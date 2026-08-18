@@ -59,6 +59,7 @@ export default function SuperAdminLogin() {
         state: {
           challengeToken:      data.challenge_token,
           maskedMobile:        data.masked_mobile,
+          mobile:              data.mobile || data.masked_mobile,
           expiresInSeconds:    data.expires_in_seconds,
           resendAfterSeconds:  data.resend_after_seconds,
           devOtp:              data.dev_otp || null,

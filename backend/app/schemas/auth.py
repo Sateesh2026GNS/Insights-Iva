@@ -50,6 +50,19 @@ class LoginRequest(BaseModel):
         return sanitize_text(value, max_length=100)
 
 
+class PhoneLoginRequest(BaseModel):
+    phone: str = Field(..., min_length=7, max_length=25)
+    id_token: str | None = None
+    role: str | None = Field(None, max_length=100)
+
+    @field_validator("role")
+    @classmethod
+    def validate_role(cls, value: str | None) -> str | None:
+        if not value:
+            return None
+        return sanitize_text(value, max_length=100)
+
+
 class RegisterRequest(BaseModel):
     company_name: str = Field(..., min_length=1, max_length=255)
     full_name: str = Field(..., min_length=1, max_length=255)

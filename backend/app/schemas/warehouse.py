@@ -7,8 +7,8 @@ class WarehouseExtendedBase(BaseModel):
     tenant_id: int
     name: str
     code: str
-    capacity: int | None = None
-    used_capacity: int | None = 0
+    capacity: int | None = Field(default=None, ge=0)
+    used_capacity: int | None = Field(default=0, ge=0)
     is_primary: bool = False
     status: str = "active"
     warehouse_type: str | None = None
@@ -20,8 +20,8 @@ class WarehouseExtendedBase(BaseModel):
     pincode: str | None = None
     manager_name: str | None = None
     manager_phone: str | None = None
-    rack_count: int | None = None
-    bin_count: int | None = None
+    rack_count: int | None = Field(default=None, ge=0)
+    bin_count: int | None = Field(default=None, ge=0)
 
 
 class WarehouseCreateExtended(WarehouseExtendedBase):
@@ -31,8 +31,8 @@ class WarehouseCreateExtended(WarehouseExtendedBase):
 class WarehouseUpdate(BaseModel):
     name: str | None = None
     code: str | None = None
-    capacity: int | None = None
-    used_capacity: int | None = None
+    capacity: int | None = Field(default=None, ge=0)
+    used_capacity: int | None = Field(default=None, ge=0)
     is_primary: bool | None = None
     status: str | None = None
     warehouse_type: str | None = None
@@ -44,8 +44,8 @@ class WarehouseUpdate(BaseModel):
     pincode: str | None = None
     manager_name: str | None = None
     manager_phone: str | None = None
-    rack_count: int | None = None
-    bin_count: int | None = None
+    rack_count: int | None = Field(default=None, ge=0)
+    bin_count: int | None = Field(default=None, ge=0)
 
 
 class WarehouseListRead(WarehouseExtendedBase):

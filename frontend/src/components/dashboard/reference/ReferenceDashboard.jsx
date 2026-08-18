@@ -201,6 +201,7 @@ function DashboardSkeleton() {
 const DEFAULT_CARD_LINKS = {
   "total-users": "/admin/users",
   "active-users": "/admin/users",
+  departments: "/masters/departments",
   "total-employees": "/masters/departments",
   "pending-approvals": "/admin/approvals",
   "total-orders": "/production/planning",
@@ -318,7 +319,7 @@ function KpiStrip({ cards = [] }) {
                     label={trendLabel}
                     mode={isMachines ? "utilization" : trendIsPct ? "change" : "info"}
                   />
-                  {card.link ? (
+                  {targetLink ? (
                     <span className="inline-flex shrink-0 items-center gap-0.5 text-[11px] font-semibold text-[#9a9aa5] transition-colors group-hover:text-[var(--color-primary)]">
                       {t("common.view", "View")}
                       <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" aria-hidden />

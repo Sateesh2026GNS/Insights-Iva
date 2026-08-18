@@ -1155,3 +1155,10 @@ select.pl-10 {
     page-break-inside: avoid;
   }
 }
+
+/* Hide Google reCAPTCHA badge */
+.grecaptcha-badge {
+  visibility: hidden !important;
+  display: none !important;
+}
+

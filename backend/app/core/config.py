@@ -3,13 +3,15 @@ from pathlib import Path
 
 from functools import lru_cache
 
-from pydantic import AliasChoices, Field, field_validator, model_validator
+from dotenv import load_dotenv
+from pydantic import AliasChoices, Field, ValidationInfo, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _DEFAULT_JWT_SECRET = "change-me-in-production-use-openssl-rand-hex-32"
 
 # .env path relative to backend/
 _env_path = Path(__file__).resolve().parent.parent.parent / ".env"
+load_dotenv(_env_path)
 
 
 def _sqlite_runtime_allowed() -> bool:
@@ -27,8 +29,12 @@ class Settings(BaseSettings):
         populate_by_name=True,
     )
 
-    # Database — PostgreSQL is required at runtime (see ALLOW_SQLITE_RUNTIME for tests).
+    # Database — PostgreSQL is required at runtime (see ALLOW_SQLITE_RUNTIME for tests/local dev).
     database_url: str = ""
+    allow_sqlite_runtime: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("ALLOW_SQLITE_RUNTIME", "allow_sqlite_runtime"),
+    )
 
     # Auth / JWT
     jwt_secret_key: str = _DEFAULT_JWT_SECRET
@@ -73,8 +79,11 @@ class Settings(BaseSettings):
     super_admin_password: str = ""
     super_admin_mobile: str = ""
 
-    # SMS OTP (optional — logs OTP in development when unset)
+    # SMS / WhatsApp OTP (optional — logs OTP in development when unset)
     sms_api_key: str = ""
+    green_api_url: str = "https://7107.api.greenapi.com"
+    green_api_id_instance: str = ""
+    green_api_token_instance: str = ""
 
     cors_origins: str = (
     "http://localhost:5174,"
@@ -99,7 +108,7 @@ class Settings(BaseSettings):
 
     @field_validator("database_url")
     @classmethod
-    def validate_database_url(cls, value: str) -> str:
+    def validate_database_url(cls, value: str, info: ValidationInfo) -> str:
         url = value.strip()
         if not url:
             raise ValueError(
@@ -108,11 +117,12 @@ class Settings(BaseSettings):
             )
         lowered = url.lower()
         if lowered.startswith("sqlite:"):
-            if not _sqlite_runtime_allowed():
+            allowed = _sqlite_runtime_allowed() or info.data.get("allow_sqlite_runtime", False)
+            if not allowed:
                 raise ValueError(
                     "SQLite is not supported as the runtime database. "
                     "Set DATABASE_URL to postgresql+psycopg://USER:PASSWORD@HOST:5432/DATABASE. "
-                    "Use ALLOW_SQLITE_RUNTIME=1 only for automated tests."
+                    "Set ALLOW_SQLITE_RUNTIME=1 in .env to allow SQLite during local development/tests."
                 )
             return url
         if lowered.startswith("postgresql"):

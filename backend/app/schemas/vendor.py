@@ -80,19 +80,19 @@ class VendorBase(BaseModel):
     upi_id: str | None = None
     payment_terms: str | None = None
     currency: str | None = "INR"
-    credit_limit: float | None = None
-    credit_days: int | None = None
-    lead_time_days: int | None = None
-    minimum_order_quantity: float | None = None
-    minimum_order_value: float | None = None
+    credit_limit: float | None = Field(default=None, ge=0.0)
+    credit_days: int | None = Field(default=None, ge=0)
+    lead_time_days: int | None = Field(default=None, ge=0)
+    minimum_order_quantity: float | None = Field(default=None, ge=0.0)
+    minimum_order_value: float | None = Field(default=None, ge=0.0)
     preferred_vendor: bool = False
-    rating: float | None = None
-    quality_score: float | None = None
-    delivery_score: float | None = None
-    price_score: float | None = None
-    service_score: float | None = None
-    on_time_delivery_percentage: float | None = None
-    rejection_percentage: float | None = None
+    rating: float | None = Field(default=None, ge=0.0, le=5.0)
+    quality_score: float | None = Field(default=None, ge=0.0, le=100.0)
+    delivery_score: float | None = Field(default=None, ge=0.0, le=100.0)
+    price_score: float | None = Field(default=None, ge=0.0, le=100.0)
+    service_score: float | None = Field(default=None, ge=0.0, le=100.0)
+    on_time_delivery_percentage: float | None = Field(default=None, ge=0.0, le=100.0)
+    rejection_percentage: float | None = Field(default=None, ge=0.0, le=100.0)
     onboarding_date: date | None = None
     product_ids: list[int] = Field(default_factory=list)
 
@@ -204,6 +204,14 @@ class VendorBase(BaseModel):
             raise ValueError(f"Invalid status. Allowed: {', '.join(sorted(VENDOR_STATUSES))}")
         return status
 
+    @field_validator("product_ids")
+    @classmethod
+    def validate_product_ids(cls, value: list[int]) -> list[int]:
+        for pid in value:
+            if not isinstance(pid, int) or pid <= 0:
+                raise ValueError("Each product ID must be a positive integer")
+        return value
+
     @model_validator(mode="after")
     def require_contact_phone_email(self) -> VendorBase:
         if not self.contact:
@@ -256,19 +264,19 @@ class VendorUpdate(BaseModel):
     upi_id: str | None = None
     payment_terms: str | None = None
     currency: str | None = None
-    credit_limit: float | None = None
-    credit_days: int | None = None
-    lead_time_days: int | None = None
-    minimum_order_quantity: float | None = None
-    minimum_order_value: float | None = None
+    credit_limit: float | None = Field(default=None, ge=0.0)
+    credit_days: int | None = Field(default=None, ge=0)
+    lead_time_days: int | None = Field(default=None, ge=0)
+    minimum_order_quantity: float | None = Field(default=None, ge=0.0)
+    minimum_order_value: float | None = Field(default=None, ge=0.0)
     preferred_vendor: bool | None = None
-    rating: float | None = None
-    quality_score: float | None = None
-    delivery_score: float | None = None
-    price_score: float | None = None
-    service_score: float | None = None
-    on_time_delivery_percentage: float | None = None
-    rejection_percentage: float | None = None
+    rating: float | None = Field(default=None, ge=0.0, le=5.0)
+    quality_score: float | None = Field(default=None, ge=0.0, le=100.0)
+    delivery_score: float | None = Field(default=None, ge=0.0, le=100.0)
+    price_score: float | None = Field(default=None, ge=0.0, le=100.0)
+    service_score: float | None = Field(default=None, ge=0.0, le=100.0)
+    on_time_delivery_percentage: float | None = Field(default=None, ge=0.0, le=100.0)
+    rejection_percentage: float | None = Field(default=None, ge=0.0, le=100.0)
     onboarding_date: date | None = None
     product_ids: list[int] | None = None
 
@@ -391,6 +399,16 @@ class VendorUpdate(BaseModel):
             return None
         if value not in PAYMENT_TERMS and value != "Net 60":
             raise ValueError(f"Invalid payment terms. Allowed: {', '.join(sorted(PAYMENT_TERMS))}")
+        return value
+
+    @field_validator("product_ids")
+    @classmethod
+    def validate_product_ids(cls, value: list[int] | None) -> list[int] | None:
+        if value is None:
+            return None
+        for pid in value:
+            if not isinstance(pid, int) or pid <= 0:
+                raise ValueError("Each product ID must be a positive integer")
         return value
 
 
@@ -534,6 +552,16 @@ class VendorDetailRead(VendorListRead):
 class VendorBulkStatusUpdate(BaseModel):
     vendor_ids: list[int] = Field(..., min_length=1)
     status: str
+
+    @field_validator("vendor_ids")
+    @classmethod
+    def validate_vendor_ids(cls, value: list[int]) -> list[int]:
+        if not value:
+            raise ValueError("vendor_ids must not be empty")
+        for vid in value:
+            if not isinstance(vid, int) or vid <= 0:
+                raise ValueError("Each vendor ID must be a positive integer")
+        return value
 
     @field_validator("status")
     @classmethod

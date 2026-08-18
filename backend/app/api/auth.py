@@ -19,6 +19,7 @@ from app.schemas.auth import (
     ForgotPasswordSuccessResponse,
     LoginRequest,
     MessageResponse,
+    PhoneLoginRequest,
     RefreshRequest,
     RegisterPendingResponse,
     RegisterRequest,
@@ -36,9 +37,11 @@ from app.services.auth_service import (
     build_access_token_for_user,
     decode_access_token,
     find_user_by_email,
+    find_user_by_phone,
     get_user_with_role,
     issue_auth_response_data,
     login_user,
+    login_user_by_phone,
     register_user,
 )
 from app.services.email_service import send_verification_email
@@ -228,6 +231,81 @@ def login(req: LoginRequest, request: Request, db: Session = Depends(get_db)):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An internal error occurred during login. Please try again.",
+        ) from exc
+
+
+@router.post("/phone-login", response_model=AuthResponse)
+def phone_login(req: PhoneLoginRequest, request: Request, db: Session = Depends(get_db)):
+    from app.middleware.security import check_rate_limit
+
+    try:
+        phone = req.phone
+        check_rate_limit(request, email=phone, scope="login")
+        ip_address = _client_ip(request)
+        user_agent = request.headers.get("User-Agent")
+
+        user = find_user_by_phone(db, phone)
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No account found with this phone number. Please contact your company administrator.",
+            )
+
+        if is_account_locked(user):
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Account temporarily locked. Try again later.",
+            )
+
+        authenticated = login_user_by_phone(db, phone)
+
+        try:
+            actual_role = assert_user_has_role(authenticated, req.role)
+        except HTTPException as exc:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=ROLE_MISMATCH_MESSAGE,
+            ) from exc
+
+        record_login_attempt(
+            db,
+            email=authenticated.email,
+            success=True,
+            user_id=authenticated.id,
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
+        record_login_history(
+            db,
+            email=authenticated.email,
+            success=True,
+            user=authenticated,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            role=actual_role,
+        )
+        AuditLogService.log_login_success(
+            db,
+            request=request,
+            user=authenticated,
+            role=actual_role,
+        )
+        data = issue_auth_response_data(
+            db,
+            authenticated,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            role_name=actual_role,
+        )
+        return AuthResponse(**data)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        db.rollback()
+        logger.exception("Unexpected error during phone login: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An internal error occurred during phone login. Please try again.",
         ) from exc
 
 

@@ -56,6 +56,7 @@ class SuperAdminLoginRequest(BaseModel):
 class SuperAdminLoginChallengeResponse(BaseModel):
     challenge_token: str
     masked_mobile: str
+    mobile: str | None = None
     expires_in_seconds: int = 300
     resend_after_seconds: int = 60
     message: str = "OTP sent to your registered mobile number."
@@ -66,6 +67,7 @@ class SuperAdminLoginChallengeResponse(BaseModel):
 class SuperAdminVerifyOtpRequest(BaseModel):
     challenge_token: str = Field(..., min_length=16, max_length=64)
     otp: str = Field(..., min_length=6, max_length=6)
+    firebase_token: str | None = None
 
     @field_validator("otp")
     @classmethod

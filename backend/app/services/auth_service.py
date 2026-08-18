@@ -208,6 +208,64 @@ def login_user(db: Session, email: str, password: str) -> User:
     return user
 
 
+def find_user_by_phone(db: Session, phone: str) -> User | None:
+    digits = "".join(c for c in (phone or "") if c.isdigit())
+    if not digits:
+        return None
+    last10 = digits[-10:] if len(digits) >= 10 else digits
+    users = db.scalars(
+        select(User).options(selectinload(User.roles), selectinload(User.tenant))
+    ).all()
+    for u in users:
+        if not u.phone:
+            continue
+        u_digits = "".join(c for c in u.phone if c.isdigit())
+        if u_digits == digits or (len(u_digits) >= 10 and u_digits[-10:] == last10):
+            return u
+    return None
+
+
+def login_user_by_phone(db: Session, phone: str) -> User:
+    from app.core.company_email import (
+        MSG_ACCOUNT_DEACTIVATED,
+        MSG_COMPANY_INACTIVE,
+        MSG_TRIAL_EXPIRED,
+        is_subscription_active,
+    )
+
+    user = find_user_by_phone(db, phone)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No account found registered with this phone number.",
+        )
+
+    company = user.tenant
+    if company is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Company association not found for this account.",
+        )
+
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=MSG_ACCOUNT_DEACTIVATED,
+        )
+
+    if not is_subscription_active(company):
+        sub = (company.subscription or "trial").strip().lower()
+        status_val = (getattr(company, "status", None) or "active").strip().lower()
+        if status_val == "suspended":
+            from app.core.company_email import MSG_COMPANY_SUSPENDED
+            detail = MSG_COMPANY_SUSPENDED
+        else:
+            detail = MSG_TRIAL_EXPIRED if sub in {"trial", "expired", ""} else MSG_COMPANY_INACTIVE
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=detail)
+
+    return user
+
+
 def issue_auth_response_data(
     db: Session,
     user: User,

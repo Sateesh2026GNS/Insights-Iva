@@ -12,33 +12,22 @@ export default function GlobalRefreshButton({ offsetForChat = false }) {
   const timerRef = useRef(null);
 
   useEffect(() => {
-    let isReload = false;
+    // ONLY show popup if user explicitly clicked the refresh button
+    let wasManualRefresh = false;
     try {
-      const navEntries = window.performance?.getEntriesByType?.("navigation");
-      if (navEntries && navEntries.length > 0) {
-        isReload = navEntries[0].type === "reload";
-      } else if (window.performance?.navigation?.type === 1) {
-        isReload = true;
+      if (sessionStorage.getItem("gns_manual_refresh_clicked") === "true") {
+        wasManualRefresh = true;
+        sessionStorage.removeItem("gns_manual_refresh_clicked");
       }
     } catch {
       // fallback
     }
 
-    let sessionFlag = false;
-    try {
-      if (sessionStorage.getItem("gns_page_refreshed") === "true") {
-        sessionFlag = true;
-        sessionStorage.removeItem("gns_page_refreshed");
-      }
-    } catch {
-      // fallback
-    }
-
-    if (sessionFlag || isReload) {
+    if (wasManualRefresh) {
       setShowPopup(true);
       timerRef.current = setTimeout(() => {
         setShowPopup(false);
-      }, 1000);
+      }, 1500);
     }
 
     return () => {
@@ -52,7 +41,7 @@ export default function GlobalRefreshButton({ offsetForChat = false }) {
     if (refreshing) return;
     setRefreshing(true);
     try {
-      sessionStorage.setItem("gns_page_refreshed", "true");
+      sessionStorage.setItem("gns_manual_refresh_clicked", "true");
     } catch {
       // fallback
     }

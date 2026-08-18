@@ -1,10 +1,13 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useSearchParams } from "react-router-dom";
 import {
   AlertTriangle,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
   ClipboardList,
   Eye,
   FileSpreadsheet,
@@ -69,7 +72,7 @@ import { exportToExcel, exportToPdf } from "../../utils/exportUtils";
 import { printWorkOrder } from "../../utils/printUtils";
 import { cleanProductLabel } from "../../utils/productLabel";
 
-const PAGE_SIZES = [20, 50, 100];
+const PAGE_SIZES = [20, 50, 100, 200, 500];
 
 function isServerWoId(id) {
   return typeof id === "number" || (typeof id === "string" && /^\d+$/.test(id));
@@ -136,6 +139,8 @@ function WoRowActions({
   issuing,
 }) {
   const [open, setOpen] = useState(false);
+  const menuBtnRef = useRef(null);
+  const [menuPos, setMenuPos] = useState({ top: 0, left: 0 });
   const serverId = isServerWoId(row.id);
 
   const more = [];
@@ -150,6 +155,21 @@ function WoRowActions({
   if (canWoStop(row.status)) more.push({ label: "Stop", onClick: () => onStop(row) });
   more.push({ label: "Print", onClick: () => onPrint(row) });
   more.push({ label: "Export PDF", onClick: () => onPdf(row) });
+
+  const openMenu = (e) => {
+    e?.stopPropagation?.();
+    const rect = menuBtnRef.current?.getBoundingClientRect();
+    if (rect) {
+      const menuHeight = more.length * 36 + 16;
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const top = spaceBelow < menuHeight ? Math.max(8, rect.top - menuHeight - 4) : rect.bottom + 4;
+      setMenuPos({
+        top,
+        left: Math.max(8, rect.right - 192),
+      });
+    }
+    setOpen(true);
+  };
 
   return (
     <div className="flex items-center justify-end gap-1 whitespace-nowrap">
@@ -168,40 +188,50 @@ function WoRowActions({
       ) : null}
       {more.length ? (
         <div className="relative">
-          <IconButton
-            aria-label="More actions"
-            title="More actions"
-            onClick={(e) => {
-              e?.stopPropagation?.();
-              setOpen((v) => !v);
-            }}
-          >
-            <MoreVertical className="h-3.5 w-3.5" />
-          </IconButton>
-          {open ? (
-            <>
-              <button type="button" className="fixed inset-0 z-40 cursor-default" aria-label="Close menu" onClick={() => setOpen(false)} />
-              <div className="absolute right-0 z-50 mt-1 w-48 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] py-1 shadow-lg">
-                {more.map((item) => (
+          <span ref={menuBtnRef} className="inline-flex">
+            <IconButton
+              aria-label="More actions"
+              title="More actions"
+              onClick={openMenu}
+            >
+              <MoreVertical className="h-3.5 w-3.5" />
+            </IconButton>
+          </span>
+          {open
+            ? createPortal(
+                <>
                   <button
-                    key={item.label}
                     type="button"
-                    disabled={item.disabled}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] disabled:opacity-50"
-                    onClick={() => {
-                      setOpen(false);
-                      item.onClick?.();
-                    }}
+                    className="fixed inset-0 z-[80] cursor-default"
+                    aria-label="Close menu"
+                    onClick={() => setOpen(false)}
+                  />
+                  <div
+                    className="fixed z-[90] w-48 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] py-1 shadow-lg"
+                    style={{ top: menuPos.top, left: menuPos.left }}
                   >
-                    {item.label === "Pause" ? <Pause className="h-3.5 w-3.5" /> : null}
-                    {item.label === "Print" ? <Printer className="h-3.5 w-3.5" /> : null}
-                    {item.label === "Export PDF" ? <FileText className="h-3.5 w-3.5" /> : null}
-                    {item.label}
-                  </button>
-                ))}
-              </div>
-            </>
-          ) : null}
+                    {more.map((item) => (
+                      <button
+                        key={item.label}
+                        type="button"
+                        disabled={item.disabled}
+                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] disabled:opacity-50"
+                        onClick={() => {
+                          setOpen(false);
+                          item.onClick?.();
+                        }}
+                      >
+                        {item.label === "Pause" ? <Pause className="h-3.5 w-3.5" /> : null}
+                        {item.label === "Print" ? <Printer className="h-3.5 w-3.5" /> : null}
+                        {item.label === "Export PDF" ? <FileText className="h-3.5 w-3.5" /> : null}
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                </>,
+                document.body
+              )
+            : null}
         </div>
       ) : null}
     </div>
@@ -209,6 +239,7 @@ function WoRowActions({
 }
 
 const defaultFilters = {
+  search: "",
   work_order_number: "",
   production_order: "",
   product: "",
@@ -238,7 +269,7 @@ const PENDING_VIEW_STATUSES = new Set([
 export default function WorkOrders() {
   const { user } = useAuth();
   const { addToast } = useToast();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const poFilter = searchParams.get("production_order_id");
   // view=pending → show only non-completed orders (from Pending Orders dashboard widget)
   const pendingView = searchParams.get("view") === "pending";
@@ -369,13 +400,19 @@ export default function WorkOrders() {
   useEffect(() => { load(); }, [load]);
   useManufacturingRefresh(load);
 
+  const handleClearFilters = useCallback(() => {
+    setFilters({ ...defaultFilters });
+    setSearchParams({});
+    setPage(1);
+  }, [setSearchParams]);
+
   const filtered = useMemo(() => {
     return workOrders.filter((w) => {
       // When navigated from Pending Orders widget, only show non-completed orders
       if (pendingView && !PENDING_VIEW_STATUSES.has(w.status)) return false;
       if (poFilter && String(w.production_order_id) !== poFilter) return false;
-      if (filters.work_order_number) {
-        const q = filters.work_order_number.toLowerCase();
+      if (filters.search) {
+        const q = filters.search.toLowerCase();
         const hay = [
           w.work_order_number,
           w.production_order_number,
@@ -389,6 +426,7 @@ export default function WorkOrders() {
           .toLowerCase();
         if (!hay.includes(q)) return false;
       }
+      if (filters.work_order_number && !String(w.work_order_number || "").toLowerCase().includes(filters.work_order_number.toLowerCase())) return false;
       if (filters.production_order && !String(w.production_order_number || "").toLowerCase().includes(filters.production_order.toLowerCase())) return false;
       if (filters.product && !String(w.product_name || "").toLowerCase().includes(filters.product.toLowerCase())) return false;
       if (filters.customer && !String(w.customer_name || "").toLowerCase().includes(filters.customer.toLowerCase())) return false;
@@ -728,8 +766,8 @@ export default function WorkOrders() {
               <input
                 type="search"
                 placeholder="Search WO, product, customer, machine…"
-                value={filters.work_order_number}
-                onChange={(e) => setFilters((f) => ({ ...f, work_order_number: e.target.value }))}
+                value={filters.search}
+                onChange={(e) => setFilters((f) => ({ ...f, search: e.target.value }))}
                 className="ui-input !rounded-full pl-10"
               />
             </div>
@@ -787,7 +825,7 @@ export default function WorkOrders() {
                 <option value="">Status</option>
                 {WO_STATUSES.map((s) => <option key={s} value={s}>{woStatusLabel(s)}</option>)}
               </select>
-              <Button variant="secondary" type="button" onClick={() => setFilters(defaultFilters)}>Clear</Button>
+              <Button variant="secondary" type="button" onClick={handleClearFilters}>Clear</Button>
             </div>
           )}
 
@@ -802,12 +840,24 @@ export default function WorkOrders() {
                   icon="clipboard"
                   title="No work orders found"
                   description={
-                    Object.values(filters).some(Boolean)
+                    Object.values(filters).some(Boolean) || poFilter || pendingView
                       ? "No work orders match your filters. Clear filters or adjust search."
                       : "Create a work order to start production execution and open its Job Card."
                   }
-                  actionLabel={!isOperator(user) ? "New Work Order" : undefined}
-                  onAction={!isOperator(user) ? () => setShowQuickModal(true) : undefined}
+                  actionLabel={
+                    Object.values(filters).some(Boolean) || poFilter || pendingView
+                      ? "Clear Filters"
+                      : !isOperator(user)
+                      ? "New Work Order"
+                      : undefined
+                  }
+                  onAction={
+                    Object.values(filters).some(Boolean) || poFilter || pendingView
+                      ? handleClearFilters
+                      : !isOperator(user)
+                      ? () => setShowQuickModal(true)
+                      : undefined
+                  }
                 />
               }
             />
@@ -834,9 +884,20 @@ export default function WorkOrders() {
               <button
                 type="button"
                 disabled={page <= 1}
+                onClick={() => setPage(1)}
+                className="ui-page-btn"
+                aria-label="First page"
+                title="First page"
+              >
+                <ChevronsLeft className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                disabled={page <= 1}
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 className="ui-page-btn"
                 aria-label="Previous page"
+                title="Previous page"
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
@@ -844,7 +905,7 @@ export default function WorkOrders() {
                 type="button"
                 className="ui-page-btn ui-page-btn--active"
               >
-                {page}
+                {page} / {totalPages}
               </button>
               <button
                 type="button"
@@ -852,8 +913,19 @@ export default function WorkOrders() {
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 className="ui-page-btn"
                 aria-label="Next page"
+                title="Next page"
               >
                 <ChevronRight className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                disabled={page >= totalPages}
+                onClick={() => setPage(totalPages)}
+                className="ui-page-btn"
+                aria-label="Last page (End of the page)"
+                title="End of the page"
+              >
+                <ChevronsRight className="h-4 w-4" />
               </button>
             </div>
           </div>

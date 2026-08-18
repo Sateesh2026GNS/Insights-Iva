@@ -32,22 +32,35 @@ function platformHeaders() {
 }
 
 export async function superAdminLogin(email, password) {
-  const { data } = await api.post("/platform/auth/login", { email, password });
+  const { data } = await api.post(
+    "/platform/auth/login",
+    { email, password },
+    { skipGlobalError: true }
+  );
   return data;
 }
 
-export async function superAdminVerifyOtp(challengeToken, otp) {
-  const { data } = await api.post("/platform/auth/verify-otp", {
-    challenge_token: challengeToken,
-    otp,
-  });
+export async function superAdminVerifyOtp(challengeToken, otp, firebaseToken = null) {
+  const { data } = await api.post(
+    "/platform/auth/verify-otp",
+    {
+      challenge_token: challengeToken,
+      otp,
+      firebase_token: firebaseToken || undefined,
+    },
+    { skipGlobalError: true }
+  );
   return data;
 }
 
 export async function superAdminResendOtp(challengeToken) {
-  const { data } = await api.post("/platform/auth/resend-otp", {
-    challenge_token: challengeToken,
-  });
+  const { data } = await api.post(
+    "/platform/auth/resend-otp",
+    {
+      challenge_token: challengeToken,
+    },
+    { skipGlobalError: true }
+  );
   return data;
 }
 

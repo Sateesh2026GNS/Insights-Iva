@@ -5,6 +5,15 @@ export async function login(email, password, role) {
   return data;
 }
 
+export async function phoneLogin(phone, role, idToken = null) {
+  const { data } = await api.post("/auth/phone-login", {
+    phone,
+    role,
+    id_token: idToken || undefined,
+  });
+  return data;
+}
+
 export async function getCurrentUser() {
   const { data } = await api.get("/auth/me");
   return data;

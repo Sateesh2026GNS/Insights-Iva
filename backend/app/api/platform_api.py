@@ -69,6 +69,7 @@ def super_admin_verify_otp(
     return SuperAdminService(db).verify_login_otp(
         req.challenge_token,
         req.otp,
+        firebase_token=req.firebase_token,
         ip_address=_client_ip(request),
         user_agent=request.headers.get("User-Agent"),
     )
