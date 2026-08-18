@@ -255,7 +255,9 @@ def _po_status_counts(db: Session, tenant_id: int) -> dict[str, int]:
 def build_admin_kpis(db: Session, tenant_id: int, user: User | None, ctx: dict[str, Any]) -> list[dict]:
     from app.services.approval_service import get_pending_approvals
     from app.services.department_service import get_department_summary
+    from app.services.rbac_service import get_user_stats
 
+    stats = get_user_stats(db, tenant_id)
     dept = get_department_summary(db, tenant_id)
     approvals = int(get_pending_approvals(db, tenant_id).get("total") or 0)
     today = ctx["today"]
