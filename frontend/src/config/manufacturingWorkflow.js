@@ -1,16 +1,4 @@
-import {
-  CalendarClock,
-  ClipboardCheck,
-  FileText,
-  GitBranch,
-  ListChecks,
-  Package,
-  ShoppingCart,
-  Star,
-  Target,
-  UserRound,
-  Users,
-} from "lucide-react";
+import { CalendarClock, ClipboardCheck, FileText, GitBranch, ListChecks, Package, ShoppingCart, Star, Target, Truck, UserRound, Users, Wallet } from "lucide-react";
 
 /** End-to-end manufacturing workflow steps for Insights Iva. */
 
@@ -228,6 +216,122 @@ export function canViewFullWorkflow(roleName) {
   if (!roleName) return false;
   return FULL_ACCESS_ROLES.includes(roleName.toLowerCase());
 }
+
+/** Map ERP role names to workflow team keys (mirrors backend ROLE_TO_TEAMS). */
+const ROLE_TEAM_MAP = {
+  Admin: ["admin", "sales", "inventory", "production", "operator", "quality", "packing", "billing"],
+  "Sales Manager": ["sales"],
+  "Store Manager": ["inventory", "packing"],
+  "Production Manager": ["production", "quality"],
+  Operator: ["operator"],
+  Accountant: ["billing"],
+  "Purchase Manager": ["inventory"],
+  "Procurement Manager": ["inventory"],
+};
+
+export function getUserWorkflowTeams(user) {
+  if (!user) return [];
+  const roles = [];
+  if (typeof user.role === "string") roles.push(user.role);
+  if (Array.isArray(user.roles)) {
+    user.roles.forEach((r) => roles.push(typeof r === "string" ? r : r?.name));
+  }
+  const teams = new Set();
+  roles.filter(Boolean).forEach((name) => {
+    (ROLE_TEAM_MAP[name] || []).forEach((t) => teams.add(t));
+  });
+  if (canViewFullWorkflow(getPrimaryRoleName(user))) {
+    ["admin", "sales", "inventory", "production", "operator", "quality", "packing", "billing"].forEach(
+      (t) => teams.add(t)
+    );
+  }
+  return [...teams];
+}
+
+export function userHasWorkflowTeam(user, team) {
+  return getUserWorkflowTeams(user).includes(team);
+}
+
+/** End-to-end manufacturing team job cards (Sales → Billing). */
+export const TEAM_WORKFLOW_JOB_CARDS = [
+  {
+    id: "sales",
+    team: "sales",
+    label: "Sales",
+    role: "Sales Manager",
+    icon: ShoppingCart,
+    statuses: ["draft", "SALES_CONFIRMED"],
+    whenShown: "Draft or new sales order",
+    actions: ["Create sales order", "Confirm order → send to Inventory"],
+    filterStatus: "SALES_CONFIRMED",
+  },
+  {
+    id: "inventory",
+    team: "inventory",
+    label: "Inventory",
+    role: "Store Manager",
+    icon: Package,
+    statuses: ["MATERIAL_CHECK_PENDING", "MATERIAL_SHORTAGE", "MATERIAL_PARTIAL", "MATERIAL_AVAILABLE"],
+    whenShown: "After sales confirmation",
+    actions: ["Verify materials", "Check stock & shortages", "Release to Production"],
+    filterStatus: "MATERIAL_CHECK_PENDING",
+  },
+  {
+    id: "production",
+    team: "production",
+    label: "Production Manager",
+    role: "Production Manager",
+    icon: Users,
+    statuses: ["READY_FOR_PRODUCTION", "PRODUCTION_ASSIGNED", "PRODUCTION_REWORK", "QUALITY_REJECTED"],
+    whenShown: "Materials available",
+    actions: ["Review job card", "Assign operator & machine", "Set schedule"],
+    filterStatus: "READY_FOR_PRODUCTION",
+  },
+  {
+    id: "operator",
+    team: "operator",
+    label: "Operator",
+    role: "Operator",
+    icon: UserRound,
+    statuses: ["PRODUCTION_ASSIGNED", "PRODUCTION_IN_PROGRESS"],
+    whenShown: "After manager assignment",
+    actions: ["Start production", "Update progress", "Complete production"],
+    filterStatus: "PRODUCTION_ASSIGNED",
+  },
+  {
+    id: "quality",
+    team: "quality",
+    label: "Quality",
+    role: "Quality Team",
+    icon: ClipboardCheck,
+    statuses: ["QUALITY_CHECK_PENDING"],
+    whenShown: "After production completed",
+    actions: ["Inspect output", "Record defects", "Pass / Fail / Partial"],
+    filterStatus: "QUALITY_CHECK_PENDING",
+  },
+  {
+    id: "packing",
+    team: "packing",
+    label: "Packing & Dispatch",
+    role: "Store Manager",
+    icon: Truck,
+    statuses: ["QUALITY_APPROVED", "PACKING_PENDING", "PACKING_IN_PROGRESS", "PACKED"],
+    whenShown: "After quality approval",
+    actions: ["Pack goods", "Enter dispatch details", "LR / tracking number"],
+    filterStatus: "PACKING_PENDING",
+  },
+  {
+    id: "billing",
+    team: "billing",
+    label: "Billing",
+    role: "Accountant",
+    icon: Wallet,
+    statuses: ["BILLING_PENDING", "BILLING_HOLD", "PACKED"],
+    whenShown: "After packing completed",
+    actions: ["Create GST invoice", "Record billing status", "Complete order"],
+    filterStatus: "BILLING_PENDING",
+  },
+];
 
 /**
  * Map a page/context key to the current step index in the manufacturing spine.

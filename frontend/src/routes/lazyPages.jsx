@@ -93,7 +93,6 @@ export const DocumentModule = lazy(() => import("../pages/common/DocumentModule"
 export const EwaybillLogin = lazy(() => import("../pages/sales/EwaybillLogin"));
 export const DigitalSignatureSetup = lazy(() => import("../pages/sales/DigitalSignatureSetup"));
 export const SettingsFeatureModule = lazy(() => import("../pages/settings/SettingsFeatureModule"));
-export const SectorSettingsV2 = lazy(() => import("../pages/settings/SectorSettingsV2"));
 export const SequenceResetSettingV2 = lazy(() => import("../pages/settings/SequenceResetSettingV2"));
 export const TemplateSettings = lazy(() => import("../pages/settings/TemplateSettingsV2"));
 export const FormatSettings = lazy(() => import("../pages/settings/FormatSettingsV2"));
@@ -217,4 +216,5 @@ export const CreateProduct = lazy(() => import("../pages/masters/CreateProduct")
 export const BomMaster = lazy(() => import("../pages/masters/BomMaster"));
 export const DepartmentManagement = lazy(() => import("../pages/masters/DepartmentManagement"));
 export const RoleWorkflowBoard = lazy(() => import("../pages/manufacturing/RoleWorkflowBoard"));
+export const SalesJobCardPage = lazy(() => import("../pages/manufacturing/SalesJobCardPage"));
 export const NotFound = lazy(() => import("../pages/NotFound"));

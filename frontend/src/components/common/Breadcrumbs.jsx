@@ -138,7 +138,6 @@ const pathLabels = {
   "restore-deleted-docs": "Restore Deleted Docs",
   rfq: "RFQ",
   safety: "Safety",
-  "sector-settings": "Sector Settings",
   sensors: "Sensors",
   "sequence-reset": "Sequence Reset",
   shifts: "Shifts",

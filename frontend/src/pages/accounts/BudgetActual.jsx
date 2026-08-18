@@ -13,7 +13,7 @@ import PageHeader from "../../components/common/PageHeader";
 const STORAGE_KEY = "smrt_budget_targets";
 const CATEGORIES  = ["Sales Revenue", "Cost of Goods Sold", "Operating Expenses", "Marketing", "HR & Payroll", "Admin & Overhead", "Other Income"];
 
-const inputClass = "mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:border-[#2563EB] focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all";
+import { inputMtClass as inputClass } from "../../design-system/classes";
 
 // Load saved budgets from localStorage
 function loadSavedBudgets() {

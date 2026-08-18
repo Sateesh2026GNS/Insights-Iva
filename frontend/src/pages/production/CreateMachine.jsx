@@ -9,8 +9,7 @@ import useTenantId from "../../hooks/useTenantId";
 import { DEPARTMENTS, PRODUCTION_LINES, MACHINE_NAMES } from "../../data/machinesMasterData";
 
 import Button from "../../components/common/Button";
-const inputClass =
-  "mt-1.5 w-full rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-4 py-2.5 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20";
+import { inputMtClass as inputClass } from "../../design-system/classes";
 
 const STATUSES = ["idle", "running", "down", "maintenance"];
 

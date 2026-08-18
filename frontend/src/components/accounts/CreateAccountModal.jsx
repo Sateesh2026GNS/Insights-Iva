@@ -32,8 +32,7 @@ const EMPTY = {
   description: "",
 };
 
-const inputClass =
-  "w-full rounded-lg border border-[#cfcfd6] bg-white px-3 py-2.5 text-[14px] text-[#1a1a1f] outline-none placeholder:text-[#9a9aa5] focus:border-[#6b4eff]";
+import { inputClass } from "../../design-system/classes";
 
 function Label({ children, required }) {
   return (

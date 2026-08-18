@@ -300,7 +300,7 @@ export default function LedgerDetailsV2() {
                   setPage(1);
                 }}
                 placeholder="Search"
-                className="w-full rounded-full border border-[#e4e4ea] bg-white py-2.5 pl-10 pr-4 text-[14px] text-[#1a1a1f] placeholder:text-[#9a9aa5] focus:border-[#0f6d84] focus:outline-none focus:ring-2 focus:ring-[#0f6d84]/25"
+                className="ui-input w-full !rounded-full py-2.5 pl-10 pr-4"
               />
             </div>
             <label className="block text-[12px] font-medium text-[#6b6b76]">
@@ -309,7 +309,7 @@ export default function LedgerDetailsV2() {
                 type="date"
                 value={fromDate}
                 onChange={(e) => setFromDate(e.target.value)}
-                className="mt-1 block w-full min-w-[150px] rounded border border-[#e4e4ea] px-3 py-2 text-[13px] outline-none focus:border-[#0f6d84]"
+                className="ui-input mt-1 block w-full min-w-[150px]"
               />
             </label>
             <label className="block text-[12px] font-medium text-[#6b6b76]">
@@ -318,7 +318,7 @@ export default function LedgerDetailsV2() {
                 type="date"
                 value={toDate}
                 onChange={(e) => setToDate(e.target.value)}
-                className="mt-1 block w-full min-w-[150px] rounded border border-[#e4e4ea] px-3 py-2 text-[13px] outline-none focus:border-[#0f6d84]"
+                className="ui-input mt-1 block w-full min-w-[150px]"
               />
             </label>
           </div>

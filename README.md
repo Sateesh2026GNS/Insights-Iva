@@ -4,9 +4,9 @@
 
 **Tagline:** Business Intelligence • Analytics • AI
 
-Security hardening (auth lockout, email verification, refresh tokens, RBAC, tenant isolation, headers) is documented in [SECURITY_REPORT.md](./SECURITY_REPORT.md). **Full security audit + hardening pass (16 Aug 2026)** — summary in [Security Audit & Hardening](#security-audit--hardening-aug-2026) below. **Frontend UI/UX audit (16 Aug 2026)** — [UI_UX_AUDIT_REPORT.md](./UI_UX_AUDIT_REPORT.md). Architecture and recent UI/live-data analysis: [PROJECT_ANALYSIS_REPORT.md](./PROJECT_ANALYSIS_REPORT.md).
+Security hardening (auth lockout, email verification, refresh tokens, RBAC, tenant isolation, headers) is documented in [SECURITY_REPORT.md](./SECURITY_REPORT.md). **Full security audit + hardening pass (16 Aug 2026)** — summary in [Security Audit & Hardening](#security-audit--hardening-aug-2026) below. **Frontend UI/UX audit + design system migration (18 Aug 2026)** — [UI_UX_AUDIT_REPORT.md](./UI_UX_AUDIT_REPORT.md). Architecture and recent analysis: [PROJECT_ANALYSIS_REPORT.md](./PROJECT_ANALYSIS_REPORT.md).
 
-**Latest stability pass (Aug 2026):** Full-stack audit — frontend build, Vitest, backend pytest, and sidebar→route mapping. **Security pass (16 Aug 2026):** Critical auth/RBAC/API fixes applied; core security tests pass. **HR module dashboards (Aug 2026):** mockup-aligned UI for HR Hub, Attendance, Leave, Payroll, Performance, Recruitment, Training, and HR Settings — see [HR & Employee Management](#hr--employee-management). See [Stability Audit & Validation](#stability-audit--validation-aug-2026) and [Security Audit & Hardening](#security-audit--hardening-aug-2026).
+**Latest stability pass (Aug 2026):** Full-stack audit — frontend build, Vitest, backend pytest, and sidebar→route mapping. **Manufacturing workflow engine (18 Aug 2026):** role-based Sales → Job Card → Inventory → Production → Quality → Packing → Billing pipeline with PostgreSQL persistence — see [Manufacturing Workflow Engine](#manufacturing-workflow-engine). **Design system rebrand (18 Aug 2026):** forest green Insights Iva brand, centralized `frontend/src/design-system/`, accounts/inventory shells, ERP document form controls — see [UI design system](#ui-design-system-colors--buttons). **Security pass (16 Aug 2026):** Critical auth/RBAC/API fixes applied; core security tests pass. **HR module dashboards (Aug 2026):** mockup-aligned UI — see [HR & Employee Management](#hr--employee-management). See [Stability Audit & Validation](#stability-audit--validation-aug-2026) and [Security Audit & Hardening](#security-audit--hardening-aug-2026).
 
 ## Branding & Assets
 
@@ -59,19 +59,34 @@ To add or replace slides, drop PNG/JPG files into `frontend/public/auth/` using 
 
 ### UI design system (colors & buttons)
 
-Central tokens live in `frontend/src/index.css` (`:root`). Prefer CSS variables and shared button classes over page-specific hex.
+Central tokens live in `frontend/src/index.css` (`:root` + `.ui-*` utilities). Import shared classes and components from **`frontend/src/design-system/index.js`** — prefer CSS variables and design-system exports over page-specific hex.
 
 | Role | Token / class | Typical use |
 |------|---------------|-------------|
-| Primary | `--color-primary` / `ui-btn-primary` | Standard primary actions |
-| Success | `--color-success` (`#036F71`) / `ui-btn-success` | Complete / produce / planning CTAs |
+| Primary (brand) | `--color-primary` (`#036F71`) / `ui-btn-primary` | Primary actions, focus rings, nav active, links |
+| Primary soft | `--color-primary-soft` (`#E6F4F4`) | Section headers, active pills, KPI backgrounds |
+| Page canvas | `--color-bg` (`#F2F7F5`) | App background — light green-gray BI canvas |
+| Success | `--color-success` / `ui-btn-success` | Complete / approve / planning CTAs |
+| Info / in-progress | `--color-info` | Workflow in-progress (blue — not primary brand) |
 | Action teal | `--color-action-teal` (`#0F6D84`) | Selective purchase/payment CTAs |
 | Action blue | `--color-action-blue` (`#7E93CC`) | Selective invoice create |
-| Soft blue | `--color-primary-soft` (`#BBDEFC`) | Light secondary CTAs (e.g. Create Vendor) |
-| Warning / CTA yellow | `--color-cta` / `ui-btn-cta` | Use **selectively** for warnings & attention—not every Create button |
+| Warning / CTA yellow | `--color-cta` / `ui-btn-cta` | Warnings & attention — use selectively |
 | Danger | `--color-danger` / `ui-btn-danger` | Delete / destructive |
 
+**Design-system modules:**
+
+| Module | Path | Exports |
+|--------|------|---------|
+| Barrel | `design-system/index.js` | Tokens, `Button`, `FormField`, `FilterBar`, `StatusBadge`, accounts/inventory shells |
+| Class tokens | `design-system/classes.js` | `inputClass`, `selectClass`, `textareaClass`, `tableWrapClass`, typography |
+| ERP forms | `design-system/erpFormControls.jsx` | `SoftInput`, `SoftSelect`, `FieldLabel`, `Pill`, `ERP_PRIMARY` |
+| Status tones | `design-system/statusTone.js` | `resolveStatusTone()` for badges |
+| Accounts shell | `components/accounts/accountsDesignSystem.jsx` | Page shell, tables, `ACCOUNTS_INPUT_CLASS` |
+| Inventory shell | `components/inventory/inventoryDesignSystem.jsx` | Page shell, tabs, pagination, tables |
+
 JS mirrors: `frontend/src/theme/colors.js`, `frontend/src/styles/theme.js`. Shared component: `ActionButton` (`frontend/src/components/common/ActionButton.jsx`).
+
+Full migration status and remaining drift: [UI_UX_AUDIT_REPORT.md](./UI_UX_AUDIT_REPORT.md).
 
 **Global search** (navbar): `GlobalSearch` — nested input wrapper (icon does not jump when results open), clear control, Escape / click-outside.
 
@@ -97,10 +112,38 @@ Figures (KPI values, money, quantity columns) use a dedicated font token so amou
 - Production planning (orders, scheduling)
 - MRP (material requirement planning) with links to production planning
 - Work orders
-- **Job Card** (`/production/job-card`) — shop-floor document view over live work orders (list + detail workflow); create via quick work order
+- **Shop-floor Job Card** (`/production/job-card`) — document view over live work orders (list + detail); create via quick work order
 - Batch tracking
 - Machine status monitoring
 - Daily production reports
+
+### Manufacturing Workflow & Sales Job Card
+
+End-to-end order workflow from confirmed sales order through billing. Live PostgreSQL data only — no mock job cards or fake timeline entries.
+
+| Page | Route | Contents |
+|------|-------|----------|
+| Admin workflow hub | Dashboard (`/`) | Stage pipeline, **Live** indicator with silent 30s auto-refresh |
+| Team workflow board | `/manufacturing/workflow` | Role-filtered queue; team actions (material check, production, quality, packing, billing) |
+| Sales Order Job Card | `/sales/orders/:id/job-card`, `/manufacturing/job-card/:orderId` | Summary panel, editable details form, 7-step workflow stepper, timeline |
+
+**Seven job-card workflow stages (UI stepper):** Sales Orders → Inventory Check → Production → Quality Check → Packing & Dispatch → Billing → Completed.
+
+**User flow:** Create sales order → add product lines → **Confirm → MRP & Production** → **Open Job Card** on the order detail page → fill customer/product/qty/delivery/priority → **Create Job Card** → Inventory team runs material check → Production assigns operator → Quality approves → Packing completes → Billing creates invoice.
+
+**Sales Job Card layout:** Header (Save / Cancel / status badge) · left column — **Job Card Summary** + **Job Card Details** form · right column — **Workflow Status** stepper + **Timeline** (actor + timestamp).
+
+**RBAC teams** (mapped from ERP roles in `workflow_constants.py`): sales, inventory, production, operator, quality, packing, billing, admin. Transitions enforce the required team; Admin may act on all stages.
+
+**Persistence:**
+- `sales_job_cards` — job card document (draft / created)
+- `sales_order_material_checks` + lines — inventory verification
+- `manufacturing_workflow_transitions` — audit trail
+- `sales_orders.workflow_status` — canonical machine state (`SALES_CONFIRMED`, `MATERIAL_CHECK_PENDING`, … `COMPLETED`)
+
+**Migrations:** `d1e2f3a4b5c6_manufacturing_workflow_engine.py`, `e2f3a4b5c6d7_sales_job_cards_table.py` — run `alembic upgrade head` from `backend/`.
+
+See [Manufacturing Workflow Engine](#manufacturing-workflow-engine) for API endpoints, code map, and tests.
 
 ### Inventory & Raw Material Management
 
@@ -167,6 +210,7 @@ Core HR APIs remain under `/hr/` — employees, shifts, attendance (clock-in/out
 
 ### Sales & Billing Module
 - Tax invoices, quotations, payment receipts, refund vouchers, proforma / export invoices, delivery challans, credit & debit notes
+- **Sales orders** — create at `/sales/orders/create`; confirm runs MRP and advances workflow; confirmed orders expose **Open Job Card**
 - e-Invoice and E-Waybill login helpers; digital signature page
 - GST billing (SGST, CGST, IGST); payment tracking
 - Customer management (Masters → Customers)
@@ -252,7 +296,10 @@ Store Dashboard → Raw Materials / Finished Goods → **Add Raw Material / Add 
 Vendors → Create Vendor (modal or `/procurement/vendors/create`) → Fill company & contact → Optional bank verify → Save → Detail / PO. Bulk import: `/procurement/vendors/bulk-import`.
 
 ### 4. Sales
-Customers (create modal or `/sales/customers/create`) → Invoice / Quotation / Receipt flows → Receive payment. Bulk buyers: `/sales/customers/bulk-import`.
+Customers (create modal or `/sales/customers/create`) → Create sales order → add product lines → Confirm (MRP + production) → **Open Job Card** → Invoice / Quotation / Receipt flows → Receive payment. Bulk buyers: `/sales/customers/bulk-import`.
+
+### 4b. Manufacturing Workflow (order spine)
+Sales order confirmed → **Sales Job Card** (`/sales/orders/:id/job-card`) → Inventory material check → Production assign/start/complete → Quality approve → Packing dispatch → Billing invoice → **Completed**. Team queues at `/manufacturing/workflow`; admin hub on main dashboard with stage pipeline.
 
 ### 5. HR (Employee)
 HR Dashboard → Attendance / Leave / Payroll / Performance modules → Create employee or leave/payroll/review as needed → Track attendance → Process payroll → View reports under HR Reports. Settings at `/hr/settings`.
@@ -464,28 +511,31 @@ Insights Iva/
 │   │       ├── slide-2.png      # Optional (gradient fallback if missing)
 │   │       └── slide-3.png      # Optional (gradient fallback if missing)
 │   ├── src/
-│   │   ├── api/                 # axiosConfig, notificationService, productionApi, salesApi, …
-│   │   ├── components/          # layout (Navbar, Sidebar), notifications, common (BrandLogo, ConfirmationDialog, …)
+│   │   ├── api/                 # axiosConfig, notificationService, productionApi, salesApi, workflowApi, …
+│   │   ├── components/          # layout (Navbar, Sidebar), notifications, common, accounts/, inventory/, manufacturing/
+│   │   ├── design-system/       # index.js, classes.js, erpFormControls.jsx, statusTone.js
 │   │   ├── context/             # AuthContext, ToastContext, SettingsContext
 │   │   ├── hooks/               # useAuth, useNotifications
-│   │   ├── pages/               # auth, dashboard, production, inventory, procurement, sales, accounts, hr, meetings, quality, maintenance, analytics, alerts, admin, documents, settings
+│   │   ├── pages/               # auth, dashboard, production, inventory, procurement, sales, accounts, hr, manufacturing, meetings, …
 │   │   └── routes/              # AppRoutes, lazyPages (code-split)
 │   ├── package.json
 │   └── .env
 │
 ├── README.md
 ├── SECURITY_REPORT.md
-└── PROJECT_ANALYSIS_REPORT.md
+├── PROJECT_ANALYSIS_REPORT.md
+└── UI_UX_AUDIT_REPORT.md
 ```
 ### Backend Code Map
 
 | Module | API (`app/api/`) | Service (`app/services/`) | Models |
 |--------|------------------|---------------------------|--------|
 | Auth | auth.py | auth_service.py, security_service.py | user, tenant, role; security tokens |
-| Production | production.py / production_api | production_service.py, job_card_service.py | production, product, machine, work orders |
+| Production | production.py / production_api | production_service.py, job_card_service.py, workflow_state_service.py, workflow_team_service.py | production, product, machine, work orders; manufacturing_workflow (SalesJobCard, material checks, transitions) |
 | Inventory | inventory.py | inventory_service.py | inventory (Warehouse, Supplier/Vendor, Item, StockLevel, StockMovement) |
 | Procurement | procurement.py | procurement_service.py, vendor_service.py, bank_lookup_service.py | procurement (PurchaseOrder, MaterialRequest, GoodsReceipt, SupplierPayment); VendorProduct; Supplier enterprise fields |
 | Sales | sales.py | sales_service.py | sales (Customer, SalesOrder, Invoice, Payment) |
+| Manufacturing Workflow | manufacturing_workflow_api.py | workflow_state_service.py, workflow_team_service.py, job_card_service.py | manufacturing_workflow (SalesJobCard, SalesOrderMaterialCheck, ManufacturingWorkflowTransition) |
 | Accounts | accounts.py | accounts_service.py | accounts (Income, Expense) |
 | HR | hr.py | hr_service.py | hr (Employee, Shift, Attendance, Payroll, Performance) |
 | Analytics | analytics.py | analytics_service.py | aggregates from other modules |
@@ -502,18 +552,140 @@ Insights Iva/
 | Area | Pages | API Client |
 |------|-------|------------|
 | Auth | Login, Register | authApi, `BrandLogo`, `AuthSlider` |
-| Dashboard | Dashboard (KPIs, charts) | productionApi, inventoryApi, hrApi, analyticsApi, accountsApi |
+| Design system | Shared across all modules | `design-system/index.js`, `classes.js`, `erpFormControls.jsx`; `accountsDesignSystem`, `inventoryDesignSystem` |
+| Dashboard | Dashboard (KPIs, charts), ManufacturingWorkflowHub | productionApi, inventoryApi, hrApi, analyticsApi, accountsApi, workflowApi |
 | Production | Planning, MRP, WorkOrders, JobCard, BatchTracking, MachineStatus, DailyReports, CreateProduction, CreateMachine | productionApi |
+| Manufacturing Workflow | RoleWorkflowBoard, TeamWorkflowJobCards, SalesJobCardPage, WorkflowOrderActions, ManufacturingWorkflowHub | workflowApi |
 | Inventory | InventoryDashboard, RawMaterials, FinishedGoods, StockTransfer, StockAdjustment, StockLedger, Warehouses, InventorySettingsV2, CreateItem | inventoryApi, bizDocumentsApi (settings) |
 | Masters | Customers, BulkImportBuyer; VendorManagement, BulkImportSeller, CreateVendor, VendorDetail; ProductsMaster, BulkImportProduct, CreateProduct; BomMaster, DepartmentManagement | salesApi, procurementApi, productsApi |
 | Procurement / Purchases | PurchaseOrders, MaterialRequests, GoodsReceipt, SupplierPayments; Purchases, PaymentsMade, DebitNotes (+ create pages) | procurementApi, bizDocumentsApi |
-| Sales | Invoices, Quotations, PaymentReceipts, Customers, document forms | salesApi |
+| Sales | Invoices, Quotations, PaymentReceipts, Customers, SalesOrderDetail, CreateSalesOrder, document forms | salesApi, workflowApi |
 | Accounts | Ledger, Expense, ChartOfAccounts, ManualJournal, BalanceSheet, ProfitLoss, Reports | accountsApi |
 | HR | HRDashboard, Attendance, Leave, Payroll, Performance, Recruitment, Training, HRSettings, Shifts, Employees + create pages | hrApi |
 | Quality, Maintenance, Analytics, Alerts | Inspection, Defects, BatchReports, Compliance; MachineMaintenance, Preventive, Breakdowns, Schedule; Production/Machine/Inventory/Profit analytics; AllAlerts, LowStock, etc. | quality/maintenance/analytics/alert APIs |
 | Admin, Documents, Settings | UserManagement, RolesPermissions, AccessLogs; Purchase/Production/Quality/Reports docs; Settings sub-pages | adminApi, document APIs |
 | Meetings | MeetingsList (calendar week view), MeetingDetail; CreateDropdown, GoogleCalendarSetupPanel | meetingsApi |
 | Notifications (navbar bell) | NotificationBell, NotificationDropdown, NotificationItem | notificationService |
+
+## Manufacturing Workflow Engine
+
+Role-based manufacturing order pipeline: confirmed sales order → job card → inventory check → production → quality → packing → billing → completed. State is stored on `sales_orders.workflow_status` with a full transition audit trail.
+
+### Architecture
+
+```
+React (SalesJobCardPage, RoleWorkflowBoard, ManufacturingWorkflowHub)
+  → workflowApi.js
+  → FastAPI /manufacturing/workflow/*
+  → workflow_state_service / workflow_team_service / job_card_service
+  → PostgreSQL (sales_job_cards, sales_order_material_checks, manufacturing_workflow_transitions)
+```
+
+| Layer | Location |
+|-------|----------|
+| Constants & state machine | `backend/app/core/workflow_constants.py` |
+| Models | `backend/app/models/manufacturing_workflow.py` |
+| Job card builder | `backend/app/services/job_card_service.py` |
+| State / counts / backfill | `backend/app/services/workflow_state_service.py` |
+| Team actions & transitions | `backend/app/services/workflow_team_service.py` |
+| API | `backend/app/api/manufacturing_workflow_api.py` |
+| Migrations | `backend/alembic/versions/d1e2f3a4b5c6_manufacturing_workflow_engine.py`, `e2f3a4b5c6d7_sales_job_cards_table.py` |
+| Backfill script | `backend/scripts/backfill_workflow_status.py` |
+| Frontend API | `frontend/src/api/workflowApi.js` |
+| Config (teams, spine steps) | `frontend/src/config/manufacturingWorkflow.js` |
+| Job card page | `frontend/src/pages/manufacturing/SalesJobCardPage.jsx` |
+| Components | `frontend/src/components/manufacturing/JobCardSummary.jsx`, `JobCardWorkflowStatus.jsx`, `JobCardTimeline.jsx` |
+| Admin hub | `frontend/src/components/dashboard/ManufacturingWorkflowHub.jsx`, `LiveIndicator.jsx` |
+| Team board | `frontend/src/pages/manufacturing/RoleWorkflowBoard.jsx`, `TeamWorkflowJobCards.jsx` |
+
+### Database tables
+
+| Table | Purpose |
+|-------|---------|
+| `sales_job_cards` | Sales-order job card document (customer, product, qty, delivery, priority, notes); unique per tenant + sales order |
+| `sales_order_material_checks` | Inventory verification header linked to sales order |
+| `sales_order_material_check_lines` | Per-material required vs available qty |
+| `manufacturing_workflow_transitions` | Audit log: action, previous/new status, user, team, linked work order / inspection / invoice |
+
+`sales_orders.workflow_status` holds the canonical workflow state (e.g. `SALES_CONFIRMED`, `MATERIAL_CHECK_PENDING`, `PRODUCTION_IN_PROGRESS`, `COMPLETED`).
+
+### Workflow teams & RBAC
+
+ERP roles map to workflow teams in `ROLE_TO_TEAMS` (`workflow_constants.py`):
+
+| Team | Typical roles | Example actions |
+|------|---------------|-----------------|
+| sales | Sales Manager, Admin | Confirm order, create job card |
+| inventory | Store Manager, Purchase/Procurement Manager | Submit material check |
+| production | Production Manager | Assign operator to work order |
+| operator | Operator | Start / update / complete production |
+| quality | Production Manager | Approve or reject quality check |
+| packing | Store Manager | Complete packing & dispatch |
+| billing | Accountant | Create invoice from packed order |
+| admin | Admin | All stages; workflow backfill |
+
+Invalid transitions are rejected by the state machine (`transition_allowed`); tests in `backend/tests/test_workflow_state_machine.py`.
+
+### API endpoints
+
+All endpoints require JWT. Prefix: **`/manufacturing/workflow`**.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/hub` | Dashboard hub: stage counts + recent activity |
+| GET | `/queue` | Team-filtered order queue (`team`, `status` query params) |
+| GET | `/job-cards` | List sales job cards |
+| POST | `/sales-orders/{id}/confirm` | Confirm sales order + MRP (sales team) |
+| GET | `/sales-orders/{id}/job-card` | Job card payload (summary, form, workflow steps, timeline) |
+| POST | `/sales-orders/{id}/job-card` | Create / finalize job card |
+| PATCH | `/sales-orders/{id}/job-card` | Save job card draft |
+| GET | `/sales-orders/{id}/context` | Full workflow context for team actions |
+| GET | `/sales-orders/{id}/material-check` | Material check document |
+| POST | `/sales-orders/{id}/material-check` | Submit inventory verification |
+| POST | `/production/job-cards/{work_order_id}/assign-operator` | Assign operator + machine |
+| POST | `/production/job-cards/{work_order_id}/start` | Start production |
+| PATCH | `/production/job-cards/{work_order_id}/progress` | Update produced/rejected qty |
+| POST | `/production/job-cards/{work_order_id}/complete` | Complete production |
+| POST | `/quality/checks/{inspection_id}/approve` | Quality approve/reject |
+| POST | `/packing/{order_id}/complete` | Complete packing & dispatch |
+| POST | `/billing/invoices` | Create billing invoice |
+| POST | `/backfill?dry_run=` | Backfill legacy orders missing `workflow_status` (admin) |
+
+### Frontend routes
+
+| Route | Component |
+|-------|-----------|
+| `/sales/orders/:id/job-card` | `SalesJobCardPage` |
+| `/manufacturing/job-card/:orderId` | `SalesJobCardPage` (alias) |
+| `/manufacturing/workflow` | `RoleWorkflowBoard` — team queues and actions |
+| `/` (admin dashboard) | `ManufacturingWorkflowHub` in reference dashboard |
+
+Entry point from **Sales Order Detail** → **Open Job Card** (confirmed orders only).
+
+### Admin dashboard hub UX
+
+`ManufacturingWorkflowHub` on the main dashboard shows:
+- **Live** pulsing indicator (auto-refresh every 30s; no manual Refresh button on the hub)
+- Stage pipeline with **Live** indicator (auto-refresh every 30s)
+- Admin-only **Preview backfill** / **Backfill legacy** for orders predating the workflow engine
+
+### Setup
+
+```bash
+# From backend/ — apply workflow migrations
+alembic upgrade head
+
+# Optional — preview then apply legacy status backfill
+python scripts/backfill_workflow_status.py --dry-run
+python scripts/backfill_workflow_status.py
+```
+
+### Tests
+
+```bash
+cd backend
+python -m pytest tests/test_workflow_state_machine.py -q
+```
 
 ## Notification Management System
 
@@ -826,15 +998,16 @@ Never commit real `.env` files or use example placeholder passwords in productio
 2. **Language:** Click the Language button (🌐) in the top bar to switch between English, Hindi, Tamil, or Telugu.
 3. **Notifications:** Click the bell icon (🔔) in the top bar to view in-app notifications. Unread items are highlighted; opening one marks it read and updates the badge without refreshing the page.
 4. **Dashboard:** View production, inventory, HR, and machine status summaries. Use the top **search** bar to jump to pages.
-5. **Production:** Create production orders, work orders, machines; open **Job Card** for shop-floor workflow views; track batches and daily reports. Tables support search, sorting, pagination.
-6. **Inventory / Materials:** Store Dashboard, raw materials, finished goods, stock transfer, adjustment, ledger, warehouses, and inventory settings. Create stock items with **Add Raw Material** / **Add Finished Good** on the list pages (or **Add Item** from the dashboard quick actions); products are also available under Masters → Products.
-7. **Masters:** Customers, Vendors, Products — create/edit via modals; bulk import pages for each.
-8. **Purchases / Procurement:** Purchases, payments made, debit notes, Vendor Master, purchase orders, material requests, GRN, supplier payments.
-9. **Sales:** Invoices, quotations, payment receipts, and related sales documents.
-10. **HR:** Dashboard, attendance, leave, payroll, performance, recruitment, training, employees, shifts; HR Settings at `/hr/settings`.
-11. **Accounts:** Ledger, expenses, chart of accounts, journals, P&L, balance sheet, reports.
-12. **Meetings:** Open `/meetings` → connect Google Calendar → create events with optional Google Meet → join from detail page or week grid.
-13. **Settings:** Theme, language, company profile, invoice/format/template/sector/sequence settings where enabled; **Integrations** shows Google Calendar status.
+5. **Production:** Create production orders, work orders, machines; open **Shop-floor Job Card** (`/production/job-card`) for operator views; track batches and daily reports. Tables support search, sorting, pagination.
+6. **Manufacturing workflow:** Confirm a sales order → open **Sales Order Job Card** from the order detail page → create job card → advance through team queues at `/manufacturing/workflow`. Admin dashboard shows live workflow hub with stage pipeline.
+7. **Inventory / Materials:** Store Dashboard, raw materials, finished goods, stock transfer, adjustment, ledger, warehouses, and inventory settings. Create stock items with **Add Raw Material** / **Add Finished Good** on the list pages (or **Add Item** from the dashboard quick actions); products are also available under Masters → Products.
+8. **Masters:** Customers, Vendors, Products — create/edit via modals; bulk import pages for each.
+9. **Purchases / Procurement:** Purchases, payments made, debit notes, Vendor Master, purchase orders, material requests, GRN, supplier payments.
+10. **Sales:** Sales orders (create → confirm → job card), invoices, quotations, payment receipts, and related sales documents.
+11. **HR:** Dashboard, attendance, leave, payroll, performance, recruitment, training, employees, shifts; HR Settings at `/hr/settings`.
+12. **Accounts:** Ledger, expenses, chart of accounts, journals, P&L, balance sheet, reports.
+13. **Meetings:** Open `/meetings` → connect Google Calendar → create events with optional Google Meet → join from detail page or week grid.
+14. **Settings:** Theme, language, company profile, invoice/format/template/sector/sequence settings where enabled; **Integrations** shows Google Calendar status.
 
 ## API Overview
 
@@ -847,6 +1020,7 @@ Never commit real `.env` files or use example placeholder passwords in productio
 | `/procurement/` | purchase-orders, **vendors** (CRUD, soft-delete, bulk-status, summary, export, purchase-history, products, bank-lookup), material-requests, goods-receipt, supplier-payments |
 | `/hr/` | dashboard, employees, shifts, attendance (clock-in, clock-out), leave, payroll, performance; UI routes also include `/hr/recruitment`, `/hr/training`, `/hr/settings` |
 | `/sales/` | customers, sales-orders, invoices, invoices/{id}, payments |
+| `/manufacturing/workflow/` | hub, queue, job-cards, sales-orders/{id}/job-card, confirm, material-check, production/quality/packing/billing actions, backfill |
 | `/accounts/` | ledger/accounting APIs as exposed by accounts router; income/expenses where enabled |
 | `/analytics/` | production-trend, machine-efficiency, inventory-turnover, worker-performance, profit, dashboard |
 | `/quality/` | inspection, defects, batch-reports, compliance |
@@ -883,8 +1057,9 @@ All sidebar entries in `frontend/src/config/sidebarNav.js` resolve to registered
 
 - **Masters** — Customers, Vendors, Products
 - **Inventory** — Store Dashboard, Raw Materials, Finished Goods, Transfer, Adjustment, Ledger, Warehouses, Settings (`/inventory` → products list UI)
-- **Production** — Planning, MRP, Work Orders, Job Card, Schedule, Machine Allocation, Daily Reports
-- **Purchases & Sales** — Purchase flows, invoices, quotations, e-Invoice, E-Waybill login, digital signature
+- **Production** — Planning, MRP, Work Orders, Shop-floor Job Card, Schedule, Machine Allocation, Daily Reports
+- **Manufacturing workflow** — `/manufacturing/workflow` (team board), Sales Order Job Card routes, dashboard hub
+- **Purchases & Sales** — Purchase flows, sales orders + job card, invoices, quotations, e-Invoice, E-Waybill login, digital signature
 - **HR** — Hub, Attendance, Leave, Payroll, Performance, Recruitment, Training, Reports, Settings (`/hr/settings`); candidates/interviews and training sessions remain placeholders on sub-routes
 - **Meetings** — `/meetings` (Google Calendar week view + list), `/meetings/:id` (details, Join Meet, Open Calendar)
 
@@ -930,6 +1105,39 @@ npm run build
 
 Shared UX: purple accent (`#6366f1`), KPI cards, Recharts donuts/line/area charts, `SerialNumberCell`, row actions via `InventoryRowActionsMenu`, `usePageRefresh` on all dashboard pages.
 
+### Manufacturing workflow pass (18 Aug 2026)
+
+| Area | Key files |
+|------|-----------|
+| State machine | `backend/app/core/workflow_constants.py` |
+| Models & migrations | `backend/app/models/manufacturing_workflow.py`, Alembic `d1e2f3a4b5c6_*`, `e2f3a4b5c6d7_*` |
+| Job card service | `backend/app/services/job_card_service.py` |
+| Workflow API | `backend/app/api/manufacturing_workflow_api.py` |
+| Sales Job Card UI | `frontend/src/pages/manufacturing/SalesJobCardPage.jsx` |
+| Workflow components | `frontend/src/components/manufacturing/JobCard*.jsx` |
+| Admin hub | `frontend/src/components/dashboard/ManufacturingWorkflowHub.jsx` |
+| Team board | `frontend/src/pages/manufacturing/RoleWorkflowBoard.jsx` |
+| Tests | `backend/tests/test_workflow_state_machine.py` |
+
+Verification: `npm run build` (frontend), `pytest tests/test_workflow_state_machine.py` (backend state machine).
+
+### UI/UX & design system pass (18 Aug 2026)
+
+Forest green rebrand and shared component migration — **styling only**; no API, route, or business-logic changes.
+
+| Area | Key files |
+|------|-----------|
+| CSS tokens | `frontend/src/index.css` — `:root`, `.ui-input`, `.ui-table-wrap`, `.ui-badge-*` |
+| Design system barrel | `frontend/src/design-system/index.js`, `classes.js`, `erpFormControls.jsx`, `statusTone.js` |
+| Accounts UI | `accountsDesignSystem.jsx`; LedgerV2, ChartOfAccountsV2, ExpenseV2, NewJournalEntryV2, modals |
+| Inventory UI | `inventoryDesignSystem.jsx`; InventoryV2, RawMaterials, FinishedGoods, StockTransfer, Warehouses |
+| Sales modals & forms | AddParty, AddItem, AddNote, PaymentReceiptForm, CreateBill, RefundVouchers, etc. |
+| ERP document forms | QuotationForm, TaxInvoiceForm, CreditNoteForm, PurchaseForm, CreatePurchaseOrder, … (via `erpFormControls`) |
+| Manufacturing UI | `ManufacturingWorkflowHub`, `SalesJobCardPage`, `JobCard*.jsx`, `CreateSalesOrder.jsx` |
+| Shared filters | `FilterBar.jsx` — Finance, Quality, Maintenance filters |
+
+Verification: `npm run build` passes; `erpFormControls` code-split chunk. Details: [UI_UX_AUDIT_REPORT.md](./UI_UX_AUDIT_REPORT.md).
+
 ### Known limitations (not bugs)
 
 - **E-Invoice / E-Waybill / Digital Signature** — UI routes exist; live submission requires user-configured external portal credentials.
@@ -938,6 +1146,7 @@ Shared UX: purple accent (`#6366f1`), KPI cards, Recharts donuts/line/area chart
 - **HR demo fallbacks** — Dashboard pages show `hrMasterData.js` preview when APIs return empty; live data replaces preview automatically when records exist.
 - **HR Settings** — UI-only; Save/Reset toasts do not persist to backend yet. Two-factor toggle is not enforced by auth.
 - **Recruitment / Training sub-routes** — `/hr/recruitment/candidates`, `/hr/training/sessions`, and some Performance/Leave/Payroll secondary tabs are placeholders.
+- **Residual purple accents** — Some sales list pages and payment forms still use legacy `#6b4eff` link/toggle styling; migration tracked in UI_UX_AUDIT_REPORT.
 
 ---
 

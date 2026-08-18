@@ -220,14 +220,6 @@ export default function RawMaterials() {
     return list;
   }, [rows, search, statusFilter, category, warehouse]);
 
-  const clearFilters = () => {
-    setSearch("");
-    setStatusFilter("");
-    setCategory("");
-    setWarehouse("");
-    setSelectedIds(new Set());
-  };
-
   const openDetail = async (row, readOnly = true) => {
     if (row.live && typeof row.id === "number") {
       try {
@@ -465,7 +457,7 @@ export default function RawMaterials() {
         }
       />
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
+      <div className="ui-grid-kpi">
         {initialLoading ? (
           Array.from({ length: 5 }).map((_, i) => <SkeletonCard key={i} />)
         ) : (
@@ -481,7 +473,7 @@ export default function RawMaterials() {
 
       <div className="ui-card min-w-0 p-4 sm:p-5">
         <div className="mb-4 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-          <div className="relative min-w-0 flex-1 xl:max-w-lg">
+          <div className="relative ui-search-wrap min-w-0 flex-1">
             <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]" />
             <input
               type="search"
@@ -520,9 +512,6 @@ export default function RawMaterials() {
                     </option>
                   ))}
                 </select>
-                <Button type="button" variant="ghost" onClick={clearFilters}>
-                  <RefreshCw className="h-4 w-4" /> Clear
-                </Button>
               </>
             ) : null}
             <Button type="button" variant="primary" onClick={handleAdd}>

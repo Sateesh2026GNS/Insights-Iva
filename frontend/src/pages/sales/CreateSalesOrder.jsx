@@ -1,26 +1,48 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Plus, Trash2, X } from "lucide-react";
+import {
+  ArrowLeft,
+  Calendar,
+  ClipboardList,
+  Eye,
+  Pencil,
+  Plus,
+  Save,
+  Trash2,
+  X,
+} from "lucide-react";
 
 import Loader from "../../components/common/Loader";
-import PageHeader from "../../components/common/PageHeader";
+import Button from "../../components/common/Button";
+import { FormField, Input, Select, Textarea } from "../../components/common/FormField";
+import JobCardSummary from "../../components/manufacturing/JobCardSummary";
+import JobCardWorkflowStatus from "../../components/manufacturing/JobCardWorkflowStatus";
+import JobCardTimeline from "../../components/manufacturing/JobCardTimeline";
+import {
+  CardSectionHeader,
+  fmtDeliveryDisplay,
+  JOB_CARD_WORKFLOW_STEPS,
+  JobCardPageMoreMenu,
+  NOTES_MAX,
+  PriorityBadge,
+  StatusBadge,
+} from "../../components/manufacturing/jobCardUiShared";
 import { createProduct } from "../../api/productsApi";
 import { createSalesOrder } from "../../api/salesApi";
+import { getUsers } from "../../api/adminApi";
 import { fetchCustomersWithFallback, resolveCustomerId } from "../../utils/customerOptions";
 import { fetchProductsWithFallback } from "../../utils/productOptions";
 import useTenantId from "../../hooks/useTenantId";
+import useAuth from "../../hooks/useAuth";
 
-import Button from "../../components/common/Button";
-const inputClass =
-  "mt-1.5 w-full rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-4 py-2.5 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20";
+const UNITS = ["Nos", "nos", "pcs", "kg", "ltr", "box", "set", "mtr"];
 
-const UNITS = ["pcs", "nos", "kg", "ltr", "box", "set", "mtr"];
+import { inputMtClass as inputClass } from "../../design-system/classes";
 
 function emptyLine() {
   return { product_id: "", item_description: "", quantity: "1", unit: "pcs", unit_price: "" };
 }
 
-/** Inline quick-add product modal — saves to backend API for tenant */
 function QuickAddProductModal({ onClose, onAdded }) {
   const tenantId = useTenantId();
   const [name, setName] = useState("");
@@ -66,10 +88,12 @@ function QuickAddProductModal({ onClose, onAdded }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl space-y-4">
+      <div className="w-full max-w-sm space-y-4 rounded-2xl bg-white p-6 shadow-2xl">
         <div className="flex items-center justify-between">
           <h3 className="text-base font-bold text-slate-900">Quick Add Product</h3>
-          <button type="button" onClick={onClose} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100"><X className="h-4 w-4" /></button>
+          <button type="button" onClick={onClose} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100">
+            <X className="h-4 w-4" />
+          </button>
         </div>
         <label className="block text-xs font-semibold text-slate-600">
           Product Name *
@@ -87,7 +111,11 @@ function QuickAddProductModal({ onClose, onAdded }) {
           <label className="block text-xs font-semibold text-slate-600">
             Unit
             <select value={unit} onChange={(e) => setUnit(e.target.value)} className={inputClass}>
-              {UNITS.map((u) => <option key={u} value={u}>{u}</option>)}
+              {UNITS.map((u) => (
+                <option key={u} value={u}>
+                  {u}
+                </option>
+              ))}
             </select>
           </label>
           <label className="block text-xs font-semibold text-slate-600">
@@ -96,8 +124,17 @@ function QuickAddProductModal({ onClose, onAdded }) {
           </label>
         </div>
         <div className="flex justify-end gap-2 pt-1">
-          <button type="button" onClick={onClose} className="rounded-xl border px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50">Cancel</button>
-          <button type="button" onClick={handleSave} disabled={!name.trim()} className="rounded-xl bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white hover:bg-[var(--color-primary-hover)] disabled:opacity-50">Add Product</button>
+          <button type="button" onClick={onClose} className="rounded-xl border px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50">
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={!name.trim()}
+            className="rounded-xl bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white hover:bg-[var(--color-primary-hover)] disabled:opacity-50"
+          >
+            Add Product
+          </button>
         </div>
       </div>
     </div>
@@ -106,6 +143,7 @@ function QuickAddProductModal({ onClose, onAdded }) {
 
 export default function CreateSalesOrder() {
   const tenantId = useTenantId();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const editKey = searchParams.get("edit") || "";
@@ -114,6 +152,7 @@ export default function CreateSalesOrder() {
   const [loading, setLoading] = useState(true);
   const [customers, setCustomers] = useState([]);
   const [products, setProducts] = useState([]);
+  const [salesPeople, setSalesPeople] = useState([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [showQuickAdd, setShowQuickAdd] = useState(false);
@@ -124,59 +163,206 @@ export default function CreateSalesOrder() {
     reference_number: searchParams.get("reference") || "",
     order_date: new Date().toISOString().slice(0, 10),
     due_date: "",
+    sales_person: "",
+    sales_person_id: "",
+    priority: "medium",
+    notes: "",
     status: "draft",
   });
   const [lines, setLines] = useState([emptyLine()]);
+  const detailsRef = useRef(null);
+
+  const resetForm = () => {
+    setForm({
+      tenant_id: tenantId,
+      customer_id: searchParams.get("customer_id") || "",
+      order_number: "",
+      reference_number: searchParams.get("reference") || "",
+      order_date: new Date().toISOString().slice(0, 10),
+      due_date: "",
+      sales_person: user?.full_name || user?.name || user?.email || "",
+      sales_person_id: user?.id ? String(user.id) : "",
+      priority: "medium",
+      notes: "",
+      status: "draft",
+    });
+    setLines([emptyLine()]);
+    setError("");
+  };
+
+  const handleViewOrder = () => {
+    if (isEdit && editKey) {
+      const stored = localStorage.getItem("smrt_sales_orders");
+      const localOrders = stored ? JSON.parse(stored) : [];
+      const so = localOrders.find(
+        (o) => String(o.order_number || o.so_number).toLowerCase() === editKey.toLowerCase()
+      );
+      if (so?.id) {
+        navigate(`/sales/orders/${so.id}`);
+        return;
+      }
+    }
+    navigate("/sales/orders");
+  };
+
+  const handleEditOrder = () => {
+    detailsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const handleAddLine = () => {
+    setLines((prev) => [...prev, emptyLine()]);
+  };
+
+  const handleDeleteDraft = () => {
+    if (!window.confirm("Discard this sales order draft? Unsaved changes will be lost.")) return;
+    if (isEdit) {
+      navigate("/sales/orders");
+      return;
+    }
+    resetForm();
+  };
+
+  useEffect(() => {
+    if (!editKey && user && !form.sales_person) {
+      const name = user.full_name || user.name || user.email || "";
+      const id = user.id ? String(user.id) : "";
+      if (name) {
+        setForm((f) => ({
+          ...f,
+          sales_person: name,
+          sales_person_id: id || f.sales_person_id,
+        }));
+      }
+    }
+  }, [user, editKey, form.sales_person]);
 
   useEffect(() => {
     Promise.all([
       fetchCustomersWithFallback().catch(() => []),
       fetchProductsWithFallback().catch(() => []),
-    ]).then(([custs, prods]) => {
-      setCustomers(custs);
-      setProducts(Array.isArray(prods) ? prods : []);
+      getUsers().catch(() => ({ data: [] })),
+    ])
+      .then(([custs, prods, usersRes]) => {
+        setCustomers(custs);
+        setProducts(Array.isArray(prods) ? prods : []);
+        const users = usersRes?.data?.items ?? usersRes?.data ?? [];
+        setSalesPeople(Array.isArray(users) ? users : []);
 
-      // Pre-fill form if editing
-      if (editKey) {
-        const stored = localStorage.getItem("smrt_sales_orders");
-        const localOrders = stored ? JSON.parse(stored) : [];
-        const so = localOrders.find(
-          (o) => String(o.order_number || o.so_number).toLowerCase() === editKey.toLowerCase()
-        );
-        if (so) {
-          // resolve customer_id from name if needed
-          const matchedCust = custs.find(
-            (c) => String(c.id) === String(so.customer_id) ||
-                   String(c.name).toLowerCase() === String(so.customer_name || "").toLowerCase()
+        if (editKey) {
+          const stored = localStorage.getItem("smrt_sales_orders");
+          const localOrders = stored ? JSON.parse(stored) : [];
+          const so = localOrders.find(
+            (o) => String(o.order_number || o.so_number).toLowerCase() === editKey.toLowerCase()
           );
-          setForm({
-            tenant_id: tenantId,
-            customer_id: matchedCust ? String(matchedCust.id) : so.customer_id || "",
-            order_number: so.order_number || so.so_number || "",
-            reference_number: so.reference_number || "",
-            order_date: String(so.order_date || so.so_date || "").slice(0, 10),
-            due_date: String(so.due_date || "").slice(0, 10),
-            status: so.status || "draft",
-          });
-          if (so.line_items?.length) {
-            setLines(so.line_items.map((l) => ({
-              product_id: String(l.product_id || ""),
-              item_description: l.item_description || "",
-              quantity: String(l.quantity || "1"),
-              unit: l.unit || "pcs",
-              unit_price: String(l.unit_price || ""),
-            })));
+          if (so) {
+            const matchedCust = custs.find(
+              (c) =>
+                String(c.id) === String(so.customer_id) ||
+                String(c.name).toLowerCase() === String(so.customer_name || "").toLowerCase()
+            );
+            setForm({
+              tenant_id: tenantId,
+              customer_id: matchedCust ? String(matchedCust.id) : so.customer_id || "",
+              order_number: so.order_number || so.so_number || "",
+              reference_number: so.reference_number || "",
+              order_date: String(so.order_date || so.so_date || "").slice(0, 10),
+              due_date: String(so.due_date || "").slice(0, 10),
+              sales_person: so.sales_person || "",
+              sales_person_id: so.sales_person_id || "",
+              priority: so.priority || "medium",
+              notes: so.notes || "",
+              status: so.status || "draft",
+            });
+            if (so.line_items?.length) {
+              setLines(
+                so.line_items.map((l) => ({
+                  product_id: String(l.product_id || ""),
+                  item_description: l.item_description || "",
+                  quantity: String(l.quantity || "1"),
+                  unit: l.unit || "pcs",
+                  unit_price: String(l.unit_price || ""),
+                }))
+              );
+            }
           }
         }
-      }
-    })
-    .catch(() => setError("Could not load customers/products."))
-    .finally(() => setLoading(false));
-  }, [editKey]);
+      })
+      .catch(() => setError("Could not load customers/products."))
+      .finally(() => setLoading(false));
+  }, [editKey, tenantId]);
 
-  const totalAmount = useMemo(() =>
-    lines.reduce((sum, l) => sum + (Number(l.quantity) || 0) * (Number(l.unit_price) || 0), 0)
-  , [lines]);
+  const selectedCustomer = useMemo(
+    () => customers.find((c) => String(c.id) === String(form.customer_id)),
+    [customers, form.customer_id]
+  );
+
+  const primaryLine = lines[0] || emptyLine();
+  const selectedProduct = useMemo(
+    () => products.find((p) => String(p.id) === String(primaryLine.product_id)),
+    [products, primaryLine.product_id]
+  );
+
+  const productCode = selectedProduct?.product_code || selectedProduct?.sku || "";
+  const customerName = selectedCustomer?.name || selectedCustomer?.company || "";
+  const soPreview = form.order_number?.trim() || "Auto-generated";
+  const uom = primaryLine.unit || "Nos";
+
+  const totalAmount = useMemo(
+    () => lines.reduce((sum, l) => sum + (Number(l.quantity) || 0) * (Number(l.unit_price) || 0), 0),
+    [lines]
+  );
+
+  const workflowCurrentStage = {
+    stage_label: "Sales Orders",
+    stage_hint: isEdit ? "Update order details and product lines" : "Add product lines and create order",
+  };
+
+  const timeline = useMemo(() => {
+    const actor = form.sales_person || user?.full_name || user?.name || "Sales Team";
+    const now = new Date().toLocaleString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    if (isEdit && form.status === "confirmed") {
+      return [
+        {
+          key: "so-confirmed",
+          title: "Sales Order Confirmed",
+          status: "completed",
+          display_time: now,
+          actor: "Sales Team",
+        },
+        {
+          key: "jc-pending",
+          title: "Job Card Created",
+          status: "pending",
+          actor: "System",
+        },
+      ];
+    }
+    return [
+      {
+        key: "so-draft",
+        title: isEdit ? "Sales Order Updated" : "Sales Order Draft",
+        status: "completed",
+        display_time: now,
+        actor,
+      },
+    ];
+  }, [form.sales_person, form.status, isEdit, user]);
+
+  const statusBadge = useMemo(() => {
+    if (form.status === "confirmed") return { label: "Sales Confirmed", variant: "confirmed" };
+    if (isEdit) return { label: "Draft", variant: "draft" };
+    return { label: "Draft", variant: "draft" };
+  }, [form.status, isEdit]);
+
+  const patchField = (key, value) => {
+    setForm((prev) => ({ ...prev, [key]: value }));
+  };
 
   const updateLine = (index, patch) => {
     setLines((prev) =>
@@ -196,19 +382,20 @@ export default function CreateSalesOrder() {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    e?.preventDefault?.();
     setError("");
     const validLines = lines.filter((l) => l.item_description && Number(l.quantity) > 0);
     if (!validLines.length) {
       setError("Add at least one product line.");
       return;
     }
+    if (!form.customer_id) {
+      setError("Customer is required.");
+      return;
+    }
     setSaving(true);
 
-    const selectedCustomer = customers.find(
-      (c) => String(c.id) === String(form.customer_id)
-    );
-    const custName = selectedCustomer?.name || selectedCustomer?.company || form.customer_id || "Customer";
+    const custName = customerName || "Customer";
     const soNo = form.order_number?.trim() || `SO-${Date.now()}`;
     const soDate = form.order_date || new Date().toISOString().slice(0, 10);
 
@@ -221,6 +408,8 @@ export default function CreateSalesOrder() {
           ...form,
           customer_id: customerId,
           order_number: soNo,
+          delivery_date: form.due_date || null,
+          sales_person: form.sales_person?.trim() || null,
           total_amount: totalAmount,
           line_items: validLines.map((l) => {
             const qty = Number(l.quantity);
@@ -236,7 +425,9 @@ export default function CreateSalesOrder() {
           }),
         });
         if (res?.data?.id) createdId = res.data.id;
-      } catch { /* local fallback */ }
+      } catch {
+        /* local fallback */
+      }
     }
 
     const newSO = {
@@ -248,10 +439,14 @@ export default function CreateSalesOrder() {
       order_date: soDate,
       so_date: soDate,
       due_date: form.due_date || "",
+      sales_person: form.sales_person?.trim() || "",
+      sales_person_id: form.sales_person_id || "",
       reference_number: form.reference_number || "",
+      priority: form.priority || "medium",
+      notes: form.notes || "",
       total_amount: totalAmount,
       amount: totalAmount,
-      status: isEdit ? (form.status || "draft") : "pending",
+      status: isEdit ? form.status || "draft" : "pending",
       line_items: validLines.map((l) => ({
         product_id: l.product_id,
         item_description: l.item_description,
@@ -266,7 +461,6 @@ export default function CreateSalesOrder() {
 
     const stored = localStorage.getItem("smrt_sales_orders");
     const localOrders = stored ? JSON.parse(stored) : [];
-    // Replace existing entry if editing, prepend if new
     const updated = isEdit
       ? localOrders.map((o) =>
           String(o.order_number || o.so_number).toLowerCase() === editKey.toLowerCase() ? newSO : o
@@ -280,155 +474,396 @@ export default function CreateSalesOrder() {
 
   if (loading) return <Loader label="Loading..." />;
 
+  const notesLen = (form.notes || "").length;
+
   return (
     <>
-    <div className="mx-auto max-w-3xl space-y-6 p-4 sm:p-6">
-      <Link to="/sales/orders" className="inline-flex items-center gap-2 text-sm font-medium text-teal-600 hover:text-[var(--color-success)]">
-        <ArrowLeft className="h-4 w-4" /> Back to sales orders
-      </Link>
-      <PageHeader
-        title={isEdit ? `Edit Sales Order — ${editKey}` : "New Sales Order"}
-        subtitle={isEdit ? "Update order details and product lines." : "Add product lines so Confirm can run MRP and create production orders."}
-      />
-
-      <form onSubmit={handleSubmit} className="ui-card space-y-4 p-6">
-        {error && (
-          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</div>
-        )}
-
-        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-          Customer *
-          <select required value={form.customer_id} onChange={(e) => setForm((f) => ({ ...f, customer_id: e.target.value }))} className={inputClass}>
-            <option value="">Select customer</option>
-            {customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
-        </label>
-        {customers.length === 0 && (
-          <p className="text-sm text-slate-500">No customers yet. <Link to="/masters/customers" className="font-medium text-teal-600 hover:underline">Add a customer first</Link>.</p>
-        )}
-
-        <div className="grid gap-4 sm:grid-cols-2">
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-            Order number
-            <input type="text" value={form.order_number} onChange={(e) => setForm((f) => ({ ...f, order_number: e.target.value }))} placeholder="Auto-generated if empty" className={inputClass} />
-          </label>
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-            Reference number
-            <input type="text" value={form.reference_number} onChange={(e) => setForm((f) => ({ ...f, reference_number: e.target.value }))} className={inputClass} />
-          </label>
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-            Order date
-            <input type="date" value={form.order_date} onChange={(e) => setForm((f) => ({ ...f, order_date: e.target.value }))} className={inputClass} />
-          </label>
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-            Due date
-            <input type="date" value={form.due_date} onChange={(e) => setForm((f) => ({ ...f, due_date: e.target.value }))} className={inputClass} />
-          </label>
-          {isEdit && (
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-              Status
-              <select value={form.status} onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))} className={inputClass}>
-                {["draft", "pending", "confirmed", "packed", "shipped", "delivered", "cancelled"].map((s) => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
-              </select>
-            </label>
-          )}
-          <div className="flex items-end">
-            <p className="rounded-xl bg-slate-50 px-4 py-2.5 text-sm font-semibold text-slate-800 dark:bg-slate-900 dark:text-slate-100">
-              Total: ₹{totalAmount.toLocaleString()}
-            </p>
-          </div>
-        </div>
-
-        <div className="space-y-3 border-t border-slate-100 pt-4 dark:border-slate-700">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">Product lines *</h3>
-            <button type="button" onClick={() => setLines((prev) => [...prev, emptyLine()])} className="inline-flex items-center gap-1 text-sm font-semibold text-[#2563EB]">
-              <Plus className="h-4 w-4" /> Add line
-            </button>
-          </div>
-          {lines.map((line, index) => (
-            <div key={index} className="grid gap-2 rounded-xl border border-slate-200 p-3 dark:border-slate-600 sm:grid-cols-12">
-              <label className="block text-xs font-medium text-slate-600 sm:col-span-4">
-                Product
-                <select value={line.product_id} onChange={(e) => updateLine(index, { product_id: e.target.value })} className={inputClass}>
-                  <option value="">Select</option>
-                  {products.map((p) => (
-                    <option key={p.id} value={p.id}>{p.product_code || p.sku ? `${p.product_code || p.sku} — ` : ""}{p.name}</option>
-                  ))}
-                </select>
-              </label>
-              <label className="block text-xs font-medium text-slate-600 sm:col-span-2">
-                Qty
-                <input type="number" min="0.001" step="any" required value={line.quantity} onChange={(e) => updateLine(index, { quantity: e.target.value })} className={inputClass} />
-              </label>
-              <label className="block text-xs font-medium text-slate-600 sm:col-span-2">
-                Unit
-                <select value={line.unit} onChange={(e) => updateLine(index, { unit: e.target.value })} className={inputClass}>
-                  {["pcs", "nos", "kg", "ltr", "box", "set", "mtr"].map((u) => <option key={u} value={u}>{u}</option>)}
-                </select>
-              </label>
-              <label className="block text-xs font-medium text-slate-600 sm:col-span-2">
-                Unit price
-                <input type="number" min="0" step="0.01" value={line.unit_price} onChange={(e) => updateLine(index, { unit_price: e.target.value })} className={inputClass} />
-              </label>
-              <label className="block text-xs font-medium text-slate-600 sm:col-span-1">
-                Description
-                <input type="text" required value={line.item_description} onChange={(e) => updateLine(index, { item_description: e.target.value })} className={inputClass} />
-              </label>
-              <div className="flex items-end sm:col-span-1">
-                <button type="button" disabled={lines.length === 1} onClick={() => setLines((prev) => prev.filter((_, i) => i !== index))} className="rounded-lg border border-rose-200 p-2.5 text-rose-600 disabled:opacity-40" title="Remove line">
-                  <Trash2 className="h-4 w-4" />
-                </button>
+      <div className="min-h-full bg-[var(--color-bg)]">
+        <form onSubmit={handleSubmit} className="ui-page mx-auto max-w-[1280px] ui-stack pb-10">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="flex min-w-0 items-start gap-3">
+              <span className="mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[var(--color-primary-soft)] text-[var(--color-primary)]">
+                <ClipboardList className="h-5 w-5" strokeWidth={2} />
+              </span>
+              <div>
+                <h1 className="ui-page-title">Sales Order Job Card</h1>
+                <p className="mt-0.5 text-sm text-[var(--color-text-muted)]">Create and manage job card from sales order</p>
               </div>
             </div>
-          ))}
-          {!products.length && (
-            <p className="text-sm text-amber-700">
-              No products yet.{" "}
-              <button type="button" onClick={() => setShowQuickAdd(true)} className="font-semibold underline text-[#2563EB]">Add a product</button>
-              {" "}to get started.
-            </p>
-          )}
-          <button type="button" onClick={() => setShowQuickAdd(true)} className="inline-flex items-center gap-1 text-xs font-semibold text-[#2563EB] hover:underline mt-1">
-            <Plus className="h-3.5 w-3.5" /> Add New Product
-          </button>
-        </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="primary" size="sm" type="submit" loading={saving} disabled={!form.customer_id}>
+                <Save className="mr-1.5 inline h-4 w-4" />
+                {isEdit ? "Update Sales Order" : "Create Sales Order"}
+              </Button>
+              <Button variant="outline" size="sm" to="/sales/orders">
+                Cancel
+              </Button>
+              <StatusBadge label={statusBadge.label} variant={statusBadge.variant} />
+            </div>
+          </div>
 
-        <div className="flex flex-wrap gap-3 pt-2">
-          <Button variant="primary" type="submit" disabled={saving || !form.customer_id} className="disabled:opacity-50">
-            {saving ? "Saving…" : isEdit ? "Update Sales Order" : "Create Sales Order"}
-          </Button>
-          <Link to="/sales/orders" className="inline-flex items-center justify-center rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
-            Cancel
-          </Link>
-        </div>
-      </form>
-    </div>
+          {error ? (
+            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</div>
+          ) : null}
 
-    {showQuickAdd && (
-      <QuickAddProductModal
-        onClose={() => setShowQuickAdd(false)}
-        onAdded={(newProduct) => {
-          setProducts((prev) => [newProduct, ...prev]);
-          setLines((prev) => {
-            const last = prev[prev.length - 1];
-            const isBlank = !last.product_id && !last.item_description;
-            const patch = {
-              product_id: newProduct.id,
-              item_description: newProduct.name,
-              unit_price: String(newProduct.unit_price || ""),
-              unit: newProduct.unit || "pcs",
-              quantity: String(newProduct.quantity || "1"),
-            };
-            return isBlank
-              ? prev.map((l, i) => i === prev.length - 1 ? { ...l, ...patch } : l)
-              : [...prev, { ...emptyLine(), ...patch }];
-          });
-        }}
-      />
-    )}
-  </>
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+            <div className="space-y-5 lg:col-span-2">
+              <JobCardSummary
+                jobCardNo="—"
+                salesOrderNo={soPreview}
+                customer={customerName || "—"}
+                product={primaryLine.item_description || selectedProduct?.name || "—"}
+                orderQuantity={primaryLine.quantity || "—"}
+                requiredDelivery={fmtDeliveryDisplay(form.due_date)}
+                priority={form.priority}
+                uom={uom}
+                headerAction={
+                  <JobCardPageMoreMenu
+                    menuId="create-so-summary-more"
+                    items={[
+                      {
+                        label: "View",
+                        icon: <Eye className="h-4 w-4" strokeWidth={2} />,
+                        onClick: handleViewOrder,
+                      },
+                      {
+                        label: "Edit",
+                        icon: <Pencil className="h-4 w-4" strokeWidth={2} />,
+                        onClick: handleEditOrder,
+                      },
+                      {
+                        label: "Add",
+                        icon: <Plus className="h-4 w-4" strokeWidth={2} />,
+                        onClick: handleAddLine,
+                      },
+                      {
+                        label: "Delete",
+                        icon: <Trash2 className="h-4 w-4" strokeWidth={2} />,
+                        danger: true,
+                        onClick: handleDeleteDraft,
+                      },
+                    ]}
+                  />
+                }
+              />
+
+              <article
+                ref={detailsRef}
+                className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
+              >
+                <CardSectionHeader title="Job Card Details" />
+
+                <div className="space-y-4 p-5">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <Select
+                      label="Customer"
+                      required
+                      value={form.customer_id}
+                      onChange={(e) => patchField("customer_id", e.target.value)}
+                    >
+                      <option value="">Select customer</option>
+                      {customers.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name || c.company_name}
+                        </option>
+                      ))}
+                    </Select>
+
+                    <Select
+                      label="Sales Person"
+                      value={form.sales_person_id ?? ""}
+                      onChange={(e) => {
+                        const id = e.target.value;
+                        const sp = salesPeople.find((u) => String(u.id) === String(id));
+                        patchField("sales_person_id", id);
+                        patchField("sales_person", sp?.full_name || sp?.name || form.sales_person);
+                      }}
+                    >
+                      <option value="">{form.sales_person || "Select sales person"}</option>
+                      {salesPeople.map((u) => (
+                        <option key={u.id} value={u.id}>
+                          {u.full_name || u.name || u.email}
+                        </option>
+                      ))}
+                    </Select>
+
+                    <Select
+                      label="Product"
+                      required
+                      value={primaryLine.product_id}
+                      onChange={(e) => updateLine(0, { product_id: e.target.value })}
+                    >
+                      <option value="">Select product</option>
+                      {products.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name}
+                        </option>
+                      ))}
+                    </Select>
+
+                    <FormField label="Product Code">
+                      <Input value={productCode} readOnly className="!bg-slate-50 !text-slate-600" />
+                    </FormField>
+
+                    <FormField label="Order Quantity" required>
+                      <div className="flex overflow-hidden rounded-lg border border-slate-200 focus-within:border-[var(--color-primary)] focus-within:ring-1 focus-within:ring-[var(--color-primary)]">
+                        <input
+                          type="number"
+                          min="0.001"
+                          step="any"
+                          required
+                          value={primaryLine.quantity}
+                          onChange={(e) => updateLine(0, { quantity: e.target.value })}
+                          className="min-h-[42px] flex-1 border-0 bg-white px-3 py-2 text-sm text-slate-900 outline-none"
+                        />
+                        <span className="flex min-w-[3.5rem] items-center justify-center border-l border-slate-200 bg-slate-50 px-2 text-xs font-semibold text-slate-500">
+                          {uom}
+                        </span>
+                      </div>
+                    </FormField>
+
+                    <Select
+                      label="Unit"
+                      value={primaryLine.unit || "Nos"}
+                      onChange={(e) => updateLine(0, { unit: e.target.value })}
+                    >
+                      {UNITS.map((unit) => (
+                        <option key={unit} value={unit}>
+                          {unit}
+                        </option>
+                      ))}
+                    </Select>
+
+                    <FormField label="Required Delivery Date" required>
+                      <div className="relative">
+                        <Input
+                          type="date"
+                          required
+                          value={form.due_date}
+                          onChange={(e) => patchField("due_date", e.target.value)}
+                          className="pr-10"
+                        />
+                        <Calendar className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden />
+                      </div>
+                    </FormField>
+
+                    <FormField label="Priority" required>
+                      <div className="flex min-h-[42px] items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 focus-within:border-[var(--color-primary)] focus-within:ring-1 focus-within:ring-[var(--color-primary)]">
+                        <select
+                          value={form.priority || "medium"}
+                          onChange={(e) => patchField("priority", e.target.value)}
+                          className="flex-1 border-0 bg-transparent py-2 text-sm text-slate-900 outline-none"
+                        >
+                          <option value="high">High</option>
+                          <option value="medium">Medium</option>
+                          <option value="low">Low</option>
+                        </select>
+                        <PriorityBadge priority={form.priority} />
+                      </div>
+                    </FormField>
+
+                    <FormField label="Order number">
+                      <Input
+                        value={form.order_number}
+                        onChange={(e) => patchField("order_number", e.target.value)}
+                        placeholder="Auto-generated if empty"
+                      />
+                    </FormField>
+
+                    <FormField label="Reference number">
+                      <Input
+                        value={form.reference_number}
+                        onChange={(e) => patchField("reference_number", e.target.value)}
+                      />
+                    </FormField>
+
+                    <FormField label="Order date">
+                      <Input
+                        type="date"
+                        value={form.order_date}
+                        onChange={(e) => patchField("order_date", e.target.value)}
+                      />
+                    </FormField>
+
+                    <FormField label="Total">
+                      <Input value={`₹${totalAmount.toLocaleString("en-IN")}`} readOnly className="!bg-slate-50 !font-semibold" />
+                    </FormField>
+                  </div>
+
+                  {customers.length === 0 ? (
+                    <p className="text-sm text-slate-500">
+                      No customers yet.{" "}
+                      <Link to="/masters/customers" className="font-medium text-[var(--color-primary)] hover:underline">
+                        Add a customer first
+                      </Link>
+                      .
+                    </p>
+                  ) : null}
+
+                  <div className="space-y-3 border-t border-slate-100 pt-4">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-sm font-semibold text-slate-800">Product lines *</h4>
+                      <button
+                        type="button"
+                        onClick={() => setLines((prev) => [...prev, emptyLine()])}
+                        className="inline-flex items-center gap-1 text-sm font-semibold text-[var(--color-primary)]"
+                      >
+                        <Plus className="h-4 w-4" /> Add line
+                      </button>
+                    </div>
+                    {lines.map((line, index) => (
+                      <div
+                        key={index}
+                        className="grid gap-2 rounded-lg border border-slate-200 p-3 sm:grid-cols-12"
+                      >
+                        <label className="block text-xs font-medium text-slate-600 sm:col-span-4">
+                          Product
+                          <select
+                            value={line.product_id}
+                            onChange={(e) => updateLine(index, { product_id: e.target.value })}
+                            className={inputClass}
+                          >
+                            <option value="">Select</option>
+                            {products.map((p) => (
+                              <option key={p.id} value={p.id}>
+                                {p.product_code || p.sku ? `${p.product_code || p.sku} — ` : ""}
+                                {p.name}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <label className="block text-xs font-medium text-slate-600 sm:col-span-2">
+                          Qty
+                          <input
+                            type="number"
+                            min="0.001"
+                            step="any"
+                            required
+                            value={line.quantity}
+                            onChange={(e) => updateLine(index, { quantity: e.target.value })}
+                            className={inputClass}
+                          />
+                        </label>
+                        <label className="block text-xs font-medium text-slate-600 sm:col-span-2">
+                          Unit
+                          <select value={line.unit} onChange={(e) => updateLine(index, { unit: e.target.value })} className={inputClass}>
+                            {UNITS.map((u) => (
+                              <option key={u} value={u}>
+                                {u}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <label className="block text-xs font-medium text-slate-600 sm:col-span-2">
+                          Unit price
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={line.unit_price}
+                            onChange={(e) => updateLine(index, { unit_price: e.target.value })}
+                            className={inputClass}
+                          />
+                        </label>
+                        <label className="block text-xs font-medium text-slate-600 sm:col-span-1">
+                          Description
+                          <input
+                            type="text"
+                            required
+                            value={line.item_description}
+                            onChange={(e) => updateLine(index, { item_description: e.target.value })}
+                            className={inputClass}
+                          />
+                        </label>
+                        <div className="flex items-end sm:col-span-1">
+                          <button
+                            type="button"
+                            disabled={lines.length === 1}
+                            onClick={() => setLines((prev) => prev.filter((_, i) => i !== index))}
+                            className="rounded-lg border border-rose-200 p-2.5 text-rose-600 disabled:opacity-40"
+                            title="Remove line"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                    {!products.length ? (
+                      <p className="text-sm text-amber-700">
+                        No products yet.{" "}
+                        <button type="button" onClick={() => setShowQuickAdd(true)} className="font-semibold text-[var(--color-primary)] underline">
+                          Add a product
+                        </button>{" "}
+                        to get started.
+                      </p>
+                    ) : null}
+                    <button
+                      type="button"
+                      onClick={() => setShowQuickAdd(true)}
+                      className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-[var(--color-primary)] hover:underline"
+                    >
+                      <Plus className="h-3.5 w-3.5" /> Add New Product
+                    </button>
+                  </div>
+
+                  <div>
+                    <Textarea
+                      label="Notes / Remarks"
+                      placeholder="Enter notes or special instructions..."
+                      rows={4}
+                      maxLength={NOTES_MAX}
+                      value={form.notes || ""}
+                      onChange={(e) => patchField("notes", e.target.value)}
+                    />
+                    <p className="mt-1 text-right text-[11px] tabular-nums text-slate-400">
+                      {notesLen} / {NOTES_MAX}
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap gap-3 border-t border-slate-100 pt-4">
+                    <Button variant="primary" type="submit" loading={saving} disabled={!form.customer_id}>
+                      <Plus className="mr-1.5 inline h-4 w-4" />
+                      {isEdit ? "Update Sales Order" : "Create Sales Order"}
+                    </Button>
+                    <Button variant="outline" to="/sales/orders">
+                      <ArrowLeft className="mr-1.5 inline h-4 w-4" />
+                      Back to Sales Orders
+                    </Button>
+                  </div>
+                </div>
+              </article>
+            </div>
+
+            <div className="space-y-4">
+              <JobCardWorkflowStatus steps={JOB_CARD_WORKFLOW_STEPS} currentStage={workflowCurrentStage} />
+              <JobCardTimeline events={timeline} />
+            </div>
+          </div>
+        </form>
+      </div>
+
+      {showQuickAdd ? (
+        <QuickAddProductModal
+          onClose={() => setShowQuickAdd(false)}
+          onAdded={(newProduct) => {
+            setProducts((prev) => [newProduct, ...prev]);
+            setLines((prev) => {
+              const last = prev[prev.length - 1];
+              const isBlank = !last.product_id && !last.item_description;
+              const patch = {
+                product_id: newProduct.id,
+                item_description: newProduct.name,
+                unit_price: String(newProduct.unit_price || ""),
+                unit: newProduct.unit || "pcs",
+                quantity: String(newProduct.quantity || "1"),
+              };
+              return isBlank
+                ? prev.map((l, i) => (i === prev.length - 1 ? { ...l, ...patch } : l))
+                : [...prev, { ...emptyLine(), ...patch }];
+            });
+          }}
+        />
+      ) : null}
+    </>
   );
 }

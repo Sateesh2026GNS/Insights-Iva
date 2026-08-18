@@ -4,12 +4,9 @@ import { Link, useNavigate } from "react-router-dom";
 import { createPortal } from "react-dom";
 import {
   ChevronDown,
-  ChevronLeft,
-  ChevronRight,
   FileSpreadsheet,
   FileText,
   ListFilter,
-  Search,
   Settings,
   Trash2,
   X,
@@ -32,8 +29,21 @@ import {
 } from "../../api/inventoryV2Api";
 import { exportToExcel, exportToPdf } from "../../utils/exportUtils";
 import { apiErrorMessage } from "../../utils/apiError";
+import {
+  InventoryOutlineButton,
+  InventoryPageCard,
+  InventoryPageShell,
+  InventoryPrimaryButton,
+  InventorySearchInput,
+  InventoryTabs,
+  InventoryToolbarButton,
+  InventoryPagination,
+  inventoryRowClass,
+  inventoryTableHeadClass,
+  inventoryTdClass,
+  inventoryThClass,
+} from "../../components/inventory/inventoryDesignSystem";
 
-const PAGE_BG = "var(--color-bg)";
 const PAGE_SIZES = [10, 20, 50];
 
 const SORT_OPTIONS = [
@@ -79,7 +89,7 @@ function DropdownMenu({ open, onClose, children, className = "" }) {
   return (
     <div
       ref={ref}
-      className={`absolute right-0 z-30 mt-1 min-w-[180px] rounded-lg border border-[#e4e4ea] bg-white py-1 shadow-lg ${className}`}
+      className={`absolute right-0 z-30 mt-1 min-w-[180px] rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] py-1 shadow-lg ${className}`}
     >
       {children}
     </div>
@@ -91,14 +101,14 @@ function RadioRow({ checked, label, onSelect }) {
     <button
       type="button"
       onClick={onSelect}
-      className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-[13px] text-[#1a1a1f] hover:bg-[#f7f7f9]"
+      className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-[13px] text-[var(--color-text)] hover:bg-[var(--color-surface-muted)]"
     >
       <span
         className={`grid h-4 w-4 place-items-center rounded-full border ${
-          checked ? "border-[#1a1a1f]" : "border-[#b0b0b8]"
+          checked ? "border-[var(--color-text)]" : "border-[var(--color-border-strong)]"
         }`}
       >
-        {checked ? <span className="h-2 w-2 rounded-full bg-[#1a1a1f]" /> : null}
+        {checked ? <span className="h-2 w-2 rounded-full bg-[var(--color-primary)]" /> : null}
       </span>
       {label}
     </button>
@@ -470,78 +480,49 @@ export default function InventoryV2() {
 
   if (loading) {
     return (
-      <div className="flex min-h-[50vh] items-center justify-center" style={{ background: PAGE_BG }}>
-        <Loader label="Loading inventory…" />
-      </div>
+      <InventoryPageShell>
+        <div className="flex min-h-[50vh] items-center justify-center">
+          <Loader label="Loading inventory…" />
+        </div>
+      </InventoryPageShell>
     );
   }
 
   return (
-    <div className="min-h-full" style={{ background: PAGE_BG }}>
-      <div className="mx-4 mb-6 mt-4 overflow-hidden rounded-2xl border border-[#e4e4ea] bg-white sm:mx-6">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#e4e4ea] px-2 pt-2 sm:px-3">
-          <div className="relative flex min-w-0 flex-1 gap-1">
-            {[
-              { id: "items", label: "All Items", accent: "#6b4eff" },
-              { id: "categories", label: "Category Wise", accent: "#22c55e" },
-            ].map((t) => {
-              const active = tab === t.id;
-              return (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => setTab(t.id)}
-                  className={`relative px-4 py-3 text-[14px] font-semibold transition-colors ${
-                    active ? "text-[#1a1a1f]" : "text-[#9a9aa5] hover:text-[#6b6b76]"
-                  }`}
-                >
-                  {t.label}
-                  {active ? (
-                    <span
-                      className="absolute inset-x-2 bottom-0 h-[3px] rounded-full"
-                      style={{ background: t.accent }}
-                    />
-                  ) : null}
-                </button>
-              );
-            })}
-          </div>
-          <Link
-            to="/inventory/settings"
-            className="mb-2 mr-1 inline-flex items-center gap-1.5 rounded-lg border border-[#e4e4ea] bg-white px-3 py-2 text-[13px] font-semibold text-[#4a4a55] hover:bg-[#f7f7f9]"
-          >
-            <Settings className="h-4 w-4" />
-            Settings
-          </Link>
-        </div>
+    <InventoryPageShell>
+      <InventoryPageCard>
+        <InventoryTabs
+          active={tab}
+          onChange={setTab}
+          tabs={[
+            { id: "items", label: "All Items" },
+            { id: "categories", label: "Category Wise" },
+          ]}
+          action={
+            <Link to="/inventory/settings" className="ui-btn ui-btn-outline inline-flex items-center gap-1.5 text-[13px]">
+              <Settings className="h-4 w-4" />
+              Settings
+            </Link>
+          }
+        />
 
         <div className="space-y-4 p-4 sm:p-5">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <div className="relative w-full max-w-md">
-              <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9a9aa5]" />
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search"
-                className="w-full rounded-lg border border-[#e4e4ea] bg-white py-2.5 pl-10 pr-4 text-[14px] text-[#1a1a1f] placeholder:text-[#9a9aa5] focus:border-[#0f6d84] focus:outline-none focus:ring-2 focus:ring-[#0f6d84]/25"
-              />
-            </div>
+            <InventorySearchInput value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search" />
 
             {tab === "items" ? (
               <div className="flex flex-wrap items-center gap-2">
                 <div className="relative">
-                  <button
-                    type="button"
+                  <InventoryToolbarButton
                     onClick={() => {
                       setSortOpen((v) => !v);
                       setFilterOpen(false);
                     }}
-                    className="inline-flex items-center gap-2 rounded-lg border border-[#cfcfd6] bg-[#f3f3f6] px-3 py-2.5 text-[13px] font-semibold text-[#1a1a1f]"
                   >
                     <ListFilter className="h-4 w-4" />
                     {sortLabel}
-                    <ChevronDown className="h-4 w-4 text-[#6b6b76]" />
-                  </button>
+                    <ChevronDown className="h-4 w-4 text-[var(--color-text-muted)]" />
+                  </InventoryToolbarButton>
                   <DropdownMenu open={sortOpen} onClose={() => setSortOpen(false)}>
                     {SORT_OPTIONS.map((opt) => (
                       <RadioRow
@@ -558,18 +539,16 @@ export default function InventoryV2() {
                 </div>
 
                 <div className="relative">
-                  <button
-                    type="button"
+                  <InventoryToolbarButton
                     onClick={() => {
                       setFilterOpen((v) => !v);
                       setSortOpen(false);
                     }}
-                    className="inline-flex items-center gap-2 rounded-lg border border-[#cfcfd6] bg-[#f3f3f6] px-3 py-2.5 text-[13px] font-semibold text-[#1a1a1f]"
                   >
                     <ListFilter className="h-4 w-4" />
                     Filters
-                    <ChevronDown className="h-4 w-4 text-[#6b6b76]" />
-                  </button>
+                    <ChevronDown className="h-4 w-4 text-[var(--color-text-muted)]" />
+                  </InventoryToolbarButton>
                   <DropdownMenu open={filterOpen} onClose={() => setFilterOpen(false)}>
                     {STOCK_FILTERS.map((opt) => (
                       <RadioRow
@@ -585,56 +564,42 @@ export default function InventoryV2() {
                   </DropdownMenu>
                 </div>
 
-                <button
-                  type="button"
+                <InventoryPrimaryButton
                   onClick={() => {
                     setEditing(null);
                     setAddOpen(true);
                   }}
-                  className="rounded-lg bg-[#0f6d84] px-4 py-2.5 text-[13px] font-bold text-white hover:bg-[#0c5a6e]"
                 >
                   Add Items
-                </button>
-                <button
-                  type="button"
-                  onClick={onExportPdf}
-                  className="rounded-lg border border-[#cfcfd6] bg-white px-3 py-2.5 text-[13px] font-semibold text-[#1a1a1f] hover:bg-[#f7f7f9]"
-                >
+                </InventoryPrimaryButton>
+                <InventoryOutlineButton type="button" onClick={onExportPdf}>
                   <span className="inline-flex items-center gap-1.5">
                     <FileText className="h-4 w-4" /> PDF
                   </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={onExportExcel}
-                  className="rounded-lg border border-[#cfcfd6] bg-white px-3 py-2.5 text-[13px] font-semibold text-[#1a1a1f] hover:bg-[#f7f7f9]"
-                >
+                </InventoryOutlineButton>
+                <InventoryOutlineButton type="button" onClick={onExportExcel}>
                   <span className="inline-flex items-center gap-1.5">
                     <FileSpreadsheet className="h-4 w-4" /> Excel
                   </span>
-                </button>
+                </InventoryOutlineButton>
               </div>
             ) : (
-              <button
-                type="button"
-                onClick={() => setCategoryModal(true)}
-                className="rounded-lg bg-[#0f6d84] px-4 py-2.5 text-[13px] font-bold text-white hover:bg-[#0c5a6e]"
-              >
+              <InventoryPrimaryButton type="button" onClick={() => setCategoryModal(true)}>
                 Add Category
-              </button>
+              </InventoryPrimaryButton>
             )}
           </div>
 
-          <div className="overflow-hidden rounded-xl border border-[#e4e4ea]">
+          <div className="ui-table-wrap ui-table-wrap--scroll overflow-hidden rounded-xl">
             <div className="overflow-x-auto">
               {tab === "items" ? (
                 <table className="min-w-full border-collapse text-left text-[13px]">
-                  <thead className="bg-[#efeaf8] text-[12px] font-semibold uppercase tracking-wide text-[#6b6b76]">
+                  <thead className={inventoryTableHeadClass}>
                     <tr>
-                      <SerialNumberHeader className="border-b border-r border-[#d0d0d8]" />
+                      <SerialNumberHeader className={`${inventoryThClass} border-r`} />
                       {["HSN Code", "Item Name", "Stock Value", "Purchase Price", "Sales Price", "Stock In Hand", "Action"].map(
                         (h) => (
-                          <th key={h} className="border-b border-r border-[#d0d0d8] px-4 py-3 last:border-r-0">
+                          <th key={h} className={`${inventoryThClass} last:border-r-0`}>
                             {h}
                           </th>
                         )
@@ -644,16 +609,16 @@ export default function InventoryV2() {
                   <tbody>
                     {pageRows.length === 0 ? (
                       <tr>
-                        <td colSpan={8} className="px-4 py-12 text-center text-sm text-[#9a9aa5]">
+                        <td colSpan={8} className="px-4 py-12 text-center text-sm text-[var(--color-text-faint)]">
                           No items found.
                         </td>
                       </tr>
                     ) : (
                       pageRows.map((row, rowIndex) => (
-                        <tr key={row.id} className="border-b border-[#ececf0] hover:bg-[#fafafa]">
+                        <tr key={row.id} className={inventoryRowClass}>
                           <SerialNumberCell rowIndex={rowIndex} page={page} pageSize={pageSize} />
-                          <td className="px-4 py-3 text-[#4a4a55]">{row.hsn_code || "—"}</td>
-                          <td className="px-4 py-3 font-semibold text-[#1a1a1f]">
+                          <td className={`${inventoryTdClass} text-[var(--color-text-muted)]`}>{row.hsn_code || "—"}</td>
+                          <td className={`${inventoryTdClass} font-semibold`}>
                             <button
                               type="button"
                               className="text-left hover:underline"
@@ -662,11 +627,11 @@ export default function InventoryV2() {
                               {row.name}
                             </button>
                           </td>
-                          <td className="px-4 py-3 tabular-nums">{Number(row.stock_value || 0).toFixed(1)}</td>
-                          <td className="px-4 py-3 tabular-nums">{Number(row.purchase_price || 0).toFixed(1)}</td>
-                          <td className="px-4 py-3 tabular-nums">{Number(row.selling_price || 0).toFixed(1)}</td>
-                          <td className="px-4 py-3 tabular-nums">{Number(row.current_stock || 0)}</td>
-                          <td className="px-4 py-3">
+                          <td className={`${inventoryTdClass} tabular-nums`}>{Number(row.stock_value || 0).toFixed(1)}</td>
+                          <td className={`${inventoryTdClass} tabular-nums`}>{Number(row.purchase_price || 0).toFixed(1)}</td>
+                          <td className={`${inventoryTdClass} tabular-nums`}>{Number(row.selling_price || 0).toFixed(1)}</td>
+                          <td className={`${inventoryTdClass} tabular-nums`}>{Number(row.current_stock || 0)}</td>
+                          <td className={inventoryTdClass}>
                             <div className="flex items-center justify-end whitespace-nowrap">
                               <InventoryRowActionsMenu
                                 rowId={row.id}
@@ -701,11 +666,11 @@ export default function InventoryV2() {
                 </table>
               ) : (
                 <table className="min-w-full border-collapse text-left text-[13px]">
-                  <thead className="bg-[#efeaf8] text-[12px] font-semibold uppercase tracking-wide text-[#6b6b76]">
+                  <thead className={inventoryTableHeadClass}>
                     <tr>
-                      <SerialNumberHeader className="border-b border-r border-[#d0d0d8]" />
+                      <SerialNumberHeader className={`${inventoryThClass} border-r`} />
                       {["Category", "Stock", "Action"].map((h) => (
-                        <th key={h} className="border-b border-r border-[#d0d0d8] px-4 py-3 last:border-r-0">
+                        <th key={h} className={`${inventoryThClass} last:border-r-0`}>
                           {h}
                         </th>
                       ))}
@@ -714,17 +679,17 @@ export default function InventoryV2() {
                   <tbody>
                     {pageRows.length === 0 ? (
                       <tr>
-                        <td colSpan={4} className="px-4 py-12 text-center text-sm text-[#9a9aa5]">
+                        <td colSpan={4} className="px-4 py-12 text-center text-sm text-[var(--color-text-faint)]">
                           No categories found.
                         </td>
                       </tr>
                     ) : (
                       pageRows.map((row, rowIndex) => (
-                        <tr key={row.category} className="border-b border-[#ececf0] hover:bg-[#fafafa]">
+                        <tr key={row.category} className={inventoryRowClass}>
                           <SerialNumberCell rowIndex={rowIndex} page={page} pageSize={pageSize} />
-                          <td className="px-4 py-3 font-semibold text-[#1a1a1f]">{row.category}</td>
-                          <td className="px-4 py-3 tabular-nums">{row.stock}</td>
-                          <td className="px-4 py-3 text-[#9a9aa5]">NA</td>
+                          <td className={`${inventoryTdClass} font-semibold`}>{row.category}</td>
+                          <td className={`${inventoryTdClass} tabular-nums`}>{row.stock}</td>
+                          <td className={`${inventoryTdClass} text-[var(--color-text-faint)]`}>NA</td>
                         </tr>
                       ))
                     )}
@@ -734,48 +699,18 @@ export default function InventoryV2() {
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-3 text-[13px] text-[#6b6b76]">
-            <div className="flex items-center gap-2">
-              <span>Rows per page:</span>
-              <select
-                value={pageSize}
-                onChange={(e) => setPageSize(Number(e.target.value))}
-                className="rounded border border-[#e4e4ea] bg-white px-2 py-1 outline-none"
-              >
-                {PAGE_SIZES.map((n) => (
-                  <option key={n} value={n}>
-                    {n}
-                  </option>
-                ))}
-              </select>
-              <span className="ml-2 font-medium text-[#1a1a1f]">
-                {total === 0 ? "0-0 of 0" : `${(page - 1) * pageSize + 1}-${Math.min(page * pageSize, total)} of ${total}`}
-              </span>
-            </div>
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                disabled={page <= 1}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="rounded p-1.5 disabled:opacity-40"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-              <span className="grid h-8 min-w-8 place-items-center rounded bg-[#0f6d84] px-2 text-[13px] font-bold text-white">
-                {page}
-              </span>
-              <button
-                type="button"
-                disabled={page >= totalPages}
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                className="rounded p-1.5 disabled:opacity-40"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
+          <InventoryPagination
+            page={page}
+            pageSize={pageSize}
+            total={total}
+            onPage={setPage}
+            onPageSize={(size) => {
+              setPageSize(size);
+              setPage(1);
+            }}
+          />
         </div>
-      </div>
+      </InventoryPageCard>
 
       <AddNewItemModal
         open={addOpen}
@@ -858,6 +793,6 @@ export default function InventoryV2() {
           </div>
         </div>
       ) : null}
-    </div>
+    </InventoryPageShell>
   );
 }

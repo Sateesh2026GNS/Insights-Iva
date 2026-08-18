@@ -73,8 +73,7 @@ export function Field({ label, children, className = "" }) {
   );
 }
 
-export const inputClass =
-  "ui-input w-full";
+export { inputClass, inputMtClass, selectClass } from "../../design-system/classes";
 
 export function ToggleRow({ label, description, checked, onChange }) {
   return (

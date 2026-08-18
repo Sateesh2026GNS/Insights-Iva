@@ -27,6 +27,7 @@ import {
   formatAccountsInr,
 } from "../../components/accounts/accountsDesignSystem";
 import Loader from "../../components/common/Loader";
+import { inputClass } from "../../design-system/classes";
 
 function todayIso() {
   const d = new Date();
@@ -265,10 +266,8 @@ export default function NewJournalEntryV2() {
     );
   }
 
-  const field =
-    "w-full rounded-md border border-[#d0d0d8] bg-[#f5f5f5] px-3 py-2.5 text-[14px] text-[#1a1a1f] outline-none placeholder:text-[#a0a0ab] focus:border-[#6b4eff] focus:bg-white focus:ring-1 focus:ring-[#c4b5fd]";
-  const lineField =
-    "w-full rounded-md border border-[#d0d0d8] bg-[#f5f5f5] px-2.5 py-2 text-[13px] outline-none placeholder:text-[#a0a0ab] focus:border-[#6b4eff] focus:bg-white focus:ring-1 focus:ring-[#c4b5fd]";
+  const field = inputClass;
+  const lineField = `${inputClass} px-2.5 py-2 text-[13px]`;
   const cell = "border-b border-r border-[#d0d0d8] px-2.5 py-2.5 last:border-r-0";
 
   return (
@@ -298,9 +297,9 @@ export default function NewJournalEntryV2() {
 
         {/* Card 1 — Voucher Details */}
         <div className="mb-4 overflow-hidden rounded-xl border border-[#d0d0d8] bg-white shadow-sm">
-          <div className="flex items-center gap-2 border-b border-[#d0d0d8] bg-[#f3f0ff] px-5 py-3">
-            <FileText className="h-4 w-4 text-[#6b4eff]" />
-            <span className="text-[12px] font-bold uppercase tracking-wide text-[#6b4eff]">
+          <div className="flex items-center gap-2 border-b border-[#d0d0d8] bg-[var(--color-primary-soft)] px-5 py-3">
+            <FileText className="h-4 w-4 text-[var(--color-primary)]" />
+            <span className="text-[12px] font-bold uppercase tracking-wide text-[var(--color-primary)]">
               Voucher Details
             </span>
           </div>
@@ -464,7 +463,7 @@ export default function NewJournalEntryV2() {
             <button
               type="button"
               onClick={addLine}
-              className="mt-4 flex w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-[#6b4eff] bg-white py-3 text-[14px] font-semibold text-[#6b4eff] hover:bg-[#f8f7ff]"
+              className="mt-4 flex w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-[var(--color-primary)] bg-white py-3 text-[14px] font-semibold text-[var(--color-primary)] hover:bg-[var(--color-primary-soft)]"
             >
               <Plus className="h-4 w-4" />
               Add New Line

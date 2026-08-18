@@ -223,7 +223,9 @@ SIDEBAR_MENU_CATALOG = [
         "label": "Dashboard",
         "path": "/",
         "module": "dashboard",
-        "children": [],
+        "children": [
+            {"label": "Manufacturing Workflow", "path": "/manufacturing/workflow", "module": "dashboard"},
+        ],
     },
     {
         "key": "masters",
@@ -428,7 +430,6 @@ SIDEBAR_MENU_CATALOG = [
             {"label": "Change Format", "path": "/settings/change-format", "module": "settings"},
             {"label": "Invoice Settings", "path": "/settings/invoice-settings", "module": "settings"},
             {"label": "Expense Settings", "path": "/accounts/expenses/settings", "module": "accounts"},
-            {"label": "Sector Settings", "path": "/settings/sector-settings", "module": "settings"},
             {"label": "Inventory Settings", "path": "/inventory/settings", "module": "settings"},
             {"label": "Sequence Reset Setting", "path": "/settings/sequence-reset", "module": "settings"},
         ],

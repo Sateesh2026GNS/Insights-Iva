@@ -11,6 +11,9 @@ import {
 import { starRating } from "../../data/vendorsMasterData";
 
 import Button from "../common/Button";
+import { inputClass as dsInput } from "../../design-system/classes";
+
+const inputClass = `${dsInput} mt-1`;
 const TABS = [
   { id: "overview", label: "Overview" },
   { id: "purchase_orders", label: "Purchase Orders" },
@@ -352,8 +355,6 @@ export default function VendorDetailModal({
   );
 }
 
-const inputClass =
-  "mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500";
 
 export function VendorFormModal({ vendor, onClose, onSave }) {
   const [form, setForm] = useState({

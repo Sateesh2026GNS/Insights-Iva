@@ -30,9 +30,9 @@ import {
 import { exportToCsv, exportToExcel, exportToPdf } from "../../utils/exportUtils";
 import { apiErrorMessage, asArray } from "../../utils/apiError";
 
-const PAGE_BG = "#EEF5F9";
-const PURPLE = "#6C4CFF";
-const BLUE = "#0B74D1";
+const PAGE_BG = "var(--color-bg)";
+const PURPLE = "var(--color-primary)";
+const BLUE = "var(--color-info)";
 const PAGE_SIZES = [10, 20, 50];
 
 const TABS = [
@@ -217,9 +217,9 @@ function partyNameColumnLabel(tab) {
 
 function partyNameCellClass(tab, row) {
   if (tab === "creditors" || (tab === "both" && row.kind === "vendor")) {
-    return "font-bold text-[#0B74D1]";
+    return "font-bold text-[var(--color-info)]";
   }
-  return "font-bold text-[#17264A]";
+  return "font-bold text-[var(--color-text)]";
 }
 
 function BalanceCell({ row }) {
@@ -238,7 +238,7 @@ function LedgerKpiCard({ label, value, sub, icon: Icon, bg, iconColor, valueColo
   const tint = cardTint || bg;
   return (
     <div
-      className="flex min-h-[100px] items-center gap-3.5 rounded-xl border border-[#E2E8F0]/50 p-4 shadow-sm"
+      className="flex min-h-[100px] items-center gap-3.5 rounded-xl border border-[var(--color-border)]/50 p-4 shadow-sm"
       style={{ backgroundColor: tint }}
     >
       <div
@@ -248,11 +248,11 @@ function LedgerKpiCard({ label, value, sub, icon: Icon, bg, iconColor, valueColo
         <Icon className="h-5 w-5" aria-hidden />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-[13px] font-medium text-[#64748B]">{label}</p>
+        <p className="text-[13px] font-medium text-[var(--color-text-muted)]">{label}</p>
         <p className="truncate text-[22px] font-bold leading-tight" style={{ color: valueColor }}>
           {value}
         </p>
-        {sub ? <p className="mt-0.5 text-[12px] text-[#64748B]">{sub}</p> : null}
+        {sub ? <p className="mt-0.5 text-[12px] text-[var(--color-text-muted)]">{sub}</p> : null}
       </div>
     </div>
   );
@@ -405,7 +405,7 @@ function partyRow(row, kind) {
 
 function CashActionIcons({ onView, onEdit, onDelete }) {
   const circleBtn =
-    "grid h-8 w-8 shrink-0 place-items-center rounded-full transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6C4CFF]";
+    "grid h-8 w-8 shrink-0 place-items-center rounded-full transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]";
 
   return (
     <div className="flex min-w-[7rem] items-center justify-end gap-1.5">
@@ -447,7 +447,7 @@ function OtherActionIcons({ onView, onEdit, onDelete, onSendMail, deleteLabel = 
   }, [menuOpen]);
 
   const circleBtn =
-    "grid h-8 w-8 shrink-0 place-items-center rounded-full transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6C4CFF]";
+    "grid h-8 w-8 shrink-0 place-items-center rounded-full transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]";
 
   return (
     <div className="relative flex min-w-[7rem] items-center justify-end gap-1.5" ref={rootRef}>
@@ -461,35 +461,35 @@ function OtherActionIcons({ onView, onEdit, onDelete, onSendMail, deleteLabel = 
         type="button"
         title="More"
         onClick={() => setMenuOpen((v) => !v)}
-        className={`${circleBtn} border border-[#E2E8F0] bg-white text-[#64748B] hover:opacity-100`}
+        className={`${circleBtn} border border-[var(--color-border)] bg-white text-[var(--color-text-muted)] hover:opacity-100`}
       >
         <MoreVertical className="h-3.5 w-3.5" />
       </button>
       {menuOpen ? (
-        <div className="absolute right-0 top-9 z-30 min-w-[180px] overflow-hidden rounded-md border border-[#E2E8F0] bg-white py-1 shadow-lg">
+        <div className="absolute right-0 top-9 z-30 min-w-[180px] overflow-hidden rounded-md border border-[var(--color-border)] bg-white py-1 shadow-lg">
           {onDelete ? (
             <button
               type="button"
-              className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-[#17264A] hover:bg-[#F8FAFC]"
+              className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-[var(--color-text)] hover:bg-[var(--color-surface-muted)]"
               onClick={() => {
                 setMenuOpen(false);
                 onDelete();
               }}
             >
-              <Trash2 className="h-4 w-4 text-[#64748B]" />
+              <Trash2 className="h-4 w-4 text-[var(--color-text-muted)]" />
               {deleteLabel}
             </button>
           ) : null}
           {onSendMail ? (
             <button
               type="button"
-              className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-[#17264A] hover:bg-[#F8FAFC]"
+              className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-[var(--color-text)] hover:bg-[var(--color-surface-muted)]"
               onClick={() => {
                 setMenuOpen(false);
                 onSendMail();
               }}
             >
-              <Mail className="h-4 w-4 text-[#64748B]" />
+              <Mail className="h-4 w-4 text-[var(--color-text-muted)]" />
               Send On Mail
             </button>
           ) : null}
@@ -513,7 +513,7 @@ function ActionIcons({ onView, onEdit, onSendLedger, onDelete, deleteLabel = "De
   }, [menuOpen]);
 
   const circleBtn =
-    "grid h-8 w-8 shrink-0 place-items-center rounded-full transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6C4CFF]";
+    "grid h-8 w-8 shrink-0 place-items-center rounded-full transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]";
 
   return (
     <div className="relative flex min-w-[10.5rem] items-center justify-end gap-1.5" ref={rootRef}>
@@ -536,34 +536,34 @@ function ActionIcons({ onView, onEdit, onSendLedger, onDelete, deleteLabel = "De
         type="button"
         title="More"
         onClick={() => setMenuOpen((v) => !v)}
-        className={`${circleBtn} bg-[#E2E8F0] text-[#64748B] hover:opacity-100`}
+        className={`${circleBtn} bg-[#E2E8F0] text-[var(--color-text-muted)] hover:opacity-100`}
       >
         <MoreVertical className="h-3.5 w-3.5" />
       </button>
       {menuOpen ? (
-        <div className="absolute right-0 top-9 z-30 min-w-[180px] overflow-hidden rounded-md border border-[#E2E8F0] bg-white py-1 shadow-lg">
+        <div className="absolute right-0 top-9 z-30 min-w-[180px] overflow-hidden rounded-md border border-[var(--color-border)] bg-white py-1 shadow-lg">
           {onDelete ? (
             <button
               type="button"
-              className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-[#17264A] hover:bg-[#F8FAFC]"
+              className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-[var(--color-text)] hover:bg-[var(--color-surface-muted)]"
               onClick={() => {
                 setMenuOpen(false);
                 onDelete();
               }}
             >
-              <Trash2 className="h-4 w-4 text-[#64748B]" />
+              <Trash2 className="h-4 w-4 text-[var(--color-text-muted)]" />
               {deleteLabel}
             </button>
           ) : null}
           <button
             type="button"
-            className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-[#17264A] hover:bg-[#F8FAFC]"
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-[var(--color-text)] hover:bg-[var(--color-surface-muted)]"
             onClick={() => {
               setMenuOpen(false);
               onSendLedger?.();
             }}
           >
-            <Mail className="h-4 w-4 text-[#64748B]" />
+            <Mail className="h-4 w-4 text-[var(--color-text-muted)]" />
             Send On Mail
           </button>
         </div>
@@ -578,13 +578,13 @@ function Pagination({ page, pageSize, total, onPage, onPageSize }) {
   const to = Math.min(page * pageSize, total);
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#E2E8F0] px-1 pt-4 text-[13px] text-[#64748B]">
+    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--color-border)] px-1 pt-4 text-[13px] text-[var(--color-text-muted)]">
       <div className="flex flex-wrap items-center gap-2">
         <span>Rows per page:</span>
         <select
           value={pageSize}
           onChange={(e) => onPageSize(Number(e.target.value))}
-          className="rounded-md border border-[#E2E8F0] bg-white px-2 py-1.5 text-[13px] text-[#17264A] outline-none focus:border-[#6C4CFF] focus:ring-2 focus:ring-[#6C4CFF]/20"
+          className="ui-select rounded-md px-2 py-1.5 text-[13px]"
         >
           {PAGE_SIZES.map((n) => (
             <option key={n} value={n}>
@@ -592,7 +592,7 @@ function Pagination({ page, pageSize, total, onPage, onPageSize }) {
             </option>
           ))}
         </select>
-        <span className="ml-1 font-medium text-[#17264A]">
+        <span className="ml-1 font-medium text-[var(--color-text)]">
           {total === 0 ? "0-0 of 0" : `${from}-${to} of ${total}`}
         </span>
       </div>
@@ -601,14 +601,14 @@ function Pagination({ page, pageSize, total, onPage, onPageSize }) {
           type="button"
           disabled={page <= 1}
           onClick={() => onPage(Math.max(1, page - 1))}
-          className="grid h-8 w-8 place-items-center rounded-md border border-[#E2E8F0] bg-white disabled:opacity-40"
+          className="grid h-8 w-8 place-items-center rounded-md border border-[var(--color-border)] bg-white disabled:opacity-40"
           aria-label="Previous page"
         >
           <ChevronLeft className="h-4 w-4" />
         </button>
         {pageNumberItems(page, totalPages).map((item) =>
           typeof item === "string" ? (
-            <span key={item} className="px-1 text-xs text-[#64748B]">…</span>
+            <span key={item} className="px-1 text-xs text-[var(--color-text-muted)]">…</span>
           ) : (
             <button
               key={item}
@@ -616,8 +616,8 @@ function Pagination({ page, pageSize, total, onPage, onPageSize }) {
               onClick={() => onPage(item)}
               className={`grid h-8 min-w-8 place-items-center rounded-md border px-2 text-[13px] font-semibold ${
                 item === page
-                  ? "border-[#6C4CFF] bg-[#6C4CFF] text-white"
-                  : "border-[#E2E8F0] bg-white text-[#17264A] hover:bg-[#F8FAFC]"
+                  ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-white"
+                  : "border-[var(--color-border)] bg-white text-[var(--color-text)] hover:bg-[var(--color-surface-muted)]"
               }`}
             >
               {item}
@@ -628,7 +628,7 @@ function Pagination({ page, pageSize, total, onPage, onPageSize }) {
           type="button"
           disabled={page >= totalPages}
           onClick={() => onPage(Math.min(totalPages, page + 1))}
-          className="grid h-8 w-8 place-items-center rounded-md border border-[#E2E8F0] bg-white disabled:opacity-40"
+          className="grid h-8 w-8 place-items-center rounded-md border border-[var(--color-border)] bg-white disabled:opacity-40"
           aria-label="Next page"
         >
           <ChevronRight className="h-4 w-4" />
@@ -937,9 +937,9 @@ export default function LedgerV2() {
 
   return (
     <div className="min-h-full px-4 py-4 sm:px-6 sm:py-5" style={{ background: PAGE_BG }}>
-      <div className="overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white shadow-sm">
+      <div className="overflow-hidden rounded-2xl border border-[var(--color-border)] bg-white shadow-sm">
         {/* Tabs */}
-        <div className="border-b border-[#E2E8F0] bg-[#F8FAFC]">
+        <div className="border-b border-[var(--color-border)] bg-[var(--color-surface-muted)]">
           <div className="flex overflow-x-auto">
             {TABS.map((t) => {
               const active = tab === t.id;
@@ -948,10 +948,10 @@ export default function LedgerV2() {
                   key={t.id}
                   type="button"
                   onClick={() => setTab(t.id)}
-                  className={`relative shrink-0 whitespace-nowrap border-r border-[#E2E8F0] px-4 py-3.5 text-[13px] font-semibold transition-colors last:border-r-0 sm:px-5 ${
+                  className={`relative shrink-0 whitespace-nowrap border-r border-[var(--color-border)] px-4 py-3.5 text-[13px] font-semibold transition-colors last:border-r-0 sm:px-5 ${
                     active
-                      ? "bg-white text-[#6C4CFF] after:absolute after:inset-x-0 after:bottom-0 after:h-[3px] after:bg-[#6C4CFF]"
-                      : "bg-[#F8FAFC] text-[#64748B] hover:bg-white hover:text-[#17264A]"
+                      ? "bg-white text-[var(--color-primary)] after:absolute after:inset-x-0 after:bottom-0 after:h-[3px] after:bg-[var(--color-primary)]"
+                      : "bg-[var(--color-surface-muted)] text-[var(--color-text-muted)] hover:bg-white hover:text-[var(--color-text)]"
                   }`}
                 >
                   {t.label}
@@ -971,13 +971,13 @@ export default function LedgerV2() {
           ) : null}
 
           <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <div className="relative w-full max-w-xl">
-              <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#64748B]" />
+            <div className="relative ui-search-wrap w-full">
+              <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]" />
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder={isPartyTab ? partySearchPlaceholder(tab) : accountSearchPlaceholder(tab)}
-                className="w-full rounded-full border border-[#E2E8F0] bg-white py-2.5 pl-10 pr-4 text-[14px] text-[#17264A] placeholder:text-[#94A3B8] focus:border-[#6C4CFF] focus:outline-none focus:ring-2 focus:ring-[#6C4CFF]/20"
+                className="ui-input w-full !rounded-full py-2.5 pl-10 pr-4"
               />
             </div>
 
@@ -986,7 +986,7 @@ export default function LedgerV2() {
                 <button
                   type="button"
                   onClick={() => setAddCustomerOpen(true)}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-[#6C4CFF] px-4 py-2.5 text-[13px] font-semibold text-white hover:bg-[#5a3fe0]"
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--color-primary)] px-4 py-2.5 text-[13px] font-semibold text-white hover:bg-[var(--color-primary-hover)]"
                 >
                   <UserPlus className="h-4 w-4" aria-hidden />+ Add Customer
                 </button>
@@ -995,7 +995,7 @@ export default function LedgerV2() {
                 <button
                   type="button"
                   onClick={() => setAddVendorOpen(true)}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-[#6C4CFF] px-4 py-2.5 text-[13px] font-semibold text-white hover:bg-[#5a3fe0]"
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--color-primary)] px-4 py-2.5 text-[13px] font-semibold text-white hover:bg-[var(--color-primary-hover)]"
                 >
                   <UserPlus className="h-4 w-4" aria-hidden />+ Add Vendor
                 </button>
@@ -1005,14 +1005,14 @@ export default function LedgerV2() {
                   <button
                     type="button"
                     onClick={() => setAdjustOpen(true)}
-                    className="rounded-lg border border-[#0B74D1] bg-white px-3 py-2.5 text-[13px] font-semibold text-[#0B74D1] hover:bg-[#EEF6FF]"
+                    className="rounded-lg border border-[var(--color-info)] bg-white px-3 py-2.5 text-[13px] font-semibold text-[var(--color-info)] hover:bg-[var(--color-info-soft)]"
                   >
                     Adjust Balance
                   </button>
                   <button
                     type="button"
                     onClick={() => setContraOpen(true)}
-                    className="rounded-lg border border-[#0B74D1] bg-white px-3 py-2.5 text-[13px] font-semibold text-[#0B74D1] hover:bg-[#EEF6FF]"
+                    className="rounded-lg border border-[var(--color-info)] bg-white px-3 py-2.5 text-[13px] font-semibold text-[var(--color-info)] hover:bg-[var(--color-info-soft)]"
                   >
                     Contra Entry (Bank/Cash Transfer)
                   </button>
@@ -1022,7 +1022,7 @@ export default function LedgerV2() {
                       setEditCashAccount(null);
                       setBankCashOpen(true);
                     }}
-                    className="inline-flex items-center gap-1.5 rounded-lg bg-[#6C4CFF] px-4 py-2.5 text-[13px] font-semibold text-white hover:bg-[#5a3fe0]"
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--color-primary)] px-4 py-2.5 text-[13px] font-semibold text-white hover:bg-[var(--color-primary-hover)]"
                   >
                     <Landmark className="h-4 w-4" aria-hidden /> Add Bank/Cash
                   </button>
@@ -1035,7 +1035,7 @@ export default function LedgerV2() {
                     setEditOtherAccount(null);
                     setExpenseIncomeOpen(true);
                   }}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-[#6C4CFF] px-4 py-2.5 text-[13px] font-semibold text-white hover:bg-[#5a3fe0]"
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--color-primary)] px-4 py-2.5 text-[13px] font-semibold text-white hover:bg-[var(--color-primary-hover)]"
                 >
                   <UserPlus className="h-4 w-4" aria-hidden />+ Add Other Account
                 </button>
@@ -1053,7 +1053,7 @@ export default function LedgerV2() {
                 <button
                   type="button"
                   onClick={onMail}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-[#0B74D1] bg-white px-4 py-2.5 text-[13px] font-semibold text-[#0B74D1] hover:bg-[#EEF6FF]"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--color-info)] bg-white px-4 py-2.5 text-[13px] font-semibold text-[var(--color-info)] hover:bg-[var(--color-info-soft)]"
                 >
                   <Mail className="h-4 w-4" /> Send On Mail
                 </button>
@@ -1061,11 +1061,11 @@ export default function LedgerV2() {
             </div>
           </div>
 
-          <div className="overflow-hidden rounded-xl border border-[#E2E8F0]">
+          <div className="overflow-hidden rounded-xl border border-[var(--color-border)]">
             <div className="overflow-x-auto">
               {isPartyTab ? (
                 <table className="min-w-[1100px] w-full border-collapse text-left text-[13px]">
-                  <thead className="bg-[#F2F0FF] text-[12px] font-semibold text-[#17264A]">
+                  <thead className="bg-[var(--color-primary-soft)] text-[12px] font-semibold text-[var(--color-text)]">
                     <tr>
                       <SerialNumberHeader className="px-3 py-3" />
                       {[
@@ -1079,7 +1079,7 @@ export default function LedgerV2() {
                       ].map((h) => (
                         <th
                           key={h}
-                          className={`border-b border-[#E2E8F0] px-4 py-3 ${h === "Action" ? "w-[11rem] text-right" : ""}`}
+                          className={`border-b border-[var(--color-border)] px-4 py-3 ${h === "Action" ? "w-[11rem] text-right" : ""}`}
                         >
                           {h}
                         </th>
@@ -1089,16 +1089,16 @@ export default function LedgerV2() {
                   <tbody>
                     {pageRows.length === 0 ? (
                       <tr>
-                        <td colSpan={8} className="px-4 py-14 text-center text-sm text-[#64748B]">
+                        <td colSpan={8} className="px-4 py-14 text-center text-sm text-[var(--color-text-muted)]">
                           No data available
                         </td>
                       </tr>
                     ) : (
                       pageRows.map((row, rowIndex) => (
-                        <tr key={row.id} className="border-b border-[#E2E8F0] hover:bg-[#F8FAFC]">
+                        <tr key={row.id} className="border-b border-[var(--color-border)] hover:bg-[var(--color-surface-muted)]">
                           <SerialNumberCell rowIndex={rowIndex} page={page} pageSize={pageSize} className="px-3 py-3.5" />
                           <td className={`px-4 py-3.5 ${partyNameCellClass(tab, row)}`}>{row.company_name}</td>
-                          <td className="px-4 py-3.5 text-[#64748B]">
+                          <td className="px-4 py-3.5 text-[var(--color-text-muted)]">
                             {row.phone ? (
                               <span className="inline-flex items-center gap-1.5">
                                 <Phone className="h-3.5 w-3.5 shrink-0 text-[#94A3B8]" />
@@ -1108,11 +1108,11 @@ export default function LedgerV2() {
                               "—"
                             )}
                           </td>
-                          <td className="px-4 py-3.5 text-[#64748B]">{row.city || "N/A"}</td>
+                          <td className="px-4 py-3.5 text-[var(--color-text-muted)]">{row.city || "N/A"}</td>
                           <td className="px-4 py-3.5">
                             <GstTypeBadge row={row} />
                           </td>
-                          <td className="px-4 py-3.5 font-medium text-[#64748B]">{row.gstin || "—"}</td>
+                          <td className="px-4 py-3.5 font-medium text-[var(--color-text-muted)]">{row.gstin || "—"}</td>
                           <td className="px-4 py-3.5">
                             <BalanceCell row={row} />
                           </td>
@@ -1162,13 +1162,13 @@ export default function LedgerV2() {
                 </table>
               ) : tab === "cash" ? (
                 <table className="min-w-[960px] w-full border-collapse text-left text-[13px]">
-                  <thead className="bg-[#F2F0FF] text-[12px] font-semibold text-[#17264A]">
+                  <thead className="bg-[var(--color-primary-soft)] text-[12px] font-semibold text-[var(--color-text)]">
                     <tr>
                       <SerialNumberHeader className="px-3 py-3" />
                       {["Account Name", "Account Type", "Description", "Balance", "Action"].map((h) => (
                         <th
                           key={h}
-                          className={`border-b border-[#E2E8F0] px-4 py-3 ${h === "Action" ? "w-[9rem] text-right" : ""}`}
+                          className={`border-b border-[var(--color-border)] px-4 py-3 ${h === "Action" ? "w-[9rem] text-right" : ""}`}
                         >
                           {h}
                         </th>
@@ -1178,16 +1178,16 @@ export default function LedgerV2() {
                   <tbody>
                     {pageRows.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="px-4 py-14 text-center text-sm text-[#64748B]">
+                        <td colSpan={6} className="px-4 py-14 text-center text-sm text-[var(--color-text-muted)]">
                           No data available
                         </td>
                       </tr>
                     ) : (
                       pageRows.map((row, rowIndex) => (
-                        <tr key={row.id} className="border-b border-[#E2E8F0] hover:bg-[#F8FAFC]">
+                        <tr key={row.id} className="border-b border-[var(--color-border)] hover:bg-[var(--color-surface-muted)]">
                           <SerialNumberCell rowIndex={rowIndex} page={page} pageSize={pageSize} className="px-3 py-3.5" />
                           <td className="px-4 py-3.5">
-                            <span className="inline-flex items-center gap-2.5 font-bold text-[#17264A]">
+                            <span className="inline-flex items-center gap-2.5 font-bold text-[var(--color-text)]">
                               <CashAccountIcon type={row.account_type} />
                               {row.name}
                             </span>
@@ -1195,7 +1195,7 @@ export default function LedgerV2() {
                           <td className="px-4 py-3.5">
                             <CashAccountTypeBadge type={row.account_type} />
                           </td>
-                          <td className="px-4 py-3.5 text-[#64748B]">{row.description || "—"}</td>
+                          <td className="px-4 py-3.5 text-[var(--color-text-muted)]">{row.description || "—"}</td>
                           <td className="px-4 py-3.5">
                             <AccountBalanceCell value={row.balance} />
                           </td>
@@ -1228,13 +1228,13 @@ export default function LedgerV2() {
                 </table>
               ) : (
                 <table className="min-w-[1100px] w-full border-collapse text-left text-[13px]">
-                  <thead className="bg-[#F2F0FF] text-[12px] font-semibold text-[#17264A]">
+                  <thead className="bg-[var(--color-primary-soft)] text-[12px] font-semibold text-[var(--color-text)]">
                     <tr>
                       <SerialNumberHeader className="px-3 py-3" />
                       {["Account Name", "Account Type", "Description", "Balance", "Status", "Action"].map((h) => (
                         <th
                           key={h}
-                          className={`border-b border-[#E2E8F0] px-4 py-3 ${
+                          className={`border-b border-[var(--color-border)] px-4 py-3 ${
                             h === "Balance" ? "text-right" : h === "Action" ? "w-[9rem] text-right" : ""
                           }`}
                         >
@@ -1246,16 +1246,16 @@ export default function LedgerV2() {
                   <tbody>
                     {pageRows.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="px-4 py-14 text-center text-sm text-[#64748B]">
+                        <td colSpan={7} className="px-4 py-14 text-center text-sm text-[var(--color-text-muted)]">
                           No data available
                         </td>
                       </tr>
                     ) : (
                       pageRows.map((row, rowIndex) => (
-                        <tr key={row.id} className="border-b border-[#E2E8F0] hover:bg-[#F8FAFC]">
+                        <tr key={row.id} className="border-b border-[var(--color-border)] hover:bg-[var(--color-surface-muted)]">
                           <SerialNumberCell rowIndex={rowIndex} page={page} pageSize={pageSize} className="px-3 py-3.5" />
                           <td className="px-4 py-3.5">
-                            <span className="inline-flex items-center gap-2.5 font-bold text-[#17264A]">
+                            <span className="inline-flex items-center gap-2.5 font-bold text-[var(--color-text)]">
                               <OtherAccountIcon row={row} index={rowIndex} />
                               {row.name}
                             </span>
@@ -1263,7 +1263,7 @@ export default function LedgerV2() {
                           <td className="px-4 py-3.5">
                             <OtherAccountTypeBadge row={row} />
                           </td>
-                          <td className="px-4 py-3.5 text-[#64748B]">{row.description || "—"}</td>
+                          <td className="px-4 py-3.5 text-[var(--color-text-muted)]">{row.description || "—"}</td>
                           <td className="px-4 py-3.5 text-right">
                             <AccountBalanceCell value={row.balance} align="right" />
                           </td>

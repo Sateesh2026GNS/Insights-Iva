@@ -220,7 +220,10 @@ def create_sales_order_endpoint(
     db: Session = Depends(get_db),
 ):
     payload.tenant_id = user.tenant_id
-    return create_sales_order(db, payload)
+    data = payload.model_dump()
+    if not (data.get("sales_person") or "").strip():
+        data["sales_person"] = (user.full_name or user.email or "").strip() or None
+    return create_sales_order(db, SalesOrderCreate(**data))
 
 
 @router.get("/sales-orders", response_model=list[SalesOrderListRead])
@@ -260,18 +263,15 @@ def confirm_sales_order_endpoint(
     user: User = Depends(require_permission(MODULE)),
     db: Session = Depends(get_db),
 ):
-    """Confirm SO → MRP + production orders. Returns workflow result."""
-    from app.services.sales_service import confirm_sales_order
+    """Confirm SO → workflow engine (material check + MRP)."""
+    from app.services.workflow_team_service import confirm_sales_order_with_workflow
 
     try:
-        return confirm_sales_order(
-            db,
-            user.tenant_id,
-            order_id,
-            requested_by=user.full_name or user.email,
-        )
-    except ValueError as exc:
-        raise HTTPException(404, str(exc)) from exc
+        return confirm_sales_order_with_workflow(db, user.tenant_id, order_id, user)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(400, str(exc)) from exc
 
 
 @router.post("/quotations/{quote_id}/convert-to-so", response_model=SalesOrderRead)

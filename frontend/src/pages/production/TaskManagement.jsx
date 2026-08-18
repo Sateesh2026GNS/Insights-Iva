@@ -227,7 +227,7 @@ export default function TaskManagement() {
           placeholder="Search task, operator, order no…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="h-9 min-w-[220px] flex-1 rounded-full border border-gray-200 bg-gray-50 px-4 text-sm outline-none focus:border-gray-400 focus:bg-white"
+          className="ui-search-wrap h-9 min-w-[10rem] flex-1 rounded-full border border-gray-200 bg-gray-50 px-4 text-sm outline-none focus:border-gray-400 focus:bg-white"
         />
         <select
           value={filterStatus}

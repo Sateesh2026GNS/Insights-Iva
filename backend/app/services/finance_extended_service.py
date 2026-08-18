@@ -588,7 +588,7 @@ def get_gl_summary(db: Session, tenant_id: int) -> GLSummaryRead:
             db.scalar(
                 select(func.coalesce(func.sum(VendorBill.amount), 0)).where(
                     VendorBill.tenant_id == tenant_id,
-                    VendorBill.status.in_("pending", "due", "overdue"),
+                    VendorBill.status.in_(["pending", "due", "overdue"]),
                 )
             )
             or 0

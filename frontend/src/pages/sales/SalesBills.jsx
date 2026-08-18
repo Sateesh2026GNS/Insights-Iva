@@ -284,7 +284,7 @@ export default function SalesBills() {
       {/* Search + Table */}
       <div className="space-y-4">
         <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
-          <div className="relative w-full sm:max-w-md">
+          <div className="relative ui-search-wrap w-full sm:w-auto">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input type="text" placeholder="Search by Bill No. or Customer..."
               value={search} onChange={(e) => setSearch(e.target.value)}

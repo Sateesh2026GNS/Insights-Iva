@@ -251,6 +251,12 @@ class SalesOrderBase(BaseModel):
     invoiced: bool = False
     packed: bool = False
     shipped: bool = False
+    delivery_date: date | None = None
+    payment_terms: str | None = None
+    warehouse_id: int | None = None
+    sales_person: str | None = None
+    priority: str = "medium"
+    workflow_status: str | None = None
 
 
 class SalesOrderLineBase(BaseModel):

@@ -13,6 +13,7 @@ import {
 } from "../../api/auditLogsApi";
 import useAuth from "../../hooks/useAuth";
 import usePageRefresh from "../../hooks/usePageRefresh";
+import { inputClass as inputCls } from "../../design-system/classes";
 import { useToast } from "../../context/ToastContext";
 
 const MODULES = [
@@ -144,9 +145,6 @@ export default function AuditLogsPanel() {
       addToast(err?.response?.data?.detail || "Delete failed", "error");
     }
   };
-
-  const inputCls =
-    "rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs text-slate-800 focus:border-teal-500 focus:outline-none dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100";
 
   return (
     <div className="space-y-4">

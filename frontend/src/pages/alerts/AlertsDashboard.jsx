@@ -36,6 +36,7 @@ import {
   formatAlertDate,
   computeAlertSummary,
 } from "../../utils/alertUtils";
+import { inputMtClass as inputClass } from "../../design-system/classes";
 
 const PAGE_SIZE = 10;
 
@@ -45,8 +46,6 @@ const STATUS_TABS = [
   { value: "acknowledged", label: "Acknowledged" },
   { value: "resolved", label: "Resolved" },
 ];
-
-const inputClass = "ui-input mt-1.5 w-full";
 
 const EXPORT_COLUMNS = [
   { key: "id", label: "Alert ID" },
@@ -481,7 +480,7 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
       {/* Search, status tabs & filters */}
       <div className="ui-card ui-card--padded print:hidden">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="relative min-w-0 flex-1 lg:max-w-md">
+          <div className="relative ui-search-wrap min-w-0 flex-1">
             <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]" />
             <input
               value={search}

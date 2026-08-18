@@ -104,6 +104,8 @@ class SalesOrder(Base, TimestampMixin):
     payment_terms: Mapped[str | None] = mapped_column(String(128))
     warehouse_id: Mapped[int | None] = mapped_column(ForeignKey("warehouses.id"))
     sales_person: Mapped[str | None] = mapped_column(String(255))
+    priority: Mapped[str] = mapped_column(String(16), default="medium", nullable=False)
+    workflow_status: Mapped[str | None] = mapped_column(String(64), index=True)
 
     customer = relationship("Customer", back_populates="sales_orders")
     invoices = relationship("Invoice", back_populates="sales_order")

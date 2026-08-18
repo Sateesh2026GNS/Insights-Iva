@@ -7,11 +7,6 @@ const CONFIG = {
     settingKey: "expense_settings",
     fields: [{ name: "default_category", label: "Default category", type: "text" }],
   },
-  "/settings/sector-settings": {
-    title: "Sector Settings",
-    settingKey: "sector_settings",
-    fields: [{ name: "sector", label: "Business sector", type: "text" }],
-  },
   "/settings/inventory-settings": {
     title: "Inventory Settings",
     settingKey: "inventory_settings",

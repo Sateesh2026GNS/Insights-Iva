@@ -1,3 +1,5 @@
+import { resolveStatusTone } from "../../design-system/statusTone";
+
 const TONE_CLASS = {
   success: "ui-badge-success",
   info: "ui-badge-info",
@@ -12,8 +14,12 @@ const TONE_CLASS = {
 
 /**
  * Shared status pill — use instead of ad-hoc color chips per page.
+ * Pass `tone` directly, or `status` for automatic semantic mapping.
  */
-export default function StatusBadge({ tone = "neutral", children, className = "" }) {
-  const toneClass = TONE_CLASS[tone] || TONE_CLASS.neutral;
+export default function StatusBadge({ tone, status, children, className = "" }) {
+  const resolved = tone || (status != null ? resolveStatusTone(status) : "neutral");
+  const toneClass = TONE_CLASS[resolved] || TONE_CLASS.neutral;
   return <span className={`ui-badge ${toneClass} ${className}`.trim()}>{children}</span>;
 }
+
+export { resolveStatusTone };

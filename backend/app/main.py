@@ -418,4 +418,6 @@ app.include_router(audit_logs_router)
 app.include_router(warehouse_router)
 app.include_router(supply_chain_router)
 from app.api.system_data import router as system_data_router
+from app.api.manufacturing_workflow_api import router as manufacturing_workflow_router
 app.include_router(system_data_router, prefix="/api")
+app.include_router(manufacturing_workflow_router)

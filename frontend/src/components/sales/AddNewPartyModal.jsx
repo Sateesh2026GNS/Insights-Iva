@@ -17,12 +17,10 @@ import { lookupIndianPincode } from "../../api/addressLookupApi";
 import { INDIAN_STATES, CITIES_BY_STATE } from "../../data/indiaLocations";
 import { useToast } from "../../context/ToastContext";
 import useTenantId from "../../hooks/useTenantId";
+import { inputClass } from "../../design-system/classes";
 
 const PANEL_CLASS =
   "flex max-h-[90vh] w-full max-w-[440px] flex-col overflow-hidden rounded-l-xl bg-white shadow-2xl animate-[slideInRight_0.28s_ease-out]";
-
-const inputClass =
-  "w-full rounded-lg border border-[#e4e4ea] bg-[#f3f3f6] px-3 py-2 text-[13px] text-[#1a1a1f] placeholder:text-[#a0a0ab] focus:border-[var(--color-action-teal)] focus:bg-white focus:outline-none focus:ring-1 focus:ring-[color-mix(in_srgb,var(--color-action-teal)_25%,transparent)]";
 
 const EMPTY = {
   gstin: "",

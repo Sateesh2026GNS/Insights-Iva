@@ -20,7 +20,6 @@ const IN_APP_SETTINGS_SEGMENTS = new Set([
   "purchase-template",
   "inventory-settings",
   "invoice-settings",
-  "sector-settings",
   "sequence-reset",
 ]);
 

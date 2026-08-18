@@ -21,6 +21,7 @@ export default function SODetailModal({ order, onClose }) {
 
         <div className="overflow-y-auto px-5 py-4">
           <div className="mb-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+            <Field label="Sales Person" value={order.sales_person || "—"} />
             <Field label="Delivery Date" value={order.delivery_date || "—"} />
             <Field label="Payment" value={order.payment_terms || "Net 30"} />
             <Field label="Warehouse" value={order.warehouse_name || "—"} />

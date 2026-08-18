@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, CheckCircle2, Factory } from "lucide-react";
+import { ArrowLeft, CheckCircle2, ClipboardList, Factory } from "lucide-react";
 
 import Loader from "../../components/common/Loader";
 import PageHeader from "../../components/common/PageHeader";
@@ -196,10 +196,20 @@ export default function SalesOrderDetail() {
           </Button>
         )}
         {isConfirmed && (
-          <Button variant="secondary" type="button" disabled={confirming}
+          <>
+            <Button
+              variant="primary"
+              to={`/sales/orders/${order.id}/job-card`}
+              className="inline-flex items-center gap-2"
+            >
+              <ClipboardList className="h-4 w-4" />
+              Open Job Card
+            </Button>
+            <Button variant="secondary" type="button" disabled={confirming}
       onClick={handleConfirm} className="inline-flex items-center gap-2">
-            View manufacturing status
-          </Button>
+              View manufacturing status
+            </Button>
+          </>
         )}
         <Button variant="secondary" to={createProductionHref} className="inline-flex items-center gap-2">
           <Factory className="h-4 w-4" /> Create Production Order
@@ -221,6 +231,7 @@ export default function SalesOrderDetail() {
           <dl className="grid grid-cols-2 gap-4 text-sm">
             <Field label="Order Number" value={order.order_number} />
             <Field label="Reference" value={order.reference_number || "—"} />
+            <Field label="Sales Person" value={order.sales_person || "—"} />
             <Field label="Order Date" value={order.order_date} />
             <Field label="Status" value={order.status} />
             <Field

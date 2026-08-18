@@ -454,6 +454,14 @@ export default function AppRoutes() {
         }
       />
       <Route
+        path="/sales/orders/:id/job-card"
+        element={
+          <ProtectedRoute>
+            <P.SalesJobCardPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/sales/orders/:id"
         element={
           <ProtectedRoute>
@@ -466,6 +474,14 @@ export default function AppRoutes() {
         element={
           <ProtectedRoute>
             <P.RoleWorkflowBoard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/manufacturing/job-card/:orderId"
+        element={
+          <ProtectedRoute>
+            <P.SalesJobCardPage />
           </ProtectedRoute>
         }
       />
@@ -653,7 +669,6 @@ export default function AppRoutes() {
       <Route path="/settings/format-settings" element={<ProtectedRoute><P.FormatSettings /></ProtectedRoute>} />
       <Route path="/settings/inventory-settings" element={<ProtectedRoute><P.InventorySettingsV2 /></ProtectedRoute>} />
       <Route path="/settings/invoice-settings" element={<ProtectedRoute><P.InvoiceSettings /></ProtectedRoute>} />
-      <Route path="/settings/sector-settings" element={<ProtectedRoute><P.SectorSettingsV2 /></ProtectedRoute>} />
       <Route path="/settings/sequence-reset" element={<ProtectedRoute><P.SequenceResetSettingV2 /></ProtectedRoute>} />
       <Route path="/settings/expense-settings" element={<ProtectedRoute><Navigate to="/accounts/expenses/settings" replace /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><P.SettingsLayout /></ProtectedRoute>}>

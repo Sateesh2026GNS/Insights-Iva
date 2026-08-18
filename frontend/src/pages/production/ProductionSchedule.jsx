@@ -1024,7 +1024,7 @@ export default function ProductionSchedule() {
         {view === "kanban" ? <KanbanView items={kanban} onCreate={openCreate} /> : null}
         {view === "table" ? (
           <div>
-            <div className="relative mb-4 max-w-md">
+            <div className="relative mb-4 ui-search-wrap">
               <input
                 type="search"
                 placeholder="Search WO, product, machine…"

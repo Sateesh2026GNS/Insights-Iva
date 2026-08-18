@@ -4,13 +4,13 @@ import { createSalesOrder } from "../../api/salesApi";
 import { fetchCustomersWithFallback, resolveCustomerId } from "../../utils/customerOptions";
 import { useToast } from "../../context/ToastContext";
 import useTenantId from "../../hooks/useTenantId";
+import useAuth from "../../hooks/useAuth";
 import Loader from "../common/Loader";
-
-const inputClass =
-  "mt-1.5 w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 placeholder-slate-400 focus:border-[#2563EB] focus:outline-none focus:ring-2 focus:ring-blue-100";
+import { inputMtClass as inputClass } from "../../design-system/classes";
 
 export default function SalesOrderFormModal({ onClose, onSave }) {
   const tenantId = useTenantId();
+  const { user } = useAuth();
   const { addToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [customers, setCustomers] = useState([]);
@@ -23,8 +23,16 @@ export default function SalesOrderFormModal({ onClose, onSave }) {
     reference_number: "",
     order_date: new Date().toISOString().slice(0, 10),
     status: "draft",
+    sales_person: "",
     total_amount: "",
   });
+
+  useEffect(() => {
+    if (user && !form.sales_person) {
+      const name = user.full_name || user.name || user.email || "";
+      if (name) setForm((f) => ({ ...f, sales_person: name }));
+    }
+  }, [user, form.sales_person]);
 
   const uniqueCustomers = useMemo(() => {
     const map = new Map();
@@ -56,6 +64,7 @@ export default function SalesOrderFormModal({ onClose, onSave }) {
         ...form,
         customer_id: customerId,
         order_number: form.order_number || `SO-${Date.now()}`,
+        sales_person: form.sales_person?.trim() || null,
         total_amount: Number(form.total_amount) || 0,
       });
       addToast("Sales order created successfully", "success");
@@ -132,6 +141,17 @@ export default function SalesOrderFormModal({ onClose, onSave }) {
                 className={inputClass}
               />
             </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-500 uppercase">Sales Person</label>
+            <input
+              type="text"
+              value={form.sales_person}
+              onChange={(e) => setForm((f) => ({ ...f, sales_person: e.target.value }))}
+              placeholder="Assigned salesperson"
+              className={inputClass}
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-3">

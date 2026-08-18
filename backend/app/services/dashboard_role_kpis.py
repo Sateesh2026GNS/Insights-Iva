@@ -8,6 +8,7 @@ from typing import Any
 from sqlalchemy import extract, func, select
 from sqlalchemy.orm import Session
 
+from app.models.accounts import Expense, Income
 from app.models.inventory import InventoryItem, StockLevel
 from app.models.machine import Machine
 from app.models.procurement import MaterialRequest
@@ -34,6 +35,7 @@ def _kpi(
     link: str | None = None,
     suffix: str | None = None,
     unit: str | None = None,
+    embedded: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     card: dict[str, Any] = {
         "id": card_id,
@@ -49,6 +51,8 @@ def _kpi(
         card["suffix"] = suffix
     if unit is not None:
         card["unit"] = unit
+    if embedded:
+        card["embedded"] = embedded
     return card
 
 
@@ -132,7 +136,94 @@ def _month_revenue(db: Session, tenant_id: int, today: date) -> float:
         )
         or 0
     )
-    return inv
+    income = float(
+        db.scalar(
+            select(func.coalesce(func.sum(Income.amount), 0)).where(
+                Income.tenant_id == tenant_id,
+                extract("month", Income.income_date) == today.month,
+                extract("year", Income.income_date) == today.year,
+            )
+        )
+        or 0
+    )
+    return inv + income
+
+
+def _month_cost(db: Session, tenant_id: int, today: date) -> float:
+    return float(
+        db.scalar(
+            select(func.coalesce(func.sum(Expense.amount), 0)).where(
+                Expense.tenant_id == tenant_id,
+                extract("month", Expense.expense_date) == today.month,
+                extract("year", Expense.expense_date) == today.year,
+            )
+        )
+        or 0
+    )
+
+
+def _month_has_financial_activity(db: Session, tenant_id: int, today: date) -> bool:
+    month, year = today.month, today.year
+    inv_count = (
+        db.scalar(
+            select(func.count())
+            .select_from(Invoice)
+            .where(
+                Invoice.tenant_id == tenant_id,
+                Invoice.status != "draft",
+                extract("month", Invoice.issue_date) == month,
+                extract("year", Invoice.issue_date) == year,
+            )
+        )
+        or 0
+    )
+    if inv_count:
+        return True
+    inc_count = (
+        db.scalar(
+            select(func.count())
+            .select_from(Income)
+            .where(
+                Income.tenant_id == tenant_id,
+                extract("month", Income.income_date) == month,
+                extract("year", Income.income_date) == year,
+            )
+        )
+        or 0
+    )
+    if inc_count:
+        return True
+    exp_count = (
+        db.scalar(
+            select(func.count())
+            .select_from(Expense)
+            .where(
+                Expense.tenant_id == tenant_id,
+                extract("month", Expense.expense_date) == month,
+                extract("year", Expense.expense_date) == year,
+            )
+        )
+        or 0
+    )
+    return exp_count > 0
+
+
+def _current_month_pl_totals(db: Session, tenant_id: int, today: date) -> tuple[float, float]:
+    from calendar import monthrange
+
+    from app.services.accounts_service import get_profit_loss
+
+    start = date(today.year, today.month, 1)
+    end = date(today.year, today.month, monthrange(today.year, today.month)[1])
+    pl = get_profit_loss(
+        db,
+        tenant_id,
+        today.year,
+        ytd_through_month=today.month,
+        start_date=start,
+        end_date=end,
+    )
+    return float(pl.get("total_revenue") or 0), float(pl.get("total_expenses") or 0)
 
 
 def _po_status_counts(db: Session, tenant_id: int) -> dict[str, int]:
@@ -164,12 +255,33 @@ def _po_status_counts(db: Session, tenant_id: int) -> dict[str, int]:
 def build_admin_kpis(db: Session, tenant_id: int, user: User | None, ctx: dict[str, Any]) -> list[dict]:
     from app.services.approval_service import get_pending_approvals
     from app.services.department_service import get_department_summary
-    from app.services.rbac_service import get_user_stats
 
-    stats = get_user_stats(db, tenant_id)
     dept = get_department_summary(db, tenant_id)
     approvals = int(get_pending_approvals(db, tenant_id).get("total") or 0)
     today = ctx["today"]
+    if _month_has_financial_activity(db, tenant_id, today):
+        month_rev, month_cost = _current_month_pl_totals(db, tenant_id, today)
+        net_margin = month_rev - month_cost
+        margin_pct = round((net_margin / month_rev) * 100, 1) if month_rev else 0.0
+        revenue_cost_kpi = _kpi(
+            "revenue-cost-snapshot",
+            "Revenue/Cost Snapshot",
+            f"{_format_inr(month_rev)} / {_format_inr(month_cost)}",
+            trend=f"{margin_pct}%",
+            trend_up=net_margin >= 0,
+            trend_label="net margin this month",
+            link="/accounts/profit-loss",
+        )
+    else:
+        revenue_cost_kpi = _kpi(
+            "revenue-cost-snapshot",
+            "Revenue/Cost Snapshot",
+            "—",
+            trend="",
+            trend_up=True,
+            trend_label="no data this month",
+            link="/accounts/profit-loss",
+        )
     return [
         _kpi("total-users", "Total Users", stats["total_users"], trend_label="registered users", link="/admin/users"),
         _kpi("departments", "Departments", dept.total_departments, trend_label="active departments", link="/masters/departments"),
@@ -191,6 +303,7 @@ def build_admin_kpis(db: Session, tenant_id: int, user: User | None, ctx: dict[s
             trend_label="open work orders",
             link="/production/work-orders?view=pending",
         ),
+        revenue_cost_kpi,
     ]
 
 
@@ -520,6 +633,32 @@ def apply_role_dashboard(
     today = ctx["today"]
     if profile == "admin":
         payload["kpi_cards"] = build_admin_kpis(db, tenant_id, user, ctx)
+        from app.services.workflow_state_service import (
+            recent_workflow_activity,
+            workflow_status_counts,
+        )
+        from app.core.workflow_constants import WORKFLOW_COUNT_BUCKETS
+
+        counts_raw = workflow_status_counts(db, tenant_id)
+        workflow_counts = []
+        for bucket in WORKFLOW_COUNT_BUCKETS:
+            statuses = [s.strip() for s in bucket["statuses"].split(",")]
+            workflow_counts.append(
+                {
+                    "key": bucket["key"],
+                    "label": bucket["label"],
+                    "count": sum(counts_raw.get(s, 0) for s in statuses),
+                    "path": bucket["path"],
+                }
+            )
+        payload["manufacturing_workflow"] = {
+            "counts": workflow_counts,
+            "activity": recent_workflow_activity(db, tenant_id, limit=15),
+        }
+        if "manufacturing_workflow" not in payload.get("visible_sections", []):
+            payload["visible_sections"] = list(payload.get("visible_sections", [])) + [
+                "manufacturing_workflow"
+            ]
     elif profile == "sales":
         payload["kpi_cards"] = build_sales_kpis(db, tenant_id, today)
         payload["production_overview"] = []

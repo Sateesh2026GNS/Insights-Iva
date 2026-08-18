@@ -393,6 +393,27 @@ function KV({ label, value, valueClass = "" }) {
   );
 }
 
+/** Sales order block — matches shop-floor job card reference layout. */
+function SalesOrderInfoPanel({ header, uom, priority }) {
+  const h = header || {};
+  return (
+    <div className="space-y-0.5">
+      <KV label="Sales Order No." value={h.sales_order_no} />
+      <KV label="Customer" value={h.customer} />
+      <KV label="Sales Person" value={h.sales_person} />
+      <KV label="Product" value={h.product} />
+      <KV label="Order Quantity" value={fmtQty(h.order_qty, uom)} />
+      <KV label="Required Delivery" value={h.required_delivery} />
+      <div className="flex items-center justify-between py-1">
+        <span className="text-[12px] text-slate-500">Priority</span>
+        <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${priority.bg} ${priority.text}`}>
+          {priority.label}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 function Field({ label, children }) {
   return (
     <label className="block space-y-1">
@@ -551,15 +572,16 @@ function OverviewDashboard({ card, uom, priority, progressPct, canManage = true,
 
   const metaItems = [
     { label: "Job Card No", value: card.job_card_no, Icon: ClipboardList },
-    { label: "Sales Order", value: h.sales_order_no, Icon: FileText },
-    { label: "Customer", value: h.customer, Icon: User },
-    { label: "Product", value: h.product, Icon: Package },
-    { label: "Order Qty", value: fmtQty(h.order_qty, uom), Icon: Box },
-    { label: "Required Delivery", value: h.required_delivery, Icon: Clock },
+    { label: "Production Order", value: h.production_order_no, Icon: Factory },
+    { label: "Planned Start", value: h.planned_start, Icon: Play },
+    { label: "Planned End", value: h.planned_end, Icon: StopCircle },
   ];
 
   return (
     <div className="space-y-4">
+      <section className="ui-card p-5">
+        <SalesOrderInfoPanel header={h} uom={uom} priority={priority} />
+      </section>
       {/* Key metadata strip */}
       <section className="ui-card px-4 py-3">
         <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
@@ -1379,17 +1401,7 @@ function DetailForm({
 
         <div className={`grid gap-4 p-5 ${operatorMode ? "lg:grid-cols-2" : "lg:grid-cols-4"}`}>
           <div className="space-y-0.5">
-            <KV label="Sales Order No." value={h.sales_order_no} />
-            <KV label="Customer" value={h.customer} />
-            <KV label="Product" value={h.product} />
-            <KV label="Order Quantity" value={fmtQty(h.order_qty, uom)} />
-            <KV label="Required Delivery" value={h.required_delivery} />
-            <div className="flex items-center justify-between py-1">
-              <span className="text-[12px] text-slate-500">Priority</span>
-              <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${priority.bg} ${priority.text}`}>
-                {priority.label}
-              </span>
-            </div>
+            <SalesOrderInfoPanel header={h} uom={uom} priority={priority} />
           </div>
 
           {!operatorMode ? (
@@ -2923,7 +2935,7 @@ export default function JobCard() {
   const canCreate = !operatorMode && (roles.production || roles.admin);
 
   const woId = params.get("id");
-  const viewParam = params.get("view") === "form" ? "form" : "overview";
+  const viewParam = params.get("view") === "overview" ? "overview" : "form";
   const [list, setList] = useState([]);
   const [card, setCard] = useState(null);
   const [machines, setMachines] = useState([]);

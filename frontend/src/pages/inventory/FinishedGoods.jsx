@@ -8,7 +8,6 @@ import {
   Package,
   PackageX,
   Plus,
-  RefreshCw,
   Search,
 } from "lucide-react";
 
@@ -202,14 +201,6 @@ export default function FinishedGoods() {
     if (warehouse) list = list.filter((r) => r.warehouse_name === warehouse);
     return list;
   }, [rows, search, statusFilter, category, warehouse]);
-
-  const clearFilters = () => {
-    setSearch("");
-    setStatusFilter("");
-    setCategory("");
-    setWarehouse("");
-    setSelectedIds(new Set());
-  };
 
   const requireLiveRow = (row, actionLabel = "This action") => {
     if (row.live && typeof row.id === "number") return true;
@@ -437,7 +428,7 @@ export default function FinishedGoods() {
         }
       />
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
+      <div className="ui-grid-kpi">
         <KpiCard label="Total Products" value={Number(kpis.total_products).toLocaleString("en-IN")} icon={Package} tone="info" meta="All finished goods" />
         <KpiCard label="Total Stock Value" value={formatInrAmount(kpis.stock_value)} icon={Coins} tone="success" meta="Across all warehouses" />
         <KpiCard label="Low Stock Items" value={kpis.low_stock} icon={AlertTriangle} tone="warning" meta="Reorder level reached" />
@@ -447,7 +438,7 @@ export default function FinishedGoods() {
 
       <div className="ui-card p-4 sm:p-5">
         <div className="mb-4 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-          <div className="relative min-w-0 flex-1 xl:max-w-lg">
+          <div className="relative ui-search-wrap min-w-0 flex-1">
             <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]" />
             <input
               type="search"
@@ -486,9 +477,6 @@ export default function FinishedGoods() {
                     </option>
                   ))}
                 </select>
-                <Button type="button" variant="ghost" onClick={clearFilters}>
-                  <RefreshCw className="h-4 w-4" /> Clear
-                </Button>
               </>
             ) : null}
             <Button type="button" variant="primary" onClick={handleAdd}>

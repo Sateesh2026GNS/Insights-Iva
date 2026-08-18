@@ -40,23 +40,23 @@ import { quickActionsRef } from "../../../data/referenceDashboardData";
 import { getErpDashboard } from "../../../api/dashboardApi";
 import { getMaterialRequests, getPurchaseOrders, getVendors } from "../../../api/procurementApi";
 import { getProductionOrders, getWorkOrders } from "../../../api/productionApi";
-import { getUsers } from "../../../api/adminApi";
 import useAuth from "../../../hooks/useAuth";
 import MachineControlCard from "../MachineControlCard";
+import ManufacturingWorkflowHub from "../ManufacturingWorkflowHub";
 import useManufacturingRefresh from "../../../hooks/useManufacturingRefresh";
 import { userCanAccess, isOperator } from "../../../config/permissions";
 import { CardShell, KpiIconWell, StatusBadge, TrendBadge, getKpiAccent } from "./ReferenceParts";
 
 /** Masters → Products visual tokens (only reference for this dashboard). */
-const PAGE_BG = "var(--color-bg)";
 const YELLOW = "var(--color-cta)";
 
 const tooltipStyle = {
   borderRadius: 12,
-  border: "1px solid #e4e4ea",
-  boxShadow: "0 1px 2px rgba(26,26,31,0.06)",
+  border: "1px solid var(--color-border)",
+  boxShadow: "var(--shadow-card-hover)",
   fontSize: 12,
-  color: "#1a1a1f",
+  color: "var(--color-text)",
+  backgroundColor: "var(--color-surface)",
 };
 
 const KPI_TITLE_KEYS = {
@@ -74,6 +74,7 @@ const KPI_TITLE_KEYS = {
   warehouses: "warehouses",
   "stock-movements": "stockMovements",
   "total-users": "totalUsers",
+  departments: "departments",
   "active-users": "activeUsers",
   "total-employees": "totalEmployees",
   "active-alerts": "activeAlerts",
@@ -112,6 +113,7 @@ const KPI_TITLE_KEYS = {
   expenses: "expenses",
   "gst-payable": "gstPayable",
   "cash-bank-balance": "cashBankBalance",
+  "revenue-cost-snapshot": "revenueCostSnapshot",
   "my-work-orders": "myWorkOrders",
   "todays-target": "todaysTarget",
   "completed-today": "completedToday",
@@ -132,6 +134,12 @@ const TREND_LABEL_KEYS = {
   "active locations": "activeLocations",
   "GRNs today": "grnsToday",
   "awaiting action": "awaitingAction",
+  "registered users": "registeredUsers",
+  "active departments": "activeDepartments",
+  "production orders": "productionOrders",
+  "open work orders": "openWorkOrders",
+  "net margin this month": "netMarginThisMonth",
+  "no data this month": "noDataThisMonth",
 };
 
 const SHOP_FLOOR_KEYS = {
@@ -175,8 +183,8 @@ function formatInr(n) {
 
 function DashboardSkeleton() {
   return (
-    <div className="min-h-full" style={{ background: PAGE_BG }} aria-busy="true" aria-label="Loading dashboard">
-      <div className="mx-auto max-w-[1400px] space-y-5 px-4 py-5 sm:px-6 lg:px-8">
+    <div className="min-h-full bg-[var(--color-bg)]" aria-busy="true" aria-label="Loading dashboard">
+      <div className="ui-page mx-auto max-w-[var(--page-max)] ui-stack">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           {Array.from({ length: 5 }).map((_, i) => (
             <SkeletonCard key={i} />
@@ -200,6 +208,7 @@ function DashboardSkeleton() {
 
 const DEFAULT_CARD_LINKS = {
   "total-users": "/admin/users",
+  departments: "/masters/departments",
   "active-users": "/admin/users",
   departments: "/masters/departments",
   "total-employees": "/masters/departments",
@@ -207,6 +216,7 @@ const DEFAULT_CARD_LINKS = {
   "total-orders": "/production/planning",
   "today-production": "/production/planning",
   "pending-orders": "/production/work-orders?view=pending",
+  "revenue-cost-snapshot": "/accounts/profit-loss",
   "machines-running": "/production/machines",
   "good-qty": "/production/reports",
   "reject-qty": "/production/reports",
@@ -272,7 +282,7 @@ function KpiStrip({ cards = [] }) {
     );
   }
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="ui-kpi-strip">
       {cards.map((card) => {
         const titleKey = KPI_TITLE_KEYS[card.id];
         const trendKey = TREND_LABEL_KEYS[card.trendLabel];
@@ -286,47 +296,37 @@ function KpiStrip({ cards = [] }) {
             : card.trendLabel;
         const cardTitle = titleKey ? t(`refDashboard.${titleKey}`) : card.title;
         const targetLink = card.link || DEFAULT_CARD_LINKS[card.id];
-        const linkCardCls =
-          "group relative flex h-full min-h-[7.5rem] flex-col overflow-hidden ui-card p-4 cursor-pointer transition-all duration-200 ease-out hover:-translate-y-1 hover:border-[var(--color-primary)]/35 hover:bg-[#fafafa] hover:shadow-lg active:translate-y-0 active:scale-[0.99] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]";
-        const staticCardCls =
-          "group relative flex h-full min-h-[7.5rem] flex-col overflow-hidden ui-card p-4";
+        const cardSurfaceCls = `group relative flex h-full w-full min-h-[var(--kpi-dashboard-min-height)] flex-col overflow-hidden rounded-xl p-3.5 shadow-sm ${accent.cardBg}`;
+        const linkCardCls = `${cardSurfaceCls} cursor-pointer transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]`;
+        const staticCardCls = cardSurfaceCls;
         const cls = targetLink ? linkCardCls : staticCardCls;
         const inner = (
           <>
-            <span className={`absolute inset-x-0 top-0 h-1 ${accent.bar}`} aria-hidden />
-            <div className="flex h-full items-start gap-3">
+            <div className="mb-1.5 flex items-start justify-between gap-2">
               <KpiIconWell id={card.id} />
-              <div className="flex min-w-0 flex-1 flex-col self-stretch">
-                <div className="flex items-center justify-between gap-1">
-                  <p className="line-clamp-2 text-[11px] font-medium leading-snug text-[#6b6b76] dark:text-slate-400">
-                    {cardTitle}
-                  </p>
-                  {targetLink ? (
-                    <ChevronRight className="h-3.5 w-3.5 shrink-0 text-[#9a9aa5] transition-all duration-200 group-hover:translate-x-0.5 dark:text-slate-500" />
-                  ) : null}
-                </div>
-                <p className="mt-2 text-2xl font-bold tabular-nums leading-none tracking-tight text-[#1a1a1f] dark:text-slate-100">
-                  {card.value}
-                  {card.unit ? <span className="ml-1 text-sm font-semibold text-[#6b6b76]">{card.unit}</span> : null}
-                  {card.suffix ? (
-                    <span className="ml-1 text-lg font-semibold text-[#9a9aa5]">{card.suffix}</span>
-                  ) : null}
-                </p>
-                <div className="mt-auto flex items-end justify-between gap-2 pt-3">
-                  <TrendBadge
-                    up={card.trendUp}
-                    value={card.trend}
-                    label={trendLabel}
-                    mode={isMachines ? "utilization" : trendIsPct ? "change" : "info"}
-                  />
-                  {targetLink ? (
-                    <span className="inline-flex shrink-0 items-center gap-0.5 text-[11px] font-semibold text-[#9a9aa5] transition-colors group-hover:text-[var(--color-primary)]">
-                      {t("common.view", "View")}
-                      <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" aria-hidden />
-                    </span>
-                  ) : null}
-                </div>
-              </div>
+              {targetLink ? (
+                <ChevronRight className="h-3.5 w-3.5 shrink-0 text-[var(--color-text-faint)] transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-[var(--color-primary)]" />
+              ) : null}
+            </div>
+            <p className="line-clamp-2 text-[11px] font-medium leading-snug text-[var(--color-text-muted)]">{cardTitle}</p>
+            <p className={`ui-kpi__value mt-1 leading-none tracking-tight ${String(card.value).includes(" / ") ? "text-lg" : "text-[1.5rem]"}`}>
+              {card.value}
+              {card.unit ? <span className="ml-1 text-sm font-semibold text-[var(--color-text-secondary)]">{card.unit}</span> : null}
+              {card.suffix ? <span className="ml-1 text-base font-semibold text-[var(--color-text-muted)]">{card.suffix}</span> : null}
+            </p>
+            <div className="mt-auto flex items-end justify-between gap-2 pt-2">
+              <TrendBadge
+                up={card.trendUp}
+                value={card.trend}
+                label={trendLabel}
+                mode={isMachines ? "utilization" : trendIsPct ? "change" : "info"}
+              />
+              {targetLink ? (
+                <span className="inline-flex shrink-0 items-center gap-0.5 text-[11px] font-semibold text-[var(--color-text-muted)] transition-colors group-hover:text-[var(--color-primary)]">
+                  {t("common.view", "View")}
+                  <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" aria-hidden />
+                </span>
+              ) : null}
             </div>
           </>
         );
@@ -928,7 +928,6 @@ export default function ReferenceDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [liveCounts, setLiveCounts] = useState({
-    userCount: null,
     ordersCount: null,
     pendingOrdersCount: null,
     pendingApprovalsCount: null,
@@ -942,12 +941,11 @@ export default function ReferenceDashboard() {
     Promise.allSettled([
       getErpDashboard(),
       getProductionOrders(),
-      getUsers(),
       getWorkOrders(),
       getMaterialRequests(),
       getPurchaseOrders(),
       getVendors(),
-    ]).then(([dashRes, prodRes, userRes, woRes, mrRes, poRes, vndRes]) => {
+    ]).then(([dashRes, prodRes, woRes, mrRes, poRes, vndRes]) => {
       if (dashRes.status === "fulfilled") {
         setApiData(dashRes.value?.data || null);
       } else {
@@ -955,11 +953,6 @@ export default function ReferenceDashboard() {
         setError("Failed to load dashboard data.");
       }
 
-
-      let usrC = null;
-      if (userRes.status === "fulfilled" && Array.isArray(userRes.value?.data)) {
-        usrC = userRes.value.data.length;
-      }
 
       let customOrders = [];
       try {
@@ -1051,7 +1044,6 @@ export default function ReferenceDashboard() {
       }).length;
 
       setLiveCounts({
-        userCount: usrC,
         ordersCount: totOrders,
         pendingOrdersCount: pendOrdersCount,
         pendingApprovalsCount: realPendingApprovalsCount,
@@ -1077,19 +1069,25 @@ export default function ReferenceDashboard() {
     if (!apiData?.kpi_cards?.length) return [];
 
     return apiData.kpi_cards.map((k) => {
-      let rawVal = Number(k.value) || 0;
-      if (k.id === "pending-approvals") {
-        if (liveCounts.pendingApprovalsCount !== null) rawVal = liveCounts.pendingApprovalsCount;
-      } else if (k.id === "total-users") {
-        if (liveCounts.userCount !== null) rawVal = liveCounts.userCount;
-      } else if (k.id === "total-orders" || k.id === "total-production-orders") {
-        if (liveCounts.ordersCount !== null) rawVal = liveCounts.ordersCount;
-      } else if (k.id === "pending-orders") {
-        if (liveCounts.pendingOrdersCount !== null) rawVal = liveCounts.pendingOrdersCount;
-      } else if (k.id === "today-production") {
-        if (liveCounts.todayProdCount !== null) rawVal = liveCounts.todayProdCount;
+      const isFormattedValue =
+        typeof k.value === "string" &&
+        (k.value.includes("/") || k.value.includes("₹") || k.value.includes("%") || k.value === "—");
+      let value = k.value;
+      if (!isFormattedValue) {
+        let rawVal = Number(k.value) || 0;
+        if (k.id === "pending-approvals") {
+          if (liveCounts.pendingApprovalsCount !== null) rawVal = liveCounts.pendingApprovalsCount;
+        } else if (k.id === "total-orders" || k.id === "total-production-orders") {
+          if (liveCounts.ordersCount !== null) rawVal = liveCounts.ordersCount;
+        } else if (k.id === "pending-orders") {
+          if (liveCounts.pendingOrdersCount !== null) rawVal = liveCounts.pendingOrdersCount;
+        } else if (k.id === "today-production") {
+          if (liveCounts.todayProdCount !== null) rawVal = liveCounts.todayProdCount;
+        }
+        value = rawVal;
       }
-      return { ...k, value: rawVal };
+
+      return { ...k, value };
     });
   }, [apiData, liveCounts]);
 
@@ -1132,8 +1130,8 @@ export default function ReferenceDashboard() {
 
   if (error) {
     return (
-      <div className="min-h-full" style={{ background: PAGE_BG }}>
-        <div className="mx-auto max-w-[1400px] px-4 py-5 sm:px-6 lg:px-8">
+      <div className="min-h-full bg-[var(--color-bg)]">
+        <div className="ui-page mx-auto max-w-[var(--page-max)]">
           <div
             className="rounded-xl border border-[#fde8e8] bg-white px-6 py-10 text-center text-sm text-[#ef4444] shadow-sm"
             role="alert"
@@ -1154,9 +1152,18 @@ export default function ReferenceDashboard() {
   }
 
   return (
-    <div className="min-h-full" style={{ background: PAGE_BG }}>
-      <div className="mx-auto max-w-[1400px] space-y-5 px-4 py-5 pb-8 sm:px-6 lg:px-8">
+    <div className="min-h-full bg-[var(--color-bg)]">
+      <div className="ui-page mx-auto max-w-[var(--page-max)] ui-stack">
         {sectionVisible(sections, "kpi") ? <KpiStrip cards={kpiCardsLive} /> : null}
+
+        {sectionVisible(sections, "manufacturing_workflow") && apiData?.manufacturing_workflow ? (
+          <ManufacturingWorkflowHub
+            data={apiData.manufacturing_workflow}
+            onRefresh={async () => {
+              await load(true);
+            }}
+          />
+        ) : null}
 
         <div className={`grid grid-cols-1 gap-5 ${isOpProfile ? "lg:grid-cols-1" : "lg:grid-cols-3"}`}>
           {!isOpProfile && sectionVisible(sections, "orders_overview") ? (

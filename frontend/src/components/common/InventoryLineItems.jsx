@@ -1,7 +1,6 @@
 import { Plus, Trash2 } from "lucide-react";
 
-const inputClass =
-  "w-full rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm";
+import { inputClass } from "../../design-system/classes";
 
 /**
  * Shared line-item editor for purchase orders, goods receipts, and material requests.

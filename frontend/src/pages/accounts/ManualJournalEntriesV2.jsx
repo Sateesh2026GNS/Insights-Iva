@@ -10,6 +10,7 @@ import {
   AccountsSearchInput,
   accountsTableClass,
   accountsTableHeadClass,
+  accountsRowActionClass,
   accountsTableWrapClass,
   accountsTdClass,
   accountsThClass,
@@ -167,7 +168,7 @@ export default function ManualJournalEntriesV2() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search"
-              className="min-w-[200px] flex-1"
+              className="ui-search-wrap flex-1"
             />
             <label className="inline-flex items-center gap-2 rounded-full border border-[#E2E8F0] bg-white px-3 py-2 text-[13px] text-[#17264A]">
               <Calendar className="h-4 w-4 text-[#64748B]" />
@@ -226,7 +227,7 @@ export default function ManualJournalEntriesV2() {
                         pageSize={pageSize}
                         className={accountsTdClass}
                       />
-                      <td className={`${accountsTdClass} font-semibold text-[#6C4CFF]`}>
+                      <td className={`${accountsTdClass} font-semibold text-[var(--color-primary)]`}>
                         {e.voucherNumber || "—"}
                       </td>
                       <td className={`${accountsTdClass} text-[#64748B]`}>{formatSlash(e.date)}</td>
@@ -239,7 +240,7 @@ export default function ManualJournalEntriesV2() {
                         <button
                           type="button"
                           onClick={() => setMenuId((id) => (id === e.id ? null : e.id))}
-                          className="inline-grid h-8 w-8 place-items-center rounded-md border border-[#E2E8F0] bg-[#F8FAFC] text-[#6C4CFF] hover:bg-[#F2F0FF]"
+                          className={accountsRowActionClass}
                           aria-label="Actions"
                         >
                           <MoreVertical className="h-4 w-4" strokeWidth={2.5} />

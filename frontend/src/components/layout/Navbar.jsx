@@ -115,7 +115,7 @@ export default function Navbar({ onMenuClick }) {
         </div>
 
         {/* Center: search */}
-        <div className="hidden min-w-0 flex-1 md:block lg:max-w-xl">
+        <div className="navbar-search-wrap hidden min-w-0 flex-1 md:block">
           <GlobalSearch />
         </div>
 

@@ -17,8 +17,7 @@ const EMPTY = {
   notes: "",
 };
 
-const inputClass =
-  "w-full rounded-lg border border-[#dcdce3] bg-white px-3 py-2.5 text-[13px] text-[#1a1a1f] placeholder:text-[#a0a0ab] focus:border-[#c4b5fd] focus:outline-none focus:ring-1 focus:ring-[#c4b5fd]";
+import { inputClass } from "../../design-system/classes";
 
 function SoftLabel({ children, required }) {
   return (

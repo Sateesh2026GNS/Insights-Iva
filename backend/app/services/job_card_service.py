@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 
 from app.models.production import ProductionOrder, WorkOrder
 from app.models.quality import QualityInspection
-from app.models.sales import DispatchShipment, Invoice, SalesOrder
+from app.models.sales import DispatchShipment, Invoice, Quotation, SalesOrder
 from app.models.user import User
 from app.services.manufacturing_workflow_service import get_bom_requirements
 from app.services.work_order_service import (
@@ -195,6 +195,66 @@ def _derive_workflow(
 
 
 
+def _resolve_sales_order(
+    db: Session, tenant_id: int, po: ProductionOrder | None
+) -> SalesOrder | None:
+    if not po:
+        return None
+    if po.sales_order_id:
+        so = db.scalars(
+            select(SalesOrder).where(
+                SalesOrder.id == po.sales_order_id,
+                SalesOrder.tenant_id == tenant_id,
+            )
+        ).first()
+        if so:
+            return so
+    order_no = (po.sales_order_number or "").strip()
+    if order_no:
+        return db.scalars(
+            select(SalesOrder).where(
+                SalesOrder.tenant_id == tenant_id,
+                SalesOrder.order_number == order_no,
+            )
+        ).first()
+    return None
+
+
+def _resolve_sales_person(
+    db: Session, tenant_id: int, so: SalesOrder | None
+) -> str | None:
+    if not so:
+        return None
+    direct = (getattr(so, "sales_person", None) or "").strip()
+    if direct:
+        return direct
+    ref = (so.reference_number or "").strip()
+    if ref:
+        quote = db.scalars(
+            select(Quotation).where(
+                Quotation.tenant_id == tenant_id,
+                Quotation.quote_number == ref,
+            )
+        ).first()
+        if quote:
+            from_quote = (getattr(quote, "sales_person", None) or "").strip()
+            if from_quote:
+                return from_quote
+    inv = db.scalars(
+        select(Invoice)
+        .where(
+            Invoice.tenant_id == tenant_id,
+            Invoice.sales_order_id == so.id,
+        )
+        .order_by(Invoice.issue_date.desc())
+    ).first()
+    if inv:
+        from_inv = (getattr(inv, "sales_person", None) or "").strip()
+        if from_inv:
+            return from_inv
+    return None
+
+
 def build_job_card(
     db: Session, tenant_id: int, work_order_id: int, user: User | None = None
 ) -> dict[str, Any] | None:
@@ -215,18 +275,15 @@ def build_job_card(
 
     so: SalesOrder | None = None
     customer_name = detail.customer_name or (po.customer_name if po else None)
-    if po and po.sales_order_id:
-        so = db.scalars(
-            select(SalesOrder).where(
-                SalesOrder.id == po.sales_order_id, SalesOrder.tenant_id == tenant_id
-            )
-        ).first()
-        if so and so.customer_id and not customer_name:
+    so = _resolve_sales_order(db, tenant_id, po)
+    if so:
+        if so.customer_id and not customer_name:
             from app.models.sales import Customer
 
             cust = db.get(Customer, so.customer_id)
             if cust:
                 customer_name = cust.name
+    sales_person = _resolve_sales_person(db, tenant_id, so)
 
     # Materials with available / shortage from live stock
     materials: list[dict[str, Any]] = []
@@ -426,6 +483,7 @@ def build_job_card(
             "sales_order_no": (so.order_number if so else None)
             or (po.sales_order_number if po else None),
             "customer": customer_name,
+            "sales_person": sales_person,
             "product": detail.product_name or (product.name if product else None),
             "product_id": po.product_id if po else None,
             "order_qty": float(po.planned_quantity if po else wo.planned_quantity or 0),
@@ -589,3 +647,701 @@ def list_job_cards(
             }
         )
     return out
+
+
+def _workflow_stage_label(status: str | None) -> str:
+    if not status:
+        return "Sales Order"
+    mapping = {
+        "SALES_CONFIRMED": "Sales Confirmed",
+        "MATERIAL_CHECK_PENDING": "Inventory Check",
+        "MATERIAL_AVAILABLE": "Inventory Check",
+        "MATERIAL_SHORTAGE": "Material Shortage",
+        "MATERIAL_PARTIAL": "Material Partial",
+        "READY_FOR_PRODUCTION": "Production",
+        "PRODUCTION_ASSIGNED": "Production",
+        "PRODUCTION_IN_PROGRESS": "Production",
+        "PRODUCTION_COMPLETED": "Production",
+        "PRODUCTION_REWORK": "Production Rework",
+        "QUALITY_CHECK_PENDING": "Quality",
+        "QUALITY_APPROVED": "Quality",
+        "QUALITY_REJECTED": "Quality Rejected",
+        "PACKING_PENDING": "Packing",
+        "PACKING_IN_PROGRESS": "Packing",
+        "PACKED": "Packing",
+        "BILLING_PENDING": "Billing",
+        "INVOICED": "Billing",
+        "COMPLETED": "Completed",
+    }
+    return mapping.get(status.upper(), status.replace("_", " ").title())
+
+
+JOB_CARD_UI_WORKFLOW_STEPS = [
+    {"key": "sales_orders", "label": "Sales Orders", "statuses": {"SALES_CONFIRMED"}},
+    {
+        "key": "inventory_check",
+        "label": "Inventory Check",
+        "statuses": {
+            "MATERIAL_CHECK_PENDING",
+            "MATERIAL_AVAILABLE",
+            "MATERIAL_SHORTAGE",
+            "MATERIAL_PARTIAL",
+        },
+    },
+    {
+        "key": "production",
+        "label": "Production",
+        "statuses": {
+            "READY_FOR_PRODUCTION",
+            "PRODUCTION_ASSIGNED",
+            "PRODUCTION_IN_PROGRESS",
+            "PRODUCTION_COMPLETED",
+            "PRODUCTION_REWORK",
+        },
+    },
+    {
+        "key": "quality_check",
+        "label": "Quality Check",
+        "statuses": {"QUALITY_CHECK_PENDING", "QUALITY_APPROVED", "QUALITY_REJECTED"},
+    },
+    {
+        "key": "packing_dispatch",
+        "label": "Packing & Dispatch",
+        "statuses": {
+            "PACKING_PENDING",
+            "PACKING_IN_PROGRESS",
+            "PACKED",
+            "PACKING_ISSUE",
+        },
+    },
+    {
+        "key": "billing",
+        "label": "Billing",
+        "statuses": {"BILLING_PENDING", "BILLING_HOLD", "INVOICED"},
+    },
+    {"key": "completed", "label": "Completed", "statuses": {"COMPLETED"}},
+]
+
+WORKFLOW_STAGE_HINTS: dict[str, str] = {
+    "sales_orders": "Waiting for inventory check",
+    "inventory_check": "Material availability verification in progress.",
+    "production": "Production planning and execution.",
+    "quality_check": "Quality inspection pending.",
+    "packing_dispatch": "Packing and dispatch preparation.",
+    "billing": "Invoice and billing processing.",
+    "completed": "Manufacturing workflow completed.",
+}
+
+
+def _build_job_card_workflow_steps(workflow_status: str | None) -> list[dict[str, Any]]:
+    current = (workflow_status or "SALES_CONFIRMED").upper()
+    active_idx = 0
+    for idx, step in enumerate(JOB_CARD_UI_WORKFLOW_STEPS):
+        if current in step["statuses"]:
+            active_idx = idx
+            break
+
+    steps_out = []
+    for idx, step in enumerate(JOB_CARD_UI_WORKFLOW_STEPS):
+        if idx < active_idx:
+            state = "completed"
+        elif idx == active_idx:
+            state = "current"
+        else:
+            state = "pending"
+        steps_out.append({"key": step["key"], "label": step["label"], "status": state})
+    return steps_out
+
+
+def _build_workflow_current_stage(workflow_status: str | None) -> dict[str, str]:
+    steps = _build_job_card_workflow_steps(workflow_status)
+    current = next((s for s in steps if s["status"] == "current"), steps[0] if steps else None)
+    key = current["key"] if current else "sales_orders"
+    return {
+        "stage_label": current["label"] if current else "Sales Orders",
+        "stage_hint": WORKFLOW_STAGE_HINTS.get(key, "Waiting for next stage."),
+    }
+
+
+def _build_job_card_timeline(
+    db: Session,
+    tenant_id: int,
+    sales_order_id: int,
+    *,
+    job_card_created_at: datetime | None = None,
+) -> list[dict[str, Any]]:
+    from app.models.manufacturing_workflow import ManufacturingWorkflowTransition, SalesJobCard
+
+    events: list[dict[str, Any]] = []
+    transitions = list(
+        db.scalars(
+            select(ManufacturingWorkflowTransition)
+            .where(
+                ManufacturingWorkflowTransition.tenant_id == tenant_id,
+                ManufacturingWorkflowTransition.sales_order_id == sales_order_id,
+            )
+            .order_by(ManufacturingWorkflowTransition.id.asc())
+        ).all()
+    )
+    for tr in transitions:
+        if tr.new_status == "SALES_CONFIRMED" or tr.action == "SALES_ORDER_CONFIRMED":
+            events.append(
+                {
+                    "key": "sales_order_confirmed",
+                    "title": "Sales Order Confirmed",
+                    "timestamp": tr.created_at,
+                    "display_time": _fmt_dt(tr.created_at),
+                    "status": "completed",
+                    "actor": tr.team.replace("_", " ").title() if tr.team else (tr.user_name or "Sales Team"),
+                }
+            )
+        if tr.action == "JOB_CARD_CREATED":
+            events.append(
+                {
+                    "key": "job_card_created",
+                    "title": "Job Card Created",
+                    "timestamp": tr.created_at,
+                    "display_time": _fmt_dt(tr.created_at),
+                    "status": "completed",
+                    "actor": tr.user_name or "System",
+                }
+            )
+
+    jc = db.scalars(
+        select(SalesJobCard).where(
+            SalesJobCard.tenant_id == tenant_id,
+            SalesJobCard.sales_order_id == sales_order_id,
+        )
+    ).first()
+    jc_at = job_card_created_at or (jc.created_at if jc and jc.status == "created" else None)
+    if jc_at and not any(e["key"] == "job_card_created" for e in events):
+        events.append(
+            {
+                "key": "job_card_created",
+                "title": "Job Card Created",
+                "timestamp": jc_at,
+                "display_time": _fmt_dt(jc_at),
+                "status": "completed",
+                "actor": "System",
+            }
+        )
+
+    ordered: list[dict[str, Any]] = []
+    so_evt = next((e for e in events if e["key"] == "sales_order_confirmed"), None)
+    jc_evt = next((e for e in events if e["key"] == "job_card_created"), None)
+    ordered.append(
+        so_evt
+        or {
+            "key": "sales_order_confirmed",
+            "title": "Sales Order Confirmed",
+            "timestamp": None,
+            "display_time": None,
+            "status": "pending",
+            "actor": None,
+        }
+    )
+    if jc and jc.status == "created":
+        ordered.append(
+            jc_evt
+            or {
+                "key": "job_card_created",
+                "title": "Job Card Created",
+                "timestamp": jc_at,
+                "display_time": _fmt_dt(jc_at) if jc_at else None,
+                "status": "completed",
+                "actor": "System",
+            }
+        )
+    else:
+        ordered.append(
+            jc_evt
+            or {
+                "key": "job_card_created",
+                "title": "Job Card Created",
+                "timestamp": None,
+                "display_time": None,
+                "status": "pending",
+                "actor": None,
+            }
+        )
+    return ordered
+
+
+def _generate_job_card_no(db: Session, tenant_id: int) -> str:
+    from app.models.manufacturing_workflow import SalesJobCard
+
+    year = datetime.now(timezone.utc).year
+    prefix = f"JC-{year}-"
+    existing = list(
+        db.scalars(
+            select(SalesJobCard.job_card_no).where(
+                SalesJobCard.tenant_id == tenant_id,
+                SalesJobCard.job_card_no.like(f"{prefix}%"),
+            )
+        ).all()
+    )
+    max_seq = 0
+    for no in existing:
+        try:
+            max_seq = max(max_seq, int(str(no).split("-")[-1]))
+        except ValueError:
+            continue
+    return f"{prefix}{max_seq + 1:05d}"
+
+
+def _get_persisted_job_card(db: Session, tenant_id: int, sales_order_id: int):
+    from app.models.manufacturing_workflow import SalesJobCard
+
+    return db.scalars(
+        select(SalesJobCard).where(
+            SalesJobCard.tenant_id == tenant_id,
+            SalesJobCard.sales_order_id == sales_order_id,
+        )
+    ).first()
+
+
+def _serialize_job_card_form(
+    db: Session,
+    so: SalesOrder,
+    line: Any | None,
+    jc: Any | None,
+    *,
+    product_code: str | None = None,
+    customer_name: str | None = None,
+    product_name: str | None = None,
+    workflow_status: str | None = None,
+) -> dict[str, Any]:
+    from app.core.workflow_constants import normalize_priority
+    from app.models.product import Product
+
+    if line and line.product_id and not product_code:
+        prod = db.get(Product, line.product_id)
+        product_code = (prod.sku if prod else "") or ""
+
+    priority = normalize_priority(jc.priority if jc else so.priority)
+    preview_no = jc.job_card_no if jc else _generate_job_card_no(db, so.tenant_id)
+    return {
+        "job_card_id": jc.id if jc else None,
+        "job_card_no": preview_no,
+        "sales_order_id": so.id,
+        "sales_order_no": so.order_number,
+        "customer_id": jc.customer_id if jc else so.customer_id,
+        "customer_name": customer_name,
+        "product_id": jc.product_id if jc else (line.product_id if line else None),
+        "product_name": product_name,
+        "product_code": product_code or "",
+        "quantity": float(jc.quantity if jc else (line.quantity if line else 0)),
+        "unit": jc.unit if jc else (line.unit if line and line.unit else "Nos"),
+        "required_delivery_date": (
+            jc.required_delivery_date.isoformat()
+            if jc and jc.required_delivery_date
+            else (so.delivery_date.isoformat() if so.delivery_date else None)
+        ),
+        "priority": priority,
+        "sales_person_id": jc.sales_person_id if jc else None,
+        "sales_person_name": jc.sales_person_name if jc else so.sales_person,
+        "notes": jc.notes if jc else "",
+        "status": jc.status if jc else "draft",
+        "is_created": bool(jc and jc.status == "created"),
+        "workflow_status": workflow_status,
+    }
+
+
+def save_sales_job_card(
+    db: Session,
+    tenant_id: int,
+    sales_order_id: int,
+    user: User,
+    payload: dict[str, Any],
+    *,
+    finalize: bool = False,
+) -> dict[str, Any]:
+    """Create or update persisted sales job card; finalize triggers workflow handoff."""
+    from fastapi import HTTPException
+
+    from app.core.permissions import get_role_names, user_is_admin
+    from app.core.workflow_constants import TEAM_SALES, normalize_priority, user_teams
+    from app.models.manufacturing_workflow import SalesJobCard
+    from app.models.product import Product
+    from app.models.sales import SalesOrderLine
+    from app.services.workflow_state_service import get_sales_order_or_404, transition_workflow_status
+    from app.services.workflow_team_service import create_material_check_for_order
+
+    if not user_is_admin(user) and TEAM_SALES not in user_teams(get_role_names(user)):
+        raise HTTPException(status_code=403, detail="Sales team permission required")
+
+    so = get_sales_order_or_404(db, tenant_id, sales_order_id)
+    if (so.status or "").lower() not in {"confirmed", "approved"} and not so.workflow_status:
+        raise HTTPException(
+            status_code=400,
+            detail="Confirm the sales order before creating a job card",
+        )
+
+    lines = list(
+        db.scalars(select(SalesOrderLine).where(SalesOrderLine.sales_order_id == so.id)).all()
+    )
+    line = lines[0] if lines else None
+
+    customer_id = payload.get("customer_id") or so.customer_id
+    product_id = payload.get("product_id") or (line.product_id if line else None)
+    quantity = float(payload.get("quantity") or (line.quantity if line else 0))
+    unit = (payload.get("unit") or (line.unit if line else "Nos") or "Nos").strip()
+    priority = normalize_priority(payload.get("priority") or so.priority)
+    notes = (payload.get("notes") or "")[:500]
+    sales_person_id = payload.get("sales_person_id")
+    sales_person_name = payload.get("sales_person_name") or so.sales_person
+
+    errors: dict[str, str] = {}
+    if not customer_id:
+        errors["customer_id"] = "Customer is required"
+    if not product_id:
+        errors["product_id"] = "Product is required"
+    if quantity <= 0:
+        errors["quantity"] = "Quantity must be greater than 0"
+    if not payload.get("required_delivery_date") and not so.delivery_date:
+        errors["required_delivery_date"] = "Required delivery date is required"
+    if not priority:
+        errors["priority"] = "Priority is required"
+    if errors:
+        raise HTTPException(status_code=422, detail={"message": "Validation failed", "errors": errors})
+
+    req_date = payload.get("required_delivery_date") or so.delivery_date
+    if isinstance(req_date, str):
+        req_date = datetime.fromisoformat(req_date.replace("Z", "+00:00")).date()
+
+    jc = _get_persisted_job_card(db, tenant_id, sales_order_id)
+    if jc and jc.status == "created" and finalize:
+        raise HTTPException(status_code=400, detail="Job card already created")
+
+    if sales_person_id:
+        sp_user = db.get(User, int(sales_person_id))
+        if sp_user:
+            sales_person_name = sp_user.full_name or sales_person_name
+
+    if not jc:
+        jc = SalesJobCard(
+            tenant_id=tenant_id,
+            job_card_no=_generate_job_card_no(db, tenant_id),
+            sales_order_id=so.id,
+            customer_id=int(customer_id),
+            product_id=int(product_id) if product_id else None,
+            quantity=quantity,
+            unit=unit,
+            required_delivery_date=req_date,
+            priority=priority,
+            sales_person_id=int(sales_person_id) if sales_person_id else None,
+            sales_person_name=sales_person_name,
+            notes=notes or None,
+            status="draft",
+            created_by_user_id=user.id,
+        )
+        db.add(jc)
+    elif jc.status != "created":
+        jc.customer_id = int(customer_id)
+        jc.product_id = int(product_id) if product_id else None
+        jc.quantity = quantity
+        jc.unit = unit
+        jc.required_delivery_date = req_date
+        jc.priority = priority
+        jc.sales_person_id = int(sales_person_id) if sales_person_id else None
+        jc.sales_person_name = sales_person_name
+        jc.notes = notes or None
+    else:
+        jc.notes = notes or jc.notes
+        jc.priority = priority
+
+    so.priority = priority
+    so.delivery_date = req_date
+    if sales_person_name:
+        so.sales_person = sales_person_name
+    if line and product_id:
+        line.product_id = int(product_id)
+        line.quantity = quantity
+        line.unit = unit
+        prod = db.get(Product, int(product_id))
+        if prod:
+            line.item_description = prod.name
+
+    ws = (so.workflow_status or "").upper()
+
+    if finalize:
+        jc.status = "created"
+        jc.workflow_stage = ws or "SALES_CONFIRMED"
+        if ws in {"", "SALES_CONFIRMED"}:
+            transition_workflow_status(
+                db,
+                tenant_id=tenant_id,
+                sales_order=so,
+                new_status="MATERIAL_CHECK_PENDING",
+                user=user,
+                action="JOB_CARD_CREATED",
+                team=TEAM_SALES,
+                commit=False,
+                notify=True,
+            )
+            create_material_check_for_order(db, tenant_id, so)
+        elif ws == "MATERIAL_CHECK_PENDING":
+            from app.models.manufacturing_workflow import ManufacturingWorkflowTransition
+
+            db.add(
+                ManufacturingWorkflowTransition(
+                    tenant_id=tenant_id,
+                    sales_order_id=so.id,
+                    action="JOB_CARD_CREATED",
+                    previous_status=ws,
+                    new_status=ws,
+                    user_id=user.id,
+                    user_name=user.full_name,
+                    team=TEAM_SALES,
+                    details="Job card created",
+                )
+            )
+            create_material_check_for_order(db, tenant_id, so)
+
+    db.commit()
+    db.refresh(jc)
+    return build_sales_job_card(db, tenant_id, sales_order_id, user=user) or {}
+
+
+def _editable_sections_for_user(user: User | None, workflow_status: str | None) -> list[str]:
+    from app.core.permissions import get_role_names, user_is_admin
+    from app.core.workflow_constants import user_teams
+
+    if user_is_admin(user):
+        return ["sales", "inventory", "production", "operator", "quality", "packing", "billing"]
+    teams = user_teams(get_role_names(user)) if user else frozenset()
+    ws = (workflow_status or "").upper()
+    sections: list[str] = []
+    if "sales" in teams and ws in {"", "DRAFT", "SALES_CONFIRMED", "MATERIAL_CHECK_PENDING"}:
+        sections.append("sales")
+    if "inventory" in teams and ws in {
+        "MATERIAL_CHECK_PENDING",
+        "MATERIAL_SHORTAGE",
+        "MATERIAL_PARTIAL",
+        "MATERIAL_AVAILABLE",
+    }:
+        sections.append("inventory")
+    if "production" in teams and ws in {
+        "READY_FOR_PRODUCTION",
+        "PRODUCTION_ASSIGNED",
+        "PRODUCTION_REWORK",
+        "QUALITY_REJECTED",
+    }:
+        sections.append("production")
+    if "operator" in teams and ws in {"PRODUCTION_ASSIGNED", "PRODUCTION_IN_PROGRESS"}:
+        sections.append("operator")
+    if "quality" in teams and ws == "QUALITY_CHECK_PENDING":
+        sections.append("quality")
+    if "packing" in teams and ws in {
+        "QUALITY_APPROVED",
+        "PACKING_PENDING",
+        "PACKING_IN_PROGRESS",
+        "PACKING_ISSUE",
+    }:
+        sections.append("packing")
+    if "billing" in teams and ws in {"BILLING_PENDING", "BILLING_HOLD", "PACKED"}:
+        sections.append("billing")
+    return sections
+
+
+def _allowed_actions(
+    user: User | None,
+    workflow_status: str | None,
+    has_wo: bool,
+    *,
+    job_card_created: bool = False,
+) -> list[str]:
+    sections = _editable_sections_for_user(user, workflow_status)
+    actions: list[str] = []
+    ws = (workflow_status or "").upper()
+    if "sales" in sections:
+        actions.append("confirm_order")
+        if not job_card_created:
+            actions.extend(["save_job_card", "create_job_card"])
+        else:
+            actions.append("save_job_card")
+    if "inventory" in sections:
+        actions.extend(["submit_material_check", "mark_materials_available", "mark_material_shortage"])
+    if "production" in sections and has_wo:
+        actions.append("assign_operator")
+    if "operator" in sections and has_wo:
+        actions.extend(["start_production", "complete_production"])
+    if "quality" in sections:
+        actions.extend(["approve_qc", "reject_qc"])
+    if "packing" in sections:
+        actions.append("complete_packing")
+    if "billing" in sections:
+        actions.append("create_invoice")
+    if ws == "COMPLETED":
+        actions = ["view"]
+    return actions
+
+
+def build_sales_job_card(
+    db: Session, tenant_id: int, sales_order_id: int, user: User | None = None
+) -> dict[str, Any] | None:
+    """Job card document generated from a sales order (uses WO when available)."""
+    from app.models.product import Product
+    from app.models.sales import SalesOrder, SalesOrderLine
+    from app.services.workflow_state_service import infer_workflow_status_from_legacy
+    from sqlalchemy.orm import selectinload
+
+    so = db.scalars(
+        select(SalesOrder)
+        .options(selectinload(SalesOrder.customer), selectinload(SalesOrder.line_items))
+        .where(
+            SalesOrder.id == sales_order_id,
+            SalesOrder.tenant_id == tenant_id,
+        )
+    ).first()
+    if not so:
+        return None
+
+    lines = list(
+        db.scalars(select(SalesOrderLine).where(SalesOrderLine.sales_order_id == so.id)).all()
+    )
+    line = lines[0] if lines else None
+    product_name = line.item_description if line else None
+    if line and line.product_id:
+        prod = db.get(Product, line.product_id)
+        product_name = prod.name if prod else product_name
+
+    customer_name = so.customer.name if so.customer else None
+    workflow_status = so.workflow_status or infer_workflow_status_from_legacy(db, tenant_id, so)
+    jc = _get_persisted_job_card(db, tenant_id, sales_order_id)
+    product_code = ""
+    if line and line.product_id:
+        prod = db.get(Product, line.product_id)
+        product_code = (prod.sku if prod else "") or ""
+
+    po = db.scalars(
+        select(ProductionOrder).where(
+            ProductionOrder.tenant_id == tenant_id,
+            ProductionOrder.sales_order_id == so.id,
+        )
+    ).first()
+    wo = None
+    if po:
+        wo = db.scalars(
+            select(WorkOrder).where(WorkOrder.production_order_id == po.id)
+        ).first()
+
+    if wo:
+        card = build_job_card(db, tenant_id, wo.id, user=user) or {}
+    else:
+        jc_no = jc.job_card_no if jc else f"JC-{so.order_number}"
+        card = {
+            "id": jc.id if jc else None,
+            "work_order_id": None,
+            "job_card_no": jc_no,
+            "status": so.status,
+            "display_status": (workflow_status or so.status or "draft").replace("_", " "),
+            "priority": so.priority or "medium",
+            "header": {
+                "sales_order_id": so.id,
+                "sales_order_no": so.order_number,
+                "customer": customer_name,
+                "sales_person": so.sales_person,
+                "product": product_name,
+                "order_qty": float(line.quantity if line else 0),
+                "uom": line.unit if line and line.unit else "Nos",
+                "required_delivery": _fmt_date(so.delivery_date),
+            },
+            "summary": {
+                "target_qty": float(line.quantity if line else 0),
+                "produced_qty": 0,
+                "rejected_qty": 0,
+                "good_qty": 0,
+                "balance_qty": float(line.quantity if line else 0),
+                "progress_pct": 0,
+            },
+            "materials": [],
+            "workflow": [],
+        }
+
+    card["sales_order_id"] = so.id
+    card["workflow_status"] = workflow_status
+    card["workflow_stage"] = _workflow_stage_label(workflow_status)
+    job_card_created = bool(jc and jc.status == "created")
+    card["editable_sections"] = _editable_sections_for_user(user, workflow_status)
+    card["allowed_actions"] = _allowed_actions(
+        user, workflow_status, bool(wo), job_card_created=job_card_created
+    )
+    priority_val = (jc.priority if jc else so.priority or card.get("priority") or "medium").lower()
+    delivery_display = _fmt_date(
+        jc.required_delivery_date if jc and jc.required_delivery_date else so.delivery_date
+    )
+    card["summary_panel"] = {
+        "job_card_no": jc.job_card_no if jc else card.get("job_card_no") or f"JC-{so.order_number}",
+        "sales_order_no": so.order_number,
+        "customer": customer_name,
+        "product": card.get("header", {}).get("product") or product_name,
+        "order_quantity": float(jc.quantity if jc else (card.get("header", {}).get("order_qty") or (line.quantity if line else 0))),
+        "required_delivery": delivery_display,
+        "priority": priority_val,
+        "uom": jc.unit if jc else (card.get("header", {}).get("uom") or (line.unit if line else "Nos")),
+        "workflow_status": workflow_status,
+    }
+    card["sales_order_summary"] = {
+        "sales_order_no": so.order_number,
+        "customer": customer_name,
+        "product": product_name,
+        "order_quantity": card["summary_panel"]["order_quantity"],
+        "required_delivery": delivery_display,
+        "priority": priority_val,
+        "uom": card["summary_panel"]["uom"],
+    }
+    card["status_badge"] = {
+        "label": "Sales Confirmed"
+        if not job_card_created
+        else _workflow_stage_label(workflow_status),
+        "tone": "success" if not job_card_created or workflow_status in {"SALES_CONFIRMED", "COMPLETED"} else "info",
+    }
+    card["form"] = _serialize_job_card_form(
+        db,
+        so,
+        line,
+        jc,
+        product_code=product_code,
+        customer_name=customer_name,
+        product_name=product_name,
+        workflow_status=workflow_status,
+    )
+    wf_for_ui = "SALES_CONFIRMED" if not job_card_created else workflow_status
+    card["workflow_steps"] = _build_job_card_workflow_steps(wf_for_ui)
+    card["workflow_current_stage"] = _build_workflow_current_stage(wf_for_ui)
+    card["timeline"] = _build_job_card_timeline(db, tenant_id, sales_order_id)
+    card["job_card_created"] = job_card_created
+    if jc:
+        card["job_card_no"] = jc.job_card_no
+    return card
+
+
+def list_sales_job_cards_by_workflow(
+    db: Session, tenant_id: int, *, status_filter: str | None = None, limit: int = 100
+) -> list[dict[str, Any]]:
+    """List job cards grouped by sales order workflow status (admin hub)."""
+    from app.models.sales import SalesOrder
+
+    q = select(SalesOrder).where(SalesOrder.tenant_id == tenant_id)
+    if status_filter:
+        q = q.where(SalesOrder.workflow_status == status_filter.upper())
+    else:
+        q = q.where(SalesOrder.workflow_status.isnot(None))
+    orders = list(db.scalars(q.order_by(SalesOrder.id.desc()).limit(limit)).all())
+    items = []
+    for so in orders:
+        card = build_sales_job_card(db, tenant_id, so.id)
+        if card:
+            items.append(
+                {
+                    "sales_order_id": so.id,
+                    "job_card_no": card.get("job_card_no"),
+                    "order_number": so.order_number,
+                    "workflow_status": so.workflow_status,
+                    "workflow_stage": card.get("workflow_stage"),
+                    "summary_panel": card.get("summary_panel"),
+                    "work_order_id": card.get("work_order_id"),
+                }
+            )
+    return items

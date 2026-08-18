@@ -30,6 +30,7 @@ import {
 } from "../../utils/manufacturingEvents";
 import { formatInr } from "../../data/salesMasterData";
 import { apiErrorMessage } from "../../utils/apiError";
+import { inputClass } from "../../design-system/classes";
 
 const PURPLE = "#6b4eff";
 const LAVENDER = "#efeaf8";
@@ -92,9 +93,6 @@ function SoftLabel({ children, required }) {
     </span>
   );
 }
-
-const inputClass =
-  "w-full rounded-md border border-[#d0d0d8] bg-[#f7f7f9] px-3 py-2.5 text-[13px] text-[#1a1a1f] placeholder:text-[#a0a0ab] focus:border-[#6b4eff] focus:outline-none focus:ring-1 focus:ring-[#c4b5fd]";
 
 export default function PaymentReceiptForm() {
   const tenantId = useTenantId();

@@ -149,7 +149,7 @@ export default function SettingsHome() {
           <ThemeModeToggle />
         </div>
 
-        <div className="relative">
+        <div className="relative ui-search-wrap">
           <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input
             type="search"

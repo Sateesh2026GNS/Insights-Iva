@@ -4,8 +4,7 @@ import Button, { IconButton } from "../common/Button";
 import { useToast } from "../../context/ToastContext";
 
 /* ── identical to CreateLeadModal ── */
-const inputClass =
-  "mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:border-[#2563EB] focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all";
+import { inputMtClass as inputClass } from "../../design-system/classes";
 
 const labelClass = "block text-xs font-bold text-slate-500 uppercase tracking-wider";
 

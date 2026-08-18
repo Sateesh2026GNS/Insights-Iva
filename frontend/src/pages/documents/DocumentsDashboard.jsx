@@ -31,8 +31,7 @@ import {
 const PAGE_SIZE = 10;
 const SUPPORTED = ["pdf", "docx", "xlsx", "pptx", "png", "jpg", "jpeg", "zip", "txt", "csv"];
 
-const inputClass =
-  "mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:border-[#2563EB] focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all";
+import { inputMtClass as inputClass } from "../../design-system/classes";
 
 const FILE_ICONS = {
   pdf: FileText,
@@ -415,7 +414,7 @@ Description:  ${doc.description || "No description provided."}
       {/* Search & Filters */}
       <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-          <div className="relative flex-1">
+          <div className="relative ui-search-wrap flex-1">
             <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
               value={search}

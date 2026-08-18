@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
 import Button, { IconButton } from "../common/Button";
+import { textareaClass } from "../../design-system/classes";
 
 export default function AddNoteModal({ open, onClose, onSave, initial }) {
   const [note, setNote] = useState("");
@@ -56,7 +57,7 @@ export default function AddNoteModal({ open, onClose, onSave, initial }) {
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="Enter note"
-            className="w-full resize-y rounded-xl border border-[#dcdce3] bg-white px-4 py-3 text-[14px] text-[#1a1a1f] placeholder:text-[#a0a0ab] focus:border-[#6b4eff] focus:outline-none focus:ring-1 focus:ring-[#6b4eff]"
+            className={`${textareaClass} resize-y`}
           />
         </div>
         <div className="grid grid-cols-2 gap-3 border-t border-[#ececf0] px-5 py-4">

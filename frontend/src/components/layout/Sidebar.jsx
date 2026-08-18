@@ -345,13 +345,13 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose }
     }
   };
 
-  /* Selected nav item: #195CCF */
+  /* Selected nav item — brand active teal on forest sidebar */
   const navItemPad = collapsed ? "justify-center px-2" : "px-3";
 
   const topLinkClass = ({ isActive }) =>
     `relative flex items-center gap-2.5 rounded-lg py-2.5 text-sm transition-all ${navItemPad} ${
       isActive
-        ? "bg-[#195CCF] font-medium text-white"
+        ? "bg-[var(--color-nav-active)] font-medium text-white"
         : "text-slate-300 hover:bg-white/10 hover:text-white"
     }`;
 

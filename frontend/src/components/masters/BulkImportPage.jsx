@@ -5,7 +5,7 @@ import { ArrowLeft, CloudUpload, X } from "lucide-react";
 import { useToast } from "../../context/ToastContext";
 import { apiErrorMessage } from "../../utils/apiError";
 
-const PAGE_BG = "#F5F5F5";
+const PAGE_BG = "var(--color-bg)";
 const PROCEED_BG = "#a18b1d";
 
 function parseCsv(text) {

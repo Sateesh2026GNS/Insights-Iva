@@ -472,7 +472,7 @@ export default function RestoreDeletedDocV2() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search documents..."
-              className="min-w-[220px] flex-1"
+              className="ui-search-wrap flex-1"
             />
 
             <AccountsSecondaryButton onClick={() => setFiltersOpen(true)}>

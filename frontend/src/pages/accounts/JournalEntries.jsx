@@ -7,9 +7,7 @@ import { useToast } from "../../context/ToastContext";
 import { getExtendedReports, createJournalEntry } from "../../api/accountsApi";
 import { formatInr } from "../../data/financeMasterData";
 import PageHeader from "../../components/common/PageHeader";
-
-const inputClass =
-  "mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:border-[#2563EB] focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all";
+import { inputMtClass as inputClass } from "../../design-system/classes";
 
 const EMPTY_ENTRY = {
   date: new Date().toISOString().split("T")[0],
@@ -307,21 +305,21 @@ export default function JournalEntries() {
                         placeholder="Account name..."
                         value={leg.account}
                         onChange={(e) => handleLegChange(idx, "account", e.target.value)}
-                        className="flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-[#2563EB] focus:outline-none focus:ring-2 focus:ring-blue-100"
+                        className={`${inputClass} flex-1`}
                       />
                       <input
                         type="number"
                         placeholder="Debit"
                         value={leg.debit || ""}
                         onChange={(e) => handleLegChange(idx, "debit", Number(e.target.value))}
-                        className="w-28 rounded-xl border border-slate-200 px-3 py-2 text-sm text-right focus:border-[#2563EB] focus:outline-none focus:ring-2 focus:ring-blue-100"
+                        className={`${inputClass} w-28 text-right`}
                       />
                       <input
                         type="number"
                         placeholder="Credit"
                         value={leg.credit || ""}
                         onChange={(e) => handleLegChange(idx, "credit", Number(e.target.value))}
-                        className="w-28 rounded-xl border border-slate-200 px-3 py-2 text-sm text-right focus:border-[#2563EB] focus:outline-none focus:ring-2 focus:ring-blue-100"
+                        className={`${inputClass} w-28 text-right`}
                       />
                       <button
                         type="button"

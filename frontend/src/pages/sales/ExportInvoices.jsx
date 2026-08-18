@@ -240,7 +240,7 @@ export default function ExportInvoices() {
 
       {/* Toolbar row 1: search | date + create */}
       <div className="mb-3 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div className="relative w-full max-w-xl">
+        <div className="relative ui-search-wrap w-full">
           <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9a9aa5]" />
           <input
             value={search}

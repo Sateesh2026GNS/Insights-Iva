@@ -14,6 +14,7 @@ import {
   AccountsTabs,
   accountsTableClass,
   accountsTableHeadClass,
+  accountsRowActionClass,
   accountsTableWrapClass,
   accountsTdClass,
   accountsThClass,
@@ -293,7 +294,7 @@ export default function ChartOfAccountsV2() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search accounts…"
-              className="min-w-[220px] flex-1"
+              className="ui-search-wrap flex-1"
             />
             <AccountsPrimaryButton
               onClick={() => {
@@ -380,7 +381,7 @@ export default function ChartOfAccountsV2() {
                           <button
                             type="button"
                             onClick={() => setMenuId((id) => (id === rowKey ? null : rowKey))}
-                            className="inline-grid h-8 w-8 place-items-center rounded-md border border-[#E2E8F0] bg-[#F8FAFC] text-[#6C4CFF] hover:bg-[#F2F0FF]"
+                            className={accountsRowActionClass}
                             aria-label="Actions"
                           >
                             <MoreVertical className="h-4 w-4" strokeWidth={2.5} />

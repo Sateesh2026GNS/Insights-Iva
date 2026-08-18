@@ -11,6 +11,9 @@ import {
 import { DEMO_BIN_TREE } from "../../data/warehousesMasterData";
 
 import Button from "../common/Button";
+import { inputClass as dsInput } from "../../design-system/classes";
+
+const inputClass = `${dsInput} mt-1`;
 const TABS = [
   { id: "overview", label: "Overview" },
   { id: "inventory", label: "Inventory" },
@@ -277,8 +280,6 @@ export default function WarehouseDetailModal({ warehouse, detail, onClose, onEdi
   );
 }
 
-const inputClass =
-  "mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500";
 
 export function WarehouseFormModal({ warehouse, onClose, onSave }) {
   const [form, setForm] = useState({

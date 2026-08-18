@@ -5,6 +5,7 @@ import Loader from "../../components/common/Loader";
 import { getCustomers, createInvoice } from "../../api/salesApi";
 import { useToast } from "../../context/ToastContext";
 import useTenantId from "../../hooks/useTenantId";
+import { inputClass as inputCls } from "../../design-system/classes";
 
 const SELLER_STATE_CODE = "36";
 const DEFAULT_CGST = 9;
@@ -21,9 +22,6 @@ const isInterState = (customer) => {
   const code = String(customer?.state_code || "").trim();
   return code !== "" && code !== SELLER_STATE_CODE;
 };
-
-const inputCls =
-  "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:border-[#2563EB] focus:outline-none focus:ring-2 focus:ring-blue-100";
 
 export default function CreateBill() {
   const navigate = useNavigate();

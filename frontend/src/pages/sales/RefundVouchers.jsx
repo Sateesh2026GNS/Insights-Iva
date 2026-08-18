@@ -13,6 +13,7 @@ import {
   deleteBizDocument,
   listBizDocuments,
 } from "../../api/bizDocumentsApi";
+import { inputClass } from "../../design-system/classes";
 import { apiErrorMessage } from "../../utils/apiError";
 import {
   fetchCustomersWithFallback,
@@ -93,9 +94,6 @@ function CreateRefundVoucherModal({
   const unused = partyId ? Number(unusedByParty[String(partyId)] || 0) : 0;
   const canRefund = Boolean(partyId) && unused > 0;
   const filtered = filterCustomers(customers, partySearch);
-
-  const inputClass =
-    "w-full rounded-md border border-[#d0d0d8] bg-[#f7f7f9] px-3 py-2.5 text-[13px] text-[#1a1a1f] placeholder:text-[#a0a0ab] focus:border-[#6b4eff] focus:outline-none focus:ring-1 focus:ring-[#c4b5fd]";
 
   return createPortal(
     <div
@@ -460,7 +458,7 @@ export default function RefundVouchers() {
     <div className="min-h-full space-y-4 bg-[var(--color-bg)] p-4 sm:p-6">
 
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div className="relative w-full max-w-xl">
+        <div className="relative ui-search-wrap w-full">
           <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9a9aa5]" />
           <input
             value={search}

@@ -23,9 +23,15 @@ import { getVendors } from "../../api/procurementApi";
 import { getCompanySettings } from "../../api/settingsApi";
 import { useToast } from "../../context/ToastContext";
 import { apiErrorMessage } from "../../utils/apiError";
+import {
+  ERP_PRIMARY,
+  ERP_PRIMARY_SOFT,
+  FieldLabel,
+  SoftInput,
+  SoftSelect,
+  Pill,
+} from "../../design-system/erpFormControls";
 
-const LAVENDER = "#efeaf8";
-const PURPLE = "#6b4eff";
 const YELLOW = "var(--color-primary)";
 const PREFIX_STORAGE_KEY = "gns_purchase_debit_note_prefixes";
 const DEFAULT_PREFIXES = ["DN"];
@@ -79,30 +85,6 @@ function lineTotals(row) {
   return { taxable, gst, total: money(taxable + gst) };
 }
 
-function FieldLabel({ children }) {
-  return <span className="mb-1.5 block text-[12px] font-medium text-[#6b6b76]">{children}</span>;
-}
-
-function SoftInput({ className = "", ...props }) {
-  return (
-    <input
-      {...props}
-      className={`w-full rounded-md border border-[#d0d0d8] bg-[#f7f7f9] px-3 py-2.5 text-[13px] text-[#1a1a1f] placeholder:text-[#a0a0ab] focus:border-[#6b4eff] focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#c4b5fd] ${className}`}
-    />
-  );
-}
-
-function SoftSelect({ className = "", children, ...props }) {
-  return (
-    <select
-      {...props}
-      className={`w-full rounded-md border border-[#d0d0d8] bg-[#f7f7f9] px-3 py-2.5 text-[13px] text-[#1a1a1f] focus:border-[#6b4eff] focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#c4b5fd] ${className}`}
-    >
-      {children}
-    </select>
-  );
-}
-
 function PrefixDropdown({ value, options, onChange, onAddNew }) {
   const [open, setOpen] = useState(false);
   return (
@@ -142,7 +124,7 @@ function PrefixDropdown({ value, options, onChange, onAddNew }) {
                 setOpen(false);
                 onAddNew();
               }}
-              className="w-full bg-[#efeaf8] py-3 text-center text-[13px] font-semibold text-[#6b4eff] hover:bg-[#e6dff6]"
+              className="w-full bg-[var(--color-primary-soft)] py-3 text-center text-[13px] font-semibold text-[var(--color-primary)] hover:opacity-90"
             >
               + Add New Prefix
             </button>
@@ -150,37 +132,6 @@ function PrefixDropdown({ value, options, onChange, onAddNew }) {
         </>
       ) : null}
     </div>
-  );
-}
-
-function Pill({ active, onClick, children, soft }) {
-  if (soft) {
-    return (
-      <button
-        type="button"
-        onClick={onClick}
-        className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] font-semibold transition ${
-          active
-            ? "border-[#6b4eff] bg-[#efeaf8] text-[#4a3fd0]"
-            : "border-[#e4e4ea] bg-[#f7f7f9] text-[#4a4a55] hover:bg-[#efefef]"
-        }`}
-      >
-        {children}
-      </button>
-    );
-  }
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`rounded-full px-3 py-1.5 text-[12px] font-medium transition ${
-        active
-          ? "bg-[#2d2a4a] text-white"
-          : "bg-[#f0f0f3] text-[#4a4a55] hover:bg-[#e4e4ea]"
-      }`}
-    >
-      {children}
-    </button>
   );
 }
 
@@ -235,7 +186,7 @@ function SectionHeader({ icon: Icon, title, children, className = "", collapsibl
   return (
     <div
       className={`flex flex-wrap items-center justify-between gap-2 border-b border-[#d0d0d8] px-4 py-3 ${className}`}
-      style={{ background: LAVENDER }}
+      style={{ background: ERP_PRIMARY_SOFT }}
     >
       {collapsible ? (
         <button
@@ -731,7 +682,7 @@ export default function PurchaseDebitNoteForm() {
               type="button"
               onClick={() => setShowSellerPicker((v) => !v)}
               className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] font-semibold text-white"
-              style={{ background: PURPLE }}
+              style={{ background: ERP_PRIMARY }}
             >
               <User className="h-3.5 w-3.5" />
               Select Seller
@@ -767,7 +718,7 @@ export default function PurchaseDebitNoteForm() {
                         type="button"
                         onClick={() => navigate("/procurement/vendors/create")}
                         className="font-medium"
-                        style={{ color: PURPLE }}
+                        style={{ color: ERP_PRIMARY }}
                       >
                         Add a seller
                       </button>
@@ -959,7 +910,7 @@ export default function PurchaseDebitNoteForm() {
               type="button"
               onClick={() => setAddItemOpen(true)}
               className="inline-flex items-center justify-center rounded-lg border px-4 py-2 text-[13px] font-semibold"
-              style={{ borderColor: PURPLE, color: PURPLE, background: "#f8f5ff" }}
+              style={{ borderColor: ERP_PRIMARY, color: ERP_PRIMARY, background: "#f8f5ff" }}
             >
               + Add More Item
             </button>
@@ -1022,7 +973,7 @@ export default function PurchaseDebitNoteForm() {
                   type="button"
                   onClick={() => setOtherChargeOpen(true)}
                   className="rounded-full border bg-white px-3 py-1.5 text-[12px] font-semibold"
-                  style={{ borderColor: PURPLE, color: PURPLE }}
+                  style={{ borderColor: ERP_PRIMARY, color: ERP_PRIMARY }}
                 >
                   {otherChargeMeta?.charge_name
                     ? `${otherChargeMeta.charge_name} · ₹ ${otherCharge.toFixed(2)}`
@@ -1032,14 +983,14 @@ export default function PurchaseDebitNoteForm() {
                   type="button"
                   onClick={() => setShowGstTds(true)}
                   className="rounded-full border bg-white px-3 py-1.5 text-[12px] font-semibold"
-                  style={{ borderColor: PURPLE, color: PURPLE }}
+                  style={{ borderColor: ERP_PRIMARY, color: ERP_PRIMARY }}
                 >
                   + Add 2% GST TDS
                 </button>
-                <button type="button" onClick={() => setShowTaxType(true)} className="rounded-full border bg-white px-3 py-1.5 text-[12px] font-semibold" style={{ borderColor: PURPLE, color: PURPLE }}>
+                <button type="button" onClick={() => setShowTaxType(true)} className="rounded-full border bg-white px-3 py-1.5 text-[12px] font-semibold" style={{ borderColor: ERP_PRIMARY, color: ERP_PRIMARY }}>
                   + Add TCS/TDS
                 </button>
-                <button type="button" onClick={() => setShowPurchaseDiscount(true)} className="rounded-full border bg-white px-3 py-1.5 text-[12px] font-semibold" style={{ borderColor: PURPLE, color: PURPLE }}>
+                <button type="button" onClick={() => setShowPurchaseDiscount(true)} className="rounded-full border bg-white px-3 py-1.5 text-[12px] font-semibold" style={{ borderColor: ERP_PRIMARY, color: ERP_PRIMARY }}>
                   + Add Debit Note Level Discount
                 </button>
               </div>
@@ -1051,7 +1002,7 @@ export default function PurchaseDebitNoteForm() {
         <div className="overflow-hidden rounded-xl border border-[#d0d0d8] bg-white">
           <div
             className="border-b border-[#d0d0d8] px-4 py-3 text-center text-[12px] font-bold uppercase tracking-[0.12em] text-[#3d3560]"
-            style={{ background: LAVENDER }}
+            style={{ background: ERP_PRIMARY_SOFT }}
           >
             Optional Fields
           </div>
@@ -1323,7 +1274,7 @@ export default function PurchaseDebitNoteForm() {
                   type="button"
                   onClick={() => setCustomFieldOpen(true)}
                   className="inline-flex items-center gap-1.5 rounded-lg border border-[#c4b5fd] bg-white px-3 py-2 text-[13px] font-semibold"
-                  style={{ color: PURPLE }}
+                  style={{ color: ERP_PRIMARY }}
                 >
                   <Plus className="h-4 w-4" />
                   Add Custom Field
@@ -1353,7 +1304,7 @@ export default function PurchaseDebitNoteForm() {
                     setForm((f) => ({ ...f, notes: "" }));
                   }}
                   className="inline-flex items-center gap-1 rounded-full px-3.5 py-1.5 text-[12px] font-semibold text-white"
-                  style={{ background: PURPLE }}
+                  style={{ background: ERP_PRIMARY }}
                 >
                   <X className="h-3.5 w-3.5" /> Remove
                 </button>
@@ -1366,7 +1317,7 @@ export default function PurchaseDebitNoteForm() {
                   setTermsPickerOpen(true);
                 }}
                 className="inline-flex items-center gap-1 rounded-full px-3.5 py-1.5 text-[12px] font-semibold text-white"
-                style={{ background: PURPLE }}
+                style={{ background: ERP_PRIMARY }}
               >
                 <User className="h-3.5 w-3.5" /> Select Terms and Conditions
               </button>

@@ -3,9 +3,9 @@ export default function SkeletonCard() {
     <div className="ui-kpi animate-pulse" aria-hidden>
       <div className="ui-kpi__top">
         <div className="h-3 w-24 rounded bg-[var(--color-surface-hover)]" />
-        <div className="h-8 w-8 rounded-full bg-[var(--color-surface-hover)]" />
+        <div className="h-7 w-7 rounded-full bg-[var(--color-surface-hover)]" />
       </div>
-      <div className="h-7 w-16 rounded bg-[var(--color-surface-hover)]" />
+      <div className="h-6 w-14 rounded bg-[var(--color-surface-hover)]" />
       <div className="h-3 w-28 rounded bg-[var(--color-border-muted)]" />
     </div>
   );

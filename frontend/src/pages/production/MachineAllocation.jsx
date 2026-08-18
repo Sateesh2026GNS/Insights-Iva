@@ -456,7 +456,7 @@ export default function MachineAllocation() {
 
         {view === "list" ? (
           <div>
-            <div className="mb-4 max-w-md">
+            <div className="mb-4 ui-search-wrap">
               <input
                 type="search"
                 placeholder="Search WO, product, machine…"

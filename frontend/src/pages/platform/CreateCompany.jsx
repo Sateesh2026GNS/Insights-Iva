@@ -52,8 +52,7 @@ const EMPTY = {
   billing_cycle: "forever",
 };
 
-const inputClass =
-  "w-full rounded-xl border border-slate-300/80 bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 shadow-sm transition focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/20 disabled:bg-slate-50 disabled:text-slate-500";
+import { inputClass } from "../../design-system/classes";
 
 function formatApiError(detail) {
   if (!detail) return "Failed to create company.";

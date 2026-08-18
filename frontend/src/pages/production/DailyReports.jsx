@@ -486,7 +486,7 @@ export default function DailyReports() {
 
       <div className="ui-card overflow-hidden p-4 sm:p-5">
         <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="relative min-w-[220px] flex-1 lg:max-w-md">
+          <div className="relative ui-search-wrap min-w-[10rem] flex-1">
             <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]" />
             <input
               type="search"

@@ -5,8 +5,7 @@ import { createExpense } from "../../api/accountsApi";
 import { useToast } from "../../context/ToastContext";
 import useTenantId from "../../hooks/useTenantId";
 
-const inputClass =
-  "mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:border-[#2563EB] focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all";
+import { inputMtClass as inputClass } from "../../design-system/classes";
 
 export default function RecordExpense({ onClose }) {
   const tenantId = useTenantId();

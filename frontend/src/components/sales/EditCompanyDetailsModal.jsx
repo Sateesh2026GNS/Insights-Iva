@@ -11,8 +11,7 @@ import { useToast } from "../../context/ToastContext";
 
 const PURPLE = "#6b4eff";
 
-const inputClass =
-  "w-full rounded-lg border border-[#e8e8ee] bg-[#f3f3f6] px-3 py-2.5 text-[13px] text-[#1a1a1f] placeholder:text-[#a0a0ab] focus:border-[#c4b5fd] focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#c4b5fd]";
+import { inputClass } from "../../design-system/classes";
 
 function SoftField({ label, required, children }) {
   return (

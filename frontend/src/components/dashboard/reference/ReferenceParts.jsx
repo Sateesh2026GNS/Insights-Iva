@@ -54,6 +54,7 @@ export const KPI_ICONS = {
   warehouses: Warehouse,
   "stock-movements": ArrowLeftRight,
   "total-users": Users,
+  departments: BarChart3,
   "active-users": UserCheck,
   "total-employees": Users,
   "active-alerts": AlertTriangle,
@@ -92,6 +93,7 @@ export const KPI_ICONS = {
   expenses: Banknote,
   "gst-payable": Receipt,
   "cash-bank-balance": IndianRupee,
+  "revenue-cost-snapshot": Receipt,
   "my-work-orders": ClipboardList,
   "todays-target": Target,
   "completed-today": CheckCircle2,
@@ -103,52 +105,66 @@ export const KPI_ICONS = {
   "quality-checks-pending": BadgeCheck,
 };
 
-/** Matched KPI color tones — icon background, icon, and top bar always use the same family. */
+/** KPI card tones — light surfaces with semantic left accent (BI scan-friendly). */
 const KPI_TONES = {
   primary: {
-    iconBg: "bg-[var(--kpi-primary-soft)] text-[var(--kpi-primary)]",
-    bar: "bg-[var(--kpi-primary)]",
+    cardBg: "bg-[var(--color-surface)] border border-[var(--color-border)] border-l-[3px] border-l-[var(--color-primary)]",
+    iconBg: "bg-[var(--color-success-soft)] text-[var(--color-primary)]",
+    iconColor: "var(--color-primary)",
   },
   success: {
-    iconBg: "bg-[var(--kpi-success-soft)] text-[var(--kpi-success)]",
-    bar: "bg-[var(--kpi-success)]",
+    cardBg: "bg-[var(--color-surface)] border border-[var(--color-border)] border-l-[3px] border-l-[var(--color-success)]",
+    iconBg: "bg-[var(--color-success-soft)] text-[var(--color-success)]",
+    iconColor: "var(--color-success)",
   },
   teal: {
-    iconBg: "bg-[var(--kpi-teal-soft)] text-[var(--kpi-teal)]",
-    bar: "bg-[var(--kpi-teal)]",
+    cardBg: "bg-[var(--color-surface)] border border-[var(--color-border)] border-l-[3px] border-l-[#048484]",
+    iconBg: "bg-[var(--color-success-soft)] text-[#048484]",
+    iconColor: "#048484",
   },
   violet: {
-    iconBg: "bg-[var(--kpi-violet-soft)] text-[var(--kpi-violet)]",
-    bar: "bg-[var(--kpi-violet)]",
+    cardBg: "bg-[var(--color-surface)] border border-[var(--color-border)] border-l-[3px] border-l-[var(--color-info)]",
+    iconBg: "bg-[var(--color-info-soft)] text-[var(--color-info)]",
+    iconColor: "var(--color-info)",
   },
   warning: {
-    iconBg: "bg-[var(--kpi-warning-soft)] text-[var(--kpi-warning)]",
-    bar: "bg-[var(--kpi-warning)]",
+    cardBg: "bg-[var(--color-surface)] border border-[var(--color-border)] border-l-[3px] border-l-[var(--color-warning)]",
+    iconBg: "bg-[var(--color-warning-soft)] text-[#b45309]",
+    iconColor: "#b45309",
+  },
+  rust: {
+    cardBg: "bg-[var(--color-surface)] border border-[var(--color-border)] border-l-[3px] border-l-[#c2410c]",
+    iconBg: "bg-[var(--color-warning-soft)] text-[#c2410c]",
+    iconColor: "#c2410c",
   },
   danger: {
-    iconBg: "bg-[var(--kpi-danger-soft)] text-[var(--kpi-danger)]",
-    bar: "bg-[var(--kpi-danger)]",
+    cardBg: "bg-[var(--color-surface)] border border-[var(--color-border)] border-l-[3px] border-l-[var(--color-danger)]",
+    iconBg: "bg-[var(--color-danger-soft)] text-[var(--color-danger)]",
+    iconColor: "var(--color-danger)",
   },
   info: {
-    iconBg: "bg-[var(--kpi-info-soft)] text-[var(--kpi-info)]",
-    bar: "bg-[var(--kpi-info)]",
+    cardBg: "bg-[var(--color-surface)] border border-[var(--color-border)] border-l-[3px] border-l-[var(--color-info)]",
+    iconBg: "bg-[var(--color-info-soft)] text-[var(--color-info)]",
+    iconColor: "var(--color-info)",
   },
   orange: {
-    iconBg: "bg-[var(--kpi-orange-soft)] text-[var(--kpi-orange)]",
-    bar: "bg-[var(--kpi-orange)]",
+    cardBg: "bg-[var(--color-surface)] border border-[var(--color-border)] border-l-[3px] border-l-[var(--color-warning)]",
+    iconBg: "bg-[var(--color-warning-soft)] text-[#d97706]",
+    iconColor: "#d97706",
   },
   neutral: {
-    iconBg: "bg-[var(--kpi-neutral-soft)] text-[var(--kpi-neutral)]",
-    bar: "bg-[var(--kpi-neutral)]",
+    cardBg: "bg-[var(--color-surface)] border border-[var(--color-border)] border-l-[3px] border-l-[var(--color-border-strong)]",
+    iconBg: "bg-[var(--color-surface-muted)] text-[var(--color-text-muted)]",
+    iconColor: "var(--color-text-muted)",
   },
 };
 
 const KPI_ID_TONE = {
-  "total-orders": "primary",
+  "total-orders": "teal",
   "today-production": "success",
   "machines-running": "violet",
-  "pending-orders": "warning",
-  "pending-approvals": "primary",
+  "pending-orders": "rust",
+  "pending-approvals": "warning",
   "good-qty": "success",
   "reject-qty": "danger",
   "inventory-value": "primary",
@@ -158,6 +174,7 @@ const KPI_ID_TONE = {
   warehouses: "primary",
   "stock-movements": "orange",
   "total-users": "primary",
+  departments: "violet",
   "active-users": "success",
   "total-employees": "teal",
   "active-alerts": "danger",
@@ -196,6 +213,7 @@ const KPI_ID_TONE = {
   expenses: "orange",
   "gst-payable": "violet",
   "cash-bank-balance": "teal",
+  "revenue-cost-snapshot": "teal",
   "my-work-orders": "primary",
   "todays-target": "teal",
   "completed-today": "success",
@@ -213,13 +231,13 @@ function inferKpiTone(id) {
     return "danger";
   }
   if (/pending|planned|on-leave|payable|hold|waiting/.test(key)) {
-    return "warning";
+    return /pending-orders|open work/.test(key) ? "rust" : "warning";
   }
   if (/complete|good-qty|present|finished|hired|active-user|receivable|todays-sales/.test(key)) {
     return "success";
   }
-  if (/machine|utilization|in-progress|gst|operator-in-progress/.test(key)) {
-    return "violet";
+  if (/machine|utilization|in-progress|operator-in-progress/.test(key)) {
+    return "info";
   }
   if (/employee|revenue|target|attendance|cash-bank/.test(key)) {
     return "teal";
@@ -243,14 +261,14 @@ export function KpiIcon({ id, className = "h-5 w-5" }) {
   return <Icon className={className} strokeWidth={1.75} aria-hidden />;
 }
 
-/** Circular light icon well — Products-page soft wells. */
+/** Icon well on KPI cards. */
 export function KpiIconWell({ id, className = "" }) {
   const accent = getKpiAccent(id);
   return (
     <div
-      className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${accent.iconBg} ${className}`}
+      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${accent.iconBg} ${className}`}
     >
-      <KpiIcon id={id} className="h-5 w-5" />
+      <KpiIcon id={id} className="h-4 w-4" />
     </div>
   );
 }
@@ -263,32 +281,47 @@ function parseTrendPercent(value) {
   return Number.isFinite(n) ? n : null;
 }
 
-/** Trend line styled like Masters → Products muted typography. */
-export function TrendBadge({ up, value, label, mode = "change" }) {
+/** Trend line — pass `onSolid` for white type on solid KPI cards. */
+export function TrendBadge({ up, value, label, mode = "change", onSolid = false }) {
   const pct = parseTrendPercent(value);
   const display = value == null || value === "" ? "—" : String(value);
   const isInfo = mode === "info" || mode === "utilization" || pct == null;
 
+  if (onSolid) {
+    let trendText = "—";
+    if (!isInfo && pct !== 0 && pct != null) {
+      trendText = `${Boolean(up) ? "↑" : "↓"} ${display}`;
+    } else if (display !== "—") {
+      trendText = `— ${display}`;
+    }
+    return (
+      <p className="flex min-w-0 items-center gap-1.5 text-[11px] leading-none text-white/75">
+        <span className="shrink-0 font-semibold tabular-nums text-white">{trendText}</span>
+        {label ? <span className="truncate font-medium text-white/70">{label}</span> : null}
+      </p>
+    );
+  }
+
   if (isInfo) {
     return (
-      <p className="flex min-w-0 items-center gap-1.5 text-[11px] leading-none text-[#6b6b76]">
+      <p className="flex min-w-0 items-center gap-1.5 text-[11px] leading-none text-[var(--color-text-muted)]">
         <span
           className={`shrink-0 font-semibold tabular-nums ${
-            mode === "utilization" ? "text-[var(--color-primary)]" : "text-[#4a4a55]"
+            mode === "utilization" ? "text-[var(--color-info)]" : "text-[var(--color-text)]"
           }`}
         >
           {display}
         </span>
-        {label ? <span className="truncate font-medium text-[#9a9aa5]">{label}</span> : null}
+        {label ? <span className="truncate font-medium text-[var(--color-text-faint)]">{label}</span> : null}
       </p>
     );
   }
 
   if (pct === 0) {
     return (
-      <p className="flex min-w-0 items-center gap-1.5 text-[11px] leading-none text-[#6b6b76]">
+      <p className="flex min-w-0 items-center gap-1.5 text-[11px] leading-none text-[var(--color-text-muted)]">
         <span className="shrink-0 font-semibold tabular-nums">— {display}</span>
-        {label ? <span className="truncate font-medium text-[#9a9aa5]">{label}</span> : null}
+        {label ? <span className="truncate font-medium text-[var(--color-text-faint)]">{label}</span> : null}
       </p>
     );
   }
@@ -297,13 +330,13 @@ export function TrendBadge({ up, value, label, mode = "change" }) {
   return (
     <p
       className={`flex min-w-0 items-center gap-1.5 text-[11px] leading-none ${
-        positive ? "text-[#15803d]" : "text-[#ef4444]"
+        positive ? "text-[var(--color-success)]" : "text-[var(--color-danger)]"
       }`}
     >
       <span className="shrink-0 font-semibold tabular-nums">
         {positive ? "↑" : "↓"} {display}
       </span>
-      {label ? <span className="truncate font-medium text-[#9a9aa5]">{label}</span> : null}
+      {label ? <span className="truncate font-medium text-[var(--color-text-faint)]">{label}</span> : null}
     </p>
   );
 }
@@ -327,10 +360,10 @@ export function CardShell({ title, children, action, className = "", subtitle })
 export function StatusBadge({ status }) {
   const { t } = useTranslation();
   const map = {
-    in_progress: "bg-[var(--color-primary-soft)] text-[var(--color-primary)]",
-    completed: "bg-[#e8f8ef] text-[#15803d]",
-    planned: "bg-[#fff6e5] text-[#b45309]",
-    on_hold: "bg-[#fde8e8] text-[#ef4444]",
+    in_progress: "bg-[var(--color-info-soft)] text-[var(--color-info)]",
+    completed: "bg-[var(--color-success-soft)] text-[var(--color-success)]",
+    planned: "bg-[var(--color-warning-soft)] text-[#b45309]",
+    on_hold: "bg-[var(--color-danger-soft)] text-[var(--color-danger)]",
   };
   const labelKey = {
     in_progress: "refDashboard.statusInProgress",
@@ -341,7 +374,7 @@ export function StatusBadge({ status }) {
   const label = labelKey ? t(labelKey) : String(status || "").replace(/_/g, " ");
   return (
     <span
-      className={`inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-semibold capitalize ${map[status] || "bg-[#f3f3f6] text-[#4a4a55]"}`}
+      className={`inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-semibold capitalize ${map[status] || "bg-[var(--color-surface-muted)] text-[var(--color-text-muted)]"}`}
     >
       {label}
     </span>

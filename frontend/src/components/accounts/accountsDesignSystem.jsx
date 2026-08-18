@@ -2,7 +2,7 @@ import { ChevronLeft, ChevronRight, Search } from "lucide-react";
 
 export { default as Loader } from "../common/Loader";
 
-/** Ledger-derived design tokens — aligned with global CSS variables */
+import { inputMtClass } from "../../design-system/classes";
 export const ACCOUNTS_PAGE_BG = "var(--color-bg)";
 export const ACCOUNTS_PURPLE = "var(--color-primary)";
 export const ACCOUNTS_BLUE = "var(--color-primary)";
@@ -33,8 +33,8 @@ export function accountsPageNumberItems(current, total) {
 
 export function AccountsPageShell({ children, className = "" }) {
   return (
-    <div className={`min-h-full px-4 py-4 sm:px-6 sm:py-5 ${className}`} style={{ background: ACCOUNTS_PAGE_BG }}>
-      {children}
+    <div className={`min-h-full bg-[var(--color-bg)] ${className}`}>
+      <div className="ui-page">{children}</div>
     </div>
   );
 }
@@ -76,18 +76,18 @@ export function AccountsTabs({ tabs, active, onChange }) {
 export function AccountsKpiCard({ label, value, sub, icon: Icon, tint, iconColor, valueColor = ACCOUNTS_TEXT }) {
   return (
     <div
-      className="ui-kpi flex min-h-[100px] items-center gap-3.5 rounded-xl border border-[var(--color-border-soft)] p-4"
+      className="ui-kpi flex min-h-[var(--kpi-min-height)] items-center gap-3 rounded-xl border border-[var(--color-border-soft)] p-3"
       style={{ backgroundColor: tint }}
     >
       <div
-        className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-[var(--color-surface)]/70 shadow-sm"
+        className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[var(--color-surface)]/70 shadow-sm"
         style={{ color: iconColor }}
       >
         <Icon className="h-5 w-5" aria-hidden />
       </div>
       <div className="min-w-0 flex-1">
         <p className="text-[13px] font-medium text-[var(--color-text-muted)]">{label}</p>
-        <p className="ui-kpi__value truncate text-[22px] leading-tight" style={{ color: valueColor }}>
+        <p className="ui-kpi__value truncate text-xl leading-tight" style={{ color: valueColor }}>
           {value}
         </p>
         {sub ? <p className="mt-0.5 text-[12px] text-[var(--color-text-muted)]">{sub}</p> : null}
@@ -102,7 +102,7 @@ export function accountsKpiEntry(label, value, sub, icon, tint, iconColor, value
 
 export function AccountsSearchInput({ value, onChange, placeholder = "Search...", className = "" }) {
   return (
-    <div className={`relative w-full max-w-xl ${className}`}>
+    <div className={`relative ui-search-wrap ${className}`}>
       <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]" />
       <input
         value={value}
@@ -222,9 +222,16 @@ export const accountsTableHeadClass =
   "bg-[var(--color-surface-thead)] text-[12px] font-semibold text-[var(--color-text)]";
 export const accountsTableHeadAltClass =
   "bg-[var(--color-surface-muted)] text-[12px] font-semibold text-[var(--color-text-muted)]";
-export const accountsTableWrapClass = "ui-table-wrap overflow-x-auto rounded-xl";
+export const accountsTableWrapClass = "ui-table-wrap ui-table-wrap--scroll rounded-xl";
 export const accountsTableClass = "min-w-full w-full border-collapse text-left text-[13px]";
-export const accountsThClass = "border-b border-[var(--color-border)] px-4 py-3";
-export const accountsTdClass = "border-b border-[var(--color-border-soft)] px-4 py-3.5";
+export const accountsThClass = "border-b border-[var(--color-border)] px-4 py-3 font-semibold";
+export const accountsTdClass = "border-b border-[var(--color-border-soft)] px-4 py-3.5 align-middle";
+
+/** Standard form control — use with FormField or standalone */
+export const ACCOUNTS_INPUT_CLASS = inputMtClass;
+
+/** Icon / row action button in accounts tables */
+export const accountsRowActionClass =
+  "inline-grid h-8 w-8 place-items-center rounded-md border border-[var(--color-border)] bg-[var(--color-surface-muted)] text-[var(--color-primary)] transition-colors hover:bg-[var(--color-primary-soft)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]";
 
 export { default as AccountsLoader } from "../common/Loader";

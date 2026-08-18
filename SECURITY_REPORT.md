@@ -3,13 +3,17 @@
 
 Generated after production-ready security hardening across the React + FastAPI Insights Iva application.
 
-**Last reviewed:** 15 August 2026
+**Last reviewed:** 18 August 2026
 
 ## Executive Summary
 
 Security features were implemented across authentication, session management, input validation, multi-tenant isolation, API protection, logging, and frontend auth flows. Backend suites covering auth, RBAC, tenant isolation, and CRUD smoke tests are in `backend/tests/`. Development mode preserves auto-verified registration for local testing. Production mode (`ENVIRONMENT=production`) enforces email verification before login.
 
-Recent product UI work (design tokens, HR dashboards, Job Card read views, global/store search UX) does **not** change the core security model documented here. Auth, JWT, RBAC, tenant scope, and CORS remain as implemented below.
+Recent product UI work (design tokens, HR dashboards, manufacturing workflow engine, Sales Job Card, global/store search UX) does **not** change the core security model documented here. Auth, JWT, RBAC, tenant scope, and CORS remain as implemented below.
+
+**Manufacturing workflow note (18 Aug 2026):** All `/manufacturing/workflow/*` endpoints require JWT and enforce team-based actions via `workflow_team_service` and `workflow_constants.ROLE_TO_TEAMS`. Transitions are validated by the state machine; invalid cross-team actions are rejected server-side. Job card and material-check records are tenant-scoped like other business entities. Frontend workflow UI is presentational — authorization is enforced on every API call.
+
+**UI/UX pass note (18 Aug 2026):** Forest green rebrand and `design-system/` migration are styling-only. No new public routes without auth, no relaxation of CORS, and no change to token storage or session handling. See [UI_UX_AUDIT_REPORT.md](./UI_UX_AUDIT_REPORT.md).
 
 **HR module note (Aug 2026):** New HR Settings UI includes a “two-factor authentication” checkbox and session/password fields — these are **client-side only** until wired to backend policy. HR dashboard demo data in `hrMasterData.js` is read-only preview when APIs are empty; it does not bypass authentication or tenant isolation. HR write endpoints (leave, payroll, performance create) remain protected by existing JWT + RBAC + `tenant_scope`.
 
@@ -169,6 +173,24 @@ When HR Settings persistence is implemented, validate: tenant-scoped storage, Ad
 
 ---
 
+## Manufacturing Workflow — Security Considerations (18 Aug 2026)
+
+| Topic | Status | Notes |
+|-------|--------|-------|
+| Route protection | Enforced | Workflow pages (`/manufacturing/workflow`, `/manufacturing/job-card/:id`, job card from sales) behind `ProtectedRoute` + JWT |
+| API authentication | Enforced | All routes under `/manufacturing/workflow/*` use `get_current_user` |
+| Tenant isolation | Enforced | Job cards, material checks, transitions filtered by `tenant_id` in services |
+| Team authorization | Enforced | Actions (confirm, material check, assign operator, quality, packing, billing) require caller’s ERP role to map to the workflow team for that stage (`workflow_team_service`) |
+| State machine integrity | Enforced | `workflow_state_service.transition_allowed()` rejects invalid status jumps; tested in `test_workflow_state_machine.py` |
+| Admin override | Limited | Admin role maps to all teams; backfill endpoint should remain admin-only |
+| Audit trail | Partial | `manufacturing_workflow_transitions` records action, user, team, timestamps; extend `log_audit()` for compliance if required |
+| Client-side workflow UI | UX only | Stepper, timeline, and team board do not bypass server checks — always call authenticated APIs |
+| PostgreSQL migrations | Operational | Alembic revisions `d1e2f3a4b5c6_*`, `e2f3a4b5c6d7_*` — apply with least-privilege DB user in production |
+
+**Recommendations:** Keep backfill (`POST /manufacturing/workflow/backfill`) admin-only; add IDOR regression tests for cross-tenant order IDs; log failed transition attempts at WARNING level for security monitoring.
+
+---
+
 ## Files Modified
 
 ### Backend — New Files
@@ -220,6 +242,11 @@ When HR Settings persistence is implemented, validate: tenant-scoped storage, Ad
 | `frontend/src/config/sidebarNav.js` | Expanded HR sidebar sections |
 | `backend/app/core/rbac_constants.py` | HR menu children incl. `/hr/settings` |
 | `backend/app/api/accounts.py` | GL account dedupe on list/seed |
+| `backend/app/api/manufacturing_workflow_api.py` | Workflow hub, queue, job card, team actions (Aug 2026) |
+| `backend/app/services/workflow_state_service.py` | State machine + transition validation |
+| `backend/app/services/workflow_team_service.py` | Team membership and action authorization |
+| `backend/app/core/workflow_constants.py` | Role-to-team mapping, workflow statuses |
+| `backend/app/core/rbac_constants.py` | Manufacturing workflow menu permissions |
 
 ---
 
@@ -301,7 +328,8 @@ SMTP_FROM_EMAIL=noreply@your-domain.com
 | Document | Purpose |
 |----------|---------|
 | [README.md](./README.md) | Features, setup, API overview, design system notes |
-| [PROJECT_ANALYSIS_REPORT.md](./PROJECT_ANALYSIS_REPORT.md) | Structure review, live-data findings, recent UI fixes |
+| [PROJECT_ANALYSIS_REPORT.md](./PROJECT_ANALYSIS_REPORT.md) | Structure review, live-data findings, workflow engine |
+| [UI_UX_AUDIT_REPORT.md](./UI_UX_AUDIT_REPORT.md) | Design system adoption, UI migration status |
 
 ## Change Log (Documentation)
 
@@ -310,6 +338,7 @@ SMTP_FROM_EMAIL=noreply@your-domain.com
 | 2026-08-13 | Confirmed UI/design-system and Job Card read-path work do not alter auth, RBAC, tenant isolation, or CORS. Cross-linked README and Project Analysis Report. |
 | 2026-08-15 | HR dashboard UI pass documented. HR Settings toggles are client-side only. RBAC menu expanded for HR sections. Chart of Accounts dedupe noted as data-integrity fix, not auth change. |
 | 2026-08-16 | Full security audit + hardening pass (this section). |
+| 2026-08-18 | Manufacturing workflow security considerations added. UI/UX rebrand documented as styling-only. Workflow API files listed. Cross-linked UI_UX_AUDIT_REPORT. |
 
 ---
 

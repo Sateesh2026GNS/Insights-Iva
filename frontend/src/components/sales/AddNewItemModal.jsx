@@ -18,15 +18,14 @@ import { useToast } from "../../context/ToastContext";
 import useTenantId from "../../hooks/useTenantId";
 import { apiErrorMessage } from "../../utils/apiError";
 
-const PURPLE = "#6b4eff";
-const BLUE = "#2563eb";
+import { inputClass } from "../../design-system/classes";
+
+const PURPLE = "var(--color-primary)";
+const BLUE = "var(--color-info)";
 
 const GST_OPTIONS = ["0", "5", "12", "18", "28"];
 const TAX_TYPES = ["Exclusive", "Inclusive"];
 const CESS_MODES = ["Percent Wise", "Amount Wise"];
-
-const inputClass =
-  "w-full rounded-lg border border-[#dcdce3] bg-[#f3f3f6] px-3 py-2.5 text-[13px] text-[#1a1a1f] placeholder:text-[#a0a0ab] focus:border-[#c4b5fd] focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#c4b5fd]";
 
 const EMPTY = {
   item_type: "goods",
