@@ -210,7 +210,6 @@ const DEFAULT_CARD_LINKS = {
   "total-users": "/admin/users",
   departments: "/masters/departments",
   "active-users": "/admin/users",
-  departments: "/masters/departments",
   "total-employees": "/masters/departments",
   "pending-approvals": "/admin/approvals",
   "total-orders": "/production/planning",
@@ -946,11 +945,17 @@ export default function ReferenceDashboard() {
       getPurchaseOrders(),
       getVendors(),
     ]).then(([dashRes, prodRes, woRes, mrRes, poRes, vndRes]) => {
-      if (dashRes.status === "fulfilled") {
-        setApiData(dashRes.value?.data || null);
+      if (dashRes.status === "fulfilled" && dashRes.value?.data) {
+        setApiData(dashRes.value.data);
       } else {
+        const errorDetail =
+          dashRes.reason?.response?.data?.message ||
+          dashRes.reason?.response?.data?.detail ||
+          dashRes.reason?.response?.data?.errors?.[0] ||
+          dashRes.reason?.message ||
+          "Failed to load dashboard data.";
         setApiData(null);
-        setError("Failed to load dashboard data.");
+        setError(errorDetail);
       }
 
 

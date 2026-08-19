@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Link, useSearchParams } from "react-router-dom";
 import {
   AlertTriangle,
@@ -2719,79 +2720,123 @@ function SectionFormModal({ title, mode, fields, initialValues, onClose, onSave,
 /* ── List row actions (Open + ⋮ menu) ──────────────────────────────────── */
 function JobCardRowActions({ row, onOpen }) {
   const [open, setOpen] = useState(false);
+  const [menuPos, setMenuPos] = useState({ top: 0, left: 0 });
+  const btnRef = useRef(null);
   const id = row?.id;
 
+  const toggleMenu = (e) => {
+    e.stopPropagation();
+    if (!open && btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect();
+      const menuWidth = 192; // 12rem / w-48
+      let left = rect.right - menuWidth;
+      if (left < 10) left = 10;
+      let top = rect.bottom + 6;
+      if (top + 200 > window.innerHeight) {
+        top = Math.max(10, rect.top - 180);
+      }
+      setMenuPos({ top, left });
+      setOpen(true);
+    } else {
+      setOpen(false);
+    }
+  };
+
   return (
-    <div className="flex items-center justify-end gap-1 whitespace-nowrap">
-      <Button variant="primary" type="button" size="sm" onClick={() => onOpen(id)} className="!px-3 !py-1.5 text-xs">
+    <div className="flex items-center justify-end gap-1 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+      <Button
+        variant="primary"
+        type="button"
+        size="sm"
+        onClick={(e) => {
+          e.stopPropagation();
+          onOpen(id);
+        }}
+        className="!px-3 !py-1.5 text-xs font-semibold shadow-sm"
+      >
         Open
       </Button>
-      <div className="relative">
-        <IconButton
-          variant="ghost"
-          type="button"
-          aria-label="More actions"
-          aria-expanded={open}
-          onClick={(e) => {
-            e.stopPropagation();
-            setOpen((v) => !v);
-          }}
-        >
-          <MoreVertical className="h-4 w-4" />
-        </IconButton>
-        {open ? (
-          <>
-            <button
-              type="button"
-              className="fixed inset-0 z-40 cursor-default"
-              aria-label="Close menu"
-              onClick={() => setOpen(false)}
-            />
-            <div className="absolute right-0 z-50 mt-1 w-48 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] py-1 shadow-lg">
-              <button
-                type="button"
-                className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-muted)]"
-                onClick={() => {
-                  setOpen(false);
-                  onOpen(id, "overview");
-                }}
-              >
-                <ClipboardList className="h-3.5 w-3.5" />
-                Open Overview
-              </button>
-              <button
-                type="button"
-                className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-muted)]"
-                onClick={() => {
-                  setOpen(false);
-                  onOpen(id, "form");
-                }}
-              >
-                <FileText className="h-3.5 w-3.5" />
-                Open Form
-              </button>
-              <Link
-                to="/production/work-orders"
-                className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-muted)]"
-                onClick={() => setOpen(false)}
-              >
-                <Factory className="h-3.5 w-3.5" />
-                Work Orders
-              </Link>
-              <button
-                type="button"
-                className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-muted)]"
-                onClick={() => {
-                  setOpen(false);
-                  onOpen(id, "form", { print: true });
-                }}
-              >
-                <Printer className="h-3.5 w-3.5" />
-                Print
-              </button>
-            </div>
-          </>
-        ) : null}
+      <div className="relative inline-flex">
+        <span ref={btnRef} className="inline-flex">
+          <IconButton
+            variant="ghost"
+            type="button"
+            aria-label="More actions"
+            aria-expanded={open}
+            onClick={toggleMenu}
+          >
+            <MoreVertical className="h-4 w-4" />
+          </IconButton>
+        </span>
+        {open && typeof document !== "undefined"
+          ? createPortal(
+              <>
+                <button
+                  type="button"
+                  className="fixed inset-0 z-[100] cursor-default bg-transparent"
+                  aria-label="Close menu"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setOpen(false);
+                  }}
+                />
+                <div
+                  className="fixed z-[101] w-48 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] py-1.5 shadow-xl transition-all"
+                  style={{ top: `${menuPos.top}px`, left: `${menuPos.left}px` }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] transition-colors"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setOpen(false);
+                      onOpen(id, "overview");
+                    }}
+                  >
+                    <ClipboardList className="h-3.5 w-3.5 text-[var(--color-primary)]" />
+                    Open Overview
+                  </button>
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] transition-colors"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setOpen(false);
+                      onOpen(id, "form");
+                    }}
+                  >
+                    <FileText className="h-3.5 w-3.5 text-[var(--color-primary)]" />
+                    Open Form
+                  </button>
+                  <Link
+                    to="/production/work-orders"
+                    className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] transition-colors"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setOpen(false);
+                    }}
+                  >
+                    <Factory className="h-3.5 w-3.5 text-[var(--color-text-muted)]" />
+                    Work Orders
+                  </Link>
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] transition-colors"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setOpen(false);
+                      onOpen(id, "form", { print: true });
+                    }}
+                  >
+                    <Printer className="h-3.5 w-3.5 text-[var(--color-text-muted)]" />
+                    Print
+                  </button>
+                </div>
+              </>,
+              document.body
+            )
+          : null}
       </div>
     </div>
   );
@@ -2800,59 +2845,97 @@ function JobCardRowActions({ row, onOpen }) {
 /* ── Detail header ⋮ menu ──────────────────────────────────────────────── */
 function JobCardDetailMenu({ onPrint, onClose }) {
   const [open, setOpen] = useState(false);
+  const [menuPos, setMenuPos] = useState({ top: 0, left: 0 });
+  const btnRef = useRef(null);
+
+  const toggleMenu = (e) => {
+    e.stopPropagation();
+    if (!open && btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect();
+      const menuWidth = 176; // w-44
+      let left = rect.right - menuWidth;
+      if (left < 10) left = 10;
+      let top = rect.bottom + 6;
+      if (top + 160 > window.innerHeight) {
+        top = Math.max(10, rect.top - 140);
+      }
+      setMenuPos({ top, left });
+      setOpen(true);
+    } else {
+      setOpen(false);
+    }
+  };
+
   return (
     <div className="relative">
-      <IconButton
-        variant="ghost"
-        type="button"
-        aria-label="More actions"
-        aria-expanded={open}
-        onClick={() => setOpen((v) => !v)}
-      >
-        <MoreVertical className="h-4 w-4" />
-      </IconButton>
-      {open ? (
-        <>
-          <button
-            type="button"
-            className="fixed inset-0 z-40 cursor-default"
-            aria-label="Close menu"
-            onClick={() => setOpen(false)}
-          />
-          <div className="absolute right-0 z-50 mt-1 w-44 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] py-1 shadow-lg">
-            <button
-              type="button"
-              className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-muted)]"
-              onClick={() => {
-                setOpen(false);
-                onPrint?.();
-              }}
-            >
-              <Printer className="h-3.5 w-3.5" />
-              Print
-            </button>
-            <Link
-              to="/production/work-orders"
-              className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-muted)]"
-              onClick={() => setOpen(false)}
-            >
-              <Factory className="h-3.5 w-3.5" />
-              Work Orders
-            </Link>
-            <button
-              type="button"
-              className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-muted)]"
-              onClick={() => {
-                setOpen(false);
-                onClose?.();
-              }}
-            >
-              <X className="h-3.5 w-3.5" />
-              Back to list
-            </button>
-          </div>
-        </>
-      ) : null}
+      <span ref={btnRef} className="inline-flex">
+        <IconButton
+          variant="ghost"
+          type="button"
+          aria-label="More actions"
+          aria-expanded={open}
+          onClick={toggleMenu}
+        >
+          <MoreVertical className="h-4 w-4" />
+        </IconButton>
+      </span>
+      {open && typeof document !== "undefined"
+        ? createPortal(
+            <>
+              <button
+                type="button"
+                className="fixed inset-0 z-[100] cursor-default bg-transparent"
+                aria-label="Close menu"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setOpen(false);
+                }}
+              />
+              <div
+                className="fixed z-[101] w-44 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] py-1.5 shadow-xl transition-all"
+                style={{ top: `${menuPos.top}px`, left: `${menuPos.left}px` }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] transition-colors"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setOpen(false);
+                    onPrint?.();
+                  }}
+                >
+                  <Printer className="h-3.5 w-3.5 text-[var(--color-text-muted)]" />
+                  Print
+                </button>
+                <Link
+                  to="/production/work-orders"
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] transition-colors"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setOpen(false);
+                  }}
+                >
+                  <Factory className="h-3.5 w-3.5 text-[var(--color-text-muted)]" />
+                  Work Orders
+                </Link>
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] transition-colors"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setOpen(false);
+                    onClose?.();
+                  }}
+                >
+                  <X className="h-3.5 w-3.5 text-[var(--color-text-muted)]" />
+                  Back to list
+                </button>
+              </div>
+            </>,
+            document.body
+          )
+        : null}
     </div>
   );
 }
@@ -2891,10 +2974,23 @@ function JobCardList({ rows, loading, onOpen, onCreate, canCreate }) {
             {rows.map((r, rowIndex) => {
               const p = priorityBadge(r.priority);
               return (
-                <tr key={r.id} className="border-b border-[var(--color-border-muted)] hover:bg-[var(--color-surface-muted)]/60">
+                <tr
+                  key={r.id}
+                  onClick={() => onOpen(r.id)}
+                  className="group border-b border-[var(--color-border-muted)] hover:bg-[var(--color-surface-muted)]/70 cursor-pointer transition-colors"
+                >
                   <SerialNumberCell rowIndex={rowIndex} className="px-4 py-3" />
                   <td className="px-4 py-3">
-                    <p className="font-semibold text-[var(--color-text)]">{r.job_card_no}</p>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onOpen(r.id);
+                      }}
+                      className="text-left font-semibold text-[var(--color-primary)] hover:underline focus:outline-none"
+                    >
+                      {r.job_card_no}
+                    </button>
                     <p className="text-[11px] text-[var(--color-text-muted)]">{r.production_order_number || "—"}</p>
                   </td>
                   <td className="px-4 py-3">
@@ -2912,7 +3008,7 @@ function JobCardList({ rows, loading, onOpen, onCreate, canCreate }) {
                     </span>
                     <span className={`ml-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${p.bg} ${p.text}`}>{p.label}</span>
                   </td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                     <JobCardRowActions row={r} onOpen={onOpen} />
                   </td>
                 </tr>

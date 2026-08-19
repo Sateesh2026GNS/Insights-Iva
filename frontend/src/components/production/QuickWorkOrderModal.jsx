@@ -5,6 +5,7 @@ import { Cpu, X } from "lucide-react";
 import { SHIFTS } from "../../data/productionPlanningMasterData";
 import { getMachines, quickCreateWorkOrder } from "../../api/productionApi";
 import { fetchFinishedGoodsWithFallback } from "../../utils/productOptions";
+import { fetchCustomersWithFallback } from "../../utils/customerOptions";
 import { apiErrorMessage } from "../../utils/apiError";
 import Button from "../common/Button";
 
@@ -21,6 +22,8 @@ function toDateTimeLocal(value) {
 export default function QuickWorkOrderModal({ order, onClose, onSuccess, addToast }) {
   const [machines, setMachines] = useState([]);
   const [products, setProducts] = useState([]);
+  const [customers, setCustomers] = useState([]);
+  const [customCustomerMode, setCustomCustomerMode] = useState(false);
   const [loadingOptions, setLoadingOptions] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -32,6 +35,7 @@ export default function QuickWorkOrderModal({ order, onClose, onSuccess, addToas
     product_name: order?.product_name || "",
     product_id: order?.product_id ? String(order.product_id) : "",
     planned_quantity: order?.planned_quantity || 100,
+    customer_id: order?.customer_id ? String(order.customer_id) : "",
     customer_name: order?.buyer_company || order?.customer_name || "",
     machine_id: order?.machine_id ? String(order.machine_id) : "",
     operator_name: order?.operator_name || "",
@@ -47,12 +51,16 @@ export default function QuickWorkOrderModal({ order, onClose, onSuccess, addToas
     Promise.all([
       getMachines().catch(() => ({ data: [] })),
       fetchFinishedGoodsWithFallback().catch(() => []),
+      fetchCustomersWithFallback().catch(() => []),
     ])
-      .then(([mRes, pRes]) => {
+      .then(([mRes, pRes, cRes]) => {
         if (cancelled) return;
         setMachines(Array.isArray(mRes?.data) ? mRes.data : []);
         const prods = Array.isArray(pRes) ? pRes : [];
         setProducts(prods);
+        const custs = Array.isArray(cRes) ? cRes : [];
+        setCustomers(custs);
+
         if (order?.product_id) {
           const selected = prods.find((p) => String(p.id) === String(order.product_id));
           setForm((prev) => ({
@@ -61,6 +69,25 @@ export default function QuickWorkOrderModal({ order, onClose, onSuccess, addToas
             product_name: selected?.name || order.product_name || prev.product_name,
           }));
         }
+
+        const prefilledCustomer = order?.buyer_company || order?.customer_name;
+        if (prefilledCustomer) {
+          const cName = String(prefilledCustomer).toLowerCase().trim();
+          const matched = custs.find(
+            (c) =>
+              (c.name || c.company || "").toLowerCase().trim() === cName ||
+              (order.customer_id && String(c.id) === String(order.customer_id))
+          );
+          if (matched) {
+            setForm((prev) => ({
+              ...prev,
+              customer_id: String(matched.id),
+              customer_name: matched.name || matched.company || prev.customer_name,
+            }));
+          } else {
+            setCustomCustomerMode(true);
+          }
+        }
       })
       .finally(() => {
         if (!cancelled) setLoadingOptions(false);
@@ -68,7 +95,7 @@ export default function QuickWorkOrderModal({ order, onClose, onSuccess, addToas
     return () => {
       cancelled = true;
     };
-  }, [order?.product_id, order?.product_name]);
+  }, [order?.product_id, order?.product_name, order?.customer_id, order?.customer_name, order?.buyer_company]);
 
   useEffect(() => {
     const onKey = (e) => {
@@ -90,6 +117,21 @@ export default function QuickWorkOrderModal({ order, onClose, onSuccess, addToas
       return;
     }
     setForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleCustomerChange = (e) => {
+    const val = e.target.value;
+    if (val === "__custom__") {
+      setCustomCustomerMode(true);
+      setForm((prev) => ({ ...prev, customer_id: "", customer_name: "" }));
+      return;
+    }
+    const selected = customers.find((c) => String(c.id) === String(val));
+    setForm((prev) => ({
+      ...prev,
+      customer_id: val,
+      customer_name: selected?.name || selected?.company || "",
+    }));
   };
 
   const handleSubmit = async (e) => {
@@ -222,7 +264,46 @@ export default function QuickWorkOrderModal({ order, onClose, onSuccess, addToas
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <label className="block space-y-1">
               <span className="ui-label">Customer</span>
-              <input name="customer_name" value={form.customer_name} onChange={handleChange} className="ui-input" />
+              {order?.customer_name && order?.customer_id ? (
+                <input value={form.customer_name} readOnly className="ui-input bg-[var(--color-surface-muted)]" />
+              ) : customCustomerMode ? (
+                <div className="flex gap-1.5">
+                  <input
+                    name="customer_name"
+                    value={form.customer_name}
+                    onChange={handleChange}
+                    placeholder="Enter customer name…"
+                    className="ui-input flex-1"
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCustomCustomerMode(false);
+                      setForm((prev) => ({ ...prev, customer_id: "", customer_name: "" }));
+                    }}
+                    className="rounded-lg border border-[var(--color-border)] px-2.5 py-1.5 text-xs font-medium text-[var(--color-primary)] hover:bg-[var(--color-surface-muted)]"
+                  >
+                    Select
+                  </button>
+                </div>
+              ) : (
+                <select
+                  name="customer_id"
+                  value={form.customer_id}
+                  onChange={handleCustomerChange}
+                  disabled={loadingOptions}
+                  className="ui-select"
+                >
+                  <option value="">{loadingOptions ? "Loading customers…" : "Select customer…"}</option>
+                  {customers.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name || c.company}{c.customer_code ? ` (${c.customer_code})` : ""}
+                    </option>
+                  ))}
+                  <option value="__custom__">+ Enter new / custom customer…</option>
+                </select>
+              )}
             </label>
             <label className="block space-y-1">
               <span className="ui-label">Operator</span>

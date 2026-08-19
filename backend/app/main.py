@@ -323,17 +323,36 @@ def health_db():
 
 @app.on_event("startup")
 def on_startup():
-    """Apply idempotent seed data. Schema is managed by Alembic migrations."""
+    """Apply idempotent schema creation and seed data."""
     try:
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
     except OperationalError:
         logger.error(
-            "PostgreSQL is unreachable or credentials are wrong. "
+            "Database is unreachable or credentials are wrong. "
             "Run: .\\scripts\\setup_postgres.ps1  "
             "(creates insights_user / insights_iva, applies schema, optional data migration)"
         )
         return
+
+    # Auto-ensure all defined tables and missing columns exist in SQLite / development mode
+    try:
+        from sqlalchemy import inspect
+        from app.models.base import Base
+        Base.metadata.create_all(bind=engine)
+        inspector = inspect(engine)
+        db_tables = inspector.get_table_names()
+        with engine.begin() as conn:
+            for table_name, table in Base.metadata.tables.items():
+                if table_name in db_tables:
+                    existing_cols = {c["name"] for c in inspector.get_columns(table_name)}
+                    for col in table.columns:
+                        if col.name not in existing_cols:
+                            col_type = col.type.compile(engine.dialect)
+                            logger.info("Adding missing column %s (%s) to %s", col.name, col_type, table_name)
+                            conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN {col.name} {col_type}"))
+    except Exception:
+        logger.exception("Schema sync warning during startup")
 
     from app.core.database import SessionLocal
     from app.core.seed_finance import seed_finance_data

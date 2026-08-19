@@ -10,6 +10,7 @@ import {
 } from "../../api/productionApi";
 import { fetchProductsWithFallback } from "../../utils/productOptions";
 import { getRawMaterials } from "../../api/inventoryApi";
+import { fetchCustomersWithFallback } from "../../utils/customerOptions";
 import useTenantId from "../../hooks/useTenantId";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { PRIORITIES, SHIFTS } from "../../data/productionPlanningMasterData";
@@ -34,12 +35,15 @@ export default function QuickCreateWorkOrder() {
   const [products, setProducts] = useState([]);
   const [machines, setMachines] = useState([]);
   const [rawMaterials, setRawMaterials] = useState([]);
+  const [customers, setCustomers] = useState([]);
+  const [customCustomerMode, setCustomCustomerMode] = useState(false);
   const [shifts, setShifts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({
     production_order_id: poId ? Number(poId) : null,
     work_order_number: prefilledOrderNumber ? `WO-${prefilledOrderNumber}` : "",
     product_id: prefilledProductId,
+    customer_id: "",
     customer_name: prefilledCustomer,
     machine_id: "",
     raw_material_id: "",
@@ -57,14 +61,26 @@ export default function QuickCreateWorkOrder() {
   const load = useCallback(async (isRefresh = false) => {
     if (!isRefresh) setLoading(true);
     try {
-      const [pRes, mRes, rmRes] = await Promise.all([
+      const [pRes, mRes, rmRes, cRes] = await Promise.all([
         fetchProductsWithFallback().catch(() => []),
         getMachines(tenantId).catch(() => ({ data: [] })),
         getRawMaterials().catch(() => ({ data: [] })),
+        fetchCustomersWithFallback().catch(() => []),
       ]);
       const rawProducts = Array.isArray(pRes) ? pRes : (pRes?.data || []);
       const sortedProducts = [...rawProducts].sort((a, b) => (b.id || 0) - (a.id || 0));
       setProducts(sortedProducts);
+      const custs = Array.isArray(cRes) ? cRes : [];
+      setCustomers(custs);
+      if (prefilledCustomer) {
+        const cName = String(prefilledCustomer).toLowerCase().trim();
+        const matched = custs.find((c) => (c.name || c.company || "").toLowerCase().trim() === cName);
+        if (matched) {
+          setForm((prev) => ({ ...prev, customer_id: String(matched.id), customer_name: matched.name || matched.company }));
+        } else {
+          setCustomCustomerMode(true);
+        }
+      }
       if (sortedProducts.length > 0) {
         setForm((prev) => ({
           ...prev,
@@ -129,6 +145,22 @@ export default function QuickCreateWorkOrder() {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
+    setError("");
+  };
+
+  const handleCustomerChange = (e) => {
+    const val = e.target.value;
+    if (val === "__custom__") {
+      setCustomCustomerMode(true);
+      setForm((prev) => ({ ...prev, customer_id: "", customer_name: "" }));
+      return;
+    }
+    const selected = customers.find((c) => String(c.id) === String(val));
+    setForm((prev) => ({
+      ...prev,
+      customer_id: val,
+      customer_name: selected?.name || selected?.company || "",
+    }));
     setError("");
   };
 
@@ -331,15 +363,47 @@ export default function QuickCreateWorkOrder() {
             >
               Customer Name
             </label>
-            <input
-              id="customer_name"
-              type="text"
-              name="customer_name"
-              value={form.customer_name}
-              onChange={handleChange}
-              placeholder="e.g. Acme Corp"
-              className="mt-1.5 w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
-            />
+            {customCustomerMode ? (
+              <div className="mt-1.5 flex gap-1.5">
+                <input
+                  id="customer_name"
+                  type="text"
+                  name="customer_name"
+                  value={form.customer_name}
+                  onChange={handleChange}
+                  placeholder="Enter customer name…"
+                  className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+                  autoFocus
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCustomCustomerMode(false);
+                    setForm((prev) => ({ ...prev, customer_id: "", customer_name: "" }));
+                  }}
+                  className="rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-xs font-medium text-teal-600 hover:bg-slate-100 dark:hover:bg-slate-700"
+                >
+                  Select
+                </button>
+              </div>
+            ) : (
+              <select
+                id="customer_name"
+                name="customer_id"
+                value={form.customer_id}
+                onChange={handleCustomerChange}
+                disabled={loading}
+                className="mt-1.5 w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+              >
+                <option value="">{loading ? "Loading customers…" : "Select customer…"}</option>
+                {customers.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name || c.company}{c.customer_code ? ` (${c.customer_code})` : ""}
+                  </option>
+                ))}
+                <option value="__custom__">+ Enter new / custom customer…</option>
+              </select>
+            )}
           </div>
 
           <div>
