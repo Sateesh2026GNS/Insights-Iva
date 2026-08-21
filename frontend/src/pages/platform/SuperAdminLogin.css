@@ -84,10 +84,6 @@ body:has(.sa-root) {
   margin-bottom: 28px;
 }
 
-.sa-card__logo {
-  margin-bottom: 14px;
-}
-
 /* ─── TITLE "Insights Iva Admin Portal" ─── */
 .sa-card__title {
   margin: 0;

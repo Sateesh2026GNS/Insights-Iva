@@ -113,7 +113,7 @@ export default function ExpenseTracking() {
           ]}
           data={expenses}
           searchKeys={["category", "vendor", "description"]}
-          searchPlaceholder="Search expenses..."
+          searchPlaceholder="Search"
         />
       </div>
 

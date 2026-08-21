@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowDownToLine,
@@ -81,18 +81,48 @@ function txnBadge(type) {
   return map[type] || { label: type, tone: "neutral", Icon: Hash };
 }
 
+const KPI_TONE_RING = {
+  primary: "hover:ring-2 hover:ring-[var(--kpi-primary)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-primary)]",
+  info: "hover:ring-2 hover:ring-[var(--kpi-info)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-info)]",
+  success: "hover:ring-2 hover:ring-[var(--kpi-success)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-success)]",
+  warning: "hover:ring-2 hover:ring-[var(--kpi-warning)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-warning)]",
+  danger: "hover:ring-2 hover:ring-[var(--kpi-danger)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-danger)]",
+  yellow: "hover:ring-2 hover:ring-[var(--kpi-warning)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-warning)]",
+  violet: "hover:ring-2 hover:ring-[var(--kpi-violet)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-violet)]",
+  teal: "hover:ring-2 hover:ring-[var(--kpi-teal)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-teal)]",
+  orange: "hover:ring-2 hover:ring-[var(--kpi-orange)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-orange)]",
+  neutral: "hover:ring-2 hover:ring-[var(--kpi-neutral)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-neutral)]",
+};
+
+function ClickableKpiCard({ onClick, title, tone, children }) {
+  const resolvedTone = tone || children?.props?.tone || "primary";
+  const ringClass = KPI_TONE_RING[resolvedTone] || KPI_TONE_RING.primary;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`h-full w-full rounded-[var(--radius-lg)] text-left transition focus:outline-none ${ringClass}`}
+      title={title}
+    >
+      {children}
+    </button>
+  );
+}
+
 export default function StockLedger() {
   const navigate = useNavigate();
   const { addToast } = useToast();
   const { user } = useAuth();
   const storeMode = isStoreManager(user);
+  const dateFromRef = useRef(null);
+  const dateToRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState({});
   const [entries, setEntries] = useState([]);
   const [warehousesApi, setWarehousesApi] = useState([]);
   const [filters, setFilters] = useState({
-    dateFrom: "2026-08-01",
-    dateTo: "2026-08-13",
+    dateFrom: "",
+    dateTo: "",
     warehouse: "",
     item: "",
     type: "",
@@ -411,10 +441,57 @@ export default function StockLedger() {
         action={
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-secondary)]">
-              <CalendarDays className="h-4 w-4 text-[var(--color-text-muted)]" />
+              <input
+                ref={dateFromRef}
+                type="date"
+                value={filters.dateFrom}
+                onChange={(e) => setFilters((f) => ({ ...f, dateFrom: e.target.value }))}
+                aria-label="Start date"
+                className="sr-only"
+              />
+              <input
+                ref={dateToRef}
+                type="date"
+                value={filters.dateTo}
+                onChange={(e) => setFilters((f) => ({ ...f, dateTo: e.target.value }))}
+                aria-label="End date"
+                className="sr-only"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  if (dateFromRef.current) {
+                    if (typeof dateFromRef.current.showPicker === "function") {
+                      dateFromRef.current.showPicker();
+                    } else {
+                      dateFromRef.current.click();
+                    }
+                  }
+                }}
+                className="flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
+                aria-label="Open start date picker"
+              >
+                <CalendarDays className="h-4 w-4" />
+              </button>
               <span>
-                {filters.dateFrom || "Start"} – {filters.dateTo || "End"}
+                {filters.dateFrom || "Start date"} - {filters.dateTo || "End date"}
               </span>
+              <button
+                type="button"
+                onClick={() => {
+                  if (dateToRef.current) {
+                    if (typeof dateToRef.current.showPicker === "function") {
+                      dateToRef.current.showPicker();
+                    } else {
+                      dateToRef.current.click();
+                    }
+                  }
+                }}
+                className="flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
+                aria-label="Open end date picker"
+              >
+                <CalendarDays className="h-4 w-4" />
+              </button>
             </div>
             <select
               value={headerWarehouse}
@@ -437,28 +514,82 @@ export default function StockLedger() {
         }
       />
 
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
+        <ClickableKpiCard
+          onClick={() => setFilters((f) => ({ ...f, type: "in" }))}
+          title="Filter stock in transactions"
+          tone="success"
+        >
+          <KpiCard
+            label="Total Stock In"
+            value={`${formatQty(kpis.stock_in, { dashZero: false })} ${kpis.uom}`}
+            icon={ArrowDownToLine}
+            tone="success"
+            meta="Click to filter"
+            className="[&_.ui-kpi__value]:!text-[#16a34a]"
+          />
+        </ClickableKpiCard>
+        <ClickableKpiCard
+          onClick={() => setFilters((f) => ({ ...f, type: "out" }))}
+          title="Filter stock out transactions"
+          tone="danger"
+        >
+          <KpiCard
+            label="Total Stock Out"
+            value={`${formatQty(kpis.stock_out, { dashZero: false })} ${kpis.uom}`}
+            icon={ArrowUpFromLine}
+            tone="danger"
+            meta="Click to filter"
+            className="[&_.ui-kpi__value]:!text-[#ef4444]"
+          />
+        </ClickableKpiCard>
+        <ClickableKpiCard
+          onClick={() => setFilters((f) => ({ ...f, type: "transfer_in" }))}
+          title="Filter transfer transactions"
+          tone="info"
+        >
+          <KpiCard
+            label="Total Transfers"
+            value={`${formatQty(kpis.transfers, { dashZero: false })} ${kpis.uom}`}
+            icon={ArrowLeftRight}
+            tone="info"
+            meta="Click to filter"
+            className="[&_.ui-kpi__value]:!text-[#2563eb]"
+          />
+        </ClickableKpiCard>
+        <ClickableKpiCard
+          onClick={() => setFilters((f) => ({ ...f, type: "adjustment" }))}
+          title="Filter adjustment transactions"
+          tone="warning"
+        >
+          <KpiCard
+            label="Total Adjustments"
+            value={`${formatQty(kpis.adjustments, { dashZero: false })} ${kpis.uom}`}
+            icon={ClipboardList}
+            tone="warning"
+            meta="Click to filter"
+            className="[&_.ui-kpi__value]:!text-[#ea580c]"
+          />
+        </ClickableKpiCard>
+        <ClickableKpiCard
+          onClick={() => setFilters((f) => ({ ...f, type: "" }))}
+          title="Show all transactions"
+          tone="primary"
+        >
+          <KpiCard
+            label="Total Transactions"
+            value={Number(kpis.total_transactions).toLocaleString("en-IN")}
+            icon={Hash}
+            tone="primary"
+            meta="Click to show all"
+            className="[&_.ui-kpi__value]:!text-[#7c3aed]"
+          />
+        </ClickableKpiCard>
+      </div>
+
       <div className="ui-card p-3 sm:p-4">
         <div className="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
           <div className="grid min-w-0 flex-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <label className="text-sm sm:col-span-2 xl:col-span-1">
-              <span className="ui-label">Date Range</span>
-              <div className="mt-1 flex flex-col gap-2 sm:flex-row">
-                <input
-                  type="date"
-                  value={filters.dateFrom}
-                  onChange={(e) => setFilters((f) => ({ ...f, dateFrom: e.target.value }))}
-                  className="ui-input min-w-0 flex-1"
-                  aria-label="From date"
-                />
-                <input
-                  type="date"
-                  value={filters.dateTo}
-                  onChange={(e) => setFilters((f) => ({ ...f, dateTo: e.target.value }))}
-                  className="ui-input min-w-0 flex-1"
-                  aria-label="To date"
-                />
-              </div>
-            </label>
             <label className="text-sm min-w-0">
               <span className="ui-label">Item</span>
               <select
@@ -526,44 +657,6 @@ export default function StockLedger() {
             </Button>
           </div>
         </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
-        <KpiCard
-          label="Total Stock In"
-          value={`${formatQty(kpis.stock_in, { dashZero: false })} ${kpis.uom}`}
-          icon={ArrowDownToLine}
-          tone="success"
-          className="[&_.ui-kpi__value]:!text-[#16a34a]"
-        />
-        <KpiCard
-          label="Total Stock Out"
-          value={`${formatQty(kpis.stock_out, { dashZero: false })} ${kpis.uom}`}
-          icon={ArrowUpFromLine}
-          tone="danger"
-          className="[&_.ui-kpi__value]:!text-[#ef4444]"
-        />
-        <KpiCard
-          label="Total Transfers"
-          value={`${formatQty(kpis.transfers, { dashZero: false })} ${kpis.uom}`}
-          icon={ArrowLeftRight}
-          tone="info"
-          className="[&_.ui-kpi__value]:!text-[#2563eb]"
-        />
-        <KpiCard
-          label="Total Adjustments"
-          value={`${formatQty(kpis.adjustments, { dashZero: false })} ${kpis.uom}`}
-          icon={ClipboardList}
-          tone="warning"
-          className="[&_.ui-kpi__value]:!text-[#ea580c]"
-        />
-        <KpiCard
-          label="Total Transactions"
-          value={Number(kpis.total_transactions).toLocaleString("en-IN")}
-          icon={Hash}
-          tone="primary"
-          className="[&_.ui-kpi__value]:!text-[#7c3aed]"
-        />
       </div>
 
       <div className="ui-card p-4 sm:p-5">

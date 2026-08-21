@@ -102,7 +102,7 @@ export default function TaxReports() {
         onMonthChange={setMonth}
         branch={branch}
         onBranchChange={setBranch}
-        searchPlaceholder="Search GSTIN, customer..."
+        searchPlaceholder="Search"
       >
         <div>
           <label className="mb-1 block text-xs font-medium text-slate-500">Year</label>

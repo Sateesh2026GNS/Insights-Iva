@@ -218,7 +218,7 @@ export default function ResourcePage({
           <DataTable
             columns={tableColumns}
             data={rows}
-            searchPlaceholder="Search..."
+            searchPlaceholder="Search"
             searchKeys={searchKeys}
             filters={filters}
             emptyState={

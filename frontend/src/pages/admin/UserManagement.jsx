@@ -325,7 +325,7 @@ export default function UserManagement() {
             columns={columns}
             data={users}
             searchKeys={["full_name", "email", "phone", "employee_id", "department", "designation", "plant_code"]}
-            searchPlaceholder="Search users by name, email, phone, department, plant code…"
+            searchPlaceholder="Search"
             pageSize={10}
           />
         )}

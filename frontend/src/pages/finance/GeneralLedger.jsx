@@ -139,7 +139,7 @@ export default function GeneralLedger() {
         onMonthChange={setMonth}
         branch={branch}
         onBranchChange={setBranch}
-        searchPlaceholder="Search voucher, account, narration..."
+        searchPlaceholder="Search"
       >
         <div>
           <label className="mb-1 block text-xs font-medium text-slate-500">Cost Center</label>

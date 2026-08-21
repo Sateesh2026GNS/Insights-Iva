@@ -320,12 +320,6 @@ function KpiStrip({ cards = [] }) {
                 label={trendLabel}
                 mode={isMachines ? "utilization" : trendIsPct ? "change" : "info"}
               />
-              {targetLink ? (
-                <span className="inline-flex shrink-0 items-center gap-0.5 text-[11px] font-semibold text-[var(--color-text-muted)] transition-colors group-hover:text-[var(--color-primary)]">
-                  {t("common.view", "View")}
-                  <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" aria-hidden />
-                </span>
-              ) : null}
             </div>
           </>
         );
@@ -444,9 +438,9 @@ function PendingTasks({ overview, inventoryBlocks = [], alerts = [], profile }) 
             <li key={task.id}>
               <Link
                 to={task.to}
-                className="flex items-center justify-between gap-3 rounded-lg border border-[#ececf0] bg-[#fafafa] px-3 py-2.5 transition hover:bg-[#f3f3f6]"
+                className="flex items-center justify-between gap-3 rounded-lg border border-[#ececf0] bg-[#fafafa] px-3 py-2.5 transition hover:bg-[#f3f3f6] dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-750"
               >
-                <span className="text-[13px] font-medium text-[#1a1a1f]">{task.label}</span>
+                <span className="text-[13px] font-medium text-[#1a1a1f] dark:text-white">{task.label}</span>
                 <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold tabular-nums ${toneClass[task.tone]}`}>
                   {Number(task.value).toLocaleString()}
                   <ArrowRight className="h-3 w-3 opacity-70" aria-hidden />
@@ -488,12 +482,12 @@ function FinancialSnapshot({ inventoryBlocks = [] }) {
         {rows.map((row) => {
           const Icon = row.icon;
           return (
-            <li key={row.label} className="flex items-center justify-between gap-3 rounded-lg bg-[#f3f3f6] px-3 py-2.5">
-              <span className="flex items-center gap-2 text-[13px] text-[#4a4a55]">
+            <li key={row.label} className="flex items-center justify-between gap-3 rounded-lg bg-[#f3f3f6] px-3 py-2.5 dark:bg-slate-800">
+              <span className="flex items-center gap-2 text-[13px] text-[#4a4a55] dark:text-slate-300">
                 <Icon className="h-4 w-4 text-[var(--color-primary)]" aria-hidden />
                 {row.label}
               </span>
-              <span className="text-[13px] font-bold tabular-nums text-[#1a1a1f]">{row.value}</span>
+              <span className="text-[13px] font-bold tabular-nums text-[#1a1a1f] dark:text-white">{row.value}</span>
             </li>
           );
         })}
@@ -512,7 +506,7 @@ function ProductionOverview({ chartSets }) {
       title={t("refDashboard.productionOverview")}
       className="h-full"
       action={
-        <div className="flex rounded-lg border border-[#e8e8ee] bg-[#f3f3f6] p-0.5 text-[11px] font-semibold" role="tablist" aria-label={t("refDashboard.productionOverview")}>
+        <div className="flex rounded-lg border border-[#e8e8ee] bg-[#f3f3f6] p-0.5 text-[11px] font-semibold dark:border-slate-700 dark:bg-slate-800" role="tablist" aria-label={t("refDashboard.productionOverview")}>
           {Object.entries(PERIOD_KEYS).map(([label, key]) => (
             <button
               key={label}
@@ -520,7 +514,7 @@ function ProductionOverview({ chartSets }) {
               role="tab"
               aria-selected={period === label}
               onClick={() => setPeriod(label)}
-              className={`rounded-md px-2.5 py-1 transition-colors ${period === label ? "bg-white text-[#1a1a1f] shadow-sm" : "text-[#6b6b76]"}`}
+              className={`rounded-md px-2.5 py-1 transition-colors ${period === label ? "bg-white text-[#1a1a1f] shadow-sm dark:bg-slate-700 dark:text-white" : "text-[#6b6b76] dark:text-slate-400"}`}
             >
               {t(`refDashboard.${key}`)}
             </button>
@@ -573,8 +567,8 @@ function ShopFloorStatus({ statusData = [] }) {
             </PieChart>
           </ResponsiveContainer>
           <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-[10px] font-medium text-[#8a8a96]">{t("refDashboard.totalMachines")}</span>
-            <span className="text-2xl font-bold text-[#1a1a1f]">{total}</span>
+            <span className="text-[10px] font-medium text-[#8a8a96] dark:text-slate-400">{t("refDashboard.totalMachines")}</span>
+            <span className="text-2xl font-bold text-[#1a1a1f] dark:text-white">{total}</span>
           </div>
         </div>
         <ul className="w-full space-y-2 text-sm">
@@ -582,11 +576,11 @@ function ShopFloorStatus({ statusData = [] }) {
             const key = SHOP_FLOOR_KEYS[item.name];
             return (
               <li key={item.name} className="flex items-center justify-between gap-2">
-                <span className="flex items-center gap-2 text-[#4a4a55]">
+                <span className="flex items-center gap-2 text-[#4a4a55] dark:text-slate-300">
                   <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: item.color }} />
                   <span>{key ? t(`refDashboard.${key}`) : item.name}</span>
                 </span>
-                <span className="shrink-0 font-bold tabular-nums text-[#1a1a1f]">{item.value}</span>
+                <span className="shrink-0 font-bold tabular-nums text-[#1a1a1f] dark:text-white">{item.value}</span>
               </li>
             );
           })}
@@ -601,7 +595,7 @@ function TopMachines({ machines = [] }) {
   if (!machines.length) {
     return (
       <CardShell title={t("refDashboard.topMachines")} className="h-full">
-        <p className="py-8 text-center text-sm text-[#8a8a96]">{t("common.noData", "No data available.")}</p>
+        <p className="py-8 text-center text-sm text-[#8a8a96] dark:text-slate-400">{t("common.noData", "No data available.")}</p>
       </CardShell>
     );
   }
@@ -615,10 +609,10 @@ function TopMachines({ machines = [] }) {
             </div>
             <div className="min-w-0 flex-1">
               <div className="mb-1 flex justify-between text-xs">
-                <span className="font-semibold text-[#1a1a1f]">{m.id}</span>
+                <span className="font-semibold text-[#1a1a1f] dark:text-white">{m.id}</span>
                 <span className="font-bold tabular-nums text-[var(--color-primary)]">{m.utilization}%</span>
               </div>
-              <div className="h-2 overflow-hidden rounded-full bg-[#f3f3f6]">
+              <div className="h-2 overflow-hidden rounded-full bg-[#f3f3f6] dark:bg-slate-800">
                 <div className="h-full rounded-full bg-[var(--color-primary)]" style={{ width: `${m.utilization}%` }} />
               </div>
             </div>
@@ -634,26 +628,26 @@ function OrdersOverview({ overview = EMPTY_ORDERS }) {
   const labels = overview.labels || {};
   const stats = [
     { label: labels.total || t("refDashboard.totalOrders"), value: overview.total, color: "text-[var(--color-primary)]" },
-    { label: labels.inProgress || t("refDashboard.inProgress"), value: overview.inProgress, color: "text-[#b45309]" },
-    { label: labels.completed || t("refDashboard.completed"), value: overview.completed, color: "text-[#15803d]" },
-    { label: labels.onHold || t("refDashboard.onHold"), value: overview.onHold, color: "text-[#ef4444]" },
+    { label: labels.inProgress || t("refDashboard.inProgress"), value: overview.inProgress, color: "text-[#b45309] dark:text-amber-400" },
+    { label: labels.completed || t("refDashboard.completed"), value: overview.completed, color: "text-[#15803d] dark:text-emerald-400" },
+    { label: labels.onHold || t("refDashboard.onHold"), value: overview.onHold, color: "text-[#ef4444] dark:text-rose-400" },
   ];
   return (
     <CardShell title={t("refDashboard.ordersOverview")}>
       <div className="mb-4 grid grid-cols-2 gap-3">
         {stats.map((s) => (
-          <div key={s.label} className="rounded-lg bg-[#f3f3f6] px-3 py-2.5 text-center">
-            <p className="text-[10px] font-medium text-[#8a8a96]">{s.label}</p>
+          <div key={s.label} className="rounded-lg bg-[#f3f3f6] px-3 py-2.5 text-center dark:bg-slate-800">
+            <p className="text-[10px] font-medium text-[#8a8a96] dark:text-slate-400">{s.label}</p>
             <p className={`text-xl font-bold tabular-nums ${s.color}`}>{Number(s.value ?? 0).toLocaleString()}</p>
           </div>
         ))}
       </div>
       <div>
         <div className="mb-1 flex justify-between text-xs">
-          <span className="font-medium text-[#4a4a55]">{t("refDashboard.overallProgress")}</span>
+          <span className="font-medium text-[#4a4a55] dark:text-slate-300">{t("refDashboard.overallProgress")}</span>
           <span className="font-bold tabular-nums text-[var(--color-primary)]">{overview.progress}%</span>
         </div>
-        <div className="h-2.5 overflow-hidden rounded-full bg-[#f3f3f6]">
+        <div className="h-2.5 overflow-hidden rounded-full bg-[#f3f3f6] dark:bg-slate-800">
           <div className="h-full rounded-full bg-[var(--color-primary)]" style={{ width: `${overview.progress}%` }} />
         </div>
       </div>
@@ -666,7 +660,7 @@ function InventorySummary({ blocks = [], warehouses = [] }) {
   if (!blocks.length) {
     return (
       <CardShell title={t("refDashboard.inventorySummary")}>
-        <p className="py-8 text-center text-sm text-[#8a8a96]">{t("common.noData", "No data available.")}</p>
+        <p className="py-8 text-center text-sm text-[#8a8a96] dark:text-slate-400">{t("common.noData", "No data available.")}</p>
       </CardShell>
     );
   }
@@ -677,7 +671,7 @@ function InventorySummary({ blocks = [], warehouses = [] }) {
           const Icon = blockIcons[b.icon] || Boxes;
           const labelKey = INVENTORY_KEYS[i];
           return (
-            <div key={b.label} className="flex items-center gap-3 rounded-lg border border-[#ececf0] px-3 py-2.5">
+            <div key={b.label} className="flex items-center gap-3 rounded-lg border border-[#ececf0] px-3 py-2.5 dark:border-slate-700 dark:bg-slate-800/60">
               <div
                 className="flex h-9 w-9 items-center justify-center rounded-lg"
                 style={{ backgroundColor: `${b.color || "var(--color-primary)"}18`, color: b.color || "var(--color-primary)" }}
@@ -685,19 +679,19 @@ function InventorySummary({ blocks = [], warehouses = [] }) {
                 <Icon className="h-4 w-4" />
               </div>
               <div>
-                <p className="text-lg font-bold tabular-nums text-[#1a1a1f]">{Number(b.count ?? 0).toLocaleString()}</p>
-                <p className="text-[10px] leading-tight text-[#8a8a96]">
+                <p className="text-lg font-bold tabular-nums text-[#1a1a1f] dark:text-white">{Number(b.count ?? 0).toLocaleString()}</p>
+                <p className="text-[10px] leading-tight text-[#8a8a96] dark:text-slate-400">
                   {labelKey ? t(`refDashboard.${labelKey}`) : b.label}
                 </p>
                 {b.quantity !== undefined && b.quantity !== b.count && b.quantity > 0 ? (
-                  <p className="text-[9px] font-medium text-[#9a9aa5]">{Number(b.quantity).toLocaleString()} units</p>
+                  <p className="text-[9px] font-medium text-[#9a9aa5] dark:text-slate-400">{Number(b.quantity).toLocaleString()} units</p>
                 ) : null}
               </div>
             </div>
           );
         })}
       </div>
-      <p className="mb-2 text-xs font-semibold text-[#4a4a55]">{t("refDashboard.warehouseLocation")}</p>
+      <p className="mb-2 text-xs font-semibold text-[#4a4a55] dark:text-slate-300">{t("refDashboard.warehouseLocation")}</p>
       <div className="flex h-2.5 overflow-hidden rounded-full">
         {warehouses.map((w, i) => (
           <div
@@ -707,7 +701,7 @@ function InventorySummary({ blocks = [], warehouses = [] }) {
           />
         ))}
       </div>
-      <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-[#8a8a96]">
+      <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-[#8a8a96] dark:text-slate-400">
         {warehouses.map((w, i) => (
           <span key={w.name} className="flex items-center gap-1">
             <span className="h-2 w-2 rounded-full" style={{ backgroundColor: w.color || "#9a9aa5" }} />
@@ -731,7 +725,7 @@ function AlertsNotifications({ alerts = [] }) {
       }
     >
       {!alerts.length ? (
-        <p className="py-6 text-center text-sm text-[#8a8a96]">{t("common.noData", "No data available.")}</p>
+        <p className="py-6 text-center text-sm text-[#8a8a96] dark:text-slate-400">{t("common.noData", "No data available.")}</p>
       ) : (
         <ul className="max-h-[220px] space-y-3 overflow-y-auto pr-1">
           {alerts.map((a, i) => {
@@ -745,15 +739,15 @@ function AlertsNotifications({ alerts = [] }) {
                   <Icon className="h-4 w-4" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-sm leading-snug text-[#1a1a1f]">{a.message}</p>
-                  <p className="mt-0.5 text-[11px] text-[#9a9aa5]">{a.time || "—"}</p>
+                  <p className="text-sm leading-snug text-[#1a1a1f] dark:text-white">{a.message}</p>
+                  <p className="mt-0.5 text-[11px] text-[#9a9aa5] dark:text-slate-400">{a.time || "—"}</p>
                 </div>
               </>
             );
             return (
               <li key={a.id || i}>
                 {a.link ? (
-                  <Link to={a.link} className="-m-1 flex gap-3 rounded-lg p-1 hover:bg-[#f3f3f6]">
+                  <Link to={a.link} className="-m-1 flex gap-3 rounded-lg p-1 hover:bg-[#f3f3f6] dark:hover:bg-slate-800">
                     {inner}
                   </Link>
                 ) : (
@@ -784,12 +778,12 @@ function QuickActions() {
             <Link
               key={a.label}
               to={a.to}
-              className="flex flex-col items-center justify-center gap-2 rounded-lg border border-[#e4e4ea] bg-[#f3f3f6] p-3.5 text-center transition hover:bg-[#ececf0]"
+              className="flex flex-col items-center justify-center gap-2 rounded-lg border border-[#e4e4ea] bg-[#f3f3f6] p-3.5 text-center transition hover:bg-[#ececf0] dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-750"
             >
               <span className="flex h-8 w-8 items-center justify-center rounded-lg text-white" style={{ backgroundColor: a.bg }}>
                 <Plus className="h-4 w-4" aria-hidden />
               </span>
-              <span className="text-[11px] font-semibold leading-tight text-[#1a1a1f]">
+              <span className="text-[11px] font-semibold leading-tight text-[#1a1a1f] dark:text-white">
                 {labelKey ? t(`refDashboard.${labelKey}`) : a.label}
               </span>
             </Link>
@@ -812,12 +806,12 @@ function RecentWorkOrders({ workOrders = [] }) {
       }
     >
       {!workOrders.length ? (
-        <p className="py-6 text-center text-sm text-[#8a8a96]">{t("common.noRecords", "No records found.")}</p>
+        <p className="py-6 text-center text-sm text-[#8a8a96] dark:text-slate-400">{t("common.noRecords", "No records found.")}</p>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full min-w-[420px] text-left text-sm">
             <thead>
-              <tr className="border-b border-[#e8e8ee] bg-[#f5f5f5] text-[12px] font-medium text-[#6b6b76]">
+              <tr className="border-b border-[#e8e8ee] bg-[#f5f5f5] text-[12px] font-medium text-[#6b6b76] dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-300">
                 <th className="px-3 py-2.5 font-medium">{t("refDashboard.woNo")}</th>
                 <th className="px-3 py-2.5 font-medium">{t("refDashboard.product")}</th>
                 <th className="px-3 py-2.5 font-medium">{t("refDashboard.qty")}</th>
@@ -827,14 +821,14 @@ function RecentWorkOrders({ workOrders = [] }) {
             </thead>
             <tbody>
               {workOrders.map((wo) => (
-                <tr key={wo.wo} className="border-b border-[#f0f0f4] last:border-0">
+                <tr key={wo.wo} className="border-b border-[#f0f0f4] last:border-0 dark:border-slate-700/60">
                   <td className="px-3 py-2.5 font-semibold text-[var(--color-primary)]">{wo.wo}</td>
-                  <td className="px-3 py-2.5 text-[#1a1a1f]">{wo.product}</td>
-                  <td className="px-3 py-2.5 tabular-nums text-[#4a4a55]">{wo.qty}</td>
+                  <td className="px-3 py-2.5 text-[#1a1a1f] dark:text-white">{wo.product}</td>
+                  <td className="px-3 py-2.5 tabular-nums text-[#4a4a55] dark:text-slate-300">{wo.qty}</td>
                   <td className="px-3 py-2.5">
                     <StatusBadge status={wo.status} />
                   </td>
-                  <td className="px-3 py-2.5 text-xs text-[#8a8a96]">{wo.due}</td>
+                  <td className="px-3 py-2.5 text-xs text-[#8a8a96] dark:text-slate-400">{wo.due}</td>
                 </tr>
               ))}
             </tbody>
@@ -890,7 +884,7 @@ function TodaysSummary({ items = [] }) {
   if (!filteredItems.length) {
     return (
       <CardShell title={t("refDashboard.todaysSummary")}>
-        <p className="py-8 text-center text-sm text-[#8a8a96]">{t("common.noData", "No data available.")}</p>
+        <p className="py-8 text-center text-sm text-[#8a8a96] dark:text-slate-400">{t("common.noData", "No data available.")}</p>
       </CardShell>
     );
   }
@@ -905,12 +899,12 @@ function TodaysSummary({ items = [] }) {
               ? t(`refDashboard.${SUMMARY_KEYS[i]}`)
               : item.label;
           return (
-            <li key={item.key || item.label || i} className="flex items-center justify-between gap-3 rounded-lg bg-[#f3f3f6] px-3 py-2.5">
-              <span className="flex items-center gap-2.5 text-sm text-[#4a4a55]">
+            <li key={item.key || item.label || i} className="flex items-center justify-between gap-3 rounded-lg bg-[#f3f3f6] px-3 py-2.5 dark:bg-slate-800">
+              <span className="flex items-center gap-2.5 text-sm text-[#4a4a55] dark:text-slate-300">
                 <Icon className="h-4 w-4 text-[var(--color-primary)]" aria-hidden />
                 {label}
               </span>
-              <span className="text-sm font-bold tabular-nums text-[#1a1a1f]">{item.value}</span>
+              <span className="text-sm font-bold tabular-nums text-[#1a1a1f] dark:text-white">{item.value}</span>
             </li>
           );
         })}
@@ -1145,7 +1139,7 @@ export default function ReferenceDashboard() {
             <button
               type="button"
               onClick={() => load(false)}
-              className="mt-4 inline-flex items-center justify-center rounded-lg border border-[#e4e4ea] px-4 py-2 text-[13px] font-semibold text-[#1a1a1f] shadow-sm transition hover:bg-[#ececf0]"
+              className="mt-4 inline-flex items-center justify-center rounded-lg border border-[#e4e4ea] px-4 py-2 text-[13px] font-semibold text-[#1a1a1f] shadow-sm transition hover:bg-[#ececf0] dark:border-slate-700 dark:text-white"
               style={{ background: YELLOW }}
             >
               {t("common.retry", "Retry")}

@@ -126,7 +126,7 @@ export default function AccountsPayable() {
         onMonthChange={setMonth}
         branch={branch}
         onBranchChange={setBranch}
-        searchPlaceholder="Search bill, vendor, PO, invoice..."
+        searchPlaceholder="Search"
       />
 
       <div className="ui-card p-4">

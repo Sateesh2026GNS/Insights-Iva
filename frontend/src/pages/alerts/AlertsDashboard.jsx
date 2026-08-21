@@ -485,7 +485,7 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by title, description, assignee…"
+              placeholder="Search"
               className="ui-input w-full !pl-10"
             />
           </div>

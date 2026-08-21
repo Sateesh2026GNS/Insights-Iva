@@ -291,7 +291,7 @@ export default function Dispatch() {
         <DataTable
           columns={columns}
           data={rows}
-          searchPlaceholder="Search dispatch, SO, customer..."
+          searchPlaceholder="Search"
           searchKeys={["dispatch_number", "challan_number", "so_number", "customer_name", "courier"]}
         />
       </div>

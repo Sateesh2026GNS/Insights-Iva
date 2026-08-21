@@ -147,7 +147,7 @@ export default function JournalEntries() {
         onMonthChange={setMonth}
         branch={branch}
         onBranchChange={setBranch}
-        searchPlaceholder="Search journal entries..."
+        searchPlaceholder="Search"
       />
 
       <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">

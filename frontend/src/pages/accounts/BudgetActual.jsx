@@ -165,7 +165,7 @@ export default function BudgetActual() {
         financialYear={financialYear} onFinancialYearChange={setFinancialYear}
         month={month} onMonthChange={setMonth}
         branch={branch} onBranchChange={setBranch}
-        searchPlaceholder="Search budget categories..."
+        searchPlaceholder="Search"
       />
 
       <div className="grid gap-6 lg:grid-cols-3">

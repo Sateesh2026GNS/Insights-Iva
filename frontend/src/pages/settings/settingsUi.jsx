@@ -14,17 +14,17 @@ export function SettingsCard({ title, description, icon: Icon, soft, onClick }) 
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-2">
-          <h3 className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
+          <h3 className="truncate text-sm font-semibold text-slate-900 dark:text-white">
             {title}
           </h3>
           <span
             aria-hidden
-            className="shrink-0 text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-[var(--color-primary)] dark:text-slate-600 dark:group-hover:text-[var(--color-primary)]"
+            className="shrink-0 text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-[var(--color-primary)] dark:text-slate-400 dark:group-hover:text-[var(--color-primary)]"
           >
             →
           </span>
         </div>
-        <p className="mt-0.5 line-clamp-2 text-xs leading-snug text-slate-500 dark:text-slate-400">
+        <p className="mt-0.5 line-clamp-2 text-xs leading-snug text-slate-500 dark:text-slate-300">
           {description}
         </p>
       </div>
@@ -37,10 +37,10 @@ export function PanelShell({ title, description, children, actions, eyebrow = nu
     <div className="animate-in fade-in slide-in-from-right-2 space-y-5 duration-300">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div className="min-w-0 space-y-1">
-          {eyebrow ? <p className="ui-eyebrow">{eyebrow}</p> : null}
+          {eyebrow ? <p className="ui-eyebrow dark:text-teal-400">{eyebrow}</p> : null}
           {/* Section title kept for nested settings panels; Navbar owns top-level page name */}
-          {title ? <h2 className="ui-section-title text-[var(--text-lg)] font-semibold text-[var(--color-text)]">{title}</h2> : null}
-          {description ? <p className="ui-subtitle mt-0">{description}</p> : null}
+          {title ? <h2 className="ui-section-title text-[var(--text-lg)] font-semibold text-[var(--color-text)] dark:text-white">{title}</h2> : null}
+          {description ? <p className="ui-subtitle mt-0 dark:text-slate-300">{description}</p> : null}
         </div>
         {actions ? <div className="ui-toolbar shrink-0">{actions}</div> : null}
       </div>
@@ -55,7 +55,7 @@ export function SectionCard({ title, children, className = "" }) {
       className={`ui-card p-5 sm:p-6 ${className}`}
     >
       {title && (
-        <h2 className="mb-4 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+        <h2 className="mb-4 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-300">
           {title}
         </h2>
       )}
@@ -66,7 +66,7 @@ export function SectionCard({ title, children, className = "" }) {
 
 export function Field({ label, children, className = "" }) {
   return (
-    <label className={`block text-sm font-medium text-slate-700 dark:text-slate-300 ${className}`}>
+    <label className={`block text-sm font-medium text-slate-700 dark:text-white ${className}`}>
       {label}
       <div className="mt-1.5">{children}</div>
     </label>
@@ -79,9 +79,9 @@ export function ToggleRow({ label, description, checked, onChange }) {
   return (
     <label className="flex cursor-pointer items-start justify-between gap-4 rounded-xl border border-slate-100 px-4 py-3 transition hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800/80">
       <span>
-        <span className="block text-sm font-medium text-slate-800 dark:text-slate-100">{label}</span>
+        <span className="block text-sm font-medium text-slate-800 dark:text-white">{label}</span>
         {description && (
-          <span className="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">{description}</span>
+          <span className="mt-0.5 block text-xs text-slate-500 dark:text-slate-300">{description}</span>
         )}
       </span>
       <input

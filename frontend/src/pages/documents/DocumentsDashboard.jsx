@@ -419,7 +419,7 @@ Description:  ${doc.description || "No description provided."}
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search documents by title, file name, uploader..."
+              placeholder="Search"
               className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-4 text-sm outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 transition-all"
             />
           </div>

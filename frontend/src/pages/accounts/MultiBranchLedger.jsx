@@ -93,7 +93,7 @@ export default function MultiBranchLedger() {
         onMonthChange={setMonth}
         branch={branch}
         onBranchChange={setBranch}
-        searchPlaceholder="Search ledger accounts..."
+        searchPlaceholder="Search"
       />
 
       <div className="grid gap-6 lg:grid-cols-3">

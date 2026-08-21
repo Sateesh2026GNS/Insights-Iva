@@ -972,7 +972,7 @@ export default function AccountsPayable() {
               onMonthChange={setMonth}
               branch={branch}
               onBranchChange={setBranch}
-              searchPlaceholder="Search bill no., vendor, PO, invoice…"
+              searchPlaceholder="Search"
             />
 
             <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
@@ -1011,7 +1011,7 @@ export default function AccountsPayable() {
               onFinancialYearChange={setFinancialYear}
               month={month}
               onMonthChange={setMonth}
-              searchPlaceholder="Search vendor, reference, method…"
+              searchPlaceholder="Search"
             />
 
             <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">

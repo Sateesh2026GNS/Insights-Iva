@@ -93,6 +93,7 @@ export function Select({
   options = [],
   placeholder = "Select...",
   className = "",
+  children,
   ...props
 }) {
   return (
@@ -101,12 +102,18 @@ export function Select({
         className={`ui-select ${error ? "is-error" : ""} ${className}`.trim()}
         {...props}
       >
-        <option value="">{placeholder}</option>
-        {options.map((opt) => (
-          <option key={opt.value} value={opt.value}>
-            {opt.label}
-          </option>
-        ))}
+        {children ? (
+          children
+        ) : (
+          <>
+            {placeholder ? <option value="">{placeholder}</option> : null}
+            {options.map((opt) => (
+              <option key={opt.value ?? opt.id ?? opt.label} value={opt.value ?? opt.id}>
+                {opt.label ?? opt.name}
+              </option>
+            ))}
+          </>
+        )}
       </select>
     </FormField>
   );

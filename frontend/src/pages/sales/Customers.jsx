@@ -194,7 +194,7 @@ export default function Customers() {
     <div className="min-h-full" style={{ background: PAGE_BG }}>
       <div className="mx-auto max-w-[1400px] px-4 py-5 sm:px-6 lg:px-8">
         <div className="ui-card p-4 sm:p-5">
-          <div className="mb-4 flex flex-wrap items-center gap-2.5">
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="relative ui-search-wrap min-w-[10rem] flex-1">
               <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9a9aa5]" />
               <input
@@ -204,32 +204,34 @@ export default function Customers() {
                 className="w-full rounded-full border border-[#e8e8ee] bg-[#f3f3f6] py-2.5 pl-10 pr-4 text-[13px] outline-none placeholder:text-[#a0a0ab] focus:border-[#d0d0d8] focus:bg-white"
               />
             </div>
-            <Button
-              variant="outline"
-              to="/masters/customers/bulk-import"
-              leftIcon={<Upload className="h-4 w-4" />}
-            >
-              Bulk Import
-            </Button>
-            <Button
-              variant="outline"
-              type="button"
-              onClick={onExport}
-              leftIcon={<FileSpreadsheet className="h-4 w-4" />}
-            >
-              Export (xlsx)
-            </Button>
-            <Button
-              variant="primary"
-              type="button"
-              onClick={() => {
-                setEditing(null);
-                setPartyOpen(true);
-              }}
-              leftIcon={<Plus className="h-4 w-4" />}
-            >
-              Create Customer
-            </Button>
+            <div className="flex flex-wrap items-center gap-2.5 sm:justify-end">
+              <Button
+                variant="outline"
+                to="/masters/customers/bulk-import"
+                leftIcon={<Upload className="h-4 w-4" />}
+              >
+                Bulk Import
+              </Button>
+              <Button
+                variant="outline"
+                type="button"
+                onClick={onExport}
+                leftIcon={<FileSpreadsheet className="h-4 w-4" />}
+              >
+                Export (xlsx)
+              </Button>
+              <Button
+                variant="primary"
+                type="button"
+                onClick={() => {
+                  setEditing(null);
+                  setPartyOpen(true);
+                }}
+                leftIcon={<Plus className="h-4 w-4" />}
+              >
+                Create Customer
+              </Button>
+            </div>
           </div>
 
           <div className="overflow-hidden rounded-lg border border-[#ececf0]">

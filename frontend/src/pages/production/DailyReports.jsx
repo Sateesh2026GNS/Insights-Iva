@@ -267,6 +267,34 @@ function NewReportModal({ onClose, onSuccess }) {
   );
 }
 
+const KPI_TONE_RING = {
+  primary: "hover:ring-2 hover:ring-[var(--kpi-primary)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-primary)]",
+  info: "hover:ring-2 hover:ring-[var(--kpi-info)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-info)]",
+  success: "hover:ring-2 hover:ring-[var(--kpi-success)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-success)]",
+  warning: "hover:ring-2 hover:ring-[var(--kpi-warning)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-warning)]",
+  danger: "hover:ring-2 hover:ring-[var(--kpi-danger)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-danger)]",
+  yellow: "hover:ring-2 hover:ring-[var(--kpi-warning)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-warning)]",
+  violet: "hover:ring-2 hover:ring-[var(--kpi-violet)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-violet)]",
+  teal: "hover:ring-2 hover:ring-[var(--kpi-teal)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-teal)]",
+  orange: "hover:ring-2 hover:ring-[var(--kpi-orange)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-orange)]",
+  neutral: "hover:ring-2 hover:ring-[var(--kpi-neutral)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-neutral)]",
+};
+
+function ClickableKpiCard({ onClick, title, tone, children }) {
+  const resolvedTone = tone || children?.props?.tone || "primary";
+  const ringClass = KPI_TONE_RING[resolvedTone] || KPI_TONE_RING.primary;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`h-full w-full rounded-[var(--radius-lg)] text-left transition focus:outline-none ${ringClass}`}
+      title={title}
+    >
+      {children}
+    </button>
+  );
+}
+
 export default function DailyReports() {
   const tenantId = useTenantId();
   const initial = lastDaysRange(7);
@@ -275,11 +303,19 @@ export default function DailyReports() {
   const [dateFrom, setDateFrom] = useState(initial.from);
   const [dateTo, setDateTo] = useState(initial.to);
   const [searchQuery, setSearchQuery] = useState("");
+  const [kpiFilter, setKpiFilter] = useState("all");
   const [includeSynced, setIncludeSynced] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [showNew, setShowNew] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
+
+  const applyKpiPreset = (preset) => {
+    setKpiFilter(preset);
+    if (preset === "all") {
+      setSearchQuery("");
+    }
+  };
 
   const loadReports = useCallback(async () => {
     setLoading(true);
@@ -306,6 +342,17 @@ export default function DailyReports() {
 
   const filtered = useMemo(() => {
     let rows = includeSynced ? reports : reports.filter((r) => !isSyncedRow(r));
+    if (kpiFilter === "scrap") {
+      rows = rows.filter((r) => scrapOf(r) > 0);
+    } else if (kpiFilter === "downtime") {
+      rows = rows.filter((r) => num(r.downtime_minutes) > 0);
+    } else if (kpiFilter === "yield") {
+      rows = rows.filter((r) => {
+        const prod = producedOf(r);
+        const good = goodOf(r);
+        return prod > 0 && Math.round((good / prod) * 100) >= 95;
+      });
+    }
     if (!searchQuery.trim()) return rows;
     const q = searchQuery.toLowerCase();
     return rows.filter((r) =>
@@ -313,18 +360,19 @@ export default function DailyReports() {
         (v) => v && String(v).toLowerCase().includes(q)
       )
     );
-  }, [reports, includeSynced, searchQuery]);
+  }, [reports, includeSynced, kpiFilter, searchQuery]);
 
   useEffect(() => {
     setPage(1);
-  }, [searchQuery, pageSize, dateFrom, dateTo, includeSynced]);
+  }, [searchQuery, pageSize, dateFrom, dateTo, includeSynced, kpiFilter]);
 
   const kpis = useMemo(() => {
     let produced = 0;
     let good = 0;
     let scrap = 0;
     let downtime = 0;
-    filtered.forEach((r) => {
+    const baseRows = includeSynced ? reports : reports.filter((r) => !isSyncedRow(r));
+    baseRows.forEach((r) => {
       produced += producedOf(r);
       good += goodOf(r);
       scrap += scrapOf(r);
@@ -336,7 +384,7 @@ export default function DailyReports() {
       downtime,
       yieldPct: produced > 0 ? Math.round((good / produced) * 1000) / 10 : 0,
     };
-  }, [filtered]);
+  }, [reports, includeSynced]);
 
   const total = filtered.length;
   const totalPages = Math.max(1, Math.ceil(total / pageSize) || 1);
@@ -478,10 +526,18 @@ export default function DailyReports() {
   return (
     <div className="space-y-5 pb-4">
       <div className="ui-grid-kpi">
-        <KpiCard label="Produced" value={kpis.produced.toLocaleString()} icon={Factory} tone="primary" />
-        <KpiCard label="Yield" value={`${kpis.yieldPct}%`} icon={CheckCircle2} tone="success" />
-        <KpiCard label="Scrap" value={kpis.scrap.toLocaleString()} icon={AlertTriangle} tone="danger" />
-        <KpiCard label="Downtime" value={`${kpis.downtime} min`} icon={Clock3} tone="warning" />
+        <ClickableKpiCard onClick={() => applyKpiPreset("all")} title="Show all reports" tone="primary">
+          <KpiCard label="Produced" value={kpis.produced.toLocaleString()} icon={Factory} tone="primary" meta="Click to filter" />
+        </ClickableKpiCard>
+        <ClickableKpiCard onClick={() => applyKpiPreset("yield")} title="Show high yield reports" tone="success">
+          <KpiCard label="Yield" value={`${kpis.yieldPct}%`} icon={CheckCircle2} tone="success" meta="Click to filter" />
+        </ClickableKpiCard>
+        <ClickableKpiCard onClick={() => applyKpiPreset("scrap")} title="Show reports with scrap" tone="danger">
+          <KpiCard label="Scrap" value={kpis.scrap.toLocaleString()} icon={AlertTriangle} tone="danger" meta="Click to filter" />
+        </ClickableKpiCard>
+        <ClickableKpiCard onClick={() => applyKpiPreset("downtime")} title="Show reports with downtime" tone="warning">
+          <KpiCard label="Downtime" value={`${kpis.downtime} min`} icon={Clock3} tone="warning" meta="Click to filter" />
+        </ClickableKpiCard>
       </div>
 
       <div className="ui-card overflow-hidden p-4 sm:p-5">
@@ -490,7 +546,7 @@ export default function DailyReports() {
             <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]" />
             <input
               type="search"
-              placeholder="Search WO, product, machine…"
+              placeholder="Search"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="ui-input !rounded-full pl-10"
@@ -595,20 +651,18 @@ export default function DailyReports() {
                           ? "Nothing in this date range yet."
                           : "No logged reports in this range. Create one, or include synced work orders."
                     }
-                    actionLabel="New Report"
-                    onAction={() => setShowNew(true)}
                   />
                 }
               />
             </div>
 
             <div className="mt-4 ui-pagination justify-between">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2.5 flex-nowrap whitespace-nowrap">
                 <span>Rows per page:</span>
                 <select
                   value={pageSize}
                   onChange={(e) => setPageSize(Number(e.target.value))}
-                  className="ui-select min-h-0 w-auto py-1"
+                  className="ui-pagination-select"
                 >
                   {PAGE_SIZES.map((n) => (
                     <option key={n} value={n}>

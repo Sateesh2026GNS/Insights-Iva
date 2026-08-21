@@ -9,8 +9,8 @@ import { filterBarClass, filterLabelClass, inputSearchClass, selectClass } from 
 export default function FilterBar({
   search,
   onSearchChange,
-  searchPlaceholder = "Search...",
-  searchLabel = "Search",
+  searchPlaceholder = "Search",
+  searchLabel = "",
   showSearch = true,
   filters = [],
   children,

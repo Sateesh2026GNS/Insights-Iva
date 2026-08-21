@@ -131,6 +131,45 @@ function SectionCard({ title, viewAllTo, children, className = "" }) {
   );
 }
 
+const KPI_TONE_RING = {
+  primary: "hover:ring-2 hover:ring-[var(--kpi-primary)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-primary)]",
+  info: "hover:ring-2 hover:ring-[var(--kpi-info)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-info)]",
+  success: "hover:ring-2 hover:ring-[var(--kpi-success)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-success)]",
+  warning: "hover:ring-2 hover:ring-[var(--kpi-warning)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-warning)]",
+  danger: "hover:ring-2 hover:ring-[var(--kpi-danger)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-danger)]",
+  yellow: "hover:ring-2 hover:ring-[var(--kpi-warning)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-warning)]",
+  violet: "hover:ring-2 hover:ring-[var(--kpi-violet)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-violet)]",
+  teal: "hover:ring-2 hover:ring-[var(--kpi-teal)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-teal)]",
+  orange: "hover:ring-2 hover:ring-[var(--kpi-orange)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-orange)]",
+  neutral: "hover:ring-2 hover:ring-[var(--kpi-neutral)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-neutral)]",
+};
+
+function ClickableKpiCard({ to, onClick, title, tone, children }) {
+  const resolvedTone = tone || children?.props?.tone || "primary";
+  const ringClass = KPI_TONE_RING[resolvedTone] || KPI_TONE_RING.primary;
+  if (to) {
+    return (
+      <Link
+        to={to}
+        className={`block h-full w-full rounded-[var(--radius-lg)] text-left transition focus:outline-none ${ringClass}`}
+        title={title}
+      >
+        {children}
+      </Link>
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`h-full w-full rounded-[var(--radius-lg)] text-left transition focus:outline-none ${ringClass}`}
+      title={title}
+    >
+      {children}
+    </button>
+  );
+}
+
 export default function InventoryDashboard() {
   const { user } = useAuth();
   const isPM = isProductionManager(user);
@@ -424,13 +463,27 @@ export default function InventoryDashboard() {
       />
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-7">
-        <KpiCard label="Total Items" value={Number(view.totalItems || 0).toLocaleString("en-IN")} icon={Package} tone="success" meta="All items in Inventory" />
-        <KpiCard label="Total Stock Value" value={formatInrAmount(view.stockValue)} icon={Coins} tone="info" meta="Across all warehouses" />
-        <KpiCard label="Low Stock Items" value={Number(view.lowStock || 0)} icon={AlertTriangle} tone="warning" meta="Reorder level reached" />
-        <KpiCard label="Out of Stock" value={Number(view.outOfStock || 0)} icon={PackageX} tone="danger" meta="Stock not available" />
-        <KpiCard label="Today's Stock In" value={formatInrAmount(view.stockInValue)} icon={ArrowDownToLine} tone="success" meta={`${Number(view.stockInTxns || 0)} Transactions`} />
-        <KpiCard label="Today's Stock Out" value={formatInrAmount(view.stockOutValue)} icon={ArrowUpFromLine} tone="danger" meta={`${Number(view.stockOutTxns || 0)} Transactions`} />
-        <KpiCard label="Pending Transfers" value={Number(view.pendingTransfers || 0)} icon={Truck} tone="info" meta="Awaiting approval" />
+        <ClickableKpiCard to="/inventory" title="View all inventory items" tone="primary">
+          <KpiCard label="Total Items" value={Number(view.totalItems || 0).toLocaleString("en-IN")} icon={Package} tone="primary" meta="All items in Inventory" />
+        </ClickableKpiCard>
+        <ClickableKpiCard to="/inventory/stock-ledger" title="View stock ledger" tone="info">
+          <KpiCard label="Total Stock Value" value={formatInrAmount(view.stockValue)} icon={Coins} tone="info" meta="Across all warehouses" />
+        </ClickableKpiCard>
+        <ClickableKpiCard to="/inventory?filter=low_stock" title="View low stock items" tone="warning">
+          <KpiCard label="Low Stock Items" value={Number(view.lowStock || 0)} icon={AlertTriangle} tone="warning" meta="Reorder level reached" />
+        </ClickableKpiCard>
+        <ClickableKpiCard to="/inventory?filter=out_of_stock" title="View out of stock items" tone="danger">
+          <KpiCard label="Out of Stock" value={Number(view.outOfStock || 0)} icon={PackageX} tone="danger" meta="Stock not available" />
+        </ClickableKpiCard>
+        <ClickableKpiCard to="/inventory/stock-in" title="View stock in transactions" tone="success">
+          <KpiCard label="Today's Stock In" value={formatInrAmount(view.stockInValue)} icon={ArrowDownToLine} tone="success" meta={`${Number(view.stockInTxns || 0)} Transactions`} />
+        </ClickableKpiCard>
+        <ClickableKpiCard to="/inventory/issue" title="View stock out transactions" tone="danger">
+          <KpiCard label="Today's Stock Out" value={formatInrAmount(view.stockOutValue)} icon={ArrowUpFromLine} tone="danger" meta={`${Number(view.stockOutTxns || 0)} Transactions`} />
+        </ClickableKpiCard>
+        <ClickableKpiCard to="/inventory/transfers" title="View pending transfers" tone="info">
+          <KpiCard label="Pending Transfers" value={Number(view.pendingTransfers || 0)} icon={Truck} tone="info" meta="Awaiting approval" />
+        </ClickableKpiCard>
       </div>
 
       <div className="grid gap-4 xl:grid-cols-12">

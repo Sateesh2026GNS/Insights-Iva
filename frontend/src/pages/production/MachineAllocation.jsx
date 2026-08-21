@@ -157,6 +157,34 @@ function FilterChips({ value, onChange, counts }) {
   );
 }
 
+const KPI_TONE_RING = {
+  primary: "hover:ring-2 hover:ring-[var(--kpi-primary)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-primary)]",
+  info: "hover:ring-2 hover:ring-[var(--kpi-info)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-info)]",
+  success: "hover:ring-2 hover:ring-[var(--kpi-success)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-success)]",
+  warning: "hover:ring-2 hover:ring-[var(--kpi-warning)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-warning)]",
+  danger: "hover:ring-2 hover:ring-[var(--kpi-danger)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-danger)]",
+  yellow: "hover:ring-2 hover:ring-[var(--kpi-warning)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-warning)]",
+  violet: "hover:ring-2 hover:ring-[var(--kpi-violet)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-violet)]",
+  teal: "hover:ring-2 hover:ring-[var(--kpi-teal)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-teal)]",
+  orange: "hover:ring-2 hover:ring-[var(--kpi-orange)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-orange)]",
+  neutral: "hover:ring-2 hover:ring-[var(--kpi-neutral)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-neutral)]",
+};
+
+function ClickableKpiCard({ onClick, title, tone, children }) {
+  const resolvedTone = tone || children?.props?.tone || "primary";
+  const ringClass = KPI_TONE_RING[resolvedTone] || KPI_TONE_RING.primary;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`h-full w-full rounded-[var(--radius-lg)] text-left transition focus:outline-none ${ringClass}`}
+      title={title}
+    >
+      {children}
+    </button>
+  );
+}
+
 export default function MachineAllocation() {
   const { addToast } = useToast();
   const [loading, setLoading] = useState(true);
@@ -408,16 +436,27 @@ export default function MachineAllocation() {
   return (
     <div className="space-y-5 pb-4">
       <div className="ui-grid-kpi">
-        <KpiCard label="Machines" value={summary.total_machines ?? 0} icon={Cpu} tone="primary" />
-        <KpiCard label="Allocated" value={summary.allocated ?? counts.allocated} icon={Settings2} tone="info" />
-        <KpiCard label="Free" value={summary.free_machines ?? 0} icon={Cpu} tone="success" />
-        <KpiCard label="Maintenance" value={summary.under_maintenance ?? 0} icon={Wrench} tone="danger" />
-        <KpiCard
-          label="Utilization"
-          value={`${summary.utilization_pct ?? 0}%`}
-          icon={Gauge}
-          tone="warning"
-        />
+        <ClickableKpiCard onClick={() => { setFilter("all"); setSearch(""); }} title="Show all machines" tone="primary">
+          <KpiCard label="Machines" value={summary.total_machines ?? 0} icon={Cpu} tone="primary" meta="Click to filter" />
+        </ClickableKpiCard>
+        <ClickableKpiCard onClick={() => setFilter("allocated")} title="Show allocated work orders" tone="info">
+          <KpiCard label="Allocated" value={summary.allocated ?? counts.allocated} icon={Settings2} tone="info" meta="Click to filter" />
+        </ClickableKpiCard>
+        <ClickableKpiCard onClick={() => setFilter("unassigned")} title="Show unassigned work orders" tone="success">
+          <KpiCard label="Free" value={summary.free_machines ?? 0} icon={Cpu} tone="success" meta="Click to filter" />
+        </ClickableKpiCard>
+        <ClickableKpiCard onClick={() => { setFilter("all"); setSearch("maintenance"); }} title="Show maintenance machines" tone="danger">
+          <KpiCard label="Maintenance" value={summary.under_maintenance ?? 0} icon={Wrench} tone="danger" meta="Click to filter" />
+        </ClickableKpiCard>
+        <ClickableKpiCard onClick={() => { setFilter("all"); setSearch(""); }} title="View machine utilization" tone="warning">
+          <KpiCard
+            label="Utilization"
+            value={`${summary.utilization_pct ?? 0}%`}
+            icon={Gauge}
+            tone="warning"
+            meta="Click to filter"
+          />
+        </ClickableKpiCard>
       </div>
 
       {unassigned.length > 0 ? (
@@ -459,7 +498,7 @@ export default function MachineAllocation() {
             <div className="mb-4 ui-search-wrap">
               <input
                 type="search"
-                placeholder="Search WO, product, machine…"
+                placeholder="Search"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="ui-input !rounded-full"
@@ -474,8 +513,6 @@ export default function MachineAllocation() {
                     ? "Create work orders first, then assign them to machines here."
                     : "No rows match this filter."
                 }
-                actionLabel={allocations.length === 0 ? "View Work Orders" : undefined}
-                actionHref={allocations.length === 0 ? "/production/work-orders" : undefined}
               />
             ) : (
               <div className="overflow-hidden rounded-lg border border-[var(--color-border-soft)]">

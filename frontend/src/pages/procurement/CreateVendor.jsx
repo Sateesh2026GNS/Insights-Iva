@@ -755,7 +755,7 @@ export default function CreateVendor() {
           <Section icon={Package} title="Products Supplied" subtitle="Link materials from Product Master.">
             <input
               className={`${inputClass} mb-3`}
-              placeholder="Search products by name or SKU…"
+              placeholder="Search"
               value={productSearch}
               onChange={(e) => setProductSearch(e.target.value)}
               disabled={loading}

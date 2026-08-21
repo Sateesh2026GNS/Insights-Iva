@@ -1,12 +1,15 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   BadgeCheck,
   Building2,
   CalendarClock,
+  Camera,
   IdCard,
   Mail,
   Phone,
   Shield,
+  Trash2,
+  Upload,
   UserRound,
   Briefcase,
   CreditCard,
@@ -14,7 +17,11 @@ import {
   History,
 } from "lucide-react";
 
+import Button from "../common/Button";
+import useAuth from "../../hooks/useAuth";
+import { useToast } from "../../context/ToastContext";
 import { getAccountOverview } from "../../api/settingsApi";
+import AdjustProfilePhotoModal from "./AdjustProfilePhotoModal";
 
 function dash(value) {
   if (value === null || value === undefined || String(value).trim() === "") return "—";
@@ -101,9 +108,14 @@ function InfoCell({ icon: Icon, label, children }) {
 }
 
 export default function AccountOverviewCard() {
+  const { user, updateUserAvatar } = useAuth();
+  const { addToast } = useToast();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [adjustModalOpen, setAdjustModalOpen] = useState(false);
+  const [selectedImageForAdjust, setSelectedImageForAdjust] = useState(null);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -131,6 +143,51 @@ export default function AccountOverviewCard() {
       cancelled = true;
     };
   }, []);
+
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      addToast("Image size must be less than 5MB", "error");
+      return;
+    }
+
+    const validTypes = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
+    if (!validTypes.includes(file.type)) {
+      addToast("Only PNG, JPG, and WebP images are supported", "error");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result;
+      if (typeof dataUrl === "string") {
+        setSelectedImageForAdjust(dataUrl);
+        setAdjustModalOpen(true);
+      }
+    };
+    reader.onerror = () => {
+      addToast("Failed to read image file", "error");
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  };
+
+  const handleRemoveAvatar = () => {
+    updateUserAvatar(null);
+    setSelectedImageForAdjust(null);
+    addToast("Profile picture removed", "success");
+  };
+
+  const handleOpenAdjuster = () => {
+    if (user?.avatar) {
+      setSelectedImageForAdjust(user.avatar);
+      setAdjustModalOpen(true);
+    } else {
+      fileInputRef.current?.click();
+    }
+  };
 
   if (loading) {
     return (
@@ -160,8 +217,12 @@ export default function AccountOverviewCard() {
 
   if (!data) return null;
 
+  const currentUserName = data.user_name || user?.full_name || user?.name || "User";
+  const userInitial = String(currentUserName)[0]?.toUpperCase() || "U";
+
   return (
     <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800/60">
+      {/* Header bar */}
       <div className="flex flex-col gap-3 border-b border-slate-100 bg-gradient-to-r from-teal-50 via-white to-slate-50 px-5 py-4 sm:flex-row sm:items-center sm:justify-between dark:border-slate-700 dark:from-teal-950/40 dark:via-slate-800 dark:to-slate-800">
         <div className="flex items-center gap-3">
           <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-teal-600 text-white shadow-sm">
@@ -182,6 +243,85 @@ export default function AccountOverviewCard() {
         </div>
       </div>
 
+      {/* Profile Photo & Quick Action Bar */}
+      <div className="flex flex-col gap-4 border-b border-slate-100 bg-slate-50/60 p-5 sm:flex-row sm:items-center sm:justify-between dark:border-slate-700/60 dark:bg-slate-900/30">
+        <div className="flex items-center gap-4">
+          <div className="relative group shrink-0">
+            <button
+              type="button"
+              onClick={handleOpenAdjuster}
+              title={user?.avatar ? "Click to view and adjust profile photo" : "Click to upload profile photo"}
+              className="flex h-16 w-16 sm:h-20 sm:w-20 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-full border-2 border-white bg-teal-600 text-2xl font-bold text-white shadow-md ring-4 ring-teal-500/10 transition-all duration-150 hover:scale-105 hover:ring-teal-500/30 dark:border-slate-800 dark:ring-teal-500/20"
+            >
+              {user?.avatar ? (
+                <img
+                  src={user.avatar}
+                  alt={currentUserName}
+                  className="h-full w-full object-cover transition-opacity group-hover:opacity-90"
+                />
+              ) : (
+                userInitial
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={handleOpenAdjuster}
+              title={user?.avatar ? "Adjust profile photo" : "Upload profile photo"}
+              className="absolute bottom-0 right-0 flex h-7 w-7 items-center justify-center rounded-full border-2 border-white bg-slate-900 text-white shadow-md transition-transform hover:scale-110 hover:bg-teal-600 dark:border-slate-850"
+            >
+              <Camera className="h-3.5 w-3.5" />
+            </button>
+          </div>
+
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="truncate text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100">
+                {currentUserName}
+              </h3>
+              <span className="inline-flex items-center rounded-md bg-teal-50 px-2 py-0.5 text-xs font-semibold text-teal-700 ring-1 ring-inset ring-teal-600/20 dark:bg-teal-950/40 dark:text-teal-300">
+                {dash(data.role || user?.role)}
+              </span>
+            </div>
+            <p className="mt-0.5 truncate text-xs font-medium text-slate-600 dark:text-slate-300">
+              {dash(data.email || user?.email)}
+            </p>
+            <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-500">
+              Supports only PNG and JPG up to 5MB
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            accept="image/png,image/jpeg,image/jpg,image/webp"
+            className="hidden"
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => fileInputRef.current?.click()}
+            leftIcon={<Upload className="h-3.5 w-3.5" />}
+          >
+            {user?.avatar ? "Upload Photo" : "Upload Profile"}
+          </Button>
+          {user?.avatar && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleRemoveAvatar}
+              leftIcon={<Trash2 className="h-3.5 w-3.5 text-red-500" />}
+              className="text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950/30"
+            >
+              Remove
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* Detail info grid */}
       <div className="grid gap-3 p-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         <InfoCell icon={Building2} label="Company Name">
           {dash(data.company_name)}
@@ -223,6 +363,18 @@ export default function AccountOverviewCard() {
           {formatDateTime(data.last_login)}
         </InfoCell>
       </div>
+
+      <AdjustProfilePhotoModal
+        open={adjustModalOpen}
+        onClose={() => setAdjustModalOpen(false)}
+        initialImage={selectedImageForAdjust}
+        onSave={(dataUrl) => {
+          updateUserAvatar(dataUrl);
+          setAdjustModalOpen(false);
+        }}
+        onRemove={handleRemoveAvatar}
+        userName={currentUserName}
+      />
     </section>
   );
 }

@@ -7,7 +7,7 @@ export default function QualityFilters({
   onSearchChange,
   resultFilter,
   onResultFilterChange,
-  searchPlaceholder = "Search...",
+  searchPlaceholder = "Search",
   children,
 }) {
   return (

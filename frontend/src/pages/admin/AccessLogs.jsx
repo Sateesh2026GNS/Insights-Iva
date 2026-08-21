@@ -109,7 +109,7 @@ export default function AccessLogs() {
             columns={columns}
             data={rows}
             searchKeys={["user_name", "action_label", "target", "ip_address"]}
-            searchPlaceholder="Search activity by user, action, or target…"
+            searchPlaceholder="Search"
             pageSize={15}
           />
         )}

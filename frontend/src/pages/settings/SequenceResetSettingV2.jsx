@@ -2,6 +2,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 import { createPortal } from "react-dom";
 
 import Loader from "../../components/common/Loader";
+import PageHeader from "../../components/common/PageHeader";
 import { useToast } from "../../context/ToastContext";
 import { getFeatureSetting, putFeatureSetting } from "../../api/bizDocumentsApi";
 import { apiErrorMessage } from "../../utils/apiError";
@@ -54,12 +55,12 @@ function ConfirmFyModal({ open, fy, busy, onCancel, onConfirm }) {
         role="alertdialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="w-full max-w-[420px] rounded-2xl bg-white px-8 py-8 shadow-2xl"
+        className="w-full max-w-[420px] rounded-2xl bg-white px-8 py-8 shadow-2xl dark:bg-slate-800 dark:border dark:border-slate-700"
       >
-        <h2 id={titleId} className="text-[22px] font-bold leading-snug text-[#1a1a1f]">
+        <h2 id={titleId} className="text-[22px] font-bold leading-snug text-slate-900 dark:text-white">
           Change sequence number to {fy.label}?
         </h2>
-        <p className="mt-3 text-[14px] leading-relaxed text-[#6b6b76]">
+        <p className="mt-3 text-[14px] leading-relaxed text-slate-600 dark:text-slate-300">
           The updated sequence number will apply to all new documents. Existing or old documents
           will not be changed.
         </p>
@@ -69,8 +70,7 @@ function ConfirmFyModal({ open, fy, busy, onCancel, onConfirm }) {
             type="button"
             disabled={busy}
             onClick={onConfirm}
-            className="w-full rounded-xl px-4 py-3.5 text-[15px] font-semibold text-[#1a1a1f] hover:brightness-95 disabled:opacity-60"
-            style={{ background: ACCENT }}
+            className="w-full rounded-xl px-4 py-3.5 text-[15px] font-semibold text-white hover:brightness-95 disabled:opacity-60 bg-[var(--color-primary)] dark:bg-teal-600"
           >
             {busy ? "Saving…" : `Change to ${fy.label}`}
           </button>
@@ -78,7 +78,7 @@ function ConfirmFyModal({ open, fy, busy, onCancel, onConfirm }) {
             type="button"
             disabled={busy}
             onClick={onCancel}
-            className="w-full rounded-xl bg-[#f0ebe3] px-4 py-3.5 text-[15px] font-semibold text-[#1a1a1f] hover:bg-[#e8e2d8] disabled:opacity-60"
+            className="w-full rounded-xl bg-slate-100 px-4 py-3.5 text-[15px] font-semibold text-slate-700 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600 disabled:opacity-60"
           >
             Cancel
           </button>
@@ -163,12 +163,19 @@ export default function SequenceResetSettingV2() {
 
   return (
     <div className="min-h-full" style={{ background: PAGE_BG }}>
-      <div className="mx-auto max-w-[1100px] px-4 py-5 sm:px-6 lg:px-8">
-        <div className="rounded-2xl border border-[#d8d8de] bg-[#fafafa] px-5 py-6 shadow-sm sm:px-8 sm:py-7">
+      <div className="mx-auto max-w-[1100px] px-4 py-5 sm:px-6 lg:px-8 space-y-5">
+        <PageHeader
+          title="Sequence Reset Setting"
+          subtitle="Set the active financial year sequence for generating new document numbers"
+          backTo="/settings"
+          backLabel="Back to Settings"
+          showTitle
+        />
+        <div className="rounded-2xl border border-slate-200 bg-white px-5 py-6 shadow-sm sm:px-8 sm:py-7 dark:border-slate-700 dark:bg-slate-800">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div className="min-w-0 max-w-md">
-              <h2 className="text-[17px] font-bold text-[#1a1a1f]">Reset sequence number</h2>
-              <p className="mt-1.5 text-[13px] leading-relaxed text-[#6b6b76]">
+              <h2 className="text-[17px] font-bold text-slate-900 dark:text-white">Reset sequence number</h2>
+              <p className="mt-1.5 text-[13px] leading-relaxed text-slate-600 dark:text-slate-300">
                 Pick the financial year whose sequence number new documents should follow.
               </p>
             </div>
@@ -188,14 +195,14 @@ export default function SequenceResetSettingV2() {
                     aria-checked={selected}
                     disabled={saving}
                     onClick={() => onPick(fy)}
-                    className={`min-w-[200px] rounded-xl border bg-white px-5 py-4 text-left transition-colors disabled:opacity-60 ${
+                    className={`min-w-[200px] rounded-xl border bg-white px-5 py-4 text-left transition-colors disabled:opacity-60 dark:bg-slate-900 ${
                       selected
-                        ? "border-[#1a1a1f] shadow-sm"
-                        : "border-[#d8d8de] hover:border-[#b0b0b8]"
+                        ? "border-[var(--color-primary)] shadow-sm dark:border-teal-400 ring-1 ring-teal-400"
+                        : "border-slate-200 hover:border-slate-300 dark:border-slate-700 dark:hover:border-slate-600"
                     }`}
                   >
-                    <div className="text-[15px] font-bold text-[#1a1a1f]">{fy.label}</div>
-                    <div className="mt-1 text-[12px] text-[#6b6b76]">{fy.range}</div>
+                    <div className="text-[15px] font-bold text-slate-900 dark:text-white">{fy.label}</div>
+                    <div className="mt-1 text-[12px] text-slate-600 dark:text-slate-400">{fy.range}</div>
                   </button>
                 );
               })}

@@ -413,7 +413,7 @@ export default function BomMaster() {
         <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
           <input
             type="search"
-            placeholder="Search Product / Bill of Materials (BOM) Number"
+            placeholder="Search"
             value={filters.bom_number}
             onChange={(e) => setFilters((f) => ({ ...f, bom_number: e.target.value }))}
             className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
@@ -442,7 +442,7 @@ export default function BomMaster() {
         <DataTable
           columns={columns}
           data={filteredBoms}
-          searchPlaceholder="Search Product"
+          searchPlaceholder="Search"
           searchKeys={["bom_number", "product_name", "product_code", "description"]}
           pageSize={10}
         />

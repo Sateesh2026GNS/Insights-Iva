@@ -536,7 +536,7 @@ export default function RFQ() {
         <DataTable
           columns={columns}
           data={rows}
-          searchPlaceholder="Search Request for Quotation (RFQ)..."
+          searchPlaceholder="Search"
           searchKeys={["rfq_number", "material_request_number", "status"]}
         />
       </div>

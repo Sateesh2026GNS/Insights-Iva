@@ -206,7 +206,7 @@ export default function CompanyAddressFields({
             onChange={setCountry}
             options={COUNTRIES}
             placeholder="Select country"
-            searchPlaceholder="Search country…"
+            searchPlaceholder="Search"
             disabled={disabled}
             error={Boolean(errors.country)}
           />
@@ -272,7 +272,7 @@ export default function CompanyAddressFields({
                 onChange={setState}
                 options={INDIAN_STATES}
                 placeholder={serviceError ? "Select state manually" : "Select state / UT"}
-                searchPlaceholder="Search state…"
+                searchPlaceholder="Search"
                 disabled={disabled || pinLoading}
                 error={Boolean(errors.state)}
               />
@@ -304,7 +304,7 @@ export default function CompanyAddressFields({
                 onChange={setCity}
                 options={cityOptions}
                 placeholder={!state ? "Select state first" : "Select city"}
-                searchPlaceholder="Search city…"
+                searchPlaceholder="Search"
                 disabled={disabled || pinLoading || !state}
                 error={Boolean(errors.city)}
                 allowCustom

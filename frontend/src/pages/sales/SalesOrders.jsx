@@ -258,7 +258,7 @@ export default function SalesOrders() {
           <DataTable
             columns={columns}
             data={filtered}
-            searchPlaceholder="Search SO, customer..."
+            searchPlaceholder="Search"
             searchKeys={["order_number", "customer_name", "sales_person"]}
             emptyState={
               rows.length === 0 ? (

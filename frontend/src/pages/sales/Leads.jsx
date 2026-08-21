@@ -250,7 +250,7 @@ export default function Leads() {
         )}
 
         {view === "table" ? (
-          <DataTable columns={columns} data={filtered} searchPlaceholder="Search leads..." searchKeys={["customer_name", "company", "sales_executive"]} />
+          <DataTable columns={columns} data={filtered} searchPlaceholder="Search" searchKeys={["customer_name", "company", "sales_executive"]} />
         ) : (
           <div className="grid gap-4 overflow-x-auto lg:grid-cols-5">
             {KANBAN_COLUMNS.map((col) => (

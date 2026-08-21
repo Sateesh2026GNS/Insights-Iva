@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   Check,
   Download,
@@ -65,7 +65,8 @@ function Tabs({ tabs, active, onChange }) {
   );
 }
 
-function CompanySection() {
+function CompanyProfileSection() {
+  const navigate = useNavigate();
   const { addToast } = useToast();
   const { updateCurrency, updateLanguage, currency, language } = useSettings();
   const [form, setForm] = useState({});
@@ -128,32 +129,45 @@ function CompanySection() {
     setFieldErrors((prev) => ({ ...prev, [key]: undefined }));
   };
 
+  const handleCancel = () => {
+    setForm(baseline);
+    setFieldErrors({});
+    navigate("/settings");
+  };
+
   const handleSave = async () => {
-    const addressErrors = validateCompanyAddress(form, { pinKey: "pincode" });
-    if (Object.keys(addressErrors).length) {
-      setFieldErrors(addressErrors);
-      addToast("Please fix the highlighted address fields.", "error");
+    const errors = {};
+    const pin = form.pincode ? String(form.pincode).trim() : "";
+    if (pin) {
+      const isIndia = String(form.country || "India").trim().toLowerCase() === "india";
+      if (isIndia && (!/^\d{6}$/.test(pin) || pin.startsWith("0"))) {
+        errors.pincode = "Enter a valid 6-digit Indian PIN code.";
+      }
+    }
+    if (Object.keys(errors).length) {
+      setFieldErrors(errors);
+      addToast("Please check the highlighted field errors.", "error");
       return;
     }
     setFieldErrors({});
     setSaving(true);
     try {
       const payload = {
-        company_name: form.company_name || null,
-        legal_name: form.legal_name || null,
-        gstin: form.gstin || null,
-        pan: form.pan || null,
-        email: form.email || null,
-        phone: form.phone || null,
-        website: form.website || null,
-        address_line1: form.address_line1 || null,
-        address_line2: form.address_line2 || null,
-        landmark: form.landmark || null,
-        city: form.city || null,
-        state: form.state || null,
-        state_code: form.state_code || null,
-        country: form.country || "India",
-        pincode: form.pincode || null,
+        company_name: form.company_name?.trim() || null,
+        legal_name: form.legal_name?.trim() || null,
+        gstin: form.gstin?.trim() || null,
+        pan: form.pan?.trim() || null,
+        email: form.email?.trim() || null,
+        phone: form.phone?.trim() || null,
+        website: form.website?.trim() || null,
+        address_line1: form.address_line1?.trim() || null,
+        address_line2: form.address_line2?.trim() || null,
+        landmark: form.landmark?.trim() || null,
+        city: form.city?.trim() || null,
+        state: form.state?.trim() || null,
+        state_code: form.state_code?.trim() || null,
+        country: form.country?.trim() || "India",
+        pincode: form.pincode?.trim() || null,
       };
       await updateCompanySettings(payload);
       if (form.currency) updateCurrency(form.currency);
@@ -197,12 +211,17 @@ function CompanySection() {
           <Button
             variant="secondary"
             type="button"
-            onClick={() => setForm(baseline)}
+            onClick={handleCancel}
           >
             Cancel
           </Button>
-          <Button variant="primary" type="button" disabled={saving}
-      onClick={handleSave} className="disabled:opacity-50">
+          <Button
+            variant="primary"
+            type="button"
+            disabled={saving}
+            onClick={handleSave}
+            className="disabled:opacity-50"
+          >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             Save Changes
           </Button>
@@ -1166,7 +1185,7 @@ export default function SettingsSectionContent({ sectionId }) {
   const map = useMemo(
     () => ({
       "my-account": MyAccountSection,
-      company: CompanySection,
+      company: CompanyProfileSection,
       users: UsersSection,
       security: SecuritySection,
       subscription: SubscriptionSection,

@@ -3,7 +3,6 @@ import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
 import Button from "../common/Button";
-const PURPLE = "#6b4eff";
 
 const CREDIT_DAYS = ["0", "7", "15", "30", "45", "60", "90"];
 
@@ -82,7 +81,7 @@ export default function AddBasicDetailsModal({ open, onClose, initial, onSave })
           </button>
         </div>
 
-        <div className="space-y-5 bg-[#f3f3f6] px-5 py-5">
+        <div className="space-y-5 bg-white px-5 py-5">
           <div className="grid grid-cols-[1fr_1.1fr] items-start gap-3">
             <div>
               <p className="text-[13px] font-bold text-[#1a1a1f]">Payment Terms</p>
@@ -109,7 +108,7 @@ export default function AddBasicDetailsModal({ open, onClose, initial, onSave })
               Opening Balance
             </label>
             <div className="relative">
-              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[13px] text-[#6b6b76]">
+              <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[14px] font-medium text-[#6b6b76]">
                 ₹
               </span>
               <input
@@ -121,7 +120,7 @@ export default function AddBasicDetailsModal({ open, onClose, initial, onSave })
                   }))
                 }
                 placeholder="Enter Opening Balance"
-                className={`${inputClass} pl-7`}
+                className={`${inputClass} !pl-9`}
               />
             </div>
             <div className="mt-2.5 grid grid-cols-2 gap-2.5">
@@ -137,19 +136,18 @@ export default function AddBasicDetailsModal({ open, onClose, initial, onSave })
                     onClick={() => setForm((f) => ({ ...f, balance_type: opt.id }))}
                     className={`inline-flex items-center justify-center gap-2 rounded-full border px-3 py-2 text-[13px] font-medium transition ${
                       active
-                        ? "border-[var(--color-primary)] bg-white text-[#1a1a1f]"
+                        ? "border-[var(--color-action-teal)] bg-white text-[#1a1a1f]"
                         : "border-[#d8d8e0] bg-white text-[#6b6b76]"
                     }`}
                   >
                     <span
                       className={`flex h-4 w-4 items-center justify-center rounded-full border-2 ${
-                        active ? "border-[#6b4eff]" : "border-[#c4c4cc]"
+                        active ? "border-[var(--color-action-teal)]" : "border-[#c4c4cc]"
                       }`}
                     >
                       {active ? (
                         <span
-                          className="h-2 w-2 rounded-full"
-                          style={{ background: PURPLE }}
+                          className="h-2 w-2 rounded-full bg-[var(--color-action-teal)]"
                         />
                       ) : null}
                     </span>

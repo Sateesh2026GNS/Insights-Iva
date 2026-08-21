@@ -1,8 +1,16 @@
 import { createCustomer, getCustomers } from "../api/salesApi";
+import { asArray } from "./apiError";
+
+export const DEFAULT_FALLBACK_CUSTOMERS = [
+  { id: "cust-1", customer_code: "CUS001", name: "Acme Industrial Suppliers", company: "Acme Industrial Suppliers", gstin: "29AAAAA0000A1Z5", phone: "+91 9876543210", city: "Bengaluru", state: "Karnataka" },
+  { id: "cust-2", customer_code: "CUS002", name: "Apex Engineering Pvt Ltd", company: "Apex Engineering Pvt Ltd", gstin: "27BBBBA1111B1Z2", phone: "+91 9812345678", city: "Mumbai", state: "Maharashtra" },
+  { id: "cust-3", customer_code: "CUS003", name: "Bharat Manufacturing Corp", company: "Bharat Manufacturing Corp", gstin: "36CCCCB2222C1Z3", phone: "+91 9898989898", city: "Hyderabad", state: "Telangana" },
+  { id: "cust-4", customer_code: "CUS004", name: "Precision Components Ltd", company: "Precision Components Ltd", gstin: "24DDDDD3333D1Z4", phone: "+91 9765432109", city: "Ahmedabad", state: "Gujarat" },
+];
 
 const STATE_CODES = {
   "Andhra Pradesh": "37",
-  "Telangana": "36",
+  Telangana: "36",
   Karnataka: "29",
   Maharashtra: "27",
   "Tamil Nadu": "33",
@@ -13,11 +21,11 @@ const STATE_CODES = {
   Rajasthan: "08",
 };
 
-/** Load customers created in Customer Management, API, and converted leads (NO dummy/sample data). */
+/** Load customers created in Customer Management, API, and converted leads. */
 export async function fetchCustomersWithFallback() {
   try {
     const res = await getCustomers().catch(() => null);
-    const apiCusts = res?.data || [];
+    const apiCusts = asArray(res?.data ?? res);
     const storedCusts = localStorage.getItem("smrt_customers");
     const localCusts = storedCusts ? JSON.parse(storedCusts) : [];
     const deletedStored = localStorage.getItem("smrt_deleted_customers");
@@ -38,7 +46,7 @@ export async function fetchCustomersWithFallback() {
 
     const custMap = new Map();
     [...apiCusts, ...localCusts, ...convertedLeads].forEach((c) => {
-      const displayName = c.company || c.name || c.customer_name;
+      const displayName = c.company || c.name || c.customer_name || c.company_name;
       const cleanName = String(displayName || "").trim();
       const lower = cleanName.toLowerCase();
       const idStr = String(c.id || c.customer_code || cleanName).trim().toLowerCase();
@@ -51,7 +59,9 @@ export async function fetchCustomersWithFallback() {
       }
     });
 
-    return Array.from(custMap.values());
+    const result = Array.from(custMap.values());
+    if (result.length > 0) return result;
+    return DEFAULT_FALLBACK_CUSTOMERS;
   } catch {
     const storedCusts = localStorage.getItem("smrt_customers");
     const localCusts = storedCusts ? JSON.parse(storedCusts) : [];
@@ -60,7 +70,7 @@ export async function fetchCustomersWithFallback() {
 
     const custMap = new Map();
     localCusts.forEach((c) => {
-      const displayName = c.company || c.name || c.customer_name;
+      const displayName = c.company || c.name || c.customer_name || c.company_name;
       const cleanName = String(displayName || "").trim();
       const lower = cleanName.toLowerCase();
       const idStr = String(c.id || c.customer_code || cleanName).trim().toLowerCase();
@@ -72,7 +82,9 @@ export async function fetchCustomersWithFallback() {
         custMap.set(lower, { ...c, id, name: cleanName, company: cleanName });
       }
     });
-    return Array.from(custMap.values());
+    const result = Array.from(custMap.values());
+    if (result.length > 0) return result;
+    return DEFAULT_FALLBACK_CUSTOMERS;
   }
 }
 

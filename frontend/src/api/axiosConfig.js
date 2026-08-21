@@ -118,6 +118,8 @@ api.interceptors.response.use(
     const isAuthUrl =
       original?.url?.includes("/auth/login") ||
       original?.url?.includes("/platform/auth/login") ||
+      original?.url?.includes("/auth/verify-otp") ||
+      original?.url?.includes("/platform/auth/verify-otp") ||
       original?.url?.includes("/auth/refresh");
 
     if (status === 401 && !isAuthUrl) {
@@ -131,7 +133,7 @@ api.interceptors.response.use(
       ) {
         window.location.assign("/login");
       }
-    } else if (typeof onApiError === "function" && !error.config?.skipGlobalError) {
+    } else if (typeof onApiError === "function" && !error.config?.skipGlobalError && !isAuthUrl) {
       if (!status || status >= 500) {
         const message = !status
           ? "Network error - please check your connection."

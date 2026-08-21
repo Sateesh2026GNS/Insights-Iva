@@ -113,7 +113,7 @@ export default function BreakdownReports() {
         ))}
       </div>
 
-      <MaintenanceFilters search={search} onSearchChange={setSearch} statusFilter={statusFilter} onStatusFilterChange={setStatusFilter} searchPlaceholder="Search breakdown, machine, cause..." />
+      <MaintenanceFilters search={search} onSearchChange={setSearch} statusFilter={statusFilter} onStatusFilterChange={setStatusFilter} searchPlaceholder="Search" />
 
       <div className="ui-card p-4 sm:p-5 overflow-x-auto">
         <DataTable columns={columns} data={filtered} searchPlaceholder="" searchKeys={[]} />

@@ -258,8 +258,8 @@
   },
   "common": {
     "cancel": "Cancel",
-    "search": "Search...",
-    "searchMenuReports": "Search modules, pages, products...",
+    "search": "Search",
+    "searchMenuReports": "Search",
     "messages": "Messages",
     "fullscreen": "Fullscreen",
     "notifications": "Notifications",

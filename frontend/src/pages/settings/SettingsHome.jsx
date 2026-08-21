@@ -6,6 +6,7 @@ import {
   Building2,
   CreditCard,
   Factory,
+  FileDigit,
   FileText,
   HardDrive,
   Info,
@@ -15,6 +16,9 @@ import {
   Package,
   Palette,
   Puzzle,
+  Receipt,
+  ReceiptText,
+  RotateCcw,
   ScrollText,
   Search,
   Settings,
@@ -51,6 +55,10 @@ const ICONS = {
   ScrollText,
   LifeBuoy,
   Info,
+  FileDigit,
+  Receipt,
+  ReceiptText,
+  RotateCcw,
 };
 
 /** Visual groups for the settings home (ids must match settingsCatalog). */
@@ -63,12 +71,21 @@ const SETTINGS_GROUPS = [
   {
     id: "workspace",
     title: "Workspace preferences",
-    ids: ["ai", "notifications", "appearance"],
+    ids: ["ai", "notifications", "appearance", "change-format"],
   },
   {
     id: "operations",
     title: "Operations",
-    ids: ["inventory", "production", "role-workflow", "finance", "documents"],
+    ids: [
+      "invoice-settings",
+      "expense-settings",
+      "inventory",
+      "sequence-reset",
+      "production",
+      "role-workflow",
+      "finance",
+      "documents",
+    ],
   },
   {
     id: "system",
@@ -155,7 +172,7 @@ export default function SettingsHome() {
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search settings…"
+            placeholder="Search"
             className="ui-input w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-10 text-sm text-slate-900 shadow-sm placeholder-slate-400 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
             autoFocus
           />

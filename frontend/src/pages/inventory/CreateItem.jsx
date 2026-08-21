@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
-  CalendarDays,
   Save,
   Upload,
 } from "lucide-react";
@@ -67,7 +66,7 @@ function Field({ label, required, hint, children, className = "" }) {
 
 function Card({ id, title, children, className = "" }) {
   return (
-    <section id={id} className={`ui-card scroll-mt-28 p-4 sm:p-5 ${className}`.trim()}>
+    <section id={id} className={`ui-card scroll-mt-28 p-4 sm:p-6 shadow-sm border border-[var(--color-border-soft)] dark:border-slate-700/80 rounded-xl bg-white dark:bg-slate-800/80 ${className}`.trim()}>
       <h3 className="mb-4 text-[14px] font-semibold text-[var(--color-text)]">{title}</h3>
       {children}
     </section>
@@ -279,28 +278,19 @@ export default function CreateItem() {
   };
 
   return (
-    <div className="space-y-5 pb-28">
+    <div className="mx-auto max-w-7xl px-6 sm:px-8 lg:px-10 py-6 space-y-6 pb-28 min-w-0 w-full">
       <PageHeader
         backTo={backPath}
-        backLabel="Back"
-        subtitle={
-          <span className="text-[12px] text-[var(--color-text-muted)]">
-            Inventory <span className="mx-1 text-[var(--color-text-faint)]">&gt;</span> Items{" "}
-            <span className="mx-1 text-[var(--color-text-faint)]">&gt;</span> Create Item
-          </span>
-        }
+        backLabel={isFinishedGood ? "Back to Finished Goods" : "Back to Raw Materials"}
         action={
-          <div className="flex flex-wrap items-center gap-2">
-            <label className="relative inline-flex items-center">
-              <CalendarDays className="pointer-events-none absolute left-3 h-4 w-4 text-[var(--color-text-muted)]" aria-hidden />
-              <input
-                type="date"
-                value={headerDate}
-                onChange={(e) => setHeaderDate(e.target.value)}
-                className="ui-input !w-auto min-w-[10.5rem] !pl-9"
-                aria-label="Date"
-              />
-            </label>
+          <div className="flex flex-wrap items-center gap-4">
+            <input
+              type="date"
+              value={headerDate}
+              onChange={(e) => setHeaderDate(e.target.value)}
+              className="ui-input !w-auto min-w-[10.5rem]"
+              aria-label="Date"
+            />
             <select
               value={form.warehouse_name}
               onChange={(e) => set("warehouse_name", e.target.value)}
@@ -343,8 +333,8 @@ export default function CreateItem() {
         </div>
       ) : null}
 
-      <form id="create-item-form" onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid gap-4 xl:grid-cols-12">
+      <form id="create-item-form" onSubmit={handleSubmit} className="space-y-6">
+        <div className="grid gap-6 xl:grid-cols-12">
           <Card id="basic" title="Basic Information" className="xl:col-span-8">
             <div className="grid gap-4 sm:grid-cols-3">
               <Field label="Item Type" required>
@@ -486,7 +476,7 @@ export default function CreateItem() {
           </Card>
         </div>
 
-        <div id="units-pricing" className="grid scroll-mt-28 gap-4 lg:grid-cols-2">
+        <div id="units-pricing" className="grid scroll-mt-28 gap-6 lg:grid-cols-2">
           <Card title="Unit & Measurement">
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Base Unit" required>
@@ -584,7 +574,7 @@ export default function CreateItem() {
           </Card>
         </div>
 
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="grid gap-6 lg:grid-cols-2">
           <Card id="tax" title="Tax Information">
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="GST Rate (%)" required>
@@ -730,8 +720,8 @@ export default function CreateItem() {
         </Card>
       </form>
 
-      <div className="fixed bottom-0 left-0 right-0 z-20 border-t border-[var(--color-border-soft)] bg-white/95 px-4 py-3 backdrop-blur sm:px-6 lg:left-[var(--sidebar-width,0px)]">
-        <div className="mx-auto flex max-w-[1600px] flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="sticky bottom-0 -mx-2 -mb-24 mt-8 z-20 border-t border-[var(--color-border-soft)] bg-[var(--color-surface)]/95 px-4 py-3.5 shadow-lg backdrop-blur sm:-mx-4 sm:px-6 lg:-mx-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pr-14 sm:pr-16">
           <CheckRow
             checked={form.is_active}
             onChange={(v) => set("is_active", v)}

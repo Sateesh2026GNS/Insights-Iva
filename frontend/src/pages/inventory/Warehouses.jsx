@@ -60,6 +60,34 @@ function thumbColor(name = "") {
   return colors[hash];
 }
 
+const KPI_TONE_RING = {
+  primary: "hover:ring-2 hover:ring-[var(--kpi-primary)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-primary)]",
+  info: "hover:ring-2 hover:ring-[var(--kpi-info)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-info)]",
+  success: "hover:ring-2 hover:ring-[var(--kpi-success)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-success)]",
+  warning: "hover:ring-2 hover:ring-[var(--kpi-warning)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-warning)]",
+  danger: "hover:ring-2 hover:ring-[var(--kpi-danger)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-danger)]",
+  yellow: "hover:ring-2 hover:ring-[var(--kpi-warning)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-warning)]",
+  violet: "hover:ring-2 hover:ring-[var(--kpi-violet)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-violet)]",
+  teal: "hover:ring-2 hover:ring-[var(--kpi-teal)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-teal)]",
+  orange: "hover:ring-2 hover:ring-[var(--kpi-orange)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-orange)]",
+  neutral: "hover:ring-2 hover:ring-[var(--kpi-neutral)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-neutral)]",
+};
+
+function ClickableKpiCard({ onClick, title, tone, children }) {
+  const resolvedTone = tone || children?.props?.tone || "primary";
+  const ringClass = KPI_TONE_RING[resolvedTone] || KPI_TONE_RING.primary;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`h-full w-full rounded-[var(--radius-lg)] text-left transition focus:outline-none ${ringClass}`}
+      title={title}
+    >
+      {children}
+    </button>
+  );
+}
+
 export default function Warehouses() {
   const tenantId = useTenantId();
   const { addToast } = useToast();
@@ -416,11 +444,41 @@ export default function Warehouses() {
       />
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
-        <KpiCard label="Total Warehouses" value={kpis.total} icon={Warehouse} tone="info" meta="Across all locations" />
-        <KpiCard label="Total Items" value={Number(kpis.totalItems).toLocaleString("en-IN")} icon={Package} tone="success" meta="In all warehouses" />
-        <KpiCard label="Total Stock Value" value={formatInrAmount(kpis.stockValue)} icon={IndianRupee} tone="warning" meta="Across all warehouses" />
-        <KpiCard label="Avg. Utilization" value={`${kpis.avgUtilization}%`} icon={Building2} tone="primary" meta="Warehouse capacity" />
-        <KpiCard label="Active Warehouses" value={kpis.active} icon={ClipboardCheck} tone="success" meta={`Out of ${kpis.total}`} />
+        <ClickableKpiCard
+          onClick={() => { setStatusFilter(""); setSearch(""); }}
+          title="Show all warehouses"
+          tone="info"
+        >
+          <KpiCard label="Total Warehouses" value={kpis.total} icon={Warehouse} tone="info" meta="Click to show all" />
+        </ClickableKpiCard>
+        <ClickableKpiCard
+          onClick={() => { setStatusFilter(""); setSearch(""); }}
+          title="View total items"
+          tone="success"
+        >
+          <KpiCard label="Total Items" value={Number(kpis.totalItems).toLocaleString("en-IN")} icon={Package} tone="success" meta="In all warehouses" />
+        </ClickableKpiCard>
+        <ClickableKpiCard
+          onClick={() => { setStatusFilter(""); setSearch(""); }}
+          title="View total stock value"
+          tone="warning"
+        >
+          <KpiCard label="Total Stock Value" value={formatInrAmount(kpis.stockValue)} icon={IndianRupee} tone="warning" meta="Across all warehouses" />
+        </ClickableKpiCard>
+        <ClickableKpiCard
+          onClick={() => { setStatusFilter(""); setSearch(""); }}
+          title="View average utilization"
+          tone="primary"
+        >
+          <KpiCard label="Avg. Utilization" value={`${kpis.avgUtilization}%`} icon={Building2} tone="primary" meta="Warehouse capacity" />
+        </ClickableKpiCard>
+        <ClickableKpiCard
+          onClick={() => { setStatusFilter("active"); setSearch(""); }}
+          title="Filter active warehouses"
+          tone="success"
+        >
+          <KpiCard label="Active Warehouses" value={kpis.active} icon={ClipboardCheck} tone="success" meta="Click to filter" />
+        </ClickableKpiCard>
       </div>
 
       <div className="ui-card p-4 sm:p-5">
@@ -429,7 +487,7 @@ export default function Warehouses() {
             <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]" />
             <input
               type="search"
-              placeholder="Search by warehouse name, code, location..."
+              placeholder="Search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="ui-input w-full !pl-10"

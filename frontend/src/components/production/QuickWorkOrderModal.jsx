@@ -7,6 +7,9 @@ import { getMachines, quickCreateWorkOrder } from "../../api/productionApi";
 import { fetchFinishedGoodsWithFallback } from "../../utils/productOptions";
 import { fetchCustomersWithFallback } from "../../utils/customerOptions";
 import { apiErrorMessage } from "../../utils/apiError";
+import AddNewItemModal from "../sales/AddNewItemModal";
+import AddNewPartyModal from "../sales/AddNewPartyModal";
+import CreateMachineModal from "./CreateMachineModal";
 import Button from "../common/Button";
 
 function toDateTimeLocal(value) {
@@ -24,6 +27,11 @@ export default function QuickWorkOrderModal({ order, onClose, onSuccess, addToas
   const [products, setProducts] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [customCustomerMode, setCustomCustomerMode] = useState(false);
+  const [customProductMode, setCustomProductMode] = useState(false);
+  const [showAddProductModal, setShowAddProductModal] = useState(false);
+  const [showAddMachineModal, setShowAddMachineModal] = useState(false);
+  const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
+  const [customMachineMode, setCustomMachineMode] = useState(false);
   const [loadingOptions, setLoadingOptions] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -121,9 +129,8 @@ export default function QuickWorkOrderModal({ order, onClose, onSuccess, addToas
 
   const handleCustomerChange = (e) => {
     const val = e.target.value;
-    if (val === "__custom__") {
-      setCustomCustomerMode(true);
-      setForm((prev) => ({ ...prev, customer_id: "", customer_name: "" }));
+    if (val === "__custom__" || val === "__add_customer__") {
+      setShowAddCustomerModal(true);
       return;
     }
     const selected = customers.find((c) => String(c.id) === String(val));
@@ -133,6 +140,30 @@ export default function QuickWorkOrderModal({ order, onClose, onSuccess, addToas
       customer_name: selected?.name || selected?.company || "",
     }));
   };
+
+  const handleProductChange = (e) => {
+    const val = e.target.value;
+    if (val === "__custom__" || val === "__add_product__") {
+      setShowAddProductModal(true);
+      return;
+    }
+    const selected = products.find((p) => String(p.id) === String(val));
+    setForm((prev) => ({
+      ...prev,
+      product_id: val,
+      product_name: selected?.name || selected?.sku || "",
+    }));
+  };
+
+  const handleMachineChange = (e) => {
+    const val = e.target.value;
+    if (val === "__custom__" || val === "__add_machine__") {
+      setShowAddMachineModal(true);
+      return;
+    }
+    setForm((prev) => ({ ...prev, machine_id: val }));
+  };
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -217,16 +248,38 @@ export default function QuickWorkOrderModal({ order, onClose, onSuccess, addToas
               <span className="ui-label">Product</span>
               {order?.product_id ? (
                 <input value={form.product_name} readOnly className="ui-input bg-[var(--color-surface-muted)]" />
+              ) : customProductMode ? (
+                <div className="flex gap-1.5">
+                  <input
+                    name="product_name"
+                    value={form.product_name}
+                    onChange={handleChange}
+                    placeholder="Enter product name…"
+                    className="ui-input flex-1"
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCustomProductMode(false);
+                      setForm((prev) => ({ ...prev, product_id: "", product_name: "" }));
+                    }}
+                    className="rounded-lg border border-[var(--color-border)] px-2.5 py-1.5 text-xs font-medium text-[var(--color-primary)] hover:bg-[var(--color-surface-muted)]"
+                  >
+                    Select
+                  </button>
+                </div>
               ) : (
                 <select
                   name="product_id"
                   value={form.product_id}
-                  onChange={handleChange}
-                  required
+                  onChange={handleProductChange}
+                  required={!customProductMode}
                   disabled={loadingOptions}
                   className="ui-select"
                 >
                   <option value="">{loadingOptions ? "Loading products…" : "Select product…"}</option>
+                  <option value="__add_product__">+ Add new Product</option>
                   {products.map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.name || p.sku}
@@ -251,14 +304,38 @@ export default function QuickWorkOrderModal({ order, onClose, onSuccess, addToas
             </label>
             <label className="block space-y-1">
               <span className="ui-label">Machine</span>
-              <select name="machine_id" value={form.machine_id} onChange={handleChange} className="ui-select">
-                <option value="">Select Machine…</option>
-                {machines.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.name || m.code}
-                  </option>
-                ))}
-              </select>
+              {customMachineMode ? (
+                <div className="flex gap-1.5">
+                  <input
+                    name="machine_name"
+                    value={form.machine_name || ""}
+                    onChange={handleChange}
+                    placeholder="Enter machine name…"
+                    className="ui-input flex-1"
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCustomMachineMode(false);
+                      setForm((prev) => ({ ...prev, machine_id: "", machine_name: "" }));
+                    }}
+                    className="rounded-lg border border-[var(--color-border)] px-2.5 py-1.5 text-xs font-medium text-[var(--color-primary)] hover:bg-[var(--color-surface-muted)]"
+                  >
+                    Select
+                  </button>
+                </div>
+              ) : (
+                <select name="machine_id" value={form.machine_id} onChange={handleMachineChange} className="ui-select">
+                  <option value="">Select Machine…</option>
+                  <option value="__add_machine__">+ Add new Machine</option>
+                  {machines.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name || m.code}
+                    </option>
+                  ))}
+                </select>
+              )}
             </label>
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -296,12 +373,12 @@ export default function QuickWorkOrderModal({ order, onClose, onSuccess, addToas
                   className="ui-select"
                 >
                   <option value="">{loadingOptions ? "Loading customers…" : "Select customer…"}</option>
+                  <option value="__add_customer__">+ Add new Customer</option>
                   {customers.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name || c.company}{c.customer_code ? ` (${c.customer_code})` : ""}
                     </option>
                   ))}
-                  <option value="__custom__">+ Enter new / custom customer…</option>
                 </select>
               )}
             </label>
@@ -366,5 +443,73 @@ export default function QuickWorkOrderModal({ order, onClose, onSuccess, addToas
     </div>
   );
 
-  return createPortal(modal, document.body);
+  return (
+    <>
+      {createPortal(modal, document.body)}
+      <AddNewItemModal
+        open={showAddProductModal}
+        placement="drawer"
+        onClose={() => setShowAddProductModal(false)}
+        onSaved={async (line, product) => {
+          setShowAddProductModal(false);
+          try {
+            const refreshed = await fetchFinishedGoodsWithFallback();
+            setProducts(Array.isArray(refreshed) ? refreshed : []);
+            const newId = String(product?.id || line?.product_id || "");
+            if (newId) {
+              setForm((prev) => ({
+                ...prev,
+                product_id: newId,
+                product_name: product?.name || line?.item_description || prev.product_name,
+              }));
+            }
+          } catch {
+            // fallback
+          }
+        }}
+      />
+      <CreateMachineModal
+        open={showAddMachineModal}
+        placement="drawer"
+        onClose={() => setShowAddMachineModal(false)}
+        onSaved={async (createdMachine) => {
+          setShowAddMachineModal(false);
+          try {
+            const mRes = await getMachines().catch(() => ({ data: [] }));
+            const refreshed = Array.isArray(mRes?.data) ? mRes.data : Array.isArray(mRes) ? mRes : [];
+            const list = refreshed.length > 0 ? refreshed : (createdMachine ? [createdMachine] : []);
+            setMachines(list);
+            const mId = String(createdMachine?.id || list[0]?.id || "");
+            if (mId) {
+              setForm((prev) => ({ ...prev, machine_id: mId }));
+            }
+          } catch {
+            // fallback
+          }
+        }}
+      />
+      <AddNewPartyModal
+        open={showAddCustomerModal}
+        placement="drawer"
+        onClose={() => setShowAddCustomerModal(false)}
+        onSaved={async (createdCust) => {
+          setShowAddCustomerModal(false);
+          try {
+            const refreshed = await fetchCustomersWithFallback();
+            setCustomers(Array.isArray(refreshed) ? refreshed : []);
+            const newId = String(createdCust?.id || "");
+            if (newId) {
+              setForm((prev) => ({
+                ...prev,
+                customer_id: newId,
+                customer_name: createdCust?.name || createdCust?.company || prev.customer_name,
+              }));
+            }
+          } catch {
+            // fallback
+          }
+        }}
+      />
+    </>
+  );
 }

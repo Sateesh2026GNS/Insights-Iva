@@ -128,7 +128,7 @@ function HighlightText({ text, query }) {
   );
 }
 
-export default function GlobalSearch({ onSelect, placeholderKey = "common.searchMenuReports" }) {
+export default function GlobalSearch({ onSelect, placeholderKey = "common.search" }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { user } = useAuth();

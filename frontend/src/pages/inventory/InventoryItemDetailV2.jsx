@@ -179,8 +179,8 @@ function StockModal({ mode, open, stock, unit, onClose, onSubmit }) {
             type="button"
             disabled={!canSubmit}
             onClick={() => onSubmit({ qty: Number(qty), remark, unit: unitVal })}
-            className={`rounded-lg px-6 py-2.5 text-[14px] font-bold text-white ${
-              canSubmit ? "bg-[#6b6b76] hover:bg-[#4a4a55]" : "cursor-not-allowed bg-[#b0b0b8]"
+            className={`rounded-lg px-6 py-2.5 text-[14px] font-bold text-white transition ${
+              canSubmit ? "bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)]" : "cursor-not-allowed bg-slate-300"
             }`}
           >
             {isAdd ? "Add" : "Remove"}

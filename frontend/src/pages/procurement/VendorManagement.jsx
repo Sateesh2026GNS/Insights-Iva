@@ -367,7 +367,7 @@ export default function VendorManagement() {
           <div className="flex flex-wrap gap-2">
             <input
               type="search"
-              placeholder="Search vendors..."
+              placeholder="Search"
               value={filters.name}
               onChange={(e) => setFilters((f) => ({ ...f, name: e.target.value }))}
               className="min-w-[200px] rounded-lg border border-slate-200 px-3 py-2 text-sm"
@@ -432,7 +432,7 @@ export default function VendorManagement() {
         <DataTable
           columns={columns}
           data={filteredVendors}
-          searchPlaceholder="Quick search in table..."
+          searchPlaceholder="Search"
           searchKeys={["vendor_code", "name", "contact", "gstin", "city"]}
           emptyState={emptyState}
         />

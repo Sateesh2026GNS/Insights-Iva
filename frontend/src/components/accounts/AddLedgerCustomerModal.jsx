@@ -337,7 +337,7 @@ export default function AddLedgerCustomerModal({ open, onClose, onSaved, custome
                 onChange={(v) => set("state", v)}
                 options={INDIAN_STATES}
                 placeholder="Select State"
-                searchPlaceholder="Search state or UT…"
+                searchPlaceholder="Search"
                 className={selectTrigger}
               />
             </OutlinedField>

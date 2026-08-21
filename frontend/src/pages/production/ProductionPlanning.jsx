@@ -252,12 +252,27 @@ const PLANNED_STATUSES = ["draft", "planned", "pending", "material_ready", "mach
 const IN_PROGRESS_STATUSES = ["in_progress", "running", "quality_check"];
 const COMPLETED_STATUSES = ["completed", "closed", "done"];
 
-function ClickableKpiCard({ onClick, title, children }) {
+const KPI_TONE_RING = {
+  primary: "hover:ring-2 hover:ring-[var(--kpi-primary)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-primary)]",
+  info: "hover:ring-2 hover:ring-[var(--kpi-info)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-info)]",
+  success: "hover:ring-2 hover:ring-[var(--kpi-success)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-success)]",
+  warning: "hover:ring-2 hover:ring-[var(--kpi-warning)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-warning)]",
+  danger: "hover:ring-2 hover:ring-[var(--kpi-danger)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-danger)]",
+  yellow: "hover:ring-2 hover:ring-[var(--kpi-warning)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-warning)]",
+  violet: "hover:ring-2 hover:ring-[var(--kpi-violet)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-violet)]",
+  teal: "hover:ring-2 hover:ring-[var(--kpi-teal)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-teal)]",
+  orange: "hover:ring-2 hover:ring-[var(--kpi-orange)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-orange)]",
+  neutral: "hover:ring-2 hover:ring-[var(--kpi-neutral)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-neutral)]",
+};
+
+function ClickableKpiCard({ onClick, title, tone, children }) {
+  const resolvedTone = tone || children?.props?.tone || "primary";
+  const ringClass = KPI_TONE_RING[resolvedTone] || KPI_TONE_RING.primary;
   return (
     <button
       type="button"
       onClick={onClick}
-      className="w-full rounded-[var(--radius-lg)] text-left transition hover:ring-2 hover:ring-[var(--color-focus-ring)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)]"
+      className={`h-full w-full rounded-[var(--radius-lg)] text-left transition focus:outline-none ${ringClass}`}
       title={title}
     >
       {children}
@@ -964,22 +979,22 @@ export default function ProductionPlanning() {
           />
 
           <div className="ui-grid-kpi print:hidden">
-            <ClickableKpiCard onClick={() => applyPlanningPreset("all")} title="Show all production orders">
+            <ClickableKpiCard onClick={() => applyPlanningPreset("all")} title="Show all production orders" tone="primary">
               <KpiCard label="Total Orders" value={summary.total_orders ?? 0} icon={ClipboardList} tone="primary" meta="Click to filter" />
             </ClickableKpiCard>
-            <ClickableKpiCard onClick={() => applyPlanningPreset("planned")} title="Show planned orders">
+            <ClickableKpiCard onClick={() => applyPlanningPreset("planned")} title="Show planned orders" tone="yellow">
               <KpiCard label="Planned" value={summary.planned_orders ?? 0} icon={FileText} tone="yellow" meta="Click to filter" />
             </ClickableKpiCard>
-            <ClickableKpiCard onClick={() => applyPlanningPreset("in_progress")} title="Show in-progress orders">
+            <ClickableKpiCard onClick={() => applyPlanningPreset("in_progress")} title="Show in-progress orders" tone="warning">
               <KpiCard label="In Progress" value={summary.in_progress_orders ?? 0} icon={Play} tone="warning" meta="Click to filter" />
             </ClickableKpiCard>
-            <ClickableKpiCard onClick={() => applyPlanningPreset("completed")} title="Show completed orders">
+            <ClickableKpiCard onClick={() => applyPlanningPreset("completed")} title="Show completed orders" tone="success">
               <KpiCard label="Completed" value={summary.completed_orders ?? 0} icon={CheckCircle2} tone="success" meta="Click to filter" />
             </ClickableKpiCard>
-            <ClickableKpiCard onClick={() => applyPlanningPreset("delayed")} title="Show delayed orders">
+            <ClickableKpiCard onClick={() => applyPlanningPreset("delayed")} title="Show delayed orders" tone="danger">
               <KpiCard label="Delayed" value={summary.delayed_orders ?? 0} icon={AlertTriangle} tone="danger" meta="Click to filter" />
             </ClickableKpiCard>
-            <ClickableKpiCard onClick={showTodayStartOrders} title="Show orders starting today">
+            <ClickableKpiCard onClick={showTodayStartOrders} title="Show orders starting today" tone="violet">
               <KpiCard
                 label="Today's Production"
                 value={summary.todays_production?.toLocaleString?.() ?? summary.todays_production ?? 0}
@@ -996,7 +1011,7 @@ export default function ProductionPlanning() {
                 <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-icon)]" />
                 <input
                   type="search"
-                  placeholder="Search order, product, customer…"
+                  placeholder="Search"
                   value={filters.q}
                   onChange={(e) => setFilters((f) => ({ ...f, q: e.target.value, preset: "" }))}
                   className="ui-input !rounded-full pl-10"
@@ -1040,42 +1055,118 @@ export default function ProductionPlanning() {
             </div>
 
             {showAdvanced ? (
-              <div className="mb-4 grid gap-3 rounded-[var(--radius-md)] border border-[#f0e0a8] bg-[#fffbeb] p-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 print:hidden">
-                <input placeholder="Order No." value={filters.order_number} onChange={(e) => patchFilters({ order_number: e.target.value })} onKeyDown={handleFilterKeyDown} className="ui-input !bg-white" />
-                <input placeholder="Product" value={filters.product} onChange={(e) => patchFilters({ product: e.target.value })} onKeyDown={handleFilterKeyDown} className="ui-input !bg-white" />
-                <input placeholder="Customer" value={filters.customer} onChange={(e) => patchFilters({ customer: e.target.value })} onKeyDown={handleFilterKeyDown} className="ui-input !bg-white" />
-                <input placeholder="Work Order" value={filters.work_order} onChange={(e) => patchFilters({ work_order: e.target.value })} onKeyDown={handleFilterKeyDown} className="ui-input !bg-white" />
-                <input placeholder="Machine" value={filters.machine} onChange={(e) => patchFilters({ machine: e.target.value })} onKeyDown={handleFilterKeyDown} className="ui-input !bg-white" />
-                <div className="mr-0.5">
-                  <select value={filters.department} onChange={(e) => patchFilters({ department: e.target.value })} className="ui-select w-full !bg-white">
+              <div className="mb-4 rounded-[24px] border border-[#dfe7e3] bg-[#f3f5f4] p-3 print:hidden">
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                  <input
+                    placeholder="Order No."
+                    value={filters.order_number}
+                    onChange={(e) => patchFilters({ order_number: e.target.value })}
+                    onKeyDown={handleFilterKeyDown}
+                    className="ui-input !min-h-[44px] !rounded-[18px] !border-[#dfe7e3] !bg-[#edf3f1] !text-[14px] !text-[#1f2b2d] placeholder:!text-[#64748b]"
+                  />
+                  <input
+                    placeholder="Product"
+                    value={filters.product}
+                    onChange={(e) => patchFilters({ product: e.target.value })}
+                    onKeyDown={handleFilterKeyDown}
+                    className="ui-input !min-h-[44px] !rounded-[18px] !border-[#dfe7e3] !bg-[#edf3f1] !text-[14px] !text-[#1f2b2d] placeholder:!text-[#64748b]"
+                  />
+                  <input
+                    placeholder="Customer"
+                    value={filters.customer}
+                    onChange={(e) => patchFilters({ customer: e.target.value })}
+                    onKeyDown={handleFilterKeyDown}
+                    className="ui-input !min-h-[44px] !rounded-[18px] !border-[#dfe7e3] !bg-[#edf3f1] !text-[14px] !text-[#1f2b2d] placeholder:!text-[#64748b]"
+                  />
+                  <input
+                    placeholder="Work Order"
+                    value={filters.work_order}
+                    onChange={(e) => patchFilters({ work_order: e.target.value })}
+                    onKeyDown={handleFilterKeyDown}
+                    className="ui-input !min-h-[44px] !rounded-[18px] !border-[#dfe7e3] !bg-[#edf3f1] !text-[14px] !text-[#1f2b2d] placeholder:!text-[#64748b]"
+                  />
+                  <input
+                    placeholder="Machine"
+                    value={filters.machine}
+                    onChange={(e) => patchFilters({ machine: e.target.value })}
+                    onKeyDown={handleFilterKeyDown}
+                    className="ui-input !min-h-[44px] !rounded-[18px] !border-[#dfe7e3] !bg-[#edf3f1] !text-[14px] !text-[#1f2b2d] placeholder:!text-[#64748b]"
+                  />
+                  <select
+                    value={filters.department}
+                    onChange={(e) => patchFilters({ department: e.target.value })}
+                    className="ui-select !min-h-[44px] !rounded-[18px] !border-[#dfe7e3] !bg-[#edf3f1] !text-[14px] !text-[#1f2b2d]"
+                  >
                     <option value="">Department</option>
-                    {DEPARTMENTS.map((d) => <option key={d} value={d}>{d}</option>)}
+                    {DEPARTMENTS.map((d) => (
+                      <option key={d} value={d}>
+                        {d}
+                      </option>
+                    ))}
                   </select>
+                  <select
+                    value={filters.shift}
+                    onChange={(e) => patchFilters({ shift: e.target.value })}
+                    className="ui-select !min-h-[44px] !rounded-[18px] !border-[#dfe7e3] !bg-[#edf3f1] !text-[14px] !text-[#1f2b2d]"
+                  >
+                    <option value="">Shift</option>
+                    {SHIFTS.map((s) => {
+                      const id = typeof s === "object" ? s.id : s;
+                      const label = typeof s === "object" ? s.label : s;
+                      return (
+                        <option key={id} value={id}>
+                          {label}
+                        </option>
+                      );
+                    })}
+                  </select>
+                  <select
+                    value={filters.priority}
+                    onChange={(e) => patchFilters({ priority: e.target.value })}
+                    className="ui-select !min-h-[44px] !rounded-[18px] !border-[#dfe7e3] !bg-[#edf3f1] !text-[14px] !text-[#1f2b2d]"
+                  >
+                    <option value="">Priority</option>
+                    {PRIORITIES.map((p) => (
+                      <option key={p} value={p}>
+                        {p}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    value={filters.status}
+                    onChange={(e) => patchFilters({ status: e.target.value })}
+                    className="ui-select !min-h-[44px] !rounded-[18px] !border-[#dfe7e3] !bg-[#edf3f1] !text-[14px] !text-[#1f2b2d]"
+                  >
+                    <option value="">Status</option>
+                    {ORDER_STATUSES.map((s) => (
+                      <option key={s} value={s}>
+                        {statusLabel(s)}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="date"
+                    value={filters.date_from}
+                    onChange={(e) => patchFilters({ date_from: e.target.value })}
+                    onKeyDown={handleFilterKeyDown}
+                    className="ui-input !min-h-[44px] !rounded-[18px] !border-[#dfe7e3] !bg-[#edf3f1] !text-[14px] !text-[#1f2b2d]"
+                  />
+                  <input
+                    type="date"
+                    value={filters.date_to}
+                    onChange={(e) => patchFilters({ date_to: e.target.value })}
+                    onKeyDown={handleFilterKeyDown}
+                    className="ui-input !min-h-[44px] !rounded-[18px] !border-[#dfe7e3] !bg-[#edf3f1] !text-[14px] !text-[#1f2b2d]"
+                  />
                 </div>
-                <select value={filters.shift} onChange={(e) => patchFilters({ shift: e.target.value })} className="ui-select !bg-white">
-                  <option value="">Shift</option>
-                  {SHIFTS.map((s) => {
-                    const id = typeof s === "object" ? s.id : s;
-                    const label = typeof s === "object" ? s.label : s;
-                    return <option key={id} value={id}>{label}</option>;
-                  })}
-                </select>
-                <select value={filters.priority} onChange={(e) => patchFilters({ priority: e.target.value })} className="ui-select !bg-white">
-                  <option value="">Priority</option>
-                  {PRIORITIES.map((p) => <option key={p} value={p}>{p}</option>)}
-                </select>
-                <select value={filters.status} onChange={(e) => patchFilters({ status: e.target.value })} className="ui-select !bg-white">
-                  <option value="">Status</option>
-                  {ORDER_STATUSES.map((s) => <option key={s} value={s}>{statusLabel(s)}</option>)}
-                </select>
-                <input type="date" value={filters.date_from} onChange={(e) => patchFilters({ date_from: e.target.value })} onKeyDown={handleFilterKeyDown} className="ui-input !bg-white" />
-                <input type="date" value={filters.date_to} onChange={(e) => patchFilters({ date_to: e.target.value })} onKeyDown={handleFilterKeyDown} className="ui-input !bg-white" />
-                <Button variant="secondary" type="button" onClick={handleApplyFilters} className="!bg-white font-medium">
-                  Apply Filters
-                </Button>
-                <Button variant="secondary" type="button" onClick={handleClearFilters} className="!bg-white font-medium">
-                  Clear filters
-                </Button>
+                <div className="mt-3 flex flex-wrap items-center gap-3">
+                  <Button variant="primary" type="button" onClick={handleApplyFilters} className="!min-h-[40px] !rounded-[14px] !px-5 !text-[14px]">
+                    Apply Filters
+                  </Button>
+                  <Button variant="secondary" type="button" onClick={handleClearFilters} className="!min-h-[40px] !rounded-[14px] !px-5 !text-[14px] !bg-transparent !border-[#dfe7e3] !text-[#1f2b2d]">
+                    Clear
+                  </Button>
+                </div>
               </div>
             ) : null}
 
@@ -1131,7 +1222,7 @@ export default function ProductionPlanning() {
 
             <div className="mt-4 flex flex-wrap items-center justify-end gap-3 text-[12px] text-[var(--color-text-muted)] print:hidden">
               <div className="mr-auto flex items-center gap-2">
-                <span>Rows per page</span>
+                <span>Rows per page:</span>
                 <select
                   value={pageSize}
                   onChange={(e) => setPageSize(Number(e.target.value))}
@@ -1149,16 +1240,6 @@ export default function ProductionPlanning() {
                 <button
                   type="button"
                   disabled={page <= 1}
-                  onClick={() => setPage(1)}
-                  className="ui-page-btn"
-                  aria-label="First page"
-                  title="First page"
-                >
-                  <ChevronsLeft className="h-4 w-4" />
-                </button>
-                <button
-                  type="button"
-                  disabled={page <= 1}
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   className="ui-page-btn"
                   aria-label="Previous page"
@@ -1167,7 +1248,7 @@ export default function ProductionPlanning() {
                   <ChevronLeft className="h-4 w-4" />
                 </button>
                 <button type="button" className="ui-page-btn ui-page-btn--active" aria-current="page">
-                  {page} / {totalPages}
+                  {page}
                 </button>
                 <button
                   type="button"
@@ -1178,16 +1259,6 @@ export default function ProductionPlanning() {
                   title="Next page"
                 >
                   <ChevronRight className="h-4 w-4" />
-                </button>
-                <button
-                  type="button"
-                  disabled={page >= totalPages}
-                  onClick={() => setPage(totalPages)}
-                  className="ui-page-btn"
-                  aria-label="Last page (End of the page)"
-                  title="End of the page"
-                >
-                  <ChevronsRight className="h-4 w-4" />
                 </button>
               </div>
             </div>

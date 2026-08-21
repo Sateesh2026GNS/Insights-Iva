@@ -389,7 +389,7 @@ export default function VendorBills() {
         <DataTable
           columns={columns}
           data={rows}
-          searchPlaceholder="Search bill, vendor, PO..."
+          searchPlaceholder="Search"
           searchKeys={["bill_number", "vendor_name", "po_number"]}
         />
       </div>

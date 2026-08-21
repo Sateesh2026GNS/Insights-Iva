@@ -100,12 +100,12 @@ export function MachineUtilizationChart() {
         {machineUtilization.map((row) => (
           <div key={row.machine}>
             <div className="mb-1 flex justify-between text-xs">
-              <span className="font-semibold text-slate-700">{row.machine}</span>
-              <span className="font-bold tabular-nums text-[#2563EB]">{row.utilization}%</span>
+              <span className="font-semibold text-slate-700 dark:text-white">{row.machine}</span>
+              <span className="font-bold tabular-nums text-[#2563EB] dark:text-blue-400">{row.utilization}%</span>
             </div>
-            <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+            <div className="h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
               <div
-                className="h-full rounded-full bg-gradient-to-r from-[#2563EB] to-[#22C55E] transition-all duration-700"
+                className="h-full rounded-full bg-gradient-to-r from-[#2563EB] to-[#22C55E]"
                 style={{ width: `${row.utilization}%` }}
               />
             </div>
@@ -146,11 +146,11 @@ export function OrderStatusChart() {
         <ul className="flex-1 space-y-2 text-sm">
           {orderStatus.map((item) => (
             <li key={item.name} className="flex items-center justify-between gap-2">
-              <span className="flex items-center gap-2">
+              <span className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
                 <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.color }} />
                 {item.name}
               </span>
-              <span className="font-semibold tabular-nums text-slate-700">{item.value}</span>
+              <span className="font-semibold tabular-nums text-slate-700 dark:text-white">{item.value}</span>
             </li>
           ))}
         </ul>

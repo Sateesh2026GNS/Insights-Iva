@@ -805,7 +805,7 @@ export default function StockTransfer() {
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]" />
               <input
                 type="search"
-                placeholder="Search by transfer no., warehouse..."
+                placeholder="Search"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="ui-input w-full !pl-9"

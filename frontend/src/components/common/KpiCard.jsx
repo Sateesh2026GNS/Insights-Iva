@@ -19,6 +19,19 @@ const TONE_CLASS = {
   neutral: "!bg-[var(--kpi-neutral-soft)] !text-[var(--kpi-neutral)]",
 };
 
+const TONE_INTERACTIVE_CLASS = {
+  primary: "hover:ring-2 hover:ring-[var(--kpi-primary)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-primary)]",
+  info: "hover:ring-2 hover:ring-[var(--kpi-info)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-info)]",
+  success: "hover:ring-2 hover:ring-[var(--kpi-success)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-success)]",
+  warning: "hover:ring-2 hover:ring-[var(--kpi-warning)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-warning)]",
+  danger: "hover:ring-2 hover:ring-[var(--kpi-danger)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-danger)]",
+  yellow: "hover:ring-2 hover:ring-[var(--kpi-warning)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-warning)]",
+  violet: "hover:ring-2 hover:ring-[var(--kpi-violet)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-violet)]",
+  teal: "hover:ring-2 hover:ring-[var(--kpi-teal)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-teal)]",
+  orange: "hover:ring-2 hover:ring-[var(--kpi-orange)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-orange)]",
+  neutral: "hover:ring-2 hover:ring-[var(--kpi-neutral)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-neutral)]",
+};
+
 function resolveTone(tone, color) {
   if (tone && TONE_CLASS[tone]) return tone;
   const c = String(color || "");
@@ -59,7 +72,8 @@ export default function KpiCard({
         : value;
 
   const interactive = Boolean(to || onClick);
-  const cardClass = `ui-kpi group ${interactive ? "cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]" : ""} ${className}`.trim();
+  const toneRing = TONE_INTERACTIVE_CLASS[resolved] || TONE_INTERACTIVE_CLASS.primary;
+  const cardClass = `ui-kpi group ${interactive ? `cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none ${toneRing}` : ""} ${className}`.trim();
 
   const inner = (
     <>

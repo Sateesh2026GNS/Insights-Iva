@@ -244,7 +244,7 @@ export default function FinalQC() {
               type="search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by customer, sales order, item…"
+              placeholder="Search"
               className="ui-input w-full !pl-10"
             />
           </div>

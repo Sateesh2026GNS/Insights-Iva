@@ -3,10 +3,9 @@ import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
 import Button from "../common/Button";
-const ERROR = "#f97316";
+import { inputClass } from "../../design-system/classes";
 
-const baseInput =
-  "w-full rounded-lg border bg-white px-3 py-2.5 text-[13px] text-[#1a1a1f] placeholder:text-[#a0a0ab] focus:outline-none";
+const ERROR = "#f97316";
 
 /**
  * Screenshot-matching modal: Field Name + Field Details, orange "required!" validation.
@@ -62,9 +61,9 @@ export default function AddCustomFieldModal({ open, onClose, onSave }) {
           </button>
         </div>
 
-        <div className="space-y-4 bg-[#f3f3f6] px-5 py-5">
+        <div className="space-y-4 bg-white px-5 py-5">
           <div>
-            <label className="mb-1.5 block text-[13px] font-semibold text-[#6b6b76]">
+            <label className="mb-1.5 block text-[13px] font-medium text-[#8a8a95]">
               Field Name
             </label>
             <input
@@ -72,29 +71,28 @@ export default function AddCustomFieldModal({ open, onClose, onSave }) {
               value={label}
               onChange={(e) => setLabel(e.target.value)}
               placeholder="Enter Field Name"
-              className={`${baseInput} ${
+              className={`${inputClass} ${
                 nameMissing
-                  ? "border-[1.5px] focus:ring-1"
-                  : "border-[#dcdce3] focus:border-[#c4b5fd] focus:ring-1 focus:ring-[#c4b5fd]"
+                  ? "!border-rose-500 !ring-1 !ring-rose-500"
+                  : ""
               }`}
-              style={nameMissing ? { borderColor: ERROR, boxShadow: `0 0 0 1px ${ERROR}` } : undefined}
             />
             {nameMissing ? (
-              <p className="mt-1 text-[12px] font-medium" style={{ color: ERROR }}>
+              <p className="mt-1 text-[12px] font-medium text-rose-500">
                 required!
               </p>
             ) : null}
           </div>
 
           <div>
-            <label className="mb-1.5 block text-[13px] font-semibold text-[#6b6b76]">
+            <label className="mb-1.5 block text-[13px] font-medium text-[#8a8a95]">
               Field Details
             </label>
             <input
               value={value}
               onChange={(e) => setValue(e.target.value)}
               placeholder="Enter Field Details"
-              className={`${baseInput} border-[#dcdce3] focus:border-[#c4b5fd] focus:ring-1 focus:ring-[#c4b5fd]`}
+              className={inputClass}
             />
           </div>
         </div>

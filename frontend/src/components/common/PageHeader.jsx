@@ -13,17 +13,18 @@ export default function PageHeader({
   backLabel = "Back",
   eyebrow,
   showTitle = false,
+  className = "",
 }) {
   const hasBody = Boolean(backTo || eyebrow || (showTitle && title) || subtitle || action);
   if (!hasBody) return null;
 
   return (
-    <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+    <header className={`flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between py-1.5 ${className}`}>
       <div className="min-w-0 space-y-1">
         {backTo ? (
           <Link
             to={backTo}
-            className="mb-1 inline-flex items-center gap-1.5 text-[var(--text-sm)] font-medium text-[var(--color-primary)] hover:opacity-80"
+            className="inline-flex items-center gap-1.5 text-[var(--text-sm)] font-medium text-[var(--color-primary)] hover:opacity-80"
           >
             <ArrowLeft className="h-4 w-4" aria-hidden />
             {backLabel}

@@ -149,7 +149,7 @@ export default function AccountSearchSelect({
             if (!open) openMenu();
           }}
           onKeyDown={onKeyDown}
-          placeholder={open ? "Search accounts…" : placeholder}
+          placeholder={open ? "Search" : placeholder}
           className="min-w-0 flex-1 bg-transparent px-2.5 py-2 text-[13px] text-[#1a1a1f] outline-none placeholder:text-[#a0a0ab]"
           autoComplete="off"
         />

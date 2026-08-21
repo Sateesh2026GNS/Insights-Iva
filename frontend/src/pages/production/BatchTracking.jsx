@@ -161,7 +161,7 @@ export default function BatchTracking() {
         <div className="mb-4">
           <input
             type="search"
-            placeholder="Search batch, product, work order..."
+            placeholder="Search"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"

@@ -264,6 +264,7 @@ export const TEAM_WORKFLOW_JOB_CARDS = [
     whenShown: "Draft or new sales order",
     actions: ["Create sales order", "Confirm order → send to Inventory"],
     filterStatus: "SALES_CONFIRMED",
+    path: "/sales/orders",
   },
   {
     id: "inventory",
@@ -275,6 +276,7 @@ export const TEAM_WORKFLOW_JOB_CARDS = [
     whenShown: "After sales confirmation",
     actions: ["Verify materials", "Check stock & shortages", "Release to Production"],
     filterStatus: "MATERIAL_CHECK_PENDING",
+    path: "/inventory/raw-materials",
   },
   {
     id: "production",
@@ -286,6 +288,7 @@ export const TEAM_WORKFLOW_JOB_CARDS = [
     whenShown: "Materials available",
     actions: ["Review job card", "Assign operator & machine", "Set schedule"],
     filterStatus: "READY_FOR_PRODUCTION",
+    path: "/production/planning",
   },
   {
     id: "operator",
@@ -297,6 +300,7 @@ export const TEAM_WORKFLOW_JOB_CARDS = [
     whenShown: "After manager assignment",
     actions: ["Start production", "Update progress", "Complete production"],
     filterStatus: "PRODUCTION_ASSIGNED",
+    path: "/production/tasks",
   },
   {
     id: "quality",
@@ -308,6 +312,7 @@ export const TEAM_WORKFLOW_JOB_CARDS = [
     whenShown: "After production completed",
     actions: ["Inspect output", "Record defects", "Pass / Fail / Partial"],
     filterStatus: "QUALITY_CHECK_PENDING",
+    path: "/quality/final",
   },
   {
     id: "packing",
@@ -319,6 +324,7 @@ export const TEAM_WORKFLOW_JOB_CARDS = [
     whenShown: "After quality approval",
     actions: ["Pack goods", "Enter dispatch details", "LR / tracking number"],
     filterStatus: "PACKING_PENDING",
+    path: "/sales/dispatch",
   },
   {
     id: "billing",
@@ -330,6 +336,7 @@ export const TEAM_WORKFLOW_JOB_CARDS = [
     whenShown: "After packing completed",
     actions: ["Create GST invoice", "Record billing status", "Complete order"],
     filterStatus: "BILLING_PENDING",
+    path: "/sales/invoices",
   },
 ];
 

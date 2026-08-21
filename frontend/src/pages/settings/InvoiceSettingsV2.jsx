@@ -1,4 +1,5 @@
 import { useState } from "react";
+import PageHeader from "../../components/common/PageHeader";
 
 const PAGE_BG = "var(--color-bg)";
 const ROW_BG = "#DBE2F0";
@@ -126,24 +127,29 @@ export default function InvoiceSettingsV2() {
 
   return (
     <div className="min-h-full" style={{ background: PAGE_BG }}>
-      <div className="mx-auto max-w-[1400px] px-4 py-5 sm:px-6 lg:px-8">
-
-        <div className="rounded-2xl border border-[#e4e4ea] bg-white p-5 shadow-sm sm:p-6">
+      <div className="mx-auto max-w-[1400px] px-4 py-5 sm:px-6 lg:px-8 space-y-5">
+        <PageHeader
+          title="Invoice Settings"
+          subtitle="Manage default billing preferences, automated settlements, and tax calculation rules"
+          backTo="/settings"
+          backLabel="Back to Settings"
+          showTitle
+        />
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6 dark:border-slate-700 dark:bg-slate-800">
           <div className="space-y-5">
             {SETTINGS.map((item) => (
               <div key={item.id}>
                 <div
-                  className="flex items-center justify-between gap-3 rounded-lg px-4 py-3"
-                  style={{ background: ROW_BG }}
+                  className="flex items-center justify-between gap-3 rounded-lg px-4 py-3 bg-slate-100 dark:bg-slate-700/80"
                 >
-                  <span className="text-[15px] font-semibold text-[#1a1a1f]">{item.title}</span>
+                  <span className="text-[15px] font-semibold text-slate-900 dark:text-white">{item.title}</span>
                   <Toggle
                     on={!!state[item.id]}
                     label={item.title}
                     onChange={() => setToggle(item.id)}
                   />
                 </div>
-                <p className="mt-2 px-1 text-[13px] leading-relaxed text-[#6b7280]">
+                <p className="mt-2 px-1 text-[13px] leading-relaxed text-slate-600 dark:text-slate-300">
                   {item.description}
                 </p>
               </div>

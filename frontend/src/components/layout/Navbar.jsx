@@ -160,14 +160,19 @@ export default function Navbar({ onMenuClick }) {
               aria-expanded={showProfile}
               aria-haspopup="menu"
             >
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--color-primary)] text-xs font-bold text-white">
-                {String(displayName)[0].toUpperCase()}
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--color-primary)] text-xs font-bold text-white shadow-sm ring-1 ring-slate-200/60 dark:ring-slate-700">
+                {user?.avatar ? (
+                  <img
+                    src={user.avatar}
+                    alt={displayName}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  String(displayName)[0].toUpperCase()
+                )}
               </div>
               <div className="hidden text-left sm:block">
-                <p className="text-sm font-semibold leading-tight text-[var(--color-text)]">
-                  {displayName}
-                </p>
-                <p className="text-[10px] text-slate-500 dark:text-slate-400">{displayRole}</p>
+                <p className="text-sm font-semibold leading-tight text-[var(--color-text)]">{displayRole}</p>
               </div>
               <ChevronDown className="hidden h-4 w-4 text-slate-400 sm:block" aria-hidden />
             </button>

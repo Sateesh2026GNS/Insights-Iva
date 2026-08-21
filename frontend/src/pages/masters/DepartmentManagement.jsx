@@ -331,7 +331,7 @@ export default function DepartmentManagement() {
           <div className="flex flex-wrap gap-2">
             <input
               type="search"
-              placeholder="Search department..."
+              placeholder="Search"
               value={filters.name}
               onChange={(e) => setFilters((f) => ({ ...f, name: e.target.value }))}
               className="min-w-[200px] rounded-lg border border-slate-200 px-3 py-2 text-sm"

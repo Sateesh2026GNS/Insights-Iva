@@ -212,7 +212,7 @@ export default function ProductsMaster() {
         </div>
 
         <div className="ui-card p-4 sm:p-5">
-          <div className="mb-4 flex flex-wrap items-center gap-2.5">
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="relative ui-search-wrap min-w-[10rem] flex-1">
               <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-icon)]" />
               <input
@@ -222,33 +222,38 @@ export default function ProductsMaster() {
                 className="ui-input !rounded-full !pl-10"
               />
             </div>
-            {!isPM && (
-              <Button variant="secondary" to={
-         pathname.startsWith("/inventory")
-          ? "/inventory/products/bulk-import"
-          : "/masters/products/bulk-import"
-        }>
-                <Upload className="h-4 w-4" />
-                Bulk Import
+            <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+              {!isPM && (
+                <Button
+                  variant="secondary"
+                  to={
+                    pathname.startsWith("/inventory")
+                      ? "/inventory/products/bulk-import"
+                      : "/masters/products/bulk-import"
+                  }
+                >
+                  <Upload className="h-4 w-4" />
+                  Bulk Import
+                </Button>
+              )}
+              <Button variant="secondary" type="button" onClick={onExport}>
+                <FileSpreadsheet className="h-4 w-4" />
+                Export (xlsx)
               </Button>
-            )}
-            <Button variant="secondary" type="button" onClick={onExport}>
-              <FileSpreadsheet className="h-4 w-4" />
-              Export (xlsx)
-            </Button>
-            {!isPM && (
-              <Button
-                variant="primary"
-                type="button"
-                onClick={() => {
-                  setEditing(null);
-                  setAddOpen(true);
-                }}
-              >
-                <Plus className="h-4 w-4" />
-                Create Product
-              </Button>
-            )}
+              {!isPM && (
+                <Button
+                  variant="primary"
+                  type="button"
+                  onClick={() => {
+                    setEditing(null);
+                    setAddOpen(true);
+                  }}
+                >
+                  <Plus className="h-4 w-4" />
+                  Create Product
+                </Button>
+              )}
+            </div>
           </div>
 
           <div className="ui-table-wrap">
@@ -368,8 +373,7 @@ export default function ProductsMaster() {
               </button>
               <button
                 type="button"
-                className="grid h-8 min-w-8 place-items-center rounded border border-[#e0b400] px-2 text-[13px] font-semibold text-[#1a1a1f] shadow-sm"
-                style={{ background: "#fff2b8" }}
+                className="grid h-8 min-w-8 place-items-center rounded border border-[#007f7d] bg-[#007f7d] px-2 text-[13px] font-semibold text-white shadow-sm"
               >
                 {page}
               </button>

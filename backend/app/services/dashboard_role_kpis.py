@@ -285,7 +285,6 @@ def build_admin_kpis(db: Session, tenant_id: int, user: User | None, ctx: dict[s
             link="/accounts/profit-loss",
         )
     return [
-        _kpi("total-users", "Total Users", stats["total_users"], trend_label="registered users", link="/admin/users"),
         _kpi("departments", "Departments", dept.total_departments, trend_label="active departments", link="/masters/departments"),
         _kpi("pending-approvals", "Pending Approvals", approvals, trend_label="awaiting action", link="/admin/approvals"),
         _kpi("total-orders", "Total Orders", ctx["total_orders"], trend_label="production orders", link="/production/planning"),

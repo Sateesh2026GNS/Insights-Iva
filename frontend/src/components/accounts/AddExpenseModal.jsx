@@ -101,9 +101,9 @@ export default function AddExpenseModal({ open, onClose, onSave, categories = []
               <label className="block text-[12px] font-medium text-[#6b6b76]">
                 Amount <span className="text-[#ef4444]">*</span>
                 <div className="relative mt-1">
-                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#9a9aa5]">₹</span>
+                  <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[#9a9aa5]">₹</span>
                   <input
-                    className={`${input} pl-7`}
+                    className={`${input} !pl-9`}
                     placeholder="Enter amount"
                     value={form.amount}
                     onChange={(e) => set("amount", e.target.value.replace(/[^\d.]/g, ""))}

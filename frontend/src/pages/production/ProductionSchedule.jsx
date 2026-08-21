@@ -60,15 +60,13 @@ const VIEWS = [
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
-function ScheduleEmpty({ message, onCreate }) {
+function ScheduleEmpty({ message }) {
   return (
     <EmptyState
       icon="clipboard"
       title="Nothing scheduled"
       description={message}
       className="py-10"
-      actionLabel={onCreate ? "New Schedule" : undefined}
-      onAction={onCreate}
     />
   );
 }
@@ -725,6 +723,34 @@ function NewScheduleModal({ onClose, onSuccess }) {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
+const KPI_TONE_RING = {
+  primary: "hover:ring-2 hover:ring-[var(--kpi-primary)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-primary)]",
+  info: "hover:ring-2 hover:ring-[var(--kpi-info)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-info)]",
+  success: "hover:ring-2 hover:ring-[var(--kpi-success)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-success)]",
+  warning: "hover:ring-2 hover:ring-[var(--kpi-warning)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-warning)]",
+  danger: "hover:ring-2 hover:ring-[var(--kpi-danger)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-danger)]",
+  yellow: "hover:ring-2 hover:ring-[var(--kpi-warning)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-warning)]",
+  violet: "hover:ring-2 hover:ring-[var(--kpi-violet)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-violet)]",
+  teal: "hover:ring-2 hover:ring-[var(--kpi-teal)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-teal)]",
+  orange: "hover:ring-2 hover:ring-[var(--kpi-orange)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-orange)]",
+  neutral: "hover:ring-2 hover:ring-[var(--kpi-neutral)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-neutral)]",
+};
+
+function ClickableKpiCard({ onClick, title, tone, children }) {
+  const resolvedTone = tone || children?.props?.tone || "primary";
+  const ringClass = KPI_TONE_RING[resolvedTone] || KPI_TONE_RING.primary;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`h-full w-full rounded-[var(--radius-lg)] text-left transition focus:outline-none ${ringClass}`}
+      title={title}
+    >
+      {children}
+    </button>
+  );
+}
+
 export default function ProductionSchedule() {
   const { addToast } = useToast();
   const { user } = useAuth();
@@ -741,6 +767,7 @@ export default function ProductionSchedule() {
   const [calendarEvents, setCalendarEvents] = useState([]);
   const [kanban, setKanban] = useState(DEMO_KANBAN);
   const [tableSearch, setTableSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [showNewModal, setShowNewModal] = useState(false);
 
   const isMountedRef = useRef(true);
@@ -845,14 +872,37 @@ export default function ProductionSchedule() {
     [timeline, shifts]
   );
 
+  const applySchedulePreset = (preset) => {
+    setStatusFilter(preset);
+    if (preset === "all") {
+      setTableSearch("");
+    }
+  };
+
   const filteredTable = useMemo(() => {
-    if (!tableSearch.trim()) return tableRows;
+    let rows = tableRows;
+    if (statusFilter && statusFilter !== "all") {
+      rows = rows.filter((r) => {
+        const s = String(r.status || "").toLowerCase();
+        if (statusFilter === "completed") {
+          return ["completed", "done", "closed"].includes(s);
+        }
+        if (statusFilter === "pending") {
+          return ["pending", "planned", "in_progress", "running", "paused"].includes(s);
+        }
+        if (statusFilter === "delayed") {
+          return ["delayed", "cancelled"].includes(s) || Boolean(r.is_delayed);
+        }
+        return s === statusFilter;
+      });
+    }
+    if (!tableSearch.trim()) return rows;
     const q = tableSearch.toLowerCase();
-    return tableRows.filter((r) =>
+    return rows.filter((r) =>
       [r.work_order_number, r.product_name, r.machine_name, r.operator_name, r.status]
         .some((v) => v && String(v).toLowerCase().includes(q))
     );
-  }, [tableRows, tableSearch]);
+  }, [tableRows, tableSearch, statusFilter]);
 
   const handleReschedule = async (sourceRow, targetMachineId) => {
     const targetRow = timeline.find((r) => r.machine_id === targetMachineId);
@@ -972,10 +1022,18 @@ export default function ProductionSchedule() {
   return (
     <div className="space-y-5 pb-4">
       <div className="ui-grid-kpi">
-        <KpiCard label="Target" value={(dashboard.production_target ?? 0).toLocaleString()} icon={Target} tone="primary" />
-        <KpiCard label="Completed" value={(dashboard.completed ?? 0).toLocaleString()} icon={CheckCircle2} tone="success" />
-        <KpiCard label="Pending" value={(dashboard.pending ?? 0).toLocaleString()} icon={ClipboardList} tone="warning" />
-        <KpiCard label="Delayed" value={dashboard.delayed_orders ?? 0} icon={AlertTriangle} tone="danger" />
+        <ClickableKpiCard onClick={() => applySchedulePreset("all")} title="Show all production targets" tone="primary">
+          <KpiCard label="Target" value={(dashboard.production_target ?? 0).toLocaleString()} icon={Target} tone="primary" meta="Click to filter" />
+        </ClickableKpiCard>
+        <ClickableKpiCard onClick={() => applySchedulePreset("completed")} title="Show completed orders" tone="success">
+          <KpiCard label="Completed" value={(dashboard.completed ?? 0).toLocaleString()} icon={CheckCircle2} tone="success" meta="Click to filter" />
+        </ClickableKpiCard>
+        <ClickableKpiCard onClick={() => applySchedulePreset("pending")} title="Show pending orders" tone="warning">
+          <KpiCard label="Pending" value={(dashboard.pending ?? 0).toLocaleString()} icon={ClipboardList} tone="warning" meta="Click to filter" />
+        </ClickableKpiCard>
+        <ClickableKpiCard onClick={() => applySchedulePreset("delayed")} title="Show delayed orders" tone="danger">
+          <KpiCard label="Delayed" value={dashboard.delayed_orders ?? 0} icon={AlertTriangle} tone="danger" meta="Click to filter" />
+        </ClickableKpiCard>
       </div>
 
       {conflicts.length > 0 ? (
@@ -1027,7 +1085,7 @@ export default function ProductionSchedule() {
             <div className="relative mb-4 ui-search-wrap">
               <input
                 type="search"
-                placeholder="Search WO, product, machine…"
+                placeholder="Search"
                 value={tableSearch}
                 onChange={(e) => setTableSearch(e.target.value)}
                 className="ui-input !rounded-full"

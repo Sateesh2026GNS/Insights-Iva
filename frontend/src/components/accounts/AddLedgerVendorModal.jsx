@@ -279,7 +279,7 @@ export default function AddLedgerVendorModal({ open, onClose, onSaved, vendor = 
                 onChange={(v) => set("state", v)}
                 options={INDIAN_STATES}
                 placeholder="Select State"
-                searchPlaceholder="Search state or UT…"
+                searchPlaceholder="Search"
                 className={selectTrigger}
               />
             </OutlinedField>

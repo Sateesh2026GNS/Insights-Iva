@@ -297,7 +297,7 @@ export default function GoodsReceipt() {
         <DataTable
           columns={columns}
           data={rows}
-          searchPlaceholder="Search GRN, PO, vendor..."
+          searchPlaceholder="Search"
           searchKeys={["grn_number", "po_number", "vendor_name"]}
         />
       </div>

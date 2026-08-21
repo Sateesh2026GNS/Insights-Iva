@@ -26,8 +26,9 @@ const EMPTY = {
   tcs: false,
 };
 
-const selectClass =
-  "w-full rounded-lg border border-[#dcdce3] bg-white px-3 py-2.5 text-[13px] text-[#1a1a1f] focus:border-[#c4b5fd] focus:outline-none focus:ring-1 focus:ring-[#c4b5fd]";
+import { inputClass } from "../../design-system/classes";
+
+const selectClass = `${inputClass} text-[13px]`;
 
 function Row({ label, children }) {
   return (
@@ -90,7 +91,7 @@ export default function AddOtherDetailsModal({ open, onClose, initial, onSave })
           </button>
         </div>
 
-        <div className="space-y-4 bg-[#f3f3f6] px-5 py-5">
+        <div className="space-y-4 bg-white px-5 py-5">
           <Row label="Party Type">
             <select
               value={form.party_type}

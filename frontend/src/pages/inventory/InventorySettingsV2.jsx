@@ -202,9 +202,10 @@ export default function InventorySettingsV2() {
   }
 
   return (
-    <div className="space-y-5 px-2 pb-24 sm:px-4 lg:px-6">
+    <div className="min-w-0 space-y-5 px-2 pt-2 pb-24 sm:px-4 lg:px-6">
       <PageHeader
-        subtitle="Configure system preferences and inventory rules"
+        backTo="/settings"
+        backLabel="Back to Settings"
         action={
           <div className="flex flex-wrap items-center gap-2">
             <label className="relative inline-flex items-center">
@@ -554,8 +555,8 @@ export default function InventorySettingsV2() {
         </SettingsCard>
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 z-20 border-t border-[var(--color-border-soft)] bg-white/95 px-4 py-3 backdrop-blur sm:px-6 lg:left-[var(--sidebar-width,0px)]">
-        <div className="mx-auto flex max-w-[1600px] flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="sticky bottom-0 -mx-2 -mb-24 mt-8 z-20 border-t border-[var(--color-border-soft)] bg-[var(--color-surface)]/95 px-4 py-3.5 shadow-lg backdrop-blur sm:-mx-4 sm:px-6 lg:-mx-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pr-14 sm:pr-16">
           <div className="flex flex-wrap items-center gap-3">
             <Button type="button" variant="outline" onClick={onSave} loading={saving} className="!border-[#16a34a] !text-[#16a34a] hover:!bg-[#f0fdf4]">
               {justSaved ? <Check className="h-4 w-4" /> : <Save className="h-4 w-4" />}

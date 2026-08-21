@@ -33,7 +33,7 @@ const EMPTY_ADDRESS = {
   pincode: "",
   city: "",
   state: "",
-  country: "India",
+  country: "",
 };
 
 const EMPTY_BASIC = {
@@ -77,7 +77,7 @@ function toInitial(party, variant = "customer") {
       pincode: party.pincode || "",
       city: party.city || "",
       state: party.state || "",
-      country: party.country || "India",
+      country: party.country || "",
     },
     basic: {
       ...EMPTY_BASIC,
@@ -138,6 +138,7 @@ function AddressModal({ open, onClose, initial, onSave }) {
           ...prev,
           city: data.city || data.district || prev.city,
           state: data.state || prev.state,
+          country: "India",
         }));
       })
       .catch(() => {});
@@ -150,11 +151,14 @@ function AddressModal({ open, onClose, initial, onSave }) {
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-end bg-black/45"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4"
       onMouseDown={(e) => e.target === e.currentTarget && onClose?.()}
       role="presentation"
     >
-      <div className={PANEL_CLASS} onMouseDown={(e) => e.stopPropagation()}>
+      <div
+        className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl"
+        onMouseDown={(e) => e.stopPropagation()}
+      >
         <div className="flex items-center justify-between border-b border-[#ececf0] px-5 py-3.5">
           <h3 className="text-[17px] font-bold text-[#1a1a1f]">Add Billing Address</h3>
           <button
@@ -205,27 +209,31 @@ function AddressModal({ open, onClose, initial, onSave }) {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <SoftField label="State">
-              <SearchableSelect
+              <select
                 value={address.state}
-                onChange={(v) => {
+                onChange={(e) => {
+                  const v = e.target.value;
                   setAddress((p) => {
                     const stateCities = CITIES_BY_STATE[v] || [];
                     const defaultCity = p.city && stateCities.includes(p.city) ? p.city : (stateCities[0] || p.city);
                     return { ...p, state: v, city: defaultCity };
                   });
                 }}
-                options={INDIAN_STATES}
-                placeholder="Select State"
-                className="!rounded-lg !border-[#d0d0d8] !bg-[#f3f3f6] !py-2 !text-[13px] !shadow-none"
-              />
+                className={inputClass}
+              >
+                <option value="">Select State</option>
+                {INDIAN_STATES.map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
             </SoftField>
             <SoftField label="Country">
               <select
-                value={address.country}
+                value={address.country || ""}
                 onChange={(e) => setAddress((p) => ({ ...p, country: e.target.value }))}
                 className={inputClass}
               >
-                <option value="India">Select Country</option>
+                <option value="">Select Country</option>
                 <option value="India">India</option>
               </select>
             </SoftField>
@@ -575,9 +583,9 @@ export default function AddNewPartyModal({
               <button
                 type="button"
                 onClick={() => setAddressOpen(true)}
-                className="inline-flex items-center gap-1 rounded-full border border-[#f4c116] bg-[#fff2b8] px-2.5 py-1 text-[11px] font-semibold text-[#1a1a1f]"
+                className="inline-flex items-center gap-1 rounded-full border border-[var(--color-action-teal)] bg-white px-3 py-1 text-[12px] font-semibold text-[var(--color-action-teal)] transition-colors hover:bg-[var(--color-action-teal)]/10"
               >
-                <Plus className="h-3 w-3" />
+                <Plus className="h-3.5 w-3.5" />
                 Add Billing Address
               </button>
             )}
@@ -594,10 +602,9 @@ export default function AddNewPartyModal({
               <button
                 type="button"
                 onClick={() => setBasicOpen(true)}
-                className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[#f4c116] px-2.5 py-1 text-[11px] font-semibold text-[#1a1a1f]"
-                style={{ background: "#fff2b8" }}
+                className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[var(--color-action-teal)] bg-white px-3 py-1 text-[12px] font-semibold text-[var(--color-action-teal)] transition-colors hover:bg-[var(--color-action-teal)]/10"
               >
-                <Plus className="h-3 w-3" />
+                <Plus className="h-3.5 w-3.5" />
                 Add
               </button>
             </div>
@@ -612,10 +619,9 @@ export default function AddNewPartyModal({
               <button
                 type="button"
                 onClick={() => setOtherOpen(true)}
-                className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[#f4c116] px-2.5 py-1 text-[11px] font-semibold text-[#1a1a1f]"
-                style={{ background: "#fff2b8" }}
+                className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[var(--color-action-teal)] bg-white px-3 py-1 text-[12px] font-semibold text-[var(--color-action-teal)] transition-colors hover:bg-[var(--color-action-teal)]/10"
               >
-                <Plus className="h-3 w-3" />
+                <Plus className="h-3.5 w-3.5" />
                 Add
               </button>
             </div>
@@ -646,7 +652,7 @@ export default function AddNewPartyModal({
             <button
               type="button"
               onClick={() => setCustomOpen(true)}
-              className="inline-flex items-center gap-1 rounded-full border border-[color-mix(in_srgb,var(--color-action-teal)_35%,transparent)] bg-white px-2.5 py-1.5 text-[12px] font-semibold text-[var(--color-action-teal)]"
+              className="inline-flex items-center gap-1 rounded-full border border-[var(--color-action-teal)] bg-white px-3 py-1 text-[12px] font-semibold text-[var(--color-action-teal)] transition-colors hover:bg-[var(--color-action-teal)]/10"
             >
               <Plus className="h-3.5 w-3.5" />
               Add Custom Field

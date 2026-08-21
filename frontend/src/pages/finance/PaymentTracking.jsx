@@ -195,7 +195,7 @@ export default function PaymentTracking() {
         onMonthChange={setMonth}
         branch={branch}
         onBranchChange={setBranch}
-        searchPlaceholder="Search payment, UTR, party..."
+        searchPlaceholder="Search"
       />
 
       <div className="ui-card p-4">

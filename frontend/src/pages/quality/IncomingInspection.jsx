@@ -219,7 +219,7 @@ export default function IncomingInspection() {
               type="search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by reference, supplier, material…"
+              placeholder="Search"
               className="ui-input w-full !pl-10"
             />
           </div>

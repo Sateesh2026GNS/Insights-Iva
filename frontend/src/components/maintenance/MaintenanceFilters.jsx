@@ -7,7 +7,7 @@ export default function MaintenanceFilters({
   onSearchChange,
   statusFilter,
   onStatusFilterChange,
-  searchPlaceholder = "Search...",
+  searchPlaceholder = "Search",
   children,
 }) {
   return (

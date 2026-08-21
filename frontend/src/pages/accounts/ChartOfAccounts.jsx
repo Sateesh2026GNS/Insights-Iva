@@ -120,7 +120,7 @@ export default function ChartOfAccounts() {
         onMonthChange={setMonth}
         branch={branch}
         onBranchChange={setBranch}
-        searchPlaceholder="Search accounts by name or code..."
+        searchPlaceholder="Search"
       />
 
       <div className="flex border-b border-slate-200 bg-slate-50/50 rounded-t-xl p-1.5 gap-2">

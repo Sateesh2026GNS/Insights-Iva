@@ -151,7 +151,7 @@ export default function FixedAssets() {
         onFinancialYearChange={setFinancialYear}
         month={month}
         onMonthChange={setMonth}
-        searchPlaceholder="Search fixed assets..."
+        searchPlaceholder="Search"
       />
 
       <div className="grid gap-6 lg:grid-cols-3">

@@ -1,7 +1,7 @@
 import { Search, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
-export function SearchBar({ value, onChange, placeholder = "Search...", onClear }) {
+export function SearchBar({ value, onChange, placeholder = "Search", onClear }) {
   const { t } = useTranslation();
   return (
     <div className="relative ui-search-wrap flex-1">

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Loader2, Save } from "lucide-react";
 
 import CompanyAddressFields, {
@@ -72,8 +73,10 @@ const NUMERIC_KEYS = new Set([
 ]);
 
 export default function SettingsCompanyProfile() {
+  const navigate = useNavigate();
   const { addToast } = useToast();
   const [form, setForm] = useState({ country: "India" });
+  const [baseline, setBaseline] = useState({ country: "India" });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
@@ -83,7 +86,11 @@ export default function SettingsCompanyProfile() {
     (async () => {
       try {
         const res = await getCompanySettings();
-        if (active) setForm({ country: "India", ...(res.data || {}) });
+        if (active) {
+          const data = { country: "India", ...(res.data || {}) };
+          setForm(data);
+          setBaseline(data);
+        }
       } catch (err) {
         if (active)
           addToast(
@@ -101,11 +108,24 @@ export default function SettingsCompanyProfile() {
 
   const setField = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
 
+  const handleCancel = () => {
+    setForm(baseline);
+    setFieldErrors({});
+    navigate("/settings");
+  };
+
   const handleSave = async () => {
-    const addressErrors = validateCompanyAddress(form, { pinKey: "pincode" });
-    if (Object.keys(addressErrors).length) {
-      setFieldErrors(addressErrors);
-      addToast("Please fix the highlighted address fields.", "error");
+    const errors = {};
+    const pin = form.pincode ? String(form.pincode).trim() : "";
+    if (pin) {
+      const isIndia = String(form.country || "India").trim().toLowerCase() === "india";
+      if (isIndia && (!/^\d{6}$/.test(pin) || pin.startsWith("0"))) {
+        errors.pincode = "Enter a valid 6-digit Indian PIN code.";
+      }
+    }
+    if (Object.keys(errors).length) {
+      setFieldErrors(errors);
+      addToast("Please fix the highlighted field errors.", "error");
       return;
     }
     setFieldErrors({});
@@ -125,8 +145,10 @@ export default function SettingsCompanyProfile() {
         payload[key] = form[key]?.trim?.() || form[key] || null;
       });
       const res = await updateCompanySettings(payload);
-      setForm({ country: "India", ...(res.data || {}) });
-      addToast("Settings saved");
+      const data = { country: "India", ...(res.data || {}) };
+      setForm(data);
+      setBaseline(data);
+      addToast("Company profile saved successfully.", "success");
     } catch (err) {
       addToast(err.response?.data?.detail || "Failed to save settings", "error");
     } finally {
@@ -154,15 +176,24 @@ export default function SettingsCompanyProfile() {
             orders and reports.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={saving}
-          className="flex items-center gap-2 rounded-lg bg-teal-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-[var(--color-success)] disabled:opacity-60"
-        >
-          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-          Save Changes
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleCancel}
+            className="rounded-lg border border-slate-300 dark:border-slate-600 px-4 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={saving}
+            className="flex items-center gap-2 rounded-lg bg-teal-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-[var(--color-success)] disabled:opacity-60"
+          >
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            Save Changes
+          </button>
+        </div>
       </div>
 
       <div className="space-y-6">

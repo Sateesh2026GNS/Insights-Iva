@@ -78,7 +78,7 @@ export default function TrialBalance() {
         onMonthChange={setMonth}
         branch={branch}
         onBranchChange={setBranch}
-        searchPlaceholder="Search ledger account codes or titles..."
+        searchPlaceholder="Search"
       />
 
       <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">

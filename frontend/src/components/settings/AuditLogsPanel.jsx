@@ -212,7 +212,7 @@ export default function AuditLogsPanel() {
           <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
           <input
             className={`${inputCls} w-full pl-8`}
-            placeholder="Search user, email, action, IP…"
+            placeholder="Search"
             value={filters.search}
             onChange={setFilter("search")}
           />

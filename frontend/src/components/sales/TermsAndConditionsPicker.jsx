@@ -126,7 +126,7 @@ export default function TermsAndConditionsPicker({
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search Terms and Conditions"
+            placeholder="Search"
             className="w-full rounded-xl border border-[#dcdce3] bg-white py-2.5 pl-9 pr-3 text-[13px] text-[#1a1a1f] placeholder:text-[#a0a0ab] focus:border-[#c4b5fd] focus:outline-none focus:ring-1 focus:ring-[#c4b5fd]"
           />
         </div>

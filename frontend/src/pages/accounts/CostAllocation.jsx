@@ -148,7 +148,7 @@ export default function CostAllocation() {
         onFinancialYearChange={setFinancialYear}
         month={month}
         onMonthChange={setMonth}
-        searchPlaceholder="Search overhead expenses..."
+        searchPlaceholder="Search"
       />
 
       <div className="grid gap-6 lg:grid-cols-3">

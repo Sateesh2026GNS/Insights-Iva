@@ -16,8 +16,31 @@ export function ToastProvider({ children }) {
   const lastErrorRef = useRef({ message: null, at: 0 });
 
   const addToast = useCallback((message, type = "success") => {
-    const id = Date.now() + Math.random();
     const text = normalizeToastMessage(message);
+    const lower = String(text || "").toLowerCase();
+
+    // Prevent noisy unauthenticated / unauthorized toast notifications on login or public routes
+    if (
+      lower.includes("not authenticated") ||
+      lower.includes("unauthorized") ||
+      lower.includes("could not validate credentials") ||
+      lower.includes("signature has expired") ||
+      lower.includes("token has expired")
+    ) {
+      if (
+        typeof window !== "undefined" &&
+        (window.location.pathname.startsWith("/login") ||
+          window.location.pathname.startsWith("/register") ||
+          window.location.pathname.startsWith("/landing") ||
+          window.location.pathname.startsWith("/forgot-password") ||
+          window.location.pathname.startsWith("/reset-password") ||
+          window.location.pathname.startsWith("/gns-admin"))
+      ) {
+        return;
+      }
+    }
+
+    const id = Date.now() + Math.random();
     setToasts((prev) => [...prev, { id, message: text, type }]);
     const ttl = type === "error" ? 5000 : 3200;
     setTimeout(() => {
@@ -28,15 +51,17 @@ export function ToastProvider({ children }) {
   useEffect(() => {
     setApiErrorHandler((message) => {
       // Debounce identical errors fired within 4s to avoid toast spam.
-      // Soft-suppress noisy RBAC redirects from the global interceptor only —
-      // explicit addToast calls (e.g. Delete failures) must still surface.
+      // Soft-suppress noisy RBAC/auth redirects from the global interceptor
       const lower = String(message || "").toLowerCase();
       if (
         lower.includes("permission") ||
         lower.includes("access to") ||
         lower.includes("not allowed") ||
         lower.includes("network error") ||
-        lower.includes("failed to fetch")
+        lower.includes("failed to fetch") ||
+        lower.includes("not authenticated") ||
+        lower.includes("unauthorized") ||
+        lower.includes("could not validate credentials")
       ) {
         return;
       }

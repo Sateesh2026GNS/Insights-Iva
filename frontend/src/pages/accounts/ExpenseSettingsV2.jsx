@@ -86,17 +86,21 @@ export default function ExpenseSettingsV2() {
   return (
     <AccountsPageShell>
       <div className="mx-auto max-w-[900px]">
-        <div className="mb-4 flex items-center gap-2">
-          <Link
-            to="/accounts/expenses"
-            className="grid h-9 w-9 place-items-center rounded-lg border border-[#E2E8F0] bg-white hover:bg-[#F8FAFC]"
-            aria-label="Back to expenses"
-          >
-            <ChevronLeft className="h-4 w-4" style={{ color: ACCOUNTS_TEXT }} />
-          </Link>
-        </div>
-
-        <div className="mb-4 flex justify-end">
+        <div className="mb-4 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <Link
+              to="/settings"
+              className="grid h-9 w-9 place-items-center rounded-lg border border-slate-200 bg-white hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700"
+              aria-label="Back to Settings"
+              title="Back to Settings"
+            >
+              <ChevronLeft className="h-4 w-4 text-slate-700 dark:text-white" />
+            </Link>
+            <div>
+              <h1 className="text-lg font-bold text-slate-900 dark:text-white">Expense Settings</h1>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Configure expense categories and account groupings</p>
+            </div>
+          </div>
           <AccountsPrimaryButton
             onClick={() => {
               setEditCategory(null);
@@ -108,7 +112,7 @@ export default function ExpenseSettingsV2() {
         </div>
 
         <AccountsCard>
-          <ul className="divide-y divide-[#E2E8F0]">
+          <ul className="divide-y divide-slate-200 dark:divide-slate-700">
             {categories.map((cat) => {
               const Icon = categoryIcon(cat.icon);
               return (
@@ -120,10 +124,10 @@ export default function ExpenseSettingsV2() {
                     <Icon className="h-4 w-4" />
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="text-[14px] font-semibold" style={{ color: ACCOUNTS_TEXT }}>
+                    <p className="text-[14px] font-semibold text-slate-900 dark:text-white">
                       {cat.name}
                     </p>
-                    <p className="text-[12px]" style={{ color: ACCOUNTS_TEXT_MUTED }}>
+                    <p className="text-[12px] text-slate-500 dark:text-slate-400">
                       {cat.account_group}
                     </p>
                   </div>

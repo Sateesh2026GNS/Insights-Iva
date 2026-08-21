@@ -247,7 +247,7 @@ function Toggle({ on, onChange }) {
       aria-checked={on}
       onClick={() => onChange(!on)}
       className={`relative h-6 w-11 rounded-full transition ${
-        on ? "bg-[#6b4eff]" : "bg-[#d4d4d8]"
+        on ? "bg-[var(--color-action-teal)]" : "bg-[#d4d4d8]"
       }`}
     >
       <span
@@ -514,7 +514,7 @@ export default function AddNewItemModal({
 
   return createPortal(
     <div
-      className={`fixed inset-0 z-[100] flex bg-black/40 ${
+      className={`fixed inset-0 z-[110] flex bg-black/40 ${
         isDrawer ? "items-stretch justify-end" : "items-center justify-center p-4"
       }`}
       role="dialog"
@@ -590,8 +590,7 @@ export default function AddNewItemModal({
               <button
                 type="button"
                 onClick={() => setShowDesc(true)}
-                className="inline-flex items-center gap-1 text-[13px] font-semibold"
-                style={{ color: BLUE }}
+                className="inline-flex items-center gap-1 text-[13px] font-semibold text-[var(--color-action-teal)] hover:underline"
               >
                 <Plus className="h-3.5 w-3.5" />
                 Add Description
@@ -612,7 +611,7 @@ export default function AddNewItemModal({
             <div className="grid grid-cols-2 gap-3">
               <label className="block">
                 <SoftLabel required>Sale Price</SoftLabel>
-                <div className="flex overflow-hidden rounded-lg border border-[#dcdce3] bg-[#f3f3f6] focus-within:border-[#c4b5fd] focus-within:ring-1 focus-within:ring-[#c4b5fd]">
+                <div className="flex overflow-hidden rounded-lg border border-[var(--color-border-soft)] bg-[var(--color-surface-muted)] focus-within:border-[var(--color-primary)] focus-within:ring-1 focus-within:ring-[var(--color-primary)]">
                   <span className="flex items-center pl-3 text-[13px] text-[#6b6b76]">₹</span>
                   <input
                     value={form.sale_price}
@@ -624,12 +623,12 @@ export default function AddNewItemModal({
                     }
                     placeholder="Enter Price"
                     required
-                    className="min-w-0 flex-1 bg-transparent px-2 py-2.5 text-[13px] outline-none"
+                    className="min-w-0 flex-1 bg-transparent px-2 py-2.5 text-[13px] text-[#1a1a1f] placeholder:text-[#a0a0ab] outline-none"
                   />
                   <select
                     value={form.tax_type}
                     onChange={(e) => setForm((f) => ({ ...f, tax_type: e.target.value }))}
-                    className="border-l border-[#dcdce3] bg-white px-2 text-[12px] outline-none"
+                    className="border-l border-[var(--color-border-soft)] bg-[var(--color-surface-muted)] px-2 text-[12px] text-[#1a1a1f] outline-none"
                   >
                     {TAX_TYPES.map((t) => (
                       <option key={t} value={t}>
@@ -716,7 +715,7 @@ export default function AddNewItemModal({
             <div className="grid grid-cols-2 gap-3">
               <label className="block">
                 <SoftLabel>CESS (Applied on Tax Value)</SoftLabel>
-                <div className="flex overflow-hidden rounded-lg border border-[#dcdce3] bg-[#f3f3f6]">
+                <div className="flex overflow-hidden rounded-lg border border-[var(--color-border-soft)] bg-[var(--color-surface-muted)] focus-within:border-[var(--color-primary)] focus-within:ring-1 focus-within:ring-[var(--color-primary)]">
                   <span className="flex items-center pl-3 text-[13px] text-[#6b6b76]">%</span>
                   <input
                     value={form.cess}
@@ -726,12 +725,12 @@ export default function AddNewItemModal({
                         cess: e.target.value.replace(/[^\d.]/g, ""),
                       }))
                     }
-                    className="min-w-0 flex-1 bg-transparent px-2 py-2.5 text-[13px] outline-none"
+                    className="min-w-0 flex-1 bg-transparent px-2 py-2.5 text-[13px] text-[#1a1a1f] placeholder:text-[#a0a0ab] outline-none"
                   />
                   <select
                     value={form.cess_mode}
                     onChange={(e) => setForm((f) => ({ ...f, cess_mode: e.target.value }))}
-                    className="border-l border-[#dcdce3] bg-white px-2 text-[12px] outline-none"
+                    className="border-l border-[var(--color-border-soft)] bg-[var(--color-surface-muted)] px-2 text-[12px] text-[#1a1a1f] outline-none"
                   >
                     {CESS_MODES.map((m) => (
                       <option key={m} value={m}>
@@ -766,8 +765,7 @@ export default function AddNewItemModal({
                   <button
                     type="button"
                     onClick={() => onAddCategory()}
-                    className="mt-1.5 text-[12px] font-semibold"
-                    style={{ color: BLUE }}
+                    className="mt-1.5 text-[12px] font-semibold text-[var(--color-action-teal)] hover:underline"
                   >
                     + Add New Category
                   </button>
@@ -790,10 +788,9 @@ export default function AddNewItemModal({
             <button
               type="button"
               onClick={() => setCustomOpen(true)}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-[#c4b5fd] bg-white px-3 py-2 text-[13px] font-semibold"
-              style={{ color: PURPLE }}
+              className="inline-flex items-center gap-1 rounded-full border border-[var(--color-action-teal)] bg-white px-3 py-1 text-[12px] font-semibold text-[var(--color-action-teal)] transition-colors hover:bg-[var(--color-action-teal)]/10"
             >
-              <Plus className="h-4 w-4" />
+              <Plus className="h-3.5 w-3.5" />
               Add Custom Field
             </button>
           </div>
@@ -807,7 +804,7 @@ export default function AddNewItemModal({
               >
                 <label className="block">
                   <SoftLabel>Purchase Price</SoftLabel>
-                  <div className="flex overflow-hidden rounded-lg border border-[#dcdce3] bg-[#f3f3f6]">
+                  <div className="flex overflow-hidden rounded-lg border border-[var(--color-border-soft)] bg-[var(--color-surface-muted)] focus-within:border-[var(--color-primary)] focus-within:ring-1 focus-within:ring-[var(--color-primary)]">
                     <span className="flex items-center pl-3 text-[13px] text-[#6b6b76]">₹</span>
                     <input
                       value={form.purchase_price}
@@ -819,14 +816,14 @@ export default function AddNewItemModal({
                           return { ...f, purchase_price: val };
                         })
                       }
-                      className="min-w-0 flex-1 bg-transparent px-2 py-2.5 text-[13px] outline-none"
+                      className="min-w-0 flex-1 bg-transparent px-2 py-2.5 text-[13px] text-[#1a1a1f] placeholder:text-[#a0a0ab] outline-none"
                     />
                     <select
                       value={form.purchase_tax_type}
                       onChange={(e) =>
                         setForm((f) => ({ ...f, purchase_tax_type: e.target.value }))
                       }
-                      className="border-l border-[#dcdce3] bg-white px-2 text-[12px] outline-none"
+                      className="border-l border-[var(--color-border-soft)] bg-[var(--color-surface-muted)] px-2 text-[12px] text-[#1a1a1f] outline-none"
                     >
                       {TAX_TYPES.map((t) => (
                         <option key={t} value={t}>
@@ -887,15 +884,14 @@ export default function AddNewItemModal({
                         <button
                           type="button"
                           onClick={(e) => { e.preventDefault(); e.stopPropagation(); setBarcodeOpen(true); }}
-                          className="inline-flex items-center gap-1 text-[12px] font-semibold"
-                          style={{ color: BLUE }}
+                          className="inline-flex items-center gap-1 text-[12px] font-semibold text-[var(--color-action-teal)] hover:underline"
                         >
                           <Eye className="h-3.5 w-3.5" /> View
                         </button>
                         <button
                           type="button"
                           onClick={generateBarcode}
-                          className="inline-flex items-center gap-1 text-[12px] font-semibold text-[#6b6b76] hover:text-[#2563eb]"
+                          className="inline-flex items-center gap-1 text-[12px] font-semibold text-[#6b6b76] hover:text-[var(--color-action-teal)]"
                         >
                           <Sparkles className="h-3.5 w-3.5" /> Regenerate
                         </button>
@@ -904,8 +900,7 @@ export default function AddNewItemModal({
                       <button
                         type="button"
                         onClick={generateBarcode}
-                        className="inline-flex items-center gap-1 text-[12px] font-semibold"
-                        style={{ color: BLUE }}
+                        className="inline-flex items-center gap-1 text-[12px] font-semibold text-[var(--color-action-teal)] hover:underline"
                       >
                         <Sparkles className="h-3.5 w-3.5" /> Generate Barcode
                       </button>

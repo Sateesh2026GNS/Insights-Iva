@@ -611,7 +611,7 @@ export default function MaterialRequests() {
         <DataTable
           columns={columns}
           data={filtered}
-          searchPlaceholder="Search MR, department, requester..."
+          searchPlaceholder="Search"
           searchKeys={["mr_number", "department", "requested_by"]}
         />
       </div>

@@ -314,7 +314,7 @@ export default function MeetingsCalendarView({
             <Search className="h-4 w-4 shrink-0" />
             <input
               type="text"
-              placeholder="Search meetings or people"
+              placeholder="Search"
               value={meetQuery}
               onChange={(e) => setMeetQuery(e.target.value)}
             />

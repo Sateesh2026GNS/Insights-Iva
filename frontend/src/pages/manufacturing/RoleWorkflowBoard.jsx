@@ -132,7 +132,9 @@ export default function RoleWorkflowBoard() {
 
   const handleSelectTeam = (card) => {
     setActiveTeam(card.team);
-    if (card.filterStatus) {
+    if (card.path) {
+      navigate(card.path);
+    } else if (card.filterStatus) {
       navigate(`/manufacturing/workflow?status=${card.filterStatus}`);
     }
   };
@@ -144,8 +146,20 @@ export default function RoleWorkflowBoard() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-lg font-semibold text-slate-900">Manufacturing Workflow</h1>
-          <p className="text-sm text-slate-500">
-            Sales → Inventory → Production → Operator → Quality → Packing → Billing
+          <p className="flex flex-wrap items-center gap-1.5 text-sm text-slate-500">
+            <Link to="/sales/orders" className="hover:text-[var(--color-primary)] hover:underline">Sales</Link>
+            <span>→</span>
+            <Link to="/inventory/raw-materials" className="hover:text-[var(--color-primary)] hover:underline">Inventory</Link>
+            <span>→</span>
+            <Link to="/production/planning" className="hover:text-[var(--color-primary)] hover:underline">Production</Link>
+            <span>→</span>
+            <Link to="/production/tasks" className="hover:text-[var(--color-primary)] hover:underline">Operator</Link>
+            <span>→</span>
+            <Link to="/quality/final" className="hover:text-[var(--color-primary)] hover:underline">Quality</Link>
+            <span>→</span>
+            <Link to="/sales/dispatch" className="hover:text-[var(--color-primary)] hover:underline">Packing</Link>
+            <span>→</span>
+            <Link to="/sales/invoices" className="hover:text-[var(--color-primary)] hover:underline">Billing</Link>
           </p>
         </div>
         {statusFilter ? (

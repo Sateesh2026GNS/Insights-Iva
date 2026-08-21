@@ -10,7 +10,7 @@ export default function SearchableSelect({
   onChange,
   options = [],
   placeholder = "Select…",
-  searchPlaceholder = "Search…",
+  searchPlaceholder = "Search",
   disabled = false,
   error = false,
   allowCustom = false,

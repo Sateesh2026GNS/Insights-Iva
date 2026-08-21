@@ -7,6 +7,8 @@ import useTenantId from "../../hooks/useTenantId";
 import { useToast } from "../../context/ToastContext";
 import { apiErrorMessage } from "../../utils/apiError";
 import { fetchFinishedGoodsWithFallback } from "../../utils/productOptions";
+import AddNewItemModal from "../sales/AddNewItemModal";
+import CreateMachineModal from "./CreateMachineModal";
 import Button, { IconButton } from "../common/Button";
 
 const SHIFT_OPTIONS = [
@@ -83,6 +85,10 @@ export default function CreateProductionOrderModal({
 
   const [machines, setMachines] = useState([]);
   const [products, setProducts] = useState([]);
+  const [customProductMode, setCustomProductMode] = useState(false);
+  const [showAddProductModal, setShowAddProductModal] = useState(false);
+  const [showAddMachineModal, setShowAddMachineModal] = useState(false);
+  const [customMachineMode, setCustomMachineMode] = useState(false);
   const [loadingOptions, setLoadingOptions] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
@@ -128,7 +134,9 @@ export default function CreateProductionOrderModal({
     if (initialOrder) {
       setForm({
         product_id: initialOrder.product_id ? String(initialOrder.product_id) : "",
+        product_name: initialOrder.product_name || "",
         machine_id: initialOrder.machine_id ? String(initialOrder.machine_id) : "",
+        machine_name: initialOrder.machine_name || "",
         operator_name: initialOrder.operator_name || "",
         operator_id: initialOrder.operator_id || "",
         planned_quantity:
@@ -145,6 +153,8 @@ export default function CreateProductionOrderModal({
     } else {
       setForm(EMPTY_FORM);
     }
+    setCustomProductMode(false);
+    setCustomMachineMode(false);
     setErrors({});
   }, [initialOrder, open]);
 
@@ -159,8 +169,11 @@ export default function CreateProductionOrderModal({
 
   const validate = () => {
     const errs = {};
-    if (!form.product_id) {
+    if (!customProductMode && !form.product_id) {
       errs.product_id = "Select a product";
+    }
+    if (customProductMode && !form.product_name?.trim()) {
+      errs.product_id = "Enter a product name";
     }
     if (!form.planned_quantity || Number(form.planned_quantity) <= 0) {
       errs.planned_quantity = "Planned quantity is required and must be greater than 0";
@@ -173,10 +186,19 @@ export default function CreateProductionOrderModal({
     e.preventDefault();
     if (!validate() || submitting) return;
 
-    const selectedProduct = products.find((p) => String(p.id) === String(form.product_id));
-    if (!selectedProduct?.id) {
-      setErrors((prev) => ({ ...prev, product_id: "Select a valid product" }));
-      return;
+    let productId = null;
+    let productName = "";
+
+    if (customProductMode) {
+      productName = form.product_name?.trim() || "";
+    } else {
+      const selectedProduct = products.find((p) => String(p.id) === String(form.product_id));
+      if (!selectedProduct?.id) {
+        setErrors((prev) => ({ ...prev, product_id: "Select a valid product" }));
+        return;
+      }
+      productId = Number(selectedProduct.id);
+      productName = selectedProduct.name || selectedProduct.sku;
     }
 
     setSubmitting(true);
@@ -189,10 +211,11 @@ export default function CreateProductionOrderModal({
 
       const payload = {
         tenant_id: Number(tenantId),
-        product_id: Number(selectedProduct.id),
+        ...(productId ? { product_id: productId } : { product_name: productName }),
         order_number: "",
         planned_quantity: Number(form.planned_quantity),
-        machine_id: form.machine_id ? Number(form.machine_id) : null,
+        machine_id: !customMachineMode && form.machine_id ? Number(form.machine_id) : null,
+        machine_name: customMachineMode ? (form.machine_name?.trim() || null) : null,
         priority: form.priority || "medium",
         shift: form.shift || null,
         status: form.status || "planned",
@@ -204,7 +227,7 @@ export default function CreateProductionOrderModal({
       const res = await createProductionOrder(payload);
       const newOrder = {
         ...(res?.data || {}),
-        product_name: selectedProduct.name || selectedProduct.sku,
+        product_name: productName,
         operator_name: form.operator_name || null,
         operator_id: form.operator_id || null,
       };
@@ -222,7 +245,7 @@ export default function CreateProductionOrderModal({
     }
   };
 
-  return createPortal(
+  const modalPortal = createPortal(
     <div
       className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm"
       role="dialog"
@@ -267,24 +290,55 @@ export default function CreateProductionOrderModal({
               <span className="ui-label">
                 Product <span className="text-[var(--color-danger)]">*</span>
               </span>
-              <select
-                value={form.product_id}
-                onChange={(e) => handleChange("product_id", e.target.value)}
-                disabled={loadingOptions}
-                className={`ui-select w-full ${errors.product_id ? "border-[var(--color-danger)]" : ""}`}
-              >
-                <option value="">{loadingOptions ? "Loading products…" : "Select product…"}</option>
-                {products
-                  .filter((p) => p?.id != null && p.id !== "")
-                  .map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name && p.name !== "—" ? p.name : p.sku || `Product #${p.id}`}
-                      {p.sku && p.sku !== "—" && p.name && p.name !== "—" ? ` (${p.sku})` : ""}
-                    </option>
-                  ))}
-              </select>
+              {customProductMode ? (
+                <div className="flex gap-1.5">
+                  <input
+                    type="text"
+                    value={form.product_name || ""}
+                    onChange={(e) => handleChange("product_name", e.target.value)}
+                    placeholder="Enter product name…"
+                    autoFocus
+                    className={`ui-input flex-1 ${errors.product_id ? "border-[var(--color-danger)]" : ""}`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCustomProductMode(false);
+                      handleChange("product_name", "");
+                      handleChange("product_id", "");
+                    }}
+                    className="rounded-lg border border-[var(--color-border)] px-2.5 py-1.5 text-xs font-medium text-[var(--color-primary)] hover:bg-[var(--color-surface-muted)]"
+                  >
+                    Select
+                  </button>
+                </div>
+              ) : (
+                <select
+                  value={form.product_id}
+                  onChange={(e) => {
+                    if (e.target.value === "__custom__" || e.target.value === "__add_product__") {
+                      setShowAddProductModal(true);
+                    } else {
+                      handleChange("product_id", e.target.value);
+                    }
+                  }}
+                  disabled={loadingOptions}
+                  className={`ui-select w-full ${errors.product_id ? "border-[var(--color-danger)]" : ""}`}
+                >
+                  <option value="">{loadingOptions ? "Loading products…" : "Select product…"}</option>
+                  <option value="__add_product__">+ Add new Product</option>
+                  {products
+                    .filter((p) => p?.id != null && p.id !== "")
+                    .map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name && p.name !== "—" ? p.name : p.sku || `Product #${p.id}`}
+                        {p.sku && p.sku !== "—" && p.name && p.name !== "—" ? ` (${p.sku})` : ""}
+                      </option>
+                    ))}
+                </select>
+              )}
               {errors.product_id ? <p className="text-xs text-[var(--color-danger)]">{errors.product_id}</p> : null}
-              {!loadingOptions && products.length === 0 ? (
+              {!loadingOptions && products.length === 0 && !customProductMode ? (
                 <p className="text-xs text-[var(--color-text-muted)]">No products found. Add products in Masters first.</p>
               ) : null}
             </label>
@@ -293,22 +347,61 @@ export default function CreateProductionOrderModal({
               <span className="ui-label">
                 Machine <span className="font-normal text-[var(--color-text-faint)]">(optional)</span>
               </span>
-              <div className="relative">
-                <Cpu className="pointer-events-none absolute left-3 top-1/2 z-[1] h-4 w-4 -translate-y-1/2 text-[var(--color-text-icon)]" />
-                <select
-                  value={form.machine_id}
-                  onChange={(e) => handleChange("machine_id", e.target.value)}
-                  disabled={loadingOptions}
-                  className="ui-select pl-10 w-full"
-                >
-                  <option value="">Select machine (optional)</option>
-                  {machines.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.name || m.code} ({m.status || "Available"})
-                    </option>
-                  ))}
-                </select>
-              </div>
+              {customMachineMode ? (
+                <div className="flex gap-1.5">
+                  <input
+                    type="text"
+                    value={form.machine_name || ""}
+                    onChange={(e) => handleChange("machine_name", e.target.value)}
+                    placeholder="Enter machine name…"
+                    autoFocus
+                    className="ui-input flex-1"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCustomMachineMode(false);
+                      handleChange("machine_name", "");
+                      handleChange("machine_id", "");
+                    }}
+                    className="rounded-lg border border-[var(--color-border)] px-2.5 py-1.5 text-xs font-medium text-[var(--color-primary)] hover:bg-[var(--color-surface-muted)]"
+                  >
+                    Select
+                  </button>
+                </div>
+              ) : (
+                <div className="relative">
+                  <Cpu className="pointer-events-none absolute left-3 top-1/2 z-[1] h-4 w-4 -translate-y-1/2 text-[var(--color-text-icon)]" />
+                  <select
+                    value={form.machine_id}
+                    onChange={(e) => {
+                      if (e.target.value === "__custom__" || e.target.value === "__add_machine__") {
+                        setShowAddMachineModal(true);
+                      } else {
+                        const mId = e.target.value;
+                        handleChange("machine_id", mId);
+                        const selM = machines.find((m) => String(m.id) === String(mId));
+                        if (selM) {
+                          handleChange("machine_name", selM.name || selM.code);
+                          if (selM.assigned_operator && !form.operator_name) {
+                            handleChange("operator_name", selM.assigned_operator);
+                          }
+                        }
+                      }
+                    }}
+                    disabled={loadingOptions}
+                    className="ui-select pl-10 w-full"
+                  >
+                    <option value="">Select machine (optional)</option>
+                    <option value="__add_machine__">+ Add new Machine</option>
+                    {machines.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.name || m.code} ({m.status || "Available"})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </label>
 
             <label className="block space-y-1.5">
@@ -441,5 +534,56 @@ export default function CreateProductionOrderModal({
       </div>
     </div>,
     document.body
+  );
+
+  return (
+    <>
+      {modalPortal}
+      <AddNewItemModal
+        open={showAddProductModal}
+        placement="drawer"
+        onClose={() => setShowAddProductModal(false)}
+        onSaved={async (line, product) => {
+          setShowAddProductModal(false);
+          try {
+            const refreshed = await fetchFinishedGoodsWithFallback();
+            setProducts(Array.isArray(refreshed) ? refreshed : []);
+            const newId = String(product?.id || line?.product_id || "");
+            if (newId) {
+              handleChange("product_id", newId);
+              if (product?.name || line?.item_description) {
+                handleChange("product_name", product?.name || line?.item_description);
+              }
+            }
+          } catch {
+            // fallback
+          }
+        }}
+      />
+      <CreateMachineModal
+        open={showAddMachineModal}
+        placement="drawer"
+        onClose={() => setShowAddMachineModal(false)}
+        onSaved={async (createdMachine) => {
+          setShowAddMachineModal(false);
+          try {
+            const mRes = await getMachines().catch(() => ({ data: [] }));
+            const refreshed = Array.isArray(mRes?.data) ? mRes.data : Array.isArray(mRes) ? mRes : [];
+            const list = refreshed.length > 0 ? refreshed : (createdMachine ? [createdMachine] : []);
+            setMachines(list);
+            const mId = String(createdMachine?.id || list[0]?.id || "");
+            if (mId) {
+              handleChange("machine_id", mId);
+              handleChange("machine_name", createdMachine?.name || createdMachine?.code || "");
+              if (createdMachine?.assigned_operator && !form.operator_name) {
+                handleChange("operator_name", createdMachine.assigned_operator);
+              }
+            }
+          } catch {
+            // fallback
+          }
+        }}
+      />
+    </>
   );
 }

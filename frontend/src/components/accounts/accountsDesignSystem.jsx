@@ -100,7 +100,7 @@ export function accountsKpiEntry(label, value, sub, icon, tint, iconColor, value
   return { label, value, sub, icon, tint, iconColor, valueColor };
 }
 
-export function AccountsSearchInput({ value, onChange, placeholder = "Search...", className = "" }) {
+export function AccountsSearchInput({ value, onChange, placeholder = "Search", className = "" }) {
   return (
     <div className={`relative ui-search-wrap ${className}`}>
       <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]" />
@@ -120,13 +120,13 @@ export function AccountsPagination({ page, pageSize, total, onPage, onPageSize, 
   const to = Math.min(page * pageSize, total);
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--color-border)] px-1 pt-4 text-[13px] text-[var(--color-text-muted)]">
-      <div className="flex flex-wrap items-center gap-2">
+    <div className="ui-pagination justify-between w-full border-t border-[var(--color-border-soft)] px-1 pt-4 text-[13px] text-[var(--color-text-secondary)]">
+      <div className="flex items-center gap-2.5 flex-nowrap whitespace-nowrap">
         <span>Rows per page:</span>
         <select
           value={pageSize}
           onChange={(e) => onPageSize(Number(e.target.value))}
-          className="ui-select rounded-md px-2 py-1.5 text-[13px]"
+          className="ui-pagination-select"
         >
           {pageSizes.map((n) => (
             <option key={n} value={n}>
@@ -134,7 +134,7 @@ export function AccountsPagination({ page, pageSize, total, onPage, onPageSize, 
             </option>
           ))}
         </select>
-        <span className="font-medium text-[var(--color-text)]">
+        <span className="font-medium text-[var(--color-text-secondary)]">
           {total === 0 ? "0-0 of 0" : `${from}-${to} of ${total}`}
         </span>
       </div>
@@ -143,14 +143,14 @@ export function AccountsPagination({ page, pageSize, total, onPage, onPageSize, 
           type="button"
           disabled={page <= 1}
           onClick={() => onPage(Math.max(1, page - 1))}
-          className="ui-btn ui-btn-secondary grid h-8 w-8 place-items-center !p-0 disabled:opacity-40"
+          className="ui-page-btn"
           aria-label="Previous page"
         >
           <ChevronLeft className="h-4 w-4" />
         </button>
-        {accountsPageNumberItems(page, totalPages).map((item) =>
+        {accountsPageNumberItems(page, totalPages).map((item, idx) =>
           typeof item === "string" ? (
-            <span key={item} className="px-1 text-xs text-[var(--color-text-muted)]">
+            <span key={`dots-${idx}`} className="px-1 text-xs text-[var(--color-text-muted)]">
               …
             </span>
           ) : (
@@ -158,11 +158,7 @@ export function AccountsPagination({ page, pageSize, total, onPage, onPageSize, 
               key={item}
               type="button"
               onClick={() => onPage(item)}
-              className={`grid h-8 min-w-8 place-items-center rounded-md border px-2 text-[13px] font-semibold ${
-                item === page
-                  ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-white"
-                  : "border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text)] hover:bg-[var(--color-surface-muted)]"
-              }`}
+              className={`ui-page-btn ${item === page ? "ui-page-btn--active" : ""}`}
             >
               {item}
             </button>
@@ -172,7 +168,7 @@ export function AccountsPagination({ page, pageSize, total, onPage, onPageSize, 
           type="button"
           disabled={page >= totalPages}
           onClick={() => onPage(Math.min(totalPages, page + 1))}
-          className="ui-btn ui-btn-secondary grid h-8 w-8 place-items-center !p-0 disabled:opacity-40"
+          className="ui-page-btn"
           aria-label="Next page"
         >
           <ChevronRight className="h-4 w-4" />

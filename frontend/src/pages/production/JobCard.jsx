@@ -2948,9 +2948,6 @@ function JobCardList({ rows, loading, onOpen, onCreate, canCreate }) {
       <EmptyState
         title="No job cards yet"
         description="Job Cards are shop-floor views of live Work Orders. Create one to start production."
-        actionLabel={canCreate ? "New Job Card" : "Go to Work Orders"}
-        onAction={canCreate ? onCreate : undefined}
-        actionHref={canCreate ? undefined : "/production/work-orders"}
       />
     );
   }

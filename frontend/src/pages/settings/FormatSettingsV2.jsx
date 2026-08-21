@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 
 import useSettings from "../../context/SettingsContext";
+import PageHeader from "../../components/common/PageHeader";
 
 const ACCENT = "#0f6d84";
 const PAGE_BG = "var(--color-bg)";
@@ -65,11 +66,11 @@ function RadioOption({ checked, label, onChange, name }) {
     <label className="inline-flex cursor-pointer items-center gap-2.5">
       <span
         className={`grid h-[18px] w-[18px] shrink-0 place-items-center rounded-full border-2 ${
-          checked ? "border-[#1a1a1f]" : "border-[#b0b0b8]"
+          checked ? "border-[var(--color-primary)] dark:border-teal-400" : "border-slate-400 dark:border-slate-600"
         }`}
       >
         {checked ? (
-          <span className="h-2.5 w-2.5 rounded-full" style={{ background: LABEL_GREEN }} />
+          <span className="h-2.5 w-2.5 rounded-full bg-[var(--color-primary)] dark:bg-teal-400" />
         ) : null}
       </span>
       <input
@@ -79,7 +80,7 @@ function RadioOption({ checked, label, onChange, name }) {
         checked={checked}
         onChange={onChange}
       />
-      <span className="text-[15px] font-medium" style={{ color: LABEL_GREEN }}>
+      <span className="text-[15px] font-medium text-slate-900 dark:text-white">
         {label}
       </span>
     </label>
@@ -88,14 +89,13 @@ function RadioOption({ checked, label, onChange, name }) {
 
 function Section({ title, children }) {
   return (
-    <div className="overflow-hidden rounded-lg border border-[#e4e4ea]">
+    <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700">
       <div
-        className="px-4 py-2.5 text-[15px] font-semibold text-[#1a1a1f]"
-        style={{ background: SECTION_BG }}
+        className="px-4 py-2.5 text-[15px] font-semibold text-slate-900 bg-slate-100 dark:bg-slate-700/80 dark:text-white"
       >
         {title}
       </div>
-      <div className="bg-white px-4 py-4 sm:px-5 sm:py-5">{children}</div>
+      <div className="bg-white px-4 py-4 sm:px-5 sm:py-5 dark:bg-slate-800 dark:text-white">{children}</div>
     </div>
   );
 }
@@ -149,8 +149,15 @@ export default function FormatSettingsV2() {
 
   return (
     <div className="min-h-full" style={{ background: PAGE_BG }}>
-      <div className="mx-auto max-w-[1400px] px-4 py-5 sm:px-6 lg:px-8">
-        <div className="space-y-5 rounded-2xl border border-[#e4e4ea] bg-white p-5 shadow-sm sm:p-6">
+      <div className="mx-auto max-w-[1400px] px-4 py-5 sm:px-6 lg:px-8 space-y-5">
+        <PageHeader
+          title="Change Format"
+          subtitle="Configure number formatting, currency symbol, and date display preferences"
+          backTo="/settings"
+          backLabel="Back to Settings"
+          showTitle
+        />
+        <div className="space-y-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6 dark:border-slate-700 dark:bg-slate-800">
           <Section title="Comma Format">
             <div className="flex flex-wrap gap-x-10 gap-y-3">
               {COMMA_OPTIONS.map((opt) => (

@@ -21,7 +21,7 @@ export default function FinanceFilters({
   onMonthChange,
   branch,
   onBranchChange,
-  searchPlaceholder = "Search...",
+  searchPlaceholder = "Search",
   children,
 }) {
   const filters = [

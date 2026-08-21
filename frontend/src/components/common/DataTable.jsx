@@ -10,7 +10,7 @@ import { asArray } from "../../utils/apiError";
 export default function DataTable({
   columns,
   data,
-  searchPlaceholder = "Search...",
+  searchPlaceholder = "Search",
   searchKeys = [],
   filters = [],
   pageSize = 10,
@@ -25,6 +25,7 @@ export default function DataTable({
   const [search, setSearch] = useState("");
   const [filterValues, setFilterValues] = useState({});
   const [page, setPage] = useState(1);
+  const [currentPageSize, setCurrentPageSize] = useState(pageSize);
   const rows = useMemo(() => asArray(data), [data]);
 
   const hasActiveFilters =
@@ -59,11 +60,11 @@ export default function DataTable({
 
   const paginated = useMemo(() => {
     if (!showPagination) return filtered;
-    const start = (page - 1) * pageSize;
-    return filtered.slice(start, start + pageSize);
-  }, [filtered, page, pageSize, showPagination]);
+    const start = (page - 1) * currentPageSize;
+    return filtered.slice(start, start + currentPageSize);
+  }, [filtered, page, currentPageSize, showPagination]);
 
-  const totalPages = Math.ceil(filtered.length / pageSize) || 1;
+  const totalPages = Math.ceil(filtered.length / currentPageSize) || 1;
 
   const resetPage = () => setPage(1);
 
@@ -93,7 +94,7 @@ export default function DataTable({
         emptyState={defaultEmpty}
         sortable={sortable}
         showSerialNumber={showSerialNumber}
-        serialOffset={showPagination ? (page - 1) * pageSize : 0}
+        serialOffset={showPagination ? (page - 1) * currentPageSize : 0}
       />
     );
   }
@@ -140,12 +141,18 @@ export default function DataTable({
         </div>
       )}
       {body}
-      {showPagination && filtered.length > pageSize ? (
+      {showPagination && filtered.length > 0 ? (
         <Pagination
           className="print:hidden"
           page={page}
+          pageSize={currentPageSize}
+          total={filtered.length}
           totalPages={totalPages}
           onPageChange={setPage}
+          onPageSizeChange={(size) => {
+            setCurrentPageSize(size);
+            setPage(1);
+          }}
         />
       ) : null}
     </div>

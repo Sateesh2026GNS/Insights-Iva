@@ -32,6 +32,7 @@ import { createSalesOrder } from "../../api/salesApi";
 import { getUsers } from "../../api/adminApi";
 import { fetchCustomersWithFallback, resolveCustomerId } from "../../utils/customerOptions";
 import { fetchProductsWithFallback } from "../../utils/productOptions";
+import AddNewPartyModal from "../../components/sales/AddNewPartyModal";
 import useTenantId from "../../hooks/useTenantId";
 import useAuth from "../../hooks/useAuth";
 
@@ -156,6 +157,10 @@ export default function CreateSalesOrder() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [showAddCustomer, setShowAddCustomer] = useState(false);
+  const [showAddSalesPerson, setShowAddSalesPerson] = useState(false);
+  const [newSpName, setNewSpName] = useState("");
+  const [newSpEmail, setNewSpEmail] = useState("");
   const [form, setForm] = useState({
     tenant_id: tenantId,
     customer_id: searchParams.get("customer_id") || "",
@@ -372,8 +377,12 @@ export default function CreateSalesOrder() {
         if (patch.product_id !== undefined) {
           const product = products.find((p) => String(p.id) === String(patch.product_id));
           if (product) {
-            next.item_description = product.name;
-            next.unit_price = product.unit_price != null ? String(product.unit_price) : next.unit_price;
+            next.item_description = product.name || product.title || "";
+            const price = product.unit_price ?? product.price_per_unit ?? product.selling_price ?? product.price;
+            if (price != null && price !== "") next.unit_price = String(price);
+            if (product.unit || product.unit_of_measure) {
+              next.unit = product.unit || product.unit_of_measure;
+            }
           }
         }
         return next;
@@ -555,51 +564,78 @@ export default function CreateSalesOrder() {
 
                 <div className="space-y-4 p-5">
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <Select
-                      label="Customer"
-                      required
-                      value={form.customer_id}
-                      onChange={(e) => patchField("customer_id", e.target.value)}
-                    >
-                      <option value="">Select customer</option>
-                      {customers.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.name || c.company_name}
-                        </option>
-                      ))}
-                    </Select>
+                    <div>
+                      <span className="ui-label mb-1 block">Customer <span className="text-[var(--color-danger)]">*</span></span>
+                      <Select
+                        required
+                        value={form.customer_id}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (val === "__add_customer__") {
+                            setShowAddCustomer(true);
+                            return;
+                          }
+                          patchField("customer_id", val);
+                        }}
+                      >
+                        <option value="">Select customer</option>
+                        <option value="__add_customer__">+ Add New Customer</option>
+                        {customers.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.name || c.company || c.company_name || c.customer_name || `Customer #${c.id}`}
+                          </option>
+                        ))}
+                      </Select>
+                    </div>
 
-                    <Select
-                      label="Sales Person"
-                      value={form.sales_person_id ?? ""}
-                      onChange={(e) => {
-                        const id = e.target.value;
-                        const sp = salesPeople.find((u) => String(u.id) === String(id));
-                        patchField("sales_person_id", id);
-                        patchField("sales_person", sp?.full_name || sp?.name || form.sales_person);
-                      }}
-                    >
-                      <option value="">{form.sales_person || "Select sales person"}</option>
-                      {salesPeople.map((u) => (
-                        <option key={u.id} value={u.id}>
-                          {u.full_name || u.name || u.email}
-                        </option>
-                      ))}
-                    </Select>
+                    <div>
+                      <span className="ui-label mb-1 block">Sales Person</span>
+                      <Select
+                        value={form.sales_person_id ?? ""}
+                        onChange={(e) => {
+                          const id = e.target.value;
+                          if (id === "__add_sp__") {
+                            setNewSpName(""); setNewSpEmail(""); setShowAddSalesPerson(true);
+                            return;
+                          }
+                          const sp = salesPeople.find((u) => String(u.id) === String(id));
+                          patchField("sales_person_id", id);
+                          patchField("sales_person", sp?.full_name || sp?.name || form.sales_person);
+                        }}
+                      >
+                        <option value="">Select sales person</option>
+                        <option value="__add_sp__">+ Add New Sales Person</option>
+                        {salesPeople.map((u) => (
+                          <option key={u.id} value={u.id}>
+                            {u.full_name || u.name || u.email}
+                          </option>
+                        ))}
+                      </Select>
+                    </div>
 
-                    <Select
-                      label="Product"
-                      required
-                      value={primaryLine.product_id}
-                      onChange={(e) => updateLine(0, { product_id: e.target.value })}
-                    >
-                      <option value="">Select product</option>
-                      {products.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.name}
-                        </option>
-                      ))}
-                    </Select>
+                    <div>
+                      <span className="ui-label mb-1 block">Product <span className="text-[var(--color-danger)]">*</span></span>
+                      <Select
+                        required
+                        value={primaryLine.product_id}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (val === "__add_product__") {
+                            setShowQuickAdd(true);
+                            return;
+                          }
+                          updateLine(0, { product_id: val });
+                        }}
+                      >
+                        <option value="">Select product</option>
+                        <option value="__add_product__">+ Add New Product</option>
+                        {products.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.name || p.title || p.product_code || `Product #${p.id}`} {p.sku || p.product_code ? `(${p.sku || p.product_code})` : ""}
+                          </option>
+                        ))}
+                      </Select>
+                    </div>
 
                     <FormField label="Product Code">
                       <Input value={productCode} readOnly className="!bg-slate-50 !text-slate-600" />
@@ -863,6 +899,86 @@ export default function CreateSalesOrder() {
             });
           }}
         />
+      ) : null}
+
+      <AddNewPartyModal
+        open={showAddCustomer}
+        onClose={() => setShowAddCustomer(false)}
+        onSaved={(cust) => {
+          if (!cust) return;
+          fetchCustomersWithFallback().then((custs) => {
+            setCustomers(custs);
+            patchField("customer_id", String(cust.id || custs[0]?.id || ""));
+          });
+        }}
+      />
+
+      {/* ─── Add Sales Person Quick Modal ─── */}
+      {showAddSalesPerson ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-sm space-y-4 rounded-2xl bg-white p-6 shadow-2xl">
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-bold text-slate-900">Add Sales Person</h3>
+              <button
+                type="button"
+                onClick={() => setShowAddSalesPerson(false)}
+                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <label className="block text-xs font-semibold text-slate-600">
+              Full Name *
+              <input
+                type="text"
+                value={newSpName}
+                onChange={(e) => setNewSpName(e.target.value)}
+                placeholder="e.g. Ravi Kumar"
+                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 focus:border-[var(--color-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]"
+                autoFocus
+              />
+            </label>
+            <label className="block text-xs font-semibold text-slate-600">
+              Email (optional)
+              <input
+                type="email"
+                value={newSpEmail}
+                onChange={(e) => setNewSpEmail(e.target.value)}
+                placeholder="e.g. ravi@company.com"
+                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 focus:border-[var(--color-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]"
+              />
+            </label>
+            <div className="flex justify-end gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setShowAddSalesPerson(false)}
+                className="rounded-xl border px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={!newSpName.trim()}
+                onClick={() => {
+                  const id = `sp-local-${Date.now()}`;
+                  const newSp = {
+                    id,
+                    full_name: newSpName.trim(),
+                    name: newSpName.trim(),
+                    email: newSpEmail.trim() || "",
+                  };
+                  setSalesPeople((prev) => [newSp, ...prev]);
+                  patchField("sales_person_id", id);
+                  patchField("sales_person", newSp.full_name);
+                  setShowAddSalesPerson(false);
+                }}
+                className="rounded-xl bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white hover:bg-[var(--color-primary-hover)] disabled:opacity-50"
+              >
+                Add
+              </button>
+            </div>
+          </div>
+        </div>
       ) : null}
     </>
   );

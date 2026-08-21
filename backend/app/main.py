@@ -407,6 +407,7 @@ app.include_router(rbac_api_router, prefix="/api")
 
 # ERP domain modules (Sales, Finance, Procurement, Quality, Maintenance, Analytics, Inventory)
 app.include_router(sales_router)
+app.include_router(sales_router, prefix="/api")
 app.include_router(business_documents_router)
 app.include_router(accounts_router)
 app.include_router(procurement_router)

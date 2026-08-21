@@ -180,7 +180,7 @@ export default function AccountsReceivable() {
         onMonthChange={setMonth}
         branch={branch}
         onBranchChange={setBranch}
-        searchPlaceholder="Search invoice, customer..."
+        searchPlaceholder="Search"
       />
 
       <div className="ui-card p-4">

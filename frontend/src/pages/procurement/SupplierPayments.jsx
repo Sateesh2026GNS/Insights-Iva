@@ -109,7 +109,7 @@ export default function SupplierPayments() {
         <DataTable
           columns={columns}
           data={payments}
-          searchPlaceholder="Search reference..."
+          searchPlaceholder="Search"
           searchKeys={["reference", "payment_method"]}
           emptyState={
             <EmptyState

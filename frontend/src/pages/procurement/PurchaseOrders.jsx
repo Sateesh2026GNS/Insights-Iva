@@ -516,7 +516,7 @@ export default function PurchaseOrders() {
                 <input
                   value={draftFilters.vendor}
                   onChange={(e) => setDraftFilters((f) => ({ ...f, vendor: e.target.value }))}
-                  placeholder="Search vendor name"
+                  placeholder="Search"
                   className="w-full rounded-lg border border-[#e4e4ea] bg-white px-3 py-2.5 text-[13px] focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/25"
                 />
               </FilterSection>

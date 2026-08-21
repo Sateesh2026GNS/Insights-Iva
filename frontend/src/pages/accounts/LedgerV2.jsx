@@ -71,8 +71,7 @@ function GstTypeBadge({ row }) {
 }
 
 function accountSearchPlaceholder(tab) {
-  if (tab === "other") return "Search by account name or type...";
-  return "Search accounts...";
+  return "Search";
 }
 
 function cashAccountTypeLabel(type) {
@@ -204,9 +203,7 @@ function computeOtherKpis(accounts) {
 }
 
 function partySearchPlaceholder(tab) {
-  if (tab === "creditors") return "Search by vendor name, phone, city, GSTIN...";
-  if (tab === "both") return "Search by party name, phone, city, GSTIN...";
-  return "Search by company name, phone, city, GSTIN...";
+  return "Search";
 }
 
 function partyNameColumnLabel(tab) {

@@ -22,7 +22,6 @@ import StatusBadge from "../../components/common/StatusBadge";
 import ConfirmDialog from "../../components/admin/ConfirmDialog";
 import InventoryRowActionsMenu from "../../components/inventory/InventoryRowActionsMenu";
 import MaterialDetailModal from "../../components/inventory/MaterialDetailModal";
-import MaterialFormModal from "../../components/inventory/MaterialFormModal";
 import { useToast } from "../../context/ToastContext";
 import useTenantId from "../../hooks/useTenantId";
 import {
@@ -82,6 +81,34 @@ function todayISO() {
   return new Date().toISOString().slice(0, 10);
 }
 
+const KPI_TONE_RING = {
+  primary: "hover:ring-2 hover:ring-[var(--kpi-primary)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-primary)]",
+  info: "hover:ring-2 hover:ring-[var(--kpi-info)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-info)]",
+  success: "hover:ring-2 hover:ring-[var(--kpi-success)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-success)]",
+  warning: "hover:ring-2 hover:ring-[var(--kpi-warning)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-warning)]",
+  danger: "hover:ring-2 hover:ring-[var(--kpi-danger)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-danger)]",
+  yellow: "hover:ring-2 hover:ring-[var(--kpi-warning)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-warning)]",
+  violet: "hover:ring-2 hover:ring-[var(--kpi-violet)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-violet)]",
+  teal: "hover:ring-2 hover:ring-[var(--kpi-teal)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-teal)]",
+  orange: "hover:ring-2 hover:ring-[var(--kpi-orange)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-orange)]",
+  neutral: "hover:ring-2 hover:ring-[var(--kpi-neutral)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-neutral)]",
+};
+
+function ClickableKpiCard({ onClick, title, tone, children }) {
+  const resolvedTone = tone || children?.props?.tone || "primary";
+  const ringClass = KPI_TONE_RING[resolvedTone] || KPI_TONE_RING.primary;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`h-full w-full rounded-[var(--radius-lg)] text-left transition focus:outline-none ${ringClass}`}
+      title={title}
+    >
+      {children}
+    </button>
+  );
+}
+
 export default function RawMaterials() {
   const tenantId = useTenantId();
   const { addToast } = useToast();
@@ -100,7 +127,6 @@ export default function RawMaterials() {
   const [selected, setSelected] = useState(null);
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [openMenuId, setOpenMenuId] = useState(null);
-  const [formModal, setFormModal] = useState({ open: false, mode: "add", material: null });
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
 
@@ -252,11 +278,6 @@ export default function RawMaterials() {
 
   const handleEdit = (row) => {
     if (!requireLiveRow(row, "Edit")) return;
-    setFormModal({ open: true, mode: "edit", material: row });
-  };
-
-  const handleAdd = () => {
-    setFormModal({ open: true, mode: "add", material: null });
   };
 
   const handleDeleteRequest = (row) => {
@@ -280,17 +301,6 @@ export default function RawMaterials() {
       setDeleting(false);
     }
   };
-
-  const handleFormSaved = async () => {
-    addToast(formModal.mode === "edit" ? "Material updated successfully" : "Material added successfully");
-    notifyManufacturingSpine(MANUFACTURING_EVENTS.INVENTORY_CHANGED, {});
-    await load({ background: true });
-  };
-
-  const defaultWarehouseName =
-    warehousesApi.find((w) => String(w.id) === String(headerWarehouse))?.name ||
-    warehousesApi[0]?.name ||
-    "Main Warehouse";
 
   const toggleRow = (id) => {
     setSelectedIds((prev) => {
@@ -462,11 +472,41 @@ export default function RawMaterials() {
           Array.from({ length: 5 }).map((_, i) => <SkeletonCard key={i} />)
         ) : (
           <>
-            <KpiCard label="Total Items" value={Number(kpis.total_items).toLocaleString("en-IN")} icon={Package} tone="info" meta="All raw materials" />
-            <KpiCard label="Total Stock Value" value={formatInrAmount(kpis.stock_value)} icon={Package} tone="success" meta="Across all warehouses" />
-            <KpiCard label="Low Stock Items" value={kpis.low_stock} icon={AlertTriangle} tone="warning" meta="Reorder level reached" />
-            <KpiCard label="Out of Stock" value={kpis.out_of_stock} icon={PackageX} tone="danger" meta="Stock not available" />
-            <KpiCard label="Total Quantity" value={formatQty(kpis.total_quantity)} icon={ArrowDownToLine} tone="info" meta="Across all items" />
+            <ClickableKpiCard
+              onClick={() => { setStatusFilter(""); setSearch(""); }}
+              title="Show all raw materials"
+              tone="info"
+            >
+              <KpiCard label="Total Items" value={Number(kpis.total_items).toLocaleString("en-IN")} icon={Package} tone="info" meta="Click to show all" />
+            </ClickableKpiCard>
+            <ClickableKpiCard
+              onClick={() => { setStatusFilter(""); setSearch(""); }}
+              title="View total stock value"
+              tone="success"
+            >
+              <KpiCard label="Total Stock Value" value={formatInrAmount(kpis.stock_value)} icon={Package} tone="success" meta="Across all warehouses" />
+            </ClickableKpiCard>
+            <ClickableKpiCard
+              onClick={() => setStatusFilter("low_stock")}
+              title="Filter low stock items"
+              tone="warning"
+            >
+              <KpiCard label="Low Stock Items" value={kpis.low_stock} icon={AlertTriangle} tone="warning" meta="Click to filter" />
+            </ClickableKpiCard>
+            <ClickableKpiCard
+              onClick={() => setStatusFilter("out_of_stock")}
+              title="Filter out of stock items"
+              tone="danger"
+            >
+              <KpiCard label="Out of Stock" value={kpis.out_of_stock} icon={PackageX} tone="danger" meta="Click to filter" />
+            </ClickableKpiCard>
+            <ClickableKpiCard
+              onClick={() => { setStatusFilter(""); setSearch(""); }}
+              title="View total quantity"
+              tone="info"
+            >
+              <KpiCard label="Total Quantity" value={formatQty(kpis.total_quantity)} icon={ArrowDownToLine} tone="info" meta="Across all items" />
+            </ClickableKpiCard>
           </>
         )}
       </div>
@@ -477,7 +517,7 @@ export default function RawMaterials() {
             <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]" />
             <input
               type="search"
-              placeholder="Search by item name, code, category..."
+              placeholder="Search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="ui-input w-full !pl-10"
@@ -514,7 +554,7 @@ export default function RawMaterials() {
                 </select>
               </>
             ) : null}
-            <Button type="button" variant="primary" onClick={handleAdd}>
+            <Button type="button" variant="primary" onClick={() => window.location.href = "/inventory/items/create?type=raw_material"}>
               <Plus className="h-4 w-4" /> Add Raw Material
             </Button>
           </div>
@@ -534,8 +574,6 @@ export default function RawMaterials() {
                   icon="cube"
                   title="No raw materials found"
                   description="Add your first raw material to start tracking stock."
-                  actionLabel="Add Raw Material"
-                  actionHref="/inventory/items/create?type=raw_material"
                 />
               }
             />
@@ -546,16 +584,6 @@ export default function RawMaterials() {
       {selected ? (
         <MaterialDetailModal material={selected} readOnly={selected.readOnly !== false} onClose={() => setSelected(null)} />
       ) : null}
-
-      <MaterialFormModal
-        open={formModal.open}
-        mode={formModal.mode}
-        material={formModal.material}
-        tenantId={tenantId}
-        warehouseName={defaultWarehouseName}
-        onClose={() => setFormModal({ open: false, mode: "add", material: null })}
-        onSaved={handleFormSaved}
-      />
 
       <ConfirmDialog
         open={Boolean(deleteTarget)}

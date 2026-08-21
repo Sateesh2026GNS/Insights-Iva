@@ -346,7 +346,7 @@ export default function MachineStatus() {
               <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9a9aa5]" />
               <input
                 type="search"
-                placeholder="Search machines..."
+                placeholder="Search"
                 value={filters.name}
                 onChange={(e) => setFilters((f) => ({ ...f, name: e.target.value }))}
                 className="w-full rounded-full border border-[#e8e8ee] bg-[#f3f3f6] py-2.5 pl-10 pr-4 text-[13px] outline-none placeholder:text-[#a0a0ab] focus:border-[#d0d0d8] focus:bg-white"

@@ -14,6 +14,8 @@ import { fetchCustomersWithFallback } from "../../utils/customerOptions";
 import useTenantId from "../../hooks/useTenantId";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { PRIORITIES, SHIFTS } from "../../data/productionPlanningMasterData";
+import AddNewItemModal from "../../components/sales/AddNewItemModal";
+import CreateMachineModal from "../../components/production/CreateMachineModal";
 
 export default function QuickCreateWorkOrder() {
   const tenantId = useTenantId();
@@ -37,6 +39,10 @@ export default function QuickCreateWorkOrder() {
   const [rawMaterials, setRawMaterials] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [customCustomerMode, setCustomCustomerMode] = useState(false);
+  const [customProductMode, setCustomProductMode] = useState(false);
+  const [showAddProductModal, setShowAddProductModal] = useState(false);
+  const [showAddMachineModal, setShowAddMachineModal] = useState(false);
+  const [customMachineMode, setCustomMachineMode] = useState(false);
   const [shifts, setShifts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({
@@ -163,6 +169,32 @@ export default function QuickCreateWorkOrder() {
     }));
     setError("");
   };
+
+  const handleProductChange = (e) => {
+    const val = e.target.value;
+    if (val === "__custom__" || val === "__add_product__") {
+      setShowAddProductModal(true);
+      return;
+    }
+    const selected = products.find((p) => String(p.id) === String(val));
+    setForm((prev) => ({
+      ...prev,
+      product_id: val,
+      product_name: selected?.name || selected?.sku || "",
+    }));
+    setError("");
+  };
+
+  const handleMachineChange = (e) => {
+    const val = e.target.value;
+    if (val === "__custom__" || val === "__add_machine__") {
+      setShowAddMachineModal(true);
+      return;
+    }
+    setForm((prev) => ({ ...prev, machine_id: val }));
+    setError("");
+  };
+
 
   const rawShiftOpts = [...(SHIFTS || []), ...(shifts || [])];
   const shiftOptionsMap = new Map();
@@ -311,29 +343,54 @@ export default function QuickCreateWorkOrder() {
             >
               Product <span className="text-red-500">*</span>
             </label>
-            <select
-              id="product_id"
-              name="product_id"
-              value={form.product_id}
-              onChange={handleChange}
-              required
-              disabled={products.length === 0}
-              className="mt-1.5 w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500 disabled:opacity-50"
-            >
-              <option value="">
-                {products.length === 0
-                  ? "No products available – please add products first"
-                  : t("quickCreateWorkOrder.selectProduct", { defaultValue: "Select product" })}
-              </option>
-              {products.map((p) => {
-                const code = p.product_code || p.sku || p.code || (p.id ? `PRD${String(p.id).padStart(3, "0")}` : "");
-                return (
-                  <option key={p.id} value={p.id}>
-                    {p.name}{code ? ` (${code})` : ""}
-                  </option>
-                );
-              })}
-            </select>
+            {customProductMode ? (
+              <div className="mt-1.5 flex gap-1.5">
+                <input
+                  type="text"
+                  name="product_name"
+                  value={form.product_name || ""}
+                  onChange={handleChange}
+                  placeholder="Enter product name…"
+                  className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+                  autoFocus
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCustomProductMode(false);
+                    setForm((prev) => ({ ...prev, product_id: "", product_name: "" }));
+                  }}
+                  className="rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-xs font-medium text-teal-600 hover:bg-slate-100 dark:hover:bg-slate-700"
+                >
+                  Select
+                </button>
+              </div>
+            ) : (
+              <select
+                id="product_id"
+                name="product_id"
+                value={form.product_id}
+                onChange={handleProductChange}
+                required={!customProductMode}
+                disabled={products.length === 0}
+                className="mt-1.5 w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500 disabled:opacity-50"
+              >
+                <option value="">
+                  {products.length === 0
+                    ? "No products available – please add products first"
+                    : t("quickCreateWorkOrder.selectProduct", { defaultValue: "Select product" })}
+                </option>
+                <option value="__add_product__">+ Add new Product</option>
+                {products.map((p) => {
+                  const code = p.product_code || p.sku || p.code || (p.id ? `PRD${String(p.id).padStart(3, "0")}` : "");
+                  return (
+                    <option key={p.id} value={p.id}>
+                      {p.name}{code ? ` (${code})` : ""}
+                    </option>
+                  );
+                })}
+              </select>
+            )}
           </div>
 
           <div>
@@ -401,7 +458,6 @@ export default function QuickCreateWorkOrder() {
                     {c.name || c.company}{c.customer_code ? ` (${c.customer_code})` : ""}
                   </option>
                 ))}
-                <option value="__custom__">+ Enter new / custom customer…</option>
               </select>
             )}
           </div>
@@ -436,20 +492,45 @@ export default function QuickCreateWorkOrder() {
             >
               Machine
             </label>
-            <select
-              id="machine_id"
-              name="machine_id"
-              value={form.machine_id}
-              onChange={handleChange}
-              className="mt-1.5 w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
-            >
-              <option value="">Select Machine (Optional)</option>
-              {machines.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.name || m.code}
-                </option>
-              ))}
-            </select>
+            {customMachineMode ? (
+              <div className="mt-1.5 flex gap-1.5">
+                <input
+                  type="text"
+                  name="machine_name"
+                  value={form.machine_name || ""}
+                  onChange={handleChange}
+                  placeholder="Enter machine name…"
+                  className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+                  autoFocus
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCustomMachineMode(false);
+                    setForm((prev) => ({ ...prev, machine_id: "", machine_name: "" }));
+                  }}
+                  className="rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-xs font-medium text-teal-600 hover:bg-slate-100 dark:hover:bg-slate-700"
+                >
+                  Select
+                </button>
+              </div>
+            ) : (
+              <select
+                id="machine_id"
+                name="machine_id"
+                value={form.machine_id}
+                onChange={handleMachineChange}
+                className="mt-1.5 w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+              >
+                <option value="">Select Machine (Optional)</option>
+                <option value="__custom__">+ Add new Machine</option>
+                {machines.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name || m.code}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
 
           {isQuickAssign && (
@@ -612,6 +693,50 @@ export default function QuickCreateWorkOrder() {
           </Link>
         </div>
       </form>
+
+      <AddNewItemModal
+        open={showAddProductModal}
+        placement="drawer"
+        onClose={() => setShowAddProductModal(false)}
+        onSaved={async (line, product) => {
+          setShowAddProductModal(false);
+          try {
+            const refreshed = await fetchProductsWithFallback();
+            setProducts(Array.isArray(refreshed) ? refreshed : []);
+            const newId = String(product?.id || line?.product_id || "");
+            if (newId) {
+              setForm((prev) => ({
+                ...prev,
+                product_id: newId,
+                product_name: product?.name || line?.item_description || prev.product_name,
+              }));
+            }
+          } catch {
+            // fallback
+          }
+        }}
+      />
+
+      <CreateMachineModal
+        open={showAddMachineModal}
+        placement="drawer"
+        onClose={() => setShowAddMachineModal(false)}
+        onSaved={async (createdMachine) => {
+          setShowAddMachineModal(false);
+          try {
+            const mRes = await getMachines().catch(() => ({ data: [] }));
+            const refreshed = Array.isArray(mRes?.data) ? mRes.data : Array.isArray(mRes) ? mRes : [];
+            const list = refreshed.length > 0 ? refreshed : (createdMachine ? [createdMachine] : []);
+            setMachines(list);
+            const mId = String(createdMachine?.id || list[0]?.id || "");
+            if (mId) {
+              setForm((prev) => ({ ...prev, machine_id: mId }));
+            }
+          } catch {
+            // fallback
+          }
+        }}
+      />
     </div>
   );
 }
