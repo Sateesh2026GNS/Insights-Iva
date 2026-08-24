@@ -178,7 +178,7 @@ export default function AdjustProfilePhotoModal({
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = "high";
 
-      // Viewport dimension in the UI (circle is 220px)
+      // Viewport dimension in the UI (square crop is 220px)
       const viewportSize = 220;
       const scaleFactor = outputSize / viewportSize;
 
@@ -315,12 +315,12 @@ export default function AdjustProfilePhotoModal({
                   />
                 </div>
 
-                {/* Dark Mask with Circular Cutout Overlay */}
+                {/* Dark mask with square crop boundary */}
                 <div
                   className="pointer-events-none absolute inset-0"
                   style={{
                     boxShadow: "0 0 0 9999px rgba(15, 23, 42, 0.65)",
-                    borderRadius: "50%",
+                    borderRadius: "0",
                     margin: "10px",
                     border: "2px solid rgba(20, 184, 166, 0.9)",
                   }}
@@ -332,7 +332,7 @@ export default function AdjustProfilePhotoModal({
                 </div>
               </div>
 
-              {/* Action buttons (Rotate, Reset, Zoom In/Out, Percentage, Change) */}
+              {/* Action buttons (Rotate, Reset, Zoom In/Out, Change) */}
               <div className="mt-4 w-full">
                 <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3 dark:border-slate-800">
                   <div className="flex flex-wrap items-center gap-1.5">
@@ -373,9 +373,6 @@ export default function AdjustProfilePhotoModal({
                     >
                       <ZoomIn className="h-3.5 w-3.5" />
                     </button>
-                    <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-1 text-xs font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-200">
-                      {Math.round(zoom * 100)}%
-                    </span>
                   </div>
 
                   <button

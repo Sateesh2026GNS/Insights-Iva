@@ -48,6 +48,12 @@ export default function SuperAdminVerifyOtp() {
       try {
         const data = await superAdminVerifyOtp(challengeToken, code);
         setPlatformSession(data);
+        try {
+          sessionStorage.setItem("smrt_login_welcome", "GNS Insights Platform");
+          window.dispatchEvent(
+            new CustomEvent("smrt_login_welcome", { detail: { companyName: "GNS Insights Platform" } })
+          );
+        } catch {}
         setSuccess("OTP verified successfully. Redirecting…");
         const path = data.dashboard_path || "/gns-admin";
         setTimeout(() => navigate(path, { replace: true }), 400);

@@ -109,51 +109,61 @@ export const KPI_ICONS = {
 const KPI_TONES = {
   primary: {
     cardBg: "bg-[var(--color-surface)] border border-[var(--color-border)] border-l-[3px] border-l-[var(--color-primary)]",
+    hoverBorder: "hover:border-[var(--color-primary)]",
     iconBg: "bg-[var(--color-success-soft)] text-[var(--color-primary)]",
     iconColor: "var(--color-primary)",
   },
   success: {
     cardBg: "bg-[var(--color-surface)] border border-[var(--color-border)] border-l-[3px] border-l-[var(--color-success)]",
+    hoverBorder: "hover:border-[var(--color-success)]",
     iconBg: "bg-[var(--color-success-soft)] text-[var(--color-success)]",
     iconColor: "var(--color-success)",
   },
   teal: {
     cardBg: "bg-[var(--color-surface)] border border-[var(--color-border)] border-l-[3px] border-l-[#048484]",
+    hoverBorder: "hover:border-[#048484]",
     iconBg: "bg-[var(--color-success-soft)] text-[#048484]",
     iconColor: "#048484",
   },
   violet: {
     cardBg: "bg-[var(--color-surface)] border border-[var(--color-border)] border-l-[3px] border-l-[var(--color-info)]",
+    hoverBorder: "hover:border-[var(--color-info)]",
     iconBg: "bg-[var(--color-info-soft)] text-[var(--color-info)]",
     iconColor: "var(--color-info)",
   },
   warning: {
     cardBg: "bg-[var(--color-surface)] border border-[var(--color-border)] border-l-[3px] border-l-[var(--color-warning)]",
+    hoverBorder: "hover:border-[var(--color-warning)]",
     iconBg: "bg-[var(--color-warning-soft)] text-[#b45309]",
     iconColor: "#b45309",
   },
   rust: {
     cardBg: "bg-[var(--color-surface)] border border-[var(--color-border)] border-l-[3px] border-l-[#c2410c]",
+    hoverBorder: "hover:border-[#c2410c]",
     iconBg: "bg-[var(--color-warning-soft)] text-[#c2410c]",
     iconColor: "#c2410c",
   },
   danger: {
     cardBg: "bg-[var(--color-surface)] border border-[var(--color-border)] border-l-[3px] border-l-[var(--color-danger)]",
+    hoverBorder: "hover:border-[var(--color-danger)]",
     iconBg: "bg-[var(--color-danger-soft)] text-[var(--color-danger)]",
     iconColor: "var(--color-danger)",
   },
   info: {
     cardBg: "bg-[var(--color-surface)] border border-[var(--color-border)] border-l-[3px] border-l-[var(--color-info)]",
+    hoverBorder: "hover:border-[var(--color-info)]",
     iconBg: "bg-[var(--color-info-soft)] text-[var(--color-info)]",
     iconColor: "var(--color-info)",
   },
   orange: {
     cardBg: "bg-[var(--color-surface)] border border-[var(--color-border)] border-l-[3px] border-l-[var(--color-warning)]",
+    hoverBorder: "hover:border-[var(--color-warning)]",
     iconBg: "bg-[var(--color-warning-soft)] text-[#d97706]",
     iconColor: "#d97706",
   },
   neutral: {
     cardBg: "bg-[var(--color-surface)] border border-[var(--color-border)] border-l-[3px] border-l-[var(--color-border-strong)]",
+    hoverBorder: "hover:border-[var(--color-border-strong)]",
     iconBg: "bg-[var(--color-surface-muted)] text-[var(--color-text-muted)]",
     iconColor: "var(--color-text-muted)",
   },
@@ -253,7 +263,8 @@ function inferKpiTone(id) {
 
 export function getKpiAccent(id) {
   const tone = KPI_ID_TONE[id] || inferKpiTone(id);
-  return KPI_TONES[tone] || KPI_TONES.neutral;
+  const accent = KPI_TONES[tone] || KPI_TONES.neutral;
+  return { ...accent, accentColor: accent.cardBg.match(/border-l-\[([^\]]+)\]/)?.[1] || "var(--color-primary)" };
 }
 
 export function KpiIcon({ id, className = "h-5 w-5" }) {

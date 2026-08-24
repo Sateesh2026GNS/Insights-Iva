@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { CheckCircle, ClipboardList, Cpu, X } from "lucide-react";
+import { CalendarDays, CheckCircle, ClipboardList, Cpu, X } from "lucide-react";
 
 import { createProductionOrder, getMachines } from "../../api/productionApi";
 import useTenantId from "../../hooks/useTenantId";
@@ -52,13 +52,30 @@ const EMPTY_FORM = {
 const EMPTY_LIST = [];
 
 function DateTimeField({ value, onChange, error }) {
+  const inputRef = useRef(null);
+
   return (
-    <input
-      type="datetime-local"
-      value={value}
-      onChange={onChange}
-      className={`ui-input w-full ${error ? "border-[var(--color-danger)]" : ""}`}
-    />
+    <span className="relative block">
+      <input
+        ref={inputRef}
+        type="datetime-local"
+        value={value}
+        onChange={onChange}
+        className={`ui-input w-full !pr-10 ${error ? "border-[var(--color-danger)]" : ""}`}
+      />
+      <button
+        type="button"
+        onClick={(event) => {
+          event.preventDefault();
+          inputRef.current?.focus();
+          inputRef.current?.showPicker?.();
+        }}
+        className="absolute right-0 top-0 flex h-full w-10 items-center justify-center text-[var(--color-text-muted)]"
+        aria-label="Open date and time picker"
+      >
+        <CalendarDays className="h-4 w-4" aria-hidden />
+      </button>
+    </span>
   );
 }
 

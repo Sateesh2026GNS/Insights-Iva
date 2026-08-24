@@ -89,7 +89,7 @@ export default function AddInvoiceDiscountModal({
             <span className="mb-1.5 block text-[12px] font-semibold text-[#6b6b76]">
               Discount
             </span>
-            <div className="flex overflow-hidden rounded-lg border border-[#dcdce3] bg-white focus-within:border-[#c4b5fd] focus-within:ring-1 focus-within:ring-[#c4b5fd]">
+            <div className="flex overflow-hidden rounded-lg border border-[#dcdce3] bg-white focus-within:border-[var(--color-primary)] focus-within:ring-1 focus-within:ring-[var(--color-primary)]">
               <select
                 value={type}
                 onChange={(e) => setType(e.target.value)}

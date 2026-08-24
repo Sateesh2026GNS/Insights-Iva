@@ -91,7 +91,7 @@ function TrackingModal({ row, onClose, onPrintChallan, onShip }) {
           <Field label="Dispatch Date" value={row.dispatch_date} />
           <Field label="ETA" value={row.eta} />
         </div>
-        <div className="mt-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-xs text-blue-800">
+        <div className="mt-4 rounded-lg border border-teal-200 bg-teal-50 px-4 py-3 text-xs text-teal-800">
           <MapPin className="mb-1 inline h-4 w-4" /> Status:{" "}
           {row.status === "in_transit" ? "En route" : row.status}
           {row.shipped ? " · FG stock deducted" : " · Packing complete"}
@@ -281,7 +281,7 @@ export default function Dispatch() {
           icon={Package}
           color="bg-amber-500"
         />
-        <KpiCard label="Packed" value={summary.packed} icon={Package} color="bg-indigo-600" />
+        <KpiCard label="Packed" value={summary.packed} icon={Package} color="bg-emerald-600" />
         <KpiCard label="In Transit" value={summary.in_transit} icon={Truck} color="bg-cyan-600" />
         <KpiCard label="Delivered" value={summary.delivered} icon={Truck} color="bg-[var(--color-success)]" />
         <KpiCard label="Delayed" value={summary.delayed} icon={Truck} color="bg-rose-600" />

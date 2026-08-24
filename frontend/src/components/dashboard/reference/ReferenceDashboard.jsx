@@ -157,7 +157,7 @@ const QUICK_ACTION_MODULES = ["production", "production", "inventory", "inventor
 const SUMMARY_KEYS = ["manPower", "workingHours", "powerConsumption", "productionEfficiency", "targetAchievement"];
 
 const EMPTY_ORDERS = { total: 0, inProgress: 0, completed: 0, onHold: 0, progress: 0 };
-const PERIOD_KEYS = { Daily: "daily", Weekly: "weekly", Monthly: "monthly" };
+const PERIOD_KEYS = { Daily: "daily", Weekly: "weekly", Monthly: "monthly", Yearly: "yearly" };
 
 const summaryIcons = { users: Users, clock: Clock, zap: Zap, gauge: Gauge, target: Target, boxes: Boxes, cart: ShoppingCart, alert: AlertTriangle, package: Package };
 const alertIcons = { alert: AlertTriangle, wrench: Wrench, box: Package, check: CheckCircle2, cart: ShoppingCart };
@@ -295,7 +295,7 @@ function KpiStrip({ cards = [] }) {
             : card.trendLabel;
         const cardTitle = titleKey ? t(`refDashboard.${titleKey}`) : card.title;
         const targetLink = card.link || DEFAULT_CARD_LINKS[card.id];
-        const cardSurfaceCls = `group relative flex h-full w-full min-h-[var(--kpi-dashboard-min-height)] flex-col overflow-hidden rounded-xl p-3.5 shadow-sm ${accent.cardBg}`;
+        const cardSurfaceCls = `group relative flex h-full w-full min-h-[var(--kpi-dashboard-min-height)] flex-col overflow-hidden rounded-xl p-3.5 shadow-sm transition-colors duration-200 ${accent.cardBg} ${accent.hoverBorder}`;
         const linkCardCls = `${cardSurfaceCls} cursor-pointer transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]`;
         const staticCardCls = cardSurfaceCls;
         const cls = targetLink ? linkCardCls : staticCardCls;
@@ -1096,6 +1096,7 @@ export default function ReferenceDashboard() {
       Daily: apiData.production_overview || [],
       Weekly: apiData.production_overview_weekly || [],
       Monthly: apiData.production_overview_monthly || [],
+      Yearly: apiData.production_overview_yearly || [],
     };
   }, [apiData]);
 

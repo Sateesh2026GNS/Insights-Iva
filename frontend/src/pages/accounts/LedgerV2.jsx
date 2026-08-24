@@ -575,13 +575,13 @@ function Pagination({ page, pageSize, total, onPage, onPageSize }) {
   const to = Math.min(page * pageSize, total);
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--color-border)] px-1 pt-4 text-[13px] text-[var(--color-text-muted)]">
-      <div className="flex flex-wrap items-center gap-2">
+    <div className="ui-pagination justify-between border-t border-[var(--color-border-soft)] px-1 pt-4">
+      <div className="flex items-center gap-2.5 flex-nowrap whitespace-nowrap text-[13px] text-[#596b82]">
         <span>Rows per page:</span>
         <select
           value={pageSize}
           onChange={(e) => onPageSize(Number(e.target.value))}
-          className="ui-select rounded-md px-2 py-1.5 text-[13px]"
+          className="ui-pagination-select"
         >
           {PAGE_SIZES.map((n) => (
             <option key={n} value={n}>
@@ -589,8 +589,8 @@ function Pagination({ page, pageSize, total, onPage, onPageSize }) {
             </option>
           ))}
         </select>
-        <span className="ml-1 font-medium text-[var(--color-text)]">
-          {total === 0 ? "0-0 of 0" : `${from}-${to} of ${total}`}
+        <span className="font-medium text-[#596b82]">
+          {total === 0 ? "0–0 of 0" : `${from}–${to} of ${total}`}
         </span>
       </div>
       <div className="flex items-center gap-1">
@@ -598,24 +598,20 @@ function Pagination({ page, pageSize, total, onPage, onPageSize }) {
           type="button"
           disabled={page <= 1}
           onClick={() => onPage(Math.max(1, page - 1))}
-          className="grid h-8 w-8 place-items-center rounded-md border border-[var(--color-border)] bg-white disabled:opacity-40"
+          className="ui-page-btn"
           aria-label="Previous page"
         >
           <ChevronLeft className="h-4 w-4" />
         </button>
-        {pageNumberItems(page, totalPages).map((item) =>
+        {pageNumberItems(page, totalPages).map((item, idx) =>
           typeof item === "string" ? (
-            <span key={item} className="px-1 text-xs text-[var(--color-text-muted)]">…</span>
+            <span key={`dots-${idx}`} className="px-1 text-xs text-[var(--color-text-muted)]">…</span>
           ) : (
             <button
               key={item}
               type="button"
               onClick={() => onPage(item)}
-              className={`grid h-8 min-w-8 place-items-center rounded-md border px-2 text-[13px] font-semibold ${
-                item === page
-                  ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-white"
-                  : "border-[var(--color-border)] bg-white text-[var(--color-text)] hover:bg-[var(--color-surface-muted)]"
-              }`}
+              className={`ui-page-btn ${item === page ? "ui-page-btn--active" : ""}`}
             >
               {item}
             </button>
@@ -625,7 +621,7 @@ function Pagination({ page, pageSize, total, onPage, onPageSize }) {
           type="button"
           disabled={page >= totalPages}
           onClick={() => onPage(Math.min(totalPages, page + 1))}
-          className="grid h-8 w-8 place-items-center rounded-md border border-[var(--color-border)] bg-white disabled:opacity-40"
+          className="ui-page-btn"
           aria-label="Next page"
         >
           <ChevronRight className="h-4 w-4" />

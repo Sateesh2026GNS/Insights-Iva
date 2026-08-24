@@ -73,11 +73,11 @@ export default function LeadDetailModal({ lead, onClose, onStatusChange, onConve
   const getActivityIcon = (type) => {
     switch (type) {
       case "Call":
-        return <PhoneCall className="h-4 w-4 text-blue-600" />;
+        return <PhoneCall className="h-4 w-4 text-[var(--color-primary)]" />;
       case "Email":
-        return <Mail className="h-4 w-4 text-indigo-600" />;
+        return <Mail className="h-4 w-4 text-slate-600" />;
       case "Meeting":
-        return <Calendar className="h-4 w-4 text-purple-600" />;
+        return <Calendar className="h-4 w-4 text-[var(--color-primary)]" />;
       default:
         return <MessageSquare className="h-4 w-4 text-emerald-600" />;
     }
@@ -88,7 +88,7 @@ export default function LeadDetailModal({ lead, onClose, onStatusChange, onConve
       <div className="flex max-h-[94vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl animate-in fade-in zoom-in-95 duration-150">
         <div className="flex items-start justify-between border-b border-slate-100 px-6 py-4">
           <div>
-            <p className="text-xs font-bold text-[#2563EB] tracking-wider uppercase">{lead.lead_id}</p>
+            <p className="text-xs font-bold text-[var(--color-primary)] tracking-wider uppercase">{lead.lead_id}</p>
             <h2 className="text-xl font-bold text-slate-900 mt-0.5">{lead.customer_name}</h2>
             <p className="text-xs text-slate-500">{lead.company} · {lead.industry || "General Industry"}</p>
           </div>
@@ -97,7 +97,7 @@ export default function LeadDetailModal({ lead, onClose, onStatusChange, onConve
 
         <div className="flex gap-1 overflow-x-auto border-b border-slate-100 px-6 bg-slate-50/50">
           {TABS.map((t) => (
-            <button key={t} type="button" onClick={() => setTab(t)} className={`whitespace-nowrap border-b-2 px-4 py-3 text-xs font-bold transition-all ${tab === t ? "border-[#2563EB] text-[#2563EB]" : "border-transparent text-slate-500 hover:text-slate-700"}`}>{t}</button>
+            <button key={t} type="button" onClick={() => setTab(t)} className={`whitespace-nowrap border-b-2 px-4 py-3 text-xs font-bold transition-all ${tab === t ? "border-[var(--color-primary)] text-[var(--color-primary)]" : "border-transparent text-slate-500 hover:text-slate-700"}`}>{t}</button>
           ))}
         </div>
 
@@ -144,21 +144,21 @@ export default function LeadDetailModal({ lead, onClose, onStatusChange, onConve
                 <button
                   type="button"
                   onClick={() => setShowAddActivity(!showAddActivity)}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-bold text-[#2563EB] hover:bg-blue-100 transition-colors"
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--color-primary-soft)] px-3 py-1.5 text-xs font-bold text-[var(--color-primary)] hover:bg-[var(--color-primary-soft)]/80 transition-colors"
                 >
                   <Plus className="h-3.5 w-3.5" /> {showAddActivity ? "Close Logger" : "Log Activity"}
                 </button>
               </div>
 
               {showAddActivity && (
-                <form onSubmit={handleAddActivity} className="rounded-xl border border-blue-200 bg-blue-50/40 p-4 space-y-3">
+                <form onSubmit={handleAddActivity} className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 space-y-3">
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="block text-[11px] font-bold text-slate-600 uppercase">Activity Type</label>
                       <select
                         value={actForm.type}
                         onChange={(e) => setActForm((f) => ({ ...f, type: e.target.value }))}
-                        className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium focus:border-[#2563EB] focus:outline-none"
+                        className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium focus:border-[var(--color-primary)] focus:outline-none"
                       >
                         <option value="Call">Call</option>
                         <option value="Email">Email</option>
@@ -172,7 +172,7 @@ export default function LeadDetailModal({ lead, onClose, onStatusChange, onConve
                         type="text"
                         value={actForm.user}
                         onChange={(e) => setActForm((f) => ({ ...f, user: e.target.value }))}
-                        className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium focus:border-[#2563EB] focus:outline-none"
+                        className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium focus:border-[var(--color-primary)] focus:outline-none"
                       />
                     </div>
                   </div>
@@ -184,7 +184,7 @@ export default function LeadDetailModal({ lead, onClose, onStatusChange, onConve
                       placeholder="e.g. Phone call with procurement lead"
                       value={actForm.subject}
                       onChange={(e) => setActForm((f) => ({ ...f, subject: e.target.value }))}
-                      className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium focus:border-[#2563EB] focus:outline-none"
+                      className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium focus:border-[var(--color-primary)] focus:outline-none"
                     />
                   </div>
                   <div>
@@ -194,7 +194,7 @@ export default function LeadDetailModal({ lead, onClose, onStatusChange, onConve
                       placeholder="Key discussion points or next steps..."
                       value={actForm.notes}
                       onChange={(e) => setActForm((f) => ({ ...f, notes: e.target.value }))}
-                      className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium focus:border-[#2563EB] focus:outline-none"
+                      className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium focus:border-[var(--color-primary)] focus:outline-none"
                     />
                   </div>
                   <div className="flex justify-end gap-2 pt-1">

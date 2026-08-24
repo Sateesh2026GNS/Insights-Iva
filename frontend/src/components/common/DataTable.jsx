@@ -16,12 +16,14 @@ export default function DataTable({
   pageSize = 10,
   showSearch = true,
   showPagination = true,
+  pagination,
   showSerialNumber = true,
   emptyState,
   noResultsState,
   sortable = true,
 }) {
   const { t } = useTranslation();
+  const effectiveShowPagination = pagination !== undefined ? Boolean(pagination) : showPagination;
   const [search, setSearch] = useState("");
   const [filterValues, setFilterValues] = useState({});
   const [page, setPage] = useState(1);
@@ -59,10 +61,10 @@ export default function DataTable({
   }, [rows, search, searchKeys, filters, filterValues]);
 
   const paginated = useMemo(() => {
-    if (!showPagination) return filtered;
+    if (!effectiveShowPagination) return filtered;
     const start = (page - 1) * currentPageSize;
     return filtered.slice(start, start + currentPageSize);
-  }, [filtered, page, currentPageSize, showPagination]);
+  }, [filtered, page, currentPageSize, effectiveShowPagination]);
 
   const totalPages = Math.ceil(filtered.length / currentPageSize) || 1;
 
@@ -94,7 +96,7 @@ export default function DataTable({
         emptyState={defaultEmpty}
         sortable={sortable}
         showSerialNumber={showSerialNumber}
-        serialOffset={showPagination ? (page - 1) * currentPageSize : 0}
+        serialOffset={effectiveShowPagination ? (page - 1) * currentPageSize : 0}
       />
     );
   }
@@ -141,7 +143,7 @@ export default function DataTable({
         </div>
       )}
       {body}
-      {showPagination && filtered.length > 0 ? (
+      {effectiveShowPagination && filtered.length > 0 ? (
         <Pagination
           className="print:hidden"
           page={page}

@@ -287,13 +287,13 @@ export default function VendorsMaster() {
             ) : null}
           </div>
 
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-[12px] text-[#6b6b76]">
-            <div className="flex items-center gap-2">
+          <div className="mt-4 ui-pagination justify-between">
+            <div className="flex items-center gap-2.5 flex-nowrap whitespace-nowrap">
               <span>Rows per page:</span>
               <select
                 value={pageSize}
                 onChange={(e) => setPageSize(Number(e.target.value))}
-                className="rounded border border-[#e2e2e8] bg-white px-2 py-1 outline-none"
+                className="ui-pagination-select"
               >
                 {PAGE_SIZES.map((n) => (
                   <option key={n} value={n}>
@@ -301,14 +301,14 @@ export default function VendorsMaster() {
                   </option>
                 ))}
               </select>
-              <span>{total === 0 ? "0-0 of 0" : `${from}-${to} of ${total}`}</span>
+              <span>{total === 0 ? "0–0 of 0" : `${from}–${to} of ${total}`}</span>
             </div>
             <div className="flex items-center gap-1">
               <button
                 type="button"
                 disabled={page <= 1}
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="grid h-8 w-8 place-items-center rounded border border-[#e2e2e8] bg-white disabled:opacity-40"
+                className="ui-page-btn"
                 aria-label="Previous page"
               >
                 <ChevronLeft className="h-4 w-4" />
@@ -318,12 +318,7 @@ export default function VendorsMaster() {
                   key={n}
                   type="button"
                   onClick={() => setPage(n)}
-                  className={`grid h-8 min-w-[2rem] place-items-center rounded border px-2 text-[13px] font-semibold ${
-                    page === n
-                      ? "border-[var(--color-action-teal)] text-white"
-                      : "border-[#e2e2e8] bg-white text-[#4a4a55]"
-                  }`}
-                  style={page === n ? { background: VENDOR_BTN } : undefined}
+                  className={`ui-page-btn ${page === n ? "ui-page-btn--active" : ""}`}
                 >
                   {n}
                 </button>
@@ -332,7 +327,7 @@ export default function VendorsMaster() {
                 type="button"
                 disabled={page >= totalPages}
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                className="grid h-8 w-8 place-items-center rounded border border-[#e2e2e8] bg-white disabled:opacity-40"
+                className="ui-page-btn"
                 aria-label="Next page"
               >
                 <ChevronRight className="h-4 w-4" />

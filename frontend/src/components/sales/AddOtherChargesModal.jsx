@@ -152,7 +152,7 @@ export default function AddOtherChargesModal({ open, onClose, onSave, initial })
           <div className="grid grid-cols-3 gap-3">
             <label className="block">
               <SoftLabel>Amount</SoftLabel>
-              <div className="flex overflow-hidden rounded-lg border border-[#dcdce3] bg-white focus-within:border-[#c4b5fd] focus-within:ring-1 focus-within:ring-[#c4b5fd]">
+              <div className="flex overflow-hidden rounded-lg border border-[#dcdce3] bg-white focus-within:border-[var(--color-primary)] focus-within:ring-1 focus-within:ring-[var(--color-primary)]">
                 <select
                   className="border-r border-[#dcdce3] bg-[#fafafa] px-2 text-[13px] text-[#1a1a1f] outline-none"
                   defaultValue="INR"

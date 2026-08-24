@@ -536,7 +536,7 @@ export default function RefundVouchers() {
                       pageSize={pageSize}
                       className="border-t border-r border-[#d0d0d8]"
                     />
-                    <td className="border-t border-r border-[#d0d0d8] px-4 py-3 font-semibold text-[#6b4eff]">{r.voucher_number}</td>
+                    <td className="border-t border-r border-[#d0d0d8] px-4 py-3 font-semibold text-[var(--color-primary)]">{r.voucher_number}</td>
                     <td className="border-t border-r border-[#d0d0d8] px-4 py-3 text-[#4a4a55]">
                       {fmtDate(r.voucher_date || r.created_at)}
                     </td>
@@ -559,13 +559,13 @@ export default function RefundVouchers() {
           </table>
         </div>
 
-        <div className="flex flex-col gap-3 border-t border-[#ececf0] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-2 text-[13px] text-[#4a4a55]">
+        <div className="ui-pagination justify-between border-t border-[var(--color-border-soft)] px-4 py-3">
+          <div className="flex items-center gap-2.5 flex-nowrap whitespace-nowrap text-[13px] text-[#596b82]">
             <span>Rows per page:</span>
             <select
               value={pageSize}
               onChange={(e) => setPageSize(Number(e.target.value))}
-              className="rounded-md border border-[#e4e4ea] bg-white px-2 py-1 text-[13px]"
+              className="ui-pagination-select"
             >
               {PAGE_SIZES.map((n) => (
                 <option key={n} value={n}>
@@ -573,10 +573,10 @@ export default function RefundVouchers() {
                 </option>
               ))}
             </select>
-            <span className="text-[#9a9aa5]">
+            <span>
               {total === 0
-                ? "1-0 of 0"
-                : `${(page - 1) * pageSize + 1}-${Math.min(page * pageSize, total)} of ${total}`}
+                ? "0–0 of 0"
+                : `${(page - 1) * pageSize + 1}–${Math.min(page * pageSize, total)} of ${total}`}
             </span>
           </div>
           <div className="flex items-center gap-1">
@@ -584,18 +584,23 @@ export default function RefundVouchers() {
               type="button"
               disabled={page <= 1}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
-              className="rounded-md border border-[#e4e4ea] p-1.5 disabled:opacity-35"
+              className="ui-page-btn"
+              aria-label="Previous page"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
-            <span className="min-w-[2rem] rounded-md bg-[var(--color-primary-soft)] px-2.5 py-1 text-center text-[13px] font-semibold text-[var(--color-primary-dark)]">
+            <button
+              type="button"
+              className="ui-page-btn ui-page-btn--active"
+            >
               {page}
-            </span>
+            </button>
             <button
               type="button"
               disabled={page >= totalPages}
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              className="rounded-md border border-[#e4e4ea] p-1.5 disabled:opacity-35"
+              className="ui-page-btn"
+              aria-label="Next page"
             >
               <ChevronRight className="h-4 w-4" />
             </button>

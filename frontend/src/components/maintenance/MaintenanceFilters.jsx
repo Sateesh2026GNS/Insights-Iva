@@ -1,6 +1,6 @@
 import FilterBar from "../common/FilterBar";
 
-const STATUSES = ["All Statuses", "Scheduled", "Completed", "In Progress", "Overdue", "Reported", "Resolved"];
+const STATUSES = ["All Statuses", "Scheduled", "In Progress", "Completed", "Overdue"];
 
 export default function MaintenanceFilters({
   search,

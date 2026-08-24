@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Cpu, X } from "lucide-react";
+import { CalendarDays, Cpu, X } from "lucide-react";
 
 import { SHIFTS } from "../../data/productionPlanningMasterData";
 import { getMachines, quickCreateWorkOrder } from "../../api/productionApi";
@@ -20,6 +20,39 @@ function toDateTimeLocal(value) {
   if (Number.isNaN(d.getTime())) return "";
   const pad = (n) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function DateTimeField({ name, value, onChange, label }) {
+  const inputRef = useRef(null);
+
+  return (
+    <label className="block space-y-1">
+      <span className="ui-label">{label}</span>
+      <span className="relative block">
+        <input
+          ref={inputRef}
+          type="datetime-local"
+          name={name}
+          value={value}
+          onChange={onChange}
+          className="ui-input w-full !pr-10"
+        />
+        <button
+          type="button"
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            inputRef.current?.focus();
+            inputRef.current?.showPicker?.();
+          }}
+          className="absolute right-0 top-0 flex h-full w-10 items-center justify-center text-[var(--color-text-muted)]"
+          aria-label={`Open ${label.toLowerCase()} picker`}
+        >
+          <CalendarDays className="h-4 w-4" aria-hidden />
+        </button>
+      </span>
+    </label>
+  );
 }
 
 export default function QuickWorkOrderModal({ order, onClose, onSuccess, addToast }) {
@@ -409,26 +442,8 @@ export default function QuickWorkOrderModal({ order, onClose, onSuccess, addToas
             </label>
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <label className="block space-y-1">
-              <span className="ui-label">Start</span>
-              <input
-                type="datetime-local"
-                name="start_date"
-                value={form.start_date}
-                onChange={handleChange}
-                className="ui-input"
-              />
-            </label>
-            <label className="block space-y-1">
-              <span className="ui-label">Due</span>
-              <input
-                type="datetime-local"
-                name="due_date"
-                value={form.due_date}
-                onChange={handleChange}
-                className="ui-input"
-              />
-            </label>
+            <DateTimeField name="start_date" value={form.start_date} onChange={handleChange} label="Start" />
+            <DateTimeField name="due_date" value={form.due_date} onChange={handleChange} label="Due" />
           </div>
           <div className="flex justify-end gap-2 border-t border-[var(--color-border)] pt-4">
             <Button variant="secondary" type="button" onClick={onClose}  disabled={saving}>

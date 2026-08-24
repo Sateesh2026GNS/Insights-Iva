@@ -9,6 +9,7 @@ import {
   Download,
   Filter,
   Hash,
+  Search,
   RefreshCw,
   Wrench,
 } from "lucide-react";
@@ -57,6 +58,26 @@ function formatDateParts(value) {
     day: d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }),
     time: d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true }),
   };
+}
+
+function dateISO(offset = 0) {
+  const date = new Date();
+  date.setDate(date.getDate() + offset);
+  const pad = (value) => String(value).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+function oneYearFromTodayISO() {
+  const date = new Date();
+  date.setFullYear(date.getFullYear() + 1);
+  const pad = (value) => String(value).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+function displayDate(value) {
+  if (!value) return "";
+  const [year, month, day] = value.split("-");
+  return `${day}-${month}-${year}`;
 }
 
 function resolveTxnType(row) {
@@ -121,13 +142,15 @@ export default function StockLedger() {
   const [entries, setEntries] = useState([]);
   const [warehousesApi, setWarehousesApi] = useState([]);
   const [filters, setFilters] = useState({
-    dateFrom: "",
-    dateTo: "",
+    dateFrom: dateISO(),
+    dateTo: oneYearFromTodayISO(),
     warehouse: "",
     item: "",
     type: "",
   });
   const [headerWarehouse, setHeaderWarehouse] = useState("");
+  const [search, setSearch] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
   const [remarksWidth, setRemarksWidth] = useState(220);
   const [openMenuId, setOpenMenuId] = useState(null);
   const [viewTarget, setViewTarget] = useState(null);
@@ -198,6 +221,13 @@ export default function StockLedger() {
 
   const filtered = useMemo(() => {
     let list = rows;
+    const query = search.trim().toLowerCase();
+    if (query) {
+      list = list.filter((r) =>
+        [r.item_name, r.item_code, r.warehouse_name, r.transaction, r.reference, r.remarks]
+          .some((value) => value != null && String(value).toLowerCase().includes(query))
+      );
+    }
     if (filters.type) {
       list = list.filter((r) => resolveTxnType(r) === filters.type);
     }
@@ -214,7 +244,7 @@ export default function StockLedger() {
       list = list.filter((r) => r.date && String(r.date).slice(0, 10) <= filters.dateTo);
     }
     return list;
-  }, [rows, filters]);
+  }, [rows, search, filters]);
 
   const kpis = useMemo(() => {
     if (!entries.length) return EMPTY_SUMMARY;
@@ -248,9 +278,10 @@ export default function StockLedger() {
   }, [entries.length, summary, filtered]);
 
   const clearFilters = () => {
+    setSearch("");
     setFilters({
-      dateFrom: "",
-      dateTo: "",
+      dateFrom: dateISO(),
+      dateTo: oneYearFromTodayISO(),
       warehouse: "",
       item: "",
       type: "",
@@ -459,35 +490,33 @@ export default function StockLedger() {
               />
               <button
                 type="button"
-                onClick={() => {
-                  if (dateFromRef.current) {
-                    if (typeof dateFromRef.current.showPicker === "function") {
-                      dateFromRef.current.showPicker();
-                    } else {
-                      dateFromRef.current.click();
-                    }
-                  }
-                }}
-                className="flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
+                onClick={() => dateFromRef.current?.showPicker?.() || dateFromRef.current?.click()}
+                className="flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors"
                 aria-label="Open start date picker"
               >
                 <CalendarDays className="h-4 w-4" />
               </button>
-              <span>
-                {filters.dateFrom || "Start date"} - {filters.dateTo || "End date"}
-              </span>
               <button
                 type="button"
-                onClick={() => {
-                  if (dateToRef.current) {
-                    if (typeof dateToRef.current.showPicker === "function") {
-                      dateToRef.current.showPicker();
-                    } else {
-                      dateToRef.current.click();
-                    }
-                  }
-                }}
-                className="flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
+                onClick={() => dateFromRef.current?.showPicker?.() || dateFromRef.current?.click()}
+                className="font-medium text-[var(--color-text-secondary)] hover:text-[var(--color-text)] transition-colors cursor-pointer"
+                title="Change start date"
+              >
+                {displayDate(filters.dateFrom)}
+              </button>
+              <span className="text-[var(--color-text-muted)] select-none font-medium px-0.5">→</span>
+              <button
+                type="button"
+                onClick={() => dateToRef.current?.showPicker?.() || dateToRef.current?.click()}
+                className="font-medium text-[var(--color-text-secondary)] hover:text-[var(--color-text)] transition-colors cursor-pointer"
+                title="Change end date"
+              >
+                {displayDate(filters.dateTo)}
+              </button>
+              <button
+                type="button"
+                onClick={() => dateToRef.current?.showPicker?.() || dateToRef.current?.click()}
+                className="flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors"
                 aria-label="Open end date picker"
               >
                 <CalendarDays className="h-4 w-4" />
@@ -588,8 +617,34 @@ export default function StockLedger() {
       </div>
 
       <div className="ui-card p-3 sm:p-4">
-        <div className="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
-          <div className="grid min-w-0 flex-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="relative min-w-0 flex-1 xl:max-w-md">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-icon)]" aria-hidden />
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search stock movements"
+              className="ui-input w-full pl-10"
+              aria-label="Search stock movements"
+            />
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setShowFilters((open) => !open)}
+                aria-expanded={showFilters}
+              >
+                <Filter className="h-4 w-4" /> Filters
+              </Button>
+              <Button type="button" variant="ghost" onClick={clearFilters}>
+                <RefreshCw className="h-4 w-4" /> Clear
+              </Button>
+            </div>
+          </div>
+          {showFilters ? <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <label className="text-sm min-w-0">
               <span className="ui-label">Item</span>
               <select
@@ -634,8 +689,6 @@ export default function StockLedger() {
                 <option value="adjustment">Adjustment</option>
               </select>
             </label>
-          </div>
-          <div className="flex flex-wrap items-end gap-3">
             <label className="text-sm">
               <span className="ui-label">Remarks width</span>
               <input
@@ -649,13 +702,7 @@ export default function StockLedger() {
                 aria-label="Adjust remarks column width"
               />
             </label>
-            <Button type="button" variant="secondary">
-              <Filter className="h-4 w-4" /> Filters
-            </Button>
-            <Button type="button" variant="ghost" onClick={clearFilters}>
-              <RefreshCw className="h-4 w-4" /> Clear
-            </Button>
-          </div>
+          </div> : null}
         </div>
       </div>
 

@@ -126,7 +126,7 @@ export default function QuoteDetailModal({ quote, onClose, onStatusChange, onCon
       <div className="flex max-h-[94vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
         <div className="flex items-start justify-between border-b px-5 py-4">
           <div>
-            <p className="text-xs font-semibold text-[#2563EB]">{quote.quote_number}</p>
+            <p className="text-xs font-semibold text-[var(--color-primary)]">{quote.quote_number}</p>
             <h2 className="text-xl font-bold text-slate-900">{quote.customer_name || "Customer"}</h2>
             <p className="text-sm text-slate-500">
               Sales Person: {quote.sales_person || "—"} · Valid until {quote.valid_until || "—"}

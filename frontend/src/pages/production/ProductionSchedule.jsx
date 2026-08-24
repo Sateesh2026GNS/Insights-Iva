@@ -1097,14 +1097,12 @@ export default function ProductionSchedule() {
                 onCreate={openCreate}
               />
             ) : (
-              <div className="overflow-hidden rounded-lg border border-[var(--color-border-soft)]">
-                <DataTable
-                  columns={tableColumns}
-                  data={filteredTable}
-                  searchKeys={["work_order_number", "product_name", "machine_name"]}
-                  showSearch={false}
-                />
-              </div>
+              <DataTable
+                columns={tableColumns}
+                data={filteredTable}
+                searchKeys={["work_order_number", "product_name", "machine_name"]}
+                showSearch={false}
+              />
             )}
           </div>
         ) : null}

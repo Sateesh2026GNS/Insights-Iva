@@ -330,7 +330,7 @@ export default function SalesOrderDetail() {
                     addToast(err.response?.data?.detail || "Delivery confirm failed", "error");
                   }
                 }}
-                className="rounded-lg border border-indigo-200 px-3 py-1.5 text-sm font-medium text-indigo-700 hover:bg-indigo-50"
+                className="rounded-lg border border-teal-200 px-3 py-1.5 text-sm font-medium text-teal-700 hover:bg-teal-50"
               >
                 Confirm delivery
               </button>
@@ -361,7 +361,7 @@ export default function SalesOrderDetail() {
                 {productionOrders.map((po) => (
                   <li key={po.id} className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900/40">
                     <div>
-                      <p className="font-semibold text-[#2563EB]">{po.order_number}</p>
+                      <p className="font-semibold text-[var(--color-primary)]">{po.order_number}</p>
                       <p className="text-xs text-slate-500">
                         Qty {po.planned_quantity} · {po.status}
                       </p>
@@ -382,7 +382,7 @@ export default function SalesOrderDetail() {
             )}
             <Link
               to="/production/planning"
-              className="mt-3 inline-block text-sm font-semibold text-[#2563EB] hover:underline"
+              className="mt-3 inline-block text-sm font-semibold text-[var(--color-primary)] hover:underline"
             >
               Open Production Planning →
             </Link>
@@ -426,7 +426,7 @@ export default function SalesOrderDetail() {
                 <ul className="space-y-2 text-sm">
                   {workflowResult.production_orders.map((po) => (
                     <li key={po.id || po.order_number} className="rounded-lg border px-3 py-2">
-                      <p className="font-medium text-[#2563EB]">{po.order_number}</p>
+                      <p className="font-medium text-[var(--color-primary)]">{po.order_number}</p>
                       <p className="text-xs text-slate-500">
                         {po.product || `Product #${po.product_id}`} · Qty {po.quantity}
                         {po.work_order_number ? ` · WO ${po.work_order_number}` : ""}

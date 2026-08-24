@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   AlertTriangle,
@@ -184,6 +184,7 @@ export default function InventoryDashboard() {
   const [selectedDate, setSelectedDate] = useState("2026-08-13");
   const [warehouseId, setWarehouseId] = useState("");
   const [prBusy, setPrBusy] = useState(null);
+  const dateInputRef = useRef(null);
 
   const load = useCallback(async (isRefresh = false) => {
     if (!isRefresh) setLoading(true);
@@ -433,8 +434,21 @@ export default function InventoryDashboard() {
         action={
           <div className="flex flex-wrap items-center gap-2">
             <label className="relative inline-flex items-center">
-              <CalendarDays className="pointer-events-none absolute left-3 h-4 w-4 text-[var(--color-text-muted)]" aria-hidden />
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  dateInputRef.current?.focus();
+                  dateInputRef.current?.showPicker?.();
+                }}
+                className="absolute left-0 z-10 flex h-full w-10 items-center justify-center text-[var(--color-text-muted)]"
+                aria-label="Open dashboard date picker"
+              >
+                <CalendarDays className="h-4 w-4" aria-hidden />
+              </button>
               <input
+                ref={dateInputRef}
                 type="date"
                 value={selectedDate}
                 onChange={(e) => setSelectedDate(e.target.value || todayISO())}

@@ -201,8 +201,8 @@ export default function SettingsPackageTypeMaster() {
         </table>
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-2 text-sm text-slate-600">
+      <div className="mt-4 ui-pagination justify-between border-t border-[var(--color-border-soft)] pt-4">
+        <div className="flex items-center gap-2.5 flex-nowrap whitespace-nowrap text-[13px] text-[#596b82]">
           <span>Rows per page:</span>
           <select
             value={rowsPerPage}
@@ -210,7 +210,7 @@ export default function SettingsPackageTypeMaster() {
               setRowsPerPage(Number(e.target.value));
               setPage(0);
             }}
-            className="rounded border border-slate-200 bg-white px-2 py-1 text-sm"
+            className="ui-pagination-select"
           >
             {ROWS_PER_PAGE_OPTIONS.map((n) => (
               <option key={n} value={n}>
@@ -218,26 +218,34 @@ export default function SettingsPackageTypeMaster() {
               </option>
             ))}
           </select>
-        </div>
-        <div className="flex items-center gap-2 text-sm text-slate-600">
           <span>
-            {total === 0 ? "0 to 0 of 0" : `${start + 1} to ${Math.min(start + rowsPerPage, total)} of ${total}`}
+            {total === 0 ? "0–0 of 0" : `${start + 1}–${Math.min(start + rowsPerPage, total)} of ${total}`}
           </span>
+        </div>
+        <div className="flex items-center gap-1">
           <button
             type="button"
             disabled={page <= 0}
             onClick={() => setPage((p) => Math.max(0, p - 1))}
-            className="rounded border px-2 py-1 disabled:opacity-40"
+            className="ui-page-btn"
+            aria-label="Previous page"
           >
-            Prev
+            ‹
+          </button>
+          <button
+            type="button"
+            className="ui-page-btn ui-page-btn--active"
+          >
+            {page + 1}
           </button>
           <button
             type="button"
             disabled={page >= totalPages - 1}
             onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-            className="rounded border px-2 py-1 disabled:opacity-40"
+            className="ui-page-btn"
+            aria-label="Next page"
           >
-            Next
+            ›
           </button>
         </div>
       </div>

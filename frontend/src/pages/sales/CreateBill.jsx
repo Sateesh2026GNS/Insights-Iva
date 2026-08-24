@@ -216,7 +216,7 @@ export default function CreateBill() {
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400">Line Items ({items.length})</h2>
             <button type="button" onClick={() => setItems((p) => [...p, EMPTY_ITEM()])}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-50 px-3 py-1.5 text-sm font-semibold text-[#2563EB] hover:bg-blue-100">
+              className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--color-primary-soft)] px-3 py-1.5 text-sm font-semibold text-[var(--color-primary)] hover:bg-[var(--color-primary-soft)]/80">
               <Plus className="h-4 w-4" /> Add Item
             </button>
           </div>
@@ -269,7 +269,7 @@ export default function CreateBill() {
                   <label className="text-sm text-slate-600">{label}</label>
                   <input type="number" min="0" step="0.01" value={form[key]}
                     onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
-                    className="w-28 rounded-lg border border-slate-200 px-3 py-1.5 text-right text-sm focus:border-[#2563EB] focus:outline-none focus:ring-2 focus:ring-blue-100" />
+                    className="w-28 rounded-lg border border-slate-200 px-3 py-1.5 text-right text-sm focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-soft)]" />
                 </div>
               ))}
             </div>
@@ -285,7 +285,7 @@ export default function CreateBill() {
               {igst > 0 && <div className="flex justify-between text-slate-600"><span>IGST ({form.igst_pct}%)</span><span>+{fmt(igst)}</span></div>}
               <div className="mt-2 flex justify-between border-t-2 border-slate-200 pt-3 text-lg font-bold text-slate-900">
                 <span>Grand Total</span>
-                <span className="text-[#2563EB]">{fmt(grandTotal)}</span>
+                <span className="text-[var(--color-primary)]">{fmt(grandTotal)}</span>
               </div>
             </div>
           </div>

@@ -100,6 +100,7 @@ export default function StockAdjustment() {
   const storeMode = isStoreManager(user);
   const [searchParams] = useSearchParams();
   const formRef = useRef(null);
+  const headerDateInputRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [adjustments, setAdjustments] = useState([]);
   const [warehouses, setWarehouses] = useState([]);
@@ -525,8 +526,21 @@ export default function StockAdjustment() {
         action={
           <div className="flex flex-wrap items-center gap-2">
             <label className="relative inline-flex items-center">
-              <CalendarDays className="pointer-events-none absolute left-3 h-4 w-4 text-[var(--color-text-muted)]" aria-hidden />
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  headerDateInputRef.current?.focus();
+                  headerDateInputRef.current?.showPicker?.();
+                }}
+                className="absolute left-0 z-10 flex h-full w-10 items-center justify-center text-[var(--color-text-muted)]"
+                aria-label="Open date picker"
+              >
+                <CalendarDays className="h-4 w-4" aria-hidden />
+              </button>
               <input
+                ref={headerDateInputRef}
                 type="date"
                 value={headerDate}
                 onChange={(e) => setHeaderDate(e.target.value)}
@@ -868,8 +882,6 @@ export default function StockAdjustment() {
                 icon="clipboard"
                 title="No adjustments yet"
                 description="Create an adjustment to correct stock quantities."
-                actionLabel="New Adjustment"
-                onAction={handleAdd}
               />
             }
           />

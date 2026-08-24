@@ -133,7 +133,6 @@ export const SIDEBAR_NAV = [
       { labelKey: "erpNav.inProcessQc", to: "/quality/in-process", module: "quality" },
       { labelKey: "erpNav.finalQc", to: "/quality/final", module: "quality" },
       { labelKey: "erpNav.batchReports", to: "/quality/batch-reports", module: "quality" },
-      { labelKey: "erpNav.rejections", to: "/quality/defects", module: "quality" },
     ],
   },
   {

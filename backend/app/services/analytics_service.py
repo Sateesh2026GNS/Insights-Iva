@@ -33,7 +33,34 @@ def get_monthly_production_trend(
             stmt = stmt.where(DailyProductionReport.created_by_user_id == user.id)
 
         stmt = stmt.group_by(func.extract("month", DailyProductionReport.report_date))
-        rows = {int(r[0]): float(r[1] or 0) for r in db.execute(stmt).all()}
+        rows = {int(r[0]): float(r[1] or 0) for r in db.execute(stmt).all() if r[0] is not None}
+        if not any(v > 0 for v in rows.values()):
+            from app.models.production import WorkOrder, ProductionOrder
+            wo_stmt = (
+                select(
+                    func.extract("month", func.coalesce(WorkOrder.planned_start, WorkOrder.created_at)).label("m"),
+                    func.coalesce(func.sum(WorkOrder.actual_quantity), 0),
+                )
+                .where(WorkOrder.tenant_id == tenant_id)
+                .where(func.extract("year", func.coalesce(WorkOrder.planned_start, WorkOrder.created_at)) == year)
+                .group_by(func.extract("month", func.coalesce(WorkOrder.planned_start, WorkOrder.created_at)))
+            )
+            wo_rows = {int(r[0]): float(r[1] or 0) for r in db.execute(wo_stmt).all() if r[0] is not None}
+            if any(v > 0 for v in wo_rows.values()):
+                rows = wo_rows
+            else:
+                po_stmt = (
+                    select(
+                        func.extract("month", func.coalesce(ProductionOrder.start_date, ProductionOrder.created_at)).label("m"),
+                        func.coalesce(func.sum(ProductionOrder.actual_quantity), 0),
+                    )
+                    .where(ProductionOrder.tenant_id == tenant_id)
+                    .where(func.extract("year", func.coalesce(ProductionOrder.start_date, ProductionOrder.created_at)) == year)
+                    .group_by(func.extract("month", func.coalesce(ProductionOrder.start_date, ProductionOrder.created_at)))
+                )
+                po_rows = {int(r[0]): float(r[1] or 0) for r in db.execute(po_stmt).all() if r[0] is not None}
+                if any(v > 0 for v in po_rows.values()):
+                    rows = po_rows
         return [
             {"month": months[i], "value": rows.get(i + 1, 0), "monthNum": i + 1}
             for i in range(12)

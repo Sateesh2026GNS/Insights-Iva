@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
 import Button, { IconButton } from "../common/Button";
-const PURPLE = "#6b4eff";
+const PRIMARY = "var(--color-primary)";
 
 /**
  * Add Prefix modal (screenshot match).
@@ -62,7 +62,7 @@ export default function AddPrefixModal({ open, onClose, onSubmit }) {
             onChange={(e) => setPrefix(e.target.value)}
             placeholder="Enter Prefix"
             className="w-full rounded-lg border bg-white px-3 py-2.5 text-[14px] text-[#1a1a1f] placeholder:text-[#a0a0ab] focus:outline-none focus:ring-1"
-            style={{ borderColor: PURPLE, boxShadow: `0 0 0 1px ${PURPLE}` }}
+            style={{ borderColor: PRIMARY, boxShadow: `0 0 0 1px ${PRIMARY}` }}
           />
         </div>
 

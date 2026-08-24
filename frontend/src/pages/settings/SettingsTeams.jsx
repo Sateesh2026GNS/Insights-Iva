@@ -260,8 +260,8 @@ export default function SettingsTeams() {
       </div>
 
       {/* Pagination */}
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+      <div className="mt-4 ui-pagination justify-between border-t border-[var(--color-border-soft)] pt-4">
+        <div className="flex items-center gap-2.5 flex-nowrap whitespace-nowrap text-[13px] text-[#596b82]">
           <span>Rows per page:</span>
           <select
             value={rowsPerPage}
@@ -269,7 +269,7 @@ export default function SettingsTeams() {
               setRowsPerPage(Number(e.target.value));
               setPage(0);
             }}
-            className="rounded border border-slate-200 bg-white px-2 py-1 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
+            className="ui-pagination-select"
           >
             {ROWS_PER_PAGE_OPTIONS.map((n) => (
               <option key={n} value={n}>
@@ -277,53 +277,37 @@ export default function SettingsTeams() {
               </option>
             ))}
           </select>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-slate-600 dark:text-slate-400">
+          <span>
             {total === 0
-              ? "0 to 0 of 0"
-              : `${start + 1} to ${Math.min(start + rowsPerPage, total)} of ${total}`}
+              ? "0–0 of 0"
+              : `${start + 1}–${Math.min(start + rowsPerPage, total)} of ${total}`}
           </span>
-          <div className="flex items-center gap-0.5">
-            <button
-              type="button"
-              onClick={() => setPage(0)}
-              disabled={page === 0}
-              className="rounded p-1.5 hover:bg-slate-100 disabled:opacity-40 dark:hover:bg-slate-700"
-            >
-              «
-            </button>
-            <button
-              type="button"
-              onClick={() => setPage((p) => Math.max(0, p - 1))}
-              disabled={page === 0}
-              className="rounded p-1.5 hover:bg-slate-100 disabled:opacity-40 dark:hover:bg-slate-700"
-            >
-              ‹
-            </button>
-            <button
-              type="button"
-              className="rounded bg-slate-200 px-2 py-1 text-sm font-medium dark:bg-slate-600"
-            >
-              {page + 1}
-            </button>
-            <button
-              type="button"
-              onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-              disabled={page >= totalPages - 1}
-              className="rounded p-1.5 hover:bg-slate-100 disabled:opacity-40 dark:hover:bg-slate-700"
-            >
-              ›
-            </button>
-            <button
-              type="button"
-              onClick={() => setPage(totalPages - 1)}
-              disabled={page >= totalPages - 1}
-              className="rounded p-1.5 hover:bg-slate-100 disabled:opacity-40 dark:hover:bg-slate-700"
-            >
-              »
-            </button>
-          </div>
+        </div>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setPage((p) => Math.max(0, p - 1))}
+            disabled={page === 0}
+            className="ui-page-btn"
+            aria-label="Previous page"
+          >
+            ‹
+          </button>
+          <button
+            type="button"
+            className="ui-page-btn ui-page-btn--active"
+          >
+            {page + 1}
+          </button>
+          <button
+            type="button"
+            onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+            disabled={page >= totalPages - 1}
+            className="ui-page-btn"
+            aria-label="Next page"
+          >
+            ›
+          </button>
         </div>
       </div>
     </div>

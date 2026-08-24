@@ -121,14 +121,16 @@ export default function FinalQC() {
     load();
   }, [load]);
 
-  const customers = useMemo(
-    () => [...new Set(rows.map((r) => r.customer_name).filter(Boolean))].sort(),
-    [rows]
-  );
-  const salesOrders = useMemo(
-    () => [...new Set(rows.map((r) => r.sales_order_number).filter(Boolean))].sort(),
-    [rows]
-  );
+  const customers = useMemo(() => {
+    const fromRows = rows.map((r) => r.customer_name).filter(Boolean);
+    const defaults = ["Tata Motors Ltd", "Mahindra & Mahindra", "Bajaj Auto Ltd", "Bharat Forge", "Larsen & Toubro"];
+    return [...new Set([...fromRows, ...defaults])].sort();
+  }, [rows]);
+  const salesOrders = useMemo(() => {
+    const fromRows = rows.map((r) => r.sales_order_number).filter(Boolean);
+    const defaults = ["SO-2026-0001", "SO-2026-0002", "SO-2026-0003", "SO-2026-0004", "SO-2026-0005"];
+    return [...new Set([...fromRows, ...defaults])].sort();
+  }, [rows]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -396,59 +398,56 @@ export default function FinalQC() {
           </table>
         </div>
 
-        <div className="flex flex-col gap-3 border-t border-[var(--color-border-soft)] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-xs text-[var(--color-text-muted)]">
-            Showing {from} to {to} of {total} entries
-          </p>
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                disabled={page <= 1}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="grid h-8 w-8 place-items-center rounded border border-[var(--color-border)] bg-white disabled:opacity-40"
-                aria-label="Previous page"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-              {pageNumberItems(page, totalPages).map((item) =>
-                typeof item === "string" ? (
-                  <span key={item} className="px-1 text-xs text-[var(--color-text-muted)]">…</span>
-                ) : (
-                  <button
-                    key={item}
-                    type="button"
-                    onClick={() => setPage(item)}
-                    className={`grid h-8 min-w-8 place-items-center rounded border px-2 text-xs font-semibold ${
-                      page === item
-                        ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-white"
-                        : "border-[var(--color-border)] bg-white text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-muted)]"
-                    }`}
-                  >
-                    {item}
-                  </button>
-                )
-              )}
-              <button
-                type="button"
-                disabled={page >= totalPages}
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                className="grid h-8 w-8 place-items-center rounded border border-[var(--color-border)] bg-white disabled:opacity-40"
-                aria-label="Next page"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </button>
-            </div>
+        <div className="ui-pagination justify-between border-t border-[var(--color-border-soft)] px-4 py-3">
+          <div className="flex items-center gap-2.5 flex-nowrap whitespace-nowrap text-[13px] text-[#596b82]">
+            <span>Rows per page:</span>
             <select
               value={pageSize}
               onChange={(e) => setPageSize(Number(e.target.value))}
-              className="ui-select !w-auto min-w-[6.5rem] text-xs"
+              className="ui-pagination-select"
               aria-label="Rows per page"
             >
               {PAGE_SIZES.map((n) => (
-                <option key={n} value={n}>{n} / page</option>
+                <option key={n} value={n}>{n}</option>
               ))}
             </select>
+            <span>
+              {total === 0 ? "0–0 of 0" : `${from}–${to} of ${total}`}
+            </span>
+          </div>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              disabled={page <= 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              className="ui-page-btn"
+              aria-label="Previous page"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            {pageNumberItems(page, totalPages).map((item, idx) =>
+              typeof item === "string" ? (
+                <span key={`dots-${idx}`} className="px-1 text-xs text-[var(--color-text-muted)]">…</span>
+              ) : (
+                <button
+                  key={item}
+                  type="button"
+                  onClick={() => setPage(item)}
+                  className={`ui-page-btn ${page === item ? "ui-page-btn--active" : ""}`}
+                >
+                  {item}
+                </button>
+              )
+            )}
+            <button
+              type="button"
+              disabled={page >= totalPages}
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              className="ui-page-btn"
+              aria-label="Next page"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
           </div>
         </div>
       </div>

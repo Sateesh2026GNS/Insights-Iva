@@ -457,6 +457,7 @@
     "daily": "Daily",
     "weekly": "Weekly",
     "monthly": "Monthly",
+    "yearly": "Yearly",
     "plannedQty": "Planned Quantity",
     "actualQty": "Actual Quantity",
     "shopFloorStatus": "Shop Floor Status",

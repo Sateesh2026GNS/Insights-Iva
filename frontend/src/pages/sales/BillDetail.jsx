@@ -9,11 +9,11 @@ const fmt = (v) =>
 
 const STATUS_STYLES = {
   paid:     "bg-emerald-100 text-emerald-700 border-emerald-200",
-  issued:   "bg-blue-100 text-blue-700 border-blue-200",
+  issued:   "bg-[var(--color-primary-soft)] text-[var(--color-primary)] border-[var(--color-primary-soft)]",
   draft:    "bg-slate-100 text-slate-600 border-slate-200",
   pending_approval: "bg-amber-100 text-amber-700 border-amber-200",
-  approved: "bg-blue-100 text-blue-700 border-blue-200",
-  sent:     "bg-indigo-100 text-indigo-700 border-indigo-200",
+  approved: "bg-teal-50 text-teal-700 border-teal-200",
+  sent:     "bg-emerald-50 text-emerald-700 border-emerald-200",
   partial:  "bg-orange-100 text-orange-700 border-orange-200",
 };
 const STATUS_LABEL = {
@@ -264,7 +264,7 @@ export default function BillDetail() {
               )}
               <div className="flex justify-between border-t border-slate-200 pt-3 text-base font-bold text-slate-900">
                 <span>Grand Total</span>
-                <span className="text-[#2563EB]">{fmt(grandTotal)}</span>
+                <span className="text-[var(--color-primary)]">{fmt(grandTotal)}</span>
               </div>
               {amountPaid > 0 && (
                 <div className="flex justify-between text-emerald-700 font-medium">

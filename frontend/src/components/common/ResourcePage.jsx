@@ -200,7 +200,7 @@ export default function ResourcePage({
         subtitle={subtitle}
         action={
           createFn && !isOperator ? (
-            <Button type="button" onClick={openModal}>
+            <Button type="button" variant="primary" onClick={openModal}>
               {createLabel}
             </Button>
           ) : null
@@ -226,8 +226,6 @@ export default function ResourcePage({
                 icon={emptyIcon}
                 title={emptyTitle}
                 description={emptyDescription}
-                actionLabel={createFn ? createLabel.replace(/^\+\s*/, "") : undefined}
-                onAction={createFn ? openModal : undefined}
               />
             }
           />
@@ -275,7 +273,7 @@ export default function ResourcePage({
               <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit" loading={saving} disabled={saving}>
+              <Button type="submit" variant="primary" loading={saving} disabled={saving}>
                 {saving ? "Saving…" : "Save"}
               </Button>
             </div>

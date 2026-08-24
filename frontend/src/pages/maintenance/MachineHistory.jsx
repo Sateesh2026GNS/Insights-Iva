@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import {
   AlertTriangle,
@@ -10,8 +11,12 @@ import {
   ClipboardList,
   Download,
   Eye,
+  FileSpreadsheet,
   FileText,
+  LayoutDashboard,
   MoreVertical,
+  Package,
+  RefreshCw,
   Search,
   Settings,
   Wrench,
@@ -197,18 +202,38 @@ export default function MachineHistory() {
   const [dateTo, setDateTo] = useState("");
   const [activeTab, setActiveTab] = useState("all");
   const [page, setPage] = useState(1);
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const moreMenuRef = useRef(null);
 
-  const load = useCallback(async (isRefresh = false) => {
-    if (!isRefresh) setLoading(true);
-    setError(null);
+  useEffect(() => {
+    const handleOutside = (e) => {
+      if (moreMenuRef.current && !moreMenuRef.current.contains(e.target)) {
+        setShowMoreMenu(false);
+      }
+    };
+    if (showMoreMenu) {
+      document.addEventListener("mousedown", handleOutside);
+      return () => document.removeEventListener("mousedown", handleOutside);
+    }
+  }, [showMoreMenu]);
+
+  const load = useCallback(async (isRefresh = false, retryCount = 0) => {
+    if (!isRefresh && retryCount === 0) setLoading(true);
+    if (retryCount === 0) setError(null);
     try {
       const res = await getMachineHistory();
       setRows(Array.isArray(res.data) ? res.data : []);
+      setError(null);
     } catch (e) {
-      setError(e.message || "Network error");
+      if (retryCount < 2) {
+        await new Promise((resolve) => setTimeout(resolve, 300 * (retryCount + 1)));
+        return load(isRefresh, retryCount + 1);
+      }
+      if (isRefresh) throw e;
+      setError(e.message || "Failed to load machine history");
       setRows([]);
     } finally {
-      setLoading(false);
+      if (retryCount === 0) setLoading(false);
     }
   }, []);
 
@@ -296,21 +321,73 @@ export default function MachineHistory() {
               type="button"
               onClick={() => {
                 exportCsv(filtered);
-                addToast("Machine history exported", "success");
+                addToast("Machine history exported to CSV", "success");
               }}
-              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-[13px] font-semibold text-slate-700 hover:bg-slate-50"
+              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-[13px] font-semibold text-slate-700 shadow-xs transition-colors hover:bg-slate-50 hover:border-[var(--color-primary)] cursor-pointer"
             >
-              <Download className="h-4 w-4" />
+              <Download className="h-4 w-4 text-[var(--color-primary)]" />
               Export
             </button>
-            <button
-              type="button"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-[13px] font-semibold text-slate-700 hover:bg-slate-50"
-            >
-              <MoreVertical className="h-4 w-4" />
-              More Actions
-              <ChevronDown className="h-4 w-4" />
-            </button>
+            <div className="relative" ref={moreMenuRef}>
+              <button
+                type="button"
+                onClick={() => setShowMoreMenu((v) => !v)}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-[13px] font-semibold text-slate-700 shadow-xs transition-colors hover:bg-slate-50 hover:border-[var(--color-primary)] cursor-pointer"
+              >
+                <MoreVertical className="h-4 w-4 text-slate-500" />
+                More Actions
+                <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform duration-200 ${showMoreMenu ? "rotate-180" : ""}`} />
+              </button>
+              {showMoreMenu && (
+                <div className="absolute right-0 top-[calc(100%+6px)] z-40 w-56 rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl animate-in fade-in zoom-in-95 duration-100">
+                  <Link
+                    to="/maintenance"
+                    onClick={() => setShowMoreMenu(false)}
+                    className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                  >
+                    <LayoutDashboard className="h-4 w-4 text-[var(--color-primary)]" />
+                    Maintenance Dashboard
+                  </Link>
+                  <Link
+                    to="/maintenance/preventive"
+                    onClick={() => setShowMoreMenu(false)}
+                    className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                  >
+                    <Wrench className="h-4 w-4 text-[var(--color-primary)]" />
+                    Preventive Maintenance
+                  </Link>
+                  <Link
+                    to="/maintenance/breakdowns"
+                    onClick={() => setShowMoreMenu(false)}
+                    className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                  >
+                    <AlertTriangle className="h-4 w-4 text-amber-500" />
+                    Breakdown Reports
+                  </Link>
+                  <Link
+                    to="/maintenance/equipment"
+                    onClick={() => setShowMoreMenu(false)}
+                    className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                  >
+                    <Package className="h-4 w-4 text-indigo-600" />
+                    Equipment & Spares
+                  </Link>
+                  <div className="my-1 border-t border-slate-100" />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowMoreMenu(false);
+                      load(true);
+                      addToast("Refreshing history logs...", "info");
+                    }}
+                    className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-[13px] font-medium text-slate-700 transition-colors hover:bg-slate-50 cursor-pointer"
+                  >
+                    <RefreshCw className="h-4 w-4 text-[var(--color-primary)]" />
+                    Refresh Logs
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         }
       />

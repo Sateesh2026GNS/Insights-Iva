@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   ArrowDownToLine,
@@ -123,6 +123,7 @@ export default function RawMaterials() {
   const [warehouse, setWarehouse] = useState("");
   const [showFilters, setShowFilters] = useState(true);
   const [selectedDate, setSelectedDate] = useState("2026-08-13");
+  const dateInputRef = useRef(null);
   const [headerWarehouse, setHeaderWarehouse] = useState("");
   const [selected, setSelected] = useState(null);
   const [selectedIds, setSelectedIds] = useState(() => new Set());
@@ -438,8 +439,21 @@ export default function RawMaterials() {
               </span>
             ) : null}
             <label className="relative inline-flex items-center">
-              <CalendarDays className="pointer-events-none absolute left-3 h-4 w-4 text-[var(--color-text-muted)]" aria-hidden />
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  dateInputRef.current?.focus();
+                  dateInputRef.current?.showPicker?.();
+                }}
+                className="absolute left-0 z-10 flex h-full w-10 items-center justify-center text-[var(--color-text-muted)]"
+                aria-label="Open date picker"
+              >
+                <CalendarDays className="h-4 w-4" aria-hidden />
+              </button>
               <input
+                ref={dateInputRef}
                 type="date"
                 value={selectedDate}
                 onChange={(e) => setSelectedDate(e.target.value || todayISO())}

@@ -64,13 +64,13 @@ function Pagination({ page, pageSize, total, onPage, onPageSize }) {
   const to = Math.min(page * pageSize, total);
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#ececf0] px-1 pt-4 text-[13px] text-[#6b6b76]">
-      <div className="flex items-center gap-2">
+    <div className="ui-pagination justify-between border-t border-[var(--color-border-soft)] px-1 pt-4">
+      <div className="flex items-center gap-2.5 flex-nowrap whitespace-nowrap text-[13px] text-[#596b82]">
         <span>Rows per page:</span>
         <select
           value={pageSize}
           onChange={(e) => onPageSize(Number(e.target.value))}
-          className="rounded border border-[#e4e4ea] bg-white px-2 py-1 outline-none"
+          className="ui-pagination-select"
         >
           {PAGE_SIZES.map((n) => (
             <option key={n} value={n}>
@@ -79,7 +79,7 @@ function Pagination({ page, pageSize, total, onPage, onPageSize }) {
           ))}
         </select>
         <span>
-          {from}-{to} of {total}
+          {total === 0 ? "0–0 of 0" : `${from}–${to} of ${total}`}
         </span>
       </div>
       <div className="flex items-center gap-1">
@@ -87,13 +87,14 @@ function Pagination({ page, pageSize, total, onPage, onPageSize }) {
           type="button"
           disabled={page <= 1}
           onClick={() => onPage(page - 1)}
-          className="grid h-8 w-8 place-items-center rounded border border-[#e4e4ea] bg-white disabled:opacity-40"
+          className="ui-page-btn"
+          aria-label="Previous page"
         >
           <ChevronLeft className="h-4 w-4" />
         </button>
         <button
           type="button"
-          className="grid h-8 min-w-8 place-items-center rounded bg-[#0f6d84] px-2 text-[13px] font-semibold text-[#1a1a1f]"
+          className="ui-page-btn ui-page-btn--active"
         >
           {page}
         </button>
@@ -101,7 +102,8 @@ function Pagination({ page, pageSize, total, onPage, onPageSize }) {
           type="button"
           disabled={page >= totalPages}
           onClick={() => onPage(page + 1)}
-          className="grid h-8 w-8 place-items-center rounded border border-[#e4e4ea] bg-white disabled:opacity-40"
+          className="ui-page-btn"
+          aria-label="Next page"
         >
           <ChevronRight className="h-4 w-4" />
         </button>
