@@ -106,6 +106,19 @@
   --color-link: #036f71;
   --color-focus-ring: rgba(3, 111, 113, 0.22);
 
+  /* Settings module — dark navy canvas */
+  --color-settings-bg: #0f1a2e;
+  --color-settings-surface: #162033;
+  --color-settings-surface-muted: #1a2744;
+  --color-settings-surface-hover: #1f2d4a;
+  --color-settings-border: #2a3650;
+  --color-settings-border-soft: #243047;
+  --color-settings-text: #e8edf5;
+  --color-settings-text-secondary: #cbd5e1;
+  --color-settings-text-muted: #94a3b8;
+  --color-settings-text-faint: #64748b;
+  --color-settings-text-icon: #94a3b8;
+
   /* Spacing scale (4px base) */
   --space-1: 0.25rem;   /* 4 */
   --space-2: 0.5rem;    /* 8 */
@@ -192,6 +205,11 @@
   --color-text-placeholder: #64748b;
   --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.35);
   --shadow-card-hover: 0 2px 8px rgba(0, 0, 0, 0.4);
+  /* Brand tints — forest green, not mint/teal */
+  --color-primary-soft: rgba(3, 111, 113, 0.14);
+  --color-primary-light: rgba(3, 111, 113, 0.22);
+  --color-accent-light: rgba(3, 111, 113, 0.14);
+  --color-focus-ring: rgba(3, 111, 113, 0.32);
 }
 
 .dark body {
@@ -217,7 +235,7 @@
 }
 
 .dark .ui-eyebrow {
-  color: #2dd4bf;
+  color: #5eb8ba;
 }
 
 .dark .ui-label {
@@ -726,11 +744,57 @@ select {
 .ui-textarea::placeholder {
   color: var(--color-text-placeholder);
 }
-input::-webkit-calendar-picker-indicator,
 input::-webkit-list-button {
   display: none !important;
   -webkit-appearance: none !important;
   opacity: 0 !important;
+}
+/* Date/time inputs — native indicator on plain inputs; hidden when custom button is present */
+input[type="date"],
+input[type="datetime-local"],
+input[type="month"],
+input[type="time"],
+.ui-date-input {
+  color-scheme: light dark;
+}
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+input[type="month"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.65;
+  filter: opacity(0.85);
+}
+input[type="date"]::-webkit-calendar-picker-indicator:hover,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover,
+input[type="month"]::-webkit-calendar-picker-indicator:hover,
+input[type="time"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
+/* Avoid duplicate chrome on native date controls (Edge / Chrome) */
+input[type="date"]::-webkit-inner-spin-button,
+input[type="datetime-local"]::-webkit-inner-spin-button,
+input[type="time"]::-webkit-inner-spin-button {
+  display: none;
+}
+input[type="date"]::-webkit-clear-button,
+input[type="datetime-local"]::-webkit-clear-button {
+  display: none;
+}
+/* Custom calendar button (FormField / DatePicker) — single icon only */
+.ui-date-input::-webkit-calendar-picker-indicator {
+  display: none;
+  -webkit-appearance: none;
+  appearance: none;
+  opacity: 0;
+  pointer-events: none;
+  width: 0;
+  height: 0;
+  margin: 0;
+  padding: 0;
+}
+.ui-date-range-popover {
+  z-index: 80;
 }
 .ui-input.pl-10,
 .ui-input.pl-9,
@@ -780,6 +844,76 @@ input.pl-8 {
   font-weight: 600;
   letter-spacing: var(--tracking-wide);
   color: var(--color-text-secondary);
+}
+
+/* Inventory page header — compact date / warehouse controls */
+.inventory-header-control {
+  min-width: 0;
+}
+.inventory-header-control__label {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  cursor: default;
+  user-select: none;
+}
+.inventory-header-control__surface {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  border-radius: var(--radius-md);
+  transition:
+    box-shadow var(--transition-fast),
+    border-color var(--transition-fast);
+}
+.inventory-header-control__surface:hover {
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-primary) 25%, transparent);
+}
+.inventory-header-control__surface:focus-within {
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+}
+.inventory-header-control__input,
+.inventory-header-control__select {
+  cursor: pointer;
+  background: var(--color-surface) !important;
+  font-weight: 500;
+  color: var(--color-text);
+}
+.inventory-header-control__input {
+  padding-right: 2.5rem !important;
+}
+.inventory-header-control__input:hover,
+.inventory-header-control__select:hover {
+  border-color: color-mix(in srgb, var(--color-primary) 35%, var(--color-border-soft));
+  background: var(--color-surface) !important;
+}
+.inventory-header-control__icon-btn {
+  position: absolute;
+  right: 0.35rem;
+  top: 50%;
+  z-index: 2;
+  display: flex;
+  height: 2rem;
+  width: 2rem;
+  transform: translateY(-50%);
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-icon);
+  transition:
+    color var(--transition-fast),
+    background-color var(--transition-fast);
+}
+.inventory-header-control__icon-btn:hover {
+  color: var(--color-primary);
+  background: var(--color-primary-soft);
+}
+.inventory-header-control__surface--select .inventory-header-control__select {
+  padding-right: 2.5rem;
 }
 .ui-field-hint {
   margin-top: var(--space-1);
@@ -858,6 +992,88 @@ input.pl-8 {
   text-transform: uppercase;
   color: var(--color-primary);
 }
+
+/* Settings hub hero — forest green tint; no light-mint bleed in dark mode */
+.settings-hero {
+  border-bottom: 1px solid var(--color-border-soft);
+  background: linear-gradient(
+    135deg,
+    var(--color-primary-soft) 0%,
+    var(--color-surface) 55%,
+    var(--color-bg) 100%
+  );
+}
+.dark .settings-hero {
+  background: linear-gradient(180deg, rgba(3, 111, 113, 0.1) 0%, var(--color-surface) 100%);
+  border-bottom-color: var(--color-border);
+}
+.settings-search.ui-input {
+  min-height: var(--control-h-sm) !important;
+  max-width: 22rem;
+  padding: 0.375rem 0.75rem 0.375rem 2.125rem !important;
+  font-size: var(--text-xs);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+.settings-search.ui-input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-focus-ring);
+}
+
+/* Settings page shell — light mode uses app canvas; dark mode uses navy */
+.settings-page {
+  min-height: 100%;
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+/* Settings — dark navy page shell when dark theme is active */
+.dark .settings-page {
+  --color-bg: var(--color-settings-bg);
+  --color-surface: var(--color-settings-surface);
+  --color-surface-muted: var(--color-settings-surface-muted);
+  --color-surface-hover: var(--color-settings-surface-hover);
+  --color-surface-thead: var(--color-settings-surface-muted);
+  --color-border: var(--color-settings-border);
+  --color-border-soft: var(--color-settings-border-soft);
+  --color-border-muted: var(--color-settings-border-soft);
+  --color-border-strong: #334155;
+  --color-text: var(--color-settings-text);
+  --color-text-secondary: var(--color-settings-text-secondary);
+  --color-text-muted: var(--color-settings-text-muted);
+  --color-text-faint: var(--color-settings-text-faint);
+  --color-text-icon: var(--color-settings-text-icon);
+  --color-text-placeholder: #64748b;
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-card-hover: 0 2px 8px rgba(0, 0, 0, 0.45);
+  background: var(--color-settings-bg);
+  color: var(--color-settings-text);
+}
+.dark .settings-page .settings-hero {
+  background: linear-gradient(
+    180deg,
+    rgba(3, 111, 113, 0.16) 0%,
+    var(--color-settings-surface) 100%
+  );
+  border-bottom-color: var(--color-settings-border-soft);
+}
+.dark .settings-page .ui-page-title,
+.dark .settings-page .ui-section-title,
+.dark .settings-page .ui-title,
+.dark .settings-page h1,
+.dark .settings-page h2,
+.dark .settings-page h3 {
+  color: var(--color-settings-text);
+}
+.dark .settings-page .ui-subtitle,
+.dark .settings-page .ui-hint {
+  color: var(--color-settings-text-muted);
+}
+.dark .settings-page .ui-eyebrow {
+  color: #5eb8ba;
+}
+
 .ui-title {
   font-size: var(--text-xl);
   font-weight: 600;

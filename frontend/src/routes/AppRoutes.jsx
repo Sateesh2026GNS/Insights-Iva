@@ -65,7 +65,15 @@ export default function AppRoutes() {
         path="/production/job-card"
         element={
           <ProtectedRoute>
-            <P.JobCard />
+            <P.LegacyJobCardRedirect />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/production/operator-jobs"
+        element={
+          <ProtectedRoute>
+            <P.OperatorJobsPage />
           </ProtectedRoute>
         }
       />
@@ -478,6 +486,14 @@ export default function AppRoutes() {
         }
       />
       <Route
+        path="/manufacturing/workflow/order/:orderId/:stage"
+        element={
+          <ProtectedRoute>
+            <P.StageJobCardPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/manufacturing/job-card/:orderId"
         element={
           <ProtectedRoute>
@@ -526,7 +542,7 @@ export default function AppRoutes() {
         path="/sales/payments/create"
         element={
           <ProtectedRoute>
-            <P.CreatePayment />
+            <P.PaymentReceiptForm />
           </ProtectedRoute>
         }
       />
@@ -716,6 +732,26 @@ export default function AppRoutes() {
       <Route path="/iot/drones" element={<ProtectedRoute><P.Drones /></ProtectedRoute>} />
       <Route path="/iot/smart-packaging" element={<ProtectedRoute><P.SmartPackaging /></ProtectedRoute>} />
       <Route path="/iot/live-operations" element={<ProtectedRoute><P.LiveOperations /></ProtectedRoute>} />
+      <Route path="/hr" element={<ProtectedRoute><P.HRDashboard /></ProtectedRoute>} />
+      <Route path="/hr/employees" element={<ProtectedRoute><P.HREmployees /></ProtectedRoute>} />
+      <Route path="/hr/employees/create" element={<ProtectedRoute><P.HRCreateEmployee /></ProtectedRoute>} />
+      <Route path="/hr/attendance" element={<ProtectedRoute><P.HRAttendance /></ProtectedRoute>} />
+      <Route path="/hr/leave" element={<ProtectedRoute><P.HRLeave /></ProtectedRoute>} />
+      <Route path="/hr/leave/create" element={<ProtectedRoute><P.HRCreateLeave /></ProtectedRoute>} />
+      <Route path="/hr/payroll" element={<ProtectedRoute><P.HRPayroll /></ProtectedRoute>} />
+      <Route path="/hr/payroll/create" element={<ProtectedRoute><P.HRCreatePayroll /></ProtectedRoute>} />
+      <Route path="/hr/performance" element={<ProtectedRoute><P.HRPerformance /></ProtectedRoute>} />
+      <Route path="/hr/performance/create" element={<ProtectedRoute><P.HRCreatePerformance /></ProtectedRoute>} />
+      <Route path="/hr/training" element={<ProtectedRoute><P.HRTraining /></ProtectedRoute>} />
+      <Route path="/hr/recruitment" element={<ProtectedRoute><P.HRRecruitment /></ProtectedRoute>} />
+      <Route path="/hr/shifts" element={<ProtectedRoute><P.HRShifts /></ProtectedRoute>} />
+      <Route path="/hr/shifts/create" element={<ProtectedRoute><P.HRCreateShift /></ProtectedRoute>} />
+      <Route path="/hr/assets" element={<ProtectedRoute><P.HRAssets /></ProtectedRoute>} />
+      <Route path="/hr/assets/create" element={<ProtectedRoute><P.HRCreateAsset /></ProtectedRoute>} />
+      <Route path="/hr/incidents" element={<ProtectedRoute><P.HRIncidents /></ProtectedRoute>} />
+      <Route path="/hr/incidents/create" element={<ProtectedRoute><P.HRCreateIncident /></ProtectedRoute>} />
+      <Route path="/hr/documents" element={<ProtectedRoute><P.HRDocuments /></ProtectedRoute>} />
+      <Route path="/hr/settings" element={<ProtectedRoute><P.HRSettings /></ProtectedRoute>} />
       <Route path="*" element={<P.NotFound />} />
     </Routes>
   );

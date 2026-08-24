@@ -59,6 +59,13 @@ def seed_roles(db, tenant_id: int = 1, *, commit: bool = True):
             role.description = spec["description"]
         if role.name == "Admin":
             role.permissions = list(MODULES)
+        elif role.name in PERMISSION_MATRIX:
+            # Merge newly introduced matrix modules without wiping admin edits.
+            required = set(_permissions_for_role(role.name))
+            current = set(role.permissions or [])
+            merged = sorted(current | required)
+            if merged != sorted(current):
+                role.permissions = merged
 
     db.flush()
     sync_role_permissions(db, tenant_id)

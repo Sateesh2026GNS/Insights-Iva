@@ -1,19 +1,33 @@
-import { Link, Navigate, useParams } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { Navigate, useParams } from "react-router-dom";
 
+import AccessDenied from "../../components/admin/AccessDenied";
+import { userCanAccessSettingsSection } from "../../config/permissions";
+import useAuth from "../../hooks/useAuth";
 import {
   findSettingsCategory,
   LEGACY_SETTINGS_REDIRECTS,
 } from "./settingsCatalog";
 import SettingsSectionContent from "./SettingsSectionContent";
+import {
+  SettingsBackLink,
+  SettingsMobileNav,
+  SettingsSectionHeader,
+} from "./settingsUi";
 
 export default function SettingsSectionPage() {
   const { sectionId } = useParams();
+  const { user } = useAuth();
   const mapped = LEGACY_SETTINGS_REDIRECTS[sectionId] || sectionId;
   const category = findSettingsCategory(mapped);
 
   if (!category) {
     return <Navigate to="/settings" replace />;
+  }
+
+  if (!userCanAccessSettingsSection(user, category.id)) {
+    return (
+      <AccessDenied message="You do not have permission to access this settings section." />
+    );
   }
 
   if (category.href) {
@@ -25,14 +39,10 @@ export default function SettingsSectionPage() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6">
-      <Link
-        to="/settings"
-        className="inline-flex items-center gap-2 text-sm font-medium text-[var(--color-success)] hover:text-[var(--color-success)] dark:text-teal-400"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        All settings
-      </Link>
+    <div className="space-y-5">
+      <SettingsBackLink />
+      <SettingsMobileNav />
+      <SettingsSectionHeader category={category} />
       <SettingsSectionContent sectionId={category.id} category={category} />
     </div>
   );

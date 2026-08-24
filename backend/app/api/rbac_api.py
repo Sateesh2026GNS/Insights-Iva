@@ -24,7 +24,7 @@ from app.schemas.auth import (
     UserResponse,
 )
 from app.schemas.rbac import UserCreate, UserUpdate
-from app.services.auth_service import get_user_with_role
+from app.services.auth_service import decode_access_token, get_user_with_role
 from app.services.settings_service import SettingsService
 
 router = APIRouter(tags=["rbac"])
@@ -45,9 +45,11 @@ PRODUCTION_MANAGER_ALLOWED_SECTIONS = {
 PRODUCTION_MANAGER_ALLOWED_CHILDREN = {
     "/masters/products",
     "/masters/bom",
+    "/manufacturing/workflow",
     "/production/machines",
     "/production/planning",
     "/production/work-orders",
+    "/production/job-card",
     "/production/schedule",
     "/factory-monitor/live-production",
     "/production/tasks",
@@ -247,12 +249,42 @@ def get_sidebar_labels(
 
 @router.get("/profile", response_model=UserResponse)
 def get_profile(
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    data = get_user_with_role(db, current_user)
+    role_from_token = None
+    auth_header = request.headers.get("Authorization") or ""
+    if auth_header.startswith("Bearer "):
+        payload = decode_access_token(auth_header[7:])
+        if payload:
+            role_from_token = payload.get("role") or payload.get("role_name")
+    data = get_user_with_role(db, current_user, preferred_role=role_from_token)
     data["email_verified"] = current_user.email_verified
     return UserResponse(**data)
+
+
+@router.get("/team-directory")
+def team_directory(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Tenant-scoped active users for assignee / sales-person pickers (non-admin safe)."""
+    from app.services.rbac_service import list_users
+
+    users = list_users(db, current_user.tenant_id)
+    return [
+        {
+            "id": u["id"],
+            "full_name": u.get("full_name"),
+            "email": u.get("email"),
+            "name": u.get("full_name") or u.get("email"),
+            "role": u.get("role"),
+            "is_active": u.get("is_active", True),
+        }
+        for u in users
+        if u.get("is_active", True)
+    ]
 
 
 # ---------------------------------------------------------------------------

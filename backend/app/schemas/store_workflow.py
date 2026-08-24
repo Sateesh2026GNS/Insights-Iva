@@ -100,6 +100,21 @@ class StoreReturnRead(BaseModel):
     created_by: str | None = None
 
 
+class PendingInventoryCheckOrder(BaseModel):
+    sales_order_id: int
+    job_card_no: str | None = None
+    order_number: str
+    customer_name: str | None = None
+    product_name: str | None = None
+    quantity: float | None = None
+    delivery_date: str | None = None
+    priority: str = "medium"
+    sales_person: str | None = None
+    order_date: str | None = None
+    status: str = "Awaiting Inventory Check"
+    workflow_status: str = "MATERIAL_CHECK_PENDING"
+
+
 class StoreDashboardRead(BaseModel):
     total_products: int = 0
     current_inventory_qty: int = 0
@@ -110,6 +125,8 @@ class StoreDashboardRead(BaseModel):
     pending_material_requests: int = 0
     pending_purchase_requisitions: int = 0
     warehouse_utilization_pct: float = 0
+    pending_inventory_checks: int = 0
+    pending_inventory_orders: list[PendingInventoryCheckOrder] = Field(default_factory=list)
 
 
 class PurchaseRequisitionFromLowStock(BaseModel):

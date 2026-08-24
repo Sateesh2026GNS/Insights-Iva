@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CalendarDays, ChevronDown, Search } from "lucide-react";
+import { ChevronDown, Search } from "lucide-react";
 
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
+import { FloatingDate, defaultDateRange, formatDisplayDate } from "../../design-system/dateControls";
 
 const PAGE_BG = "var(--color-bg)";
 const ACCENT = "#0f6d84";
@@ -36,51 +37,6 @@ const DOCUMENT_TYPE_GROUPS = [
 
 const PARTY_OPTIONS = ["Cash Sale", "DEMO GST Register Party"];
 const ITEM_OPTIONS = ["Demo Product"];
-
-function pad2(n) {
-  return String(n).padStart(2, "0");
-}
-
-function formatDisplayDate(iso) {
-  if (!iso) return "";
-  const [y, m, d] = iso.split("-");
-  if (!y || !m || !d) return iso;
-  return `${d}-${m}-${y}`;
-}
-
-function toIsoDate(d) {
-  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
-}
-
-function defaultDateRange() {
-  const to = new Date();
-  const from = new Date();
-  from.setMonth(from.getMonth() - 1);
-  return { from: toIsoDate(from), to: toIsoDate(to) };
-}
-
-function FloatingDate({ label, value, onChange }) {
-  return (
-    <label className="relative block min-w-[160px] flex-1 sm:flex-none">
-      <span className="absolute -top-2 left-3 z-[1] bg-[#efefef] px-1 text-[11px] font-medium text-[#6b6b76]">
-        {label}
-      </span>
-      <div className="relative flex items-center rounded-lg border border-[#cfcfd6] bg-white px-3 py-2.5">
-        <span className="min-w-0 flex-1 text-[13px] text-[#1a1a1f]">
-          {formatDisplayDate(value) || "Select date"}
-        </span>
-        <CalendarDays className="ml-1 h-4 w-4 shrink-0 text-[#9a9aa5]" />
-        <input
-          type="date"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className="absolute inset-0 cursor-pointer opacity-0"
-          aria-label={label}
-        />
-      </div>
-    </label>
-  );
-}
 
 function useOutsideClose(ref, open, onClose) {
   useEffect(() => {

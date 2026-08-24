@@ -316,43 +316,55 @@ def health_db():
     try:
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
+        if settings.is_production:
+            return {"status": "ok"}
         return {"status": "ok", "database": "reachable"}
     except SQLAlchemyError:
-        return JSONResponse(status_code=503, content={"status": "error", "database": "unreachable"})
+        return JSONResponse(status_code=503, content={"status": "error"})
 
 
 @app.on_event("startup")
 def on_startup():
-    """Apply idempotent schema creation and seed data."""
+    """Verify database connectivity; apply dev-only schema sync; run idempotent seeds."""
     try:
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
     except OperationalError:
         logger.error(
             "Database is unreachable or credentials are wrong. "
-            "Run: .\\scripts\\setup_postgres.ps1  "
-            "(creates insights_user / insights_iva, applies schema, optional data migration)"
+            "Verify DATABASE_URL and PostgreSQL availability before starting the API."
         )
+        if settings.is_production:
+            raise RuntimeError("PostgreSQL is required but unreachable at startup")
         return
 
-    # Auto-ensure all defined tables and missing columns exist in SQLite / development mode
-    try:
-        from sqlalchemy import inspect
-        from app.models.base import Base
-        Base.metadata.create_all(bind=engine)
-        inspector = inspect(engine)
-        db_tables = inspector.get_table_names()
-        with engine.begin() as conn:
-            for table_name, table in Base.metadata.tables.items():
-                if table_name in db_tables:
-                    existing_cols = {c["name"] for c in inspector.get_columns(table_name)}
-                    for col in table.columns:
-                        if col.name not in existing_cols:
-                            col_type = col.type.compile(engine.dialect)
-                            logger.info("Adding missing column %s (%s) to %s", col.name, col_type, table_name)
-                            conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN {col.name} {col_type}"))
-    except Exception:
-        logger.exception("Schema sync warning during startup")
+    # Production schema is managed exclusively by Alembic — never create_all / runtime DDL.
+    if not settings.is_production:
+        try:
+            from sqlalchemy import inspect
+            from app.models.base import Base
+
+            Base.metadata.create_all(bind=engine)
+            inspector = inspect(engine)
+            db_tables = inspector.get_table_names()
+            with engine.begin() as conn:
+                for table_name, table in Base.metadata.tables.items():
+                    if table_name in db_tables:
+                        existing_cols = {c["name"] for c in inspector.get_columns(table_name)}
+                        for col in table.columns:
+                            if col.name not in existing_cols:
+                                col_type = col.type.compile(engine.dialect)
+                                logger.info(
+                                    "Adding missing column %s (%s) to %s",
+                                    col.name,
+                                    col_type,
+                                    table_name,
+                                )
+                                conn.execute(
+                                    text(f"ALTER TABLE {table_name} ADD COLUMN {col.name} {col_type}")
+                                )
+        except Exception:
+            logger.exception("Schema sync warning during startup (development only)")
 
     from app.core.database import SessionLocal
     from app.core.seed_finance import seed_finance_data
@@ -368,20 +380,25 @@ def on_startup():
 
     db = SessionLocal()
     try:
-        seed_tenant(db)  # Ensure tenant 1 exists
-        seed_super_admin(db)  # GNS Super Admin from .env
-        tenant_ids = list(db.scalars(select(Tenant.id)).all()) or [1]
-        for tid in tenant_ids:
-            seed_roles(db, tenant_id=tid)
-        seed_admin_user(db)
+        seed_super_admin(db)
+        if not settings.is_production:
+            seed_tenant(db)
+            tenant_ids = list(db.scalars(select(Tenant.id)).all()) or [1]
+            for tid in tenant_ids:
+                seed_roles(db, tenant_id=tid)
+            seed_admin_user(db)
 
-        all_tenants = db.scalars(select(Tenant)).all()
-        for t in all_tenants:
-            inv_count = db.scalar(
-                select(func.count(InvoiceModel.id)).where(InvoiceModel.tenant_id == t.id)
-            )
-            if not inv_count:
-                seed_finance_data(db, tenant_id=t.id)
+            all_tenants = db.scalars(select(Tenant)).all()
+            for t in all_tenants:
+                inv_count = db.scalar(
+                    select(func.count(InvoiceModel.id)).where(InvoiceModel.tenant_id == t.id)
+                )
+                if not inv_count:
+                    seed_finance_data(db, tenant_id=t.id)
+        else:
+            tenant_ids = list(db.scalars(select(Tenant.id)).all())
+            for tid in tenant_ids:
+                seed_roles(db, tenant_id=tid)
     except Exception:
         logger.exception("Seed warning during startup")
     finally:

@@ -282,6 +282,7 @@ def fanout_alert_notifications(
                     action_url=link,
                     created_by=alert.created_by or "System",
                     created_by_user_id=created_by_user_id,
+                    commit=False,
                 )
             created += 1
         except Exception as exc:

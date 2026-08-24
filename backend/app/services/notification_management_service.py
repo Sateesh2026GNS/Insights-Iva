@@ -118,11 +118,13 @@ class NotificationManagementService:
         action_url: str | None = None,
         created_by: str | None = None,
         created_by_user_id: int | None = None,
+        commit: bool = True,
     ) -> ErpNotification:
         ntype = type if type in NOTIFICATION_TYPES else "information"
         npriority = priority if priority in NOTIFICATION_PRIORITIES else "medium"
         repo = NotificationRepository(db, tenant_id, user_id)
         return repo.create(
+            commit=commit,
             title=title,
             message=message,
             type=ntype,

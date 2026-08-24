@@ -14,7 +14,7 @@ export const MANUFACTURING_WORKFLOW_STEPS = [
   { id: "work_order", label: "Work Order", shortLabel: "Work Order", path: "/production/work-orders" },
   { id: "machine_assign", label: "Machine Assign", shortLabel: "Machine Assign", path: "/production/tasks" },
   { id: "material_issue", label: "Material Issue", shortLabel: "Material Issue", path: "/production/work-orders" },
-  { id: "production", label: "Production", shortLabel: "Production", path: "/production/job-card" },
+  { id: "production", label: "Production", shortLabel: "Production", path: "/manufacturing/workflow?status=READY_FOR_PRODUCTION" },
   { id: "quality", label: "Quality", shortLabel: "Quality", path: "/quality/final" },
   { id: "finished_goods", label: "Finished Goods", shortLabel: "Finished Goods", path: "/inventory/finished-goods" },
   { id: "dispatch", label: "Dispatch", shortLabel: "Dispatch", path: "/sales/dispatch" },
@@ -83,6 +83,117 @@ export const RESPONSIBILITY_ICONS = {
   purchase_order: Package,
   grn: Star,
 };
+
+/** Nine job-card stages for manufacturing workflow board process map. */
+export const MANUFACTURING_JOB_CARD_STAGES = [
+  {
+    id: "sales_orders",
+    label: "Sales Order",
+    responsible_role: "Sales Manager",
+    path: "/sales/orders",
+    filterStatus: "SALES_CONFIRMED",
+  },
+  {
+    id: "inventory_check",
+    label: "Inventory Check",
+    responsible_role: "Store Manager",
+    path: "/manufacturing/workflow?status=MATERIAL_CHECK_PENDING",
+    filterStatus: "MATERIAL_CHECK_PENDING",
+  },
+  {
+    id: "store_manager",
+    label: "Store Manager",
+    responsible_role: "Store Manager",
+    path: "/manufacturing/workflow?status=STORE_ISSUE_PENDING",
+    filterStatus: "STORE_ISSUE_PENDING",
+  },
+  {
+    id: "production_manager",
+    label: "Production Manager",
+    responsible_role: "Production Manager",
+    path: "/manufacturing/workflow?status=READY_FOR_PRODUCTION",
+    filterStatus: "READY_FOR_PRODUCTION",
+  },
+  {
+    id: "operator",
+    label: "Operator",
+    responsible_role: "Operator",
+    path: "/production/operator-jobs",
+    filterStatus: "PRODUCTION_ASSIGNED",
+  },
+  {
+    id: "quality_check",
+    label: "Quality Check",
+    responsible_role: "Quality Team",
+    path: "/manufacturing/workflow?status=QUALITY_CHECK_PENDING",
+    filterStatus: "QUALITY_CHECK_PENDING",
+  },
+  {
+    id: "packing_dispatch",
+    label: "Packing & Dispatch",
+    responsible_role: "Store Manager",
+    path: "/manufacturing/workflow?status=PACKING_PENDING",
+    filterStatus: "PACKING_PENDING",
+  },
+  {
+    id: "billing",
+    label: "Billing",
+    responsible_role: "Accountant",
+    path: "/manufacturing/workflow?status=BILLING_PENDING",
+    filterStatus: "BILLING_PENDING",
+  },
+  {
+    id: "completed",
+    label: "Completed",
+    responsible_role: "Admin",
+    path: "/manufacturing/workflow?status=COMPLETED",
+    filterStatus: "COMPLETED",
+  },
+];
+
+/** Manufacturing workflow shortcuts — surfaced under Settings (not sidebar). */
+export const MANUFACTURING_WORKFLOW_SETTINGS_LINKS = [
+  {
+    label: "Workflow Board",
+    description: "Full board — all manufacturing stages and live orders.",
+    to: "/manufacturing/workflow",
+  },
+  {
+    label: "Sales Orders",
+    description: "Confirmed orders entering the manufacturing pipeline.",
+    to: "/sales/orders",
+  },
+  {
+    label: "Material Check",
+    description: "Store material verification and inventory checks.",
+    to: "/manufacturing/workflow?status=MATERIAL_CHECK_PENDING",
+  },
+  {
+    label: "Production Jobs",
+    description: "Orders ready for production planning and assignment.",
+    to: "/manufacturing/workflow?status=READY_FOR_PRODUCTION",
+  },
+  {
+    label: "Operator Jobs",
+    description: "Shop-floor jobs assigned to operators.",
+    to: "/production/operator-jobs",
+  },
+  {
+    label: "Quality Checks",
+    description: "In-process and final quality inspection queue.",
+    to: "/manufacturing/workflow?status=QUALITY_CHECK_PENDING",
+  },
+  {
+    label: "Packing & Dispatch",
+    description: "Packing, labeling, and dispatch preparation.",
+    to: "/manufacturing/workflow?status=PACKING_PENDING",
+  },
+  {
+    label: "Billing",
+    description: "Invoice generation and billing handoff.",
+    to: "/manufacturing/workflow?status=BILLING_PENDING",
+  },
+];
 
 export const DEFAULT_RESPONSIBILITY_STAGES = [
   {
@@ -224,6 +335,7 @@ const ROLE_TEAM_MAP = {
   "Store Manager": ["inventory", "packing"],
   "Production Manager": ["production", "quality"],
   Operator: ["operator"],
+  "HR Manager": ["hr"],
   Accountant: ["billing"],
   "Purchase Manager": ["inventory"],
   "Procurement Manager": ["inventory"],
@@ -300,7 +412,7 @@ export const TEAM_WORKFLOW_JOB_CARDS = [
     whenShown: "After manager assignment",
     actions: ["Start production", "Update progress", "Complete production"],
     filterStatus: "PRODUCTION_ASSIGNED",
-    path: "/production/tasks",
+    path: "/production/operator-jobs",
   },
   {
     id: "quality",

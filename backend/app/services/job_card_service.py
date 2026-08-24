@@ -677,32 +677,47 @@ def _workflow_stage_label(status: str | None) -> str:
 
 
 JOB_CARD_UI_WORKFLOW_STEPS = [
-    {"key": "sales_orders", "label": "Sales Orders", "statuses": {"SALES_CONFIRMED"}},
+    {"key": "sales_orders", "label": "Sales Order", "statuses": {"SALES_CONFIRMED"}},
     {
         "key": "inventory_check",
         "label": "Inventory Check",
         "statuses": {
             "MATERIAL_CHECK_PENDING",
-            "MATERIAL_AVAILABLE",
             "MATERIAL_SHORTAGE",
             "MATERIAL_PARTIAL",
         },
     },
     {
-        "key": "production",
-        "label": "Production",
+        "key": "store_manager",
+        "label": "Store Manager",
+        "statuses": {
+            "MATERIAL_AVAILABLE",
+            "STORE_ISSUE_PENDING",
+            "STORE_ISSUE_PARTIAL",
+        },
+    },
+    {
+        "key": "production_manager",
+        "label": "Production Manager",
         "statuses": {
             "READY_FOR_PRODUCTION",
+            "PRODUCTION_REWORK",
+            "QUALITY_REJECTED",
+        },
+    },
+    {
+        "key": "operator",
+        "label": "Operator",
+        "statuses": {
             "PRODUCTION_ASSIGNED",
             "PRODUCTION_IN_PROGRESS",
             "PRODUCTION_COMPLETED",
-            "PRODUCTION_REWORK",
         },
     },
     {
         "key": "quality_check",
         "label": "Quality Check",
-        "statuses": {"QUALITY_CHECK_PENDING", "QUALITY_APPROVED", "QUALITY_REJECTED"},
+        "statuses": {"QUALITY_CHECK_PENDING", "QUALITY_ON_HOLD", "QUALITY_APPROVED", "QUALITY_REJECTED"},
     },
     {
         "key": "packing_dispatch",
@@ -719,13 +734,15 @@ JOB_CARD_UI_WORKFLOW_STEPS = [
         "label": "Billing",
         "statuses": {"BILLING_PENDING", "BILLING_HOLD", "INVOICED"},
     },
-    {"key": "completed", "label": "Completed", "statuses": {"COMPLETED"}},
+    {"key": "completed", "label": "Completed", "statuses": {"COMPLETED", "WORKFLOW_ON_HOLD"}},
 ]
 
 WORKFLOW_STAGE_HINTS: dict[str, str] = {
     "sales_orders": "Waiting for inventory check",
     "inventory_check": "Material availability verification in progress.",
-    "production": "Production planning and execution.",
+    "store_manager": "Store material issue and verification.",
+    "production_manager": "Production planning and operator assignment.",
+    "operator": "Production execution on shop floor.",
     "quality_check": "Quality inspection pending.",
     "packing_dispatch": "Packing and dispatch preparation.",
     "billing": "Invoice and billing processing.",
@@ -898,6 +915,57 @@ def _get_persisted_job_card(db: Session, tenant_id: int, sales_order_id: int):
             SalesJobCard.sales_order_id == sales_order_id,
         )
     ).first()
+
+
+def ensure_sales_job_card_from_order(
+    db: Session, tenant_id: int, sales_order_id: int, user: User | None = None
+) -> None:
+    """Auto-create sales job card when a sales order enters the workflow."""
+    from app.core.workflow_constants import normalize_priority
+    from app.models.manufacturing_workflow import SalesJobCard
+    from app.models.sales import SalesOrderLine
+    from app.services.workflow_state_service import get_sales_order_or_404
+
+    jc = _get_persisted_job_card(db, tenant_id, sales_order_id)
+    if jc and jc.status == "created":
+        return
+
+    so = get_sales_order_or_404(db, tenant_id, sales_order_id)
+    lines = list(
+        db.scalars(
+            select(SalesOrderLine).where(SalesOrderLine.sales_order_id == so.id)
+        ).all()
+    )
+    line = lines[0] if lines else None
+    if not line:
+        return
+
+    priority = normalize_priority(so.priority)
+    if not jc:
+        jc = SalesJobCard(
+            tenant_id=tenant_id,
+            job_card_no=_generate_job_card_no(db, tenant_id),
+            sales_order_id=so.id,
+            customer_id=so.customer_id,
+            product_id=line.product_id,
+            quantity=float(line.quantity or 0),
+            unit=(line.unit or "Nos").strip() or "Nos",
+            required_delivery_date=so.delivery_date,
+            priority=priority,
+            sales_person_name=so.sales_person,
+            notes=None,
+            status="created",
+            workflow_stage=so.workflow_status or "MATERIAL_CHECK_PENDING",
+            created_by_user_id=user.id if user else None,
+        )
+        db.add(jc)
+    else:
+        jc.status = "created"
+        jc.workflow_stage = so.workflow_status or jc.workflow_stage or "MATERIAL_CHECK_PENDING"
+        jc.quantity = float(line.quantity or jc.quantity or 0)
+        jc.product_id = line.product_id or jc.product_id
+        jc.priority = priority
+    db.flush()
 
 
 def _serialize_job_card_form(
@@ -1309,6 +1377,7 @@ def build_sales_job_card(
     )
     wf_for_ui = "SALES_CONFIRMED" if not job_card_created else workflow_status
     card["workflow_steps"] = _build_job_card_workflow_steps(wf_for_ui)
+    card["workflow_tracker"] = card["workflow_steps"]
     card["workflow_current_stage"] = _build_workflow_current_stage(wf_for_ui)
     card["timeline"] = _build_job_card_timeline(db, tenant_id, sales_order_id)
     card["job_card_created"] = job_card_created

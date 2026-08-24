@@ -3,21 +3,49 @@ import {
   Boxes,
   Building2,
   ClipboardList,
-  Contact,
-  Crown,
   FileBarChart2,
+  FileText,
   History,
   Layers,
   LayoutDashboard,
-  LogOut,
   Package,
   PackageMinus,
   PackagePlus,
+  Receipt,
   RotateCcw,
   Settings,
   ShoppingCart,
+  Truck,
+  Wallet,
   Warehouse,
 } from "lucide-react";
+
+/** Purchases sidebar pages — keep aligned with `sidebarNav.js` procurement section. */
+export const STORE_MANAGER_PURCHASE_PAGES = [
+  { key: "stockIn", label: "Stock In", to: "/inventory/stock-in", icon: PackagePlus },
+  {
+    key: "purchaseRequisitions",
+    label: "Purchase Requisitions",
+    to: "/procurement/material-requests",
+    icon: ClipboardList,
+  },
+  { key: "purchase", label: "Purchase", to: "/purchases", icon: FileText, end: true },
+  { key: "paymentsMade", label: "Payments Made", to: "/purchases/payments-made", icon: Wallet },
+  { key: "debitNote", label: "Debit Note", to: "/purchases/debit-notes", icon: Receipt },
+  {
+    key: "purchaseOrder",
+    label: "Purchase Order",
+    to: "/procurement/purchase-orders",
+    icon: ShoppingCart,
+  },
+  { key: "goodsReceipt", label: "Goods Receipt (GRN)", to: "/procurement/goods-receipt", icon: Truck },
+  {
+    key: "supplierPayments",
+    label: "Supplier Payments",
+    to: "/procurement/supplier-payments",
+    icon: Wallet,
+  },
+];
 
 /**
  * Role-based Store Manager sidebar — grouped like commercial ERP menus
@@ -32,18 +60,16 @@ export const STORE_MANAGER_NAV_ITEMS = [
     end: true,
   },
   {
+    key: "jobCards",
+    label: "Job Cards",
+    to: "/manufacturing/workflow",
+    icon: ClipboardList,
+  },
+  {
     key: "purchases",
     label: "Purchases",
     icon: ShoppingCart,
-    children: [
-      { key: "stockIn", label: "Stock In", to: "/inventory/stock-in", icon: PackagePlus },
-      {
-        key: "purchaseRequisitions",
-        label: "Purchase Requisitions",
-        to: "/procurement/material-requests",
-        icon: ClipboardList,
-      },
-    ],
+    children: STORE_MANAGER_PURCHASE_PAGES,
   },
   {
     key: "inventory",
@@ -64,6 +90,12 @@ export const STORE_MANAGER_NAV_ITEMS = [
         icon: PackageMinus,
       },
       { key: "return", label: "Stock Return", to: "/inventory/stock-return", icon: RotateCcw },
+      {
+        key: "inventoryCheck",
+        label: "Inventory Check",
+        to: "/manufacturing/workflow?status=MATERIAL_CHECK_PENDING",
+        icon: ClipboardList,
+      },
       {
         key: "transfer",
         label: "Stock Transfer",
@@ -113,23 +145,5 @@ export const STORE_MANAGER_NAV_ITEMS = [
     to: "/settings",
     icon: Settings,
     end: true,
-  },
-  {
-    key: "subscription",
-    label: "Subscription",
-    to: "/settings/subscription",
-    icon: Crown,
-  },
-  {
-    key: "contact",
-    label: "Contact Us",
-    to: "/settings/my-account",
-    icon: Contact,
-  },
-  {
-    key: "logout",
-    label: "Logout",
-    action: "logout",
-    icon: LogOut,
   },
 ];

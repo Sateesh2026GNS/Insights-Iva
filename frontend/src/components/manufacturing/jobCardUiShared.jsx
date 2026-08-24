@@ -1,15 +1,19 @@
 import { CheckCircle2, ClipboardList } from "lucide-react";
 
 import RowActionMenu from "../common/RowActionMenu";
+import CommonStatusBadge from "../common/StatusBadge";
 import { PRIORITY_STYLES } from "./JobCardSummary";
+import { getWorkflowStatusLabel, getWorkflowStatusVariant } from "../../config/workflowStages";
 
 export const PAGE_BG = "var(--color-bg)";
 export const NOTES_MAX = 500;
 
 export const JOB_CARD_WORKFLOW_STEPS = [
-  { key: "sales_orders", label: "Sales Orders", status: "current" },
+  { key: "sales_orders", label: "Sales Order", status: "current" },
   { key: "inventory_check", label: "Inventory Check", status: "pending" },
-  { key: "production", label: "Production", status: "pending" },
+  { key: "store_manager", label: "Store Manager", status: "pending" },
+  { key: "production_manager", label: "Production Manager", status: "pending" },
+  { key: "operator", label: "Operator", status: "pending" },
   { key: "quality_check", label: "Quality Check", status: "pending" },
   { key: "packing_dispatch", label: "Packing & Dispatch", status: "pending" },
   { key: "billing", label: "Billing", status: "pending" },
@@ -34,7 +38,7 @@ export function CardSectionHeader({ title }) {
   );
 }
 
-export function StatusBadge({ label = "Draft", variant = "draft" }) {
+export function StatusBadgeLegacy({ label = "Draft", variant = "draft" }) {
   const styles =
     variant === "confirmed"
       ? "border-[color-mix(in_srgb,var(--color-success)_25%,transparent)] bg-[var(--color-success-soft)] text-[var(--color-success)]"
@@ -47,6 +51,15 @@ export function StatusBadge({ label = "Draft", variant = "draft" }) {
       {label}
     </span>
   );
+}
+
+/** Legacy pill badge for sales job card pages. */
+export { StatusBadgeLegacy as StatusBadge };
+
+export function WorkflowStatusBadge({ status, label, variant }) {
+  const resolvedLabel = label || getWorkflowStatusLabel(status);
+  const tone = variant || getWorkflowStatusVariant(status);
+  return <CommonStatusBadge tone={tone}>{resolvedLabel}</CommonStatusBadge>;
 }
 
 export function PriorityBadge({ priority, showDot = true }) {

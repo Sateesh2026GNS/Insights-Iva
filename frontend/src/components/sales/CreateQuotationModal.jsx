@@ -5,21 +5,14 @@ import { X } from "lucide-react";
 import { fetchCustomersWithFallback } from "../../utils/customerOptions";
 
 import Button from "../common/Button";
-function todayIso() {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function plusDaysIso(days) {
-  const d = new Date();
-  d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
-}
+import { DatePicker, TimePicker } from "../../design-system/dateControls";
+import { addDaysIso, todayIso } from "../../utils/dateUtils";
 
 const EMPTY = {
   customer_id: "",
   customer_name: "",
   quote_date: todayIso(),
-  valid_until: plusDaysIso(30),
+  valid_until: addDaysIso(todayIso(), 30),
   total_amount: "",
   sales_person: "",
   notes: "",
@@ -37,7 +30,7 @@ export default function CreateQuotationModal({ open, onClose, onSubmit, saving }
     setForm({
       ...EMPTY,
       quote_date: todayIso(),
-      valid_until: plusDaysIso(30),
+      valid_until: addDaysIso(todayIso(), 30),
     });
     setError("");
     setLoadingCustomers(true);

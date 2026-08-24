@@ -19,6 +19,7 @@ import EmptyState from "../../components/common/EmptyState";
 import KpiCard from "../../components/common/KpiCard";
 import Loader from "../../components/common/Loader";
 import PageHeader from "../../components/common/PageHeader";
+import { HeaderWarehouseField } from "../../components/inventory/InventoryHeaderControls";
 import StatusBadge from "../../components/common/StatusBadge";
 import InventoryRowActionsMenu from "../../components/inventory/InventoryRowActionsMenu";
 import RecordDetailModal from "../../components/inventory/RecordDetailModal";
@@ -439,77 +440,78 @@ export default function StockLedger() {
       <PageHeader
         subtitle="Track and analyze stock movement history"
         action={
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-secondary)]">
-              <input
-                ref={dateFromRef}
-                type="date"
-                value={filters.dateFrom}
-                onChange={(e) => setFilters((f) => ({ ...f, dateFrom: e.target.value }))}
-                aria-label="Start date"
-                className="sr-only"
-              />
-              <input
-                ref={dateToRef}
-                type="date"
-                value={filters.dateTo}
-                onChange={(e) => setFilters((f) => ({ ...f, dateTo: e.target.value }))}
-                aria-label="End date"
-                className="sr-only"
-              />
-              <button
-                type="button"
-                onClick={() => {
-                  if (dateFromRef.current) {
-                    if (typeof dateFromRef.current.showPicker === "function") {
-                      dateFromRef.current.showPicker();
-                    } else {
-                      dateFromRef.current.click();
-                    }
-                  }
-                }}
-                className="flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
-                aria-label="Open start date picker"
-              >
-                <CalendarDays className="h-4 w-4" />
-              </button>
-              <span>
-                {filters.dateFrom || "Start date"} - {filters.dateTo || "End date"}
-              </span>
-              <button
-                type="button"
-                onClick={() => {
-                  if (dateToRef.current) {
-                    if (typeof dateToRef.current.showPicker === "function") {
-                      dateToRef.current.showPicker();
-                    } else {
-                      dateToRef.current.click();
-                    }
-                  }
-                }}
-                className="flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
-                aria-label="Open end date picker"
-              >
-                <CalendarDays className="h-4 w-4" />
-              </button>
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="inventory-header-control">
+              <span className="inventory-header-control__label">Period</span>
+              <div className="inventory-header-control__surface cursor-pointer">
+                <div className="flex min-w-[12rem] items-center gap-2 rounded-[var(--radius-md)] border border-[var(--color-border-soft)] bg-[var(--color-surface)] px-3 py-2 text-sm font-medium text-[var(--color-text)]">
+                  <input
+                    ref={dateFromRef}
+                    type="date"
+                    value={filters.dateFrom}
+                    onChange={(e) => setFilters((f) => ({ ...f, dateFrom: e.target.value }))}
+                    aria-label="Start date"
+                    className="sr-only"
+                  />
+                  <input
+                    ref={dateToRef}
+                    type="date"
+                    value={filters.dateTo}
+                    onChange={(e) => setFilters((f) => ({ ...f, dateTo: e.target.value }))}
+                    aria-label="End date"
+                    className="sr-only"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (dateFromRef.current) {
+                        if (typeof dateFromRef.current.showPicker === "function") {
+                          dateFromRef.current.showPicker();
+                        } else {
+                          dateFromRef.current.click();
+                        }
+                      }
+                    }}
+                    className="inventory-header-control__icon-btn !static !h-auto !w-auto !transform-none hover:bg-transparent"
+                    aria-label="Open start date picker"
+                  >
+                    <CalendarDays className="h-4 w-4 text-[var(--color-text-icon)]" />
+                  </button>
+                  <span className="whitespace-nowrap">
+                    {filters.dateFrom || "Start date"} – {filters.dateTo || "End date"}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (dateToRef.current) {
+                        if (typeof dateToRef.current.showPicker === "function") {
+                          dateToRef.current.showPicker();
+                        } else {
+                          dateToRef.current.click();
+                        }
+                      }
+                    }}
+                    className="inventory-header-control__icon-btn !static !h-auto !w-auto !transform-none hover:bg-transparent"
+                    aria-label="Open end date picker"
+                  >
+                    <CalendarDays className="h-4 w-4 text-[var(--color-text-icon)]" />
+                  </button>
+                </div>
+              </div>
             </div>
-            <select
+            <HeaderWarehouseField
+              label="Warehouse"
               value={headerWarehouse}
-              onChange={(e) => {
-                setHeaderWarehouse(e.target.value);
-                setFilters((f) => ({ ...f, warehouse: e.target.value }));
+              onChange={(value) => {
+                setHeaderWarehouse(value);
+                setFilters((f) => ({ ...f, warehouse: value }));
               }}
-              className="ui-select !w-auto min-w-[11rem]"
-              aria-label="Warehouse"
-            >
-              {warehouses.length ? (
-                warehouses.map((w) => (
-                  <option key={w} value={w}>{w}</option>
-                ))
-              ) : (
-                <option value="">Main Warehouse</option>
-              )}
-            </select>
+              warehouseOptions={
+                warehouses.length
+                  ? warehouses.map((w) => ({ value: w, label: w }))
+                  : [{ value: "", label: "Main Warehouse" }]
+              }
+            />
           </div>
         }
       />

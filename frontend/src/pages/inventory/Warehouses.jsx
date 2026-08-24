@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Building2,
-  CalendarDays,
   ClipboardCheck,
   Filter,
   IndianRupee,
@@ -19,6 +18,7 @@ import EmptyState from "../../components/common/EmptyState";
 import KpiCard from "../../components/common/KpiCard";
 import Loader from "../../components/common/Loader";
 import PageHeader from "../../components/common/PageHeader";
+import InventoryHeaderControls from "../../components/inventory/InventoryHeaderControls";
 import StatusBadge from "../../components/common/StatusBadge";
 import ConfirmDialog from "../../components/admin/ConfirmDialog";
 import InventoryRowActionsMenu from "../../components/inventory/InventoryRowActionsMenu";
@@ -417,29 +417,16 @@ export default function Warehouses() {
       <PageHeader
         subtitle="Manage and organize all your warehouses"
         action={
-          <div className="flex flex-wrap items-center gap-2">
-            <label className="relative inline-flex items-center">
-              <CalendarDays className="pointer-events-none absolute left-3 h-4 w-4 text-[var(--color-text-muted)]" aria-hidden />
-              <input
-                type="date"
-                value={headerDate}
-                onChange={(e) => setHeaderDate(e.target.value)}
-                className="ui-input !w-auto min-w-[10.5rem] !pl-9"
-                aria-label="Date"
-              />
-            </label>
-            <select
-              value={headerScope}
-              onChange={(e) => setHeaderScope(e.target.value)}
-              className="ui-select !w-auto min-w-[11rem]"
-              aria-label="Warehouse scope"
-            >
-              <option value="">All Warehouses</option>
-              {rows.map((w) => (
-                <option key={w.id} value={w.id}>{w.name}</option>
-              ))}
-            </select>
-          </div>
+          <InventoryHeaderControls
+            dateValue={headerDate}
+            onDateChange={setHeaderDate}
+            warehouseValue={headerScope}
+            onWarehouseChange={setHeaderScope}
+            warehouseOptions={[
+              { value: "", label: "All Warehouses" },
+              ...rows.map((w) => ({ value: w.id, label: w.name })),
+            ]}
+          />
         }
       />
 

@@ -1,12 +1,15 @@
 import { Link, useLocation } from "react-router-dom";
 import { ChevronRight, Home } from "lucide-react";
 
+import { findSettingsCategory } from "../../pages/settings/settingsCatalog";
+
 const pathLabels = {
   "": "Dashboard",
   production: "Production",
   planning: "Production Planning",
   "work-orders": "Work Orders",
   "job-card": "Job Card",
+  "operator-jobs": "My Operator Jobs",
   tasks: "Tasks",
   batches: "Batch Tracking",
   machines: "Machines",
@@ -153,6 +156,7 @@ const pathLabels = {
 
 /** Exact pathname → navbar title (inventory and other routes where segment labels are ambiguous). */
 const PAGE_TITLE_OVERRIDES = {
+  "/settings": "Settings",
   "/inventory": "Inventory",
   "/inventory/dashboard": "Store Dashboard",
   "/inventory/settings": "Inventory Settings",
@@ -175,6 +179,9 @@ const PAGE_TITLE_OVERRIDES = {
   "/inventory/suppliers/create": "Create Supplier",
   "/meetings": "Meetings",
   "/procurement/purchase-orders/create": "Create Purchase Order",
+  "/sales/payments/create": "Record Payment",
+  "/sales/payment-receipts/create": "Record Payment",
+  "/production/operator-jobs": "My Operator Jobs",
 };
 
 function getLabel(segment, segments, index) {
@@ -187,6 +194,10 @@ function getLabel(segment, segments, index) {
   if (segment === "create" && prev === "orders") return "Create Sales Order";
   if (segment === "create" && prev === "purchase-orders") return "Create Purchase Order";
   if (segment === "create-quick" && prev === "work-orders") return "Quick Work Order";
+  if (prev === "settings" && index >= 1) {
+    const cat = findSettingsCategory(segment);
+    if (cat) return cat.title;
+  }
   return pathLabels[segment] || segment.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 

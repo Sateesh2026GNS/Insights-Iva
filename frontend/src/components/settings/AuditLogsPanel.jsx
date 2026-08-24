@@ -14,6 +14,7 @@ import {
 import useAuth from "../../hooks/useAuth";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { inputClass as inputCls } from "../../design-system/classes";
+import { DateRangeFields } from "../../design-system/dateControls";
 import { useToast } from "../../context/ToastContext";
 
 const MODULES = [
@@ -217,8 +218,15 @@ export default function AuditLogsPanel() {
             onChange={setFilter("search")}
           />
         </div>
-        <input type="date" className={inputCls} value={filters.date_from} onChange={setFilter("date_from")} />
-        <input type="date" className={inputCls} value={filters.date_to} onChange={setFilter("date_to")} />
+        <DateRangeFields
+          from={filters.date_from}
+          to={filters.date_to}
+          onFromChange={setFilter("date_from")}
+          onToChange={setFilter("date_to")}
+          fromLabel="From"
+          toLabel="To"
+          className="contents sm:col-span-2"
+        />
         <select className={inputCls} value={filters.action} onChange={setFilter("action")}>
           {ACTIONS.map((a) => (
             <option key={a || "all"} value={a}>

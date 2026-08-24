@@ -6,12 +6,10 @@ import {
   ExternalLink,
   KeyRound,
   Loader2,
-  Moon,
   Plus,
   RefreshCw,
   Save,
   Shield,
-  Sun,
   Trash2,
 } from "lucide-react";
 
@@ -35,18 +33,22 @@ import SettingsMyPermissions from "./SettingsMyPermissions";
 import SettingsMySubscription from "./SettingsMySubscription";
 import SettingsTeams from "./SettingsTeams";
 import SettingsUsers from "./SettingsUsers";
+import { MANUFACTURING_WORKFLOW_SETTINGS_LINKS } from "../../config/manufacturingWorkflow";
 import Button from "../../components/common/Button";
 import {
   Field,
   PanelShell,
   SectionCard,
+  SettingsActionLink,
+  SettingsLinkGrid,
+  SettingsThemeToggle,
   ToggleRow,
   inputClass,
 } from "./settingsUi";
 
 function Tabs({ tabs, active, onChange }) {
   return (
-    <div className="flex flex-wrap gap-1 rounded-xl bg-slate-100 p-1 dark:bg-slate-800">
+    <div className="flex flex-wrap gap-1 rounded-xl bg-[var(--color-surface-muted)] p-1">
       {tabs.map((t) => (
         <button
           key={t.id}
@@ -54,8 +56,8 @@ function Tabs({ tabs, active, onChange }) {
           onClick={() => onChange(t.id)}
           className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
             active === t.id
-              ? "bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-white"
-              : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
+              ? "bg-[var(--color-surface)] text-[var(--color-text)] shadow-sm ring-1 ring-[var(--color-border)]"
+              : "text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
           }`}
         >
           {t.label}
@@ -514,7 +516,7 @@ function SecuritySection() {
           <div className="space-y-3 text-sm text-slate-600 dark:text-slate-300">
             <div className="flex items-center justify-between rounded-xl border border-slate-100 px-4 py-3 dark:border-slate-700">
               <div className="flex items-center gap-3">
-                <Shield className="h-5 w-5 text-teal-600" />
+                <Shield className="h-5 w-5 text-[var(--color-primary)]" />
                 <div>
                   <p className="font-medium text-slate-800 dark:text-slate-100">This browser</p>
                   <p className="text-xs text-slate-500">Current session · Active now</p>
@@ -527,7 +529,7 @@ function SecuritySection() {
             <p className="text-xs text-slate-500">
               Change password from your profile or use Forgot Password on the login page.
             </p>
-            <Link to="/forgot-password" className="inline-flex text-sm font-semibold text-teal-600 hover:underline">
+            <Link to="/forgot-password" className="inline-flex text-sm font-semibold text-[var(--color-primary)] hover:underline">
               Reset password →
             </Link>
           </div>
@@ -538,16 +540,11 @@ function SecuritySection() {
 }
 
 function AppearanceSection() {
-  const {
-    theme,
-    language,
-    updateTheme,
-    updateLanguage,
-  } = useSettings();
+  const { language, updateLanguage } = useSettings();
   const { addToast } = useToast();
   const [fontSize, setFontSize] = useState(() => localStorage.getItem("gns-font-size") || "medium");
   const [compact, setCompact] = useState(() => localStorage.getItem("gns-compact") === "true");
-  const [accent, setAccent] = useState(() => localStorage.getItem("gns-accent") || "teal");
+  const [accent, setAccent] = useState(() => localStorage.getItem("gns-accent") || "forest");
 
   const saveLocal = () => {
     localStorage.setItem("gns-font-size", fontSize);
@@ -571,47 +568,12 @@ function AppearanceSection() {
       <SectionCard title="Theme">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <p className="text-sm font-medium text-slate-800 dark:text-slate-100">
-              Color mode
-            </p>
-            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+            <p className="text-sm font-medium text-[var(--color-text)]">Color mode</p>
+            <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">
               Switch between light and dark appearance.
             </p>
           </div>
-          <div className="inline-flex items-center gap-3 rounded-full border border-slate-200 bg-white px-3.5 py-2 shadow-sm dark:border-slate-600 dark:bg-slate-800">
-            <Sun
-              className={`h-4 w-4 shrink-0 ${
-                theme === "light"
-                  ? "text-amber-500"
-                  : "text-slate-400 dark:text-slate-500"
-              }`}
-              aria-hidden
-            />
-            <button
-              type="button"
-              role="switch"
-              aria-checked={theme === "dark"}
-              aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-              onClick={() => updateTheme(theme === "dark" ? "light" : "dark")}
-              className={`relative h-6 w-11 shrink-0 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 ${
-                theme === "dark" ? "bg-blue-500" : "bg-slate-300 dark:bg-slate-600"
-              }`}
-            >
-              <span
-                className={`pointer-events-none absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
-                  theme === "dark" ? "left-[22px]" : "left-0.5"
-                }`}
-              />
-            </button>
-            <Moon
-              className={`h-4 w-4 shrink-0 ${
-                theme === "dark"
-                  ? "text-blue-400"
-                  : "text-slate-400 dark:text-slate-500"
-              }`}
-              aria-hidden
-            />
-          </div>
+          <SettingsThemeToggle />
         </div>
       </SectionCard>
 
@@ -638,10 +600,10 @@ function AppearanceSection() {
           </Field>
           <Field label="Accent color">
             <select className={inputClass} value={accent} onChange={(e) => setAccent(e.target.value)}>
-              <option value="teal">Teal</option>
-              <option value="blue">Blue</option>
-              <option value="violet">Violet</option>
+              <option value="forest">Forest green (brand)</option>
               <option value="emerald">Emerald</option>
+              <option value="blue">Blue</option>
+              <option value="slate">Slate</option>
             </select>
           </Field>
           <div className="flex items-end">
@@ -835,7 +797,7 @@ function InventorySection() {
           <p className="mt-3 text-xs text-slate-500">
             Advanced unit masters and low-stock limits are managed under Inventory modules.
           </p>
-          <Link to="/inventory/warehouses" className="mt-3 inline-flex text-sm font-semibold text-teal-600 hover:underline">
+          <Link to="/inventory/warehouses" className="mt-3 inline-flex text-sm font-semibold text-[var(--color-primary)] hover:underline">
             Open Inventory →
           </Link>
         </SectionCard>
@@ -844,28 +806,44 @@ function InventorySection() {
   );
 }
 
+function ManufacturingWorkflowSection() {
+  return (
+    <PanelShell
+      title="Manufacturing Workflow"
+      description="Open the workflow board and stage-specific queues for sales through billing."
+    >
+      <SettingsLinkGrid>
+        {MANUFACTURING_WORKFLOW_SETTINGS_LINKS.map((item) => (
+          <SettingsActionLink
+            key={item.label}
+            to={item.to}
+            title={item.label}
+            description={item.description}
+          />
+        ))}
+      </SettingsLinkGrid>
+    </PanelShell>
+  );
+}
+
 function ProductionSection() {
   return (
     <PanelShell title="Production Settings" description="Shifts, work orders, machines, and scheduling defaults.">
-      <div className="grid gap-4 sm:grid-cols-2">
+      <SettingsLinkGrid>
         {[
           { title: "Work orders", desc: "Manage WO lifecycle and shop-floor flow.", to: "/production/work-orders" },
           { title: "Machine allocation", desc: "Assign machines and monitor status.", to: "/production/machines" },
           { title: "Production calendar", desc: "Plan capacity and schedules.", to: "/production/schedule" },
         ].map((item) => (
-          <Link
+          <SettingsActionLink
             key={item.title}
             to={item.to}
-            className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-teal-300 hover:shadow-md dark:border-slate-700 dark:bg-slate-800"
-          >
-            <h3 className="font-semibold text-slate-900 dark:text-slate-100">{item.title}</h3>
-            <p className="ui-subtitle">{item.desc}</p>
-            <span className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-teal-600">
-              Configure <ExternalLink className="h-3.5 w-3.5" />
-            </span>
-          </Link>
+            title={item.title}
+            description={item.desc}
+            actionLabel="Configure"
+          />
         ))}
-      </div>
+      </SettingsLinkGrid>
       <SectionCard title="Automation">
         <ToggleRow label="Auto scheduling" description="Suggest WO allocation from demand." checked={false} onChange={() => {}} />
       </SectionCard>
@@ -894,10 +872,10 @@ function FinanceSection() {
             Edit company tax fields
           </Button>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <Link to="/accounts" className="rounded-xl border border-slate-200 p-4 text-sm hover:border-teal-300 dark:border-slate-700">
+            <Link to="/accounts" className="rounded-xl border border-slate-200 p-4 text-sm hover:border-[var(--color-primary)] dark:border-slate-700">
               Open Accounts module →
             </Link>
-            <Link to="/finance/general-ledger" className="rounded-xl border border-slate-200 p-4 text-sm hover:border-teal-300 dark:border-slate-700">
+            <Link to="/finance/general-ledger" className="rounded-xl border border-slate-200 p-4 text-sm hover:border-[var(--color-primary)] dark:border-slate-700">
               General Ledger →
             </Link>
           </div>
@@ -1181,7 +1159,7 @@ function SubscriptionSection() {
   );
 }
 
-export default function SettingsSectionContent({ sectionId }) {
+export default function SettingsSectionContent({ sectionId, category }) {
   const map = useMemo(
     () => ({
       "my-account": MyAccountSection,
@@ -1194,6 +1172,7 @@ export default function SettingsSectionContent({ sectionId }) {
       appearance: AppearanceSection,
       inventory: InventorySection,
       production: ProductionSection,
+      "manufacturing-workflow": ManufacturingWorkflowSection,
       finance: FinanceSection,
       documents: DocumentsSection,
       integrations: IntegrationsSection,

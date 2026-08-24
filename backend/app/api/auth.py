@@ -48,7 +48,11 @@ from app.services.email_service import send_verification_email
 from app.services.login_history_service import mark_logout, record_login_history
 from app.services.password_reset_service import PasswordResetService
 from app.services.security_service import (
-    INVALID_CREDENTIALS,
+    ACCOUNT_LOCKED_MESSAGE,
+    FAILURE_ACCOUNT_LOCKED,
+    FAILURE_INVALID_CREDENTIALS,
+    FAILURE_ROLE_MISMATCH,
+    GENERIC_LOGIN_ERROR,
     create_email_verification,
     is_account_locked,
     record_login_attempt,
@@ -91,7 +95,7 @@ def login(req: LoginRequest, request: Request, db: Session = Depends(get_db)):
                 user_id=user.id,
                 ip_address=ip_address,
                 user_agent=user_agent,
-                failure_reason="locked",
+                failure_reason=FAILURE_ACCOUNT_LOCKED,
             )
             record_login_history(
                 db,
@@ -106,7 +110,7 @@ def login(req: LoginRequest, request: Request, db: Session = Depends(get_db)):
             )
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail="Account temporarily locked. Try again later.",
+                detail=ACCOUNT_LOCKED_MESSAGE,
             )
 
         if not db.scalar(select(func.count(User.id))):
@@ -128,7 +132,7 @@ def login(req: LoginRequest, request: Request, db: Session = Depends(get_db)):
                     user_id=user.id if user else None,
                     ip_address=ip_address,
                     user_agent=user_agent,
-                    failure_reason="invalid",
+                    failure_reason=FAILURE_INVALID_CREDENTIALS,
                 )
                 record_login_history(
                     db,
@@ -141,10 +145,9 @@ def login(req: LoginRequest, request: Request, db: Session = Depends(get_db)):
                 AuditLogService.log_login_failed(
                     db, request=request, email=email, user=user
                 )
-                detail = exc.detail if isinstance(exc.detail, str) else "Invalid email or password."
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail=detail,
+                    detail=GENERIC_LOGIN_ERROR,
                 ) from exc
             raise
 
@@ -161,7 +164,7 @@ def login(req: LoginRequest, request: Request, db: Session = Depends(get_db)):
                 user_id=authenticated.id,
                 ip_address=ip_address,
                 user_agent=user_agent,
-                failure_reason="role_mismatch",
+                failure_reason=FAILURE_ROLE_MISMATCH,
             )
             record_login_history(
                 db,
@@ -254,7 +257,7 @@ def phone_login(req: PhoneLoginRequest, request: Request, db: Session = Depends(
         if is_account_locked(user):
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail="Account temporarily locked. Try again later.",
+                detail=ACCOUNT_LOCKED_MESSAGE,
             )
 
         authenticated = login_user_by_phone(db, phone)
@@ -311,10 +314,17 @@ def phone_login(req: PhoneLoginRequest, request: Request, db: Session = Depends(
 
 @router.get("/me", response_model=UserResponse)
 def get_me(
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> UserResponse:
-    user_data = get_user_with_role(db, current_user)
+    role_from_token = None
+    auth_header = request.headers.get("Authorization") or ""
+    if auth_header.startswith("Bearer "):
+        payload = decode_access_token(auth_header[7:])
+        if payload:
+            role_from_token = payload.get("role") or payload.get("role_name")
+    user_data = get_user_with_role(db, current_user, preferred_role=role_from_token)
     user_data["email_verified"] = current_user.email_verified
     return UserResponse(**user_data)
 
@@ -438,7 +448,7 @@ def refresh_tokens(req: RefreshRequest, request: Request, db: Session = Depends(
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=INVALID_CREDENTIALS,
+            detail=GENERIC_LOGIN_ERROR,
         )
     db.refresh(user, ["roles"])
     touch_user_activity(db, user)

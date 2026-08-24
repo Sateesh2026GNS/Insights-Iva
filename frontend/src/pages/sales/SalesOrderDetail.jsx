@@ -46,22 +46,8 @@ export default function SalesOrderDetail() {
       const res = await getSalesOrderDetail(id);
       setData(res.data || null);
     } catch {
-      // Fall back to localStorage for locally-created sales orders
-      const stored = JSON.parse(localStorage.getItem("smrt_sales_orders") || "[]");
-      const local = stored.find(
-        (o) => String(o.id) === String(id) || String(o.order_number) === String(id) || String(o.so_number) === String(id)
-      );
-      if (local) {
-        setData({
-          order: local,
-          customer: { name: local.customer_name || "" },
-          line_items: local.line_items || [],
-          production_orders: [],
-        });
-      } else {
-        addToast("Order not found", "error");
-        setData(null);
-      }
+      addToast("Order not found", "error");
+      setData(null);
     } finally {
       setLoading(false);
     }
@@ -97,16 +83,16 @@ export default function SalesOrderDetail() {
       const result = res.data;
       setWorkflowResult(result);
       notifyManufacturingSpine(MANUFACTURING_EVENTS.MRP_RUN, result);
+      notifyManufacturingSpine(MANUFACTURING_EVENTS.DASHBOARD_REFRESH, result);
       if (result?.warning) {
         addToast(result.warning, "warning");
       } else if (result?.already_confirmed) {
         addToast("Order already confirmed");
       } else {
-        const woCount = (result?.work_orders || []).length;
         addToast(
-          woCount
-            ? `Confirmed — MRP, ${result.production_orders?.length || 0} production order(s), ${woCount} work order(s)`
-            : "Sales order confirmed — MRP and production planning updated",
+          result?.repaired_workflow
+            ? "Sales order linked to inventory check queue"
+            : "Sales order confirmed — awaiting store inventory check",
           "success"
         );
       }

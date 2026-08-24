@@ -35,9 +35,11 @@ MSG_REGISTRATION_SUCCESS = (
     "Registration completed successfully. Please log in using your registered "
     "email address and password."
 )
-MSG_EMAIL_NOT_FOUND = "Email address not found."
-MSG_EMAIL_NOT_WITH_COMPANY = "This email address is not registered with your company."
-MSG_INCORRECT_PASSWORD = "Incorrect password."
+# Login responses — generic to prevent account enumeration.
+MSG_GENERIC_LOGIN_ERROR = "Incorrect email or password."
+MSG_EMAIL_NOT_FOUND = MSG_GENERIC_LOGIN_ERROR
+MSG_EMAIL_NOT_WITH_COMPANY = MSG_GENERIC_LOGIN_ERROR
+MSG_INCORRECT_PASSWORD = MSG_GENERIC_LOGIN_ERROR
 MSG_ACCOUNT_DEACTIVATED = (
     "Your account has been deactivated. Please contact your administrator."
 )

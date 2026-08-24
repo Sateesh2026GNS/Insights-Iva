@@ -20,8 +20,18 @@ export const backfillWorkflowStatuses = (dryRun = false) =>
 
 export const getWorkflowHub = () => api.get("/manufacturing/workflow/hub");
 
+export const getOperatorJobs = (params = {}) =>
+  api.get("/manufacturing/workflow/operator/jobs", { params });
+
 export const getWorkflowQueue = (params = {}) =>
   api.get("/manufacturing/workflow/queue", { params });
+
+/** Role-filtered actionable queue — backend determines visibility (preferred). */
+export const getMyJobCardQueue = (params = {}) =>
+  api.get("/manufacturing/workflow/my-queue", { params });
+
+export const getWorkflowRoutingMeta = () =>
+  api.get("/manufacturing/workflow/routing");
 
 export const confirmSalesOrderWorkflow = (orderId) =>
   api.post(`/manufacturing/workflow/sales-orders/${orderId}/confirm`);
@@ -38,6 +48,12 @@ export const assignOperator = (workOrderId, payload) =>
 export const startProduction = (workOrderId) =>
   api.post(`/manufacturing/workflow/production/job-cards/${workOrderId}/start`);
 
+export const pauseProduction = (workOrderId) =>
+  api.post(`/manufacturing/workflow/production/job-cards/${workOrderId}/pause`);
+
+export const resumeProduction = (workOrderId) =>
+  api.post(`/manufacturing/workflow/production/job-cards/${workOrderId}/resume`);
+
 export const updateProductionProgress = (workOrderId, payload) =>
   api.patch(`/manufacturing/workflow/production/job-cards/${workOrderId}/progress`, payload);
 
@@ -49,6 +65,21 @@ export const submitQualityCheck = (inspectionId, payload) =>
 
 export const completePacking = (orderId, payload) =>
   api.post(`/manufacturing/workflow/packing/${orderId}/complete`, payload);
+
+export const getStageJobCard = (orderId, stage) =>
+  api.get(`/manufacturing/workflow/sales-orders/${orderId}/stage/${stage}`);
+
+export const submitStoreIssue = (orderId, payload) =>
+  api.post(`/manufacturing/workflow/sales-orders/${orderId}/store-issue`, payload);
+
+export const holdWorkflowOrder = (orderId, payload = {}) =>
+  api.post(`/manufacturing/workflow/sales-orders/${orderId}/hold`, payload);
+
+export const raiseMaterialRequest = (orderId, payload = {}) =>
+  api.post(`/manufacturing/workflow/sales-orders/${orderId}/material-request`, payload);
+
+export const getWorkflowLiveCards = (params = {}) =>
+  api.get("/manufacturing/workflow/live", { params });
 
 export const createBillingInvoice = (orderId, payload = {}) =>
   api.post("/manufacturing/workflow/billing/invoices", payload, { params: { order_id: orderId } });

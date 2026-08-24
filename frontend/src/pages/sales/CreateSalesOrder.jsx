@@ -28,13 +28,14 @@ import {
   StatusBadge,
 } from "../../components/manufacturing/jobCardUiShared";
 import { createProduct } from "../../api/productsApi";
-import { createSalesOrder } from "../../api/salesApi";
-import { getUsers } from "../../api/adminApi";
+import { createSalesOrder, confirmSalesOrder, getSalesOrderDetail, getSalesOrders, getSalesOrdersEnriched } from "../../api/salesApi";
+import { getTeamDirectory } from "../../api/adminApi";
 import { fetchCustomersWithFallback, resolveCustomerId } from "../../utils/customerOptions";
 import { fetchProductsWithFallback } from "../../utils/productOptions";
 import AddNewPartyModal from "../../components/sales/AddNewPartyModal";
 import useTenantId from "../../hooks/useTenantId";
 import useAuth from "../../hooks/useAuth";
+import { useToast } from "../../context/ToastContext";
 
 const UNITS = ["Nos", "nos", "pcs", "kg", "ltr", "box", "set", "mtr"];
 
@@ -42,6 +43,102 @@ import { inputMtClass as inputClass } from "../../design-system/classes";
 
 function emptyLine() {
   return { product_id: "", item_description: "", quantity: "1", unit: "pcs", unit_price: "" };
+}
+
+function applyOrderDetailToForm(detail, custs, tenantId) {
+  const so = detail?.order ?? detail ?? {};
+  const lineItems = detail?.line_items ?? so.line_items ?? [];
+  const matchedCust = custs.find(
+    (c) =>
+      String(c.id) === String(so.customer_id) ||
+      String(c.name).toLowerCase() === String(so.customer_name || "").toLowerCase()
+  );
+  return {
+    form: {
+      tenant_id: tenantId,
+      customer_id: matchedCust ? String(matchedCust.id) : so.customer_id ? String(so.customer_id) : "",
+      order_number: so.order_number || so.so_number || "",
+      reference_number: so.reference_number || "",
+      order_date: String(so.order_date || so.so_date || "").slice(0, 10),
+      due_date: String(so.delivery_date || so.due_date || "").slice(0, 10),
+      sales_person: so.sales_person || "",
+      sales_person_id: so.sales_person_id ? String(so.sales_person_id) : "",
+      priority: so.priority || "medium",
+      notes: so.notes || "",
+      status: so.status || "draft",
+    },
+    lines: lineItems.length
+      ? lineItems.map((l) => ({
+          product_id: String(l.product_id || ""),
+          item_description: l.item_description || "",
+          quantity: String(l.quantity || "1"),
+          unit: l.unit || "pcs",
+          unit_price: String(l.unit_price ?? ""),
+        }))
+      : [emptyLine()],
+    orderId: so.id ?? detail?.order?.id ?? null,
+  };
+}
+
+function buildDetailFromSummary(order) {
+  if (!order) return null;
+  return {
+    order,
+    line_items: (order.line_items || []).map((l) => ({
+      product_id: l.product_id ?? null,
+      item_description: l.item_description || "",
+      quantity: l.quantity ?? 0,
+      unit: l.unit || "pcs",
+      unit_price: l.unit_price ?? 0,
+      line_total: l.line_total ?? 0,
+    })),
+  };
+}
+
+async function fetchOrderForEdit(editKey) {
+  if (!editKey) return null;
+  const key = String(editKey).trim();
+
+  const loadDetailById = async (orderId) => {
+    try {
+      const res = await getSalesOrderDetail(orderId);
+      return res?.data ?? res;
+    } catch {
+      return null;
+    }
+  };
+
+  if (/^\d+$/.test(key)) {
+    const detail = await loadDetailById(Number(key));
+    if (detail) return detail;
+  }
+
+  let orders = [];
+  try {
+    const listRes = await getSalesOrdersEnriched();
+    orders = Array.isArray(listRes?.data) ? listRes.data : [];
+  } catch {
+    try {
+      const listRes = await getSalesOrders();
+      orders = Array.isArray(listRes?.data) ? listRes.data : [];
+    } catch {
+      orders = [];
+    }
+  }
+
+  const match = orders.find(
+    (o) =>
+      String(o.id) === key ||
+      String(o.order_number || o.so_number || "").toLowerCase() === key.toLowerCase()
+  );
+  if (!match) return null;
+
+  if (match.id) {
+    const detail = await loadDetailById(match.id);
+    if (detail) return detail;
+  }
+
+  return buildDetailFromSummary(match);
 }
 
 function QuickAddProductModal({ onClose, onAdded }) {
@@ -145,6 +242,7 @@ function QuickAddProductModal({ onClose, onAdded }) {
 export default function CreateSalesOrder() {
   const tenantId = useTenantId();
   const { user } = useAuth();
+  const { addToast } = useToast();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const editKey = searchParams.get("edit") || "";
@@ -175,6 +273,7 @@ export default function CreateSalesOrder() {
     status: "draft",
   });
   const [lines, setLines] = useState([emptyLine()]);
+  const [editOrderId, setEditOrderId] = useState(null);
   const detailsRef = useRef(null);
 
   const resetForm = () => {
@@ -196,16 +295,9 @@ export default function CreateSalesOrder() {
   };
 
   const handleViewOrder = () => {
-    if (isEdit && editKey) {
-      const stored = localStorage.getItem("smrt_sales_orders");
-      const localOrders = stored ? JSON.parse(stored) : [];
-      const so = localOrders.find(
-        (o) => String(o.order_number || o.so_number).toLowerCase() === editKey.toLowerCase()
-      );
-      if (so?.id) {
-        navigate(`/sales/orders/${so.id}`);
-        return;
-      }
+    if (editOrderId) {
+      navigate(`/sales/orders/${editOrderId}`);
+      return;
     }
     navigate("/sales/orders");
   };
@@ -245,7 +337,7 @@ export default function CreateSalesOrder() {
     Promise.all([
       fetchCustomersWithFallback().catch(() => []),
       fetchProductsWithFallback().catch(() => []),
-      getUsers().catch(() => ({ data: [] })),
+      getTeamDirectory().catch(() => ({ data: [] })),
     ])
       .then(([custs, prods, usersRes]) => {
         setCustomers(custs);
@@ -254,42 +346,18 @@ export default function CreateSalesOrder() {
         setSalesPeople(Array.isArray(users) ? users : []);
 
         if (editKey) {
-          const stored = localStorage.getItem("smrt_sales_orders");
-          const localOrders = stored ? JSON.parse(stored) : [];
-          const so = localOrders.find(
-            (o) => String(o.order_number || o.so_number).toLowerCase() === editKey.toLowerCase()
-          );
-          if (so) {
-            const matchedCust = custs.find(
-              (c) =>
-                String(c.id) === String(so.customer_id) ||
-                String(c.name).toLowerCase() === String(so.customer_name || "").toLowerCase()
-            );
-            setForm({
-              tenant_id: tenantId,
-              customer_id: matchedCust ? String(matchedCust.id) : so.customer_id || "",
-              order_number: so.order_number || so.so_number || "",
-              reference_number: so.reference_number || "",
-              order_date: String(so.order_date || so.so_date || "").slice(0, 10),
-              due_date: String(so.due_date || "").slice(0, 10),
-              sales_person: so.sales_person || "",
-              sales_person_id: so.sales_person_id || "",
-              priority: so.priority || "medium",
-              notes: so.notes || "",
-              status: so.status || "draft",
-            });
-            if (so.line_items?.length) {
-              setLines(
-                so.line_items.map((l) => ({
-                  product_id: String(l.product_id || ""),
-                  item_description: l.item_description || "",
-                  quantity: String(l.quantity || "1"),
-                  unit: l.unit || "pcs",
-                  unit_price: String(l.unit_price || ""),
-                }))
-              );
-            }
-          }
+          fetchOrderForEdit(editKey)
+            .then((detail) => {
+              if (!detail) {
+                setError("Sales order not found.");
+                return;
+              }
+              const applied = applyOrderDetailToForm(detail, custs, tenantId);
+              setForm(applied.form);
+              setLines(applied.lines);
+              setEditOrderId(applied.orderId);
+            })
+            .catch(() => setError("Could not load sales order for editing. Check your connection and try again."));
         }
       })
       .catch(() => setError("Could not load customers/products."))
@@ -392,6 +460,15 @@ export default function CreateSalesOrder() {
 
   const handleSubmit = async (e) => {
     e?.preventDefault?.();
+    await saveOrder({ confirmAfterCreate: false });
+  };
+
+  const handleCreateAndConfirm = async (e) => {
+    e?.preventDefault?.();
+    await saveOrder({ confirmAfterCreate: true });
+  };
+
+  const saveOrder = async ({ confirmAfterCreate = false } = {}) => {
     setError("");
     const validLines = lines.filter((l) => l.item_description && Number(l.quantity) > 0);
     if (!validLines.length) {
@@ -404,81 +481,59 @@ export default function CreateSalesOrder() {
     }
     setSaving(true);
 
-    const custName = customerName || "Customer";
-    const soNo = form.order_number?.trim() || `SO-${Date.now()}`;
-    const soDate = form.order_date || new Date().toISOString().slice(0, 10);
+    try {
+      const customerId = await resolveCustomerId(form.customer_id, customers, tenantId);
+      const payload = {
+        ...form,
+        customer_id: customerId,
+        order_number: form.order_number?.trim() || undefined,
+        delivery_date: form.due_date || null,
+        sales_person: form.sales_person?.trim() || user?.full_name || user?.name || null,
+        total_amount: totalAmount,
+        status: isEdit ? form.status || "draft" : "draft",
+        line_items: validLines.map((l) => {
+          const qty = Number(l.quantity);
+          const price = Number(l.unit_price) || 0;
+          return {
+            product_id: Number(l.product_id) || null,
+            item_description: l.item_description,
+            quantity: qty,
+            unit: l.unit || "pcs",
+            unit_price: price,
+            line_total: Math.round(qty * price * 100) / 100,
+          };
+        }),
+      };
 
-    let createdId = `so-${Date.now()}`;
-
-    if (!isEdit) {
-      try {
-        const customerId = await resolveCustomerId(form.customer_id, customers, tenantId);
-        const res = await createSalesOrder({
-          ...form,
-          customer_id: customerId,
-          order_number: soNo,
-          delivery_date: form.due_date || null,
-          sales_person: form.sales_person?.trim() || null,
-          total_amount: totalAmount,
-          line_items: validLines.map((l) => {
-            const qty = Number(l.quantity);
-            const price = Number(l.unit_price) || 0;
-            return {
-              product_id: Number(l.product_id) || null,
-              item_description: l.item_description,
-              quantity: qty,
-              unit: l.unit || "pcs",
-              unit_price: price,
-              line_total: Math.round(qty * price * 100) / 100,
-            };
-          }),
-        });
-        if (res?.data?.id) createdId = res.data.id;
-      } catch {
-        /* local fallback */
+      if (isEdit) {
+        addToast("Sales order updates are not supported from this form yet.", "warning");
+        setSaving(false);
+        return;
       }
+
+      const res = await createSalesOrder(payload);
+      const orderId = res?.data?.id;
+      const orderNumber = res?.data?.order_number || "";
+
+      if (confirmAfterCreate && orderId) {
+        const confirmRes = await confirmSalesOrder(orderId);
+        const wf = confirmRes?.data ?? confirmRes;
+        addToast(
+          wf?.repaired_workflow
+            ? `Sales order ${orderNumber} linked to inventory queue`
+            : `Sales order ${orderNumber} confirmed — sent to Store Manager for inventory check`,
+          "success"
+        );
+      } else {
+        addToast(`Sales order ${orderNumber} created`, "success");
+      }
+
+      navigate(orderId ? `/sales/orders/${orderId}` : "/sales/orders");
+    } catch (err) {
+      setError(err?.response?.data?.detail || "Could not create sales order.");
+    } finally {
+      setSaving(false);
     }
-
-    const newSO = {
-      id: createdId,
-      order_number: soNo,
-      so_number: soNo,
-      customer_name: custName,
-      customer_id: form.customer_id,
-      order_date: soDate,
-      so_date: soDate,
-      due_date: form.due_date || "",
-      sales_person: form.sales_person?.trim() || "",
-      sales_person_id: form.sales_person_id || "",
-      reference_number: form.reference_number || "",
-      priority: form.priority || "medium",
-      notes: form.notes || "",
-      total_amount: totalAmount,
-      amount: totalAmount,
-      status: isEdit ? form.status || "draft" : "pending",
-      line_items: validLines.map((l) => ({
-        product_id: l.product_id,
-        item_description: l.item_description,
-        quantity: Number(l.quantity),
-        unit: l.unit || "pcs",
-        unit_price: Number(l.unit_price) || 0,
-        line_total: (Number(l.quantity) || 0) * (Number(l.unit_price) || 0),
-      })),
-      items_count: validLines.length,
-      created_at: new Date().toISOString(),
-    };
-
-    const stored = localStorage.getItem("smrt_sales_orders");
-    const localOrders = stored ? JSON.parse(stored) : [];
-    const updated = isEdit
-      ? localOrders.map((o) =>
-          String(o.order_number || o.so_number).toLowerCase() === editKey.toLowerCase() ? newSO : o
-        )
-      : [newSO, ...localOrders.filter((o) => String(o.order_number || o.so_number) !== soNo)];
-    localStorage.setItem("smrt_sales_orders", JSON.stringify(updated));
-
-    setSaving(false);
-    navigate("/sales/orders");
   };
 
   if (loading) return <Loader label="Loading..." />;
@@ -504,6 +559,18 @@ export default function CreateSalesOrder() {
                 <Save className="mr-1.5 inline h-4 w-4" />
                 {isEdit ? "Update Sales Order" : "Create Sales Order"}
               </Button>
+              {!isEdit ? (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  type="button"
+                  loading={saving}
+                  disabled={!form.customer_id}
+                  onClick={handleCreateAndConfirm}
+                >
+                  Create &amp; Confirm
+                </Button>
+              ) : null}
               <Button variant="outline" size="sm" to="/sales/orders">
                 Cancel
               </Button>

@@ -4,10 +4,12 @@ import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { Check, Settings2 } from "lucide-react";
 
 import { useToast } from "../../context/ToastContext";
+import PageHeader from "../../components/common/PageHeader";
+import { SettingsFeatureShell } from "./settingsUi";
 
 const PAGE_BG = "var(--color-bg)";
-const ACCENT = "#0f6d84";
-const BTN_DARK = "#2f323a";
+const ACCENT = "var(--color-primary)";
+const BTN_DARK = "var(--color-primary)";
 const STORAGE_KEY = "gns_template_settings_v2";
 
 const TABS = [
@@ -1796,9 +1798,14 @@ export default function TemplateSettingsV2() {
   };
 
   return (
-    <div className="min-h-full" style={{ background: PAGE_BG }}>
-      <div className="mx-auto max-w-[1400px] px-4 py-5 sm:px-6 lg:px-8">
-        <div className="mb-5 flex flex-wrap gap-2">
+    <SettingsFeatureShell>
+      <PageHeader
+        showTitle
+        title="Template Settings"
+        subtitle="Choose and customize invoice, quotation, and purchase document templates."
+      />
+
+      <div className="flex flex-wrap gap-2">
           {TABS.map((t) => {
             const active = tab === t.id;
             return (
@@ -1806,10 +1813,11 @@ export default function TemplateSettingsV2() {
                 key={t.id}
                 type="button"
                 onClick={() => selectTab(t.id)}
-                className={`rounded-lg px-5 py-2.5 text-[13px] font-bold tracking-wide ${
-                  active ? "text-[#1a1a1f]" : "bg-[#ececf0] text-[#4a4a55]"
+                className={`rounded-lg px-5 py-2.5 text-[13px] font-bold tracking-wide transition ${
+                  active
+                    ? "bg-[var(--color-primary)] text-white shadow-sm"
+                    : "bg-[var(--color-surface-muted)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
                 }`}
-                style={active ? { background: ACCENT } : undefined}
               >
                 {t.label}
               </button>
@@ -1817,22 +1825,24 @@ export default function TemplateSettingsV2() {
           })}
         </div>
 
-        <div className="rounded-2xl border border-[#e4e4ea] bg-white p-5 shadow-sm sm:p-6">
+        <div className="ui-card p-5 sm:p-6">
           <div className="flex flex-wrap gap-6">
             {templates.map((tpl) => {
               const selected = selectedId === tpl.id;
               return (
                 <div
                   key={tpl.id}
-                  className={`w-full max-w-[260px] rounded-2xl p-4 ${
-                    selected ? "bg-[#2f323a]" : "bg-transparent"
+                  className={`w-full max-w-[260px] rounded-2xl p-4 transition ${
+                    selected
+                      ? "bg-[var(--color-primary)] ring-2 ring-[var(--color-primary)] ring-offset-2 ring-offset-[var(--color-surface)]"
+                      : "bg-[var(--color-surface-muted)]"
                   }`}
                 >
                   <DocPreview style={tpl.style} accent={accent} title={docTitle} />
                   {tpl.name ? (
                     <div
                       className={`mt-3 text-center text-[14px] font-bold uppercase tracking-wide ${
-                        selected ? "text-white" : "text-[#1a1a1f]"
+                        selected ? "text-white" : "text-[var(--color-text)]"
                       }`}
                     >
                       {tpl.name}
@@ -1844,7 +1854,7 @@ export default function TemplateSettingsV2() {
                     <button
                       type="button"
                       onClick={() => setCustomiseFor(tpl.id)}
-                      className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-[#d0d0d8] bg-white py-2 text-[12px] font-semibold text-[#1a1a1f]"
+                      className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] py-2 text-[12px] font-semibold text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]"
                     >
                       <Settings2 className="h-3.5 w-3.5" />
                       Customise
@@ -1852,8 +1862,7 @@ export default function TemplateSettingsV2() {
                     <button
                       type="button"
                       onClick={() => useTemplate(tpl.id)}
-                      className="rounded-lg py-2 text-[12px] font-semibold text-white"
-                      style={{ background: BTN_DARK }}
+                      className="rounded-lg bg-[var(--color-primary)] py-2 text-[12px] font-semibold text-white hover:opacity-90"
                     >
                       Use This
                     </button>
@@ -1863,7 +1872,6 @@ export default function TemplateSettingsV2() {
             })}
           </div>
         </div>
-      </div>
 
       <CustomiseModal
         open={Boolean(customiseFor)}
@@ -1875,6 +1883,6 @@ export default function TemplateSettingsV2() {
           addToast("Template Update successfully", "success");
         }}
       />
-    </div>
+    </SettingsFeatureShell>
   );
 }

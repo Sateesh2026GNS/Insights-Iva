@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
+
+logger = logging.getLogger(__name__)
 
 from app.core.permissions import get_role_names, user_is_admin
 from app.core.workflow_constants import (
@@ -118,21 +121,30 @@ def transition_workflow_status(
     )
     db.add(row)
 
-    if notify:
-        _notify_team_for_status(
-            db,
-            tenant_id=tenant_id,
-            sales_order=sales_order,
-            new_status=target,
-            actor=user,
-        )
-
     if commit:
         db.commit()
         db.refresh(sales_order)
         db.refresh(row)
+        if notify:
+            _notify_team_for_status(
+                db,
+                tenant_id=tenant_id,
+                sales_order=sales_order,
+                new_status=target,
+                actor=user,
+                in_transaction=False,
+            )
     else:
         db.flush()
+        if notify:
+            _notify_team_for_status(
+                db,
+                tenant_id=tenant_id,
+                sales_order=sales_order,
+                new_status=target,
+                actor=user,
+                in_transaction=True,
+            )
     return row
 
 
@@ -143,7 +155,9 @@ def _notify_team_for_status(
     sales_order: SalesOrder,
     new_status: str,
     actor: User | None,
+    in_transaction: bool = False,
 ) -> None:
+    """Notify role holders about a workflow stage. Never raises — failures are logged only."""
     role_names = STATUS_NOTIFY_ROLES.get(new_status)
     if not role_names:
         return
@@ -153,27 +167,62 @@ def _notify_team_for_status(
         user_ids = _users_for_roles(db, tenant_id, role_names)
         if actor:
             user_ids = [uid for uid in user_ids if uid != actor.id]
+        if not user_ids:
+            return
+
         title = f"Workflow: {sales_order.order_number} → {new_status.replace('_', ' ').title()}"
         message = (
             f"Sales order {sales_order.order_number} requires action at stage "
             f"{new_status.replace('_', ' ').lower()}."
         )
         for uid in user_ids:
-            NotificationManagementService.create_for_user(
-                db,
-                tenant_id=tenant_id,
-                user_id=uid,
-                title=title,
-                message=message,
-                type="production",
-                priority=normalize_priority(getattr(sales_order, "priority", "medium")),
-                module="production",
-                action_url=f"/manufacturing/workflow?order={sales_order.id}",
-                created_by=actor.full_name if actor else "System",
-                created_by_user_id=actor.id if actor else None,
-            )
-    except Exception:
-        pass
+            try:
+                if in_transaction:
+                    with db.begin_nested():
+                        NotificationManagementService.create_for_user(
+                            db,
+                            tenant_id=tenant_id,
+                            user_id=uid,
+                            title=title,
+                            message=message,
+                            type="production",
+                            priority=normalize_priority(getattr(sales_order, "priority", "medium")),
+                            module="production",
+                            action_url=f"/manufacturing/workflow?order={sales_order.id}",
+                            created_by=actor.full_name if actor else "System",
+                            created_by_user_id=actor.id if actor else None,
+                            commit=False,
+                        )
+                else:
+                    NotificationManagementService.create_for_user(
+                        db,
+                        tenant_id=tenant_id,
+                        user_id=uid,
+                        title=title,
+                        message=message,
+                        type="production",
+                        priority=normalize_priority(getattr(sales_order, "priority", "medium")),
+                        module="production",
+                        action_url=f"/manufacturing/workflow?order={sales_order.id}",
+                        created_by=actor.full_name if actor else "System",
+                        created_by_user_id=actor.id if actor else None,
+                        commit=True,
+                    )
+            except Exception as exc:
+                logger.exception(
+                    "Workflow notification failed for user_id=%s order_id=%s status=%s: %s",
+                    uid,
+                    sales_order.id,
+                    new_status,
+                    exc,
+                )
+    except Exception as exc:
+        logger.exception(
+            "Workflow notification fanout failed for order_id=%s status=%s: %s",
+            sales_order.id,
+            new_status,
+            exc,
+        )
 
 
 def _users_for_roles(db: Session, tenant_id: int, role_names: list[str]) -> list[int]:

@@ -638,6 +638,7 @@ def apply_role_dashboard(
             recent_workflow_activity,
             workflow_status_counts,
         )
+        from app.services.stage_job_card_service import list_live_workflow_cards
         from app.core.workflow_constants import WORKFLOW_COUNT_BUCKETS
 
         counts_raw = workflow_status_counts(db, tenant_id)
@@ -655,6 +656,7 @@ def apply_role_dashboard(
         payload["manufacturing_workflow"] = {
             "counts": workflow_counts,
             "activity": recent_workflow_activity(db, tenant_id, limit=15),
+            "live_cards": list_live_workflow_cards(db, tenant_id, limit=12),
         }
         if "manufacturing_workflow" not in payload.get("visible_sections", []):
             payload["visible_sections"] = list(payload.get("visible_sections", [])) + [

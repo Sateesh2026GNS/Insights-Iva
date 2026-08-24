@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Banknote, Bookmark, Building2, ChevronDown, MoreVertical, Pencil, Search, Star, Trash2, CircleMinus } from "lucide-react";
 
 import Button from "../../components/common/Button";
@@ -97,9 +97,14 @@ function SoftLabel({ children, required }) {
 export default function PaymentReceiptForm() {
   const tenantId = useTenantId();
   const navigate = useNavigate();
+  const location = useLocation();
   const { addToast } = useToast();
   const { id: editId } = useParams();
   const isEdit = Boolean(editId);
+  const listPath =
+    !isEdit && location.pathname.startsWith("/sales/payments")
+      ? "/sales/payments"
+      : "/sales/payment-receipts";
   const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -215,7 +220,7 @@ export default function PaymentReceiptForm() {
       } catch (err) {
         if (!cancelled) {
           addToast(apiErrorMessage(err, "Failed to load payment receipt"), "error");
-          if (editId) navigate("/sales/payment-receipts");
+          if (editId) navigate(listPath);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -337,7 +342,7 @@ export default function PaymentReceiptForm() {
           }),
         });
         addToast("Payment receipt updated", "success");
-        navigate("/sales/payment-receipts");
+        navigate(listPath);
         return;
       }
 
@@ -375,7 +380,7 @@ export default function PaymentReceiptForm() {
         customer_id: customerId,
       });
       addToast("Payment receipt recorded");
-      navigate("/sales/payment-receipts");
+      navigate(listPath);
     } catch (err) {
       addToast(apiErrorMessage(err, "Failed to save payment"), "error");
     } finally {
@@ -397,7 +402,7 @@ export default function PaymentReceiptForm() {
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={() => navigate("/sales/payment-receipts")}
+            onClick={() => navigate(listPath)}
             className="rounded-lg p-1.5 text-[#4a4a55] hover:bg-[#f5f5f7]"
             aria-label="Back"
           >
@@ -405,7 +410,7 @@ export default function PaymentReceiptForm() {
           </button>
         </div>
         <div className="flex items-center gap-2">
-          <Button type="button" variant="secondary" onClick={() => navigate("/sales/payment-receipts")}>
+          <Button type="button" variant="secondary" onClick={() => navigate(listPath)}>
             Cancel
           </Button>
           <Button type="submit" variant="primary" loading={saving} disabled={saving}>

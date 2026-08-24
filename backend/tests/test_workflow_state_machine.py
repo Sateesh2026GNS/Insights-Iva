@@ -12,7 +12,8 @@ def test_happy_path_transitions():
     assert transition_allowed("draft", "SALES_CONFIRMED")
     assert transition_allowed("SALES_CONFIRMED", "MATERIAL_CHECK_PENDING")
     assert transition_allowed("MATERIAL_CHECK_PENDING", "MATERIAL_AVAILABLE")
-    assert transition_allowed("MATERIAL_AVAILABLE", "READY_FOR_PRODUCTION")
+    assert transition_allowed("MATERIAL_AVAILABLE", "STORE_ISSUE_PENDING")
+    assert transition_allowed("STORE_ISSUE_PENDING", "READY_FOR_PRODUCTION")
     assert transition_allowed("READY_FOR_PRODUCTION", "PRODUCTION_ASSIGNED")
     assert transition_allowed("PRODUCTION_ASSIGNED", "PRODUCTION_IN_PROGRESS")
     assert transition_allowed("PRODUCTION_IN_PROGRESS", "PRODUCTION_COMPLETED")
@@ -24,6 +25,11 @@ def test_happy_path_transitions():
     assert transition_allowed("PACKED", "BILLING_PENDING")
     assert transition_allowed("BILLING_PENDING", "INVOICED")
     assert transition_allowed("INVOICED", "COMPLETED")
+
+
+def test_shortage_does_not_skip_to_production():
+    assert not transition_allowed("MATERIAL_SHORTAGE", "READY_FOR_PRODUCTION")
+    assert not transition_allowed("MATERIAL_PARTIAL", "READY_FOR_PRODUCTION")
 
 
 def test_invalid_operator_to_invoiced_blocked():

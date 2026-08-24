@@ -6,7 +6,7 @@ import KpiCard from "../../components/common/KpiCard";
 import Loader from "../../components/common/Loader";
 import PageHeader from "../../components/common/PageHeader";
 import { getSalesHub } from "../../api/salesApi";
-import { SALES_FLOW, formatInr } from "../../data/salesMasterData";
+import { formatInr } from "../../data/salesMasterData";
 import useManufacturingRefresh from "../../hooks/useManufacturingRefresh";
 
 
@@ -71,15 +71,6 @@ export default function SalesDashboard() {
         <KpiCard label="Dispatch Pending" value={hub.dispatch_pending} icon={Truck} color="bg-cyan-600" />
         <KpiCard label="Outstanding Payments" value={formatInr(hub.outstanding_payments)} icon={IndianRupee} color="bg-rose-600" />
         <KpiCard label="New Customers" value={hub.new_customers} icon={Users} color="bg-[var(--color-success)]" />
-      </div>
-
-      <div className="ui-toolbar ui-card px-4 py-3 text-[var(--text-xs)] font-medium text-[var(--color-text-secondary)]">
-        {SALES_FLOW.map((s, i) => (
-          <span key={s} className="flex items-center gap-1">
-            <span className="rounded bg-[var(--color-surface-muted)] px-1.5 py-0.5 ring-1 ring-[var(--color-border)]">{s}</span>
-            {i < SALES_FLOW.length - 1 && <span className="text-[var(--color-text-faint)]">↓</span>}
-          </span>
-        ))}
       </div>
 
       <div className="grid gap-5 lg:grid-cols-2">

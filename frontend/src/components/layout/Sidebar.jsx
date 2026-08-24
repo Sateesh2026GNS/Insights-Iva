@@ -30,7 +30,13 @@ import BrandLogo from "../common/BrandLogo";
 import LogoutConfirmModal from "../common/LogoutConfirmModal";
 import useAuth from "../../hooks/useAuth";
 import { getSidebarMenus } from "../../api/authApi";
-import { userCanAccess, isStoreManager, isProductionManager, isOperator, storeManagerPathAllowed } from "../../config/permissions";
+import { userCanAccess, isStoreManager, isProductionManager, isOperator, isHRManager, storeManagerPathAllowed } from "../../config/permissions";
+import {
+  PRODUCTION_MANAGER_ALLOWED_CHILDREN,
+  PRODUCTION_MANAGER_ALLOWED_SECTIONS,
+  HR_MANAGER_ALLOWED_SECTIONS,
+  OPERATOR_BLOCKED_SECTIONS,
+} from "../../config/rbacNavFilters";
 import { SIDEBAR_NAV, sectionHasActiveChild } from "../../config/sidebarNav";
 import { STORE_MANAGER_NAV_ITEMS } from "../../config/storeManagerNavConfig";
 
@@ -142,100 +148,22 @@ function mapApiMenusToNav(menus) {
   });
 }
 
-const PROD_MANAGER_ALLOWED_SECTIONS = new Set([
-  "dashboard",
-  "masters",
-  "production",
-  "inventory",
-  "procurement",
-  "quality",
-  "maintenance",
-  "alerts",
-  "documents",
-  "analytics",
-]);
-
-const PROD_MANAGER_ALLOWED_CHILDREN = new Set([
-  "/masters/products",
-  "/masters/bom",
-  "/production",
-  "/production/dashboard",
-  "/production/create",
-  "/production/machines",
-  "/production/planning",
-  "/production/work-orders",
-  "/production/work-orders/create-quick",
-  "/production/job-card",
-  "/production/schedule",
-  "/production/tasks",
-  "/production/reports",
-  "/inventory",
-  "/inventory/raw-materials",
-  "/inventory/finished-goods",
-  "/inventory/stock-transfer",
-  "/sales",
-  "/sales/orders",
-  "/procurement/vendors",
-  "/procurement/material-requests",
-  "/quality/in-process",
-  "/quality/final",
-  "/quality/defects",
-  "/maintenance/preventive",
-  "/maintenance/equipment",
-  "/maintenance/breakdowns",
-  "/maintenance/machine-history",
-  "/alerts",
-  "/alerts/low-stock",
-  "/alerts/machine-failure",
-  "/alerts/production-delay",
-  "/alerts/maintenance",
-  "/alerts/quality",
-  "/alerts/safety",
-  "/alerts/general",
-  "/documents",
-  "/documents/production",
-  "/documents/quality",
-  "/documents/reports",
-  "/analytics/production",
-  "/analytics/inventory",
-  "/analytics/live",
-]);
-
-function normalizeRoleName(value) {
-  return String(value || "")
-    .trim()
-    .toLowerCase()
-    .replace(/[_\-\s]+/g, " ");
-}
-
-function isHRManager(user) {
-  if (!user) return false;
-  if (Array.isArray(user.permissions) && user.permissions.includes("*")) return false; // admin
-  const roles = Array.isArray(user.roles)
-    ? user.roles.map((r) => (typeof r === "object" ? r.name : String(r)))
-    : [];
-  const roleStr = String(user.role || user.role_name || (typeof user.roles === "string" ? user.roles : ""));
-  const allRoles = [...roles.map((r) => normalizeRoleName(r)), normalizeRoleName(roleStr)];
-  return allRoles.some((r) => r.includes("hr manager") || r.includes("hr manager") || r.includes("hr") || r.includes("human resources"));
-}
-
-// Sections always hidden for HR Manager regardless of API permissions
-const HR_MANAGER_BLOCKED_SECTIONS = new Set(["masters", "hrMasters"]);
-
 export function filterStaticNav(user) {
   const storeMgr = isStoreManager(user);
   const isPM = isProductionManager(user);
   const isHR = isHRManager(user);
+  const isOp = isOperator(user);
   return SIDEBAR_NAV.map((section) => {
-    if (isPM && !PROD_MANAGER_ALLOWED_SECTIONS.has(section.key)) return null;
-    if (isHR && HR_MANAGER_BLOCKED_SECTIONS.has(section.key)) return null;
+    if (isPM && !PRODUCTION_MANAGER_ALLOWED_SECTIONS.has(section.key)) return null;
+    if (isHR && !HR_MANAGER_ALLOWED_SECTIONS.has(section.key)) return null;
+    if (isOp && OPERATOR_BLOCKED_SECTIONS.has(section.key)) return null;
     if (section.to) {
       if (!userCanAccess(user, section.module)) return null;
       if (storeMgr && !storeManagerPathAllowed(section.to)) return null;
       return section;
     }
     let children = (section.children || []).filter((c) => {
-      if (isPM && !PROD_MANAGER_ALLOWED_CHILDREN.has(c.to)) return false;
+      if (isPM && !PRODUCTION_MANAGER_ALLOWED_CHILDREN.has(c.to)) return false;
       return userCanAccess(user, c.module);
     });
     if (storeMgr) {
@@ -291,26 +219,21 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose }
     // Prefer local SIDEBAR_NAV so new pages (Inventory v2, Ledger) appear even if API catalog is stale.
     const staticNav = filterStaticNav(user);
     const raw = staticNav.length ? staticNav : apiNav && apiNav.length ? apiNav : [];
-    const filteredRaw = (raw || []).filter((section) => {
-      if (isHRManager(user) && HR_MANAGER_BLOCKED_SECTIONS.has(section.key)) return false;
-      return true;
-    });
     if (isProductionManager(user)) {
-      return filteredRaw
+      return raw
         .map((section) => {
-          if (!PROD_MANAGER_ALLOWED_SECTIONS.has(section.key)) return null;
+          if (!PRODUCTION_MANAGER_ALLOWED_SECTIONS.has(section.key)) return null;
           if (!section.children) return section;
-          const children = section.children.filter((c) => PROD_MANAGER_ALLOWED_CHILDREN.has(c.to));
+          const children = section.children.filter((c) => PRODUCTION_MANAGER_ALLOWED_CHILDREN.has(c.to));
           if (children.length === 0) return null;
           return { ...section, children };
         })
         .filter(Boolean);
     }
-    // Operators do not see the Masters section
     if (isOperator(user)) {
-      return filteredRaw.filter((section) => section.key !== "masters");
+      return raw.filter((section) => !OPERATOR_BLOCKED_SECTIONS.has(section.key));
     }
-    return filteredRaw;
+    return raw;
   }, [apiNav, user, storeMode]);
 
   const [expanded, setExpanded] = useState(() =>

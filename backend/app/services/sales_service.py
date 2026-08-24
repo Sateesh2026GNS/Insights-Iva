@@ -153,7 +153,12 @@ def list_sales_orders(db: Session, tenant_id: int, status: str | None = None) ->
 
 
 def update_sales_order_status(
-    db: Session, tenant_id: int, order_id: int, status: str
+    db: Session,
+    tenant_id: int,
+    order_id: int,
+    status: str,
+    *,
+    user=None,
 ) -> SalesOrder | None:
     order = db.scalars(
         select(SalesOrder).where(
@@ -168,9 +173,16 @@ def update_sales_order_status(
         "confirmed",
         "approved",
     }:
-        from app.services.manufacturing_workflow_service import confirm_sales_order_workflow
+        from fastapi import HTTPException
 
-        confirm_sales_order_workflow(db, tenant_id, order.id)
+        from app.services.workflow_team_service import confirm_sales_order_with_workflow
+
+        if user is None:
+            raise HTTPException(
+                status_code=400,
+                detail="Authenticated user required to confirm sales order",
+            )
+        confirm_sales_order_with_workflow(db, tenant_id, order.id, user)
         db.refresh(order)
         return order
 
@@ -181,54 +193,19 @@ def update_sales_order_status(
 
 
 def confirm_sales_order(
-    db: Session, tenant_id: int, order_id: int, requested_by: str | None = None
+    db: Session,
+    tenant_id: int,
+    order_id: int,
+    user,
+    *,
+    requested_by: str | None = None,
 ) -> dict:
-    """Confirm SO and return MRP + production planning results."""
-    from app.services.manufacturing_workflow_service import confirm_sales_order_workflow
+    """Confirm SO through the team workflow engine (material check queue)."""
+    from app.services.workflow_team_service import confirm_sales_order_with_workflow
 
-    order = db.scalars(
-        select(SalesOrder).where(
-            SalesOrder.id == order_id, SalesOrder.tenant_id == tenant_id
-        )
-    ).first()
-    if not order:
-        raise ValueError("Sales order not found")
-    previous = (order.status or "").lower()
-    if previous in {"confirmed", "approved"}:
-        # Already confirmed — return linked production snapshot
-        from app.models.production import ProductionOrder
-
-        pos = list(
-            db.scalars(
-                select(ProductionOrder).where(
-                    ProductionOrder.tenant_id == tenant_id,
-                    ProductionOrder.sales_order_id == order.id,
-                )
-            ).all()
-        )
-        return {
-            "sales_order_id": order.id,
-            "order_number": order.order_number,
-            "status": order.status,
-            "already_confirmed": True,
-            "mrp_results": [],
-            "production_orders": [
-                {
-                    "id": p.id,
-                    "order_number": p.order_number,
-                    "product_id": p.product_id,
-                    "quantity": float(p.planned_quantity or 0),
-                }
-                for p in pos
-            ],
-            "warning": None,
-        }
-    return confirm_sales_order_workflow(
-        db,
-        tenant_id,
-        order.id,
-        requested_by=requested_by,
-    )
+    if user is None:
+        raise ValueError("User required to confirm sales order")
+    return confirm_sales_order_with_workflow(db, tenant_id, order_id, user)
 
 
 def convert_quotation_to_sales_order(
@@ -846,6 +823,73 @@ def update_lead_status(
     db.commit()
     db.refresh(lead)
     return lead
+
+
+def list_lead_activities(db: Session, tenant_id: int, lead_id: int) -> list[dict]:
+    from fastapi import HTTPException
+
+    from app.models.sales import Lead, LeadActivity
+
+    lead = db.scalars(
+        select(Lead).where(Lead.id == lead_id, Lead.tenant_id == tenant_id)
+    ).first()
+    if not lead:
+        raise HTTPException(404, "Lead not found")
+    rows = list(
+        db.scalars(
+            select(LeadActivity)
+            .where(LeadActivity.lead_id == lead_id, LeadActivity.tenant_id == tenant_id)
+            .order_by(LeadActivity.id.desc())
+        ).all()
+    )
+    return [
+        {
+            "id": row.id,
+            "type": row.activity_type,
+            "subject": row.subject,
+            "user": row.user_name,
+            "notes": row.notes,
+            "date": row.created_at.strftime("%m/%d/%y, %I:%M %p") if row.created_at else None,
+        }
+        for row in rows
+    ]
+
+
+def create_lead_activity(
+    db: Session,
+    tenant_id: int,
+    lead_id: int,
+    payload,
+    user,
+) -> dict:
+    from fastapi import HTTPException
+
+    from app.models.sales import Lead, LeadActivity
+
+    lead = db.scalars(
+        select(Lead).where(Lead.id == lead_id, Lead.tenant_id == tenant_id)
+    ).first()
+    if not lead:
+        raise HTTPException(404, "Lead not found")
+    row = LeadActivity(
+        tenant_id=tenant_id,
+        lead_id=lead_id,
+        activity_type=(payload.type or "Call").strip(),
+        subject=payload.subject.strip(),
+        user_name=(payload.user or user.full_name or user.email or "Sales").strip(),
+        notes=(payload.notes or "").strip() or None,
+    )
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return {
+        "id": row.id,
+        "type": row.activity_type,
+        "subject": row.subject,
+        "user": row.user_name,
+        "notes": row.notes,
+        "date": row.created_at.strftime("%m/%d/%y, %I:%M %p") if row.created_at else None,
+    }
 
 
 def _next_quotation_number(db: Session, tenant_id: int) -> str:

@@ -13,6 +13,7 @@ from app.schemas.sales import (
     CustomerRead,
     CustomerUpdate,
     LeadCreate,
+    LeadActivityCreate,
     LeadRead,
     PaymentCreate,
     PaymentRead,
@@ -181,6 +182,29 @@ def update_lead_status_endpoint(
     return lead
 
 
+@router.get("/leads/{lead_id}/activities")
+def list_lead_activities_endpoint(
+    lead_id: int,
+    tenant_id: int = Depends(tenant_scope(MODULE)),
+    db: Session = Depends(get_db),
+):
+    from app.services.sales_service import list_lead_activities
+
+    return list_lead_activities(db, tenant_id, lead_id)
+
+
+@router.post("/leads/{lead_id}/activities", status_code=201)
+def create_lead_activity_endpoint(
+    lead_id: int,
+    payload: LeadActivityCreate,
+    user: User = Depends(require_permission(MODULE)),
+    db: Session = Depends(get_db),
+):
+    from app.services.sales_service import create_lead_activity
+
+    return create_lead_activity(db, user.tenant_id, lead_id, payload, user)
+
+
 @router.post("/quotations", response_model=QuotationRead)
 def create_quotation_endpoint(
     payload: QuotationCreate,
@@ -223,7 +247,13 @@ def create_sales_order_endpoint(
     data = payload.model_dump()
     if not (data.get("sales_person") or "").strip():
         data["sales_person"] = (user.full_name or user.email or "").strip() or None
-    return create_sales_order(db, SalesOrderCreate(**data))
+    so = create_sales_order(db, SalesOrderCreate(**data))
+    if (data.get("status") or "").lower() in {"confirmed", "approved"}:
+        from app.services.workflow_team_service import confirm_sales_order_with_workflow
+
+        confirm_sales_order_with_workflow(db, user.tenant_id, so.id, user)
+        db.refresh(so)
+    return so
 
 
 @router.get("/sales-orders", response_model=list[SalesOrderListRead])
@@ -242,16 +272,28 @@ def list_sales_orders_endpoint(
     ]
 
 
+@router.get("/sales-orders/summary", response_model=SOSummaryRead)
+def so_summary(tenant_id: int = Depends(tenant_scope(MODULE)), db: Session = Depends(get_db)):
+    return get_so_summary(db, tenant_id)
+
+
+@router.get("/sales-orders/enriched", response_model=list[SOListRead])
+def so_enriched(tenant_id: int = Depends(tenant_scope(MODULE)), db: Session = Depends(get_db)):
+    return list_so_enriched(db, tenant_id)
+
+
 @router.patch("/sales-orders/{order_id}/status", response_model=SalesOrderRead)
 def update_sales_order_status_endpoint(
     order_id: int,
     status: str = Query(...),
-    tenant_id: int = Depends(tenant_scope(MODULE)),
+    user: User = Depends(require_permission(MODULE)),
     db: Session = Depends(get_db),
 ):
     from app.services.sales_service import update_sales_order_status
 
-    order = update_sales_order_status(db, tenant_id, order_id, status)
+    order = update_sales_order_status(
+        db, user.tenant_id, order_id, status, user=user
+    )
     if not order:
         raise HTTPException(404, "Sales order not found")
     return order
@@ -904,16 +946,6 @@ def download_quotation_pdf_endpoint(
         media_type="application/pdf",
         headers={"Content-Disposition": f'attachment; filename="Quotation-{doc_no}.pdf"'},
     )
-
-
-@router.get("/sales-orders/summary", response_model=SOSummaryRead)
-def so_summary(tenant_id: int = Depends(tenant_scope(MODULE)), db: Session = Depends(get_db)):
-    return get_so_summary(db, tenant_id)
-
-
-@router.get("/sales-orders/enriched", response_model=list[SOListRead])
-def so_enriched(tenant_id: int = Depends(tenant_scope(MODULE)), db: Session = Depends(get_db)):
-    return list_so_enriched(db, tenant_id)
 
 
 @router.get("/hub", response_model=SalesHubRead)

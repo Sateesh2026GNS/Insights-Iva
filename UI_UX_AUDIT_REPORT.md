@@ -1,18 +1,16 @@
 # Insights Iva — Frontend UI/UX Audit Report
 
-**Date:** 18 August 2026  
-**Scope:** Full React frontend (`frontend/src`)  
+**Date:** 21 August 2026  
+**Scope:** React frontend (`frontend/src`)  
 **Goal:** Premium, consistent, accessible ERP UI using the Insights Iva forest green brand — without breaking architecture, APIs, routes, or business logic.
 
 ---
 
 ## Executive Summary
 
-Insights Iva now has a **centralized design system** with CSS tokens in `frontend/src/index.css`, a JavaScript barrel at `frontend/src/design-system/`, and domain shells for accounts and inventory. The brand primary is **forest green** (`#036f71`) on a light green-gray canvas (`#f2f7f5`), with blue reserved for info/in-progress semantics and amber/red for warning/danger.
+Insights Iva uses a **centralized design system** with CSS tokens in `index.css`, a JavaScript barrel at `design-system/`, and domain shells for accounts, inventory, and settings. Brand primary is **forest green** (`#036f71`) on canvas `#f2f7f5`.
 
-August 2026 passes **hardened shared components first**, then migrated high-traffic modules (accounts, inventory, sales modals, procurement create flows, ERP document forms, manufacturing workflow UI). No routing, API contract, or backend schema changes were made for styling work alone.
-
-**Build status:** `npm run build` passes after the 18 Aug migration batch. Shared `erpFormControls` is code-split into its own Vite chunk.
+August 2026 work hardened shared components, migrated high-traffic modules, integrated **Settings into the main ERP shell**, added **shared date/calendar controls**, and refactored key procurement forms. **Build status:** `npm run build` passes.
 
 ---
 
@@ -22,115 +20,143 @@ August 2026 passes **hardened shared components first**, then migrated high-traf
 
 | Layer | Location | Purpose |
 |-------|----------|---------|
-| **CSS tokens** | `frontend/src/index.css` (`:root`) | Colors, typography, spacing, shadows, `.ui-*` utilities |
-| **JS class tokens** | `frontend/src/design-system/classes.js` | `inputClass`, `selectClass`, `textareaClass`, `tableWrapClass`, typography shortcuts |
-| **Barrel export** | `frontend/src/design-system/index.js` | Single import: tokens + `Button`, `FormField`, `FilterBar`, `StatusBadge`, domain shells |
-| **ERP form primitives** | `frontend/src/design-system/erpFormControls.jsx` | `SoftInput`, `SoftSelect`, `FieldLabel`, `Pill`, `ERP_PRIMARY` / `ERP_PRIMARY_SOFT` |
-| **Status semantics** | `frontend/src/design-system/statusTone.js` | `resolveStatusTone()` maps business statuses → badge tones |
-| **Chart/theme mirrors** | `frontend/src/theme/colors.js`, `frontend/src/styles/theme.js` | Recharts and legacy JS color references |
+| CSS tokens | `frontend/src/index.css` | Colors, typography, `.ui-*` utilities |
+| Class tokens | `design-system/classes.js` | `inputClass`, `selectClass`, `tableWrapClass` |
+| Barrel | `design-system/index.js` | Single import for tokens + components |
+| ERP forms | `design-system/erpFormControls.jsx` | `SoftInput`, `SoftSelect`, `FieldLabel`, `Pill` |
+| Date/time | `design-system/dateControls.jsx` | `DatePicker`, `DateRangePicker`, `FloatingDate`, … |
+| Date helpers | `utils/dateUtils.js` | `todayIso()`, timezone-safe ISO, range presets |
+| Status | `design-system/statusTone.js` | `resolveStatusTone()` |
 
-### Brand palette (current)
+### Brand palette
 
-| Role | Token | Value / use |
-|------|-------|-------------|
-| Primary | `--color-primary` | `#036f71` — buttons, focus rings, nav active, links |
-| Primary soft | `--color-primary-soft` | `#e6f4f4` — section headers, active pills, KPI backgrounds |
-| Canvas | `--color-bg` | `#f2f7f5` — page background |
-| Success | `--color-success` | Green — completed, approved |
-| Info / in-progress | `--color-info` | Blue — workflow in progress |
-| Warning | `--color-warning` | Amber — pending, attention |
-| Danger | `--color-danger` | Red — errors, destructive |
-| Action teal / blue | `--color-action-teal`, `--color-action-blue` | Selective CTAs (purchases, invoices) where product spec requires |
-
-### Utility classes
-
-| Class | Use |
-|-------|-----|
-| `.ui-page`, `.ui-stack`, `.ui-card` | Page layout and vertical rhythm |
-| `.ui-input`, `.ui-select`, `.ui-textarea` | Standard form controls with focus ring |
-| `.ui-input.is-error`, `.is-success`, `:read-only` | Validation and disabled states |
-| `.ui-table-wrap`, `.ui-table-wrap--scroll` | Horizontal scroll + row hover |
-| `.ui-badge-*` | Semantic status badges |
-| `.ui-page-title`, `.ui-section-title`, `.ui-label`, `.ui-hint` | Typography hierarchy |
-| `.ui-btn--{variant}` | Button variants via `Button.jsx` |
+| Role | Token | Use |
+|------|-------|-----|
+| Primary | `--color-primary` `#036f71` | Buttons, focus, nav active, links |
+| Primary soft | `--color-primary-soft` | Section headers, KPI backgrounds |
+| Canvas | `--color-bg` `#f2f7f5` | Page background |
+| Info | `--color-info` | Workflow in-progress (blue, not brand) |
+| Success / Warning / Danger | Semantic greens, amber, red | Status badges, alerts |
 
 ---
 
-## Components & Modules Improved
+## Components Improved
 
-### Shared components
+### Shared
 
-| Component | Change |
-|-----------|--------|
-| `Button.jsx` | Primary/success/warning/danger variants aligned to CSS tokens |
-| `StatusBadge.jsx` | Accepts `tone` or `status` (auto-resolves via `resolveStatusTone`) |
-| `FilterBar.jsx` | **New** — consolidated filter UI; used by Finance, Quality, Maintenance filters |
-| `RowActionMenu.jsx` | Portal + viewport flip; design tokens; ARIA menu roles |
-| `Breadcrumbs.jsx`, `SearchFilter.jsx`, `SkeletonCard.jsx` | Token-aligned styling |
-| `LiveIndicator.jsx` | **New** — pulsing live badge for workflow hub |
-| `Modal.jsx` | `.ui-modal-backdrop` / `.ui-modal` CSS |
+| Component | Notes |
+|-----------|-------|
+| `Button.jsx` | Canonical variants via `.ui-btn--*` |
+| `FormField.jsx` | `Input`, `Select`, `Textarea`; date types get single calendar trigger |
+| `FilterBar.jsx` | Finance, Quality, Maintenance filters |
+| `RowActionMenu.jsx` | Portal + viewport flip |
+| `LiveIndicator.jsx` | Workflow hub live badge |
+| `PermissionGate.jsx` | Available; use via `usePermissions()` |
+
+### Date & calendar (21 Aug 2026)
+
+| Item | Detail |
+|------|--------|
+| Root cause (fixed) | Global CSS had hidden all `::-webkit-calendar-picker-indicator` — broke native pickers app-wide |
+| Shared module | `dateControls.jsx` — native `showPicker()` + one custom calendar button |
+| Duplicate icons (fixed) | Native indicator hidden on `.ui-date-input` (custom button present); spin/clear chrome hidden |
+| Timezone | `todayIso()` replaces `toISOString().slice(0,10)` in migrated forms |
+| Remaining | ~120 files still use raw `type="date"` with native picker (single icon after CSS fix) |
+
+### Settings UI (Aug 2026)
+
+| Change | Detail |
+|--------|--------|
+| Shell | Settings routes stay inside main ERP layout (sidebar + navbar visible) |
+| Dark theme | Navy hero/background only when dark theme (moon icon) active |
+| Components | `SettingsPageShell`, `SettingsHero`, grouped list rows, mobile nav |
+| Search | Reduced hero search bar size; token-aligned colors |
 
 ### Domain shells
 
-| Shell | Location | Covers |
-|-------|----------|--------|
-| **Accounts** | `components/accounts/accountsDesignSystem.jsx` | `AccountsPageShell`, table tokens, `ACCOUNTS_INPUT_CLASS`, row actions |
-| **Inventory** | `components/inventory/inventoryDesignSystem.jsx` | `InventoryPageShell`, tabs, search, pagination, table tokens |
+| Shell | Covers |
+|-------|--------|
+| Accounts | `accountsDesignSystem.jsx` — page shell, tables, inputs |
+| Inventory | `inventoryDesignSystem.jsx` — tabs, pagination, tables |
+| Settings | `settingsUi.jsx`, `settingsCatalog.js` |
 
 ### Manufacturing workflow UI
 
-| Component / page | Notes |
-|------------------|-------|
-| `ManufacturingWorkflowHub.jsx` | Stage pipeline, Live indicator, 30s auto-refresh; simplified hub (no Refresh, 16-card grid, or activity feed) |
-| `SalesJobCardPage.jsx` | 2-column reference layout: summary + form / stepper + timeline |
-| `JobCardSummary.jsx`, `JobCardWorkflowStatus.jsx`, `JobCardTimeline.jsx`, `WorkflowStagePipeline.jsx` | Brand green accents (replaced legacy `#195CCF` blue) |
-| `CreateSalesOrder.jsx` | Same 2-column layout as Job Card; summary three-dot menu |
-| `ReferenceDashboard.jsx`, `ReferenceParts.jsx` | Light KPI cards, semantic colors, `ui-page` layout |
-| `Sidebar.jsx` | Active nav uses `--color-nav-active` |
+- `ManufacturingWorkflowHub`, `SalesJobCardPage`, `CreateSalesOrder` — 2-column reference layout, brand green accents.
+- Admin hub simplified per spec (no Refresh, 16-card grid, or activity feed).
 
-### Accounts module (migrated)
+### Manufacturing UX pass (21 Aug 2026 — IA + workflow)
 
-LedgerV2, ChartOfAccountsV2, ManualJournalEntriesV2, LedgerDetailsV2, JournalEntries, RecordIncome/Expense, ChartOfAccounts, CostAllocation, FixedAssets, BudgetActual, ExpenseV2, ReportViewerV2, RestoreDeletedDocV2, CreateAccountModal, RecordPaymentModal, AdjustBalanceModal, NewJournalEntryV2.
+| Change | Detail |
+|--------|--------|
+| **Information architecture** | New top-level **Manufacturing** sidebar section (Workflow Board, stage-filter deep links); removed duplicate “Manufacturing Workflow” from Sales |
+| **9-step pipeline** | `WorkflowStagePipeline` expanded to Sales → Inventory → Store → Prod. Mgr → Operator → Quality → Packing → Billing → Completed |
+| **Tracker unification** | `JobCardWorkflowStatus` delegates to shared `WorkflowTracker` (blocked/rejected states everywhere) |
+| **Workflow board** | `RoleWorkflowBoard` uses `ManufacturingPageHeader`, full 9-stage process map, priority badges, per-order tracker |
+| **Admin dashboard** | `ManufacturingWorkflowHub` KPI cards from live PostgreSQL counts; live job cards with mini tracker; fixed missing `Link` import |
+| **Store Manager** | Manufacturing nav group + `/manufacturing/*` route access for inventory/store workflow stages |
+| **Administration nav** | Pending Approvals + Integrations linked in sidebar |
 
-### Inventory module (migrated)
+### Store Manager sidebar (21 Aug)
 
-InventoryV2, FinishedGoods, RawMaterials, StockAdjustment, StockTransfer, Warehouses, WarehouseDetailModal, InventoryLineItems, and related filters — via `inventoryDesignSystem`.
+- Dedicated nav in `storeManagerNavConfig.js`.
+- **Purchases:** Stock In, Requisitions, Purchase, Payments Made, Debit Note, PO, GRN, Supplier Payments.
+- **Removed from sidebar:** Subscription, Contact Us (My Account), Logout (available from global header/user menu).
 
-### Sales & procurement (migrated)
+### Procurement form polish
 
-**Modals/forms:** AddCashAccountModal, AddNewPartyModal, AddPaymentModeModal, AddInvoiceDiscountModal, AddBasicDetailsModal, AddTransporterDetailsModal, AddOtherChargesModal, EditCompanyDetailsModal, DispatchAddressPicker, SalesOrderFormModal, PaymentReceiptForm, MakePaymentForm, CreateBill, RefundVouchers, AddNoteModal, AddTermsAndConditionsModal, AddNewItemModal, AddPrefixModal.
-
-**ERP document forms (10 files):** QuotationForm, TaxInvoiceForm, ProformaInvoiceForm, CreditNoteForm, DebitNoteForm, ExportInvoiceForm, DeliveryChallanForm, PurchaseForm, PurchaseDebitNoteForm, CreatePurchaseOrder — now import `SoftInput` / `SoftSelect` / `FieldLabel` / `Pill` from `erpFormControls.jsx`.
-
-**Procurement/inventory create:** CreateWarehouse, CreateSupplier, CreateMaterialRequest, CreateGoodsReceipt, CreateSupplierPayment, CreateVendor, CreateCompany, CreateMachine, SettingsDeliveryLocation, CompanyAddressFields.
-
-**Other pages:** AlertsDashboard, DocumentsDashboard, CreateLeadModal, DepartmentDetailModal, VendorDetailModal, AuditLogsPanel, and 40+ list pages received consistent filter/toolbar/table token updates.
+- `CreateSupplierPayment.jsx` — design-system form, empty state for no vendors, `DatePicker`, role-appropriate layout.
 
 ---
 
-## Functional Issues Fixed
+## Modules Migrated (summary)
+
+| Module | Status |
+|--------|--------|
+| Accounts (Ledger, COA, journals, reports) | Migrated to accounts shell + design tokens |
+| Inventory (V2, FG, RM, transfer, adjustment) | Migrated to inventory shell |
+| ERP document forms (10) | `erpFormControls.jsx` |
+| Sales/procurement modals | `classes.js` input tokens |
+| Reports filters | Shared `FloatingDate` / `DateRangePicker` |
+| HR dashboards | Mockup UI; indigo KPI cards (not yet on shared `KpiCard`) |
+
+---
+
+## Functional UX Fixes
 
 | Issue | Fix |
 |-------|-----|
-| Three-dot menus clipped in scrollable tables | `RowActionMenu` portal + viewport positioning |
-| Inconsistent badge appearance (duplicate CSS) | Single `.ui-badge` definition in `index.css` |
-| Accounts purple palette diverged from brand | Mapped to `--color-primary` forest green |
-| Manufacturing hub used legacy blue `#195CCF` | Replaced with CSS brand variables |
-| Page-local duplicate input class strings (100+ per form) | Centralized in `design-system/classes.js` and `erpFormControls.jsx` |
-| `AddNewItemModal` / `WarehouseDetailModal` regressions during bulk edit | Restored constants; fixed broken `TABS` array |
+| Two calendar icons on date fields | Hide native indicator when custom `.ui-date-input` button present |
+| Settings felt disconnected | Moved into ERP shell; dark navy only in dark mode |
+| Store Manager missing purchase pages | Full Purchases group in store nav |
+| Record supplier payment poor UX | Redesigned form + empty vendor state |
+| Row menus clipped in tables | Portal positioning |
+| Duplicate badge CSS | Single `.ui-badge` in `index.css` |
+| Manufacturing hub legacy blue | Replaced with brand CSS variables |
 
-**No routing, API, or backend business-logic changes for UI-only migration.**
+**No routing, API contract, or database schema changes for UI-only work.**
 
 ---
 
 ## Responsive & Accessibility
 
-- Row action menus flip above trigger when near bottom of viewport
-- Accounts and inventory tables retain horizontal scroll via `ui-table-wrap`
-- Form labels via `FormField` and `FieldLabel`; focus rings on `.ui-input:focus`
-- `RowActionMenu`: `aria-expanded`, `aria-haspopup`, `role="menu"` / `menuitem`, Escape to close
-- `RouteFallback`: `role="status"` + brand-colored spinner
-- `LiveIndicator`: visual-only; does not replace accessible status text on workflow pages
+- Tables: horizontal scroll via `ui-table-wrap`
+- Forms: labels via `FormField` / `FieldLabel`; focus rings on inputs
+- Menus: `aria-expanded`, Escape to close, keyboard-friendly row actions
+- Date pickers: calendar button has `aria-label`; Escape blurs input
+- Route fallback: `role="status"` spinner
+
+---
+
+## RBAC & Navigation UX (21 Aug)
+
+| Check | Behavior |
+|-------|------------|
+| Sidebar | Module-tagged items filtered by role; Store Manager uses custom nav |
+| Parent sections | Hidden when no visible children |
+| Unauthorized URL | `AccessDenied` page (not blank, not 404) |
+| Refresh | JWT role → `/auth/me` restores correct menu |
+| Role login redirect | `roleRedirect.js` per role |
 
 ---
 
@@ -138,51 +164,40 @@ InventoryV2, FinishedGoods, RawMaterials, StockAdjustment, StockTransfer, Wareho
 
 | Check | Result |
 |-------|--------|
-| **Frontend build** | Pass (`npm run build`) — includes `erpFormControls` chunk |
-| **Backend workflow tests** | Pass (`pytest tests/test_workflow_state_machine.py`) |
-| **Vitest** | Pass when run (`npm test -- --run`) |
-| **Playwright** | Not configured — recommended for login → workflow → job card smoke |
-| **Visual regression** | No baseline in repo |
+| `npm run build` | Pass |
+| `npm test -- --run` | Pass (when run) |
+| `pytest test_workflow_state_machine` | Pass |
+| Playwright E2E | Not configured — recommended |
+| Visual regression | No baseline in repo |
 
-### Recommended next test steps
+### Recommended next steps
 
-1. Playwright smoke: login → dashboard hub → create SO → job card → team board action
-2. Visual check: one accounts page + one ERP document form + Sales Job Card at mobile width
-3. Accessibility audit on `SalesJobCardPage` stepper and timeline
+1. Playwright: login per role → sidebar snapshot → one forbidden URL.
+2. Migrate high-traffic raw date inputs to `DatePicker`.
+3. HR dashboards → shared `KpiCard` + tokens.
+4. Remove residual purple link colors in sales/procurement lists.
 
 ---
 
-## Remaining Issues (genuine)
+## Remaining Issues
 
 | Priority | Issue |
 |----------|-------|
-| Medium | Residual `#6b4eff` purple in list pages (PaymentReceipts, CreditNotes, PurchaseOrders, etc.) — table link styling |
-| Medium | `PaymentReceiptForm`, `MakePaymentForm`, `SignatureAndStampPanel`, `TermsAndConditionsPicker` — local `PURPLE` constant for toggles/links |
-| Medium | HR dashboards still use inline indigo/violet KPI cards instead of shared `KpiCard` + tokens |
-| Medium | `AnalyticsKpiCard`, `TemplateSettingsV2` template swatches — separate from design system |
-| Low | Some pages import from `design-system/classes` directly instead of barrel `design-system` |
-| Low | 50+ modals duplicate footer button rows instead of shared `ModalFooter` |
-| Low | Full-bleed sales/accounts routes bypass `.ui-page` — padding varies slightly |
-| Low | `xlsx` export chunk size / npm audit advisories (dependency, not UI) |
-
----
-
-## Implementation Strategy Used
-
-1. Define CSS tokens and `.ui-*` utilities in `index.css` (forest green rebrand)
-2. Add `design-system/` barrel with class tokens, status tone resolver, ERP form controls
-3. Migrate domain shells (accounts, inventory) then high-traffic modals and list pages
-4. Extract duplicated ERP form helpers into `erpFormControls.jsx` (10 document forms)
-5. Align manufacturing workflow UI to reference layouts and brand tokens
-6. Run `npm run build` after each batch; fix regressions file-by-file
+| Medium | Residual `#6b4eff` in PaymentReceipts, CreditNotes, list page links |
+| Medium | HR KPI cards use inline indigo instead of `KpiCard` |
+| Medium | ~120 files still on raw `type="date"` (functional; not fully standardized) |
+| Medium | `SettingsContext.dateFormat` not wired to pickers/display |
+| Low | 50+ modals duplicate footer button rows |
+| Low | Some routes bypass `.ui-page` padding |
+| Low | npm audit advisories on export libs (dependency, not UI) |
 
 ---
 
 ## Related Documentation
 
-- [README.md](./README.md) — design system overview, manufacturing workflow, setup  
+- [README.md](./README.md) — setup, RBAC, design system overview  
 - [SECURITY_REPORT.md](./SECURITY_REPORT.md) — auth/session (separate from visual UX)  
-- [PROJECT_ANALYSIS_REPORT.md](./PROJECT_ANALYSIS_REPORT.md) — architecture, live-data, workflow engine  
+- [PROJECT_ANALYSIS_REPORT.md](./PROJECT_ANALYSIS_REPORT.md) — architecture, RBAC flow  
 
 ---
 
@@ -190,5 +205,6 @@ InventoryV2, FinishedGoods, RawMaterials, StockAdjustment, StockTransfer, Wareho
 
 | Date | Note |
 |------|------|
-| 2026-08-16 | Initial audit: shared components (badges, row menu, modal CSS, accountsDesignSystem baseline) |
-| 2026-08-18 | Forest green rebrand; `design-system/` module; accounts/inventory/sales/procurement migration; ERP form controls; manufacturing workflow UI alignment; build verified |
+| 2026-08-16 | Initial audit: badges, row menu, modal CSS, accounts shell |
+| 2026-08-18 | Forest green rebrand; design-system module; ERP forms; manufacturing UI |
+| 2026-08-21 | Manufacturing IA pass: nav section, 9-step pipeline, tracker unification, workflow board UX, admin hub KPIs |

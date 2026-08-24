@@ -37,7 +37,10 @@ class Settings(BaseSettings):
     )
 
     # Auth / JWT
-    jwt_secret_key: str = _DEFAULT_JWT_SECRET
+    jwt_secret_key: str = Field(
+        default=_DEFAULT_JWT_SECRET,
+        validation_alias=AliasChoices("JWT_SECRET_KEY", "JWT_SECRET", "SECRET_KEY"),
+    )
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
     refresh_token_expire_days: int = 7
@@ -152,6 +155,26 @@ class Settings(BaseSettings):
         if self.is_sqlite:
             raise ValueError(
                 "SQLite cannot be used as the runtime database when ENVIRONMENT=production"
+            )
+        origins = self.cors_origin_list
+        if not origins:
+            raise ValueError(
+                "CORS_ORIGINS must list at least one trusted frontend origin in production"
+            )
+        for origin in origins:
+            lowered = origin.lower()
+            if lowered == "*" or "localhost" in lowered or "127.0.0.1" in lowered:
+                raise ValueError(
+                    "CORS_ORIGINS must not include localhost, 127.0.0.1, or * in production"
+                )
+        hosts = self.allowed_host_list
+        if not hosts or all(h in ("localhost", "127.0.0.1") for h in hosts):
+            raise ValueError(
+                "ALLOWED_HOSTS must include your production domain(s) when ENVIRONMENT=production"
+            )
+        if self.google_calendar_configured and not self.google_oauth_redirect_uri.strip():
+            raise ValueError(
+                "GOOGLE_OAUTH_REDIRECT_URI must be set in production when Google Calendar is configured"
             )
         return self
 

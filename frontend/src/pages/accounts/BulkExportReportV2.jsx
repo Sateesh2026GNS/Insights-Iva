@@ -1,59 +1,15 @@
 import { useMemo, useRef, useState } from "react";
-import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 
 import { useToast } from "../../context/ToastContext";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
 import { BULK_EXPORT_DOCUMENTS } from "../../data/reportViews";
+import { FloatingDate, defaultDateRange } from "../../design-system/dateControls";
 
 const PAGE_BG = "var(--color-bg)";
 const ACCENT = "#0f6d84";
 const BTN_DARK = "#2f323a";
 const PAGE_SIZES = [10, 20, 50, 100];
-
-function pad2(n) {
-  return String(n).padStart(2, "0");
-}
-
-function formatDisplayDate(iso) {
-  if (!iso) return "";
-  const [y, m, d] = iso.split("-");
-  if (!y || !m || !d) return iso;
-  return `${d}-${m}-${y}`;
-}
-
-function toIsoDate(d) {
-  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
-}
-
-function defaultDateRange() {
-  const to = new Date();
-  const from = new Date();
-  from.setMonth(from.getMonth() - 1);
-  return { from: toIsoDate(from), to: toIsoDate(to) };
-}
-
-function FloatingDate({ label, value, onChange }) {
-  return (
-    <label className="relative block min-w-[150px]">
-      <span className="absolute -top-2 left-3 z-[1] bg-white px-1 text-[11px] font-medium text-[#6b6b76]">
-        {label}
-      </span>
-      <div className="relative flex items-center rounded-lg border border-[#cfcfd6] bg-white px-3 py-2.5">
-        <span className="min-w-0 flex-1 text-[13px] text-[#1a1a1f]">
-          {formatDisplayDate(value) || "Select date"}
-        </span>
-        <CalendarDays className="ml-1 h-4 w-4 shrink-0 text-[#9a9aa5]" />
-        <input
-          type="date"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className="absolute inset-0 cursor-pointer opacity-0"
-          aria-label={label}
-        />
-      </div>
-    </label>
-  );
-}
 
 function DocumentSelect({ value, onChange }) {
   const [open, setOpen] = useState(false);

@@ -6,7 +6,6 @@ import {
   ArrowLeftRight,
   ArrowUpFromLine,
   BookOpen,
-  CalendarDays,
   ClipboardList,
   Coins,
   Lightbulb,
@@ -24,6 +23,7 @@ import KpiCard from "../../components/common/KpiCard";
 import Loader from "../../components/common/Loader";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
 import PageHeader from "../../components/common/PageHeader";
+import InventoryHeaderControls from "../../components/inventory/InventoryHeaderControls";
 import StatusBadge from "../../components/common/StatusBadge";
 import StoreManagerNav from "../../components/inventory/StoreManagerNav";
 import useAuth from "../../hooks/useAuth";
@@ -44,6 +44,7 @@ import {
   notifyManufacturingSpine,
 } from "../../utils/manufacturingEvents";
 import { asArray, apiErrorMessage } from "../../utils/apiError";
+import { stageJobCardUrl } from "../../utils/workflowStageRoutes";
 
 const STATUS_COLORS = {
   in: "#22c55e",
@@ -106,6 +107,20 @@ function movementTypeMeta(type) {
   if (["purchase", "return", "production"].includes(t)) return TYPE_META.in;
   if (["sales", "sale", "issue", "scrap"].includes(t)) return TYPE_META.out;
   return { label: t ? t.replace(/\b\w/g, (c) => c.toUpperCase()) : "—", tone: "neutral" };
+}
+
+function formatDisplayDate(value) {
+  if (!value) return "—";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return String(value).slice(0, 10);
+  return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }).replace(/ /g, "-");
+}
+
+function priorityTone(priority) {
+  const p = String(priority || "medium").toLowerCase();
+  if (p === "high") return "danger";
+  if (p === "low") return "neutral";
+  return "warning";
 }
 
 function itemStockStatus(item) {
@@ -415,6 +430,9 @@ export default function InventoryDashboard() {
     { label: "Inventory Settings", to: "/inventory/settings", icon: Settings, tone: "text-[#6b7280]" },
   ];
 
+  const pendingInventoryChecks = Number(dash.pending_inventory_checks || 0);
+  const pendingInventoryOrders = asArray(dash.pending_inventory_orders);
+
   if (loading) {
     return (
       <div className="space-y-5 pb-4">
@@ -431,34 +449,13 @@ export default function InventoryDashboard() {
       <PageHeader
         subtitle="Overview of inventory and stock activities"
         action={
-          <div className="flex flex-wrap items-center gap-2">
-            <label className="relative inline-flex items-center">
-              <CalendarDays className="pointer-events-none absolute left-3 h-4 w-4 text-[var(--color-text-muted)]" aria-hidden />
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value || todayISO())}
-                className="ui-input !w-auto min-w-[10.5rem] !pl-9"
-                aria-label="Dashboard date"
-              />
-            </label>
-            <select
-              value={warehouseId}
-              onChange={(e) => setWarehouseId(e.target.value)}
-              className="ui-select !w-auto min-w-[11rem]"
-              aria-label="Warehouse filter"
-            >
-              {warehouses.length ? (
-                warehouses.map((w) => (
-                  <option key={w.id} value={w.id}>
-                    {w.name}
-                  </option>
-                ))
-              ) : (
-                <option value="">Main Warehouse</option>
-              )}
-            </select>
-          </div>
+          <InventoryHeaderControls
+            dateValue={selectedDate}
+            onDateChange={(v) => setSelectedDate(v || todayISO())}
+            warehouseValue={warehouseId}
+            onWarehouseChange={setWarehouseId}
+            warehouses={warehouses}
+          />
         }
       />
 
@@ -481,10 +478,81 @@ export default function InventoryDashboard() {
         <ClickableKpiCard to="/inventory/issue" title="View stock out transactions" tone="danger">
           <KpiCard label="Today's Stock Out" value={formatInrAmount(view.stockOutValue)} icon={ArrowUpFromLine} tone="danger" meta={`${Number(view.stockOutTxns || 0)} Transactions`} />
         </ClickableKpiCard>
+        <ClickableKpiCard
+          to="/manufacturing/workflow?status=MATERIAL_CHECK_PENDING"
+          title="Sales orders awaiting inventory check"
+          tone="warning"
+        >
+          <KpiCard
+            label="Pending Inventory Checks"
+            value={pendingInventoryChecks}
+            icon={ClipboardList}
+            tone="warning"
+            meta="Confirmed sales orders"
+          />
+        </ClickableKpiCard>
         <ClickableKpiCard to="/inventory/transfers" title="View pending transfers" tone="info">
           <KpiCard label="Pending Transfers" value={Number(view.pendingTransfers || 0)} icon={Truck} tone="info" meta="Awaiting approval" />
         </ClickableKpiCard>
       </div>
+
+      {pendingInventoryOrders.length > 0 ? (
+        <SectionCard
+          title="Sales Orders Awaiting Inventory Check"
+          viewAllTo="/manufacturing/workflow?status=MATERIAL_CHECK_PENDING"
+        >
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-left text-[13px]">
+              <thead className="bg-[var(--color-surface-muted)]/50 text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
+                <tr>
+                  <SerialNumberHeader />
+                  <th className="px-4 py-2.5">Sales Order No.</th>
+                  <th className="px-3 py-2.5">Customer</th>
+                  <th className="px-3 py-2.5">Product</th>
+                  <th className="px-3 py-2.5 text-right">Order Qty</th>
+                  <th className="px-3 py-2.5">Required Delivery</th>
+                  <th className="px-3 py-2.5">Priority</th>
+                  <th className="px-3 py-2.5">Sales Person</th>
+                  <th className="px-3 py-2.5">Order Date</th>
+                  <th className="px-3 py-2.5">Status</th>
+                  <th className="px-4 py-2.5">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pendingInventoryOrders.map((row, idx) => (
+                  <tr key={row.sales_order_id} className="border-t border-[var(--color-border-soft)]">
+                    <SerialNumberCell rowIndex={idx} />
+                    <td className="px-4 py-2.5 font-medium tabular-nums text-[var(--color-text)]">{row.order_number}</td>
+                    <td className="px-3 py-2.5 text-[var(--color-text-secondary)]">{row.customer_name || "—"}</td>
+                    <td className="max-w-[140px] truncate px-3 py-2.5 text-[var(--color-text-secondary)]">{row.product_name || "—"}</td>
+                    <td className="px-3 py-2.5 text-right tabular-nums text-[var(--color-text)]">
+                      {row.quantity != null ? Number(row.quantity).toLocaleString("en-IN") : "—"}
+                    </td>
+                    <td className="px-3 py-2.5 text-[var(--color-text-secondary)]">{formatDisplayDate(row.delivery_date)}</td>
+                    <td className="px-3 py-2.5">
+                      <StatusBadge tone={priorityTone(row.priority)}>{String(row.priority || "medium").toUpperCase()}</StatusBadge>
+                    </td>
+                    <td className="px-3 py-2.5 text-[var(--color-text-secondary)]">{row.sales_person || "—"}</td>
+                    <td className="px-3 py-2.5 text-[var(--color-text-secondary)]">{formatDisplayDate(row.order_date)}</td>
+                    <td className="px-3 py-2.5">
+                      <StatusBadge tone="warning">{row.status || "Awaiting Inventory Check"}</StatusBadge>
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        to={stageJobCardUrl(row.sales_order_id, row.workflow_status || "MATERIAL_CHECK_PENDING")}
+                      >
+                        Check Inventory
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </SectionCard>
+      ) : null}
 
       <div className="grid gap-4 xl:grid-cols-12">
         <section className="ui-card min-w-0 overflow-hidden p-4 sm:p-5 xl:col-span-4">

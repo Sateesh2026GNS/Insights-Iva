@@ -3,22 +3,33 @@ import { createPortal } from "react-dom";
 import { MoreVertical } from "lucide-react";
 import { AuthContext } from "../../context/AuthContext.jsx";
 
-const MENU_WIDTH = 176;
+const DEFAULT_MENU_WIDTH = 176;
 const ITEM_HEIGHT = 36;
 
-export default function RowActionMenu({ rowId, openMenu, setOpenMenu, items = [] }) {
+export default function RowActionMenu({
+  rowId,
+  openMenu,
+  setOpenMenu,
+  items = [],
+  allowOperator = false,
+  menuWidth = DEFAULT_MENU_WIDTH,
+  ariaLabel = "Open actions",
+}) {
   const auth = useContext(AuthContext);
   const role = (auth?.user?.role ?? auth?.user?.role_name ?? "").toLowerCase();
   const isOperator = role === "operator";
 
-  if (isOperator) return null;
-
   const [localOpen, setLocalOpen] = useState(false);
   const [menuPos, setMenuPos] = useState({ top: 0, left: 0 });
+  const [focusIndex, setFocusIndex] = useState(-1);
   const btnRef = useRef(null);
+  const itemRefs = useRef([]);
 
   const isControlled = openMenu !== undefined && setOpenMenu !== undefined;
   const isOpen = isControlled ? openMenu === rowId : localOpen;
+
+  const menuEntries = (items || []).filter(Boolean);
+  const actionableItems = menuEntries.filter((item) => !item.divider);
 
   const setIsOpen = (val) => {
     if (isControlled) {
@@ -26,47 +37,77 @@ export default function RowActionMenu({ rowId, openMenu, setOpenMenu, items = []
     } else {
       setLocalOpen(val);
     }
+    if (!val) setFocusIndex(-1);
   };
-
-  const visibleItems = (items || []).filter(Boolean);
-  if (visibleItems.length === 0) return null;
 
   const openMenuAtButton = () => {
     const rect = btnRef.current?.getBoundingClientRect();
     if (rect) {
-      const menuHeight = visibleItems.length * ITEM_HEIGHT + 8;
+      const menuHeight = menuEntries.length * ITEM_HEIGHT + 8;
       let top = rect.bottom + 4;
-      let left = Math.max(8, rect.right - MENU_WIDTH);
+      let left = Math.max(8, rect.right - menuWidth);
       if (top + menuHeight > window.innerHeight - 8) {
         top = Math.max(8, rect.top - menuHeight - 4);
       }
-      if (left + MENU_WIDTH > window.innerWidth - 8) {
-        left = Math.max(8, window.innerWidth - MENU_WIDTH - 8);
+      if (left + menuWidth > window.innerWidth - 8) {
+        left = Math.max(8, window.innerWidth - menuWidth - 8);
       }
       setMenuPos({ top, left });
     }
     setIsOpen(true);
+    setFocusIndex(0);
   };
 
   useEffect(() => {
     if (!isOpen) return undefined;
     const onKey = (e) => {
-      if (e.key === "Escape") setIsOpen(false);
+      if (e.key === "Escape") {
+        setIsOpen(false);
+        btnRef.current?.focus();
+        return;
+      }
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setFocusIndex((prev) => {
+          const next = prev < actionableItems.length - 1 ? prev + 1 : 0;
+          itemRefs.current[next]?.focus();
+          return next;
+        });
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setFocusIndex((prev) => {
+          const next = prev > 0 ? prev - 1 : actionableItems.length - 1;
+          itemRefs.current[next]?.focus();
+          return next;
+        });
+      }
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [isOpen]);
+  }, [isOpen, actionableItems.length]);
+
+  useEffect(() => {
+    if (isOpen && focusIndex >= 0) {
+      itemRefs.current[focusIndex]?.focus();
+    }
+  }, [isOpen, focusIndex]);
+
+  if (isOperator && !allowOperator) return null;
+  if (actionableItems.length === 0) return null;
 
   const stopRowClick = (event) => {
     event.stopPropagation();
   };
+
+  let actionIndex = -1;
 
   return (
     <>
       <button
         ref={btnRef}
         type="button"
-        aria-label="Open actions"
+        aria-label={ariaLabel}
         aria-expanded={isOpen}
         aria-haspopup="menu"
         onMouseDown={stopRowClick}
@@ -96,32 +137,51 @@ export default function RowActionMenu({ rowId, openMenu, setOpenMenu, items = []
               />
               <div
                 className="fixed z-[130] overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] py-1 shadow-lg"
-                style={{ top: menuPos.top, left: menuPos.left, width: MENU_WIDTH }}
+                style={{ top: menuPos.top, left: menuPos.left, width: menuWidth }}
                 role="menu"
+                aria-label={ariaLabel}
               >
-                {visibleItems.map((item, index) => {
+                {menuEntries.map((item, index) => {
+                  if (item.divider) {
+                    return (
+                      <div
+                        key={`divider-${index}`}
+                        className="my-1 border-t border-[var(--color-border-muted)]"
+                        role="separator"
+                      />
+                    );
+                  }
+
+                  actionIndex += 1;
+                  const currentActionIndex = actionIndex;
                   const label = String(item.label || "");
                   const labelLower = label.toLowerCase();
                   const isDanger =
                     item.danger ||
                     labelLower.includes("delete") ||
                     labelLower.includes("remove") ||
-                    labelLower.includes("reject");
+                    labelLower.includes("reject") ||
+                    labelLower.includes("sign out");
 
                   return (
                     <button
                       key={`${label}-${index}`}
+                      ref={(el) => {
+                        itemRefs.current[currentActionIndex] = el;
+                      }}
                       type="button"
                       role="menuitem"
+                      tabIndex={focusIndex === currentActionIndex ? 0 : -1}
                       onMouseDown={stopRowClick}
                       onTouchStart={stopRowClick}
                       onPointerDown={stopRowClick}
                       onClick={(event) => {
                         stopRowClick(event);
                         setIsOpen(false);
+                        btnRef.current?.focus();
                         item.onClick?.();
                       }}
-                      className={`flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold transition-colors ${
+                      className={`flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-primary)] ${
                         isDanger
                           ? "text-[var(--color-danger)] hover:bg-[var(--color-danger-soft)]"
                           : "text-[var(--color-text)] hover:bg-[var(--color-surface-muted)]"

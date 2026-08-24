@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from app.core.rbac_constants import REGISTERABLE_ROLES
 from app.utils.password import validate_password_strength
-from app.utils.sanitize import sanitize_email_local_part, sanitize_text
+from app.utils.sanitize import sanitize_email_local_part, sanitize_password, sanitize_text
 
 TOKEN_REGEX = re.compile(r"^[A-Za-z0-9_-]{16,512}$")
 
@@ -41,6 +41,14 @@ class LoginRequest(BaseModel):
     @classmethod
     def validate_email(cls, value: str) -> str:
         return _normalize_email(value)
+
+    @field_validator("password")
+    @classmethod
+    def validate_password_input(cls, value: str) -> str:
+        cleaned = sanitize_password(value)
+        if not cleaned:
+            raise ValueError("Password is required")
+        return cleaned
 
     @field_validator("role")
     @classmethod

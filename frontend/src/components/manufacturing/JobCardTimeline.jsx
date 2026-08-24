@@ -8,7 +8,7 @@ export default function JobCardTimeline({ events = [] }) {
           <ClipboardList className="h-4 w-4" strokeWidth={2} />
         </span>
         <h3 className="text-[13px] font-bold uppercase tracking-[0.06em] text-[var(--color-primary)]">
-          Timeline
+          Workflow Timeline
         </h3>
       </header>
 

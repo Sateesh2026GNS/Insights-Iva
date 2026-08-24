@@ -19,7 +19,16 @@ from app.utils.security_tokens import generate_token, hash_token
 logger = logging.getLogger("smrt.security")
 settings = get_settings()
 
-INVALID_CREDENTIALS = "Invalid Credentials"
+GENERIC_LOGIN_ERROR = "Incorrect email or password."
+ACCOUNT_LOCKED_MESSAGE = "Too many failed attempts. Please try again later."
+LOGIN_RATE_LIMIT_MESSAGE = "Too many login attempts. Please try again later."
+INVALID_CREDENTIALS = GENERIC_LOGIN_ERROR
+
+# Internal failure categories for login_attempts / audit (never returned to clients).
+FAILURE_INVALID_CREDENTIALS = "INVALID_CREDENTIALS"
+FAILURE_ACCOUNT_LOCKED = "ACCOUNT_LOCKED"
+FAILURE_RATE_LIMITED = "RATE_LIMITED"
+FAILURE_ROLE_MISMATCH = "ROLE_MISMATCH"
 
 
 def _utcnow() -> datetime:
@@ -73,7 +82,9 @@ def register_failed_login(db: Session, user: User | None, email: str) -> None:
     if not user:
         return
     try:
+        now = _utcnow()
         user.failed_login_attempts = int(user.failed_login_attempts or 0) + 1
+        user.last_failed_login_at = now
         if user.failed_login_attempts >= settings.max_login_attempts:
             user.locked_until = _utcnow() + timedelta(minutes=settings.lockout_minutes)
             logger.warning("Account locked for user_id=%s until %s", user.id, user.locked_until)
@@ -109,6 +120,7 @@ def register_failed_login(db: Session, user: User | None, email: str) -> None:
 def clear_login_failures(db: Session, user: User) -> None:
     user.failed_login_attempts = 0
     user.locked_until = None
+    user.last_failed_login_at = None
     user.last_activity_at = _utcnow()
     db.commit()
 

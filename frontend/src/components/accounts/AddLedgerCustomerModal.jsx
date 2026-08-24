@@ -9,6 +9,7 @@ import { INDIAN_STATES, INDIAN_STATE_CODES } from "../../data/indiaLocations";
 import { useToast } from "../../context/ToastContext";
 import useTenantId from "../../hooks/useTenantId";
 import { apiErrorMessage } from "../../utils/apiError";
+import { todayIso } from "../../utils/dateUtils";
 
 const GST_TREATMENTS = [
   "Consumer",
@@ -52,14 +53,6 @@ const EMPTY = {
   opening_balance_date: "",
   also_vendor: false,
 };
-
-function todayIso() {
-  const d = new Date();
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
-}
 
 function parseExtra(line2 = "") {
   const text = String(line2 || "");

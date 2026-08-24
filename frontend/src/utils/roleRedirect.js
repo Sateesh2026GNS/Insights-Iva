@@ -8,5 +8,23 @@ export function getDashboardPathForRole(role) {
   if (name.includes("super admin") || name === "gns super admin") {
     return "/gns-admin";
   }
+  if (name.includes("store manager")) {
+    return "/inventory/dashboard";
+  }
+  if (name.includes("hr manager")) {
+    return "/hr";
+  }
+  if (name.includes("sales manager")) {
+    return "/sales/dashboard";
+  }
+  if (name.includes("accountant")) {
+    return "/accounts";
+  }
+  if (name.includes("operator")) {
+    return "/production/operator-jobs";
+  }
+  if (name.includes("production manager")) {
+    return "/production/planning";
+  }
   return "/";
 }

@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 
 import Button, { IconButton } from "../../components/common/Button";
+import { operatorJobCardUrl } from "../../utils/jobCardRoutes";
 import DataTable from "../../components/common/DataTable";
 import EmptyState from "../../components/common/EmptyState";
 import KpiCard from "../../components/common/KpiCard";
@@ -48,7 +49,7 @@ import {
   startWorkOrder,
   stopWorkOrder,
   getMachines,
-  updateProductionOrderMachine,
+  updateWorkOrder,
 } from "../../api/productionApi";
 import {
   DEPARTMENTS,
@@ -177,7 +178,7 @@ function WoRowActions({
         <Eye className="h-3.5 w-3.5" />
       </IconButton>
       {serverId ? (
-        <IconButton to={`/production/job-card?id=${row.id}`} aria-label="Job Card" title="Job Card">
+        <IconButton to={operatorJobCardUrl(row)} aria-label="Job Card" title="Job Card">
           <ClipboardList className="h-3.5 w-3.5" />
         </IconButton>
       ) : null}
@@ -335,36 +336,10 @@ export default function WorkOrders() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      let localWOs = [];
-      try {
-        const stored = localStorage.getItem("smrt_local_work_orders");
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          localWOs = parsed.map((r, i) => enrichApiWorkOrder(r, i));
-        }
-      } catch (e) {}
-
       const poId = poFilter ? Number(poFilter) : undefined;
-      let wRes;
-      try {
-        wRes = await getWorkOrders(poId);
-      } catch (e) {
-        addToast(e?.response?.data?.detail || "Could not load work orders", "error");
-        wRes = { data: [] };
-      }
-      const apiRows = wRes.data || [];
-      const apiEnriched = apiRows.map((r, i) => enrichApiWorkOrder(r, i));
-
-      const combined = [...localWOs, ...apiEnriched];
-      const seen = new Set();
-      const enriched = combined.filter((w) => {
-        const key = w.id ? `id-${w.id}` : w.work_order_number ? `num-${w.work_order_number}` : null;
-        if (!key) return true;
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      });
-
+      const wRes = await getWorkOrders(poId);
+      const apiRows = wRes?.data || [];
+      const enriched = apiRows.map((r, i) => enrichApiWorkOrder(r, i));
       enriched.sort((a, b) => {
         const idA = typeof a.id === "number" ? a.id : Number(String(a.id).replace(/\D/g, "")) || 0;
         const idB = typeof b.id === "number" ? b.id : Number(String(b.id).replace(/\D/g, "")) || 0;
@@ -374,9 +349,9 @@ export default function WorkOrders() {
         return dateB.localeCompare(dateA);
       });
       setWorkOrders(enriched);
-    } catch {
+    } catch (e) {
       setWorkOrders([]);
-      addToast("Could not load work orders", "error");
+      addToast(e?.response?.data?.detail || "Could not load work orders", "error");
     } finally {
       setLoading(false);
     }
@@ -404,28 +379,23 @@ export default function WorkOrders() {
       })
     );
 
-    try {
-      const storedWOs = localStorage.getItem("smrt_local_work_orders") || localStorage.getItem("smrt_work_orders");
-      if (storedWOs) {
-        const localWOs = JSON.parse(storedWOs);
-        const updatedWOs = localWOs.map((wo) =>
-          wo.id === workOrderId || wo.work_order_number === workOrderId
-            ? { ...wo, machine_id: numId, machine_name: mName }
-            : wo
-        );
-        localStorage.setItem("smrt_local_work_orders", JSON.stringify(updatedWOs));
-        localStorage.setItem("smrt_work_orders", JSON.stringify(updatedWOs));
-      }
-    } catch {}
-
-    addToast(numId ? `Machine (${mName}) assigned to work order` : "Machine unassigned", "success");
-
-    if (typeof workOrderId === "number" && numId) {
+    const numericWoId = typeof workOrderId === "number" ? workOrderId : Number(workOrderId);
+    if (Number.isFinite(numericWoId) && numericWoId > 0) {
       try {
-        await updateProductionOrderMachine(workOrderId, numId).catch(() => null);
-        notifyManufacturingSpine(MANUFACTURING_EVENTS.WORK_ORDER_UPDATED, { workOrderId, machineId: numId });
-      } catch {}
+        await updateWorkOrder(numericWoId, null, { machine_id: numId });
+        notifyManufacturingSpine(MANUFACTURING_EVENTS.WORK_ORDER_UPDATED, {
+          workOrderId: numericWoId,
+          machineId: numId,
+        });
+        addToast(numId ? `Machine (${mName}) assigned to work order` : "Machine unassigned", "success");
+      } catch (e) {
+        addToast(e?.response?.data?.detail || "Could not save machine assignment", "error");
+        load();
+      }
+      return;
     }
+
+    addToast(numId ? `Machine (${mName}) assigned locally` : "Machine unassigned", "success");
   };
 
   useEffect(() => { load(); }, [load]);

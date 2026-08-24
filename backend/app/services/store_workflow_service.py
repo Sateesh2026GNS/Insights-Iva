@@ -19,6 +19,7 @@ from app.models.inventory import (
 from app.models.procurement import MaterialRequest, MaterialRequestLine
 from app.schemas.inventory import StockMovementCreate
 from app.schemas.store_workflow import (
+    PendingInventoryCheckOrder,
     PurchaseRequisitionCreated,
     PurchaseRequisitionFromLowStock,
     StoreConsumeCreate,
@@ -609,6 +610,10 @@ def get_store_dashboard(db: Session, tenant_id: int) -> StoreDashboardRead:
         if total_cap > 0:
             util = round(100.0 * sum(used) / total_cap, 1)
 
+    from app.services.workflow_team_service import list_pending_inventory_checks
+
+    pending_count, pending_orders = list_pending_inventory_checks(db, tenant_id, limit=8)
+
     return StoreDashboardRead(
         total_products=total_products,
         current_inventory_qty=current_qty,
@@ -619,6 +624,10 @@ def get_store_dashboard(db: Session, tenant_id: int) -> StoreDashboardRead:
         pending_material_requests=pending_req,
         pending_purchase_requisitions=pending_pr,
         warehouse_utilization_pct=util,
+        pending_inventory_checks=pending_count,
+        pending_inventory_orders=[
+            PendingInventoryCheckOrder(**row) for row in pending_orders
+        ],
     )
 
 

@@ -69,3 +69,19 @@ export const createPrFromLowStock = (payload) =>
   api.post("/inventory/store/purchase-requisitions/from-low-stock", payload);
 export const getStoreInventoryHistory = (params = {}) =>
   api.get("/inventory/store/history", { params });
+
+export const getStockReturns = (params = {}) => api.get("/inventory/stock-returns", { params });
+export const getStockReturn = (id) => api.get(`/inventory/stock-returns/${id}`);
+export const getStockReturnAvailableQty = (itemId, params = {}) =>
+  api.get(`/inventory/stock-returns/available-qty/${itemId}`, { params });
+export const createStockReturn = (payload) => api.post("/inventory/stock-returns", payload);
+export const updateStockReturn = (id, payload) => api.put(`/inventory/stock-returns/${id}`, payload);
+export const updateStockReturnStatus = (id, payload) =>
+  api.patch(`/inventory/stock-returns/${id}/status`, payload);
+
+export const getStockIns = (params = {}) => api.get("/inventory/stock-ins", { params });
+export const getStockIn = (id) => api.get(`/inventory/stock-ins/${id}`);
+export const createStockIn = (payload) => api.post("/inventory/stock-ins", payload);
+export const updateStockIn = (id, payload) => api.put(`/inventory/stock-ins/${id}`, payload);
+export const updateStockInStatus = (id, payload) =>
+  api.patch(`/inventory/stock-ins/${id}/status`, payload);

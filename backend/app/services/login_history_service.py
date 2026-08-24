@@ -25,6 +25,14 @@ def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def _ensure_utc(dt: datetime | None) -> datetime | None:
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt
+
+
 def _format_row(row: LoginHistory) -> dict:
     login_at = row.login_at
     if login_at and login_at.tzinfo is None:
@@ -211,7 +219,8 @@ def mark_logout(
         now = _utcnow()
         if all_sessions:
             for r in matched_rows:
-                if r.login_at and now < r.login_at:
+                login_at = _ensure_utc(r.login_at)
+                if login_at and now < login_at:
                     raise ValueError("logout_at timestamp cannot be earlier than login_at timestamp.")
                 r.logout_at = now
             db.commit()
@@ -219,7 +228,8 @@ def mark_logout(
             return matched_rows[0]
 
         target = matched_rows[0]
-        if target.login_at and now < target.login_at:
+        login_at = _ensure_utc(target.login_at)
+        if login_at and now < login_at:
             raise ValueError("logout_at timestamp cannot be earlier than login_at timestamp.")
         target.logout_at = now
         db.commit()

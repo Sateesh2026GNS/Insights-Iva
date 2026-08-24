@@ -100,3 +100,29 @@ describe("getEffectivePermissions / userCanAccess", () => {
     expect(userCanAccess({ role: "Procurement Manager" }, "inventory")).toBe(true);
   });
 });
+
+describe("Store Manager settings access", () => {
+  const storeManager = {
+    role: "Store Manager",
+    permissions: ["dashboard", "inventory", "procurement", "masters", "alerts", "documents"],
+  };
+
+  it("denies /settings when settings module is missing from live permissions", () => {
+    expect(userCanAccessPath(storeManager, "/settings")).toBe(false);
+  });
+
+  it("allows /settings when settings module is granted", () => {
+    const withSettings = {
+      ...storeManager,
+      permissions: [...storeManager.permissions, "settings"],
+    };
+    expect(userCanAccessPath(withSettings, "/settings")).toBe(true);
+    expect(userCanAccessPath(withSettings, "/settings/my-account")).toBe(true);
+    expect(userCanAccessPath(withSettings, "/settings/users")).toBe(false);
+    expect(userCanAccessPath(withSettings, "/settings/company")).toBe(false);
+  });
+
+  it("falls back to static role map including settings when API permissions are empty", () => {
+    expect(userCanAccessPath({ role: "Store Manager", permissions: [] }, "/settings")).toBe(true);
+  });
+});

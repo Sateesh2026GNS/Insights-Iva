@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   AlertTriangle,
   ArrowDownToLine,
-  CalendarDays,
   Filter,
   Package,
   PackageX,
@@ -21,6 +21,7 @@ import SkeletonCard from "../../components/common/SkeletonCard";
 import StatusBadge from "../../components/common/StatusBadge";
 import ConfirmDialog from "../../components/admin/ConfirmDialog";
 import InventoryRowActionsMenu from "../../components/inventory/InventoryRowActionsMenu";
+import InventoryHeaderControls from "../../components/inventory/InventoryHeaderControls";
 import MaterialDetailModal from "../../components/inventory/MaterialDetailModal";
 import { useToast } from "../../context/ToastContext";
 import useTenantId from "../../hooks/useTenantId";
@@ -111,6 +112,7 @@ function ClickableKpiCard({ onClick, title, tone, children }) {
 
 export default function RawMaterials() {
   const tenantId = useTenantId();
+  const navigate = useNavigate();
   const { addToast } = useToast();
   const [initialLoading, setInitialLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -278,6 +280,11 @@ export default function RawMaterials() {
 
   const handleEdit = (row) => {
     if (!requireLiveRow(row, "Edit")) return;
+    navigate(`/inventory/items/${row.id}?type=raw_material`);
+  };
+
+  const handleAdd = () => {
+    navigate("/inventory/items/create?type=raw_material");
   };
 
   const handleDeleteRequest = (row) => {
@@ -430,40 +437,20 @@ export default function RawMaterials() {
       <PageHeader
         subtitle="Manage and track your raw materials inventory"
         action={
-          <div className="flex flex-wrap items-center gap-2">
+          <InventoryHeaderControls
+            dateValue={selectedDate}
+            onDateChange={(v) => setSelectedDate(v || todayISO())}
+            warehouseValue={headerWarehouse}
+            onWarehouseChange={setHeaderWarehouse}
+            warehouses={warehousesApi}
+          >
             {refreshing ? (
-              <span className="inline-flex items-center gap-1.5 text-[12px] text-[var(--color-text-muted)]">
+              <span className="inline-flex items-center gap-1.5 pb-1 text-[12px] text-[var(--color-text-muted)]">
                 <RefreshCw className="h-3.5 w-3.5 animate-spin" aria-hidden />
                 Refreshing…
               </span>
             ) : null}
-            <label className="relative inline-flex items-center">
-              <CalendarDays className="pointer-events-none absolute left-3 h-4 w-4 text-[var(--color-text-muted)]" aria-hidden />
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value || todayISO())}
-                className="ui-input !w-auto min-w-[10.5rem] !pl-9"
-                aria-label="Date"
-              />
-            </label>
-            <select
-              value={headerWarehouse}
-              onChange={(e) => setHeaderWarehouse(e.target.value)}
-              className="ui-select !w-auto min-w-[11rem]"
-              aria-label="Warehouse"
-            >
-              {warehousesApi.length ? (
-                warehousesApi.map((w) => (
-                  <option key={w.id} value={w.id}>
-                    {w.name}
-                  </option>
-                ))
-              ) : (
-                <option value="">Main Warehouse</option>
-              )}
-            </select>
-          </div>
+          </InventoryHeaderControls>
         }
       />
 
@@ -554,7 +541,7 @@ export default function RawMaterials() {
                 </select>
               </>
             ) : null}
-            <Button type="button" variant="primary" onClick={() => window.location.href = "/inventory/items/create?type=raw_material"}>
+            <Button type="button" variant="primary" onClick={handleAdd}>
               <Plus className="h-4 w-4" /> Add Raw Material
             </Button>
           </div>

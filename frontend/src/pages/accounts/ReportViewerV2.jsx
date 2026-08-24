@@ -1,11 +1,12 @@
 import { useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Plus, Search, X } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronLeft, ChevronRight, Plus, Search, X } from "lucide-react";
 
 import { useToast } from "../../context/ToastContext";
 import { getReportView } from "../../data/reportViews";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
+import { FloatingDate, defaultDateRange, formatDisplayDate } from "../../design-system/dateControls";
 import BulkExportReportV2 from "./BulkExportReportV2";
 
 const PAGE_BG = "var(--color-bg)";
@@ -18,51 +19,6 @@ const ALIGN_CLASS = {
   center: "text-center",
   right: "text-right",
 };
-
-function pad2(n) {
-  return String(n).padStart(2, "0");
-}
-
-function formatDisplayDate(iso) {
-  if (!iso) return "";
-  const [y, m, d] = iso.split("-");
-  if (!y || !m || !d) return iso;
-  return `${d}-${m}-${y}`;
-}
-
-function toIsoDate(d) {
-  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
-}
-
-function defaultDateRange() {
-  const to = new Date();
-  const from = new Date();
-  from.setMonth(from.getMonth() - 1);
-  return { from: toIsoDate(from), to: toIsoDate(to) };
-}
-
-function FloatingDate({ label, value, onChange }) {
-  return (
-    <label className="relative block min-w-[150px]">
-      <span className="absolute -top-2 left-3 z-[1] bg-white px-1 text-[11px] font-medium text-[#6b6b76]">
-        {label}
-      </span>
-      <div className="relative flex items-center rounded-lg border border-[#cfcfd6] bg-white px-3 py-2.5">
-        <span className="min-w-0 flex-1 text-[13px] text-[#1a1a1f]">
-          {formatDisplayDate(value) || "Select date"}
-        </span>
-        <CalendarDays className="ml-1 h-4 w-4 shrink-0 text-[#9a9aa5]" />
-        <input
-          type="date"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className="absolute inset-0 cursor-pointer opacity-0"
-          aria-label={label}
-        />
-      </div>
-    </label>
-  );
-}
 
 function WhatsAppIcon({ className = "h-4 w-4" }) {
   return (

@@ -1,180 +1,202 @@
-# Insights Iva ERP – Project Analysis Report
+# Insights Iva ERP — Project Analysis Report
 
-**Last updated:** 18 August 2026
+**Last updated:** 21 August 2026
 
 ## 1. Executive Summary
 
-Insights Iva is a multi-tenant manufacturing ERP with a React + Vite frontend and a FastAPI + SQLAlchemy backend (SQLite in typical local/dev use; PostgreSQL supported via Alembic for workflow and production deployments). The architecture is modular across production, inventory, procurement/purchases, sales, finance/accounts, HR, quality, maintenance, analytics, alerts, documents, settings, and administration.
+Insights Iva is a multi-tenant manufacturing ERP with a React + Vite frontend and a FastAPI + SQLAlchemy backend. SQLite is typical for local development; PostgreSQL is supported via Alembic for workflow tables and production deployments. The product spans production, inventory, procurement, sales, finance, HR, quality, maintenance, analytics, alerts, documents, meetings, settings, and administration.
 
-The codebase is largely structured correctly. Core dashboard and inventory paths use live backend APIs. Recent work (Aug 2026) focused on:
+The codebase is modular and largely production-oriented: live APIs drive inventory, manufacturing workflow, and most operational modules. August 2026 work prioritized:
 
-1. **Manufacturing workflow engine (18 Aug)** — Role-based Sales → Job Card → Inventory → Production → Quality → Packing → Billing pipeline with PostgreSQL persistence, state machine, team actions, and Sales Job Card UI aligned to reference layouts.
-2. **Design system & UI/UX (Aug 2026)** — Forest green Insights Iva brand (`#036f71`), centralized tokens in `index.css`, shared `design-system/` barrel (`classes.js`, `erpFormControls.jsx`, `statusTone.js`), accounts/inventory domain shells, ERP document form control migration, and FilterBar consolidation — **UI only; no business logic, API, route, or schema changes** beyond workflow feature work.
-3. **HR module dashboards** — Mockup-aligned pages for HR Hub, Attendance, Leave, Payroll, Performance, Recruitment, Training, and HR Settings, with expanded sidebar navigation and RBAC menu parity.
-4. **Accounts stability** — Chart of Accounts duplicate-row deduplication and resilient list fetching during dev hot-reload.
+1. **End-to-end RBAC (21 Aug)** — Seven registerable roles (Admin, Sales Manager, Production Manager, Store Manager, HR Manager, Accountant, Operator) with a single permission source in `backend/app/core/rbac_constants.py` and frontend mirror in `frontend/src/config/permissions.js`. Login and `/auth/me` return **active-role-only** permissions; JWT role is preserved on refresh. HR module (`hr`) added to catalog; 19 HR routes registered; Store Manager gets dedicated sidebar with full Purchases menu.
+2. **Manufacturing workflow engine (18 Aug)** — Sales → Job Card → Inventory → Production → Quality → Packing → Billing with PostgreSQL persistence, state machine, and team actions.
+3. **Design system & UI/UX (Aug 2026)** — Forest green brand (`#036f71`), `frontend/src/design-system/` barrel, accounts/inventory shells, ERP form controls, Settings shell inside main ERP layout.
+4. **Shared date/calendar controls (21 Aug)** — `dateUtils.js`, `dateControls.jsx` (`DatePicker`, `DateRangePicker`, etc.), duplicate calendar icon fix, timezone-safe ISO helpers.
+5. **HR dashboards** — Mockup-aligned pages with API merge fallbacks in `hrMasterData.js` when live data is empty.
 
-HR dashboard pages use a **merge/fallback pattern**: live `hrApi` data when present; curated demo payloads in `hrMasterData.js` when APIs return empty — layouts remain reviewable without DB seeding. **Manufacturing workflow uses live data only** — no mock job cards or fabricated timeline entries.
+For setup and features, see [README.md](./README.md). For security, see [SECURITY_REPORT.md](./SECURITY_REPORT.md). For UI migration status, see [UI_UX_AUDIT_REPORT.md](./UI_UX_AUDIT_REPORT.md).
 
-For setup and module overview, see [README.md](./README.md). For auth and hardening, see [SECURITY_REPORT.md](./SECURITY_REPORT.md). For frontend design system details, see [UI_UX_AUDIT_REPORT.md](./UI_UX_AUDIT_REPORT.md).
+---
 
-## 2. Project Structure Review
+## 2. Project Structure
 
-### Frontend
-- React application with route-based lazy loading (`lazyPages.jsx` + `React.lazy`)
-- Pages grouped by domain: dashboard, production, inventory, procurement, purchases, sales, accounts, finance, HR, quality, maintenance, analytics, alerts, admin, documents, settings, manufacturing workflow
-- **Design system:** `frontend/src/design-system/` — barrel export (`index.js`), CSS class tokens (`classes.js`), ERP form primitives (`erpFormControls.jsx`), status tone resolver (`statusTone.js`); CSS tokens in `frontend/src/index.css` (`:root` + `.ui-*`)
-- **Domain shells:** `accountsDesignSystem.jsx`, `inventoryDesignSystem.jsx` — page shells, table tokens, shared inputs
-- Shared UI: layout (Navbar, Sidebar), `GlobalSearch`, `FilterBar`, `Button`, `FormField`, `DataTable`, `StatusBadge`, `KpiCard`, `LiveIndicator`
-- Manufacturing UI: `SalesJobCardPage`, `ManufacturingWorkflowHub`, `RoleWorkflowBoard`, workflow components under `components/manufacturing/`
-- HR shared data/helpers: `frontend/src/data/hrMasterData.js`
-- Theme mirrors: `frontend/src/theme/colors.js`, `frontend/src/styles/theme.js`
+### Frontend (`frontend/src`)
 
-### Backend
-- FastAPI app with router registration in `app/main.py`
-- Domain modules under `app/api`, `app/routers`, `app/services`, `app/models`, `app/schemas`, `app/repositories`
-- SQLite-backed persistence (`backend/smrt.db` by default) with SQLAlchemy models; Alembic migrations for workflow tables
-- **Manufacturing workflow:** `manufacturing_workflow_api.py`, `workflow_state_service.py`, `workflow_team_service.py`, `job_card_service.py`, `workflow_constants.py`
-- HR extended services: `hr_extended_service.py`
-- Accounts GL dedupe: `backend/app/api/accounts.py` (`_dedupe_gl_accounts`)
+| Area | Purpose |
+|------|---------|
+| `routes/` | `AppRoutes.jsx`, lazy-loaded `lazyPages.jsx` |
+| `config/` | `permissions.js`, `sidebarNav.js`, `storeManagerNavConfig.js`, `rbacNavFilters.js`, `manufacturingWorkflow.js` |
+| `design-system/` | Tokens, `classes.js`, `erpFormControls.jsx`, `dateControls.jsx`, domain shells |
+| `context/` | `AuthContext` (JWT + user + refresh), `SettingsContext`, `ToastContext` |
+| `hooks/` | `useAuth`, `usePermissions` (`hasRole`, `hasPermission`, `can`, `canAction`) |
+| `components/layout/` | `Sidebar`, `ProtectedRoute`, `Navbar` |
+| `pages/` | Domain pages by module (production, inventory, sales, hr, accounts, …) |
+| `api/` | Axios clients per domain (`authApi`, `hrApi`, `procurementApi`, …) |
 
-## 3. Key Findings
+### Backend (`backend/app`)
 
-### Frontend
-- Inventory pages previously injected synthetic demo content on empty API responses; those fallbacks were removed so empty states reflect live data.
-- **HR dashboards intentionally retain demo merge** — only when live APIs are empty.
-- **Manufacturing workflow is live-data only** — job cards, material checks, transitions, and timeline come from PostgreSQL via `/manufacturing/workflow/*`.
-- Central color system migrated to **forest green primary** (`--color-primary: #036f71`) with semantic success/info/warning/danger; legacy purple `#6b4eff` largely removed from ERP document forms; residual purple in some list-page links and payment-form toggles documented in UI_UX_AUDIT_REPORT.
-- ERP document forms (Quotation, Tax Invoice, Credit/Debit Note, Proforma, Export Invoice, Delivery Challan, Purchase Form, Purchase Debit Note, Create PO) now share `SoftInput` / `SoftSelect` / `FieldLabel` / `Pill` from `design-system/erpFormControls.jsx`.
-- Navbar `GlobalSearch` and Store Dashboard product search layout fixes (nested input wrappers, clear, Escape/outside dismiss).
-- Job Card exists in two contexts: shop-floor document view (`/production/job-card` over work orders) and **Sales Order Job Card** (`/manufacturing/job-card/:orderId`) tied to the manufacturing workflow engine.
-- Chart of Accounts: duplicate React keys from duplicate DB rows — fixed at API dedupe + frontend `dedupeGlRows()` + retry on connection reset.
+| Area | Purpose |
+|------|---------|
+| `api/` | FastAPI routers (auth, rbac, hr, manufacturing_workflow, accounts, …) |
+| `core/` | `rbac_constants.py`, `permissions.py`, `seed_roles.py`, `workflow_constants.py` |
+| `services/` | Business logic (`auth_service`, `workflow_*`, `rbac_service`, …) |
+| `models/` | SQLAlchemy models (tenant-scoped) |
+| `alembic/versions/` | Workflow and meetings migrations |
 
-### Backend
-- Dashboard API wiring through ERP dashboard router and dashboard service.
-- **Manufacturing workflow state machine** enforces valid transitions; team membership derived from RBAC roles (`ROLE_TO_TEAMS` in `workflow_constants.py`).
-- HR APIs: employees, shifts, attendance, leave, payroll, performance — enriched list endpoints for dashboard consumption.
-- **No dedicated recruitment/training/settings APIs yet** — those dashboard pages are frontend-first with demo data.
-- Auth, RBAC, and tenant isolation remain the security backbone (see SECURITY_REPORT).
+---
 
-## 4. Modules Reviewed
+## 3. RBAC Architecture (21 Aug 2026)
+
+### Single source of truth
+
+| Layer | Location |
+|-------|----------|
+| Permission matrix | `backend/app/core/rbac_constants.py` → `PERMISSION_MATRIX`, `MODULE_CATALOG`, `SIDEBAR_MENU_CATALOG` |
+| Runtime enforcement | `backend/app/core/permissions.py` → `get_user_permissions`, `require_permission`, `require_action` |
+| Role seeding | `backend/app/core/seed_roles.py` |
+| Frontend mirror | `frontend/src/config/permissions.js` → `ROLE_PERMISSIONS`, `ROUTE_MODULES`, `userCanAccessPath` |
+| Nav narrowing | `frontend/src/config/rbacNavFilters.js` (Production Manager, Operator, HR Manager path/section filters) |
+| Store Manager UI | `frontend/src/config/storeManagerNavConfig.js` (dedicated sidebar; no Subscription / My Account / Logout) |
+
+### Registerable roles
+
+| Role | Primary modules | Notes |
+|------|-----------------|-------|
+| **Admin** | All modules | Full workflow visibility |
+| **Sales Manager** | sales, masters, analytics, meetings | Sales dashboard redirect; expanded Sales sidebar |
+| **Production Manager** | production, quality, inventory (narrow UI), … | Sidebar allowlist in `rbacNavFilters.js` |
+| **Store Manager** | inventory, procurement, accounts (ledger/expense) | Custom sidebar; all Purchases pages; path whitelist |
+| **HR Manager** | hr, documents, analytics, settings | HR-only sidebar sections; `/hr/*` routes |
+| **Accountant** | accounts, sales (billing docs), analytics | Accounts dashboard redirect |
+| **Operator** | production, factoryMonitor, documents, alerts | Execution paths only; no admin/management menus |
+
+### Auth → UI data flow
+
+```
+Login (role selected) → JWT carries role / role_id
+  → AuthContext stores user + permissions in localStorage
+  → GET /auth/me reads JWT role → permissions for that role only
+  → usePermissions() → sidebar filterStaticNav / Store Manager nav
+  → ProtectedRoute → userCanAccessPath()
+  → API → require_permission / tenant_scope
+```
+
+### Manufacturing workflow teams
+
+ERP roles map to workflow teams in `workflow_constants.py` / `manufacturingWorkflow.js` (sales, inventory, production, operator, quality, packing, billing). Server-side `workflow_team_service` enforces stage actions; frontend team board is presentational.
+
+---
+
+## 4. Key Modules
 
 ### Dashboard
-- Route `/` → `ReferenceDashboard` with `ManufacturingWorkflowHub` (stage pipeline, Live indicator, 30s silent auto-refresh).
-- Store managers redirect to inventory dashboard.
-- Live ERP dashboard API; empty-state UI instead of fabricated KPI values.
 
-### Manufacturing Workflow (18 Aug 2026)
+- Admin: `ReferenceDashboard` + `ManufacturingWorkflowHub` (live API, 30s refresh).
+- Role redirects via `roleRedirect.js` (Store → inventory dashboard, HR → `/hr`, Sales → `/sales/dashboard`, etc.).
 
-| Route | Page | Data source |
-|-------|------|-------------|
-| `/` | Admin workflow hub | `GET /manufacturing/workflow/hub` |
-| `/manufacturing/workflow` | Team workflow board | `GET /manufacturing/workflow/queue` + team actions |
-| `/sales/orders/:id/job-card` | Sales Job Card | `GET/POST/PATCH .../job-card` |
-| `/manufacturing/job-card/:orderId` | Sales Job Card (alias) | Same as above |
-| `/sales/orders/create` | Create Sales Order | 2-column layout aligned with Job Card reference |
+### Manufacturing workflow
 
-**Stages:** Sales Orders → Inventory Check → Production → Quality Check → Packing & Dispatch → Billing → Completed.
+| Route | Purpose |
+|-------|---------|
+| `/` | Admin workflow hub |
+| `/manufacturing/workflow` | Team board |
+| `/sales/orders/:id/job-card` | Sales Job Card |
+| `/sales/orders/create` | Create sales order |
 
-**Persistence:** `sales_job_cards`, `sales_order_material_checks`, `manufacturing_workflow_transitions`, `sales_orders.workflow_status`.
+Persistence: `sales_job_cards`, material checks, `manufacturing_workflow_transitions`, `sales_orders.workflow_status`.
 
-### Inventory / Store Dashboard
-- Live list/detail without demo-row injection (except intentional empty-state preview rows documented in README).
-- `InventoryV2` and related pages migrated to `inventoryDesignSystem.jsx`.
-- Eight-screen inventory UX documented in README.
+### Inventory & Store Manager
 
-### Production
-- Planning, MRP, work orders, schedule, machine allocation, daily reports, shop-floor Job Card.
+- Live inventory APIs; Store Manager uses `storeManagerNavConfig.js` (Dashboard, Purchases, Inventory, Ledger, Expense, Masters, Reports, Settings).
+- Purchases group includes: Stock In, Purchase Requisitions, Purchase, Payments Made, Debit Note, Purchase Order, GRN, Supplier Payments.
+
+### HR
+
+| Route | Page | Data |
+|-------|------|------|
+| `/hr` | HR Dashboard | `hrApi` + merge |
+| `/hr/employees`, `/hr/attendance`, `/hr/leave`, `/hr/payroll`, … | Domain pages | Live API + demo merge |
+| `/hr/settings` | HR Settings | Client-side only (no persist API) |
+
+All `/hr/*` routes registered in `AppRoutes.jsx` (Aug 2026). Backend requires `hr` module permission.
 
 ### Accounts
-- LedgerV2, ChartOfAccountsV2, ManualJournalEntriesV2, NewJournalEntryV2, and related modals migrated to `accountsDesignSystem` + `design-system/classes`.
-- Chart of Accounts dedupe at list/seed endpoints.
 
-### Sales & Procurement UI
-- Sales modals (Add Party, Add Item, Add Note, Terms, Discount, etc.) migrated to `inputClass` / `textareaClass`.
-- Payment forms (Payment Receipt, Make Payment) partially migrated; some purple accent constants remain (cosmetic).
-- Procurement create pages (Warehouse, Supplier, Material Request, GRN, Vendor Payment, Vendor, Company, Machine) migrated.
+- LedgerV2, ChartOfAccountsV2, journal entries — `accountsDesignSystem`; GL dedupe at API + UI.
 
-### HR (Aug 2026 pass)
+### Procurement
 
-| Route | Page | Data source |
-|-------|------|-------------|
-| `/hr` | HR Dashboard | `getEmployeeSummary`, attendance/leave APIs + `mergeHrHub()` |
-| `/hr/attendance` | Attendance | `getAttendanceEnriched`, `mergeAttendanceDashboard()` |
-| `/hr/leave` | Leave Management | `getLeaveEnriched`, `mergeLeaveDashboard()` |
-| `/hr/payroll` | Payroll | `getPayrollEnriched`, `mergePayrollDashboard()` |
-| `/hr/performance` | Performance | `getPerformanceReviews`, `mergePerformanceDashboard()` |
-| `/hr/recruitment` | Recruitment | Demo dashboard (no backend module yet) |
-| `/hr/training` | Training | Demo dashboard (no backend module yet) |
-| `/hr/settings` | HR Settings | Client-side form only (no persist API) |
+- `CreateSupplierPayment.jsx` refactored to design-system forms + `DatePicker` (Aug 2026).
 
-### Masters / Purchases / Quality / Maintenance / Analytics / Admin
-- Structured around existing API and service layers.
-- FilterBar shared across Finance, Quality, Maintenance filter components.
+---
 
-## 5. Fixes & Improvements Applied (Recent)
+## 5. Recent Fixes & Improvements
 
-| Area | Change |
-|------|--------|
-| Manufacturing workflow | State machine, team services, job card API, Sales Job Card page, admin hub, team board, Alembic migrations, `test_workflow_state_machine.py` |
-| Design system | Forest green brand tokens; `design-system/` barrel; `erpFormControls.jsx`; accounts/inventory shells; `.ui-input` / `.ui-table-wrap` / badge semantics |
-| ERP document forms | 10 forms share `SoftInput`, `SoftSelect`, `FieldLabel`, `Pill`; purple hex replaced with `ERP_PRIMARY` CSS vars |
-| Sales/procurement modals | Migrated to `design-system/classes` input/textarea tokens |
-| Admin workflow hub | Removed Refresh button, 16-card count grid, Recent Workflow Activity per product spec |
-| Create Sales Order | 2-column layout; Job Card Summary three-dot menu (View/Edit/Add/Delete) |
-| Live data (inventory) | Removed synthetic demo inventory rows / detail demo-item bypasses |
-| Job Card (production) | Read list/detail over work orders |
-| Search | Store Dashboard + navbar `GlobalSearch` layout/UX fixes |
-| Chart of Accounts | API + UI dedupe; transient retry on GL list fetch |
-| HR dashboards | Full mockup UI for 8 HR pages; `hrMasterData.js` merge helpers |
-| HR navigation | Expanded sidebar + RBAC children; route `/hr/settings` |
-| Docs | README, this report, SECURITY_REPORT, UI_UX_AUDIT_REPORT cross-linked and refreshed |
+| Date | Area | Change |
+|------|------|--------|
+| 21 Aug | RBAC | Active-role permissions; JWT role on `/auth/me`; `hr` module; HR routes; sidebar/route guards; `PermissionGate` pattern via `usePermissions` |
+| 21 Aug | Store Manager | Full Purchases sidebar; removed Subscription, Contact Us, Logout from store nav |
+| 21 Aug | Calendar | `dateUtils.js`, `dateControls.jsx`; hide duplicate native picker on `.ui-date-input`; supplier payment form migrated |
+| 21 Aug | Settings | Full-bleed navy shell in dark theme only; hero/search sizing; inside main ERP shell |
+| 18 Aug | Workflow | State machine, job card API, Sales Job Card UI, Alembic migrations |
+| 18 Aug | Design system | Forest green tokens, `erpFormControls`, accounts/inventory shells |
+| 15 Aug | HR | Dashboard pages, expanded nav, Chart of Accounts dedupe |
+
+---
 
 ## 6. Verification
 
 ### Frontend
+
 ```bash
-cd frontend && npm test -- --run
 cd frontend && npm run build
+cd frontend && npm test -- --run
 ```
-Manufacturing workflow pages and `erpFormControls` chunk included in production build.
 
 ### Backend
+
 ```bash
-cd backend && pip install -r requirements.txt && pytest
-cd backend && pytest tests/test_workflow_state_machine.py
+cd backend && pytest tests/test_rbac.py tests/test_permission_fallback.py tests/test_workflow_state_machine.py
+cd backend && pytest
 ```
 
-### Manual UI checks (recommended)
-- Manufacturing: confirm SO → Open Job Card → create/save → team board actions per role
-- Dashboard: Live indicator on workflow hub; stage pipeline auto-refresh
-- Accounts: `/accounts/chart-of-accounts`, `/accounts/ledger`, new journal entry form styling
-- Sales: one ERP document form (e.g. Quotation) — inputs use forest green focus ring
-- HR: `/hr`, `/hr/attendance`, `/hr/settings`
-- Dashboard global search; Store Dashboard product search
+### Manual checks (recommended)
+
+- Log in as each of the 7 roles: sidebar, dashboard redirect, direct URL to forbidden page → Access Denied.
+- Refresh browser: role and menu unchanged.
+- Store Manager: Purchases submenu complete; no Subscription/Logout in sidebar.
+- HR Manager: `/hr` and sub-routes open; no generic Masters section.
+- Date fields: single calendar icon on `DatePicker` / `FormField` date inputs.
+
+---
 
 ## 7. Recommendations
 
-- Keep the current architecture; avoid duplicate routes, services, or tables for the same business concept.
-- **Manufacturing workflow:** Run `alembic upgrade head` on all environments; use `backfill_workflow_status.py` for legacy orders; extend E2E tests for full order spine when Playwright is added.
-- **Design system:** Finish migrating residual `#6b4eff` list-page links and payment-form toggles; prefer `import { … } from "../design-system"` over page-local hex.
-- **HR:** Add backend models/APIs for recruitment, training, and persisted HR settings when product scope confirms.
-- Continue using live backend data as source of truth outside intentional HR demo merge.
-- Run full pytest + frontend build in CI before releases.
-- Extend `log_audit()` to workflow transitions and HR write operations per SECURITY_REPORT.
-- Clean duplicate GL rows in SQLite for affected tenants (dedupe is defensive at API layer).
+- Run full `pytest` + `npm run build` in CI before releases.
+- Extend E2E tests (Playwright) for role login → sidebar → workflow action.
+- Persist HR Settings and wire security toggles to backend policy.
+- Finish migrating raw `type="date"` inputs to shared `DatePicker` (~120 files remain; native pickers work via CSS fix).
+- Replace residual `#6b4eff` purple in list pages with design tokens.
+- Apply `alembic upgrade head` on all environments using PostgreSQL workflow tables.
+- Extend `log_audit()` to workflow transitions and HR writes.
+
+---
 
 ## 8. Related Documents
 
 | Document | Purpose |
 |----------|---------|
-| [README.md](./README.md) | Product overview, setup, features, API map, manufacturing workflow, design system |
-| [SECURITY_REPORT.md](./SECURITY_REPORT.md) | Auth hardening, RBAC, tenant isolation, workflow API security notes |
-| [UI_UX_AUDIT_REPORT.md](./UI_UX_AUDIT_REPORT.md) | Design system adoption, component migration status, remaining UI drift |
+| [README.md](./README.md) | Product overview, setup, API map, RBAC summary |
+| [SECURITY_REPORT.md](./SECURITY_REPORT.md) | Auth, RBAC enforcement, tenant isolation |
+| [UI_UX_AUDIT_REPORT.md](./UI_UX_AUDIT_REPORT.md) | Design system, calendar UX, migration status |
+
+---
 
 ## 9. Change Log
 
 | Date | Note |
 |------|------|
-| 2026-08-13 | Initial report: live-data inventory fixes, design tokens, Job Card, search UX |
-| 2026-08-15 | HR module dashboard pass, Chart of Accounts dedupe, expanded HR nav, `/hr/settings` |
-| 2026-08-18 | Manufacturing workflow engine, Sales Job Card UI, design system centralization (`design-system/`, ERP form controls), accounts/inventory/sales UI migration pass |
+| 2026-08-13 | Initial report: live-data inventory, design tokens, search UX |
+| 2026-08-15 | HR dashboards, Chart of Accounts dedupe, HR nav |
+| 2026-08-18 | Manufacturing workflow, design system, ERP form controls |
+| 2026-08-21 | End-to-end RBAC, HR routes, Store Manager nav, shared date controls, Settings shell |

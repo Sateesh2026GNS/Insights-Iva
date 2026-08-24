@@ -4,7 +4,7 @@ import Button from "../../components/common/Button";
 import Loader from "../../components/common/Loader";
 import { useToast } from "../../context/ToastContext";
 import useAuth from "../../hooks/useAuth";
-import { getUsers } from "../../api/adminApi";
+import { getTeamDirectory } from "../../api/adminApi";
 import { getMachines } from "../../api/productionApi";
 import { confirmSalesOrder } from "../../api/salesApi";
 import {
@@ -115,7 +115,7 @@ export default function WorkflowOrderActions({ orderId, onSuccess }) {
   useEffect(() => {
     if (!teams.includes("production") && !teams.includes("admin")) return;
     Promise.all([
-      getUsers().then((r) => {
+      getTeamDirectory().then((r) => {
         const rows = r?.data ?? r ?? [];
         return rows.filter((u) =>
           (u.roles || []).some((role) => {

@@ -16,6 +16,7 @@ import useAuth from "../../hooks/useAuth";
 import { printWorkOrder } from "../../utils/printUtils";
 
 import Button, { IconButton } from "../common/Button";
+import { operatorJobCardUrl } from "../../utils/jobCardRoutes";
 
 const TABS = [
   { id: "overview", label: "Overview" },
@@ -345,7 +346,7 @@ export default function WorkOrderDetailModal({
             </Button>
           ) : null}
           {typeof w.id === "number" || (typeof w.id === "string" && /^\d+$/.test(w.id)) ? (
-            <Button variant="secondary" to={`/production/job-card?id=${w.id}`} className="!px-3 !py-1.5 text-xs">
+            <Button variant="secondary" to={operatorJobCardUrl(w)} className="!px-3 !py-1.5 text-xs">
               <ClipboardList className="h-3.5 w-3.5" /> Open Job Card
             </Button>
           ) : null}

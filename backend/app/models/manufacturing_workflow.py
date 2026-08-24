@@ -88,6 +88,76 @@ class SalesJobCard(Base, TimestampMixin):
     created_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
 
 
+class WorkflowStageJobCard(Base, TimestampMixin):
+    """Per-stage job card document linked to a sales order workflow instance."""
+
+    __tablename__ = "workflow_stage_job_cards"
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "card_number", name="uq_workflow_stage_cards_tenant_no"),
+        UniqueConstraint(
+            "tenant_id", "sales_order_id", "stage", name="uq_workflow_stage_cards_tenant_so_stage"
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id"), nullable=False, index=True)
+    sales_order_id: Mapped[int] = mapped_column(
+        ForeignKey("sales_orders.id"), nullable=False, index=True
+    )
+    sales_job_card_id: Mapped[int | None] = mapped_column(ForeignKey("sales_job_cards.id"))
+    stage: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    card_number: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    status: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="pending"
+    )  # pending | in_progress | completed | on_hold | rejected | assigned
+    material_check_id: Mapped[int | None] = mapped_column(
+        ForeignKey("sales_order_material_checks.id")
+    )
+    work_order_id: Mapped[int | None] = mapped_column(ForeignKey("work_orders.id"))
+    quality_inspection_id: Mapped[int | None] = mapped_column(
+        ForeignKey("quality_inspections.id")
+    )
+    dispatch_id: Mapped[int | None] = mapped_column(ForeignKey("dispatch_shipments.id"))
+    invoice_id: Mapped[int | None] = mapped_column(ForeignKey("invoices.id"))
+    assigned_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    payload_json: Mapped[str | None] = mapped_column(Text)
+    completed_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    issue_lines = relationship(
+        "WorkflowMaterialIssueLine",
+        back_populates="stage_job_card",
+        cascade="all, delete-orphan",
+    )
+
+
+class WorkflowMaterialIssueLine(Base, TimestampMixin):
+    """Store material issue lines for store-manager stage job cards."""
+
+    __tablename__ = "workflow_material_issue_lines"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    stage_job_card_id: Mapped[int] = mapped_column(
+        ForeignKey("workflow_stage_job_cards.id"), nullable=False, index=True
+    )
+    material_check_line_id: Mapped[int | None] = mapped_column(
+        ForeignKey("sales_order_material_check_lines.id")
+    )
+    product_id: Mapped[int | None] = mapped_column(ForeignKey("products.id"))
+    material_code: Mapped[str | None] = mapped_column(String(64))
+    material_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    required_qty: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
+    available_qty: Mapped[float] = mapped_column(Numeric(12, 2), default=0, nullable=False)
+    issued_qty: Mapped[float] = mapped_column(Numeric(12, 2), default=0, nullable=False)
+    remaining_qty: Mapped[float] = mapped_column(Numeric(12, 2), default=0, nullable=False)
+    store_location: Mapped[str | None] = mapped_column(String(255))
+    issue_status: Mapped[str] = mapped_column(
+        String(32), default="pending", nullable=False
+    )  # pending | partial | issued
+
+    stage_job_card = relationship("WorkflowStageJobCard", back_populates="issue_lines")
+
+
 class ManufacturingWorkflowTransition(Base, TimestampMixin):
     """Audit trail for workflow status changes on sales orders."""
 

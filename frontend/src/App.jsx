@@ -7,21 +7,9 @@ import Navbar from "./components/layout/Navbar";
 import Sidebar from "./components/layout/Sidebar";
 import AiChatWidget from "./components/ai/AiChatWidget";
 import GlobalRefreshButton from "./components/common/GlobalRefreshButton";
+import { isOperator } from "./config/permissions";
 import useAuth from "./hooks/useAuth";
-
-/** Settings routes that render inside the main ERP shell (sidebar + navbar). */
-const IN_APP_SETTINGS_SEGMENTS = new Set([
-  "change-format",
-  "format-settings",
-  "change-template",
-  "template-settings",
-  "invoice-template",
-  "quotation-template",
-  "purchase-template",
-  "inventory-settings",
-  "invoice-settings",
-  "sequence-reset",
-]);
+import { isAiCopilotEnabled, isOperatorAiRoute } from "./utils/aiCopilot";
 
 function normalizePath(pathname) {
   return (pathname || "/").replace(/\/+$/, "") || "/";
@@ -41,45 +29,31 @@ function isShellLessRoute(pathname) {
     return true;
   }
   if (path.startsWith("/gns-admin")) return true;
-  // Settings hub + catalog sections use SettingsLayout; sidebar feature pages stay in-app
-  if (path === "/settings") return true;
-  if (path.startsWith("/settings/")) {
-    const segment = path.slice("/settings/".length).split("/")[0];
-    if (IN_APP_SETTINGS_SEGMENTS.has(segment)) return false;
-    return true;
-  }
   return false;
 }
 
-function isOperatorRole(user) {
-  const role = user?.role_name || user?.role || "";
-  const roles = Array.isArray(user?.roles) ? user.roles : [];
-  const names = roles.map((item) => (typeof item === "string" ? item : item?.name || ""));
-  return role.toLowerCase() === "operator" || names.some((name) => name.toLowerCase() === "operator");
-}
-
-function isOperationsRoute(pathname) {
-  const normalized = pathname.replace(/\/+$/, "") || "/";
-  return (
-    normalized === "/" ||
-    normalized === "/operations" ||
-    normalized.startsWith("/operations/") ||
-    normalized === "/factory-monitor" ||
-    normalized.startsWith("/factory-monitor/") ||
-    normalized === "/iot" ||
-    normalized === "/iot/live-operations" ||
-    normalized.startsWith("/iot/live-operations/") ||
-    normalized.startsWith("/iot/")
-  );
+function isSettingsRoute(pathname) {
+  const path = normalizePath(pathname);
+  return path === "/settings" || path.startsWith("/settings/");
 }
 
 export function shouldShowChatbot(user, pathname) {
-  if (!isOperatorRole(user)) return false;
-  if (!isOperationsRoute(pathname)) return false;
-  if (pathname === "/login" || pathname === "/register" || pathname === "/landing" || pathname === "/forgot-password" || pathname === "/reset-password" || pathname === "/verify-email") return false;
-  if (pathname.startsWith("/gns-admin")) return false;
-  if (pathname.startsWith("/settings")) return false;
-  return true;
+  if (!user || !isOperator(user)) return false;
+  if (!isAiCopilotEnabled()) return false;
+  const path = normalizePath(pathname);
+  if (
+    path === "/login" ||
+    path === "/register" ||
+    path === "/landing" ||
+    path === "/forgot-password" ||
+    path === "/reset-password" ||
+    path === "/verify-email"
+  ) {
+    return false;
+  }
+  if (path.startsWith("/gns-admin")) return false;
+  if (path.startsWith("/settings")) return false;
+  return isOperatorAiRoute(pathname);
 }
 
 export default function App() {
@@ -93,6 +67,7 @@ export default function App() {
     /^\/sales\/invoices\/[^/]+\/edit$/.test(location.pathname) ||
     location.pathname === "/sales/quotations/create" ||
     /^\/sales\/quotations\/[^/]+\/edit$/.test(location.pathname) ||
+    location.pathname === "/sales/payments/create" ||
     location.pathname === "/sales/payment-receipts/create" ||
     /^\/sales\/payment-receipts\/[^/]+\/edit$/.test(location.pathname) ||
     location.pathname === "/sales/proforma-invoices/create" ||
@@ -165,6 +140,7 @@ export default function App() {
     location.pathname.startsWith("/reports/") ||
     location.pathname === "/ledger" ||
     location.pathname.startsWith("/ledger/");
+  const isSettings = isSettingsRoute(location.pathname);
   const isEInvoiceLogin = location.pathname === "/sales/e-invoice";
   /** Full-bleed editors keep their own chrome; list/dashboard surfaces use Products page surface. */
   const isFullBleedSales = isInvoiceEditor || isSalesDocList || isEInvoiceLogin || normalizePath(location.pathname) === "/";
@@ -232,8 +208,12 @@ export default function App() {
               : "overflow-y-auto"
           }`}
         >
-          {isFullBleedSales || isInvoiceEditor || isEInvoiceLogin ? (
-            <div className={isInvoiceEditor || isEInvoiceLogin ? "h-full min-h-0" : "min-h-full"}>
+          {isFullBleedSales || isInvoiceEditor || isEInvoiceLogin || isSettings ? (
+            <div
+              className={`min-h-full ${isSettings ? "settings-page" : ""} ${
+                isInvoiceEditor || isEInvoiceLogin ? "h-full min-h-0" : ""
+              }`}
+            >
               <Suspense fallback={<RouteFallback />}>
                 <AppRoutes />
               </Suspense>

@@ -1,375 +1,385 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { useTranslation } from "react-i18next";
-import { Check, ChevronRight, Circle, Lock } from "lucide-react";
+import { Link, useSearchParams } from "react-router-dom";
+import { RefreshCw } from "lucide-react";
 
 import Loader from "../../components/common/Loader";
+import Button from "../../components/common/Button";
+import KpiCard from "../../components/common/KpiCard";
 import { useToast } from "../../context/ToastContext";
 import useAuth from "../../hooks/useAuth";
 import usePageRefresh from "../../hooks/usePageRefresh";
-import { getManufacturingWorkflowBoard, getSalesOrderWorkflow } from "../../api/salesApi";
-import { getSalesJobCard, getWorkflowQueue } from "../../api/workflowApi";
+import { getManufacturingWorkflowBoard } from "../../api/salesApi";
+import { getMaterialCheck, getMyJobCardQueue, getSalesJobCard, getWorkflowHub } from "../../api/workflowApi";
 import JobCardSummary from "../../components/manufacturing/JobCardSummary";
+import JobCardQueueFilters from "../../components/manufacturing/JobCardQueueFilters";
+import JobCardQueueTable, { WorkflowStageTabs } from "../../components/manufacturing/JobCardQueueTable";
+import JobCardTimeline from "../../components/manufacturing/JobCardTimeline";
+import MaterialSummaryPanel from "../../components/manufacturing/MaterialSummaryPanel";
 import WorkflowStagePipeline from "../../components/manufacturing/WorkflowStagePipeline";
-import TeamWorkflowJobCards from "./TeamWorkflowJobCards";
-import WorkflowOrderActions from "./WorkflowOrderActions";
-import {
-  DEFAULT_RESPONSIBILITY_STAGES,
-  getPrimaryRoleName,
-  getResponsibilityAccent,
-  getResponsibilityIcon,
-} from "../../config/manufacturingWorkflow";
-
-const STATUS_STYLES = {
-  completed: "border-emerald-200 bg-emerald-50 text-emerald-900",
-  current: "border-amber-300 bg-amber-50 text-amber-950 ring-1 ring-amber-200",
-  pending: "border-slate-200 bg-white text-slate-700",
-  blocked: "border-slate-200 bg-slate-50 text-slate-400",
-};
+import WorkflowTracker from "../../components/manufacturing/WorkflowTracker";
+import { getWorkflowStatusLabel, getRoleQueueStages } from "../../config/workflowStages";
+import { getPrimaryRoleName, userHasWorkflowTeam } from "../../config/manufacturingWorkflow";
+import { stageJobCardUrl } from "../../utils/workflowStageRoutes";
 
 function orderIdOf(row) {
   return row?.sales_order_id ?? row?.id;
 }
 
+/** Drop placeholder / draft rows that are not real workflow orders. */
+function isValidQueueRow(row) {
+  const id = orderIdOf(row);
+  if (!id) return false;
+  if (row.workflow_status) return true;
+  if (row.order_number && (row.customer_name || row.product_name)) return true;
+  return false;
+}
+
+function priorityRank(priority) {
+  const p = String(priority || "medium").toLowerCase();
+  if (p === "high") return 0;
+  if (p === "medium") return 1;
+  return 2;
+}
+
 export default function RoleWorkflowBoard() {
-  const { t } = useTranslation();
   const { user } = useAuth();
   const { addToast } = useToast();
-  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const statusFilter = searchParams.get("status");
   const orderFilter = searchParams.get("order");
   const roleName = getPrimaryRoleName(user);
+  const isAdmin = userHasWorkflowTeam(user, "admin");
+  const isStoreManager = roleName === "Store Manager";
+
   const [loading, setLoading] = useState(true);
   const [board, setBoard] = useState(null);
+  const [hub, setHub] = useState(null);
   const [queue, setQueue] = useState([]);
-  const [activeTeam, setActiveTeam] = useState(null);
   const [selectedOrderId, setSelectedOrderId] = useState(null);
-  const [detail, setDetail] = useState(null);
-  const [jobCard, setJobCard] = useState(null);
-  const [detailLoading, setDetailLoading] = useState(false);
+  const [previewCard, setPreviewCard] = useState(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [materialLines, setMaterialLines] = useState([]);
+  const [materialLoading, setMaterialLoading] = useState(false);
+
+  const [search, setSearch] = useState("");
+  const [priorityFilter, setPriorityFilter] = useState("");
+  const [localStatusFilter, setLocalStatusFilter] = useState("");
+  const [deliveryFilter, setDeliveryFilter] = useState("");
+  const [stockFilter, setStockFilter] = useState("");
+
+  const [queueMeta, setQueueMeta] = useState(null);
+
+  const roleStages = useMemo(() => getRoleQueueStages(roleName), [roleName]);
 
   const load = useCallback(async ({ isRefresh = false } = {}) => {
     if (!isRefresh) setLoading(true);
     try {
-      const [boardRes, queueRes] = await Promise.all([
-        getManufacturingWorkflowBoard(),
-        getWorkflowQueue(statusFilter ? { status: statusFilter } : {}),
-      ]);
-      setBoard(boardRes?.data ?? boardRes);
-      setQueue(queueRes?.data?.items ?? queueRes?.items ?? []);
-      if (isRefresh) addToast("Workflow board updated.", "success");
+      const requests = [
+        getManufacturingWorkflowBoard().catch(() => null),
+        getMyJobCardQueue(statusFilter ? { status: statusFilter } : {}),
+      ];
+      if (isAdmin) requests.push(getWorkflowHub().catch(() => null));
+      const results = await Promise.all(requests);
+      setBoard(results[0]?.data ?? results[0]);
+      const queueRes = results[1]?.data ?? results[1];
+      setQueue(queueRes?.items ?? []);
+      setQueueMeta(queueRes?.meta ?? null);
+      if (isAdmin && results[2]) setHub(results[2]?.data ?? results[2]);
+      if (isRefresh) addToast("Workflow refreshed.", "success");
     } catch (err) {
       addToast(err?.response?.data?.detail || "Could not load workflow board", "error");
-      if (!isRefresh) {
-        setBoard(null);
-        setQueue([]);
-      }
+      if (!isRefresh) setQueue([]);
     } finally {
       setLoading(false);
     }
-  }, [addToast, statusFilter]);
+  }, [addToast, statusFilter, isAdmin]);
 
   usePageRefresh(() => load({ isRefresh: true }));
-
   useEffect(() => {
     load();
   }, [load]);
 
-  const openOrder = useCallback(async (orderId) => {
+  const previewOrder = useCallback(async (orderId) => {
     if (!orderId) return;
     setSelectedOrderId(orderId);
-    setDetailLoading(true);
-    setJobCard(null);
+    setPreviewLoading(true);
+    setMaterialLoading(true);
+    setPreviewCard(null);
+    setMaterialLines([]);
     try {
-      const [wfRes, jcRes] = await Promise.all([
-        getSalesOrderWorkflow(orderId),
-        getSalesJobCard(orderId).catch(() => null),
+      const [cardRes, matRes] = await Promise.all([
+        getSalesJobCard(orderId),
+        getMaterialCheck(orderId).catch(() => null),
       ]);
-      setDetail(wfRes?.data ?? wfRes);
-      const jc = jcRes?.data ?? jcRes;
-      if (jc) setJobCard(jc);
-    } catch (err) {
-      addToast(err?.response?.data?.detail || "Could not load order workflow", "error");
-      setDetail(null);
+      setPreviewCard(cardRes?.data ?? cardRes);
+      const mat = matRes?.data?.material_check ?? matRes?.material_check;
+      setMaterialLines(mat?.lines || []);
+    } catch {
+      setPreviewCard(null);
+      setMaterialLines([]);
     } finally {
-      setDetailLoading(false);
+      setPreviewLoading(false);
+      setMaterialLoading(false);
     }
-  }, [addToast]);
+  }, []);
 
   useEffect(() => {
-    if (orderFilter) {
-      openOrder(Number(orderFilter));
-    }
-  }, [orderFilter, openOrder]);
+    if (orderFilter) previewOrder(Number(orderFilter));
+  }, [orderFilter, previewOrder]);
 
-  const orders = useMemo(() => {
-    if (queue.length) return queue;
-    return (board?.orders || []).map((o) => ({
-      ...o,
-      sales_order_id: orderIdOf(o),
-    }));
-  }, [queue, board]);
+  const sortedQueue = useMemo(
+    () =>
+      [...queue]
+        .filter(isValidQueueRow)
+        .sort((a, b) => {
+        const pr = priorityRank(a.priority) - priorityRank(b.priority);
+        if (pr !== 0) return pr;
+        const da = a.delivery_date ? new Date(a.delivery_date).getTime() : Infinity;
+        const db = b.delivery_date ? new Date(b.delivery_date).getTime() : Infinity;
+        return da - db;
+      }),
+    [queue]
+  );
 
-  useEffect(() => {
-    if (orderFilter) return;
-    if (!orders.length || selectedOrderId) return;
-    const firstId = orderIdOf(orders[0]);
-    if (firstId) openOrder(firstId);
-  }, [orders, orderFilter, selectedOrderId, openOrder]);
+  const pendingInventoryCount = useMemo(
+    () =>
+      sortedQueue.filter((r) =>
+        ["MATERIAL_CHECK_PENDING", "MATERIAL_SHORTAGE", "MATERIAL_PARTIAL"].includes(
+          String(r.workflow_status || "").toUpperCase()
+        )
+      ).length,
+    [sortedQueue]
+  );
 
-  const roleStages = useMemo(() => {
-    const apiStages = board?.role_stages;
-    if (Array.isArray(apiStages) && apiStages.length) return apiStages;
-    return DEFAULT_RESPONSIBILITY_STAGES;
-  }, [board]);
+  const statusOptions = useMemo(() => {
+    const set = new Set(sortedQueue.map((r) => r.workflow_status).filter(Boolean));
+    return [...set].sort();
+  }, [sortedQueue]);
 
-  const currentStageId = useMemo(() => {
-    if (detail?.current_stage_id) return detail.current_stage_id;
-    const pending = board?.orders?.find((o) => o.my_pending_stages?.length)?.my_pending_stages?.[0];
-    return pending?.id || board?.orders?.[0]?.current_stage_id || "quotation";
-  }, [board, detail]);
+  const filteredOrders = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return sortedQueue.filter((row) => {
+      if (priorityFilter && String(row.priority || "").toLowerCase() !== priorityFilter) return false;
+      if (localStatusFilter && row.workflow_status !== localStatusFilter) return false;
+      if (deliveryFilter && row.delivery_date) {
+        const rowDay = row.delivery_date.slice(0, 10);
+        if (rowDay !== deliveryFilter) return false;
+      } else if (deliveryFilter && !row.delivery_date) {
+        return false;
+      }
+      if (stockFilter && row.material_stock_status !== stockFilter) return false;
+      if (!q) return true;
+      const hay = [
+        row.job_card_no,
+        row.order_number,
+        row.customer_name,
+        row.product_name,
+        String(row.sales_order_id),
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return hay.includes(q);
+    });
+  }, [sortedQueue, search, priorityFilter, localStatusFilter, deliveryFilter, stockFilter]);
 
-  const handleSelectTeam = (card) => {
-    setActiveTeam(card.team);
-    if (card.path) {
-      navigate(card.path);
-    } else if (card.filterStatus) {
-      navigate(`/manufacturing/workflow?status=${card.filterStatus}`);
-    }
+  const pipelineCounts = useMemo(() => {
+    const raw = board?.status_counts || board?.counts || hub?.counts || [];
+    if (Array.isArray(raw)) return Object.fromEntries(raw.map((c) => [c.key, c.count]));
+    return raw;
+  }, [board, hub]);
+
+  const alertCounts = useMemo(() => {
+    const raw = hub?.raw_status_counts || {};
+    return {
+      highPriority: sortedQueue.filter((o) => String(o.priority || "").toLowerCase() === "high").length,
+      materialShortage: Number(raw.MATERIAL_SHORTAGE || 0) + Number(raw.MATERIAL_PARTIAL || 0),
+      qualityRejected: Number(raw.QUALITY_REJECTED || 0),
+      inProduction: Number(raw.PRODUCTION_IN_PROGRESS || 0),
+    };
+  }, [hub, sortedQueue]);
+
+  const clearFilters = () => {
+    setSearch("");
+    setPriorityFilter("");
+    setLocalStatusFilter("");
+    setDeliveryFilter("");
+    setStockFilter("");
   };
 
-  if (loading) return <Loader label="Loading role workflow..." />;
+  if (loading) return <Loader label="Loading job cards…" />;
+
+  const selectedRow = filteredOrders.find((o) => orderIdOf(o) === selectedOrderId);
+  const trackerStatus = previewCard?.workflow_status || selectedRow?.workflow_status;
+  const trackerSteps = previewCard?.workflow_tracker || previewCard?.workflow_steps || [];
+  const openStageUrl = selectedOrderId ? stageJobCardUrl(selectedOrderId, trackerStatus) : null;
+
+  const emptyDescription =
+    statusFilter === "COMPLETED"
+      ? "Completed workflows will appear here after billing is finalized."
+      : isStoreManager
+        ? "New confirmed Sales Orders will appear here for inventory verification."
+        : "Confirm a sales order to start the manufacturing workflow.";
+
+  const queueTitle = queueMeta?.queue_title
+    || (isStoreManager ? "Store Manager – Inventory Queue" : "My Job Card Queue");
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+    <div className="ui-page ui-stack pb-8">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-lg font-semibold text-slate-900">Manufacturing Workflow</h1>
-          <p className="flex flex-wrap items-center gap-1.5 text-sm text-slate-500">
-            <Link to="/sales/orders" className="hover:text-[var(--color-primary)] hover:underline">Sales</Link>
-            <span>→</span>
-            <Link to="/inventory/raw-materials" className="hover:text-[var(--color-primary)] hover:underline">Inventory</Link>
-            <span>→</span>
-            <Link to="/production/planning" className="hover:text-[var(--color-primary)] hover:underline">Production</Link>
-            <span>→</span>
-            <Link to="/production/tasks" className="hover:text-[var(--color-primary)] hover:underline">Operator</Link>
-            <span>→</span>
-            <Link to="/quality/final" className="hover:text-[var(--color-primary)] hover:underline">Quality</Link>
-            <span>→</span>
-            <Link to="/sales/dispatch" className="hover:text-[var(--color-primary)] hover:underline">Packing</Link>
-            <span>→</span>
-            <Link to="/sales/invoices" className="hover:text-[var(--color-primary)] hover:underline">Billing</Link>
+          <h1 className="ui-page-title">{queueTitle}</h1>
+          <p className="mt-0.5 text-sm text-[var(--color-text-muted)]">
+            {sortedQueue.length
+              ? `${sortedQueue.length} job card${sortedQueue.length === 1 ? "" : "s"} require your action`
+              : isStoreManager
+                ? "Confirmed sales orders awaiting inventory verification will appear here"
+                : "Job cards routed to your role will appear here automatically"}
           </p>
         </div>
-        {statusFilter ? (
-          <Link to="/manufacturing/workflow" className="text-sm font-medium text-[var(--color-primary)] hover:underline">
-            Clear filter · show all
-          </Link>
+        {!isAdmin && sortedQueue.length ? (
+          <div className="flex flex-wrap gap-2">
+            <KpiCard
+              label="Pending action"
+              value={sortedQueue.length}
+              tone="warning"
+              meta={queueMeta?.responsible_role_label || roleName}
+            />
+          </div>
+        ) : isStoreManager ? (
+          <div className="flex flex-wrap gap-2">
+            <KpiCard
+              label="Pending inventory checks"
+              value={pendingInventoryCount}
+              tone={pendingInventoryCount ? "warning" : "primary"}
+              meta={`${sortedQueue.length} total in queue`}
+            />
+          </div>
         ) : null}
       </div>
 
-      <TeamWorkflowJobCards
-        queue={orders}
-        user={user}
-        activeTeam={activeTeam}
-        onSelectTeam={handleSelectTeam}
-      />
-
-      <WorkflowStagePipeline currentStatus={jobCard?.workflow_status} />
-
-      {selectedOrderId && !detailLoading && jobCard?.summary_panel ? (
-        <div className="grid gap-4 lg:grid-cols-3">
-          <JobCardSummary
-            jobCardNo={jobCard.summary_panel.job_card_no}
-            salesOrderNo={jobCard.summary_panel.sales_order_no}
-            customer={jobCard.summary_panel.customer}
-            product={jobCard.summary_panel.product}
-            orderQuantity={jobCard.summary_panel.order_quantity}
-            requiredDelivery={jobCard.summary_panel.required_delivery}
-            priority={jobCard.summary_panel.priority}
-            uom={jobCard.summary_panel.uom}
-            workflowStatus={jobCard.summary_panel.workflow_status}
-          />
-          <div className="flex flex-col justify-center gap-2 lg:col-span-2">
-            <p className="text-sm text-slate-600">
-              Stage:{" "}
-              <span className="font-semibold text-[var(--color-primary)]">
-                {jobCard.workflow_stage || "—"}
-              </span>
-            </p>
-            <Link
-              to={`/manufacturing/job-card/${selectedOrderId}`}
-              className="inline-flex w-fit items-center rounded-lg bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white hover:bg-[var(--color-primary-hover)]"
-            >
-              Open full job card →
+      {isAdmin && hub?.counts?.length ? (
+        <section className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-6">
+          {hub.counts.slice(0, 6).map((bucket) => (
+            <Link key={bucket.key} to={bucket.path || `/manufacturing/workflow?status=${bucket.statuses?.split(",")[0]}`}>
+              <KpiCard label={bucket.label} value={bucket.count ?? 0} tone="primary" meta="Live count" />
             </Link>
-          </div>
-        </div>
-      ) : null}
-
-      <section className="ui-card p-4">
-        <h2 className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--color-primary)]">
-          Active job card · team actions
-        </h2>
-        <p className="mt-1 text-xs text-[var(--color-text-muted)]">
-          {selectedOrderId
-            ? "Complete the action for your team, then the order moves to the next stage."
-            : "Select an order from the queue below to open its job card."}
-        </p>
-        {selectedOrderId ? (
-          <div className="mt-3">
-            {detailLoading ? (
-              <Loader label="Loading job card..." />
-            ) : (
-              <WorkflowOrderActions
-                orderId={selectedOrderId}
-                onSuccess={() => {
-                  load({ isRefresh: true });
-                  openOrder(selectedOrderId);
-                }}
-              />
-            )}
-          </div>
-        ) : (
-          <p className="mt-4 rounded-lg border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
-            No order selected. Pick one from the queue below or create a new sales order.
-          </p>
-        )}
-      </section>
-
-      <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-        <h2 className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">
-          {statusFilter ? `Queue · ${statusFilter.replace(/_/g, " ")}` : "Workflow queue"}
-        </h2>
-        <p className="mt-1 text-xs text-slate-400">
-          Signed in as <span className="font-semibold text-slate-600">{roleName || "—"}</span>
-          {board?.full_access ? " · Full chain (Management)" : " · Your team orders only"}
-        </p>
-        <div className="mt-3 overflow-x-auto">
-          <table className="min-w-full text-left text-sm">
-            <thead className="border-b text-xs uppercase text-slate-400">
-              <tr>
-                <th className="px-3 py-2">Order</th>
-                <th className="px-3 py-2">Customer</th>
-                <th className="px-3 py-2">Product</th>
-                <th className="px-3 py-2">Workflow status</th>
-                <th className="px-3 py-2">Priority</th>
-                <th className="px-3 py-2" />
-              </tr>
-            </thead>
-            <tbody>
-              {orders.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="px-3 py-8 text-center text-slate-500">
-                    <p>No orders in your workflow queue.</p>
-                    <p className="mt-2 text-xs">
-                      Create a sales order, confirm it, or run{" "}
-                      <strong>Backfill legacy orders</strong> on the Admin Dashboard.
-                    </p>
-                    <Link
-                      to="/sales/orders"
-                      className="mt-3 inline-block text-sm font-semibold text-[var(--color-primary)] hover:underline"
-                    >
-                      Go to Sales Orders →
-                    </Link>
-                  </td>
-                </tr>
-              ) : (
-                orders.map((o) => {
-                  const oid = orderIdOf(o);
-                  const isSelected = selectedOrderId === oid;
-                  return (
-                    <tr
-                      key={oid}
-                      className={`border-b border-slate-100 ${isSelected ? "bg-sky-50/60" : ""}`}
-                    >
-                      <td className="px-3 py-2 font-medium text-[#0f6d84]">{o.order_number}</td>
-                      <td className="px-3 py-2 text-slate-600">{o.customer_name || "—"}</td>
-                      <td className="px-3 py-2 text-slate-600">{o.product_name || "—"}</td>
-                      <td className="px-3 py-2">
-                        <span className="rounded bg-slate-100 px-2 py-0.5 text-xs font-medium uppercase text-slate-700">
-                          {o.workflow_status || o.status || "draft"}
-                        </span>
-                      </td>
-                      <td className="px-3 py-2 capitalize">{o.priority || "medium"}</td>
-                      <td className="px-3 py-2 text-right">
-                        <button
-                          type="button"
-                          onClick={() => openOrder(oid)}
-                          className={`text-xs font-semibold hover:underline ${
-                            isSelected ? "text-[var(--color-primary)]" : "text-[var(--color-success)]"
-                          }`}
-                        >
-                          {isSelected ? "Selected" : "Open job card"}
-                        </button>
-                        <Link
-                          to={`/manufacturing/job-card/${oid}`}
-                          className="ml-2 text-xs font-medium text-slate-500 hover:text-[var(--color-primary)]"
-                        >
-                          View
-                        </Link>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <section>
-        <div className="mb-4 flex items-center gap-2.5">
-          <span className="h-5 w-1 rounded-full bg-slate-300" aria-hidden />
-          <h2 className="text-xs font-bold uppercase tracking-[0.14em] text-slate-400">
-            {t("roleWorkflowPage.section", "Full process map")}
-          </h2>
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {roleStages.slice(0, 6).map((stage, index) => {
-            const accent = getResponsibilityAccent(index);
-            const Icon = getResponsibilityIcon(stage.id);
-            return (
-              <Link
-                key={stage.id}
-                to={stage.path || "/"}
-                className={`group rounded-2xl border bg-white px-5 py-4 shadow-sm transition border-slate-100 ${accent.hover}`}
-              >
-                <div className="flex items-start gap-3">
-                  <span className={`flex h-9 w-9 items-center justify-center rounded-full ${accent.iconWrap}`}>
-                    <Icon className="h-4 w-4" strokeWidth={1.9} />
-                  </span>
-                  <div>
-                    <p className="text-sm font-semibold text-slate-900">{stage.label}</p>
-                    <p className={`text-xs font-medium ${accent.role}`}>{stage.responsible_role}</p>
-                  </div>
-                  <ChevronRight className="ml-auto h-4 w-4 text-slate-300" />
-                </div>
-              </Link>
-            );
-          })}
-        </div>
-      </section>
-
-      {selectedOrderId && detail && !detailLoading ? (
-        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <h2 className="mb-3 text-xs font-bold uppercase tracking-[0.14em] text-slate-500">
-            Stage timeline · {detail?.order_number || `#${selectedOrderId}`}
-          </h2>
-          <div className="space-y-2">
-            {(detail?.stages || []).slice(0, 12).map((s) => (
-              <div
-                key={s.id}
-                className={`rounded-lg border px-3 py-2 text-sm ${STATUS_STYLES[s.status] || STATUS_STYLES.pending}`}
-              >
-                <span className="font-medium">{s.label}</span>
-                <span className="ml-2 text-xs capitalize opacity-75">{s.status}</span>
-              </div>
-            ))}
-          </div>
+          ))}
         </section>
       ) : null}
+
+      {isAdmin ? (
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <KpiCard label="High Priority" value={alertCounts.highPriority} tone="danger" meta="Urgent orders" />
+          <KpiCard label="Material Shortages" value={alertCounts.materialShortage} tone="warning" meta="Needs procurement" />
+          <KpiCard label="Quality Rejections" value={alertCounts.qualityRejected} tone="danger" meta="Rework pending" />
+          <KpiCard label="In Production" value={alertCounts.inProduction} tone="info" meta="Operator active" />
+        </div>
+      ) : null}
+
+      <WorkflowStagePipeline currentStatus={trackerStatus} counts={pipelineCounts} />
+
+      <section className="ui-card space-y-3 p-4">
+        <WorkflowStageTabs stages={roleStages} activeStatus={statusFilter} />
+      </section>
+
+      <div className="grid gap-4 xl:grid-cols-12">
+        <section className="ui-card overflow-hidden p-0 xl:col-span-8">
+          <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[var(--color-border-soft)] px-4 py-3">
+            <div>
+              <h2 className="text-sm font-semibold text-[var(--color-text)]">
+                {isStoreManager
+                  ? statusFilter
+                    ? getWorkflowStatusLabel(statusFilter)
+                    : "Inventory job card queue"
+                  : statusFilter
+                    ? getWorkflowStatusLabel(statusFilter)
+                    : "Your job card queue"}
+              </h2>
+              <p className="text-xs text-[var(--color-text-muted)]">
+                {isStoreManager
+                  ? `${filteredOrders.length} order${filteredOrders.length === 1 ? "" : "s"} · Click a row to preview · Use Inventory Check to verify materials`
+                  : "Click a row to preview · Open Job Card to perform stage actions"}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {statusFilter ? (
+                <Button variant="outline" size="sm" to="/manufacturing/workflow">
+                  Clear filter
+                </Button>
+              ) : null}
+              <Button variant="outline" size="sm" onClick={() => load({ isRefresh: true })}>
+                <RefreshCw className="mr-1.5 h-4 w-4" />
+                Refresh
+              </Button>
+            </div>
+          </div>
+
+          <JobCardQueueFilters
+            search={search}
+            onSearchChange={setSearch}
+            priority={priorityFilter}
+            onPriorityChange={setPriorityFilter}
+            status={localStatusFilter}
+            onStatusChange={setLocalStatusFilter}
+            deliveryDate={deliveryFilter}
+            onDeliveryDateChange={setDeliveryFilter}
+            stockStatus={stockFilter}
+            onStockStatusChange={setStockFilter}
+            statusOptions={statusOptions}
+            showStockFilter={isStoreManager}
+            onClear={clearFilters}
+          />
+
+          <div className="p-2">
+            <JobCardQueueTable
+              rows={filteredOrders}
+              selectedOrderId={selectedOrderId}
+              onSelect={previewOrder}
+              emptyTitle={statusFilter === "COMPLETED" ? "No completed job cards" : "No Job Cards Pending"}
+              emptyDescription={emptyDescription}
+              onRefresh={() => load({ isRefresh: true })}
+            />
+          </div>
+        </section>
+
+        <aside className="ui-stack xl:col-span-4">
+          {previewLoading ? <Loader label="Loading preview…" /> : null}
+          {!previewLoading && previewCard?.summary_panel ? (
+            <>
+              <JobCardSummary
+                jobCardNo={previewCard.summary_panel.job_card_no}
+                salesOrderNo={previewCard.summary_panel.sales_order_no}
+                customer={previewCard.summary_panel.customer}
+                product={previewCard.summary_panel.product}
+                orderQuantity={previewCard.summary_panel.order_quantity}
+                requiredDelivery={previewCard.summary_panel.required_delivery}
+                priority={previewCard.summary_panel.priority}
+                uom={previewCard.summary_panel.uom}
+                workflowStatus={previewCard.summary_panel.workflow_status}
+              />
+              <MaterialSummaryPanel lines={materialLines} loading={materialLoading} />
+              {trackerSteps.length ? (
+                <WorkflowTracker steps={trackerSteps} currentStage={previewCard.workflow_current_stage} />
+              ) : null}
+              {previewCard.timeline?.length ? (
+                <JobCardTimeline events={previewCard.timeline} />
+              ) : null}
+              {openStageUrl ? (
+                <Button variant="primary" className="w-full" to={openStageUrl}>
+                  {String(trackerStatus || "").toUpperCase() === "MATERIAL_CHECK_PENDING"
+                    ? "Open Inventory Check"
+                    : "Open Job Card"}
+                </Button>
+              ) : null}
+            </>
+          ) : !previewLoading ? (
+            <div className="ui-card p-6 text-center text-sm text-[var(--color-text-muted)]">
+              Select a job card from the queue to preview summary, materials, and timeline.
+            </div>
+          ) : null}
+        </aside>
+      </div>
     </div>
   );
 }

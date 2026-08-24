@@ -228,11 +228,21 @@ export default function AiChatWidget() {
         addToast(`Opening ${data.navigation}`, "info");
       }
     } catch (err) {
-      const detail = err.response?.data?.detail || "I couldn't retrieve the requested data. Please try again later.";
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: typeof detail === "string" ? detail : "Request failed. Please try again." },
-      ]);
+      const status = err.response?.status;
+      const detail = err.response?.data?.detail;
+      let message =
+        typeof detail === "string"
+          ? detail
+          : "I couldn't retrieve the requested data. Please try again later.";
+      if (status === 403) {
+        message =
+          typeof detail === "string" && detail
+            ? detail
+            : "AI assistant is available only when logged in as an Operator.";
+      } else if (status === 401) {
+        message = "Your session expired. Please sign in again as an Operator.";
+      }
+      setMessages((prev) => [...prev, { role: "assistant", content: message }]);
     } finally {
       setLoading(false);
     }
@@ -286,17 +296,18 @@ export default function AiChatWidget() {
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="fixed bottom-5 right-5 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-lg transition hover:scale-105 hover:shadow-xl sm:bottom-6 sm:right-6"
+          className="fixed bottom-5 right-5 z-[100] flex h-14 w-14 items-center justify-center rounded-full bg-[var(--color-primary)] text-white shadow-lg transition hover:bg-[var(--color-primary-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/40 focus-visible:ring-offset-2 sm:bottom-6 sm:right-6 dark:ring-offset-slate-900"
           aria-label="Open AI Assistant"
+          title="AI Assistant"
         >
-          <Sparkles className="h-6 w-6" />
+          <Sparkles className="h-6 w-6" aria-hidden />
         </button>
       )}
 
       {open && (
-        <div className="fixed inset-x-3 bottom-3 z-50 flex max-h-[min(640px,calc(100vh-1.5rem))] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl sm:inset-x-auto sm:bottom-6 sm:right-6 sm:w-[420px]">
+        <div className="fixed inset-x-3 bottom-3 z-[100] flex max-h-[min(640px,calc(100vh-1.5rem))] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl sm:inset-x-auto sm:bottom-6 sm:right-6 sm:w-[420px]">
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-slate-100 bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-3 text-white">
+          <div className="flex items-center justify-between border-b border-[var(--color-border-soft)] bg-[var(--color-primary)] px-4 py-3 text-white">
             <div className="flex items-center gap-2">
               <Bot className="h-5 w-5" />
               <div>

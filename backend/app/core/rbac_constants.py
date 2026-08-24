@@ -16,6 +16,7 @@ MODULE_CATALOG = [
     {"code": "meetings", "label": "Meetings"},
     {"code": "factoryMonitor", "label": "Factory Monitor"},
     {"code": "iot", "label": "IoT & Smart Factory"},
+    {"code": "hr", "label": "Human Resources"},
     {"code": "settings", "label": "Settings"},
     {"code": "admin", "label": "Security & Administration"},
 ]
@@ -134,8 +135,8 @@ PERMISSION_MATRIX = {
         "description": "Full Vendor Master and procurement operations access.",
     },
     "HR Manager": {
-        "modules": ["dashboard", "analytics", "alerts", "documents", "masters", "meetings"],
-        "description": "Dashboard, departments master, documents, and alerts.",
+        "modules": ["dashboard", "hr", "analytics", "alerts", "documents", "meetings", "settings"],
+        "description": "Employees, attendance, leave, payroll, and HR reports.",
     },
     "Accountant": {
         "modules": [
@@ -186,13 +187,26 @@ STORE_MANAGER_ALLOWED_PATHS = frozenset({
     "/inventory/stock-ledger",
     "/inventory/warehouses",
     "/procurement/goods-receipt",
+    "/procurement/material-requests",
+    "/procurement/purchase-orders",
+    "/procurement/supplier-payments",
     "/procurement/vendors",
+    "/purchases",
+    "/purchases/payments-made",
+    "/purchases/debit-notes",
     "/sales/dispatch",
     "/masters/products",
     "/alerts/low-stock",
     "/documents",
     "/documents/purchase",
     "/analytics/inventory",
+    "/settings",
+    "/settings/my-account",
+    "/settings/subscription",
+    "/settings/notifications",
+    "/settings/appearance",
+    "/settings/security",
+    "/inventory/settings",
 })
 
 
@@ -209,9 +223,21 @@ def store_manager_path_allowed(path: str | None) -> bool:
         return True
     if normalized.startswith("/procurement/goods-receipt"):
         return True
+    if normalized.startswith("/procurement/material-requests"):
+        return True
+    if normalized.startswith("/procurement/purchase-orders"):
+        return True
+    if normalized.startswith("/procurement/supplier-payments"):
+        return True
     if normalized.startswith("/procurement/vendors"):
         return True
+    if normalized.startswith("/purchases"):
+        return True
     if normalized.startswith("/sales/dispatch"):
+        return True
+    if normalized.startswith("/settings"):
+        return True
+    if normalized.startswith("/inventory/settings"):
         return True
     return False
 
@@ -287,8 +313,15 @@ SIDEBAR_MENU_CATALOG = [
         "path": None,
         "module": "sales",
         "children": [
+            {"label": "Sales Dashboard", "path": "/sales/dashboard", "module": "sales"},
+            {"label": "Leads", "path": "/sales/leads", "module": "sales"},
+            {"label": "Quotations", "path": "/sales/quotations", "module": "sales"},
+            {"label": "Sales Orders", "path": "/sales/orders", "module": "sales"},
+            {"label": "Customers", "path": "/masters/customers", "module": "sales"},
             {"label": "Work Orders", "path": "/production/work-orders", "module": "sales"},
             {"label": "Job Card", "path": "/production/job-card", "module": "sales"},
+            {"label": "Dispatch", "path": "/sales/dispatch", "module": "sales"},
+            {"label": "Manufacturing Workflow", "path": "/manufacturing/workflow", "module": "dashboard"},
         ],
     },
     {
@@ -406,6 +439,27 @@ SIDEBAR_MENU_CATALOG = [
             {"label": "Inventory KPI", "path": "/analytics/inventory", "module": "analytics"},
             {"label": "Sales KPI", "path": "/analytics/sales", "module": "analytics"},
             {"label": "Finance KPI", "path": "/analytics/finance", "module": "analytics"},
+        ],
+    },
+    {
+        "key": "hr",
+        "label": "Human Resources",
+        "path": None,
+        "module": "hr",
+        "children": [
+            {"label": "HR Dashboard", "path": "/hr", "module": "hr"},
+            {"label": "Employees", "path": "/hr/employees", "module": "hr"},
+            {"label": "Attendance", "path": "/hr/attendance", "module": "hr"},
+            {"label": "Leave", "path": "/hr/leave", "module": "hr"},
+            {"label": "Payroll", "path": "/hr/payroll", "module": "hr"},
+            {"label": "Performance", "path": "/hr/performance", "module": "hr"},
+            {"label": "Training", "path": "/hr/training", "module": "hr"},
+            {"label": "Recruitment", "path": "/hr/recruitment", "module": "hr"},
+            {"label": "Shifts", "path": "/hr/shifts", "module": "hr"},
+            {"label": "Assets", "path": "/hr/assets", "module": "hr"},
+            {"label": "Incidents", "path": "/hr/incidents", "module": "hr"},
+            {"label": "HR Documents", "path": "/hr/documents", "module": "hr"},
+            {"label": "HR Settings", "path": "/hr/settings", "module": "hr"},
         ],
     },
     {

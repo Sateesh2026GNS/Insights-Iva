@@ -1,10 +1,14 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   BadgeCheck,
+  Bell,
   Building2,
   CalendarClock,
   Camera,
   IdCard,
+  KeyRound,
+  LogOut,
   Mail,
   Phone,
   Shield,
@@ -15,9 +19,12 @@ import {
   CreditCard,
   Clock,
   History,
+  Pencil,
 } from "lucide-react";
 
 import Button from "../common/Button";
+import LogoutConfirmModal from "../common/LogoutConfirmModal";
+import RowActionMenu from "../common/RowActionMenu";
 import useAuth from "../../hooks/useAuth";
 import { useToast } from "../../context/ToastContext";
 import { getAccountOverview } from "../../api/settingsApi";
@@ -108,13 +115,16 @@ function InfoCell({ icon: Icon, label, children }) {
 }
 
 export default function AccountOverviewCard() {
-  const { user, updateUserAvatar } = useAuth();
+  const navigate = useNavigate();
+  const { user, updateUserAvatar, logout } = useAuth();
   const { addToast } = useToast();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [adjustModalOpen, setAdjustModalOpen] = useState(false);
   const [selectedImageForAdjust, setSelectedImageForAdjust] = useState(null);
+  const [logoutOpen, setLogoutOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -189,6 +199,57 @@ export default function AccountOverviewCard() {
     }
   };
 
+  const scrollToProfile = useCallback(() => {
+    document.getElementById("account-profile-section")?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  }, []);
+
+  const handleConfirmLogout = async ({ allDevices }) => {
+    setLoggingOut(true);
+    try {
+      await logout({ allDevices });
+      navigate("/login", { replace: true });
+    } finally {
+      setLoggingOut(false);
+      setLogoutOpen(false);
+    }
+  };
+
+  const accountMenuItems = useMemo(
+    () => [
+      {
+        label: "Edit Profile",
+        icon: <Pencil className="h-3.5 w-3.5" aria-hidden />,
+        onClick: scrollToProfile,
+      },
+      {
+        label: "Change Password",
+        icon: <KeyRound className="h-3.5 w-3.5" aria-hidden />,
+        onClick: () => navigate("/settings/security"),
+      },
+      {
+        label: "Notification Settings",
+        icon: <Bell className="h-3.5 w-3.5" aria-hidden />,
+        onClick: () => navigate("/settings/notifications"),
+      },
+      {
+        label: "Two-Factor Authentication",
+        icon: <Shield className="h-3.5 w-3.5" aria-hidden />,
+        onClick: () => navigate("/settings/security"),
+      },
+      { divider: true },
+      {
+        label: "Sign Out",
+        icon: <LogOut className="h-3.5 w-3.5" aria-hidden />,
+        danger: true,
+        onClick: () => setLogoutOpen(true),
+      },
+    ],
+    [navigate, scrollToProfile]
+  );
+
   if (loading) {
     return (
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800/60">
@@ -240,11 +301,23 @@ export default function AccountOverviewCard() {
         <div className="flex flex-wrap items-center gap-2">
           <PlanBadge plan={data.subscription_plan} />
           <LicenseBadge status={data.license_status} />
+          <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--color-surface-muted)] hover:bg-[var(--color-surface-hover)]">
+            <RowActionMenu
+              rowId="account-overview"
+              items={accountMenuItems}
+              allowOperator
+              menuWidth={220}
+              ariaLabel="Account actions"
+            />
+          </span>
         </div>
       </div>
 
       {/* Profile Photo & Quick Action Bar */}
-      <div className="flex flex-col gap-4 border-b border-slate-100 bg-slate-50/60 p-5 sm:flex-row sm:items-center sm:justify-between dark:border-slate-700/60 dark:bg-slate-900/30">
+      <div
+        id="account-profile-section"
+        className="flex flex-col gap-4 border-b border-slate-100 bg-slate-50/60 p-5 sm:flex-row sm:items-center sm:justify-between dark:border-slate-700/60 dark:bg-slate-900/30"
+      >
         <div className="flex items-center gap-4">
           <div className="relative group shrink-0">
             <button
@@ -374,6 +447,15 @@ export default function AccountOverviewCard() {
         }}
         onRemove={handleRemoveAvatar}
         userName={currentUserName}
+      />
+
+      <LogoutConfirmModal
+        open={logoutOpen}
+        busy={loggingOut}
+        onCancel={() => {
+          if (!loggingOut) setLogoutOpen(false);
+        }}
+        onConfirm={handleConfirmLogout}
       />
     </section>
   );

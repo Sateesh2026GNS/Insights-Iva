@@ -27,3 +27,10 @@ def sanitize_filename(value: str | None) -> str | None:
 
 def sanitize_email_local_part(value: str) -> str:
     return sanitize_text(value, max_length=255) or ""
+
+
+def sanitize_password(value: str | None) -> str:
+    """Strip control characters from passwords; preserve printable characters."""
+    if value is None:
+        return ""
+    return _CONTROL_CHARS.sub("", value)[:128]

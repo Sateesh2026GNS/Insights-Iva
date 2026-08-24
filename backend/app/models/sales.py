@@ -27,6 +27,31 @@ class Lead(Base, TimestampMixin):
     next_followup: Mapped[date | None] = mapped_column(Date)
     opportunity_value: Mapped[float | None] = mapped_column(Numeric(12, 2))
 
+    activities = relationship(
+        "LeadActivity",
+        back_populates="lead",
+        cascade="all, delete-orphan",
+        order_by="LeadActivity.id.desc()",
+    )
+
+
+class LeadActivity(Base, TimestampMixin):
+    __tablename__ = "lead_activities"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tenant_id: Mapped[int] = mapped_column(
+        ForeignKey("tenants.id"), nullable=False, index=True
+    )
+    lead_id: Mapped[int] = mapped_column(
+        ForeignKey("leads.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    activity_type: Mapped[str] = mapped_column(String(64), default="Call", nullable=False)
+    subject: Mapped[str] = mapped_column(String(255), nullable=False)
+    user_name: Mapped[str | None] = mapped_column(String(255))
+    notes: Mapped[str | None] = mapped_column(Text)
+
+    lead = relationship("Lead", back_populates="activities")
+
 
 class Quotation(Base, TimestampMixin):
     __tablename__ = "quotations"

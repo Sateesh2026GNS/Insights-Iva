@@ -14,14 +14,38 @@ _lock = Lock()
 _buckets: dict[str, list[float]] = defaultdict(list)
 
 
-def _client_key(request: Request, email: str | None = None) -> str:
+def _client_ip(request: Request) -> str:
     forwarded = request.headers.get("X-Forwarded-For")
-    ip = forwarded.split(",")[0].strip() if forwarded else None
-    if not ip and request.client:
-        ip = request.client.host
-    ip = ip or "unknown"
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    if request.client:
+        return request.client.host
+    return "unknown"
+
+
+def _client_key(request: Request, email: str | None = None) -> str:
+    ip = _client_ip(request)
     email_part = (email or "").lower().strip()
     return f"{ip}:{email_part}"
+
+
+def _enforce_bucket(
+    key: str,
+    *,
+    max_requests: int,
+    window_seconds: int,
+    detail: str,
+) -> None:
+    now = time.time()
+    with _lock:
+        hits = [t for t in _buckets[key] if now - t < window_seconds]
+        if len(hits) >= max_requests:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=detail,
+            )
+        hits.append(now)
+        _buckets[key] = hits
 
 
 def check_rate_limit(
@@ -42,26 +66,40 @@ def check_rate_limit(
             max_requests = settings.forgot_password_rate_limit
             window_seconds = settings.forgot_password_rate_window_seconds
     email_part = (email or "").lower().strip()
-    # Forgot-password: max N requests / window / email.
-    if scope == "forgot_password" and email_part:
-        key = f"{scope}:email:{email_part}"
-    elif scope == "login":
-        key = f"{scope}:{_client_key(request, email)}"
-    else:
-        key = f"{scope}:{_client_key(request, email)}"
-    now = time.time()
+    login_detail = "Too many login attempts. Please try again later."
+    forgot_detail = "Too many password reset requests. Please try again later."
+    detail = login_detail if scope == "login" else forgot_detail
 
-    with _lock:
-        hits = [t for t in _buckets[key] if now - t < window_seconds]
-        if len(hits) >= max_requests:
-            detail = (
-                "Too many login attempts. Please try again later."
-                if scope == "login"
-                else "Too many password reset requests. Please try again later."
+    if scope == "forgot_password" and email_part:
+        _enforce_bucket(
+            f"{scope}:email:{email_part}",
+            max_requests=max_requests,
+            window_seconds=window_seconds,
+            detail=detail,
+        )
+        return
+
+    if scope == "login":
+        ip = _client_ip(request)
+        ip_limit = max(max_requests * 3, max_requests + 10)
+        _enforce_bucket(
+            f"{scope}:ip:{ip}",
+            max_requests=ip_limit,
+            window_seconds=window_seconds,
+            detail=login_detail,
+        )
+        if email_part:
+            _enforce_bucket(
+                f"{scope}:{_client_key(request, email)}",
+                max_requests=max_requests,
+                window_seconds=window_seconds,
+                detail=login_detail,
             )
-            raise HTTPException(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail=detail,
-            )
-        hits.append(now)
-        _buckets[key] = hits
+        return
+
+    _enforce_bucket(
+        f"{scope}:{_client_key(request, email)}",
+        max_requests=max_requests,
+        window_seconds=window_seconds,
+        detail=detail,
+    )

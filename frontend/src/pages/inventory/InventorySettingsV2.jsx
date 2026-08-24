@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowLeftRight,
-  CalendarDays,
   Check,
   CheckCircle2,
   ClipboardList,
@@ -17,6 +16,7 @@ import { getFeatureSetting, putFeatureSetting } from "../../api/bizDocumentsApi"
 import Button from "../../components/common/Button";
 import Loader from "../../components/common/Loader";
 import PageHeader from "../../components/common/PageHeader";
+import InventoryHeaderControls from "../../components/inventory/InventoryHeaderControls";
 import { useToast } from "../../context/ToastContext";
 import { apiErrorMessage } from "../../utils/apiError";
 
@@ -207,29 +207,18 @@ export default function InventorySettingsV2() {
         backTo="/settings"
         backLabel="Back to Settings"
         action={
-          <div className="flex flex-wrap items-center gap-2">
-            <label className="relative inline-flex items-center">
-              <CalendarDays className="pointer-events-none absolute left-3 h-4 w-4 text-[var(--color-text-muted)]" aria-hidden />
-              <input
-                type="date"
-                value={headerDate}
-                onChange={(e) => setHeaderDate(e.target.value)}
-                className="ui-input !w-auto min-w-[10.5rem] !pl-9"
-                aria-label="Date"
-              />
-            </label>
-            <select
-              value={headerWarehouse}
-              onChange={(e) => setHeaderWarehouse(e.target.value)}
-              className="ui-select !w-auto min-w-[11rem]"
-              aria-label="Warehouse"
-            >
-              <option>Main Warehouse</option>
-              <option>Unit-1 Warehouse</option>
-              <option>FG Store</option>
-              <option>All Warehouses</option>
-            </select>
-          </div>
+          <InventoryHeaderControls
+            dateValue={headerDate}
+            onDateChange={setHeaderDate}
+            warehouseValue={headerWarehouse}
+            onWarehouseChange={setHeaderWarehouse}
+            warehouseOptions={[
+              { value: "Main Warehouse", label: "Main Warehouse" },
+              { value: "Unit-1 Warehouse", label: "Unit-1 Warehouse" },
+              { value: "FG Store", label: "FG Store" },
+              { value: "All Warehouses", label: "All Warehouses" },
+            ]}
+          />
         }
       />
 

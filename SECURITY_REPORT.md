@@ -3,13 +3,15 @@
 
 Generated after production-ready security hardening across the React + FastAPI Insights Iva application.
 
-**Last reviewed:** 18 August 2026
+**Last reviewed:** 21 August 2026
 
 ## Executive Summary
 
 Security features were implemented across authentication, session management, input validation, multi-tenant isolation, API protection, logging, and frontend auth flows. Backend suites covering auth, RBAC, tenant isolation, and CRUD smoke tests are in `backend/tests/`. Development mode preserves auto-verified registration for local testing. Production mode (`ENVIRONMENT=production`) enforces email verification before login.
 
-Recent product UI work (design tokens, HR dashboards, manufacturing workflow engine, Sales Job Card, global/store search UX) does **not** change the core security model documented here. Auth, JWT, RBAC, tenant scope, and CORS remain as implemented below.
+**RBAC alignment pass (21 Aug 2026):** Seven registerable roles share one permission matrix in `rbac_constants.py`. `/auth/me` and `/auth/profile` read the **JWT role** so token refresh preserves the selected role; permissions returned are for the **active role only** (not a union of all assigned roles). Frontend `permissions.js` mirrors backend modules including `hr`. Store Manager uses a dedicated path allowlist — server-side `require_permission` remains authoritative; sidebar and `ProtectedRoute` are UX layers only.
+
+Recent product UI work (design tokens, HR dashboards, manufacturing workflow, Settings shell, date controls, Store Manager nav) does **not** relax auth, CORS, or tenant isolation.
 
 **Manufacturing workflow note (18 Aug 2026):** All `/manufacturing/workflow/*` endpoints require JWT and enforce team-based actions via `workflow_team_service` and `workflow_constants.ROLE_TO_TEAMS`. Transitions are validated by the state machine; invalid cross-team actions are rejected server-side. Job card and material-check records are tenant-scoped like other business entities. Frontend workflow UI is presentational — authorization is enforced on every API call.
 
@@ -66,9 +68,15 @@ For product setup and module overview, see [README.md](./README.md). For archite
 - SQLAlchemy ORM uses parameterized queries throughout (SQL injection resistant).
 
 ### 9. Role-Based Access Control (RBAC)
-- **Existing** `require_permission`, `require_admin`, `tenant_scope` on all business APIs unchanged.
-- Roles: Admin, Production Manager, Store Manager, HR Manager, Accountant, Operator.
-- Admin-only routes remain protected; tests in `test_rbac.py` pass.
+- `require_permission`, `require_admin`, `tenant_scope`, and `require_action` on business APIs.
+- **Registerable roles (7):** Admin, Sales Manager, Production Manager, Store Manager, HR Manager, Accountant, Operator.
+- Permission matrix: `backend/app/core/rbac_constants.py` (`PERMISSION_MATRIX`, `MODULE_CATALOG`).
+- Runtime resolution: `get_user_permissions()` uses active role; explicit role JSON overrides matrix when set.
+- **Active role on refresh:** JWT `role` / `role_id` → `/auth/me` returns permissions for that role only (`auth_service.get_user_with_role`).
+- **HR module:** `hr` in catalog; HR routes require module permission server-side.
+- **Store Manager:** Frontend path whitelist in `permissions.js` / `storeManagerNavConfig.js`; backend still enforces inventory/procurement/accounts scopes.
+- Admin-only routes protected; core tests in `test_rbac.py`, `test_permission_fallback.py`.
+- **Frontend:** `ProtectedRoute` + `userCanAccessPath()` — UX only; never substitute for API checks.
 
 ### 10. Multi-Tenant Security
 - **Existing** tenant isolation via `tenant_scope` and service-level filters unchanged.
@@ -339,6 +347,26 @@ SMTP_FROM_EMAIL=noreply@your-domain.com
 | 2026-08-15 | HR dashboard UI pass documented. HR Settings toggles are client-side only. RBAC menu expanded for HR sections. Chart of Accounts dedupe noted as data-integrity fix, not auth change. |
 | 2026-08-16 | Full security audit + hardening pass (this section). |
 | 2026-08-18 | Manufacturing workflow security considerations added. UI/UX rebrand documented as styling-only. Workflow API files listed. Cross-linked UI_UX_AUDIT_REPORT. |
+| 2026-08-21 | RBAC alignment: active-role permissions, JWT role on `/auth/me`, `hr` module, Store Manager path allowlist documented. UI date/settings changes noted as non-security. |
+
+---
+
+## RBAC Alignment — 21 August 2026
+
+End-to-end role → permission → sidebar → route → API alignment without changing database schema or API contracts.
+
+| Topic | Status | Notes |
+|-------|--------|-------|
+| Permission source | Single matrix | `rbac_constants.py` + frontend `permissions.js` mirror |
+| Login role selection | Enforced | Selected role embedded in JWT at login |
+| Token refresh | Fixed | `/auth/me` reads JWT role — menu does not revert to default role |
+| Permission union bug | Fixed | No longer unions permissions from all roles assigned to user |
+| HR routes | Protected | `/hr/*` behind JWT + `hr` module; 19 routes registered |
+| Store Manager nav | UX allowlist | Purchases paths added; Subscription/Logout removed from store sidebar only |
+| Manufacturing workflow | Unchanged | Team actions still enforced in `workflow_team_service` |
+| Client-side gates | UX only | `usePermissions`, `PermissionGate` — backend remains authoritative |
+
+**Recommendations:** Add Playwright tests per role for forbidden URLs; extend `require_action` to remaining module DELETE routes; wire HR Settings security toggles to backend policy before treating as enforced.
 
 ---
 

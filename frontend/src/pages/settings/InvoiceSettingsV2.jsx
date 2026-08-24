@@ -1,9 +1,8 @@
 import { useState } from "react";
-import PageHeader from "../../components/common/PageHeader";
 
-const PAGE_BG = "var(--color-bg)";
-const ROW_BG = "#DBE2F0";
-const TOGGLE_ON = "#3B82F6";
+import PageHeader from "../../components/common/PageHeader";
+import { SettingsFeatureShell, SettingsSwitch } from "./settingsUi";
+
 const STORAGE_KEY = "gns_invoice_settings_v2";
 
 const SETTINGS = [
@@ -94,28 +93,6 @@ function saveState(state) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
-function Toggle({ on, onChange, label }) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={on}
-      aria-label={label}
-      onClick={onChange}
-      className={`relative h-[22px] w-[40px] shrink-0 rounded-full transition-colors ${
-        on ? "" : "bg-[#d1d5db]"
-      }`}
-      style={on ? { background: TOGGLE_ON } : undefined}
-    >
-      <span
-        className={`absolute top-[2px] h-[18px] w-[18px] rounded-full bg-white shadow transition-transform ${
-          on ? "left-[20px]" : "left-[2px]"
-        }`}
-      />
-    </button>
-  );
-}
-
 export default function InvoiceSettingsV2() {
   const [state, setState] = useState(() => loadState());
 
@@ -126,37 +103,31 @@ export default function InvoiceSettingsV2() {
   };
 
   return (
-    <div className="min-h-full" style={{ background: PAGE_BG }}>
-      <div className="mx-auto max-w-[1400px] px-4 py-5 sm:px-6 lg:px-8 space-y-5">
-        <PageHeader
-          title="Invoice Settings"
-          subtitle="Manage default billing preferences, automated settlements, and tax calculation rules"
-          backTo="/settings"
-          backLabel="Back to Settings"
-          showTitle
-        />
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6 dark:border-slate-700 dark:bg-slate-800">
-          <div className="space-y-5">
-            {SETTINGS.map((item) => (
-              <div key={item.id}>
-                <div
-                  className="flex items-center justify-between gap-3 rounded-lg px-4 py-3 bg-slate-100 dark:bg-slate-700/80"
-                >
-                  <span className="text-[15px] font-semibold text-slate-900 dark:text-white">{item.title}</span>
-                  <Toggle
-                    on={!!state[item.id]}
-                    label={item.title}
-                    onChange={() => setToggle(item.id)}
-                  />
-                </div>
-                <p className="mt-2 px-1 text-[13px] leading-relaxed text-slate-600 dark:text-slate-300">
-                  {item.description}
-                </p>
-              </div>
-            ))}
+    <SettingsFeatureShell>
+      <PageHeader
+        title="Invoice Settings"
+        subtitle="Manage default billing preferences, automated settlements, and tax calculation rules"
+        backTo="/settings"
+        backLabel="Back to Settings"
+        showTitle
+      />
+      <div className="ui-card space-y-5 p-5 sm:p-6">
+        {SETTINGS.map((item) => (
+          <div key={item.id}>
+            <div className="flex items-center justify-between gap-3 rounded-xl bg-[var(--color-surface-muted)] px-4 py-3">
+              <span className="text-[15px] font-semibold text-[var(--color-text)]">{item.title}</span>
+              <SettingsSwitch
+                checked={!!state[item.id]}
+                label={item.title}
+                onChange={() => setToggle(item.id)}
+              />
+            </div>
+            <p className="mt-2 px-1 text-[13px] leading-relaxed text-[var(--color-text-muted)]">
+              {item.description}
+            </p>
           </div>
-        </div>
+        ))}
       </div>
-    </div>
+    </SettingsFeatureShell>
   );
 }

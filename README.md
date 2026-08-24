@@ -4,9 +4,9 @@
 
 **Tagline:** Business Intelligence • Analytics • AI
 
-Security hardening (auth lockout, email verification, refresh tokens, RBAC, tenant isolation, headers) is documented in [SECURITY_REPORT.md](./SECURITY_REPORT.md). **Full security audit + hardening pass (16 Aug 2026)** — summary in [Security Audit & Hardening](#security-audit--hardening-aug-2026) below. **Frontend UI/UX audit + design system migration (18 Aug 2026)** — [UI_UX_AUDIT_REPORT.md](./UI_UX_AUDIT_REPORT.md). Architecture and recent analysis: [PROJECT_ANALYSIS_REPORT.md](./PROJECT_ANALYSIS_REPORT.md).
+Security hardening (auth lockout, email verification, refresh tokens, RBAC, tenant isolation, headers) is documented in [SECURITY_REPORT.md](./SECURITY_REPORT.md). **Full security audit + hardening pass (16 Aug 2026)** — summary in [Security Audit & Hardening](#security-audit--hardening-aug-2026) below. **Frontend UI/UX audit + design system migration (18 Aug 2026)** — [UI_UX_AUDIT_REPORT.md](./UI_UX_AUDIT_REPORT.md). **Wireframe-first UI/UX standard** for new pages — [Wireframe-first UI/UX standard](#wireframe-first-uiux-standard). Architecture and recent analysis: [PROJECT_ANALYSIS_REPORT.md](./PROJECT_ANALYSIS_REPORT.md).
 
-**Latest stability pass (Aug 2026):** Full-stack audit — frontend build, Vitest, backend pytest, and sidebar→route mapping. **Manufacturing workflow engine (18 Aug 2026):** role-based Sales → Job Card → Inventory → Production → Quality → Packing → Billing pipeline with PostgreSQL persistence — see [Manufacturing Workflow Engine](#manufacturing-workflow-engine). **Design system rebrand (18 Aug 2026):** forest green Insights Iva brand, centralized `frontend/src/design-system/`, accounts/inventory shells, ERP document form controls — see [UI design system](#ui-design-system-colors--buttons). **Security pass (16 Aug 2026):** Critical auth/RBAC/API fixes applied; core security tests pass. **HR module dashboards (Aug 2026):** mockup-aligned UI — see [HR & Employee Management](#hr--employee-management). See [Stability Audit & Validation](#stability-audit--validation-aug-2026) and [Security Audit & Hardening](#security-audit--hardening-aug-2026).
+**Latest pass (21 Aug 2026):** End-to-end **RBAC** for seven roles (Admin, Sales Manager, Production Manager, Store Manager, HR Manager, Accountant, Operator) — permissions, sidebar, routes, and JWT role preserved on refresh — see [Role-Based Access Control](#role-based-access-control). **Shared date/calendar controls** (`dateControls.jsx`, `dateUtils.js`) and duplicate calendar icon fix — see [UI design system](#ui-design-system-colors--buttons). **Store Manager** dedicated sidebar with full Purchases menu. **Settings** integrated into main ERP shell (dark navy theme in dark mode only). **Manufacturing workflow engine (18 Aug 2026):** role-based Sales → Job Card → Inventory → Production → Quality → Packing → Billing — see [Manufacturing Workflow Engine](#manufacturing-workflow-engine). **Design system rebrand (18 Aug 2026):** forest green brand, `frontend/src/design-system/` — see [UI design system](#ui-design-system-colors--buttons). **HR module dashboards (Aug 2026):** mockup-aligned UI — see [HR & Employee Management](#hr--employee-management). See [Stability Audit & Validation](#stability-audit--validation-aug-2026) and [Security Audit & Hardening](#security-audit--hardening-aug-2026).
 
 ## Branding & Assets
 
@@ -77,9 +77,11 @@ Central tokens live in `frontend/src/index.css` (`:root` + `.ui-*` utilities). I
 
 | Module | Path | Exports |
 |--------|------|---------|
-| Barrel | `design-system/index.js` | Tokens, `Button`, `FormField`, `FilterBar`, `StatusBadge`, accounts/inventory shells |
+| Barrel | `design-system/index.js` | Tokens, `Button`, `FormField`, `StandardPageLayout`, `FilterBar`, `StatusBadge`, accounts/inventory shells |
 | Class tokens | `design-system/classes.js` | `inputClass`, `selectClass`, `textareaClass`, `tableWrapClass`, typography |
 | ERP forms | `design-system/erpFormControls.jsx` | `SoftInput`, `SoftSelect`, `FieldLabel`, `Pill`, `ERP_PRIMARY` |
+| Date/time | `design-system/dateControls.jsx` | `DatePicker`, `DateRangePicker`, `FloatingDate`, `FloatingDateRange` |
+| Date helpers | `utils/dateUtils.js` | `todayIso()`, timezone-safe ISO, range presets |
 | Status tones | `design-system/statusTone.js` | `resolveStatusTone()` for badges |
 | Accounts shell | `components/accounts/accountsDesignSystem.jsx` | Page shell, tables, `ACCOUNTS_INPUT_CLASS` |
 | Inventory shell | `components/inventory/inventoryDesignSystem.jsx` | Page shell, tabs, pagination, tables |
@@ -87,6 +89,68 @@ Central tokens live in `frontend/src/index.css` (`:root` + `.ui-*` utilities). I
 JS mirrors: `frontend/src/theme/colors.js`, `frontend/src/styles/theme.js`. Shared component: `ActionButton` (`frontend/src/components/common/ActionButton.jsx`).
 
 Full migration status and remaining drift: [UI_UX_AUDIT_REPORT.md](./UI_UX_AUDIT_REPORT.md).
+
+### Wireframe-first UI/UX standard
+
+Mandatory process for **all new pages and major UI changes**. Cursor rule: [`.cursor/rules/wireframe-first-ui.mdc`](./.cursor/rules/wireframe-first-ui.mdc).
+
+**Principle:** STRUCTURE → VALIDATE UX → DESIGN SYSTEM → VISUAL HIERARCHY → INTERACTION → CONSISTENCY AUDIT
+
+**"Structure before style. Think first, design later."**
+
+Do **not** change backend APIs, database logic, auth, RBAC, or business workflows unless explicitly requested.
+
+#### 1. Structure first
+
+Build wireframe/layout before visual styling. Define:
+
+- Page hierarchy, sections, primary/secondary actions, empty/loading/error states
+- Grid, spacing, responsive structure (stack mobile → columns at `sm:`/`lg:`)
+- Shell: standard pages = `ui-page ui-stack`; full-bleed editors = `App.jsx` `isInvoiceEditor`
+- Title in **Navbar** (`getPageTitle`); `PageHeader` = subtitle + actions (`showTitle={false}` default)
+
+**Do not** add colors, gradients, shadows, or decorative animations in this phase.
+
+#### 2. Validate UX
+
+Before styling, confirm: scannable info, obvious primary action, clear flow, grouped related items, appropriate density, consistency with sibling pages in the same module, all states covered.
+
+#### 3. Apply design system
+
+Reuse from `frontend/src/design-system` and `components/common/`:
+
+| Need | Component / token |
+|------|-------------------|
+| Buttons | `Button` |
+| Forms | `FormField`, `Input`, `Select`, `Textarea`, `DatePicker` |
+| Page shell | `StandardPageLayout` |
+| Cards | `ui-card`, settings `SectionCard`, `SettingsActionLink` |
+| Tables | `Table`, `DataTable`, `FilterBar` |
+| States | `Loader`, `SkeletonTable`, `EmptyState`, `ErrorState`, `OfflineState` |
+| Brand | `var(--color-primary)` — no one-off hex palettes |
+
+No duplicate components. No `#6b4eff` / random purple unless an established document-editor pattern.
+
+#### 4. Visual hierarchy + responsive
+
+Navbar title > section heading > supporting text. Primary actions dominant; secondary subtle. Status via `StatusBadge` and semantic tokens. Intentional whitespace. Reflow at breakpoints — do not only shrink.
+
+#### 5. Interactions
+
+Only: hover, focus-visible, active, disabled, loading, validation, success/error (toasts). No decorative animation.
+
+#### 6. Consistency audit
+
+Before finishing, compare with a reference page in the same module: header, spacing, typography, buttons, forms, tables, cards, filters, status, responsive behavior, colors.
+
+**Reference pages:**
+
+- List/CRUD: `ResourcePage.jsx`
+- Standard list: `PaymentTracking.jsx` — `StandardPageLayout` + `ui-card` + `Table`
+- Settings: `settingsUi.jsx` — `PanelShell`, `SectionCard`, `SettingsActionLink`
+- Full-bleed forms: invoice/payment receipt editors
+
+**Date inputs:** Prefer `DatePicker` from `design-system/dateControls.jsx` over raw `type="date"`. Custom fields use one calendar button (`.ui-date-input`); native webkit indicator is hidden to prevent duplicate icons. Use `todayIso()` instead of `toISOString().slice(0, 10)` for local calendar dates.
 
 **Global search** (navbar): `GlobalSearch` — nested input wrapper (icon does not jump when results open), clear control, Escape / click-outside.
 
@@ -105,6 +169,28 @@ Figures (KPI values, money, quantity columns) use a dedicated font token so amou
 `DataTable` and `Table` (`frontend/src/components/common/`) normalize their `data` prop with `asArray` (`frontend/src/utils/apiError.js`). A non-array API payload renders the empty state instead of throwing, so a single malformed response cannot blank out a list page. Page loaders should also pass list responses through `asArray` before `setState`.
 
 `StatusBadge` maps unknown tones to a safe default; valid tones are `success`, `info`, `progress`, `pending`, `primary`, `warning`, `danger`, `error`, `neutral`.
+
+## Role-Based Access Control
+
+Seven registerable roles share one permission matrix. Backend: `backend/app/core/rbac_constants.py`. Frontend mirror: `frontend/src/config/permissions.js`.
+
+| Role | Dashboard redirect | Sidebar |
+|------|-------------------|---------|
+| Admin | `/` (workflow hub) | Full catalog |
+| Sales Manager | `/sales/dashboard` | Sales, Masters, Analytics, Meetings |
+| Production Manager | `/production/planning` | Narrow allowlist (production, quality, inventory subset) |
+| Store Manager | `/inventory/dashboard` | Custom nav (`storeManagerNavConfig.js`) — Purchases, Inventory, Ledger, Expense |
+| HR Manager | `/hr` | HR sections only |
+| Accountant | `/accounts/dashboard` | Accounts, billing docs, analytics |
+| Operator | `/production/job-card` | Execution paths (job card, factory monitor, alerts) |
+
+**Flow:** Login selects role → JWT carries `role` / `role_id` → `GET /auth/me` returns permissions for **that role only** → `usePermissions()` filters sidebar → `ProtectedRoute` checks `userCanAccessPath()`.
+
+**Store Manager Purchases menu:** Stock In, Purchase Requisitions, Purchase, Payments Made, Debit Note, Purchase Order, GRN, Supplier Payments. Subscription, My Account, and Log Out are not in the store sidebar (logout remains in the global header).
+
+**Manufacturing workflow teams** map from ERP roles in `workflow_constants.py` — see [Manufacturing Workflow Engine](#manufacturing-workflow-engine).
+
+Security details: [SECURITY_REPORT.md](./SECURITY_REPORT.md). Architecture: [PROJECT_ANALYSIS_REPORT.md](./PROJECT_ANALYSIS_REPORT.md).
 
 ## Features
 
@@ -177,7 +263,8 @@ Inventory settings persist under the `inventory_settings` feature-settings key (
 - Deep-link create for customers: `/sales/customers/create` → opens the create modal on the list page
 
 ### Purchases & Procurement
-- **Purchases** sidebar: Purchase (`/purchases`), Payments Made, Debit Note, Purchase Order
+- **Purchases** sidebar: Purchase (`/purchases`), Payments Made, Debit Note, Purchase Order, GRN, Supplier Payments
+- **Store Manager** sees the full Purchases group via dedicated sidebar config
 - Purchase orders, material requests, goods receipt (GRN), supplier payments
 - **Enterprise Vendor Master** (`/procurement/vendors`) on the existing `suppliers` table
   - Company, contact, GST, address (PIN auto-fill), bank & procurement terms
@@ -1039,17 +1126,18 @@ All list endpoints accept `tenant_id` as a query parameter (default: 1 for demo)
 
 ## Stability Audit & Validation (Aug 2026)
 
-End-to-end audit across frontend routes, sidebar navigation, API integration, RBAC, and automated tests. Subsequent **HR UI pass (15 Aug 2026)** added mockup-aligned dashboards without changing database schema.
+End-to-end audit across frontend routes, sidebar navigation, API integration, RBAC, and automated tests. **RBAC alignment (21 Aug 2026):** seven roles, active-role permissions, JWT role on refresh, HR routes registered, Store Manager purchases nav. **HR UI pass (15 Aug 2026):** mockup-aligned dashboards without schema changes.
 
 ### Verification summary
 
 | Check | Command / scope | Result |
 |-------|-----------------|--------|
-| Frontend production build | `npm run build` | Pass (incl. HR dashboard pages) |
-| Frontend unit tests | `npm test` (Vitest, 28 tests) | Pass |
-| Backend API tests | `pytest` (86 tests) | Pass |
-| Sidebar → route mapping | 96+ sidebar links vs `AppRoutes` | **0 unmatched** (incl. `/hr/settings`, recruitment, training) |
-| Backend route registration | `app.main` import | ~650 routes |
+| Frontend production build | `npm run build` | Pass |
+| Frontend unit tests | `npm test -- --run` | Pass |
+| Backend RBAC tests | `pytest tests/test_rbac.py tests/test_permission_fallback.py` | Pass |
+| Backend API tests | `pytest` | Pass (some pre-existing auth/logout failures may remain) |
+| Sidebar → route mapping | Sidebar links vs `AppRoutes` | HR routes + Store Manager purchases aligned |
+| RBAC refresh | Login as role → refresh browser | Menu unchanged (JWT role on `/auth/me`) |
 
 ### Navigation coverage
 
@@ -1071,9 +1159,11 @@ Legacy redirects remain (e.g. `/inventory/items` → `/inventory/raw-materials`,
 |------|------|--------|
 | Customer validation | `backend/app/schemas/sales.py` | Name, contact, email, 10-digit phone, GSTIN validators on create/update |
 | Journal entries | `backend/app/schemas/accounts.py` | Map `reference`/`description` → `ref`/`desc` before persist |
-| RBAC permissions | `backend/app/core/permissions.py` | Roles with explicit `permissions` JSON use only those values; empty list falls back to `PERMISSION_MATRIX` |
-| Chart of Accounts | `backend/app/api/accounts.py`, `frontend/src/api/chartOfAccountsSync.js` | Dedupe duplicate GL account codes per tenant; transient retry on list fetch |
-| HR RBAC menu | `backend/app/core/rbac_constants.py`, `frontend/src/config/sidebarNav.js` | Expanded HR sidebar sections aligned with new dashboard routes |
+| RBAC permissions | `backend/app/core/rbac_constants.py`, `auth_service.py` | Active-role-only permissions; JWT role on `/auth/me` |
+| Chart of Accounts | `backend/app/api/accounts.py`, `chartOfAccountsSync.js` | Dedupe GL codes per tenant; transient retry on list fetch |
+| HR RBAC menu | `rbac_constants.py`, `sidebarNav.js`, `AppRoutes.jsx` | HR module + 19 routes |
+| Store Manager nav | `storeManagerNavConfig.js`, `permissions.js` | Full Purchases menu; trimmed account/subscription items |
+| Date controls | `dateControls.jsx`, `dateUtils.js`, `index.css` | Shared pickers; duplicate calendar icon fix |
 
 ### Global refresh UX
 

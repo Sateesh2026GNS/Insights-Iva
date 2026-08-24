@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
 import Button from "../common/Button";
+import { todayIso } from "../../utils/dateUtils";
 
 const field =
   "w-full rounded border border-[#c4c4cc] bg-white px-3 py-2.5 text-[13px] text-[#1a1a1f] outline-none placeholder:text-[#9a9aa5] focus:border-[#1a1a1f]";
@@ -16,11 +17,6 @@ function OutlinedField({ label, children, className = "" }) {
       {children}
     </label>
   );
-}
-
-function todayIso() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 const EMPTY = {

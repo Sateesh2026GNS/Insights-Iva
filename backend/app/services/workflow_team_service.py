@@ -20,8 +20,10 @@ from app.core.workflow_constants import (
     TEAM_SALES,
     normalize_priority,
     user_teams,
+    workflow_status_label,
 )
 from app.models.manufacturing_workflow import (
+    SalesJobCard,
     SalesOrderMaterialCheck,
     SalesOrderMaterialCheckLine,
 )
@@ -44,11 +46,28 @@ from app.services.workflow_state_service import (
 )
 
 
+_TEAM_MODULE_FALLBACK = {
+    TEAM_SALES: "sales",
+    TEAM_INVENTORY: "inventory",
+    TEAM_PRODUCTION: "production",
+    TEAM_OPERATOR: "production",
+    TEAM_QUALITY: "production",
+    TEAM_PACKING: "inventory",
+    TEAM_BILLING: "accounts",
+}
+
+
 def _assert_team(user: User, team: str) -> None:
     if user_is_admin(user):
         return
-    if team not in user_teams(get_role_names(user)):
-        raise HTTPException(status_code=403, detail=f"Requires {team} team permission")
+    if team in user_teams(get_role_names(user)):
+        return
+    from app.core.permissions import user_has_permission
+
+    module = _TEAM_MODULE_FALLBACK.get(team)
+    if module and user_has_permission(user, module):
+        return
+    raise HTTPException(status_code=403, detail=f"Requires {team} team permission")
 
 
 def _serialize_material_check(mc: SalesOrderMaterialCheck) -> dict[str, Any]:
@@ -139,6 +158,255 @@ def create_material_check_for_order(
     return mc
 
 
+def _ensure_workflow_artifacts(
+    db: Session,
+    tenant_id: int,
+    so: SalesOrder,
+    user: User | None,
+) -> SalesOrderMaterialCheck:
+    """Ensure material check and job card exist for a confirmed workflow order."""
+    from app.services.job_card_service import ensure_sales_job_card_from_order
+
+    mc = db.scalars(
+        select(SalesOrderMaterialCheck).where(
+            SalesOrderMaterialCheck.tenant_id == tenant_id,
+            SalesOrderMaterialCheck.sales_order_id == so.id,
+        )
+    ).first()
+    if not mc:
+        mc = create_material_check_for_order(db, tenant_id, so, commit=False)
+    ensure_sales_job_card_from_order(db, tenant_id, so.id, user)
+    return mc
+
+
+def repair_confirmed_orders_missing_workflow(
+    db: Session, tenant_id: int, *, limit: int = 50, user: User | None = None
+) -> int:
+    """Link confirmed sales orders without workflow_status to the inventory check queue."""
+    from app.models.manufacturing_workflow import ManufacturingWorkflowTransition
+
+    orphans = list(
+        db.scalars(
+            select(SalesOrder)
+            .where(
+                SalesOrder.tenant_id == tenant_id,
+                SalesOrder.status.in_(["confirmed", "approved"]),
+                SalesOrder.workflow_status.is_(None),
+            )
+            .order_by(SalesOrder.id.desc())
+            .limit(limit)
+        ).all()
+    )
+    if not orphans:
+        return 0
+
+    repaired = 0
+    for so in orphans:
+        lines = list(
+            db.scalars(
+                select(SalesOrderLine).where(SalesOrderLine.sales_order_id == so.id)
+            ).all()
+        )
+        if not lines:
+            continue
+        so.workflow_status = "MATERIAL_CHECK_PENDING"
+        if not so.priority:
+            so.priority = "medium"
+        _ensure_workflow_artifacts(db, tenant_id, so, user)
+        db.add(
+            ManufacturingWorkflowTransition(
+                tenant_id=tenant_id,
+                sales_order_id=so.id,
+                action="WORKFLOW_REPAIR",
+                previous_status=None,
+                new_status="MATERIAL_CHECK_PENDING",
+                user_name="System",
+                team="admin",
+                details="Confirmed order linked to inventory check queue",
+            )
+        )
+        repaired += 1
+    if repaired:
+        db.commit()
+
+    # Repair confirmed orders that have workflow_status but missing job card / material check
+    gaps = list(
+        db.scalars(
+            select(SalesOrder)
+            .where(
+                SalesOrder.tenant_id == tenant_id,
+                SalesOrder.status.in_(["confirmed", "approved"]),
+                SalesOrder.workflow_status.isnot(None),
+            )
+            .order_by(SalesOrder.id.desc())
+            .limit(limit)
+        ).all()
+    )
+    gap_fixed = 0
+    for so in gaps:
+        from app.services.job_card_service import _get_persisted_job_card
+
+        needs_mc = not db.scalars(
+            select(SalesOrderMaterialCheck.id).where(
+                SalesOrderMaterialCheck.tenant_id == tenant_id,
+                SalesOrderMaterialCheck.sales_order_id == so.id,
+            )
+        ).first()
+        needs_jc = not _get_persisted_job_card(db, tenant_id, so.id)
+        if needs_mc or needs_jc:
+            _ensure_workflow_artifacts(db, tenant_id, so, user)
+            gap_fixed += 1
+    if gap_fixed:
+        db.commit()
+        repaired += gap_fixed
+
+    return repaired
+
+
+def _material_stock_status(
+    workflow_status: str | None,
+    material_check: SalesOrderMaterialCheck | None,
+) -> str | None:
+    """pending | available | shortage — for store-manager queue filters."""
+    ws = (workflow_status or "").upper()
+    if ws in {"MATERIAL_SHORTAGE", "MATERIAL_PARTIAL"}:
+        return "shortage"
+    if material_check and material_check.lines:
+        if any(float(ln.shortage_qty or 0) > 0 for ln in material_check.lines):
+            return "shortage"
+        if material_check.status in {"verified", "completed"}:
+            return "available"
+    if ws == "MATERIAL_CHECK_PENDING":
+        return "pending"
+    if ws in {"MATERIAL_AVAILABLE", "STORE_ISSUE_PENDING", "STORE_ISSUE_PARTIAL"}:
+        return "available"
+    return None
+
+
+def _serialize_queue_order(
+    db: Session,
+    so: SalesOrder,
+    *,
+    job_card: SalesJobCard | None = None,
+    material_check: SalesOrderMaterialCheck | None = None,
+    assigned_to: str | None = None,
+) -> dict[str, Any]:
+    product_name = None
+    product_code = None
+    qty = None
+    unit = None
+    product_id = None
+    if so.line_items:
+        ln = so.line_items[0]
+        qty = float(ln.quantity or 0)
+        product_name = ln.item_description
+        unit = ln.unit or "Nos"
+        product_id = ln.product_id
+        if ln.product_id:
+            p = db.get(Product, ln.product_id)
+            if p:
+                product_name = p.name or product_name
+                product_code = getattr(p, "sku", None) or getattr(p, "code", None)
+
+    if job_card:
+        qty = float(job_card.quantity or qty or 0)
+        unit = job_card.unit or unit or "Nos"
+        if job_card.product_id:
+            product_id = job_card.product_id
+            p = db.get(Product, job_card.product_id)
+            if p:
+                product_name = p.name or product_name
+                product_code = getattr(p, "sku", None) or getattr(p, "code", None)
+
+    ws = so.workflow_status
+    label = workflow_status_label(ws)
+    delivery = job_card.required_delivery_date if job_card and job_card.required_delivery_date else so.delivery_date
+
+    return {
+        "sales_order_id": so.id,
+        "job_card_no": job_card.job_card_no if job_card else None,
+        "order_number": so.order_number,
+        "customer_name": so.customer.name if so.customer else None,
+        "product_name": product_name,
+        "product_code": product_code,
+        "product_id": product_id,
+        "quantity": qty,
+        "unit": unit or "Nos",
+        "priority": normalize_priority(job_card.priority if job_card else so.priority),
+        "workflow_status": ws,
+        "status_label": label,
+        "status": label,
+        "delivery_date": delivery.isoformat() if delivery else None,
+        "order_date": so.order_date.isoformat() if so.order_date else None,
+        "sales_person": so.sales_person,
+        "material_stock_status": _material_stock_status(ws, material_check),
+        "assigned_to": assigned_to,
+    }
+
+
+def list_pending_inventory_checks(
+    db: Session, tenant_id: int, *, limit: int = 10
+) -> tuple[int, list[dict[str, Any]]]:
+    """Count and list sales orders awaiting store inventory verification."""
+    repair_confirmed_orders_missing_workflow(db, tenant_id)
+    from sqlalchemy import func
+
+    count = int(
+        db.scalar(
+            select(func.count(SalesOrder.id)).where(
+                SalesOrder.tenant_id == tenant_id,
+                SalesOrder.workflow_status == "MATERIAL_CHECK_PENDING",
+            )
+        )
+        or 0
+    )
+    orders = list(
+        db.scalars(
+            select(SalesOrder)
+            .options(selectinload(SalesOrder.line_items), selectinload(SalesOrder.customer))
+            .where(
+                SalesOrder.tenant_id == tenant_id,
+                SalesOrder.workflow_status == "MATERIAL_CHECK_PENDING",
+            )
+            .order_by(SalesOrder.id.desc())
+            .limit(limit)
+        ).all()
+    )
+    order_ids = [o.id for o in orders]
+    jc_map: dict[int, SalesJobCard] = {}
+    mc_map: dict[int, SalesOrderMaterialCheck] = {}
+    if order_ids:
+        jcs = list(
+            db.scalars(
+                select(SalesJobCard).where(
+                    SalesJobCard.tenant_id == tenant_id,
+                    SalesJobCard.sales_order_id.in_(order_ids),
+                )
+            ).all()
+        )
+        jc_map = {jc.sales_order_id: jc for jc in jcs}
+        mcs = list(
+            db.scalars(
+                select(SalesOrderMaterialCheck)
+                .options(selectinload(SalesOrderMaterialCheck.lines))
+                .where(
+                    SalesOrderMaterialCheck.tenant_id == tenant_id,
+                    SalesOrderMaterialCheck.sales_order_id.in_(order_ids),
+                )
+            ).all()
+        )
+        mc_map = {mc.sales_order_id: mc for mc in mcs}
+    return count, [
+        _serialize_queue_order(
+            db,
+            so,
+            job_card=jc_map.get(so.id),
+            material_check=mc_map.get(so.id),
+        )
+        for so in orders
+    ]
+
+
 def confirm_sales_order_with_workflow(
     db: Session,
     tenant_id: int,
@@ -150,18 +418,45 @@ def confirm_sales_order_with_workflow(
     """Confirm SO → SALES_CONFIRMED → MATERIAL_CHECK_PENDING with MRP snapshot."""
     _assert_team(user, TEAM_SALES)
     so = get_sales_order_or_404(db, tenant_id, sales_order_id)
-    if (so.status or "").lower() in {"confirmed", "approved"} and so.workflow_status:
-        mc = db.scalars(
-            select(SalesOrderMaterialCheck).where(
-                SalesOrderMaterialCheck.sales_order_id == so.id
-            )
-        ).first()
+    if (so.status or "").lower() in {"confirmed", "approved"}:
+        if so.workflow_status:
+            _ensure_workflow_artifacts(db, tenant_id, so, user)
+            db.commit()
+            mc = db.scalars(
+                select(SalesOrderMaterialCheck).where(
+                    SalesOrderMaterialCheck.sales_order_id == so.id
+                )
+            ).first()
+            db.refresh(so)
+            return {
+                "sales_order_id": so.id,
+                "order_number": so.order_number,
+                "workflow_status": so.workflow_status,
+                "already_confirmed": True,
+                "material_check": _serialize_material_check(mc) if mc else None,
+            }
+        lines = list(
+            db.scalars(
+                select(SalesOrderLine).where(SalesOrderLine.sales_order_id == so.id)
+            ).all()
+        )
+        if not lines:
+            raise HTTPException(status_code=400, detail="Add product lines before confirming")
+        so.workflow_status = "MATERIAL_CHECK_PENDING"
+        if not so.priority:
+            so.priority = "medium"
+        mc = _ensure_workflow_artifacts(db, tenant_id, so, user)
+        db.commit()
+        db.refresh(so)
         return {
             "sales_order_id": so.id,
             "order_number": so.order_number,
+            "status": so.status,
             "workflow_status": so.workflow_status,
-            "already_confirmed": True,
-            "material_check": _serialize_material_check(mc) if mc else None,
+            "priority": normalize_priority(so.priority),
+            "mrp_results": [],
+            "material_check": _serialize_material_check(mc),
+            "repaired_workflow": True,
         }
 
     lines = list(
@@ -214,6 +509,9 @@ def confirm_sales_order_with_workflow(
         notify=True,
     )
     mc = create_material_check_for_order(db, tenant_id, so)
+    from app.services.job_card_service import ensure_sales_job_card_from_order
+
+    ensure_sales_job_card_from_order(db, tenant_id, so.id, user)
     db.commit()
     db.refresh(so)
     return {
@@ -267,11 +565,11 @@ def submit_material_check(
             ln.shortage_qty = max(0.0, float(ln.required_qty) - float(ln.available_qty))
             ln.is_available = ln.shortage_qty <= 0
 
-    all_available = all(ln.is_available for ln in mc.lines) if mc.lines else False
+    all_available = all(ln.is_available for ln in mc.lines) if mc.lines else True
     any_shortage = any(float(ln.shortage_qty or 0) > 0 for ln in mc.lines)
-    any_available = any(ln.is_available for ln in mc.lines)
+    any_available = any(ln.is_available for ln in mc.lines) if mc.lines else True
 
-    if all_available:
+    if not mc.lines or all_available:
         mc.status = "available"
         target = "MATERIAL_AVAILABLE"
     elif any_available and any_shortage:
@@ -299,21 +597,39 @@ def submit_material_check(
         notify=True,
     )
 
+    from app.services.stage_job_card_service import ensure_stage_card, complete_stage_card
+
+    inv_card = ensure_stage_card(
+        db, tenant_id, sales_order_id, "inventory_check",
+        material_check_id=mc.id,
+        status="completed" if target == "MATERIAL_AVAILABLE" else "in_progress",
+    )
+    mc.check_number = inv_card.card_number
+
     production_orders = []
-    if target in {"MATERIAL_AVAILABLE", "MATERIAL_PARTIAL"}:
-        production_orders = _create_production_for_order(db, tenant_id, so, user)
+    if target == "MATERIAL_AVAILABLE":
+        complete_stage_card(db, inv_card, user, status="completed")
+        store_card = ensure_stage_card(
+            db, tenant_id, sales_order_id, "store",
+            material_check_id=mc.id,
+            status="pending",
+        )
         transition_workflow_status(
             db,
             tenant_id=tenant_id,
             sales_order=so,
-            new_status="READY_FOR_PRODUCTION",
+            new_status="STORE_ISSUE_PENDING",
             user=user,
-            action="PRODUCTION_JOB_CREATED",
+            action="STORE_JOB_CARD_CREATED",
             team=TEAM_INVENTORY,
             commit=False,
             notify=True,
             skip_permission_check=True,
         )
+    elif target in {"MATERIAL_PARTIAL", "MATERIAL_SHORTAGE"}:
+        inv_card.status = "completed" if target == "MATERIAL_PARTIAL" else "rejected"
+        inv_card.completed_by_user_id = user.id
+        inv_card.completed_at = datetime.now(timezone.utc)
 
     db.commit()
     db.refresh(so)
@@ -321,6 +637,204 @@ def submit_material_check(
         "sales_order_id": so.id,
         "workflow_status": so.workflow_status,
         "material_check": _serialize_material_check(mc),
+        "production_orders": production_orders,
+    }
+
+
+def hold_workflow_order(
+    db: Session,
+    tenant_id: int,
+    sales_order_id: int,
+    user: User,
+    *,
+    reason: str | None = None,
+) -> dict[str, Any]:
+    """Put workflow on hold from any inventory/store stage."""
+    so = get_sales_order_or_404(db, tenant_id, sales_order_id)
+    ws = (so.workflow_status or "").upper()
+    allowed = {
+        "MATERIAL_CHECK_PENDING",
+        "MATERIAL_SHORTAGE",
+        "MATERIAL_PARTIAL",
+        "MATERIAL_AVAILABLE",
+        "STORE_ISSUE_PENDING",
+        "STORE_ISSUE_PARTIAL",
+        "READY_FOR_PRODUCTION",
+        "PRODUCTION_ASSIGNED",
+        "QUALITY_CHECK_PENDING",
+        "PACKING_PENDING",
+        "BILLING_PENDING",
+    }
+    if ws not in allowed and not user_is_admin(user):
+        raise HTTPException(status_code=409, detail=f"Cannot hold order at status {ws}")
+    transition_workflow_status(
+        db,
+        tenant_id=tenant_id,
+        sales_order=so,
+        new_status="WORKFLOW_ON_HOLD",
+        user=user,
+        action="WORKFLOW_ON_HOLD",
+        team=TEAM_INVENTORY if ws.startswith("MATERIAL") or ws.startswith("STORE") else TEAM_PRODUCTION,
+        details=reason,
+        commit=True,
+        notify=True,
+    )
+    return {"sales_order_id": so.id, "workflow_status": so.workflow_status}
+
+
+def raise_material_request(
+    db: Session,
+    tenant_id: int,
+    sales_order_id: int,
+    user: User,
+    *,
+    notes: str | None = None,
+) -> dict[str, Any]:
+    """Create purchase requisition for shortages (store/inventory action)."""
+    from app.models.procurement import MaterialRequest
+
+    _assert_team(user, TEAM_INVENTORY)
+    so = get_sales_order_or_404(db, tenant_id, sales_order_id)
+    mc = db.scalars(
+        select(SalesOrderMaterialCheck).where(
+            SalesOrderMaterialCheck.sales_order_id == so.id,
+            SalesOrderMaterialCheck.tenant_id == tenant_id,
+        )
+    ).first()
+    if not mc:
+        raise HTTPException(status_code=404, detail="Material check not found")
+
+    mr_number = f"MR-{so.order_number}"
+    existing = db.scalars(
+        select(MaterialRequest).where(
+            MaterialRequest.tenant_id == tenant_id,
+            MaterialRequest.mr_number == mr_number,
+        )
+    ).first()
+    if not existing:
+        mr = MaterialRequest(
+            tenant_id=tenant_id,
+            mr_number=mr_number,
+            request_date=date.today(),
+            requested_by=user.full_name,
+            status="pending",
+            notes=notes or f"Raised from workflow {so.order_number}",
+        )
+        db.add(mr)
+        db.commit()
+    return {
+        "sales_order_id": so.id,
+        "material_request_number": mr_number,
+        "workflow_status": so.workflow_status,
+    }
+
+
+def submit_store_material_issue(
+    db: Session,
+    tenant_id: int,
+    sales_order_id: int,
+    user: User,
+    *,
+    line_updates: list[dict[str, Any]] | None = None,
+    send_to_production: bool = False,
+    partial: bool = False,
+) -> dict[str, Any]:
+    """Store manager issues materials; completes store stage when fully issued."""
+    from app.services.stage_job_card_service import (
+        _ensure_store_issue_lines,
+        complete_stage_card,
+        ensure_stage_card,
+        get_stage_card,
+    )
+
+    _assert_team(user, TEAM_INVENTORY)
+    so = get_sales_order_or_404(db, tenant_id, sales_order_id)
+    ws = (so.workflow_status or "").upper()
+    if ws not in {"STORE_ISSUE_PENDING", "STORE_ISSUE_PARTIAL", "MATERIAL_AVAILABLE"}:
+        raise HTTPException(status_code=409, detail=f"Store issue not allowed at {ws}")
+
+    mc = db.scalars(
+        select(SalesOrderMaterialCheck).where(
+            SalesOrderMaterialCheck.sales_order_id == so.id,
+            SalesOrderMaterialCheck.tenant_id == tenant_id,
+        )
+    ).first()
+    store_card = get_stage_card(db, tenant_id, sales_order_id, "store")
+    if not store_card:
+        store_card = ensure_stage_card(
+            db, tenant_id, sales_order_id, "store",
+            material_check_id=mc.id if mc else None,
+            status="in_progress",
+        )
+    if mc:
+        _ensure_store_issue_lines(db, store_card, mc)
+
+    line_map = {ln.id: ln for ln in store_card.issue_lines}
+    for upd in line_updates or []:
+        ln = line_map.get(upd.get("id"))
+        if not ln:
+            continue
+        issued = float(upd.get("issued_qty", ln.issued_qty))
+        ln.issued_qty = min(issued, float(ln.required_qty))
+        ln.remaining_qty = max(0.0, float(ln.required_qty) - ln.issued_qty)
+        if ln.remaining_qty <= 0:
+            ln.issue_status = "issued"
+        elif ln.issued_qty > 0:
+            ln.issue_status = "partial"
+        if upd.get("store_location"):
+            ln.store_location = upd["store_location"]
+
+    all_issued = all(ln.issue_status == "issued" for ln in store_card.issue_lines) if store_card.issue_lines else False
+    any_issued = any(float(ln.issued_qty or 0) > 0 for ln in store_card.issue_lines)
+
+    if send_to_production and not all_issued and not partial:
+        raise HTTPException(status_code=400, detail="All materials must be issued before sending to production")
+
+    production_orders = []
+    if all_issued or (send_to_production and any_issued):
+        complete_stage_card(db, store_card, user, status="completed")
+        production_orders = _create_production_for_order(db, tenant_id, so, user)
+        wo_id = production_orders[0]["work_order_id"] if production_orders else None
+        ensure_stage_card(
+            db, tenant_id, sales_order_id, "production_manager",
+            work_order_id=wo_id,
+            status="pending",
+        )
+        transition_workflow_status(
+            db,
+            tenant_id=tenant_id,
+            sales_order=so,
+            new_status="READY_FOR_PRODUCTION",
+            user=user,
+            action="STORE_ISSUE_COMPLETED",
+            team=TEAM_INVENTORY,
+            commit=False,
+            notify=True,
+            skip_permission_check=True,
+        )
+    elif partial or (any_issued and not all_issued):
+        store_card.status = "in_progress"
+        transition_workflow_status(
+            db,
+            tenant_id=tenant_id,
+            sales_order=so,
+            new_status="STORE_ISSUE_PARTIAL",
+            user=user,
+            action="STORE_PARTIAL_ISSUE",
+            team=TEAM_INVENTORY,
+            commit=False,
+            notify=False,
+            skip_permission_check=True,
+        )
+    else:
+        store_card.status = "in_progress"
+
+    db.commit()
+    db.refresh(so)
+    return {
+        "sales_order_id": so.id,
+        "workflow_status": so.workflow_status,
+        "store_card_number": store_card.card_number,
         "production_orders": production_orders,
     }
 
@@ -404,6 +918,7 @@ def assign_operator_to_work_order(
         "READY_FOR_PRODUCTION",
         "PRODUCTION_ASSIGNED",
         "PRODUCTION_REWORK",
+        "QUALITY_REJECTED",
     }:
         raise HTTPException(
             status_code=409,
@@ -432,6 +947,17 @@ def assign_operator_to_work_order(
         po.priority = normalize_priority(so.priority if so else po.priority)
 
     if so:
+        from app.services.stage_job_card_service import complete_stage_card, ensure_stage_card, get_stage_card
+
+        pm_card = get_stage_card(db, tenant_id, so.id, "production_manager")
+        if pm_card:
+            complete_stage_card(db, pm_card, user, status="assigned")
+        ensure_stage_card(
+            db, tenant_id, so.id, "operator",
+            work_order_id=wo.id,
+            assigned_user_id=operator_user_id,
+            status="assigned",
+        )
         transition_workflow_status(
             db,
             tenant_id=tenant_id,
@@ -455,6 +981,100 @@ def assign_operator_to_work_order(
     }
 
 
+class OperatorProductionValidationError(HTTPException):
+    def __init__(self, detail: str) -> None:
+        super().__init__(status_code=400, detail=detail)
+
+
+def _validate_operator_qty(value: float | None, name: str) -> float | None:
+    if value is None:
+        return None
+    if value < 0:
+        raise OperatorProductionValidationError(f"{name} cannot be negative")
+    return value
+
+
+def _validate_produced_vs_target(produced: float | None, target: float) -> None:
+    if produced is None or target <= 0:
+        return
+    if produced > target:
+        raise OperatorProductionValidationError(
+            f"Produced quantity ({produced}) cannot exceed target quantity ({target})"
+        )
+
+
+def _log_operator_workflow_event(
+    db: Session,
+    *,
+    tenant_id: int,
+    sales_order: SalesOrder,
+    user: User,
+    action: str,
+    work_order_id: int | None = None,
+    details: str | None = None,
+) -> None:
+    from app.models.manufacturing_workflow import ManufacturingWorkflowTransition
+
+    db.add(
+        ManufacturingWorkflowTransition(
+            tenant_id=tenant_id,
+            sales_order_id=sales_order.id,
+            action=action,
+            previous_status=sales_order.workflow_status,
+            new_status=sales_order.workflow_status,
+            user_id=user.id,
+            user_name=user.full_name,
+            user_role=get_role_names(user)[0] if get_role_names(user) else None,
+            team=TEAM_OPERATOR,
+            work_order_id=work_order_id,
+            details=details,
+        )
+    )
+
+
+def _update_operator_stage_payload(
+    db: Session,
+    tenant_id: int,
+    sales_order_id: int,
+    *,
+    produced_qty: float | None = None,
+    rejected_qty: float | None = None,
+    rework_qty: float | None = None,
+    operator_remarks: str | None = None,
+    actual_start_time: str | None = None,
+    actual_end_time: str | None = None,
+) -> None:
+    import json
+
+    from app.services.stage_job_card_service import get_stage_card
+
+    card = get_stage_card(db, tenant_id, sales_order_id, "operator")
+    if not card:
+        return
+    payload: dict[str, Any] = {}
+    if card.payload_json:
+        try:
+            payload = json.loads(card.payload_json)
+        except json.JSONDecodeError:
+            payload = {}
+    if produced_qty is not None:
+        payload["produced_qty"] = produced_qty
+    if rejected_qty is not None:
+        payload["rejected_qty"] = rejected_qty
+    if rework_qty is not None:
+        payload["rework_qty"] = rework_qty
+    if operator_remarks is not None:
+        from app.utils.sanitize import sanitize_text
+
+        payload["operator_remarks"] = sanitize_text(operator_remarks, max_length=500)
+    if actual_start_time is not None:
+        payload["actual_start_time"] = actual_start_time
+    if actual_end_time is not None:
+        payload["actual_end_time"] = actual_end_time
+    card.payload_json = json.dumps(payload)
+    db.flush()
+
+
 def operator_start_production(
     db: Session, tenant_id: int, work_order_id: int, user: User
 ) -> dict[str, Any]:
@@ -469,6 +1089,13 @@ def operator_start_production(
             po.start_date = datetime.now(timezone.utc)
 
     if so:
+        from app.services.stage_job_card_service import get_stage_card
+
+        op_card = get_stage_card(db, tenant_id, so.id, "operator")
+        if op_card:
+            op_card.status = "in_progress"
+        now_iso = datetime.now(timezone.utc).astimezone().strftime("%d-%b-%Y %I:%M %p")
+        _update_operator_stage_payload(db, tenant_id, so.id, actual_start_time=now_iso)
         transition_workflow_status(
             db,
             tenant_id=tenant_id,
@@ -492,14 +1119,92 @@ def operator_update_production(
     *,
     produced_qty: float | None = None,
     rejected_qty: float | None = None,
+    rework_qty: float | None = None,
     notes: str | None = None,
+    actual_start_time: str | None = None,
+    actual_end_time: str | None = None,
 ) -> dict[str, Any]:
     _assert_team(user, TEAM_OPERATOR)
     wo = _get_operator_work_order(db, tenant_id, work_order_id, user)
+    so = _so_for_work_order(db, tenant_id, wo)
+    target = float(wo.planned_quantity or 0)
+    produced_qty = _validate_operator_qty(produced_qty, "Produced quantity")
+    rejected_qty = _validate_operator_qty(rejected_qty, "Rejected quantity")
+    rework_qty = _validate_operator_qty(rework_qty, "Rework quantity")
+    _validate_produced_vs_target(produced_qty, target)
     if produced_qty is not None:
         wo.actual_quantity = produced_qty
+    if so:
+        _update_operator_stage_payload(
+            db,
+            tenant_id,
+            so.id,
+            produced_qty=produced_qty,
+            rejected_qty=rejected_qty,
+            rework_qty=rework_qty,
+            operator_remarks=notes,
+            actual_start_time=actual_start_time,
+            actual_end_time=actual_end_time,
+        )
     db.commit()
-    return {"work_order_id": wo.id, "actual_quantity": float(wo.actual_quantity or 0)}
+    return {
+        "work_order_id": wo.id,
+        "actual_quantity": float(wo.actual_quantity or 0),
+        "rejected_qty": float(rejected_qty or 0),
+        "rework_qty": float(rework_qty or 0),
+    }
+
+
+def operator_pause_production(
+    db: Session, tenant_id: int, work_order_id: int, user: User
+) -> dict[str, Any]:
+    _assert_team(user, TEAM_OPERATOR)
+    wo = _get_operator_work_order(db, tenant_id, work_order_id, user)
+    so = _so_for_work_order(db, tenant_id, wo)
+    if wo.status in {"in_progress", "running"}:
+        wo.status = "paused"
+    if so:
+        from app.services.stage_job_card_service import get_stage_card
+
+        op_card = get_stage_card(db, tenant_id, so.id, "operator")
+        if op_card:
+            op_card.status = "on_hold"
+        _log_operator_workflow_event(
+            db,
+            tenant_id=tenant_id,
+            sales_order=so,
+            user=user,
+            action="PRODUCTION_PAUSED",
+            work_order_id=wo.id,
+        )
+    db.commit()
+    return {"work_order_id": wo.id, "status": wo.status}
+
+
+def operator_resume_production(
+    db: Session, tenant_id: int, work_order_id: int, user: User
+) -> dict[str, Any]:
+    _assert_team(user, TEAM_OPERATOR)
+    wo = _get_operator_work_order(db, tenant_id, work_order_id, user)
+    so = _so_for_work_order(db, tenant_id, wo)
+    if wo.status == "paused":
+        wo.status = "in_progress"
+    if so:
+        from app.services.stage_job_card_service import get_stage_card
+
+        op_card = get_stage_card(db, tenant_id, so.id, "operator")
+        if op_card:
+            op_card.status = "in_progress"
+        _log_operator_workflow_event(
+            db,
+            tenant_id=tenant_id,
+            sales_order=so,
+            user=user,
+            action="PRODUCTION_RESUMED",
+            work_order_id=wo.id,
+        )
+    db.commit()
+    return {"work_order_id": wo.id, "status": wo.status}
 
 
 def operator_complete_production(
@@ -510,11 +1215,17 @@ def operator_complete_production(
     *,
     produced_qty: float | None = None,
     rejected_qty: float | None = None,
+    rework_qty: float | None = None,
     notes: str | None = None,
 ) -> dict[str, Any]:
     _assert_team(user, TEAM_OPERATOR)
     wo = _get_operator_work_order(db, tenant_id, work_order_id, user)
     so = _so_for_work_order(db, tenant_id, wo)
+    target = float(wo.planned_quantity or 0)
+    produced_qty = _validate_operator_qty(produced_qty, "Produced quantity")
+    rejected_qty = _validate_operator_qty(rejected_qty, "Rejected quantity")
+    rework_qty = _validate_operator_qty(rework_qty, "Rework quantity")
+    _validate_produced_vs_target(produced_qty, target)
     if produced_qty is not None:
         wo.actual_quantity = produced_qty
     wo.status = "completed"
@@ -525,6 +1236,17 @@ def operator_complete_production(
 
     qi = None
     if so:
+        now_iso = datetime.now(timezone.utc).astimezone().strftime("%d-%b-%Y %I:%M %p")
+        _update_operator_stage_payload(
+            db,
+            tenant_id,
+            so.id,
+            produced_qty=float(wo.actual_quantity or 0),
+            rejected_qty=rejected_qty,
+            rework_qty=rework_qty,
+            operator_remarks=notes,
+            actual_end_time=now_iso,
+        )
         transition_workflow_status(
             db,
             tenant_id=tenant_id,
@@ -538,6 +1260,16 @@ def operator_complete_production(
             notify=False,
         )
         qi = _create_quality_inspection_pending(db, tenant_id, so, wo, user, notes)
+        from app.services.stage_job_card_service import complete_stage_card, ensure_stage_card, get_stage_card
+
+        op_card = get_stage_card(db, tenant_id, so.id, "operator")
+        if op_card:
+            complete_stage_card(db, op_card, user, status="completed")
+        ensure_stage_card(
+            db, tenant_id, so.id, "quality",
+            quality_inspection_id=qi.id if qi else None,
+            status="pending",
+        )
         transition_workflow_status(
             db,
             tenant_id=tenant_id,
@@ -588,17 +1320,17 @@ def submit_quality_check(
             )
         ).first()
 
-    if so and (so.workflow_status or "").upper() != "QUALITY_CHECK_PENDING":
+    if so and (so.workflow_status or "").upper() not in {"QUALITY_CHECK_PENDING", "QUALITY_ON_HOLD"}:
         raise HTTPException(
             status_code=409,
             detail=f"Order not awaiting quality check ({so.workflow_status})",
         )
 
     result_norm = (result or "").strip().lower()
-    if result_norm not in {"pass", "fail", "partial"}:
-        raise HTTPException(status_code=400, detail="result must be pass, fail, or partial")
+    if result_norm not in {"pass", "fail", "partial", "hold", "conditional"}:
+        raise HTTPException(status_code=400, detail="result must be pass, fail, partial, or hold")
 
-    qi.result = result_norm
+    qi.result = result_norm if result_norm != "conditional" else "hold"
     qi.status = "completed"
     qi.inspector = user.full_name
     qi.notes = notes or qi.notes
@@ -609,10 +1341,29 @@ def submit_quality_check(
         target = "QUALITY_APPROVED"
     elif result_norm == "fail":
         target = "QUALITY_REJECTED"
+    elif result_norm in {"hold", "conditional"}:
+        target = "QUALITY_ON_HOLD"
     else:
         target = "QUALITY_APPROVED"
 
     if so:
+        from app.services.stage_job_card_service import complete_stage_card, ensure_stage_card, get_stage_card
+
+        qc_card = get_stage_card(db, tenant_id, so.id, "quality")
+        if not qc_card:
+            qc_card = ensure_stage_card(
+                db, tenant_id, so.id, "quality",
+                quality_inspection_id=qi.id,
+                status="in_progress",
+            )
+        if target == "QUALITY_APPROVED":
+            complete_stage_card(db, qc_card, user, status="completed")
+            ensure_stage_card(db, tenant_id, so.id, "packing", status="pending")
+        elif target == "QUALITY_REJECTED":
+            qc_card.status = "rejected"
+        elif target == "QUALITY_ON_HOLD":
+            qc_card.status = "on_hold"
+
         transition_workflow_status(
             db,
             tenant_id=tenant_id,
@@ -637,6 +1388,21 @@ def submit_quality_check(
                 team=TEAM_QUALITY,
                 commit=False,
                 notify=True,
+                skip_permission_check=True,
+            )
+        elif target == "QUALITY_REJECTED":
+            transition_workflow_status(
+                db,
+                tenant_id=tenant_id,
+                sales_order=so,
+                new_status="PRODUCTION_REWORK",
+                user=user,
+                action="QUALITY_SENT_BACK",
+                team=TEAM_QUALITY,
+                quality_inspection_id=qi.id,
+                commit=False,
+                notify=True,
+                skip_permission_check=True,
             )
 
     db.commit()
@@ -831,104 +1597,87 @@ def list_team_queue(
     status_filter: str | None = None,
     limit: int = 50,
 ) -> list[dict[str, Any]]:
-    """Orders visible to the user's team based on workflow_status."""
-    teams = user_teams(get_role_names(user))
-    if user_is_admin(user):
-        teams = frozenset(
-            {TEAM_SALES, TEAM_INVENTORY, TEAM_PRODUCTION, TEAM_OPERATOR, TEAM_QUALITY, TEAM_PACKING, TEAM_BILLING}
-        )
+    """Orders visible to the user's team — delegates to centralized routing service."""
+    from app.services.workflow_routing_service import get_my_job_card_queue
 
-    team_statuses: dict[str, set[str]] = {
-        TEAM_SALES: {"SALES_CONFIRMED"},
-        TEAM_INVENTORY: {"MATERIAL_CHECK_PENDING", "MATERIAL_SHORTAGE", "MATERIAL_PARTIAL", "MATERIAL_AVAILABLE"},
-        TEAM_PRODUCTION: {"READY_FOR_PRODUCTION", "PRODUCTION_ASSIGNED", "PRODUCTION_REWORK", "QUALITY_REJECTED"},
-        TEAM_OPERATOR: {"PRODUCTION_ASSIGNED", "PRODUCTION_IN_PROGRESS"},
-        TEAM_QUALITY: {"QUALITY_CHECK_PENDING"},
-        TEAM_PACKING: {"QUALITY_APPROVED", "PACKING_PENDING", "PACKING_IN_PROGRESS", "PACKING_ISSUE"},
-        TEAM_BILLING: {"BILLING_PENDING", "BILLING_HOLD", "PACKED"},
-    }
+    result = get_my_job_card_queue(
+        db,
+        tenant_id,
+        user,
+        status_filter=status_filter,
+        limit=limit,
+        strict=False,
+    )
+    return result["items"]
 
-    allowed: set[str] = set()
-    for t in teams:
-        allowed.update(team_statuses.get(t, set()))
 
+def list_operator_assigned_jobs(
+    db: Session,
+    tenant_id: int,
+    user: User,
+    *,
+    status_filter: str | None = None,
+    limit: int = 50,
+) -> list[dict[str, Any]]:
+    """Work orders assigned to the current operator (or all assigned WOs for admin)."""
+    from app.models.machine import Machine
+    from app.services.stage_job_card_service import get_stage_card
+    from sqlalchemy.orm import selectinload
+
+    if not user_is_admin(user):
+        _assert_team(user, TEAM_OPERATOR)
+
+    allowed_statuses = {"PRODUCTION_ASSIGNED", "PRODUCTION_IN_PROGRESS"}
     if status_filter:
         sf = status_filter.upper()
-        if sf not in allowed and not user_is_admin(user):
-            raise HTTPException(status_code=403, detail="Status not visible to your team")
-        allowed = {sf}
+        if sf not in allowed_statuses:
+            raise HTTPException(status_code=400, detail=f"Invalid operator job status: {sf}")
+        allowed_statuses = {sf}
 
-    from sqlalchemy import or_
-
-    orders: list[SalesOrder] = []
-
-    if user_is_admin(user) and not status_filter:
-        orders = list(
-            db.scalars(
-                select(SalesOrder)
-                .options(selectinload(SalesOrder.line_items), selectinload(SalesOrder.customer))
-                .where(
-                    SalesOrder.tenant_id == tenant_id,
-                    or_(
-                        SalesOrder.workflow_status.isnot(None),
-                        SalesOrder.status.in_(["draft", "pending"]),
-                    ),
-                )
-                .order_by(SalesOrder.id.desc())
-                .limit(limit)
-            ).all()
+    stmt = (
+        select(WorkOrder, SalesOrder, ProductionOrder)
+        .join(ProductionOrder, WorkOrder.production_order_id == ProductionOrder.id)
+        .join(SalesOrder, ProductionOrder.sales_order_id == SalesOrder.id)
+        .options(selectinload(SalesOrder.customer), selectinload(SalesOrder.line_items))
+        .where(
+            WorkOrder.tenant_id == tenant_id,
+            SalesOrder.workflow_status.in_(list(allowed_statuses)),
+            WorkOrder.assigned_user_id.isnot(None),
         )
-    else:
-        if TEAM_SALES in teams and not status_filter:
-            draft_orders = list(
-                db.scalars(
-                    select(SalesOrder)
-                    .options(selectinload(SalesOrder.line_items), selectinload(SalesOrder.customer))
-                    .where(
-                        SalesOrder.tenant_id == tenant_id,
-                        SalesOrder.status.in_(["draft", "pending"]),
-                        SalesOrder.workflow_status.is_(None),
-                    )
-                    .order_by(SalesOrder.id.desc())
-                    .limit(limit)
-                ).all()
-            )
-            orders.extend(draft_orders)
+        .order_by(SalesOrder.id.desc())
+        .limit(limit)
+    )
+    if not user_is_admin(user):
+        stmt = stmt.where(WorkOrder.assigned_user_id == user.id)
 
-        if allowed:
-            q = (
-                select(SalesOrder)
-                .options(selectinload(SalesOrder.line_items), selectinload(SalesOrder.customer))
-                .where(
-                    SalesOrder.tenant_id == tenant_id,
-                    SalesOrder.workflow_status.in_(list(allowed)),
-                )
-                .order_by(SalesOrder.id.desc())
-                .limit(limit)
-            )
-            wf_orders = list(db.scalars(q).all())
-            seen = {o.id for o in orders}
-            for o in wf_orders:
-                if o.id not in seen:
-                    orders.append(o)
-                    seen.add(o.id)
-
-        orders.sort(key=lambda o: o.id, reverse=True)
-        orders = orders[:limit]
-
-    if not orders and not allowed and TEAM_SALES not in teams:
-        return []
-    items = []
-    for so in orders:
+    rows = db.execute(stmt).all()
+    items: list[dict[str, Any]] = []
+    for wo, so, _po in rows:
         product_name = None
-        qty = None
+        qty = float(wo.planned_quantity or 0)
         if so.line_items:
             ln = so.line_items[0]
-            qty = float(ln.quantity or 0)
+            qty = float(ln.quantity or qty)
             product_name = ln.item_description
             if ln.product_id:
                 p = db.get(Product, ln.product_id)
                 product_name = p.name if p else product_name
+
+        op_card = get_stage_card(db, tenant_id, so.id, "operator")
+        machine_name = None
+        if wo.machine_id:
+            machine = db.get(Machine, wo.machine_id)
+            machine_name = machine.name if machine else None
+
+        produced = float(wo.actual_quantity or 0)
+        target = float(wo.planned_quantity or qty or 0)
+        progress_pct = min(100, round((produced / target) * 100)) if target > 0 else 0
+
+        operator_name = None
+        if wo.assigned_user_id:
+            op_user = db.get(User, wo.assigned_user_id)
+            operator_name = op_user.full_name if op_user else None
+
         items.append(
             {
                 "sales_order_id": so.id,
@@ -936,10 +1685,21 @@ def list_team_queue(
                 "customer_name": so.customer.name if so.customer else None,
                 "product_name": product_name,
                 "quantity": qty,
+                "target_quantity": target,
+                "produced_quantity": produced,
+                "progress_pct": progress_pct,
                 "priority": normalize_priority(so.priority),
                 "workflow_status": so.workflow_status,
+                "work_order_id": wo.id,
+                "work_order_number": wo.work_order_number,
+                "work_order_status": wo.status,
+                "operator_job_card_no": op_card.card_number if op_card else None,
+                "operator_card_status": op_card.status if op_card else None,
+                "assigned_operator": operator_name,
+                "assigned_operator_id": wo.assigned_user_id,
+                "machine_name": machine_name,
                 "delivery_date": so.delivery_date.isoformat() if so.delivery_date else None,
-                "sales_person": so.sales_person,
+                "planned_end": wo.planned_end.isoformat() if wo.planned_end else None,
             }
         )
     return items

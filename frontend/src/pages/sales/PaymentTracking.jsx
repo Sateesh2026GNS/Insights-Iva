@@ -1,15 +1,16 @@
 import { useCallback, useEffect, useState } from "react";
 import { Plus } from "lucide-react";
 
+import Button from "../../components/common/Button";
+import EmptyState from "../../components/common/EmptyState";
 import Loader from "../../components/common/Loader";
-import PageHeader from "../../components/common/PageHeader";
+import StandardPageLayout from "../../components/common/StandardPageLayout";
 import Table from "../../components/common/Table";
 import { getPayments, getInvoices } from "../../api/salesApi";
 import useTenantId from "../../hooks/useTenantId";
 import useManufacturingRefresh from "../../hooks/useManufacturingRefresh";
 import { formatInr } from "../../data/salesMasterData";
 
-import Button from "../../components/common/Button";
 export default function PaymentTracking() {
   const tenantId = useTenantId();
   const [loading, setLoading] = useState(true);
@@ -38,38 +39,45 @@ export default function PaymentTracking() {
   if (loading) return <Loader label="Loading payments..." />;
 
   return (
-    <div className="space-y-5 pb-4">
-      <PageHeader
-        subtitle="Payments update invoice balances, income, and AR journal entries."
-        action={
-          <Button variant="primary" to="/sales/payments/create">
-            <Plus className="h-4 w-4" /> Record Payment
-          </Button>
-        }
-      />
-
+    <StandardPageLayout
+      subtitle="Payments update invoice balances, income, and AR journal entries."
+      action={
+        <Button variant="primary" to="/sales/payments/create">
+          <Plus className="h-4 w-4" /> Record Payment
+        </Button>
+      }
+    >
       <div className="ui-card p-4">
-        <Table
-          columns={[
-            { key: "id", label: "Payment#" },
-            {
-              key: "invoice_id",
-              label: "Invoice",
-              render: (r) => invMap[r.invoice_id]?.invoice_number ?? `INV-${r.invoice_id}`,
-            },
-            { key: "payment_date", label: "Date" },
-            {
-              key: "amount",
-              label: "Amount",
-              align: "right",
-              render: (r) => formatInr(r.amount),
-            },
-            { key: "method", label: "Method" },
-            { key: "notes", label: "Notes" },
-          ]}
-          data={payments}
-        />
+        {payments.length === 0 ? (
+          <EmptyState
+            title="No payments recorded"
+            description="Record a customer payment against an invoice to update AR and invoice balance."
+            actionLabel="Record Payment"
+            actionHref="/sales/payments/create"
+          />
+        ) : (
+          <Table
+            columns={[
+              { key: "id", label: "Payment#" },
+              {
+                key: "invoice_id",
+                label: "Invoice",
+                render: (r) => invMap[r.invoice_id]?.invoice_number ?? `INV-${r.invoice_id}`,
+              },
+              { key: "payment_date", label: "Date" },
+              {
+                key: "amount",
+                label: "Amount",
+                align: "right",
+                render: (r) => formatInr(r.amount),
+              },
+              { key: "method", label: "Method" },
+              { key: "notes", label: "Notes" },
+            ]}
+            data={payments}
+          />
+        )}
       </div>
-    </div>
+    </StandardPageLayout>
   );
 }

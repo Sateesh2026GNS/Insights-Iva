@@ -46,7 +46,7 @@ def test_login_wrong_password(client, register_admin):
         "/auth/login", json={"email": ctx["email"], "password": "wrong-password", "role": "Admin"}
     )
     assert resp.status_code == 401
-    assert resp.json()["detail"] == "Incorrect password."
+    assert resp.json()["detail"] == "Incorrect email or password."
 
 
 def test_login_role_mismatch(client, register_admin):
@@ -67,7 +67,7 @@ def test_login_email_not_found(client):
         json={"email": "nobody@unknown-corp.example", "password": "Passw0rd!123", "role": "Admin"},
     )
     assert resp.status_code == 401
-    assert resp.json()["detail"] == "Email address not found."
+    assert resp.json()["detail"] == "Incorrect email or password."
 
 
 def test_login_email_not_with_company(client, register_admin):
@@ -78,7 +78,7 @@ def test_login_email_not_with_company(client, register_admin):
         json={"email": f"ghost@{domain}", "password": "Passw0rd!123", "role": "Admin"},
     )
     assert resp.status_code == 401
-    assert resp.json()["detail"] == "This email address is not registered with your company."
+    assert resp.json()["detail"] == "Incorrect email or password."
 
 
 def test_login_lockout_after_five_failures(client, register_admin):
@@ -151,11 +151,11 @@ def test_register_duplicate_company_name_succeeds(client):
 
     login1 = client.post(
         "/auth/login",
-        json={"email": "first-gns@acme1.test", "password": "Passw0rd!123", "role": "Admin"},
+        json={"email": "first-gns@acme1.test", "password": "Passw0rd!123", "role": "Operator"},
     )
     login2 = client.post(
         "/auth/login",
-        json={"email": "second-gns@acme2.test", "password": "Passw0rd!123", "role": "Admin"},
+        json={"email": "second-gns@acme2.test", "password": "Passw0rd!123", "role": "Operator"},
     )
     assert login1.status_code == 200
     assert login2.status_code == 200

@@ -249,3 +249,25 @@ def test_production_manager_can_create_work_order(client, register_admin):
         },
     )
     assert resp.status_code == 200, resp.text
+
+
+def test_store_manager_role_includes_settings_module(client, register_admin):
+    """Store Manager must receive settings in JWT permissions for /settings route access."""
+    admin = register_admin()
+    tenant_id = admin["user"]["tenant_id"]
+    store = _create_role_user(client, tenant_id, "Store Manager")
+    perms = store["user"]["permissions"]
+    assert "settings" in perms, f"Store Manager permissions missing settings: {perms}"
+
+
+def test_store_manager_can_load_account_settings(client, register_admin):
+    admin = register_admin()
+    tenant_id = admin["user"]["tenant_id"]
+    store = _create_role_user(client, tenant_id, "Store Manager")
+    headers = {"Authorization": f"Bearer {store['access_token']}"}
+
+    overview = client.get("/settings/account-overview", headers=headers)
+    assert overview.status_code == 200, overview.text
+
+    denied = client.get("/api/settings/users/stats", headers=headers)
+    assert denied.status_code == 403

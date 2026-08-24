@@ -4,14 +4,10 @@ import { X } from "lucide-react";
 
 import Button from "../common/Button";
 import { useToast } from "../../context/ToastContext";
+import { todayIso } from "../../utils/dateUtils";
 
 const input =
   "w-full rounded-lg border border-[#d0d0d8] bg-white px-3 py-2.5 text-[13px] text-[#1a1a1f] outline-none placeholder:text-[#9a9aa5] focus:border-[#2d2a4a]";
-
-function todayIso() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
 
 export default function ContraEntryModal({
   open,

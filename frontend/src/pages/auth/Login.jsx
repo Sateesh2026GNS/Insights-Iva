@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { login as loginApi, getApiErrorMessage } from "../../api/authApi";
+import { login as loginApi, getLoginErrorMessage } from "../../api/authApi";
 import useAuth from "../../hooks/useAuth";
 import AuthSlider from "../../components/auth/AuthSlider";
 import LoginBackdrop from "../../components/auth/LoginBackdrop";
@@ -75,7 +75,7 @@ export default function Login() {
       const data = await loginApi(email.trim(), password, role);
       completeLogin(data);
     } catch (err) {
-      setError(getApiErrorMessage(err, "Login failed. Is the API running?"));
+      setError(getLoginErrorMessage(err, "Login failed. Is the API running?"));
     } finally {
       setLoading(false);
     }

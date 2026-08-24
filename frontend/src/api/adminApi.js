@@ -5,6 +5,7 @@ import api from "./axiosConfig";
 
 // ----- Users -----
 export const getUsers = () => api.get("/admin/users");
+export const getTeamDirectory = () => api.get("/team-directory");
 export const getUser = (id) => api.get(`/admin/users/${id}`);
 export const createUser = (payload) => api.post("/admin/users", payload);
 export const updateUser = (id, payload) => api.put(`/admin/users/${id}`, payload);

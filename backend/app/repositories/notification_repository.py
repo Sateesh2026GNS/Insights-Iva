@@ -158,7 +158,7 @@ class NotificationRepository(BaseRepository):
             logger.exception("Unexpected error clearing all notifications: %s", exc)
             raise HTTPException(500, "Database commit failed. Transaction has been rolled back.") from exc
 
-    def create(self, **kwargs) -> ErpNotification:
+    def create(self, *, commit: bool = True, **kwargs) -> ErpNotification:
         if "created_at" not in kwargs:
             kwargs["created_at"] = datetime.now(timezone.utc)
         row = ErpNotification(
@@ -168,15 +168,20 @@ class NotificationRepository(BaseRepository):
         )
         try:
             self.db.add(row)
-            self.db.commit()
-            self.db.refresh(row)
+            if commit:
+                self.db.commit()
+                self.db.refresh(row)
+            else:
+                self.db.flush()
             return row
         except (OperationalError, SQLAlchemyError) as exc:
-            self.db.rollback()
+            if commit:
+                self.db.rollback()
             logger.exception("Database error creating notification: %s", exc)
             raise HTTPException(503, "Database commit failed. Transaction has been rolled back.") from exc
         except Exception as exc:
-            self.db.rollback()
+            if commit:
+                self.db.rollback()
             logger.exception("Unexpected error creating notification: %s", exc)
             raise HTTPException(500, "Database commit failed. Transaction has been rolled back.") from exc
 

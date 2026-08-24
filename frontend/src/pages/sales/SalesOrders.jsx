@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import usePageRefresh from "../../hooks/usePageRefresh";
-import { Link } from "react-router-dom";
-import { Download, Filter, IndianRupee, Plus, ShoppingCart, Truck } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { ClipboardList, Download, Edit2, ExternalLink, Eye, Filter, IndianRupee, Plus, ShoppingCart, Truck } from "lucide-react";
 import KpiCard from "../../components/common/KpiCard";
 
 import DataTable from "../../components/common/DataTable";
 import EmptyState from "../../components/common/EmptyState";
 import PageHeader from "../../components/common/PageHeader";
+import RowActionMenu from "../../components/common/RowActionMenu";
 import SkeletonTable from "../../components/common/SkeletonTable";
 import { ErrorState, NoResultsState, OfflineState } from "../../components/common/states";
 import SODetailModal from "../../components/sales/SODetailModal";
@@ -22,6 +23,7 @@ const defaultFilters = { customer: "", status: "", sales_person: "" };
 
 export default function SalesOrders() {
   const { addToast } = useToast();
+  const navigate = useNavigate();
   const { online, markRequestStart, markRequestEnd } = useNetworkStatus();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -30,6 +32,7 @@ export default function SalesOrders() {
   const [filters, setFilters] = useState(defaultFilters);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [selected, setSelected] = useState(null);
+  const [openMenu, setOpenMenu] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -37,25 +40,10 @@ export default function SalesOrders() {
     if (typeof markRequestStart === "function") markRequestStart();
     try {
       const res = await getSalesOrdersEnriched().catch(() => ({ data: [] }));
-      const apiOrders = Array.isArray(res?.data) ? res.data : [];
-      const stored = localStorage.getItem("smrt_sales_orders");
-      const localOrders = stored ? JSON.parse(stored) : [];
-
-      const soMap = new Map();
-      [...apiOrders, ...localOrders].forEach((o) => {
-        const key = String(o.order_number || o.so_number || o.id || "").trim().toLowerCase();
-        if (key) soMap.set(key, o);
-      });
-      setRows(Array.from(soMap.values()));
+      setRows(Array.isArray(res?.data) ? res.data : []);
     } catch {
-      const stored = localStorage.getItem("smrt_sales_orders");
-      const localOrders = stored ? JSON.parse(stored) : [];
-      const soMap = new Map();
-      localOrders.forEach((o) => {
-        const key = String(o.order_number || o.so_number || o.id || "").trim().toLowerCase();
-        if (key) soMap.set(key, o);
-      });
-      setRows(Array.from(soMap.values()));
+      setRows([]);
+      setLoadError("Could not load sales orders.");
     } finally {
       if (typeof markRequestEnd === "function") markRequestEnd();
       setLoading(false);
@@ -151,23 +139,53 @@ export default function SalesOrders() {
     },
     {
       key: "actions",
-      label: "Actions",
+      label: "",
       render: (r) => (
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setSelected(r)}
-            className="text-xs font-semibold text-[var(--color-primary)] hover:underline"
-          >
-            View
-          </button>
-          <Link
-            to={`/sales/orders/create?edit=${r.order_number || r.so_number}`}
-            className="text-xs font-semibold text-[var(--color-text-secondary)] hover:underline"
-          >
-            Edit
-          </Link>
-        </div>
+        <RowActionMenu
+          rowId={r.id ?? r.order_number}
+          openMenu={openMenu}
+          setOpenMenu={setOpenMenu}
+          ariaLabel={`Actions for ${r.order_number || "sales order"}`}
+          items={[
+            {
+              label: "View",
+              icon: <Eye className="h-4 w-4" />,
+              onClick: () => setSelected(r),
+            },
+            {
+              label: "Edit",
+              icon: <Edit2 className="h-4 w-4" />,
+              onClick: () => {
+                if (typeof r.id === "number") {
+                  navigate(`/sales/orders/create?edit=${r.id}`);
+                  return;
+                }
+                navigate(
+                  `/sales/orders/create?edit=${encodeURIComponent(r.order_number || r.so_number || "")}`
+                );
+              },
+            },
+            ...(typeof r.id === "number"
+              ? [
+                  {
+                    label: "Full Details",
+                    icon: <ExternalLink className="h-4 w-4" />,
+                    onClick: () => navigate(`/sales/orders/${r.id}`),
+                  },
+                  {
+                    label: "Job Card",
+                    icon: <ClipboardList className="h-4 w-4" />,
+                    onClick: () => navigate(`/sales/orders/${r.id}/job-card`),
+                  },
+                ]
+              : []),
+            {
+              label: "Dispatch",
+              icon: <Truck className="h-4 w-4" />,
+              onClick: () => navigate("/sales/dispatch"),
+            },
+          ]}
+        />
       ),
     },
   ];

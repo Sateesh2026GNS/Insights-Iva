@@ -83,6 +83,28 @@ export async function resendVerification(email) {
   return data;
 }
 
+/** Map login API errors to user-safe messages (never expose enumeration or internals). */
+export function getLoginErrorMessage(err, fallback = "Login failed. Please try again.") {
+  const status = err?.response?.status;
+  const detail = getApiErrorMessage(err, "");
+  if (status === 429) {
+    if (detail.toLowerCase().includes("failed attempts")) {
+      return "Too many failed attempts. Please try again later.";
+    }
+    return "Too many login attempts. Please try again later.";
+  }
+  if (status === 401 && detail) {
+    return detail;
+  }
+  if (status === 422) {
+    return "Please enter a valid company email and password.";
+  }
+  if (detail && !detail.toLowerCase().includes("database")) {
+    return detail;
+  }
+  return fallback;
+}
+
 /** Extract human-readable error from FastAPI or API envelope responses. */
 export function getApiErrorMessage(err, fallback = "Something went wrong.") {
   const data = err?.response?.data;

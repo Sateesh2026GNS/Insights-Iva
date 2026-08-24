@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db
@@ -65,6 +65,16 @@ from app.schemas.inventory_extended import (
     StockTransferCreate,
     StockTransferRead,
     StockTransferStatusUpdate,
+    StockReturnCreate,
+    StockReturnRead,
+    StockReturnStatusUpdate,
+    StockReturnSummaryRead,
+    StockReturnUpdate,
+    StockInCreate,
+    StockInRead,
+    StockInStatusUpdate,
+    StockInSummaryRead,
+    StockInUpdate,
 )
 from app.services.inventory_extended_service import (
     create_adjustment,
@@ -81,6 +91,21 @@ from app.services.inventory_extended_service import (
     list_ledger_entries,
     list_materials_enriched,
     list_transfers,
+)
+from app.services.stock_return_service import (
+    create_stock_return as create_stock_return_doc,
+    get_item_available_for_return,
+    get_stock_return,
+    list_stock_returns,
+    update_stock_return,
+    update_stock_return_status,
+)
+from app.services.stock_in_service import (
+    create_stock_in as create_stock_in_doc,
+    get_stock_in,
+    list_stock_ins,
+    update_stock_in,
+    update_stock_in_status,
 )
 
 router = APIRouter(prefix="/inventory", tags=["inventory"])
@@ -459,6 +484,188 @@ def update_adjustment_status_endpoint(
         raise HTTPException(500, "Adjustment updated but could not be loaded")
     return match
 
+
+@router.get("/stock-returns", response_model=list[StockReturnSummaryRead])
+def stock_returns_list(
+    search: str | None = Query(None),
+    status: str | None = Query(None),
+    return_type: str | None = Query(None),
+    department: str | None = Query(None),
+    warehouse_id: int | None = Query(None),
+    date_from: str | None = Query(None),
+    date_to: str | None = Query(None),
+    tenant_id: int = Depends(tenant_scope(MODULE)),
+    db: Session = Depends(get_db),
+):
+    return list_stock_returns(
+        db,
+        tenant_id,
+        search=search,
+        status=status,
+        return_type=return_type,
+        department=department,
+        warehouse_id=warehouse_id,
+        date_from=date_from,
+        date_to=date_to,
+    )
+
+
+@router.get("/stock-returns/available-qty/{item_id}")
+def stock_return_available_qty(
+    item_id: int,
+    warehouse_id: int = Query(..., ge=1),
+    reference_id: int | None = Query(None),
+    tenant_id: int = Depends(tenant_scope(MODULE)),
+    db: Session = Depends(get_db),
+):
+    return get_item_available_for_return(
+        db,
+        tenant_id,
+        item_id=item_id,
+        warehouse_id=warehouse_id,
+        reference_id=reference_id,
+    )
+
+
+@router.get("/stock-returns/{return_id}", response_model=StockReturnRead)
+def stock_return_detail(
+    return_id: int,
+    tenant_id: int = Depends(tenant_scope(MODULE)),
+    db: Session = Depends(get_db),
+):
+    row = get_stock_return(db, tenant_id, return_id)
+    if not row:
+        raise HTTPException(404, "Stock return not found")
+    return row
+
+
+@router.post("/stock-returns", response_model=StockReturnRead)
+def create_stock_return_endpoint(
+    payload: StockReturnCreate,
+    request: Request,
+    user: User = Depends(require_permission(MODULE)),
+    db: Session = Depends(get_db),
+):
+    result = create_stock_return_doc(db, user.tenant_id, payload, user, request=request)
+    return result
+
+
+@router.put("/stock-returns/{return_id}", response_model=StockReturnRead)
+def update_stock_return_endpoint(
+    return_id: int,
+    payload: StockReturnUpdate,
+    request: Request,
+    user: User = Depends(require_permission(MODULE)),
+    db: Session = Depends(get_db),
+):
+    row = update_stock_return(db, user.tenant_id, return_id, payload, user, request=request)
+    if not row:
+        raise HTTPException(404, "Stock return not found")
+    return row
+
+
+@router.patch("/stock-returns/{return_id}/status", response_model=StockReturnRead)
+def update_stock_return_status_endpoint(
+    return_id: int,
+    payload: StockReturnStatusUpdate,
+    request: Request,
+    user: User = Depends(require_permission(MODULE)),
+    db: Session = Depends(get_db),
+):
+    row = update_stock_return_status(
+        db, user.tenant_id, return_id, payload, user, request=request
+    )
+    if not row:
+        raise HTTPException(404, "Stock return not found")
+    if row.status == "completed":
+        from app.services.alert_service import sync_low_stock_alerts
+
+        sync_low_stock_alerts(db, user.tenant_id)
+    return row
+
+
+@router.get("/stock-ins", response_model=list[StockInSummaryRead])
+def stock_ins_list(
+    search: str | None = Query(None),
+    status: str | None = Query(None),
+    reference_type: str | None = Query(None),
+    warehouse_id: int | None = Query(None),
+    date_from: str | None = Query(None),
+    date_to: str | None = Query(None),
+    tenant_id: int = Depends(tenant_scope(MODULE)),
+    db: Session = Depends(get_db),
+):
+    return list_stock_ins(
+        db,
+        tenant_id,
+        search=search,
+        status=status,
+        reference_type=reference_type,
+        warehouse_id=warehouse_id,
+        date_from=date_from,
+        date_to=date_to,
+    )
+
+
+@router.get("/stock-ins/{stock_in_id}", response_model=StockInRead)
+def stock_in_detail(
+    stock_in_id: int,
+    tenant_id: int = Depends(tenant_scope(MODULE)),
+    db: Session = Depends(get_db),
+):
+    row = get_stock_in(db, tenant_id, stock_in_id)
+    if not row:
+        raise HTTPException(404, "Stock in document not found")
+    return row
+
+
+@router.post("/stock-ins", response_model=StockInRead)
+def create_stock_in_endpoint(
+    payload: StockInCreate,
+    request: Request,
+    user: User = Depends(require_permission(MODULE)),
+    db: Session = Depends(get_db),
+):
+    result = create_stock_in_doc(db, user.tenant_id, payload, user, request=request)
+    if result.status == "confirmed":
+        from app.services.alert_service import sync_low_stock_alerts
+
+        sync_low_stock_alerts(db, user.tenant_id)
+    return result
+
+
+@router.put("/stock-ins/{stock_in_id}", response_model=StockInRead)
+def update_stock_in_endpoint(
+    stock_in_id: int,
+    payload: StockInUpdate,
+    request: Request,
+    user: User = Depends(require_permission(MODULE)),
+    db: Session = Depends(get_db),
+):
+    row = update_stock_in(db, user.tenant_id, stock_in_id, payload, user, request=request)
+    if not row:
+        raise HTTPException(404, "Stock in document not found")
+    return row
+
+
+@router.patch("/stock-ins/{stock_in_id}/status", response_model=StockInRead)
+def update_stock_in_status_endpoint(
+    stock_in_id: int,
+    payload: StockInStatusUpdate,
+    request: Request,
+    user: User = Depends(require_permission(MODULE)),
+    db: Session = Depends(get_db),
+):
+    row = update_stock_in_status(
+        db, user.tenant_id, stock_in_id, payload, user, request=request
+    )
+    if not row:
+        raise HTTPException(404, "Stock in document not found")
+    if row.status == "confirmed":
+        from app.services.alert_service import sync_low_stock_alerts
+
+        sync_low_stock_alerts(db, user.tenant_id)
+    return row
 
 
 @router.get("/ledger/summary", response_model=LedgerSummaryRead)

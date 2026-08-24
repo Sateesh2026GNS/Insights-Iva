@@ -37,6 +37,9 @@ class User(Base, TimestampMixin):
     last_login_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    last_failed_login_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     plant_code: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     department: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
     assigned_machine_id: Mapped[int | None] = mapped_column(

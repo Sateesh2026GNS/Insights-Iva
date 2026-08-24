@@ -3,7 +3,7 @@
 from datetime import date, datetime, timezone
 
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.models.machine import Machine
 from app.models.production import ProductionOrder, WorkOrder

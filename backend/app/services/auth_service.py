@@ -139,71 +139,35 @@ def find_user_by_email(db: Session, email: str) -> User | None:
 
 def login_user(db: Session, email: str, password: str) -> User:
     """
-    Validate login with explicit error messages.
-    JWT must only be issued by the caller after this succeeds.
+    Validate credentials. Raises 401 with a generic message for any auth failure
+    so callers cannot distinguish unknown email, wrong password, or inactive account.
     """
-    from app.core.company_email import (
-        MSG_ACCOUNT_DEACTIVATED,
-        MSG_COMPANY_INACTIVE,
-        MSG_EMAIL_NOT_FOUND,
-        MSG_EMAIL_NOT_WITH_COMPANY,
-        MSG_INCORRECT_PASSWORD,
-        MSG_TRIAL_EXPIRED,
-        email_domain,
-        find_company_by_email_domain,
-        is_subscription_active,
-    )
+    from app.core.company_email import MSG_GENERIC_LOGIN_ERROR, is_subscription_active
+    from app.services.security_service import GENERIC_LOGIN_ERROR
+
+    generic = GENERIC_LOGIN_ERROR or MSG_GENERIC_LOGIN_ERROR
+    # Fixed bcrypt hash for timing mitigation when the email is unknown.
+    dummy_hash = "$2b$12$LQv3c1yqBWVHxkd0LHA0COYz6TtxMQJqpNfWXlFbW.6B1Lx3KvQ6e"
 
     email = (email or "").strip().lower()
     user = find_user_by_email(db, email)
 
     if not user:
-        domain = email_domain(email)
-        company = find_company_by_email_domain(db, domain)
-        if company:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail=MSG_EMAIL_NOT_WITH_COMPANY,
-            )
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=MSG_EMAIL_NOT_FOUND,
-        )
-
-    company = user.tenant
-    if company is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=MSG_EMAIL_NOT_FOUND,
-        )
+        verify_password(password, dummy_hash)
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=generic)
 
     if not verify_password(password, user.hashed_password):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=MSG_INCORRECT_PASSWORD,
-        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=generic)
 
     if not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=MSG_ACCOUNT_DEACTIVATED,
-        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=generic)
 
     if not getattr(user, "email_verified", True):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Please verify your email address before signing in.",
-        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=generic)
 
-    if not is_subscription_active(company):
-        sub = (company.subscription or "trial").strip().lower()
-        status_val = (getattr(company, "status", None) or "active").strip().lower()
-        if status_val == "suspended":
-            from app.core.company_email import MSG_COMPANY_SUSPENDED
-            detail = MSG_COMPANY_SUSPENDED
-        else:
-            detail = MSG_TRIAL_EXPIRED if sub in {"trial", "expired", ""} else MSG_COMPANY_INACTIVE
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=detail)
+    company = user.tenant
+    if company is None or not is_subscription_active(company):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=generic)
 
     return user
 
@@ -293,18 +257,41 @@ def issue_auth_response_data(
     }
 
 
+def _permissions_for_role_record(role) -> list[str]:
+    """Resolve module/action permissions for a single role (JSON or matrix fallback)."""
+    from app.core.rbac_constants import PERMISSION_MATRIX, VALID_MODULES
+
+    raw = getattr(role, "permissions", None) or []
+    if isinstance(raw, str):
+        try:
+            import json
+
+            raw = json.loads(raw)
+        except ValueError:
+            raw = [raw]
+    normalized = list(raw) if isinstance(raw, (list, tuple, set)) else []
+    if normalized:
+        return sorted(set(normalized))
+    spec = PERMISSION_MATRIX.get(getattr(role, "name", ""), {})
+    perms = list(spec.get("modules", []))
+    perms.extend(spec.get("actions", []))
+    if getattr(role, "name", None) == "Admin":
+        return sorted(VALID_MODULES)
+    return sorted(set(perms))
+
+
 def get_user_with_role(db: Session, user: User, *, preferred_role: str | None = None) -> dict:
     from app.models.platform import CompanyLicense
 
     db.refresh(user, ["roles", "tenant"])
     role_names = [r.name for r in user.roles]
-    permissions = sorted({p for r in user.roles for p in (r.permissions or [])})
     primary = None
     if preferred_role:
         primary = next((r for r in user.roles if r.name == preferred_role), None)
     if primary is None:
         primary = user.roles[0] if user.roles else None
     role_name = primary.name if primary else "Operator"
+    permissions = _permissions_for_role_record(primary) if primary else []
     tenant = user.tenant
     tenant_name = tenant.name if tenant else None
 

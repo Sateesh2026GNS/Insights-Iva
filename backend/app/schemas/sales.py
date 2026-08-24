@@ -457,6 +457,22 @@ class LeadRead(LeadBase):
     model_config = ConfigDict(from_attributes=True)
 
 
+class LeadActivityCreate(BaseModel):
+    type: str = Field(default="Call", min_length=1, max_length=64)
+    subject: str = Field(..., min_length=1, max_length=255)
+    user: str | None = None
+    notes: str | None = None
+
+
+class LeadActivityRead(BaseModel):
+    id: int
+    type: str
+    subject: str
+    user: str | None = None
+    notes: str | None = None
+    date: str | None = None
+
+
 class QuotationBase(BaseModel):
     tenant_id: int
     quote_number: str

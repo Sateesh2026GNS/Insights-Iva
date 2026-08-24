@@ -148,3 +148,31 @@ def missing_foreign_key_parents(
 def filter_row_for_target(row: dict, target_column_names: set[str]) -> dict:
     """Keep only columns that exist on the PostgreSQL table."""
     return {key: value for key, value in row.items() if key in target_column_names}
+
+
+_BCRYPT_PREFIXES = ("$2a$", "$2b$", "$2y$")
+
+
+def is_bcrypt_hash(value: str | None) -> bool:
+    """True when value looks like a bcrypt password hash."""
+    if not value or not isinstance(value, str):
+        return False
+    s = value.strip()
+    return s.startswith(_BCRYPT_PREFIXES) and len(s) >= 60
+
+
+def normalize_user_password_for_migration(hashed_password: str | None) -> str | None:
+    """
+    Preserve bcrypt hashes from SQLite; hash plaintext legacy values before PostgreSQL insert.
+    Never copy plaintext passwords into PostgreSQL.
+    """
+    if hashed_password is None:
+        return None
+    s = str(hashed_password).strip()
+    if not s:
+        return None
+    if is_bcrypt_hash(s):
+        return s
+    from app.services.auth_service import hash_password
+
+    return hash_password(s)

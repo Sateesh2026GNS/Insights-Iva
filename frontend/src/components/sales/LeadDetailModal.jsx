@@ -19,22 +19,15 @@ export default function LeadDetailModal({ lead, onClose, onStatusChange, onConve
   });
 
   useEffect(() => {
-    if (lead) {
-      const keyId = lead.lead_id || lead.id || lead.customer_name || "lead_default";
-      const stored = localStorage.getItem(`smrt_lead_act_${keyId}`);
-      if (stored) {
-        setActivities(JSON.parse(stored));
-      } else if (typeof lead.id === "number") {
-        getLeadActivities(lead.id)
-          .then((res) => {
-            const list = Array.isArray(res?.data) ? res.data : [];
-            setActivities(list);
-            localStorage.setItem(`smrt_lead_act_${keyId}`, JSON.stringify(list));
-          })
-          .catch(() => setActivities([]));
-      } else {
-        setActivities([]);
-      }
+    if (lead && typeof lead.id === "number") {
+      getLeadActivities(lead.id)
+        .then((res) => {
+          const list = Array.isArray(res?.data) ? res.data : [];
+          setActivities(list);
+        })
+        .catch(() => setActivities([]));
+    } else {
+      setActivities([]);
     }
   }, [lead]);
 
@@ -44,21 +37,16 @@ export default function LeadDetailModal({ lead, onClose, onStatusChange, onConve
     e.preventDefault();
     if (!actForm.subject) return;
 
-    const newAct = {
-      id: Date.now(),
-      ...actForm,
-      date: new Date().toLocaleString("en-US", { dateStyle: "short", timeStyle: "short" }),
-    };
-
-    const keyId = lead?.lead_id || lead?.id || lead?.customer_name || "lead_default";
-    const updated = [newAct, ...activities];
-    setActivities(updated);
-    localStorage.setItem(`smrt_lead_act_${keyId}`, JSON.stringify(updated));
-
     if (typeof lead.id === "number") {
       try {
-        await createLeadActivity(lead.id, newAct).catch(() => null);
-      } catch {}
+        const res = await createLeadActivity(lead.id, actForm);
+        const saved = res?.data;
+        if (saved) {
+          setActivities((prev) => [saved, ...prev]);
+        }
+      } catch {
+        return;
+      }
     }
 
     setActForm({

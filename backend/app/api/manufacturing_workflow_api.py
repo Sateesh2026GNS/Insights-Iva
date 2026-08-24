@@ -9,8 +9,12 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db
-from app.core.permissions import require_any_permission, require_permission, user_is_admin
-from app.core.workflow_constants import WORKFLOW_COUNT_BUCKETS
+from app.core.permissions import get_role_names, require_any_permission, require_permission, user_is_admin
+from app.services.workflow_routing_service import (
+    get_admin_dashboard_counts,
+    get_my_job_card_queue,
+    get_queue_metadata_for_user,
+)
 from app.models.user import User
 from app.services.workflow_state_service import (
     backfill_workflow_statuses,
@@ -18,14 +22,18 @@ from app.services.workflow_state_service import (
     recent_workflow_activity,
     workflow_status_counts,
 )
+from app.services.stage_job_card_service import list_live_workflow_cards
 from app.services.workflow_team_service import (
     assign_operator_to_work_order,
     confirm_sales_order_with_workflow,
     create_billing_invoice,
     create_material_check_for_order,
     get_order_workflow_context,
+    list_operator_assigned_jobs,
     list_team_queue,
     operator_complete_production,
+    operator_pause_production,
+    operator_resume_production,
     operator_start_production,
     operator_update_production,
     submit_material_check,
@@ -68,7 +76,10 @@ class OperatorAssignPayload(BaseModel):
 class OperatorProgressPayload(BaseModel):
     produced_qty: float | None = None
     rejected_qty: float | None = None
-    notes: str | None = None
+    rework_qty: float | None = None
+    notes: str | None = Field(default=None, max_length=500)
+    actual_start_time: str | None = Field(default=None, max_length=64)
+    actual_end_time: str | None = Field(default=None, max_length=64)
 
 
 class QualitySubmitPayload(BaseModel):
@@ -116,23 +127,12 @@ def workflow_admin_hub(
 ):
     """Live workflow counts and recent activity for admin dashboard."""
     counts_raw = workflow_status_counts(db, user.tenant_id)
-    buckets = []
-    for bucket in WORKFLOW_COUNT_BUCKETS:
-        statuses = [s.strip() for s in bucket["statuses"].split(",")]
-        total = sum(counts_raw.get(s, 0) for s in statuses)
-        buckets.append(
-            {
-                "key": bucket["key"],
-                "label": bucket["label"],
-                "count": total,
-                "path": bucket["path"],
-                "statuses": statuses,
-            }
-        )
+    buckets = get_admin_dashboard_counts(db, user.tenant_id, counts_raw)
     return {
         "counts": buckets,
         "activity": recent_workflow_activity(db, user.tenant_id, limit=25),
         "raw_status_counts": counts_raw,
+        "live_cards": list_live_workflow_cards(db, user.tenant_id, limit=12),
     }
 
 
@@ -145,6 +145,50 @@ def workflow_team_queue(
 ):
     return {
         "items": list_team_queue(db, user.tenant_id, user, status_filter=status, limit=limit),
+    }
+
+
+@router.get("/my-queue")
+@router.get("/job-cards/my-queue")
+def my_job_card_queue(
+    status: str | None = Query(None),
+    limit: int = Query(50, ge=1, le=200),
+    user: User = Depends(require_any_permission(*WORKFLOW_MODULES)),
+    db: Session = Depends(get_db),
+):
+    """Role-filtered actionable job card queue — backend determines visibility."""
+    return get_my_job_card_queue(
+        db, user.tenant_id, user, status_filter=status, limit=limit, strict=True
+    )
+
+
+@router.get("/routing")
+def workflow_routing_metadata(
+    user: User = Depends(require_any_permission(*WORKFLOW_MODULES)),
+):
+    """Routing metadata for the current user (queue title, actionable statuses)."""
+    return {
+        "meta": get_queue_metadata_for_user(user),
+        "get_next_status": "Use workflow_routing_service.get_next_workflow_status",
+    }
+
+
+@router.get("/operator/jobs")
+def operator_assigned_jobs(
+    status: str | None = Query(None),
+    limit: int = Query(50, ge=1, le=200),
+    user: User = Depends(require_permission("production")),
+    db: Session = Depends(get_db),
+):
+    from app.core.workflow_constants import TEAM_OPERATOR, user_teams
+
+    teams = user_teams(get_role_names(user))
+    if TEAM_OPERATOR not in teams and not user_is_admin(user):
+        raise HTTPException(status_code=403, detail="Operator role required")
+    return {
+        "items": list_operator_assigned_jobs(
+            db, user.tenant_id, user, status_filter=status, limit=limit
+        ),
     }
 
 
@@ -340,8 +384,41 @@ def operator_progress_endpoint(
         user,
         produced_qty=payload.produced_qty,
         rejected_qty=payload.rejected_qty,
+        rework_qty=payload.rework_qty,
         notes=payload.notes,
+        actual_start_time=payload.actual_start_time,
+        actual_end_time=payload.actual_end_time,
     )
+
+
+@router.post("/production/job-cards/{work_order_id}/pause")
+def operator_pause_endpoint(
+    work_order_id: int,
+    user: User = Depends(require_permission("production")),
+    db: Session = Depends(get_db),
+):
+    from app.core.workflow_constants import TEAM_OPERATOR, user_teams
+    from app.core.permissions import get_role_names
+
+    teams = user_teams(get_role_names(user))
+    if TEAM_OPERATOR not in teams and not user_is_admin(user):
+        raise HTTPException(status_code=403, detail="Operator role required")
+    return operator_pause_production(db, user.tenant_id, work_order_id, user)
+
+
+@router.post("/production/job-cards/{work_order_id}/resume")
+def operator_resume_endpoint(
+    work_order_id: int,
+    user: User = Depends(require_permission("production")),
+    db: Session = Depends(get_db),
+):
+    from app.core.workflow_constants import TEAM_OPERATOR, user_teams
+    from app.core.permissions import get_role_names
+
+    teams = user_teams(get_role_names(user))
+    if TEAM_OPERATOR not in teams and not user_is_admin(user):
+        raise HTTPException(status_code=403, detail="Operator role required")
+    return operator_resume_production(db, user.tenant_id, work_order_id, user)
 
 
 @router.post("/production/job-cards/{work_order_id}/complete")
@@ -365,6 +442,7 @@ def operator_complete_endpoint(
         user,
         produced_qty=p.produced_qty,
         rejected_qty=p.rejected_qty,
+        rework_qty=p.rework_qty,
         notes=p.notes,
     )
 
@@ -442,3 +520,112 @@ def billing_invoice_endpoint(
         invoice_date=p.invoice_date,
         remarks=p.remarks,
     )
+
+
+STAGE_PERMISSIONS = {
+    "inventory_check": ("inventory",),
+    "store": ("inventory",),
+    "production_manager": ("production",),
+    "operator": ("production",),
+    "quality": ("quality", "production"),
+    "packing": ("inventory", "sales"),
+    "billing": ("accounts", "sales"),
+}
+
+
+class StoreIssueLineUpdate(BaseModel):
+    id: int
+    issued_qty: float | None = None
+    store_location: str | None = None
+
+
+class StoreIssueSubmit(BaseModel):
+    lines: list[StoreIssueLineUpdate] = Field(default_factory=list)
+    send_to_production: bool = False
+    partial: bool = False
+
+
+class HoldPayload(BaseModel):
+    reason: str | None = None
+
+
+class MaterialRequestPayload(BaseModel):
+    notes: str | None = None
+
+
+@router.get("/sales-orders/{order_id}/stage/{stage}")
+def get_stage_job_card_endpoint(
+    order_id: int,
+    stage: str,
+    user: User = Depends(require_any_permission(*WORKFLOW_MODULES)),
+    db: Session = Depends(get_db),
+):
+    from app.services.stage_job_card_service import STAGE_PREFIX, build_stage_job_card
+
+    if stage not in STAGE_PREFIX:
+        raise HTTPException(status_code=400, detail=f"Invalid stage: {stage}")
+    perms = STAGE_PERMISSIONS.get(stage, WORKFLOW_MODULES)
+    if not user_is_admin(user):
+        from app.core.permissions import user_has_any_permission
+
+        if not user_has_any_permission(user, *perms):
+            raise HTTPException(status_code=403, detail="Not authorized for this stage")
+    return build_stage_job_card(db, user.tenant_id, order_id, stage, user=user)
+
+
+@router.post("/sales-orders/{order_id}/store-issue")
+def submit_store_issue_endpoint(
+    order_id: int,
+    payload: StoreIssueSubmit,
+    user: User = Depends(require_permission("inventory")),
+    db: Session = Depends(get_db),
+):
+    from app.services.workflow_team_service import submit_store_material_issue
+
+    return submit_store_material_issue(
+        db,
+        user.tenant_id,
+        order_id,
+        user,
+        line_updates=[ln.model_dump() for ln in payload.lines],
+        send_to_production=payload.send_to_production,
+        partial=payload.partial,
+    )
+
+
+@router.post("/sales-orders/{order_id}/hold")
+def hold_workflow_endpoint(
+    order_id: int,
+    payload: HoldPayload | None = None,
+    user: User = Depends(require_any_permission(*WORKFLOW_MODULES)),
+    db: Session = Depends(get_db),
+):
+    from app.services.workflow_team_service import hold_workflow_order
+
+    p = payload or HoldPayload()
+    return hold_workflow_order(db, user.tenant_id, order_id, user, reason=p.reason)
+
+
+@router.post("/sales-orders/{order_id}/material-request")
+def raise_material_request_endpoint(
+    order_id: int,
+    payload: MaterialRequestPayload | None = None,
+    user: User = Depends(require_permission("inventory")),
+    db: Session = Depends(get_db),
+):
+    from app.services.workflow_team_service import raise_material_request
+
+    p = payload or MaterialRequestPayload()
+    return raise_material_request(db, user.tenant_id, order_id, user, notes=p.notes)
+
+
+@router.get("/live")
+def workflow_live_cards(
+    limit: int = Query(12, ge=1, le=50),
+    status: str | None = Query(None),
+    user: User = Depends(require_any_permission(*WORKFLOW_MODULES)),
+    db: Session = Depends(get_db),
+):
+    from app.services.stage_job_card_service import list_live_workflow_cards
+
+    return {"items": list_live_workflow_cards(db, user.tenant_id, limit=limit, status_filter=status)}

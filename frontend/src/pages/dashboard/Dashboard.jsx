@@ -2,12 +2,14 @@ import { Navigate } from "react-router-dom";
 
 import ReferenceDashboard from "../../components/dashboard/reference/ReferenceDashboard";
 import useAuth from "../../hooks/useAuth";
-import { isStoreManager } from "../../config/permissions";
+import { getDashboardPathForRole } from "../../utils/roleRedirect";
+import { getActiveRoleName } from "../../config/permissions";
 
 export default function Dashboard() {
   const { user } = useAuth();
-  if (isStoreManager(user)) {
-    return <Navigate to="/inventory" replace />;
+  const target = getDashboardPathForRole(getActiveRoleName(user));
+  if (target !== "/") {
+    return <Navigate to={target} replace />;
   }
   return <ReferenceDashboard />;
 }

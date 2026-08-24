@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
   ArrowDownToLine,
-  CalendarDays,
   Coins,
   Filter,
   Package,
@@ -20,6 +19,7 @@ import PageHeader from "../../components/common/PageHeader";
 import StatusBadge from "../../components/common/StatusBadge";
 import ConfirmDialog from "../../components/admin/ConfirmDialog";
 import InventoryRowActionsMenu from "../../components/inventory/InventoryRowActionsMenu";
+import InventoryHeaderControls from "../../components/inventory/InventoryHeaderControls";
 import MaterialDetailModal from "../../components/inventory/MaterialDetailModal";
 import MaterialFormModal from "../../components/inventory/MaterialFormModal";
 import { useToast } from "../../context/ToastContext";
@@ -425,34 +425,13 @@ export default function FinishedGoods() {
       <PageHeader
         subtitle="Manage and track your finished goods inventory"
         action={
-          <div className="flex flex-wrap items-center gap-2">
-            <label className="relative inline-flex items-center">
-              <CalendarDays className="pointer-events-none absolute left-3 h-4 w-4 text-[var(--color-text-muted)]" aria-hidden />
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value || todayISO())}
-                className="ui-input !w-auto min-w-[10.5rem] !pl-9"
-                aria-label="Date"
-              />
-            </label>
-            <select
-              value={headerWarehouse}
-              onChange={(e) => setHeaderWarehouse(e.target.value)}
-              className="ui-select !w-auto min-w-[11rem]"
-              aria-label="Warehouse"
-            >
-              {warehousesApi.length ? (
-                warehousesApi.map((w) => (
-                  <option key={w.id} value={w.id}>
-                    {w.name}
-                  </option>
-                ))
-              ) : (
-                <option value="">Main Warehouse</option>
-              )}
-            </select>
-          </div>
+          <InventoryHeaderControls
+            dateValue={selectedDate}
+            onDateChange={(v) => setSelectedDate(v || todayISO())}
+            warehouseValue={headerWarehouse}
+            onWarehouseChange={setHeaderWarehouse}
+            warehouses={warehousesApi}
+          />
         }
       />
 

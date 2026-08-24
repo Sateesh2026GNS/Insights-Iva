@@ -1,5 +1,7 @@
 import { ClipboardList } from "lucide-react";
 
+import { getWorkflowStatusLabel } from "../../config/workflowStages";
+
 const PRIORITY_STYLES = {
   high: {
     label: "High",
@@ -11,7 +13,7 @@ const PRIORITY_STYLES = {
   },
   low: {
     label: "Low",
-    className: "border border-emerald-400 bg-emerald-50 text-emerald-700",
+    className: "border border-sky-400 bg-sky-50 text-sky-700",
   },
 };
 
@@ -82,7 +84,7 @@ export default function JobCardSummary({
         <SummaryRow label="Product" value={product} />
         <SummaryRow label="Order Quantity" value={fmtQty(orderQuantity, uom)} />
         <SummaryRow label="Required Delivery" value={requiredDelivery} />
-        <SummaryRow label="Priority" isLast>
+        <SummaryRow label="Priority">
           <span
             className={`inline-flex items-center gap-1.5 rounded-full px-3 py-0.5 text-[11px] font-bold uppercase ${pStyle.className}`}
           >
@@ -92,6 +94,11 @@ export default function JobCardSummary({
             {pStyle.label}
           </span>
         </SummaryRow>
+        {workflowStatus ? (
+          <SummaryRow label="Current Status" isLast value={getWorkflowStatusLabel(workflowStatus)} />
+        ) : (
+          <SummaryRow label="Current Status" isLast value="—" />
+        )}
       </div>
     </article>
   );

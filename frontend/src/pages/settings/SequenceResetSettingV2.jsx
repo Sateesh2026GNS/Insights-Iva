@@ -7,9 +7,9 @@ import { useToast } from "../../context/ToastContext";
 import { getFeatureSetting, putFeatureSetting } from "../../api/bizDocumentsApi";
 import { apiErrorMessage } from "../../utils/apiError";
 
-const PAGE_BG = "var(--color-bg)";
+import { SettingsFeatureShell } from "./settingsUi";
+
 const SETTING_KEY = "sequence_reset";
-const ACCENT = "#0f6d84";
 
 /** Indian FY options: previous + current (Apr–Mar). */
 function buildFyOptions(date = new Date()) {
@@ -155,58 +155,54 @@ export default function SequenceResetSettingV2() {
 
   if (loading) {
     return (
-      <div className="flex min-h-[50vh] items-center justify-center" style={{ background: PAGE_BG }}>
-        <Loader label="Loading sequence settings…" />
-      </div>
+      <SettingsFeatureShell>
+        <div className="flex min-h-[40vh] items-center justify-center">
+          <Loader label="Loading sequence settings…" />
+        </div>
+      </SettingsFeatureShell>
     );
   }
 
   return (
-    <div className="min-h-full" style={{ background: PAGE_BG }}>
-      <div className="mx-auto max-w-[1100px] px-4 py-5 sm:px-6 lg:px-8 space-y-5">
-        <PageHeader
-          title="Sequence Reset Setting"
-          subtitle="Set the active financial year sequence for generating new document numbers"
-          backTo="/settings"
-          backLabel="Back to Settings"
-          showTitle
-        />
-        <div className="rounded-2xl border border-slate-200 bg-white px-5 py-6 shadow-sm sm:px-8 sm:py-7 dark:border-slate-700 dark:bg-slate-800">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-            <div className="min-w-0 max-w-md">
-              <h2 className="text-[17px] font-bold text-slate-900 dark:text-white">Reset sequence number</h2>
-              <p className="mt-1.5 text-[13px] leading-relaxed text-slate-600 dark:text-slate-300">
-                Pick the financial year whose sequence number new documents should follow.
-              </p>
-            </div>
+    <SettingsFeatureShell>
+      <PageHeader
+        title="Sequence Reset Setting"
+        subtitle="Set the active financial year sequence for generating new document numbers"
+        backTo="/settings"
+        backLabel="Back to Settings"
+        showTitle
+      />
+      <div className="ui-card px-5 py-6 sm:px-8 sm:py-7">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+          <div className="min-w-0 max-w-md">
+            <h2 className="text-[17px] font-bold text-[var(--color-text)]">Reset sequence number</h2>
+            <p className="mt-1.5 text-[13px] leading-relaxed text-[var(--color-text-muted)]">
+              Pick the financial year whose sequence number new documents should follow.
+            </p>
+          </div>
 
-            <div
-              className="flex flex-wrap gap-3"
-              role="radiogroup"
-              aria-label="Financial year for sequence"
-            >
-              {fyOptions.map((fy) => {
-                const selected = selectedFy === fy.id;
-                return (
-                  <button
-                    key={fy.id}
-                    type="button"
-                    role="radio"
-                    aria-checked={selected}
-                    disabled={saving}
-                    onClick={() => onPick(fy)}
-                    className={`min-w-[200px] rounded-xl border bg-white px-5 py-4 text-left transition-colors disabled:opacity-60 dark:bg-slate-900 ${
-                      selected
-                        ? "border-[var(--color-primary)] shadow-sm dark:border-teal-400 ring-1 ring-teal-400"
-                        : "border-slate-200 hover:border-slate-300 dark:border-slate-700 dark:hover:border-slate-600"
-                    }`}
-                  >
-                    <div className="text-[15px] font-bold text-slate-900 dark:text-white">{fy.label}</div>
-                    <div className="mt-1 text-[12px] text-slate-600 dark:text-slate-400">{fy.range}</div>
-                  </button>
-                );
-              })}
-            </div>
+          <div className="flex flex-wrap gap-3" role="radiogroup" aria-label="Financial year for sequence">
+            {fyOptions.map((fy) => {
+              const selected = selectedFy === fy.id;
+              return (
+                <button
+                  key={fy.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={selected}
+                  disabled={saving}
+                  onClick={() => onPick(fy)}
+                  className={`min-w-[200px] rounded-xl border bg-[var(--color-surface)] px-5 py-4 text-left transition-colors disabled:opacity-60 ${
+                    selected
+                      ? "border-[var(--color-primary)] shadow-sm ring-1 ring-[var(--color-primary)]"
+                      : "border-[var(--color-border)] hover:border-[var(--color-primary)]/40"
+                  }`}
+                >
+                  <div className="text-[15px] font-bold text-[var(--color-text)]">{fy.label}</div>
+                  <div className="mt-1 text-[12px] text-[var(--color-text-muted)]">{fy.range}</div>
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -218,6 +214,6 @@ export default function SequenceResetSettingV2() {
         onCancel={() => !saving && setPendingFy(null)}
         onConfirm={() => pendingFy && persist(pendingFy.id)}
       />
-    </div>
+    </SettingsFeatureShell>
   );
 }

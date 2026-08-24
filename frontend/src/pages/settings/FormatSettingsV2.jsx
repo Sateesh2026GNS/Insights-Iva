@@ -2,11 +2,8 @@ import { useMemo, useState } from "react";
 
 import useSettings from "../../context/SettingsContext";
 import PageHeader from "../../components/common/PageHeader";
+import { SettingsFeatureShell } from "./settingsUi";
 
-const ACCENT = "#0f6d84";
-const PAGE_BG = "var(--color-bg)";
-const SECTION_BG = "#DBE2F0";
-const LABEL_GREEN = "#2D6A4F";
 const STORAGE_KEY = "gns_format_settings_v2";
 
 const COMMA_OPTIONS = [
@@ -89,13 +86,11 @@ function RadioOption({ checked, label, onChange, name }) {
 
 function Section({ title, children }) {
   return (
-    <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700">
-      <div
-        className="px-4 py-2.5 text-[15px] font-semibold text-slate-900 bg-slate-100 dark:bg-slate-700/80 dark:text-white"
-      >
+    <div className="overflow-hidden rounded-xl border border-[var(--color-border)]">
+      <div className="bg-[var(--color-primary-soft)] px-4 py-2.5 text-[15px] font-semibold text-[var(--color-text)]">
         {title}
       </div>
-      <div className="bg-white px-4 py-4 sm:px-5 sm:py-5 dark:bg-slate-800 dark:text-white">{children}</div>
+      <div className="bg-[var(--color-surface)] px-4 py-4 sm:px-5 sm:py-5">{children}</div>
     </div>
   );
 }
@@ -148,16 +143,15 @@ export default function FormatSettingsV2() {
   }, []);
 
   return (
-    <div className="min-h-full" style={{ background: PAGE_BG }}>
-      <div className="mx-auto max-w-[1400px] px-4 py-5 sm:px-6 lg:px-8 space-y-5">
-        <PageHeader
-          title="Change Format"
-          subtitle="Configure number formatting, currency symbol, and date display preferences"
-          backTo="/settings"
-          backLabel="Back to Settings"
-          showTitle
-        />
-        <div className="space-y-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6 dark:border-slate-700 dark:bg-slate-800">
+    <SettingsFeatureShell>
+      <PageHeader
+        title="Change Format"
+        subtitle="Configure number formatting, currency symbol, and date display preferences"
+        backTo="/settings"
+        backLabel="Back to Settings"
+        showTitle
+      />
+      <div className="ui-card space-y-5 p-5 sm:p-6">
           <Section title="Comma Format">
             <div className="flex flex-wrap gap-x-10 gap-y-3">
               {COMMA_OPTIONS.map((opt) => (
@@ -203,8 +197,7 @@ export default function FormatSettingsV2() {
               ))}
             </div>
           </Section>
-        </div>
       </div>
-    </div>
+    </SettingsFeatureShell>
   );
 }

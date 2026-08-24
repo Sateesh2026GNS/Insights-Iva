@@ -42,6 +42,7 @@ from scripts.migration_utils import (  # noqa: E402
     fetch_existing_unique_keys,
     filter_row_for_target,
     missing_foreign_key_parents,
+    normalize_user_password_for_migration,
     primary_key_columns,
     row_should_skip,
     tables_to_migrate,
@@ -142,6 +143,14 @@ def migrate(source_url: str, target_url: str, *, dry_run: bool = False) -> dict[
                 fk_skipped = 0
                 for row in rows:
                     payload = filter_row_for_target(dict(row), target_columns)
+                    if name == "users" and "hashed_password" in payload:
+                        normalized = normalize_user_password_for_migration(
+                            payload.get("hashed_password")
+                        )
+                        if not normalized:
+                            fk_skipped += 1
+                            continue
+                        payload["hashed_password"] = normalized
                     if row_should_skip(
                         payload,
                         pk_columns=pk_columns,

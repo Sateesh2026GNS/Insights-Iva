@@ -1,181 +1,186 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Building2, Wallet } from "lucide-react";
 
+import Loader from "../../components/common/Loader";
 import PageHeader from "../../components/common/PageHeader";
+import Button from "../../components/common/Button";
+import { Input, Select, Textarea, FormRow } from "../../components/common/FormField";
+import { DatePicker } from "../../design-system/dateControls";
 import { createSupplierPayment, getVendors } from "../../api/procurementApi";
 import useTenantId from "../../hooks/useTenantId";
+import { useToast } from "../../context/ToastContext";
+import { todayIso } from "../../utils/dateUtils";
+import { apiErrorMessage } from "../../utils/apiError";
 
-
-
-import Button from "../../components/common/Button";
-import { inputMtClass as inputClass } from "../../design-system/classes";
-
-const PAYMENT_METHODS = ["bank", "cash", "cheque", "upi", "other"];
+const PAYMENT_METHODS = [
+  { value: "bank", label: "Bank transfer" },
+  { value: "cash", label: "Cash" },
+  { value: "cheque", label: "Cheque" },
+  { value: "upi", label: "UPI" },
+  { value: "other", label: "Other" },
+];
 
 export default function CreateSupplierPayment() {
   const tenantId = useTenantId();
   const navigate = useNavigate();
+  const { addToast } = useToast();
   const [vendors, setVendors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({
     tenant_id: tenantId,
     supplier_id: "",
-    payment_date: new Date().toISOString().slice(0, 10),
+    payment_date: todayIso(),
     amount: "",
     payment_method: "bank",
     reference: "",
     notes: "",
   });
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
 
   useEffect(() => {
     getVendors(tenantId)
-      .then((r) => setVendors(r.data || []))
+      .then((r) => setVendors(Array.isArray(r.data) ? r.data : []))
+      .catch(() => setVendors([]))
       .finally(() => setLoading(false));
-  }, []);
+  }, [tenantId]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
+    if (!form.supplier_id || !form.amount) return;
     setSaving(true);
     try {
       await createSupplierPayment({
         ...form,
+        tenant_id: tenantId,
         supplier_id: Number(form.supplier_id),
         amount: Number(form.amount),
-        reference: form.reference || null,
-        notes: form.notes || null,
+        reference: form.reference.trim() || null,
+        notes: form.notes.trim() || null,
       });
+      addToast("Supplier payment recorded");
       navigate("/procurement/supplier-payments");
     } catch (err) {
-      setError(err.response?.data?.detail || err.message || "Failed to record payment.");
+      addToast(apiErrorMessage(err, "Failed to record payment."), "error");
     } finally {
       setSaving(false);
     }
   };
 
   if (loading) {
-    return (
-      <div className="flex min-h-[12rem] items-center justify-center">
-        <p className="text-sm text-slate-500">Loading vendors…</p>
-      </div>
-    );
+    return <Loader label="Loading suppliers…" />;
   }
 
   return (
-    <div className="mx-auto max-w-lg space-y-6">
+    <div className="ui-page mx-auto max-w-2xl">
       <Link
         to="/procurement/supplier-payments"
-        className="inline-flex items-center gap-2 text-sm font-medium text-teal-600 hover:text-[var(--color-success)] dark:text-teal-400"
+        className="mb-4 inline-flex items-center gap-2 text-sm font-medium text-[var(--color-primary)] hover:underline"
       >
-        <ArrowLeft className="h-4 w-4" />
+        <ArrowLeft className="h-4 w-4 shrink-0" aria-hidden />
         Back to supplier payments
       </Link>
+
       <PageHeader
         title="Record supplier payment"
-        subtitle="Record a payment made to a vendor."
+        subtitle="Log a payment made to a vendor — bank, cash, cheque, or UPI."
       />
-      <form onSubmit={handleSubmit} className="ui-card space-y-4 p-6">
-        {error && (
-          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-800 dark:bg-red-900/20 dark:text-red-200">
-            {typeof error === "string" ? error : JSON.stringify(error)}
+
+      {vendors.length === 0 ? (
+        <div className="ui-card flex flex-col items-center gap-4 p-8 text-center sm:p-10">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--color-primary-soft)] text-[var(--color-primary)]">
+            <Building2 className="h-7 w-7" aria-hidden />
           </div>
-        )}
-        {vendors.length === 0 && (
-          <p className="text-sm text-slate-500">
-            No vendors yet.{" "}
-            <Link to="/procurement/vendors/create" className="font-medium text-teal-600 hover:underline">
-              Add a vendor first
-            </Link>
-            .
-          </p>
-        )}
-        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-          Supplier *
-          <select
+          <div className="max-w-sm space-y-1">
+            <h2 className="text-lg font-semibold text-[var(--color-text)]">No suppliers yet</h2>
+            <p className="text-sm text-[var(--color-text-muted)]">
+              Add a vendor before recording a supplier payment.
+            </p>
+          </div>
+          <div className="flex flex-wrap justify-center gap-3 pt-2">
+            <Button variant="primary" to="/procurement/vendors/create">
+              Add vendor
+            </Button>
+            <Button variant="outline" to="/procurement/supplier-payments">
+              Cancel
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <form onSubmit={handleSubmit} className="ui-card space-y-5 p-6 sm:p-8">
+          <div className="flex items-start gap-3 rounded-xl border border-[var(--color-border-soft)] bg-[var(--color-surface-muted)] px-4 py-3">
+            <Wallet className="mt-0.5 h-5 w-5 shrink-0 text-[var(--color-primary)]" aria-hidden />
+            <p className="text-sm text-[var(--color-text-secondary)]">
+              Payment will be linked to the selected supplier. Reference and notes are optional but help with reconciliation.
+            </p>
+          </div>
+
+          <Select
+            label="Supplier"
             required
             value={form.supplier_id}
             onChange={(e) => setForm((f) => ({ ...f, supplier_id: e.target.value }))}
-            className={inputClass}
-          >
-            <option value="">Select supplier</option>
-            {vendors.map((v) => (
-              <option key={v.id} value={v.id}>
-                {v.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-          Payment date *
-          <input
-            type="date"
-            required
-            value={form.payment_date}
-            onChange={(e) => setForm((f) => ({ ...f, payment_date: e.target.value }))}
-            className={inputClass}
+            placeholder="Select supplier"
+            options={vendors.map((v) => ({ value: String(v.id), label: v.name }))}
           />
-        </label>
-        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-          Amount *
-          <input
-            type="number"
-            required
-            step="0.01"
-            min="0"
-            value={form.amount}
-            onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
-            placeholder="e.g. 5000.00"
-            className={inputClass}
-          />
-        </label>
-        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-          Payment method
-          <select
+
+          <FormRow>
+            <DatePicker
+              label="Payment date"
+              required
+              value={form.payment_date}
+              onChange={(value) => setForm((f) => ({ ...f, payment_date: value }))}
+              max={todayIso()}
+            />
+            <Input
+              label="Amount"
+              type="number"
+              required
+              step="0.01"
+              min="0"
+              value={form.amount}
+              onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
+              placeholder="e.g. 5000.00"
+            />
+          </FormRow>
+
+          <Select
+            label="Payment method"
             value={form.payment_method}
             onChange={(e) => setForm((f) => ({ ...f, payment_method: e.target.value }))}
-            className={inputClass}
-          >
-            {PAYMENT_METHODS.map((m) => (
-              <option key={m} value={m}>
-                {m}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-          Reference
-          <input
-            type="text"
+            options={PAYMENT_METHODS}
+          />
+
+          <Input
+            label="Reference"
             value={form.reference}
             onChange={(e) => setForm((f) => ({ ...f, reference: e.target.value }))}
             placeholder="e.g. Bank ref, cheque no."
-            className={inputClass}
           />
-        </label>
-        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-          Notes
-          <textarea
-            rows={2}
+
+          <Textarea
+            label="Notes"
+            rows={3}
             value={form.notes}
             onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-            className={inputClass}
+            placeholder="Optional payment notes"
           />
-        </label>
-        <div className="flex flex-wrap gap-3 pt-2">
-          <Button variant="primary" type="submit" disabled={saving || !form.supplier_id || !form.amount} className="disabled:opacity-50">
-            {saving ? "Saving…" : "Record payment"}
-          </Button>
-          <Link
-            to="/procurement/supplier-payments"
-            className="inline-flex items-center justify-center rounded-xl border border-slate-200 dark:border-slate-600 px-4 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
-          >
-            Cancel
-          </Link>
-        </div>
-      </form>
+
+          <div className="flex flex-wrap gap-3 border-t border-[var(--color-border-soft)] pt-5">
+            <Button
+              variant="primary"
+              type="submit"
+              loading={saving}
+              disabled={!form.supplier_id || !form.amount || !form.payment_date}
+            >
+              Record payment
+            </Button>
+            <Button variant="outline" to="/procurement/supplier-payments">
+              Cancel
+            </Button>
+          </div>
+        </form>
+      )}
     </div>
   );
 }

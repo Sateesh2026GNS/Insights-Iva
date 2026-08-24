@@ -2,14 +2,15 @@
  * Settings module catalog — card home + search index.
  */
 
+import { SETTINGS_ICON } from "./settingsTokens";
+
 export const SETTINGS_CATEGORIES = [
   {
     id: "my-account",
     title: "My Account",
     description: "Your profile, company, role, and subscription overview.",
     icon: "UserRound",
-    accent: "bg-[var(--color-success-soft)]0",
-    soft: "bg-[var(--color-success-soft)] text-[var(--color-success)] dark:bg-teal-900/30 dark:text-teal-300",
+    soft: SETTINGS_ICON.default,
     keywords: ["my account", "profile", "me", "user", "role", "subscription", "company"],
   },
   {
@@ -17,8 +18,7 @@ export const SETTINGS_CATEGORIES = [
     title: "Company Profile",
     description: "Logo, legal identity, GST, address, timezone, and currency.",
     icon: "Building2",
-    accent: "bg-sky-500",
-    soft: "bg-sky-50 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300",
+    soft: SETTINGS_ICON.default,
     keywords: ["company", "profile", "gst", "pan", "address", "timezone", "currency", "logo", "phone", "email", "website"],
   },
   {
@@ -26,8 +26,7 @@ export const SETTINGS_CATEGORIES = [
     title: "User Management",
     description: "Users, teams, roles, permissions, invites, and access control.",
     icon: "Users",
-    accent: "bg-violet-500",
-    soft: "bg-violet-50 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300",
+    soft: SETTINGS_ICON.default,
     keywords: ["users", "user", "team", "teams", "roles", "permissions", "invite", "password", "deactivate", "department"],
   },
   {
@@ -35,8 +34,7 @@ export const SETTINGS_CATEGORIES = [
     title: "Security",
     description: "Password policy, 2FA, sessions, OTP, and lockout rules.",
     icon: "Shield",
-    accent: "bg-rose-500",
-    soft: "bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300",
+    soft: SETTINGS_ICON.danger,
     keywords: [
       "security",
       "password",
@@ -57,8 +55,7 @@ export const SETTINGS_CATEGORIES = [
     title: "Subscription",
     description: "Plan, licenses, trial, renewals, invoices, and billing history.",
     icon: "CreditCard",
-    accent: "bg-emerald-500",
-    soft: "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300",
+    soft: SETTINGS_ICON.success,
     keywords: ["subscription", "plan", "license", "trial", "renew", "invoice", "payment", "upgrade"],
   },
   {
@@ -66,8 +63,7 @@ export const SETTINGS_CATEGORIES = [
     title: "AI & LLM",
     description: "AI assistant, providers, API keys, models, and usage.",
     icon: "Bot",
-    accent: "bg-fuchsia-500",
-    soft: "bg-fuchsia-50 text-fuchsia-700 dark:bg-fuchsia-900/30 dark:text-fuchsia-300",
+    soft: SETTINGS_ICON.info,
     keywords: ["ai", "llm", "openai", "gemini", "ollama", "deepseek", "copilot", "model", "prompt"],
   },
   {
@@ -75,8 +71,7 @@ export const SETTINGS_CATEGORIES = [
     title: "Notifications",
     description: "Email, SMS, push, and operational alert preferences.",
     icon: "Bell",
-    accent: "bg-amber-500",
-    soft: "bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
+    soft: SETTINGS_ICON.warning,
     keywords: ["notifications", "email", "sms", "push", "alerts", "stock", "machine", "production"],
   },
   {
@@ -84,8 +79,7 @@ export const SETTINGS_CATEGORIES = [
     title: "Appearance",
     description: "Theme, accent color, language, and display density.",
     icon: "Palette",
-    accent: "bg-indigo-500",
-    soft: "bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300",
+    soft: SETTINGS_ICON.default,
     keywords: ["appearance", "theme", "dark", "light", "language", "telugu", "hindi", "font", "compact"],
   },
   {
@@ -93,8 +87,7 @@ export const SETTINGS_CATEGORIES = [
     title: "Change Format",
     description: "Comma format, currency symbol, and date format preferences.",
     icon: "FileDigit",
-    accent: "bg-blue-500",
-    soft: "bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
+    soft: SETTINGS_ICON.info,
     href: "/settings/change-format",
     keywords: ["format", "change format", "comma", "currency", "date", "number format", "symbol", "display"],
   },
@@ -103,8 +96,7 @@ export const SETTINGS_CATEGORIES = [
     title: "Invoice Settings",
     description: "Auto payment settlement, cash discount, additional charges, round off, and TCS.",
     icon: "Receipt",
-    accent: "bg-teal-600",
-    soft: "bg-teal-50 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300",
+    soft: SETTINGS_ICON.info,
     href: "/settings/invoice-settings",
     keywords: ["invoice", "invoice settings", "auto settle", "cash discount", "charges", "round off", "party balance", "tcs", "ewaybill", "rates"],
   },
@@ -113,8 +105,7 @@ export const SETTINGS_CATEGORIES = [
     title: "Expense Settings",
     description: "Expense categories, chart groups, and accounting classification.",
     icon: "ReceiptText",
-    accent: "bg-amber-600",
-    soft: "bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
+    soft: SETTINGS_ICON.warning,
     href: "/accounts/expenses/settings",
     keywords: ["expense", "expense settings", "categories", "account group", "cost center", "category"],
   },
@@ -123,8 +114,7 @@ export const SETTINGS_CATEGORIES = [
     title: "Inventory Settings",
     description: "Warehouses, units, barcode, batch, and low-stock rules.",
     icon: "Package",
-    accent: "bg-orange-500",
-    soft: "bg-orange-50 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300",
+    soft: SETTINGS_ICON.default,
     href: "/inventory/settings",
     keywords: ["inventory", "inventory settings", "warehouse", "barcode", "batch", "expiry", "stock", "units", "reorder", "transfer"],
   },
@@ -133,8 +123,7 @@ export const SETTINGS_CATEGORIES = [
     title: "Sequence Reset Setting",
     description: "Reset document sequence numbers for new financial years.",
     icon: "RotateCcw",
-    accent: "bg-rose-600",
-    soft: "bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300",
+    soft: SETTINGS_ICON.warning,
     href: "/settings/sequence-reset",
     keywords: ["sequence", "sequence reset", "financial year", "fy", "numbering", "reset"],
   },
@@ -143,25 +132,27 @@ export const SETTINGS_CATEGORIES = [
     title: "Production Settings",
     description: "Shifts, work orders, machines, calendar, and scheduling.",
     icon: "Factory",
-    accent: "bg-cyan-500",
-    soft: "bg-cyan-50 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300",
+    soft: SETTINGS_ICON.default,
     keywords: ["production", "shift", "work order", "machine", "calendar", "scheduling"],
   },
   {
-    id: "role-workflow",
-    title: "Role Workflow",
-    description: "View role responsibilities and manufacturing workflow stages.",
-    icon: "Workflow",
-    accent: "bg-[var(--color-primary)]",
-    soft: "bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
-    href: "/manufacturing/workflow",
+    id: "manufacturing-workflow",
+    title: "Manufacturing Workflow",
+    description: "Workflow board, stage queues, and role-based manufacturing handoffs.",
+    icon: "GitBranch",
+    soft: SETTINGS_ICON.success,
     keywords: [
-      "role workflow",
-      "workflow",
-      "responsibilities",
       "manufacturing",
+      "workflow board",
+      "material check",
+      "production jobs",
+      "operator jobs",
+      "quality checks",
+      "packing",
+      "dispatch",
+      "billing",
+      "role workflow",
       "stages",
-      "my responsibilities",
     ],
   },
   {
@@ -169,8 +160,7 @@ export const SETTINGS_CATEGORIES = [
     title: "Finance Settings",
     description: "GST, tax rules, invoice prefix, FY, and currency.",
     icon: "Wallet",
-    accent: "bg-lime-600",
-    soft: "bg-lime-50 text-lime-700 dark:bg-lime-900/30 dark:text-lime-300",
+    soft: SETTINGS_ICON.default,
     keywords: ["finance", "gst", "tax", "invoice", "financial year", "currency", "bank", "payment"],
   },
   {
@@ -178,8 +168,7 @@ export const SETTINGS_CATEGORIES = [
     title: "Documents",
     description: "Templates, letterheads, invoice layouts, and company docs.",
     icon: "FileText",
-    accent: "bg-slate-600",
-    soft: "bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200",
+    soft: SETTINGS_ICON.info,
     keywords: ["documents", "templates", "letterhead", "invoice template", "logo", "number format"],
   },
   {
@@ -187,8 +176,7 @@ export const SETTINGS_CATEGORIES = [
     title: "Integrations",
     description: "Email, SMS, WhatsApp, Google, Microsoft, and gateways.",
     icon: "Puzzle",
-    accent: "bg-[var(--color-success-soft)]0",
-    soft: "bg-[var(--color-success-soft)] text-[var(--color-success)] dark:bg-teal-900/30 dark:text-teal-300",
+    soft: SETTINGS_ICON.info,
     keywords: ["integrations", "whatsapp", "google", "microsoft", "sms", "payment gateway", "erp"],
   },
   {
@@ -196,8 +184,7 @@ export const SETTINGS_CATEGORIES = [
     title: "API & Webhooks",
     description: "API keys, webhook URLs, tokens, and developer access.",
     icon: "KeyRound",
-    accent: "bg-[var(--color-primary)]",
-    soft: "bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
+    soft: SETTINGS_ICON.info,
     keywords: ["api", "webhooks", "keys", "token", "developer", "revoke"],
   },
   {
@@ -205,8 +192,7 @@ export const SETTINGS_CATEGORIES = [
     title: "Backup & Restore",
     description: "Database backup, restore, schedules, and downloads.",
     icon: "HardDrive",
-    accent: "bg-stone-600",
-    soft: "bg-stone-100 text-stone-700 dark:bg-stone-800 dark:text-stone-200",
+    soft: SETTINGS_ICON.neutral,
     keywords: ["backup", "restore", "database", "download", "schedule"],
   },
   {
@@ -214,8 +200,7 @@ export const SETTINGS_CATEGORIES = [
     title: "Audit Logs",
     description: "Login history, activity logs, and system change trails.",
     icon: "ScrollText",
-    accent: "bg-red-500",
-    soft: "bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300",
+    soft: SETTINGS_ICON.danger,
     keywords: ["audit", "logs", "login history", "activity", "role changes"],
   },
   {
@@ -223,8 +208,7 @@ export const SETTINGS_CATEGORIES = [
     title: "Help & Support",
     description: "Docs, tickets, FAQ, and contact options.",
     icon: "LifeBuoy",
-    accent: "bg-green-600",
-    soft: "bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300",
+    soft: SETTINGS_ICON.success,
     keywords: ["help", "support", "ticket", "faq", "documentation", "chat"],
   },
   {
@@ -232,9 +216,41 @@ export const SETTINGS_CATEGORIES = [
     title: "About System",
     description: "Version, build, license, and environment details.",
     icon: "Info",
-    accent: "bg-neutral-600",
-    soft: "bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-200",
+    soft: SETTINGS_ICON.neutral,
     keywords: ["about", "version", "build", "license", "database", "update"],
+  },
+];
+
+/** Visual groups for settings navigation (home + sidebar). */
+export const SETTINGS_NAV_GROUPS = [
+  {
+    id: "account",
+    title: "Account & access",
+    ids: ["my-account", "company", "users", "security", "subscription"],
+  },
+  {
+    id: "workspace",
+    title: "Workspace preferences",
+    ids: ["ai", "notifications", "appearance", "change-format"],
+  },
+  {
+    id: "operations",
+    title: "Operations",
+    ids: [
+      "invoice-settings",
+      "expense-settings",
+      "inventory",
+      "sequence-reset",
+      "production",
+      "manufacturing-workflow",
+      "finance",
+      "documents",
+    ],
+  },
+  {
+    id: "system",
+    title: "System & support",
+    ids: ["integrations", "api", "backup", "audit", "help", "about"],
   },
 ];
 
@@ -257,6 +273,7 @@ export const LEGACY_SETTINGS_REDIRECTS = {
   "invoice-settings": "invoice-settings",
   "expense-settings": "expense-settings",
   "sequence-reset": "sequence-reset",
+  "role-workflow": "manufacturing-workflow",
 };
 
 export function findSettingsCategory(id) {

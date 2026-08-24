@@ -253,6 +253,132 @@ class StockAdjustment(Base, TimestampMixin):
     adjustment_date: Mapped[date | None] = mapped_column(Date)
 
 
+class StockReturn(Base, TimestampMixin):
+    """Multi-line stock return document with approval workflow."""
+
+    __tablename__ = "stock_returns"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tenant_id: Mapped[int] = mapped_column(
+        ForeignKey("tenants.id"), nullable=False, index=True
+    )
+    return_number: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    return_date: Mapped[date | None] = mapped_column(Date)
+    return_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    reference_no: Mapped[str | None] = mapped_column(String(128))
+    reference_type: Mapped[str | None] = mapped_column(String(64))
+    reference_id: Mapped[int | None] = mapped_column(Integer)
+    department: Mapped[str | None] = mapped_column(String(64))
+    returned_by: Mapped[str | None] = mapped_column(String(255))
+    returned_by_user_id: Mapped[int | None] = mapped_column(Integer)
+    return_to_warehouse_id: Mapped[int] = mapped_column(
+        ForeignKey("warehouses.id"), nullable=False
+    )
+    reason: Mapped[str | None] = mapped_column(String(128))
+    remarks: Mapped[str | None] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(32), default="draft", nullable=False)
+    total_qty: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    created_by: Mapped[str | None] = mapped_column(String(255))
+    updated_by: Mapped[str | None] = mapped_column(String(255))
+    verified_by: Mapped[str | None] = mapped_column(String(255))
+    quality_checked_by: Mapped[str | None] = mapped_column(String(255))
+    completed_by: Mapped[str | None] = mapped_column(String(255))
+    rejected_by: Mapped[str | None] = mapped_column(String(255))
+    rejection_reason: Mapped[str | None] = mapped_column(Text)
+
+    lines = relationship(
+        "StockReturnLine",
+        back_populates="stock_return",
+        cascade="all, delete-orphan",
+        order_by="StockReturnLine.line_no",
+    )
+    warehouse = relationship("Warehouse", foreign_keys=[return_to_warehouse_id])
+
+
+class StockReturnLine(Base, TimestampMixin):
+    __tablename__ = "stock_return_lines"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    stock_return_id: Mapped[int] = mapped_column(
+        ForeignKey("stock_returns.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    line_no: Mapped[int] = mapped_column(Integer, nullable=False)
+    item_id: Mapped[int] = mapped_column(ForeignKey("inventory_items.id"), nullable=False)
+    batch_number: Mapped[str | None] = mapped_column(String(64))
+    available_qty: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    return_qty: Mapped[int] = mapped_column(Integer, nullable=False)
+    unit: Mapped[str] = mapped_column(String(32), default="pcs", nullable=False)
+    condition: Mapped[str] = mapped_column(String(32), default="good", nullable=False)
+    warehouse_id: Mapped[int] = mapped_column(ForeignKey("warehouses.id"), nullable=False)
+    line_reason: Mapped[str | None] = mapped_column(String(128))
+
+    stock_return = relationship("StockReturn", back_populates="lines")
+    item = relationship("InventoryItem")
+    warehouse = relationship("Warehouse", foreign_keys=[warehouse_id])
+
+
+class StockInDocument(Base, TimestampMixin):
+    """Multi-line stock-in (goods receipt) document with draft/confirm workflow."""
+
+    __tablename__ = "stock_in_documents"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tenant_id: Mapped[int] = mapped_column(
+        ForeignKey("tenants.id"), nullable=False, index=True
+    )
+    stock_in_number: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    stock_in_date: Mapped[date | None] = mapped_column(Date)
+    reference_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    reference_no: Mapped[str | None] = mapped_column(String(128))
+    reference_id: Mapped[int | None] = mapped_column(Integer)
+    supplier_id: Mapped[int | None] = mapped_column(ForeignKey("suppliers.id"))
+    supplier_name: Mapped[str | None] = mapped_column(String(255))
+    warehouse_id: Mapped[int] = mapped_column(ForeignKey("warehouses.id"), nullable=False)
+    storage_location: Mapped[str | None] = mapped_column(String(128))
+    received_by: Mapped[str | None] = mapped_column(String(255))
+    received_by_user_id: Mapped[int | None] = mapped_column(Integer)
+    remarks: Mapped[str | None] = mapped_column(Text)
+    attachments_json: Mapped[str | None] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(32), default="draft", nullable=False)
+    total_qty: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    created_by: Mapped[str | None] = mapped_column(String(255))
+    updated_by: Mapped[str | None] = mapped_column(String(255))
+    confirmed_by: Mapped[str | None] = mapped_column(String(255))
+    confirmed_at: Mapped[date | None] = mapped_column(Date)
+
+    lines = relationship(
+        "StockInLine",
+        back_populates="stock_in",
+        cascade="all, delete-orphan",
+        order_by="StockInLine.line_no",
+    )
+    warehouse = relationship("Warehouse", foreign_keys=[warehouse_id])
+    supplier = relationship("Supplier", foreign_keys=[supplier_id])
+
+
+class StockInLine(Base, TimestampMixin):
+    __tablename__ = "stock_in_lines"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    stock_in_id: Mapped[int] = mapped_column(
+        ForeignKey("stock_in_documents.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    line_no: Mapped[int] = mapped_column(Integer, nullable=False)
+    item_id: Mapped[int] = mapped_column(ForeignKey("inventory_items.id"), nullable=False)
+    ordered_qty: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    received_qty: Mapped[int] = mapped_column(Integer, nullable=False)
+    unit: Mapped[str] = mapped_column(String(32), default="pcs", nullable=False)
+    batch_number: Mapped[str | None] = mapped_column(String(64))
+    lot_number: Mapped[str | None] = mapped_column(String(64))
+    manufacturing_date: Mapped[date | None] = mapped_column(Date)
+    expiry_date: Mapped[date | None] = mapped_column(Date)
+    storage_location: Mapped[str | None] = mapped_column(String(128))
+    line_remarks: Mapped[str | None] = mapped_column(String(255))
+
+    stock_in = relationship("StockInDocument", back_populates="lines")
+    item = relationship("InventoryItem")
+
+
 class StoreIssueRequest(Base, TimestampMixin):
     """Shop-floor material request → issue → confirm → consume workflow."""
 
