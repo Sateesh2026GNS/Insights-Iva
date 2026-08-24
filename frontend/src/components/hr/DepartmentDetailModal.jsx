@@ -229,9 +229,9 @@ export default function DepartmentDetailModal({ department, detail, onClose, onE
         </div>
 
         <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 px-5 py-2">
-          <Link to="/hr/employees" className="inline-flex items-center gap-1 rounded-lg bg-[var(--color-primary)] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[var(--color-primary-hover)]">
-            <UserPlus className="h-3 w-3" /> Assign Employee
-          </Link>
+          <Button variant="add" size="sm" to="/hr/employees" leftIcon={<UserPlus className="h-3 w-3" aria-hidden />}>
+            Assign Employee
+          </Button>
           <Link to="/production/machines" className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50">
             <Cpu className="h-3 w-3" /> Assign Machine
           </Link>

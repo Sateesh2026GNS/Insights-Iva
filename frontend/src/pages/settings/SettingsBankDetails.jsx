@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Loader2, Save } from "lucide-react";
 
 import { useCompanySettings } from "../../hooks/useCompanySettings";
+import Button from "../../components/common/Button";
 
 const FIELDS = [
   { key: "bank_name", label: "Bank Name" },
@@ -50,15 +51,16 @@ export default function SettingsBankDetails() {
             Bank details used on invoices and payment documents.
           </p>
         </div>
-        <button
+        <Button
           type="button"
+          variant="primary"
           onClick={handleSave}
           disabled={saving}
-          className="flex items-center gap-2 rounded-lg bg-teal-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-[var(--color-success)] disabled:opacity-60"
+          loading={saving}
+          leftIcon={!saving ? <Save className="h-4 w-4" aria-hidden /> : undefined}
         >
-          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
           Save
-        </button>
+        </Button>
       </div>
 
       <div className="rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-800/50">

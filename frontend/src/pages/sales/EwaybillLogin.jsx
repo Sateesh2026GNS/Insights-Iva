@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { ewaybillLogin, getEwaybillStatus } from "../../api/bizDocumentsApi";
 import { useToast } from "../../context/ToastContext";
 import Loader from "../../components/common/Loader";
+import Button from "../../components/common/Button";
 
 export default function EwaybillLogin() {
   const { addToast } = useToast();
@@ -104,13 +105,9 @@ export default function EwaybillLogin() {
           </div>
         </label>
 
-        <button
-          type="submit"
-          disabled={saving}
-          className="w-full rounded-lg bg-[var(--color-primary)] py-3 text-sm font-bold text-white hover:bg-[var(--color-primary-hover)] disabled:opacity-60 shadow-sm"
-        >
+        <Button type="submit" variant="primary" fullWidth disabled={saving} loading={saving}>
           {saving ? "Logging in…" : "Login"}
-        </button>
+        </Button>
 
         <button
           type="button"

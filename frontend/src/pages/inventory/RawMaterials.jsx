@@ -541,8 +541,8 @@ export default function RawMaterials() {
                 </select>
               </>
             ) : null}
-            <Button type="button" variant="primary" onClick={handleAdd}>
-              <Plus className="h-4 w-4" /> Add Raw Material
+            <Button type="button" variant="add" onClick={handleAdd} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
+              Add Raw Material
             </Button>
           </div>
         </div>

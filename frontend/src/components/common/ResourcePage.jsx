@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import AdminModal from "../admin/AdminModal";
-import Button from "./Button";
+import Button, { AddButton } from "./Button";
 import DataTable from "./DataTable";
 import EmptyState from "./EmptyState";
 import { Input, Select, Textarea } from "./FormField";
@@ -200,9 +200,9 @@ export default function ResourcePage({
         subtitle={subtitle}
         action={
           createFn && !isOperator ? (
-            <Button type="button" variant="primary" onClick={openModal}>
-              {createLabel}
-            </Button>
+            <AddButton type="button" onClick={openModal}>
+              {createLabel.replace(/^\+\s*/, "")}
+            </AddButton>
           ) : null
         }
       />

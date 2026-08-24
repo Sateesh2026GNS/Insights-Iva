@@ -24,6 +24,7 @@ import {
 } from "recharts";
 
 import Loader from "../../components/common/Loader";
+import { AddButton } from "../../components/common/Button";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { getHRHub } from "../../api/hrApi";
 import { EMPTY_HR_HUB, mergeHrHub } from "../../data/hrMasterData";
@@ -177,13 +178,9 @@ export default function HRDashboard() {
             <span className="font-medium text-slate-700">Dashboard</span>
           </nav>
         </div>
-        <Link
-          to="/hr/employees/create"
-          className="inline-flex items-center gap-2 rounded-lg bg-[#6366f1] px-4 py-2.5 text-[13px] font-semibold text-white shadow-sm hover:bg-[#4f46e5]"
-        >
-          <Plus className="h-4 w-4" />
+        <AddButton to="/hr/employees/create">
           Add Employee
-        </Link>
+        </AddButton>
       </div>
 
       {/* KPI row */}

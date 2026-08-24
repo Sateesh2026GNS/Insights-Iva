@@ -4,8 +4,11 @@
  */
 export {
   default,
+  AddButton,
   PrimaryButton,
   SecondaryButton,
+  ViewButton,
+  EditButton,
   SuccessButton,
   WarningButton,
   DangerButton,

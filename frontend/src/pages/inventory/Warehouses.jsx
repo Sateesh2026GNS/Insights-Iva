@@ -515,8 +515,8 @@ export default function Warehouses() {
             <Button type="button" variant="ghost" onClick={clearFilters}>
               <RefreshCw className="h-4 w-4" /> Clear
             </Button>
-            <Button variant="primary" type="button" onClick={() => setFormWarehouse({})}>
-              <Plus className="h-4 w-4" /> Add Warehouse
+            <Button variant="add" type="button" onClick={() => setFormWarehouse({})} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
+              Add Warehouse
             </Button>
           </div>
         </div>

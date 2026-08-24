@@ -6,6 +6,7 @@ import CompanyAddressFields, {
 } from "../../components/common/CompanyAddressFields";
 import { useCompanySettings } from "../../hooks/useCompanySettings";
 import { useToast } from "../../context/ToastContext";
+import Button from "../../components/common/Button";
 
 const ADDRESS_KEYS = [
   "address_line1",
@@ -75,15 +76,16 @@ export default function SettingsBillingAddress() {
             Company billing address used on invoices and tax documents.
           </p>
         </div>
-        <button
+        <Button
           type="button"
+          variant="primary"
           onClick={handleSave}
           disabled={saving}
-          className="inline-flex items-center gap-2 rounded-lg bg-teal-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-[var(--color-success)] disabled:opacity-60"
+          loading={saving}
+          leftIcon={!saving ? <Save className="h-4 w-4" aria-hidden /> : undefined}
         >
-          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
           Save
-        </button>
+        </Button>
       </div>
 
       {formattedAddress ? (

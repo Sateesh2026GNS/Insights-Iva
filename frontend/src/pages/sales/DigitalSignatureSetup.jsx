@@ -3,6 +3,7 @@ import usePageRefresh from "../../hooks/usePageRefresh";
 import { Check, Info, ScrollText } from "lucide-react";
 
 import Loader from "../../components/common/Loader";
+import Button from "../../components/common/Button";
 import {
   getDigitalSignatureStatus,
   setupDigitalSignature,
@@ -101,13 +102,9 @@ export default function DigitalSignatureSetup() {
         </ul>
 
         {!showForm ? (
-          <button
-            type="button"
-            onClick={() => setShowForm(true)}
-            className="w-full rounded-xl bg-[var(--color-primary)] py-3 text-sm font-bold text-white hover:bg-[var(--color-primary-hover)]"
-          >
+          <Button type="button" variant="primary" fullWidth onClick={() => setShowForm(true)}>
             {status?.is_setup ? "Update Digital Signature" : "Set Up Digital Signature"}
-          </button>
+          </Button>
         ) : (
           <form onSubmit={onSetup} className="space-y-3">
             <input
@@ -129,20 +126,12 @@ export default function DigitalSignatureSetup() {
               className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm"
             />
             <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setShowForm(false)}
-                className="flex-1 rounded-xl border border-slate-200 py-2.5 text-sm font-semibold"
-              >
+              <Button type="button" variant="secondary" className="flex-1" onClick={() => setShowForm(false)}>
                 Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={saving}
-                className="flex-1 rounded-xl bg-[var(--color-primary)] py-2.5 text-sm font-bold disabled:opacity-60"
-              >
+              </Button>
+              <Button type="submit" variant="primary" className="flex-1" disabled={saving} loading={saving}>
                 {saving ? "Saving…" : "Confirm"}
-              </button>
+              </Button>
             </div>
           </form>
         )}

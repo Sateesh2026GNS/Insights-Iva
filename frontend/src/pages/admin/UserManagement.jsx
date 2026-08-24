@@ -294,8 +294,7 @@ export default function UserManagement() {
         title="User Management"
         subtitle="Create, view, and manage all user accounts and their assigned roles."
         action={
-          <Button variant="primary" type="button" onClick={openCreate}>
-            <Plus className="h-4 w-4" />
+          <Button variant="add" type="button" onClick={openCreate} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
             Add User
           </Button>
         }
@@ -453,13 +452,14 @@ export default function UserManagement() {
             >
               Cancel
             </button>
-            <button
+            <Button
               type="submit"
+              variant={editing ? "edit" : "primary"}
               disabled={saving}
-              className="rounded-xl bg-teal-600 px-5 py-2 text-sm font-semibold text-white hover:bg-[var(--color-success)] disabled:opacity-50"
+              loading={saving}
             >
               {saving ? "Saving…" : editing ? "Save Changes" : "Create User"}
-            </button>
+            </Button>
           </div>
         </form>
       </AdminModal>

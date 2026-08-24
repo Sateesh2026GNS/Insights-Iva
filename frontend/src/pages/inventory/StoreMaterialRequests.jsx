@@ -204,26 +204,26 @@ export default function StoreMaterialRequests({ mode = "requests" }) {
           <div className="flex flex-wrap gap-1">
             {r.status === "pending" && (
               <>
-                <button type="button" disabled={busy} onClick={() => runAction(r.id, "approve")} className="rounded-lg bg-[var(--color-success)] px-2 py-1 text-xs font-semibold text-white disabled:opacity-50">
-                  <CheckCircle2 className="mr-0.5 inline h-3 w-3" /> Approve
-                </button>
-                <button type="button" disabled={busy} onClick={() => runAction(r.id, "reject")} className="rounded-lg bg-red-600 px-2 py-1 text-xs font-semibold text-white disabled:opacity-50">
-                  <XCircle className="mr-0.5 inline h-3 w-3" /> Reject
-                </button>
-                <button type="button" disabled={busy} onClick={() => runAction(r.id, "issue")} className="rounded-lg bg-[var(--color-primary)] px-2 py-1 text-xs font-semibold text-white disabled:opacity-50">
+                <Button type="button" variant="view" size="sm" disabled={busy} onClick={() => runAction(r.id, "approve")} leftIcon={<CheckCircle2 className="h-3 w-3" aria-hidden />}>
+                  Approve
+                </Button>
+                <Button type="button" variant="danger" size="sm" disabled={busy} onClick={() => runAction(r.id, "reject")} leftIcon={<XCircle className="h-3 w-3" aria-hidden />}>
+                  Reject
+                </Button>
+                <Button type="button" variant="primary" size="sm" disabled={busy} onClick={() => runAction(r.id, "issue")}>
                   Issue
-                </button>
+                </Button>
               </>
             )}
             {r.status === "approved" && (
-              <button type="button" disabled={busy} onClick={() => runAction(r.id, "issue")} className="rounded-lg bg-[var(--color-primary)] px-2.5 py-1 text-xs font-semibold text-white disabled:opacity-50">
+              <Button type="button" variant="primary" size="sm" disabled={busy} onClick={() => runAction(r.id, "issue")}>
                 Issue Material
-              </button>
+              </Button>
             )}
             {r.status === "issued" && (
-              <button type="button" disabled={busy} onClick={() => runAction(r.id, "confirm")} className="rounded-lg bg-teal-600 px-2.5 py-1 text-xs font-semibold text-white disabled:opacity-50">
+              <Button type="button" variant="view" size="sm" disabled={busy} onClick={() => runAction(r.id, "confirm")}>
                 Confirm Received
-              </button>
+              </Button>
             )}
             {(r.status === "issued" || r.status === "received") && (
               <button
@@ -278,8 +278,8 @@ export default function StoreMaterialRequests({ mode = "requests" }) {
               <Plus className="h-4 w-4" /> Issue Materials Form
             </Button>
           ) : (
-            <Button variant="primary" type="button" onClick={() => setShowForm((v) => !v)}>
-              <Plus className="h-4 w-4" /> New Request
+            <Button variant="add" type="button" onClick={() => setShowForm((v) => !v)} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
+              New Request
             </Button>
           )}
         </div>

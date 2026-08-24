@@ -225,9 +225,9 @@ export default function Purchases() {
           </button>
         </div>
         <Button
-          variant="primary"
+          variant="add"
           to="/purchases/create"
-          leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} />}
+          leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}
         >
           Create New
         </Button>

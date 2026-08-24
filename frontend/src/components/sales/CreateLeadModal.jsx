@@ -3,6 +3,7 @@ import { X, Save } from "lucide-react";
 import { createLead } from "../../api/salesApi";
 import { useToast } from "../../context/ToastContext";
 import { LEAD_SOURCES } from "../../data/salesMasterData";
+import Button from "../common/Button";
 
 import { inputMtClass as inputClass } from "../../design-system/classes";
 
@@ -250,13 +251,9 @@ export default function CreateLeadModal({ isOpen, onClose, onSuccess }) {
             >
               Cancel
             </button>
-            <button
-              type="submit"
-              disabled={saving}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--color-primary)] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[var(--color-primary-hover)] shadow-sm transition-all disabled:opacity-50"
-            >
-              <Save className="h-4 w-4" /> Save Lead
-            </button>
+            <Button type="submit" variant="primary" disabled={saving} loading={saving} leftIcon={!saving ? <Save className="h-4 w-4" aria-hidden /> : undefined}>
+              Save Lead
+            </Button>
           </div>
         </form>
       </div>

@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { Calendar, ChevronLeft, ChevronRight, FileText, Filter, ListFilter, Plus, Search, X } from "lucide-react";
 
 import Loader from "../../components/common/Loader";
+import Button from "../../components/common/Button";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
 import { useToast } from "../../context/ToastContext";
 import { cancelInvoice, getInvoicesV2 } from "../../api/salesApi";
@@ -303,13 +304,9 @@ export default function CreditNotes() {
                 className="w-[118px] border-0 bg-transparent p-0 text-[13px] focus:outline-none"
               />
             </div>
-            <Link
-              to="/sales/credit-notes/create"
-              className="inline-flex items-center gap-1.5 rounded-lg px-4 py-2.5 text-[14px] font-semibold text-white shadow-sm"
-              style={{ background: YELLOW }}
-            >
-              <Plus className="h-4 w-4" strokeWidth={2.5} /> Create Credit Note
-            </Link>
+            <Button variant="add" to="/sales/credit-notes/create" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
+              Create Credit Note
+            </Button>
           </div>
         </div>
 
@@ -394,13 +391,9 @@ export default function CreditNotes() {
                       <p className="mt-3 text-[14px] text-[#9a9aa5]">
                         No Credit Notes yet. Create your first credit note.
                       </p>
-                      <Link
-                        to="/sales/credit-notes/create"
-                        className="mt-4 inline-flex items-center gap-1.5 rounded-lg px-4 py-2.5 text-[14px] font-semibold text-white"
-                        style={{ background: YELLOW }}
-                      >
-                        <Plus className="h-4 w-4" /> Create Credit Note
-                      </Link>
+                      <Button variant="add" to="/sales/credit-notes/create" className="mt-4" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
+                        Create Credit Note
+                      </Button>
                     </td>
                   </tr>
                 ) : (

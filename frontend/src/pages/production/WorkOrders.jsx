@@ -174,7 +174,7 @@ function WoRowActions({
 
   return (
     <div className="flex items-center justify-end gap-1 whitespace-nowrap">
-      <IconButton aria-label="View" title="View" onClick={() => onView(row)}>
+      <IconButton variant="view" aria-label="View" title="View" onClick={() => onView(row)}>
         <Eye className="h-3.5 w-3.5" />
       </IconButton>
       {serverId ? (
@@ -918,8 +918,7 @@ export default function WorkOrders() {
                 <span className="hidden sm:inline">Print</span>
               </Button>
               {!isOperator(user) && (
-                <Button variant="success" type="button" onClick={() => setShowQuickModal(true)}>
-                  <Plus className="h-4 w-4" />
+                <Button variant="add" type="button" onClick={() => setShowQuickModal(true)} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
                   New Work Order
                 </Button>
               )}

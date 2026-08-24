@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { RefreshCw, CheckCircle2, ChevronRight, Lock, CheckCircle, ShieldAlert } from "lucide-react";
 import Loader from "../../components/common/Loader";
+import Button from "../../components/common/Button";
 import { useToast } from "../../context/ToastContext";
 import { getExtendedReports } from "../../api/accountsApi";
 import { formatInr } from "../../data/financeMasterData";
@@ -116,16 +117,15 @@ export default function YearClosing() {
           </div>
 
           <div className="flex justify-end border-t pt-4">
-            <button
-              onClick={() => setCurrentStep(2)}
+            <Button
+              type="button"
+              variant="primary"
               disabled={!allChecksPassed}
-              className={`rounded-xl px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all flex items-center gap-2 ${
-                allChecksPassed ? "bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] cursor-pointer" : "bg-slate-300 cursor-not-allowed"
-              }`}
+              onClick={() => setCurrentStep(2)}
+              rightIcon={<ChevronRight className="h-4 w-4" aria-hidden />}
             >
               Next Step
-              <ChevronRight className="h-4 w-4" />
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -164,27 +164,19 @@ export default function YearClosing() {
           </div>
 
           <div className="flex justify-between border-t pt-4">
-            <button
-              onClick={() => setCurrentStep(1)}
-              className="rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-4 py-2.5 text-sm font-semibold text-slate-700"
-            >
+            <Button type="button" variant="secondary" onClick={() => setCurrentStep(1)}>
               Back
-            </button>
-            <button
-              onClick={handleStartClose}
+            </Button>
+            <Button
+              type="button"
+              variant="danger"
               disabled={actionLoading}
-              className="rounded-xl bg-red-600 hover:bg-red-700 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all flex items-center gap-2"
+              loading={actionLoading}
+              onClick={handleStartClose}
+              leftIcon={<Lock className="h-4 w-4" aria-hidden />}
             >
-              {actionLoading ? (
-                <>
-                  <RefreshCw className="h-4 w-4 animate-spin" /> Closing Year...
-                </>
-              ) : (
-                <>
-                  <Lock className="h-4 w-4" /> Finalize Year-End Close
-                </>
-              )}
-            </button>
+              {actionLoading ? "Closing Year..." : "Finalize Year-End Close"}
+            </Button>
           </div>
         </div>
       )}
@@ -214,15 +206,17 @@ export default function YearClosing() {
             </div>
           </div>
 
-          <button
+          <Button
+            type="button"
+            variant="view"
+            fullWidth
             onClick={() => {
               setCurrentStep(1);
               setClosingChecks((prev) => prev.map((c) => c.id === 4 ? { ...c, checked: false } : c));
             }}
-            className="w-full rounded-xl bg-green-600 hover:bg-green-700 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all"
           >
             Acknowledge & Return
-          </button>
+          </Button>
         </div>
       )}
     </div>

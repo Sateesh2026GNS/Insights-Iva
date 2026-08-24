@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import {
   Mail, Phone, X, User, Briefcase, Package, Loader2
 } from "lucide-react";
 
 import { deptColor, formatInr, statusColor } from "../../data/hrMasterData";
 import api from "../../api/axiosConfig";
+import Button from "../common/Button";
 
 const TABS = ["Personal", "Job", "Assets"];
 
@@ -199,13 +199,9 @@ export default function EmployeeDetailModal({ employee, onClose }) {
         </div>
 
         <div className="flex items-center gap-2 border-t border-slate-100 px-5 py-3 bg-slate-50/50">
-          <Link
-            to="/hr/assets"
-            onClick={onClose}
-            className="rounded-lg bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white hover:bg-[var(--color-primary-hover)] transition-colors"
-          >
+          <Button variant="view" to="/hr/assets" onClick={onClose}>
             View Assets
-          </Link>
+          </Button>
         </div>
       </div>
     </div>

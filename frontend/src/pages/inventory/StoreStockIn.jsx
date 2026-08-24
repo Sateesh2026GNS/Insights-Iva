@@ -651,8 +651,7 @@ export default function StoreStockIn() {
         Refresh
       </Button>
       {canCreate ? (
-        <Button variant="primary" onClick={openCreate}>
-          <Plus className="h-4 w-4" aria-hidden />
+        <Button variant="add" onClick={openCreate} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
           New Stock In
         </Button>
       ) : null}

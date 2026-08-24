@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { login as loginApi, getLoginErrorMessage } from "../../api/authApi";
 import useAuth from "../../hooks/useAuth";
@@ -6,8 +6,12 @@ import AuthSlider from "../../components/auth/AuthSlider";
 import LoginBackdrop from "../../components/auth/LoginBackdrop";
 import PasswordInput from "../../components/auth/PasswordInput";
 import BrandLogo from "../../components/common/BrandLogo";
+import Button from "../../components/common/Button";
+import LoginSuccessOverlay from "../../components/common/LoginSuccessOverlay";
 import { ROLES } from "../../config/permissions";
 import { getDashboardPathForRole } from "../../utils/roleRedirect";
+
+const LOGIN_SUCCESS_MS = 1800;
 
 const LOGIN_ROLES = ROLES.map((r) => r.name);
 
@@ -52,28 +56,32 @@ export default function Login() {
   const [role, setRole] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [redirectPath, setRedirectPath] = useState("/");
+  const redirectTimerRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (redirectTimerRef.current) clearTimeout(redirectTimerRef.current);
+    };
+  }, []);
 
   const completeLogin = (data) => {
-    const compName =
-      data.user?.company_name ||
-      data.user?.tenant_name ||
-      localStorage.getItem("smrt_company_name") ||
-      "GNS Insights";
-
-    try {
-      sessionStorage.setItem("smrt_login_welcome", compName);
-      window.dispatchEvent(
-        new CustomEvent("smrt_login_welcome", { detail: { companyName: compName } })
-      );
-    } catch {}
-
     login({
       access_token: data.access_token,
       refresh_token: data.refresh_token,
       user: data.user,
     });
+
     const resolvedRole = data.user?.role_name || data.user?.role || role;
-    navigate(getDashboardPathForRole(resolvedRole), { replace: true });
+    const path = getDashboardPathForRole(resolvedRole);
+    setRedirectPath(path);
+    setShowSuccess(true);
+    setLoading(false);
+
+    redirectTimerRef.current = setTimeout(() => {
+      navigate(path, { replace: true });
+    }, LOGIN_SUCCESS_MS);
   };
 
   const handleSubmit = async (e) => {
@@ -99,6 +107,7 @@ export default function Login() {
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden p-3 sm:p-4">
+      <LoginSuccessOverlay open={showSuccess} />
       <LoginBackdrop />
       <div className="relative z-10 w-full max-w-3xl">
         <div
@@ -185,13 +194,16 @@ export default function Login() {
                   </Link>
                 </div>
 
-                <button
+                <Button
                   type="submit"
+                  variant="primary"
+                  fullWidth
                   disabled={loading}
-                  className="w-full rounded-lg bg-teal-600 py-2.5 text-sm font-bold uppercase tracking-wider text-white transition hover:bg-[var(--color-success)] disabled:opacity-50"
+                  loading={loading}
+                  className="uppercase tracking-wider"
                 >
                   {loading ? "Signing in..." : "SIGN IN"}
-                </button>
+                </Button>
               </form>
 
               <p className="mt-4 text-center text-xs text-gray-500">

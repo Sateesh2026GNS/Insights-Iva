@@ -64,8 +64,7 @@ export default function InventoryList({
     <div style={{ display: "grid", gap: "16px" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <h2>{title}</h2>
-        <Button variant="primary" to={createPath}>
-          <Plus className="h-4 w-4" />
+        <Button variant="add" to={createPath} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
           {createLabel}
         </Button>
       </div>

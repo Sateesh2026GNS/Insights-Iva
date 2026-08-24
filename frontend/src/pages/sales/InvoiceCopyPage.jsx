@@ -3,6 +3,7 @@ import { Link, useLocation, useParams } from "react-router-dom";
 import { Download, Mail, MessageCircle, Printer, Share2 } from "lucide-react";
 
 import Loader from "../../components/common/Loader";
+import Button from "../../components/common/Button";
 import GstTaxInvoice from "../../components/sales/GstTaxInvoice";
 import { useToast } from "../../context/ToastContext";
 import {
@@ -150,12 +151,14 @@ export default function InvoiceCopyPage() {
             <MessageCircle className="h-4 w-4" /> WhatsApp
           </button>
           {id ? (
-            <Link
+            <Button
+              variant="edit"
+              size="sm"
               to={isDebitNote ? `/sales/debit-notes/${id}/edit` : `/sales/invoices/${id}/edit`}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-teal-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-[var(--color-success)]"
+              leftIcon={<Share2 className="h-4 w-4" aria-hidden />}
             >
-              <Share2 className="h-4 w-4" /> Edit {docLabel}
-            </Link>
+              Edit {docLabel}
+            </Button>
           ) : null}
         </div>
       </div>

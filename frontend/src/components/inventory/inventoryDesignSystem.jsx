@@ -1,4 +1,5 @@
 import { ChevronLeft, ChevronRight, Search } from "lucide-react";
+import Button, { AddButton } from "../common/Button";
 
 export const INVENTORY_PAGE_BG = "var(--color-bg)";
 export const INVENTORY_PAGE_SIZES = [10, 20, 50];
@@ -61,29 +62,33 @@ export function InventorySearchInput({ value, onChange, placeholder = "Search", 
 
 export function InventoryToolbarButton({ children, className = "", ...props }) {
   return (
-    <button
-      type="button"
-      className={`ui-btn ui-btn-secondary inline-flex items-center gap-2 !px-3 !py-2.5 text-[13px] ${className}`}
-      {...props}
-    >
+    <Button variant="secondary" className={`!px-3 !py-2.5 text-[13px] ${className}`} {...props}>
       {children}
-    </button>
+    </Button>
+  );
+}
+
+export function InventoryAddButton({ children, className = "", ...props }) {
+  return (
+    <AddButton className={`text-[13px] ${className}`} {...props}>
+      {children}
+    </AddButton>
   );
 }
 
 export function InventoryPrimaryButton({ children, className = "", ...props }) {
   return (
-    <button type="button" className={`ui-btn ui-btn-primary text-[13px] ${className}`} {...props}>
+    <Button variant="primary" className={`text-[13px] ${className}`} {...props}>
       {children}
-    </button>
+    </Button>
   );
 }
 
 export function InventoryOutlineButton({ children, className = "", ...props }) {
   return (
-    <button type="button" className={`ui-btn ui-btn-outline text-[13px] ${className}`} {...props}>
+    <Button variant="outline" className={`text-[13px] ${className}`} {...props}>
       {children}
-    </button>
+    </Button>
   );
 }
 

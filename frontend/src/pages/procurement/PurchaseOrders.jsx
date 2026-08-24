@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 
 import Loader from "../../components/common/Loader";
+import Button from "../../components/common/Button";
 import RowActionMenu from "../../components/common/RowActionMenu";
 import PODetailModal from "../../components/procurement/PODetailModal";
 import { useToast } from "../../context/ToastContext";
@@ -320,12 +321,9 @@ export default function PurchaseOrders() {
                 <CalendarDays className="h-4 w-4" />
               </button>
             </div>
-            <Link
-              to="/procurement/purchase-orders/create"
-              className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--color-primary)] px-4 py-2.5 text-[14px] font-semibold text-white shadow-sm hover:opacity-95"
-            >
-              <Plus className="h-4 w-4" strokeWidth={2.5} /> Create Purchase Order
-            </Link>
+            <Button variant="add" to="/procurement/purchase-orders/create" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
+              Create Purchase Order
+            </Button>
           </div>
         </div>
       </div>
@@ -576,16 +574,17 @@ export default function PurchaseOrders() {
               >
                 Clear
               </button>
-              <button
+              <Button
                 type="button"
+                variant="primary"
+                className="flex-1"
                 onClick={() => {
                   setFilters(draftFilters);
                   setShowFilters(false);
                 }}
-                className="flex-1 rounded-lg bg-[var(--color-primary)] py-2.5 text-[13px] font-semibold text-white"
               >
                 Apply
-              </button>
+              </Button>
             </div>
           </aside>
         </div>

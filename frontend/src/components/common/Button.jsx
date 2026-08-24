@@ -1,19 +1,32 @@
 import { forwardRef } from "react";
 import { Link } from "react-router-dom";
+import { Plus } from "lucide-react";
 
 /**
  * Centralized Insights Iva Button.
  * DESIGN ONCE → BUILD ONCE → REUSE EVERYWHERE.
  *
- * Variants: primary | secondary | success | warning | danger | outline | ghost
- * Sizes: sm | md | lg | icon
+ * Variants:
+ *   add       — + Add New / Add Customer / Create New (teal-blue #0F5F78)
+ *   primary   — Create / Submit / Save (brand green)
+ *   secondary — Cancel / Back / Close
+ *   view      — View / Open / Approve / Confirm (#2E9B72)
+ *   edit      — Edit / Update (#3182CE)
+ *   success   — alias of view (backward compat)
+ *   warning   — Hold / Pending / Review Required
+ *   danger    — Delete / Remove
+ *   outline   — bordered brand accent
+ *   ghost     — low priority / icon chrome
  *
- * Prefer this component over raw <button className="ui-btn-*"> or page-local colors.
+ * Sizes: sm | md | lg | icon
  */
 
 export const BUTTON_VARIANTS = [
+  "add",
   "primary",
   "secondary",
+  "view",
+  "edit",
   "success",
   "warning",
   "danger",
@@ -22,8 +35,11 @@ export const BUTTON_VARIANTS = [
 ];
 
 const VARIANT_CLASS = {
+  add: "ui-btn--add",
   primary: "ui-btn--primary",
   secondary: "ui-btn--secondary",
+  view: "ui-btn--view",
+  edit: "ui-btn--edit",
   success: "ui-btn--success",
   warning: "ui-btn--warning",
   danger: "ui-btn--danger",
@@ -151,11 +167,29 @@ const Button = forwardRef(function Button(
 
 export default Button;
 
+const ADD_PLUS_ICON = <Plus className="h-4 w-4 shrink-0" strokeWidth={2.5} aria-hidden />;
+
+/** Compact ERP-style “+ Add New” toolbar button (teal-blue). */
+export function AddButton({ children, leftIcon, showIcon = true, ...props }) {
+  const icon = leftIcon ?? (showIcon ? ADD_PLUS_ICON : undefined);
+  return (
+    <Button variant="add" leftIcon={icon} {...props}>
+      {children}
+    </Button>
+  );
+}
+
 export function PrimaryButton(props) {
   return <Button variant="primary" {...props} />;
 }
 export function SecondaryButton(props) {
   return <Button variant="secondary" {...props} />;
+}
+export function ViewButton(props) {
+  return <Button variant="view" {...props} />;
+}
+export function EditButton(props) {
+  return <Button variant="edit" {...props} />;
 }
 export function SuccessButton(props) {
   return <Button variant="success" {...props} />;

@@ -384,8 +384,8 @@ export default function InProcessQC() {
             >
               <FileSpreadsheet className="h-4 w-4" /> Export
             </Button>
-            <Button variant="primary" to="/quality/inspection">
-              <Plus className="h-4 w-4" /> New In-Process QC
+            <Button variant="add" to="/quality/inspection" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
+              New In-Process QC
             </Button>
           </div>
         }

@@ -20,6 +20,12 @@ function resolveWorkflowStatus(row) {
   return row.workflow_status || null;
 }
 
+function actionVariantForRow(row) {
+  const ws = String(row.workflow_status || "").toUpperCase();
+  if (ws === "MATERIAL_SHORTAGE" || ws === "MATERIAL_PARTIAL") return "warning";
+  return "view";
+}
+
 function actionLabelForRow(row) {
   const ws = String(row.workflow_status || "").toUpperCase();
   if (ws === "MATERIAL_CHECK_PENDING") return "Inventory Check";
@@ -88,7 +94,7 @@ function QueueRowCard({ row, idx, isSelected, onSelect, stageUrl }) {
       <div className="mt-3 flex items-center justify-between gap-2">
         <PriorityBadge priority={row.priority || "medium"} showDot={false} />
         <Button
-          variant="primary"
+          variant={actionVariantForRow(row)}
           size="sm"
           to={stageUrl}
           onClick={(e) => e.stopPropagation()}
@@ -211,7 +217,7 @@ export default function JobCardQueueTable({
                     {row.assigned_to || "—"}
                   </td>
                   <td className="whitespace-nowrap px-3 py-2.5 text-right">
-                    <Button variant="primary" size="sm" to={stageUrl} onClick={(e) => e.stopPropagation()}>
+                    <Button variant={actionVariantForRow(row)} size="sm" to={stageUrl} onClick={(e) => e.stopPropagation()}>
                       {actionLabelForRow(row)}
                     </Button>
                   </td>

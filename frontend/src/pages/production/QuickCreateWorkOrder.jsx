@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 import { useToast } from "../../context/ToastContext";
+import Button from "../../components/common/Button";
 import {
   getProducts,
   getMachines,
@@ -678,13 +679,9 @@ export default function QuickCreateWorkOrder() {
         )}
 
         <div className="flex gap-3 pt-2">
-          <button
-            type="submit"
-            disabled={saving || products.length === 0}
-            className="rounded-lg bg-teal-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[var(--color-success)] disabled:bg-slate-400"
-          >
+          <Button type="submit" variant="primary" disabled={saving || products.length === 0} loading={saving}>
             {saving ? "Saving..." : "Save & Done"}
-          </button>
+          </Button>
           <Link
             to="/production/work-orders"
             className="rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"

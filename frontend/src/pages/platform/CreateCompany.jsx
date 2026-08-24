@@ -267,31 +267,25 @@ function CreateCompanyForm() {
 
             <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-center">
               {result.company?.id ? (
-                <Link
-                  to={`/gns-admin/companies/${result.company.id}`}
-                  className="rounded-lg bg-teal-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-[var(--color-success)]"
-                >
+                <Button variant="view" to={`/gns-admin/companies/${result.company.id}`}>
                   View Company
-                </Link>
+                </Button>
               ) : null}
-              <Link
-                to="/gns-admin"
-                className="rounded-lg border border-slate-200 px-5 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
-              >
+              <Button variant="secondary" to="/gns-admin">
                 Back to Dashboard
-              </Link>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="secondary"
                 onClick={() => {
                   setResult(null);
                   setForm(EMPTY);
                   setError("");
                   setFieldErrors({});
                 }}
-                className="rounded-lg border border-slate-200 px-5 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
               >
                 Create Another
-              </button>
+              </Button>
             </div>
           </div>
         </main>

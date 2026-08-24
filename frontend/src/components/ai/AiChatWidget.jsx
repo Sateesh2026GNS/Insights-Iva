@@ -13,6 +13,7 @@ import {
   sendAiChat,
 } from "../../api/aiAssistantApi";
 import AiMessageContent from "./AiMessageContent";
+import Button, { IconButton } from "../common/Button";
 
 const DEFAULT_SUGGESTIONS = [
   "Today's Work Orders",
@@ -333,9 +334,9 @@ export default function AiChatWidget() {
           {/* History panel */}
           {showHistory && (
             <div className="max-h-40 overflow-y-auto border-b border-slate-100 bg-slate-50 p-2">
-              <button type="button" onClick={startNewChat} className="mb-2 w-full rounded-lg bg-[var(--color-primary)] px-3 py-1.5 text-xs font-semibold text-white">
+              <Button type="button" variant="primary" fullWidth size="sm" onClick={startNewChat} className="mb-2">
                 + New Chat
-              </button>
+              </Button>
               {conversations.length === 0 && (
                 <p className="px-2 py-3 text-center text-xs text-slate-400">No conversation history</p>
               )}
@@ -392,13 +393,9 @@ export default function AiChatWidget() {
                         contentRef={(el) => { msgRefs.current[i] = el; }}
                       />
                       {m.navigation && (
-                        <button
-                          type="button"
-                          onClick={() => handleNav(m.navigation)}
-                          className="mt-2 inline-flex items-center gap-1 rounded-lg bg-[var(--color-primary)] px-2.5 py-1 text-xs font-semibold text-white hover:bg-[var(--color-primary-hover)]"
-                        >
-                          Open Page <ChevronDown className="h-3 w-3 -rotate-90" />
-                        </button>
+                        <Button type="button" variant="primary" size="sm" className="mt-2" onClick={() => handleNav(m.navigation)}>
+                          Open Page <ChevronDown className="h-3 w-3 -rotate-90" aria-hidden />
+                        </Button>
                       )}
                     </div>
 
@@ -470,14 +467,15 @@ export default function AiChatWidget() {
                 placeholder="Ask about job cards, work orders, machines…"
                 className="max-h-24 min-h-[40px] flex-1 resize-none rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 [appearance:textfield]"
               />
-              <button
+              <IconButton
                 type="button"
+                variant="primary"
+                aria-label="Send message"
                 onClick={() => sendMessage()}
                 disabled={loading || !input.trim()}
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary-hover)] disabled:opacity-50"
               >
-                <Send className="h-4 w-4" />
-              </button>
+                <Send className="h-4 w-4" aria-hidden />
+              </IconButton>
             </div>
           </div>
         </div>

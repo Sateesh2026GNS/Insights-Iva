@@ -4,6 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { CalendarDays, ChevronLeft, ChevronRight, Download, Edit2, Eye, FileText, Filter, ListFilter, Plus, Search, Trash2, X } from "lucide-react";
 
 import Loader from "../../components/common/Loader";
+import Button from "../../components/common/Button";
 import RowActionMenu from "../../components/common/RowActionMenu";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
 import { useToast } from "../../context/ToastContext";
@@ -374,13 +375,9 @@ export default function PurchaseDebitNotes() {
                 <CalendarDays className="h-4 w-4" />
               </button>
             </div>
-            <Link
-              to="/purchases/debit-notes/create"
-              className="inline-flex items-center gap-1.5 rounded-lg px-4 py-2.5 text-[14px] font-semibold text-white shadow-sm"
-              style={{ background: ACCENT }}
-            >
-              <Plus className="h-4 w-4" strokeWidth={2.5} /> Create Debit Note
-            </Link>
+            <Button variant="add" to="/purchases/debit-notes/create" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
+              Create Debit Note
+            </Button>
             <button
               type="button"
               onClick={() => {

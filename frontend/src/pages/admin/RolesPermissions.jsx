@@ -156,8 +156,7 @@ export default function RolesPermissions() {
         }
         action={
           permissionsOnly ? null : (
-            <Button variant="primary" type="button" onClick={openCreate}>
-              <Plus className="h-4 w-4" />
+            <Button variant="add" type="button" onClick={openCreate} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
               Add Role
             </Button>
           )
@@ -348,13 +347,14 @@ export default function RolesPermissions() {
             >
               Cancel
             </button>
-            <button
+            <Button
               type="submit"
+              variant={editing || permissionsOnly ? "edit" : "primary"}
               disabled={saving}
-              className="rounded-xl bg-teal-600 px-5 py-2 text-sm font-semibold text-white hover:bg-[var(--color-success)] disabled:opacity-50"
+              loading={saving}
             >
               {saving ? "Saving…" : permissionsOnly ? "Save Permissions" : editing ? "Save Changes" : "Create Role"}
-            </button>
+            </Button>
           </div>
         </form>
       </AdminModal>

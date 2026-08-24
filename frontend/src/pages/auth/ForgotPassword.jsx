@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { forgotPassword, getApiErrorMessage } from "../../api/authApi";
 import BrandLogo from "../../components/common/BrandLogo";
+import Button from "../../components/common/Button";
 import { useToast } from "../../context/ToastContext";
 
 const MailIcon = () => (
@@ -134,20 +135,15 @@ export default function ForgotPassword() {
             />
           </div>
 
-          <button
+          <Button
             type="submit"
+            variant="primary"
+            fullWidth
             disabled={loading || sent}
-            className="flex w-full items-center justify-center gap-2 rounded-lg bg-teal-600 py-3 font-bold text-white transition hover:bg-[var(--color-success)] disabled:cursor-not-allowed disabled:opacity-50"
+            loading={loading}
           >
-            {loading ? (
-              <>
-                <Spinner />
-                Sending…
-              </>
-            ) : (
-              "Send Reset Link"
-            )}
-          </button>
+            {loading ? "Sending…" : "Send Reset Link"}
+          </Button>
         </form>
 
         <p className="mt-6 text-center text-sm text-gray-600">

@@ -192,7 +192,7 @@ export default function AccountsReceivable() {
               Accounts receivable data is pulled from your sales invoices.
               Create an invoice in the Sales module to see it here.
             </p>
-            <Button variant="primary" to="/sales/invoices/create" className="mt-5">
+            <Button variant="add" to="/sales/invoices/create" className="mt-5" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
               Create Invoice
             </Button>
           </div>

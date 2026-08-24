@@ -8,6 +8,7 @@ import { useToast } from "../../context/ToastContext";
 import { getExtendedReports } from "../../api/accountsApi";
 import { formatInr } from "../../data/financeMasterData";
 import KpiCard from "../../components/common/KpiCard";
+import Button from "../../components/common/Button";
 
 import { inputMtClass as inputClass } from "../../design-system/classes";
 const COST_ALLOCATION_STORAGE_KEY = "cost-allocation-local-entries";
@@ -125,13 +126,9 @@ export default function CostAllocation() {
           <p className="ui-subtitle font-medium">Allocate indirect overhead and general expense vouchers across organizational departments.</p>
         </div>
         <div className="flex gap-2">
-          <button
-            onClick={() => setModalOpen(true)}
-            className="inline-flex items-center gap-2 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all"
-          >
-            <Plus className="h-4 w-4" />
+          <Button type="button" variant="add" onClick={() => setModalOpen(true)} leftIcon={<Plus className="h-4 w-4" aria-hidden />}>
             New Allocation
-          </button>
+          </Button>
         </div>
       </header>
 
@@ -299,19 +296,12 @@ export default function CostAllocation() {
               </div>
 
               <div className="flex justify-end gap-2 border-t border-slate-100 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setModalOpen(false)}
-                  className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
-                >
+                <Button type="button" variant="secondary" onClick={() => setModalOpen(false)}>
                   Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--color-primary)] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[var(--color-primary-hover)] shadow-sm transition-all"
-                >
+                </Button>
+                <Button type="submit" variant="primary">
                   Allocate Cost
-                </button>
+                </Button>
               </div>
             </form>
           </div>

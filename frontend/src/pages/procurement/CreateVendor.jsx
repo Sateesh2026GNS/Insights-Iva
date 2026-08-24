@@ -803,12 +803,9 @@ export default function CreateVendor() {
                 onChange={onPickDoc}
                 disabled={loading}
               />
-              <label
-                htmlFor="vendor-docs"
-                className="inline-flex cursor-pointer rounded-xl bg-[var(--color-primary)] px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:opacity-95"
-              >
+              <Button as="label" htmlFor="vendor-docs" variant="primary" className="cursor-pointer" aria-disabled={loading || undefined}>
                 Choose files
-              </label>
+              </Button>
               <p className="mt-2 text-xs text-slate-500">PDF or images · attached on save</p>
             </div>
             {pendingDocs.length > 0 && (

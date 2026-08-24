@@ -4,6 +4,7 @@ import { Link, useLocation } from "react-router-dom";
 import { Calendar, ChevronLeft, ChevronRight, FileText, Filter, ListFilter, Plus, Search, X } from "lucide-react";
 
 import Loader from "../../components/common/Loader";
+import Button from "../../components/common/Button";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
 import { useToast } from "../../context/ToastContext";
 import { cancelInvoice, getInvoicesV2 } from "../../api/salesApi";
@@ -245,14 +246,9 @@ export default function ProformaInvoices() {
                 className="w-[118px] border-0 bg-transparent p-0 text-[13px] focus:outline-none"
               />
             </div>
-            <Link
-              to={createTo}
-              className="inline-flex items-center gap-1.5 rounded-lg px-4 py-2.5 text-[14px] font-semibold text-white shadow-sm"
-              style={{ background: YELLOW }}
-            >
-              <Plus className="h-4 w-4" strokeWidth={2.5} />{" "}
+            <Button variant="add" to={createTo} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
               {exportOnly ? "Export Proforma Invoice" : "Proforma Invoice"}
-            </Link>
+            </Button>
           </div>
         </div>
       </div>
@@ -340,14 +336,9 @@ export default function ProformaInvoices() {
                       <p className="mt-3 text-[14px] text-[#9a9aa5]">
                         No proforma invoices yet. Create your first one.
                       </p>
-                      <Link
-                        to={createTo}
-                        className="mt-4 inline-flex items-center gap-1.5 rounded-lg px-4 py-2.5 text-[14px] font-semibold text-white"
-                        style={{ background: YELLOW }}
-                      >
-                        <Plus className="h-4 w-4" />{" "}
+                      <Button variant="add" to={createTo} className="mt-4" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
                         {exportOnly ? "Export Proforma Invoice" : "Proforma Invoice"}
-                      </Link>
+                      </Button>
                     </td>
                   </tr>
                 ) : (

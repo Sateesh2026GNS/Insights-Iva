@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { ArrowLeft, Plus, Save, Trash2 } from "lucide-react";
 import Loader from "../../components/common/Loader";
+import Button from "../../components/common/Button";
 import { getCustomers, createInvoice } from "../../api/salesApi";
 import { useToast } from "../../context/ToastContext";
 import useTenantId from "../../hooks/useTenantId";
@@ -304,14 +305,9 @@ export default function CreateBill() {
             className="rounded-lg border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
             Cancel
           </Link>
-          <button type="submit" disabled={saving}
-            className="inline-flex items-center gap-2 rounded-lg bg-[var(--color-primary)] px-6 py-2.5 text-sm font-semibold text-white shadow transition hover:bg-[var(--color-primary-hover)] disabled:opacity-60">
-            {saving ? (
-              <><span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" /> Saving…</>
-            ) : (
-              <><Save className="h-4 w-4" /> Save Bill</>
-            )}
-          </button>
+          <Button type="submit" variant="primary" disabled={saving} loading={saving} leftIcon={!saving ? <Save className="h-4 w-4" aria-hidden /> : undefined}>
+            {saving ? "Saving…" : "Save Bill"}
+          </Button>
         </div>
       </form>
     </div>

@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { Banknote, Building2, ChevronLeft, ChevronRight, Download, Eye, FileText, IndianRupee, Landmark, Layers, List, Mail, MoreVertical, Pencil, Phone, Search, Target, Trash2, TrendingUp, UserPlus, Users, Wallet } from "lucide-react";
 
 import Loader from "../../components/common/Loader";
+import Button from "../../components/common/Button";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
 import AddLedgerCustomerModal from "../../components/accounts/AddLedgerCustomerModal";
 import AddLedgerVendorModal from "../../components/accounts/AddLedgerVendorModal";
@@ -976,22 +977,14 @@ export default function LedgerV2() {
 
             <div className="flex flex-wrap items-center gap-2">
               {tab === "debtors" ? (
-                <button
-                  type="button"
-                  onClick={() => setAddCustomerOpen(true)}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--color-primary)] px-4 py-2.5 text-[13px] font-semibold text-white hover:bg-[var(--color-primary-hover)]"
-                >
-                  <UserPlus className="h-4 w-4" aria-hidden />+ Add Customer
-                </button>
+                <Button type="button" variant="add" onClick={() => setAddCustomerOpen(true)} leftIcon={<UserPlus className="h-4 w-4" aria-hidden />}>
+                  + Add Customer
+                </Button>
               ) : null}
               {tab === "creditors" ? (
-                <button
-                  type="button"
-                  onClick={() => setAddVendorOpen(true)}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--color-primary)] px-4 py-2.5 text-[13px] font-semibold text-white hover:bg-[var(--color-primary-hover)]"
-                >
-                  <UserPlus className="h-4 w-4" aria-hidden />+ Add Vendor
-                </button>
+                <Button type="button" variant="add" onClick={() => setAddVendorOpen(true)} leftIcon={<UserPlus className="h-4 w-4" aria-hidden />}>
+                  + Add Vendor
+                </Button>
               ) : null}
               {tab === "cash" ? (
                 <>
@@ -1009,29 +1002,31 @@ export default function LedgerV2() {
                   >
                     Contra Entry (Bank/Cash Transfer)
                   </button>
-                  <button
+                  <Button
                     type="button"
+                    variant="primary"
                     onClick={() => {
                       setEditCashAccount(null);
                       setBankCashOpen(true);
                     }}
-                    className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--color-primary)] px-4 py-2.5 text-[13px] font-semibold text-white hover:bg-[var(--color-primary-hover)]"
+                    leftIcon={<Landmark className="h-4 w-4" aria-hidden />}
                   >
-                    <Landmark className="h-4 w-4" aria-hidden /> Add Bank/Cash
-                  </button>
+                    Add Bank/Cash
+                  </Button>
                 </>
               ) : null}
               {tab === "other" ? (
-                <button
+                <Button
                   type="button"
+                  variant="primary"
                   onClick={() => {
                     setEditOtherAccount(null);
                     setExpenseIncomeOpen(true);
                   }}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--color-primary)] px-4 py-2.5 text-[13px] font-semibold text-white hover:bg-[var(--color-primary-hover)]"
+                  leftIcon={<UserPlus className="h-4 w-4" aria-hidden />}
                 >
-                  <UserPlus className="h-4 w-4" aria-hidden />+ Add Other Account
-                </button>
+                  + Add Other Account
+                </Button>
               ) : null}
 
               <button

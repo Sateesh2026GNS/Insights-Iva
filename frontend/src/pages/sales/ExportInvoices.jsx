@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Calendar, ChevronLeft, ChevronRight, Filter, ListFilter, Plus, Receipt, Search, X } from "lucide-react";
 
 import Loader from "../../components/common/Loader";
+import Button from "../../components/common/Button";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
 import { useToast } from "../../context/ToastContext";
 import { cancelInvoice, getInvoicesV2 } from "../../api/salesApi";
@@ -268,13 +269,9 @@ export default function ExportInvoices() {
               title={fmtDisplayDate(dateTo)}
             />
           </div>
-          <Link
-            to="/sales/export-invoices/create"
-            className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--color-primary)] px-4 py-2.5 text-[14px] font-semibold text-white shadow-sm hover:bg-[var(--color-primary-hover)]"
-          >
-            <Plus className="h-4 w-4" strokeWidth={2.5} />
+          <Button variant="add" to="/sales/export-invoices/create" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
             Export Invoice
-          </Link>
+          </Button>
         </div>
       </div>
 
@@ -358,12 +355,9 @@ export default function ExportInvoices() {
                     <p className="mt-3 text-[14px] text-[#8a8a95]">
                       No export invoices yet. Create your first one.
                     </p>
-                    <Link
-                      to="/sales/export-invoices/create"
-                      className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-[var(--color-primary)] px-4 py-2.5 text-[14px] font-semibold text-white"
-                    >
-                      <Plus className="h-4 w-4" /> Export Invoice
-                    </Link>
+                    <Button variant="add" to="/sales/export-invoices/create" className="mt-4" leftIcon={<Plus className="h-4 w-4" aria-hidden />}>
+                      Export Invoice
+                    </Button>
                   </td>
                 </tr>
               ) : (

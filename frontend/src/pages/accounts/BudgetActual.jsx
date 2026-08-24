@@ -9,6 +9,7 @@ import { getInvoices } from "../../api/salesApi";
 import { formatInr } from "../../data/financeMasterData";
 import KpiCard from "../../components/common/KpiCard";
 import PageHeader from "../../components/common/PageHeader";
+import Button from "../../components/common/Button";
 
 const STORAGE_KEY = "smrt_budget_targets";
 const CATEGORIES  = ["Sales Revenue", "Cost of Goods Sold", "Operating Expenses", "Marketing", "HR & Payroll", "Admin & Overhead", "Other Income"];
@@ -153,10 +154,9 @@ export default function BudgetActual() {
             <p className="text-sm font-semibold text-blue-800">No budget targets set yet</p>
             <p className="text-xs text-blue-600 mt-0.5">Click "Set Budget Targets" to enter monthly/annual targets for each category. Actuals are pulled from your real invoice and expense data.</p>
           </div>
-          <button onClick={openModal}
-            className="ml-4 shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-[var(--color-primary)] px-3 py-2 text-xs font-semibold text-white hover:bg-[var(--color-primary-hover)]">
-            <Plus className="h-3.5 w-3.5" /> Set Targets
-          </button>
+          <Button type="button" variant="add" size="sm" onClick={openModal} className="ml-4 shrink-0" leftIcon={<Plus className="h-3.5 w-3.5" aria-hidden />}>
+            Set Targets
+          </Button>
         </div>
       )}
 
@@ -285,14 +285,12 @@ export default function BudgetActual() {
             </div>
 
             <div className="flex justify-end gap-2 border-t border-slate-100 pt-4">
-              <button onClick={() => setModalOpen(false)}
-                className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors">
+              <Button type="button" variant="secondary" onClick={() => setModalOpen(false)}>
                 Cancel
-              </button>
-              <button onClick={saveBudgets}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--color-primary)] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[var(--color-primary-hover)] shadow-sm transition-all">
+              </Button>
+              <Button type="button" variant="primary" onClick={saveBudgets}>
                 Save Budget Targets
-              </button>
+              </Button>
             </div>
           </div>
         </div>

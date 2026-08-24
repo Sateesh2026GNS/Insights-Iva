@@ -376,8 +376,8 @@ export default function BomMaster() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="primary" type="button" onClick={() => setFormBom({ _existingBoms: boms })}>
-            <Plus className="h-4 w-4" /> Create Bill of Materials (BOM)
+          <Button variant="add" type="button" onClick={() => setFormBom({ _existingBoms: boms })} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
+            Create Bill of Materials (BOM)
           </Button>
           <button type="button" onClick={() => selected && setFormBom(selected)} disabled={!selected} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40">
             Edit Bill of Materials (BOM)
@@ -452,7 +452,9 @@ export default function BomMaster() {
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <h3 className="mb-3 text-sm font-bold text-slate-800">Quick Actions</h3>
           <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={() => setFormBom({})} className="rounded-lg bg-[var(--color-primary)] px-3 py-2 text-xs font-semibold text-white">Create Production Order</button>
+            <Button type="button" variant="primary" size="sm" onClick={() => setFormBom({})}>
+              Create Production Order
+            </Button>
             <button type="button" className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700">Generate Material Requirement</button>
             <button type="button" onClick={() => handlePrintPdf(selected)} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700">Print BOM</button>
             <button type="button" onClick={handleDownloadTemplate} className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700">

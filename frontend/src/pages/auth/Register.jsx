@@ -5,6 +5,7 @@ import AuthSlider from "../../components/auth/AuthSlider";
 import LoginBackdrop from "../../components/auth/LoginBackdrop";
 import PasswordInput from "../../components/auth/PasswordInput";
 import BrandLogo from "../../components/common/BrandLogo";
+import Button from "../../components/common/Button";
 import { ROLES } from "../../config/permissions";
 
 const REGISTRATION_SUCCESS_MESSAGE =
@@ -267,13 +268,16 @@ export default function Register() {
                   />
                 </div>
 
-                <button
+                <Button
                   type="submit"
+                  variant="primary"
+                  fullWidth
                   disabled={loading || Boolean(success)}
-                  className="w-full rounded-lg bg-teal-600 py-3 font-bold uppercase tracking-wider text-white transition hover:bg-[var(--color-success)] disabled:opacity-50"
+                  loading={loading}
+                  className="uppercase tracking-wider"
                 >
                   {loading ? "Creating Account..." : "SIGN UP"}
-                </button>
+                </Button>
               </form>
 
               <p className="mt-4 text-xs text-gray-600">

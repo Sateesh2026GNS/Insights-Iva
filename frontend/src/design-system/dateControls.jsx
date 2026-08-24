@@ -9,6 +9,7 @@ import { createPortal } from "react-dom";
 import { Calendar, CalendarDays, ChevronLeft, ChevronRight, X } from "lucide-react";
 
 import { FormField } from "../components/common/FormField";
+import Button from "../components/common/Button";
 import {
   addMonths,
   buildDateRangePresets,
@@ -522,13 +523,9 @@ export function DateRangePicker({
           >
             Cancel
           </button>
-          <button
-            type="button"
-            onClick={apply}
-            className="rounded-lg bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
-          >
+          <Button type="button" variant="primary" onClick={apply}>
             Apply
-          </button>
+          </Button>
         </div>
       </div>
     </div>

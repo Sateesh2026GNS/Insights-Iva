@@ -2,6 +2,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 import { createPortal } from "react-dom";
 
 import Loader from "../../components/common/Loader";
+import Button from "../../components/common/Button";
 import PageHeader from "../../components/common/PageHeader";
 import { useToast } from "../../context/ToastContext";
 import { getFeatureSetting, putFeatureSetting } from "../../api/bizDocumentsApi";
@@ -65,23 +66,20 @@ function ConfirmFyModal({ open, fy, busy, onCancel, onConfirm }) {
           will not be changed.
         </p>
         <div className="mt-8 flex flex-col gap-3">
-          <button
+          <Button
             ref={confirmRef}
             type="button"
+            variant="primary"
+            fullWidth
             disabled={busy}
+            loading={busy}
             onClick={onConfirm}
-            className="w-full rounded-xl px-4 py-3.5 text-[15px] font-semibold text-white hover:brightness-95 disabled:opacity-60 bg-[var(--color-primary)] dark:bg-teal-600"
           >
             {busy ? "Saving…" : `Change to ${fy.label}`}
-          </button>
-          <button
-            type="button"
-            disabled={busy}
-            onClick={onCancel}
-            className="w-full rounded-xl bg-slate-100 px-4 py-3.5 text-[15px] font-semibold text-slate-700 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600 disabled:opacity-60"
-          >
+          </Button>
+          <Button type="button" variant="secondary" fullWidth disabled={busy} onClick={onCancel}>
             Cancel
-          </button>
+          </Button>
         </div>
       </div>
     </div>,

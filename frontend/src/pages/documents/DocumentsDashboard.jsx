@@ -3,6 +3,7 @@ import { Download, Eye, File, FileArchive, FileImage, FileSpreadsheet, FileText,
 import KpiCard from "../../components/common/KpiCard";
 
 import Loader from "../../components/common/Loader";
+import Button from "../../components/common/Button";
 import { useToast } from "../../context/ToastContext";
 import useAuth from "../../hooks/useAuth";
 import usePageRefresh from "../../hooks/usePageRefresh";
@@ -13,7 +14,6 @@ import {
   updateDocument,
 } from "../../api/documentsApi";
 import { isAdmin } from "../../config/permissions";
-import Button from "../../components/common/Button";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
 import {
   DOC_TYPES,
@@ -382,8 +382,8 @@ Description:  ${doc.description || "No description provided."}
           </div>
         <div className="flex flex-wrap items-center gap-2">
           {canWrite && (
-            <Button variant="primary" type="button" onClick={openCreate}>
-              <Plus className="h-4 w-4" /> Upload Document
+            <Button variant="add" type="button" onClick={openCreate} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
+              Upload Document
             </Button>
           )}
         </div>
@@ -873,13 +873,9 @@ Description:  ${doc.description || "No description provided."}
             </dl>
 
             <div className="flex justify-end gap-2 border-t pt-4">
-              <button
-                type="button"
-                onClick={() => handleDownload(preview)}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--color-primary)] px-4 py-2 text-xs font-semibold text-white hover:bg-[var(--color-primary-hover)] transition-colors shadow-xs"
-              >
-                <Download className="h-4 w-4" /> Download File
-              </button>
+              <Button type="button" variant="primary" size="sm" onClick={() => handleDownload(preview)} leftIcon={<Download className="h-4 w-4" aria-hidden />}>
+                Download File
+              </Button>
               <button
                 type="button"
                 onClick={() => setPreview(null)}

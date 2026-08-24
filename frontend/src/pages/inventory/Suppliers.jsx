@@ -65,8 +65,7 @@ export default function Suppliers() {
   );
 
   const createAction = (
-    <Button variant="primary" to="/inventory/suppliers/create">
-      <Plus className="h-4 w-4" />
+    <Button variant="add" to="/inventory/suppliers/create" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
       Create supplier
     </Button>
   );

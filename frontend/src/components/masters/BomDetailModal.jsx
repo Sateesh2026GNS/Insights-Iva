@@ -228,20 +228,12 @@ function AddComponentModal({ open, onClose, onAdd, bomId }) {
         </div>
 
         <div className="mt-4 flex justify-end gap-3 pt-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50"
-          >
+          <Button type="button" variant="secondary" onClick={onClose}>
             Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={busy}
-            className="rounded-xl bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white hover:bg-[var(--color-primary-hover)] disabled:opacity-50"
-          >
+          </Button>
+          <Button type="submit" variant="primary" disabled={busy} loading={busy}>
             {busy ? "Adding..." : "Add Component"}
-          </button>
+          </Button>
         </div>
       </form>
     </div>,
@@ -349,13 +341,9 @@ export default function BomDetailModal({ bom, onClose, onEdit, onCopy, onDelete,
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-bold text-slate-800">BOM Components</h3>
-                <button
-                  type="button"
-                  onClick={() => setAddComponentOpen(true)}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--color-primary)] px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-[var(--color-primary-hover)] transition-colors"
-                >
-                  <Plus className="h-3.5 w-3.5" /> Add Component
-                </button>
+                <Button type="button" variant="add" size="sm" onClick={() => setAddComponentOpen(true)} leftIcon={<Plus className="h-3.5 w-3.5" aria-hidden />}>
+                  Add Component
+                </Button>
               </div>
               <div className="overflow-x-auto rounded-xl border border-slate-200">
                 <table className="w-full text-left text-sm">
@@ -550,7 +538,7 @@ export default function BomDetailModal({ bom, onClose, onEdit, onCopy, onDelete,
         </div>
 
         <div className="flex flex-wrap gap-2 border-t border-slate-100 bg-slate-50 px-5 py-3">
-          <Button type="button" onClick={() => onEdit(bom)} variant="primary" className="text-xs">Edit BOM</Button>
+          <Button type="button" onClick={() => onEdit(bom)} variant="edit" size="sm">Edit BOM</Button>
           <button type="button" onClick={() => onCopy(bom)} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">
             <Copy className="h-3.5 w-3.5" /> Copy BOM
           </button>
@@ -1145,20 +1133,12 @@ export function BomFormModal({ bom, onClose, onSave, existingBoms = [] }) {
 
         {/* Footer */}
         <div className="pt-2 flex items-center justify-end gap-3">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 transition-colors"
-          >
+          <Button type="button" variant="secondary" onClick={onClose}>
             Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={saving}
-            className="rounded-full bg-[#0D8780] hover:bg-[#0A6C67] px-6 py-2.5 text-sm font-semibold text-white transition-all shadow-sm active:scale-95 disabled:opacity-60"
-          >
+          </Button>
+          <Button type="submit" variant="primary" disabled={saving} loading={saving}>
             {saving ? "Saving..." : "Save BOM"}
-          </button>
+          </Button>
         </div>
       </form>
     </div>

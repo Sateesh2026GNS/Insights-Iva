@@ -368,9 +368,9 @@ export default function PaymentReceipts() {
             ) : null}
           </div>
           <Button
-            variant="primary"
+            variant="add"
             to="/sales/payment-receipts/create"
-            leftIcon={<Plus className="h-4 w-4 text-white" strokeWidth={2.5} />}
+            leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}
           >
             Record Payment
           </Button>
@@ -401,10 +401,10 @@ export default function PaymentReceipts() {
                       No Receipt available, Record new payment
                     </p>
                     <Button
-                      variant="primary"
+                      variant="add"
                       to="/sales/payment-receipts/create"
                       className="mt-4"
-                      leftIcon={<Plus className="h-4 w-4 text-white" />}
+                      leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}
                     >
                       Record Payment
                     </Button>

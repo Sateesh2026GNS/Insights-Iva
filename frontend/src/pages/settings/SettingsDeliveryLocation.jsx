@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import {
   Loader2,
   Plus,
@@ -12,6 +11,7 @@ import {
 
 import { createWarehouse, getWarehouses } from "../../api/inventoryApi";
 import { useToast } from "../../context/ToastContext";
+import Button from "../../components/common/Button";
 import useTenantId from "../../hooks/useTenantId";
 import usePageRefresh from "../../hooks/usePageRefresh";
 
@@ -110,14 +110,9 @@ export default function SettingsDeliveryLocation() {
             Warehouses and storage sites used as delivery destinations for dispatch and inventory.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={openForm}
-          className="inline-flex items-center justify-center gap-2 rounded-lg bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[var(--color-success)]"
-        >
-          <Plus className="h-4 w-4" />
+        <Button type="button" variant="add" onClick={openForm} leftIcon={<Plus className="h-4 w-4" aria-hidden />}>
           Add Warehouse
-        </button>
+        </Button>
       </div>
 
       {showForm && (
@@ -199,21 +194,18 @@ export default function SettingsDeliveryLocation() {
           </div>
 
           <div className="mt-5 flex flex-wrap gap-3 border-t border-slate-100 pt-4 dark:border-slate-700">
-            <button
+            <Button
               type="submit"
+              variant="primary"
               disabled={saving}
-              className="inline-flex items-center gap-2 rounded-lg bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-[var(--color-success)] disabled:opacity-50"
+              loading={saving}
+              leftIcon={!saving ? <Plus className="h-4 w-4" aria-hidden /> : undefined}
             >
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
               {saving ? "Saving…" : "Create location"}
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowForm(false)}
-              className="rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
-            >
+            </Button>
+            <Button type="button" variant="secondary" onClick={() => setShowForm(false)}>
               Cancel
-            </button>
+            </Button>
           </div>
         </form>
       )}
@@ -231,20 +223,12 @@ export default function SettingsDeliveryLocation() {
             warehouses under Inventory.
           </p>
           <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-            <button
-              type="button"
-              onClick={openForm}
-              className="inline-flex items-center gap-2 rounded-lg bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-[var(--color-success)]"
-            >
-              <Plus className="h-4 w-4" />
+            <Button type="button" variant="add" onClick={openForm} leftIcon={<Plus className="h-4 w-4" aria-hidden />}>
               Add first warehouse
-            </button>
-            <Link
-              to="/inventory/warehouses"
-              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
-            >
+            </Button>
+            <Button variant="secondary" to="/inventory/warehouses">
               Open Inventory Warehouses
-            </Link>
+            </Button>
           </div>
         </div>
       ) : (

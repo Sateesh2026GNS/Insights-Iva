@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { ArrowLeft, Download, FileText, User, Calendar, Hash } from "lucide-react";
 import Loader from "../../components/common/Loader";
+import Button from "../../components/common/Button";
 import { getInvoiceDetail } from "../../api/salesApi";
 
 const fmt = (v) =>
@@ -146,10 +147,9 @@ export default function BillDetail() {
           <p className="mt-0.5 text-sm text-slate-500">Details for {customerName}</p>
         </div>
         <div className="flex flex-wrap gap-3">
-          <button onClick={() => window.print()}
-            className="inline-flex items-center gap-2 rounded-lg bg-[var(--color-primary)] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[var(--color-primary-hover)]">
-            <Download className="h-4 w-4" /> Print / Download
-          </button>
+          <Button type="button" variant="primary" onClick={() => window.print()} leftIcon={<Download className="h-4 w-4" aria-hidden />}>
+            Print / Download
+          </Button>
         </div>
       </header>
 

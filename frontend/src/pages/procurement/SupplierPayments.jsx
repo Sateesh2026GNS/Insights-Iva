@@ -3,6 +3,7 @@ import usePageRefresh from "../../hooks/usePageRefresh";
 
 import Loader from "../../components/common/Loader";
 import Button from "../../components/common/Button";
+import { Plus } from "lucide-react";
 import PageHeader from "../../components/common/PageHeader";
 import DataTable from "../../components/common/DataTable";
 import EmptyState from "../../components/common/EmptyState";
@@ -100,8 +101,8 @@ export default function SupplierPayments() {
         title="Supplier Payments"
         subtitle={`Total paid: ₹${total.toLocaleString()}`}
         action={
-          <Button variant="primary" to="/procurement/supplier-payments/create">
-            + Record Payment
+          <Button variant="add" to="/procurement/supplier-payments/create" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
+            Record Payment
           </Button>
         }
       />

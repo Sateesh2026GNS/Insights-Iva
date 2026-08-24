@@ -327,9 +327,9 @@ export default function VendorDetailModal({
         </div>
 
         <div className="flex flex-wrap gap-2 border-t border-slate-100 px-5 py-4">
-          <Link to="/procurement/purchase-orders/create" className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--color-primary)] px-3 py-2 text-xs font-semibold text-white hover:bg-[var(--color-primary-hover)]">
-            <ShoppingCart className="h-3.5 w-3.5" /> Create PO
-          </Link>
+          <Button variant="primary" size="sm" to="/procurement/purchase-orders/create" leftIcon={<ShoppingCart className="h-3.5 w-3.5" aria-hidden />}>
+            Create PO
+          </Button>
           <Link to="/procurement/goods-receipt/create" className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">
             <Package className="h-3.5 w-3.5" /> Receive Goods
           </Link>

@@ -292,13 +292,9 @@ export default function BankReconciliation() {
           <p className="text-sm font-medium text-blue-900">
             Ready to match selected ledger posting with bank statement item!
           </p>
-          <button
-            type="button"
-            onClick={handleMatch}
-            className="rounded-lg bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white hover:bg-[var(--color-primary-hover)]"
-          >
+          <Button type="button" variant="primary" onClick={handleMatch}>
             Confirm Match
-          </button>
+          </Button>
         </div>
       ) : null}
     </div>

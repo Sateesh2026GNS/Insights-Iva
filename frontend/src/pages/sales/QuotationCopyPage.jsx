@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { Download, Printer } from "lucide-react";
 
 import Loader from "../../components/common/Loader";
+import Button from "../../components/common/Button";
 import ErpDocumentTemplate from "../../components/documents/ErpDocumentTemplate";
 import { useToast } from "../../context/ToastContext";
 import { downloadQuotationPdf, getQuotationDocument } from "../../api/salesApi";
@@ -62,9 +63,9 @@ export default function QuotationCopyPage() {
           <button type="button" onClick={handleDownloadPdf} disabled={busy === "pdf"} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium hover:bg-slate-50 disabled:opacity-60">
             <Download className="h-4 w-4" /> {busy === "pdf" ? "Downloading…" : "Download PDF"}
           </button>
-          <Link to={`/sales/quotations/${id}/edit`} className="inline-flex items-center gap-1.5 rounded-lg bg-teal-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-[var(--color-success)]">
+          <Button variant="edit" size="sm" to={`/sales/quotations/${id}/edit`}>
             Edit Quotation
-          </Link>
+          </Button>
         </div>
       </div>
       <ErpDocumentTemplate data={docPayload} docType="quotation" />

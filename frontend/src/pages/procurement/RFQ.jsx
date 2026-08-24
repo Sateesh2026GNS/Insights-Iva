@@ -365,12 +365,9 @@ function VendorComparisonPanel({ rfq, vendors, bestVendor, suppliers, onRefreshC
       )}
 
       <div className="mt-4 flex flex-wrap gap-2">
-        <Link
-          to="/procurement/purchase-orders/create"
-          className="rounded-lg bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white hover:bg-[var(--color-primary-hover)]"
-        >
+        <Button variant="add" to="/procurement/purchase-orders/create" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
           Create Purchase Order
-        </Link>
+        </Button>
       </div>
 
       <AddQuotationModal
@@ -513,11 +510,12 @@ export default function RFQ() {
         action={
           <>
             <Button
-            variant="primary"
+            variant="add"
             type="button"
             onClick={() => setIsCreateOpen(true)}
+            leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}
           >
-            <Plus className="h-4 w-4" /> Create Request for Quotation (RFQ)
+            Create Request for Quotation (RFQ)
           </Button>
           </>
         }

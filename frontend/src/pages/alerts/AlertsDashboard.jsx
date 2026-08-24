@@ -406,8 +406,8 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
               onPdf={() => exportToPdf(exportRows, EXPORT_COLUMNS, "Alerts Report", "alerts")}
             />
             {canCreate && (
-              <Button variant="primary" type="button" onClick={() => setShowCreate(true)}>
-                <Plus className="h-4 w-4" /> New Alert
+              <Button variant="add" type="button" onClick={() => setShowCreate(true)} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
+                New Alert
               </Button>
             )}
           </div>

@@ -4,6 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Calendar, ChevronLeft, ChevronRight, Download, Edit2, Eye, FileText, Filter, ListFilter, Plus, Search, Trash2, X } from "lucide-react";
 
 import Loader from "../../components/common/Loader";
+import Button from "../../components/common/Button";
 import RowActionMenu from "../../components/common/RowActionMenu";
 import { useToast } from "../../context/ToastContext";
 import { cancelInvoice, downloadInvoicePdf, getInvoicesV2 } from "../../api/salesApi";
@@ -366,13 +367,9 @@ export default function DebitNotes() {
               className="w-[118px] border-0 bg-transparent p-0 text-[13px] focus:outline-none"
             />
           </div>
-          <Link
-            to="/sales/debit-notes/create"
-            className="inline-flex items-center gap-1.5 rounded-lg px-4 py-2.5 text-[14px] font-semibold text-[#1a1a1f] shadow-sm"
-            style={{ background: YELLOW }}
-          >
-            <Plus className="h-4 w-4" strokeWidth={2.5} /> Sales Debit Note
-          </Link>
+          <Button variant="add" to="/sales/debit-notes/create" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
+            Sales Debit Note
+          </Button>
         </div>
       </div>
 
@@ -462,13 +459,9 @@ export default function DebitNotes() {
                       <p className="mt-4 text-[14px] text-[#6b6b76]">
                         No Sales Debit Note available, Create new Sales Debit Note
                       </p>
-                      <Link
-                        to="/sales/debit-notes/create"
-                        className="mt-5 inline-flex items-center gap-1.5 rounded-lg px-4 py-2.5 text-[14px] font-semibold text-[#1a1a1f]"
-                        style={{ background: YELLOW }}
-                      >
-                        <Plus className="h-4 w-4" /> Sales Debit Note
-                      </Link>
+                      <Button variant="add" to="/sales/debit-notes/create" className="mt-5" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
+                        Sales Debit Note
+                      </Button>
                     </td>
                   </tr>
                 ) : (

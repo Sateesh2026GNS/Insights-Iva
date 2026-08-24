@@ -443,8 +443,7 @@ function CalendarView({ events, onCreate }) {
           <div className="flex flex-col items-start gap-3 py-2 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-[var(--color-text-secondary)]">Nothing scheduled for this day.</p>
             {onCreate ? (
-              <Button type="button" variant="success" size="sm" onClick={onCreate}>
-                <Plus className="h-3.5 w-3.5" />
+              <Button type="button" variant="add" size="sm" onClick={onCreate} leftIcon={<Plus className="h-3.5 w-3.5" aria-hidden />}>
                 New Schedule
               </Button>
             ) : null}
@@ -1067,8 +1066,7 @@ export default function ProductionSchedule() {
               <span className="hidden sm:inline">Export</span>
             </Button>
             {openCreate ? (
-              <Button type="button" variant="success" onClick={openCreate}>
-                <Plus className="h-4 w-4" />
+              <Button type="button" variant="add" onClick={openCreate} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
                 New Schedule
               </Button>
             ) : null}

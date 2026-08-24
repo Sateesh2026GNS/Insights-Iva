@@ -6,6 +6,7 @@ import { ArrowLeft, Pencil, Trash2, X } from "lucide-react";
 
 import AddNewItemModal from "../../components/sales/AddNewItemModal";
 import Loader from "../../components/common/Loader";
+import Button from "../../components/common/Button";
 import { useToast } from "../../context/ToastContext";
 import {
   addInventoryV2Stock,
@@ -168,23 +169,17 @@ function StockModal({ mode, open, stock, unit, onClose, onSubmit }) {
         </label>
 
         <div className="flex justify-end gap-3">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg border border-[#1a1a1f] bg-white px-5 py-2.5 text-[14px] font-semibold"
-          >
+          <Button type="button" variant="secondary" onClick={onClose}>
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
+            variant="primary"
             disabled={!canSubmit}
             onClick={() => onSubmit({ qty: Number(qty), remark, unit: unitVal })}
-            className={`rounded-lg px-6 py-2.5 text-[14px] font-bold text-white transition ${
-              canSubmit ? "bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)]" : "cursor-not-allowed bg-slate-300"
-            }`}
           >
             {isAdd ? "Add" : "Remove"}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

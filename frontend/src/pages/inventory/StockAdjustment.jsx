@@ -831,10 +831,11 @@ export default function StockAdjustment() {
             ) : null}
             <Button
               type="button"
-              variant="primary"
+              variant="add"
               onClick={openForm}
+              leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}
             >
-              <Plus className="h-4 w-4" /> New Adjustment
+              New Adjustment
             </Button>
           </div>
         </div>

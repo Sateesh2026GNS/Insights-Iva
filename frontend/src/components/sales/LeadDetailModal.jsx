@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
 import { Mail, Phone, X, PhoneCall, Calendar, MessageSquare, Plus } from "lucide-react";
 
 import { formatInr, priorityColor, statusColor } from "../../data/salesMasterData";
 import { getLeadActivities, createLeadActivity } from "../../api/salesApi";
+import Button from "../common/Button";
 
 const TABS = ["Overview", "Contacts", "Notes", "Timeline", "Activities"];
 
@@ -186,12 +186,9 @@ export default function LeadDetailModal({ lead, onClose, onStatusChange, onConve
                     />
                   </div>
                   <div className="flex justify-end gap-2 pt-1">
-                    <button
-                      type="submit"
-                      className="rounded-lg bg-[var(--color-primary)] px-3 py-1.5 text-xs font-bold text-white hover:bg-[var(--color-primary-hover)] shadow-xs"
-                    >
+                    <Button type="submit" variant="primary" size="sm">
                       Save Activity
-                    </button>
+                    </Button>
                   </div>
                 </form>
               )}
@@ -235,12 +232,13 @@ export default function LeadDetailModal({ lead, onClose, onStatusChange, onConve
             </select>
           )}
           {["qualified", "converted", "won"].includes(String(lead.status || "").toLowerCase()) ? (
-            <Link
+            <Button
+              variant="primary"
+              size="sm"
               to={`/sales/quotations?create=true&customer_name=${encodeURIComponent(lead.customer_name || lead.company || "")}`}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--color-primary)] px-4 py-2 text-xs font-bold text-white hover:bg-[var(--color-primary-hover)] shadow-xs transition-all"
             >
               Create Quotation
-            </Link>
+            </Button>
           ) : (
             <span className="rounded-xl bg-slate-100 border border-slate-200/80 px-4 py-2 text-xs font-semibold text-slate-400 cursor-not-allowed">
               Quotation Locked (Qualify Lead First)

@@ -3,6 +3,8 @@ import { AlertCircle, Building2, Download, FileText, Plus, Printer, Star, Upload
 import PageHeader from "../../components/common/PageHeader";
 
 import DataTable from "../../components/common/DataTable";
+import Button from "../../components/common/Button";
+import TableActionButtons from "../../components/common/TableActionButtons";
 import Loader from "../../components/common/Loader";
 import VendorDetailModal, { VendorFormModal } from "../../components/procurement/VendorDetailModal";
 import { useToast } from "../../context/ToastContext";
@@ -32,7 +34,6 @@ import {
 } from "../../data/vendorsMasterData";
 import { exportToExcel, exportToPdf } from "../../utils/exportUtils";
 
-import Button from "../../components/common/Button";
 function SummaryCard({ label, value, icon: Icon, color, format }) {
   const display = format === "currency" ? `₹${Number(value || 0).toLocaleString("en-IN")}` : value;
   return (
@@ -299,15 +300,19 @@ export default function VendorManagement() {
       label: "Actions",
       sortable: false,
       render: (r) => (
-        <div className="flex flex-wrap gap-1 text-xs">
-          <button type="button" onClick={() => openVendor(r)} className="font-semibold text-[var(--color-primary)] hover:underline">View</button>
-          <button type="button" onClick={() => setFormVendor(r)} className="font-semibold text-slate-600 hover:underline">Edit</button>
-          {isAdmin && r.approval_status === "pending" && (
-            <button type="button" onClick={() => handleApprove(r, "approved")} className="font-semibold text-teal-600 hover:underline">Approve</button>
-          )}
-          {r.status === "active" && (
-            <button type="button" onClick={() => handleDeactivate(r)} className="font-semibold text-red-600 hover:underline">Deactivate</button>
-          )}
+        <div className="flex flex-col items-end gap-1.5">
+          <TableActionButtons
+            onView={() => openVendor(r)}
+            onEdit={() => setFormVendor(r)}
+            onDelete={r.status === "active" ? () => handleDeactivate(r) : undefined}
+            showDelete={r.status === "active"}
+            deleteLabel="Deactivate"
+          />
+          {isAdmin && r.approval_status === "pending" ? (
+            <Button variant="view" size="sm" type="button" onClick={() => handleApprove(r, "approved")}>
+              Approve
+            </Button>
+          ) : null}
         </div>
       ),
     },
@@ -320,8 +325,8 @@ export default function VendorManagement() {
       <p className="mt-1 text-sm text-slate-400">
         Click &quot;Add Vendor&quot; to add your first vendor.
       </p>
-      <Button variant="primary" type="button" onClick={() => setFormVendor({})} className="mt-4">
-        <Plus className="h-4 w-4" /> Add Vendor
+      <Button variant="add" type="button" onClick={() => setFormVendor({})} className="mt-4" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
+        Add Vendor
       </Button>
     </div>
   );
@@ -334,9 +339,9 @@ export default function VendorManagement() {
         subtitle="Manage vendors, purchase history, outstanding payables, and performance ratings."
         action={
           <>
-            <Button variant="primary" type="button" onClick={() => setFormVendor({})}>
-            <Plus className="h-4 w-4" /> Add Vendor
-          </Button>
+            <Button variant="add" type="button" onClick={() => setFormVendor({})} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
+              Add Vendor
+            </Button>
           <Button variant="secondary" type="button" onClick={handleDownloadTemplate}>
             <Upload className="h-4 w-4" /> Import
           </Button>

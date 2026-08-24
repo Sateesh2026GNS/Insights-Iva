@@ -97,29 +97,18 @@ function TrackingModal({ row, onClose, onPrintChallan, onShip }) {
           {row.shipped ? " · FG stock deducted" : " · Packing complete"}
         </div>
         <div className="mt-4 flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => onPrintChallan(soId)}
-            className="rounded-lg border px-4 py-2 text-sm font-semibold text-slate-700"
-          >
+          <Button type="button" variant="secondary" onClick={() => onPrintChallan(soId)}>
             Print Delivery Challan
-          </button>
+          </Button>
           {canShip && (
-            <button
-              type="button"
-              onClick={() => onShip(row)}
-              className="rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white"
-            >
+            <Button type="button" variant="primary" onClick={() => onShip(row)}>
               Ship (stock out)
-            </button>
+            </Button>
           )}
           {row.shipped && !row.invoiced && (
-            <Link
-              to={`/sales/invoices/create?sales_order_id=${soId}`}
-              className="rounded-lg bg-[var(--color-success)] px-4 py-2 text-sm font-semibold text-white hover:bg-[var(--color-success-hover)]"
-            >
+            <Button variant="primary" to={`/sales/invoices/create?sales_order_id=${soId}`}>
               Create Invoice
-            </Link>
+            </Button>
           )}
         </div>
       </div>

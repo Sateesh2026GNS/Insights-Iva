@@ -221,13 +221,13 @@ export default function Customers() {
                 Export (xlsx)
               </Button>
               <Button
-                variant="primary"
+                variant="add"
                 type="button"
                 onClick={() => {
                   setEditing(null);
                   setPartyOpen(true);
                 }}
-                leftIcon={<Plus className="h-4 w-4" />}
+                leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}
               >
                 Create Customer
               </Button>

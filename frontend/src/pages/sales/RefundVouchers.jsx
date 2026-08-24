@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { AlertCircle, Calendar, ChevronDown, ChevronLeft, ChevronRight, Plus, RotateCcw, Search, X } from "lucide-react";
 
 import Loader from "../../components/common/Loader";
+import Button from "../../components/common/Button";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
 import { useToast } from "../../context/ToastContext";
 import useTenantId from "../../hooks/useTenantId";
@@ -484,14 +485,14 @@ export default function RefundVouchers() {
               className="w-[118px] border-0 bg-transparent p-0 text-[13px] focus:outline-none"
             />
           </div>
-          <button
+          <Button
             type="button"
+            variant="add"
             onClick={() => setCreateOpen(true)}
-            className="inline-flex items-center gap-1.5 rounded-lg px-4 py-2.5 text-[14px] font-semibold text-white"
-            style={{ background: YELLOW }}
+            leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}
           >
-            <Plus className="h-4 w-4" strokeWidth={2.5} /> New Refund Voucher
-          </button>
+            New Refund Voucher
+          </Button>
         </div>
       </div>
 
@@ -517,14 +518,9 @@ export default function RefundVouchers() {
                     <p className="mt-3 text-[14px] text-[#6b6b76]">
                       No refund vouchers available, Create new refund voucher
                     </p>
-                    <button
-                      type="button"
-                      onClick={() => setCreateOpen(true)}
-                      className="mt-4 inline-flex items-center gap-1.5 rounded-lg px-4 py-2.5 text-[14px] font-semibold text-white"
-                      style={{ background: YELLOW }}
-                    >
-                      <Plus className="h-4 w-4" /> New Refund Voucher
-                    </button>
+                    <Button type="button" variant="add" onClick={() => setCreateOpen(true)} className="mt-4" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
+                      New Refund Voucher
+                    </Button>
                   </td>
                 </tr>
               ) : (

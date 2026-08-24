@@ -6,6 +6,7 @@ import { useToast } from "../../context/ToastContext";
 import useTenantId from "../../hooks/useTenantId";
 import useAuth from "../../hooks/useAuth";
 import Loader from "../common/Loader";
+import Button from "../common/Button";
 import { inputMtClass as inputClass } from "../../design-system/classes";
 
 export default function SalesOrderFormModal({ onClose, onSave }) {
@@ -197,13 +198,12 @@ export default function SalesOrderFormModal({ onClose, onSave }) {
 
           {/* Action Buttons */}
           <div className="flex justify-end gap-2 border-t pt-4">
-            <button type="button" onClick={onClose} className="rounded-lg border px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+            <Button type="button" variant="secondary" onClick={onClose}>
               Cancel
-            </button>
-            <button type="submit" disabled={saving || !form.customer_id} className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--color-primary)] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[var(--color-primary-hover)] disabled:opacity-50">
-              <Save className="h-4 w-4" />
+            </Button>
+            <Button type="submit" variant="primary" disabled={saving || !form.customer_id} loading={saving} leftIcon={!saving ? <Save className="h-4 w-4" aria-hidden /> : undefined}>
               {saving ? "Saving…" : "Save Order"}
-            </button>
+            </Button>
           </div>
         </form>
       </div>

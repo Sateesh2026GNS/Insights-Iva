@@ -36,8 +36,8 @@ export default function TeamWorkflowJobCards({ queue = [], user, activeTeam, onS
         </div>
         <Button
           to="/sales/orders/create"
-          variant="primary"
-          leftIcon={<Plus className="h-4 w-4" />}
+          variant="add"
+          leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}
         >
           New sales order
         </Button>

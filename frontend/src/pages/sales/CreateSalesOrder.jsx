@@ -225,14 +225,9 @@ function QuickAddProductModal({ onClose, onAdded }) {
           <button type="button" onClick={onClose} className="rounded-xl border px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50">
             Cancel
           </button>
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={!name.trim()}
-            className="rounded-xl bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white hover:bg-[var(--color-primary-hover)] disabled:opacity-50"
-          >
+          <Button type="button" variant="primary" onClick={handleSave} disabled={!name.trim()}>
             Add Product
-          </button>
+          </Button>
         </div>
       </div>
     </div>
@@ -1023,8 +1018,9 @@ export default function CreateSalesOrder() {
               >
                 Cancel
               </button>
-              <button
+              <Button
                 type="button"
+                variant="primary"
                 disabled={!newSpName.trim()}
                 onClick={() => {
                   const id = `sp-local-${Date.now()}`;
@@ -1039,10 +1035,9 @@ export default function CreateSalesOrder() {
                   patchField("sales_person", newSp.full_name);
                   setShowAddSalesPerson(false);
                 }}
-                className="rounded-xl bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white hover:bg-[var(--color-primary-hover)] disabled:opacity-50"
               >
                 Add
-              </button>
+              </Button>
             </div>
           </div>
         </div>

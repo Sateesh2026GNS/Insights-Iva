@@ -48,18 +48,33 @@
 
   --color-info: #0751b2;
   --color-info-soft: #e8f2fc;
-  --color-danger: #dc2626;
-  --color-danger-hover: #b91c1c;
+  --color-danger: #e24a4a;
+  --color-danger-hover: #cf4040;
   --color-danger-soft: #fde8e8;
-  --color-success: #036f71;
-  --color-success-hover: #02595b;
-  --color-success-soft: #e6f4f4;
+  /* View / Open / Approve — action green (distinct from brand primary) */
+  --color-action-view: #2e9b72;
+  --color-action-view-hover: #268a64;
+  --color-action-view-active: #1f7856;
+  --color-action-view-soft: #e8f6f0;
+  /* Edit / Update — action blue */
+  --color-action-edit: #3182ce;
+  --color-action-edit-hover: #2c72b8;
+  --color-action-edit-active: #2563a8;
+  --color-action-edit-soft: #ebf4fc;
+  /* Semantic success maps to view green for approve/confirm actions */
+  --color-success: var(--color-action-view);
+  --color-success-hover: var(--color-action-view-hover);
+  --color-success-soft: var(--color-action-view-soft);
   --color-action-teal: #036f71;
   --color-action-teal-hover: #02595b;
   --color-action-teal-active: #024a4c;
-  --color-action-blue: #0751b2;
-  --color-action-blue-hover: #0e71f0;
-  --color-action-blue-active: #0a4aa2;
+  --color-action-blue: var(--color-action-edit);
+  --color-action-blue-hover: var(--color-action-edit-hover);
+  --color-action-blue-active: var(--color-action-edit-active);
+  /* Add New — deep teal-blue toolbar CTA (#0F5F78) */
+  --color-add: #0f5f78;
+  --color-add-hover: #0a4d63;
+  --color-add-active: #083f52;
   --color-warning: #e6a817;
   --color-warning-hover: #cc9414;
   --color-warning-soft: #fef6e7;
@@ -400,12 +415,15 @@ textarea {
 .ui-btn-primary,
 .ui-btn-secondary,
 .ui-btn-success,
+.ui-btn-view,
+.ui-btn-edit,
 .ui-btn-warning,
 .ui-btn-cta,
 .ui-btn-danger,
 .ui-btn-ghost,
 .ui-btn-hr,
-.ui-btn-outline {
+.ui-btn-outline,
+.ui-btn-add {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -433,6 +451,8 @@ textarea {
 .ui-btn-primary:active:not(:disabled):not(.is-loading),
 .ui-btn-secondary:active:not(:disabled):not(.is-loading),
 .ui-btn-success:active:not(:disabled):not(.is-loading),
+.ui-btn-view:active:not(:disabled):not(.is-loading),
+.ui-btn-edit:active:not(:disabled):not(.is-loading),
 .ui-btn-warning:active:not(:disabled):not(.is-loading),
 .ui-btn-cta:active:not(:disabled):not(.is-loading),
 .ui-btn-danger:active:not(:disabled):not(.is-loading),
@@ -445,6 +465,8 @@ textarea {
 .ui-btn-primary:focus-visible,
 .ui-btn-secondary:focus-visible,
 .ui-btn-success:focus-visible,
+.ui-btn-view:focus-visible,
+.ui-btn-edit:focus-visible,
 .ui-btn-warning:focus-visible,
 .ui-btn-cta:focus-visible,
 .ui-btn-danger:focus-visible,
@@ -460,6 +482,8 @@ textarea {
 .ui-btn-primary:disabled,
 .ui-btn-secondary:disabled,
 .ui-btn-success:disabled,
+.ui-btn-view:disabled,
+.ui-btn-edit:disabled,
 .ui-btn-warning:disabled,
 .ui-btn-cta:disabled,
 .ui-btn-danger:disabled,
@@ -469,6 +493,8 @@ textarea {
 .ui-btn-primary.is-loading,
 .ui-btn-secondary.is-loading,
 .ui-btn-success.is-loading,
+.ui-btn-view.is-loading,
+.ui-btn-edit.is-loading,
 .ui-btn-warning.is-loading,
 .ui-btn-cta.is-loading,
 .ui-btn-danger.is-loading,
@@ -540,32 +566,88 @@ textarea {
   background: var(--color-primary-active);
 }
 
-/* Warning — accent / highlight CTAs */
+/* Add New — list/toolbar create CTA (teal-blue, compact ERP) */
+.ui-btn--add,
+.ui-btn-add {
+  min-height: 2.5rem;
+  padding: 0 1rem;
+  gap: 0.4375rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  border: 1px solid transparent;
+  background: var(--color-add);
+  color: #fff;
+  box-shadow: 0 1px 2px rgba(15, 95, 120, 0.18);
+}
+.ui-btn--add:hover:not(:disabled):not(.is-loading):not([aria-disabled="true"]),
+.ui-btn-add:hover:not(:disabled):not(.is-loading) {
+  background: var(--color-add-hover);
+}
+.ui-btn--add:active:not(:disabled):not(.is-loading):not([aria-disabled="true"]),
+.ui-btn-add:active:not(:disabled):not(.is-loading) {
+  background: var(--color-add-active);
+}
+.ui-btn--add.ui-btn--sm {
+  min-height: 2rem;
+  padding: 0 0.75rem;
+  font-size: var(--text-xs);
+  gap: 0.35rem;
+}
+
+/* Warning — hold / pending / review required */
 .ui-btn--warning,
 .ui-btn-cta,
 .ui-btn-warning {
   border: 1px solid transparent;
-  background: var(--color-cta);
-  color: var(--color-text);
+  background: var(--color-warning);
+  color: #fff;
   box-shadow: var(--shadow-card);
 }
 .ui-btn--warning:hover:not(:disabled):not(.is-loading):not([aria-disabled="true"]),
 .ui-btn-cta:hover:not(:disabled):not(.is-loading),
 .ui-btn-warning:hover:not(:disabled):not(.is-loading) {
-  background: var(--color-cta-hover);
+  background: var(--color-warning-hover);
 }
 
-/* Success — Approve / Complete / Issue / Start */
+/* Success / View — Approve / Open / View / Confirm */
 .ui-btn--success,
-.ui-btn-success {
+.ui-btn-success,
+.ui-btn--view,
+.ui-btn-view {
   border: 1px solid transparent;
-  background: var(--color-success);
+  background: var(--color-action-view);
   color: #fff;
   box-shadow: var(--shadow-card);
 }
 .ui-btn--success:hover:not(:disabled):not(.is-loading):not([aria-disabled="true"]),
-.ui-btn-success:hover:not(:disabled):not(.is-loading) {
-  background: var(--color-success-hover);
+.ui-btn-success:hover:not(:disabled):not(.is-loading),
+.ui-btn--view:hover:not(:disabled):not(.is-loading):not([aria-disabled="true"]),
+.ui-btn-view:hover:not(:disabled):not(.is-loading) {
+  background: var(--color-action-view-hover);
+}
+.ui-btn--success:active:not(:disabled):not(.is-loading):not([aria-disabled="true"]),
+.ui-btn-success:active:not(:disabled):not(.is-loading),
+.ui-btn--view:active:not(:disabled):not(.is-loading):not([aria-disabled="true"]),
+.ui-btn-view:active:not(:disabled):not(.is-loading) {
+  background: var(--color-action-view-active);
+}
+
+/* Edit — modify / update */
+.ui-btn--edit,
+.ui-btn-edit {
+  border: 1px solid transparent;
+  background: var(--color-action-edit);
+  color: #fff;
+  box-shadow: var(--shadow-card);
+}
+.ui-btn--edit:hover:not(:disabled):not(.is-loading):not([aria-disabled="true"]),
+.ui-btn-edit:hover:not(:disabled):not(.is-loading) {
+  background: var(--color-action-edit-hover);
+}
+.ui-btn--edit:active:not(:disabled):not(.is-loading):not([aria-disabled="true"]),
+.ui-btn-edit:active:not(:disabled):not(.is-loading) {
+  background: var(--color-action-edit-active);
 }
 
 /* Secondary — Cancel / Back / Close / Reset */
@@ -623,13 +705,54 @@ textarea {
   color: var(--color-primary);
 }
 
+.ui-btn--add:focus-visible,
+.ui-btn-add:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(15, 95, 120, 0.28);
+}
+
 /* Icon tone helpers (pair with size="icon") */
 .ui-btn--icon.ui-btn--primary {
-  background: var(--color-action-teal);
+  background: var(--color-primary);
+  color: #fff;
   box-shadow: none;
 }
 .ui-btn--icon.ui-btn--primary:hover:not(:disabled):not(.is-loading):not([aria-disabled="true"]) {
-  background: var(--color-action-teal-hover);
+  background: var(--color-primary-hover);
+}
+.ui-btn--icon.ui-btn--view,
+.ui-btn--icon.ui-btn--success {
+  background: var(--color-action-view);
+  color: #fff;
+  box-shadow: none;
+}
+.ui-btn--icon.ui-btn--view:hover:not(:disabled):not(.is-loading):not([aria-disabled="true"]),
+.ui-btn--icon.ui-btn--success:hover:not(:disabled):not(.is-loading):not([aria-disabled="true"]) {
+  background: var(--color-action-view-hover);
+}
+.ui-btn--icon.ui-btn--edit {
+  background: var(--color-action-edit);
+  color: #fff;
+  box-shadow: none;
+}
+.ui-btn--icon.ui-btn--edit:hover:not(:disabled):not(.is-loading):not([aria-disabled="true"]) {
+  background: var(--color-action-edit-hover);
+}
+.ui-btn--icon.ui-btn--danger {
+  background: var(--color-danger);
+  color: #fff;
+  box-shadow: none;
+}
+.ui-btn--icon.ui-btn--danger:hover:not(:disabled):not(.is-loading):not([aria-disabled="true"]) {
+  background: var(--color-danger-hover);
+}
+.ui-btn--icon.ui-btn--warning {
+  background: var(--color-warning);
+  color: #fff;
+  box-shadow: none;
+}
+.ui-btn--icon.ui-btn--warning:hover:not(:disabled):not(.is-loading):not([aria-disabled="true"]) {
+  background: var(--color-warning-hover);
 }
 .ui-btn--icon.ui-btn--ghost {
   background: var(--color-surface-muted);
@@ -645,6 +768,8 @@ textarea {
   .ui-btn-primary,
   .ui-btn-secondary,
   .ui-btn-success,
+  .ui-btn-view,
+  .ui-btn-edit,
   .ui-btn-warning,
   .ui-btn-cta,
   .ui-btn-danger,
@@ -1582,5 +1707,82 @@ input.pl-8 {
 .grecaptcha-badge {
   visibility: hidden !important;
   display: none !important;
+}
+
+/* ── Login success overlay (centered, not corner toast) ── */
+@keyframes loginSuccessFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes loginSuccessScaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.login-success-overlay {
+  animation: loginSuccessFadeIn 0.35s ease-out forwards;
+}
+
+.login-success-overlay__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.28);
+  backdrop-filter: blur(3px);
+}
+
+.login-success-overlay__card {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 22rem);
+  border-radius: 1rem;
+  background: #ffffff;
+  padding: 2rem 1.75rem 1.85rem;
+  text-align: center;
+  box-shadow:
+    0 24px 48px -12px rgba(15, 23, 42, 0.18),
+    0 0 0 1px rgba(22, 163, 74, 0.08);
+  animation: loginSuccessScaleIn 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.login-success-overlay__icon-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 4rem;
+  height: 4rem;
+  margin: 0 auto 1.15rem;
+  border-radius: 9999px;
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.login-success-overlay__icon {
+  width: 2rem;
+  height: 2rem;
+}
+
+.login-success-overlay__title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: #15803d;
+}
+
+.login-success-overlay__subtitle {
+  margin: 0.45rem 0 0;
+  font-size: 0.9375rem;
+  color: #64748b;
 }
 

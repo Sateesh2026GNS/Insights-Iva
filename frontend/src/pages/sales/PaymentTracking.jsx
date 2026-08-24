@@ -42,8 +42,8 @@ export default function PaymentTracking() {
     <StandardPageLayout
       subtitle="Payments update invoice balances, income, and AR journal entries."
       action={
-        <Button variant="primary" to="/sales/payments/create">
-          <Plus className="h-4 w-4" /> Record Payment
+        <Button variant="add" to="/sales/payments/create" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
+          Record Payment
         </Button>
       }
     >

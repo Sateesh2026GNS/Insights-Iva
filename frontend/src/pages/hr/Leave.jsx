@@ -20,7 +20,7 @@ import {
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 
 import InventoryRowActionsMenu from "../../components/inventory/InventoryRowActionsMenu";
-import Button from "../../components/common/Button";
+import Button, { AddButton } from "../../components/common/Button";
 import Loader from "../../components/common/Loader";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
 import usePageRefresh from "../../hooks/usePageRefresh";
@@ -317,14 +317,9 @@ export default function Leave({ autoOpenCreate = false }) {
           <p className="mt-1 text-[13px] text-slate-500">Manage and track employee leave requests</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setShowCreateModal(true)}
-            className="inline-flex items-center gap-2 rounded-lg bg-[#6366f1] px-4 py-2.5 text-[13px] font-semibold text-white shadow-sm hover:bg-[#4f46e5]"
-          >
-            <Plus className="h-4 w-4" />
+          <AddButton type="button" onClick={() => setShowCreateModal(true)}>
             Apply Leave
-          </button>
+          </AddButton>
           <button
             type="button"
             onClick={() => addToast("Leave calendar coming soon", "info")}

@@ -5,6 +5,7 @@ import { Cpu, Play, Square, Plus, ArrowRight } from "lucide-react";
 import { useToast } from "../../context/ToastContext";
 import { getMachines, updateMachineStatus } from "../../api/productionApi";
 import useTenantId from "../../hooks/useTenantId";
+import Button from "../../components/common/Button";
 
 
 
@@ -84,13 +85,9 @@ export default function MachineStatus() {
             Live Production
             <ArrowRight className="h-4 w-4" />
           </Link>
-          <Link
-            to="/production/machines/create"
-            className="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-[var(--color-success)] transition-colors"
-          >
-            <Plus className="h-4 w-4" />
+          <Button variant="add" to="/production/machines/create" leftIcon={<Plus className="h-4 w-4" aria-hidden />}>
             Add Machine
-          </Link>
+          </Button>
         </div>
       </div>
 
@@ -143,13 +140,9 @@ export default function MachineStatus() {
               <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                 Add a machine to get started.
               </p>
-              <Link
-                to="/production/machines/create"
-                className="mt-4 inline-flex items-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-[var(--color-success)]"
-              >
-                <Plus className="h-4 w-4" />
+              <Button variant="add" to="/production/machines/create" className="mt-4" leftIcon={<Plus className="h-4 w-4" aria-hidden />}>
                 Add Machine
-              </Link>
+              </Button>
             </div>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

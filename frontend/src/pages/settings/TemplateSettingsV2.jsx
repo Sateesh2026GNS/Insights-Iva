@@ -5,6 +5,7 @@ import { Check, Settings2 } from "lucide-react";
 
 import { useToast } from "../../context/ToastContext";
 import PageHeader from "../../components/common/PageHeader";
+import Button from "../../components/common/Button";
 import { SettingsFeatureShell } from "./settingsUi";
 
 const PAGE_BG = "var(--color-bg)";
@@ -1859,13 +1860,9 @@ export default function TemplateSettingsV2() {
                       <Settings2 className="h-3.5 w-3.5" />
                       Customise
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => useTemplate(tpl.id)}
-                      className="rounded-lg bg-[var(--color-primary)] py-2 text-[12px] font-semibold text-white hover:opacity-90"
-                    >
+                    <Button type="button" variant="primary" size="sm" className="flex-1" onClick={() => useTemplate(tpl.id)}>
                       Use This
-                    </button>
+                    </Button>
                   </div>
                 </div>
               );

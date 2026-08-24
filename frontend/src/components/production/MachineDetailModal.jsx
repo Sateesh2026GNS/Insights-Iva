@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 
 import { STATUS_COLORS, statusLabel } from "../../data/machinesMasterData";
+import Button from "../common/Button";
 
 const ALL_TABS = [
   { id: "overview", label: "Overview" },
@@ -247,9 +248,9 @@ export default function MachineDetailModal({ machine, detail, onClose, onStatusC
             ) : (
               /* Admin / Manager: full controls */
               <>
-                <Link to="/production/work-orders" className="rounded-lg bg-[var(--color-primary)] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[var(--color-primary-hover)]">
+                <Button variant="primary" size="sm" to="/production/work-orders">
                   Assign Work Order
-                </Link>
+                </Button>
                 {status !== "running" && (
                   <button type="button" onClick={() => onStatusChange?.(m, "running")} className="inline-flex items-center gap-1 rounded-lg bg-green-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-green-700">
                     <Play className="h-3 w-3" /> Start

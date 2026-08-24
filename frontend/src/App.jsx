@@ -7,6 +7,7 @@ import Navbar from "./components/layout/Navbar";
 import Sidebar from "./components/layout/Sidebar";
 import AiChatWidget from "./components/ai/AiChatWidget";
 import GlobalRefreshButton from "./components/common/GlobalRefreshButton";
+import Button from "./components/common/Button";
 import { isOperator } from "./config/permissions";
 import useAuth from "./hooks/useAuth";
 import { isAiCopilotEnabled, isOperatorAiRoute } from "./utils/aiCopilot";
@@ -175,12 +176,14 @@ export default function App() {
       className="app-shell relative flex h-screen overflow-hidden dark:bg-slate-950"
       data-sidebar-collapsed={sidebarCollapsed ? "true" : "false"}
     >
-      <a
+      <Button
+        as="a"
         href="#main-content"
-        className="absolute left-4 top-4 z-[100] -translate-y-[200%] rounded-lg bg-[var(--color-primary)] px-4 py-2 text-sm font-medium text-white shadow-lg outline-none ring-2 ring-[var(--color-primary)]/40 ring-offset-2 transition-transform focus:translate-y-0 dark:ring-offset-slate-900"
+        variant="primary"
+        className="absolute left-4 top-4 z-[100] -translate-y-[200%] shadow-lg outline-none ring-2 ring-[var(--color-primary)]/40 ring-offset-2 transition-transform focus:translate-y-0 dark:ring-offset-slate-900"
       >
         Skip to main content
-      </a>
+      </Button>
       <div
         className={`fixed inset-0 z-40 bg-slate-900/60 backdrop-blur-sm lg:hidden transition-opacity ${sidebarOpen ? "opacity-100" : "opacity-0 pointer-events-none"}`}
         onClick={() => setSidebarOpen(false)}

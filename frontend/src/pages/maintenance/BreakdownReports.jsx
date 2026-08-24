@@ -273,8 +273,8 @@ export default function BreakdownReports() {
       <PageHeader
         subtitle="Critical production breakdowns — downtime tracking, MTTR, and repair workflow."
         action={
-          <Button variant="primary" onClick={() => setShowModal(true)}>
-            <Plus className="h-4 w-4" /> Report Breakdown
+          <Button variant="add" onClick={() => setShowModal(true)} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
+            Report Breakdown
           </Button>
         }
       />

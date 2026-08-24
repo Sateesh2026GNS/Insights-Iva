@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Calendar, ChevronLeft, ChevronRight, Filter, ListFilter, MoreVertical, Plus, Receipt, Search, X } from "lucide-react";
 
 import Loader from "../../components/common/Loader";
+import Button from "../../components/common/Button";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
 import { useToast } from "../../context/ToastContext";
 import { cancelInvoice, getInvoicesV2 } from "../../api/salesApi";
@@ -219,13 +220,9 @@ export default function InvoiceDashboard() {
           <span className="text-[14px] font-medium text-[#2c2b3d]">{fmtDisplayDate(dateTo)}</span>
           <Calendar className="h-5 w-5 text-[#6b6b76]" />
         </div>
-        <Link
-          to="/sales/invoices/create"
-          className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--color-action-blue)] px-4 py-2.5 text-[14px] font-semibold text-white shadow-sm hover:bg-[var(--color-action-blue-hover)] active:bg-[var(--color-action-blue-active)]"
-        >
-          <Plus className="h-4 w-4" strokeWidth={2.5} />
+        <Button variant="add" to="/sales/invoices/create" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
           Create Invoice
-        </Link>
+        </Button>
       </div>
 
       {/* KPI strip */}

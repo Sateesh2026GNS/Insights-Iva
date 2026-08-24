@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { Calendar, ChevronLeft, ChevronRight, FileText, Filter, ListFilter, Plus, Search, X } from "lucide-react";
 
 import Loader from "../../components/common/Loader";
+import Button from "../../components/common/Button";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
 import QuoteDetailModal from "../../components/sales/QuoteDetailModal";
 import { useToast } from "../../context/ToastContext";
@@ -301,14 +302,9 @@ export default function Quotations() {
             className="w-[118px] border-0 bg-transparent p-0 text-[13px] focus:outline-none"
           />
         </div>
-        <Link
-          to="/sales/quotations/create"
-          className="inline-flex items-center justify-center gap-1.5 rounded-lg px-4 py-2.5 text-[14px] font-semibold text-[#1a1a1f] shadow-sm"
-          style={{ background: ACCENT }}
-        >
-          <Plus className="h-4 w-4" strokeWidth={2.5} />
+        <Button variant="add" to="/sales/quotations/create" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
           Create Quotation
-        </Link>
+        </Button>
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -399,13 +395,9 @@ export default function Quotations() {
                     <p className="mt-3 text-[14px] text-[#6b6b76]">
                       No Quotations available, Create new quotation
                     </p>
-                    <Link
-                      to="/sales/quotations/create"
-                      className="mt-4 inline-flex items-center gap-1.5 rounded-lg px-4 py-2.5 text-[14px] font-semibold text-[#1a1a1f]"
-                      style={{ background: ACCENT }}
-                    >
-                      <Plus className="h-4 w-4" /> Create Quotation
-                    </Link>
+                    <Button variant="add" to="/sales/quotations/create" className="mt-4" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
+                      Create Quotation
+                    </Button>
                   </td>
                 </tr>
               ) : (

@@ -196,8 +196,8 @@ export default function SalesOrders() {
         subtitle="Manage orders from quotation to dispatch with production and inventory integration."
         action={
           <>
-            <Button variant="primary" to="/sales/orders/create">
-              <Plus className="h-4 w-4" /> New Sales Order
+            <Button variant="add" to="/sales/orders/create" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
+              New Sales Order
             </Button>
             <Button
               variant="secondary"

@@ -13,37 +13,7 @@ function normalizeToastMessage(message) {
 
 export function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([]);
-  const [welcomeToast, setWelcomeToast] = useState(null);
   const lastErrorRef = useRef({ message: null, at: 0 });
-
-  const showWelcomePopup = useCallback((companyName) => {
-    const name = companyName || "GNS Insights";
-    setWelcomeToast(name);
-    setTimeout(() => {
-      setWelcomeToast(null);
-    }, 3000);
-  }, []);
-
-  useEffect(() => {
-    const handleWelcomeEvent = (e) => {
-      if (e.detail?.companyName) {
-        showWelcomePopup(e.detail.companyName);
-      }
-    };
-    window.addEventListener("smrt_login_welcome", handleWelcomeEvent);
-
-    try {
-      const welcomeCompany = sessionStorage.getItem("smrt_login_welcome");
-      if (welcomeCompany) {
-        sessionStorage.removeItem("smrt_login_welcome");
-        showWelcomePopup(welcomeCompany);
-      }
-    } catch {}
-
-    return () => {
-      window.removeEventListener("smrt_login_welcome", handleWelcomeEvent);
-    };
-  }, [showWelcomePopup]);
 
   const addToast = useCallback((message, type = "success") => {
     const text = normalizeToastMessage(message);
@@ -176,15 +146,6 @@ export function ToastProvider({ children }) {
           );
         })}
       </div>
-      {welcomeToast && (
-        <div className="fixed bottom-6 right-6 z-[99999] pointer-events-auto animate-in fade-in slide-in-from-bottom-4 duration-300">
-          <div className="flex items-center rounded-xl bg-white px-5 py-3.5 shadow-2xl border border-slate-200/90 text-[14px] text-slate-700 tracking-normal font-normal select-none">
-            <span>
-              Welcome to <span className="font-bold text-[var(--color-primary)]">{welcomeToast}</span>
-            </span>
-          </div>
-        </div>
-      )}
     </ToastContext.Provider>
   );
 }

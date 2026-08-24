@@ -187,11 +187,12 @@ export default function Leads() {
         subtitle="Enterprise CRM pipeline with Kanban view, 360° lead profile, and opportunity tracking."
         action={
           <Button
-            variant="primary"
+            variant="add"
             type="button"
             onClick={() => setShowCreateModal(true)}
+            leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}
           >
-            <Plus className="h-4 w-4" /> New Lead
+            New Lead
           </Button>
         }
       />

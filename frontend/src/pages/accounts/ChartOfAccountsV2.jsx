@@ -8,7 +8,7 @@ import {
   AccountsCard,
   AccountsPageShell,
   AccountsPagination,
-  AccountsPrimaryButton,
+  AccountsAddButton,
   AccountsSearchInput,
   AccountsSecondaryButton,
   AccountsTabs,
@@ -296,15 +296,15 @@ export default function ChartOfAccountsV2() {
               placeholder="Search"
               className="ui-search-wrap flex-1"
             />
-            <AccountsPrimaryButton
+            <AccountsAddButton
               onClick={() => {
                 setEditing(null);
                 setSubParent(null);
                 setModalOpen(true);
               }}
             >
-              + Create Account
-            </AccountsPrimaryButton>
+              Create Account
+            </AccountsAddButton>
             <SortByMenu value={sortBy} onChange={setSortBy} />
             <AccountsSecondaryButton type="button" onClick={handleExport}>
               <Download className="h-4 w-4" />

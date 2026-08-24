@@ -7,6 +7,7 @@ import { useToast } from "../../context/ToastContext";
 import { getExtendedReports, createGLAccount } from "../../api/accountsApi";
 import { formatInr } from "../../data/financeMasterData";
 import PageHeader from "../../components/common/PageHeader";
+import Button from "../../components/common/Button";
 
 import { inputMtClass as inputClass } from "../../design-system/classes";
 
@@ -278,19 +279,12 @@ export default function ChartOfAccounts() {
               </div>
 
               <div className="flex justify-end gap-2 border-t border-slate-100 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setModalOpen(false)}
-                  className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
-                >
+                <Button type="button" variant="secondary" onClick={() => setModalOpen(false)}>
                   Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--color-primary)] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[var(--color-primary-hover)] shadow-sm transition-all"
-                >
+                </Button>
+                <Button type="submit" variant="primary">
                   Save Account
-                </button>
+                </Button>
               </div>
             </form>
           </div>

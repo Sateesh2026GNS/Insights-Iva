@@ -3,6 +3,7 @@ import { X, Plus, Trash2, Save } from "lucide-react";
 import { createInvoice } from "../../api/salesApi";
 import { useToast } from "../../context/ToastContext";
 import useTenantId from "../../hooks/useTenantId";
+import Button from "../common/Button";
 
 const SELLER_STATE_CODE = "36";
 const DEFAULT_CGST = 9;
@@ -295,14 +296,12 @@ export default function BillFormModal({ invoice, onClose, onSave }) {
 
         {/* Footer — type="button" only, no form/submit */}
         <div className="flex items-center justify-end gap-2 border-t px-5 py-4">
-          <button type="button" onClick={onClose}
-            className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer">
+          <Button type="button" variant="secondary" onClick={onClose}>
             Cancel
-          </button>
-          <button type="button" onClick={handleSave} disabled={saving}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--color-primary)] px-5 py-2 text-sm font-semibold text-white hover:bg-[var(--color-primary-hover)] disabled:opacity-50 cursor-pointer shadow-sm">
-            <Save className="h-4 w-4" /> {saving ? "Saving…" : "Save Bill"}
-          </button>
+          </Button>
+          <Button type="button" variant="primary" onClick={handleSave} disabled={saving} loading={saving} leftIcon={!saving ? <Save className="h-4 w-4" aria-hidden /> : undefined}>
+            {saving ? "Saving…" : "Save Bill"}
+          </Button>
         </div>
       </div>
     </div>

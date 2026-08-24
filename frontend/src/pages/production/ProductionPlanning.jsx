@@ -163,11 +163,11 @@ function OrderActions({
 
   return (
     <div className="flex items-center justify-end gap-1 whitespace-nowrap print:hidden">
-      <IconButton aria-label="View" title="View" onClick={() => onView(row)}>
+      <IconButton variant="view" aria-label="View" title="View" onClick={() => onView(row)}>
         <Eye className="h-3.5 w-3.5" />
       </IconButton>
       {canEdit ? (
-        <IconButton aria-label="Edit" title="Edit" onClick={() => onEdit(row)}>
+        <IconButton variant="edit" aria-label="Edit" title="Edit" onClick={() => onEdit(row)}>
           <Pencil className="h-3.5 w-3.5" />
         </IconButton>
       ) : null}
@@ -378,7 +378,7 @@ export default function ProductionPlanning() {
   }, [location.state]);
 
   const [machines, setMachines] = useState([]);
-  // State to track which single order is being printed
+  const [printDetailOrder, setPrintDetailOrder] = useState(null);
   const fileInputRef = useRef(null);
   const startDateRef = useRef(null);
   const dueDateRef = useRef(null);

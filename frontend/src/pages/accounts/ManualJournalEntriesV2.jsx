@@ -7,6 +7,7 @@ import {
   AccountsPageShell,
   AccountsPagination,
   AccountsPrimaryButton,
+  AccountsAddButton,
   AccountsSearchInput,
   accountsTableClass,
   accountsTableHeadClass,
@@ -186,10 +187,9 @@ export default function ManualJournalEntriesV2() {
                 className="w-[108px] border-0 bg-transparent text-[12px] outline-none"
               />
             </label>
-            <AccountsPrimaryButton onClick={goNew}>
-              <Plus className="h-4 w-4" />
+            <AccountsAddButton onClick={goNew} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
               New Journal Entry
-            </AccountsPrimaryButton>
+            </AccountsAddButton>
           </div>
 
           <div className={accountsTableWrapClass}>
@@ -212,10 +212,9 @@ export default function ManualJournalEntriesV2() {
                       <div className="text-[14px] text-[#64748B]">
                         No Journal Entries available, Create new entry
                       </div>
-                      <AccountsPrimaryButton onClick={goNew} className="mt-4">
-                        <Plus className="h-4 w-4" />
+                      <AccountsAddButton onClick={goNew} className="mt-4" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
                         New Journal Entry
-                      </AccountsPrimaryButton>
+                      </AccountsAddButton>
                     </td>
                   </tr>
                 ) : (

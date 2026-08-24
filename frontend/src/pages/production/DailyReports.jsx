@@ -574,8 +574,7 @@ export default function DailyReports() {
               <FileDown className="h-4 w-4" />
               <span className="hidden sm:inline">PDF</span>
             </Button>
-            <Button type="button" variant="success" onClick={() => setShowNew(true)}>
-              <Plus className="h-4 w-4" />
+            <Button type="button" variant="add" onClick={() => setShowNew(true)} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
               New Report
             </Button>
           </div>

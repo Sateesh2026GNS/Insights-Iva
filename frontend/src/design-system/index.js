@@ -46,7 +46,8 @@ export { default as themeColors } from "../theme/colors";
 export { default as theme } from "../styles/theme";
 
 /* Shared UI components — reuse, do not duplicate */
-export { default as Button, PrimaryButton, SecondaryButton, SuccessButton, WarningButton, DangerButton, IconButton } from "../components/common/Button";
+export { default as Button, AddButton, PrimaryButton, SecondaryButton, ViewButton, EditButton, SuccessButton, WarningButton, DangerButton, IconButton } from "../components/common/Button";
+export { default as TableActionButtons } from "../components/common/TableActionButtons";
 export { FormField, Input, Select, Textarea } from "../components/common/FormField";
 export { default as Modal } from "../components/common/Modal";
 export { default as DataTable } from "../components/common/DataTable";
@@ -92,6 +93,7 @@ export {
   AccountsSearchInput,
   AccountsPagination,
   AccountsPrimaryButton,
+  AccountsAddButton,
   AccountsOutlineButton,
   accountsTableWrapClass,
   accountsTableClass,
@@ -106,6 +108,7 @@ export {
   InventorySearchInput,
   InventoryPagination,
   InventoryPrimaryButton,
+  InventoryAddButton,
   InventoryOutlineButton,
   inventoryTableWrapClass,
   inventoryRowActionClass,

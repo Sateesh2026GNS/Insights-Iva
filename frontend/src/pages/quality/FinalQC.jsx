@@ -231,8 +231,8 @@ export default function FinalQC() {
             >
               <FileSpreadsheet className="h-4 w-4" /> Export
             </Button>
-            <Button variant="primary" to="/quality/inspection">
-              <Plus className="h-4 w-4" /> New Final QC
+            <Button variant="add" to="/quality/inspection" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
+              New Final QC
             </Button>
           </div>
         }

@@ -16,6 +16,7 @@ import AddNewItemModal from "../../components/sales/AddNewItemModal";
 import InventoryRowActionsMenu from "../../components/inventory/InventoryRowActionsMenu";
 import RecordDetailModal from "../../components/inventory/RecordDetailModal";
 import Loader from "../../components/common/Loader";
+import Button from "../../components/common/Button";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
 import { useToast } from "../../context/ToastContext";
 import {
@@ -34,6 +35,7 @@ import {
   InventoryPageCard,
   InventoryPageShell,
   InventoryPrimaryButton,
+  InventoryAddButton,
   InventorySearchInput,
   InventoryTabs,
   InventoryToolbarButton,
@@ -242,23 +244,17 @@ function StockAdjustModal({ mode, open, stock, unit, onClose, onSubmit }) {
         </label>
 
         <div className="flex justify-end gap-3">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg border border-[#1a1a1f] bg-white px-5 py-2.5 text-[14px] font-semibold text-[#1a1a1f]"
-          >
+          <Button type="button" variant="secondary" onClick={onClose}>
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
+            variant="primary"
             disabled={!canSubmit}
             onClick={() => onSubmit({ qty: Number(qty), remark, unit: unitVal })}
-            className={`rounded-lg px-6 py-2.5 text-[14px] font-bold text-white transition ${
-              canSubmit ? "bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)]" : "cursor-not-allowed bg-slate-300"
-            }`}
           >
             {isAdd ? "Add" : "Remove"}
-          </button>
+          </Button>
         </div>
       </div>
     </div>
@@ -564,14 +560,14 @@ export default function InventoryV2() {
                   </DropdownMenu>
                 </div>
 
-                <InventoryPrimaryButton
+                <InventoryAddButton
                   onClick={() => {
                     setEditing(null);
                     setAddOpen(true);
                   }}
                 >
                   Add Items
-                </InventoryPrimaryButton>
+                </InventoryAddButton>
                 <InventoryOutlineButton type="button" onClick={onExportPdf}>
                   <span className="inline-flex items-center gap-1.5">
                     <FileText className="h-4 w-4" /> PDF
@@ -584,9 +580,9 @@ export default function InventoryV2() {
                 </InventoryOutlineButton>
               </div>
             ) : (
-              <InventoryPrimaryButton type="button" onClick={() => setCategoryModal(true)}>
+              <InventoryAddButton type="button" onClick={() => setCategoryModal(true)}>
                 Add Category
-              </InventoryPrimaryButton>
+              </InventoryAddButton>
             )}
           </div>
 

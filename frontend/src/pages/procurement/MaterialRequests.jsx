@@ -16,6 +16,7 @@ import PageHeader from "../../components/common/PageHeader";
 
 import DataTable from "../../components/common/DataTable";
 import Loader from "../../components/common/Loader";
+import Button from "../../components/common/Button";
 import { useToast } from "../../context/ToastContext";
 import {
   approveMaterialRequest,
@@ -34,7 +35,6 @@ import {
 } from "../../data/procurementMasterData";
 import { exportToExcel } from "../../utils/exportUtils";
 import useManufacturingRefresh from "../../hooks/useManufacturingRefresh";
-import Button from "../../components/common/Button";
 import {
   MANUFACTURING_EVENTS,
   notifyManufacturingSpine,
@@ -282,13 +282,9 @@ function MRDetailModal({ row, onClose, onConvert, onApproved }) {
             </>
           )}
           {canConvert && (
-            <button
-              type="button"
-              onClick={() => onConvert(row)}
-              className="rounded-lg bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white"
-            >
+            <Button type="button" variant="primary" onClick={() => onConvert(row)}>
               Convert to PO
-            </button>
+            </Button>
           )}
           <Link
             to="/procurement/purchase-orders"
@@ -489,8 +485,8 @@ export default function MaterialRequests() {
         subtitle="MRP shortages become purchase requests, then purchase orders."
         action={
           <>
-            <Button variant="primary" to="/procurement/material-requests/create">
-            <Plus className="h-4 w-4" /> New Material Request
+            <Button variant="add" to="/procurement/material-requests/create" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
+            New Material Request
           </Button>
           <Button
             variant="secondary"

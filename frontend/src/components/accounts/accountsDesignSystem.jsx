@@ -1,4 +1,5 @@
 import { ChevronLeft, ChevronRight, Search } from "lucide-react";
+import Button, { AddButton } from "../common/Button";
 
 export { default as Loader } from "../common/Loader";
 
@@ -178,39 +179,43 @@ export function AccountsPagination({ page, pageSize, total, onPage, onPageSize, 
   );
 }
 
+export function AccountsAddButton({ children, className = "", ...props }) {
+  return (
+    <AddButton className={className} {...props}>
+      {children}
+    </AddButton>
+  );
+}
+
 export function AccountsPrimaryButton({ children, className = "", ...props }) {
   return (
-    <button
-      type="button"
-      className={`ui-btn ui-btn-primary ${className}`}
-      {...props}
-    >
+    <Button variant="primary" className={className} {...props}>
       {children}
-    </button>
+    </Button>
   );
 }
 
 export function AccountsBlueButton({ children, className = "", ...props }) {
   return (
-    <button type="button" className={`ui-btn ui-btn-primary ${className}`} {...props}>
+    <Button variant="edit" className={className} {...props}>
       {children}
-    </button>
+    </Button>
   );
 }
 
 export function AccountsOutlineButton({ children, className = "", ...props }) {
   return (
-    <button type="button" className={`ui-btn ui-btn-outline ${className}`} {...props}>
+    <Button variant="outline" className={className} {...props}>
       {children}
-    </button>
+    </Button>
   );
 }
 
 export function AccountsSecondaryButton({ children, className = "", ...props }) {
   return (
-    <button type="button" className={`ui-btn ui-btn-secondary ${className}`} {...props}>
+    <Button variant="secondary" className={className} {...props}>
       {children}
-    </button>
+    </Button>
   );
 }
 

@@ -7,6 +7,7 @@ import { getProducts } from "../../api/productionApi";
 import { formatInr, statusColor } from "../../data/salesMasterData";
 import { useToast } from "../../context/ToastContext";
 import { exportToPdf } from "../../utils/exportUtils";
+import Button from "../common/Button";
 
 export default function QuoteDetailModal({ quote, onClose, onStatusChange, onConverted }) {
   const navigate = useNavigate();
@@ -205,14 +206,9 @@ export default function QuoteDetailModal({ quote, onClose, onStatusChange, onCon
           <button type="button" onClick={handleSendEmail} className="inline-flex items-center gap-1 rounded-lg border px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
             <Mail className="h-4 w-4" /> Email
           </button>
-          <button
-            type="button"
-            disabled={converting}
-            onClick={handleConvert}
-            className="rounded-lg bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
-          >
+          <Button type="button" variant="primary" disabled={converting} loading={converting} onClick={handleConvert}>
             {converting ? "Converting…" : "Convert to Sales Order"}
-          </button>
+          </Button>
           <Link
             to={`/sales/orders/create?reference=${encodeURIComponent(quote.quote_number || "")}${
               quote.customer_id ? `&customer_id=${quote.customer_id}` : ""

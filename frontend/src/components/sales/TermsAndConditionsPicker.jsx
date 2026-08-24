@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { MoreVertical, Pencil, Plus, Search, Trash2, User, X } from "lucide-react";
 
 import AddTermsAndConditionsModal from "./AddTermsAndConditionsModal";
+import Button from "../common/Button";
 
 const PRIMARY = "var(--color-primary)";
 const STORAGE_KEY = "gns_invoice_terms_templates";
@@ -245,13 +246,9 @@ export default function TermsAndConditionsPicker({
         >
           <X className="h-4 w-4" /> Remove
         </button>
-        <button
-          type="button"
-          onClick={handleSelect}
-          className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-[var(--color-primary)] py-3 text-[13px] font-semibold text-white hover:bg-[var(--color-primary-hover)] transition-colors shadow-sm"
-        >
-          <User className="h-4 w-4" /> Select Terms and Conditions
-        </button>
+        <Button type="button" variant="primary" fullWidth onClick={handleSelect} leftIcon={<User className="h-4 w-4" aria-hidden />}>
+          Select Terms and Conditions
+        </Button>
       </div>
 
       <AddTermsAndConditionsModal

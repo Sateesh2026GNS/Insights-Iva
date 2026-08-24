@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { resendVerification, verifyEmail } from "../../api/authApi";
+import Button from "../../components/common/Button";
 
 export default function VerifyEmail() {
   const [searchParams] = useSearchParams();
@@ -78,13 +79,9 @@ export default function VerifyEmail() {
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full px-4 py-3 bg-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
               />
-              <button
-                type="submit"
-                disabled={resendLoading}
-                className="w-full py-3 bg-teal-600 hover:bg-[var(--color-success)] text-white font-bold rounded-lg disabled:opacity-50"
-              >
+              <Button type="submit" variant="primary" fullWidth disabled={resendLoading} loading={resendLoading}>
                 {resendLoading ? "Sending..." : "Resend Verification Email"}
-              </button>
+              </Button>
             </form>
             <p className="mt-6">
               <Link to="/login" className="text-teal-600 font-semibold hover:text-[var(--color-success)]">

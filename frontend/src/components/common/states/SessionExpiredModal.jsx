@@ -1,5 +1,6 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { LogIn } from "lucide-react";
+import Button from "../Button";
 
 /**
  * Session expired overlay — prompts re-login without exposing sensitive data.
@@ -42,14 +43,16 @@ export default function SessionExpiredModal({ open, onLogin }) {
           Your session has ended for security. Sign in again to continue.
           Unsaved work in open forms may be lost if it was not saved.
         </p>
-        <button
+        <Button
           type="button"
+          variant="primary"
+          fullWidth
           onClick={handleLogin}
-          className="mt-6 flex w-full items-center justify-center gap-2 rounded-lg bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-[var(--color-success)]"
+          leftIcon={<LogIn className="h-4 w-4" aria-hidden />}
+          className="mt-6"
         >
-          <LogIn className="h-4 w-4" aria-hidden />
           Login Again
-        </button>
+        </Button>
       </div>
     </div>
   );

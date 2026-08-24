@@ -242,14 +242,14 @@ export default function ProductsMaster() {
               </Button>
               {!isPM && (
                 <Button
-                  variant="primary"
+                  variant="add"
                   type="button"
                   onClick={() => {
                     setEditing(null);
                     setAddOpen(true);
                   }}
+                  leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}
                 >
-                  <Plus className="h-4 w-4" />
                   Create Product
                 </Button>
               )}

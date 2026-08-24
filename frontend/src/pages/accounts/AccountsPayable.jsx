@@ -785,11 +785,11 @@ export default function AccountsPayable() {
         subtitle="Manage vendor bills, supplier payments, and outstanding payables."
         action={
           <>
-            <Button variant="secondary" type="button" onClick={() => setShowCreateBill(true)}>
-              <FileText className="h-4 w-4" /> New Vendor Bill
+            <Button variant="add" type="button" onClick={() => setShowCreateBill(true)} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
+              New Vendor Bill
             </Button>
-            <Button variant="primary" type="button" onClick={() => { setPayBill(null); setShowCreatePayment(true); }}>
-              <CreditCard className="h-4 w-4" /> Record Payment
+            <Button variant="add" type="button" onClick={() => { setPayBill(null); setShowCreatePayment(true); }} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
+              Record Payment
             </Button>
           </>
         }
@@ -948,13 +948,9 @@ export default function AccountsPayable() {
                   }`}>{count}</span>
                 </button>
               ))}
-              <button
-                type="button"
-                onClick={() => setShowCreateBill(true)}
-                className="ml-auto btn-outline text-sm"
-              >
-                <Plus className="h-4 w-4" /> New Bill
-              </button>
+              <Button type="button" variant="add" size="sm" onClick={() => setShowCreateBill(true)} className="ml-auto" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
+                New Bill
+              </Button>
             </div>
 
             <FinanceFilters
@@ -981,9 +977,9 @@ export default function AccountsPayable() {
                   <Receipt className="mx-auto h-12 w-12 text-slate-300" />
                   <p className="mt-3 text-sm font-semibold text-slate-500">No vendor bills found</p>
                   <p className="text-xs text-slate-400 mt-1">Enter a vendor invoice to get started</p>
-                  <button type="button" onClick={() => setShowCreateBill(true)} className="btn-primary mt-4 mx-auto">
-                    <Plus className="h-4 w-4" /> Enter Vendor Bill
-                  </button>
+                  <Button type="button" variant="add" onClick={() => setShowCreateBill(true)} className="mt-4 mx-auto" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
+                    Enter Vendor Bill
+                  </Button>
                 </div>
               ) : (
                 <DataTable columns={billColumns} data={filteredBills} searchPlaceholder="" searchKeys={[]} />
@@ -999,9 +995,9 @@ export default function AccountsPayable() {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-base font-bold text-slate-800">Payment History</h2>
-              <button type="button" onClick={() => { setPayBill(null); setShowCreatePayment(true); }} className="btn-primary text-sm">
-                <Plus className="h-4 w-4" /> Record Payment
-              </button>
+              <Button type="button" variant="add" onClick={() => { setPayBill(null); setShowCreatePayment(true); }} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
+                Record Payment
+              </Button>
             </div>
 
             <FinanceFilters
@@ -1019,9 +1015,9 @@ export default function AccountsPayable() {
                 <div className="py-16 text-center">
                   <CreditCard className="mx-auto h-12 w-12 text-slate-300" />
                   <p className="mt-3 text-sm font-semibold text-slate-500">No payments recorded yet</p>
-                  <button type="button" onClick={() => { setPayBill(null); setShowCreatePayment(true); }} className="btn-primary mt-4 mx-auto">
-                    <Plus className="h-4 w-4" /> Record First Payment
-                  </button>
+                  <Button type="button" variant="add" onClick={() => { setPayBill(null); setShowCreatePayment(true); }} className="mt-4 mx-auto" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
+                    Record First Payment
+                  </Button>
                 </div>
               ) : (
                 <DataTable columns={paymentColumns} data={filteredPayments} searchPlaceholder="" searchKeys={[]} />

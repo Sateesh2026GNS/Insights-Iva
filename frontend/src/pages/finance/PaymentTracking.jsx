@@ -167,11 +167,12 @@ export default function PaymentTracking() {
         action={
           <>
             <Button
-            variant="primary"
+            variant="add"
             type="button"
             onClick={() => setShowPaymentModal(true)}
+            leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}
           >
-            <Plus className="h-4 w-4" /> Record Payment
+            Record Payment
           </Button>
           </>
         }

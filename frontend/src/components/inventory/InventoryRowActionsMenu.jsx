@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Eye, Minus, MoreVertical, Pencil, Plus, Trash2 } from "lucide-react";
+import { rowActionMenuItemClass } from "../common/rowActionTone.js";
 
 export default function InventoryRowActionsMenu({
   rowId,
@@ -101,11 +102,7 @@ export default function InventoryRowActionsMenu({
                         onClose();
                         item.onClick();
                       }}
-                      className={`flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold transition-colors ${
-                        item.danger
-                          ? "text-red-600 hover:bg-red-50"
-                          : "text-[var(--color-text)] hover:bg-[var(--color-surface-muted)]"
-                      }`}
+                      className={rowActionMenuItemClass(item.label, { danger: item.danger })}
                     >
                       <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden />
                       {item.label}

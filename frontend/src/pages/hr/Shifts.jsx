@@ -104,11 +104,12 @@ export default function Shifts() {
         action={
           <>
             <Button
-            variant="hr"
+            variant="add"
             type="button"
             onClick={() => setShowCreateModal(true)}
+            leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}
           >
-            <Plus className="h-4 w-4" /> Create Shift
+            Create Shift
           </Button>
           </>
         }

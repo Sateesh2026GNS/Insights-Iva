@@ -352,8 +352,8 @@ function UsersSection() {
         <SectionCard>
           <p className="text-xs font-medium uppercase text-slate-500">Quick actions</p>
           <div className="mt-2 flex flex-wrap gap-2">
-            <Button variant="primary" to="/admin/users" className="text-xs">
-              <Plus className="h-3.5 w-3.5" /> Create / Invite
+            <Button variant="add" to="/admin/users" className="text-xs" leftIcon={<Plus className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />}>
+              Create / Invite
             </Button>
             <Button variant="secondary" to="/admin/roles" className="text-xs">
               Roles

@@ -241,8 +241,8 @@ export default function SalesBills() {
         subtitle="Manage your billing records."
         action={
           <>
-            <Button variant="primary" to="/sales/bills/create">
-              <Plus className="h-4 w-4" /> Create Bill
+            <Button variant="add" to="/sales/bills/create" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
+              Create Bill
             </Button>
             <Button
               variant="secondary"
@@ -298,8 +298,8 @@ export default function SalesBills() {
             <FileText className="mx-auto mb-4 h-12 w-12 text-slate-300" />
             <p className="text-lg font-semibold text-slate-700">No bills yet</p>
             <p className="ui-subtitle">Create your first bill to get started.</p>
-            <Button variant="primary" to="/sales/bills/create" className="mt-6">
-              <Plus className="h-4 w-4" /> Create Bill
+            <Button variant="add" to="/sales/bills/create" className="mt-6" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
+              Create Bill
             </Button>
           </div>
         ) : (

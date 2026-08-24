@@ -287,9 +287,9 @@ export default function PaymentsMade() {
               </button>
             </div>
             <Button
-              variant="primary"
+              variant="add"
               to="/purchases/payments-made/create"
-              leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} />}
+              leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}
             >
               Make Payment
             </Button>

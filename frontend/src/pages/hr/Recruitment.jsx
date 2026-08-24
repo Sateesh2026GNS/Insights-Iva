@@ -19,6 +19,7 @@ import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import PlaceholderPage from "../../components/common/PlaceholderPage";
 import InventoryRowActionsMenu from "../../components/inventory/InventoryRowActionsMenu";
 import Loader from "../../components/common/Loader";
+import { AddButton } from "../../components/common/Button";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { useToast } from "../../context/ToastContext";
 import {
@@ -398,14 +399,9 @@ function RecruitmentDashboard() {
           <p className="mt-1 text-[13px] text-slate-500">Track and manage your recruitment process</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={openCreateJob}
-            className="inline-flex items-center gap-2 rounded-lg bg-[#6366f1] px-4 py-2.5 text-[13px] font-semibold text-white shadow-sm hover:bg-[#4f46e5]"
-          >
-            <Plus className="h-4 w-4" />
+          <AddButton type="button" onClick={openCreateJob}>
             Create Job Opening
-          </button>
+          </AddButton>
           <button
             type="button"
             onClick={() => {

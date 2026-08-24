@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Plus, ChevronUp, ChevronDown, Pencil, Trash2, FileX2, Search } from "lucide-react";
 import { useToast } from "../../context/ToastContext";
+import Button from "../../components/common/Button";
 
 const ROWS_PER_PAGE_OPTIONS = [5, 7, 10, 25, 50];
 const STORAGE_KEY = "gns_package_type_master_v1";
@@ -134,14 +135,9 @@ export default function SettingsPackageTypeMaster() {
             This is a list of package type master that will be used for creating package list
           </p>
         </div>
-        <button
-          type="button"
-          onClick={addItem}
-          className="flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-green-700"
-        >
-          <Plus className="h-4 w-4" />
+        <Button type="button" variant="add" onClick={addItem} leftIcon={<Plus className="h-4 w-4" aria-hidden />}>
           Add Package Type Master
-        </button>
+        </Button>
       </div>
 
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">

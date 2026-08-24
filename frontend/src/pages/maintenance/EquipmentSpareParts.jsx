@@ -612,14 +612,14 @@ export default function EquipmentSpareParts() {
         subtitle="Manage all plant equipment and spare parts inventory"
         action={
           <div className="flex flex-wrap items-center gap-2">
-            <button
+            <Button
               type="button"
+              variant="add"
               onClick={() => setShowAddEquipmentModal(true)}
-              className="inline-flex items-center gap-2 rounded-lg bg-[var(--color-primary)] px-4 py-2.5 text-[13px] font-semibold text-white shadow-sm hover:bg-[var(--color-primary-hover)] cursor-pointer"
+              leftIcon={<Plus className="h-4 w-4" aria-hidden />}
             >
-              <Plus className="h-4 w-4" />
               Add Equipment
-            </button>
+            </Button>
             <button
               type="button"
               onClick={() => setShowAddSpareModal(true)}
@@ -793,12 +793,12 @@ export default function EquipmentSpareParts() {
           ) : null}
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <button type="button" onClick={() => load(true)} className="inline-flex items-center rounded-lg bg-[var(--color-primary)] px-4 py-2 text-[13px] font-semibold text-white hover:bg-[var(--color-primary-hover)] cursor-pointer">
+          <Button type="button" variant="primary" onClick={() => load(true)}>
             Filter
-          </button>
-          <button type="button" onClick={resetFilters} className="inline-flex items-center rounded-lg border border-slate-200 bg-white px-4 py-2 text-[13px] font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer">
+          </Button>
+          <Button type="button" variant="secondary" onClick={resetFilters}>
             Reset
-          </button>
+          </Button>
         </div>
       </div>
 

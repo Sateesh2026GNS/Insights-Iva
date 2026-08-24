@@ -7,6 +7,7 @@ import {
 } from "../../api/authApi";
 import PasswordInput from "../../components/auth/PasswordInput";
 import BrandLogo from "../../components/common/BrandLogo";
+import Button from "../../components/common/Button";
 import { useToast } from "../../context/ToastContext";
 import { passwordRuleStatus, validatePasswordStrength } from "../../utils/passwordValidation";
 
@@ -214,20 +215,15 @@ export default function ResetPassword() {
             </ul>
           )}
 
-          <button
+          <Button
             type="submit"
+            variant="primary"
+            fullWidth
             disabled={loading || success || !tokenValid}
-            className="flex w-full items-center justify-center gap-2 rounded-lg bg-teal-600 py-3 font-bold text-white transition hover:bg-[var(--color-success)] disabled:cursor-not-allowed disabled:opacity-50"
+            loading={loading}
           >
-            {loading ? (
-              <>
-                <Spinner />
-                Resetting…
-              </>
-            ) : (
-              "Reset Password"
-            )}
-          </button>
+            {loading ? "Resetting…" : "Reset Password"}
+          </Button>
         </form>
 
         <p className="mt-6 text-center text-sm text-gray-600">

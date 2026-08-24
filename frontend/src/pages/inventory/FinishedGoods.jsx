@@ -517,8 +517,8 @@ export default function FinishedGoods() {
                 </select>
               </>
             ) : null}
-            <Button type="button" variant="primary" onClick={handleAdd}>
-              <Plus className="h-4 w-4" /> Add Finished Good
+            <Button type="button" variant="add" onClick={handleAdd} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
+              Add Finished Good
             </Button>
           </div>
         </div>

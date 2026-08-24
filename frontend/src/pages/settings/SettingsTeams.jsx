@@ -14,6 +14,7 @@ import useAuth from "../../hooks/useAuth";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { getRoles } from "../../api/adminApi";
 import { useToast } from "../../context/ToastContext";
+import Button from "../../components/common/Button";
 
 const ROWS_PER_PAGE_OPTIONS = [5, 7, 10, 25, 50];
 
@@ -148,14 +149,9 @@ export default function SettingsTeams() {
             Manage teams of your company
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => navigate("/admin/roles")}
-          className="flex items-center gap-2 rounded-lg bg-teal-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-[var(--color-success)]"
-        >
-          <Plus className="h-4 w-4" />
+        <Button variant="add" type="button" onClick={() => navigate("/admin/roles")} leftIcon={<Plus className="h-4 w-4" aria-hidden />}>
           Add Team
-        </button>
+        </Button>
       </div>
 
       {/* Table */}

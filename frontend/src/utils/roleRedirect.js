@@ -14,10 +14,10 @@ export function getDashboardPathForRole(role) {
   if (name.includes("hr manager")) {
     return "/hr";
   }
-  if (name.includes("sales manager")) {
+  if (name.includes("sales")) {
     return "/sales/dashboard";
   }
-  if (name.includes("accountant")) {
+  if (name.includes("accountant") || name.includes("billing")) {
     return "/accounts";
   }
   if (name.includes("operator")) {
@@ -25,6 +25,15 @@ export function getDashboardPathForRole(role) {
   }
   if (name.includes("production manager")) {
     return "/production/planning";
+  }
+  if (name.includes("quality")) {
+    return "/quality";
+  }
+  if (name.includes("packing") || name.includes("dispatch")) {
+    return "/sales/dispatch";
+  }
+  if (name === "admin" || name.includes("admin")) {
+    return "/";
   }
   return "/";
 }

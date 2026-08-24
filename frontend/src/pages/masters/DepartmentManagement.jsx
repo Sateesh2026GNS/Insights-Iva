@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Building2, Cpu, Download, FileText, Layers, Plus, Printer, Upload, UserCheck, Users } from "lucide-react";
 
 import DataTable from "../../components/common/DataTable";
+import TableActionButtons from "../../components/common/TableActionButtons";
 import Loader from "../../components/common/Loader";
 import Button from "../../components/common/Button";
 import DepartmentDetailModal, { DepartmentFormModal } from "../../components/masters/DepartmentDetailModal";
@@ -276,13 +277,13 @@ export default function DepartmentManagement() {
       label: "Actions",
       sortable: false,
       render: (r) => (
-        <div className="flex flex-wrap gap-1 text-xs">
-          <button type="button" onClick={() => openDepartment(r)} className="font-semibold text-[#2563EB] hover:underline">View</button>
-          <button type="button" onClick={() => setFormDept(r)} className="font-semibold text-slate-600 hover:underline">Edit</button>
-          {r.status === "active" && (
-            <button type="button" onClick={() => handleDeactivate(r)} className="font-semibold text-red-600 hover:underline">Deactivate</button>
-          )}
-        </div>
+        <TableActionButtons
+          onView={() => openDepartment(r)}
+          onEdit={() => setFormDept(r)}
+          onDelete={r.status === "active" ? () => handleDeactivate(r) : undefined}
+          showDelete={r.status === "active"}
+          deleteLabel="Deactivate"
+        />
       ),
     },
   ];
@@ -299,8 +300,8 @@ export default function DepartmentManagement() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="primary" type="button" onClick={() => setFormDept({})}>
-            <Plus className="h-4 w-4" /> Add Department
+          <Button variant="add" type="button" onClick={() => setFormDept({})} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
+            Add Department
           </Button>
           <button type="button" onClick={handleDownloadTemplate} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
             <Upload className="h-4 w-4" /> Import

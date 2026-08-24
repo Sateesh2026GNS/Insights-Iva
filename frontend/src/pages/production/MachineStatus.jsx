@@ -4,6 +4,7 @@ import { Activity, ChevronLeft, ChevronRight, Cpu, Download, FileSpreadsheet, Fi
 
 import DataTable from "../../components/common/DataTable";
 import Loader from "../../components/common/Loader";
+import Button from "../../components/common/Button";
 import MachineDetailModal from "../../components/production/MachineDetailModal";
 import { useToast } from "../../context/ToastContext";
 import usePageRefresh from "../../hooks/usePageRefresh";
@@ -388,13 +389,9 @@ export default function MachineStatus() {
               </>
             )}
             {!operatorMode && (
-              <Link
-                to="/production/machines/create"
-                className="inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2.5 text-[13px] font-semibold text-[#1a1a1f]"
-                style={{ background: YELLOW }}
-              >
-                <Plus className="h-4 w-4" /> New Machine
-              </Link>
+              <Button variant="add" to="/production/machines/create" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
+                New Machine
+              </Button>
             )}
             <div className="ml-auto flex rounded-lg border border-slate-200 p-0.5">
               <button
@@ -458,13 +455,9 @@ export default function MachineStatus() {
                   <p className="mt-4 text-sm font-semibold text-slate-700">No machines found.</p>
                   <p className="mt-1 text-sm text-slate-500">Add a machine to get started.</p>
                   {!operatorMode && (
-                    <Link
-                      to="/production/machines/create"
-                      className="mt-4 inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2.5 text-[13px] font-semibold text-[#1a1a1f]"
-                      style={{ background: YELLOW }}
-                    >
-                      <Plus className="h-4 w-4" /> New Machine
-                    </Link>
+                    <Button variant="add" to="/production/machines/create" className="mt-4" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
+                      New Machine
+                    </Button>
                   )}
                 </>
               ) : (

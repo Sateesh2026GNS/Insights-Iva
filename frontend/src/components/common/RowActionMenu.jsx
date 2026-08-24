@@ -2,6 +2,7 @@ import { useContext, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { MoreVertical } from "lucide-react";
 import { AuthContext } from "../../context/AuthContext.jsx";
+import { rowActionMenuItemClass } from "./rowActionTone.js";
 
 const DEFAULT_MENU_WIDTH = 176;
 const ITEM_HEIGHT = 36;
@@ -155,13 +156,12 @@ export default function RowActionMenu({
                   actionIndex += 1;
                   const currentActionIndex = actionIndex;
                   const label = String(item.label || "");
-                  const labelLower = label.toLowerCase();
                   const isDanger =
                     item.danger ||
-                    labelLower.includes("delete") ||
-                    labelLower.includes("remove") ||
-                    labelLower.includes("reject") ||
-                    labelLower.includes("sign out");
+                    label.toLowerCase().includes("delete") ||
+                    label.toLowerCase().includes("remove") ||
+                    label.toLowerCase().includes("reject") ||
+                    label.toLowerCase().includes("sign out");
 
                   return (
                     <button
@@ -181,11 +181,7 @@ export default function RowActionMenu({
                         btnRef.current?.focus();
                         item.onClick?.();
                       }}
-                      className={`flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-primary)] ${
-                        isDanger
-                          ? "text-[var(--color-danger)] hover:bg-[var(--color-danger-soft)]"
-                          : "text-[var(--color-text)] hover:bg-[var(--color-surface-muted)]"
-                      }`}
+                      className={rowActionMenuItemClass(label, { danger: isDanger })}
                     >
                       {item.icon ? <span className="shrink-0">{item.icon}</span> : null}
                       <span>{label}</span>

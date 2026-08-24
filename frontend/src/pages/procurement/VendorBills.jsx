@@ -335,14 +335,16 @@ export default function VendorBills() {
         if (r.status === "approved") {
           return (
             <div className="flex items-center gap-2">
-              <button
+              <Button
                 type="button"
+                variant="primary"
+                size="sm"
                 disabled={isBusy}
                 onClick={() => handleStatusChange(r.id, "paid")}
-                className="inline-flex items-center gap-1 rounded-lg bg-[var(--color-primary)] px-2.5 py-1 text-xs font-semibold text-white hover:bg-[var(--color-primary-hover)] disabled:opacity-50"
+                leftIcon={<CheckCircle2 className="h-3.5 w-3.5" aria-hidden />}
               >
-                <CheckCircle2 className="h-3.5 w-3.5" /> Mark Paid
-              </button>
+                Mark Paid
+              </Button>
               {deleteBtn}
             </div>
           );
@@ -366,11 +368,12 @@ export default function VendorBills() {
         action={
           <>
             <Button
-            variant="primary"
+            variant="add"
             type="button"
             onClick={() => setIsCreateOpen(true)}
+            leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}
           >
-            <Plus className="h-4 w-4" /> Create Vendor Bill
+            Create Vendor Bill
           </Button>
           </>
         }

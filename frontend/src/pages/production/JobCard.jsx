@@ -3197,8 +3197,8 @@ export default function JobCard() {
                 Work Orders
               </Button>
               {canCreate ? (
-                <Button variant="primary" type="button" onClick={() => setShowCreate(true)}>
-                  <Plus className="h-4 w-4" /> New Job Card
+                <Button variant="add" type="button" onClick={() => setShowCreate(true)} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
+                  New Job Card
                 </Button>
               ) : null}
             </div>

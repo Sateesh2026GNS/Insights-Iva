@@ -273,8 +273,8 @@ export default function GoodsReceipt() {
         subtitle="Receive materials against purchase orders and post accepted quantity to inventory."
         action={
           <>
-            <Button variant="primary" to="/procurement/goods-receipt/create">
-            <Plus className="h-4 w-4" /> New GRN
+            <Button variant="add" to="/procurement/goods-receipt/create" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
+            New GRN
           </Button>
           </>
         }

@@ -1,4 +1,4 @@
-import Button from "./Button";
+import { AddButton } from "./Button";
 
 const icons = {
   clipboard: (
@@ -55,16 +55,14 @@ export default function EmptyState({
         </p>
       ) : null}
       {actionLabel && actionHref ? (
-        <Button variant="primary" to={actionHref} className="mt-6">
-          <span aria-hidden>+</span>
+        <AddButton to={actionHref} className="mt-6">
           {actionLabel}
-        </Button>
+        </AddButton>
       ) : null}
       {actionLabel && !actionHref && onAction ? (
-        <Button variant="primary" type="button" onClick={onAction} className="mt-6">
-          <span aria-hidden>+</span>
+        <AddButton type="button" onClick={onAction} className="mt-6">
           {actionLabel}
-        </Button>
+        </AddButton>
       ) : null}
     </div>
   );

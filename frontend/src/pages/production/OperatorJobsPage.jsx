@@ -200,22 +200,20 @@ export default function OperatorJobsPage() {
                       {fmtDeliveryDisplay(job.planned_end || job.delivery_date)}
                     </td>
                     <td className="px-3 py-2.5 text-right">
-                      <Link
+                      <Button
+                        variant={job.workflow_status === "PRODUCTION_ASSIGNED" ? "primary" : "view"}
+                        size="sm"
                         to={`/manufacturing/workflow/order/${job.sales_order_id}/operator`}
-                        className="inline-flex items-center gap-1 rounded-lg bg-[var(--color-primary)] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[var(--color-primary-hover)]"
-                      >
-                        {job.workflow_status === "PRODUCTION_ASSIGNED" ? (
-                          <>
+                        leftIcon={
+                          job.workflow_status === "PRODUCTION_ASSIGNED" ? (
                             <PlayCircle className="h-3.5 w-3.5" aria-hidden />
-                            Start
-                          </>
-                        ) : (
-                          <>
+                          ) : (
                             <Factory className="h-3.5 w-3.5" aria-hidden />
-                            Open
-                          </>
-                        )}
-                      </Link>
+                          )
+                        }
+                      >
+                        {job.workflow_status === "PRODUCTION_ASSIGNED" ? "Start" : "Open"}
+                      </Button>
                     </td>
                   </tr>
                 ))}

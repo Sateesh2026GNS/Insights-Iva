@@ -6,7 +6,10 @@ import {
   setPlatformSession,
 } from "../../api/platformApi";
 import BrandLogo from "../../components/common/BrandLogo";
+import LoginSuccessOverlay from "../../components/common/LoginSuccessOverlay";
 import "./SuperAdminLogin.css";
+
+const LOGIN_SUCCESS_MS = 1800;
 
 export default function SuperAdminVerifyOtp() {
   const navigate = useNavigate();
@@ -24,6 +27,8 @@ export default function SuperAdminVerifyOtp() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("OTP sent to your mobile.");
   const [countdown, setCountdown] = useState(60);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [redirectPath, setRedirectPath] = useState("/gns-admin");
 
   const inputRefs = useRef([]);
 
@@ -48,15 +53,10 @@ export default function SuperAdminVerifyOtp() {
       try {
         const data = await superAdminVerifyOtp(challengeToken, code);
         setPlatformSession(data);
-        try {
-          sessionStorage.setItem("smrt_login_welcome", "GNS Insights Platform");
-          window.dispatchEvent(
-            new CustomEvent("smrt_login_welcome", { detail: { companyName: "GNS Insights Platform" } })
-          );
-        } catch {}
-        setSuccess("OTP verified successfully. Redirecting…");
         const path = data.dashboard_path || "/gns-admin";
-        setTimeout(() => navigate(path, { replace: true }), 400);
+        setRedirectPath(path);
+        setShowSuccess(true);
+        setTimeout(() => navigate(path, { replace: true }), LOGIN_SUCCESS_MS);
       } catch (err) {
         const detail = err.response?.data?.detail || err.response?.data?.message;
         const msg =
@@ -145,6 +145,7 @@ export default function SuperAdminVerifyOtp() {
 
   return (
     <div className="sa-root">
+      <LoginSuccessOverlay open={showSuccess} />
       <div className="sa-bg-base" />
       <div className="sa-orb-tl" />
       <div className="sa-orb-tr" />

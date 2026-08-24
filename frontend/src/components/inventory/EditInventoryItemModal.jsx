@@ -3,6 +3,7 @@ import { X } from "lucide-react";
 
 import { updateInventoryItem } from "../../api/inventoryApi";
 import { apiErrorMessage } from "../../utils/apiError";
+import Button from "../common/Button";
 
 export default function EditInventoryItemModal({ item, onClose, onSaved, addToast }) {
   const [form, setForm] = useState({
@@ -108,20 +109,12 @@ export default function EditInventoryItemModal({ item, onClose, onSaved, addToas
           </label>
         </div>
         <div className="flex justify-end gap-2 border-t px-5 py-4">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg border px-4 py-2 text-sm font-semibold text-slate-700"
-          >
+          <Button type="button" variant="secondary" onClick={onClose}>
             Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={saving}
-            className="rounded-lg bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
-          >
+          </Button>
+          <Button type="submit" variant="primary" disabled={saving} loading={saving}>
             {saving ? "Saving…" : "Save"}
-          </button>
+          </Button>
         </div>
       </form>
     </div>

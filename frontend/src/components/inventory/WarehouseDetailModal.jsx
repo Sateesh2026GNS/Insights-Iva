@@ -257,9 +257,9 @@ export default function WarehouseDetailModal({ warehouse, detail, onClose, onEdi
         </div>
 
         <div className="flex flex-wrap gap-2 border-t border-slate-100 px-5 py-4">
-          <Link to="/inventory/stock-transfer" className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--color-primary)] px-3 py-2 text-xs font-semibold text-white hover:bg-[var(--color-primary-hover)]">
-            <ArrowDownUp className="h-3.5 w-3.5" /> Stock Transfer
-          </Link>
+          <Button variant="primary" size="sm" to="/inventory/stock-transfer" leftIcon={<ArrowDownUp className="h-3.5 w-3.5" aria-hidden />}>
+            Stock Transfer
+          </Button>
           <Link to={`/inventory/stock-ledger`} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">
             <Package className="h-3.5 w-3.5" /> Stock Ledger
           </Link>
