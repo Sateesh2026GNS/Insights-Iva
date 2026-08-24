@@ -3,7 +3,7 @@
 
 Generated after production-ready security hardening across the React + FastAPI Insights Iva application.
 
-**Last reviewed:** 21 August 2026
+**Last reviewed:** 24 August 2026
 
 ## Executive Summary
 
@@ -16,6 +16,8 @@ Recent product UI work (design tokens, HR dashboards, manufacturing workflow, Se
 **Manufacturing workflow note (18 Aug 2026):** All `/manufacturing/workflow/*` endpoints require JWT and enforce team-based actions via `workflow_team_service` and `workflow_constants.ROLE_TO_TEAMS`. Transitions are validated by the state machine; invalid cross-team actions are rejected server-side. Job card and material-check records are tenant-scoped like other business entities. Frontend workflow UI is presentational — authorization is enforced on every API call.
 
 **UI/UX pass note (18 Aug 2026):** Forest green rebrand and `design-system/` migration are styling-only. No new public routes without auth, no relaxation of CORS, and no change to token storage or session handling. See [UI_UX_AUDIT_REPORT.md](./UI_UX_AUDIT_REPORT.md).
+
+**Button consistency pass (24 Aug 2026):** Action-based button variants (`add`, `view`, `edit`, `danger`), `AddButton`, and `TableActionButtons` migrated across 80+ list/toolbar pages. **Styling and component structure only** — no changes to auth flows, JWT handling, RBAC matrices, route guards, API endpoints, or tenant isolation. Delete/Edit buttons remain client-side UX; server-side `require_permission` / `require_action` unchanged.
 
 **HR module note (Aug 2026):** New HR Settings UI includes a “two-factor authentication” checkbox and session/password fields — these are **client-side only** until wired to backend policy. HR dashboard demo data in `hrMasterData.js` is read-only preview when APIs are empty; it does not bypass authentication or tenant isolation. HR write endpoints (leave, payroll, performance create) remain protected by existing JWT + RBAC + `tenant_scope`.
 
@@ -348,6 +350,7 @@ SMTP_FROM_EMAIL=noreply@your-domain.com
 | 2026-08-16 | Full security audit + hardening pass (this section). |
 | 2026-08-18 | Manufacturing workflow security considerations added. UI/UX rebrand documented as styling-only. Workflow API files listed. Cross-linked UI_UX_AUDIT_REPORT. |
 | 2026-08-21 | RBAC alignment: active-role permissions, JWT role on `/auth/me`, `hr` module, Store Manager path allowlist documented. UI date/settings changes noted as non-security. |
+| 2026-08-24 | Button consistency pass documented as styling-only. No auth, RBAC, route, or API contract changes. Cross-linked updated UI_UX_AUDIT_REPORT. |
 
 ---
 

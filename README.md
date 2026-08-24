@@ -4,9 +4,11 @@
 
 **Tagline:** Business Intelligence • Analytics • AI
 
-Security hardening (auth lockout, email verification, refresh tokens, RBAC, tenant isolation, headers) is documented in [SECURITY_REPORT.md](./SECURITY_REPORT.md). **Full security audit + hardening pass (16 Aug 2026)** — summary in [Security Audit & Hardening](#security-audit--hardening-aug-2026) below. **Frontend UI/UX audit + design system migration (18 Aug 2026)** — [UI_UX_AUDIT_REPORT.md](./UI_UX_AUDIT_REPORT.md). **Wireframe-first UI/UX standard** for new pages — [Wireframe-first UI/UX standard](#wireframe-first-uiux-standard). Architecture and recent analysis: [PROJECT_ANALYSIS_REPORT.md](./PROJECT_ANALYSIS_REPORT.md).
+Security hardening (auth lockout, email verification, refresh tokens, RBAC, tenant isolation, headers) is documented in [SECURITY_REPORT.md](./SECURITY_REPORT.md). **Full security audit + hardening pass (16 Aug 2026)** — summary in [Security Audit & Hardening](#security-audit--hardening-aug-2026) below. **Frontend UI/UX audit + design system migration (18 Aug 2026; button action system 24 Aug 2026)** — [UI_UX_AUDIT_REPORT.md](./UI_UX_AUDIT_REPORT.md). **Wireframe-first UI/UX standard** for new pages — [Wireframe-first UI/UX standard](#wireframe-first-uiux-standard). Architecture and recent analysis: [PROJECT_ANALYSIS_REPORT.md](./PROJECT_ANALYSIS_REPORT.md).
 
-**Latest pass (21 Aug 2026):** End-to-end **RBAC** for seven roles (Admin, Sales Manager, Production Manager, Store Manager, HR Manager, Accountant, Operator) — permissions, sidebar, routes, and JWT role preserved on refresh — see [Role-Based Access Control](#role-based-access-control). **Shared date/calendar controls** (`dateControls.jsx`, `dateUtils.js`) and duplicate calendar icon fix — see [UI design system](#ui-design-system-colors--buttons). **Store Manager** dedicated sidebar with full Purchases menu. **Settings** integrated into main ERP shell (dark navy theme in dark mode only). **Manufacturing workflow engine (18 Aug 2026):** role-based Sales → Job Card → Inventory → Production → Quality → Packing → Billing — see [Manufacturing Workflow Engine](#manufacturing-workflow-engine). **Design system rebrand (18 Aug 2026):** forest green brand, `frontend/src/design-system/` — see [UI design system](#ui-design-system-colors--buttons). **HR module dashboards (Aug 2026):** mockup-aligned UI — see [HR & Employee Management](#hr--employee-management). See [Stability Audit & Validation](#stability-audit--validation-aug-2026) and [Security Audit & Hardening](#security-audit--hardening-aug-2026).
+**Latest pass (24 Aug 2026):** **Action-based button system** — centralized `Button` variants (`add`, `primary`, `secondary`, `view`, `edit`, `warning`, `danger`), `AddButton` / `TableActionButtons`, and app-wide migration of list/toolbar Add/Create CTAs to teal-blue `#0F5F78` — see [UI design system](#ui-design-system-colors--buttons) and [UI_UX_AUDIT_REPORT.md](./UI_UX_AUDIT_REPORT.md).
+
+**Prior pass (21 Aug 2026):** End-to-end **RBAC** for seven roles (Admin, Sales Manager, Production Manager, Store Manager, HR Manager, Accountant, Operator) — permissions, sidebar, routes, and JWT role preserved on refresh — see [Role-Based Access Control](#role-based-access-control). **Shared date/calendar controls** (`dateControls.jsx`, `dateUtils.js`) and duplicate calendar icon fix — see [UI design system](#ui-design-system-colors--buttons). **Store Manager** dedicated sidebar with full Purchases menu. **Settings** integrated into main ERP shell (dark navy theme in dark mode only). **Manufacturing workflow engine (18 Aug 2026):** role-based Sales → Job Card → Inventory → Production → Quality → Packing → Billing — see [Manufacturing Workflow Engine](#manufacturing-workflow-engine). **Design system rebrand (18 Aug 2026):** forest green brand, `frontend/src/design-system/` — see [UI design system](#ui-design-system-colors--buttons). **HR module dashboards (Aug 2026):** mockup-aligned UI — see [HR & Employee Management](#hr--employee-management). See [Stability Audit & Validation](#stability-audit--validation-aug-2026) and [Security Audit & Hardening](#security-audit--hardening-aug-2026).
 
 ## Branding & Assets
 
@@ -61,34 +63,62 @@ To add or replace slides, drop PNG/JPG files into `frontend/public/auth/` using 
 
 Central tokens live in `frontend/src/index.css` (`:root` + `.ui-*` utilities). Import shared classes and components from **`frontend/src/design-system/index.js`** — prefer CSS variables and design-system exports over page-specific hex.
 
+#### Button action system (Aug 2026)
+
+Use **`Button`** from `components/common/Button.jsx` (or `design-system/index.js`). Do not hand-roll button colors on pages.
+
+| Action | Variant | Color | Typical use |
+|--------|---------|-------|-------------|
+| **Add New / Create (toolbar)** | `add` | `#0F5F78` teal-blue | + Add New, Add Customer, Create Bill, New Order — compact 40px ERP CTA |
+| **Submit / Save** | `primary` | `#036F71` brand green | Form save, confirm workflow, issue material |
+| **Cancel / Back / Close** | `secondary` | Light + border | Dismiss modals, navigate back |
+| **View / Open / Approve** | `view` | `#2E9B72` | Row View, Open Job Card, Approve, Confirm Received |
+| **Edit / Update** | `edit` | `#3182CE` | Row Edit, Save Changes (existing record) |
+| **Delete / Remove** | `danger` | `#E24A4A` | Row Delete, destructive confirm |
+| **Hold / Pending / Review** | `warning` | Amber | Pending status actions |
+| **Low priority** | `outline` / `ghost` | Border / transparent | Export, filter chrome, icon-only |
+
+**Helpers:**
+
+| Component | Purpose |
+|-----------|---------|
+| `AddButton` | Toolbar “+ Add …” with default Plus icon (`variant="add"`) |
+| `TableActionButtons` | Inline row group: View (green) · Edit (blue) · Delete (red) |
+| `RowActionMenu` + `rowActionTone.js` | Kebab menus with semantic item colors |
+| `AccountsAddButton` / `InventoryAddButton` | Domain wrappers for list-page create CTAs |
+
+**CSS classes:** `.ui-btn--add`, `.ui-btn--primary`, `.ui-btn--view`, `.ui-btn--edit`, `.ui-btn--danger`, etc.
+
+#### Color tokens (non-button)
+
 | Role | Token / class | Typical use |
 |------|---------------|-------------|
-| Primary (brand) | `--color-primary` (`#036F71`) / `ui-btn-primary` | Primary actions, focus rings, nav active, links |
+| Primary (brand) | `--color-primary` (`#036F71`) | Focus rings, nav active, links, form submit |
+| Add CTA | `--color-add` (`#0F5F78`) | List/toolbar create buttons only |
 | Primary soft | `--color-primary-soft` (`#E6F4F4`) | Section headers, active pills, KPI backgrounds |
 | Page canvas | `--color-bg` (`#F2F7F5`) | App background — light green-gray BI canvas |
-| Success | `--color-success` / `ui-btn-success` | Complete / approve / planning CTAs |
-| Info / in-progress | `--color-info` | Workflow in-progress (blue — not primary brand) |
-| Action teal | `--color-action-teal` (`#0F6D84`) | Selective purchase/payment CTAs |
-| Action blue | `--color-action-blue` (`#7E93CC`) | Selective invoice create |
-| Warning / CTA yellow | `--color-cta` / `ui-btn-cta` | Warnings & attention — use selectively |
-| Danger | `--color-danger` / `ui-btn-danger` | Delete / destructive |
+| View / approve | `--color-action-view` (`#2E9B72`) | Success-style actions (not brand primary) |
+| Edit | `--color-action-edit` (`#3182CE`) | Update actions |
+| Info / in-progress | `--color-info` | Workflow in-progress (blue — not brand) |
+| Warning / CTA yellow | `--color-cta` / `ui-btn-warning` | Warnings & attention — use selectively |
+| Danger | `--color-danger` (`#E24A4A`) | Delete / destructive |
 
 **Design-system modules:**
 
 | Module | Path | Exports |
 |--------|------|---------|
-| Barrel | `design-system/index.js` | Tokens, `Button`, `FormField`, `StandardPageLayout`, `FilterBar`, `StatusBadge`, accounts/inventory shells |
-| Class tokens | `design-system/classes.js` | `inputClass`, `selectClass`, `textareaClass`, `tableWrapClass`, typography |
-| ERP forms | `design-system/erpFormControls.jsx` | `SoftInput`, `SoftSelect`, `FieldLabel`, `Pill`, `ERP_PRIMARY` |
-| Date/time | `design-system/dateControls.jsx` | `DatePicker`, `DateRangePicker`, `FloatingDate`, `FloatingDateRange` |
+| Barrel | `design-system/index.js` | Tokens, `Button`, `AddButton`, `TableActionButtons`, `FormField`, layouts |
+| Class tokens | `design-system/classes.js` | `inputClass`, `selectClass`, `tableWrapClass`, typography |
+| ERP forms | `design-system/erpFormControls.jsx` | `SoftInput`, `SoftSelect`, `FieldLabel`, `Pill` |
+| Date/time | `design-system/dateControls.jsx` | `DatePicker`, `DateRangePicker`, `FloatingDate` |
 | Date helpers | `utils/dateUtils.js` | `todayIso()`, timezone-safe ISO, range presets |
 | Status tones | `design-system/statusTone.js` | `resolveStatusTone()` for badges |
-| Accounts shell | `components/accounts/accountsDesignSystem.jsx` | Page shell, tables, `ACCOUNTS_INPUT_CLASS` |
-| Inventory shell | `components/inventory/inventoryDesignSystem.jsx` | Page shell, tabs, pagination, tables |
+| Accounts shell | `components/accounts/accountsDesignSystem.jsx` | Page shell, tables, `AccountsAddButton` |
+| Inventory shell | `components/inventory/inventoryDesignSystem.jsx` | Page shell, tabs, `InventoryAddButton` |
 
-JS mirrors: `frontend/src/theme/colors.js`, `frontend/src/styles/theme.js`. Shared component: `ActionButton` (`frontend/src/components/common/ActionButton.jsx`).
+JS mirrors: `frontend/src/theme/colors.js`, `frontend/src/styles/theme.js`. Legacy alias: `ActionButton.jsx` re-exports `Button`.
 
-Full migration status and remaining drift: [UI_UX_AUDIT_REPORT.md](./UI_UX_AUDIT_REPORT.md).
+Full migration status: [UI_UX_AUDIT_REPORT.md](./UI_UX_AUDIT_REPORT.md).
 
 ### Wireframe-first UI/UX standard
 
@@ -1228,6 +1258,22 @@ Forest green rebrand and shared component migration — **styling only**; no API
 
 Verification: `npm run build` passes; `erpFormControls` code-split chunk. Details: [UI_UX_AUDIT_REPORT.md](./UI_UX_AUDIT_REPORT.md).
 
+### Button action system pass (24 Aug 2026)
+
+Action-based button consistency across list pages and modals — **styling only**; no API, route, RBAC, or business-logic changes.
+
+| Area | Key files |
+|------|-----------|
+| Button variants | `frontend/src/components/common/Button.jsx` — `add`, `primary`, `secondary`, `view`, `edit`, `warning`, `danger` |
+| CSS tokens | `frontend/src/index.css` — `--color-add`, `.ui-btn--add`, `.ui-btn--view`, `.ui-btn--edit` |
+| Toolbar create | `AddButton` — teal-blue `#0F5F78` for + Add New / Create … |
+| Table rows | `TableActionButtons.jsx` — View (green) · Edit (blue) · Delete (red) |
+| Row menus | `RowActionMenu.jsx` + `rowActionTone.js` |
+| Domain wrappers | `AccountsAddButton`, `InventoryAddButton` |
+| Tests | `frontend/src/components/common/Button.test.jsx` |
+
+**Convention:** toolbar/list **create** → `variant="add"`; form **Save/Submit** → `variant="primary"` (brand green). Details: [UI_UX_AUDIT_REPORT.md](./UI_UX_AUDIT_REPORT.md).
+
 ### Known limitations (not bugs)
 
 - **E-Invoice / E-Waybill / Digital Signature** — UI routes exist; live submission requires user-configured external portal credentials.
@@ -1236,7 +1282,7 @@ Verification: `npm run build` passes; `erpFormControls` code-split chunk. Detail
 - **HR demo fallbacks** — Dashboard pages show `hrMasterData.js` preview when APIs return empty; live data replaces preview automatically when records exist.
 - **HR Settings** — UI-only; Save/Reset toasts do not persist to backend yet. Two-factor toggle is not enforced by auth.
 - **Recruitment / Training sub-routes** — `/hr/recruitment/candidates`, `/hr/training/sessions`, and some Performance/Leave/Payroll secondary tabs are placeholders.
-- **Residual purple accents** — Some sales list pages and payment forms still use legacy `#6b4eff` link/toggle styling; migration tracked in UI_UX_AUDIT_REPORT.
+- **Residual purple accents** — Some payment forms and inline document “+ Add Item” links still use legacy styling; migration tracked in UI_UX_AUDIT_REPORT.
 
 ---
 
