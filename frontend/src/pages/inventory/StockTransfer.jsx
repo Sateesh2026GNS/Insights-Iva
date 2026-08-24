@@ -117,6 +117,7 @@ export default function StockTransfer() {
   const { addToast } = useToast();
   const [searchParams] = useSearchParams();
   const formRef = useRef(null);
+  const headerDateInputRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [transfers, setTransfers] = useState([]);
   const [warehouses, setWarehouses] = useState([]);
@@ -832,8 +833,6 @@ export default function StockTransfer() {
                 icon="clipboard"
                 title="No transfers yet"
                 description="Create a transfer to move stock between warehouses."
-                actionLabel="New Transfer"
-                onAction={openForm}
               />
             }
           />

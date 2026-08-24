@@ -6,7 +6,7 @@ from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.models.machine import Machine
-from app.models.production import DailyProductionReport, ProductionOrder, WorkOrder
+from app.models.production import Batch, DailyProductionReport, ProductionOrder, WorkOrder
 from app.models.inventory import InventoryItem, StockLevel, StockMovement, Warehouse
 from app.models.procurement import GoodsReceipt
 from app.models.sales import Invoice, SalesOrder
@@ -122,25 +122,133 @@ def _top_machines(db: Session, tenant_id: int, machines: list[Machine], limit: i
     return result
 
 
-def _production_overview(db: Session, tenant_id: int, days: int) -> list[dict]:
+def _get_production_for_date_range(
+    db: Session, tenant_id: int, start_date: date, end_date: date
+) -> tuple[float, float]:
+    """Aggregate planned and actual production for a date range across reports, work orders, batches, and production orders."""
+    # 1. Daily production reports
+    reports = list(
+        db.scalars(
+            select(DailyProductionReport).where(
+                DailyProductionReport.tenant_id == tenant_id,
+                DailyProductionReport.report_date >= start_date,
+                DailyProductionReport.report_date <= end_date,
+            )
+        ).all()
+    )
+    r_actual = sum(float(r.produced_quantity or 0) for r in reports)
+    r_planned = sum(float(r.planned_quantity or 0) for r in reports)
+
+    # 2. Work orders in this date range
+    wos = list(
+        db.scalars(
+            select(WorkOrder).where(
+                WorkOrder.tenant_id == tenant_id,
+                or_(
+                    and_(
+                        WorkOrder.planned_start.isnot(None),
+                        func.date(WorkOrder.planned_start) >= start_date,
+                        func.date(WorkOrder.planned_start) <= end_date,
+                    ),
+                    and_(
+                        WorkOrder.planned_start.is_(None),
+                        func.date(WorkOrder.created_at) >= start_date,
+                        func.date(WorkOrder.created_at) <= end_date,
+                    ),
+                ),
+            )
+        ).all()
+    )
+    wo_planned = sum(float(w.planned_quantity or 0) for w in wos)
+    wo_actual = sum(float(w.actual_quantity or 0) for w in wos)
+
+    # Batches produced in this date range
+    batch_actual = float(
+        db.scalar(
+            select(func.coalesce(func.sum(Batch.quantity), 0)).where(
+                Batch.tenant_id == tenant_id,
+                or_(
+                    and_(
+                        Batch.produced_at.isnot(None),
+                        func.date(Batch.produced_at) >= start_date,
+                        func.date(Batch.produced_at) <= end_date,
+                    ),
+                    and_(
+                        Batch.produced_at.is_(None),
+                        func.date(Batch.created_at) >= start_date,
+                        func.date(Batch.created_at) <= end_date,
+                    ),
+                ),
+            )
+        )
+        or 0
+    )
+
+    # 3. Production orders in this date range
+    pos = list(
+        db.scalars(
+            select(ProductionOrder).where(
+                ProductionOrder.tenant_id == tenant_id,
+                or_(
+                    and_(
+                        ProductionOrder.start_date.isnot(None),
+                        func.date(ProductionOrder.start_date) >= start_date,
+                        func.date(ProductionOrder.start_date) <= end_date,
+                    ),
+                    and_(
+                        ProductionOrder.start_date.is_(None),
+                        func.date(ProductionOrder.created_at) >= start_date,
+                        func.date(ProductionOrder.created_at) <= end_date,
+                    ),
+                ),
+            )
+        ).all()
+    )
+    po_planned = sum(float(p.planned_quantity or 0) for p in pos)
+    po_actual = sum(
+        float(
+            p.actual_quantity
+            or (p.planned_quantity if (p.status or "").lower() in ("completed", "closed", "done") else 0)
+            or 0
+        )
+        for p in pos
+    )
+
+    # Combine planned
+    if r_planned > 0:
+        planned = r_planned
+    elif wo_planned > 0:
+        planned = wo_planned
+    elif po_planned > 0:
+        planned = po_planned
+    else:
+        planned = 0.0
+
+    # Combine actual
+    if r_actual > 0:
+        actual = r_actual
+    elif wo_actual > 0:
+        actual = wo_actual
+    elif batch_actual > 0:
+        actual = batch_actual
+    elif po_actual > 0:
+        actual = po_actual
+    else:
+        actual = 0.0
+
+    return planned, actual
+
+
+def _production_overview(db: Session, tenant_id: int, days: int = 7) -> list[dict]:
     today = date.today()
     overview = []
     for i in range(days - 1, -1, -1):
         d = today - timedelta(days=i)
-        day_reports = list(
-            db.scalars(
-                select(DailyProductionReport).where(
-                    DailyProductionReport.tenant_id == tenant_id,
-                    DailyProductionReport.report_date == d,
-                )
-            ).all()
-        )
-        actual = int(sum(float(r.produced_quantity or 0) for r in day_reports))
-        planned = int(sum(float(r.planned_quantity or 0) for r in day_reports))
+        planned, actual = _get_production_for_date_range(db, tenant_id, d, d)
         overview.append({
             "date": d.strftime("%d %b"),
-            "planned": planned,
-            "actual": actual,
+            "planned": int(planned),
+            "actual": int(actual),
         })
     return overview
 
@@ -148,24 +256,14 @@ def _production_overview(db: Session, tenant_id: int, days: int) -> list[dict]:
 def _weekly_overview(db: Session, tenant_id: int) -> list[dict]:
     today = date.today()
     rows = []
-    for week in range(5, 0, -1):
+    for week in range(4, -1, -1):
         start = today - timedelta(days=week * 7)
         end = start + timedelta(days=6)
-        reports = list(
-            db.scalars(
-                select(DailyProductionReport).where(
-                    DailyProductionReport.tenant_id == tenant_id,
-                    DailyProductionReport.report_date >= start,
-                    DailyProductionReport.report_date <= end,
-                )
-            ).all()
-        )
-        actual = int(sum(float(r.produced_quantity or 0) for r in reports))
-        planned = int(sum(float(r.planned_quantity or 0) for r in reports))
+        planned, actual = _get_production_for_date_range(db, tenant_id, start, end)
         rows.append({
-            "date": f"Week {6 - week}",
-            "planned": planned,
-            "actual": actual,
+            "date": f"Week {5 - week}",
+            "planned": int(planned),
+            "actual": int(actual),
         })
     return rows
 
@@ -174,26 +272,21 @@ def _monthly_overview(db: Session, tenant_id: int) -> list[dict]:
     today = date.today()
     rows = []
     for month_offset in range(5, -1, -1):
-        month_start = (today.replace(day=1) - timedelta(days=month_offset * 28)).replace(day=1)
-        if month_start.month == 12:
-            month_end = month_start.replace(day=31)
+        y = today.year
+        m = today.month - month_offset
+        while m <= 0:
+            m += 12
+            y -= 1
+        month_start = date(y, m, 1)
+        if m == 12:
+            month_end = date(y, 12, 31)
         else:
-            month_end = (month_start.replace(month=month_start.month + 1, day=1) - timedelta(days=1))
-        reports = list(
-            db.scalars(
-                select(DailyProductionReport).where(
-                    DailyProductionReport.tenant_id == tenant_id,
-                    DailyProductionReport.report_date >= month_start,
-                    DailyProductionReport.report_date <= month_end,
-                )
-            ).all()
-        )
-        actual = int(sum(float(r.produced_quantity or 0) for r in reports))
-        planned = int(sum(float(r.planned_quantity or 0) for r in reports))
+            month_end = date(y, m + 1, 1) - timedelta(days=1)
+        planned, actual = _get_production_for_date_range(db, tenant_id, month_start, month_end)
         rows.append({
             "date": month_start.strftime("%b"),
-            "planned": planned,
-            "actual": actual,
+            "planned": int(planned),
+            "actual": int(actual),
         })
     return rows
 
@@ -205,21 +298,11 @@ def _yearly_overview(db: Session, tenant_id: int) -> list[dict]:
         year_val = today.year - year_offset
         year_start = date(year_val, 1, 1)
         year_end = date(year_val, 12, 31)
-        reports = list(
-            db.scalars(
-                select(DailyProductionReport).where(
-                    DailyProductionReport.tenant_id == tenant_id,
-                    DailyProductionReport.report_date >= year_start,
-                    DailyProductionReport.report_date <= year_end,
-                )
-            ).all()
-        )
-        actual = int(sum(float(r.produced_quantity or 0) for r in reports))
-        planned = int(sum(float(r.planned_quantity or 0) for r in reports))
+        planned, actual = _get_production_for_date_range(db, tenant_id, year_start, year_end)
         rows.append({
             "date": str(year_val),
-            "planned": planned,
-            "actual": actual,
+            "planned": int(planned),
+            "actual": int(actual),
         })
     return rows
 

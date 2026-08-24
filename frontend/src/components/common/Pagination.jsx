@@ -29,7 +29,7 @@ export default function Pagination({
 
   return (
     <div className={`ui-pagination justify-between w-full border-t border-[var(--color-border-soft)] pt-3 ${className}`.trim()}>
-      <div className="flex items-center gap-2.5 flex-nowrap whitespace-nowrap text-[13px] text-[var(--color-text-secondary)]">
+      <div className="flex items-center gap-2.5 flex-nowrap whitespace-nowrap text-[13px] text-[#596b82]">
         <span>Rows per page:</span>
         {onPageSizeChange ? (
           <select
@@ -45,15 +45,15 @@ export default function Pagination({
             ))}
           </select>
         ) : (
-          <span className="inline-flex h-8 items-center rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 text-[13px] font-medium text-[var(--color-text)]">
+          <span className="ui-pagination-select !justify-center !px-3">
             {pageSize}
           </span>
         )}
-        <span className="font-medium text-[var(--color-text-secondary)]">
+        <span className="font-medium text-[#596b82]">
           {total != null
             ? total === 0
-              ? "0-0 of 0"
-              : `${from}-${to} of ${total}`
+              ? "0–0 of 0"
+              : `${from}–${to} of ${total}`
             : `Page ${page} of ${calculatedTotalPages}`}
         </span>
       </div>

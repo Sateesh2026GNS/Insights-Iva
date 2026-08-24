@@ -10,8 +10,8 @@ import { lookupIndianPincode } from "../../api/addressLookupApi";
 import { INDIAN_STATES } from "../../data/customersMasterData";
 import { useToast } from "../../context/ToastContext";
 
-const PURPLE = "#6b4eff";
-const YELLOW = "var(--color-primary)";
+const PRIMARY = "var(--color-primary)";
+const PRIMARY_SOFT = "var(--color-primary-soft)";
 
 const EMPTY_FORM = {
   gstin: "",
@@ -312,8 +312,8 @@ export default function DispatchAddressPicker({
         <button
           type="button"
           onClick={openModal}
-          className="inline-flex items-center rounded-full border px-3.5 py-1.5 text-[13px] font-semibold"
-          style={{ borderColor: "#c4b5fd", color: PURPLE }}
+          className="inline-flex items-center rounded-full border px-3.5 py-1.5 text-[13px] font-semibold transition-colors hover:bg-[var(--color-primary-soft)]"
+          style={{ borderColor: PRIMARY, color: PRIMARY }}
         >
           {value ? (
             <span className="max-w-[220px] truncate">{value.name}</span>
@@ -379,8 +379,8 @@ export default function DispatchAddressPicker({
           <button
             type="button"
             onClick={openModal}
-            className="flex w-full items-center justify-center border-t border-[#ececf0] bg-[#f3f0ff] py-3 text-[13px] font-bold"
-            style={{ color: PURPLE }}
+            className="flex w-full items-center justify-center border-t border-[#ececf0] bg-[var(--color-primary-soft)] py-3 text-[13px] font-bold"
+            style={{ color: PRIMARY }}
           >
             + Add Dispatch Address
           </button>

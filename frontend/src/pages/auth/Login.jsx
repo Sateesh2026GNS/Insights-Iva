@@ -54,6 +54,19 @@ export default function Login() {
   const [error, setError] = useState("");
 
   const completeLogin = (data) => {
+    const compName =
+      data.user?.company_name ||
+      data.user?.tenant_name ||
+      localStorage.getItem("smrt_company_name") ||
+      "GNS Insights";
+
+    try {
+      sessionStorage.setItem("smrt_login_welcome", compName);
+      window.dispatchEvent(
+        new CustomEvent("smrt_login_welcome", { detail: { companyName: compName } })
+      );
+    } catch {}
+
     login({
       access_token: data.access_token,
       refresh_token: data.refresh_token,

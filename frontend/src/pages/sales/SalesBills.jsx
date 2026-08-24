@@ -19,8 +19,8 @@ const STATUS_STYLES = {
   paid: "bg-emerald-100 text-emerald-700",
   draft: "bg-slate-100 text-slate-600",
   partial: "bg-orange-100 text-orange-700",
-  sent: "bg-blue-100 text-blue-700",
-  approved: "bg-blue-100 text-blue-700",
+  sent: "bg-teal-100 text-teal-700",
+  approved: "bg-emerald-100 text-emerald-700",
 };
 
 const STATUS_LABEL = {
@@ -149,7 +149,7 @@ export default function SalesBills() {
           <span className="font-medium text-slate-800">
             {productName}
             {Array.isArray(r.items) && r.items.length > 1 && (
-              <span className="ml-1.5 rounded-full bg-blue-50 px-1.5 py-0.5 text-[10px] font-semibold text-blue-600">
+              <span className="ml-1.5 rounded-full bg-[var(--color-primary-soft)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--color-primary)]">
                 +{r.items.length - 1} more
               </span>
             )}

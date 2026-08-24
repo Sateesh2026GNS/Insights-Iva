@@ -9,7 +9,7 @@ import { getCompanySettings, updateCompanySettings } from "../../api/settingsApi
 import { INDIAN_STATES } from "../../data/customersMasterData";
 import { useToast } from "../../context/ToastContext";
 
-const PURPLE = "#6b4eff";
+const PRIMARY = "var(--color-primary)";
 
 import { inputClass } from "../../design-system/classes";
 
@@ -379,8 +379,7 @@ export default function EditCompanyDetailsModal({ open, onClose, onSaved }) {
               <button
                 type="button"
                 onClick={() => setCustomFieldOpen(true)}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-[#c4b5fd] bg-white px-3 py-2 text-[13px] font-semibold"
-                style={{ color: PURPLE }}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--color-primary)] bg-white px-3 py-2 text-[13px] font-semibold text-[var(--color-primary)] hover:bg-[var(--color-primary-soft)] transition-colors"
               >
                 <Plus className="h-4 w-4" />
                 Add Custom Field

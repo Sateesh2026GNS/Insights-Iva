@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import {
   Calendar,
   CalendarDays,
   CheckCircle,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   ClipboardList,
@@ -37,6 +38,12 @@ import { exportToExcel } from "../../utils/exportUtils";
 
 const PAGE_SIZES = [10, 25, 50];
 
+const PROCESS_STATUS_OPTIONS = [
+  { value: "passed", label: "Passed" },
+  { value: "in_progress", label: "In Progress" },
+  { value: "failed", label: "Failed" },
+];
+
 function ProcessStatusBadge({ row }) {
   const key = normalizeProcessStatus(row);
   const styles = {
@@ -68,6 +75,141 @@ function ProcessResultBadge({ row }) {
   );
 }
 
+function MultiSelectDropdown({
+  label,
+  options = [],
+  selected = [],
+  onChange,
+  placeholder = "Search...",
+  minWidth = "min-w-[11rem]",
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const wrapRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) {
+        setOpen(false);
+      }
+    };
+    if (open) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [open]);
+
+  const normalizedOptions = useMemo(() => {
+    return options.map((opt) =>
+      typeof opt === "string" ? { value: opt, label: opt } : opt
+    );
+  }, [options]);
+
+  const filteredOptions = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return normalizedOptions;
+    return normalizedOptions.filter((opt) =>
+      opt.label.toLowerCase().includes(q) || String(opt.value).toLowerCase().includes(q)
+    );
+  }, [normalizedOptions, query]);
+
+  const toggleOption = (val) => {
+    if (selected.includes(val)) {
+      onChange(selected.filter((item) => item !== val));
+    } else {
+      onChange([...selected, val]);
+    }
+  };
+
+  const selectAll = () => {
+    onChange(normalizedOptions.map((opt) => opt.value));
+  };
+
+  const clearAll = () => {
+    onChange([]);
+  };
+
+  const count = selected.length;
+  const triggerLabel = count > 0 ? `${label} (${count})` : `All ${label}`;
+
+  return (
+    <div className="relative" ref={wrapRef}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className={`inline-flex items-center justify-between gap-2 rounded-lg border border-[var(--color-border-soft)] bg-white px-3 py-2 text-[13px] font-medium text-[var(--color-text)] shadow-xs transition-colors hover:border-[var(--color-primary)] ${minWidth}`}
+      >
+        <span className="truncate">{triggerLabel}</span>
+        <ChevronDown className={`h-4 w-4 shrink-0 text-[var(--color-text-muted)] transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+      </button>
+
+      {open && (
+        <div className="absolute left-0 top-[calc(100%+4px)] z-40 w-64 rounded-xl border border-[var(--color-border-soft)] bg-white p-2 shadow-xl">
+          {normalizedOptions.length > 5 && (
+            <div className="mb-2 px-1">
+              <div className="flex items-center gap-1.5 rounded-lg border border-[var(--color-border-soft)] bg-[var(--color-surface-muted)]/50 px-2.5 py-1.5">
+                <Search className="h-3.5 w-3.5 text-[var(--color-text-muted)]" />
+                <input
+                  type="text"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder={placeholder}
+                  className="w-full bg-transparent text-[12px] text-[var(--color-text)] outline-none placeholder:text-[var(--color-text-placeholder)]"
+                />
+              </div>
+            </div>
+          )}
+
+          <div className="flex items-center justify-between border-b border-[var(--color-border-soft)] px-2 py-1 text-[11px]">
+            <button
+              type="button"
+              onClick={selectAll}
+              className="font-medium text-[var(--color-primary)] hover:underline cursor-pointer"
+            >
+              Select All
+            </button>
+            <button
+              type="button"
+              onClick={clearAll}
+              className="text-[var(--color-text-muted)] hover:text-red-600 cursor-pointer"
+            >
+              Clear
+            </button>
+          </div>
+
+          <div className="max-h-48 overflow-y-auto pt-1 space-y-0.5">
+            {filteredOptions.length === 0 ? (
+              <p className="px-2 py-3 text-center text-xs text-[var(--color-text-muted)]">No options found</p>
+            ) : (
+              filteredOptions.map((opt) => {
+                const isSelected = selected.includes(opt.value);
+                return (
+                  <label
+                    key={opt.value}
+                    className={`flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-[13px] cursor-pointer transition-colors ${
+                      isSelected
+                        ? "bg-[var(--color-primary-soft)] text-[var(--color-primary-dark)] font-medium"
+                        : "text-[var(--color-text)] hover:bg-[var(--color-surface-muted)]"
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => toggleOption(opt.value)}
+                      className="h-4 w-4 rounded border-[#c0d5d0] text-[var(--color-primary)] focus:ring-[var(--color-primary)] cursor-pointer"
+                    />
+                    <span className="truncate">{opt.label}</span>
+                  </label>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function pageNumberItems(current, total) {
   if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
   const items = [1];
@@ -86,9 +228,9 @@ export default function InProcessQC() {
   const [summary, setSummary] = useState(EMPTY_PROCESS_SUMMARY);
   const [rows, setRows] = useState([]);
   const [search, setSearch] = useState("");
-  const [workOrderFilter, setWorkOrderFilter] = useState("");
-  const [processFilter, setProcessFilter] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
+  const [selectedWorkOrders, setSelectedWorkOrders] = useState([]);
+  const [selectedProcesses, setSelectedProcesses] = useState([]);
+  const [selectedStatuses, setSelectedStatuses] = useState([]);
   const [dateFilter, setDateFilter] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [page, setPage] = useState(1);
@@ -121,22 +263,43 @@ export default function InProcessQC() {
     load();
   }, [load]);
 
-  const workOrders = useMemo(
-    () => [...new Set(rows.map((r) => r.work_order_number).filter(Boolean))].sort(),
-    [rows]
-  );
-  const processes = useMemo(
-    () => [...new Set(rows.map((r) => r.process_operation || r.machine_name).filter(Boolean))].sort(),
-    [rows]
-  );
+  const workOrders = useMemo(() => {
+    const fromRows = rows.map((r) => r.work_order_number || r.work_order).filter(Boolean);
+    const standardWOs = [
+      "WO-2026-0001",
+      "WO-2026-0002",
+      "WO-2026-0003",
+      "WO-2026-0004",
+      "WO-2026-0005",
+      "WO-2026-0006",
+      "WO-2026-0007",
+      "WO-2026-0008",
+    ];
+    return [...new Set([...fromRows, ...standardWOs])].sort();
+  }, [rows]);
+
+  const processes = useMemo(() => {
+    const fromRows = rows.map((r) => r.process_operation || r.machine_name || r.process).filter(Boolean);
+    const standardProcesses = [
+      "Cutting & Slitting",
+      "CNC Machining",
+      "Stamping & Pressing",
+      "Welding & Fabrication",
+      "Heat Treatment",
+      "Surface Coating",
+      "Assembly & Fitting",
+    ];
+    return [...new Set([...fromRows, ...standardProcesses])].sort();
+  }, [rows]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return rows.filter((r) => {
-      if (workOrderFilter && r.work_order_number !== workOrderFilter) return false;
+      const wo = r.work_order_number || r.work_order;
+      if (selectedWorkOrders.length > 0 && !selectedWorkOrders.includes(wo)) return false;
       const process = r.process_operation || r.machine_name;
-      if (processFilter && process !== processFilter) return false;
-      if (statusFilter && normalizeProcessStatus(r) !== statusFilter) return false;
+      if (selectedProcesses.length > 0 && !selectedProcesses.includes(process)) return false;
+      if (selectedStatuses.length > 0 && !selectedStatuses.includes(normalizeProcessStatus(r))) return false;
       const rowDate = String(r.inspection_date || r.inspection_time || "").slice(0, 10);
       if (dateFilter && rowDate !== dateFilter) return false;
       if (!q) return true;
@@ -151,11 +314,11 @@ export default function InProcessQC() {
         r.batch_code,
       ].some((v) => String(v || "").toLowerCase().includes(q));
     });
-  }, [rows, search, workOrderFilter, processFilter, statusFilter, dateFilter]);
+  }, [rows, search, selectedWorkOrders, selectedProcesses, selectedStatuses, dateFilter]);
 
   useEffect(() => {
     setPage(1);
-  }, [search, workOrderFilter, processFilter, statusFilter, dateFilter, pageSize]);
+  }, [search, selectedWorkOrders, selectedProcesses, selectedStatuses, dateFilter, pageSize]);
 
   const total = filtered.length;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
@@ -196,8 +359,6 @@ export default function InProcessQC() {
   return (
     <div className="min-w-0 space-y-5 pb-4">
       <PageHeader
-        title="In-Process QC"
-        showTitle
         subtitle="Monitor and manage quality checks during the production process"
         action={
           <div className="flex flex-wrap items-center gap-2">
@@ -238,50 +399,41 @@ export default function InProcessQC() {
               type="search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search"
-              className="ui-input w-full !pl-10"
+              placeholder="Search by QC no, work order, operation, product..."
+              className="ui-input w-full !pl-10 text-[13px] text-[var(--color-text)]"
             />
           </div>
-          <select
-            value={workOrderFilter}
-            onChange={(e) => setWorkOrderFilter(e.target.value)}
-            className="ui-select !w-auto min-w-[10.5rem]"
-            aria-label="Work order filter"
-          >
-            <option value="">All Work Orders</option>
-            {workOrders.map((wo) => (
-              <option key={wo} value={wo}>{wo}</option>
-            ))}
-          </select>
-          <select
-            value={processFilter}
-            onChange={(e) => setProcessFilter(e.target.value)}
-            className="ui-select !w-auto min-w-[10.5rem]"
-            aria-label="Process filter"
-          >
-            <option value="">All Processes</option>
-            {processes.map((p) => (
-              <option key={p} value={p}>{p}</option>
-            ))}
-          </select>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="ui-select !w-auto min-w-[9.5rem]"
-            aria-label="Status filter"
-          >
-            <option value="">All Status</option>
-            <option value="passed">Passed</option>
-            <option value="in_progress">In Progress</option>
-            <option value="failed">Failed</option>
-          </select>
+          <MultiSelectDropdown
+            label="Work Orders"
+            options={workOrders}
+            selected={selectedWorkOrders}
+            onChange={setSelectedWorkOrders}
+            placeholder="Search work orders..."
+            minWidth="min-w-[12rem]"
+          />
+          <MultiSelectDropdown
+            label="Processes"
+            options={processes}
+            selected={selectedProcesses}
+            onChange={setSelectedProcesses}
+            placeholder="Search processes..."
+            minWidth="min-w-[11rem]"
+          />
+          <MultiSelectDropdown
+            label="Status"
+            options={PROCESS_STATUS_OPTIONS}
+            selected={selectedStatuses}
+            onChange={setSelectedStatuses}
+            placeholder="Search statuses..."
+            minWidth="min-w-[9.5rem]"
+          />
           <label className="relative inline-flex items-center">
             <CalendarDays className="pointer-events-none absolute left-3 h-4 w-4 text-[var(--color-text-muted)]" />
             <input
               type="date"
               value={dateFilter}
               onChange={(e) => setDateFilter(e.target.value)}
-              className="ui-input !w-auto min-w-[10.5rem] !pl-9"
+              className="ui-input !w-auto min-w-[10.5rem] !pl-9 text-[13px] text-[var(--color-text)]"
               aria-label="Select date"
             />
           </label>
@@ -296,9 +448,9 @@ export default function InProcessQC() {
               variant="ghost"
               onClick={() => {
                 setSearch("");
-                setWorkOrderFilter("");
-                setProcessFilter("");
-                setStatusFilter("");
+                setSelectedWorkOrders([]);
+                setSelectedProcesses([]);
+                setSelectedStatuses([]);
                 setDateFilter("");
               }}
             >
@@ -325,8 +477,8 @@ export default function InProcessQC() {
       <div className="ui-card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-[1100px] w-full border-collapse text-left text-[13px]">
-            <thead className="bg-[var(--color-surface-thead)] text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
-              <tr className="border-b border-[var(--color-border-soft)]">
+            <thead className="bg-[var(--color-primary-soft)] text-[12px] font-semibold text-[var(--color-primary-dark)] border-b border-[#d0e5e0]">
+              <tr>
                 <SerialNumberHeader className="px-3 py-3" />
                 <th className="px-4 py-3">QC No.</th>
                 <th className="px-4 py-3">Date</th>
@@ -350,7 +502,15 @@ export default function InProcessQC() {
                 pageRows.map((row, rowIndex) => (
                   <tr key={row.id ?? row.qc_number} className="hover:bg-[var(--color-surface-muted)]/50">
                     <SerialNumberCell rowIndex={rowIndex} page={page} pageSize={pageSize} className="px-3 py-3.5" />
-                    <td className="px-4 py-3.5 font-semibold text-[var(--color-text)]">{row.qc_number}</td>
+                    <td className="px-4 py-3.5 font-semibold">
+                      <button
+                        type="button"
+                        onClick={() => setViewRow(row)}
+                        className="font-semibold text-[var(--color-primary)] hover:underline cursor-pointer"
+                      >
+                        {row.qc_number}
+                      </button>
+                    </td>
                     <td className="whitespace-nowrap px-4 py-3.5 text-[var(--color-text-secondary)]">
                       {formatInspectionDate(row.inspection_date || row.inspection_time)}
                     </td>
@@ -390,59 +550,56 @@ export default function InProcessQC() {
           </table>
         </div>
 
-        <div className="flex flex-col gap-3 border-t border-[var(--color-border-soft)] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-xs text-[var(--color-text-muted)]">
-            Showing {from} to {to} of {total} entries
-          </p>
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                disabled={page <= 1}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="grid h-8 w-8 place-items-center rounded border border-[var(--color-border)] bg-white disabled:opacity-40"
-                aria-label="Previous page"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-              {pageNumberItems(page, totalPages).map((item) =>
-                typeof item === "string" ? (
-                  <span key={item} className="px-1 text-xs text-[var(--color-text-muted)]">…</span>
-                ) : (
-                  <button
-                    key={item}
-                    type="button"
-                    onClick={() => setPage(item)}
-                    className={`grid h-8 min-w-8 place-items-center rounded border px-2 text-xs font-semibold ${
-                      page === item
-                        ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-white"
-                        : "border-[var(--color-border)] bg-white text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-muted)]"
-                    }`}
-                  >
-                    {item}
-                  </button>
-                )
-              )}
-              <button
-                type="button"
-                disabled={page >= totalPages}
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                className="grid h-8 w-8 place-items-center rounded border border-[var(--color-border)] bg-white disabled:opacity-40"
-                aria-label="Next page"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </button>
-            </div>
+        <div className="ui-pagination justify-between border-t border-[var(--color-border-soft)] px-4 py-3">
+          <div className="flex items-center gap-2.5 flex-nowrap whitespace-nowrap text-[13px] text-[#596b82]">
+            <span>Rows per page:</span>
             <select
               value={pageSize}
               onChange={(e) => setPageSize(Number(e.target.value))}
-              className="ui-select !w-auto min-w-[6.5rem] text-xs"
+              className="ui-pagination-select"
               aria-label="Rows per page"
             >
               {PAGE_SIZES.map((n) => (
-                <option key={n} value={n}>{n} / page</option>
+                <option key={n} value={n}>{n}</option>
               ))}
             </select>
+            <span>
+              {total === 0 ? "0–0 of 0" : `${from}–${to} of ${total}`}
+            </span>
+          </div>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              disabled={page <= 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              className="ui-page-btn"
+              aria-label="Previous page"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            {pageNumberItems(page, totalPages).map((item, idx) =>
+              typeof item === "string" ? (
+                <span key={`dots-${idx}`} className="px-1 text-xs text-[var(--color-text-muted)]">…</span>
+              ) : (
+                <button
+                  key={item}
+                  type="button"
+                  onClick={() => setPage(item)}
+                  className={`ui-page-btn ${page === item ? "ui-page-btn--active" : ""}`}
+                >
+                  {item}
+                </button>
+              )
+            )}
+            <button
+              type="button"
+              disabled={page >= totalPages}
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              className="ui-page-btn"
+              aria-label="Next page"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
           </div>
         </div>
       </div>

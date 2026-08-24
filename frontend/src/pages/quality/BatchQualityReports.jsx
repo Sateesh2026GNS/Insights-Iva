@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import {
   CalendarDays,
   CheckCircle,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Clock,
@@ -38,6 +39,17 @@ import { exportToExcel } from "../../utils/exportUtils";
 
 const PAGE_SIZES = [10, 25, 50];
 
+const BATCH_STATUS_OPTIONS = [
+  { value: "completed", label: "Completed" },
+  { value: "in_progress", label: "In Progress" },
+];
+
+const BATCH_RESULT_OPTIONS = [
+  { value: "passed", label: "Passed" },
+  { value: "failed", label: "Failed" },
+  { value: "pending", label: "Pending" },
+];
+
 function BatchStatusBadge({ row }) {
   const key = normalizeBatchStatus(row);
   const styles = {
@@ -68,6 +80,141 @@ function BatchResultBadge({ row }) {
   );
 }
 
+function MultiSelectDropdown({
+  label,
+  options = [],
+  selected = [],
+  onChange,
+  placeholder = "Search...",
+  minWidth = "min-w-[11rem]",
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const wrapRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) {
+        setOpen(false);
+      }
+    };
+    if (open) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [open]);
+
+  const normalizedOptions = useMemo(() => {
+    return options.map((opt) =>
+      typeof opt === "string" ? { value: opt, label: opt } : opt
+    );
+  }, [options]);
+
+  const filteredOptions = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return normalizedOptions;
+    return normalizedOptions.filter((opt) =>
+      opt.label.toLowerCase().includes(q) || String(opt.value).toLowerCase().includes(q)
+    );
+  }, [normalizedOptions, query]);
+
+  const toggleOption = (val) => {
+    if (selected.includes(val)) {
+      onChange(selected.filter((item) => item !== val));
+    } else {
+      onChange([...selected, val]);
+    }
+  };
+
+  const selectAll = () => {
+    onChange(normalizedOptions.map((opt) => opt.value));
+  };
+
+  const clearAll = () => {
+    onChange([]);
+  };
+
+  const count = selected.length;
+  const triggerLabel = count > 0 ? `${label} (${count})` : `All ${label}`;
+
+  return (
+    <div className="relative" ref={wrapRef}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className={`inline-flex items-center justify-between gap-2 rounded-lg border border-[var(--color-border-soft)] bg-white px-3.5 py-2 text-[13px] font-medium text-[var(--color-text)] shadow-xs transition-colors hover:border-[var(--color-primary)] ${minWidth}`}
+      >
+        <span className="truncate">{triggerLabel}</span>
+        <ChevronDown className={`h-4 w-4 shrink-0 text-[var(--color-text-muted)] transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+      </button>
+
+      {open && (
+        <div className="absolute left-0 top-[calc(100%+4px)] z-40 w-64 rounded-xl border border-[var(--color-border-soft)] bg-white p-2 shadow-xl">
+          {normalizedOptions.length > 5 && (
+            <div className="mb-2 px-1">
+              <div className="flex items-center gap-1.5 rounded-lg border border-[var(--color-border-soft)] bg-[var(--color-surface-muted)]/50 px-2.5 py-1.5">
+                <Search className="h-3.5 w-3.5 text-[var(--color-text-muted)]" />
+                <input
+                  type="text"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder={placeholder}
+                  className="w-full bg-transparent text-[12px] text-[var(--color-text)] outline-none placeholder:text-[var(--color-text-placeholder)]"
+                />
+              </div>
+            </div>
+          )}
+
+          <div className="flex items-center justify-between border-b border-[var(--color-border-soft)] px-2 py-1 text-[11px]">
+            <button
+              type="button"
+              onClick={selectAll}
+              className="font-medium text-[var(--color-primary)] hover:underline cursor-pointer"
+            >
+              Select All
+            </button>
+            <button
+              type="button"
+              onClick={clearAll}
+              className="text-[var(--color-text-muted)] hover:text-red-600 cursor-pointer"
+            >
+              Clear
+            </button>
+          </div>
+
+          <div className="max-h-48 overflow-y-auto pt-1 space-y-0.5">
+            {filteredOptions.length === 0 ? (
+              <p className="px-2 py-3 text-center text-xs text-[var(--color-text-muted)]">No options found</p>
+            ) : (
+              filteredOptions.map((opt) => {
+                const isSelected = selected.includes(opt.value);
+                return (
+                  <label
+                    key={opt.value}
+                    className={`flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-[13px] cursor-pointer transition-colors ${
+                      isSelected
+                        ? "bg-[var(--color-primary-soft)] text-[var(--color-primary-dark)] font-medium"
+                        : "text-[var(--color-text)] hover:bg-[var(--color-surface-muted)]"
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => toggleOption(opt.value)}
+                      className="h-4 w-4 rounded border-[#c0d5d0] text-[var(--color-primary)] focus:ring-[var(--color-primary)] cursor-pointer"
+                    />
+                    <span className="truncate">{opt.label}</span>
+                  </label>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function pageNumberItems(current, total) {
   if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
   const items = [1];
@@ -86,10 +233,10 @@ export default function BatchQualityReports() {
   const [summary, setSummary] = useState(EMPTY_BATCH_SUMMARY);
   const [rows, setRows] = useState([]);
   const [search, setSearch] = useState("");
-  const [productFilter, setProductFilter] = useState("");
-  const [processFilter, setProcessFilter] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
-  const [resultFilter, setResultFilter] = useState("");
+  const [selectedProducts, setSelectedProducts] = useState([]);
+  const [selectedProcesses, setSelectedProcesses] = useState([]);
+  const [selectedStatuses, setSelectedStatuses] = useState([]);
+  const [selectedResults, setSelectedResults] = useState([]);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [showFilters, setShowFilters] = useState(false);
@@ -123,27 +270,27 @@ export default function BatchQualityReports() {
     load();
   }, [load]);
 
-  const products = useMemo(
-    () => [...new Set(rows.map((r) => r.product_name).filter(Boolean))].sort(),
-    [rows]
-  );
-  const processes = useMemo(
-    () => [...new Set(rows.map((r) => r.process_operation || r.process).filter(Boolean))].sort(),
-    [rows]
-  );
+  const products = useMemo(() => {
+    const fromRows = rows.map((r) => r.product_name).filter(Boolean);
+    const defaults = ["Shaft 25mm", "Flange Coupling 100mm", "Precision Gear 45T", "Bushing 30mm", "Hydraulic Cylinder Rod"];
+    return [...new Set([...fromRows, ...defaults])].sort();
+  }, [rows]);
+  const processes = useMemo(() => {
+    const fromRows = rows.map((r) => r.process_operation || r.process).filter(Boolean);
+    const defaults = ["Machining", "Heat Treatment", "Surface Grinding", "CNC Milling", "Final Assembly"];
+    return [...new Set([...fromRows, ...defaults])].sort();
+  }, [rows]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return rows.filter((r) => {
-      if (productFilter && r.product_name !== productFilter) return false;
+      if (selectedProducts.length > 0 && !selectedProducts.includes(r.product_name)) return false;
       const process = r.process_operation || r.process;
-      if (processFilter && process !== processFilter) return false;
-      if (statusFilter && normalizeBatchStatus(r) !== statusFilter) return false;
-      if (resultFilter) {
-        const result = batchResultLabel(r);
-        if (resultFilter === "passed" && result !== "Passed") return false;
-        if (resultFilter === "failed" && result !== "Failed") return false;
-        if (resultFilter === "pending" && result !== null) return false;
+      if (selectedProcesses.length > 0 && !selectedProcesses.includes(process)) return false;
+      if (selectedStatuses.length > 0 && !selectedStatuses.includes(normalizeBatchStatus(r))) return false;
+      if (selectedResults.length > 0) {
+        const res = (batchResultLabel(r) || "Pending").toLowerCase();
+        if (!selectedResults.includes(res)) return false;
       }
       const start = String(r.start_date || r.report_date || "").slice(0, 10);
       if (dateFrom && start < dateFrom) return false;
@@ -159,11 +306,11 @@ export default function BatchQualityReports() {
         r.inspector,
       ].some((v) => String(v || "").toLowerCase().includes(q));
     });
-  }, [rows, search, productFilter, processFilter, statusFilter, resultFilter, dateFrom, dateTo]);
+  }, [rows, search, selectedProducts, selectedProcesses, selectedStatuses, selectedResults, dateFrom, dateTo]);
 
   useEffect(() => {
     setPage(1);
-  }, [search, productFilter, processFilter, statusFilter, resultFilter, dateFrom, dateTo, pageSize]);
+  }, [search, selectedProducts, selectedProcesses, selectedStatuses, selectedResults, dateFrom, dateTo, pageSize]);
 
   const total = filtered.length;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
@@ -199,8 +346,6 @@ export default function BatchQualityReports() {
   return (
     <div className="min-w-0 space-y-5 pb-4">
       <PageHeader
-        title="Batch Quality Reports"
-        showTitle
         subtitle="View and analyze quality results by batch"
         action={
           <div className="flex flex-wrap items-center gap-2">
@@ -279,83 +424,74 @@ export default function BatchQualityReports() {
       </div>
 
       <div className="ui-card ui-card--padded">
-        <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
+        <div className="flex flex-col gap-3.5 xl:flex-row xl:items-center">
           <div className="relative min-w-0 flex-1">
             <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]" />
             <input
               type="search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search"
-              className="ui-input w-full !pl-10"
+              placeholder="Search by batch no, product, work order..."
+              className="ui-input w-full !pl-10 text-[13px] text-[var(--color-text)]"
             />
           </div>
-          <select
-            value={productFilter}
-            onChange={(e) => setProductFilter(e.target.value)}
-            className="ui-select !w-auto min-w-[10.5rem]"
-            aria-label="Product filter"
-          >
-            <option value="">All Products</option>
-            {products.map((p) => (
-              <option key={p} value={p}>{p}</option>
-            ))}
-          </select>
-          <select
-            value={processFilter}
-            onChange={(e) => setProcessFilter(e.target.value)}
-            className="ui-select !w-auto min-w-[10.5rem]"
-            aria-label="Process filter"
-          >
-            <option value="">All Processes</option>
-            {processes.map((p) => (
-              <option key={p} value={p}>{p}</option>
-            ))}
-          </select>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="ui-select !w-auto min-w-[9.5rem]"
-            aria-label="Status filter"
-          >
-            <option value="">All Status</option>
-            <option value="completed">Completed</option>
-            <option value="in_progress">In Progress</option>
-          </select>
-          <select
-            value={resultFilter}
-            onChange={(e) => setResultFilter(e.target.value)}
-            className="ui-select !w-auto min-w-[9.5rem]"
-            aria-label="Result filter"
-          >
-            <option value="">All Results</option>
-            <option value="passed">Passed</option>
-            <option value="failed">Failed</option>
-            <option value="pending">Pending</option>
-          </select>
-          <div className="flex flex-wrap items-center gap-2">
-            <label className="relative inline-flex items-center">
-              <CalendarDays className="pointer-events-none absolute left-3 h-4 w-4 text-[var(--color-text-muted)]" />
+          <div className="flex flex-wrap items-center gap-3">
+            <MultiSelectDropdown
+              label="Products"
+              options={products}
+              selected={selectedProducts}
+              onChange={setSelectedProducts}
+              placeholder="Search products..."
+              minWidth="min-w-[11.5rem]"
+            />
+            <MultiSelectDropdown
+              label="Processes"
+              options={processes}
+              selected={selectedProcesses}
+              onChange={setSelectedProcesses}
+              placeholder="Search processes..."
+              minWidth="min-w-[11rem]"
+            />
+            <MultiSelectDropdown
+              label="Status"
+              options={BATCH_STATUS_OPTIONS}
+              selected={selectedStatuses}
+              onChange={setSelectedStatuses}
+              placeholder="Search statuses..."
+              minWidth="min-w-[9.5rem]"
+            />
+            <MultiSelectDropdown
+              label="Results"
+              options={BATCH_RESULT_OPTIONS}
+              selected={selectedResults}
+              onChange={setSelectedResults}
+              placeholder="Search results..."
+              minWidth="min-w-[9.5rem]"
+            />
+            <div className="flex items-center gap-2">
+              <label className="relative inline-flex items-center">
+                <CalendarDays className="pointer-events-none absolute left-3 h-4 w-4 text-[var(--color-text-muted)]" />
+                <input
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => setDateFrom(e.target.value)}
+                  className="ui-input !w-auto min-w-[9.5rem] !pl-9 text-[13px] text-[var(--color-text)]"
+                  aria-label="Date from"
+                />
+              </label>
+              <span className="text-xs text-[var(--color-text-muted)]">to</span>
               <input
                 type="date"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-                className="ui-input !w-auto min-w-[9.5rem] !pl-9"
-                aria-label="Date from"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                className="ui-input !w-auto min-w-[9.5rem] text-[13px] text-[var(--color-text)]"
+                aria-label="Date to"
               />
-            </label>
-            <span className="text-xs text-[var(--color-text-muted)]">to</span>
-            <input
-              type="date"
-              value={dateTo}
-              onChange={(e) => setDateTo(e.target.value)}
-              className="ui-input !w-auto min-w-[9.5rem]"
-              aria-label="Date to"
-            />
+            </div>
+            <Button type="button" variant="secondary" onClick={() => setShowFilters((v) => !v)}>
+              <Filter className="h-4 w-4" /> Filters
+            </Button>
           </div>
-          <Button type="button" variant="secondary" onClick={() => setShowFilters((v) => !v)}>
-            <Filter className="h-4 w-4" /> Filters
-          </Button>
         </div>
         {showFilters ? (
           <div className="mt-4 flex flex-wrap gap-2 border-t border-[var(--color-border-soft)] pt-4">
@@ -364,10 +500,10 @@ export default function BatchQualityReports() {
               variant="ghost"
               onClick={() => {
                 setSearch("");
-                setProductFilter("");
-                setProcessFilter("");
-                setStatusFilter("");
-                setResultFilter("");
+                setSelectedProducts([]);
+                setSelectedProcesses([]);
+                setSelectedStatuses([]);
+                setSelectedResults([]);
                 setDateFrom("");
                 setDateTo("");
               }}
@@ -381,8 +517,8 @@ export default function BatchQualityReports() {
       <div className="ui-card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-[1280px] w-full border-collapse text-left text-[13px]">
-            <thead className="bg-[var(--color-surface-thead)] text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
-              <tr className="border-b border-[var(--color-border-soft)]">
+            <thead className="bg-[var(--color-primary-soft)] text-[12px] font-semibold text-[var(--color-primary-dark)] border-b border-[#d0e5e0]">
+              <tr>
                 <SerialNumberHeader className="px-3 py-3" />
                 <th className="px-4 py-3">Batch No.</th>
                 <th className="px-4 py-3">Product</th>
@@ -408,7 +544,15 @@ export default function BatchQualityReports() {
                 pageRows.map((row, rowIndex) => (
                   <tr key={row.id ?? row.batch_code} className="hover:bg-[var(--color-surface-muted)]/50">
                     <SerialNumberCell rowIndex={rowIndex} page={page} pageSize={pageSize} className="px-3 py-3.5" />
-                    <td className="px-4 py-3.5 font-semibold text-[var(--color-text)]">{row.batch_code}</td>
+                    <td className="px-4 py-3.5 font-semibold">
+                      <button
+                        type="button"
+                        onClick={() => setViewRow(row)}
+                        className="font-semibold text-[var(--color-primary)] hover:underline cursor-pointer"
+                      >
+                        {row.batch_code}
+                      </button>
+                    </td>
                     <td className="px-4 py-3.5 text-[var(--color-text)]">{row.product_name || "—"}</td>
                     <td className="px-4 py-3.5 font-medium text-[var(--color-text-secondary)]">
                       {row.work_order_number || row.work_order || "—"}
@@ -452,59 +596,56 @@ export default function BatchQualityReports() {
           </table>
         </div>
 
-        <div className="flex flex-col gap-3 border-t border-[var(--color-border-soft)] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-xs text-[var(--color-text-muted)]">
-            Showing {from} to {to} of {total} entries
-          </p>
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                disabled={page <= 1}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="grid h-8 w-8 place-items-center rounded border border-[var(--color-border)] bg-white disabled:opacity-40"
-                aria-label="Previous page"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-              {pageNumberItems(page, totalPages).map((item) =>
-                typeof item === "string" ? (
-                  <span key={item} className="px-1 text-xs text-[var(--color-text-muted)]">…</span>
-                ) : (
-                  <button
-                    key={item}
-                    type="button"
-                    onClick={() => setPage(item)}
-                    className={`grid h-8 min-w-8 place-items-center rounded border px-2 text-xs font-semibold ${
-                      page === item
-                        ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-white"
-                        : "border-[var(--color-border)] bg-white text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-muted)]"
-                    }`}
-                  >
-                    {item}
-                  </button>
-                )
-              )}
-              <button
-                type="button"
-                disabled={page >= totalPages}
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                className="grid h-8 w-8 place-items-center rounded border border-[var(--color-border)] bg-white disabled:opacity-40"
-                aria-label="Next page"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </button>
-            </div>
+        <div className="ui-pagination justify-between border-t border-[var(--color-border-soft)] px-4 py-3">
+          <div className="flex items-center gap-2.5 flex-nowrap whitespace-nowrap text-[13px] text-[#596b82]">
+            <span>Rows per page:</span>
             <select
               value={pageSize}
               onChange={(e) => setPageSize(Number(e.target.value))}
-              className="ui-select !w-auto min-w-[6.5rem] text-xs"
+              className="ui-pagination-select"
               aria-label="Rows per page"
             >
               {PAGE_SIZES.map((n) => (
-                <option key={n} value={n}>{n} / page</option>
+                <option key={n} value={n}>{n}</option>
               ))}
             </select>
+            <span>
+              {total === 0 ? "0–0 of 0" : `${from}–${to} of ${total}`}
+            </span>
+          </div>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              disabled={page <= 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              className="ui-page-btn"
+              aria-label="Previous page"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            {pageNumberItems(page, totalPages).map((item, idx) =>
+              typeof item === "string" ? (
+                <span key={`dots-${idx}`} className="px-1 text-xs text-[var(--color-text-muted)]">…</span>
+              ) : (
+                <button
+                  key={item}
+                  type="button"
+                  onClick={() => setPage(item)}
+                  className={`ui-page-btn ${page === item ? "ui-page-btn--active" : ""}`}
+                >
+                  {item}
+                </button>
+              )
+            )}
+            <button
+              type="button"
+              disabled={page >= totalPages}
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              className="ui-page-btn"
+              aria-label="Next page"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
           </div>
         </div>
       </div>

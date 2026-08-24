@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { useLocation, useSearchParams } from "react-router-dom";
 import {
   AlertTriangle,
+  Calendar,
   CheckCircle,
   CheckCircle2,
   ChevronLeft,
@@ -233,6 +234,7 @@ const defaultFilters = {
   customer: "",
   work_order: "",
   machine: "",
+  operator: "",
   department: "",
   shift: "",
   priority: "",
@@ -377,9 +379,9 @@ export default function ProductionPlanning() {
 
   const [machines, setMachines] = useState([]);
   // State to track which single order is being printed
-  const [printDetailOrder, setPrintDetailOrder] = useState(null);
-
   const fileInputRef = useRef(null);
+  const startDateRef = useRef(null);
+  const dueDateRef = useRef(null);
 
   const load = useCallback(async (opts = {}) => {
     const isRefresh = Boolean(opts?.isRefresh);
@@ -449,20 +451,92 @@ export default function ProductionPlanning() {
           o.buyer_company,
           o.work_order_number,
           o.machine_name,
+          o.operator_name,
+          o.operator_id,
+          o.department,
+          o.shift,
+          o.priority,
+          o.status,
+          ...(Array.isArray(o.work_orders)
+            ? o.work_orders.flatMap((w) => [w.work_order_number, w.machine_name, w.operator_name])
+            : []),
         ]
           .filter(Boolean)
           .join(" ")
           .toLowerCase();
         if (!hay.includes(q)) return false;
       }
-      if (appliedFilters.order_number && !String(o.order_number).toLowerCase().includes(appliedFilters.order_number.toLowerCase())) return false;
-      if (appliedFilters.product && !String(o.product_name || "").toLowerCase().includes(appliedFilters.product.toLowerCase())) return false;
-      if (appliedFilters.customer && !String(o.customer_name || o.buyer_company || "").toLowerCase().includes(appliedFilters.customer.toLowerCase())) return false;
-      if (appliedFilters.work_order && !String(o.work_order_number || "").toLowerCase().includes(appliedFilters.work_order.toLowerCase())) return false;
-      if (appliedFilters.machine && !String(o.machine_name || "").toLowerCase().includes(appliedFilters.machine.toLowerCase())) return false;
-      if (appliedFilters.department && o.department !== appliedFilters.department) return false;
-      if (appliedFilters.shift && o.shift !== appliedFilters.shift) return false;
-      if (appliedFilters.priority && o.priority !== appliedFilters.priority) return false;
+      if (
+        appliedFilters.order_number &&
+        !String(o.order_number || o.id || "")
+          .toLowerCase()
+          .includes(appliedFilters.order_number.trim().toLowerCase())
+      ) {
+        return false;
+      }
+      if (appliedFilters.work_order) {
+        const targetWo = appliedFilters.work_order.trim().toLowerCase();
+        const directWo = String(o.work_order_number || "").toLowerCase();
+        const nestedWo = Array.isArray(o.work_orders)
+          ? o.work_orders.some((w) =>
+              String(w.work_order_number || w.id || "").toLowerCase().includes(targetWo)
+            )
+          : false;
+        if (!directWo.includes(targetWo) && !nestedWo) return false;
+      }
+      if (
+        appliedFilters.product &&
+        !String(o.product_name || o.product?.name || o.product?.sku || "")
+          .toLowerCase()
+          .includes(appliedFilters.product.trim().toLowerCase())
+      ) {
+        return false;
+      }
+      if (
+        appliedFilters.customer &&
+        !String(o.customer_name || o.customer || o.buyer_company || "")
+          .toLowerCase()
+          .includes(appliedFilters.customer.trim().toLowerCase())
+      ) {
+        return false;
+      }
+      if (appliedFilters.machine) {
+        const targetM = appliedFilters.machine.trim().toLowerCase();
+        const directM = String(o.machine_name || o.machine?.name || o.machine?.code || "").toLowerCase();
+        const nestedM = Array.isArray(o.work_orders)
+          ? o.work_orders.some((w) =>
+              String(w.machine_name || w.machine?.name || w.machine?.code || "").toLowerCase().includes(targetM)
+            )
+          : false;
+        if (!directM.includes(targetM) && !nestedM) return false;
+      }
+      if (appliedFilters.operator) {
+        const targetOp = appliedFilters.operator.trim().toLowerCase();
+        const directOp = String(o.operator_name || o.operator_id || "").toLowerCase();
+        const nestedOp = Array.isArray(o.work_orders)
+          ? o.work_orders.some((w) =>
+              String(w.operator_name || w.operator || "").toLowerCase().includes(targetOp)
+            )
+          : false;
+        if (!directOp.includes(targetOp) && !nestedOp) return false;
+      }
+      if (
+        appliedFilters.department &&
+        String(o.department || "").trim().toLowerCase() !== appliedFilters.department.trim().toLowerCase()
+      ) {
+        return false;
+      }
+      if (appliedFilters.shift) {
+        const targetShift = appliedFilters.shift.trim().toLowerCase();
+        const shiftVal = typeof o.shift === "object" ? (o.shift?.id || o.shift?.label || "") : String(o.shift || "");
+        if (shiftVal.trim().toLowerCase() !== targetShift) return false;
+      }
+      if (
+        appliedFilters.priority &&
+        String(o.priority || "").trim().toLowerCase() !== appliedFilters.priority.trim().toLowerCase()
+      ) {
+        return false;
+      }
 
       const status = String(o.status || "").toLowerCase();
       if (appliedFilters.preset === "planned" && !PLANNED_STATUSES.includes(status)) return false;
@@ -470,12 +544,47 @@ export default function ProductionPlanning() {
       if (appliedFilters.preset === "completed" && !COMPLETED_STATUSES.includes(status)) return false;
       if (appliedFilters.preset === "delayed" && !o.is_delayed && status !== "delayed") return false;
 
-      if (appliedFilters.status && o.status !== appliedFilters.status) return false;
+      if (appliedFilters.status) {
+        const targetStatus = appliedFilters.status.trim().toLowerCase();
+        if (targetStatus === "completed" || targetStatus === "closed" || targetStatus === "done") {
+          if (!COMPLETED_STATUSES.includes(status)) return false;
+        } else if (targetStatus === "in_progress" || targetStatus === "running") {
+          if (!IN_PROGRESS_STATUSES.includes(status)) return false;
+        } else if (targetStatus === "planned" || targetStatus === "draft" || targetStatus === "pending") {
+          if (!PLANNED_STATUSES.includes(status)) return false;
+        } else if (status !== targetStatus) {
+          return false;
+        }
+      }
       const startDate = o.start_date ? String(o.start_date).slice(0, 10) : "";
       const createdDate = o.created_at ? String(o.created_at).slice(0, 10) : "";
+      const dueDate = o.due_date ? String(o.due_date).slice(0, 10) : "";
       const effectiveDate = startDate || createdDate;
-      if (appliedFilters.date_from && (!effectiveDate || effectiveDate < appliedFilters.date_from)) return false;
-      if (appliedFilters.date_to && (!effectiveDate || effectiveDate > appliedFilters.date_to)) return false;
+      const effectiveDue = dueDate || effectiveDate;
+
+      if (appliedFilters.date_from) {
+        const woStartMatch = Array.isArray(o.work_orders)
+          ? o.work_orders.some((w) => {
+              const ws = w.planned_start ? String(w.planned_start).slice(0, 10) : (w.created_at ? String(w.created_at).slice(0, 10) : "");
+              return ws && ws >= appliedFilters.date_from;
+            })
+          : false;
+        if ((!effectiveDate || effectiveDate < appliedFilters.date_from) && !woStartMatch) {
+          return false;
+        }
+      }
+
+      if (appliedFilters.date_to) {
+        const woDueMatch = Array.isArray(o.work_orders)
+          ? o.work_orders.some((w) => {
+              const wd = w.planned_end ? String(w.planned_end).slice(0, 10) : (w.planned_start ? String(w.planned_start).slice(0, 10) : (w.created_at ? String(w.created_at).slice(0, 10) : ""));
+              return wd && wd <= appliedFilters.date_to;
+            })
+          : false;
+        if ((!effectiveDue || effectiveDue > appliedFilters.date_to) && !woDueMatch) {
+          return false;
+        }
+      }
       return true;
     });
   }, [orders, appliedFilters]);
@@ -524,7 +633,7 @@ export default function ProductionPlanning() {
   };
 
   const handleApplyFilters = useCallback(() => {
-    setAppliedFilters({ ...filters });
+    setAppliedFilters({ ...filters, preset: "" });
     setPage(1);
   }, [filters]);
 
@@ -748,147 +857,155 @@ export default function ProductionPlanning() {
           if (Number.isFinite(id) && id > 0) {
             return products.find((p) => Number(p.id) === id) || { id };
           }
-          const q = String(row.product_name || row.product || row.sku || "").toLowerCase().trim();
-          if (!q) return null;
+          const raw = String(row.product || row.product_name || "").trim().toLowerCase();
+          if (!raw) return null;
           return (
-            products.find((p) =>
-              [p.name, p.sku, p.product_code].some((v) => String(v || "").toLowerCase() === q)
-            ) ||
-            products.find((p) => String(p.name || "").toLowerCase().includes(q)) ||
-            null
+            products.find(
+              (p) =>
+                String(p.name || "").toLowerCase() === raw ||
+                String(p.sku || "").toLowerCase() === raw ||
+                String(p.code || "").toLowerCase() === raw
+            ) || null
           );
         };
 
-        let created = 0;
-        let skipped = 0;
+        let createdCount = 0;
         for (const row of rows) {
           const product = matchProduct(row);
-          const qty = Number(row.planned_quantity || row.quantity || 0);
-          if (!product?.id || !Number.isFinite(qty) || qty <= 0) {
-            skipped += 1;
+          if (!product?.id) {
             continue;
           }
+          const plannedQty = Number(row.planned_quantity || row.quantity || 0);
+          if (!plannedQty || plannedQty <= 0) {
+            continue;
+          }
+
+          const payload = {
+            tenant_id: tenantId || 1,
+            product_id: product.id,
+            planned_quantity: plannedQty,
+            order_number: row.order_number ? String(row.order_number).trim() : undefined,
+            customer_name: row.customer ? String(row.customer).trim() : undefined,
+            priority: row.priority && PRIORITIES.includes(row.priority.toLowerCase()) ? row.priority.toLowerCase() : "medium",
+            department: row.department ? String(row.department).trim() : undefined,
+            shift: row.shift ? String(row.shift).trim() : undefined,
+            start_date: row.start_date ? new Date(row.start_date).toISOString() : undefined,
+            due_date: row.due_date ? new Date(row.due_date).toISOString() : undefined,
+            status: row.status && ORDER_STATUSES.includes(row.status.toLowerCase()) ? row.status.toLowerCase() : "planned",
+          };
+
           try {
-            await createProductionOrder({
-              tenant_id: tenantId,
-              product_id: product.id,
-              order_number: row.order_number || row.po_number || "",
-              planned_quantity: qty,
-              customer_name: row.customer_name || row.customer || null,
-              priority: String(row.priority || "medium").toLowerCase(),
-              department: row.department || "Production",
-              shift: row.shift || "Shift A",
-              start_date: row.start_date || null,
-              due_date: row.due_date || null,
-              status: row.status || "planned",
-            });
-            created += 1;
+            await createProductionOrder(payload);
+            createdCount += 1;
           } catch {
-            skipped += 1;
+            // skip failed row
           }
         }
 
-        if (created) {
-          addToast(`Imported ${created} production order${created === 1 ? "" : "s"}${skipped ? ` · ${skipped} skipped` : ""}`, "success");
-          await load();
+        if (createdCount > 0) {
+          addToast(`Import successful: Created ${createdCount} production order(s)`, "success");
+          notifyManufacturingSpine(MANUFACTURING_EVENTS.ORDER_CREATED, { count: createdCount });
+          load();
         } else {
-          addToast(skipped ? "Import failed: no matching products or valid quantities." : "No rows to import.", "error");
+          addToast("Import failed: No valid rows could be imported.", "error");
         }
-      } catch {
-        addToast("Error parsing file. Please check CSV format.", "error");
+      } catch (err) {
+        addToast(`Import failed: ${err.message || "Invalid file format"}`, "error");
       } finally {
         setImporting(false);
+        if (event.target) event.target.value = "";
       }
     };
 
     reader.readAsText(file);
-    event.target.value = "";
   };
 
-  const exportColumns = [
-    { key: "order_number", label: "Order No" },
-    { key: "product_name", label: "Product" },
-    { key: "buyer_company", label: "Buyer Company" },
-    { key: "size", label: "Size" },
-    { key: "planned_quantity", label: "Planned" },
-    { key: "produced_quantity", label: "Produced" },
-    { key: "priority", label: "Priority" },
-    { key: "status", label: "Status" },
-  ];
-
   const handleExportExcel = () => {
-    exportToExcel(filteredOrders, exportColumns, "production-planning");
-    addToast("Exported products to Excel");
+    const cols = [
+      { key: "order_number", label: "Order Number" },
+      { key: "product_name", label: "Product" },
+      { key: "customer_name", label: "Customer" },
+      { key: "planned_quantity", label: "Planned Quantity" },
+      { key: "produced_quantity", label: "Produced Quantity" },
+      { key: "priority", label: "Priority" },
+      { key: "status", label: "Status" },
+      { key: "machine_name", label: "Machine" },
+      { key: "operator_name", label: "Operator" },
+      { key: "department", label: "Department" },
+      { key: "shift", label: "Shift" },
+      { key: "start_date", label: "Start Date" },
+      { key: "due_date", label: "Due Date" },
+    ];
+    exportToExcel(filteredOrders, cols, "production-planning-orders");
+    addToast("Exported to Excel", "success");
   };
 
   const handleExportPdf = () => {
-    exportToPdf(filteredOrders, exportColumns, "Production Planning", "production-planning");
-    addToast("Exported products to PDF");
+    const cols = [
+      { key: "order_number", label: "Order No." },
+      { key: "product_name", label: "Product" },
+      { key: "planned_quantity", label: "Planned" },
+      { key: "produced_quantity", label: "Produced" },
+      { key: "priority", label: "Priority" },
+      { key: "status", label: "Status" },
+      { key: "due_date", label: "Due Date" },
+    ];
+    exportToPdf(filteredOrders, cols, "production-planning-orders", "Production Planning Report");
+    addToast("Exported to PDF", "success");
   };
 
   const handleGlobalPrint = () => {
     setPrintDetailOrder(null);
-    setTimeout(() => window.print(), 100);
+    window.print();
   };
 
   const handleIndividualPrint = (order) => {
     setPrintDetailOrder(order);
     setTimeout(() => {
       window.print();
-      setTimeout(() => setPrintDetailOrder(null), 500);
     }, 150);
   };
 
   const columns = [
     {
+      key: "id",
+      label: "S.No.",
+      render: (_, __, i) => <span className="tabular-nums font-medium text-[var(--color-text-muted)]">{from + i}</span>,
+      sortable: false,
+    },
+    {
       key: "order_number",
       label: "Order",
       render: (r) => (
-        <div className="min-w-[7.5rem]">
-          <p className="text-[13px] font-semibold tabular-nums text-[var(--color-text)]">{r.order_number || "—"}</p>
-          <p className="mt-0.5 text-[11px] text-[var(--color-text-muted)]">
-            {formatDate(r.start_date) !== "—" ? `Start ${formatDate(r.start_date)}` : "No start date"}
-          </p>
-        </div>
+        <button
+          type="button"
+          onClick={() => openOrder(r)}
+          className="font-medium text-[var(--color-primary)] hover:underline focus:outline-none"
+        >
+          {r.order_number}
+        </button>
       ),
     },
     {
       key: "product_name",
       label: "Product",
-      render: (r) => {
-        const product = cleanProductLabel(r.product_name);
-        const customer = r.buyer_company || r.customer_name || "";
-        const machine =
-          r.machine_name && r.machine_name !== "—" && r.machine_name !== "Unassigned" ? r.machine_name : "";
-        const meta = [customer, machine].filter(Boolean).join(" · ");
-        return (
-          <div className="max-w-[220px]">
-            <p className="truncate text-[13px] font-medium text-[var(--color-text)]" title={product}>
-              {product}
-            </p>
-            <p className="mt-0.5 truncate text-[11px] text-[var(--color-text-muted)]" title={meta || undefined}>
-              {meta || "No customer / machine"}
-            </p>
-          </div>
-        );
-      },
+      render: (r) => (
+        <div className="max-w-[200px] truncate" title={r.product_name}>
+          <span className="font-medium text-[var(--color-text)]">{r.product_name}</span>
+          {r.customer_name && r.customer_name !== "—" ? (
+            <span className="block text-[11px] text-[var(--color-text-muted)] truncate">{r.customer_name}</span>
+          ) : null}
+        </div>
+      ),
     },
     {
       key: "planned_quantity",
       label: "Qty",
-      render: (r) => {
-        const planned = Number(r.planned_quantity || 0);
-        const produced = Number(r.produced_quantity ?? r.actual_quantity ?? 0);
-        const balance = Math.max(planned - produced, 0);
-        return (
-          <div className="tabular-nums">
-            <p className="text-[13px] font-semibold text-[var(--color-text)]">{planned}</p>
-            <p className="text-[11px] text-[var(--color-text-muted)]">
-              {produced} done · {balance} left
-            </p>
-          </div>
-        );
-      },
+      render: (r) => (
+        <span className="tabular-nums text-[var(--color-text)]">
+          {Number(r.planned_quantity || 0).toLocaleString()}
+        </span>
+      ),
     },
     {
       key: "priority",
@@ -1013,28 +1130,23 @@ export default function ProductionPlanning() {
                   type="search"
                   placeholder="Search"
                   value={filters.q}
-                  onChange={(e) => setFilters((f) => ({ ...f, q: e.target.value, preset: "" }))}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setFilters((f) => ({ ...f, q: val, preset: "" }));
+                    setAppliedFilters((f) => ({ ...f, q: val, preset: "" }));
+                  }}
                   className="ui-input !rounded-full pl-10"
                 />
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <Button variant="secondary" type="button" onClick={() => setShowAdvanced(!showAdvanced)}>
-                  <Filter className="h-4 w-4" />
                   {showAdvanced ? "Hide Filters" : "Filters"}
                 </Button>
-                <Button variant="secondary" type="button" onClick={handleImportFileClick} disabled={importing}>
-                  <Upload className="h-4 w-4" />
-                  {importing ? "Importing…" : "Import"}
-                </Button>
-                <Button variant="secondary" type="button" onClick={handleExportExcel}  title="Export Excel">
+                <Button variant="secondary" type="button" onClick={handleExportExcel} title="Export Excel">
                   <FileSpreadsheet className="h-4 w-4" />
                   <span className="hidden sm:inline">Excel</span>
                 </Button>
-                <Button variant="secondary" type="button" onClick={handleExportPdf}  title="Export PDF">
-                  <FileText className="h-4 w-4" />
-                  <span className="hidden sm:inline">PDF</span>
-                </Button>
-                <Button variant="secondary" type="button" onClick={handleGlobalPrint}  title="Print">
+                <Button variant="secondary" type="button" onClick={handleGlobalPrint} title="Print">
                   <Printer className="h-4 w-4" />
                   <span className="hidden sm:inline">Print</span>
                 </Button>
@@ -1054,121 +1166,180 @@ export default function ProductionPlanning() {
               </div>
             </div>
 
-            {showAdvanced ? (
-              <div className="mb-4 rounded-[24px] border border-[#dfe7e3] bg-[#f3f5f4] p-3 print:hidden">
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-                  <input
-                    placeholder="Order No."
-                    value={filters.order_number}
-                    onChange={(e) => patchFilters({ order_number: e.target.value })}
-                    onKeyDown={handleFilterKeyDown}
-                    className="ui-input !min-h-[44px] !rounded-[18px] !border-[#dfe7e3] !bg-[#edf3f1] !text-[14px] !text-[#1f2b2d] placeholder:!text-[#64748b]"
-                  />
-                  <input
-                    placeholder="Product"
-                    value={filters.product}
-                    onChange={(e) => patchFilters({ product: e.target.value })}
-                    onKeyDown={handleFilterKeyDown}
-                    className="ui-input !min-h-[44px] !rounded-[18px] !border-[#dfe7e3] !bg-[#edf3f1] !text-[14px] !text-[#1f2b2d] placeholder:!text-[#64748b]"
-                  />
-                  <input
-                    placeholder="Customer"
-                    value={filters.customer}
-                    onChange={(e) => patchFilters({ customer: e.target.value })}
-                    onKeyDown={handleFilterKeyDown}
-                    className="ui-input !min-h-[44px] !rounded-[18px] !border-[#dfe7e3] !bg-[#edf3f1] !text-[14px] !text-[#1f2b2d] placeholder:!text-[#64748b]"
-                  />
-                  <input
-                    placeholder="Work Order"
-                    value={filters.work_order}
-                    onChange={(e) => patchFilters({ work_order: e.target.value })}
-                    onKeyDown={handleFilterKeyDown}
-                    className="ui-input !min-h-[44px] !rounded-[18px] !border-[#dfe7e3] !bg-[#edf3f1] !text-[14px] !text-[#1f2b2d] placeholder:!text-[#64748b]"
-                  />
-                  <input
-                    placeholder="Machine"
-                    value={filters.machine}
-                    onChange={(e) => patchFilters({ machine: e.target.value })}
-                    onKeyDown={handleFilterKeyDown}
-                    className="ui-input !min-h-[44px] !rounded-[18px] !border-[#dfe7e3] !bg-[#edf3f1] !text-[14px] !text-[#1f2b2d] placeholder:!text-[#64748b]"
-                  />
-                  <select
-                    value={filters.department}
-                    onChange={(e) => patchFilters({ department: e.target.value })}
-                    className="ui-select !min-h-[44px] !rounded-[18px] !border-[#dfe7e3] !bg-[#edf3f1] !text-[14px] !text-[#1f2b2d]"
-                  >
-                    <option value="">Department</option>
-                    {DEPARTMENTS.map((d) => (
-                      <option key={d} value={d}>
-                        {d}
+            {showAdvanced && (
+              <div className="mb-4 grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 print:hidden">
+                <input
+                  placeholder="WO Number"
+                  value={filters.work_order}
+                  onChange={(e) => patchFilters({ work_order: e.target.value })}
+                  onKeyDown={handleFilterKeyDown}
+                  className="ui-input"
+                />
+                <input
+                  placeholder="Production Order"
+                  value={filters.order_number}
+                  onChange={(e) => patchFilters({ order_number: e.target.value })}
+                  onKeyDown={handleFilterKeyDown}
+                  className="ui-input"
+                />
+                <input
+                  placeholder="Product"
+                  value={filters.product}
+                  onChange={(e) => patchFilters({ product: e.target.value })}
+                  onKeyDown={handleFilterKeyDown}
+                  className="ui-input"
+                />
+                <input
+                  placeholder="Customer"
+                  value={filters.customer}
+                  onChange={(e) => patchFilters({ customer: e.target.value })}
+                  onKeyDown={handleFilterKeyDown}
+                  className="ui-input"
+                />
+                <input
+                  placeholder="Machine"
+                  value={filters.machine}
+                  onChange={(e) => patchFilters({ machine: e.target.value })}
+                  onKeyDown={handleFilterKeyDown}
+                  className="ui-input"
+                />
+                <input
+                  placeholder="Operator"
+                  value={filters.operator}
+                  onChange={(e) => patchFilters({ operator: e.target.value })}
+                  onKeyDown={handleFilterKeyDown}
+                  className="ui-input"
+                />
+                <select
+                  value={filters.department}
+                  onChange={(e) => patchFilters({ department: e.target.value })}
+                  className="ui-select"
+                >
+                  <option value="">Department</option>
+                  {DEPARTMENTS.map((d) => (
+                    <option key={d} value={d}>
+                      {d}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={filters.shift}
+                  onChange={(e) => patchFilters({ shift: e.target.value })}
+                  className="ui-select"
+                >
+                  <option value="">Shift</option>
+                  {SHIFTS.map((s) => {
+                    const id = typeof s === "object" ? s.id : s;
+                    const label = typeof s === "object" ? s.label : s;
+                    return (
+                      <option key={id} value={id}>
+                        {label}
                       </option>
-                    ))}
-                  </select>
-                  <select
-                    value={filters.shift}
-                    onChange={(e) => patchFilters({ shift: e.target.value })}
-                    className="ui-select !min-h-[44px] !rounded-[18px] !border-[#dfe7e3] !bg-[#edf3f1] !text-[14px] !text-[#1f2b2d]"
-                  >
-                    <option value="">Shift</option>
-                    {SHIFTS.map((s) => {
-                      const id = typeof s === "object" ? s.id : s;
-                      const label = typeof s === "object" ? s.label : s;
-                      return (
-                        <option key={id} value={id}>
-                          {label}
-                        </option>
-                      );
-                    })}
-                  </select>
-                  <select
-                    value={filters.priority}
-                    onChange={(e) => patchFilters({ priority: e.target.value })}
-                    className="ui-select !min-h-[44px] !rounded-[18px] !border-[#dfe7e3] !bg-[#edf3f1] !text-[14px] !text-[#1f2b2d]"
-                  >
-                    <option value="">Priority</option>
-                    {PRIORITIES.map((p) => (
-                      <option key={p} value={p}>
-                        {p}
-                      </option>
-                    ))}
-                  </select>
-                  <select
-                    value={filters.status}
-                    onChange={(e) => patchFilters({ status: e.target.value })}
-                    className="ui-select !min-h-[44px] !rounded-[18px] !border-[#dfe7e3] !bg-[#edf3f1] !text-[14px] !text-[#1f2b2d]"
-                  >
-                    <option value="">Status</option>
-                    {ORDER_STATUSES.map((s) => (
-                      <option key={s} value={s}>
-                        {statusLabel(s)}
-                      </option>
-                    ))}
-                  </select>
+                    );
+                  })}
+                </select>
+                <select
+                  value={filters.priority}
+                  onChange={(e) => patchFilters({ priority: e.target.value })}
+                  className="ui-select"
+                >
+                  <option value="">Priority</option>
+                  {PRIORITIES.map((p) => (
+                    <option key={p} value={p}>
+                      {p}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={filters.status}
+                  onChange={(e) => patchFilters({ status: e.target.value })}
+                  className="ui-select"
+                >
+                  <option value="">Status</option>
+                  {ORDER_STATUSES.map((s) => (
+                    <option key={s} value={s}>
+                      {statusLabel(s)}
+                    </option>
+                  ))}
+                </select>
+                <div className="relative flex items-center">
                   <input
+                    ref={startDateRef}
                     type="date"
+                    placeholder="Start Date"
+                    title="Start Date"
+                    aria-label="Start Date"
                     value={filters.date_from}
                     onChange={(e) => patchFilters({ date_from: e.target.value })}
                     onKeyDown={handleFilterKeyDown}
-                    className="ui-input !min-h-[44px] !rounded-[18px] !border-[#dfe7e3] !bg-[#edf3f1] !text-[14px] !text-[#1f2b2d]"
+                    onClick={(e) => {
+                      try {
+                        e.target.showPicker?.();
+                      } catch {}
+                    }}
+                    className="ui-input w-full pr-10 cursor-pointer [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-0 [&::-webkit-calendar-picker-indicator]:top-0 [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:w-10 [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer"
                   />
+                  <button
+                    type="button"
+                    tabIndex={-1}
+                    onClick={() => {
+                      try {
+                        startDateRef.current?.showPicker?.();
+                        startDateRef.current?.focus();
+                      } catch {
+                        startDateRef.current?.focus();
+                      }
+                    }}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--color-text-icon)] hover:text-[var(--color-text)] transition-colors cursor-pointer"
+                    title="Open calendar"
+                  >
+                    <Calendar className="h-4 w-4" />
+                  </button>
+                </div>
+                <div className="relative flex items-center">
                   <input
+                    ref={dueDateRef}
                     type="date"
+                    placeholder="Due Date"
+                    title="Due Date"
+                    aria-label="Due Date"
                     value={filters.date_to}
                     onChange={(e) => patchFilters({ date_to: e.target.value })}
                     onKeyDown={handleFilterKeyDown}
-                    className="ui-input !min-h-[44px] !rounded-[18px] !border-[#dfe7e3] !bg-[#edf3f1] !text-[14px] !text-[#1f2b2d]"
+                    onClick={(e) => {
+                      try {
+                        e.target.showPicker?.();
+                      } catch {}
+                    }}
+                    className="ui-input w-full pr-10 cursor-pointer [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-0 [&::-webkit-calendar-picker-indicator]:top-0 [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:w-10 [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer"
                   />
+                  <button
+                    type="button"
+                    tabIndex={-1}
+                    onClick={() => {
+                      try {
+                        dueDateRef.current?.showPicker?.();
+                        dueDateRef.current?.focus();
+                      } catch {
+                        dueDateRef.current?.focus();
+                      }
+                    }}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--color-text-icon)] hover:text-[var(--color-text)] transition-colors cursor-pointer"
+                    title="Open calendar"
+                  >
+                    <Calendar className="h-4 w-4" />
+                  </button>
                 </div>
-                <div className="mt-3 flex flex-wrap items-center gap-3">
-                  <Button variant="primary" type="button" onClick={handleApplyFilters} className="!min-h-[40px] !rounded-[14px] !px-5 !text-[14px]">
+                <div className="flex items-center gap-2 sm:col-span-2 md:col-span-3 lg:col-span-4 xl:col-span-6">
+                  <Button variant="primary" type="button" onClick={handleApplyFilters}>
                     Apply Filters
                   </Button>
-                  <Button variant="secondary" type="button" onClick={handleClearFilters} className="!min-h-[40px] !rounded-[14px] !px-5 !text-[14px] !bg-transparent !border-[#dfe7e3] !text-[#1f2b2d]">
+                  <Button variant="secondary" type="button" onClick={handleClearFilters}>
                     Clear
                   </Button>
                 </div>
               </div>
-            ) : null}
+            )}
 
             <div className="planning-table-panel print:border-none print:shadow-none">
               <DataTable
@@ -1220,13 +1391,13 @@ export default function ProductionPlanning() {
               />
             </div>
 
-            <div className="mt-4 flex flex-wrap items-center justify-end gap-3 text-[12px] text-[var(--color-text-muted)] print:hidden">
-              <div className="mr-auto flex items-center gap-2">
+            <div className="mt-4 ui-pagination justify-between print:hidden">
+              <div className="flex items-center gap-2.5 flex-nowrap whitespace-nowrap">
                 <span>Rows per page:</span>
                 <select
                   value={pageSize}
                   onChange={(e) => setPageSize(Number(e.target.value))}
-                  className="ui-select !min-h-0 !w-auto !py-1"
+                  className="ui-pagination-select"
                 >
                   {PAGE_SIZES.map((n) => (
                     <option key={n} value={n}>
@@ -1234,7 +1405,7 @@ export default function ProductionPlanning() {
                     </option>
                   ))}
                 </select>
-                <span className="tabular-nums">{total === 0 ? "0–0 of 0" : `${from}–${to} of ${total}`}</span>
+                <span className="tabular-nums">{total === 0 ? "0-0 of 0" : `${from}-${to} of ${total}`}</span>
               </div>
               <div className="flex items-center gap-1">
                 <button

@@ -100,7 +100,7 @@ function SummaryTab({ label, count, amount, active, onClick }) {
       onClick={onClick}
       className={`min-w-0 flex-1 border-b-[3px] px-4 py-3.5 text-left transition ${
         active
-          ? "border-[#6b4eff] bg-white text-[#6b4eff]"
+          ? "border-[var(--color-primary)] bg-white text-[var(--color-primary)]"
           : "border-transparent bg-transparent text-[#6b6b76] hover:bg-white/70"
       }`}
     >
@@ -109,7 +109,7 @@ function SummaryTab({ label, count, amount, active, onClick }) {
       </p>
       <p
         className={`mt-1 text-[18px] font-bold tabular-nums ${
-          active ? "text-[#6b4eff]" : "text-[#1a1a1f]"
+          active ? "text-[var(--color-primary)]" : "text-[#1a1a1f]"
         }`}
       >
         {amount}
@@ -419,7 +419,7 @@ export default function PaymentReceipts() {
                       pageSize={pageSize}
                       className="border-t border-r border-[#d0d0d8]"
                     />
-                    <td className="border-t border-r border-[#d0d0d8] px-4 py-3 font-semibold text-[#6b4eff]">{r.receipt_number}</td>
+                    <td className="border-t border-r border-[#d0d0d8] px-4 py-3 font-semibold text-[var(--color-primary)]">{r.receipt_number}</td>
                     <td className="border-t border-r border-[#d0d0d8] px-4 py-3 text-[#4a4a55]">{fmtDate(r.payment_date)}</td>
                     <td className="border-t border-r border-[#d0d0d8] px-4 py-3">{r.party_name}</td>
                     <td className="border-t border-r border-[#d0d0d8] px-4 py-3 tabular-nums font-medium">{formatInr(r.amount)}</td>
@@ -429,7 +429,7 @@ export default function PaymentReceipts() {
                       <div className="flex flex-wrap gap-2">
                         <Link
                           to={`/sales/payment-receipts/${r.id}/edit`}
-                          className="text-[12px] font-semibold text-[#6b4eff] hover:underline"
+                          className="text-[12px] font-semibold text-[var(--color-primary)] hover:underline"
                         >
                           View
                         </Link>
@@ -455,13 +455,13 @@ export default function PaymentReceipts() {
           </table>
         </div>
 
-        <div className="flex flex-col gap-3 border-t border-[#ececf0] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-2 text-[13px] text-[#4a4a55]">
+        <div className="ui-pagination justify-between border-t border-[var(--color-border-soft)] px-4 py-3">
+          <div className="flex items-center gap-2.5 flex-nowrap whitespace-nowrap text-[13px] text-[#596b82]">
             <span>Rows per page:</span>
             <select
               value={pageSize}
               onChange={(e) => setPageSize(Number(e.target.value))}
-              className="rounded-md border border-[#e4e4ea] bg-white px-2 py-1 text-[13px]"
+              className="ui-pagination-select"
             >
               {PAGE_SIZES.map((n) => (
                 <option key={n} value={n}>
@@ -469,10 +469,10 @@ export default function PaymentReceipts() {
                 </option>
               ))}
             </select>
-            <span className="text-[#9a9aa5]">
+            <span>
               {total === 0
-                ? "1-0 of 0"
-                : `${(page - 1) * pageSize + 1}-${Math.min(page * pageSize, total)} of ${total}`}
+                ? "0–0 of 0"
+                : `${(page - 1) * pageSize + 1}–${Math.min(page * pageSize, total)} of ${total}`}
             </span>
           </div>
           <div className="flex items-center gap-1">
@@ -480,18 +480,23 @@ export default function PaymentReceipts() {
               type="button"
               disabled={page <= 1}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
-              className="rounded-md border border-[#e4e4ea] p-1.5 disabled:opacity-35"
+              className="ui-page-btn"
+              aria-label="Previous page"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
-            <span className="min-w-[2rem] rounded-md bg-[#0f6d84] px-2.5 py-1 text-center text-[13px] font-semibold text-white">
+            <button
+              type="button"
+              className="ui-page-btn ui-page-btn--active"
+            >
               {page}
-            </span>
+            </button>
             <button
               type="button"
               disabled={page >= totalPages}
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              className="rounded-md border border-[#e4e4ea] p-1.5 disabled:opacity-35"
+              className="ui-page-btn"
+              aria-label="Next page"
             >
               <ChevronRight className="h-4 w-4" />
             </button>

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Check, Upload, X } from "lucide-react";
 
-const PURPLE = "#6b4eff";
+const PRIMARY = "var(--color-primary)";
 
 function paintCanvasStyle(ctx) {
   ctx.strokeStyle = "#1a1a1f";
@@ -210,7 +210,7 @@ export default function SignatureAndStampPanel({
             onClick={clear}
             onMouseDown={(e) => e.stopPropagation()}
             className="pointer-events-auto inline-flex items-center gap-1 text-[12px] font-semibold"
-            style={{ color: PURPLE }}
+            style={{ color: PRIMARY }}
           >
             <X className="h-3.5 w-3.5" /> Clear
           </button>
@@ -219,7 +219,7 @@ export default function SignatureAndStampPanel({
             onClick={save}
             onMouseDown={(e) => e.stopPropagation()}
             className="pointer-events-auto inline-flex items-center gap-1 text-[12px] font-semibold"
-            style={{ color: PURPLE }}
+            style={{ color: PRIMARY }}
           >
             <Check className="h-3.5 w-3.5" /> {savedFlash ? "Saved" : "Save"}
           </button>
@@ -237,7 +237,7 @@ export default function SignatureAndStampPanel({
         type="button"
         onClick={() => fileRef.current?.click()}
         className="mt-3 inline-flex items-center gap-1.5 text-[13px] font-semibold"
-        style={{ color: PURPLE }}
+        style={{ color: PRIMARY }}
       >
         <Upload className="h-4 w-4" /> Upload Stamp
       </button>

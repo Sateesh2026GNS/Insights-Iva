@@ -515,14 +515,12 @@ export default function MachineAllocation() {
                 }
               />
             ) : (
-              <div className="overflow-hidden rounded-lg border border-[var(--color-border-soft)]">
-                <DataTable
-                  columns={columns}
-                  data={filtered}
-                  searchKeys={["work_order_number", "product_name", "machine_name"]}
-                  showSearch={false}
-                />
-              </div>
+              <DataTable
+                columns={columns}
+                data={filtered}
+                searchKeys={["work_order_number", "product_name", "machine_name"]}
+                showSearch={false}
+              />
             )}
           </div>
         ) : (

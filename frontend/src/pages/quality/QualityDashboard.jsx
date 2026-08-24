@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  Bar,
-  BarChart,
   CartesianGrid,
   Cell,
   Line,
@@ -113,7 +111,6 @@ export default function QualityDashboard() {
   const trends = hub.kpi_trends || {};
   const trendData = hub.inspection_trend || [];
   const typeData = hub.inspection_by_type || [];
-  const rejectionData = hub.rejection_reasons || [];
   const recentRows = hub.recent_inspections || [];
 
   return (
@@ -241,82 +238,43 @@ export default function QualityDashboard() {
         </div>
       </div>
 
-      {/* Table + rejection chart */}
-      <div className="grid gap-4 lg:grid-cols-2">
-        <div className="ui-card overflow-hidden">
-          <div className="border-b border-[var(--color-border-soft)] px-5 py-4">
-            <h2 className="text-sm font-semibold text-[var(--color-text)]">Recent Inspections</h2>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[520px] border-collapse text-left text-sm">
-              <thead>
-                <tr className="border-b border-[var(--color-border-soft)] bg-[var(--color-surface-muted)]/40 text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
-                  <th className="px-4 py-3">Date</th>
-                  <th className="px-4 py-3">Type</th>
-                  <th className="px-4 py-3">Reference</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3">Result</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[var(--color-border-muted)]">
-                {recentRows.map((row) => (
-                  <tr key={`${row.reference}-${row.date}`} className="hover:bg-[var(--color-surface-muted)]/40">
-                    <td className="whitespace-nowrap px-4 py-3 text-[var(--color-text-secondary)]">{row.date}</td>
-                    <td className="px-4 py-3 text-[var(--color-text)]">{row.type}</td>
-                    <td className="px-4 py-3 font-medium text-[var(--color-text)]">{row.reference}</td>
-                    <td className="px-4 py-3">
-                      <StatusPill value={row.status} kind="status" />
-                    </td>
-                    <td className="px-4 py-3">
-                      <StatusPill value={row.result} kind="result" />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div className="border-t border-[var(--color-border-soft)] px-5 py-3">
-            <Link to="/quality/inspection" className="text-sm font-semibold text-[var(--color-primary)] hover:underline">
-              View All Inspections →
-            </Link>
-          </div>
+      {/* Recent Inspections Table */}
+      <div className="ui-card overflow-hidden">
+        <div className="border-b border-[var(--color-border-soft)] px-5 py-4">
+          <h2 className="text-sm font-semibold text-[var(--color-text)]">Recent Inspections</h2>
         </div>
-
-        <div className="ui-card ui-card--padded flex flex-col">
-          <h2 className="mb-4 text-sm font-semibold text-[var(--color-text)]">Top Rejection Reasons</h2>
-          <div className="min-h-0 flex-1">
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={rejectionData}
-                  layout="vertical"
-                  margin={{ top: 0, right: 28, left: 4, bottom: 0 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e5e7eb" />
-                  <XAxis type="number" tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
-                  <YAxis
-                    type="category"
-                    dataKey="name"
-                    width={148}
-                    tick={{ fontSize: 11, fill: "#64748b" }}
-                    axisLine={false}
-                    tickLine={false}
-                  />
-                  <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
-                  <Bar dataKey="count" radius={[0, 4, 4, 0]} barSize={18}>
-                    {rejectionData.map((entry) => (
-                      <Cell key={entry.name} fill={entry.color} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-          <div className="mt-2 border-t border-[var(--color-border-soft)] pt-3">
-            <Link to="/quality/defects" className="text-sm font-semibold text-[var(--color-primary)] hover:underline">
-              View All Rejections →
-            </Link>
-          </div>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[520px] border-collapse text-left text-sm">
+            <thead className="bg-[var(--color-primary-soft)] text-[12px] font-semibold text-[var(--color-primary-dark)] border-b border-[#d0e5e0]">
+              <tr>
+                <th className="px-4 py-3">Date</th>
+                <th className="px-4 py-3">Type</th>
+                <th className="px-4 py-3">Reference</th>
+                <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3">Result</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[var(--color-border-muted)]">
+              {recentRows.map((row) => (
+                <tr key={`${row.reference}-${row.date}`} className="hover:bg-[var(--color-surface-muted)]/40">
+                  <td className="whitespace-nowrap px-4 py-3 text-[var(--color-text-secondary)]">{row.date}</td>
+                  <td className="px-4 py-3 text-[var(--color-text)]">{row.type}</td>
+                  <td className="px-4 py-3 font-medium text-[var(--color-text)]">{row.reference}</td>
+                  <td className="px-4 py-3">
+                    <StatusPill value={row.status} kind="status" />
+                  </td>
+                  <td className="px-4 py-3">
+                    <StatusPill value={row.result} kind="result" />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="border-t border-[var(--color-border-soft)] px-5 py-3">
+          <Link to="/quality/inspection" className="text-sm font-semibold text-[var(--color-primary)] hover:underline">
+            View All Inspections →
+          </Link>
         </div>
       </div>
     </div>

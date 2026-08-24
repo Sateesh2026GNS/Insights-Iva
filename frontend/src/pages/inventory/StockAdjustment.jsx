@@ -100,6 +100,7 @@ export default function StockAdjustment() {
   const storeMode = isStoreManager(user);
   const [searchParams] = useSearchParams();
   const formRef = useRef(null);
+  const headerDateInputRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [adjustments, setAdjustments] = useState([]);
   const [warehouses, setWarehouses] = useState([]);
@@ -849,8 +850,6 @@ export default function StockAdjustment() {
                 icon="clipboard"
                 title="No adjustments yet"
                 description="Create an adjustment to correct stock quantities."
-                actionLabel="New Adjustment"
-                onAction={handleAdd}
               />
             }
           />

@@ -538,13 +538,13 @@ export default function DebitNotes() {
           </div>
         </div>
 
-        <div className="mt-4 flex flex-col gap-3 border-t border-[#e4e4ea] pt-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-2 text-[13px] text-[#6b6b76]">
+        <div className="mt-4 ui-pagination justify-between border-t border-[var(--color-border-soft)] pt-4">
+          <div className="flex items-center gap-2.5 flex-nowrap whitespace-nowrap text-[13px] text-[#596b82]">
             <span>Rows per page:</span>
             <select
               value={pageSize}
               onChange={(e) => setPageSize(Number(e.target.value))}
-              className="rounded-md border border-[#e4e4ea] bg-white px-2 py-1"
+              className="ui-pagination-select"
             >
               {PAGE_SIZES.map((n) => (
                 <option key={n} value={n}>
@@ -554,8 +554,8 @@ export default function DebitNotes() {
             </select>
             <span>
               {total === 0
-                ? "1-0 of 0"
-                : `${(page - 1) * pageSize + 1}-${Math.min(page * pageSize, total)} of ${total}`}
+                ? "0–0 of 0"
+                : `${(page - 1) * pageSize + 1}–${Math.min(page * pageSize, total)} of ${total}`}
             </span>
           </div>
           <div className="flex items-center gap-1">
@@ -563,21 +563,23 @@ export default function DebitNotes() {
               type="button"
               disabled={page <= 1}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
-              className="rounded-md border border-[#e4e4ea] p-1.5 disabled:opacity-35"
+              className="ui-page-btn"
+              aria-label="Previous page"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
-            <span
-              className="min-w-[2rem] rounded-md border border-[#e4e4ea] px-2.5 py-1 text-center text-[13px] font-semibold"
-              style={{ background: "color-mix(in srgb, var(--color-primary) 28%, white)" }}
+            <button
+              type="button"
+              className="ui-page-btn ui-page-btn--active"
             >
               {page}
-            </span>
+            </button>
             <button
               type="button"
               disabled={page >= totalPages}
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              className="rounded-md border border-[#e4e4ea] p-1.5 disabled:opacity-35"
+              className="ui-page-btn"
+              aria-label="Next page"
             >
               <ChevronRight className="h-4 w-4" />
             </button>

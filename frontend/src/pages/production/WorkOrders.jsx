@@ -1038,7 +1038,7 @@ export default function WorkOrders() {
               columns={columns}
               data={paginatedWorkOrders}
               showSearch={false}
-              pagination={false}
+              showPagination={false}
               emptyState={
                 <EmptyState
                   icon="clipboard"
@@ -1055,12 +1055,12 @@ export default function WorkOrders() {
 
           {/* Pagination Bar */}
           <div className="mt-4 ui-pagination justify-between print:hidden">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2.5 flex-nowrap whitespace-nowrap">
               <span>Rows per page:</span>
               <select
                 value={pageSize}
                 onChange={(e) => setPageSize(Number(e.target.value))}
-                className="ui-select min-h-0 w-auto py-1"
+                className="ui-pagination-select"
               >
                 {PAGE_SIZES.map((n) => (
                   <option key={n} value={n}>

@@ -145,4 +145,36 @@ describe("ReferenceDashboard", () => {
     expect(screen.queryByText("refDashboard.inventorySummary")).not.toBeInTheDocument();
     expect(screen.queryByText("refDashboard.quickActions")).not.toBeInTheDocument();
   });
+
+  it("renders all four period tabs (Daily, Weekly, Monthly, Yearly) in Production Overview", async () => {
+    mockUseAuth.mockReturnValue({
+      user: {
+        role: "Production Manager",
+        permissions: ["dashboard", "production"],
+      },
+    });
+    mockGetErpDashboard.mockResolvedValue({
+      data: {
+        ...fullDashboard,
+        production_overview_weekly: [{ date: "Week 1", planned: 50, actual: 45 }],
+        production_overview_monthly: [{ date: "Aug", planned: 200, actual: 190 }],
+        production_overview_yearly: [{ date: "2026", planned: 2400, actual: 2300 }],
+      },
+    });
+
+    render(
+      <MemoryRouter>
+        <ReferenceDashboard />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("refDashboard.productionOverview")).toBeInTheDocument();
+    });
+
+    expect(screen.getByText("refDashboard.daily")).toBeInTheDocument();
+    expect(screen.getByText("refDashboard.weekly")).toBeInTheDocument();
+    expect(screen.getByText("refDashboard.monthly")).toBeInTheDocument();
+    expect(screen.getByText("refDashboard.yearly")).toBeInTheDocument();
+  });
 });

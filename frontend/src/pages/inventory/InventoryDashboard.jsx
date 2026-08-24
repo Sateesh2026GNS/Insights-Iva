@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   AlertTriangle,
@@ -199,6 +199,7 @@ export default function InventoryDashboard() {
   const [selectedDate, setSelectedDate] = useState("2026-08-13");
   const [warehouseId, setWarehouseId] = useState("");
   const [prBusy, setPrBusy] = useState(null);
+  const dateInputRef = useRef(null);
 
   const load = useCallback(async (isRefresh = false) => {
     if (!isRefresh) setLoading(true);

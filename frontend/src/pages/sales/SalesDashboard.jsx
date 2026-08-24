@@ -66,7 +66,7 @@ export default function SalesDashboard() {
 
       <div className="ui-grid-kpi">
         <KpiCard label="Monthly Revenue" value={formatInr(hub.monthly_revenue)} icon={IndianRupee} color="bg-[var(--color-success)]" />
-        <KpiCard label="Total Orders" value={hub.total_orders} icon={ShoppingCart} color="bg-indigo-600" />
+        <KpiCard label="Total Orders" value={hub.total_orders} icon={ShoppingCart} color="bg-teal-600" />
         <KpiCard label="Pending Orders" value={hub.pending_orders} icon={ShoppingCart} color="bg-amber-500" />
         <KpiCard label="Dispatch Pending" value={hub.dispatch_pending} icon={Truck} color="bg-cyan-600" />
         <KpiCard label="Outstanding Payments" value={formatInr(hub.outstanding_payments)} icon={IndianRupee} color="bg-rose-600" />

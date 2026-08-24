@@ -32,8 +32,8 @@ import { formatInr } from "../../data/salesMasterData";
 import { apiErrorMessage } from "../../utils/apiError";
 import { inputClass } from "../../design-system/classes";
 
-const PURPLE = "#6b4eff";
-const LAVENDER = "#efeaf8";
+const PRIMARY = "var(--color-primary)";
+const PRIMARY_SOFT = "var(--color-primary-soft)";
 const ACCOUNTS_KEY = "gns_payment_accounts";
 const MODES_KEY = "gns_payment_modes";
 const PREFIX_KEY = "gns_receipt_prefixes";
@@ -551,7 +551,7 @@ export default function PaymentReceiptForm() {
                         setAddBuyerOpen(true);
                       }}
                       className="flex w-full items-center justify-center gap-1 border-t border-[#ececf0] py-3 text-[13px] font-semibold"
-                      style={{ background: LAVENDER, color: PURPLE }}
+                      style={{ background: PRIMARY_SOFT, color: PRIMARY }}
                     >
                       + Add Customer
                     </button>
@@ -632,7 +632,7 @@ export default function PaymentReceiptForm() {
                   aria-checked={form.apply_tds}
                   onClick={() => setForm((f) => ({ ...f, apply_tds: !f.apply_tds }))}
                   className={`relative h-6 w-11 rounded-full transition ${
-                    form.apply_tds ? "bg-[#6b4eff]" : "bg-[#d4d4d8]"
+                    form.apply_tds ? "bg-[var(--color-primary)]" : "bg-[#d4d4d8]"
                   }`}
                 >
                   <span
@@ -681,12 +681,12 @@ export default function PaymentReceiptForm() {
                             ? "border-transparent text-white"
                             : "border-[#e4e4ea] bg-white text-[#1a1a1f]"
                         }`}
-                        style={active ? { background: PURPLE } : undefined}
+                        style={active ? { background: PRIMARY } : undefined}
                       >
                         {m.icon === "cash" ? (
                           <Banknote className="h-3.5 w-3.5" />
                         ) : (
-                          <Building2 className="h-3.5 w-3.5" style={{ color: active ? "#fff" : PURPLE }} />
+                          <Building2 className="h-3.5 w-3.5" style={{ color: active ? "#fff" : PRIMARY }} />
                         )}
                         {m.label}
                       </button>
@@ -696,7 +696,7 @@ export default function PaymentReceiptForm() {
                     type="button"
                     onClick={() => setModeModalOpen(true)}
                     className="rounded-full border border-dashed border-[#c4c4cc] px-3 py-2 text-[13px] font-semibold"
-                    style={{ color: PURPLE }}
+                    style={{ color: PRIMARY }}
                   >
                     + Add Payment Mode
                   </button>
@@ -708,16 +708,16 @@ export default function PaymentReceiptForm() {
                 <button
                   type="button"
                   onClick={() => setAccountOpen((v) => !v)}
-                  className="flex w-full items-center justify-between rounded-lg border bg-[#f8f5ff] px-3 py-2.5 text-left text-[13px]"
-                  style={{ borderColor: PURPLE }}
+                  className="flex w-full items-center justify-between rounded-lg border bg-[var(--color-primary-soft)] px-3 py-2.5 text-left text-[13px]"
+                  style={{ borderColor: PRIMARY }}
                 >
                   <span className="inline-flex items-center gap-2">
-                    <Banknote className="h-4 w-4" style={{ color: PURPLE }} />
+                    <Banknote className="h-4 w-4" style={{ color: PRIMARY }} />
                     {selectedAccount?.name || "Select Account"}
                   </span>
                   <ChevronDown
                     className={`h-4 w-4 transition ${accountOpen ? "rotate-180" : ""}`}
-                    style={{ color: PURPLE }}
+                    style={{ color: PRIMARY }}
                   />
                 </button>
                 {accountOpen ? (
@@ -740,7 +740,7 @@ export default function PaymentReceiptForm() {
                               setAccountOpen(false);
                             }}
                           >
-                            <Banknote className="h-4 w-4" style={{ color: PURPLE }} />
+                            <Banknote className="h-4 w-4" style={{ color: PRIMARY }} />
                             <span className="text-[13px] font-medium">{a.name}</span>
                             {a.isDefault ? (
                               <span className="rounded-full bg-[#dcfce7] px-2 py-0.5 text-[11px] font-semibold text-[#166534]">
@@ -797,7 +797,7 @@ export default function PaymentReceiptForm() {
                         else setBankModalOpen(true);
                       }}
                       className="flex w-full items-center justify-center py-3 text-[13px] font-semibold"
-                      style={{ background: LAVENDER, color: PURPLE }}
+                      style={{ background: PRIMARY_SOFT, color: PRIMARY }}
                     >
                       + Add New Account
                     </button>

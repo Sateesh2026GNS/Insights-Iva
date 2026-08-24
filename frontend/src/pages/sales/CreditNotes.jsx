@@ -96,7 +96,7 @@ function SummaryTab({ label, count, amount, active, onClick }) {
       onClick={onClick}
       className={`min-w-0 flex-1 border-b-[3px] px-5 py-3.5 text-left transition ${
         active
-          ? "border-[#6b4eff] bg-white text-[#6b4eff]"
+          ? "border-[var(--color-primary)] bg-white text-[var(--color-primary)]"
           : "border-transparent bg-transparent text-[#6b6b76] hover:bg-white/70"
       }`}
     >
@@ -417,7 +417,7 @@ export default function CreditNotes() {
                           pageSize={pageSize}
                           className="border-t border-r border-[#d0d0d8]"
                         />
-                        <td className="border-t border-r border-[#d0d0d8] px-4 py-3 font-semibold text-[#6b4eff]">
+                        <td className="border-t border-r border-[#d0d0d8] px-4 py-3 font-semibold text-[var(--color-primary)]">
                           {r.invoice_number}
                         </td>
                         <td className="border-t border-r border-[#d0d0d8] px-4 py-3 text-[#4a4a55]">
@@ -439,7 +439,7 @@ export default function CreditNotes() {
                           <div className="flex flex-wrap gap-2">
                             <Link
                               to={`/sales/credit-notes/${r.id}/edit`}
-                              className="text-[12px] font-semibold text-[#6b4eff] hover:underline"
+                              className="text-[12px] font-semibold text-[var(--color-primary)] hover:underline"
                             >
                               View
                             </Link>
@@ -476,13 +476,13 @@ export default function CreditNotes() {
           </div>
         </div>
 
-        <div className="mt-4 flex flex-col gap-3 border-t border-[#e4e4ea] pt-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-2 text-[13px] text-[#6b6b76]">
+        <div className="mt-4 ui-pagination justify-between border-t border-[var(--color-border-soft)] pt-4">
+          <div className="flex items-center gap-2.5 flex-nowrap whitespace-nowrap text-[13px] text-[#596b82]">
             <span>Rows per page:</span>
             <select
               value={pageSize}
               onChange={(e) => setPageSize(Number(e.target.value))}
-              className="rounded-md border border-[#e4e4ea] bg-white px-2 py-1"
+              className="ui-pagination-select"
             >
               {PAGE_SIZES.map((n) => (
                 <option key={n} value={n}>
@@ -492,8 +492,8 @@ export default function CreditNotes() {
             </select>
             <span>
               {total === 0
-                ? "1-0 of 0"
-                : `${(page - 1) * pageSize + 1}-${Math.min(page * pageSize, total)} of ${total}`}
+                ? "0–0 of 0"
+                : `${(page - 1) * pageSize + 1}–${Math.min(page * pageSize, total)} of ${total}`}
             </span>
           </div>
           <div className="flex items-center gap-1">
@@ -501,21 +501,23 @@ export default function CreditNotes() {
               type="button"
               disabled={page <= 1}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
-              className="rounded-md border border-[#e4e4ea] p-1.5 disabled:opacity-35"
+              className="ui-page-btn"
+              aria-label="Previous page"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
-            <span
-              className="min-w-[2rem] rounded-md border border-[#e4e4ea] px-2.5 py-1 text-center text-[13px] font-semibold"
-              style={{ background: "color-mix(in srgb, var(--color-primary) 28%, white)" }}
+            <button
+              type="button"
+              className="ui-page-btn ui-page-btn--active"
             >
               {page}
-            </span>
+            </button>
             <button
               type="button"
               disabled={page >= totalPages}
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              className="rounded-md border border-[#e4e4ea] p-1.5 disabled:opacity-35"
+              className="ui-page-btn"
+              aria-label="Next page"
             >
               <ChevronRight className="h-4 w-4" />
             </button>

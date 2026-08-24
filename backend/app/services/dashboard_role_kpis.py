@@ -665,6 +665,9 @@ def apply_role_dashboard(
     elif profile == "sales":
         payload["kpi_cards"] = build_sales_kpis(db, tenant_id, today)
         payload["production_overview"] = []
+        payload["production_overview_weekly"] = []
+        payload["production_overview_monthly"] = []
+        payload["production_overview_yearly"] = []
         payload["shop_floor_status"] = []
         payload["top_machines"] = []
         payload["recent_work_orders"] = []
@@ -677,6 +680,7 @@ def apply_role_dashboard(
         payload["production_overview"] = []
         payload["production_overview_weekly"] = []
         payload["production_overview_monthly"] = []
+        payload["production_overview_yearly"] = []
         payload["shop_floor_status"] = []
         payload["top_machines"] = []
         payload["orders_overview"] = {
@@ -729,6 +733,9 @@ def apply_role_dashboard(
     elif profile == "accountant":
         payload["kpi_cards"] = build_accountant_kpis(db, tenant_id, today)
         payload["production_overview"] = []
+        payload["production_overview_weekly"] = []
+        payload["production_overview_monthly"] = []
+        payload["production_overview_yearly"] = []
         payload["shop_floor_status"] = []
         payload["top_machines"] = []
         payload["recent_work_orders"] = []

@@ -9,7 +9,7 @@ const DEFAULT_CGST = 9;
 const DEFAULT_SGST = 9;
 const DEFAULT_IGST = 18;
 
-const cls = "mt-1.5 w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 focus:border-[#2563EB] focus:outline-none focus:ring-2 focus:ring-blue-100";
+const cls = "mt-1.5 w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-soft)]";
 const genBillNumber = () => `BILL-${Date.now().toString().slice(-6)}`;
 const EMPTY_ITEM = () => ({ item_description: "", qty: "1", unit: "pcs", rate: "0", amount: 0 });
 
@@ -214,7 +214,7 @@ export default function BillFormModal({ invoice, onClose, onSave }) {
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-xs font-bold uppercase text-slate-400">Line Items ({items.length})</h3>
               <button type="button" onClick={() => setItems((p) => [...p, EMPTY_ITEM()])}
-                className="inline-flex items-center gap-1 text-xs font-bold text-[#2563EB] hover:underline">
+                className="inline-flex items-center gap-1 text-xs font-bold text-[var(--color-primary)] hover:underline">
                 <Plus className="h-3 w-3" /> Add Item
               </button>
             </div>
@@ -280,7 +280,7 @@ export default function BillFormModal({ invoice, onClose, onSave }) {
               {igst > 0 && <div className="flex justify-between text-slate-600"><span>IGST ({form.igst_pct}%)</span><span>+₹{igst.toLocaleString("en-IN")}</span></div>}
               <div className="flex justify-between border-t border-slate-200 pt-2 font-bold text-slate-900">
                 <span>Grand Total</span>
-                <span className="text-[#2563EB]">₹{grandTotal.toLocaleString("en-IN")}</span>
+                <span className="text-[var(--color-primary)]">₹{grandTotal.toLocaleString("en-IN")}</span>
               </div>
             </div>
           </div>
@@ -296,14 +296,12 @@ export default function BillFormModal({ invoice, onClose, onSave }) {
         {/* Footer — type="button" only, no form/submit */}
         <div className="flex items-center justify-end gap-2 border-t px-5 py-4">
           <button type="button" onClick={onClose}
-            className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+            className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer">
             Cancel
           </button>
           <button type="button" onClick={handleSave} disabled={saving}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white hover:bg-[var(--color-primary-hover)] disabled:opacity-60">
-            {saving
-              ? <><span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" /> Saving…</>
-              : <><Save className="h-4 w-4" /> Save Bill</>}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--color-primary)] px-5 py-2 text-sm font-semibold text-white hover:bg-[var(--color-primary-hover)] disabled:opacity-50 cursor-pointer shadow-sm">
+            <Save className="h-4 w-4" /> {saving ? "Saving…" : "Save Bill"}
           </button>
         </div>
       </div>

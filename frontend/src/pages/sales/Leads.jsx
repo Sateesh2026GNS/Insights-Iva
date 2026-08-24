@@ -198,7 +198,7 @@ export default function Leads() {
 
       <div className="ui-grid-kpi">
         <KpiCard label="Total Leads" value={summary.total_leads} icon={Users} color="bg-[var(--color-success)]" />
-        <KpiCard label="New Leads" value={summary.new_leads} icon={UserPlus} color="bg-indigo-600" />
+        <KpiCard label="New Leads" value={summary.new_leads} icon={UserPlus} color="bg-teal-600" />
         <KpiCard label="Contacted" value={summary.contacted_leads} icon={PhoneCall} color="bg-cyan-600" />
         <KpiCard label="Qualified" value={summary.qualified_leads} icon={Target} color="bg-slate-600" />
         <KpiCard label="Lost Leads" value={summary.lost_leads} icon={XCircle} color="bg-rose-600" />
@@ -274,7 +274,7 @@ export default function Leads() {
                           </div>
                           <p className="text-xs text-slate-500 font-medium">{r.company}</p>
                           {(r.opportunity_value || r.estimated_value) && (
-                            <p className="mt-1.5 text-xs font-black text-blue-600">{formatInr(r.opportunity_value || r.estimated_value)}</p>
+                            <p className="mt-1.5 text-xs font-black text-[var(--color-success)]">{formatInr(r.opportunity_value || r.estimated_value)}</p>
                           )}
                           <div className="mt-3 flex items-center justify-between border-t pt-2 text-xs">
                             <button type="button" onClick={() => setSelected(r)} className="font-bold text-[var(--color-success)] hover:underline">
@@ -283,7 +283,7 @@ export default function Leads() {
                             {isQualified ? (
                               <Link
                                 to={`/sales/quotations?create=true&customer_name=${encodeURIComponent(r.customer_name || r.company || "")}`}
-                                className="text-[11px] font-bold text-slate-600 hover:text-blue-600 hover:underline"
+                                className="text-[11px] font-bold text-slate-600 hover:text-[var(--color-success)] hover:underline"
                               >
                                 + Quote
                               </Link>

@@ -220,7 +220,7 @@ export default function ProformaInvoices() {
       <div className="space-y-4 p-4 sm:p-6">
 
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-          <div className="min-w-[200px] rounded-xl border border-[#e4e4ea] border-b-[3px] border-b-[#3d3560] bg-white px-5 py-3.5 shadow-sm">
+          <div className="min-w-[200px] rounded-xl border border-[#e4e4ea] border-b-[3px] border-b-[var(--color-primary)] bg-white px-5 py-3.5 shadow-sm">
             <p className="text-[13px] font-medium text-[#6b6b76]">
               Total Sales <span className="text-[#a0a0ab]">({total})</span>
             </p>
@@ -359,7 +359,7 @@ export default function ProformaInvoices() {
                         pageSize={pageSize}
                         className="border-t border-r border-[#d0d0d8]"
                       />
-                      <td className="border-t border-r border-[#d0d0d8] px-4 py-3 font-semibold text-[#6b4eff]">
+                      <td className="border-t border-r border-[#d0d0d8] px-4 py-3 font-semibold text-[var(--color-primary)]">
                         {r.invoice_number}
                       </td>
                       <td className="border-t border-r border-[#d0d0d8] px-4 py-3 text-[#4a4a55]">{fmtDate(r.issue_date)}</td>
@@ -372,7 +372,7 @@ export default function ProformaInvoices() {
                         <div className="flex flex-wrap gap-2">
                           <Link
                             to={`/sales/proforma-invoices/${r.id}/edit`}
-                            className="text-[12px] font-semibold text-[#6b4eff] hover:underline"
+                            className="text-[12px] font-semibold text-[var(--color-primary)] hover:underline"
                           >
                             View
                           </Link>
@@ -398,13 +398,13 @@ export default function ProformaInvoices() {
             </table>
           </div>
 
-          <div className="flex flex-col gap-3 border-t border-[#ececf0] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-2 text-[13px] text-[#4a4a55]">
+          <div className="ui-pagination justify-between border-t border-[var(--color-border-soft)] px-4 py-3">
+            <div className="flex items-center gap-2.5 flex-nowrap whitespace-nowrap text-[13px] text-[#596b82]">
               <span>Rows per page:</span>
               <select
                 value={pageSize}
                 onChange={(e) => setPageSize(Number(e.target.value))}
-                className="rounded-md border border-[#e4e4ea] bg-white px-2 py-1 text-[13px]"
+                className="ui-pagination-select"
               >
                 {PAGE_SIZES.map((n) => (
                   <option key={n} value={n}>
@@ -412,10 +412,10 @@ export default function ProformaInvoices() {
                   </option>
                 ))}
               </select>
-              <span className="text-[#9a9aa5]">
+              <span>
                 {total === 0
-                  ? "1-0 of 0"
-                  : `${(page - 1) * pageSize + 1}-${Math.min(page * pageSize, total)} of ${total}`}
+                  ? "0–0 of 0"
+                  : `${(page - 1) * pageSize + 1}–${Math.min(page * pageSize, total)} of ${total}`}
               </span>
             </div>
             <div className="flex items-center gap-1">
@@ -423,18 +423,23 @@ export default function ProformaInvoices() {
                 type="button"
                 disabled={page <= 1}
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="rounded-md border border-[#e4e4ea] p-1.5 disabled:opacity-35"
+                className="ui-page-btn"
+                aria-label="Previous page"
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
-              <span className="min-w-[2rem] rounded-md bg-[var(--color-primary-soft)] px-2.5 py-1 text-center text-[13px] font-semibold text-[var(--color-primary-dark)]">
+              <button
+                type="button"
+                className="ui-page-btn ui-page-btn--active"
+              >
                 {page}
-              </span>
+              </button>
               <button
                 type="button"
                 disabled={page >= totalPages}
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                className="rounded-md border border-[#e4e4ea] p-1.5 disabled:opacity-35"
+                className="ui-page-btn"
+                aria-label="Next page"
               >
                 <ChevronRight className="h-4 w-4" />
               </button>

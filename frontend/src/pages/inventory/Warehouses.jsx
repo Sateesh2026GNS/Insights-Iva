@@ -532,8 +532,6 @@ export default function Warehouses() {
                 icon="factory"
                 title="No warehouses yet"
                 description="Add a warehouse to organize stock by location."
-                actionLabel="Add Warehouse"
-                onAction={() => setFormWarehouse({})}
               />
             }
           />

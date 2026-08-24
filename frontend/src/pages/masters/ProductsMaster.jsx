@@ -343,13 +343,13 @@ export default function ProductsMaster() {
             ) : null}
           </div>
 
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-[12px] text-[#6b6b76]">
-            <div className="flex items-center gap-2">
+          <div className="mt-4 ui-pagination justify-between">
+            <div className="flex items-center gap-2.5 flex-nowrap whitespace-nowrap">
               <span>Rows per page:</span>
               <select
                 value={pageSize}
                 onChange={(e) => setPageSize(Number(e.target.value))}
-                className="rounded border border-[#e2e2e8] bg-white px-2 py-1 outline-none"
+                className="ui-pagination-select"
               >
                 {PAGE_SIZES.map((n) => (
                   <option key={n} value={n}>
@@ -358,7 +358,7 @@ export default function ProductsMaster() {
                 ))}
               </select>
               <span>
-                {total === 0 ? "0-0 of 0" : `${from}-${to} of ${total}`}
+                {total === 0 ? "0–0 of 0" : `${from}–${to} of ${total}`}
               </span>
             </div>
             <div className="flex items-center gap-1">
@@ -366,14 +366,14 @@ export default function ProductsMaster() {
                 type="button"
                 disabled={page <= 1}
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="grid h-8 w-8 place-items-center rounded border border-[#e2e2e8] bg-white disabled:opacity-40"
+                className="ui-page-btn"
                 aria-label="Previous page"
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
               <button
                 type="button"
-                className="grid h-8 min-w-8 place-items-center rounded border border-[#007f7d] bg-[#007f7d] px-2 text-[13px] font-semibold text-white shadow-sm"
+                className="ui-page-btn ui-page-btn--active"
               >
                 {page}
               </button>
@@ -381,7 +381,7 @@ export default function ProductsMaster() {
                 type="button"
                 disabled={page >= totalPages}
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                className="grid h-8 w-8 place-items-center rounded border border-[#e2e2e8] bg-white disabled:opacity-40"
+                className="ui-page-btn"
                 aria-label="Next page"
               >
                 <ChevronRight className="h-4 w-4" />

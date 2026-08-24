@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 
 import PlaceholderPage from "../components/common/PlaceholderPage";
 import ProtectedRoute from "../components/layout/ProtectedRoute";
+import Login from "../pages/auth/Login";
 /* Pages are lazy-loaded via lazyPages – see vite.config manualChunks for vendor splits */
 import * as P from "./lazyPages";
 import MachineStatus from "../pages/factoryMonitor/MachineStatus";
@@ -11,7 +12,7 @@ export default function AppRoutes() {
   return (
     <Routes>
       <Route path="/landing" element={<P.Landing />} />
-      <Route path="/login" element={<P.Login />} />
+      <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Navigate to="/login" replace />} />
       <Route path="/gns-admin/login" element={<P.SuperAdminLogin />} />
       <Route path="/gns-admin/verify-otp" element={<P.SuperAdminVerifyOtp />} />
@@ -643,6 +644,7 @@ export default function AppRoutes() {
       <Route path="/maintenance/preventive" element={<ProtectedRoute><P.PreventiveMaintenance /></ProtectedRoute>} />
       <Route path="/maintenance/breakdowns" element={<ProtectedRoute><P.BreakdownReports /></ProtectedRoute>} />
       <Route path="/maintenance/machine-history" element={<ProtectedRoute><P.MachineHistory /></ProtectedRoute>} />
+      <Route path="/maintenance/history" element={<ProtectedRoute><P.MachineHistory /></ProtectedRoute>} />
       <Route path="/maintenance/schedule" element={<ProtectedRoute><P.MaintenanceSchedule /></ProtectedRoute>} />
       <Route path="/analytics" element={<ProtectedRoute><P.ExecutiveDashboard /></ProtectedRoute>} />
       <Route path="/analytics/executive" element={<ProtectedRoute><P.ExecutiveDashboard /></ProtectedRoute>} />

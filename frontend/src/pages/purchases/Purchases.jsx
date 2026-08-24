@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { Link } from "react-router-dom";
-import { Calendar, ChevronLeft, ChevronRight, Filter, ListFilter, Plus, Search, ShoppingCart, X } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Filter, ListFilter, Plus, Search, ShoppingCart, X } from "lucide-react";
 
 import Loader from "../../components/common/Loader";
 import Button from "../../components/common/Button";
@@ -28,6 +28,12 @@ function fmtDate(iso) {
   return `${d}/${m}/${y}`;
 }
 
+function displayDate(iso) {
+  if (!iso) return "";
+  const [year, month, day] = iso.split("-");
+  return `${day}-${month}-${year}`;
+}
+
 function hasDocument(row) {
   const meta = row.meta || {};
   return Boolean(
@@ -46,7 +52,7 @@ function Chip({ label, active, onClick }) {
       onClick={onClick}
       className={`inline-flex items-center rounded-full px-3.5 py-1.5 text-[13px] font-medium transition ${
         active
-          ? "border border-[#6b4eff] bg-[#efeaf8] text-[#6b4eff]"
+          ? "border border-[var(--color-success)] bg-[var(--color-success-soft)] text-[var(--color-success)]"
           : "bg-[#f0f0f3] text-[#4a4a55] hover:bg-[#e4e4ea]"
       }`}
     >
@@ -71,6 +77,8 @@ export default function Purchases() {
   const [search, setSearch] = useState("");
   const [dateFrom, setDateFrom] = useState("2026-04-01");
   const [dateTo, setDateTo] = useState("2027-03-31");
+  const dateFromRef = useRef(null);
+  const dateToRef = useRef(null);
   const [showFilters, setShowFilters] = useState(false);
   const [showSort, setShowSort] = useState(false);
   const [sortId, setSortId] = useState("date_desc");
@@ -166,22 +174,55 @@ export default function Purchases() {
 
   return (
     <div className="min-h-full bg-[#F5F5F5] p-4 sm:p-6">
-      <div className="mb-4 flex flex-wrap items-center gap-2.5">
+      <div className="mb-4 flex w-full flex-wrap items-center justify-end gap-2.5">
         <div className="inline-flex items-center gap-2 rounded-lg border border-[#e4e4ea] bg-white px-3 py-2 text-[13px] text-[#4a4a55]">
-          <Calendar className="h-4 w-4 shrink-0 text-[#9a9aa5]" />
+          <button
+            type="button"
+            onClick={() => dateFromRef.current?.showPicker?.() || dateFromRef.current?.click()}
+            className="flex items-center justify-center text-[#697b78] hover:text-[#1f3935] transition-colors"
+            aria-label="Open start date picker"
+          >
+            <CalendarDays className="h-4 w-4" />
+          </button>
           <input
+            ref={dateFromRef}
             type="date"
             value={dateFrom}
             onChange={(e) => setDateFrom(e.target.value)}
-            className="w-[118px] border-0 bg-transparent p-0 text-[13px] focus:outline-none"
+            className="sr-only"
           />
-          <span className="text-[#9a9aa5]">→</span>
+          <button
+            type="button"
+            onClick={() => dateFromRef.current?.showPicker?.() || dateFromRef.current?.click()}
+            className="font-medium text-[#1f3935] hover:text-black transition-colors cursor-pointer"
+            title="Change start date"
+          >
+            {displayDate(dateFrom)}
+          </button>
+          <span className="text-[#697b78] select-none font-medium px-0.5">→</span>
+          <button
+            type="button"
+            onClick={() => dateToRef.current?.showPicker?.() || dateToRef.current?.click()}
+            className="font-medium text-[#1f3935] hover:text-black transition-colors cursor-pointer"
+            title="Change end date"
+          >
+            {displayDate(dateTo)}
+          </button>
           <input
+            ref={dateToRef}
             type="date"
             value={dateTo}
             onChange={(e) => setDateTo(e.target.value)}
-            className="w-[118px] border-0 bg-transparent p-0 text-[13px] focus:outline-none"
+            className="sr-only"
           />
+          <button
+            type="button"
+            onClick={() => dateToRef.current?.showPicker?.() || dateToRef.current?.click()}
+            className="flex items-center justify-center text-[#697b78] hover:text-[#1f3935] transition-colors"
+            aria-label="Open end date picker"
+          >
+            <CalendarDays className="h-4 w-4" />
+          </button>
         </div>
         <Button
           variant="primary"
@@ -256,7 +297,7 @@ export default function Purchases() {
         <div className="overflow-hidden rounded-xl border border-[#e4e4ea]">
           <div className="overflow-x-auto">
             <table className="min-w-full border-collapse text-left text-[13px]">
-              <thead className="bg-[#efeaf8] text-[12px] font-semibold uppercase tracking-wide text-[#6b6b76]">
+              <thead className="bg-[var(--color-success-soft)] text-[12px] font-semibold uppercase tracking-wide text-[#6b6b76]">
                 <tr>
                   <SerialNumberHeader className="border-b border-r border-[#d0d0d8]" />
                   {[
@@ -295,7 +336,7 @@ export default function Purchases() {
                         pageSize={pageSize}
                         className="border-t border-r border-[#d0d0d8]"
                       />
-                      <td className="border-t border-r border-[#d0d0d8] px-4 py-3 font-semibold text-[#6b4eff]">
+                      <td className="border-t border-r border-[#d0d0d8] px-4 py-3 font-semibold text-[var(--color-success)]">
                         {r.document_number}
                       </td>
                       <td className="border-t border-r border-[#d0d0d8] px-4 py-3 text-[#4a4a55]">
@@ -314,7 +355,7 @@ export default function Purchases() {
                         <div className="flex flex-wrap gap-2">
                           <Link
                             to={`/purchases/${r.id}`}
-                            className="text-[12px] font-semibold text-[#6b4eff] hover:underline"
+                            className="text-[12px] font-semibold text-[var(--color-success)] hover:underline"
                           >
                             View
                           </Link>
@@ -341,13 +382,13 @@ export default function Purchases() {
           </div>
         </div>
 
-        <div className="mt-4 flex flex-col gap-3 border-t border-[#e4e4ea] pt-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-2 text-[13px] text-[#6b6b76]">
+        <div className="mt-4 ui-pagination justify-between border-t border-[var(--color-border-soft)] pt-4">
+          <div className="flex items-center gap-2.5 flex-nowrap whitespace-nowrap text-[13px] text-[#596b82]">
             <span>Rows per page:</span>
             <select
               value={pageSize}
               onChange={(e) => setPageSize(Number(e.target.value))}
-              className="rounded-md border border-[#e4e4ea] bg-white px-2 py-1"
+              className="ui-pagination-select"
             >
               {PAGE_SIZES.map((n) => (
                 <option key={n} value={n}>
@@ -357,8 +398,8 @@ export default function Purchases() {
             </select>
             <span>
               {total === 0
-                ? "1-0 of 0"
-                : `${(page - 1) * pageSize + 1}-${Math.min(page * pageSize, total)} of ${total}`}
+                ? "0–0 of 0"
+                : `${(page - 1) * pageSize + 1}–${Math.min(page * pageSize, total)} of ${total}`}
             </span>
           </div>
           <div className="flex items-center gap-1">
@@ -366,21 +407,23 @@ export default function Purchases() {
               type="button"
               disabled={page <= 1}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
-              className="rounded-md border border-[#e4e4ea] p-1.5 disabled:opacity-35"
+              className="ui-page-btn"
+              aria-label="Previous page"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
-            <span
-              className="min-w-[2rem] rounded-md border border-[#e4e4ea] px-2.5 py-1 text-center text-[13px] font-semibold"
-              style={{ background: "color-mix(in srgb, var(--color-primary) 28%, white)" }}
+            <button
+              type="button"
+              className="ui-page-btn ui-page-btn--active"
             >
               {page}
-            </span>
+            </button>
             <button
               type="button"
               disabled={page >= totalPages}
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              className="rounded-md border border-[#e4e4ea] p-1.5 disabled:opacity-35"
+              className="ui-page-btn"
+              aria-label="Next page"
             >
               <ChevronRight className="h-4 w-4" />
             </button>

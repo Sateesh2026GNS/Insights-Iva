@@ -107,7 +107,7 @@ export default function EwaybillLogin() {
         <button
           type="submit"
           disabled={saving}
-          className="w-full rounded-lg bg-[#4338ca] py-3 text-sm font-bold text-white hover:bg-indigo-700 disabled:opacity-60"
+          className="w-full rounded-lg bg-[var(--color-primary)] py-3 text-sm font-bold text-white hover:bg-[var(--color-primary-hover)] disabled:opacity-60 shadow-sm"
         >
           {saving ? "Logging in…" : "Login"}
         </button>

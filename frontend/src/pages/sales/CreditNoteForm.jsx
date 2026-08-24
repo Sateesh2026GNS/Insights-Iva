@@ -138,7 +138,7 @@ function showsVehicleNo(mode) {
 
 function SectionHeader({ icon: Icon, title, children, className = "", collapsible, open, onToggle }) {
   const titleRow = (
-    <div className="flex min-w-0 items-center gap-2 text-[13px] font-bold uppercase tracking-wide text-[#3d3560]">
+    <div className="flex min-w-0 items-center gap-2 text-[13px] font-bold uppercase tracking-wide text-slate-800">
       {Icon ? <Icon className="h-4 w-4 shrink-0" /> : null}
       <span className="truncate">{title}</span>
       {collapsible ? (
@@ -726,7 +726,7 @@ export default function CreditNoteForm() {
                   <button
                     type="button"
                     onClick={() => setEditCompanyOpen(true)}
-                    className="inline-flex items-center gap-1 text-[13px] font-medium text-[#6b4eff] hover:underline"
+                    className="inline-flex items-center gap-1 text-[13px] font-medium text-[var(--color-primary)] hover:underline"
                   >
                     <PenLine className="h-3.5 w-3.5" />
                     Edit Company Details
@@ -771,7 +771,7 @@ export default function CreditNoteForm() {
               type="button"
               onClick={() => setShowBuyerPicker((v) => !v)}
               className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] font-semibold text-white"
-              style={{ background: ERP_PRIMARY }}
+              style={{ background: "var(--color-primary)" }}
             >
               <User className="h-3.5 w-3.5" />
               Select Buyer
@@ -779,7 +779,7 @@ export default function CreditNoteForm() {
             <button
               type="button"
               onClick={() => setAddBuyerOpen(true)}
-              className="inline-flex items-center gap-1 rounded-lg border border-[#6b4eff] bg-white px-3 py-1.5 text-[13px] font-semibold text-[#6b4eff]"
+              className="inline-flex items-center gap-1 rounded-lg border border-[var(--color-primary)] bg-white px-3 py-1.5 text-[13px] font-semibold text-[var(--color-primary)] hover:bg-[var(--color-primary-soft)] transition-colors"
             >
               <Plus className="h-3.5 w-3.5" />
               Add New Buyer
@@ -1050,7 +1050,7 @@ export default function CreditNoteForm() {
         {/* OPTIONAL FIELDS */}
         <div className="overflow-hidden rounded-xl border border-[#d0d0d8] bg-white">
           <div
-            className="border-b border-[#d0d0d8] px-4 py-3 text-center text-[12px] font-bold uppercase tracking-[0.12em] text-[#3d3560]"
+            className="border-b border-[#d0d0d8] px-4 py-3 text-center text-[12px] font-bold uppercase tracking-[0.12em] text-slate-800"
             style={{ background: ERP_PRIMARY_SOFT }}
           >
             Optional Fields
@@ -1129,7 +1129,7 @@ export default function CreditNoteForm() {
                           />
                           <button
                             type="button"
-                            className="absolute right-2 top-1/2 inline-flex -translate-y-1/2 items-center gap-1 text-[12px] font-semibold text-[#2563eb]"
+                            className="absolute right-2 top-1/2 inline-flex -translate-y-1/2 items-center gap-1 text-[12px] font-semibold text-[var(--color-primary)]"
                           >
                             <MapPin className="h-3.5 w-3.5" />
                             Calculate
@@ -1153,7 +1153,7 @@ export default function CreditNoteForm() {
                   <button
                     type="button"
                     onClick={() => setTransporterModalOpen(true)}
-                    className="shrink-0 text-[13px] font-semibold text-[#2563eb]"
+                    className="shrink-0 text-[13px] font-semibold text-[var(--color-primary)] hover:underline"
                   >
                     {form.transporter_name ? "Edit Transporter" : "+ Add New Transporter"}
                   </button>
@@ -1322,8 +1322,7 @@ export default function CreditNoteForm() {
                 <button
                   type="button"
                   onClick={() => setCustomFieldOpen(true)}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-[#c4b5fd] bg-white px-3 py-2 text-[13px] font-semibold"
-                  style={{ color: ERP_PRIMARY }}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--color-primary)] bg-white px-3 py-2 text-[13px] font-semibold text-[var(--color-primary)] hover:bg-[var(--color-primary-soft)] transition-colors"
                 >
                   <Plus className="h-4 w-4" />
                   Add Custom Field
@@ -1388,7 +1387,7 @@ export default function CreditNoteForm() {
                   rows={3}
                   value={form.notes}
                   onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-                  className="w-full rounded-md border border-[#d0d0d8] bg-white px-3 py-2.5 text-[13px] leading-relaxed text-[#1a1a1f] focus:border-[#6b4eff] focus:outline-none focus:ring-1 focus:ring-[#c4b5fd]"
+                  className="w-full rounded-md border border-[#d0d0d8] bg-white px-3 py-2.5 text-[13px] leading-relaxed text-[#1a1a1f] focus:border-[var(--color-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]"
                 />
               </div>
             ) : null}

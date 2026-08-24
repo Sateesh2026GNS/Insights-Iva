@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   ArrowDownToLine,
@@ -124,6 +124,7 @@ export default function FinishedGoods() {
   const [warehouse, setWarehouse] = useState("");
   const [showFilters, setShowFilters] = useState(true);
   const [selectedDate, setSelectedDate] = useState("2026-08-13");
+  const dateInputRef = useRef(null);
   const [headerWarehouse, setHeaderWarehouse] = useState("");
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [selected, setSelected] = useState(null);

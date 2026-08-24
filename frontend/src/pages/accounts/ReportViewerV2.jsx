@@ -213,42 +213,38 @@ function GenerateReportDrawer({
 
 function PaginationBar({ pageSize, setPageSize, rangeLabel, safePage, totalPages, total, setPage }) {
   return (
-    <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#e4e4ea] bg-white px-4 py-3 text-[12px] text-[#6b6b76] shadow-sm">
-      <div className="flex items-center gap-2">
+    <div className="mt-4 ui-pagination justify-between border-t border-[var(--color-border-soft)] px-4 py-3">
+      <div className="flex items-center gap-2.5 flex-nowrap whitespace-nowrap text-[13px] text-[#596b82]">
         <span>Rows per page:</span>
-        <div className="relative">
-          <select
-            value={pageSize}
-            onChange={(e) => {
-              setPageSize(Number(e.target.value));
-              setPage(1);
-            }}
-            className="appearance-none rounded-md border border-[#d8d8e0] bg-white py-1.5 pl-2.5 pr-7 text-[12px] font-medium text-[#1a1a1f] outline-none"
-          >
-            {PAGE_SIZES.map((n) => (
-              <option key={n} value={n}>
-                {n}
-              </option>
-            ))}
-          </select>
-          <ChevronDown className="pointer-events-none absolute right-1.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#9a9aa5]" />
-        </div>
+        <select
+          value={pageSize}
+          onChange={(e) => {
+            setPageSize(Number(e.target.value));
+            setPage(1);
+          }}
+          className="ui-pagination-select"
+        >
+          {PAGE_SIZES.map((n) => (
+            <option key={n} value={n}>
+              {n}
+            </option>
+          ))}
+        </select>
         <span>{rangeLabel}</span>
       </div>
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-1">
         <button
           type="button"
           disabled={safePage <= 1}
           onClick={() => setPage((p) => Math.max(1, p - 1))}
-          className="grid h-8 w-8 place-items-center rounded-md border border-[#d8d8e0] bg-white disabled:opacity-40"
+          className="ui-page-btn"
           aria-label="Previous page"
         >
           <ChevronLeft className="h-4 w-4" />
         </button>
         <button
           type="button"
-          className="grid h-8 min-w-8 place-items-center rounded-md px-2 text-[13px] font-semibold text-[#1a1a1f] shadow-sm"
-          style={{ background: ACCENT }}
+          className="ui-page-btn ui-page-btn--active"
         >
           {safePage}
         </button>
@@ -256,7 +252,7 @@ function PaginationBar({ pageSize, setPageSize, rangeLabel, safePage, totalPages
           type="button"
           disabled={safePage >= totalPages || total === 0}
           onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-          className="grid h-8 w-8 place-items-center rounded-md border border-[#d8d8e0] bg-white disabled:opacity-40"
+          className="ui-page-btn"
           aria-label="Next page"
         >
           <ChevronRight className="h-4 w-4" />

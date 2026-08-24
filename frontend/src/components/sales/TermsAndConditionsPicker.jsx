@@ -4,7 +4,7 @@ import { MoreVertical, Pencil, Plus, Search, Trash2, User, X } from "lucide-reac
 
 import AddTermsAndConditionsModal from "./AddTermsAndConditionsModal";
 
-const PURPLE = "#6b4eff";
+const PRIMARY = "var(--color-primary)";
 const STORAGE_KEY = "gns_invoice_terms_templates";
 
 const DEFAULT_BODY =
@@ -127,7 +127,7 @@ export default function TermsAndConditionsPicker({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search"
-            className="w-full rounded-xl border border-[#dcdce3] bg-white py-2.5 pl-9 pr-3 text-[13px] text-[#1a1a1f] placeholder:text-[#a0a0ab] focus:border-[#c4b5fd] focus:outline-none focus:ring-1 focus:ring-[#c4b5fd]"
+            className="w-full rounded-xl border border-[#dcdce3] bg-white py-2.5 pl-9 pr-3 text-[13px] text-[#1a1a1f] placeholder:text-[#a0a0ab] focus:border-[var(--color-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]"
           />
         </div>
       </div>
@@ -228,7 +228,7 @@ export default function TermsAndConditionsPicker({
           setEditing(null);
           setAddOpen(true);
         }}
-        className="flex w-full items-center justify-center gap-1.5 border-t border-[#ececf0] bg-[#f3efff] py-3 text-[13px] font-semibold text-[#4f46e5]"
+        className="flex w-full items-center justify-center gap-1.5 border-t border-[#ececf0] bg-[var(--color-primary-soft)] py-3 text-[13px] font-semibold text-[var(--color-primary)] hover:bg-[var(--color-primary-soft)]/80 transition-colors"
       >
         <Plus className="h-4 w-4" /> Add Terms and Conditions
       </button>
@@ -241,16 +241,14 @@ export default function TermsAndConditionsPicker({
             onRemove?.();
             onClose?.();
           }}
-          className="inline-flex items-center justify-center gap-1.5 rounded-xl py-3 text-[13px] font-semibold text-white"
-          style={{ background: PURPLE }}
+          className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white py-3 text-[13px] font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
         >
           <X className="h-4 w-4" /> Remove
         </button>
         <button
           type="button"
           onClick={handleSelect}
-          className="inline-flex items-center justify-center gap-1.5 rounded-xl py-3 text-[13px] font-semibold text-white"
-          style={{ background: PURPLE }}
+          className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-[var(--color-primary)] py-3 text-[13px] font-semibold text-white hover:bg-[var(--color-primary-hover)] transition-colors shadow-sm"
         >
           <User className="h-4 w-4" /> Select Terms and Conditions
         </button>

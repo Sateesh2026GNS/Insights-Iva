@@ -43,7 +43,7 @@ function TabPlaceholder({ title, link, linkLabel }) {
         {title} — linked records will appear here.
       </div>
       {link && (
-        <Link to={link} className="text-sm font-semibold text-[#2563EB] hover:underline">
+        <Link to={link} className="text-sm font-semibold text-[var(--color-primary)] hover:underline">
           {linkLabel || "View all"} →
         </Link>
       )}
@@ -69,7 +69,7 @@ export default function CustomerDetailModal({ customer, onClose, onEdit, onDelet
       <div className="flex max-h-[94vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
         <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4">
           <div>
-            <p className="text-xs font-semibold text-[#2563EB]">{customer.customer_code}</p>
+            <p className="text-xs font-semibold text-[var(--color-primary)]">{customer.customer_code}</p>
             <h2 className="text-xl font-bold text-slate-900">{customer.company}</h2>
             <p className="text-sm text-slate-500">{customer.contact_person} · {customer.city}, {customer.state}</p>
           </div>
@@ -187,7 +187,7 @@ export default function CustomerDetailModal({ customer, onClose, onEdit, onDelet
               ) : (
                 customer.documents.map((d, i) => (
                   <li key={i} className="flex items-center gap-3 rounded-lg bg-slate-50 px-4 py-3">
-                    <FileText className="h-5 w-5 text-[#2563EB]" />
+                    <FileText className="h-5 w-5 text-[var(--color-primary)]" />
                     <span className="text-sm font-medium">{d.name}</span>
                     <span className="text-xs text-slate-400">{d.type}</span>
                   </li>
