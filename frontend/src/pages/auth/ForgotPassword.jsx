@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { forgotPassword, getApiErrorMessage } from "../../api/authApi";
+import LoginBackdrop from "../../components/auth/LoginBackdrop";
 import BrandLogo from "../../components/common/BrandLogo";
 import Button from "../../components/common/Button";
 import { useToast } from "../../context/ToastContext";
@@ -81,14 +82,15 @@ export default function ForgotPassword() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-100 via-teal-50 to-slate-100 p-4">
-      <div className="w-full max-w-md rounded-2xl border border-slate-200/80 bg-white p-8 shadow-xl">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden p-4">
+      <LoginBackdrop />
+      <div className="relative z-10 w-full max-w-md rounded-2xl border border-slate-200/80 bg-white p-8 shadow-xl dark:border-slate-700 dark:bg-slate-900">
         <div className="mb-6 text-center">
           <div className="mb-3 flex justify-center">
             <BrandLogo size="lg" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">Forgot Password</h1>
-          <p className="mt-2 text-sm text-gray-600">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-slate-100">Forgot Password</h1>
+          <p className="mt-2 text-sm text-gray-600 dark:text-slate-400">
             Enter your company email address and we&apos;ll send a secure reset link.
           </p>
         </div>
@@ -113,7 +115,7 @@ export default function ForgotPassword() {
 
         <form onSubmit={handleSubmit} className="space-y-4" noValidate>
           <div className="relative">
-            <label htmlFor="company-email" className="mb-1.5 block text-sm font-medium text-gray-700">
+            <label htmlFor="company-email" className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-slate-300">
               Company Email Address
             </label>
             <div className="pointer-events-none absolute left-4 top-[2.55rem] text-gray-400">
@@ -130,7 +132,7 @@ export default function ForgotPassword() {
               }}
               autoComplete="email"
               disabled={loading || sent}
-              className="box-border h-12 w-full rounded-lg border border-slate-200 bg-gray-50 py-3 pl-12 pr-4 text-sm text-gray-700 placeholder-gray-500 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30 disabled:opacity-60"
+              className="box-border h-12 w-full rounded-lg border border-slate-200 bg-gray-50 py-3 pl-12 pr-4 text-sm text-gray-700 placeholder-gray-500 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30 disabled:opacity-60 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-500"
               required
             />
           </div>
@@ -146,7 +148,7 @@ export default function ForgotPassword() {
           </Button>
         </form>
 
-        <p className="mt-6 text-center text-sm text-gray-600">
+        <p className="mt-6 text-center text-sm text-gray-600 dark:text-slate-400">
           <Link to="/login" className="font-semibold text-teal-600 hover:text-[var(--color-success)]">
             Back to Sign In
           </Link>
