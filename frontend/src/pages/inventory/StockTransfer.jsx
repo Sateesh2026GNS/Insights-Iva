@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import {
   ArrowLeftRight,
   ArrowRight,
+  Calendar,
   CheckCircle2,
   Filter,
   Plus,
@@ -33,30 +34,7 @@ import {
 } from "../../api/inventoryApi";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { asArray } from "../../utils/apiError";
-
-const STATUS_TONE = {
-  draft: "neutral",
-  pending_approval: "warning",
-  pending: "warning",
-  approved: "success",
-  in_transit: "info",
-  received: "success",
-  completed: "success",
-  rejected: "danger",
-  cancelled: "danger",
-};
-
-const STATUS_LABEL = {
-  draft: "Draft",
-  pending_approval: "Pending",
-  pending: "Pending",
-  approved: "Approved",
-  in_transit: "In Transit",
-  received: "Received",
-  completed: "Completed",
-  rejected: "Cancelled",
-  cancelled: "Cancelled",
-};
+import { todayIso } from "../../utils/dateUtils";
 
 const STEPS = [
   { id: 1, label: "Transfer Details" },
@@ -66,11 +44,11 @@ const STEPS = [
 
 const emptyForm = {
   transfer_number: "",
-  transfer_date: "2026-08-13",
+  transfer_date: todayIso(),
   reference: "",
   from_warehouse_id: "",
   to_warehouse_id: "",
-  expected_date: "2026-08-15",
+  expected_date: todayIso(),
   remarks: "",
   item_id: "",
   batch_number: "",
@@ -131,7 +109,7 @@ export default function StockTransfer() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [showFilters, setShowFilters] = useState(false);
-  const [headerDate, setHeaderDate] = useState("2026-08-13");
+  const [headerDate, setHeaderDate] = useState(() => todayIso());
   const [headerWarehouse, setHeaderWarehouse] = useState("");
   const [openMenuId, setOpenMenuId] = useState(null);
   const [viewTarget, setViewTarget] = useState(null);
@@ -549,12 +527,15 @@ export default function StockTransfer() {
                   </label>
                   <label className="text-sm">
                     <span className="ui-label">Transfer Date</span>
-                    <input
-                      type="date"
-                      value={form.transfer_date}
-                      onChange={(e) => setForm((f) => ({ ...f, transfer_date: e.target.value }))}
-                      className="ui-input"
-                    />
+                    <div className="relative flex items-center">
+                      <input
+                        type="date"
+                        value={form.transfer_date || todayIso()}
+                        onChange={(e) => setForm((f) => ({ ...f, transfer_date: e.target.value || todayIso() }))}
+                        className="ui-input pr-9"
+                      />
+                      <Calendar className="pointer-events-none absolute right-2.5 h-4 w-4 text-[var(--color-text-muted)]" />
+                    </div>
                   </label>
                   <label className="text-sm">
                     <span className="ui-label">Reference (Optional)</span>
@@ -614,12 +595,15 @@ export default function StockTransfer() {
 
                   <label className="text-sm">
                     <span className="ui-label">Expected Date *</span>
-                    <input
-                      type="date"
-                      value={form.expected_date}
-                      onChange={(e) => setForm((f) => ({ ...f, expected_date: e.target.value }))}
-                      className="ui-input"
-                    />
+                    <div className="relative flex items-center">
+                      <input
+                        type="date"
+                        value={form.expected_date || todayIso()}
+                        onChange={(e) => setForm((f) => ({ ...f, expected_date: e.target.value || todayIso() }))}
+                        className="ui-input pr-9"
+                      />
+                      <Calendar className="pointer-events-none absolute right-2.5 h-4 w-4 text-[var(--color-text-muted)]" />
+                    </div>
                   </label>
 
                   <label className="text-sm sm:col-span-2 lg:col-span-3">

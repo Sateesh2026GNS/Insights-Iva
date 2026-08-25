@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import usePageRefresh from "../../hooks/usePageRefresh";
-import { CheckCircle2, Plus, XCircle } from "lucide-react";
+import { Calendar, CheckCircle2, Plus, XCircle } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 
 import DataTable from "../../components/common/DataTable";
 import Loader from "../../components/common/Loader";
 import StoreManagerNav from "../../components/inventory/StoreManagerNav";
 import { useToast } from "../../context/ToastContext";
+import { todayIso } from "../../utils/dateUtils";
 import {
   approveStoreMaterialRequest,
   confirmStoreMaterialReceived,
@@ -60,6 +61,7 @@ export default function StoreMaterialRequests({ mode = "requests" }) {
   const [consumeRow, setConsumeRow] = useState(null);
   const [consumeForm, setConsumeForm] = useState({ used_qty: "", waste_qty: "0", returned_qty: "0" });
   const [form, setForm] = useState({
+    request_date: todayIso(),
     warehouse_id: "",
     item_id: "",
     quantity: "",
@@ -287,6 +289,19 @@ export default function StoreMaterialRequests({ mode = "requests" }) {
 
       {showForm && !issueMode && (
         <form onSubmit={handleCreate} className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:grid-cols-2 lg:grid-cols-3">
+          <label className="text-sm">
+            Request Date *
+            <div className="relative mt-1 flex items-center">
+              <input
+                type="date"
+                required
+                value={form.request_date || todayIso()}
+                onChange={(e) => setForm((f) => ({ ...f, request_date: e.target.value || todayIso() }))}
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 pr-9 text-sm"
+              />
+              <Calendar className="pointer-events-none absolute right-2.5 h-4 w-4 text-slate-400" />
+            </div>
+          </label>
           <label className="text-sm">
             Operator Name
             <input required value={form.operator_name} onChange={(e) => setForm((f) => ({ ...f, operator_name: e.target.value }))} placeholder="e.g. Ramesh" className="mt-1 w-full rounded-lg border px-3 py-2 text-sm" />

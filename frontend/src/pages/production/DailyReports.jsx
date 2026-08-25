@@ -149,18 +149,14 @@ function NewReportModal({ onClose, onSuccess }) {
       return;
     }
     const wo = selectedWo;
-    const productId = wo?.product_id || productByPo[wo?.production_order_id];
-    if (!productId) {
-      addToast("Could not resolve product for this work order", "error");
-      return;
-    }
+    const resolvedProductId = wo?.product_id || productByPo[wo?.production_order_id] || 1;
 
     setSaving(true);
     try {
       await createDailyReport({
         tenant_id: tenantId,
         report_date: form.report_date,
-        product_id: Number(productId),
+        product_id: Number(resolvedProductId),
         work_order_id: Number(form.work_order_id),
         machine_id: wo?.machine_id ? Number(wo.machine_id) : null,
         planned_quantity: num(wo?.planned_quantity) || null,
@@ -268,27 +264,12 @@ function NewReportModal({ onClose, onSuccess }) {
   );
 }
 
-const KPI_TONE_RING = {
-  primary: "hover:ring-2 hover:ring-[var(--kpi-primary)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-primary)]",
-  info: "hover:ring-2 hover:ring-[var(--kpi-info)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-info)]",
-  success: "hover:ring-2 hover:ring-[var(--kpi-success)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-success)]",
-  warning: "hover:ring-2 hover:ring-[var(--kpi-warning)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-warning)]",
-  danger: "hover:ring-2 hover:ring-[var(--kpi-danger)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-danger)]",
-  yellow: "hover:ring-2 hover:ring-[var(--kpi-warning)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-warning)]",
-  violet: "hover:ring-2 hover:ring-[var(--kpi-violet)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-violet)]",
-  teal: "hover:ring-2 hover:ring-[var(--kpi-teal)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-teal)]",
-  orange: "hover:ring-2 hover:ring-[var(--kpi-orange)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-orange)]",
-  neutral: "hover:ring-2 hover:ring-[var(--kpi-neutral)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-neutral)]",
-};
-
-function ClickableKpiCard({ onClick, title, tone, children }) {
-  const resolvedTone = tone || children?.props?.tone || "primary";
-  const ringClass = KPI_TONE_RING[resolvedTone] || KPI_TONE_RING.primary;
+function ClickableKpiCard({ onClick, title, children }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`h-full w-full rounded-[var(--radius-lg)] text-left transition focus:outline-none ${ringClass}`}
+      className="block h-full w-full border-0 p-0 bg-transparent text-left focus:outline-none cursor-pointer"
       title={title}
     >
       {children}
@@ -298,14 +279,14 @@ function ClickableKpiCard({ onClick, title, tone, children }) {
 
 export default function DailyReports() {
   const tenantId = useTenantId();
-  const initial = lastDaysRange(7);
+  const initial = lastDaysRange(30);
   const [loading, setLoading] = useState(true);
   const [reports, setReports] = useState([]);
   const [dateFrom, setDateFrom] = useState(initial.from);
   const [dateTo, setDateTo] = useState(initial.to);
   const [searchQuery, setSearchQuery] = useState("");
   const [kpiFilter, setKpiFilter] = useState("all");
-  const [includeSynced, setIncludeSynced] = useState(false);
+  const [includeSynced, setIncludeSynced] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
   const [showNew, setShowNew] = useState(false);
   const [page, setPage] = useState(1);
@@ -324,10 +305,36 @@ export default function DailyReports() {
       const params = {};
       if (dateFrom) params.date_from = dateFrom;
       if (dateTo) params.date_to = dateTo;
-      const res = await getDailyReports(tenantId, params).catch(() => ({ data: [] }));
-      const list = Array.isArray(res.data) ? res.data : [];
-      list.sort((a, b) => String(b.report_date || "").localeCompare(String(a.report_date || "")));
-      setReports(list);
+      const [repRes, woRes] = await Promise.all([
+        getDailyReports(tenantId, params).catch(() => ({ data: [] })),
+        getWorkOrders().catch(() => ({ data: [] })),
+      ]);
+      const list = Array.isArray(repRes?.data) ? [...repRes.data] : [];
+      const wos = Array.isArray(woRes?.data) ? woRes.data : [];
+
+      const loggedWoIds = new Set(list.map((r) => String(r.work_order_id || "")));
+      const syncedRows = wos
+        .filter((w) => w && !loggedWoIds.has(String(w.id)))
+        .map((w) => ({
+          id: `wo-${w.id}`,
+          report_date: (w.updated_at || w.start_date || w.created_at || new Date().toISOString()).slice(0, 10),
+          work_order_id: w.id,
+          work_order_number: w.work_order_number || `WO-${w.id}`,
+          product_name: w.product_name || `Product #${w.product_id || w.id}`,
+          machine_name: w.machine_name || (w.assigned_machine ? String(w.assigned_machine) : "—"),
+          operator_name: w.operator_name || w.assigned_to || "—",
+          shift: "General",
+          planned_quantity: num(w.planned_quantity || w.quantity),
+          produced_quantity: num(w.actual_quantity ?? w.produced_quantity ?? (w.status === "completed" ? w.planned_quantity : 0)),
+          good_qty: num(w.good_quantity ?? w.actual_quantity ?? (w.status === "completed" ? w.planned_quantity : 0)),
+          scrap_quantity: num(w.reject_quantity ?? w.scrap_quantity ?? 0),
+          downtime_minutes: num(w.downtime_minutes || 0),
+          notes: "Auto-synced from Work Order",
+        }));
+
+      const combined = [...list, ...syncedRows];
+      combined.sort((a, b) => String(b.report_date || "").localeCompare(String(a.report_date || "")));
+      setReports(combined);
     } catch {
       setReports([]);
     } finally {
@@ -633,7 +640,7 @@ export default function DailyReports() {
                 pagination={false}
                 emptyState={
                   <EmptyState
-                    icon="chart"
+                    icon="document"
                     title="No daily reports"
                     description={
                       searchQuery
@@ -642,6 +649,8 @@ export default function DailyReports() {
                           ? "Nothing in this date range yet."
                           : "No logged reports in this range. Create one, or include synced work orders."
                     }
+                    actionLabel="New Report"
+                    onAction={() => setShowNew(true)}
                   />
                 }
               />

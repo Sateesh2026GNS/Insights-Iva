@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -62,6 +63,8 @@ class InventoryItemBase(BaseModel):
     production_date: str | None = None
     warranty: str | None = None
     is_active: bool = True
+    created_at: datetime | None = None
+    date: str | None = None
 
     @field_validator("unit_cost", mode="before")
     @classmethod

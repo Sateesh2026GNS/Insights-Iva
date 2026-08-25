@@ -21,6 +21,7 @@ import { useToast } from "../../context/ToastContext";
 import useTenantId from "../../hooks/useTenantId";
 
 import Button from "../common/Button";
+import { DocumentEmptyIcon } from "../common/EmptyState";
 
 const TABS = [
   { id: "overview", label: "Overview" },
@@ -361,7 +362,14 @@ export default function BomDetailModal({ bom, onClose, onEdit, onCopy, onDelete,
                   </thead>
                   <tbody>
                     {localComponents.length === 0 ? (
-                      <tr><td colSpan={8} className="px-3 py-6 text-center text-slate-400">No components added yet</td></tr>
+                      <tr>
+                        <td colSpan={8} className="px-3 py-10 text-center">
+                          <div className="flex flex-col items-center justify-center">
+                            <DocumentEmptyIcon className="mb-2 h-10 w-10 text-slate-300 dark:text-slate-600" />
+                            <p className="text-sm font-medium text-slate-500">No components added yet</p>
+                          </div>
+                        </td>
+                      </tr>
                     ) : (
                       localComponents.map((c, i) => (
                         <tr key={c.id || i} className="border-t border-slate-100">
@@ -425,7 +433,14 @@ export default function BomDetailModal({ bom, onClose, onEdit, onCopy, onDelete,
                 </thead>
                 <tbody>
                   {(bom.routing || []).length === 0 ? (
-                    <tr><td colSpan={4} className="px-3 py-6 text-center text-slate-400">No routing defined</td></tr>
+                    <tr>
+                      <td colSpan={4} className="px-3 py-10 text-center">
+                        <div className="flex flex-col items-center justify-center">
+                          <DocumentEmptyIcon className="mb-2 h-10 w-10 text-slate-300 dark:text-slate-600" />
+                          <p className="text-sm font-medium text-slate-500">No routing defined</p>
+                        </div>
+                      </td>
+                    </tr>
                   ) : (
                     bom.routing.map((r, i) => (
                       <tr key={i} className="border-t border-slate-100">

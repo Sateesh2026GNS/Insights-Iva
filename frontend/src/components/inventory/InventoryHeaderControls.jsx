@@ -1,7 +1,8 @@
-import { useCallback, useId, useRef } from "react";
-import { CalendarDays } from "lucide-react";
+import { useCallback, useId, useRef, useState } from "react";
+import { CalendarDays, Share2 } from "lucide-react";
 
-import { openNativeDatePicker } from "../../utils/dateUtils";
+import { openNativeDatePicker, todayIso } from "../../utils/dateUtils";
+import InventoryDateExportModal from "./InventoryDateExportModal";
 
 /** Compact optional caption — keeps header uncluttered. */
 function FieldCaption({ htmlFor, children }) {
@@ -15,6 +16,7 @@ function FieldCaption({ htmlFor, children }) {
 
 /**
  * Clickable date control — entire surface opens native date picker.
+ * Automatically opens the Date Export / Share Popup for historical dates.
  */
 export function HeaderDateField({
   label = "Date",
@@ -25,52 +27,83 @@ export function HeaderDateField({
   max,
   className = "",
   id: idProp,
+  enableExportModal = true,
+  warehouseId = "",
+  warehouses = [],
+  sectionTitle = "Inventory",
+  itemType = "",
 }) {
   const autoId = useId();
   const id = idProp || autoId;
   const inputRef = useRef(null);
+  const [modalOpen, setModalOpen] = useState(false);
 
   const openPicker = useCallback(() => {
     openNativeDatePicker(inputRef.current);
   }, []);
 
+  const today = todayIso();
+  const maxDate = max || today;
+
+  const handleDateChange = (newDate) => {
+    onChange?.(newDate);
+    // Only open the pop-up for dates up to today (past / current date), never for future dates
+    if (enableExportModal && newDate && newDate <= today) {
+      setModalOpen(true);
+    }
+  };
+
   return (
-    <div className={`inventory-header-control ${className}`.trim()}>
-      {showLabel ? <FieldCaption htmlFor={id}>{label}</FieldCaption> : null}
-      <div className="inventory-header-control__surface">
-        <input
-          ref={inputRef}
-          id={id}
-          type="date"
-          value={value || ""}
-          min={min}
-          max={max}
-          onChange={(e) => onChange?.(e.target.value)}
-          onClick={openPicker}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
+    <>
+      <div className={`inventory-header-control ${className}`.trim()}>
+        {showLabel ? <FieldCaption htmlFor={id}>{label}</FieldCaption> : null}
+        <div className="inventory-header-control__surface">
+          <input
+            ref={inputRef}
+            id={id}
+            type="date"
+            value={value || ""}
+            min={min}
+            max={maxDate}
+            onChange={(e) => handleDateChange(e.target.value)}
+            onClick={openPicker}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                openPicker();
+              }
+            }}
+            className="ui-input ui-date-input inventory-header-control__input !w-auto min-w-[10.5rem]"
+            aria-label={label || "Date"}
+          />
+          <button
+            type="button"
+            tabIndex={-1}
+            onClick={(e) => {
               e.preventDefault();
+              e.stopPropagation();
               openPicker();
-            }
-          }}
-          className="ui-input ui-date-input inventory-header-control__input !w-auto min-w-[10.5rem]"
-          aria-label={label || "Date"}
-        />
-        <button
-          type="button"
-          tabIndex={-1}
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            openPicker();
-          }}
-          className="inventory-header-control__icon-btn"
-          aria-label={`Open calendar for ${label || "date"}`}
-        >
-          <CalendarDays className="h-4 w-4" strokeWidth={2} aria-hidden />
-        </button>
+            }}
+            className="inventory-header-control__icon-btn !border-0 !outline-none !shadow-none !ring-0 bg-transparent"
+            aria-label={`Open calendar for ${label || "date"}`}
+          >
+            <CalendarDays className="h-4 w-4" strokeWidth={2} aria-hidden />
+          </button>
+        </div>
       </div>
-    </div>
+
+      {enableExportModal && (
+        <InventoryDateExportModal
+          open={modalOpen}
+          onClose={() => setModalOpen(false)}
+          initialDate={value || todayIso()}
+          warehouseId={warehouseId}
+          warehouses={warehouses}
+          sectionTitle={sectionTitle}
+          itemType={itemType}
+        />
+      )}
+    </>
   );
 }
 
@@ -144,6 +177,8 @@ export default function InventoryHeaderControls({
   showLabels = true,
   emptyWarehouseLabel = "Main Warehouse",
   className = "",
+  sectionTitle = "Inventory",
+  itemType = "",
   children,
 }) {
   return (
@@ -154,6 +189,10 @@ export default function InventoryHeaderControls({
         showLabel={showLabels}
         value={dateValue}
         onChange={onDateChange}
+        warehouseId={warehouseValue}
+        warehouses={warehouses}
+        sectionTitle={sectionTitle}
+        itemType={itemType}
       />
       <HeaderWarehouseField
         label={warehouseLabel}

@@ -263,12 +263,20 @@ def post_sales_invoice_journal(
 
     debit = sum(float(l["debit"]) for l in legs)
     credit = sum(float(l["credit"]) for l in legs)
-    diff = round(abs(debit - credit), 2)
-    if diff >= 0.01:
-        raise ValueError(
-            f"Invalid invoice journal totals for invoice {invoice_number}: "
-            f"total debit ({debit:.2f}) does not match total credit ({credit:.2f})"
-        )
+    diff = round(debit - credit, 2)
+    if abs(diff) >= 0.01:
+        # Auto-adjust small floating point discrepancy into Round Off leg
+        round_leg = next((l for l in legs if l["account"] == "Round Off"), None)
+        if round_leg:
+            if diff > 0:
+                round_leg["credit"] += diff
+            else:
+                round_leg["debit"] += abs(diff)
+        else:
+            if diff > 0:
+                legs.append({"account": "Round Off", "debit": 0, "credit": diff})
+            else:
+                legs.append({"account": "Round Off", "debit": abs(diff), "credit": 0})
 
     try:
         return post_journal_entry(

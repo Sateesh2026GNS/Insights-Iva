@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { Link, useLocation } from "react-router-dom";
 import { Calendar, ChevronLeft, ChevronRight, FileText, Filter, ListFilter, Plus, Search, X } from "lucide-react";
@@ -121,6 +121,26 @@ export default function ProformaInvoices() {
   const [search, setSearch] = useState("");
   const [dateFrom, setDateFrom] = useState("2026-04-01");
   const [dateTo, setDateTo] = useState("2027-03-31");
+  const dateFromRef = useRef(null);
+  const dateToRef = useRef(null);
+
+  const openDateFrom = () => {
+    if (typeof dateFromRef.current?.showPicker === "function") {
+      dateFromRef.current.showPicker();
+    } else {
+      dateFromRef.current?.focus();
+      dateFromRef.current?.click();
+    }
+  };
+
+  const openDateTo = () => {
+    if (typeof dateToRef.current?.showPicker === "function") {
+      dateToRef.current.showPicker();
+    } else {
+      dateToRef.current?.focus();
+      dateToRef.current?.click();
+    }
+  };
   const [showFilters, setShowFilters] = useState(false);
   const [showSort, setShowSort] = useState(false);
   const [sortId, setSortId] = useState("date_desc");
@@ -221,31 +241,46 @@ export default function ProformaInvoices() {
     <div className="min-h-full" style={{ background: PAGE_BG }}>
       <div className="space-y-4 p-4 sm:p-6">
 
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-          <div className="min-w-[200px] rounded-xl border border-[#e4e4ea] border-b-[3px] border-b-[var(--color-primary)] bg-white px-5 py-3.5 shadow-sm">
-            <p className="text-[13px] font-medium text-[#6b6b76]">
-              Total Sales <span className="text-[#a0a0ab]">({total})</span>
-            </p>
-            <p className="mt-1 text-[20px] font-bold tabular-nums text-[#1a1a1f]">
-              {formatInr(totalSales)}
-            </p>
-          </div>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
           <div className="flex flex-wrap items-center gap-2.5">
             <div className="inline-flex items-center gap-2 rounded-lg border border-[#e4e4ea] bg-white px-3 py-2 text-[13px] text-[#4a4a55] shadow-sm">
-              <Calendar className="h-4 w-4 shrink-0 text-[#9a9aa5]" />
+              <button
+                type="button"
+                onClick={openDateFrom}
+                className="flex items-center justify-center text-[#9a9aa5] hover:text-[var(--color-primary)] transition-colors cursor-pointer"
+                aria-label="Open start date picker"
+              >
+                <Calendar className="h-4 w-4 shrink-0" />
+              </button>
               <input
+                ref={dateFromRef}
                 type="date"
                 value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-                className="w-[118px] border-0 bg-transparent p-0 text-[13px] focus:outline-none"
+                onChange={(e) => {
+                  setDateFrom(e.target.value);
+                  setPage(1);
+                }}
+                className="w-[118px] border-0 bg-transparent p-0 text-[13px] focus:outline-none cursor-pointer"
               />
               <span className="text-[#9a9aa5]">→</span>
               <input
+                ref={dateToRef}
                 type="date"
                 value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-                className="w-[118px] border-0 bg-transparent p-0 text-[13px] focus:outline-none"
+                onChange={(e) => {
+                  setDateTo(e.target.value);
+                  setPage(1);
+                }}
+                className="w-[118px] border-0 bg-transparent p-0 text-[13px] focus:outline-none cursor-pointer"
               />
+              <button
+                type="button"
+                onClick={openDateTo}
+                className="flex items-center justify-center text-[#9a9aa5] hover:text-[var(--color-primary)] transition-colors cursor-pointer"
+                aria-label="Open end date picker"
+              >
+                <Calendar className="h-4 w-4 shrink-0" />
+              </button>
             </div>
             <Button variant="add" to={createTo} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
               {exportOnly ? "Export Proforma Invoice" : "Proforma Invoice"}

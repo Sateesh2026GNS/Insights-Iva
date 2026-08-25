@@ -1,12 +1,11 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Calendar } from "lucide-react";
 
 import PageHeader from "../../components/common/PageHeader";
 import { createWarehouse } from "../../api/inventoryApi";
 import useTenantId from "../../hooks/useTenantId";
-
-
+import { todayIso } from "../../utils/dateUtils";
 
 import Button from "../../components/common/Button";
 import { inputMtClass as inputClass } from "../../design-system/classes";
@@ -16,6 +15,7 @@ export default function CreateWarehouse() {
   const navigate = useNavigate();
   const [form, setForm] = useState({
     tenant_id: tenantId,
+    date: todayIso(),
     name: "",
     code: "",
     capacity: "",
@@ -99,18 +99,15 @@ export default function CreateWarehouse() {
             onChange={(e) => setForm((f) => ({ ...f, is_primary: e.target.checked }))}
             className="rounded border-slate-300 text-teal-600 focus:ring-teal-500"
           />
-          Primary warehouse
+          Set as primary warehouse
         </label>
-        <div className="flex flex-wrap gap-3 pt-2">
-          <Button variant="primary" type="submit" disabled={saving} className="disabled:opacity-50">
-            {saving ? "Saving…" : "Create warehouse"}
-          </Button>
-          <Link
-            to="/inventory/warehouses"
-            className="inline-flex items-center justify-center rounded-xl border border-slate-200 dark:border-slate-600 px-4 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
-          >
+        <div className="flex justify-end gap-3 pt-2">
+          <Button variant="secondary" to="/inventory/warehouses">
             Cancel
-          </Link>
+          </Button>
+          <Button variant="primary" type="submit" disabled={saving}>
+            {saving ? "Creating…" : "Create warehouse"}
+          </Button>
         </div>
       </form>
     </div>

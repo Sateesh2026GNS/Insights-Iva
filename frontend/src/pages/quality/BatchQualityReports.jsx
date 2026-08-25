@@ -421,74 +421,95 @@ export default function BatchQualityReports() {
         />
       </div>
 
-      <div className="ui-card ui-card--padded">
-        <div className="flex flex-col gap-3.5 xl:flex-row xl:items-center">
-          <SearchBar
-            value={search}
-            onChange={setSearch}
-            placeholder="Search by batch no, product, work order..."
-            className="min-w-0 w-full"
-          />
-          <div className="flex flex-wrap items-center gap-3">
-            <MultiSelectDropdown
-              label="Products"
-              options={products}
-              selected={selectedProducts}
-              onChange={setSelectedProducts}
-              placeholder="Search products..."
-              minWidth="min-w-[11.5rem]"
+      <div className="ui-card ui-card--padded space-y-3">
+        {/* Top search & quick actions bar */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="relative ui-search-wrap min-w-[220px] flex-1">
+            <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]" />
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by batch no, product, work order..."
+              className="ui-input w-full !pl-10 text-[13px] text-[var(--color-text)]"
             />
-            <MultiSelectDropdown
-              label="Processes"
-              options={processes}
-              selected={selectedProcesses}
-              onChange={setSelectedProcesses}
-              placeholder="Search processes..."
-              minWidth="min-w-[11rem]"
-            />
-            <MultiSelectDropdown
-              label="Status"
-              options={BATCH_STATUS_OPTIONS}
-              selected={selectedStatuses}
-              onChange={setSelectedStatuses}
-              placeholder="Search statuses..."
-              minWidth="min-w-[9.5rem]"
-            />
-            <MultiSelectDropdown
-              label="Results"
-              options={BATCH_RESULT_OPTIONS}
-              selected={selectedResults}
-              onChange={setSelectedResults}
-              placeholder="Search results..."
-              minWidth="min-w-[9.5rem]"
-            />
-            <div className="flex items-center gap-2">
-              <label className="relative inline-flex items-center">
-                <CalendarDays className="pointer-events-none absolute left-3 h-4 w-4 text-[var(--color-text-muted)]" />
-                <input
-                  type="date"
-                  value={dateFrom}
-                  onChange={(e) => setDateFrom(e.target.value)}
-                  className="ui-input !w-auto min-w-[9.5rem] !pl-9 text-[13px] text-[var(--color-text)]"
-                  aria-label="Date from"
-                />
-              </label>
-              <span className="text-xs text-[var(--color-text-muted)]">to</span>
+          </div>
+          <div className="flex flex-wrap items-center gap-2.5">
+            <div className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border-soft)] bg-white px-3 py-1.5 text-[13px] shadow-xs">
+              <CalendarDays className="h-4 w-4 shrink-0 text-[var(--color-text-muted)]" />
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                className="border-0 bg-transparent p-0 text-[13px] text-[var(--color-text)] focus:outline-none"
+                aria-label="Date from"
+              />
+              <span className="text-[var(--color-text-muted)]">to</span>
               <input
                 type="date"
                 value={dateTo}
                 onChange={(e) => setDateTo(e.target.value)}
-                className="ui-input !w-auto min-w-[9.5rem] text-[13px] text-[var(--color-text)]"
+                className="border-0 bg-transparent p-0 text-[13px] text-[var(--color-text)] focus:outline-none"
                 aria-label="Date to"
               />
             </div>
-            <Button type="button" variant="secondary" onClick={() => setShowFilters((v) => !v)}>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setShowFilters((v) => !v)}
+              className={showFilters ? "!border-[var(--color-primary)] !text-[var(--color-primary)] font-semibold" : ""}
+            >
               <Filter className="h-4 w-4" /> Filters
+              {(selectedProducts.length + selectedProcesses.length + selectedStatuses.length + selectedResults.length) > 0 ? (
+                <span className="ml-1 rounded-full bg-[var(--color-primary)] px-1.5 py-0.2 text-[10px] text-white">
+                  {selectedProducts.length + selectedProcesses.length + selectedStatuses.length + selectedResults.length}
+                </span>
+              ) : null}
             </Button>
           </div>
         </div>
-        {showFilters ? (
-          <div className="mt-4 flex flex-wrap gap-2 border-t border-[var(--color-border-soft)] pt-4">
+
+        {/* Filter dropdowns row */}
+        <div className="flex flex-wrap items-center gap-3 border-t border-[var(--color-border-soft)] pt-3">
+          <MultiSelectDropdown
+            label="Products"
+            options={products}
+            selected={selectedProducts}
+            onChange={setSelectedProducts}
+            placeholder="Search products..."
+            minWidth="min-w-[11.5rem]"
+          />
+          <MultiSelectDropdown
+            label="Processes"
+            options={processes}
+            selected={selectedProcesses}
+            onChange={setSelectedProcesses}
+            placeholder="Search processes..."
+            minWidth="min-w-[11rem]"
+          />
+          <MultiSelectDropdown
+            label="Status"
+            options={BATCH_STATUS_OPTIONS}
+            selected={selectedStatuses}
+            onChange={setSelectedStatuses}
+            placeholder="Search statuses..."
+            minWidth="min-w-[9.5rem]"
+          />
+          <MultiSelectDropdown
+            label="Results"
+            options={BATCH_RESULT_OPTIONS}
+            selected={selectedResults}
+            onChange={setSelectedResults}
+            placeholder="Search results..."
+            minWidth="min-w-[9.5rem]"
+          />
+          {(selectedProducts.length > 0 ||
+            selectedProcesses.length > 0 ||
+            selectedStatuses.length > 0 ||
+            selectedResults.length > 0 ||
+            dateFrom ||
+            dateTo ||
+            search) && (
             <Button
               type="button"
               variant="ghost"
@@ -501,11 +522,12 @@ export default function BatchQualityReports() {
                 setDateFrom("");
                 setDateTo("");
               }}
+              className="text-xs text-[var(--color-text-muted)] hover:text-red-600"
             >
-              Clear all filters
+              Clear filters
             </Button>
-          </div>
-        ) : null}
+          )}
+        </div>
       </div>
 
       <div className="ui-card overflow-hidden">

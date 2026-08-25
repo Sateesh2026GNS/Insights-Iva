@@ -20,6 +20,17 @@ vi.mock("../../../api/dashboardApi", () => ({
   getErpDashboard: () => mockGetErpDashboard(),
 }));
 
+vi.mock("../../../api/procurementApi", () => ({
+  getMaterialRequests: vi.fn().mockResolvedValue({ data: [] }),
+  getPurchaseOrders: vi.fn().mockResolvedValue({ data: [] }),
+  getVendors: vi.fn().mockResolvedValue({ data: [] }),
+}));
+
+vi.mock("../../../api/productionApi", () => ({
+  getProductionOrders: vi.fn().mockResolvedValue({ data: [] }),
+  getWorkOrders: vi.fn().mockResolvedValue({ data: [] }),
+}));
+
 vi.mock("recharts", () => {
   const React = require("react");
   const Mock = ({ children }) => <div data-testid="recharts-mock">{children}</div>;

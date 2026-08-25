@@ -184,19 +184,72 @@ const PAGE_TITLE_OVERRIDES = {
   "/production/operator-jobs": "My Operator Jobs",
 };
 
+const ENTITY_SINGULAR = {
+  invoices: "Invoice",
+  quotations: "Quotation",
+  orders: "Sales Order",
+  bills: "Bill",
+  "debit-notes": "Debit Note",
+  "credit-notes": "Credit Note",
+  "delivery-challans": "Delivery Challan",
+  "proforma-invoices": "Proforma Invoice",
+  "export-invoices": "Export Invoice",
+  "export-proforma-invoices": "Export Proforma Invoice",
+  purchases: "Purchase",
+  "purchase-orders": "Purchase Order",
+  "goods-receipt": "Goods Receipt",
+  "material-requests": "Material Request",
+  "supplier-payments": "Supplier Payment",
+  "vendor-bills": "Vendor Bill",
+  vendors: "Vendor",
+  customers: "Customer",
+  products: "Product",
+  items: "Item",
+  warehouses: "Warehouse",
+  suppliers: "Supplier",
+  "work-orders": "Work Order",
+  meetings: "Meeting",
+  "journal-entries": "Journal Entry",
+  "chart-of-accounts": "Account",
+  reports: "Report",
+  "payment-receipts": "Payment Receipt",
+  "refund-vouchers": "Refund Voucher",
+  "payments-made": "Payment Made",
+  leads: "Lead",
+  employees: "Employee",
+  tasks: "Task",
+  machines: "Machine",
+  departments: "Department",
+  users: "User",
+  roles: "Role",
+};
+
 function getLabel(segment, segments, index) {
   const prev = index > 0 ? segments[index - 1] : null;
   if (segment === "dashboard" && prev === "inventory") return "Store Dashboard";
   if (segment === "settings" && prev === "inventory") return "Inventory Settings";
-  if (segment === "create" && prev === "items") return "Create Item";
-  if (segment === "create" && prev === "warehouses") return "Create Warehouse";
-  if (segment === "create" && prev === "suppliers") return "Create Supplier";
-  if (segment === "create" && prev === "orders") return "Create Sales Order";
-  if (segment === "create" && prev === "purchase-orders") return "Create Purchase Order";
   if (segment === "create-quick" && prev === "work-orders") return "Quick Work Order";
+  if (segment === "create" && prev && ENTITY_SINGULAR[prev]) {
+    return `Create ${ENTITY_SINGULAR[prev]}`;
+  }
+  if (segment === "edit" && index >= 2) {
+    const parentEntity = segments[index - 2];
+    if (ENTITY_SINGULAR[parentEntity]) return `Edit ${ENTITY_SINGULAR[parentEntity]}`;
+    return "Edit";
+  }
+  if (segment === "copy" && index >= 2) {
+    const parentEntity = segments[index - 2];
+    if (ENTITY_SINGULAR[parentEntity]) return `${ENTITY_SINGULAR[parentEntity]} Copy`;
+    return "Copy";
+  }
   if (prev === "settings" && index >= 1) {
     const cat = findSettingsCategory(segment);
     if (cat) return cat.title;
+  }
+  // If segment is a numeric or alphanumeric ID (like "1", "INV-000001", etc.) under an entity list
+  const isIdSegment = /^\d+$/.test(segment) || (prev && ENTITY_SINGULAR[prev] && !pathLabels[segment] && segment.length > 0 && !["create", "edit", "copy", "bulk-import"].includes(segment));
+  if (isIdSegment && prev && ENTITY_SINGULAR[prev]) {
+    return `${ENTITY_SINGULAR[prev]} Details`;
   }
   return pathLabels[segment] || segment.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
@@ -240,9 +293,6 @@ export function getBreadcrumbTrail(pathname) {
 export function getPageTitle(pathname) {
   const path = (pathname || "/").replace(/\/$/, "") || "/";
   if (PAGE_TITLE_OVERRIDES[path]) return PAGE_TITLE_OVERRIDES[path];
-  if (/^\/inventory\/items\/[^/]+$/.test(path)) return "Item Details";
-  if (/^\/meetings\/[^/]+$/.test(path)) return "Meeting Details";
-  if (/^\/procurement\/purchase-orders\/[^/]+\/edit$/.test(path)) return "Edit Purchase Order";
   const trail = getBreadcrumbTrail(pathname);
   return trail[trail.length - 1]?.label || "Dashboard";
 }

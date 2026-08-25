@@ -202,6 +202,7 @@ class UserResponse(BaseModel):
     trial_expires_at: str | None = None
     last_login_at: str | None = None
     current_login_at: str | None = None
+    avatar: str | None = None
 
     @field_validator("email")
     @classmethod

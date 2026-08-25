@@ -13,20 +13,51 @@ export default defineConfig({
       ignored: ["**/node_modules_bak_push/**", "**/dist/**", "**/.git/**"],
     },
     proxy: {
-      // Proxy API requests while bypassing static public assets (.png, .jpg, etc.)
+      // Proxy API requests while bypassing HTML page navigations to SPA index.html
       "/auth": {
         target: "http://127.0.0.1:8000",
         changeOrigin: true,
-        bypass(req) {
-          if (req.url.match(/\.(png|jpg|jpeg|gif|svg|webp|ico)$/i)) {
-            return req.url;
-          }
-        },
+        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
       },
-      "/api": { target: "http://127.0.0.1:8000", changeOrigin: true },
-      "/tasks": { target: "http://127.0.0.1:8000", changeOrigin: true },
-      "/sidebar": { target: "http://127.0.0.1:8000", changeOrigin: true },
-      "/platform": { target: "http://127.0.0.1:8000", changeOrigin: true },
+      "/api": {
+        target: "http://127.0.0.1:8000",
+        changeOrigin: true,
+      },
+      "/sales": {
+        target: "http://127.0.0.1:8000",
+        changeOrigin: true,
+        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+      },
+      "/inventory": {
+        target: "http://127.0.0.1:8000",
+        changeOrigin: true,
+        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+      },
+      "/procurement": {
+        target: "http://127.0.0.1:8000",
+        changeOrigin: true,
+        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+      },
+      "/production": {
+        target: "http://127.0.0.1:8000",
+        changeOrigin: true,
+        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+      },
+      "/tasks": {
+        target: "http://127.0.0.1:8000",
+        changeOrigin: true,
+        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+      },
+      "/sidebar": {
+        target: "http://127.0.0.1:8000",
+        changeOrigin: true,
+        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+      },
+      "/platform": {
+        target: "http://127.0.0.1:8000",
+        changeOrigin: true,
+        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+      },
       "/health": { target: "http://127.0.0.1:8000", changeOrigin: true },
     },
   },

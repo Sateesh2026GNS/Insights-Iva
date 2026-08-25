@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 
 import Button from "../../components/common/Button";
+import { DocumentEmptyIcon } from "../../components/common/EmptyState";
 import { SearchBar } from "../../components/common/SearchFilter";
 import Loader from "../../components/common/Loader";
 import PageHeader from "../../components/common/PageHeader";
@@ -816,7 +817,12 @@ export default function EquipmentSpareParts() {
               <tbody>
                 {pageRows.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="border-b border-slate-100 px-3 py-10 text-center text-slate-500">No equipment found</td>
+                    <td colSpan={7} className="border-b border-slate-100 px-3 py-12 text-center text-slate-500">
+                      <div className="flex flex-col items-center justify-center">
+                        <DocumentEmptyIcon className="mb-2 h-10 w-10 text-slate-300 dark:text-slate-600" />
+                        <p className="text-sm font-medium">No equipment found</p>
+                      </div>
+                    </td>
                   </tr>
                 ) : (
                   pageRows.map((row, idx) => {
@@ -871,7 +877,12 @@ export default function EquipmentSpareParts() {
               <tbody>
                 {pageRows.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="border-b border-slate-100 px-3 py-10 text-center text-slate-500">No spare parts found</td>
+                    <td colSpan={8} className="border-b border-slate-100 px-3 py-12 text-center text-slate-500">
+                      <div className="flex flex-col items-center justify-center">
+                        <DocumentEmptyIcon className="mb-2 h-10 w-10 text-slate-300 dark:text-slate-600" />
+                        <p className="text-sm font-medium">No spare parts found</p>
+                      </div>
+                    </td>
                   </tr>
                 ) : (
                   pageRows.map((row, idx) => (

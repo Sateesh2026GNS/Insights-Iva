@@ -1,14 +1,16 @@
 import { useEffect, useState } from "react";
-import { X } from "lucide-react";
+import { Calendar, X } from "lucide-react";
 
 import Button from "../common/Button";
 import { createInventoryItem, updateInventoryItem } from "../../api/inventoryApi";
 import { apiErrorMessage } from "../../utils/apiError";
+import { todayIso } from "../../utils/dateUtils";
 
 const UNITS = ["KG", "Nos", "Pcs", "Ltr", "Mtr", "Roll", "Box", "Sheet", "Drum", "Gms"];
 
 function emptyForm() {
   return {
+    date: todayIso(),
     name: "",
     sku: "",
     unit: "KG",

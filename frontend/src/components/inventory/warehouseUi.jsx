@@ -47,8 +47,18 @@ export function WhKpiCard({ label, value, icon: Icon, tone = "primary", hint, to
     teal: "bg-teal-600",
     orange: "bg-orange-500",
   };
+  const hoverBorders = {
+    primary: "hover:border-[#036f71] hover:ring-1 hover:ring-[#036f71]",
+    emerald: "hover:border-[#059669] hover:ring-1 hover:ring-[#059669]",
+    amber: "hover:border-[#d97706] hover:ring-1 hover:ring-[#d97706]",
+    red: "hover:border-[#dc2626] hover:ring-1 hover:ring-[#dc2626]",
+    slate: "hover:border-[#64748b] hover:ring-1 hover:ring-[#64748b]",
+    sky: "hover:border-[#0751b2] hover:ring-1 hover:ring-[#0751b2]",
+    teal: "hover:border-[#036f71] hover:ring-1 hover:ring-[#036f71]",
+    orange: "hover:border-[#ea580c] hover:ring-1 hover:ring-[#ea580c]",
+  };
   const body = (
-    <div className="group rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-slate-300 hover:shadow-md">
+    <div className={`group rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md cursor-pointer ${hoverBorders[tone] || hoverBorders.primary}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-xs font-medium text-slate-500">{label}</p>

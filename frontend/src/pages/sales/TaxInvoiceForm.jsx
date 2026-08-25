@@ -48,6 +48,31 @@ import {
   Pill,
 } from "../../design-system/erpFormControls";
 
+const STATE_CODES = {
+  "Andhra Pradesh": "37",
+  Telangana: "36",
+  Karnataka: "29",
+  Maharashtra: "27",
+  "Tamil Nadu": "33",
+  Gujarat: "24",
+  Delhi: "07",
+  "Uttar Pradesh": "09",
+  "West Bengal": "19",
+  Rajasthan: "08",
+  Kerala: "32",
+  "Madhya Pradesh": "23",
+  Punjab: "03",
+  Haryana: "06",
+  Bihar: "10",
+  Odisha: "21",
+  Assam: "18",
+  Jharkhand: "20",
+  Chhattisgarh: "22",
+  Uttarakhand: "05",
+  "Himachal Pradesh": "02",
+  Goa: "30",
+};
+
 const PREFIX_STORAGE_KEY = "gns_invoice_prefixes";
 const DEFAULT_PREFIXES = ["INV-", "TI-"];
 const ADD_PREFIX_VALUE = "__add_prefix__";
@@ -214,13 +239,26 @@ function SectionHeader({ icon: Icon, title, children, className = "", collapsibl
 
 const INDIAN_STATES = [
   "Andhra Pradesh",
+  "Assam",
+  "Bihar",
+  "Chhattisgarh",
   "Delhi",
+  "Goa",
   "Gujarat",
+  "Haryana",
+  "Himachal Pradesh",
+  "Jharkhand",
   "Karnataka",
+  "Kerala",
+  "Madhya Pradesh",
   "Maharashtra",
+  "Odisha",
+  "Punjab",
+  "Rajasthan",
   "Tamil Nadu",
   "Telangana",
   "Uttar Pradesh",
+  "Uttarakhand",
   "West Bengal",
 ];
 
@@ -236,6 +274,9 @@ export default function TaxInvoiceForm() {
   const [company, setCompany] = useState(null);
   const [customerSearch, setCustomerSearch] = useState("");
   const [showBuyerPicker, setShowBuyerPicker] = useState(false);
+  const [sameAsBuyer, setSameAsBuyer] = useState(true);
+  const [showConsigneePicker, setShowConsigneePicker] = useState(false);
+  const [consigneeSearch, setConsigneeSearch] = useState("");
   const [dispatchAddress, setDispatchAddress] = useState(null);
   const [editCompanyOpen, setEditCompanyOpen] = useState(false);
   const [addBuyerOpen, setAddBuyerOpen] = useState(false);
@@ -259,6 +300,15 @@ export default function TaxInvoiceForm() {
   const [pendingInvoiceType, setPendingInvoiceType] = useState(null);
   const [prefixModalOpen, setPrefixModalOpen] = useState(false);
   const [customPrefixes, setCustomPrefixes] = useState(loadCustomPrefixes);
+  // Tax mode: "auto" detects from buyer state, "cgst_sgst" forces CGST+SGST, "igst" forces IGST
+  const [taxModeOverride, setTaxModeOverride] = useState("auto");
+  const [declarationText, setDeclarationText] = useState(() => {
+    try { return localStorage.getItem("gns_invoice_declaration") || ""; } catch { return ""; }
+  });
+  const [rejectionPolicyText, setRejectionPolicyText] = useState(() => {
+    try { return localStorage.getItem("gns_invoice_rejection_policy") || ""; } catch { return ""; }
+  });
+  const [declOpen, setDeclOpen] = useState(false);
   const [signatureOn, setSignatureOn] = useState(true);
   const [signatureDataUrl, setSignatureDataUrl] = useState(null);
   const [stampDataUrl, setStampDataUrl] = useState(null);
@@ -266,6 +316,7 @@ export default function TaxInvoiceForm() {
   const [itemPickerIdx, setItemPickerIdx] = useState(null);
   const [itemSearch, setItemSearch] = useState("");
   const [numberManual, setNumberManual] = useState(false);
+  const [erpFieldsOpen, setErpFieldsOpen] = useState(true);
   const [form, setForm] = useState({
     tenant_id: tenantId,
     customer_id: "",
@@ -279,6 +330,22 @@ export default function TaxInvoiceForm() {
     discount: 0,
     other_charge: 0,
     round_off: 0,
+    irn: (typeof window !== "undefined" ? localStorage.getItem("gns_invoice_irn") : "") || "",
+    ack_no: (typeof window !== "undefined" ? localStorage.getItem("gns_invoice_ack_no") : "") || "",
+    ack_date: (typeof window !== "undefined" ? localStorage.getItem("gns_invoice_ack_date") : "") || "",
+    ewaybill_number: "",
+    delivery_note: "",
+    delivery_note_date: "",
+    payment_terms: "",
+    reference_no: "",
+    reference_date: "",
+    other_references: "",
+    po_number: "",
+    po_date: "",
+    dispatch_doc_no: "",
+    transporter_name: "DTDC",
+    destination: "",
+    terms_of_delivery: "",
     consignee_name: "",
     consignee_address1: "",
     consignee_address2: "",
@@ -293,15 +360,11 @@ export default function TaxInvoiceForm() {
     lr_date: "",
     vehicle_no: "",
     distance_km: 0,
-    transporter_name: "",
     transporter_id: "",
     place_of_supply: "",
     date_of_supply: "",
     supply_type: "B2B",
-    po_number: "",
-    po_date: "",
     challan_number: "",
-    ewaybill_number: "",
     sales_person: "",
     reverse_charge: false,
   });
@@ -427,6 +490,11 @@ export default function TaxInvoiceForm() {
   const filteredCustomers = useMemo(
     () => filterCustomers(customers, customerSearch),
     [customers, customerSearch]
+  );
+
+  const filteredConsignees = useMemo(
+    () => filterCustomers(customers, consigneeSearch),
+    [customers, consigneeSearch]
   );
 
   const selectedBuyer = customers.find((c) => String(c.id) === String(form.customer_id));
@@ -572,7 +640,8 @@ export default function TaxInvoiceForm() {
   const invoiceDiscount = Number(form.discount) || 0;
   const finalAmount = money(itemsTotal + otherCharge - invoiceDiscount + (Number(form.round_off) || 0));
 
-  const useIgst = invoiceType === "export";
+  const useIgst = taxModeOverride === "igst" || invoiceType === "export";
+  const useCgstSgst = !useIgst && (taxModeOverride === "cgst_sgst" || taxModeOverride === "auto");
 
   const avgGstPct =
     filledItems.length > 0
@@ -613,7 +682,7 @@ export default function TaxInvoiceForm() {
       const invoiceNumberPayload =
         !isEdit && !numberManual ? "AUTO" : form.invoice_number || "AUTO";
       const payload = {
-        tenant_id: form.tenant_id,
+        tenant_id: Number(form.tenant_id || tenantId) || 1,
         customer_id: customerId,
         sales_order_id: form.sales_order_id || null,
         document_type: invoiceType,
@@ -628,26 +697,50 @@ export default function TaxInvoiceForm() {
         sgst_pct: sgstPct,
         igst_pct: igstPct,
         status: "issued",
-        transport_mode: form.transport_mode || null,
-        lr_number: form.lr_number || null,
-        lr_date: form.lr_date || null,
+        irn: form.irn || null,
+        ack_no: form.ack_no || null,
+        ack_date: form.ack_date || null,
+        delivery_note: form.delivery_note || form.challan_number || null,
+        delivery_note_date: form.delivery_note_date || null,
+        payment_terms: form.payment_terms || null,
+        reference_no: form.reference_no || null,
+        reference_date: form.reference_date || null,
+        other_references: form.other_references || null,
+        po_number: form.po_number || null,
+        po_date: form.po_date || null,
+        lr_number: form.dispatch_doc_no || form.lr_number || null,
+        lr_date: form.delivery_note_date || form.lr_date || null,
+        dispatch_doc_no: form.dispatch_doc_no || form.lr_number || null,
+        transporter_name: form.transporter_name || "DTDC",
+        destination: form.destination || null,
+        delivery_terms: form.terms_of_delivery || null,
+        terms_of_delivery: form.terms_of_delivery || null,
+        consignee_name: form.consignee_name || null,
+        consignee_address1: form.consignee_address1 || null,
+        consignee_address2: form.consignee_address2 || null,
+        consignee_state: form.consignee_state || null,
+        consignee_state_code: form.consignee_state_code || null,
+        consignee_gstin: form.consignee_gstin || null,
+        consignee_phone: form.consignee_phone || null,
+        consignee_email: form.consignee_email || null,
+        transport_mode: form.transport_mode || "Road",
         vehicle_no: form.vehicle_no || null,
         distance_km: form.distance_km ? Number(form.distance_km) : null,
-        transporter_name: form.transporter_name || null,
         place_of_supply: form.place_of_supply || null,
         date_of_supply: form.date_of_supply || null,
         supply_type: form.supply_type || null,
-        po_number: form.po_number || null,
-        po_date: form.po_date || null,
-        challan_number: form.challan_number || null,
+        challan_number: form.delivery_note || form.challan_number || null,
         ewaybill_number: form.ewaybill_number || null,
         sales_person: form.sales_person || null,
         reverse_charge: Boolean(form.reverse_charge),
         terms_and_conditions: termsAttached ? form.notes || null : null,
+        rejection_policy: rejectionPolicyText || null,
+        stamp_url: stampDataUrl || null,
+        signature_url: signatureDataUrl || null,
         show_signature: Boolean(signatureOn),
         bank_details: bankAccount || null,
         custom_fields: customFields.length
-          ? Object.fromEntries(customFields.map((f) => [f.label, f.value]))
+          ? customFields.map((f) => ({ label: f.label, value: f.value }))
           : null,
         notes: customFields.map((f) => `${f.label}: ${f.value}`).filter(Boolean).join("\n") || null,
         items: filledItems.map((i) => {
@@ -791,7 +884,13 @@ export default function TaxInvoiceForm() {
                       {p}
                     </option>
                   ))}
-                  <option value={ADD_PREFIX_VALUE}>+ Add Prefix</option>
+                  <option
+                    value={ADD_PREFIX_VALUE}
+                    className="add-new-option text-[#036f71] font-semibold bg-[#e6f4f4] dark:text-[#2dd4bf] dark:bg-[#0d3d38]"
+                    style={{ color: "#036f71", fontWeight: "600" }}
+                  >
+                    + Add Prefix
+                  </option>
                 </SoftSelect>
               </label>
               <label className="block">
@@ -961,17 +1060,345 @@ export default function TaxInvoiceForm() {
                 </div>
                 <div>
                   <p className="text-[11px] font-medium uppercase tracking-wide text-[#9a9aa5]">Phone</p>
-                  <p className="text-[#4a4a55]">{form.consignee_phone || selectedBuyer.phone || "—"}</p>
+                  <p className="text-[#4a4a55]">{selectedBuyer.phone || "—"}</p>
                 </div>
                 <div>
                   <p className="text-[11px] font-medium uppercase tracking-wide text-[#9a9aa5]">Email</p>
-                  <p className="text-[#4a4a55]">{form.consignee_email || selectedBuyer.email || "—"}</p>
+                  <p className="text-[#4a4a55]">{selectedBuyer.email || "—"}</p>
                 </div>
               </div>
             ) : (
               <p className="py-4 text-center text-[13px] text-[#a0a0ab]">Select a buyer to continue</p>
             )}
           </div>
+        </section>
+
+        {/* Consignee (Ship to) Details */}
+        <section className="overflow-hidden rounded-xl border border-[#d0d0d8] bg-white">
+          <SectionHeader icon={MapPin} title="Consignee Details (Ship to)">
+            <div className="flex items-center gap-3">
+              <label className="inline-flex cursor-pointer items-center gap-1.5 text-[12px] font-semibold text-[#4a4a55]">
+                <input
+                  type="checkbox"
+                  checked={sameAsBuyer}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setSameAsBuyer(checked);
+                    if (checked && selectedBuyer) {
+                      setForm((f) => ({
+                        ...f,
+                        ...customerToConsigneeFields(selectedBuyer),
+                        consignee_phone: selectedBuyer.phone || selectedBuyer.mobile || "",
+                        consignee_email: selectedBuyer.email || "",
+                      }));
+                    }
+                  }}
+                  className="h-4 w-4 rounded border-[#c4c4cc] text-[var(--color-primary)] focus:ring-[var(--color-primary)]"
+                />
+                Same as Buyer (Bill to)
+              </label>
+              {!sameAsBuyer && (
+                <button
+                  type="button"
+                  onClick={() => setShowConsigneePicker((v) => !v)}
+                  className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[12px] font-semibold text-white"
+                  style={{ background: ERP_PRIMARY }}
+                >
+                  <User className="h-3.5 w-3.5" />
+                  Select Consignee
+                </button>
+              )}
+            </div>
+          </SectionHeader>
+
+          <div className="p-4">
+            {showConsigneePicker && !sameAsBuyer && (
+              <div className="mb-3 rounded-lg border border-[#e4e4ea] bg-[#fafafa] p-3">
+                <div className="relative mb-2">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9a9aa5]" />
+                  <input
+                    type="search"
+                    placeholder="Search Consignee..."
+                    value={consigneeSearch}
+                    onChange={(e) => setConsigneeSearch(e.target.value)}
+                    className="w-full rounded-lg border border-[#e4e4ea] bg-white py-2 pl-9 pr-3 text-[13px]"
+                  />
+                </div>
+                <div className="max-h-44 overflow-y-auto">
+                  {filteredConsignees.map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => {
+                        setForm((f) => ({
+                          ...f,
+                          consignee_name: c.name || c.company || "",
+                          consignee_address1: c.address_line1 || c.address || "",
+                          consignee_address2: c.address_line2 || [c.city, c.pincode].filter(Boolean).join(" - ") || "",
+                          consignee_state: c.state || "",
+                          consignee_state_code: c.state_code || "",
+                          consignee_gstin: c.gstin || "",
+                          consignee_phone: c.phone || c.mobile || "",
+                          consignee_email: c.email || "",
+                        }));
+                        setShowConsigneePicker(false);
+                      }}
+                      className="block w-full rounded-md px-3 py-2 text-left text-[13px] hover:bg-white"
+                    >
+                      {c.name || c.company}
+                      {c.gstin ? ` · ${c.gstin}` : ""}
+                      {c.state ? ` · ${c.state}` : ""}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {sameAsBuyer ? (
+              <div className="rounded-lg border border-[#e4e4ea] bg-[#fafafa] p-3 text-[13px] text-[#555]">
+                <p className="font-semibold text-[#1a1a1f]">Ship to is set to same as Buyer:</p>
+                <p className="mt-1 text-[#333]">
+                  <strong>{form.consignee_name || selectedBuyer?.name || "—"}</strong>
+                  {form.consignee_address1 ? ` — ${form.consignee_address1}` : ""}
+                  {form.consignee_address2 ? `, ${form.consignee_address2}` : ""}
+                  {form.consignee_state ? ` · ${form.consignee_state}` : ""}
+                  {form.consignee_gstin ? ` (GSTIN: ${form.consignee_gstin})` : ""}
+                </p>
+                <p className="mt-1 text-[11px] text-[#888]">
+                  Uncheck "Same as Buyer" above if goods need to be shipped to a different party, site, or warehouse.
+                </p>
+              </div>
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-3">
+                <label className="block">
+                  <FieldLabel>Consignee / Company Name</FieldLabel>
+                  <SoftInput
+                    value={form.consignee_name}
+                    onChange={(e) => setForm((f) => ({ ...f, consignee_name: e.target.value }))}
+                    placeholder="Enter Consignee Name"
+                  />
+                </label>
+                <label className="block">
+                  <FieldLabel>GSTIN / UIN</FieldLabel>
+                  <SoftInput
+                    value={form.consignee_gstin}
+                    onChange={(e) => setForm((f) => ({ ...f, consignee_gstin: e.target.value.toUpperCase() }))}
+                    placeholder="Consignee GSTIN"
+                  />
+                </label>
+                <label className="block">
+                  <FieldLabel>Contact Phone</FieldLabel>
+                  <SoftInput
+                    value={form.consignee_phone}
+                    onChange={(e) => setForm((f) => ({ ...f, consignee_phone: e.target.value }))}
+                    placeholder="Phone number"
+                  />
+                </label>
+                <label className="block sm:col-span-2">
+                  <FieldLabel>Shipping Address Line 1</FieldLabel>
+                  <SoftInput
+                    value={form.consignee_address1}
+                    onChange={(e) => setForm((f) => ({ ...f, consignee_address1: e.target.value }))}
+                    placeholder="Address Line 1 (Street, Area, Building)"
+                  />
+                </label>
+                <label className="block">
+                  <FieldLabel>Shipping Address Line 2</FieldLabel>
+                  <SoftInput
+                    value={form.consignee_address2}
+                    onChange={(e) => setForm((f) => ({ ...f, consignee_address2: e.target.value }))}
+                    placeholder="Address Line 2 (City, Pincode)"
+                  />
+                </label>
+                <label className="block">
+                  <FieldLabel>State</FieldLabel>
+                  <SoftSelect
+                    value={form.consignee_state}
+                    onChange={(e) => {
+                      const st = e.target.value;
+                      const code = STATE_CODES[st] || "";
+                      setForm((f) => ({ ...f, consignee_state: st, consignee_state_code: code }));
+                    }}
+                  >
+                    <option value="">Select State</option>
+                    {INDIAN_STATES.map((s) => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </SoftSelect>
+                </label>
+                <label className="block">
+                  <FieldLabel>State Code</FieldLabel>
+                  <SoftInput
+                    value={form.consignee_state_code}
+                    onChange={(e) => setForm((f) => ({ ...f, consignee_state_code: e.target.value }))}
+                    placeholder="e.g. 36"
+                  />
+                </label>
+                <label className="block">
+                  <FieldLabel>Email</FieldLabel>
+                  <SoftInput
+                    value={form.consignee_email}
+                    onChange={(e) => setForm((f) => ({ ...f, consignee_email: e.target.value }))}
+                    placeholder="Email"
+                  />
+                </label>
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* e-Invoice & ERP Document References */}
+        <section className="overflow-hidden rounded-xl border border-[#d0d0d8] bg-white">
+          <SectionHeader
+            icon={FileText}
+            title="e-Invoice &amp; ERP Document References"
+            collapsible
+            open={erpFieldsOpen}
+            onToggle={() => setErpFieldsOpen((v) => !v)}
+          />
+          {erpFieldsOpen ? (
+            <div className="space-y-4 p-4">
+              {/* e-Invoice Header Info */}
+              <div className="rounded-lg border border-[#e4e4ea] bg-[#fafafa] p-3">
+                <p className="mb-2.5 text-[12px] font-bold uppercase tracking-wide text-[#555]">
+                  e-Invoice Details (IRN, Ack No, e-Way Bill)
+                </p>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <label className="block sm:col-span-2">
+                    <FieldLabel>IRN (Invoice Reference Number)</FieldLabel>
+                    <SoftInput
+                      placeholder="64-character IRN hash (e.g. ac896ad46b9435f32300355098ed1f529f90b5ece59cb7e7874f12cc2dbe518)"
+                      value={form.irn}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setForm((f) => ({ ...f, irn: val }));
+                        try { localStorage.setItem("gns_invoice_irn", val); } catch {}
+                      }}
+                    />
+                  </label>
+                  <label className="block">
+                    <FieldLabel>e-Way Bill No.</FieldLabel>
+                    <SoftInput
+                      placeholder="e.g. 142474039666"
+                      value={form.ewaybill_number}
+                      onChange={(e) => setForm((f) => ({ ...f, ewaybill_number: e.target.value }))}
+                    />
+                  </label>
+                  <label className="block">
+                    <FieldLabel>Ack No.</FieldLabel>
+                    <SoftInput
+                      placeholder="e.g. 112631214245778"
+                      value={form.ack_no}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setForm((f) => ({ ...f, ack_no: val }));
+                        try { localStorage.setItem("gns_invoice_ack_no", val); } catch {}
+                      }}
+                    />
+                  </label>
+                  <label className="block">
+                    <FieldLabel>Ack Date</FieldLabel>
+                    <SoftInput
+                      type="date"
+                      value={form.ack_date}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setForm((f) => ({ ...f, ack_date: val }));
+                        try { localStorage.setItem("gns_invoice_ack_date", val); } catch {}
+                      }}
+                    />
+                  </label>
+                  <label className="block">
+                    <FieldLabel>Mode / Terms of Payment</FieldLabel>
+                    <SoftInput
+                      placeholder="e.g. Advance / 30 Days Credit"
+                      value={form.payment_terms}
+                      onChange={(e) => setForm((f) => ({ ...f, payment_terms: e.target.value }))}
+                    />
+                  </label>
+                </div>
+              </div>
+
+              {/* ERP Document & Dispatch Grid */}
+              <p className="text-[12px] font-bold uppercase tracking-wide text-[#555]">
+                Order, Delivery &amp; Dispatch References
+              </p>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <label className="block">
+                  <FieldLabel>Delivery Note</FieldLabel>
+                  <SoftInput
+                    placeholder="Delivery Note No."
+                    value={form.delivery_note}
+                    onChange={(e) => setForm((f) => ({ ...f, delivery_note: e.target.value, challan_number: e.target.value }))}
+                  />
+                </label>
+                <label className="block">
+                  <FieldLabel>Delivery Note Date</FieldLabel>
+                  <SoftInput
+                    type="date"
+                    value={form.delivery_note_date}
+                    onChange={(e) => setForm((f) => ({ ...f, delivery_note_date: e.target.value }))}
+                  />
+                </label>
+                <label className="block">
+                  <FieldLabel>Reference No. &amp; Date</FieldLabel>
+                  <SoftInput
+                    placeholder="e.g. REF/2026/09"
+                    value={form.reference_no}
+                    onChange={(e) => setForm((f) => ({ ...f, reference_no: e.target.value }))}
+                  />
+                </label>
+                <label className="block">
+                  <FieldLabel>Other References</FieldLabel>
+                  <SoftInput
+                    placeholder="Other references"
+                    value={form.other_references}
+                    onChange={(e) => setForm((f) => ({ ...f, other_references: e.target.value }))}
+                  />
+                </label>
+                <label className="block">
+                  <FieldLabel>Buyer's Order No.</FieldLabel>
+                  <SoftInput
+                    placeholder="PO Number"
+                    value={form.po_number}
+                    onChange={(e) => setForm((f) => ({ ...f, po_number: e.target.value }))}
+                  />
+                </label>
+                <label className="block">
+                  <FieldLabel>Buyer's Order Date (Dated)</FieldLabel>
+                  <SoftInput
+                    type="date"
+                    value={form.po_date}
+                    onChange={(e) => setForm((f) => ({ ...f, po_date: e.target.value }))}
+                  />
+                </label>
+                <label className="block">
+                  <FieldLabel>Dispatch Doc No. (LR No.)</FieldLabel>
+                  <SoftInput
+                    placeholder="Dispatch Doc / LR No."
+                    value={form.dispatch_doc_no}
+                    onChange={(e) => setForm((f) => ({ ...f, dispatch_doc_no: e.target.value, lr_number: e.target.value }))}
+                  />
+                </label>
+                <label className="block">
+                  <FieldLabel>Dispatched through</FieldLabel>
+                  <SoftInput
+                    placeholder="e.g. DTDC"
+                    value={form.transporter_name}
+                    onChange={(e) => setForm((f) => ({ ...f, transporter_name: e.target.value }))}
+                  />
+                </label>
+                <label className="block">
+                  <FieldLabel>Destination</FieldLabel>
+                  <SoftInput
+                    placeholder="e.g. INDORE"
+                    value={form.destination}
+                    onChange={(e) => setForm((f) => ({ ...f, destination: e.target.value }))}
+                  />
+                </label>
+              </div>
+            </div>
+          ) : null}
         </section>
 
         {/* Items */}
@@ -1524,11 +1951,11 @@ export default function TaxInvoiceForm() {
             ) : null}
           </section>
 
-          {/* Terms */}
+          {/* Terms of Delivery */}
           <section className="overflow-hidden rounded-xl border border-[#d0d0d8] bg-white">
             <SectionHeader
               icon={FileText}
-              title="Terms and Conditions"
+              title="Terms of Delivery"
               collapsible
               open={termsOpen}
               onToggle={() => setTermsOpen((v) => !v)}
@@ -1540,7 +1967,7 @@ export default function TaxInvoiceForm() {
                     e.preventDefault();
                     e.stopPropagation();
                     setTermsAttached(false);
-                    setForm((f) => ({ ...f, notes: "" }));
+                    setForm((f) => ({ ...f, notes: "", terms_of_delivery: "" }));
                   }}
                   className="inline-flex items-center gap-1 rounded-full px-3.5 py-1.5 text-[12px] font-semibold text-white"
                   style={{ background: ERP_PRIMARY }}
@@ -1558,7 +1985,7 @@ export default function TaxInvoiceForm() {
                 className="inline-flex items-center gap-1 rounded-full px-3.5 py-1.5 text-[12px] font-semibold text-white"
                 style={{ background: ERP_PRIMARY }}
               >
-                <User className="h-3.5 w-3.5" /> Select Terms and Conditions
+                <User className="h-3.5 w-3.5" /> Select Terms of Delivery
               </button>
               <button
                 type="button"
@@ -1569,19 +1996,107 @@ export default function TaxInvoiceForm() {
                 }}
                 className="rounded-full border border-[#d8d8e0] bg-white px-3.5 py-1.5 text-[12px] font-semibold text-[#4a4a55]"
               >
-                + Add New Terms and Conditions
+                + Add New Terms of Delivery
               </button>
             </SectionHeader>
-            {termsOpen && termsAttached && form.notes ? (
+            {termsOpen && termsAttached && (form.notes || form.terms_of_delivery) ? (
               <div className="p-4">
                 <textarea
                   rows={3}
-                  value={form.notes}
-                  onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+                  value={form.terms_of_delivery || form.notes || ""}
+                  placeholder="Enter Terms of Delivery (e.g. 1. Door delivery within 7 working days.)"
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setForm((f) => ({ ...f, notes: val, terms_of_delivery: val }));
+                    try { localStorage.setItem("gns_invoice_terms_data", val); } catch { /* ignore */ }
+                    try { localStorage.setItem("gns_invoice_delivery_terms", val); } catch { /* ignore */ }
+                  }}
                   className="w-full rounded-lg border border-[#e4e4ea] bg-white px-3 py-2.5 text-[13px] leading-relaxed text-[#1a1a1f] focus:border-[var(--color-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]"
                 />
               </div>
             ) : null}
+          </section>
+
+          {/* GST Mode — CGST + SGST or IGST selector */}
+          <section className="overflow-hidden rounded-xl border border-[#d0d0d8] bg-white">
+            <div className="flex items-center gap-3 border-b border-[#e8e8f0] px-4 py-3">
+              <Grid2x2 className="h-4 w-4 text-[var(--color-primary)]" />
+              <span className="text-[13px] font-semibold text-[#1a1a1f]">GST Tax Mode</span>
+            </div>
+            <div className="flex flex-wrap items-center gap-3 p-4">
+              {[
+                { id: "auto", label: "Auto Detect" },
+                { id: "cgst_sgst", label: "CGST + SGST (Intra-state)" },
+                { id: "igst", label: "IGST (Inter-state / Export)" },
+              ].map((opt) => (
+                <label key={opt.id} className="flex cursor-pointer items-center gap-2 text-[13px] font-medium">
+                  <input
+                    type="radio"
+                    name="taxModeOverride"
+                    checked={taxModeOverride === opt.id}
+                    onChange={() => setTaxModeOverride(opt.id)}
+                    className="accent-[var(--color-primary)] h-4 w-4"
+                  />
+                  {opt.label}
+                </label>
+              ))}
+            </div>
+            <div className="px-4 pb-3 text-[11px] text-[#9a9aa5]">
+              {taxModeOverride === "auto"
+                ? "Tax mode is automatically determined from buyer vs seller state."
+                : taxModeOverride === "igst"
+                ? "IGST will be applied on all line items."
+                : "CGST + SGST will be split equally on all line items."}
+            </div>
+          </section>
+
+          {/* Declaration & Rejection Policy */}
+          <section className="overflow-hidden rounded-xl border border-[#d0d0d8] bg-white">
+            <button
+              type="button"
+              className="flex w-full items-center gap-3 border-b border-[#e8e8f0] px-4 py-3 text-left"
+              onClick={() => setDeclOpen((v) => !v)}
+            >
+              <FileText className="h-4 w-4 text-[var(--color-primary)]" />
+              <span className="text-[13px] font-semibold text-[#1a1a1f]">Declaration &amp; Rejection Policy</span>
+              <ChevronDown className={`ml-auto h-4 w-4 text-[#9a9aa5] transition-transform ${declOpen ? "rotate-180" : ""}`} />
+            </button>
+            {declOpen && (
+              <div className="grid gap-4 p-4 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-[12px] font-semibold text-[#4a4a55]">
+                    Declaration (one item per line)
+                  </label>
+                  <textarea
+                    rows={6}
+                    value={declarationText}
+                    placeholder={"1. Certified that the particulars given above are true and correct.\n2. All disputes subject to local jurisdiction."}
+                    onChange={(e) => {
+                      setDeclarationText(e.target.value);
+                      try { localStorage.setItem("gns_invoice_declaration", e.target.value); } catch { /* ignore */ }
+                    }}
+                    className="w-full rounded-lg border border-[#e4e4ea] bg-white px-3 py-2.5 text-[12px] leading-relaxed text-[#1a1a1f] focus:border-[var(--color-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]"
+                  />
+                  <p className="mt-1 text-[11px] text-[#9a9aa5]">Leave blank to use default declaration text.</p>
+                </div>
+                <div>
+                  <label className="mb-1 block text-[12px] font-semibold text-[#4a4a55]">
+                    Rejection Policy (one item per line)
+                  </label>
+                  <textarea
+                    rows={6}
+                    value={rejectionPolicyText}
+                    placeholder={"1. Loose Winding & Tight Release\n2. For all Rejection and Quality Claims, End user Email/Samples for evaluation is mandatory."}
+                    onChange={(e) => {
+                      setRejectionPolicyText(e.target.value);
+                      try { localStorage.setItem("gns_invoice_rejection_policy", e.target.value); } catch { /* ignore */ }
+                    }}
+                    className="w-full rounded-lg border border-[#e4e4ea] bg-white px-3 py-2.5 text-[12px] leading-relaxed text-[#1a1a1f] focus:border-[var(--color-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]"
+                  />
+                  <p className="mt-1 text-[11px] text-[#9a9aa5]">Leave blank to use default rejection policy text.</p>
+                </div>
+              </div>
+            )}
           </section>
 
           {/* Signature */}
@@ -1725,6 +2240,7 @@ export default function TaxInvoiceForm() {
           setTermsAttached(true);
           setTermsOpen(true);
           setForm((f) => ({ ...f, notes: body }));
+          try { localStorage.setItem("gns_invoice_terms_data", body); } catch { /* ignore */ }
         }}
         onRemove={() => {
           setTermsAttached(false);

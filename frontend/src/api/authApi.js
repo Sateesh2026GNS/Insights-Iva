@@ -24,6 +24,16 @@ export async function getProfile() {
   return data;
 }
 
+export async function updateProfileAvatar(avatar) {
+  const { data } = await api.put("/auth/avatar", { avatar });
+  return data;
+}
+
+export async function removeProfileAvatar() {
+  const { data } = await api.delete("/auth/avatar");
+  return data;
+}
+
 export async function register(companyName, fullName, email, password, role = "Admin") {
   const { data } = await api.post("/auth/register", {
     company_name: companyName,

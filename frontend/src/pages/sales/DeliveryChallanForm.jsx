@@ -641,7 +641,13 @@ export default function DeliveryChallanForm() {
                       {p}
                     </option>
                   ))}
-                  <option value={ADD_PREFIX_VALUE}>+ Add New Prefix</option>
+                  <option
+                    value={ADD_PREFIX_VALUE}
+                    className="add-new-option text-[#036f71] font-semibold bg-[#e6f4f4] dark:text-[#2dd4bf] dark:bg-[#0d3d38]"
+                    style={{ color: "#036f71", fontWeight: "600" }}
+                  >
+                    + Add New Prefix
+                  </option>
                 </SoftSelect>
               </label>
               <label className="block">

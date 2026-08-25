@@ -277,9 +277,44 @@ export default function DefectTracking() {
       </div>
 
       {showFilters ? (
-        <div className="ui-card ui-card--padded">
-          <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
-            <SearchBar value={search} onChange={setSearch} placeholder="Search" className="min-w-0 w-full" />
+        <div className="ui-card ui-card--padded space-y-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="relative ui-search-wrap min-w-[220px] flex-1">
+              <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]" />
+              <input
+                type="search"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search by rejection no, batch, material, reason..."
+                className="ui-input w-full !pl-10 text-[13px] text-[var(--color-text)]"
+              />
+            </div>
+            <div className="flex flex-wrap items-center gap-2.5">
+              <div className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border-soft)] bg-white px-3 py-1.5 text-[13px] shadow-xs">
+                <CalendarDays className="h-4 w-4 shrink-0 text-[var(--color-text-muted)]" />
+                <input
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => setDateFrom(e.target.value)}
+                  className="border-0 bg-transparent p-0 text-[13px] text-[var(--color-text)] focus:outline-none"
+                  aria-label="Date from"
+                />
+                <span className="text-[var(--color-text-muted)]">to</span>
+                <input
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => setDateTo(e.target.value)}
+                  className="border-0 bg-transparent p-0 text-[13px] text-[var(--color-text)] focus:outline-none"
+                  aria-label="Date to"
+                />
+              </div>
+              <Button type="button" variant="secondary" onClick={clearFilters}>
+                <RotateCcw className="h-4 w-4" /> Clear
+              </Button>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3 border-t border-[var(--color-border-soft)] pt-3">
             <select
               value={typeFilter}
               onChange={(e) => setTypeFilter(e.target.value)}
@@ -312,29 +347,6 @@ export default function DefectTracking() {
               <option value="open">Open</option>
               <option value="closed">Closed</option>
             </select>
-            <div className="flex flex-wrap items-center gap-2">
-              <label className="relative inline-flex items-center">
-                <CalendarDays className="pointer-events-none absolute left-3 h-4 w-4 text-[var(--color-text-muted)]" />
-                <input
-                  type="date"
-                  value={dateFrom}
-                  onChange={(e) => setDateFrom(e.target.value)}
-                  className="ui-input !w-auto min-w-[9.5rem] !pl-9"
-                  aria-label="Date from"
-                />
-              </label>
-              <span className="text-xs text-[var(--color-text-muted)]">to</span>
-              <input
-                type="date"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-                className="ui-input !w-auto min-w-[9.5rem]"
-                aria-label="Date to"
-              />
-            </div>
-            <Button type="button" variant="secondary" onClick={clearFilters}>
-              <RotateCcw className="h-4 w-4" /> Clear
-            </Button>
           </div>
         </div>
       ) : null}

@@ -193,31 +193,47 @@ def generate_invoice_pdf(doc: dict[str, Any]) -> bytes:
     )
     outer_rows.append([party_table, "", ""])
 
-    item_rows: list[list[Any]] = [["Sl No.", "Description of Goods", "HSN/SAC", "Quantity", "Rate", "per", "Amount"]]
+    item_rows: list[list[Any]] = [
+        [
+            _p("<b>Sl No.</b>", center),
+            _p("<b>Description of Goods</b>", body_bold),
+            _p("<b>HSN/SAC</b>", center),
+            _p("<b>Quantity</b>", right),
+            _p("<b>Rate</b>", right),
+            _p("<b>per</b>", center),
+            _p("<b>Amount</b>", right),
+        ]
+    ]
     for idx, item in enumerate(items, 1):
+        desc = item.get("description") or item.get("item_description") or "—"
+        if item.get("details"):
+            desc += f"<br/><font size='6' color='#555555'><i>{item.get('details')}</i></font>"
         item_rows.append(
             [
-                str(item.get("si", idx)),
-                item.get("description", "")[:120],
-                item.get("hsn", ""),
-                f"{_fmt_qty(item.get('qty', 0))} {(item.get('unit') or '').upper()}",
-                _fmt(item.get("rate", 0), 3),
-                (item.get("unit", "") or "").upper(),
-                _fmt(item.get("total_amount", item.get("taxable_amount", 0)), 3),
+                _p(str(item.get("si", idx)), center),
+                _p(desc, body),
+                _p(item.get("hsn", "—"), center),
+                _p(f"{_fmt_qty(item.get('qty', 0))} {(item.get('unit') or 'PCS').upper()}", right),
+                _p(_fmt(item.get("rate", 0), 3), right),
+                _p((item.get("unit", "") or "PCS").upper(), center),
+                _p(_fmt(item.get("total_amount", item.get("taxable_amount", 0)), 3), right),
             ]
         )
-    for _ in range(max(0, 8 - len(items))):
-        item_rows.append(["", "", "", "", "", "", ""])
+
+    desc_right = ParagraphStyle("DescRight", parent=body, alignment=TA_RIGHT)
+    cgst_pct = float((items[0] if items else {}).get("cgst_pct", 9) or 9)
+    sgst_pct = float((items[0] if items else {}).get("sgst_pct", 9) or 9)
+    igst_pct = float((items[0] if items else {}).get("igst_pct", 18) or 18)
 
     if is_igst and float(summary.get("igst_total", 0) or 0) > 0:
-        item_rows.append(["", "", "", "", "", f"IGST {_fmt((items[0] if items else {}).get('igst_pct', 18), 0)}%", _fmt(summary.get("igst_total", 0), 2)])
+        item_rows.append(["", _p("<b><i>IGST</i></b>", desc_right), "", "", _p(f"{_fmt(igst_pct, 0)} %", center), "", _p(_fmt(summary.get("igst_total", 0), 3), right)])
     if not is_igst and float(summary.get("cgst_total", 0) or 0) > 0:
-        item_rows.append(["", "", "", "", "", "CGST", _fmt(summary.get("cgst_total", 0), 2)])
+        item_rows.append(["", _p("<b><i>CGST</i></b>", desc_right), "", "", _p(f"{_fmt(cgst_pct, 0)} %", center), "", _p(_fmt(summary.get("cgst_total", 0), 3), right)])
     if not is_igst and float(summary.get("sgst_total", 0) or 0) > 0:
-        item_rows.append(["", "", "", "", "", "SGST", _fmt(summary.get("sgst_total", 0), 2)])
+        item_rows.append(["", _p("<b><i>SGST</i></b>", desc_right), "", "", _p(f"{_fmt(sgst_pct, 0)} %", center), "", _p(_fmt(summary.get("sgst_total", 0), 3), right)])
     if float(summary.get("round_off", 0) or 0) != 0:
-        item_rows.append(["", "Less : ROUNDED OFF", "", "", "", "", f"({_fmt(abs(summary.get('round_off', 0)), 3)})"])
-    item_rows.append(["", "Total", "", f"{_fmt_qty(summary.get('qty_total', 0))}", "", "", _inr(summary.get("grand_total", 0), 3)])
+        item_rows.append(["", _p("<i>Less :</i> ROUNDED OFF", desc_right), "", "", "", "", _p(f"({_fmt(abs(summary.get('round_off', 0)), 3)})", right)])
+    item_rows.append(["", _p("<b>Total</b>", desc_right), "", _p(f"<b>{_fmt_qty(summary.get('qty_total', 0))}</b>", right), "", "", _p(f"<b>{_inr(summary.get('grand_total', 0), 3)}</b>", right)])
 
     item_table = Table(item_rows, colWidths=[10 * mm, 82 * mm, 18 * mm, 18 * mm, 16 * mm, 11 * mm, 35 * mm], repeatRows=1)
     item_table.setStyle(
@@ -225,17 +241,13 @@ def generate_invoice_pdf(doc: dict[str, Any]) -> bytes:
             [
                 ("BOX", (0, 0), (-1, -1), 0.7, colors.black),
                 ("INNERGRID", (0, 0), (-1, -1), 0.35, colors.black),
-                ("FONT", (0, 0), (-1, 0), "Helvetica-Bold", 7),
-                ("FONT", (0, 1), (-1, -1), "Helvetica", 7),
-                ("ALIGN", (0, 0), (0, -1), "CENTER"),
-                ("ALIGN", (2, 0), (6, -1), "RIGHT"),
-                ("ALIGN", (1, 0), (1, -1), "LEFT"),
                 ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
                 ("LEFTPADDING", (0, 0), (-1, -1), 2),
                 ("RIGHTPADDING", (0, 0), (-1, -1), 2),
-                ("TOPPADDING", (0, 0), (-1, -1), 1.5),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 1.5),
-                ("FONT", (0, -1), (-1, -1), "Helvetica-Bold", 7.3),
+                ("TOPPADDING", (0, 0), (-1, -1), 2),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f0f0f0")),
+                ("BACKGROUND", (0, -1), (-1, -1), colors.HexColor("#f5f5f5")),
             ]
         )
     )
@@ -250,52 +262,112 @@ def generate_invoice_pdf(doc: dict[str, Any]) -> bytes:
     outer_rows.append([words_row, "", ""])
 
     tax_total = float(summary.get("igst_total", 0) if is_igst else float(summary.get("cgst_total", 0) or 0) + float(summary.get("sgst_total", 0) or 0))
-    hsn_rows = [["HSN/SAC", "Taxable Value", "Rate", "Tax Amount", "Total Tax Amount"]]
-    if items:
-        for item in items:
-            rate = item.get("igst_pct", 0) if is_igst else item.get("cgst_pct", 0)
-            amt = item.get("igst_amount", 0) if is_igst else float(item.get("cgst_amount", 0) or 0) + float(item.get("sgst_amount", 0) or 0)
-            hsn_rows.append([item.get("hsn", ""), _fmt(item.get("taxable_amount", 0), 2), f"{_fmt(rate, 0)}%", _fmt(amt, 2), _fmt(amt, 2)])
+    hsn_rows: list[list[Any]] = [
+        [
+            _p("<b>HSN/SAC</b>", center),
+            _p("<b>Taxable Value</b>", right),
+            _p("<b>Rate</b>", center),
+            _p("<b>Tax Amount</b>", right),
+            _p("<b>Total Tax Amount</b>", right),
+        ]
+    ]
+
+    # Group HSN
+    hsn_map: dict[str, dict[str, float]] = {}
+    for item in items:
+        h = str(item.get("hsn") or "—").strip()
+        t_val = float(item.get("taxable_amount") or item.get("amount") or 0)
+        r = float(item.get("igst_pct") if is_igst else item.get("cgst_pct") or 9)
+        t_tax = float(item.get("igst_amount") if is_igst else (float(item.get("cgst_amount") or 0) + float(item.get("sgst_amount") or 0)))
+        k = f"{h}_{r}"
+        if k not in hsn_map:
+            hsn_map[k] = {"hsn": h, "taxable": 0, "rate": r, "tax": 0}
+        hsn_map[k]["taxable"] += t_val
+        hsn_map[k]["tax"] += t_tax
+
+    if hsn_map:
+        for v in hsn_map.values():
+            hsn_rows.append([
+                _p(v["hsn"], center),
+                _p(_fmt(v["taxable"], 3), right),
+                _p(f"{_fmt(v['rate'], 0)}%", center),
+                _p(_fmt(v["tax"], 3), right),
+                _p(_fmt(v["tax"], 3), right),
+            ])
     else:
-        hsn_rows.append(["", _fmt(summary.get("taxable_value", 0), 2), "", _fmt(tax_total, 2), _fmt(tax_total, 2)])
-    hsn_rows.append(["Total", _fmt(summary.get("taxable_value", 0), 2), "", _fmt(tax_total, 2), _fmt(tax_total, 2)])
+        hsn_rows.append([_p("—", center), _p(_fmt(summary.get("taxable_value", 0), 3), right), _p("", center), _p(_fmt(tax_total, 3), right), _p(_fmt(tax_total, 3), right)])
+
+    hsn_rows.append([_p("<b>Total</b>", body), _p(f"<b>{_fmt(summary.get('taxable_value', 0), 3)}</b>", right), "", _p(f"<b>{_fmt(tax_total, 3)}</b>", right), _p(f"<b>{_fmt(tax_total, 3)}</b>", right)])
     hsn_table = Table(hsn_rows, colWidths=[46 * mm, 46 * mm, 20 * mm, 40 * mm, 38 * mm], repeatRows=1)
-    hsn_table.setStyle(TableStyle([("BOX", (0, 0), (-1, -1), 0.7, colors.black), ("INNERGRID", (0, 0), (-1, -1), 0.35, colors.black), ("FONT", (0, 0), (-1, 0), "Helvetica-Bold", 7), ("FONT", (0, 1), (-1, -1), "Helvetica", 6.9), ("ALIGN", (1, 0), (-1, -1), "RIGHT"), ("LEFTPADDING", (0, 0), (-1, -1), 2), ("RIGHTPADDING", (0, 0), (-1, -1), 2)]))
+    hsn_table.setStyle(
+        TableStyle(
+            [
+                ("BOX", (0, 0), (-1, -1), 0.7, colors.black),
+                ("INNERGRID", (0, 0), (-1, -1), 0.35, colors.black),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f0f0f0")),
+                ("BACKGROUND", (0, -1), (-1, -1), colors.HexColor("#f5f5f5")),
+                ("LEFTPADDING", (0, 0), (-1, -1), 2),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 2),
+                ("TOPPADDING", (0, 0), (-1, -1), 1.5),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 1.5),
+            ]
+        )
+    )
     outer_rows.append([hsn_table, "", ""])
     outer_rows.append([_p(f"<b>Tax Amount (in words)</b> : {_words(tax_total)}", body), "", ""])
 
-    declaration = (doc.get("terms") or "").strip() or (
+    declaration_default = (
         "1. Certified that the particulars given above are true and correct.\n"
-        "2. Goods once sold cannot be taken back.\n"
-        "3. Subject to local jurisdiction."
+        "2. The amount indicated represents the price actually charged and that there is no flow of additional consideration directly or indirectly from the buyer.\n"
+        "3. All disputes subject to Hyderabad Jurisdiction.\n"
+        "4. Goods once sold cannot be taken back or exchanged.\n"
+        "5. Cheques subject to realisation.\n"
+        "6. 24% Interest per annum will be charged if the bills are not paid within due days.\n"
+        "7. Goods Return \"As It Is\" shall be taken back, only within 7 days from The Date of Delivery & the same shall have to be Intimated in 'Writing' along with reasons for Goods Return."
     )
-    rejection = (
-        "1. Loose winding and edge damages to be reported immediately.\n"
-        "2. Quality claims require sample and batch details.\n"
-        "3. Complaints accepted within 24 hours from receipt."
+    rejection_default = (
+        "1. Loose Winding & Tight Release\n"
+        "2. Printability on face paper\n"
+        "3. Loop Tack, Peel Adhesion and Shear Strength (15% tolerance) are less than what is mentioned in our Technical Data Sheet.\n"
+        "4. For all Rejection and Quality Claims, End user Email /Samples for evaluation is mandatory.\n"
+        "5. For application issues End user visit by Stic On Papers Private Limited team is mandatory.\n"
+        "6. No rejection claim will be accepted if above conditions are not fulfilled.\n"
+        "7. We are not responsible for material application related issues.\n"
+        "8. Any quantity discrepancies are only accepted within 24 hours from the receipt of the material\n"
+        "9. Any quality discrepancies are only accepted within 7 working days from the receipt of Material (Unconverted Rolls Only)"
     )
-    decl_lines = "<br/>".join([f"{i+1}. {ln.strip()}" for i, ln in enumerate([x for x in declaration.splitlines() if x.strip()])])
-    rej_lines = "<br/>".join([f"{i+1}. {ln.strip()}" for i, ln in enumerate([x for x in rejection.splitlines() if x.strip()])])
+
+    decl_raw = (doc.get("terms") or "").strip() or declaration_default
+    decl_lines = "<br/>".join([f"{ln.strip()}" for ln in decl_raw.splitlines() if ln.strip()])
+    rej_lines = "<br/>".join([f"{ln.strip()}" for ln in rejection_default.splitlines() if ln.strip()])
+    remarks_text = doc.get("remarks") or f"Being material sold vide Invoice No : {meta.get('invoice_no', '')}"
+    decl_cell_content = f"<b>Declaration</b><br/>{decl_lines}<br/><br/><b>Remarks:</b><br/>{remarks_text}"
+
     bottom_text = Table(
-        [[_p(f"<b>Declaration</b><br/>{decl_lines}", tiny), _p(f"<b>Rejection Policy</b><br/>{rej_lines}", tiny)]],
+        [[_p(decl_cell_content, tiny), _p(f"<b>Rejection Policy :</b><br/>{rej_lines}", tiny)]],
         colWidths=[95 * mm, 95 * mm],
     )
     bottom_text.setStyle(TableStyle([("BOX", (0, 0), (-1, -1), 0.7, colors.black), ("INNERGRID", (0, 0), (-1, -1), 0.35, colors.black), ("VALIGN", (0, 0), (-1, -1), "TOP"), ("LEFTPADDING", (0, 0), (-1, -1), 2), ("RIGHTPADDING", (0, 0), (-1, -1), 2)]))
     outer_rows.append([bottom_text, "", ""])
 
-    remarks_text = doc.get("remarks", "")
-    outer_rows.append([_p(f"<b>Remarks</b> : {remarks_text}", body), "", ""])
+    company_year = seller.get("financial_year") or "2025-26"
+    seller_display = seller.get("name", "")
+    if seller_display and "-" not in seller_display:
+        seller_display = f"{seller_display} - {company_year}"
+    if not seller_display:
+        seller_display = f"STIC-ON PAPERS PVT LTD - {company_year}"
 
     sign_row = Table(
-        [[_p("<b>Prepared by</b><br/><br/>" + (doc.get("prepared_by", "") or ""), body), _p("<b>Verified by</b>", body), _p(f"for {seller.get('name', '')}<br/><br/><b>Authorised Signatory</b>", right)]],
+        [[_p("<b>Prepared by</b><br/><br/>" + (doc.get("prepared_by", "") or ""), body), _p("<b>Verified by</b>", body), _p(f"for <b>{seller_display}</b><br/><br/>Authorised Signatory", right)]],
         colWidths=[50 * mm, 50 * mm, 90 * mm],
     )
     sign_row.setStyle(TableStyle([("BOX", (0, 0), (-1, -1), 0.7, colors.black), ("INNERGRID", (0, 0), (-1, -1), 0.35, colors.black), ("VALIGN", (0, 0), (-1, -1), "BOTTOM"), ("LEFTPADDING", (0, 0), (-1, -1), 2), ("RIGHTPADDING", (0, 0), (-1, -1), 2), ("BOTTOMPADDING", (0, 0), (-1, -1), 3)]))
     outer_rows.append([sign_row, "", ""])
-    outer_rows.append([_p("This is a Computer Generated Invoice", ParagraphStyle("Foot", parent=tiny, alignment=TA_CENTER)), "", ""])
 
     outer = Table([[row[0]] for row in outer_rows], colWidths=[190 * mm], repeatRows=0)
     outer.setStyle(TableStyle([("BOX", (0, 0), (-1, -1), 0.8, colors.black), ("INNERGRID", (0, 0), (-1, -1), 0.4, colors.black), ("LEFTPADDING", (0, 0), (-1, -1), 0), ("RIGHTPADDING", (0, 0), (-1, -1), 0), ("TOPPADDING", (0, 0), (-1, -1), 0), ("BOTTOMPADDING", (0, 0), (-1, -1), 0)]))
 
-    pdf.build([outer, Spacer(1, 1)])
+    foot_p = _p("This is a Computer Generated Invoice", ParagraphStyle("Foot", parent=tiny, alignment=TA_CENTER))
+    pdf.build([outer, Spacer(1, 2 * mm), foot_p])
     return buffer.getvalue()

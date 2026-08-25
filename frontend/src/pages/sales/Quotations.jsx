@@ -571,7 +571,7 @@ export default function Quotations() {
                   setFilters(draftFilters);
                   setShowFilters(false);
                 }}
-                className="rounded-xl py-3 text-[14px] font-semibold text-[var(--color-text)]"
+                className="rounded-xl py-3 text-[14px] font-semibold text-white"
                 style={{ background: ACCENT }}
               >
                 Apply Filter

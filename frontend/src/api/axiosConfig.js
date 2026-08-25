@@ -10,7 +10,7 @@ export function getApiBaseURL() {
   if (import.meta.env.VITE_API_BASE_URL !== undefined) {
     return import.meta.env.VITE_API_BASE_URL;
   }
-  return "http://localhost:8000";
+  return "";
 }
 
 function isPlatformRequest(config) {
@@ -134,8 +134,8 @@ api.interceptors.response.use(
         window.location.assign("/login");
       }
     } else if (typeof onApiError === "function" && !error.config?.skipGlobalError && !isAuthUrl) {
-      if (!status || status >= 500) {
-        const message = !status
+      if (error.code === "ERR_NETWORK" || (status && status >= 500)) {
+        const message = error.code === "ERR_NETWORK"
           ? "Network error - please check your connection."
           : "Something went wrong. Please try again.";
         onApiError(message);

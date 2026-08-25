@@ -158,6 +158,20 @@ def create_user(db: Session, tenant_id: int, payload: UserCreate) -> dict:
         if is_public_email_domain(email_domain(payload.email)):
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=MSG_PUBLIC_EMAIL)
 
+        emp_id = (payload.employee_id or "").strip()
+        if emp_id:
+            existing_emp = db.scalars(
+                select(User).where(
+                    User.tenant_id == tenant_id,
+                    func.lower(User.employee_id) == emp_id.lower(),
+                )
+            ).first()
+            if existing_emp:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=f"Employee ID '{emp_id}' is already in use by {existing_emp.full_name} ({existing_emp.email})",
+                )
+
         company = db.get(Tenant, tenant_id)
         if company and company.email and not user_email_matches_company(payload.email, company):
             raise HTTPException(
@@ -171,7 +185,7 @@ def create_user(db: Session, tenant_id: int, payload: UserCreate) -> dict:
             email=payload.email,
             full_name=payload.full_name,
             phone=payload.phone,
-            employee_id=payload.employee_id,
+            employee_id=emp_id or None,
             designation=payload.designation,
             is_active=payload.is_active,
             hashed_password=hash_password(payload.password),
@@ -218,7 +232,23 @@ def update_user(
         if "phone" in data:
             user.phone = data["phone"]
         if "employee_id" in data:
-            user.employee_id = data["employee_id"]
+            emp_id = (data["employee_id"] or "").strip()
+            if emp_id:
+                clash_emp = db.scalars(
+                    select(User).where(
+                        User.tenant_id == tenant_id,
+                        func.lower(User.employee_id) == emp_id.lower(),
+                        User.id != user.id,
+                    )
+                ).first()
+                if clash_emp:
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail=f"Employee ID '{emp_id}' is already in use by {clash_emp.full_name} ({clash_emp.email})",
+                    )
+                user.employee_id = emp_id
+            else:
+                user.employee_id = None
         if "designation" in data:
             user.designation = data["designation"]
         if data.get("password"):

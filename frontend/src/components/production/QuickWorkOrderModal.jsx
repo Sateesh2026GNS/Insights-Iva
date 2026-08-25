@@ -35,7 +35,7 @@ function DateTimeField({ name, value, onChange, label }) {
           name={name}
           value={value}
           onChange={onChange}
-          className="ui-input w-full !pr-10"
+          className="ui-input w-full !pr-10 [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:w-0 [&::-webkit-calendar-picker-indicator]:pointer-events-none"
         />
         <button
           type="button"
@@ -45,7 +45,7 @@ function DateTimeField({ name, value, onChange, label }) {
             inputRef.current?.focus();
             inputRef.current?.showPicker?.();
           }}
-          className="absolute right-0 top-0 flex h-full w-10 items-center justify-center text-[var(--color-text-muted)]"
+          className="absolute right-0 top-0 flex h-full w-10 items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors cursor-pointer"
           aria-label={`Open ${label.toLowerCase()} picker`}
         >
           <CalendarDays className="h-4 w-4" aria-hidden />
@@ -312,7 +312,13 @@ export default function QuickWorkOrderModal({ order, onClose, onSuccess, addToas
                   className="ui-select"
                 >
                   <option value="">{loadingOptions ? "Loading products…" : "Select product…"}</option>
-                  <option value="__add_product__">+ Add new Product</option>
+                  <option
+                    value="__add_product__"
+                    className="add-new-option text-[#036f71] font-semibold bg-[#e6f4f4] dark:text-[#2dd4bf] dark:bg-[#0d3d38]"
+                    style={{ color: "#036f71", fontWeight: "600" }}
+                  >
+                    + Add new Product
+                  </option>
                   {products.map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.name || p.sku}
@@ -361,7 +367,13 @@ export default function QuickWorkOrderModal({ order, onClose, onSuccess, addToas
               ) : (
                 <select name="machine_id" value={form.machine_id} onChange={handleMachineChange} className="ui-select">
                   <option value="">Select Machine…</option>
-                  <option value="__add_machine__">+ Add new Machine</option>
+                  <option
+                    value="__add_machine__"
+                    className="add-new-option text-[#036f71] font-semibold bg-[#e6f4f4] dark:text-[#2dd4bf] dark:bg-[#0d3d38]"
+                    style={{ color: "#036f71", fontWeight: "600" }}
+                  >
+                    + Add new Machine
+                  </option>
                   {machines.map((m) => (
                     <option key={m.id} value={m.id}>
                       {m.name || m.code}
@@ -406,7 +418,13 @@ export default function QuickWorkOrderModal({ order, onClose, onSuccess, addToas
                   className="ui-select"
                 >
                   <option value="">{loadingOptions ? "Loading customers…" : "Select customer…"}</option>
-                  <option value="__add_customer__">+ Add new Customer</option>
+                  <option
+                    value="__add_customer__"
+                    className="add-new-option text-[#036f71] font-semibold bg-[#e6f4f4] dark:text-[#2dd4bf] dark:bg-[#0d3d38]"
+                    style={{ color: "#036f71", fontWeight: "600" }}
+                  >
+                    + Add new Customer
+                  </option>
                   {customers.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name || c.company}{c.customer_code ? ` (${c.customer_code})` : ""}

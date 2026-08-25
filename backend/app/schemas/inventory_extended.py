@@ -32,6 +32,7 @@ class MaterialListRead(BaseModel):
     barcode: str | None = None
     vendor_name: str | None = None
     item_type: str = "raw_material"
+    created_at: str | None = None
 
 
 class FinishedGoodListRead(BaseModel):
@@ -52,6 +53,7 @@ class FinishedGoodListRead(BaseModel):
     qr_code: str | None = None
     unit_cost: float | None = Field(None, ge=0.0)
     stock_value: float | None = Field(None, ge=0.0)
+    created_at: str | None = None
 
 
 class MaterialDetailRead(BaseModel):

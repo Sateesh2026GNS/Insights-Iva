@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 from sqlalchemy import select, func
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -336,6 +337,39 @@ def get_auth_profile(
 ) -> UserResponse:
     """Alias for /auth/me — JWT profile with company and role claims."""
     return get_me(current_user=current_user, db=db)
+
+
+class AvatarUpdateRequest(BaseModel):
+    avatar: str | None = None
+
+
+@router.put("/avatar", response_model=UserResponse)
+def update_profile_avatar(
+    req: AvatarUpdateRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> UserResponse:
+    """Persist user avatar image directly in database."""
+    current_user.avatar = req.avatar
+    db.commit()
+    db.refresh(current_user)
+    user_data = get_user_with_role(db, current_user)
+    user_data["email_verified"] = current_user.email_verified
+    return UserResponse(**user_data)
+
+
+@router.delete("/avatar", response_model=UserResponse)
+def remove_profile_avatar(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> UserResponse:
+    """Remove user avatar image from database."""
+    current_user.avatar = None
+    db.commit()
+    db.refresh(current_user)
+    user_data = get_user_with_role(db, current_user)
+    user_data["email_verified"] = current_user.email_verified
+    return UserResponse(**user_data)
 
 
 @router.post("/register", response_model=RegisterPendingResponse, status_code=status.HTTP_201_CREATED)

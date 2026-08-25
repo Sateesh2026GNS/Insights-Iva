@@ -146,12 +146,25 @@ export function Select({
           children
         ) : (
           <>
-            {placeholder ? <option value="">{placeholder}</option> : null}
-            {options.map((opt) => (
-              <option key={opt.value ?? opt.id ?? opt.label} value={opt.value ?? opt.id}>
-                {opt.label ?? opt.name}
-              </option>
-            ))}
+            {options.map((opt) => {
+              const val = opt.value ?? opt.id;
+              const lbl = opt.label ?? opt.name;
+              const isAdd =
+                String(lbl || "").startsWith("+") ||
+                /add new|create new/i.test(String(lbl || "")) ||
+                String(val || "").startsWith("__add") ||
+                String(val || "").startsWith("__new");
+              return (
+                <option
+                  key={val ?? lbl}
+                  value={val}
+                  className={isAdd ? "add-new-option text-[var(--color-primary)] font-semibold" : ""}
+                  style={isAdd ? { color: "#036f71", fontWeight: "600" } : undefined}
+                >
+                  {lbl}
+                </option>
+              );
+            })}
           </>
         )}
       </select>

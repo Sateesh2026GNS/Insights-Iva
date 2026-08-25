@@ -40,6 +40,17 @@ def _calc_work_overtime(work_hours: float, capacity_hours: float) -> tuple[float
 
 
 def create_employee(db: Session, payload: EmployeeCreate) -> Employee:
+    existing = db.scalars(
+        select(Employee).where(
+            Employee.tenant_id == payload.tenant_id,
+            func.lower(Employee.employee_code) == payload.employee_code.strip().lower(),
+        )
+    ).first()
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Employee code '{payload.employee_code}' already exists for {existing.full_name}.",
+        )
     emp = Employee(**payload.model_dump())
     db.add(emp)
     db.commit()

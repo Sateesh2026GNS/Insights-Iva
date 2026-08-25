@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
+  Camera,
   Check,
   Download,
   ExternalLink,
@@ -11,6 +12,7 @@ import {
   Save,
   Shield,
   Trash2,
+  Upload,
 } from "lucide-react";
 
 import { getUsers } from "../../api/adminApi";
@@ -27,6 +29,7 @@ import CompanyAddressFields, {
 import AuditLogsPanel from "../../components/settings/AuditLogsPanel";
 import LoginHistoryPanel from "../../components/settings/LoginHistoryPanel";
 import AccountOverviewCard from "../../components/settings/AccountOverviewCard";
+import AdjustProfilePhotoModal from "../../components/settings/AdjustProfilePhotoModal";
 import SettingsDeliveryLocation from "./SettingsDeliveryLocation";
 import SettingsDocumentNumberFormat from "./SettingsDocumentNumberFormat";
 import SettingsMyPermissions from "./SettingsMyPermissions";
@@ -76,6 +79,9 @@ function CompanyProfileSection() {
   const [saving, setSaving] = useState(false);
   const [baseline, setBaseline] = useState({});
   const [fieldErrors, setFieldErrors] = useState({});
+  const [adjustModalOpen, setAdjustModalOpen] = useState(false);
+  const [selectedImageForAdjust, setSelectedImageForAdjust] = useState(null);
+  const fileInputRef = useRef(null);
 
   const load = useCallback(async (isRefresh = false) => {
     if (!isRefresh) setLoading(true);
@@ -87,6 +93,7 @@ function CompanyProfileSection() {
       } catch {
         regional = {};
       }
+      const cachedLogo = localStorage.getItem("smrt-company-logo") || null;
       const data = {
         company_name: "",
         legal_name: "",
@@ -103,8 +110,15 @@ function CompanyProfileSection() {
         state_code: "",
         country: "India",
         pincode: "",
+        logo_url: res.data?.logo_url || cachedLogo || null,
         ...(res.data || {}),
       };
+      if (res.data?.logo_url) {
+        try {
+          localStorage.setItem("smrt-company-logo", res.data.logo_url);
+        } catch {}
+      }
+      data.logo_url = data.logo_url || cachedLogo || null;
       data.country = data.country || regional.country || "India";
       data.landmark = data.landmark || "";
       data.timezone = data.timezone || regional.timezone || "Asia/Kolkata";
@@ -129,6 +143,75 @@ function CompanyProfileSection() {
   const set = (key) => (e) => {
     setForm((f) => ({ ...f, [key]: e.target.value }));
     setFieldErrors((prev) => ({ ...prev, [key]: undefined }));
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      addToast("Logo image size must be less than 5MB", "error");
+      return;
+    }
+
+    const validTypes = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
+    if (!validTypes.includes(file.type)) {
+      addToast("Only PNG, JPG, and WebP images are supported", "error");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result;
+      if (typeof dataUrl === "string") {
+        setSelectedImageForAdjust(dataUrl);
+        setAdjustModalOpen(true);
+      }
+    };
+    reader.onerror = () => {
+      addToast("Failed to read image file", "error");
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  };
+
+  const handleOpenAdjuster = () => {
+    if (form?.logo_url) {
+      setSelectedImageForAdjust(form.logo_url);
+      setAdjustModalOpen(true);
+    } else {
+      fileInputRef.current?.click();
+    }
+  };
+
+  const handleSaveLogo = async (croppedDataUrl) => {
+    setForm((f) => ({ ...f, logo_url: croppedDataUrl }));
+    setSelectedImageForAdjust(null);
+    setAdjustModalOpen(false);
+    try {
+      localStorage.setItem("smrt-company-logo", croppedDataUrl);
+    } catch {}
+    try {
+      await updateCompanySettings({ logo_url: croppedDataUrl });
+      addToast("Company logo updated and saved.", "success");
+    } catch {
+      addToast("Company logo updated. Click 'Save Changes' to apply.", "info");
+    }
+  };
+
+  const handleRemoveLogo = async () => {
+    setForm((f) => ({ ...f, logo_url: null }));
+    setSelectedImageForAdjust(null);
+    setAdjustModalOpen(false);
+    try {
+      localStorage.removeItem("smrt-company-logo");
+    } catch {}
+    try {
+      await updateCompanySettings({ logo_url: null });
+      addToast("Company logo removed.", "success");
+    } catch {
+      addToast("Company logo removed. Click 'Save Changes' to apply.", "info");
+    }
   };
 
   const handleCancel = () => {
@@ -170,6 +253,7 @@ function CompanyProfileSection() {
         state_code: form.state_code?.trim() || null,
         country: form.country?.trim() || "India",
         pincode: form.pincode?.trim() || null,
+        logo_url: form.logo_url ?? null,
       };
       await updateCompanySettings(payload);
       if (form.currency) updateCurrency(form.currency);
@@ -204,6 +288,8 @@ function CompanyProfileSection() {
     );
   }
 
+  const companyInitial = (form.company_name || "C").slice(0, 1).toUpperCase();
+
   return (
     <PanelShell
       title="Company Profile"
@@ -231,16 +317,89 @@ function CompanyProfileSection() {
       }
     >
       <SectionCard title="Brand">
-        <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
-          <div className="flex h-20 w-20 items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-slate-50 text-2xl font-bold text-[var(--color-success)] dark:border-slate-600 dark:bg-slate-900">
-            {(form.company_name || "G").slice(0, 1).toUpperCase()}
+        <div className="flex flex-col items-start gap-5 sm:flex-row sm:items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="relative group shrink-0">
+              <button
+                type="button"
+                onClick={handleOpenAdjuster}
+                title={form?.logo_url ? "Click to view and adjust company logo" : "Click to upload company logo"}
+                className="flex h-20 w-20 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-2xl border-2 border-white bg-slate-50 text-2xl font-bold text-[var(--color-success)] shadow-md ring-4 ring-[var(--color-success)]/10 transition-all duration-150 hover:scale-105 hover:ring-[var(--color-success)]/30 dark:border-slate-800 dark:bg-slate-900"
+              >
+                {form?.logo_url ? (
+                  <img
+                    src={form.logo_url}
+                    alt={form.company_name || "Company Logo"}
+                    className="h-full w-full object-contain p-1.5 transition-opacity group-hover:opacity-90"
+                  />
+                ) : (
+                  companyInitial
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={handleOpenAdjuster}
+                title={form?.logo_url ? "Adjust company logo" : "Upload company logo"}
+                className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full border-2 border-white bg-slate-900 text-white shadow-md transition-transform hover:scale-110 hover:bg-[var(--color-success)] dark:border-slate-850"
+              >
+                <Camera className="h-3.5 w-3.5" />
+              </button>
+            </div>
+
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Company Logo</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Shown on Tax Invoices, Delivery Challans, and ERP Documents.
+              </p>
+              <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">
+                Supports PNG, JPG, and WebP up to 5MB
+              </p>
+            </div>
           </div>
-          <div>
-            <p className="text-sm font-medium text-slate-800 dark:text-slate-100">Company Logo</p>
-            <p className="text-xs text-slate-500">Shown on invoices and the app header. Upload coming soon.</p>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              accept="image/png,image/jpeg,image/jpg,image/webp"
+              className="hidden"
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => fileInputRef.current?.click()}
+              leftIcon={<Upload className="h-3.5 w-3.5" />}
+            >
+              {form?.logo_url ? "Change Logo" : "Upload Logo"}
+            </Button>
+            {form?.logo_url && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleRemoveLogo}
+                leftIcon={<Trash2 className="h-3.5 w-3.5 text-red-500" />}
+                className="text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950/30"
+              >
+                Remove
+              </Button>
+            )}
           </div>
         </div>
       </SectionCard>
+
+      {/* Adjust Company Logo Modal */}
+      <AdjustProfilePhotoModal
+        open={adjustModalOpen}
+        onClose={() => {
+          setAdjustModalOpen(false);
+          setSelectedImageForAdjust(null);
+        }}
+        initialImage={selectedImageForAdjust || form?.logo_url}
+        onSave={handleSaveLogo}
+        onRemove={handleRemoveLogo}
+        userName={form.company_name || "Company Logo"}
+      />
 
       <SectionCard title="Identity">
         <div className="grid gap-4 sm:grid-cols-2">

@@ -118,8 +118,16 @@ export default function Employees() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.employee_code || !form.full_name) {
+    if (!form.employee_code.trim() || !form.full_name.trim()) {
       setError("Employee Code and Full Name are required.");
+      return;
+    }
+    const codeTrim = form.employee_code.trim().toLowerCase();
+    const duplicate = rows.find(
+      (r) => (r.employee_code || r.employee_id || "").toString().trim().toLowerCase() === codeTrim
+    );
+    if (duplicate) {
+      setError(`Employee Code '${form.employee_code.trim()}' is already in use by ${duplicate.full_name || duplicate.name || "another employee"}.`);
       return;
     }
     setSaving(true);

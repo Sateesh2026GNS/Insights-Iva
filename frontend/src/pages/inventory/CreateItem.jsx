@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
+  Calendar,
   Save,
   Upload,
 } from "lucide-react";
@@ -11,6 +12,7 @@ import { createInventoryItem, getWarehouses } from "../../api/inventoryApi";
 import { useToast } from "../../context/ToastContext";
 import useTenantId from "../../hooks/useTenantId";
 import { apiErrorMessage, asArray } from "../../utils/apiError";
+import { todayIso } from "../../utils/dateUtils";
 
 const TABS = [
   { id: "basic", label: "Basic Information" },
@@ -98,7 +100,6 @@ export default function CreateItem() {
   const initialType = searchParams.get("type") === "finished_good" ? "finished_good" : "raw_material";
 
   const [activeTab, setActiveTab] = useState("basic");
-  const [headerDate, setHeaderDate] = useState("2026-08-13");
   const [warehouses, setWarehouses] = useState(DEFAULT_WAREHOUSES);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -264,6 +265,8 @@ export default function CreateItem() {
         warranty: form.warranty?.trim() || null,
         item_type: form.item_type,
         is_active: form.is_active,
+        date: form.date || headerDate || todayIso(),
+        created_at: form.date || headerDate || todayIso(),
       };
       await createInventoryItem(payload);
       addToast("Item created successfully");
@@ -284,13 +287,6 @@ export default function CreateItem() {
         backLabel={isFinishedGood ? "Back to Finished Goods" : "Back to Raw Materials"}
         action={
           <div className="flex flex-wrap items-center gap-4">
-            <input
-              type="date"
-              value={headerDate}
-              onChange={(e) => setHeaderDate(e.target.value)}
-              className="ui-input !w-auto min-w-[10.5rem]"
-              aria-label="Date"
-            />
             <select
               value={form.warehouse_name}
               onChange={(e) => set("warehouse_name", e.target.value)}
@@ -336,7 +332,7 @@ export default function CreateItem() {
       <form id="create-item-form" onSubmit={handleSubmit} className="space-y-6">
         <div className="grid gap-6 xl:grid-cols-12">
           <Card id="basic" title="Basic Information" className="xl:col-span-8">
-            <div className="grid gap-4 sm:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <Field label="Item Type" required>
                 <select
                   value={form.item_type}

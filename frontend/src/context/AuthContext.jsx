@@ -1,6 +1,6 @@
 import { createContext, useCallback, useEffect, useMemo, useState } from "react";
 
-import { getCurrentUser, logout as logoutApi } from "../api/authApi";
+import { getCurrentUser, logout as logoutApi, removeProfileAvatar, updateProfileAvatar } from "../api/authApi";
 import { setUnauthorizedHandler } from "../api/axiosConfig";
 import { invalidateReferenceCache } from "../utils/referenceDataCache";
 
@@ -19,17 +19,34 @@ function getAvatarStorageKey(raw) {
   return `smrt-avatar-${tenantKey}-${userKey}`;
 }
 
+function getAvatarFromStorage(raw) {
+  if (!raw || typeof raw !== "object") return null;
+  const userKey = raw.id || raw.email || raw.username;
+  const keys = [
+    getAvatarStorageKey(raw),
+    raw.id ? `smrt-avatar-${raw.id}` : null,
+    raw.email ? `smrt-avatar-${raw.email}` : null,
+    userKey ? `smrt-avatar-user-${userKey}` : null,
+    "smrt-current-avatar",
+  ].filter(Boolean);
+
+  for (const k of keys) {
+    try {
+      const val = localStorage.getItem(k);
+      if (val && typeof val === "string" && val.length > 20) {
+        return val;
+      }
+    } catch {}
+  }
+  return null;
+}
+
 function normalizeUser(raw) {
   if (!raw || typeof raw !== "object") return null;
   const fullName = raw.full_name ?? raw.name ?? "User";
   let avatar = raw.avatar ?? raw.profile_picture ?? raw.photo ?? null;
-  if (!avatar) {
-    const key = getAvatarStorageKey(raw);
-    if (key) {
-      try {
-        avatar = localStorage.getItem(key) || null;
-      } catch {}
-    }
+  if (!avatar || typeof avatar !== "string" || avatar.trim() === "") {
+    avatar = getAvatarFromStorage(raw);
   }
   return {
     ...raw,
@@ -62,15 +79,15 @@ function clearTenantDataCaches() {
         k &&
         (k.startsWith("smrt_") ||
           k.startsWith("gns_") ||
-          k.startsWith("smrt-company-") ||
-          k.startsWith("smrt-avatar-") ||
-          k === "smrt-current-avatar")
+          k.startsWith("smrt-company-"))
       ) {
         if (
           !k.startsWith("smrt-token") &&
           !k.startsWith("smrt-refresh") &&
           !k.startsWith("smrt-user") &&
-          !k.startsWith("smrt-language")
+          !k.startsWith("smrt-language") &&
+          !k.startsWith("smrt-avatar") &&
+          !k.startsWith("smrt-company-logo")
         ) {
           keys.push(k);
         }
@@ -222,22 +239,33 @@ export function AuthProvider({ children }) {
     setUser((prev) => {
       if (!prev) return prev;
       const updated = { ...prev, avatar: avatarData || null };
-      const key = getAvatarStorageKey(prev);
+      const primaryKey = getAvatarStorageKey(prev);
+      const userKey = prev.id || prev.email || prev.username;
+      const allKeys = [
+        primaryKey,
+        prev.id ? `smrt-avatar-${prev.id}` : null,
+        prev.email ? `smrt-avatar-${prev.email}` : null,
+        userKey ? `smrt-avatar-user-${userKey}` : null,
+      ].filter(Boolean);
+
       try {
         localStorage.setItem("smrt-user", JSON.stringify(updated));
-        if (key) {
+        for (const k of allKeys) {
           if (avatarData) {
-            localStorage.setItem(key, avatarData);
+            localStorage.setItem(k, avatarData);
           } else {
-            localStorage.removeItem(key);
+            localStorage.removeItem(k);
           }
         }
-        // Purge legacy unscoped keys that cause cross-company avatar leaks
-        localStorage.removeItem("smrt-current-avatar");
-        if (prev.id) {
-          localStorage.removeItem(`smrt-avatar-${prev.id}`);
-        }
       } catch {}
+
+      // Persist to backend database so it never resets
+      if (avatarData) {
+        updateProfileAvatar(avatarData).catch(() => {});
+      } else {
+        removeProfileAvatar().catch(() => {});
+      }
+
       return updated;
     });
   }, []);

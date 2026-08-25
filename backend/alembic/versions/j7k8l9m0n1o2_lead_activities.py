@@ -17,6 +17,12 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    bind = op.get_bind()
+    from sqlalchemy import inspect
+    tables = set(inspect(bind).get_table_names())
+    if "lead_activities" in tables:
+        return
+
     op.create_table(
         "lead_activities",
         sa.Column("id", sa.Integer(), nullable=False),

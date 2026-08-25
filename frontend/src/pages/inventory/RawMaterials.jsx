@@ -36,7 +36,7 @@ import {
 import { stockStatusLabel, stockStatusTone } from "../../data/inventoryMasterData";
 import useManufacturingRefresh from "../../hooks/useManufacturingRefresh";
 import { asArray } from "../../utils/apiError";
-import { notifyManufacturingSpine, MANUFACTURING_EVENTS } from "../../utils/manufacturingEvents";
+import { todayIso } from "../../utils/dateUtils";
 
 const EMPTY_SUMMARY = {
   total_items: 0,
@@ -59,8 +59,9 @@ function formatQty(value) {
 
 function formatUpdated(value) {
   if (!value) return "—";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return String(value).slice(0, 10);
+  const valStr = String(value).slice(0, 10);
+  const d = new Date(valStr.length === 10 ? `${valStr}T00:00:00` : value);
+  if (Number.isNaN(d.getTime())) return valStr;
   return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
 }
 
@@ -83,27 +84,12 @@ function todayISO() {
   return new Date().toISOString().slice(0, 10);
 }
 
-const KPI_TONE_RING = {
-  primary: "hover:ring-2 hover:ring-[var(--kpi-primary)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-primary)]",
-  info: "hover:ring-2 hover:ring-[var(--kpi-info)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-info)]",
-  success: "hover:ring-2 hover:ring-[var(--kpi-success)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-success)]",
-  warning: "hover:ring-2 hover:ring-[var(--kpi-warning)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-warning)]",
-  danger: "hover:ring-2 hover:ring-[var(--kpi-danger)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-danger)]",
-  yellow: "hover:ring-2 hover:ring-[var(--kpi-warning)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-warning)]",
-  violet: "hover:ring-2 hover:ring-[var(--kpi-violet)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-violet)]",
-  teal: "hover:ring-2 hover:ring-[var(--kpi-teal)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-teal)]",
-  orange: "hover:ring-2 hover:ring-[var(--kpi-orange)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-orange)]",
-  neutral: "hover:ring-2 hover:ring-[var(--kpi-neutral)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-neutral)]",
-};
-
-function ClickableKpiCard({ onClick, title, tone, children }) {
-  const resolvedTone = tone || children?.props?.tone || "primary";
-  const ringClass = KPI_TONE_RING[resolvedTone] || KPI_TONE_RING.primary;
+function ClickableKpiCard({ onClick, title, children }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`h-full w-full rounded-[var(--radius-lg)] text-left transition focus:outline-none ${ringClass}`}
+      className="block h-full w-full border-0 p-0 bg-transparent text-left focus:outline-none cursor-pointer"
       title={title}
     >
       {children}
@@ -125,7 +111,7 @@ export default function RawMaterials() {
   const [category, setCategory] = useState("");
   const [warehouse, setWarehouse] = useState("");
   const [showFilters, setShowFilters] = useState(true);
-  const [selectedDate, setSelectedDate] = useState("2026-08-13");
+  const [selectedDate, setSelectedDate] = useState(() => todayIso());
   const [headerWarehouse, setHeaderWarehouse] = useState("");
   const [selected, setSelected] = useState(null);
   const [selectedIds, setSelectedIds] = useState(() => new Set());
@@ -185,17 +171,23 @@ export default function RawMaterials() {
     () =>
       materials.map((m) => {
         const available = Number(m.available ?? Math.max((Number(m.quantity) || 0) - (Number(m.reserved) || 0), 0));
+        const rawDate = m.updated_at || m.last_updated || m.created_at;
+        const rawDateStr = rawDate ? String(rawDate).slice(0, 10) : "";
+        const effectiveLastUpdated =
+          rawDateStr && selectedDate && rawDateStr <= selectedDate
+            ? rawDateStr
+            : selectedDate || rawDateStr || todayIso();
         return {
           ...m,
           available,
           reserved: Number(m.reserved || 0),
           description: m.description || m.category || "",
-          last_updated: m.updated_at || m.last_updated || m.created_at,
+          last_updated: effectiveLastUpdated,
           thumb: thumbColor(m.name || m.sku || ""),
           live: true,
         };
       }),
-    [materials]
+    [materials, selectedDate]
   );
 
   const kpis = useMemo(() => {
@@ -439,6 +431,8 @@ export default function RawMaterials() {
         subtitle="Manage and track your raw materials inventory"
         action={
           <InventoryHeaderControls
+            sectionTitle="Raw Materials"
+            itemType="raw_material"
             dateValue={selectedDate}
             onDateChange={(v) => setSelectedDate(v || todayISO())}
             warehouseValue={headerWarehouse}
