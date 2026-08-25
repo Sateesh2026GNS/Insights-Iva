@@ -588,6 +588,7 @@ def get_erp_dashboard(db: Session, tenant_id: int, user: User | None = None) -> 
         if wo.production_order and wo.production_order.product:
             product_name = wo.production_order.product.name
         recent_work_orders.append({
+            "id": wo.id,
             "wo": wo.work_order_number,
             "product": product_name,
             "qty": float(wo.planned_quantity or 0),

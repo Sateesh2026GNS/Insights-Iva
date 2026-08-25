@@ -821,7 +821,7 @@ function RecentWorkOrders({ workOrders = [] }) {
             </thead>
             <tbody>
               {workOrders.map((wo) => (
-                <tr key={wo.wo}>
+                <tr key={wo._rowKey ?? wo.id ?? wo.wo}>
                   <td className="px-3 py-2.5 font-semibold text-[var(--color-primary)]">{wo.wo}</td>
                   <td className="px-3 py-2.5 text-[#1a1a1f] dark:text-white">{wo.product}</td>
                   <td className="px-3 py-2.5 tabular-nums text-[#4a4a55] dark:text-slate-300">{wo.qty}</td>
@@ -1108,12 +1108,14 @@ export default function ReferenceDashboard() {
 
   const workOrdersLive = useMemo(() => {
     if (!apiData?.recent_work_orders?.length) return [];
-    return apiData.recent_work_orders.map((w) => ({
+    return apiData.recent_work_orders.map((w, index) => ({
+      id: w.id,
       wo: w.wo,
       product: w.product,
       qty: w.qty,
       status: w.status,
       due: w.due ? String(w.due).slice(0, 10) : "—",
+      _rowKey: w.id != null ? `wo-${w.id}` : `${w.wo}-${index}`,
     }));
   }, [apiData]);
 

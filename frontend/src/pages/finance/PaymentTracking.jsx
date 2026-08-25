@@ -27,6 +27,14 @@ const MONTH_NAMES = [
   "July", "August", "September", "October", "November", "December",
 ];
 
+function normalizePaymentRows(data) {
+  if (Array.isArray(data)) return data;
+  if (data && Array.isArray(data.items)) return data.items;
+  if (data && Array.isArray(data.results)) return data.results;
+  if (data && Array.isArray(data.payments)) return data.payments;
+  return [];
+}
+
 export default function PaymentTracking() {
   const { addToast } = useToast();
   const [loading, setLoading] = useState(true);
@@ -45,9 +53,8 @@ export default function PaymentTracking() {
 
 
       if (sumRes.status === "fulfilled" && sumRes.value?.data) setSummary({ ...INITIAL_PAY_SUMMARY, ...sumRes.value.data });
-      // Use API data only — no localStorage fallback
-      if (listRes.status === "fulfilled" && listRes.value?.data?.length) {
-        setRows(listRes.value.data);
+      if (listRes.status === "fulfilled") {
+        setRows(normalizePaymentRows(listRes.value?.data));
       } else {
         setRows([]);
       }
@@ -65,8 +72,9 @@ export default function PaymentTracking() {
   useEffect(() => { load(); }, [load]);
 
   const filtered = useMemo(() => {
+    const list = Array.isArray(rows) ? rows : [];
     const q = search.toLowerCase();
-    return rows.filter((r) => {
+    return list.filter((r) => {
       if (
         q &&
         ![r.payment_number, r.invoice, r.party_name, r.utr_number, r.transaction_id].some((v) =>
