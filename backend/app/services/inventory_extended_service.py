@@ -145,6 +145,7 @@ def list_materials_enriched(db: Session, tenant_id: int) -> list[MaterialListRea
                 barcode=item.barcode,
                 vendor_name=supplier.name if supplier else None,
                 item_type=item.item_type,
+                created_at=item.created_at.isoformat() if getattr(item, "created_at", None) else None,
             )
         )
     return result
@@ -319,6 +320,7 @@ def list_finished_goods_enriched(db: Session, tenant_id: int) -> list[FinishedGo
                 qr_code=f"QR-{item.sku}" if item.sku else None,
                 unit_cost=float(item.unit_cost) if item.unit_cost else None,
                 stock_value=round((float(item.unit_cost or 0)) * qty, 2) if qty else 0,
+                created_at=item.created_at.isoformat() if getattr(item, "created_at", None) else None,
             )
         )
     return result

@@ -641,7 +641,13 @@ export default function CreateSalesOrder() {
                         }}
                       >
                         <option value="">Select customer</option>
-                        <option value="__add_customer__">+ Add New Customer</option>
+                        <option
+                          value="__add_customer__"
+                          className="add-new-option text-[#036f71] font-semibold bg-[#e6f4f4] dark:text-[#2dd4bf] dark:bg-[#0d3d38]"
+                          style={{ color: "#036f71", fontWeight: "600" }}
+                        >
+                          + Add New Customer
+                        </option>
                         {customers.map((c) => (
                           <option key={c.id} value={c.id}>
                             {c.name || c.company || c.company_name || c.customer_name || `Customer #${c.id}`}
@@ -666,7 +672,13 @@ export default function CreateSalesOrder() {
                         }}
                       >
                         <option value="">Select sales person</option>
-                        <option value="__add_sp__">+ Add New Sales Person</option>
+                        <option
+                          value="__add_sp__"
+                          className="add-new-option text-[#036f71] font-semibold bg-[#e6f4f4] dark:text-[#2dd4bf] dark:bg-[#0d3d38]"
+                          style={{ color: "#036f71", fontWeight: "600" }}
+                        >
+                          + Add New Sales Person
+                        </option>
                         {salesPeople.map((u) => (
                           <option key={u.id} value={u.id}>
                             {u.full_name || u.name || u.email}
@@ -690,7 +702,13 @@ export default function CreateSalesOrder() {
                         }}
                       >
                         <option value="">Select product</option>
-                        <option value="__add_product__">+ Add New Product</option>
+                        <option
+                          value="__add_product__"
+                          className="add-new-option text-[#036f71] font-semibold bg-[#e6f4f4] dark:text-[#2dd4bf] dark:bg-[#0d3d38]"
+                          style={{ color: "#036f71", fontWeight: "600" }}
+                        >
+                          + Add New Product
+                        </option>
                         {products.map((p) => (
                           <option key={p.id} value={p.id}>
                             {p.name || p.title || p.product_code || `Product #${p.id}`} {p.sku || p.product_code ? `(${p.sku || p.product_code})` : ""}

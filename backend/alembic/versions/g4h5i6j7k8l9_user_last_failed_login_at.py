@@ -17,10 +17,17 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.add_column(
-        "users",
-        sa.Column("last_failed_login_at", sa.DateTime(timezone=True), nullable=True),
-    )
+    bind = op.get_bind()
+    from sqlalchemy import inspect
+    inspector = inspect(bind)
+    tables = set(inspector.get_table_names())
+    if "users" in tables:
+        cols = {c["name"] for c in inspector.get_columns("users")}
+        if "last_failed_login_at" not in cols:
+            op.add_column(
+                "users",
+                sa.Column("last_failed_login_at", sa.DateTime(timezone=True), nullable=True),
+            )
 
 
 def downgrade() -> None:

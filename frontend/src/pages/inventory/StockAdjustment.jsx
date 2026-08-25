@@ -4,6 +4,7 @@ import {
   ArrowDown,
   ArrowRight,
   ArrowUp,
+  Calendar,
   CheckCircle2,
   ClipboardList,
   Filter,
@@ -38,6 +39,7 @@ import {
 } from "../../api/inventoryApi";
 import { ADJUSTMENT_REASONS } from "../../data/inventoryMasterData";
 import { asArray } from "../../utils/apiError";
+import { todayIso } from "../../utils/dateUtils";
 
 const STEPS = [
   { id: 1, label: "Adjustment Details" },
@@ -106,7 +108,7 @@ export default function StockAdjustment() {
   const [warehouses, setWarehouses] = useState([]);
   const [items, setItems] = useState([]);
   const [form, setForm] = useState({
-    adjustment_date: "2026-08-13",
+    adjustment_date: todayIso(),
     warehouse_id: "",
     item_id: "",
     adj_type: "increase",
@@ -122,7 +124,7 @@ export default function StockAdjustment() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [showFilters, setShowFilters] = useState(false);
-  const [headerDate, setHeaderDate] = useState("2026-08-13");
+  const [headerDate, setHeaderDate] = useState(() => todayIso());
   const [headerWarehouse, setHeaderWarehouse] = useState("");
   const [openMenuId, setOpenMenuId] = useState(null);
   const [viewTarget, setViewTarget] = useState(null);
@@ -575,12 +577,15 @@ export default function StockAdjustment() {
                   </label>
                   <label className="text-sm">
                     <span className="ui-label">Adjustment Date *</span>
-                    <input
-                      type="date"
-                      value={form.adjustment_date}
-                      onChange={(e) => setForm((f) => ({ ...f, adjustment_date: e.target.value }))}
-                      className="ui-input"
-                    />
+                    <div className="relative flex items-center">
+                      <input
+                        type="date"
+                        value={form.adjustment_date || todayIso()}
+                        onChange={(e) => setForm((f) => ({ ...f, adjustment_date: e.target.value || todayIso() }))}
+                        className="ui-input pr-9"
+                      />
+                      <Calendar className="pointer-events-none absolute right-2.5 h-4 w-4 text-[var(--color-text-muted)]" />
+                    </div>
                   </label>
                   <label className="text-sm">
                     <span className="ui-label">Warehouse *</span>

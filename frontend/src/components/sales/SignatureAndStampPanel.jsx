@@ -136,7 +136,15 @@ export default function SignatureAndStampPanel({
     paintCanvasStyle(ctx);
     dirtyRef.current = false;
     setSavedFlash(false);
+    try { localStorage.removeItem("gns_invoice_signature_data"); } catch { /* ignore */ }
     onSignatureChange?.(null);
+  };
+
+  const removeStamp = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    try { localStorage.removeItem("gns_invoice_stamp_data"); } catch { /* ignore */ }
+    onStampChange?.(null);
   };
 
   const save = (e) => {
@@ -158,12 +166,14 @@ export default function SignatureAndStampPanel({
     })();
     if (blank) {
       dirtyRef.current = false;
+      try { localStorage.removeItem("gns_invoice_signature_data"); } catch { /* ignore */ }
       onSignatureChange?.(null);
       setSavedFlash(false);
       return;
     }
     const url = canvas.toDataURL("image/png");
     dirtyRef.current = false;
+    try { localStorage.setItem("gns_invoice_signature_data", url); } catch { /* ignore */ }
     onSignatureChange?.(url);
     setSavedFlash(true);
     window.setTimeout(() => setSavedFlash(false), 1500);
@@ -173,7 +183,11 @@ export default function SignatureAndStampPanel({
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = () => onStampChange?.(String(reader.result));
+    reader.onload = () => {
+      const url = String(reader.result);
+      try { localStorage.setItem("gns_invoice_stamp_data", url); } catch { /* ignore */ }
+      onStampChange?.(url);
+    };
     reader.readAsDataURL(file);
     e.target.value = "";
   };
@@ -209,10 +223,9 @@ export default function SignatureAndStampPanel({
             type="button"
             onClick={clear}
             onMouseDown={(e) => e.stopPropagation()}
-            className="pointer-events-auto inline-flex items-center gap-1 text-[12px] font-semibold"
-            style={{ color: PRIMARY }}
+            className="pointer-events-auto inline-flex items-center gap-1 text-[12px] font-semibold text-rose-600 hover:text-rose-700"
           >
-            <X className="h-3.5 w-3.5" /> Clear
+            <X className="h-3.5 w-3.5" /> Clear Signature
           </button>
           <button
             type="button"
@@ -221,7 +234,7 @@ export default function SignatureAndStampPanel({
             className="pointer-events-auto inline-flex items-center gap-1 text-[12px] font-semibold"
             style={{ color: PRIMARY }}
           >
-            <Check className="h-3.5 w-3.5" /> {savedFlash ? "Saved" : "Save"}
+            <Check className="h-3.5 w-3.5" /> {savedFlash ? "Saved" : "Save Signature"}
           </button>
         </div>
       </div>
@@ -233,14 +246,25 @@ export default function SignatureAndStampPanel({
         className="hidden"
         onChange={onStampFile}
       />
-      <button
-        type="button"
-        onClick={() => fileRef.current?.click()}
-        className="mt-3 inline-flex items-center gap-1.5 text-[13px] font-semibold"
-        style={{ color: PRIMARY }}
-      >
-        <Upload className="h-4 w-4" /> Upload Stamp
-      </button>
+      <div className="mt-3 flex items-center justify-center gap-4">
+        <button
+          type="button"
+          onClick={() => fileRef.current?.click()}
+          className="inline-flex items-center gap-1.5 text-[13px] font-semibold"
+          style={{ color: PRIMARY }}
+        >
+          <Upload className="h-4 w-4" /> {stampDataUrl ? "Change Stamp" : "Upload Stamp"}
+        </button>
+        {stampDataUrl ? (
+          <button
+            type="button"
+            onClick={removeStamp}
+            className="inline-flex items-center gap-1 text-[12px] font-semibold text-rose-600 hover:text-rose-700"
+          >
+            <X className="h-3.5 w-3.5" /> Remove Stamp
+          </button>
+        ) : null}
+      </div>
 
       <p className="mt-4 text-[13px] font-medium text-[#4a4a55]">Authorised Signatory</p>
     </div>

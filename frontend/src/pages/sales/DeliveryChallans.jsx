@@ -581,8 +581,8 @@ export default function DeliveryChallans() {
                   setFilters(draftFilters);
                   setShowFilters(false);
                 }}
-                className="rounded-xl py-3 text-[14px] font-semibold text-[#1a1a1f]"
-                style={{ background: "#EAE5B3" }}
+                className="rounded-xl py-3 text-[14px] font-semibold text-white"
+                style={{ background: "#036f71" }}
               >
                 Apply Filter
               </button>

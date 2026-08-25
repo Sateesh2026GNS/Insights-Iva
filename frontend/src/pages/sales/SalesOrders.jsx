@@ -217,14 +217,14 @@ export default function SalesOrders() {
       />
 
       <div className="ui-grid-kpi">
-        <KpiCard label="Total Orders" value={summary.total_orders ?? 0} icon={ShoppingCart} color="bg-[var(--color-success)]" />
-        <KpiCard label="Pending" value={summary.pending ?? 0} icon={ShoppingCart} color="bg-amber-500" />
-        <KpiCard label="Confirmed" value={summary.confirmed ?? 0} icon={ShoppingCart} color="bg-teal-600" />
-        <KpiCard label="Packed" value={summary.packed ?? 0} icon={ShoppingCart} color="bg-slate-600" />
-        <KpiCard label="Shipped" value={summary.shipped ?? 0} icon={Truck} color="bg-cyan-600" />
-        <KpiCard label="Delivered" value={summary.delivered ?? 0} icon={Truck} color="bg-[var(--color-success)]" />
-        <KpiCard label="Cancelled" value={summary.cancelled ?? 0} icon={ShoppingCart} color="bg-rose-600" />
-        <KpiCard label="Revenue" value={formatInr(summary.revenue ?? 0)} icon={IndianRupee} color="bg-emerald-700" />
+        <KpiCard label="Total Orders" value={summary.total_orders ?? 0} icon={ShoppingCart} tone="teal" onClick={() => setFilters((f) => ({ ...f, status: "" }))} title="Show all orders" />
+        <KpiCard label="Pending" value={summary.pending ?? 0} icon={ShoppingCart} tone="warning" onClick={() => setFilters((f) => ({ ...f, status: "pending" }))} title="Filter pending orders" />
+        <KpiCard label="Confirmed" value={summary.confirmed ?? 0} icon={ShoppingCart} tone="teal" onClick={() => setFilters((f) => ({ ...f, status: "confirmed" }))} title="Filter confirmed orders" />
+        <KpiCard label="Packed" value={summary.packed ?? 0} icon={ShoppingCart} tone="neutral" onClick={() => setFilters((f) => ({ ...f, status: "packed" }))} title="Filter packed orders" />
+        <KpiCard label="Shipped" value={summary.shipped ?? 0} icon={Truck} tone="info" onClick={() => setFilters((f) => ({ ...f, status: "shipped" }))} title="Filter shipped orders" />
+        <KpiCard label="Delivered" value={summary.delivered ?? 0} icon={Truck} tone="teal" onClick={() => setFilters((f) => ({ ...f, status: "delivered" }))} title="Filter delivered orders" />
+        <KpiCard label="Cancelled" value={summary.cancelled ?? 0} icon={ShoppingCart} tone="danger" onClick={() => setFilters((f) => ({ ...f, status: "cancelled" }))} title="Filter cancelled orders" />
+        <KpiCard label="Revenue" value={formatInr(summary.revenue ?? 0)} icon={IndianRupee} tone="teal" onClick={() => setFilters((f) => ({ ...f, status: "" }))} title="Total orders revenue" />
       </div>
 
       <div className="ui-card p-4">

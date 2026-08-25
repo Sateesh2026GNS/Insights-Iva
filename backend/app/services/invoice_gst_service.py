@@ -65,9 +65,10 @@ def apply_header_gst(
         inv.sgst_pct = 0
         inv.cgst_pct = 0
     else:
-        half = _money(gst_sum / 2)
-        inv.sgst_amount = half
-        inv.cgst_amount = half
+        cgst = _money(gst_sum / 2)
+        sgst = _money(gst_sum - cgst)
+        inv.cgst_amount = cgst
+        inv.sgst_amount = sgst
         inv.igst_amount = 0
         half_pct = _money(default_gst_pct / 2)
         if not inv.sgst_pct:

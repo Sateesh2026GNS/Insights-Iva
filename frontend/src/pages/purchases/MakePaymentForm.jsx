@@ -464,7 +464,13 @@ export default function MakePaymentForm() {
                         {p}
                       </option>
                     ))}
-                    <option value="__add__">+ Add New Prefix</option>
+                    <option
+                      value="__add__"
+                      className="add-new-option text-[#036f71] font-semibold bg-[#e6f4f4] dark:text-[#2dd4bf] dark:bg-[#0d3d38]"
+                      style={{ color: "#036f71", fontWeight: "600" }}
+                    >
+                      + Add New Prefix
+                    </option>
                   </select>
                 </label>
                 <label className="block">

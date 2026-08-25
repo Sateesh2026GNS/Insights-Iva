@@ -332,6 +332,7 @@ def get_user_with_role(db: Session, user: User, *, preferred_role: str | None = 
         "trial_expires_at": tenant.trial_expires_at.isoformat() if tenant and getattr(tenant, "trial_expires_at", None) else None,
         "last_login_at": user.last_login_at.isoformat() if getattr(user, "last_login_at", None) else None,
         "current_login_at": datetime.now(timezone.utc).isoformat(),
+        "avatar": getattr(user, "avatar", None),
     }
 
 

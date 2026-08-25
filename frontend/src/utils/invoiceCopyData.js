@@ -189,13 +189,20 @@ export function mapDetailToInvoiceCopy(detail, companySettings = {}) {
   }
 
   const billing = buildAddress(cust);
+  const consigneeAddress = [inv.consignee_address1, inv.consignee_address2].filter(Boolean).join(", ") || billing;
+
+  const irnVal = inv.irn || companySettings.irn || (typeof window !== "undefined" ? localStorage.getItem("gns_invoice_irn") : "") || "";
+  const ackNoVal = inv.ack_no || (typeof window !== "undefined" ? localStorage.getItem("gns_invoice_ack_no") : "") || "";
+  const ackDateVal = formatDate(inv.ack_date) || (typeof window !== "undefined" ? localStorage.getItem("gns_invoice_ack_date") : "") || "";
 
   return {
     title: "TAX INVOICE",
     tax_mode: taxMode,
-    eInvoice: Boolean(companySettings.e_invoice_enabled),
-    e_invoice_enabled: Boolean(companySettings.e_invoice_enabled),
-    irn: companySettings.irn || "",
+    eInvoice: Boolean(irnVal || companySettings.e_invoice_enabled),
+    e_invoice_enabled: Boolean(irnVal || companySettings.e_invoice_enabled),
+    irn: irnVal,
+    ack_no: ackNoVal,
+    ack_date: ackDateVal,
     seller: {
       name: companySettings.company_name || companySettings.name || "Insights Iva",
       logo: companySettings.logo_url || "",
@@ -214,24 +221,28 @@ export function mapDetailToInvoiceCopy(detail, companySettings = {}) {
       invoice_no: inv.invoice_number,
       date: formatDate(inv.issue_date),
       due_date: formatDate(inv.due_date),
-      reference_no: inv.po_number || inv.reference_number || "",
-      delivery_note: inv.challan_number || "",
       eway_bill_no: inv.ewaybill_number || inv.eway_bill_number || "",
-      payment_terms: inv.notes || companySettings.payment_terms_note || "",
+      delivery_note: inv.delivery_note || inv.challan_number || "",
+      payment_terms: inv.payment_terms || inv.payment_mode || companySettings.payment_terms_note || "",
+      reference_no: inv.reference_no || (inv.reference_date ? `${inv.reference_no || "Ref"} dt. ${formatDate(inv.reference_date)}` : "") || inv.po_number || "",
+      other_references: inv.other_references || "",
+      buyer_order_no: inv.po_number || inv.buyer_order_no || "",
+      buyer_order_date: formatDate(inv.po_date || inv.buyer_order_date),
     },
     dispatch: {
       vehicle_no: inv.vehicle_no || "",
-      transport_name: inv.transporter_name || "",
-      lr_number: inv.lr_number || "",
-      dispatch_through: inv.transport_mode || "",
-      destination: cust.city || cust.state || "",
-      delivery_terms: inv.terms_and_conditions || "",
+      dispatch_doc_no: inv.dispatch_doc_no || inv.lr_number || "",
+      delivery_note_date: formatDate(inv.delivery_note_date || inv.lr_date),
+      transporter_name: inv.transporter_name || "DTDC",
+      dispatched_through: inv.transporter_name || inv.transport_mode || "DTDC",
+      destination: inv.destination || cust.city || cust.state || "",
+      delivery_terms: inv.delivery_terms || inv.terms_of_delivery || inv.terms_and_conditions || (typeof window !== "undefined" ? (localStorage.getItem("gns_invoice_delivery_terms") || localStorage.getItem("gns_invoice_terms_data") || "") : "") || "",
     },
     buyer: {
       name: cust.name || inv.buyer_name || "",
       company: cust.contact_name || "",
       billing_address: billing,
-      shipping_address: billing,
+      shipping_address: consigneeAddress,
       gstin: cust.gstin || "",
       state: cust.state || "",
       state_code: cust.state_code || "",
@@ -239,12 +250,12 @@ export function mapDetailToInvoiceCopy(detail, companySettings = {}) {
       phone: cust.phone || "",
     },
     consignee: {
-      name: cust.name || "",
-      address: billing,
-      gstin: cust.gstin || "",
-      state: cust.state || "",
-      state_code: cust.state_code || "",
-      phone: cust.phone || "",
+      name: inv.consignee_name || cust.name || "",
+      address: consigneeAddress,
+      gstin: inv.consignee_gstin || cust.gstin || "",
+      state: inv.consignee_state || cust.state || "",
+      state_code: inv.consignee_state_code || cust.state_code || "",
+      phone: inv.consignee_phone || cust.phone || "",
     },
     items,
     summary: {

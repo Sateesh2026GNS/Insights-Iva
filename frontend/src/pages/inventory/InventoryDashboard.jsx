@@ -146,27 +146,12 @@ function SectionCard({ title, viewAllTo, children, className = "" }) {
   );
 }
 
-const KPI_TONE_RING = {
-  primary: "hover:ring-2 hover:ring-[var(--kpi-primary)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-primary)]",
-  info: "hover:ring-2 hover:ring-[var(--kpi-info)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-info)]",
-  success: "hover:ring-2 hover:ring-[var(--kpi-success)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-success)]",
-  warning: "hover:ring-2 hover:ring-[var(--kpi-warning)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-warning)]",
-  danger: "hover:ring-2 hover:ring-[var(--kpi-danger)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-danger)]",
-  yellow: "hover:ring-2 hover:ring-[var(--kpi-warning)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-warning)]",
-  violet: "hover:ring-2 hover:ring-[var(--kpi-violet)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-violet)]",
-  teal: "hover:ring-2 hover:ring-[var(--kpi-teal)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-teal)]",
-  orange: "hover:ring-2 hover:ring-[var(--kpi-orange)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-orange)]",
-  neutral: "hover:ring-2 hover:ring-[var(--kpi-neutral)] focus-visible:ring-2 focus-visible:ring-[var(--kpi-neutral)]",
-};
-
-function ClickableKpiCard({ to, onClick, title, tone, children }) {
-  const resolvedTone = tone || children?.props?.tone || "primary";
-  const ringClass = KPI_TONE_RING[resolvedTone] || KPI_TONE_RING.primary;
+function ClickableKpiCard({ to, onClick, title, children }) {
   if (to) {
     return (
       <Link
         to={to}
-        className={`block h-full w-full rounded-[var(--radius-lg)] text-left transition focus:outline-none ${ringClass}`}
+        className="block h-full w-full border-0 p-0 bg-transparent text-left focus:outline-none"
         title={title}
       >
         {children}
@@ -177,7 +162,7 @@ function ClickableKpiCard({ to, onClick, title, tone, children }) {
     <button
       type="button"
       onClick={onClick}
-      className={`h-full w-full rounded-[var(--radius-lg)] text-left transition focus:outline-none ${ringClass}`}
+      className="block h-full w-full border-0 p-0 bg-transparent text-left focus:outline-none cursor-pointer"
       title={title}
     >
       {children}

@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 from app.api.auth_deps import get_current_user
 from app.api.deps import get_db
-from app.core.permissions import require_permission, tenant_scope
+from app.core.permissions import require_any_permission, require_permission, tenant_scope
 from app.models.user import User
 from app.schemas.company_settings import CompanySettingsRead, CompanySettingsUpdate
 from app.services import company_settings_service
@@ -144,7 +144,7 @@ def get_company_settings(
 @router.put("/company", response_model=CompanySettingsRead)
 def update_company_settings(
     payload: CompanySettingsUpdate,
-    user: User = Depends(require_permission(MODULE)),
+    user: User = Depends(require_any_permission("admin", "settings")),
     db: Session = Depends(get_db),
 ) -> CompanySettingsRead:
     try:

@@ -17,13 +17,13 @@ describe("canAccess", () => {
   });
 
   it("restricts non-admin roles to their modules", () => {
-    expect(canAccess("HR Manager", "masters")).toBe(true);
+    expect(canAccess("HR Manager", "hr")).toBe(true);
     expect(canAccess("HR Manager", "production")).toBe(false);
   });
 
   it("returns false for unknown roles or missing input", () => {
-    expect(canAccess(undefined, "masters")).toBe(false);
-    expect(canAccess("Ghost", "masters")).toBe(false);
+    expect(canAccess(undefined, "hr")).toBe(false);
+    expect(canAccess("Ghost", "hr")).toBe(false);
   });
 });
 
@@ -70,7 +70,7 @@ describe("getEffectivePermissions / userCanAccess", () => {
 
   it("falls back to the role map when no live permissions exist", () => {
     const user = { role: "HR Manager" };
-    expect(userCanAccess(user, "masters")).toBe(true);
+    expect(userCanAccess(user, "hr")).toBe(true);
     expect(userCanAccess(user, "sales")).toBe(false);
   });
 

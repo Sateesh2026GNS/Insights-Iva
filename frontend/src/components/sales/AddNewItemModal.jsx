@@ -759,7 +759,15 @@ export default function AddNewItemModal({
                       {c}
                     </option>
                   ))}
-                  {onAddCategory ? <option value="__add_category__">+ Add New Category</option> : null}
+                  {onAddCategory ? (
+                    <option
+                      value="__add_category__"
+                      className="add-new-option text-[#036f71] font-semibold bg-[#e6f4f4] dark:text-[#2dd4bf] dark:bg-[#0d3d38]"
+                      style={{ color: "#036f71", fontWeight: "600" }}
+                    >
+                      + Add New Category
+                    </option>
+                  ) : null}
                 </select>
                 {onAddCategory ? (
                   <button

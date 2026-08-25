@@ -865,6 +865,56 @@ select {
   background-size: 0.8rem 0.8rem;
   padding-right: 2.5rem;
 }
+
+/* Brand teal highlight for "Add New" and "Create" options across all dropdowns */
+select option[value^="__add"],
+select option[value*="add_"],
+select option[value*="create_"],
+select option[value="__add__"],
+select option[value="__new__"],
+select option[value*="new_"],
+select option[value="__add_prefix__"],
+select option[value="custom"],
+select option[value="__custom__"],
+select option.add-new-option,
+option[value^="__add"],
+option[value*="add_"],
+option[value*="create_"],
+option[value="__add__"],
+option[value="__new__"],
+option[value*="new_"],
+option[value="__add_prefix__"],
+option[value="custom"],
+option[value="__custom__"],
+option.add-new-option {
+  color: #036f71 !important; /* Brand Teal from reference image */
+  font-weight: 600 !important;
+  background-color: #e6f4f4;
+}
+
+.dark select option[value^="__add"],
+.dark select option[value*="add_"],
+.dark select option[value*="create_"],
+.dark select option[value="__add__"],
+.dark select option[value="__new__"],
+.dark select option[value*="new_"],
+.dark select option[value="__add_prefix__"],
+.dark select option[value="custom"],
+.dark select option[value="__custom__"],
+.dark select option.add-new-option,
+.dark option[value^="__add"],
+.dark option[value*="add_"],
+.dark option[value*="create_"],
+.dark option[value="__add__"],
+.dark option[value="__new__"],
+.dark option[value*="new_"],
+.dark option[value="__add_prefix__"],
+.dark option[value="custom"],
+.dark option[value="__custom__"],
+.dark option.add-new-option {
+  color: #2dd4bf !important;
+  background-color: #0d3d38;
+}
 .ui-input::placeholder,
 .ui-textarea::placeholder {
   color: var(--color-text-placeholder);
@@ -907,16 +957,18 @@ input[type="datetime-local"]::-webkit-clear-button {
   display: none;
 }
 /* Custom calendar button (FormField / DatePicker) — single icon only */
-.ui-date-input::-webkit-calendar-picker-indicator {
-  display: none;
-  -webkit-appearance: none;
-  appearance: none;
-  opacity: 0;
-  pointer-events: none;
-  width: 0;
-  height: 0;
-  margin: 0;
-  padding: 0;
+.ui-date-input::-webkit-calendar-picker-indicator,
+.relative > input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+.relative > input[type="date"]::-webkit-calendar-picker-indicator {
+  display: none !important;
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
 }
 .ui-date-range-popover {
   z-index: 80;
@@ -1028,6 +1080,10 @@ input.pl-8 {
   align-items: center;
   justify-content: center;
   border-radius: var(--radius-sm);
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background: transparent;
   color: var(--color-text-icon);
   transition:
     color var(--transition-fast),
@@ -1270,6 +1326,50 @@ input.pl-8 {
   background: var(--color-surface);
   padding: var(--kpi-padding);
   box-shadow: var(--shadow-card);
+  transition: border-color var(--transition-fast) ease, box-shadow var(--transition-fast) ease, transform var(--transition-fast) ease;
+  cursor: pointer;
+}
+.ui-kpi:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.08);
+}
+.ui-kpi--primary:hover,
+.ui-kpi--teal:hover,
+.ui-kpi[data-tone="primary"]:hover,
+.ui-kpi[data-tone="teal"]:hover {
+  border-color: #036f71 !important;
+}
+.ui-kpi--info:hover,
+.ui-kpi[data-tone="info"]:hover {
+  border-color: #0751b2 !important;
+}
+.ui-kpi--success:hover,
+.ui-kpi[data-tone="success"]:hover {
+  border-color: #059669 !important;
+}
+.ui-kpi--warning:hover,
+.ui-kpi--yellow:hover,
+.ui-kpi[data-tone="warning"]:hover,
+.ui-kpi[data-tone="yellow"]:hover {
+  border-color: #d97706 !important;
+}
+.ui-kpi--danger:hover,
+.ui-kpi--red:hover,
+.ui-kpi[data-tone="danger"]:hover,
+.ui-kpi[data-tone="red"]:hover {
+  border-color: #dc2626 !important;
+}
+.ui-kpi--orange:hover,
+.ui-kpi[data-tone="orange"]:hover {
+  border-color: #ea580c !important;
+}
+.ui-kpi--violet:hover,
+.ui-kpi[data-tone="violet"]:hover {
+  border-color: #7c3aed !important;
+}
+.ui-kpi--neutral:hover,
+.ui-kpi[data-tone="neutral"]:hover {
+  border-color: #64748b !important;
 }
 .ui-kpi__top {
   display: flex;
@@ -1653,15 +1753,15 @@ input.pl-8 {
   }
 
   /* Clean full-width table formatting with borders (non-invoice pages). */
-  table:not(.erp-doc__outer) {
+  table:not(.erp-doc *):not(.erp-doc):not(.gst-invoice *) {
     width: 100% !important;
     border-collapse: collapse !important;
     margin-top: 0.5rem !important;
     margin-bottom: 0.5rem !important;
   }
 
-  table:not(.erp-doc__outer) th,
-  table:not(.erp-doc__outer) td {
+  table:not(.erp-doc *):not(.erp-doc):not(.gst-invoice *) th,
+  table:not(.erp-doc *):not(.erp-doc):not(.gst-invoice *) td {
     border: 1px solid #cbd5e1 !important;
     padding: 6px 10px !important;
     text-align: left !important;
@@ -1670,7 +1770,7 @@ input.pl-8 {
     font-size: 10pt !important;
   }
 
-  table:not(.erp-doc__outer) th {
+  table:not(.erp-doc *):not(.erp-doc):not(.gst-invoice *) th {
     background-color: #f1f5f9 !important;
     font-weight: 700 !important;
     -webkit-print-color-adjust: exact !important;
@@ -1683,7 +1783,7 @@ input.pl-8 {
     display: none !important;
   }
 
-  table:not(.erp-doc__outer) tr {
+  table:not(.erp-doc *):not(.erp-doc):not(.gst-invoice *) tr {
     page-break-inside: avoid !important;
   }
 

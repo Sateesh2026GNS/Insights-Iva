@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
-import { Download, Mail, MessageCircle, Printer, Share2 } from "lucide-react";
+import { Download, Printer, Share2 } from "lucide-react";
 
 import Loader from "../../components/common/Loader";
 import Button from "../../components/common/Button";
+import WhatsAppIcon from "../../components/common/WhatsAppIcon";
+import GmailIcon from "../../components/common/GmailIcon";
 import GstTaxInvoice from "../../components/sales/GstTaxInvoice";
 import { useToast } from "../../context/ToastContext";
 import {
@@ -47,8 +49,21 @@ export default function InvoiceCopyPage() {
 
   const copyData = useMemo(() => {
     if (!id) return null;
-    if (docPayload) return docPayload;
-    return mapDetailToInvoiceCopy(detail, settings || {});
+    let base = docPayload;
+    if (!base && detail) {
+      base = mapDetailToInvoiceCopy(detail, settings || {});
+    }
+    if (base) {
+      const sellerLogo = base.seller?.logo || base.seller?.logo_url || settings?.logo_url;
+      return {
+        ...base,
+        seller: {
+          ...base.seller,
+          logo: sellerLogo || "",
+        },
+      };
+    }
+    return null;
   }, [id, detail, settings, docPayload]);
 
   const invoiceNo = copyData?.meta?.invoice_no || copyData?.meta?.invoiceNo || id || "";
@@ -59,11 +74,69 @@ export default function InvoiceCopyPage() {
   }, []);
 
   const handleDownloadPdf = useCallback(async () => {
-    if (!id) {
-      addToast("Save the invoice first to download PDF.", "info");
+    const invoiceEl = document.querySelector(".erp-doc");
+    if (!invoiceEl) {
+      addToast("Invoice not ready to download.", "info");
       return;
     }
     setBusy("pdf");
+    try {
+      const { default: html2canvas } = await import("html2canvas");
+      const { jsPDF } = await import("jspdf");
+
+      // Capture at 2× scale with exact dimensions to prevent border/text collision
+      const canvas = await html2canvas(invoiceEl, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        logging: false,
+        backgroundColor: "#ffffff",
+        scrollX: 0,
+        scrollY: 0,
+        windowWidth: 1024,
+        onclone: (clonedDoc) => {
+          const doc = clonedDoc.querySelector(".erp-doc");
+          if (doc) {
+            doc.style.width = "794px";
+            doc.style.maxWidth = "794px";
+            doc.style.margin = "0";
+            doc.style.boxSizing = "border-box";
+            doc.style.boxShadow = "none";
+          }
+        },
+      });
+
+      const imgData = canvas.toDataURL("image/jpeg", 0.98);
+      // A4 in mm: 210 × 297
+      const pageW = 210;
+      const pageH = 297;
+      const imgW = pageW;
+      const imgH = (canvas.height * pageW) / canvas.width;
+
+      const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+      let yPos = 0;
+      // If invoice overflows a single A4 page, split across pages
+      while (yPos < imgH) {
+        if (yPos > 0) pdf.addPage();
+        pdf.addImage(imgData, "JPEG", 0, -yPos, imgW, imgH);
+        yPos += pageH;
+      }
+      pdf.save(`${isDebitNote ? "DebitNote" : "Invoice"}-${invoiceNo}.pdf`);
+      addToast("PDF downloaded.", "success");
+    } catch (err) {
+      console.error(err);
+      addToast("Could not download PDF. Try using Print → Save as PDF.", "error");
+    } finally {
+      setBusy("");
+    }
+  }, [invoiceNo, addToast, isDebitNote]);
+
+  const handleEmail = useCallback(async () => {
+    if (!id) {
+      addToast("Save the invoice first to email.", "info");
+      return;
+    }
+
     try {
       const res = await downloadInvoicePdf(id);
       const blob = new Blob([res.data], { type: "application/pdf" });
@@ -73,42 +146,49 @@ export default function InvoiceCopyPage() {
       a.download = `${isDebitNote ? "DebitNote" : "Invoice"}-${invoiceNo}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
-      addToast("PDF downloaded.", "success");
-    } catch (err) {
-      addToast(apiErrorMessage(err, "Could not download PDF."), "error");
-    } finally {
-      setBusy("");
+      addToast("Invoice PDF downloaded! Opening Gmail...", "success");
+    } catch {
+      // Fallback if download API errors
     }
-  }, [id, invoiceNo, addToast, isDebitNote]);
 
-  const handleEmail = useCallback(async () => {
-    if (!id) {
-      addToast("Save the invoice first to email.", "info");
-      return;
-    }
-    const to = window.prompt("Send invoice to email:", customerEmail);
-    if (!to) return;
-    setBusy("email");
-    try {
-      await emailInvoice(id, { to_email: to });
-      addToast(`Invoice emailed to ${to}`, "success");
-    } catch (err) {
-      addToast(apiErrorMessage(err, "Could not send email. Check SMTP settings."), "error");
-    } finally {
-      setBusy("");
-    }
-  }, [id, customerEmail, addToast]);
+    const to = customerEmail || "";
+    const subject = `${isDebitNote ? "Debit Note" : "Tax Invoice"} ${invoiceNo}`;
+    const grandAmount = copyData?.summary?.grand_total ?? copyData?.grandTotal ?? "";
+    const sellerName = copyData?.seller?.name || "Insights Iva";
+    const body = `Dear Customer,\n\nPlease find the details for ${isDebitNote ? "Debit Note" : "Tax Invoice"} ${invoiceNo}.\n\nGrand Total: ₹${grandAmount}\n\nThank you,\n${sellerName}`;
 
-  const handleWhatsApp = useCallback(() => {
-    const phone = (copyData?.buyer?.phone || "").replace(/\D/g, "");
+    const gmailUrl =
+      `https://mail.google.com/mail/?view=cm&fs=1` +
+      `&to=${encodeURIComponent(to)}` +
+      `&su=${encodeURIComponent(subject)}` +
+      `&body=${encodeURIComponent(body)}`;
+
+    window.open(gmailUrl, "_blank", "noopener,noreferrer");
+  }, [id, customerEmail, isDebitNote, invoiceNo, copyData, addToast]);
+
+  const handleWhatsApp = useCallback(async () => {
+    if (id) {
+      try {
+        const res = await downloadInvoicePdf(id);
+        const blob = new Blob([res.data], { type: "application/pdf" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${isDebitNote ? "DebitNote" : "Invoice"}-${invoiceNo}.pdf`;
+        a.click();
+        URL.revokeObjectURL(url);
+        addToast("Invoice PDF downloaded! Opening WhatsApp...", "success");
+      } catch {
+        // Fallback if download API errors
+      }
+    }
+    const docType = isDebitNote ? "Debit Note" : "Tax Invoice";
     const text = encodeURIComponent(
-      `Tax Invoice ${invoiceNo} from ${copyData?.seller?.name || "Insights Iva"}. Total: ₹${copyData?.summary?.grand_total ?? copyData?.grandTotal ?? 0}`
+      `${docType} ${invoiceNo} from ${copyData?.seller?.name || "Insights Iva"}. Total: ₹${copyData?.summary?.grand_total ?? copyData?.grandTotal ?? 0}`
     );
-    const url = phone
-      ? `https://wa.me/${phone.startsWith("91") ? phone : `91${phone}`}?text=${text}`
-      : `https://wa.me/?text=${text}`;
+    const url = `https://api.whatsapp.com/send?text=${text}`;
     window.open(url, "_blank", "noopener,noreferrer");
-  }, [copyData, invoiceNo]);
+  }, [id, isDebitNote, invoiceNo, copyData, addToast]);
 
   if (loading) return <Loader label={`Loading ${docLabel.toLowerCase()} preview...`} />;
 
@@ -141,14 +221,14 @@ export default function InvoiceCopyPage() {
             disabled={busy === "email"}
             className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium hover:bg-slate-50 disabled:opacity-60"
           >
-            <Mail className="h-4 w-4" /> Email
+            <GmailIcon className="h-4 w-4 shrink-0" /> Gmail
           </button>
           <button
             type="button"
             onClick={handleWhatsApp}
             className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-800 hover:bg-emerald-100"
           >
-            <MessageCircle className="h-4 w-4" /> WhatsApp
+            <WhatsAppIcon className="h-4 w-4 shrink-0" /> WhatsApp
           </button>
           {id ? (
             <Button

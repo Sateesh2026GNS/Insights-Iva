@@ -30,7 +30,7 @@ import {
 } from "lucide-react";
 import Loader from "../../components/common/Loader";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
-import EmptyState from "../../components/common/EmptyState";
+import EmptyState, { DocumentEmptyIcon } from "../../components/common/EmptyState";
 import Button, { IconButton } from "../../components/common/Button";
 import QuickWorkOrderModal from "../../components/production/QuickWorkOrderModal";
 import { useToast } from "../../context/ToastContext";
@@ -387,9 +387,9 @@ function JobCardHeaderSectionsMenu({ onSelect, hideIds = [] }) {
 
 function KV({ label, value, valueClass = "" }) {
   return (
-    <div className="flex items-baseline justify-between gap-3 py-1">
-      <span className="text-[12px] text-[var(--color-text-muted)]">{label}</span>
-      <span className={`text-right text-[12px] font-semibold text-[var(--color-text)] ${valueClass}`}>{dash(value)}</span>
+    <div className="flex items-baseline justify-between gap-2 py-1 print:py-0.5 print:border-b print:border-slate-100 last:border-b-0">
+      <span className="text-[12px] text-[var(--color-text-muted)] print:text-[10px] print:text-slate-600 print:whitespace-nowrap">{label}</span>
+      <span className={`text-right text-[12px] font-semibold text-[var(--color-text)] print:text-[10px] print:font-bold print:text-slate-900 ${valueClass}`}>{dash(value)}</span>
     </div>
   );
 }
@@ -405,9 +405,9 @@ function SalesOrderInfoPanel({ header, uom, priority }) {
       <KV label="Product" value={h.product} />
       <KV label="Order Quantity" value={fmtQty(h.order_qty, uom)} />
       <KV label="Required Delivery" value={h.required_delivery} />
-      <div className="flex items-center justify-between py-1">
-        <span className="text-[12px] text-slate-500">Priority</span>
-        <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${priority.bg} ${priority.text}`}>
+      <div className="flex items-center justify-between py-1 print:py-0.5">
+        <span className="text-[12px] text-slate-500 print:text-[10px] print:text-slate-600">Priority</span>
+        <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold print:text-[9.5px] print:px-2 print:py-0.5 ${priority.bg} ${priority.text}`}>
           {priority.label}
         </span>
       </div>
@@ -661,8 +661,11 @@ function OverviewDashboard({ card, uom, priority, progressPct, canManage = true,
               <tbody>
                 {materials.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="px-3 py-4 text-center text-slate-400">
-                      No BOM materials
+                    <td colSpan={4} className="px-3 py-6 text-center">
+                      <div className="flex flex-col items-center justify-center">
+                        <DocumentEmptyIcon className="mb-1.5 h-8 w-8 text-slate-300 dark:text-slate-600" />
+                        <p className="text-xs font-medium text-slate-500">No BOM materials</p>
+                      </div>
                     </td>
                   </tr>
                 ) : (
@@ -813,7 +816,7 @@ function OverviewDashboard({ card, uom, priority, progressPct, canManage = true,
 /* ── Screenshot 1/2: Status timeline ───────────────────────────────────── */
 function StatusTimeline({ timeline, closed }) {
   return (
-    <section className="ui-card p-4">
+    <section className="ui-card p-4 print:hidden">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="min-w-0 flex-1">
           <p className="mb-3 text-[12px] font-semibold text-[var(--color-text)]">Status</p>
@@ -1378,17 +1381,20 @@ function DetailForm({
   return (
     <div className="space-y-4">
       {/* Header — screenshot 2 */}
-      <section className="ui-card">
-        <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[var(--color-border-soft)] px-5 py-4">
+      <section className="ui-card print:border print:border-slate-300 print:rounded-lg print:shadow-none">
+        <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[var(--color-border-soft)] px-5 py-4 print:border-b-2 print:border-slate-800 print:px-3 print:py-2.5">
           <div>
-            <h1 className="text-xl font-bold tracking-tight text-[var(--color-text)]">Job Card</h1>
-            <p className="text-sm text-[var(--color-text-muted)]">Shop-floor work instruction</p>
+            <div className="flex items-center gap-2">
+              <span className="hidden text-sm font-black uppercase tracking-wider text-slate-800 print:inline-block">Insights Iva ·</span>
+              <h1 className="text-xl font-bold tracking-tight text-[var(--color-text)] print:text-lg print:font-black print:text-slate-950">Job Card</h1>
+            </div>
+            <p className="text-sm text-[var(--color-text-muted)] print:text-[11px] print:text-slate-600">Shop-floor work instruction & production traveler</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full bg-[var(--color-success-soft)] px-3 py-1 text-xs font-bold capitalize text-[var(--color-success)]">
+            <span className="rounded-full bg-[var(--color-success-soft)] px-3 py-1 text-xs font-bold capitalize text-[var(--color-success)] print:border print:border-emerald-600 print:bg-emerald-50 print:text-emerald-800 print:py-0.5 print:px-2 print:text-[10px]">
               {card.display_status || card.status || "—"}
             </span>
-            <span className="text-sm font-semibold text-[var(--color-text)]">{card.job_card_no}</span>
+            <span className="text-sm font-semibold text-[var(--color-text)] print:text-xs print:font-bold print:border print:border-slate-300 print:px-2 print:py-0.5 print:rounded print:bg-slate-100">{card.job_card_no}</span>
             <JobCardHeaderSectionsMenu
               onSelect={goToSection}
               hideIds={
@@ -1400,14 +1406,16 @@ function DetailForm({
           </div>
         </div>
 
-        <div className={`grid gap-4 p-5 ${operatorMode ? "lg:grid-cols-2" : "lg:grid-cols-4"}`}>
-          <div className="space-y-0.5">
+        <div className={`grid gap-4 p-5 ${operatorMode ? "lg:grid-cols-2" : "lg:grid-cols-4"} print:grid-cols-4 print:gap-2.5 print:p-2.5`}>
+          <div className="space-y-0.5 rounded-lg p-2 print:border print:border-slate-200 print:bg-slate-50/50">
+            <p className="hidden mb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-700 print:block">Order Info</p>
             <SalesOrderInfoPanel header={h} uom={uom} priority={priority} />
           </div>
 
           {!operatorMode ? (
             <>
-              <div className="space-y-0.5">
+              <div className="space-y-0.5 rounded-lg p-2 print:border print:border-slate-200 print:bg-slate-50/50">
+                <p className="hidden mb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-700 print:block">Schedule</p>
                 <KV label="Job Card Date" value={h.job_card_date} />
                 <KV label="Planned Start" value={h.planned_start} />
                 <KV label="Planned End" value={h.planned_end} />
@@ -1415,23 +1423,34 @@ function DetailForm({
                 <KV label="Dispatch Date" value={h.dispatch_date || card.dispatch?.dispatch_date} />
                 <KV label="Delivery Date" value={h.delivery_date} />
               </div>
-              <div className="space-y-0.5">
+              <div className="space-y-0.5 rounded-lg p-2 print:border print:border-slate-200 print:bg-slate-50/50">
+                <p className="hidden mb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-700 print:block">Production & Unit</p>
                 <KV label="Production Manager" value={h.production_manager} />
                 <KV label="Department" value={h.department} />
                 <KV label="Production Type" value={h.production_type || "Manufacturing"} />
                 <KV label="Plant / Unit" value={h.plant} />
-                <Field label="Remarks">
-                  <Inp
-                    value={draft.remarks}
-                    onChange={(e) => setDraft((d) => ({ ...d, remarks: e.target.value }))}
-                    placeholder="Optional remarks"
-                    disabled={!mgr}
-                  />
-                </Field>
+                <KV label="Machine" value={card.machine?.machine_name || draft.machine_id} />
+                <KV label="Shift" value={draft.shift || card.operator?.shift} />
+                <div className="print:hidden">
+                  <Field label="Remarks">
+                    <Inp
+                      value={draft.remarks}
+                      onChange={(e) => setDraft((d) => ({ ...d, remarks: e.target.value }))}
+                      placeholder="Optional remarks"
+                      disabled={!mgr}
+                    />
+                  </Field>
+                </div>
+                {draft.remarks ? (
+                  <div className="hidden print:block text-[10px] text-slate-700 pt-1">
+                    <span className="font-semibold text-slate-500">Remarks: </span>
+                    {draft.remarks}
+                  </div>
+                ) : null}
               </div>
             </>
           ) : (
-            <div className="space-y-0.5">
+            <div className="space-y-0.5 rounded-lg p-2 print:border print:border-slate-200 print:bg-slate-50/50">
               <KV label="Machine" value={card.machine?.machine_name} />
               <KV label="Operator" value={card.operator?.operator_name} />
               <KV label="Shift" value={card.operator?.shift} />
@@ -1439,8 +1458,8 @@ function DetailForm({
             </div>
           )}
 
-          <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-muted)] p-3">
-            <p className="mb-2 text-[11px] font-semibold text-[var(--color-text)]">Summary</p>
+          <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-muted)] p-3 print:rounded-lg print:border print:border-slate-300 print:bg-white print:p-2">
+            <p className="mb-2 text-[11px] font-bold text-[var(--color-text)] print:mb-1.5 print:text-[10px] print:uppercase print:tracking-wider print:text-slate-900">Summary</p>
             <KV label="Target Quantity" value={fmtQty(s.target_qty, uom)} />
             <KV label="Produced Quantity" value={fmtQty(s.produced_qty, uom)} valueClass="text-[var(--color-success)]" />
             <KV label="Rejected Quantity" value={fmtQty(s.rejected_qty, uom)} valueClass="text-[var(--color-danger)]" />
@@ -1454,7 +1473,7 @@ function DetailForm({
       <div
         className={`grid items-stretch gap-3 ${
           operatorMode ? "grid-cols-1" : "grid-cols-1 md:grid-cols-2 xl:grid-cols-3"
-        }`}
+        } print:grid-cols-2 print:gap-3 print:my-2.5`}
       >
         <Card
           title="Material Requirement"
@@ -1462,7 +1481,7 @@ function DetailForm({
           headerStyle="form"
           fill
           bodyClass="p-3"
-          className="!rounded-lg !border-[#e2e8f0] !shadow-none"
+          className="!rounded-lg !border-[#e2e8f0] !shadow-none print:col-span-2 print:w-full"
           action={
             <SectionCrudMenu
               canManage={canManageMaterials}
@@ -1472,27 +1491,30 @@ function DetailForm({
           }
         >
           {hasShortage ? (
-            <div className="mb-2 flex gap-2 rounded-md border border-orange-200 bg-orange-50 px-2 py-1.5 text-[10px] text-orange-900">
+            <div className="mb-2 flex gap-2 rounded-md border border-orange-200 bg-orange-50 px-2 py-1.5 text-[10px] text-orange-900 print:border-orange-300 print:bg-orange-50/70">
               <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
               Shortage — resolve stock before production start.
             </div>
           ) : null}
-          <div className="min-h-0 flex-1 overflow-x-auto">
-            <table className="w-full min-w-[420px] border-collapse text-left text-[11px]">
+          <div className="min-h-0 flex-1 overflow-x-auto print:overflow-visible">
+            <table className="w-full min-w-[420px] print:min-w-0 print:w-full border-collapse text-left text-[11px] print:text-[10px]">
               <thead>
-                <tr className="border-b border-[#e8edf4] bg-[#f7f9fc] text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                  <th className="px-2 py-1.5 font-semibold">Material</th>
-                  <th className="px-2 py-1.5 font-semibold whitespace-nowrap">Required</th>
-                  <th className="px-2 py-1.5 font-semibold whitespace-nowrap">Available</th>
-                  <th className="px-2 py-1.5 text-center font-semibold whitespace-nowrap">To Issue</th>
-                  <th className="px-2 py-1.5 text-right font-semibold">Status</th>
+                <tr className="border-b border-[#e8edf4] bg-[#f7f9fc] text-[10px] font-semibold uppercase tracking-wide text-slate-500 print:bg-slate-100 print:text-slate-800">
+                  <th className="px-2 py-1.5 font-semibold print:w-[35%]">Material</th>
+                  <th className="px-2 py-1.5 font-semibold whitespace-nowrap print:w-[15%]">Required</th>
+                  <th className="px-2 py-1.5 font-semibold whitespace-nowrap print:w-[15%]">Available</th>
+                  <th className="px-2 py-1.5 text-center print:text-left font-semibold whitespace-nowrap print:w-[18%]">To Issue</th>
+                  <th className="px-2 py-1.5 text-right font-semibold print:w-[17%]">Status</th>
                 </tr>
               </thead>
               <tbody>
                 {materials.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-2 py-4 text-center text-slate-400">
-                      No BOM materials linked
+                    <td colSpan={5} className="px-2 py-4 text-center">
+                      <div className="flex flex-col items-center justify-center">
+                        <DocumentEmptyIcon className="mb-1 h-6 w-6 text-slate-300 print:text-slate-400" />
+                        <p className="text-xs font-medium text-slate-500">No BOM materials linked</p>
+                      </div>
                     </td>
                   </tr>
                 ) : (
@@ -1500,29 +1522,32 @@ function DetailForm({
                     const key = materialKey(m, i);
                     const ok = m.status === "available";
                     return (
-                      <tr key={key} className="border-b border-[#eef2f7] last:border-b-0">
-                        <td className="max-w-[9rem] truncate px-2 py-1.5 font-medium text-slate-800" title={m.material}>
+                      <tr key={key} className="border-b border-[#eef2f7] last:border-b-0 print:border-slate-200">
+                        <td className="max-w-[9rem] truncate px-2 py-1.5 font-medium text-slate-800 print:max-w-none print:whitespace-normal" title={m.material}>
                           {m.material}
                         </td>
-                        <td className="whitespace-nowrap px-2 py-1.5 tabular-nums text-slate-700">
+                        <td className="whitespace-nowrap px-2 py-1.5 tabular-nums text-slate-700 font-medium">
                           {Number(m.required).toLocaleString()} {m.unit}
                         </td>
                         <td className="whitespace-nowrap px-2 py-1.5 tabular-nums text-slate-700">
                           {Number(m.available).toLocaleString()} {m.unit}
                         </td>
-                        <td className="px-2 py-1 text-center">
+                        <td className="px-2 py-1 text-center print:text-left print:px-2">
+                          <span className="hidden print:inline-block font-semibold tabular-nums text-slate-800 text-[10px]">
+                            {m.to_issue != null && m.to_issue !== "" ? m.to_issue : m.required || "0"} {m.unit}
+                          </span>
                           <input
                             type="number"
                             min="0"
                             step="any"
                             disabled={!!card.materials_issued || !canManageMaterials}
-                            className="mx-auto h-[28px] w-[4.75rem] rounded border border-[#d5dbe6] bg-white px-1 text-center text-[11px] tabular-nums text-slate-700 outline-none focus:border-[var(--color-primary)] focus:ring-1 focus:ring-[var(--color-primary)]/25 disabled:bg-slate-50"
+                            className="mx-auto h-[28px] w-[4.75rem] rounded border border-[#d5dbe6] bg-white px-1 text-center text-[11px] tabular-nums text-slate-700 outline-none focus:border-[var(--color-primary)] focus:ring-1 focus:ring-[var(--color-primary)]/25 disabled:bg-slate-50 print:hidden"
                             value={m.to_issue ?? ""}
                             onChange={(e) => updateToIssue(key, e.target.value)}
                           />
                         </td>
                         <td className="whitespace-nowrap px-2 py-1.5 text-right">
-                          <span className={`text-[10px] font-semibold ${ok ? "text-emerald-600" : "text-rose-600"}`}>
+                          <span className={`text-[10px] font-semibold print:text-[9.5px] ${ok ? "text-emerald-600 print:text-emerald-800" : "text-rose-600 print:text-rose-800"}`}>
                             {m.status_label}
                           </span>
                         </td>
@@ -1714,7 +1739,7 @@ function DetailForm({
       <div
         className={`grid items-stretch gap-3 ${
           operatorMode ? "grid-cols-1" : "grid-cols-1 md:grid-cols-2 xl:grid-cols-3"
-        }`}
+        } print:grid-cols-2 print:gap-3 print:my-2.5`}
       >
         <Card
           id="jc-section-production"
@@ -1723,7 +1748,7 @@ function DetailForm({
           headerStyle="form"
           fill
           bodyClass="p-3"
-          className={JC_CARD}
+          className={`${JC_CARD} print:col-span-1`}
           action={
             <div className="flex items-center gap-1">
               {showStart ? (
@@ -1807,7 +1832,7 @@ function DetailForm({
               headerStyle="form"
               fill
               bodyClass="p-3"
-              className={JC_CARD}
+              className={`${JC_CARD} print:col-span-1`}
               action={
                 <SectionCrudMenu
                   canManage={canManageMaterials}
@@ -1884,7 +1909,7 @@ function DetailForm({
               headerStyle="form"
               fill
               bodyClass="space-y-2.5 p-3"
-              className={`${JC_CARD} overflow-hidden`}
+              className={`${JC_CARD} overflow-hidden print:col-span-2 print:w-full`}
               action={
                 <SectionCrudMenu
                   canManage={canManageMaterials}
@@ -1969,7 +1994,7 @@ function DetailForm({
       </div>
 
       {!operatorMode ? (
-        <div className="grid items-stretch gap-3 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid items-stretch gap-3 grid-cols-1 md:grid-cols-2 xl:grid-cols-3 print:grid-cols-2 print:gap-3 print:my-2.5">
           <Card
             id="jc-section-dispatch"
             title="Dispatch Details"
@@ -1977,7 +2002,7 @@ function DetailForm({
             headerStyle="form"
             fill
             bodyClass="space-y-2.5 p-3"
-            className={`${JC_CARD} overflow-hidden`}
+            className={`${JC_CARD} overflow-hidden print:col-span-1`}
             action={
               <SectionCrudMenu
                 canManage={canManageMaterials}
@@ -2035,10 +2060,23 @@ function DetailForm({
                   value={dispatch.dispatched_qty ?? ""}
                   onChange={(e) => patchDispatch({ dispatched_qty: e.target.value })}
                   disabled={!canManageMaterials}
+                  placeholder="0"
                 />
                 <span className="shrink-0 text-[11px] text-slate-500">{uom}</span>
               </div>
             </StackField>
+            <div className="mt-auto flex items-center justify-end gap-2 pt-1">
+              <span className="text-[11px] font-medium text-slate-500">Dispatch Status</span>
+              <span
+                className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase ${
+                  dispatch.done || String(dispatch.status || "").toLowerCase() === "dispatched"
+                    ? "bg-emerald-100 text-emerald-700"
+                    : "bg-slate-100 text-slate-600"
+                }`}
+              >
+                {(dispatch.done ? "DISPATCHED" : String(dispatch.status || "Pending")).toUpperCase()}
+              </span>
+            </div>
           </Card>
 
           <Card
@@ -2048,7 +2086,7 @@ function DetailForm({
             headerStyle="form"
             fill
             bodyClass="space-y-2.5 p-3"
-            className={`${JC_CARD} overflow-hidden`}
+            className={`${JC_CARD} overflow-hidden print:col-span-1`}
             action={
               <SectionCrudMenu
                 canManage={canManageMaterials}
@@ -2129,7 +2167,7 @@ function DetailForm({
             headerStyle="form"
             fill
             bodyClass="p-3"
-            className={`${JC_CARD} overflow-hidden`}
+            className={`${JC_CARD} overflow-hidden print:col-span-2 print:w-full`}
             action={
               <SectionCrudMenu
                 canManage={canManageMaterials}
@@ -2141,13 +2179,13 @@ function DetailForm({
             {approvals.length === 0 ? (
               <p className="text-xs text-slate-400">No approval events yet.</p>
             ) : (
-              <div className="min-h-0 flex-1 overflow-x-auto">
-                <table className="w-full min-w-[240px] border-collapse text-left text-[11px]">
+              <div className="min-h-0 flex-1 overflow-x-auto print:overflow-visible">
+                <table className="w-full min-w-[240px] print:min-w-0 print:w-full border-collapse text-left text-[11px] print:text-[10px]">
                   <thead>
-                    <tr className="border-b border-[#e8edf4] text-[9px] font-semibold uppercase tracking-wide text-slate-500">
-                      <th className="py-1.5 pr-2 font-semibold">Action</th>
-                      <th className="py-1.5 pr-2 font-semibold">Person / Role</th>
-                      <th className="py-1.5 text-right font-semibold">Date / Time</th>
+                    <tr className="border-b border-[#e8edf4] text-[9px] font-semibold uppercase tracking-wide text-slate-500 print:bg-slate-100 print:text-slate-800 print:text-[9.5px]">
+                      <th className="py-1.5 px-2 font-semibold print:w-[28%]">Action / Step</th>
+                      <th className="py-1.5 px-2 font-semibold print:w-[42%]">Person / Role</th>
+                      <th className="py-1.5 px-2 text-right font-semibold print:w-[30%]">Date / Time</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -2159,10 +2197,10 @@ function DetailForm({
                           ? `${person} · ${role}`
                           : person || role || "—";
                       return (
-                        <tr key={a._key || `${a.step}-${a.at}`} className="border-b border-[#eef2f7] last:border-b-0">
-                          <td className="py-1.5 pr-2 font-medium text-slate-800">{a.step || "—"}</td>
-                          <td className="py-1.5 pr-2 text-slate-600">{personRole}</td>
-                          <td className="whitespace-nowrap py-1.5 text-right tabular-nums text-slate-500">{a.at || "—"}</td>
+                        <tr key={a._key || `${a.step}-${a.at}`} className="border-b border-[#eef2f7] last:border-b-0 print:border-slate-200">
+                          <td className="py-1.5 px-2 font-medium text-slate-800">{a.step || "—"}</td>
+                          <td className="py-1.5 px-2 text-slate-600 print:text-slate-800">{personRole}</td>
+                          <td className="whitespace-nowrap py-1.5 px-2 text-right tabular-nums text-slate-500 print:text-slate-800">{a.at || "—"}</td>
                         </tr>
                       );
                     })}
@@ -2207,10 +2245,10 @@ function DetailForm({
 
       {/* Notes + actions — screenshot footer */}
       <section className={`ui-card p-3.5 ${JC_CARD}`}>
-        <h3 className="mb-2 text-[12px] font-bold uppercase tracking-[0.04em] text-[var(--color-primary)]">
+        <h3 className="mb-2 text-[12px] font-bold uppercase tracking-[0.04em] text-[var(--color-primary)] print:text-[10px] print:text-slate-800">
           Notes / Instructions
         </h3>
-        <ol className="mb-3 grid list-decimal gap-2 pl-4 text-[11px] leading-snug text-slate-600 sm:grid-cols-2 xl:grid-cols-4">
+        <ol className="mb-3 grid list-decimal gap-2 pl-4 text-[11px] leading-snug text-slate-600 sm:grid-cols-2 xl:grid-cols-4 print:grid-cols-2 print:text-[9.5px] print:gap-1.5 print:mb-0">
           {(card.notes || []).map((n) => (
             <li key={n} className="pl-0.5">
               {n}
@@ -2229,6 +2267,133 @@ function DetailForm({
           </Button>
         </div>
       </section>
+
+      {/* Sign-off / Authorization Box for Print */}
+      <section className="hidden print:block rounded-lg border border-slate-300 bg-white p-3 break-inside-avoid my-2">
+        <h4 className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-800 border-b border-slate-200 pb-1">
+          Authorizations & Shop-Floor Sign-Off
+        </h4>
+        <div className="grid grid-cols-3 gap-4 text-[10px]">
+          <div className="border border-dashed border-slate-300 rounded p-2 bg-slate-50/50">
+            <p className="font-semibold text-slate-700">Operator Sign-Off</p>
+            <p className="text-[9px] text-slate-500 mt-0.5">Name: {card.operator?.operator_name || "—"}</p>
+            <div className="mt-6 border-t border-slate-300 pt-1 text-slate-500 flex justify-between text-[9px]">
+              <span>Signature: ________________</span>
+              <span>Date: _________</span>
+            </div>
+          </div>
+          <div className="border border-dashed border-slate-300 rounded p-2 bg-slate-50/50">
+            <p className="font-semibold text-slate-700">QC Inspector Sign-Off</p>
+            <p className="text-[9px] text-slate-500 mt-0.5">Name: {quality.checked_by || "QC Team"}</p>
+            <div className="mt-6 border-t border-slate-300 pt-1 text-slate-500 flex justify-between text-[9px]">
+              <span>Signature: ________________</span>
+              <span>Date: _________</span>
+            </div>
+          </div>
+          <div className="border border-dashed border-slate-300 rounded p-2 bg-slate-50/50">
+            <p className="font-semibold text-slate-700">Production Head / Manager</p>
+            <p className="text-[9px] text-slate-500 mt-0.5">Name: {h.production_manager || "—"}</p>
+            <div className="mt-6 border-t border-slate-300 pt-1 text-slate-500 flex justify-between text-[9px]">
+              <span>Signature: ________________</span>
+              <span>Date: _________</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Global CSS for Job Card Print Optimization */}
+      <style>{`
+        @media print {
+          @page {
+            size: portrait;
+            margin: 8mm 8mm;
+          }
+          *, *::before, *::after {
+            box-shadow: none !important;
+            text-shadow: none !important;
+            scrollbar-width: none !important;
+          }
+          *::-webkit-scrollbar {
+            display: none !important;
+            width: 0 !important;
+            height: 0 !important;
+          }
+          html, body, #root {
+            background-color: #fff !important;
+            color: #0f172a !important;
+            font-size: 10.5px !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            overflow: visible !important;
+            height: auto !important;
+          }
+          .print\\:hidden {
+            display: none !important;
+          }
+          div, section, article, main, table, .overflow-x-auto, .overflow-y-auto {
+            overflow: visible !important;
+          }
+          .ui-card, section, article {
+            border: 1px solid #cbd5e1 !important;
+            border-radius: 6px !important;
+            background: #ffffff !important;
+            box-shadow: none !important;
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
+            margin-bottom: 8px !important;
+          }
+          .ui-card > div:first-child {
+            background-color: #f8fafc !important;
+            border-bottom: 1px solid #cbd5e1 !important;
+            padding-top: 5px !important;
+            padding-bottom: 5px !important;
+          }
+          table {
+            width: 100% !important;
+            max-width: 100% !important;
+            border-collapse: collapse !important;
+            font-size: 10px !important;
+            table-layout: auto !important;
+          }
+          tr {
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
+          }
+          th {
+            border: 1px solid #cbd5e1 !important;
+            background-color: #f1f5f9 !important;
+            color: #0f172a !important;
+            font-weight: 700 !important;
+            font-size: 9.5px !important;
+            padding: 4px 6px !important;
+            text-transform: uppercase !important;
+          }
+          td {
+            border: 1px solid #e2e8f0 !important;
+            padding: 4px 6px !important;
+            font-size: 9.5px !important;
+            color: #1e293b !important;
+            vertical-align: middle !important;
+            word-break: break-word !important;
+          }
+          input, select, textarea {
+            border: 1px solid #cbd5e1 !important;
+            background: #fff !important;
+            color: #0f172a !important;
+            font-size: 9.5px !important;
+            padding: 2px 4px !important;
+            box-shadow: none !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          body * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }

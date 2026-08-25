@@ -268,12 +268,13 @@ export default function Dispatch() {
           label="Ready to Dispatch"
           value={summary.ready_to_dispatch}
           icon={Package}
-          color="bg-amber-500"
+          tone="warning"
+          title="Orders packed and ready for dispatch"
         />
-        <KpiCard label="Packed" value={summary.packed} icon={Package} color="bg-emerald-600" />
-        <KpiCard label="In Transit" value={summary.in_transit} icon={Truck} color="bg-cyan-600" />
-        <KpiCard label="Delivered" value={summary.delivered} icon={Truck} color="bg-[var(--color-success)]" />
-        <KpiCard label="Delayed" value={summary.delayed} icon={Truck} color="bg-rose-600" />
+        <KpiCard label="Packed" value={summary.packed} icon={Package} tone="teal" title="Packed shipments" />
+        <KpiCard label="In Transit" value={summary.in_transit} icon={Truck} tone="info" title="Shipments in transit" />
+        <KpiCard label="Delivered" value={summary.delivered} icon={Truck} tone="teal" title="Delivered shipments" />
+        <KpiCard label="Delayed" value={summary.delayed} icon={Truck} tone="danger" title="Delayed shipments" />
       </div>
 
       <div className="ui-card p-4">

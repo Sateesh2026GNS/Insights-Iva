@@ -84,7 +84,24 @@ def create_inventory_item(
 ) -> InventoryItem:
     data = payload.model_dump()
     valid_keys = {c.name for c in InventoryItem.__table__.columns}
-    item_data = {k: v for k, v in data.items() if k in valid_keys}
+    item_data = {k: v for k, v in data.items() if k in valid_keys and v is not None}
+    
+    # Handle user-selected entry date
+    entry_date = data.get("date") or data.get("created_at")
+    if entry_date:
+        try:
+            from datetime import datetime
+            if isinstance(entry_date, str):
+                dt_str = entry_date.strip()
+                if len(dt_str) == 10:
+                    item_data["created_at"] = datetime.strptime(dt_str, "%Y-%m-%d")
+                else:
+                    item_data["created_at"] = datetime.fromisoformat(dt_str)
+            elif isinstance(entry_date, datetime):
+                item_data["created_at"] = entry_date
+        except Exception:
+            pass
+
     item = InventoryItem(**item_data)
     db.add(item)
     db.commit()

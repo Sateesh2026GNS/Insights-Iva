@@ -234,7 +234,7 @@ export function AddDispatchAddressModal({ open, onClose, onSaved }) {
               type="submit"
               disabled={saving}
               className="rounded-xl py-3 text-[14px] font-semibold text-white disabled:opacity-60"
-              style={{ background: YELLOW }}
+              style={{ background: PRIMARY }}
             >
               {saving ? "Saving…" : "Save"}
             </button>

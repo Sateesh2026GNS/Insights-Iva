@@ -198,12 +198,12 @@ export default function Leads() {
       />
 
       <div className="ui-grid-kpi">
-        <KpiCard label="Total Leads" value={summary.total_leads} icon={Users} color="bg-[var(--color-success)]" />
-        <KpiCard label="New Leads" value={summary.new_leads} icon={UserPlus} color="bg-teal-600" />
-        <KpiCard label="Contacted" value={summary.contacted_leads} icon={PhoneCall} color="bg-cyan-600" />
-        <KpiCard label="Qualified" value={summary.qualified_leads} icon={Target} color="bg-slate-600" />
-        <KpiCard label="Lost Leads" value={summary.lost_leads} icon={XCircle} color="bg-rose-600" />
-        <KpiCard label="Conversion Rate" value={summary.conversion_rate} suffix="%" icon={TrendingUp} color="bg-[var(--color-success)]" />
+        <KpiCard label="Total Leads" value={summary.total_leads} icon={Users} tone="teal" onClick={() => setFilters((f) => ({ ...f, sales_executive: "", source: "", industry: "", region: "" }))} title="View all leads" />
+        <KpiCard label="New Leads" value={summary.new_leads} icon={UserPlus} tone="teal" onClick={() => setFilters((f) => ({ ...f, source: "" }))} title="View new leads" />
+        <KpiCard label="Contacted" value={summary.contacted_leads} icon={PhoneCall} tone="info" onClick={() => setFilters((f) => ({ ...f, source: "" }))} title="View contacted leads" />
+        <KpiCard label="Qualified" value={summary.qualified_leads} icon={Target} tone="neutral" onClick={() => setFilters((f) => ({ ...f, source: "" }))} title="View qualified leads" />
+        <KpiCard label="Lost Leads" value={summary.lost_leads} icon={XCircle} tone="danger" onClick={() => setFilters((f) => ({ ...f, source: "" }))} title="View lost leads" />
+        <KpiCard label="Conversion Rate" value={summary.conversion_rate} suffix="%" icon={TrendingUp} tone="success" title="Overall conversion rate" />
       </div>
 
       <div className="ui-toolbar ui-card px-4 py-3 text-[var(--text-xs)] font-medium text-[var(--color-text-secondary)]">

@@ -372,9 +372,9 @@ export default function IncomingInspection() {
       />
 
       {/* Filters */}
-      <div className="ui-card ui-card--padded">
-        <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
-          <div className="relative min-w-0 flex-1">
+      <div className="ui-card ui-card--padded space-y-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="relative ui-search-wrap min-w-[220px] flex-1">
             <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]" />
             <input
               type="search"
@@ -384,6 +384,34 @@ export default function IncomingInspection() {
               className="ui-input w-full !pl-10 text-[13px] text-[var(--color-text)]"
             />
           </div>
+          <div className="flex flex-wrap items-center gap-2.5">
+            <div className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border-soft)] bg-white px-3 py-1.5 text-[13px] shadow-xs">
+              <CalendarDays className="h-4 w-4 shrink-0 text-[var(--color-text-muted)]" />
+              <input
+                type="date"
+                value={dateFilter}
+                onChange={(e) => setDateFilter(e.target.value)}
+                className="border-0 bg-transparent p-0 text-[13px] text-[var(--color-text)] focus:outline-none"
+                aria-label="Select date"
+              />
+            </div>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setShowFilters((v) => !v)}
+              className={showFilters ? "!border-[var(--color-primary)] !text-[var(--color-primary)] font-semibold" : ""}
+            >
+              <Filter className="h-4 w-4" /> Filters
+              {(selectedTypes.length + selectedSuppliers.length + selectedMaterials.length + selectedStatuses.length) > 0 ? (
+                <span className="ml-1 rounded-full bg-[var(--color-primary)] px-1.5 py-0.2 text-[10px] text-white">
+                  {selectedTypes.length + selectedSuppliers.length + selectedMaterials.length + selectedStatuses.length}
+                </span>
+              ) : null}
+            </Button>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3 border-t border-[var(--color-border-soft)] pt-3">
           <MultiSelectDropdown
             label="Inspection Types"
             options={INSPECTION_TYPE_OPTIONS}
@@ -416,22 +444,12 @@ export default function IncomingInspection() {
             placeholder="Search statuses..."
             minWidth="min-w-[9.5rem]"
           />
-          <label className="relative inline-flex items-center">
-            <CalendarDays className="pointer-events-none absolute left-3 h-4 w-4 text-[var(--color-text-muted)]" />
-            <input
-              type="date"
-              value={dateFilter}
-              onChange={(e) => setDateFilter(e.target.value)}
-              className="ui-input !w-auto min-w-[10.5rem] !pl-9 text-[13px] text-[var(--color-text)]"
-              aria-label="Select date"
-            />
-          </label>
-          <Button type="button" variant="secondary" onClick={() => setShowFilters((v) => !v)}>
-            <Filter className="h-4 w-4" /> Filters
-          </Button>
-        </div>
-        {showFilters ? (
-          <div className="mt-4 flex flex-wrap gap-2 border-t border-[var(--color-border-soft)] pt-4">
+          {(selectedTypes.length > 0 ||
+            selectedSuppliers.length > 0 ||
+            selectedMaterials.length > 0 ||
+            selectedStatuses.length > 0 ||
+            dateFilter ||
+            search) && (
             <Button
               type="button"
               variant="ghost"
@@ -443,11 +461,12 @@ export default function IncomingInspection() {
                 setSelectedStatuses([]);
                 setDateFilter("");
               }}
+              className="text-xs text-[var(--color-text-muted)] hover:text-red-600"
             >
-              Clear all filters
+              Clear filters
             </Button>
-          </div>
-        ) : null}
+          )}
+        </div>
       </div>
 
       {/* KPI cards */}

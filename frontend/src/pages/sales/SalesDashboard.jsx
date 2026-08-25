@@ -65,12 +65,12 @@ export default function SalesDashboard() {
       <PageHeader subtitle="Revenue, orders, dispatch, payments, and sales executive performance." />
 
       <div className="ui-grid-kpi">
-        <KpiCard label="Monthly Revenue" value={formatInr(hub.monthly_revenue)} icon={IndianRupee} color="bg-[var(--color-success)]" />
-        <KpiCard label="Total Orders" value={hub.total_orders} icon={ShoppingCart} color="bg-teal-600" />
-        <KpiCard label="Pending Orders" value={hub.pending_orders} icon={ShoppingCart} color="bg-amber-500" />
-        <KpiCard label="Dispatch Pending" value={hub.dispatch_pending} icon={Truck} color="bg-cyan-600" />
-        <KpiCard label="Outstanding Payments" value={formatInr(hub.outstanding_payments)} icon={IndianRupee} color="bg-rose-600" />
-        <KpiCard label="New Customers" value={hub.new_customers} icon={Users} color="bg-[var(--color-success)]" />
+        <KpiCard label="Monthly Revenue" value={formatInr(hub.monthly_revenue)} icon={IndianRupee} tone="teal" to="/sales/invoices" />
+        <KpiCard label="Total Orders" value={hub.total_orders} icon={ShoppingCart} tone="teal" to="/sales/orders" />
+        <KpiCard label="Pending Orders" value={hub.pending_orders} icon={ShoppingCart} tone="warning" to="/sales/orders" />
+        <KpiCard label="Dispatch Pending" value={hub.dispatch_pending} icon={Truck} tone="info" to="/sales/dispatch" />
+        <KpiCard label="Outstanding Payments" value={formatInr(hub.outstanding_payments)} icon={IndianRupee} tone="danger" to="/sales/payments" />
+        <KpiCard label="New Customers" value={hub.new_customers} icon={Users} tone="teal" to="/masters/customers" />
       </div>
 
       <div className="grid gap-5 lg:grid-cols-2">

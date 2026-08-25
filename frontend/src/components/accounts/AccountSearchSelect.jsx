@@ -194,6 +194,10 @@ export default function AccountSearchSelect({
               ) : (
                 filtered.map((opt, idx) => {
                   const active = idx === highlight || opt.value === value;
+                  const isAdd =
+                    String(opt.label || "").startsWith("+") ||
+                    /add new|create/i.test(String(opt.label || "")) ||
+                    String(opt.value || "").startsWith("__add");
                   return (
                     <button
                       key={`${opt.value}-${opt.label}`}
@@ -205,8 +209,12 @@ export default function AccountSearchSelect({
                         pick(opt);
                       }}
                       onMouseEnter={() => setHighlight(idx)}
-                      className={`block w-full px-3 py-2 text-left text-[13px] text-[#1a1a1f] ${
-                        active ? "bg-[#e8e8e8]" : "bg-white"
+                      className={`block w-full px-3 py-2 text-left text-[13px] ${
+                        active
+                          ? "bg-[#e6f4f4] text-[#036f71] font-semibold"
+                          : isAdd
+                            ? "text-[#036f71] font-semibold bg-white hover:bg-[#e6f4f4]"
+                            : "text-[#1a1a1f] bg-white hover:bg-[#f3f4f6]"
                       }`}
                     >
                       {opt.label}

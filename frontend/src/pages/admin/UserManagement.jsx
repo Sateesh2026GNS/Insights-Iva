@@ -120,8 +120,33 @@ export default function UserManagement() {
   const validate = () => {
     const e = {};
     if (!form.full_name.trim()) e.full_name = "Name is required";
-    if (!form.email.trim()) e.email = "Email is required";
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = "Enter a valid email";
+    if (!form.email.trim()) {
+      e.email = "Email is required";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
+      e.email = "Enter a valid email";
+    } else {
+      const emailDup = users.find(
+        (u) =>
+          u.email &&
+          u.email.trim().toLowerCase() === form.email.trim().toLowerCase() &&
+          (!editing || u.id !== editing.id)
+      );
+      if (emailDup) e.email = `Email is already in use by ${emailDup.full_name}`;
+    }
+
+    if (form.employee_id.trim()) {
+      const empIdTrim = form.employee_id.trim().toLowerCase();
+      const empDup = users.find(
+        (u) =>
+          u.employee_id &&
+          u.employee_id.trim().toLowerCase() === empIdTrim &&
+          (!editing || u.id !== editing.id)
+      );
+      if (empDup) {
+        e.employee_id = `Employee ID '${form.employee_id.trim()}' is already assigned to ${empDup.full_name}`;
+      }
+    }
+
     if (!editing && form.password.length < 6) e.password = "Password must be at least 6 characters";
     if (editing && form.password && form.password.length < 6)
       e.password = "Password must be at least 6 characters";
@@ -366,6 +391,7 @@ export default function UserManagement() {
             <Input
               label="Employee ID"
               value={form.employee_id}
+              error={errors.employee_id}
               onChange={(e) => setForm((f) => ({ ...f, employee_id: e.target.value }))}
               placeholder="EMP001"
             />

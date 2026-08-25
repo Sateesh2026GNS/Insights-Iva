@@ -381,7 +381,13 @@ export default function QuickCreateWorkOrder() {
                     ? "No products available – please add products first"
                     : t("quickCreateWorkOrder.selectProduct", { defaultValue: "Select product" })}
                 </option>
-                <option value="__add_product__">+ Add new Product</option>
+                <option
+                  value="__add_product__"
+                  className="add-new-option text-[#036f71] font-semibold bg-[#e6f4f4] dark:text-[#2dd4bf] dark:bg-[#0d3d38]"
+                  style={{ color: "#036f71", fontWeight: "600" }}
+                >
+                  + Add new Product
+                </option>
                 {products.map((p) => {
                   const code = p.product_code || p.sku || p.code || (p.id ? `PRD${String(p.id).padStart(3, "0")}` : "");
                   return (
@@ -524,7 +530,13 @@ export default function QuickCreateWorkOrder() {
                 className="mt-1.5 w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
               >
                 <option value="">Select Machine (Optional)</option>
-                <option value="__custom__">+ Add new Machine</option>
+                <option
+                  value="__custom__"
+                  className="add-new-option text-[#036f71] font-semibold bg-[#e6f4f4] dark:text-[#2dd4bf] dark:bg-[#0d3d38]"
+                  style={{ color: "#036f71", fontWeight: "600" }}
+                >
+                  + Add new Machine
+                </option>
                 {machines.map((m) => (
                   <option key={m.id} value={m.id}>
                     {m.name || m.code}

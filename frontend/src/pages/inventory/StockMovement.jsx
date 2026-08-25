@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { PackageMinus } from "lucide-react";
+import { Calendar, PackageMinus } from "lucide-react";
 
 import Loader from "../../components/common/Loader";
 import StoreManagerNav from "../../components/inventory/StoreManagerNav";
@@ -13,8 +13,10 @@ import useTenantId from "../../hooks/useTenantId";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { isStoreManager } from "../../config/permissions";
 import useAuth from "../../hooks/useAuth";
+import { todayIso } from "../../utils/dateUtils";
 
 import Button from "../../components/common/Button";
+
 function itemLabel(item) {
   const code = item.product_code || item.code || item.item_code;
   const name = item.name || "Item";
@@ -32,6 +34,7 @@ export default function StockMovement() {
   const [items, setItems] = useState([]);
   const [warehouses, setWarehouses] = useState([]);
   const [form, setForm] = useState({
+    date: todayIso(),
     warehouse_id: "",
     item_id: "",
     quantity: "",
@@ -79,7 +82,7 @@ export default function StockMovement() {
         movement_type: "out",
       });
       addToast("Material issued successfully");
-      setForm({ warehouse_id: "", item_id: "", quantity: "", notes: "" });
+      setForm({ date: todayIso(), warehouse_id: "", item_id: "", quantity: "", notes: "" });
       load();
     } catch {
       addToast("Failed to issue material", "error");
@@ -96,7 +99,6 @@ export default function StockMovement() {
       </div>
     );
   }
-
 
   return (
     <div className="space-y-6 pb-8">
@@ -117,6 +119,20 @@ export default function StockMovement() {
         </div>
 
         <form onSubmit={handleSubmit} className="grid gap-4">
+          <label className="block text-sm">
+            <span className="font-medium text-slate-700">Issue Date *</span>
+            <div className="relative mt-1 flex items-center">
+              <input
+                type="date"
+                required
+                value={form.date || todayIso()}
+                onChange={(e) => setForm((f) => ({ ...f, date: e.target.value || todayIso() }))}
+                className="w-full rounded-lg border border-slate-200 px-3 py-2.5 pr-9 text-sm focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/20"
+              />
+              <Calendar className="pointer-events-none absolute right-2.5 h-4 w-4 text-slate-400" />
+            </div>
+          </label>
+
           <label className="block text-sm">
             <span className="font-medium text-slate-700">Warehouse</span>
             <select
@@ -161,25 +177,27 @@ export default function StockMovement() {
               value={form.quantity}
               onChange={(e) => setForm((f) => ({ ...f, quantity: e.target.value }))}
               required
-              placeholder="Enter quantity"
+              placeholder="e.g. 10"
               className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/20"
             />
           </label>
 
           <label className="block text-sm">
-            <span className="font-medium text-slate-700">Notes (optional)</span>
+            <span className="font-medium text-slate-700">Notes / remarks (optional)</span>
             <textarea
               value={form.notes}
               onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
               rows={2}
-              placeholder="Work order, department, or reason…"
+              placeholder="Job order #, department, operator name…"
               className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/20"
             />
           </label>
 
-          <Button variant="primary" type="submit" disabled={submitting} className="w-full">
-            {submitting ? "Issuing…" : "Issue Material"}
-          </Button>
+          <div className="flex justify-end pt-2">
+            <Button variant="primary" type="submit" disabled={submitting}>
+              {submitting ? "Issuing…" : "Issue Material"}
+            </Button>
+          </div>
         </form>
       </div>
     </div>

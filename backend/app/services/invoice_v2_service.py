@@ -449,11 +449,13 @@ def create_invoice_v2(db: Session, payload: InvoiceV2Create) -> Invoice:
     elif doc in ("debit_note", "debitnote", "dn", "sales_debit_note"):
         doc = "debit_note"
 
-    full_number = f"{payload.invoice_prefix or ''}{payload.invoice_number}".strip()
-    if not full_number or full_number.upper() in ("AUTO", "AUTO-GENERATE"):
+    raw_num = (payload.invoice_number or "").strip()
+    if not raw_num or raw_num.upper() in ("AUTO", "AUTO-GENERATE") or raw_num.endswith("AUTO"):
         prefix, full_number = allocate_next_invoice_number(db, payload.tenant_id)
         if not payload.invoice_prefix:
             payload.invoice_prefix = prefix
+    else:
+        full_number = f"{payload.invoice_prefix or ''}{raw_num}".strip()
 
     cgst_rate = float(getattr(payload, "cgst_pct", getattr(payload, "csgst_pct", 0)) or 0)
     company = get_or_create_settings(db, payload.tenant_id)
@@ -505,7 +507,7 @@ def create_invoice_v2(db: Session, payload: InvoiceV2Create) -> Invoice:
         show_signature=bool(payload.show_signature),
         bank_details_json=json.dumps(payload.bank_details) if payload.bank_details else None,
         custom_fields_json=json.dumps(payload.custom_fields) if payload.custom_fields else None,
-        notes=payload.notes,
+        notes=getattr(payload, "notes", None),
     )
     try:
         db.add(inv)
@@ -608,7 +610,7 @@ def create_invoice_v2(db: Session, payload: InvoiceV2Create) -> Invoice:
             pass
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Database error while creating invoice.",
+            detail=f"Database error while creating invoice: {exc}",
         ) from exc
     except Exception as exc:
         logger.exception("Unexpected error creating invoice %s: %s", full_number, exc)
@@ -618,7 +620,7 @@ def create_invoice_v2(db: Session, payload: InvoiceV2Create) -> Invoice:
             pass
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to create invoice.",
+            detail=f"Failed to create invoice: {exc}",
         ) from exc
 
     try:

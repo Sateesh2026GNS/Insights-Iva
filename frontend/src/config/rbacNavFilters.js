@@ -1,8 +1,3 @@
-/**
- * Role-specific sidebar/path narrowing — complements module grants from permissions.js.
- * Keep aligned with backend `app/core/rbac_constants.py` SIDEBAR_MENU_CATALOG filters.
- */
-
 /** Production Manager sidebar sections (module grants are broader for API access). */
 export const PRODUCTION_MANAGER_ALLOWED_SECTIONS = new Set([
   "dashboard",
@@ -14,38 +9,56 @@ export const PRODUCTION_MANAGER_ALLOWED_SECTIONS = new Set([
   "maintenance",
   "alerts",
   "documents",
+  "meetings",
   "analytics",
 ]);
 
 export const PRODUCTION_MANAGER_ALLOWED_CHILDREN = new Set([
+  // Dashboard
   "/",
   "/manufacturing/workflow",
+
+  // Masters — products reference only
   "/masters/products",
   "/masters/bom",
+
+  // Production — full access
   "/production",
   "/production/dashboard",
   "/production/planning",
   "/production/work-orders",
   "/production/work-orders/create-quick",
-  "/manufacturing/workflow",
   "/production/schedule",
   "/production/tasks",
   "/production/reports",
   "/production/machines",
-  "/inventory",
+  "/manufacturing/workflow",
+
+  // Inventory — read-only view (no Store Dashboard, no Inventory Settings)
   "/inventory/raw-materials",
   "/inventory/finished-goods",
   "/inventory/stock-transfer",
-  "/procurement/material-requests",
+
+  // Purchases — Purchase Order only (no bills / payments / debit notes)
   "/procurement/purchase-orders",
-  "/procurement/goods-receipt",
+
+  // Quality — full quality visibility including incoming and batch reports
+  "/quality",
+  "/quality/incoming",
   "/quality/in-process",
   "/quality/final",
+  "/quality/batch-reports",
   "/quality/defects",
-  "/maintenance/preventive",
+
+  // Maintenance — full access
+  "/maintenance",
   "/maintenance/equipment",
+  "/maintenance/preventive",
   "/maintenance/breakdowns",
   "/maintenance/machine-history",
+  "/maintenance/schedule",
+
+  // Alerts — all factory alerts
   "/alerts",
   "/alerts/low-stock",
   "/alerts/machine-failure",
@@ -54,13 +67,21 @@ export const PRODUCTION_MANAGER_ALLOWED_CHILDREN = new Set([
   "/alerts/quality",
   "/alerts/safety",
   "/alerts/general",
+
+  // Documents
   "/documents",
   "/documents/production",
   "/documents/quality",
   "/documents/reports",
-  "/analytics/production",
-  "/analytics/inventory",
+
+  // Meetings
+  "/meetings",
+
+  // Analytics — production-focused only
   "/analytics/live",
+  "/analytics/production",
+
+  // Factory Monitor / IoT
   "/factory-monitor/machine-status",
   "/factory-monitor/production-lines",
 ]);
@@ -118,11 +139,15 @@ export function productionManagerPathAllowed(pathname) {
   if (path.startsWith("/production/")) return true;
   if (path.startsWith("/inventory/raw-materials")) return true;
   if (path.startsWith("/inventory/finished-goods")) return true;
-  if (path.startsWith("/procurement/material-requests")) return true;
+  if (path.startsWith("/inventory/stock-transfer")) return true;
   if (path.startsWith("/procurement/purchase-orders")) return true;
-  if (path.startsWith("/procurement/goods-receipt")) return true;
   if (path.startsWith("/quality/")) return true;
   if (path.startsWith("/maintenance/")) return true;
+  if (path.startsWith("/alerts/")) return true;
+  if (path.startsWith("/documents")) return true;
+  if (path.startsWith("/meetings")) return true;
+  if (path.startsWith("/analytics/live")) return true;
+  if (path.startsWith("/analytics/production")) return true;
   if (path.startsWith("/factory-monitor/")) return true;
   if (path.startsWith("/manufacturing/")) return true;
   return false;

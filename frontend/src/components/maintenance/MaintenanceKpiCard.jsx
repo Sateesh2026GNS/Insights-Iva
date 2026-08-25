@@ -59,8 +59,19 @@ export default function MaintenanceKpiCard({
     trendText = `${up ? "↑" : "↓"} ${trend.pct}% vs last month`;
   }
 
+const TONE_HOVER_BORDER = {
+  primary: "hover:border-[#036f71] hover:ring-1 hover:ring-[#036f71]",
+  violet: "hover:border-[#7c3aed] hover:ring-1 hover:ring-[#7c3aed]",
+  success: "hover:border-[#059669] hover:ring-1 hover:ring-[#059669]",
+  orange: "hover:border-[#ea580c] hover:ring-1 hover:ring-[#ea580c]",
+  info: "hover:border-[#0751b2] hover:ring-1 hover:ring-[#0751b2]",
+  danger: "hover:border-[#dc2626] hover:ring-1 hover:ring-[#dc2626]",
+  teal: "hover:border-[#036f71] hover:ring-1 hover:ring-[#036f71]",
+  neutral: "hover:border-[#64748b] hover:ring-1 hover:ring-[#64748b]",
+};
+
   return (
-    <article className={`relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm ${className}`}>
+    <article className={`relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md cursor-pointer ${TONE_HOVER_BORDER[tone] || TONE_HOVER_BORDER.primary} ${className}`}>
       <span className={`absolute inset-x-0 top-0 h-0.5 ${styles.bar}`} aria-hidden />
       <div className="flex items-start gap-3">
         {Icon ? (

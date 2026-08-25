@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
-import { X } from "lucide-react";
+import { Calendar, X } from "lucide-react";
 
 import { updateInventoryItem } from "../../api/inventoryApi";
 import { apiErrorMessage } from "../../utils/apiError";
+import { todayIso } from "../../utils/dateUtils";
 import Button from "../common/Button";
 
 export default function EditInventoryItemModal({ item, onClose, onSaved, addToast }) {
   const [form, setForm] = useState({
+    date: todayIso(),
     name: "",
     sku: "",
     barcode: "",
@@ -22,6 +24,7 @@ export default function EditInventoryItemModal({ item, onClose, onSaved, addToas
   useEffect(() => {
     if (!item) return;
     setForm({
+      date: item.created_at ? item.created_at.slice(0, 10) : todayIso(),
       name: item.name || "",
       sku: item.sku || "",
       barcode: item.barcode || "",

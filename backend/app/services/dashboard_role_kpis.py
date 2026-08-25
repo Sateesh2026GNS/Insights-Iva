@@ -353,7 +353,6 @@ def build_production_kpis(db: Session, tenant_id: int, ctx: dict[str, Any]) -> l
     return [
         _kpi("total-production-orders", "Total Production Orders", po["total"], trend_label="all POs", link="/production/planning"),
         _kpi("planned-orders", "Planned Orders", po["planned"], trend_label="not started", link="/production/planning"),
-        _kpi("in-progress-orders", "In Progress", po["in_progress"], trend_label="active POs", link="/production/work-orders"),
         _kpi("completed-orders", "Completed", po["completed"], trend_label="finished POs", link="/production/work-orders"),
         _kpi("delayed-orders", "Delayed Orders", delayed, trend_label="past due", link="/production/work-orders"),
         _kpi(

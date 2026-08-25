@@ -1124,7 +1124,29 @@ export default function ReferenceDashboard() {
   const showQuickActions = !isOpProfile && sectionVisible(sections, "quick_actions");
   const showRecentWo = !isStoreProfile && sectionVisible(sections, "recent_work_orders");
   const showFinance = !isOpProfile && showInventory && ["admin", "full"].includes(profile);
+  const showPendingTasks = !isOpProfile && sectionVisible(sections, "orders_overview");
+  const showTodaysSummary = sectionVisible(sections, "todays_summary");
+  const topRowVisibleCount = (showPendingTasks ? 1 : 0) + (showFinance ? 1 : 0) + (showTodaysSummary ? 1 : 0);
 
+  const topRowGridCls = isOpProfile
+    ? "grid-cols-1"
+    : topRowVisibleCount === 1
+      ? "grid-cols-1"
+      : topRowVisibleCount === 2
+        ? "grid-cols-1 md:grid-cols-2"
+        : "grid-cols-1 md:grid-cols-2 lg:grid-cols-3";
+
+  const showOrdersOverview = sectionVisible(sections, "orders_overview");
+  const showAlerts = sectionVisible(sections, "alerts");
+  const midRowVisibleCount = (showOrdersOverview ? 1 : 0) + (showInventory ? 1 : 0) + (showAlerts ? 1 : 0);
+
+  const midRowGridCls = isOpProfile
+    ? "grid-cols-1 md:grid-cols-2"
+    : midRowVisibleCount === 1
+      ? "grid-cols-1"
+      : midRowVisibleCount === 2
+        ? "grid-cols-1 md:grid-cols-2"
+        : "grid-cols-1 md:grid-cols-2 lg:grid-cols-3";
 
   if (loading) return <DashboardSkeleton />;
 
@@ -1140,7 +1162,7 @@ export default function ReferenceDashboard() {
             <button
               type="button"
               onClick={() => load(false)}
-              className="mt-4 inline-flex items-center justify-center rounded-lg border border-[#e4e4ea] px-4 py-2 text-[13px] font-semibold text-[#1a1a1f] shadow-sm transition hover:bg-[#ececf0] dark:border-slate-700 dark:text-white"
+              className="mt-4 inline-flex items-center justify-center rounded-lg px-4 py-2 text-[13px] font-semibold text-white shadow-sm transition hover:opacity-90"
               style={{ background: YELLOW }}
             >
               {t("common.retry", "Retry")}
@@ -1165,25 +1187,39 @@ export default function ReferenceDashboard() {
           />
         ) : null}
 
-        <div className={`grid grid-cols-1 gap-5 ${isOpProfile ? "lg:grid-cols-1" : "lg:grid-cols-3"}`}>
-          {!isOpProfile && sectionVisible(sections, "orders_overview") ? (
-            <PendingTasks
-              overview={ordersOverview}
-              inventoryBlocks={apiData?.inventory_blocks || []}
-              alerts={alertsLive}
-              profile={profile}
-            />
-          ) : null}
-          {showFinance ? <FinancialSnapshot inventoryBlocks={apiData?.inventory_blocks || []} /> : null}
-          {sectionVisible(sections, "todays_summary") ? (
-            <TodaysSummary items={apiData?.todays_summary || []} />
-          ) : null}
-        </div>
+        {topRowVisibleCount > 0 && (
+          <div className={`grid gap-5 ${topRowGridCls}`}>
+            {showPendingTasks ? (
+              <PendingTasks
+                overview={ordersOverview}
+                inventoryBlocks={apiData?.inventory_blocks || []}
+                alerts={alertsLive}
+                profile={profile}
+              />
+            ) : null}
+            {showFinance ? <FinancialSnapshot inventoryBlocks={apiData?.inventory_blocks || []} /> : null}
+            {showTodaysSummary ? (
+              <TodaysSummary items={apiData?.todays_summary || []} />
+            ) : null}
+          </div>
+        )}
 
         {(showProduction || showShopFloor || showTopMachines || (isOpProfile && sectionVisible(sections, "production_overview"))) && (
           <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
             {(showProduction || (isOpProfile && sectionVisible(sections, "production_overview"))) && (
-              <div className={isOpProfile ? "xl:col-span-6" : (!showShopFloor && !showTopMachines) ? "xl:col-span-12" : "xl:col-span-5"}>
+              <div
+                className={
+                  isOpProfile
+                    ? "xl:col-span-6"
+                    : !showShopFloor && !showTopMachines
+                      ? "xl:col-span-12"
+                      : !showShopFloor
+                        ? "xl:col-span-7"
+                        : !showTopMachines
+                          ? "xl:col-span-8"
+                          : "xl:col-span-5"
+                }
+              >
                 <ProductionOverview chartSets={chartSets} />
               </div>
             )}
@@ -1193,38 +1229,42 @@ export default function ReferenceDashboard() {
               </div>
             ) : null}
             {showShopFloor ? (
-              <div className="xl:col-span-3">
+              <div className={!showTopMachines ? "xl:col-span-5" : "xl:col-span-3"}>
                 <ShopFloorStatus statusData={apiData?.shop_floor_status || []} />
               </div>
             ) : null}
             {showTopMachines ? (
-              <div className="xl:col-span-4">
+              <div className={!showShopFloor ? "xl:col-span-7" : "xl:col-span-4"}>
                 <TopMachines machines={apiData?.top_machines || []} />
               </div>
             ) : null}
           </div>
         )}
 
-        <div className={`grid grid-cols-1 gap-5 ${isOpProfile ? "lg:grid-cols-2" : "lg:grid-cols-3"}`}>
-          {sectionVisible(sections, "orders_overview") ? <OrdersOverview overview={ordersOverview} /> : null}
-          {showInventory ? (
-            <InventorySummary blocks={apiData?.inventory_blocks || []} warehouses={apiData?.warehouse_locations || []} />
-          ) : null}
-          {sectionVisible(sections, "alerts") ? <AlertsNotifications alerts={alertsLive} /> : null}
-        </div>
+        {midRowVisibleCount > 0 && (
+          <div className={`grid gap-5 ${midRowGridCls}`}>
+            {showOrdersOverview ? <OrdersOverview overview={ordersOverview} /> : null}
+            {showInventory ? (
+              <InventorySummary blocks={apiData?.inventory_blocks || []} warehouses={apiData?.warehouse_locations || []} />
+            ) : null}
+            {showAlerts ? <AlertsNotifications alerts={alertsLive} /> : null}
+          </div>
+        )}
 
-        <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
-          {showQuickActions ? (
-            <div className="xl:col-span-3">
-              <QuickActions />
-            </div>
-          ) : null}
-          {showRecentWo ? (
-            <div className={showQuickActions ? "xl:col-span-9" : "xl:col-span-12"}>
-              <RecentWorkOrders workOrders={workOrdersLive} />
-            </div>
-          ) : null}
-        </div>
+        {(showQuickActions || showRecentWo) && (
+          <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
+            {showQuickActions ? (
+              <div className={showRecentWo ? "xl:col-span-3" : "xl:col-span-12"}>
+                <QuickActions />
+              </div>
+            ) : null}
+            {showRecentWo ? (
+              <div className={showQuickActions ? "xl:col-span-9" : "xl:col-span-12"}>
+                <RecentWorkOrders workOrders={workOrdersLive} />
+              </div>
+            ) : null}
+          </div>
+        )}
 
         <footer className="flex flex-col items-center justify-between gap-2 border-t border-[#e4e4ea] pt-4 text-center text-[11px] text-[#8a8a96] sm:flex-row sm:text-left">
           <p>{t("refDashboard.copyright")}</p>

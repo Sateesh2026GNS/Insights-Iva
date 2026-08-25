@@ -61,7 +61,7 @@ function DateTimeField({ value, onChange, error }) {
         type="datetime-local"
         value={value}
         onChange={onChange}
-        className={`ui-input w-full !pr-10 ${error ? "border-[var(--color-danger)]" : ""}`}
+        className={`ui-input w-full !pr-10 [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:w-0 [&::-webkit-calendar-picker-indicator]:pointer-events-none ${error ? "border-[var(--color-danger)]" : ""}`}
       />
       <button
         type="button"
@@ -70,7 +70,7 @@ function DateTimeField({ value, onChange, error }) {
           inputRef.current?.focus();
           inputRef.current?.showPicker?.();
         }}
-        className="absolute right-0 top-0 flex h-full w-10 items-center justify-center text-[var(--color-text-muted)]"
+        className="absolute right-0 top-0 flex h-full w-10 items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors cursor-pointer"
         aria-label="Open date and time picker"
       >
         <CalendarDays className="h-4 w-4" aria-hidden />
@@ -343,7 +343,13 @@ export default function CreateProductionOrderModal({
                   className={`ui-select w-full ${errors.product_id ? "border-[var(--color-danger)]" : ""}`}
                 >
                   <option value="">{loadingOptions ? "Loading products…" : "Select product…"}</option>
-                  <option value="__add_product__">+ Add new Product</option>
+                  <option
+                    value="__add_product__"
+                    className="add-new-option text-[#036f71] font-semibold bg-[#e6f4f4] dark:text-[#2dd4bf] dark:bg-[#0d3d38]"
+                    style={{ color: "#036f71", fontWeight: "600" }}
+                  >
+                    + Add new Product
+                  </option>
                   {products
                     .filter((p) => p?.id != null && p.id !== "")
                     .map((p) => (
@@ -410,7 +416,13 @@ export default function CreateProductionOrderModal({
                     className="ui-select pl-10 w-full"
                   >
                     <option value="">Select machine (optional)</option>
-                    <option value="__add_machine__">+ Add new Machine</option>
+                    <option
+                      value="__add_machine__"
+                      className="add-new-option text-[#036f71] font-semibold bg-[#e6f4f4] dark:text-[#2dd4bf] dark:bg-[#0d3d38]"
+                      style={{ color: "#036f71", fontWeight: "600" }}
+                    >
+                      + Add new Machine
+                    </option>
                     {machines.map((m) => (
                       <option key={m.id} value={m.id}>
                         {m.name || m.code} ({m.status || "Available"})

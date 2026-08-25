@@ -1,12 +1,11 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Calendar } from "lucide-react";
 
 import PageHeader from "../../components/common/PageHeader";
 import { createSupplier } from "../../api/inventoryApi";
 import useTenantId from "../../hooks/useTenantId";
-
-
+import { todayIso } from "../../utils/dateUtils";
 
 import Button from "../../components/common/Button";
 import { inputMtClass as inputClass } from "../../design-system/classes";
@@ -16,6 +15,7 @@ export default function CreateSupplier() {
   const navigate = useNavigate();
   const [form, setForm] = useState({
     tenant_id: tenantId,
+    date: todayIso(),
     name: "",
     contact: "",
     email: "",
@@ -34,7 +34,7 @@ export default function CreateSupplier() {
       id: `sup-${Date.now()}`,
       ...form,
       name: form.name.trim(),
-      created_at: new Date().toISOString().slice(0, 10),
+      created_at: form.date || todayIso(),
     };
 
     // Save to localStorage immediately — guaranteed to show in list
@@ -105,20 +105,17 @@ export default function CreateSupplier() {
             type="text"
             value={form.phone}
             onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
-            placeholder="e.g. +1 234 567 8900"
+            placeholder="e.g. +91 98765 43210"
             className={inputClass}
           />
         </label>
-        <div className="flex flex-wrap gap-3 pt-2">
-          <Button variant="primary" type="submit" disabled={saving} className="disabled:opacity-50">
-            {saving ? "Saving…" : "Create supplier"}
-          </Button>
-          <Link
-            to="/inventory/suppliers"
-            className="inline-flex items-center justify-center rounded-xl border border-slate-200 dark:border-slate-600 px-4 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
-          >
+        <div className="flex justify-end gap-3 pt-2">
+          <Button variant="secondary" to="/inventory/suppliers">
             Cancel
-          </Link>
+          </Button>
+          <Button variant="primary" type="submit" disabled={saving}>
+            {saving ? "Creating…" : "Create supplier"}
+          </Button>
         </div>
       </form>
     </div>

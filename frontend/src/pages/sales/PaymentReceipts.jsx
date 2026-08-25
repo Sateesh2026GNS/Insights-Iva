@@ -581,7 +581,7 @@ export default function PaymentReceipts() {
                   setFilters(draftFilters);
                   setShowFilters(false);
                 }}
-                className="rounded-xl py-3 text-[14px] font-semibold"
+                className="rounded-xl py-3 text-[14px] font-semibold text-white"
                 style={{ background: ACCENT }}
               >
                 Apply Filter

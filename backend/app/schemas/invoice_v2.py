@@ -108,7 +108,8 @@ class InvoiceV2Create(BaseModel):
     terms_and_conditions: str | None = None
     show_signature: bool = False
     bank_details: dict[str, Any] | None = None
-    custom_fields: list[dict[str, Any]] | None = None
+    notes: str | None = None
+    custom_fields: list[dict[str, Any]] | dict[str, Any] | Any | None = None
     items: list[InvoiceV2ItemCreate] = Field(..., min_length=1)
 
     @field_validator("items", mode="before")

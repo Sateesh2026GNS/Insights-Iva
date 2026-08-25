@@ -86,7 +86,7 @@ export default function SearchableSelect({
       </button>
 
       {open ? (
-        <div className="absolute left-0 right-0 z-40 mt-1 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg dark:border-slate-600 dark:bg-slate-800">
+        <div className="absolute left-0 right-0 top-full z-40 mt-1 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg dark:border-slate-600 dark:bg-slate-800">
           <div className="flex items-center gap-2 border-b border-slate-100 px-3 py-2 dark:border-slate-700">
             <Search className="h-4 w-4 text-slate-400" aria-hidden />
             <input
@@ -126,6 +126,11 @@ export default function SearchableSelect({
             ) : (
               filtered.map((opt) => {
                 const active = opt.value === value;
+                const isAdd =
+                  String(opt.label || "").startsWith("+") ||
+                  /add new|create new/i.test(String(opt.label || "")) ||
+                  String(opt.value || "").startsWith("__add") ||
+                  String(opt.value || "").startsWith("__new");
                 return (
                   <li key={opt.value}>
                     <button
@@ -135,8 +140,10 @@ export default function SearchableSelect({
                       onClick={() => pick(opt)}
                       className={`flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm ${
                         active
-                          ? "bg-[var(--color-success-soft)] text-[var(--color-success)] dark:bg-teal-900/30 dark:text-teal-200"
-                          : "text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-700/50"
+                          ? "bg-[var(--color-success-soft)] text-[var(--color-success)] font-semibold dark:bg-teal-900/30 dark:text-teal-200"
+                          : isAdd
+                            ? "text-[var(--color-primary)] font-semibold hover:bg-[var(--color-primary-soft)] dark:text-[#2dd4bf] dark:hover:bg-teal-950/30"
+                            : "text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-700/50"
                       }`}
                     >
                       <span className="truncate">{opt.label}</span>

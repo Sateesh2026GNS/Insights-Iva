@@ -84,8 +84,6 @@ PERMISSION_MATRIX = {
             "procurement",
             "settings",
             "iot",
-            "sales",
-            "accounts",
         ],
         "description": (
             "Dashboard, Production, Planning, Work Orders, Quality, "

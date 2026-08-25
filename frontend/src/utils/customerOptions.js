@@ -102,10 +102,16 @@ export function customerToConsigneeFields(customer) {
 
 /** Ensure a numeric customer id for API calls. */
 export async function resolveCustomerId(customerId, customers, tenantId) {
+  if (!customerId) return 1;
   const idStr = String(customerId);
   if (/^\d+$/.test(idStr)) return Number(idStr);
 
-  const customer = customers.find((c) => String(c.id) === idStr || String(c.name) === idStr);
+  const customer = customers.find(
+    (c) => String(c.id) === idStr || String(c.name) === idStr || String(c.buyer_name) === idStr
+  );
+  if (customer && customer.id && /^\d+$/.test(String(customer.id))) {
+    return Number(customer.id);
+  }
   if (!customer) return 1;
 
   const payload = {

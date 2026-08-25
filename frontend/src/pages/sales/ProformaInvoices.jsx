@@ -220,15 +220,7 @@ export default function ProformaInvoices() {
     <div className="min-h-full" style={{ background: PAGE_BG }}>
       <div className="space-y-4 p-4 sm:p-6">
 
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-          <div className="min-w-[200px] rounded-xl border border-[#e4e4ea] border-b-[3px] border-b-[var(--color-primary)] bg-white px-5 py-3.5 shadow-sm">
-            <p className="text-[13px] font-medium text-[#6b6b76]">
-              Total Sales <span className="text-[#a0a0ab]">({total})</span>
-            </p>
-            <p className="mt-1 text-[20px] font-bold tabular-nums text-[#1a1a1f]">
-              {formatInr(totalSales)}
-            </p>
-          </div>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
           <div className="flex flex-wrap items-center gap-2.5">
             <div className="inline-flex items-center gap-2 rounded-lg border border-[#e4e4ea] bg-white px-3 py-2 text-[13px] text-[#4a4a55] shadow-sm">
               <Calendar className="h-4 w-4 shrink-0 text-[#9a9aa5]" />
