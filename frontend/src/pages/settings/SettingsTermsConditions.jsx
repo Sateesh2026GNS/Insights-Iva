@@ -74,7 +74,7 @@ export default function SettingsTermsConditions() {
       ) : (
         <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700">
           <table className="w-full text-left text-sm">
-            <thead className="bg-slate-50 text-xs uppercase text-slate-500 dark:bg-slate-800">
+            <thead className="ui-table-head">
               <tr>
                 <th className="px-4 py-3">Title</th>
                 <th className="px-4 py-3">Details</th>

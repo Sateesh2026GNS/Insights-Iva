@@ -312,10 +312,10 @@ function VendorComparisonPanel({ rfq, vendors, bestVendor, suppliers, onRefreshC
           No quotations recorded for this Request for Quotation (RFQ) yet. Click <strong>+ Add Quote</strong> to record vendor prices.
         </div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[640px] text-left text-sm">
-            <thead>
-              <tr className="border-b text-xs font-semibold uppercase text-slate-500">
+        <div className="ui-table-wrap ui-table-wrap--scroll">
+          <table className="ui-table w-full min-w-[640px] text-left text-sm">
+            <thead className="ui-table-head">
+              <tr>
                 <th className="py-2.5 pr-4">Vendor</th>
                 <th className="py-2.5 pr-4">Price</th>
                 <th className="py-2.5 pr-4">Delivery</th>

@@ -1,5 +1,6 @@
-import { ChevronLeft, ChevronRight, Search } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import Button, { AddButton } from "../common/Button";
+import { SearchBar } from "../common/SearchFilter";
 
 export { default as Loader } from "../common/Loader";
 
@@ -101,17 +102,15 @@ export function accountsKpiEntry(label, value, sub, icon, tint, iconColor, value
   return { label, value, sub, icon, tint, iconColor, valueColor };
 }
 
-export function AccountsSearchInput({ value, onChange, placeholder = "Search", className = "" }) {
+export function AccountsSearchInput({ value, onChange, placeholder = "Search", className = "", disabled = false }) {
   return (
-    <div className={`relative ui-search-wrap ${className}`}>
-      <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]" />
-      <input
-        value={value}
-        onChange={onChange}
-        placeholder={placeholder}
-        className="ui-input w-full !rounded-full py-2.5 pl-10 pr-4"
-      />
-    </div>
+    <SearchBar
+      value={value}
+      onChange={(next) => onChange?.({ target: { value: next } })}
+      placeholder={placeholder}
+      className={className}
+      disabled={disabled}
+    />
   );
 }
 
@@ -219,14 +218,12 @@ export function AccountsSecondaryButton({ children, className = "", ...props }) 
   );
 }
 
-export const accountsTableHeadClass =
-  "bg-[var(--color-surface-thead)] text-[12px] font-semibold text-[var(--color-text)]";
-export const accountsTableHeadAltClass =
-  "bg-[var(--color-surface-muted)] text-[12px] font-semibold text-[var(--color-text-muted)]";
-export const accountsTableWrapClass = "ui-table-wrap ui-table-wrap--scroll rounded-xl";
-export const accountsTableClass = "min-w-full w-full border-collapse text-left text-[13px]";
-export const accountsThClass = "border-b border-[var(--color-border)] px-4 py-3 font-semibold";
-export const accountsTdClass = "border-b border-[var(--color-border-soft)] px-4 py-3.5 align-middle";
+export const accountsTableHeadClass = "ui-table-head";
+export const accountsTableHeadAltClass = "ui-table-head";
+export const accountsTableWrapClass = "ui-table-wrap ui-table-wrap--scroll";
+export const accountsTableClass = "ui-table min-w-full w-full border-collapse text-left";
+export const accountsThClass = "px-4 py-3 font-semibold";
+export const accountsTdClass = "px-4 py-3.5 align-middle";
 
 /** Standard form control — use with FormField or standalone */
 export const ACCOUNTS_INPUT_CLASS = inputMtClass;

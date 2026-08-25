@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { CalendarDays, ChevronLeft, ChevronRight, ListFilter, Plus, Receipt, Search } from "lucide-react";
 
 import Loader from "../../components/common/Loader";
+import { SearchBar } from "../../components/common/SearchFilter";
 import Button from "../../components/common/Button";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
 import { useToast } from "../../context/ToastContext";
@@ -69,16 +70,16 @@ function SummaryTab({ label, count, amount, active, onClick }) {
       onClick={onClick}
       className={`min-w-0 flex-1 border-b-[3px] px-4 py-3.5 text-left transition ${
         active
-          ? "border-[var(--color-success)] bg-white text-[var(--color-success)]"
-          : "border-transparent bg-transparent text-[#6b6b76] hover:bg-white/70"
+          ? "border-[var(--color-success)] bg-[var(--color-surface)] text-[var(--color-success)]"
+          : "border-transparent bg-transparent text-[var(--color-text-muted)] hover:bg-[var(--color-surface)]/70"
       }`}
     >
-      <p className={`text-[13px] font-medium ${active ? "" : "text-[#6b6b76]"}`}>
+      <p className={`text-[13px] font-medium ${active ? "" : "text-[var(--color-text-muted)]"}`}>
         {label} <span className={active ? "opacity-70" : "text-[#a0a0ab]"}>({count})</span>
       </p>
       <p
         className={`mt-1 text-[18px] font-bold tabular-nums ${
-          active ? "text-[var(--color-success)]" : "text-[#1a1a1f]"
+          active ? "text-[var(--color-success)]" : "text-[var(--color-text)]"
         }`}
       >
         {amount}
@@ -210,7 +211,7 @@ export default function PaymentsMade() {
   return (
     <div className="min-h-full space-y-4 bg-[#F5F5F5] p-4 sm:p-6">
 
-      <div className="overflow-hidden rounded-xl border border-[#d0d0d8] bg-[var(--color-success-soft)]">
+      <div className="overflow-hidden rounded-xl border border-[var(--color-table-border)] bg-[var(--color-success-soft)]">
         <div className="flex overflow-x-auto">
           {MODE_TABS.map((t) => (
             <SummaryTab
@@ -225,19 +226,11 @@ export default function PaymentsMade() {
         </div>
       </div>
 
-      <div className="rounded-t-2xl border border-[#e4e4ea] border-b-0 bg-white px-4 pb-6 pt-4 sm:px-6">
-        <div className="mb-3 flex flex-col gap-3 border-b border-[#e4e4ea] pb-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="relative ui-search-wrap w-full">
-            <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9a9aa5]" />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search"
-              className="w-full rounded-full border border-[#e4e4ea] bg-white py-2.5 pl-10 pr-4 text-[14px] text-[#1a1a1f] shadow-sm placeholder:text-[#9a9aa5] focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/25"
-            />
-          </div>
+      <div className="rounded-t-2xl border border-[var(--color-border)] border-b-0 bg-[var(--color-surface)] px-4 pb-6 pt-4 sm:px-6">
+        <div className="mb-3 flex flex-col gap-3 border-b border-[var(--color-border)] pb-3 lg:flex-row lg:items-center lg:justify-between">
+          <SearchBar value={search} onChange={setSearch} placeholder="Search" className="w-full" />
           <div className="flex flex-wrap items-center gap-2.5">
-            <div className="inline-flex items-center gap-2 rounded-lg border border-[#e4e4ea] bg-white px-3 py-2 text-[13px] text-[#4a4a55] shadow-sm">
+            <div className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-[13px] text-[var(--color-text-secondary)] shadow-sm">
               <button
                 type="button"
                 onClick={() => dateFromRef.current?.showPicker?.() || dateFromRef.current?.click()}
@@ -297,7 +290,7 @@ export default function PaymentsMade() {
               <button
                 type="button"
                 onClick={() => setShowSort((v) => !v)}
-                className="inline-flex items-center gap-2 rounded-lg bg-[#ececf0] px-3.5 py-2 text-[13px] font-medium text-[#4a4a55]"
+                className="inline-flex items-center gap-2 rounded-lg bg-[var(--color-surface-muted)] px-3.5 py-2 text-[13px] font-medium text-[var(--color-text-secondary)]"
               >
                 <ListFilter className="h-4 w-4" /> Sort by
               </button>
@@ -309,7 +302,7 @@ export default function PaymentsMade() {
                     aria-label="Close sort"
                     onClick={() => setShowSort(false)}
                   />
-                  <div className="absolute right-0 z-20 mt-1.5 w-[280px] overflow-hidden rounded-xl border border-[#d0d0d8] bg-white py-1 shadow-lg">
+                  <div className="absolute right-0 z-20 mt-1.5 w-[280px] overflow-hidden rounded-xl border border-[var(--color-table-border)] bg-[var(--color-surface)] py-1 shadow-lg">
                     {SORT_OPTIONS.map((opt) => (
                       <button
                         key={opt.id}
@@ -318,8 +311,8 @@ export default function PaymentsMade() {
                           setSortId(opt.id);
                           setShowSort(false);
                         }}
-                        className={`block w-full px-4 py-2.5 text-left text-[13px] hover:bg-[#f5f5f7] ${
-                          sortId === opt.id ? "font-semibold" : "text-[#4a4a55]"
+                        className={`block w-full px-4 py-2.5 text-left text-[13px] hover:bg-[var(--color-surface-hover)] ${
+                          sortId === opt.id ? "font-semibold" : "text-[var(--color-text-secondary)]"
                         }`}
                       >
                         {opt.label}
@@ -332,12 +325,12 @@ export default function PaymentsMade() {
           </div>
         </div>
 
-        <div className="overflow-hidden rounded-xl border border-[#d0d0d8] bg-white">
+        <div className="overflow-hidden rounded-xl border border-[var(--color-table-border)] bg-[var(--color-surface)]">
           <div className="overflow-x-auto">
             <table className="min-w-full border-collapse text-left text-[13px]">
-              <thead className="bg-[var(--color-success-soft)] text-[12px] font-semibold uppercase tracking-wide text-[#6b6b76]">
+              <thead className="ui-table-head">
                 <tr>
-                  <SerialNumberHeader className="border-b border-r border-[#d0d0d8]" />
+                  <SerialNumberHeader className="border-b border-r border-[var(--color-table-border)]" />
                   {[
                     "Receipt No.",
                     "Payment Date",
@@ -349,7 +342,7 @@ export default function PaymentsMade() {
                   ].map((h) => (
                     <th
                       key={h}
-                      className="border-b border-r border-[#d0d0d8] px-4 py-3 last:border-r-0"
+                      className="border-b border-r border-[var(--color-table-border)] px-4 py-3 last:border-r-0"
                     >
                       {h}
                     </th>
@@ -360,40 +353,40 @@ export default function PaymentsMade() {
                 {pageRows.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="px-4 py-16 text-center">
-                      <Receipt className="mx-auto h-12 w-12 text-[#c4c4cc]" />
-                      <p className="mt-3 text-[14px] text-[#6b6b76]">
+                      <Receipt className="mx-auto h-12 w-12 text-[var(--color-text-icon)]" />
+                      <p className="mt-3 text-[14px] text-[var(--color-text-muted)]">
                         No Payment available, Make a new payment
                       </p>
                     </td>
                   </tr>
                 ) : (
                   pageRows.map((r, rowIndex) => (
-                    <tr key={r.id} className="hover:bg-[#fafafa]">
+                    <tr key={r.id} className="hover:bg-[var(--color-table-row-hover)]">
                       <SerialNumberCell
                         rowIndex={rowIndex}
                         page={page}
                         pageSize={pageSize}
-                        className="border-t border-r border-[#d0d0d8]"
+                        className="border-t border-r border-[var(--color-table-border)]"
                       />
-                      <td className="border-t border-r border-[#d0d0d8] px-4 py-3 font-semibold text-[var(--color-success)]">
+                      <td className="border-t border-r border-[var(--color-table-border)] px-4 py-3 font-semibold text-[var(--color-success)]">
                         {r.receipt_number}
                       </td>
-                      <td className="border-t border-r border-[#d0d0d8] px-4 py-3 text-[#4a4a55]">
+                      <td className="border-t border-r border-[var(--color-table-border)] px-4 py-3 text-[var(--color-text-secondary)]">
                         {fmtDate(r.payment_date)}
                       </td>
-                      <td className="border-t border-r border-[#d0d0d8] px-4 py-3">
+                      <td className="border-t border-r border-[var(--color-table-border)] px-4 py-3">
                         {r.party_name}
                       </td>
-                      <td className="border-t border-r border-[#d0d0d8] px-4 py-3">
+                      <td className="border-t border-r border-[var(--color-table-border)] px-4 py-3">
                         {modeLabel(r.method)}
                       </td>
-                      <td className="border-t border-r border-[#d0d0d8] px-4 py-3 tabular-nums font-medium">
+                      <td className="border-t border-r border-[var(--color-table-border)] px-4 py-3 tabular-nums font-medium">
                         {formatInr(r.amount)}
                       </td>
-                      <td className="border-t border-r border-[#d0d0d8] px-4 py-3 tabular-nums">
+                      <td className="border-t border-r border-[var(--color-table-border)] px-4 py-3 tabular-nums">
                         {formatInr(r.advance_amount)}
                       </td>
-                      <td className="border-t border-[#d0d0d8] px-4 py-3">
+                      <td className="border-t border-[var(--color-table-border)] px-4 py-3">
                         <div className="flex flex-wrap gap-2">
                           <Link
                             to={`/purchases/payments-made/${r.id}/edit`}
@@ -405,7 +398,7 @@ export default function PaymentsMade() {
                           <Link
                             to={`/purchases/payments-made/${r.id}/edit`}
                             state={{ viewId: r.id, payment: r }}
-                            className="text-[12px] font-semibold text-[#4a4a55] hover:underline"
+                            className="text-[12px] font-semibold text-[var(--color-text-secondary)] hover:underline"
                           >
                             Edit
                           </Link>
@@ -427,7 +420,7 @@ export default function PaymentsMade() {
         </div>
 
         <div className="mt-4 ui-pagination justify-between border-t border-[var(--color-border-soft)] pt-4">
-          <div className="flex items-center gap-2.5 flex-nowrap whitespace-nowrap text-[13px] text-[#596b82]">
+          <div className="flex items-center gap-2.5 flex-nowrap whitespace-nowrap text-[13px] text-[var(--color-text-muted)]">
             <span>Rows per page:</span>
             <select
               value={pageSize}

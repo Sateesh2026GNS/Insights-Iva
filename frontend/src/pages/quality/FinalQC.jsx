@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 
 import Button from "../../components/common/Button";
+import { SearchBar } from "../../components/common/SearchFilter";
 import InventoryRowActionsMenu from "../../components/inventory/InventoryRowActionsMenu";
 import KpiCard from "../../components/common/KpiCard";
 import Loader from "../../components/common/Loader";
@@ -240,16 +241,7 @@ export default function FinalQC() {
 
       <div className="ui-card ui-card--padded">
         <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
-          <div className="relative min-w-0 flex-1">
-            <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]" />
-            <input
-              type="search"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search"
-              className="ui-input w-full !pl-10"
-            />
-          </div>
+          <SearchBar value={search} onChange={setSearch} placeholder="Search" className="min-w-0 w-full" />
           <select
             value={customerFilter}
             onChange={(e) => setCustomerFilter(e.target.value)}
@@ -333,7 +325,7 @@ export default function FinalQC() {
       <div className="ui-card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-[1100px] w-full border-collapse text-left text-[13px]">
-            <thead className="bg-[var(--color-surface-thead)] text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
+            <thead className="ui-table-head">
               <tr className="border-b border-[var(--color-border-soft)]">
                 <SerialNumberHeader className="px-3 py-3" />
                 <th className="px-4 py-3">QC No.</th>

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, Search } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 
+import { SearchBar } from "../../components/common/SearchFilter";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
 import { FloatingDate, defaultDateRange, formatDisplayDate } from "../../design-system/dateControls";
 
@@ -93,34 +94,14 @@ function MultiSelectFilter({
       {open ? (
         <div className="absolute left-0 top-[calc(100%+6px)] z-30 w-[280px] overflow-hidden rounded-xl border border-[#e4e4ea] bg-white shadow-xl">
           <div className="border-b border-[#ececf0] p-3">
-            {searchMode === "outlined" ? (
-              <label className="relative block">
-                <span className="absolute -top-2 left-3 z-[1] bg-white px-1 text-[11px] font-medium text-[#6b6b76]">
-                  Search
-                </span>
-                <div className="flex items-center rounded-lg border border-[#1a1a1f] bg-white px-3 py-2">
-                  <Search className="mr-2 h-4 w-4 text-[#9a9aa5]" />
-                  <input
-                    autoFocus
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    className="w-full bg-transparent text-[13px] outline-none"
-                    placeholder=""
-                  />
-                </div>
-              </label>
-            ) : (
-              <div className="flex items-center rounded-lg border border-[#d8d8e0] bg-white px-3 py-2">
-                <Search className="mr-2 h-4 w-4 text-[#9a9aa5]" />
-                <input
-                  autoFocus
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search"
-                  className="w-full bg-transparent text-[13px] outline-none placeholder:text-[#9a9aa5]"
-                />
-              </div>
-            )}
+            <SearchBar
+              size="compact"
+              value={query}
+              onChange={setQuery}
+              placeholder="Search"
+              autoFocus
+              className="w-full"
+            />
           </div>
 
           <div className="max-h-[260px] overflow-y-auto py-2">
@@ -275,10 +256,10 @@ export default function AuditTrailV2() {
         </div>
 
         <div className="overflow-hidden rounded-2xl border border-[#e4e4ea] bg-white shadow-sm">
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-left">
-              <thead>
-                <tr className="bg-[#f0f0f4] text-[12px] font-semibold text-[#6b6b76]">
+          <div className="ui-table-wrap ui-table-wrap--scroll !rounded-none !border-0">
+            <table className="ui-table min-w-full text-left">
+              <thead className="ui-table-head">
+                <tr>
                   <SerialNumberHeader />
                   <th className="px-5 py-3.5 text-left font-semibold">Date &amp; Time</th>
                   <th className="px-5 py-3.5 text-left font-semibold">Activity</th>

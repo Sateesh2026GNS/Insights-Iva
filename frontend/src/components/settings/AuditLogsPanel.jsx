@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Download, Loader2, Search, Trash2 } from "lucide-react";
+import { Download, Loader2, Trash2 } from "lucide-react";
 
 import Button from "../common/Button";
+import { SearchBar } from "../common/SearchFilter";
 import { SerialNumberCell, SerialNumberHeader } from "../common/SerialNumberCell";
 
 import {
@@ -209,13 +210,15 @@ export default function AuditLogsPanel() {
       </div>
 
       <div className="grid gap-2 rounded-xl border border-slate-200 bg-slate-50/80 p-3 dark:border-slate-700 dark:bg-slate-800/40 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
-        <div className="relative sm:col-span-2">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-          <input
-            className={`${inputCls} w-full pl-8`}
-            placeholder="Search"
+        <div className="sm:col-span-2">
+          <SearchBar
             value={filters.search}
-            onChange={setFilter("search")}
+            onChange={(v) => {
+              setFilters((f) => ({ ...f, search: v }));
+              setPage(1);
+            }}
+            placeholder="Search"
+            className="w-full"
           />
         </div>
         <DateRangeFields
@@ -266,7 +269,7 @@ export default function AuditLogsPanel() {
       ) : (
         <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
           <table className="min-w-full divide-y divide-slate-200 text-xs dark:divide-slate-700">
-            <thead className="bg-slate-50 dark:bg-slate-800/80">
+            <thead className="ui-table-head">
               <tr className="text-left font-semibold uppercase tracking-wide text-slate-500">
                 <SerialNumberHeader className="px-2.5 py-2.5" />
                 {[

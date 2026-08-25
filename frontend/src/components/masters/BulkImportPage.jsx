@@ -164,8 +164,8 @@ export default function BulkImportPage({
               <div className="relative overflow-hidden rounded-md border border-[#ececf0] bg-[#fbfbfd] p-3">
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[520px] border-collapse text-left text-[10px] text-[#4a4a55]">
-                    <thead>
-                      <tr className="border border-[#d8d8e0] bg-[#f3f3f6]">
+                    <thead className="ui-table-head">
+                      <tr>
                         {columns.map((col) => (
                           <th
                             key={col}

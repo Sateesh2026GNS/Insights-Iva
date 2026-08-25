@@ -6,6 +6,7 @@ import { AlertTriangle, CheckCircle2, Clock, Download, Pause, Search, XCircle } 
 import BatchDetailModal from "../../components/production/BatchDetailModal";
 import DataTable from "../../components/common/DataTable";
 import Loader from "../../components/common/Loader";
+import { SearchBar } from "../../components/common/SearchFilter";
 import { useToast } from "../../context/ToastContext";
 import { getBatchDetail, getBatchSummary, getBatchesEnriched } from "../../api/productionApi";
 import {
@@ -159,12 +160,11 @@ export default function BatchTracking() {
 
       <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="mb-4">
-          <input
-            type="search"
-            placeholder="Search"
+          <SearchBar
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+            onChange={setSearch}
+            placeholder="Search"
+            className="w-full"
           />
         </div>
         <DataTable

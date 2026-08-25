@@ -41,12 +41,12 @@ export default function ConfirmationDialog({
         aria-modal="true"
         aria-labelledby="confirmation-dialog-title"
         aria-describedby="confirmation-dialog-message"
-        className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-700 dark:bg-slate-800"
+        className="w-full max-w-md rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 shadow-2xl"
       >
-        <h2 id="confirmation-dialog-title" className="text-base font-bold text-slate-900 dark:text-slate-100">
+        <h2 id="confirmation-dialog-title" className="text-base font-bold text-[var(--color-text)]">
           {title}
         </h2>
-        <p id="confirmation-dialog-message" className="mt-2 whitespace-pre-line text-sm text-slate-600 dark:text-slate-300">
+        <p id="confirmation-dialog-message" className="mt-2 whitespace-pre-line text-sm text-[var(--color-text-secondary)]">
           {message}
         </p>
         <div className="mt-6 flex items-center justify-end gap-2.5">

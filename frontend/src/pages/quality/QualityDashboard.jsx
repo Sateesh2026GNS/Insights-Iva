@@ -245,7 +245,7 @@ export default function QualityDashboard() {
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[520px] border-collapse text-left text-sm">
-            <thead className="bg-[var(--color-primary-soft)] text-[12px] font-semibold text-[var(--color-primary-dark)] border-b border-[#d0e5e0]">
+            <thead className="ui-table-head">
               <tr>
                 <th className="px-4 py-3">Date</th>
                 <th className="px-4 py-3">Type</th>

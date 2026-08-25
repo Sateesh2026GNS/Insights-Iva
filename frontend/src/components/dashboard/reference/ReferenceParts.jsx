@@ -341,7 +341,7 @@ export function TrendBadge({ up, value, label, mode = "change", onSolid = false 
   return (
     <p
       className={`flex min-w-0 items-center gap-1.5 text-[11px] leading-none ${
-        positive ? "text-[var(--color-success)]" : "text-[var(--color-danger)]"
+        positive ? "ui-value-positive" : "ui-value-negative"
       }`}
     >
       <span className="shrink-0 font-semibold tabular-nums">

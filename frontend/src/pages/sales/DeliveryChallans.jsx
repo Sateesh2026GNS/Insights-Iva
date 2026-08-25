@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { Calendar, ChevronLeft, ChevronRight, FileText, Filter, ListFilter, Plus, Search, X } from "lucide-react";
 
 import Loader from "../../components/common/Loader";
+import { SearchBar } from "../../components/common/SearchFilter";
 import Button from "../../components/common/Button";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
 import { useToast } from "../../context/ToastContext";
@@ -64,7 +65,7 @@ function Chip({ label, active, onClick }) {
       className={`inline-flex items-center rounded-full px-3.5 py-1.5 text-[13px] font-medium transition ${
         active
           ? "bg-[#2d2a4a] text-white"
-          : "bg-[#f0f0f3] text-[#4a4a55] hover:bg-[#e4e4ea]"
+          : "bg-[var(--color-surface-muted)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"
       }`}
     >
       {label}
@@ -74,8 +75,8 @@ function Chip({ label, active, onClick }) {
 
 function FilterSection({ label, children }) {
   return (
-    <div className="border-b border-[#d0d0d8] py-4 last:border-b-0">
-      <p className="mb-2.5 text-[12px] font-medium text-[#9a9aa5]">{label}</p>
+    <div className="border-b border-[var(--color-table-border)] py-4 last:border-b-0">
+      <p className="mb-2.5 text-[12px] font-medium text-[var(--color-text-faint)]">{label}</p>
       <div className="flex flex-wrap gap-2">{children}</div>
     </div>
   );
@@ -88,12 +89,12 @@ function SummaryTab({ label, amount, active, onClick }) {
       onClick={onClick}
       className={`min-w-0 flex-1 border-b-[3px] px-5 py-3.5 text-left transition ${
         active
-          ? "border-[var(--color-primary)] bg-white text-[var(--color-primary)]"
-          : "border-transparent bg-transparent text-[#6b6b76] hover:bg-white/70"
+          ? "border-[var(--color-primary)] bg-[var(--color-surface)] text-[var(--color-primary)]"
+          : "border-transparent bg-transparent text-[var(--color-text-muted)] hover:bg-[var(--color-surface)]/70"
       }`}
     >
-      <p className={`text-[13px] font-medium ${active ? "" : "text-[#6b6b76]"}`}>{label}</p>
-      <p className={`mt-1 text-[18px] font-bold tabular-nums ${active ? "text-inherit" : "text-[#1a1a1f]"}`}>
+      <p className={`text-[13px] font-medium ${active ? "" : "text-[var(--color-text-muted)]"}`}>{label}</p>
+      <p className={`mt-1 text-[18px] font-bold tabular-nums ${active ? "text-inherit" : "text-[var(--color-text)]"}`}>
         {amount}
       </p>
     </button>
@@ -231,7 +232,7 @@ export default function DeliveryChallans() {
   return (
     <div className="min-h-full" style={{ background: PAGE_BG }}>
       <div className="space-y-4 p-4 sm:p-6">
-        <div className="overflow-hidden rounded-xl bg-[#ececf0]">
+        <div className="overflow-hidden rounded-xl bg-[var(--color-surface-muted)]">
           <div className="flex flex-wrap">
             <SummaryTab
               label="All Challans"
@@ -255,15 +256,15 @@ export default function DeliveryChallans() {
         </div>
 
         <div className="flex flex-wrap items-center justify-end gap-2.5">
-          <div className="inline-flex items-center gap-2 rounded-lg border border-[#e4e4ea] bg-white px-3 py-2 text-[13px] text-[#4a4a55] shadow-sm">
-            <Calendar className="h-4 w-4 shrink-0 text-[#9a9aa5]" />
+          <div className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-[13px] text-[var(--color-text-secondary)] shadow-sm">
+            <Calendar className="h-4 w-4 shrink-0 text-[var(--color-text-faint)]" />
             <input
               type="date"
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
               className="w-[118px] border-0 bg-transparent p-0 text-[13px] focus:outline-none"
             />
-            <span className="text-[#9a9aa5]">→</span>
+            <span className="text-[var(--color-text-faint)]">→</span>
             <input
               type="date"
               value={dateTo}
@@ -277,17 +278,9 @@ export default function DeliveryChallans() {
         </div>
       </div>
 
-      <div className="rounded-t-2xl bg-white px-4 pb-6 pt-4 sm:px-6">
+      <div className="rounded-t-2xl bg-[var(--color-surface)] px-4 pb-6 pt-4 sm:px-6">
         <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="relative ui-search-wrap w-full">
-            <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9a9aa5]" />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search"
-              className="w-full rounded-full border border-[#e4e4ea] bg-white py-2.5 pl-10 pr-4 text-[14px] text-[#1a1a1f] shadow-sm placeholder:text-[#9a9aa5] focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/25"
-            />
-          </div>
+          <SearchBar value={search} onChange={setSearch} placeholder="Search" className="w-full" />
           <div className="relative flex gap-2">
             <button
               type="button"
@@ -295,7 +288,7 @@ export default function DeliveryChallans() {
                 setDraftFilters(filters);
                 setShowFilters(true);
               }}
-              className="inline-flex items-center gap-2 rounded-lg border border-[#e4e4ea] bg-white px-3.5 py-2 text-[13px] font-medium text-[#4a4a55]"
+              className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3.5 py-2 text-[13px] font-medium text-[var(--color-text-secondary)]"
             >
               <Filter className="h-4 w-4" /> Filters
             </button>
@@ -303,7 +296,7 @@ export default function DeliveryChallans() {
               <button
                 type="button"
                 onClick={() => setShowSort((v) => !v)}
-                className="inline-flex items-center gap-2 rounded-lg border border-[#e4e4ea] bg-white px-3.5 py-2 text-[13px] font-medium text-[#4a4a55]"
+                className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3.5 py-2 text-[13px] font-medium text-[var(--color-text-secondary)]"
               >
                 <ListFilter className="h-4 w-4" /> Sort by
               </button>
@@ -315,7 +308,7 @@ export default function DeliveryChallans() {
                     aria-label="Close sort"
                     onClick={() => setShowSort(false)}
                   />
-                  <div className="absolute right-0 z-20 mt-1.5 w-[240px] overflow-hidden rounded-xl border border-[#d0d0d8] bg-white py-1 shadow-lg">
+                  <div className="absolute right-0 z-20 mt-1.5 w-[240px] overflow-hidden rounded-xl border border-[var(--color-table-border)] bg-[var(--color-surface)] py-1 shadow-lg">
                     {SORT_OPTIONS.map((opt) => (
                       <button
                         key={opt.id}
@@ -324,8 +317,8 @@ export default function DeliveryChallans() {
                           setSortId(opt.id);
                           setShowSort(false);
                         }}
-                        className={`block w-full px-4 py-2.5 text-left text-[13px] hover:bg-[#F5F5F5] ${
-                          sortId === opt.id ? "font-semibold" : "text-[#4a4a55]"
+                        className={`block w-full px-4 py-2.5 text-left text-[13px] hover:bg-[var(--color-surface-hover)] ${
+                          sortId === opt.id ? "font-semibold" : "text-[var(--color-text-secondary)]"
                         }`}
                       >
                         {opt.label}
@@ -338,26 +331,25 @@ export default function DeliveryChallans() {
           </div>
         </div>
 
-        <div className="overflow-hidden rounded-xl border border-[#d0d0d8]">
-          <div className="overflow-x-auto">
-            <table className="min-w-full border-collapse text-left text-[13px]">
-              <thead className="bg-[#efeaf8] text-[12px] font-semibold uppercase tracking-wide text-[#6b6b76]">
+        <div className="ui-table-wrap ui-table-wrap--scroll">
+          <table className="ui-table min-w-full border-collapse text-left text-[13px]">
+              <thead className="ui-table-head">
                 <tr>
-                  <SerialNumberHeader className="border-b border-r border-[#d0d0d8]" />
-                  <th className="border-b border-r border-[#d0d0d8] px-4 py-3 last:border-r-0">Challan No.</th>
-                  <th className="border-b border-r border-[#d0d0d8] px-4 py-3 last:border-r-0">Date</th>
-                  <th className="border-b border-r border-[#d0d0d8] px-4 py-3 last:border-r-0">Buyer Name</th>
-                  <th className="border-b border-r border-[#d0d0d8] px-4 py-3 last:border-r-0">Amount</th>
-                  <th className="border-b border-r border-[#d0d0d8] px-4 py-3 last:border-r-0">Status</th>
-                  <th className="border-b border-r border-[#d0d0d8] px-4 py-3 last:border-r-0">Actions</th>
+                  <SerialNumberHeader className="border-b border-r border-[var(--color-table-border)]" />
+                  <th className="border-b border-r border-[var(--color-table-border)] px-4 py-3 last:border-r-0">Challan No.</th>
+                  <th className="border-b border-r border-[var(--color-table-border)] px-4 py-3 last:border-r-0">Date</th>
+                  <th className="border-b border-r border-[var(--color-table-border)] px-4 py-3 last:border-r-0">Buyer Name</th>
+                  <th className="border-b border-r border-[var(--color-table-border)] px-4 py-3 last:border-r-0">Amount</th>
+                  <th className="border-b border-r border-[var(--color-table-border)] px-4 py-3 last:border-r-0">Status</th>
+                  <th className="border-b border-r border-[var(--color-table-border)] px-4 py-3 last:border-r-0">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {pageRows.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="px-4 py-16 text-center">
-                      <FileText className="mx-auto h-12 w-12 text-[#c4c4cc]" />
-                      <p className="mt-3 text-[14px] text-[#9a9aa5]">
+                      <FileText className="mx-auto h-12 w-12 text-[var(--color-text-icon)]" />
+                      <p className="mt-3 text-[14px] text-[var(--color-text-faint)]">
                         No Delivery Challans available, Create new Delivery Challan
                       </p>
                       <Button variant="add" to="/sales/delivery-challans/create" className="mt-4" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
@@ -367,25 +359,25 @@ export default function DeliveryChallans() {
                   </tr>
                 ) : (
                   pageRows.map((r, rowIndex) => (
-                    <tr key={r.id} className="hover:bg-[#fafafa]">
+                    <tr key={r.id} className="hover:bg-[var(--color-table-row-hover)]">
                       <SerialNumberCell
                         rowIndex={rowIndex}
                         page={page}
                         pageSize={pageSize}
-                        className="border-t border-r border-[#d0d0d8]"
+                        className="border-t border-r border-[var(--color-table-border)]"
                       />
-                      <td className="border-t border-r border-[#d0d0d8] px-4 py-3 font-semibold text-[var(--color-primary)]">
+                      <td className="border-t border-r border-[var(--color-table-border)] px-4 py-3 font-semibold text-[var(--color-primary)]">
                         {r.invoice_number}
                       </td>
-                      <td className="border-t border-r border-[#d0d0d8] px-4 py-3 text-[#4a4a55]">{fmtDate(r.issue_date)}</td>
-                      <td className="border-t border-r border-[#d0d0d8] px-4 py-3">{r.customer_name || "—"}</td>
-                      <td className="border-t border-r border-[#d0d0d8] px-4 py-3 tabular-nums font-medium">
+                      <td className="border-t border-r border-[var(--color-table-border)] px-4 py-3 text-[var(--color-text-secondary)]">{fmtDate(r.issue_date)}</td>
+                      <td className="border-t border-r border-[var(--color-table-border)] px-4 py-3">{r.customer_name || "—"}</td>
+                      <td className="border-t border-r border-[var(--color-table-border)] px-4 py-3 tabular-nums font-medium">
                         {formatInr(r.grand_total ?? r.total_amount ?? 0)}
                       </td>
-                      <td className="border-t border-r border-[#d0d0d8] px-4 py-3 capitalize text-[#4a4a55]">
+                      <td className="border-t border-r border-[var(--color-table-border)] px-4 py-3 capitalize text-[var(--color-text-secondary)]">
                         {deliveryStatus(r)}
                       </td>
-                      <td className="border-t border-r border-[#d0d0d8] px-4 py-3">
+                      <td className="border-t border-r border-[var(--color-table-border)] px-4 py-3">
                         <div className="flex flex-wrap gap-2">
                           <Link
                             to={`/sales/delivery-challans/${r.id}/edit`}
@@ -395,7 +387,7 @@ export default function DeliveryChallans() {
                           </Link>
                           <Link
                             to={`/sales/delivery-challans/${r.id}/edit`}
-                            className="text-[12px] font-semibold text-[#4a4a55] hover:underline"
+                            className="text-[12px] font-semibold text-[var(--color-text-secondary)] hover:underline"
                           >
                             Edit
                           </Link>
@@ -422,11 +414,10 @@ export default function DeliveryChallans() {
                 )}
               </tbody>
             </table>
-          </div>
         </div>
 
         <div className="mt-4 ui-pagination justify-between border-t border-[var(--color-border-soft)] pt-4">
-          <div className="flex items-center gap-2.5 flex-nowrap whitespace-nowrap text-[13px] text-[#596b82]">
+          <div className="flex items-center gap-2.5 flex-nowrap whitespace-nowrap text-[13px] text-[var(--color-text-muted)]">
             <span>Rows per page:</span>
             <select
               value={pageSize}
@@ -478,13 +469,13 @@ export default function DeliveryChallans() {
           role="presentation"
           onMouseDown={(e) => e.target === e.currentTarget && setShowFilters(false)}
         >
-          <aside className="flex h-full w-full max-w-[400px] flex-col bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-[#d0d0d8] px-5 py-4">
-              <h2 className="text-[18px] font-bold text-[#1a1a1f]">Filters</h2>
+          <aside className="flex h-full w-full max-w-[400px] flex-col bg-[var(--color-surface)] shadow-2xl">
+            <div className="flex items-center justify-between border-b border-[var(--color-table-border)] px-5 py-4">
+              <h2 className="text-[18px] font-bold text-[var(--color-text)]">Filters</h2>
               <button
                 type="button"
                 onClick={() => setShowFilters(false)}
-                className="rounded-lg p-1 text-[#9a9aa5] hover:bg-[#F5F5F5]"
+                className="rounded-lg p-1 text-[var(--color-text-faint)] hover:bg-[var(--color-surface-hover)]"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -563,7 +554,7 @@ export default function DeliveryChallans() {
                 ))}
               </FilterSection>
             </div>
-            <div className="grid grid-cols-2 gap-3 border-t border-[#d0d0d8] px-5 py-4">
+            <div className="grid grid-cols-2 gap-3 border-t border-[var(--color-table-border)] px-5 py-4">
               <button
                 type="button"
                 onClick={() => {
@@ -571,7 +562,7 @@ export default function DeliveryChallans() {
                   setFilters(EMPTY_FILTERS);
                   setShowFilters(false);
                 }}
-                className="rounded-xl border border-[#d8d8e0] bg-[#f0f0f4] py-3 text-[14px] font-semibold"
+                className="rounded-xl border border-[var(--color-border-soft)] bg-[#f0f0f4] py-3 text-[14px] font-semibold"
               >
                 Clear Filter
               </button>
@@ -581,7 +572,7 @@ export default function DeliveryChallans() {
                   setFilters(draftFilters);
                   setShowFilters(false);
                 }}
-                className="rounded-xl py-3 text-[14px] font-semibold text-[#1a1a1f]"
+                className="rounded-xl py-3 text-[14px] font-semibold text-[var(--color-text)]"
                 style={{ background: "#EAE5B3" }}
               >
                 Apply Filter

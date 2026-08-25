@@ -9,10 +9,10 @@ export default function MaterialTable({ columns, rows, editable = false, onChang
   return (
     <div className="ui-table-wrap ui-table-wrap--scroll">
       <table className="ui-table w-full min-w-[640px] text-sm">
-        <thead>
+        <thead className="ui-table-head">
           <tr>
             {columns.map((col) => (
-              <th key={col.key} className="whitespace-nowrap px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
+              <th key={col.key} className="whitespace-nowrap px-3 py-2 text-left text-xs font-semibold">
                 {col.label}
               </th>
             ))}
@@ -20,7 +20,7 @@ export default function MaterialTable({ columns, rows, editable = false, onChang
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={row.id} className="border-t border-[var(--color-border-muted)]">
+            <tr key={row.id}>
               {columns.map((col) => {
                 const val = row[col.key];
                 if (editable && col.editable) {

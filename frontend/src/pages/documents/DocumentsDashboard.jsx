@@ -3,6 +3,7 @@ import { Download, Eye, File, FileArchive, FileImage, FileSpreadsheet, FileText,
 import KpiCard from "../../components/common/KpiCard";
 
 import Loader from "../../components/common/Loader";
+import { SearchBar } from "../../components/common/SearchFilter";
 import Button from "../../components/common/Button";
 import { useToast } from "../../context/ToastContext";
 import useAuth from "../../hooks/useAuth";
@@ -63,10 +64,19 @@ function FileTypeIcon({ name }) {
     word: "text-blue-600",
     ppt: "text-orange-600",
     zip: "text-amber-600",
-    other: "text-slate-500",
+    other: "text-[var(--color-text-muted)]",
   };
   return <Icon className={`h-5 w-5 ${colors[cat]}`} title={FILE_TYPE_LABELS[cat]} />;
 }
+
+const docActionViewClass =
+  "inline-flex items-center gap-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 py-1 text-xs font-semibold text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] transition-colors";
+const docActionDownloadClass =
+  "inline-flex items-center gap-1 rounded-lg border border-[var(--color-info-soft)] bg-[var(--color-info-soft)] px-2.5 py-1 text-xs font-semibold text-[var(--color-info)] hover:opacity-90 transition-colors";
+const docActionEditClass =
+  "inline-flex items-center gap-1 rounded-lg border border-[var(--color-warning-soft)] bg-[var(--color-warning-soft)] px-2 py-1 text-xs font-semibold text-[var(--color-warning)] hover:opacity-90 transition-colors";
+const docActionDeleteClass =
+  "inline-flex items-center gap-1 rounded-lg border border-[var(--color-danger-soft)] bg-[var(--color-danger-soft)] px-2 py-1 text-xs font-semibold text-[var(--color-danger)] hover:opacity-90 transition-colors disabled:opacity-50";
 
 function emptyForm(docType = "general") {
   return {
@@ -372,11 +382,12 @@ Description:  ${doc.description || "No description provided."}
   if (loading) return <Loader label="Loading documents repository..." />;
 
   return (
-    <div className="min-h-full pb-8 print:p-0" style={{ background: "#F5F5F5" }}>
-      <div className="mx-auto max-w-[1400px] space-y-5 px-4 py-5 sm:px-6 lg:px-8">
+    <div className="min-h-full bg-[var(--color-bg)] pb-8 print:p-0">
+      <div className="ui-page mx-auto max-w-[1400px] space-y-5">
         <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="mt-0.5 text-xs text-slate-500 print:hidden">
+            {title ? <h1 className="ui-page-title">{title}</h1> : null}
+            <p className="mt-0.5 text-xs text-[var(--color-text-muted)] print:hidden">
               {subtitle || "Central document management for purchase, production, quality, finance, and HR files."}
             </p>
           </div>
@@ -390,7 +401,7 @@ Description:  ${doc.description || "No description provided."}
       </header>
 
       {error && (
-        <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800 font-medium">
+        <div className="rounded-xl border border-[var(--color-danger-soft)] bg-[var(--color-danger-soft)] px-4 py-3 text-sm font-medium text-[var(--color-danger)]">
           {error}
         </div>
       )}
@@ -407,39 +418,31 @@ Description:  ${doc.description || "No description provided."}
           label="Storage Used"
           value={formatFileSize(summary.storageBytes) === "—" ? "1.8 MB" : formatFileSize(summary.storageBytes)}
           icon={HardDrive}
-          color="bg-slate-700"
+          color="bg-[var(--color-surface-hover)]"
         />
       </div>
 
       {/* Search & Filters */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-          <div className="relative ui-search-wrap flex-1">
-            <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search"
-              className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-4 text-sm outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 transition-all"
-            />
-          </div>
+          <SearchBar value={search} onChange={setSearch} placeholder="Search" className="w-full" />
           <button
             type="button"
             onClick={() => setShowFilters((v) => !v)}
-            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-all"
+            className="inline-flex items-center gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2.5 text-sm font-semibold text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-muted)] transition-all"
           >
-            <Filter className="h-4 w-4 text-slate-500" /> Filters
+            <Filter className="h-4 w-4 text-[var(--color-text-muted)]" /> Filters
           </button>
         </div>
 
         {showFilters && (
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 border-t pt-4 border-slate-100">
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 border-t pt-4 border-[var(--color-border-muted)]">
             <div>
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Category</label>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--color-text-faint)] mb-1">Category</label>
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 font-medium cursor-pointer"
+                className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-secondary)] font-medium cursor-pointer"
               >
                 <option value="">All categories</option>
                 {DOC_TYPES.filter((t) => admin || allowedTypes.includes(t.value)).map((t) => (
@@ -450,11 +453,11 @@ Description:  ${doc.description || "No description provided."}
               </select>
             </div>
             <div>
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Department</label>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--color-text-faint)] mb-1">Department</label>
               <select
                 value={department}
                 onChange={(e) => setDepartment(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+                className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-secondary)]"
               >
                 <option value="">All departments</option>
                 {deptOptions.map((d) => (
@@ -465,29 +468,29 @@ Description:  ${doc.description || "No description provided."}
               </select>
             </div>
             <div>
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Uploader</label>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--color-text-faint)] mb-1">Uploader</label>
               <input
                 value={uploadedBy}
                 onChange={(e) => setUploadedBy(e.target.value)}
                 placeholder="Uploaded by..."
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+                className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-secondary)]"
               />
             </div>
             <div>
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Created Date</label>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--color-text-faint)] mb-1">Created Date</label>
               <input
                 type="date"
                 value={dateFrom}
                 onChange={(e) => setDateFrom(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+                className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-secondary)]"
               />
             </div>
             <div>
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">File Type</label>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--color-text-faint)] mb-1">File Type</label>
               <select
                 value={fileType}
                 onChange={(e) => setFileType(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+                className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-secondary)]"
               >
                 <option value="">All file types</option>
                 {Object.entries(FILE_TYPE_LABELS).map(([k, v]) => (
@@ -498,11 +501,11 @@ Description:  ${doc.description || "No description provided."}
               </select>
             </div>
             <div>
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Status</label>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--color-text-faint)] mb-1">Status</label>
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+                className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-secondary)]"
               >
                 <option value="">All statuses</option>
                 <option value="Available">Available</option>
@@ -514,10 +517,9 @@ Description:  ${doc.description || "No description provided."}
       </div>
 
       {/* Data Table */}
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-left text-sm">
-            <thead className="bg-slate-50/80 text-xs font-bold uppercase tracking-wider text-slate-400 border-b border-slate-200/80">
+      <div className="ui-table-wrap ui-table-wrap--scroll">
+          <table className="ui-table min-w-full text-left text-sm">
+            <thead className="ui-table-head">
               <tr>
                 <SerialNumberHeader className="px-3.5 py-3" />
                 {[
@@ -531,7 +533,7 @@ Description:  ${doc.description || "No description provided."}
                 ].map(([key, label]) => (
                   <th
                     key={key}
-                    className="cursor-pointer whitespace-nowrap px-3.5 py-3 hover:text-slate-800 transition-colors"
+                    className="cursor-pointer whitespace-nowrap px-3.5 py-3 hover:text-[var(--color-text)] transition-colors"
                     onClick={() => {
                       if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
                       else {
@@ -547,66 +549,53 @@ Description:  ${doc.description || "No description provided."}
                 <th className="px-3.5 py-3 font-bold">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 font-sans">
+            <tbody>
               {pageRows.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-4 py-12 text-center text-slate-500">
-                    <FolderOpen className="mx-auto mb-2 h-8 w-8 text-slate-300" />
+                  <td colSpan={9} className="px-4 py-12 text-center text-[var(--color-table-text-secondary)]">
+                    <FolderOpen className="mx-auto mb-2 h-8 w-8 text-[var(--color-text-icon)]" />
                     No documents found matching your filter.
                   </td>
                 </tr>
               ) : (
                 pageRows.map((doc, rowIndex) => (
-                  <tr key={doc.id} className="hover:bg-slate-50/80 transition-colors">
+                  <tr key={doc.id}>
                     <SerialNumberCell rowIndex={rowIndex} page={page} pageSize={PAGE_SIZE} className="px-3.5 py-3" />
                     <td className="px-3.5 py-3">
                       <div className="flex items-center gap-2.5">
                         <FileTypeIcon name={doc.file_name || doc.title} />
                         <div className="min-w-0">
-                          <p className="truncate font-semibold text-slate-900" title={doc.title}>{doc.title}</p>
-                          <p className="truncate text-xs font-mono text-slate-400">{doc.file_name || `${doc.title}.pdf`}</p>
+                          <p className="truncate font-semibold text-[var(--color-table-text)]" title={doc.title}>{doc.title}</p>
+                          <p className="truncate text-xs font-mono text-[var(--color-table-text-secondary)]">{doc.file_name || `${doc.title}.pdf`}</p>
                         </div>
                       </div>
                     </td>
                     <td className="whitespace-nowrap px-3.5 py-3">
-                      <span className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700 border border-slate-200">
-                        <Tag className="h-3 w-3 text-slate-400 shrink-0" />
+                      <span className="inline-flex items-center gap-1 rounded-md bg-[var(--color-surface-muted)] px-2 py-0.5 text-xs font-semibold text-[var(--color-text-secondary)] border border-[var(--color-border)]">
+                        <Tag className="h-3 w-3 text-[var(--color-text-faint)] shrink-0" />
                         {doc.category}
                       </span>
                     </td>
-                    <td className="whitespace-nowrap px-3.5 py-3 text-xs text-slate-700 font-medium">{doc.department}</td>
-                    <td className="px-3.5 py-3 text-xs text-slate-700">
+                    <td className="whitespace-nowrap px-3.5 py-3 text-xs text-[var(--color-table-text-secondary)] font-medium">{doc.department}</td>
+                    <td className="px-3.5 py-3 text-xs text-[var(--color-table-text-secondary)]">
                       <span className="inline-flex items-center gap-1">
-                        <User className="h-3 w-3 text-slate-400 shrink-0" />
+                        <User className="h-3 w-3 text-[var(--color-text-faint)] shrink-0" />
                         {doc.uploaded_by || "System"}
                       </span>
                     </td>
-                    <td className="px-3.5 py-3 text-xs font-mono text-slate-600">v{doc.version}</td>
-                    <td className="px-3.5 py-3 font-mono font-semibold text-slate-800 text-xs">{doc.file_size_label}</td>
-                    <td className="whitespace-nowrap px-3.5 py-3 text-xs text-slate-600">{doc.created_label}</td>
+                    <td className="px-3.5 py-3 text-xs font-mono text-[var(--color-table-text-secondary)]">v{doc.version}</td>
+                    <td className="px-3.5 py-3 font-mono font-semibold text-[var(--color-table-text)] text-xs">{doc.file_size_label}</td>
+                    <td className="whitespace-nowrap px-3.5 py-3 text-xs text-[var(--color-table-text-secondary)]">{doc.created_label}</td>
                     <td className="px-3.5 py-3">
                       <div className="flex flex-wrap gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => handlePreview(doc)}
-                          className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors shadow-2xs"
-                        >
-                          <Eye className="h-3 w-3 text-slate-500" /> View
+                        <button type="button" onClick={() => handlePreview(doc)} className={docActionViewClass}>
+                          <Eye className="h-3 w-3 text-[var(--color-text-muted)]" /> View
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDownload(doc)}
-                          className="inline-flex items-center gap-1 rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700 hover:bg-blue-100 transition-colors"
-                        >
+                        <button type="button" onClick={() => handleDownload(doc)} className={docActionDownloadClass}>
                           <Download className="h-3 w-3" /> Download
                         </button>
                         {canWrite && (
-                          <button
-                            type="button"
-                            onClick={() => openEdit(doc)}
-                            className="inline-flex items-center gap-1 rounded-lg border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-700 hover:bg-amber-100 transition-colors"
-                            title="Edit Document"
-                          >
+                          <button type="button" onClick={() => openEdit(doc)} className={docActionEditClass} title="Edit Document">
                             <Pencil className="h-3 w-3" />
                           </button>
                         )}
@@ -615,7 +604,7 @@ Description:  ${doc.description || "No description provided."}
                             type="button"
                             disabled={busyId === doc.id}
                             onClick={() => handleDelete(doc.id)}
-                            className="inline-flex items-center gap-1 rounded-lg border border-rose-200 bg-rose-50 px-2 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-100 transition-colors disabled:opacity-50"
+                            className={docActionDeleteClass}
                             title="Delete Document"
                           >
                             <Trash2 className="h-3 w-3" />
@@ -628,11 +617,10 @@ Description:  ${doc.description || "No description provided."}
               )}
             </tbody>
           </table>
-        </div>
 
         {/* Pagination Footer */}
-        <div className="flex flex-col items-center justify-between gap-3 border-t border-slate-100 px-4 py-3 sm:flex-row">
-          <p className="text-xs font-semibold text-slate-500">
+        <div className="ui-pagination flex flex-col items-center justify-between gap-3 border-t border-[var(--color-border-muted)] px-4 py-3 sm:flex-row">
+          <p className="text-xs font-semibold text-[var(--color-text-muted)]">
             Showing {sorted.length === 0 ? 0 : (page - 1) * PAGE_SIZE + 1}–
             {Math.min(page * PAGE_SIZE, sorted.length)} of {sorted.length} documents
           </p>
@@ -641,18 +629,18 @@ Description:  ${doc.description || "No description provided."}
               type="button"
               disabled={page <= 1}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
-              className="rounded-xl border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40 transition-colors"
+              className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3.5 py-1.5 text-xs font-semibold text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-muted)] disabled:opacity-40 transition-colors"
             >
               Previous
             </button>
-            <span className="text-xs font-bold text-slate-700 font-mono">
+            <span className="text-xs font-bold text-[var(--color-text-secondary)] font-mono">
               Page {page} / {totalPages}
             </span>
             <button
               type="button"
               disabled={page >= totalPages}
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              className="rounded-xl border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40 transition-colors"
+              className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3.5 py-1.5 text-xs font-semibold text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-muted)] disabled:opacity-40 transition-colors"
             >
               Next
             </button>
@@ -662,16 +650,16 @@ Description:  ${doc.description || "No description provided."}
 
       {/* Upload / Edit Modal */}
       {modal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-          <form onSubmit={handleSave} className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl space-y-4 border border-slate-200 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-start justify-between border-b pb-3">
+        <div className="ui-modal-backdrop">
+          <form onSubmit={handleSave} className="ui-modal w-full max-w-lg max-h-[90vh] overflow-y-auto space-y-4">
+            <div className="flex items-start justify-between border-b border-[var(--color-border-muted)] pb-3">
               <div>
-                <h2 className="text-lg font-bold text-slate-900">
+                <h2 className="text-lg font-bold text-[var(--color-text)]">
                   {modal === "create" ? "Upload Document" : "Edit Document"}
                 </h2>
-                <p className="text-xs text-slate-500 mt-0.5">Attach a file and configure document details.</p>
+                <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Attach a file and configure document details.</p>
               </div>
-              <button type="button" onClick={() => setModal(null)} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100">
+              <button type="button" onClick={() => setModal(null)} className="rounded-lg p-1.5 text-[var(--color-text-faint)] hover:bg-[var(--color-surface-muted)]">
                 <X className="h-5 w-5" />
               </button>
             </div>
@@ -679,7 +667,7 @@ Description:  ${doc.description || "No description provided."}
             {/* Native File Dropzone Picker */}
             <div
               onClick={() => fileInputRef.current?.click()}
-              className="group cursor-pointer rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/50 p-6 text-center hover:border-blue-500 hover:bg-blue-50/30 transition-all"
+              className="group cursor-pointer rounded-2xl border-2 border-dashed border-[var(--color-border)] bg-[var(--color-surface-muted)]/50 p-6 text-center hover:border-[var(--color-primary)] hover:bg-[var(--color-primary-soft)] transition-all"
             >
               <input
                 ref={fileInputRef}
@@ -688,18 +676,18 @@ Description:  ${doc.description || "No description provided."}
                 accept=".pdf,.docx,.doc,.xlsx,.xls,.pptx,.png,.jpg,.jpeg,.zip,.txt,.csv"
                 onChange={handleFileChange}
               />
-              <Upload className="mx-auto h-8 w-8 text-blue-600 group-hover:scale-110 transition-transform" />
-              <p className="mt-2 text-sm font-semibold text-slate-700">
+              <Upload className="mx-auto h-8 w-8 text-[var(--color-primary)] group-hover:scale-110 transition-transform" />
+              <p className="mt-2 text-sm font-semibold text-[var(--color-text-secondary)]">
                 {form.file_name ? form.file_name : "Click or drag to select a file"}
               </p>
-              <p className="mt-0.5 text-xs text-slate-400">
+              <p className="mt-0.5 text-xs text-[var(--color-text-faint)]">
                 {form.file_size ? `Selected size: ${formatFileSize(form.file_size)}` : "Supports PDF, DOCX, XLSX, PNG, JPG, ZIP"}
               </p>
             </div>
 
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Document Title *</label>
+                <label className="block text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Document Title *</label>
                 <input
                   type="text"
                   required
@@ -712,7 +700,7 @@ Description:  ${doc.description || "No description provided."}
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Category</label>
+                  <label className="block text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Category</label>
                   <select
                     value={form.doc_type}
                     onChange={(e) => setForm({ ...form, doc_type: e.target.value })}
@@ -726,7 +714,7 @@ Description:  ${doc.description || "No description provided."}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Department</label>
+                  <label className="block text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Department</label>
                   <select
                     value={form.department}
                     onChange={(e) => setForm({ ...form, department: e.target.value })}
@@ -743,7 +731,7 @@ Description:  ${doc.description || "No description provided."}
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Version *</label>
+                  <label className="block text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Version *</label>
                   <select
                     value={form.version}
                     onChange={(e) => setForm({ ...form, version: e.target.value })}
@@ -757,7 +745,7 @@ Description:  ${doc.description || "No description provided."}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">File Name</label>
+                  <label className="block text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">File Name</label>
                   <input
                     type="text"
                     placeholder="report.pdf"
@@ -770,7 +758,7 @@ Description:  ${doc.description || "No description provided."}
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Uploaded By</label>
+                  <label className="block text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Uploaded By</label>
                   <input
                     type="text"
                     placeholder="Uploader name..."
@@ -780,7 +768,7 @@ Description:  ${doc.description || "No description provided."}
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">File Size (Bytes)</label>
+                  <label className="block text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">File Size (Bytes)</label>
                   <input
                     type="number"
                     placeholder="e.g. 245000"
@@ -792,7 +780,7 @@ Description:  ${doc.description || "No description provided."}
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Description</label>
+                <label className="block text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Description</label>
                 <textarea
                   rows={3}
                   placeholder="Document notes or description..."
@@ -807,7 +795,7 @@ Description:  ${doc.description || "No description provided."}
               <button
                 type="button"
                 onClick={() => setModal(null)}
-                className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+                className="rounded-xl border border-[var(--color-border)] px-4 py-2 text-sm font-semibold text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-muted)] transition-colors"
               >
                 Cancel
               </button>
@@ -821,53 +809,53 @@ Description:  ${doc.description || "No description provided."}
 
       {/* Document View / Preview Modal */}
       {preview && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl space-y-4 border border-slate-200 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-start justify-between border-b pb-3">
+        <div className="ui-modal-backdrop">
+          <div className="ui-modal w-full max-w-lg max-h-[90vh] overflow-y-auto space-y-4">
+            <div className="flex items-start justify-between border-b border-[var(--color-border-muted)] pb-3">
               <div className="flex items-center gap-2.5">
                 <FileTypeIcon name={preview.file_name || preview.title} />
                 <div>
-                  <h2 className="text-lg font-bold text-slate-900">{preview.title}</h2>
-                  <p className="text-xs font-mono text-slate-400 mt-0.5">{preview.file_name || `${preview.title}.pdf`}</p>
+                  <h2 className="text-lg font-bold text-[var(--color-text)]">{preview.title}</h2>
+                  <p className="text-xs font-mono text-[var(--color-text-faint)] mt-0.5">{preview.file_name || `${preview.title}.pdf`}</p>
                 </div>
               </div>
-              <button type="button" onClick={() => setPreview(null)} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100">
+              <button type="button" onClick={() => setPreview(null)} className="rounded-lg p-1.5 text-[var(--color-text-faint)] hover:bg-[var(--color-surface-muted)]">
                 <X className="h-5 w-5" />
               </button>
             </div>
 
             <dl className="space-y-3 text-sm">
               <div>
-                <dt className="text-xs font-bold text-slate-400 uppercase tracking-wider">Description</dt>
-                <dd className="mt-1 text-slate-800 bg-slate-50 rounded-xl p-3 border border-slate-200/80 text-xs leading-relaxed">
+                <dt className="text-xs font-bold text-[var(--color-text-faint)] uppercase tracking-wider">Description</dt>
+                <dd className="mt-1 text-[var(--color-text)] bg-[var(--color-surface-muted)] rounded-xl p-3 border border-[var(--color-border)]/80 text-xs leading-relaxed">
                   {preview.description || "No description provided."}
                 </dd>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 bg-slate-50/50 rounded-xl p-3 border border-slate-200/60 text-xs">
+              <div className="grid grid-cols-2 gap-3 bg-[var(--color-surface-muted)]/50 rounded-xl p-3 border border-[var(--color-border)]/60 text-xs">
                 <div>
-                  <dt className="text-slate-400 font-semibold">Category</dt>
-                  <dd className="font-bold text-slate-800 mt-0.5">{preview.category}</dd>
+                  <dt className="text-[var(--color-text-faint)] font-semibold">Category</dt>
+                  <dd className="font-bold text-[var(--color-text)] mt-0.5">{preview.category}</dd>
                 </div>
                 <div>
-                  <dt className="text-slate-400 font-semibold">Department</dt>
-                  <dd className="font-medium text-slate-800 mt-0.5">{preview.department}</dd>
+                  <dt className="text-[var(--color-text-faint)] font-semibold">Department</dt>
+                  <dd className="font-medium text-[var(--color-text)] mt-0.5">{preview.department}</dd>
                 </div>
                 <div>
-                  <dt className="text-slate-400 font-semibold">File Size</dt>
-                  <dd className="font-mono font-bold text-slate-800 mt-0.5">{preview.file_size_label}</dd>
+                  <dt className="text-[var(--color-text-faint)] font-semibold">File Size</dt>
+                  <dd className="font-mono font-bold text-[var(--color-text)] mt-0.5">{preview.file_size_label}</dd>
                 </div>
                 <div>
-                  <dt className="text-slate-400 font-semibold">Version</dt>
-                  <dd className="font-mono text-slate-800 mt-0.5">v{preview.version}</dd>
+                  <dt className="text-[var(--color-text-faint)] font-semibold">Version</dt>
+                  <dd className="font-mono text-[var(--color-text)] mt-0.5">v{preview.version}</dd>
                 </div>
                 <div>
-                  <dt className="text-slate-400 font-semibold">Uploaded By</dt>
-                  <dd className="font-medium text-slate-700 mt-0.5">{preview.uploaded_by || "System"}</dd>
+                  <dt className="text-[var(--color-text-faint)] font-semibold">Uploaded By</dt>
+                  <dd className="font-medium text-[var(--color-text-secondary)] mt-0.5">{preview.uploaded_by || "System"}</dd>
                 </div>
                 <div>
-                  <dt className="text-slate-400 font-semibold">Created Date</dt>
-                  <dd className="font-medium text-slate-700 mt-0.5">{preview.created_label}</dd>
+                  <dt className="text-[var(--color-text-faint)] font-semibold">Created Date</dt>
+                  <dd className="font-medium text-[var(--color-text-secondary)] mt-0.5">{preview.created_label}</dd>
                 </div>
               </div>
             </dl>
@@ -879,7 +867,7 @@ Description:  ${doc.description || "No description provided."}
               <button
                 type="button"
                 onClick={() => setPreview(null)}
-                className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+                className="rounded-xl border border-[var(--color-border)] px-4 py-2 text-xs font-semibold text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-muted)] transition-colors"
               >
                 Close
               </button>

@@ -14,8 +14,14 @@ export const getAttendance = (params) => api.get("/hr/attendance", { params });
 export const getAttendanceSummary = (params) => api.get("/hr/attendance/summary", { params });
 export const getAttendanceEnriched = (params) => api.get("/hr/attendance/enriched", { params });
 export const createAttendance = (payload) => api.post("/hr/attendance", payload);
-export const clockIn = (payload) => api.post("/hr/attendance/clock-in", payload);
-export const clockOut = (payload) => api.post("/hr/attendance/clock-out", payload);
+export const clockIn = ({ employee_id, record_date }) =>
+  api.post("/hr/attendance/clock-in", null, {
+    params: { employee_id, record_date },
+  });
+export const clockOut = ({ employee_id, record_date }) =>
+  api.post("/hr/attendance/clock-out", null, {
+    params: { employee_id, record_date },
+  });
 
 export const getLeaveRequests = (params) => api.get("/hr/leave", { params });
 export const getLeaveSummary = (params) => api.get("/hr/leave/summary", { params });
@@ -27,8 +33,8 @@ export const getPayroll = (params) => api.get("/hr/payroll", { params });
 export const getPayrollSummary = (params) => api.get("/hr/payroll/summary", { params });
 export const getPayrollEnriched = (params) => api.get("/hr/payroll/enriched", { params });
 export const createPayroll = (payload) => api.post("/hr/payroll", payload);
-export const updatePayrollStatus = (payrollId, payload) =>
-  api.patch(`/hr/payroll/${payrollId}/status`, payload);
+export const updatePayrollStatus = (payrollId, status) =>
+  api.patch(`/hr/payroll/${payrollId}/status`, null, { params: { status } });
 
 export const getPerformanceReviews = (params) => api.get("/hr/performance", { params });
 export const createPerformanceReview = (payload) => api.post("/hr/performance", payload);
@@ -51,7 +57,8 @@ export const updateSafetyIncident = (incidentId, payload) =>
   api.put(`/hr/incidents/${incidentId}`, payload);
 export const deleteSafetyIncident = (incidentId) => api.delete(`/hr/incidents/${incidentId}`);
 
-export const getRecruitmentDashboard = () => api.get("/hr/recruitment/dashboard");
+export const getRecruitmentDashboard = (params) =>
+  api.get("/hr/recruitment/dashboard", { params });
 export const getRecruitmentJobs = () => api.get("/hr/recruitment/jobs");
 export const createRecruitmentJob = (payload) => api.post("/hr/recruitment/jobs", payload);
 export const updateRecruitmentJob = (jobId, payload) => api.put(`/hr/recruitment/jobs/${jobId}`, payload);
@@ -63,7 +70,8 @@ export const updateRecruitmentApplicant = (applicantId, payload) =>
 export const deleteRecruitmentApplicant = (applicantId) =>
   api.delete(`/hr/recruitment/applicants/${applicantId}`);
 
-export const getTrainingDashboard = () => api.get("/hr/training/dashboard");
+export const getTrainingDashboard = (params) =>
+  api.get("/hr/training/dashboard", { params });
 export const getTrainingPrograms = () => api.get("/hr/training/programs");
 export const createTrainingProgram = (payload) => api.post("/hr/training/programs", payload);
 export const updateTrainingProgram = (programId, payload) =>

@@ -1,5 +1,19 @@
-import { ChevronLeft, ChevronRight, Search } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+
 import Button, { AddButton } from "../common/Button";
+import { SearchBar } from "../common/SearchFilter";
+
+export function InventorySearchInput({ value, onChange, placeholder = "Search", className = "", disabled = false }) {
+  return (
+    <SearchBar
+      value={value}
+      onChange={(next) => onChange?.({ target: { value: next } })}
+      placeholder={placeholder}
+      className={className}
+      disabled={disabled}
+    />
+  );
+}
 
 export const INVENTORY_PAGE_BG = "var(--color-bg)";
 export const INVENTORY_PAGE_SIZES = [10, 20, 50];
@@ -46,20 +60,6 @@ export function InventoryTabs({ tabs, active, onChange, action = null }) {
   );
 }
 
-export function InventorySearchInput({ value, onChange, placeholder = "Search", className = "" }) {
-  return (
-    <div className={`relative ui-search-wrap w-full ${className}`}>
-      <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-faint)]" />
-      <input
-        value={value}
-        onChange={onChange}
-        placeholder={placeholder}
-        className="ui-input w-full py-2.5 pl-10 pr-4"
-      />
-    </div>
-  );
-}
-
 export function InventoryToolbarButton({ children, className = "", ...props }) {
   return (
     <Button variant="secondary" className={`!px-3 !py-2.5 text-[13px] ${className}`} {...props}>
@@ -92,13 +92,12 @@ export function InventoryOutlineButton({ children, className = "", ...props }) {
   );
 }
 
-export const inventoryTableWrapClass = "inventory-table-scroll ui-table-wrap ui-table-wrap--scroll rounded-lg border border-[var(--color-border-soft)]";
-export const inventoryTableClass = "min-w-full w-full border-collapse text-left text-[13px]";
-export const inventoryTableHeadClass =
-  "bg-[var(--color-surface-thead)] text-[12px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]";
-export const inventoryThClass = "border-b border-[var(--color-border)] px-4 py-3";
-export const inventoryTdClass = "border-b border-[var(--color-border-muted)] px-4 py-3 text-[var(--color-text)]";
-export const inventoryRowClass = "border-b border-[var(--color-border-muted)] hover:bg-[var(--color-surface-muted)]";
+export const inventoryTableWrapClass = "inventory-table-scroll ui-table-wrap ui-table-wrap--scroll";
+export const inventoryTableClass = "ui-table min-w-full w-full border-collapse text-left";
+export const inventoryTableHeadClass = "ui-table-head";
+export const inventoryThClass = "px-4 py-3";
+export const inventoryTdClass = "px-4 py-3";
+export const inventoryRowClass = "";
 
 export const inventoryRowActionClass =
   "inline-grid h-8 w-8 place-items-center rounded-md border border-[var(--color-border)] bg-[var(--color-surface-muted)] text-[var(--color-primary)] transition-colors hover:bg-[var(--color-primary-soft)]";

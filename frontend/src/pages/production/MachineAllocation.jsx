@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 
 import Button from "../../components/common/Button";
+import { SearchBar } from "../../components/common/SearchFilter";
 import DataTable from "../../components/common/DataTable";
 import EmptyState from "../../components/common/EmptyState";
 import KpiCard from "../../components/common/KpiCard";
@@ -495,15 +496,12 @@ export default function MachineAllocation() {
 
         {view === "list" ? (
           <div>
-            <div className="mb-4 ui-search-wrap">
-              <input
-                type="search"
-                placeholder="Search"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="ui-input !rounded-full"
-              />
-            </div>
+            <SearchBar
+              value={search}
+              onChange={setSearch}
+              placeholder="Search"
+              className="mb-4 w-full"
+            />
             {filtered.length === 0 ? (
               <EmptyState
                 icon="factory"

@@ -218,8 +218,8 @@ export default function WorkOrderDetailModal({
 
           {tab === "materials" && (
             <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="border-b text-xs uppercase text-slate-400">
+              <thead className="ui-table-head">
+                <tr>
                   <th className="py-2">Material</th>
                   <th className="py-2 text-right">Required</th>
                   <th className="py-2 text-right">Issued</th>
@@ -288,8 +288,8 @@ export default function WorkOrderDetailModal({
 
           {tab === "audit" && (
             <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="border-b text-xs uppercase text-slate-400">
+              <thead className="ui-table-head">
+                <tr>
                   <th className="py-2">Action</th>
                   <th className="py-2">User</th>
                   <th className="py-2">Time</th>

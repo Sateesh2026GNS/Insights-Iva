@@ -36,7 +36,7 @@ export default function PODetailModal({ po, onClose, onApprove, onReject }) {
           </div>
 
           <table className="mb-4 w-full text-left text-sm">
-            <thead><tr className="border-b text-xs uppercase text-slate-500"><th className="py-2">Item</th><th>Qty</th><th>UOM</th><th>Rate</th><th>Amount</th></tr></thead>
+            <thead className="ui-table-head"><tr><th className="py-2">Item</th><th>Qty</th><th>UOM</th><th>Rate</th><th>Amount</th></tr></thead>
             <tbody>
               {items.map((it, i) => (
                 <tr key={i} className="border-b"><td className="py-2">{it.name}</td><td>{it.qty}</td><td>{it.uom}</td><td>₹{it.rate}</td><td>₹{Number(it.amount).toLocaleString("en-IN")}</td></tr>

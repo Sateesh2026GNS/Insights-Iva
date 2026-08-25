@@ -228,9 +228,9 @@ export default function InventoryAnalytics() {
             <h3 className="mb-3 text-sm font-semibold text-slate-800 dark:text-slate-100">{title}</h3>
             {rows?.length ? (
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead>
-                    <tr className="border-b text-slate-500">
+                <table className="ui-table w-full text-left text-xs">
+                  <thead className="ui-table-head">
+                    <tr>
                       <SerialNumberHeader className="pb-2" />
                       {cols.map((c) => <th key={c} className="pb-2 pr-3 capitalize">{c.replace("_", " ")}</th>)}
                     </tr>

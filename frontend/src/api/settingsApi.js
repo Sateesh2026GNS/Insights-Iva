@@ -1,9 +1,16 @@
 import api from "./axiosConfig";
+import { getCachedReference, invalidateReferenceCache } from "../utils/referenceDataCache";
 
-export const getCompanySettings = () => api.get("/settings/company");
+export const getCompanySettings = (options = {}) =>
+  getCachedReference("company-settings", () => api.get("/settings/company"), {
+    force: options.force === true,
+  });
 
 export const updateCompanySettings = (payload) =>
-  api.put("/settings/company", payload);
+  api.put("/settings/company", payload).then((res) => {
+    invalidateReferenceCache("company-settings");
+    return res;
+  });
 
 /** Live profile, subscription, and session details for the signed-in user. */
 export const getAccountOverview = () => api.get("/settings/account-overview");

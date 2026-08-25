@@ -347,7 +347,7 @@ export default function BomDetailModal({ bom, onClose, onEdit, onCopy, onDelete,
               </div>
               <div className="overflow-x-auto rounded-xl border border-slate-200">
                 <table className="w-full text-left text-sm">
-                  <thead className="bg-slate-50 text-xs uppercase text-slate-500">
+                  <thead className="ui-table-head">
                     <tr>
                       <th className="px-3 py-2">Component</th>
                       <th className="px-3 py-2">Item Code</th>
@@ -415,7 +415,7 @@ export default function BomDetailModal({ bom, onClose, onEdit, onCopy, onDelete,
           {tab === "routing" && (
             <div className="overflow-x-auto rounded-xl border border-slate-200">
               <table className="w-full text-left text-sm">
-                <thead className="bg-slate-50 text-xs uppercase text-slate-500">
+                <thead className="ui-table-head">
                   <tr>
                     <th className="px-3 py-2">Operation</th>
                     <th className="px-3 py-2">Work Center</th>
@@ -444,7 +444,7 @@ export default function BomDetailModal({ bom, onClose, onEdit, onCopy, onDelete,
           {tab === "machines" && (
             <div className="overflow-x-auto rounded-xl border border-slate-200">
               <table className="w-full text-left text-sm">
-                <thead className="bg-slate-50 text-xs uppercase text-slate-500">
+                <thead className="ui-table-head">
                   <tr>
                     <th className="px-3 py-2">Machine Name</th>
                     <th className="px-3 py-2">Machine Code</th>
@@ -471,7 +471,7 @@ export default function BomDetailModal({ bom, onClose, onEdit, onCopy, onDelete,
           {tab === "inventory" && (
             <div className="overflow-x-auto rounded-xl border border-slate-200">
               <table className="w-full text-left text-sm">
-                <thead className="bg-slate-50 text-xs uppercase text-slate-500">
+                <thead className="ui-table-head">
                   <tr>
                     <th className="px-3 py-2">Component</th>
                     <th className="px-3 py-2">Required</th>

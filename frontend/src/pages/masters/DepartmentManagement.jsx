@@ -5,6 +5,7 @@ import DataTable from "../../components/common/DataTable";
 import TableActionButtons from "../../components/common/TableActionButtons";
 import Loader from "../../components/common/Loader";
 import Button from "../../components/common/Button";
+import { SearchBar } from "../../components/common/SearchFilter";
 import DepartmentDetailModal, { DepartmentFormModal } from "../../components/masters/DepartmentDetailModal";
 import { useToast } from "../../context/ToastContext";
 import useTenantId from "../../hooks/useTenantId";
@@ -330,12 +331,11 @@ export default function DepartmentManagement() {
       <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap gap-2">
-            <input
-              type="search"
-              placeholder="Search"
+            <SearchBar
               value={filters.name}
-              onChange={(e) => setFilters((f) => ({ ...f, name: e.target.value }))}
-              className="min-w-[200px] rounded-lg border border-slate-200 px-3 py-2 text-sm"
+              onChange={(v) => setFilters((f) => ({ ...f, name: v }))}
+              placeholder="Search"
+              className="min-w-[200px]"
             />
             <button
               type="button"

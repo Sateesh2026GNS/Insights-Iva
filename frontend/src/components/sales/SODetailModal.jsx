@@ -30,8 +30,8 @@ export default function SODetailModal({ order, onClose }) {
           </div>
 
           <table className="mb-4 w-full text-left text-sm">
-            <thead>
-              <tr className="border-b text-xs uppercase text-slate-500">
+            <thead className="ui-table-head">
+              <tr>
                 <th className="py-2 pr-3">Product</th>
                 <th className="pr-3">Qty</th>
                 <th className="pr-3">Unit</th>

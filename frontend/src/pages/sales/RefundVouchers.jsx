@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { AlertCircle, Calendar, ChevronDown, ChevronLeft, ChevronRight, Plus, RotateCcw, Search, X } from "lucide-react";
+import { AlertCircle, Calendar, ChevronDown, ChevronLeft, ChevronRight, Plus, RotateCcw, X } from "lucide-react";
 
 import Loader from "../../components/common/Loader";
 import Button from "../../components/common/Button";
+import { SearchBar } from "../../components/common/SearchFilter";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
 import { useToast } from "../../context/ToastContext";
 import useTenantId from "../../hooks/useTenantId";
@@ -188,12 +189,13 @@ function CreateRefundVoucherModal({
             {partyOpen ? (
               <div className="absolute left-0 right-0 z-20 mt-1 max-h-48 overflow-hidden rounded-xl border border-[#d0d0d8] bg-white shadow-lg">
                 <div className="border-b border-[#ececf0] p-2">
-                  <input
-                    autoFocus
+                  <SearchBar
+                    size="compact"
                     value={partySearch}
-                    onChange={(e) => setPartySearch(e.target.value)}
+                    onChange={setPartySearch}
                     placeholder="Search"
-                    className="w-full rounded-lg border border-[#e4e4ea] px-3 py-2 text-[13px] outline-none"
+                    autoFocus
+                    className="w-full"
                   />
                 </div>
                 <div className="max-h-36 overflow-y-auto">
@@ -459,15 +461,7 @@ export default function RefundVouchers() {
     <div className="min-h-full space-y-4 bg-[var(--color-bg)] p-4 sm:p-6">
 
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div className="relative ui-search-wrap w-full">
-          <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9a9aa5]" />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search"
-            className="w-full rounded-full border border-[#e4e4ea] bg-white py-2.5 pl-10 pr-4 text-[14px] text-[#1a1a1f] shadow-sm placeholder:text-[#9a9aa5] focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/25"
-          />
-        </div>
+        <SearchBar value={search} onChange={setSearch} placeholder="Search" className="w-full" />
         <div className="flex flex-wrap items-center gap-2.5">
           <div className="inline-flex items-center gap-2 rounded-lg border border-[#e4e4ea] bg-white px-3 py-2 text-[13px] text-[#4a4a55] shadow-sm">
             <Calendar className="h-4 w-4 shrink-0 text-[#9a9aa5]" />
@@ -499,7 +493,7 @@ export default function RefundVouchers() {
       <div className="overflow-hidden rounded-xl border border-[#d0d0d8] bg-white">
         <div className="overflow-x-auto">
           <table className="min-w-full border-collapse text-left text-[13px]">
-            <thead className="bg-[#f3f3f6] text-[12px] font-semibold uppercase tracking-wide text-[#6b6b76]">
+            <thead className="ui-table-head">
               <tr>
                 <SerialNumberHeader className="border-b border-r border-[#d0d0d8]" />
                 <th className="border-b border-r border-[#d0d0d8] px-4 py-3 last:border-r-0">Voucher No.</th>

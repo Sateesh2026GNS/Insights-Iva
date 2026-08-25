@@ -21,7 +21,6 @@ import {
   Play,
   Plus,
   Printer,
-  Search,
   Send,
   Target,
   Upload,
@@ -29,6 +28,7 @@ import {
 } from "lucide-react";
 
 import Button, { IconButton } from "../../components/common/Button";
+import { SearchBar } from "../../components/common/SearchFilter";
 import DataTable from "../../components/common/DataTable";
 import KpiCard from "../../components/common/KpiCard";
 import Loader from "../../components/common/Loader";
@@ -1124,20 +1124,15 @@ export default function ProductionPlanning() {
 
           <div className="ui-card min-w-0 p-4 sm:p-5 print:border-0 print:bg-white print:p-0 print:shadow-none">
             <div className="mb-4 flex flex-col gap-3 print:hidden lg:flex-row lg:items-center lg:justify-between">
-              <div className="relative ui-search-wrap min-w-[10rem] flex-1">
-                <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-icon)]" />
-                <input
-                  type="search"
-                  placeholder="Search"
-                  value={filters.q}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setFilters((f) => ({ ...f, q: val, preset: "" }));
-                    setAppliedFilters((f) => ({ ...f, q: val, preset: "" }));
-                  }}
-                  className="ui-input !rounded-full pl-10"
-                />
-              </div>
+              <SearchBar
+                value={filters.q}
+                onChange={(val) => {
+                  setFilters((f) => ({ ...f, q: val, preset: "" }));
+                  setAppliedFilters((f) => ({ ...f, q: val, preset: "" }));
+                }}
+                placeholder="Search"
+                className="w-full"
+              />
               <div className="flex flex-wrap items-center gap-2">
                 <Button variant="secondary" type="button" onClick={() => setShowAdvanced(!showAdvanced)}>
                   {showAdvanced ? "Hide Filters" : "Filters"}

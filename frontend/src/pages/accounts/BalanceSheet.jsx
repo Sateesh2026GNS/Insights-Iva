@@ -102,8 +102,9 @@ const S = {
   },
   // ── thead ──
   th: (extraStyle = {}) => ({
-    background: "#e4e4e4",
-    border: "1px solid #bbb",
+    background: "#172033",
+    color: "#ffffff",
+    border: "1px solid #e2e8f0",
     padding: "7px 10px",
     fontSize: 12,
     fontFamily: "Arial, Helvetica, sans-serif",
@@ -456,7 +457,7 @@ export default function BalanceSheet() {
           </colgroup>
 
           {/* ── column headers ── */}
-          <thead>
+          <thead className="ui-table-head">
             <tr>
               <th style={S.th({ fontWeight: 700, color: "#111", textAlign: "left" })}>
                 Liabilities

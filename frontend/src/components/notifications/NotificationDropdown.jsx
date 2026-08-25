@@ -40,9 +40,9 @@ export default function NotificationDropdown({
   return (
     <>
       <div className="absolute right-0 top-full z-50 w-[22rem] max-w-[calc(100vw-2rem)] pt-1">
-        <div className="rounded-xl border border-slate-200 bg-white shadow-xl">
-          <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
-            <p className="text-sm font-semibold text-slate-800">{t("common.notifications")}</p>
+        <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xl">
+          <div className="flex items-center justify-between border-b border-[var(--color-border-muted)] px-4 py-3">
+            <p className="text-sm font-semibold text-[var(--color-text)]">{t("common.notifications")}</p>
             <div className="flex items-center gap-2">
               {notifications.some((n) => !(n.is_read ?? n.read)) && (
                 <button
@@ -71,13 +71,13 @@ export default function NotificationDropdown({
             className="max-h-80 overflow-y-auto py-1"
           >
             {loading && notifications.length === 0 && (
-              <li className="px-4 py-8 text-center text-sm text-slate-400">Loading…</li>
+              <li className="px-4 py-8 text-center text-sm text-[var(--color-text-muted)]">Loading…</li>
             )}
             {error && notifications.length === 0 && (
               <li className="px-4 py-8 text-center text-sm text-red-500">{error}</li>
             )}
             {!loading && !error && notifications.length === 0 && (
-              <li className="px-4 py-8 text-center text-sm text-slate-400">
+              <li className="px-4 py-8 text-center text-sm text-[var(--color-text-muted)]">
                 {t("common.noNotifications")}
               </li>
             )}
@@ -91,12 +91,12 @@ export default function NotificationDropdown({
               />
             ))}
             {loadingMore && (
-              <li className="px-4 py-3 text-center text-xs text-slate-400">Loading more…</li>
+              <li className="px-4 py-3 text-center text-xs text-[var(--color-text-muted)]">Loading more…</li>
             )}
           </ul>
 
-          <div className="border-t border-slate-100 px-4 py-2.5 text-center">
-            <Link to="/alerts" className="text-xs font-semibold text-[#2563EB] hover:underline">
+          <div className="border-t border-[var(--color-border-muted)] px-4 py-2.5 text-center">
+            <Link to="/alerts" className="text-xs font-semibold text-[var(--color-primary)] hover:underline">
               View all alerts
             </Link>
           </div>

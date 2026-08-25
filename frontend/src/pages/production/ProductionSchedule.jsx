@@ -20,6 +20,7 @@ import EmptyState from "../../components/common/EmptyState";
 import KpiCard from "../../components/common/KpiCard";
 import Loader from "../../components/common/Loader";
 import Button, { IconButton } from "../../components/common/Button";
+import { SearchBar } from "../../components/common/SearchFilter";
 import StatusBadge from "../../components/common/StatusBadge";
 import { useToast } from "../../context/ToastContext";
 import {
@@ -1080,15 +1081,12 @@ export default function ProductionSchedule() {
         {view === "kanban" ? <KanbanView items={kanban} onCreate={openCreate} /> : null}
         {view === "table" ? (
           <div>
-            <div className="relative mb-4 ui-search-wrap">
-              <input
-                type="search"
-                placeholder="Search"
-                value={tableSearch}
-                onChange={(e) => setTableSearch(e.target.value)}
-                className="ui-input !rounded-full"
-              />
-            </div>
+            <SearchBar
+              value={tableSearch}
+              onChange={setTableSearch}
+              placeholder="Search"
+              className="mb-4 w-full"
+            />
             {filteredTable.length === 0 ? (
               <ScheduleEmpty
                 message="No schedule rows yet. Create a schedule or assign work orders to machines."

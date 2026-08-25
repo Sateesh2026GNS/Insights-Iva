@@ -149,7 +149,7 @@ export default function OperatorJobsPage() {
         ) : (
           <div className="ui-table-wrap ui-table-wrap--scroll">
             <table className="ui-table w-full min-w-[720px] text-sm">
-              <thead>
+              <thead className="ui-table-head">
                 <tr>
                   <th className="px-3 py-2 text-left">Job Card</th>
                   <th className="px-3 py-2 text-left">Sales Order</th>

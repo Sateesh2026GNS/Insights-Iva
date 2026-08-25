@@ -132,7 +132,7 @@ export default function LoginHistoryPanel() {
       ) : (
         <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
           <table className="min-w-full divide-y divide-slate-200 text-sm dark:divide-slate-700">
-            <thead className="bg-slate-50 dark:bg-slate-800/80">
+            <thead className="ui-table-head">
               <tr className="text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                 <th className="px-3 py-3">Name</th>
                 <th className="px-3 py-3">Email</th>

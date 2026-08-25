@@ -4,6 +4,7 @@ import PageHeader from "../../components/common/PageHeader";
 
 import DataTable from "../../components/common/DataTable";
 import Button from "../../components/common/Button";
+import { SearchBar } from "../../components/common/SearchFilter";
 import TableActionButtons from "../../components/common/TableActionButtons";
 import Loader from "../../components/common/Loader";
 import VendorDetailModal, { VendorFormModal } from "../../components/procurement/VendorDetailModal";
@@ -370,12 +371,11 @@ export default function VendorManagement() {
       <div className="ui-card p-5">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap gap-2">
-            <input
-              type="search"
-              placeholder="Search"
+            <SearchBar
               value={filters.name}
-              onChange={(e) => setFilters((f) => ({ ...f, name: e.target.value }))}
-              className="min-w-[200px] rounded-lg border border-slate-200 px-3 py-2 text-sm"
+              onChange={(v) => setFilters((f) => ({ ...f, name: v }))}
+              placeholder="Search"
+              className="min-w-[200px]"
             />
             <button
               type="button"

@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { Banknote, Bookmark, Building2, ChevronDown, MoreVertical, Pencil, Search, Star, Trash2, CircleMinus } from "lucide-react";
+import { Banknote, Bookmark, Building2, ChevronDown, MoreVertical, Pencil, Star, Trash2, CircleMinus } from "lucide-react";
 
 import Button from "../../components/common/Button";
+import { SearchBar } from "../../components/common/SearchFilter";
 import Loader from "../../components/common/Loader";
 import AddNewPartyModal from "../../components/sales/AddNewPartyModal";
 import AddPaymentModeModal from "../../components/sales/AddPaymentModeModal";
@@ -321,14 +322,14 @@ export default function MakePaymentForm() {
                 </button>
                 {sellerOpen ? (
                   <div className="absolute left-0 right-0 z-30 mt-1 overflow-hidden rounded-xl border border-[#e4e4ea] bg-white shadow-xl">
-                    <div className="relative border-b border-[#ececf0] p-2">
-                      <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9a9aa5]" />
-                      <input
-                        autoFocus
+                    <div className="border-b border-[#ececf0] p-2">
+                      <SearchBar
+                        size="compact"
                         value={sellerSearch}
-                        onChange={(e) => setSellerSearch(e.target.value)}
+                        onChange={setSellerSearch}
                         placeholder="Search"
-                        className="w-full rounded-lg border border-[#e4e4ea] py-2 pl-9 pr-3 text-[13px] outline-none"
+                        autoFocus
+                        className="w-full"
                       />
                     </div>
                     <div className="max-h-56 overflow-y-auto">
@@ -670,7 +671,7 @@ export default function MakePaymentForm() {
             </div>
             <div className="overflow-x-auto rounded-lg border border-[#ececf0]">
               <table className="min-w-full text-left text-[13px]">
-                <thead className="bg-[#f3f3f6] text-[12px] font-semibold text-[#6b6b76]">
+                <thead className="ui-table-head">
                   <tr>
                     <th className="px-3 py-2.5 w-10" />
                     <th className="px-3 py-2.5">Purchase Date</th>

@@ -294,7 +294,7 @@ export default function ChartOfAccountsV2() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search"
-              className="ui-search-wrap flex-1"
+              className="flex-1"
             />
             <AccountsAddButton
               onClick={() => {

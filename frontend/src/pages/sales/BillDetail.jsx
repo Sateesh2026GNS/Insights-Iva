@@ -196,7 +196,7 @@ export default function BillDetail() {
           {/* Line Items Table */}
           <div className="overflow-x-auto rounded-xl border border-slate-200">
             <table className="min-w-full divide-y divide-slate-200 text-sm">
-              <thead className="bg-slate-50">
+              <thead className="ui-table-head">
                 <tr>
                   {["#", "Product / Description", "Qty", "Unit", "Unit Price", "Amount"].map((h, i) => (
                     <th key={h}

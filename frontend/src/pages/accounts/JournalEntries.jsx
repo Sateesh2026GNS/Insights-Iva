@@ -152,10 +152,10 @@ export default function JournalEntries() {
       />
 
       <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-slate-50 border-b text-slate-500 text-left font-semibold">
+        <div className="ui-table-wrap ui-table-wrap--scroll">
+          <table className="ui-table w-full text-sm">
+            <thead className="ui-table-head">
+              <tr>
                 <th className="p-3">Entry ID</th>
                 <th className="p-3">Posting Date</th>
                 <th className="p-3">Reference</th>

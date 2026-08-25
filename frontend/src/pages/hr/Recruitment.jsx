@@ -48,7 +48,7 @@ const FUNNEL_WIDTHS = [100, 88, 76, 64, 52, 40];
 function Panel({ title, children, className = "" }) {
   return (
     <div className={`rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm ${className}`}>
-      <h2 className="mb-4 text-[15px] font-semibold text-slate-900">{title}</h2>
+      <h2 className="mb-4 ui-section-title">{title}</h2>
       {children}
     </div>
   );
@@ -75,9 +75,9 @@ function RecKpiCard({ label, value, icon: Icon, tone, trend }) {
     <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[11px] font-medium text-slate-500">{label}</p>
+          <p className="text-xs font-medium text-slate-500">{label}</p>
           <p className="mt-1 text-[22px] font-bold leading-tight text-slate-900">{value}</p>
-          {trendText ? <p className={`mt-1 text-[11px] font-medium ${trendClass}`}>{trendText}</p> : null}
+          {trendText ? <p className={`mt-1 text-xs font-medium ${trendClass}`}>{trendText}</p> : null}
         </div>
         <div className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${tones[tone]}`}>
           <Icon className="h-5 w-5" aria-hidden />
@@ -90,7 +90,7 @@ function RecKpiCard({ label, value, icon: Icon, tone, trend }) {
 function JobStatusBadge({ status }) {
   const label = String(status || "open").charAt(0).toUpperCase() + String(status || "open").slice(1);
   return (
-    <span className={`inline-flex rounded-md px-2 py-0.5 text-[11px] font-semibold capitalize ${recruitmentJobStatusBadgeClass(status)}`}>
+    <span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-semibold capitalize ${recruitmentJobStatusBadgeClass(status)}`}>
       {label}
     </span>
   );
@@ -98,7 +98,7 @@ function JobStatusBadge({ status }) {
 
 function ApplicantStatusBadge({ status }) {
   return (
-    <span className={`inline-flex rounded-md px-2 py-0.5 text-[11px] font-semibold ${recruitmentApplicantStatusBadgeClass(status)}`}>
+    <span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-semibold ${recruitmentApplicantStatusBadgeClass(status)}`}>
       {recruitmentApplicantStatusLabel(status)}
     </span>
   );
@@ -111,7 +111,7 @@ function RecruitmentFunnel({ stages }) {
         {stages.map((stage, index) => (
           <div
             key={stage.key}
-            className="flex h-10 items-center justify-center text-[11px] font-semibold text-white transition-all"
+            className="flex h-10 items-center justify-center text-xs font-semibold text-white transition-all"
             style={{
               width: `${FUNNEL_WIDTHS[index] || 40}%`,
               background: stage.color,
@@ -391,12 +391,12 @@ function RecruitmentDashboard() {
   if (loading) return <Loader label="Loading recruitment..." />;
 
   return (
-    <div className="min-w-0 space-y-5 pb-5">
+    <div className="hr-page ui-page ui-stack min-w-0">
       {/* Header */}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <h1 className="text-[22px] font-bold text-[#1e3a5f]">Recruitment</h1>
-          <p className="mt-1 text-[13px] text-slate-500">Track and manage your recruitment process</p>
+          <h1 className="ui-page-title">Recruitment</h1>
+          <p className="ui-subtitle mt-0">Track and manage your recruitment process</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <AddButton type="button" onClick={openCreateJob}>
@@ -408,14 +408,14 @@ function RecruitmentDashboard() {
               resetApplicantForm();
               setShowApplicantModal(true);
             }}
-            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-[13px] font-semibold text-slate-700 hover:bg-slate-50"
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
           >
             <UserPlus className="h-4 w-4" />
             Add Applicant
           </button>
           <button
             type="button"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-[13px] font-semibold text-slate-700 hover:bg-slate-50"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
           >
             <MoreVertical className="h-4 w-4" />
             More Actions
@@ -447,8 +447,8 @@ function RecruitmentDashboard() {
 
         <Panel title="Job Openings">
           <div className="overflow-x-auto rounded-xl border border-slate-200">
-            <table className="min-w-full w-full border-collapse text-left text-[13px]">
-              <thead className="bg-[#eef6ff] text-[12px] font-semibold text-slate-700">
+            <table className="min-w-full w-full border-collapse text-left text-sm">
+              <thead className="ui-table-head">
                 <tr>
                   <th className="border-b border-slate-200 px-3 py-3">Job Title</th>
                   <th className="border-b border-slate-200 px-3 py-3">Department</th>
@@ -461,7 +461,7 @@ function RecruitmentDashboard() {
               <tbody>
                 {data.job_openings.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="border-b border-slate-100 px-3 py-8 text-center text-[13px] text-slate-500">
+                    <td colSpan={6} className="border-b border-slate-100 px-3 py-8 text-center text-sm text-slate-500">
                       No recruitment records found
                     </td>
                   </tr>
@@ -511,8 +511,8 @@ function RecruitmentDashboard() {
         <div className="xl:col-span-2">
           <Panel title="Recent Applicants">
             <div className="overflow-x-auto rounded-xl border border-slate-200">
-              <table className="min-w-full w-full border-collapse text-left text-[13px]">
-                <thead className="bg-[#eef6ff] text-[12px] font-semibold text-slate-700">
+              <table className="min-w-full w-full border-collapse text-left text-sm">
+                <thead className="ui-table-head">
                   <tr>
                     <th className="border-b border-slate-200 px-3 py-3 min-w-[160px]">Candidate Name</th>
                     <th className="border-b border-slate-200 px-3 py-3">Job Title</th>
@@ -525,7 +525,7 @@ function RecruitmentDashboard() {
                 <tbody>
                   {pageRows.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="border-b border-slate-100 px-3 py-8 text-center text-[13px] text-slate-500">
+                      <td colSpan={6} className="border-b border-slate-100 px-3 py-8 text-center text-sm text-slate-500">
                         No applicants found
                       </td>
                     </tr>
@@ -575,7 +575,7 @@ function RecruitmentDashboard() {
               </table>
             </div>
 
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-[13px] text-slate-500">
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-slate-500">
               <span>
                 Showing {from} to {to} of {displayTotal} entries
               </span>
@@ -591,7 +591,7 @@ function RecruitmentDashboard() {
                       key={item}
                       type="button"
                       onClick={() => setPage(item)}
-                      className={`grid h-8 min-w-8 place-items-center rounded-md border px-2 text-[13px] font-semibold ${
+                      className={`grid h-8 min-w-8 place-items-center rounded-md border px-2 text-sm font-semibold ${
                         item === page ? "border-[#6366f1] bg-[#6366f1] text-white" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
                       }`}
                     >
@@ -603,7 +603,7 @@ function RecruitmentDashboard() {
                   <ChevronRight className="h-4 w-4" />
                 </button>
               </div>
-              <span className="rounded-md border border-slate-200 bg-white px-2 py-1.5 text-[13px] text-slate-600">
+              <span className="rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-600">
                 {pageSize} / page
               </span>
             </div>
@@ -624,7 +624,7 @@ function RecruitmentDashboard() {
             </ResponsiveContainer>
             <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
               <span className="text-[20px] font-bold text-slate-900">{data.source_total}</span>
-              <span className="text-[11px] text-slate-500">Total</span>
+              <span className="text-xs text-slate-500">Total</span>
             </div>
           </div>
           <ul className="mt-4 space-y-2 text-[12px]">

@@ -15,6 +15,7 @@ import DataTable from "../../components/common/DataTable";
 import EmptyState from "../../components/common/EmptyState";
 import KpiCard from "../../components/common/KpiCard";
 import Loader from "../../components/common/Loader";
+import { SearchBar } from "../../components/common/SearchFilter";
 import PageHeader from "../../components/common/PageHeader";
 import StatusBadge from "../../components/common/StatusBadge";
 import ConfirmDialog from "../../components/admin/ConfirmDialog";
@@ -476,16 +477,7 @@ export default function FinishedGoods() {
 
       <div className="ui-card p-4 sm:p-5">
         <div className="mb-4 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-          <div className="relative ui-search-wrap min-w-0 flex-1">
-            <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]" />
-            <input
-              type="search"
-              placeholder="Search"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="ui-input w-full !pl-10"
-            />
-          </div>
+          <SearchBar value={search} onChange={setSearch} placeholder="Search" className="w-full" />
 
           <div className="flex flex-wrap items-center gap-2">
             <Button type="button" variant="secondary" onClick={() => setShowFilters((v) => !v)}>

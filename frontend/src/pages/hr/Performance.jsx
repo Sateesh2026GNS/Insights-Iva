@@ -32,6 +32,7 @@ import InventoryRowActionsMenu from "../../components/inventory/InventoryRowActi
 import Button, { AddButton } from "../../components/common/Button";
 import Loader from "../../components/common/Loader";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
+import { HrPage, HrPageHeader, HrPanel } from "../../components/hr/hrUi";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import useTenantId from "../../hooks/useTenantId";
 import { useToast } from "../../context/ToastContext";
@@ -62,20 +63,7 @@ const PERFORMER_ICON_TONES = {
   user: "bg-sky-100 text-sky-600",
 };
 
-const inputClass =
-  "mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:border-[#6366f1] focus:outline-none focus:ring-2 focus:ring-indigo-100 transition-all";
-
-function Panel({ title, action, children, className = "" }) {
-  return (
-    <div className={`rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm ${className}`}>
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <h2 className="text-[15px] font-semibold text-slate-900">{title}</h2>
-        {action}
-      </div>
-      {children}
-    </div>
-  );
-}
+const inputClass = "ui-input mt-1.5 w-full";
 
 function avatarTone(label) {
   let h = 0;
@@ -85,7 +73,7 @@ function avatarTone(label) {
 
 function ReviewStatusBadge({ status }) {
   return (
-    <span className={`inline-flex rounded-md px-2 py-0.5 text-[11px] font-semibold ${performanceStatusBadgeClass(status)}`}>
+    <span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-semibold ${performanceStatusBadgeClass(status)}`}>
       {performanceStatusLabel(status)}
     </span>
   );
@@ -266,62 +254,60 @@ export default function Performance({ autoOpenCreate = false }) {
   const trendBadge = data.trend_badge || {};
 
   return (
-    <div className="min-w-0 space-y-5 pb-5">
-      {/* Header */}
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div>
-          <h1 className="text-[22px] font-bold text-[#1e3a5f]">Performance</h1>
-          <p className="mt-1 text-[13px] text-slate-500">Track and improve employee performance</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
+    <HrPage>
+      <HrPageHeader
+        title="Performance"
+        subtitle="Track and improve employee performance"
+        action={
+          <>
           <AddButton type="button" onClick={() => setShowCreateModal(true)}>
             Create Review
           </AddButton>
           <button
             type="button"
             onClick={() => addToast("Goals & OKRs module coming soon", "info")}
-            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-[13px] font-semibold text-[#6366f1] hover:bg-indigo-50"
+            className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2.5 text-sm font-semibold text-[var(--color-primary)] hover:bg-[var(--color-surface-muted)]"
           >
             <Target className="h-4 w-4" />
             Goals & OKRs
           </button>
           <button
             type="button"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-[13px] font-semibold text-slate-700 hover:bg-slate-50"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2.5 text-sm font-semibold text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-muted)]"
           >
             More Actions
             <ChevronDown className="h-4 w-4" />
           </button>
-        </div>
-      </div>
+          </>
+        }
+      />
 
-      {/* Filter bar */}
-      <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
-        <label className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[13px] text-slate-700">
+      <div className="flex flex-wrap items-center gap-2 ui-card p-4">
+        <label className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
           <CalendarDays className="h-4 w-4 text-slate-400" />
           <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="border-none bg-transparent outline-none" />
           <span className="text-slate-400">–</span>
           <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="border-none bg-transparent outline-none" />
         </label>
-        <select value={department} onChange={(e) => setDepartment(e.target.value)} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-[13px] text-slate-600 outline-none">
+        <select value={department} onChange={(e) => setDepartment(e.target.value)} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 outline-none">
           <option value="">All Departments</option>
           {departments.map((d) => (
             <option key={d} value={d}>{d}</option>
           ))}
         </select>
-        <select value={designation} onChange={(e) => setDesignation(e.target.value)} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-[13px] text-slate-600 outline-none">
+        <select value={designation} onChange={(e) => setDesignation(e.target.value)} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 outline-none">
           <option value="">All Designations</option>
           {designations.map((d) => (
             <option key={d} value={d}>{d}</option>
           ))}
         </select>
-        <select value={employeeFilter} onChange={(e) => setEmployeeFilter(e.target.value)} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-[13px] text-slate-600 outline-none">
+        <select value={employeeFilter} onChange={(e) => setEmployeeFilter(e.target.value)} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 outline-none">
           <option value="">All Employees</option>
           {employees.map((e) => (
             <option key={e.id} value={e.full_name}>{e.full_name}</option>
           ))}
         </select>
-        <button type="button" className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-[13px] font-semibold text-slate-700 hover:bg-slate-50">
+        <button type="button" className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
           <Filter className="h-4 w-4" />
           Filter
         </button>
@@ -332,10 +318,10 @@ export default function Performance({ autoOpenCreate = false }) {
 
       {/* Top widgets row */}
       <div className="grid gap-4 xl:grid-cols-3">
-        <Panel
+        <HrPanel
           title="Performance Trend"
           action={
-            <span className="rounded-md bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-700">
+            <span className="rounded-md bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700">
               ↑ {trendBadge.pct}% {trendBadge.label || "vs last period"}
             </span>
           }
@@ -356,9 +342,9 @@ export default function Performance({ autoOpenCreate = false }) {
               </RechartsLine>
             </ResponsiveContainer>
           </div>
-        </Panel>
+        </HrPanel>
 
-        <Panel title="Rating Distribution">
+        <HrPanel title="Rating Distribution">
           <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start">
             <div className="relative h-44 w-44 shrink-0">
               <ResponsiveContainer width="100%" height="100%">
@@ -373,7 +359,7 @@ export default function Performance({ autoOpenCreate = false }) {
               </ResponsiveContainer>
               <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
                 <span className="text-[20px] font-bold text-slate-900">{data.rating_total}</span>
-                <span className="text-[11px] text-slate-500">Total</span>
+                <span className="text-xs text-slate-500">Total</span>
               </div>
             </div>
             <ul className="min-w-0 flex-1 space-y-2 text-[12px]">
@@ -388,9 +374,9 @@ export default function Performance({ autoOpenCreate = false }) {
               ))}
             </ul>
           </div>
-        </Panel>
+        </HrPanel>
 
-        <Panel title="Top Performers" action={<Link to="/hr/performance" className="text-[13px] font-semibold text-[#6366f1]">View All</Link>}>
+        <HrPanel title="Top Performers" action={<Link to="/hr/performance" className="text-sm font-semibold text-[#6366f1]">View All</Link>}>
           <ul className="space-y-4">
             {data.top_performers.map((p) => {
               const Icon = p.icon === "trophy" ? Trophy : UserRound;
@@ -404,10 +390,10 @@ export default function Performance({ autoOpenCreate = false }) {
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-2">
-                        <p className="truncate text-[13px] font-semibold text-slate-800">{p.name}</p>
-                        <span className="shrink-0 text-[13px] font-bold tabular-nums text-slate-800">{Number(p.rating).toFixed(1)}</span>
+                        <p className="truncate text-sm font-semibold text-slate-800">{p.name}</p>
+                        <span className="shrink-0 text-sm font-bold tabular-nums text-slate-800">{Number(p.rating).toFixed(1)}</span>
                       </div>
-                      <p className="truncate text-[11px] text-slate-500">{p.department}</p>
+                      <p className="truncate text-xs text-slate-500">{p.department}</p>
                     </div>
                   </div>
                   <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100">
@@ -417,16 +403,16 @@ export default function Performance({ autoOpenCreate = false }) {
               );
             })}
           </ul>
-        </Panel>
+        </HrPanel>
       </div>
 
       {/* Bottom row */}
       <div className="grid gap-4 xl:grid-cols-3">
         <div className="xl:col-span-2">
-          <Panel title="Recent Performance Reviews" action={<Link to="/hr/performance" className="text-[13px] font-semibold text-[#6366f1]">View All</Link>}>
+          <HrPanel title="Recent Performance Reviews" action={<Link to="/hr/performance" className="text-sm font-semibold text-[#6366f1]">View All</Link>}>
             <div className="overflow-x-auto rounded-xl border border-slate-200">
-              <table className="min-w-full w-full border-collapse text-left text-[13px]">
-                <thead className="bg-[#eef6ff] text-[12px] font-semibold text-slate-700">
+              <table className="min-w-full w-full border-collapse text-left text-sm">
+                  <thead className="ui-table-head">
                   <tr>
                     <SerialNumberHeader className="border-b border-slate-200 px-3 py-3" />
                     <th className="border-b border-slate-200 px-3 py-3 min-w-[140px]">Employee Name</th>
@@ -495,7 +481,7 @@ export default function Performance({ autoOpenCreate = false }) {
               </table>
             </div>
 
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-[13px] text-slate-500">
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-slate-500">
               <span>
                 Showing {from} to {to} of {displayTotal} entries
               </span>
@@ -511,7 +497,7 @@ export default function Performance({ autoOpenCreate = false }) {
                       key={item}
                       type="button"
                       onClick={() => setPage(item)}
-                      className={`grid h-8 min-w-8 place-items-center rounded-md border px-2 text-[13px] font-semibold ${
+                      className={`grid h-8 min-w-8 place-items-center rounded-md border px-2 text-sm font-semibold ${
                         item === page ? "border-[#6366f1] bg-[#6366f1] text-white" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
                       }`}
                     >
@@ -524,11 +510,11 @@ export default function Performance({ autoOpenCreate = false }) {
                 </button>
               </div>
             </div>
-          </Panel>
+          </HrPanel>
         </div>
 
         <div className="space-y-4">
-          <Panel title="Performance Insights">
+          <HrPanel title="Performance Insights">
             <ul className="space-y-4">
               {data.performance_insights.map((item) => (
                 <li key={item.key}>
@@ -544,12 +530,12 @@ export default function Performance({ autoOpenCreate = false }) {
                 </li>
               ))}
             </ul>
-          </Panel>
+          </HrPanel>
 
-          <Panel
+          <HrPanel
             title="Upcoming Reviews"
             action={
-              <button type="button" onClick={() => addToast("Review calendar coming soon", "info")} className="text-[13px] font-semibold text-[#6366f1]">
+              <button type="button" onClick={() => addToast("Review calendar coming soon", "info")} className="text-sm font-semibold text-[#6366f1]">
                 View Calendar
               </button>
             }
@@ -562,13 +548,13 @@ export default function Performance({ autoOpenCreate = false }) {
                     <span className="text-[10px] font-semibold uppercase text-indigo-400">{item.month}</span>
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-[13px] font-semibold text-slate-800">{item.title}</p>
-                    <p className="mt-0.5 truncate text-[11px] text-slate-500">{item.employees}</p>
+                    <p className="text-sm font-semibold text-slate-800">{item.title}</p>
+                    <p className="mt-0.5 truncate text-xs text-slate-500">{item.employees}</p>
                   </div>
                 </li>
               ))}
             </ul>
-          </Panel>
+          </HrPanel>
         </div>
       </div>
 
@@ -647,6 +633,6 @@ export default function Performance({ autoOpenCreate = false }) {
           </div>
         </div>
       )}
-    </div>
+    </HrPage>
   );
 }

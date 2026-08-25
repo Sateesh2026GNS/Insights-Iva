@@ -38,7 +38,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import useSettings from "../../context/SettingsContext";
 import { filterAccessibleSettingsCategories } from "../../config/permissions";
 import useAuth from "../../hooks/useAuth";
-import { inputSearchClass } from "../../design-system/classes";
+import { SearchBar } from "../../components/common/SearchFilter";
 import {
   SETTINGS_NAV_GROUPS,
   SETTINGS_CATEGORIES,
@@ -329,30 +329,14 @@ export function SettingsSearchInput({
   autoFocus = false,
 }) {
   return (
-    <div className="relative max-w-[22rem]">
-      <Search
-        className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--color-text-icon)]"
-        aria-hidden
-      />
-      <input
-        type="search"
-        value={value}
-        onChange={onChange}
-        placeholder={placeholder}
-        autoFocus={autoFocus}
-        className={`${inputSearchClass} settings-search shadow-sm`}
-      />
-      {value ? (
-        <button
-          type="button"
-          onClick={onClear}
-          className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-[var(--color-text-icon)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
-          aria-label="Clear search"
-        >
-          <X className="h-3.5 w-3.5" />
-        </button>
-      ) : null}
-    </div>
+    <SearchBar
+      value={value}
+      onChange={(next) => onChange?.({ target: { value: next } })}
+      onClear={onClear}
+      placeholder={placeholder}
+      autoFocus={autoFocus}
+      className="max-w-[22rem]"
+    />
   );
 }
 

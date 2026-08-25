@@ -276,7 +276,7 @@ export default function GlobalSearch({ onSelect, placeholderKey = "common.search
             setOpen(true);
             setFocus(true);
           }}
-          className="global-search-input w-full rounded-full border border-[var(--color-border)] bg-[var(--color-surface-muted)] py-2 pl-10 pr-10 text-sm text-[var(--color-text)] placeholder:text-[var(--color-text-placeholder)] focus:border-[var(--color-primary)] focus:bg-[var(--color-surface)] focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:placeholder:text-slate-500 dark:focus:border-[var(--color-primary)] dark:focus:bg-slate-900"
+          className="global-search-input w-full rounded-full border border-[var(--color-border)] bg-[var(--color-surface-muted)] py-2 pl-10 pr-10 text-sm text-[var(--color-text)] placeholder:text-[var(--color-text-placeholder)] focus:border-[var(--color-primary)] focus:bg-[var(--color-surface)] focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)]"
           aria-label={t("common.search")}
           aria-expanded={showDropdown}
           aria-controls="global-search-results"
@@ -305,7 +305,7 @@ export default function GlobalSearch({ onSelect, placeholderKey = "common.search
           id="global-search-results"
           ref={listRef}
           role="listbox"
-          className="absolute left-0 right-0 top-full z-50 mt-1.5 max-h-80 overflow-y-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xl dark:border-slate-700 dark:bg-slate-900 sm:min-w-[22rem]"
+          className="absolute left-0 right-0 top-full z-50 mt-1.5 max-h-80 overflow-y-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xl sm:min-w-[22rem]"
         >
           {!hasQuery ? (
             <p className="border-b border-[var(--color-border-soft)] px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
@@ -337,11 +337,11 @@ export default function GlobalSearch({ onSelect, placeholderKey = "common.search
                   onClick={() => handleSelect(r.path)}
                   className={`flex h-14 w-full items-center gap-3 border-b border-[var(--color-border-soft)] px-4 text-left transition-colors last:border-b-0 ${
                     selected
-                      ? "bg-[var(--color-primary-soft)] text-[var(--color-primary-dark)] dark:bg-[var(--color-primary)]/20 dark:text-slate-100"
-                      : "text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] dark:text-slate-200 dark:hover:bg-slate-800"
+                      ? "bg-[var(--color-primary-soft)] text-[var(--color-primary-dark)]"
+                      : "text-[var(--color-text)] hover:bg-[var(--color-surface-muted)]"
                   }`}
                 >
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-[var(--color-surface-muted)] text-[var(--color-text-muted)] dark:bg-slate-800 dark:text-slate-300">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-[var(--color-surface-muted)] text-[var(--color-text-muted)]">
                     <Icon className="h-4 w-4" aria-hidden />
                   </span>
                   <span className="min-w-0 flex-1">

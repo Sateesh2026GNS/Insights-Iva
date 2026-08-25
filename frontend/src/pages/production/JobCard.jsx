@@ -648,10 +648,10 @@ function OverviewDashboard({ card, uom, priority, progressPct, canManage = true,
         </Card>
 
         <Card title="Material Requirement" icon={Package} bodyClass="p-0" action={menu("materials")}>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-[11px]">
-              <thead>
-                <tr className="border-b border-slate-100 bg-slate-50 text-[10px] uppercase text-slate-500">
+          <div className="ui-table-wrap ui-table-wrap--scroll !rounded-none !border-0">
+            <table className="ui-table w-full text-left text-[11px]">
+              <thead className="ui-table-head">
+                <tr>
                   <th className="px-3 py-2 font-semibold">Material</th>
                   <th className="px-2 py-2 font-semibold">Required Qty</th>
                   <th className="px-2 py-2 font-semibold">Available Qty</th>
@@ -719,10 +719,10 @@ function OverviewDashboard({ card, uom, priority, progressPct, canManage = true,
         </Card>
 
         <Card title="Quality Check" icon={Search} action={menu("quality")}>
-          <div className="overflow-x-auto">
-            <table className="w-full text-[12px]">
-              <thead>
-                <tr className="border-b border-slate-100 bg-slate-50 text-[10px] uppercase text-slate-500">
+          <div className="ui-table-wrap ui-table-wrap--scroll !rounded-none !border-0">
+            <table className="ui-table w-full text-[12px]">
+              <thead className="ui-table-head">
+                <tr>
                   <th className="px-2 py-2 text-left font-semibold">Checked Qty</th>
                   <th className="px-2 py-2 text-left font-semibold">Passed</th>
                   <th className="px-2 py-2 text-left font-semibold">Rejected</th>
@@ -733,8 +733,8 @@ function OverviewDashboard({ card, uom, priority, progressPct, canManage = true,
               <tbody>
                 <tr>
                   <td className="px-2 py-3 font-semibold">{fmtQty(card.quality?.checked_qty, uom)}</td>
-                  <td className="px-2 py-3 font-semibold text-emerald-600">{fmtQty(card.quality?.passed_qty, uom)}</td>
-                  <td className="px-2 py-3 font-semibold text-rose-600">{fmtQty(card.quality?.rejected_qty, uom)}</td>
+                  <td className="px-2 py-3 font-semibold ui-value-positive ui-num">{fmtQty(card.quality?.passed_qty, uom)}</td>
+                  <td className="px-2 py-3 font-semibold ui-value-negative ui-num">{fmtQty(card.quality?.rejected_qty, uom)}</td>
                   <td className="px-2 py-3 font-semibold text-orange-500">{fmtQty(card.quality?.rework_qty, uom)}</td>
                   <td className="px-2 py-3">
                     <span
@@ -1479,8 +1479,8 @@ function DetailForm({
           ) : null}
           <div className="min-h-0 flex-1 overflow-x-auto">
             <table className="w-full min-w-[420px] border-collapse text-left text-[11px]">
-              <thead>
-                <tr className="border-b border-[#e8edf4] bg-[#f7f9fc] text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+              <thead className="ui-table-head">
+                <tr>
                   <th className="px-2 py-1.5 font-semibold">Material</th>
                   <th className="px-2 py-1.5 font-semibold whitespace-nowrap">Required</th>
                   <th className="px-2 py-1.5 font-semibold whitespace-nowrap">Available</th>
@@ -2143,8 +2143,8 @@ function DetailForm({
             ) : (
               <div className="min-h-0 flex-1 overflow-x-auto">
                 <table className="w-full min-w-[240px] border-collapse text-left text-[11px]">
-                  <thead>
-                    <tr className="border-b border-[#e8edf4] text-[9px] font-semibold uppercase tracking-wide text-slate-500">
+                  <thead className="ui-table-head">
+                    <tr>
                       <th className="py-1.5 pr-2 font-semibold">Action</th>
                       <th className="py-1.5 pr-2 font-semibold">Person / Role</th>
                       <th className="py-1.5 text-right font-semibold">Date / Time</th>
@@ -2953,10 +2953,10 @@ function JobCardList({ rows, loading, onOpen, onCreate, canCreate }) {
   }
   return (
     <section className="ui-card overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[720px] text-left text-sm">
-          <thead>
-            <tr className="border-b border-[var(--color-border-soft)] bg-[var(--color-surface-thead)] text-[11px] uppercase tracking-wider text-[var(--color-text-muted)]">
+      <div className="ui-table-wrap ui-table-wrap--scroll">
+        <table className="ui-table w-full min-w-[720px] text-left text-sm">
+          <thead className="ui-table-head">
+            <tr>
               <SerialNumberHeader className="px-4 py-3 font-semibold" />
               <th className="px-4 py-3 font-semibold">Job Card</th>
               <th className="px-4 py-3 font-semibold">Customer / Product</th>

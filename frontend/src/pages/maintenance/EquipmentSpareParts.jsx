@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 
 import Button from "../../components/common/Button";
+import { SearchBar } from "../../components/common/SearchFilter";
 import Loader from "../../components/common/Loader";
 import PageHeader from "../../components/common/PageHeader";
 import CreateMachineModal from "../../components/production/CreateMachineModal";
@@ -161,16 +162,13 @@ function MultiSelectDropdown({
         <div className="absolute left-0 top-[calc(100%+4px)] z-40 w-64 rounded-xl border border-slate-200 bg-white p-2 shadow-xl animate-in fade-in zoom-in-95 duration-100">
           {normalizedOptions.length > 5 && (
             <div className="mb-2 px-1">
-              <div className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5">
-                <Search className="h-3.5 w-3.5 text-slate-400" />
-                <input
-                  type="text"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder={placeholder}
-                  className="w-full bg-transparent text-[12px] text-slate-800 outline-none placeholder:text-slate-400"
-                />
-              </div>
+              <SearchBar
+                size="compact"
+                value={query}
+                onChange={setQuery}
+                placeholder={placeholder}
+                className="w-full"
+              />
             </div>
           )}
 
@@ -735,17 +733,12 @@ export default function EquipmentSpareParts() {
       <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
         <div className="grid gap-3 lg:grid-cols-12 lg:items-end">
           <div className="lg:col-span-3">
-            <label className="mb-1 block text-[11px] font-medium text-slate-500">Search</label>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-                placeholder={activeTab === "equipment" ? "Search equipment..." : "Search spare parts..."}
-                className="w-full rounded-lg border border-slate-200 py-2 pl-9 pr-3 text-[13px] focus:border-[var(--color-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]"
-              />
-            </div>
+            <SearchBar
+              value={search}
+              onChange={(v) => { setSearch(v); setPage(1); }}
+              placeholder={activeTab === "equipment" ? "Search equipment..." : "Search spare parts..."}
+              className="w-full"
+            />
           </div>
           <div className="lg:col-span-2">
             <label className="mb-1 block text-[11px] font-medium text-slate-500">Status</label>
@@ -809,7 +802,7 @@ export default function EquipmentSpareParts() {
         <div className="overflow-x-auto rounded-xl border border-slate-200">
           {activeTab === "equipment" ? (
             <table className="min-w-full w-full border-collapse text-left text-[13px]">
-              <thead className="bg-[#eef6ff] text-[12px] font-semibold text-slate-700">
+              <thead className="ui-table-head">
                 <tr>
                   <th className="border-b border-slate-200 px-3 py-3">Equipment Code</th>
                   <th className="border-b border-slate-200 px-3 py-3">Name</th>
@@ -863,7 +856,7 @@ export default function EquipmentSpareParts() {
             </table>
           ) : (
             <table className="min-w-full w-full border-collapse text-left text-[13px]">
-              <thead className="bg-[#eef6ff] text-[12px] font-semibold text-slate-700">
+              <thead className="ui-table-head">
                 <tr>
                   <th className="border-b border-slate-200 px-3 py-3">Part No</th>
                   <th className="border-b border-slate-200 px-3 py-3">Name</th>

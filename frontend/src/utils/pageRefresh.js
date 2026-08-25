@@ -1,3 +1,5 @@
+import { invalidateReferenceCache } from "./referenceDataCache";
+
 /**
  * Registry for the global bottom-right Refresh control.
  * Pages register their data reload functions; the button awaits them.
@@ -46,6 +48,7 @@ export async function runPageRefresh() {
   }
 
   refreshGeneration += 1;
+  invalidateReferenceCache();
   refreshInProgress = true;
   try {
     const results = await Promise.allSettled(

@@ -331,8 +331,8 @@ export default function DepartmentDetailModal({ department, detail, onClose, onE
           {tab === "employees" && (
             employees.length > 0 ? (
               <table className="w-full text-left text-sm">
-                <thead>
-                  <tr className="border-b text-xs uppercase text-slate-400">
+                <thead className="ui-table-head">
+                  <tr>
                     <th className="py-2">Code</th>
                     <th className="py-2">Name</th>
                     <th className="py-2">Email</th>
@@ -362,8 +362,8 @@ export default function DepartmentDetailModal({ department, detail, onClose, onE
           {tab === "machines" && (
             machines.length > 0 ? (
               <table className="w-full text-left text-sm">
-                <thead>
-                  <tr className="border-b text-xs uppercase text-slate-400">
+                <thead className="ui-table-head">
+                  <tr>
                     <th className="py-2">Code</th>
                     <th className="py-2">Machine</th>
                     <th className="py-2">Work Center</th>
@@ -407,8 +407,8 @@ export default function DepartmentDetailModal({ department, detail, onClose, onE
           {tab === "work_centers" && (
             workCenters.length > 0 ? (
               <table className="w-full text-left text-sm">
-                <thead>
-                  <tr className="border-b text-xs uppercase text-slate-400">
+                <thead className="ui-table-head">
+                  <tr>
                     <th className="py-2">Work Center</th>
                     <th className="py-2">Capacity</th>
                     <th className="py-2">Shift</th>
@@ -468,8 +468,8 @@ export default function DepartmentDetailModal({ department, detail, onClose, onE
           {tab === "audit" && (
             auditLogs.length > 0 ? (
               <table className="w-full text-left text-sm">
-                <thead>
-                  <tr className="border-b text-xs uppercase text-slate-400">
+                <thead className="ui-table-head">
+                  <tr>
                     <th className="py-2">Action</th>
                     <th className="py-2">User</th>
                     <th className="py-2">Timestamp</th>

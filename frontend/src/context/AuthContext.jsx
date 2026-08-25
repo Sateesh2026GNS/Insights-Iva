@@ -2,6 +2,7 @@ import { createContext, useCallback, useEffect, useMemo, useState } from "react"
 
 import { getCurrentUser, logout as logoutApi } from "../api/authApi";
 import { setUnauthorizedHandler } from "../api/axiosConfig";
+import { invalidateReferenceCache } from "../utils/referenceDataCache";
 
 export const AuthContext = createContext(null);
 
@@ -77,6 +78,7 @@ function clearTenantDataCaches() {
     }
     keys.forEach((k) => localStorage.removeItem(k));
   } catch {}
+  invalidateReferenceCache();
 }
 
 export function AuthProvider({ children }) {

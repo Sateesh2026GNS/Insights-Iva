@@ -13,6 +13,7 @@ import {
 import useAuth from "../../hooks/useAuth";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { getRoles } from "../../api/adminApi";
+import { SearchBar } from "../../components/common/SearchFilter";
 import { useToast } from "../../context/ToastContext";
 import Button from "../../components/common/Button";
 
@@ -110,30 +111,13 @@ export default function SettingsTeams() {
           />
         </span>
       </button>
-      <div className="relative">
-        <input
-          type="text"
-          placeholder="Search"
-          value={search[colKey] ?? ""}
-          onChange={(e) =>
-            setSearch((s) => ({ ...s, [colKey]: e.target.value }))
-          }
-          className="w-full rounded border border-slate-200 bg-white py-1 pl-7 pr-2 text-xs placeholder-slate-400 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
-        />
-        <svg
-          className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-          />
-        </svg>
-      </div>
+      <SearchBar
+        value={search[colKey] ?? ""}
+        onChange={(v) => setSearch((s) => ({ ...s, [colKey]: v }))}
+        placeholder="Search"
+        size="compact"
+        className="min-w-0 w-full flex-none"
+      />
     </div>
   );
 
@@ -155,10 +139,10 @@ export default function SettingsTeams() {
       </div>
 
       {/* Table */}
-      <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700">
-        <table className="w-full border-collapse">
-          <thead>
-            <tr className="bg-sky-50 dark:bg-sky-900/20">
+      <div className="ui-table-wrap ui-table-wrap--scroll overflow-hidden">
+        <table className="ui-table w-full border-collapse">
+          <thead className="ui-table-head">
+            <tr>
               <th className="border-b border-slate-200 px-4 py-3 text-left dark:border-slate-700">
                 <SortHeader colKey="name" label="Team" />
               </th>

@@ -1,6 +1,10 @@
 import api from "./axiosConfig";
+import { getCachedReference } from "../utils/referenceDataCache";
 
-export const getWarehouses = () => api.get("/inventory/warehouses");
+export const getWarehouses = (options = {}) =>
+  getCachedReference("warehouses", () => api.get("/inventory/warehouses"), {
+    force: options.force === true,
+  });
 export const getWarehouseSummary = () => api.get("/inventory/warehouses/summary");
 export const getWarehouseDetail = (warehouseId) => api.get(`/inventory/warehouses/${warehouseId}`);
 export const createWarehouseFull = (payload) => api.post("/inventory/warehouses/full", payload);

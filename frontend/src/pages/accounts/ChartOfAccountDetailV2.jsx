@@ -499,10 +499,10 @@ export default function ChartOfAccountDetailV2() {
           </div>
         ) : (
           <div className="overflow-hidden rounded-xl border border-[#cfcfd6] bg-white">
-            <div className="overflow-x-auto">
-              <table className="min-w-full border-collapse text-[13px]">
-                <thead>
-                  <tr className="bg-[#fafafa] text-left text-[12px] font-semibold uppercase tracking-wide text-[#6b6b76]">
+            <div className="ui-table-wrap ui-table-wrap--scroll !rounded-none !border-0">
+              <table className="ui-table min-w-full border-collapse text-[13px]">
+                <thead className="ui-table-head">
+                  <tr>
                     <SerialNumberHeader />
                     {[
                       "Date",

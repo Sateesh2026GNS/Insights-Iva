@@ -1,4 +1,5 @@
 import api from "./axiosConfig";
+import { getCachedReference } from "../utils/referenceDataCache";
 
 export const getPurchaseOrders = () => api.get("/procurement/purchase-orders");
 export const getPurchaseOrdersEnriched = () => api.get("/procurement/purchase-orders/enriched");
@@ -11,8 +12,13 @@ export const deletePurchaseOrder = (poId) => api.delete(`/procurement/purchase-o
 export const updatePurchaseOrderStatus = (poId, status) =>
   api.patch(`/procurement/purchase-orders/${poId}/status`, null, { params: { status } });
 
-export const getVendors = (params = {}) =>
-  api.get("/procurement/vendors", { params });
+export const getVendors = (params = {}) => {
+  const filtered = params && Object.keys(params).length > 0;
+  if (filtered) return api.get("/procurement/vendors", { params });
+  return getCachedReference("vendors", () => api.get("/procurement/vendors"), {
+    force: params.force === true,
+  });
+};
 export const getVendorSummary = () => api.get("/procurement/vendors/summary");
 export const getVendorDetail = (vendorId) => api.get(`/procurement/vendors/${vendorId}`);
 export const getVendorPurchaseHistory = (vendorId) =>

@@ -263,6 +263,10 @@
   font-weight: 700;
 }
 
+.meetings-cal__meet-with-search {
+  margin-bottom: 20px;
+}
+
 .meetings-cal__meet-with {
   display: flex;
   align-items: center;
@@ -550,4 +554,78 @@
   .meetings-cal__rail {
     display: none;
   }
+}
+
+/* Dark theme — Meetings calendar */
+.dark .meetings-cal {
+  --gcal-blue: #5eb8ba;
+  --gcal-blue-soft: rgba(3, 111, 113, 0.18);
+  --gcal-border: #2e3340;
+  --gcal-text: #f1f5f9;
+  --gcal-muted: #94a3b8;
+  --gcal-surface: #1a1d24;
+  color: var(--gcal-text);
+  background: var(--gcal-surface);
+  border-color: var(--gcal-border);
+}
+.dark .meetings-cal__btn {
+  background: var(--color-surface-muted);
+  border-color: var(--gcal-border);
+  color: var(--gcal-text);
+}
+.dark .meetings-cal__btn:hover {
+  background: var(--color-surface-hover);
+}
+.dark .meetings-cal__select {
+  background: var(--color-surface-muted);
+  border-color: var(--gcal-border);
+  color: var(--gcal-text);
+}
+.dark .meetings-cal__create {
+  background: var(--color-surface-muted);
+  color: var(--gcal-text);
+}
+.dark .meetings-cal__create:hover {
+  background: var(--color-surface-hover);
+}
+.dark .meetings-cal__create-menu {
+  background: var(--color-surface);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+.dark .meetings-cal__create-menu-item {
+  color: var(--gcal-text);
+}
+.dark .meetings-cal__create-menu-item:hover,
+.dark .meetings-cal__create-menu-item:focus-visible {
+  background: var(--color-surface-hover);
+}
+.dark .meetings-cal__mini-grid button:hover {
+  background: var(--color-surface-hover);
+}
+.dark .meetings-cal__meet-with {
+  background: var(--color-surface-muted);
+  border-color: var(--gcal-border);
+  color: var(--gcal-muted);
+}
+.dark .meetings-cal__meet-with input {
+  color: var(--gcal-text);
+}
+.dark .meetings-cal__day-col {
+  border-right-color: var(--gcal-border);
+}
+.dark .meetings-cal__hour-line {
+  border-bottom-color: var(--gcal-border);
+}
+.dark .meetings-cal__rail-btn:hover {
+  background: var(--color-surface-hover);
+}
+.dark .meetings-cal__setup {
+  background: rgba(230, 168, 23, 0.12);
+  border-color: rgba(230, 168, 23, 0.28);
+  color: var(--gcal-text);
+}
+.dark .meetings-cal__setup-code,
+.dark .meetings-cal__setup-pre {
+  background: var(--color-surface-muted);
+  color: var(--gcal-text);
 }

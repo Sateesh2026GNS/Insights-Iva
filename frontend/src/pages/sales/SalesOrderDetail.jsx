@@ -230,8 +230,8 @@ export default function SalesOrderDetail() {
           {lineItems.length ? (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
-                <thead>
-                  <tr className="border-b text-xs uppercase text-slate-400">
+                <thead className="ui-table-head">
+                  <tr>
                     <th className="py-2">Product</th>
                     <th className="py-2">Qty</th>
                     <th className="py-2">Unit</th>

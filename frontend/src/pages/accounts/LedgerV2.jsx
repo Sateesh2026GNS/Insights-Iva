@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { Banknote, Building2, ChevronLeft, ChevronRight, Download, Eye, FileText, IndianRupee, Landmark, Layers, List, Mail, MoreVertical, Pencil, Phone, Search, Target, Trash2, TrendingUp, UserPlus, Users, Wallet } from "lucide-react";
 
 import Loader from "../../components/common/Loader";
+import { SearchBar } from "../../components/common/SearchFilter";
 import Button from "../../components/common/Button";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
 import AddLedgerCustomerModal from "../../components/accounts/AddLedgerCustomerModal";
@@ -240,7 +241,7 @@ function LedgerKpiCard({ label, value, sub, icon: Icon, bg, iconColor, valueColo
       style={{ backgroundColor: tint }}
     >
       <div
-        className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-white/70 shadow-sm"
+        className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-[var(--color-surface)]/70 shadow-sm"
         style={{ color: iconColor }}
       >
         <Icon className="h-5 w-5" aria-hidden />
@@ -459,12 +460,12 @@ function OtherActionIcons({ onView, onEdit, onDelete, onSendMail, deleteLabel = 
         type="button"
         title="More"
         onClick={() => setMenuOpen((v) => !v)}
-        className={`${circleBtn} border border-[var(--color-border)] bg-white text-[var(--color-text-muted)] hover:opacity-100`}
+        className={`${circleBtn} border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-muted)] hover:opacity-100`}
       >
         <MoreVertical className="h-3.5 w-3.5" />
       </button>
       {menuOpen ? (
-        <div className="absolute right-0 top-9 z-30 min-w-[180px] overflow-hidden rounded-md border border-[var(--color-border)] bg-white py-1 shadow-lg">
+        <div className="absolute right-0 top-9 z-30 min-w-[180px] overflow-hidden rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] py-1 shadow-lg">
           {onDelete ? (
             <button
               type="button"
@@ -539,7 +540,7 @@ function ActionIcons({ onView, onEdit, onSendLedger, onDelete, deleteLabel = "De
         <MoreVertical className="h-3.5 w-3.5" />
       </button>
       {menuOpen ? (
-        <div className="absolute right-0 top-9 z-30 min-w-[180px] overflow-hidden rounded-md border border-[var(--color-border)] bg-white py-1 shadow-lg">
+        <div className="absolute right-0 top-9 z-30 min-w-[180px] overflow-hidden rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] py-1 shadow-lg">
           {onDelete ? (
             <button
               type="button"
@@ -577,7 +578,7 @@ function Pagination({ page, pageSize, total, onPage, onPageSize }) {
 
   return (
     <div className="ui-pagination justify-between border-t border-[var(--color-border-soft)] px-1 pt-4">
-      <div className="flex items-center gap-2.5 flex-nowrap whitespace-nowrap text-[13px] text-[#596b82]">
+      <div className="flex items-center gap-2.5 flex-nowrap whitespace-nowrap text-[13px] text-[var(--color-text-muted)]">
         <span>Rows per page:</span>
         <select
           value={pageSize}
@@ -590,7 +591,7 @@ function Pagination({ page, pageSize, total, onPage, onPageSize }) {
             </option>
           ))}
         </select>
-        <span className="font-medium text-[#596b82]">
+        <span className="font-medium text-[var(--color-text-muted)]">
           {total === 0 ? "0–0 of 0" : `${from}–${to} of ${total}`}
         </span>
       </div>
@@ -931,7 +932,7 @@ export default function LedgerV2() {
 
   return (
     <div className="min-h-full px-4 py-4 sm:px-6 sm:py-5" style={{ background: PAGE_BG }}>
-      <div className="overflow-hidden rounded-2xl border border-[var(--color-border)] bg-white shadow-sm">
+      <div className="overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
         {/* Tabs */}
         <div className="border-b border-[var(--color-border)] bg-[var(--color-surface-muted)]">
           <div className="flex overflow-x-auto">
@@ -944,8 +945,8 @@ export default function LedgerV2() {
                   onClick={() => setTab(t.id)}
                   className={`relative shrink-0 whitespace-nowrap border-r border-[var(--color-border)] px-4 py-3.5 text-[13px] font-semibold transition-colors last:border-r-0 sm:px-5 ${
                     active
-                      ? "bg-white text-[var(--color-primary)] after:absolute after:inset-x-0 after:bottom-0 after:h-[3px] after:bg-[var(--color-primary)]"
-                      : "bg-[var(--color-surface-muted)] text-[var(--color-text-muted)] hover:bg-white hover:text-[var(--color-text)]"
+                      ? "bg-[var(--color-surface)] text-[var(--color-primary)] after:absolute after:inset-x-0 after:bottom-0 after:h-[3px] after:bg-[var(--color-primary)]"
+                      : "bg-[var(--color-surface-muted)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text)]"
                   }`}
                 >
                   {t.label}
@@ -965,15 +966,7 @@ export default function LedgerV2() {
           ) : null}
 
           <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <div className="relative ui-search-wrap w-full">
-              <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]" />
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder={isPartyTab ? partySearchPlaceholder(tab) : accountSearchPlaceholder(tab)}
-                className="ui-input w-full !rounded-full py-2.5 pl-10 pr-4"
-              />
-            </div>
+            <SearchBar value={search} onChange={setSearch} placeholder="Search" className="w-full" />
 
             <div className="flex flex-wrap items-center gap-2">
               {tab === "debtors" ? (
@@ -991,14 +984,14 @@ export default function LedgerV2() {
                   <button
                     type="button"
                     onClick={() => setAdjustOpen(true)}
-                    className="rounded-lg border border-[var(--color-info)] bg-white px-3 py-2.5 text-[13px] font-semibold text-[var(--color-info)] hover:bg-[var(--color-info-soft)]"
+                    className="rounded-lg border border-[var(--color-info)] bg-[var(--color-surface)] px-3 py-2.5 text-[13px] font-semibold text-[var(--color-info)] hover:bg-[var(--color-info-soft)]"
                   >
                     Adjust Balance
                   </button>
                   <button
                     type="button"
                     onClick={() => setContraOpen(true)}
-                    className="rounded-lg border border-[var(--color-info)] bg-white px-3 py-2.5 text-[13px] font-semibold text-[var(--color-info)] hover:bg-[var(--color-info-soft)]"
+                    className="rounded-lg border border-[var(--color-info)] bg-[var(--color-surface)] px-3 py-2.5 text-[13px] font-semibold text-[var(--color-info)] hover:bg-[var(--color-info-soft)]"
                   >
                     Contra Entry (Bank/Cash Transfer)
                   </button>
@@ -1041,7 +1034,7 @@ export default function LedgerV2() {
                 <button
                   type="button"
                   onClick={onMail}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--color-info)] bg-white px-4 py-2.5 text-[13px] font-semibold text-[var(--color-info)] hover:bg-[var(--color-info-soft)]"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--color-info)] bg-[var(--color-surface)] px-4 py-2.5 text-[13px] font-semibold text-[var(--color-info)] hover:bg-[var(--color-info-soft)]"
                 >
                   <Mail className="h-4 w-4" /> Send On Mail
                 </button>
@@ -1050,10 +1043,10 @@ export default function LedgerV2() {
           </div>
 
           <div className="overflow-hidden rounded-xl border border-[var(--color-border)]">
-            <div className="overflow-x-auto">
+            <div className="ui-table-wrap ui-table-wrap--scroll">
               {isPartyTab ? (
-                <table className="min-w-[1100px] w-full border-collapse text-left text-[13px]">
-                  <thead className="bg-[var(--color-primary-soft)] text-[12px] font-semibold text-[var(--color-text)]">
+                <table className="ui-table min-w-[1100px] w-full border-collapse text-left text-[13px]">
+                  <thead className="ui-table-head">
                     <tr>
                       <SerialNumberHeader className="px-3 py-3" />
                       {[
@@ -1150,7 +1143,7 @@ export default function LedgerV2() {
                 </table>
               ) : tab === "cash" ? (
                 <table className="min-w-[960px] w-full border-collapse text-left text-[13px]">
-                  <thead className="bg-[var(--color-primary-soft)] text-[12px] font-semibold text-[var(--color-text)]">
+                  <thead className="ui-table-head">
                     <tr>
                       <SerialNumberHeader className="px-3 py-3" />
                       {["Account Name", "Account Type", "Description", "Balance", "Action"].map((h) => (
@@ -1216,7 +1209,7 @@ export default function LedgerV2() {
                 </table>
               ) : (
                 <table className="min-w-[1100px] w-full border-collapse text-left text-[13px]">
-                  <thead className="bg-[var(--color-primary-soft)] text-[12px] font-semibold text-[var(--color-text)]">
+                  <thead className="ui-table-head">
                     <tr>
                       <SerialNumberHeader className="px-3 py-3" />
                       {["Account Name", "Account Type", "Description", "Balance", "Status", "Action"].map((h) => (

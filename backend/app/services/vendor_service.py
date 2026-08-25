@@ -227,12 +227,69 @@ def _set_vendor_products(
         )
 
 
-def _to_list_read(db: Session, tenant_id: int, supplier: Supplier) -> VendorListRead:
+def _batch_outstanding_for_suppliers(
+    db: Session, tenant_id: int, supplier_ids: list[int]
+) -> dict[int, float]:
+    if not supplier_ids:
+        return {}
+    unique_ids = list({int(sid) for sid in supplier_ids if sid})
+    po_rows = db.execute(
+        select(PurchaseOrder.supplier_id, func.coalesce(func.sum(PurchaseOrder.total_amount), 0)).where(
+            PurchaseOrder.tenant_id == tenant_id,
+            PurchaseOrder.supplier_id.in_(unique_ids),
+            PurchaseOrder.status.notin_(("cancelled", "draft")),
+        ).group_by(PurchaseOrder.supplier_id)
+    ).all()
+    paid_rows = db.execute(
+        select(SupplierPayment.supplier_id, func.coalesce(func.sum(SupplierPayment.amount), 0)).where(
+            SupplierPayment.tenant_id == tenant_id,
+            SupplierPayment.supplier_id.in_(unique_ids),
+        ).group_by(SupplierPayment.supplier_id)
+    ).all()
+    po_map = {int(row[0]): float(row[1] or 0) for row in po_rows}
+    paid_map = {int(row[0]): float(row[1] or 0) for row in paid_rows}
+    return {
+        sid: max(po_map.get(sid, 0.0) - paid_map.get(sid, 0.0), 0.0) for sid in unique_ids
+    }
+
+
+def _batch_product_ids(
+    db: Session, tenant_id: int, vendor_ids: list[int]
+) -> dict[int, list[int]]:
+    if not vendor_ids:
+        return {}
+    unique_ids = list({int(vid) for vid in vendor_ids if vid})
+    rows = db.execute(
+        select(VendorProduct.vendor_id, VendorProduct.product_id).where(
+            VendorProduct.tenant_id == tenant_id,
+            VendorProduct.vendor_id.in_(unique_ids),
+        )
+    ).all()
+    result: dict[int, list[int]] = {vid: [] for vid in unique_ids}
+    for vendor_id, product_id in rows:
+        result.setdefault(int(vendor_id), []).append(int(product_id))
+    return result
+
+
+def _to_list_read(
+    db: Session,
+    tenant_id: int,
+    supplier: Supplier,
+    *,
+    outstanding_map: dict[int, float] | None = None,
+    product_ids_map: dict[int, list[int]] | None = None,
+) -> VendorListRead:
     data = VendorListRead.model_validate(supplier)
     data.vendor_code = _vendor_code(supplier)
-    data.outstanding = _outstanding_for_supplier(db, tenant_id, supplier.id)
+    if outstanding_map is not None:
+        data.outstanding = outstanding_map.get(supplier.id, 0.0)
+    else:
+        data.outstanding = _outstanding_for_supplier(db, tenant_id, supplier.id)
     data.preferred_vendor = bool(getattr(supplier, "preferred_vendor", False))
-    data.product_ids = _product_ids(db, tenant_id, supplier.id)
+    if product_ids_map is not None:
+        data.product_ids = product_ids_map.get(supplier.id, [])
+    else:
+        data.product_ids = _product_ids(db, tenant_id, supplier.id)
     return data
 
 
@@ -291,7 +348,13 @@ def list_vendors_enriched(
     if date_to:
         q = q.where(func.date(Supplier.created_at) <= date_to)
     suppliers = list(db.scalars(q.order_by(Supplier.name)).all())
-    return [_to_list_read(db, tenant_id, s) for s in suppliers]
+    supplier_ids = [s.id for s in suppliers]
+    outstanding_map = _batch_outstanding_for_suppliers(db, tenant_id, supplier_ids)
+    product_ids_map = _batch_product_ids(db, tenant_id, supplier_ids)
+    return [
+        _to_list_read(db, tenant_id, s, outstanding_map=outstanding_map, product_ids_map=product_ids_map)
+        for s in suppliers
+    ]
 
 
 def get_vendor_summary(db: Session, tenant_id: int) -> VendorSummaryRead:

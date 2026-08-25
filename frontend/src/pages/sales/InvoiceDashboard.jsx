@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Calendar, ChevronLeft, ChevronRight, Filter, ListFilter, MoreVertical, Plus, Receipt, Search, X } from "lucide-react";
 
 import Loader from "../../components/common/Loader";
+import { SearchBar } from "../../components/common/SearchFilter";
 import Button from "../../components/common/Button";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
 import { useToast } from "../../context/ToastContext";
@@ -58,7 +59,7 @@ function Chip({ label, active, onClick, icon: Icon }) {
       className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[13px] font-medium transition ${
         active
           ? "bg-[#0f6d84] text-white"
-          : "bg-[#f0f0f3] text-[#4a4a55] hover:bg-[#e4e4ea]"
+          : "bg-[var(--color-surface-muted)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"
       }`}
     >
       {Icon ? <Icon className="h-3.5 w-3.5" /> : null}
@@ -69,8 +70,8 @@ function Chip({ label, active, onClick, icon: Icon }) {
 
 function FilterSection({ label, children }) {
   return (
-    <div className="border-b border-[#d0d0d8] py-4 last:border-b-0">
-      <p className="mb-2.5 text-[12px] font-medium text-[#9a9aa5]">{label}</p>
+    <div className="border-b border-[var(--color-table-border)] py-4 last:border-b-0">
+      <p className="mb-2.5 text-[12px] font-medium text-[var(--color-text-faint)]">{label}</p>
       <div className="flex flex-wrap gap-2">{children}</div>
     </div>
   );
@@ -89,15 +90,15 @@ function SummaryTab({ label, count, amount, active, tone, onClick }) {
       onClick={onClick}
       className={`min-w-0 flex-1 border-b-[3px] px-5 py-3.5 text-left transition ${
         active
-          ? `bg-white ${activeStyles[tone]}`
-          : "border-transparent bg-transparent text-[#6b6b76] hover:bg-white/70"
+          ? `bg-[var(--color-surface)] ${activeStyles[tone]}`
+          : "border-transparent bg-transparent text-[var(--color-text-muted)] hover:bg-[var(--color-surface)]/70"
       }`}
     >
-      <p className={`text-[13px] font-medium ${active ? "" : "text-[#6b6b76]"}`}>
+      <p className={`text-[13px] font-medium ${active ? "" : "text-[var(--color-text-muted)]"}`}>
         {label}{" "}
         <span className={active ? "opacity-70" : "text-[#a0a0ab]"}>({count})</span>
       </p>
-      <p className={`mt-1 text-[18px] font-bold tabular-nums ${active ? "text-inherit" : "text-[#1a1a1f]"}`}>
+      <p className={`mt-1 text-[18px] font-bold tabular-nums ${active ? "text-inherit" : "text-[var(--color-text)]"}`}>
         {amount}
       </p>
     </button>
@@ -213,12 +214,12 @@ export default function InvoiceDashboard() {
     <div className="min-h-full bg-[var(--color-bg)] px-5 py-5 sm:px-6">
       {/* Toolbar row 1: calendar + create */}
       <div className="mb-4 flex justify-end gap-3">
-        <div className="inline-flex items-center gap-3 rounded-full bg-white px-4 py-3 text-[13px] text-[#4a4a55] shadow-sm shadow-[#00000010]">
-          <Calendar className="h-5 w-5 text-[#6b6b76]" />
+        <div className="inline-flex items-center gap-3 rounded-full bg-[var(--color-surface)] px-4 py-3 text-[13px] text-[var(--color-text-secondary)] shadow-sm shadow-[#00000010]">
+          <Calendar className="h-5 w-5 text-[var(--color-text-muted)]" />
           <span className="text-[14px] font-medium text-[#2c2b3d]">{fmtDisplayDate(dateFrom)}</span>
-          <span className="text-[#9a9aa5]">→</span>
+          <span className="text-[var(--color-text-faint)]">→</span>
           <span className="text-[14px] font-medium text-[#2c2b3d]">{fmtDisplayDate(dateTo)}</span>
-          <Calendar className="h-5 w-5 text-[#6b6b76]" />
+          <Calendar className="h-5 w-5 text-[var(--color-text-muted)]" />
         </div>
         <Button variant="add" to="/sales/invoices/create" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
           Create Invoice
@@ -226,7 +227,7 @@ export default function InvoiceDashboard() {
       </div>
 
       {/* KPI strip */}
-      <div className="mb-4 overflow-hidden rounded-xl bg-[#ececf0]">
+      <div className="mb-4 overflow-hidden rounded-xl bg-[var(--color-surface-muted)]">
         <div className="flex flex-wrap">
           <SummaryTab
             label="Total Sales"
@@ -265,15 +266,7 @@ export default function InvoiceDashboard() {
 
       {/* Search row: under KPI cards */}
       <div className="mb-3 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div className="relative ui-search-wrap w-full">
-          <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9a9aa5]" />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search"
-            className="w-full rounded-full border border-[#e4e4ea] bg-white py-2.5 pl-10 pr-4 text-[14px] text-[#1a1a1f] shadow-sm placeholder:text-[#9a9aa5] focus:border-[#0f6d84] focus:outline-none focus:ring-2 focus:ring-[#0f6d84]/25"
-          />
-        </div>
+        <SearchBar value={search} onChange={setSearch} placeholder="Search" className="w-full" />
       </div>
 
       {/* Toolbar row 2: filters + sort (right) */}
@@ -281,7 +274,7 @@ export default function InvoiceDashboard() {
         <button
           type="button"
           onClick={openFilters}
-          className="inline-flex items-center gap-2 rounded-lg bg-[#ececf0] px-3.5 py-2 text-[13px] font-medium text-[#4a4a55] hover:bg-[#e0e0e6]"
+          className="inline-flex items-center gap-2 rounded-lg bg-[var(--color-surface-muted)] px-3.5 py-2 text-[13px] font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"
         >
           <Filter className="h-4 w-4" />
           Filters
@@ -292,8 +285,8 @@ export default function InvoiceDashboard() {
             onClick={() => setShowSort((v) => !v)}
             className={`inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-[13px] font-medium ${
               showSort
-                ? "bg-[#dcdce3] text-[#1a1a1f]"
-                : "bg-[#ececf0] text-[#4a4a55] hover:bg-[#e0e0e6]"
+                ? "bg-[#dcdce3] text-[var(--color-text)]"
+                : "bg-[var(--color-surface-muted)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"
             }`}
           >
             <ListFilter className="h-4 w-4" />
@@ -307,7 +300,7 @@ export default function InvoiceDashboard() {
                 aria-label="Close sort"
                 onClick={() => setShowSort(false)}
               />
-              <div className="absolute right-0 z-20 mt-1.5 w-[260px] overflow-hidden rounded-xl border border-[#d0d0d8] bg-white py-1 shadow-[0_8px_30px_rgba(0,0,0,0.12)]">
+              <div className="absolute right-0 z-20 mt-1.5 w-[260px] overflow-hidden rounded-xl border border-[var(--color-table-border)] bg-[var(--color-surface)] py-1 shadow-[0_8px_30px_rgba(0,0,0,0.12)]">
                 {SORT_OPTIONS.map((opt) => (
                   <button
                     key={opt.id}
@@ -316,8 +309,8 @@ export default function InvoiceDashboard() {
                       setSortId(opt.id);
                       setShowSort(false);
                     }}
-                    className={`block w-full px-4 py-2.5 text-left text-[13px] hover:bg-[#f5f5f7] ${
-                      sortId === opt.id ? "font-semibold text-[#1a1a1f]" : "font-normal text-[#3a3a42]"
+                    className={`block w-full px-4 py-2.5 text-left text-[13px] hover:bg-[var(--color-surface-hover)] ${
+                      sortId === opt.id ? "font-semibold text-[var(--color-text)]" : "font-normal text-[var(--color-text-secondary)]"
                     }`}
                   >
                     {opt.label}
@@ -330,17 +323,17 @@ export default function InvoiceDashboard() {
       </div>
 
       {/* Table card */}
-      <div className="overflow-hidden rounded-xl border border-[#d0d0d8] bg-white">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[880px] border-collapse text-left">
-            <thead>
-              <tr className="bg-[#f3f3f6]">
-                <SerialNumberHeader className="border-b border-r border-[#d0d0d8]" />
+      <div className="overflow-hidden rounded-xl border border-[var(--color-table-border)] bg-[var(--color-surface)]">
+        <div className="ui-table-wrap ui-table-wrap--scroll !rounded-none !border-0">
+          <table className="ui-table w-full min-w-[880px] border-collapse text-left">
+            <thead className="ui-table-head">
+              <tr>
+                <SerialNumberHeader className="border-b border-r border-[var(--color-table-border)]" />
                 {["Invoice No.", "Date", "Buyer Name", "Due in", "Amount", "Status", "Actions"].map(
                   (h) => (
                     <th
                       key={h}
-                      className="border-b border-r border-[#d0d0d8] px-4 py-3 text-[12px] font-semibold uppercase tracking-wide text-[#6b6b76] last:border-r-0"
+                      className="border-b border-r border-[var(--color-table-border)] px-4 py-3 text-[12px] font-semibold last:border-r-0"
                     >
                       {h}
                     </th>
@@ -360,40 +353,40 @@ export default function InvoiceDashboard() {
                 </tr>
               ) : (
                 rows.map((r, rowIndex) => (
-                  <tr key={r.id} className="hover:bg-[#fafafa]">
+                  <tr key={r.id} className="hover:bg-[var(--color-table-row-hover)]">
                     <SerialNumberCell
                       rowIndex={rowIndex}
                       page={page}
                       pageSize={pageSize}
-                      className="border-t border-r border-[#d0d0d8]"
+                      className="border-t border-r border-[var(--color-table-border)]"
                     />
-                    <td className="border-t border-r border-[#d0d0d8] px-4 py-3 text-[14px] font-medium text-[#0f6d84]">
+                    <td className="border-t border-r border-[var(--color-table-border)] px-4 py-3 text-[14px] font-medium text-[#0f6d84]">
                       {r.invoice_number}
                     </td>
-                    <td className="border-t border-r border-[#d0d0d8] px-4 py-3 text-[14px] text-[#4a4a55]">
+                    <td className="border-t border-r border-[var(--color-table-border)] px-4 py-3 text-[14px] text-[var(--color-text-secondary)]">
                       {fmtDisplayDate(r.issue_date || r.due_date) || "ΓÇö"}
                     </td>
-                    <td className="border-t border-r border-[#d0d0d8] px-4 py-3 text-[14px] font-medium text-[#1a1a1f]">
+                    <td className="border-t border-r border-[var(--color-table-border)] px-4 py-3 text-[14px] font-medium text-[var(--color-text)]">
                       {r.buyer_name || r.customer_name || "ΓÇö"}
                     </td>
-                    <td className="border-t border-r border-[#d0d0d8] px-4 py-3 text-[14px] text-[#4a4a55]">
+                    <td className="border-t border-r border-[var(--color-table-border)] px-4 py-3 text-[14px] text-[var(--color-text-secondary)]">
                       {r.due_in || daysUntilDue(r.due_date)}
                     </td>
-                    <td className="border-t border-r border-[#d0d0d8] px-4 py-3 text-[14px] font-semibold tabular-nums text-[#1a1a1f]">
+                    <td className="border-t border-r border-[var(--color-table-border)] px-4 py-3 text-[14px] font-semibold tabular-nums text-[var(--color-text)]">
                       {formatInr(r.amount)}
                     </td>
-                    <td className="border-t border-r border-[#d0d0d8] px-4 py-3">
+                    <td className="border-t border-r border-[var(--color-table-border)] px-4 py-3">
                       <span
                         className={`rounded-full px-2.5 py-0.5 text-[12px] font-semibold capitalize ${statusColor(r.payment_status || r.status)}`}
                       >
                         {r.payment_status || r.status}
                       </span>
                     </td>
-                    <td className="border-t border-r border-[#d0d0d8] px-4 py-3">
+                    <td className="border-t border-r border-[var(--color-table-border)] px-4 py-3">
                       <div className="relative flex flex-wrap items-center gap-3">
                         <Link
                           to={`/sales/invoices/${r.id}`}
-                          className="text-[12px] font-semibold text-[#4a4a55] hover:underline"
+                          className="text-[12px] font-semibold text-[var(--color-text-secondary)] hover:underline"
                         >
                           View
                         </Link>
@@ -407,7 +400,7 @@ export default function InvoiceDashboard() {
                         ) : null}
                         <Link
                           to={`/sales/invoices/${r.id}`}
-                          className="text-[12px] font-semibold text-[#4a4a55] hover:underline"
+                          className="text-[12px] font-semibold text-[var(--color-text-secondary)] hover:underline"
                         >
                           Print
                         </Link>
@@ -431,7 +424,7 @@ export default function InvoiceDashboard() {
 
         {/* Pagination */}
         <div className="ui-pagination justify-between border-t border-[var(--color-border-soft)] px-4 py-3">
-          <div className="flex items-center gap-2.5 flex-nowrap whitespace-nowrap text-[13px] text-[#596b82]">
+          <div className="flex items-center gap-2.5 flex-nowrap whitespace-nowrap text-[13px] text-[var(--color-text-muted)]">
             <span>Rows per page:</span>
             <select
               value={pageSize}
@@ -486,13 +479,13 @@ export default function InvoiceDashboard() {
           role="presentation"
           onMouseDown={(e) => e.target === e.currentTarget && setShowFilters(false)}
         >
-          <aside className="flex h-full w-full max-w-[400px] flex-col bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-[#d0d0d8] px-5 py-4">
-              <h2 className="text-[18px] font-bold text-[#1a1a1f]">Filters</h2>
+          <aside className="flex h-full w-full max-w-[400px] flex-col bg-[var(--color-surface)] shadow-2xl">
+            <div className="flex items-center justify-between border-b border-[var(--color-table-border)] px-5 py-4">
+              <h2 className="text-[18px] font-bold text-[var(--color-text)]">Filters</h2>
               <button
                 type="button"
                 onClick={() => setShowFilters(false)}
-                className="rounded-lg p-1 text-[#9a9aa5] hover:bg-[#f5f5f7]"
+                className="rounded-lg p-1 text-[var(--color-text-faint)] hover:bg-[var(--color-surface-hover)]"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -549,7 +542,7 @@ export default function InvoiceDashboard() {
                       onChange={(e) =>
                         setDraftFilters((f) => ({ ...f, customDueDate: e.target.value }))
                       }
-                      className="ml-2 rounded-md border border-[#e4e4ea] px-2 py-1 text-[12px]"
+                      className="ml-2 rounded-md border border-[var(--color-border)] px-2 py-1 text-[12px]"
                     />
                   )}
                 </label>
@@ -675,14 +668,14 @@ export default function InvoiceDashboard() {
               </FilterSection>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 border-t border-[#d0d0d8] px-5 py-4">
+            <div className="grid grid-cols-2 gap-3 border-t border-[var(--color-table-border)] px-5 py-4">
               <button
                 type="button"
                 onClick={() => {
                   setDraftFilters(EMPTY_FILTERS);
                   setFilters(EMPTY_FILTERS);
                 }}
-                className="rounded-xl bg-[#e8e8ee] py-3 text-[14px] font-semibold text-[#1a1a1f]"
+                className="rounded-xl bg-[var(--color-surface-muted)] py-3 text-[14px] font-semibold text-[var(--color-text)]"
               >
                 Clear Filter
               </button>

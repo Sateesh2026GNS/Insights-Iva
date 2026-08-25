@@ -1073,9 +1073,9 @@ export default function AccountsPayable() {
                     </div>
                   </div>
                   <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="bg-white/60 text-[11px] font-bold uppercase text-slate-500 tracking-wide">
+                    <table className="ui-table w-full text-sm">
+                      <thead className="ui-table-head">
+                        <tr>
                           <SerialNumberHeader className="px-2 py-2" />
                           <th className="px-4 py-2 text-left">Bill No.</th>
                           <th className="px-4 py-2 text-left">Vendor</th>

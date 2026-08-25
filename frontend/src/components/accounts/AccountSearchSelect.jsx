@@ -1,5 +1,8 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { ChevronDown } from "lucide-react";
 import { createPortal } from "react-dom";
+
+import { SearchBar } from "../common/SearchFilter";
 
 /**
  * Searchable account picker for journal lines.
@@ -12,6 +15,7 @@ export default function AccountSearchSelect({
   onChange,
   placeholder = "Select account",
 }) {
+  const listboxId = useId();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [highlight, setHighlight] = useState(0);
@@ -125,60 +129,58 @@ export default function AccountSearchSelect({
     }
   };
 
+  const displayValue = open ? query : label || "";
+
   return (
     <div ref={rootRef} className="relative w-full">
-      <div
-        className={`flex items-center overflow-hidden rounded-md border bg-[#f5f5f5] ${
-          open
-            ? "border-[#6b4eff] bg-white ring-1 ring-[#c4b5fd]"
-            : "border-[#d0d0d8]"
-        }`}
+      <SearchBar
+        size="compact"
+        value={displayValue}
+        onChange={(next) => {
+          setQuery(next);
+          setHighlight(0);
+          if (!open) setOpen(true);
+        }}
+        onFocus={() => {
+          if (!open) openMenu();
+        }}
+        onClick={() => {
+          if (!open) openMenu();
+        }}
+        onKeyDown={onKeyDown}
+        placeholder={open ? "Search" : placeholder}
+        clearable={false}
+        type="text"
+        autoComplete="off"
+        role="combobox"
+        aria-expanded={open}
+        aria-controls={listboxId}
+        aria-label={placeholder}
+        inputRef={inputRef}
+        className="w-full"
+        inputClassName="!pr-9"
+      />
+      <button
+        type="button"
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={() => (open ? setOpen(false) : openMenu())}
+        className="absolute right-2.5 top-1/2 z-20 -translate-y-1/2 text-[var(--color-text-icon)] transition-colors hover:text-[var(--color-text)]"
+        aria-label="Toggle accounts"
+        tabIndex={-1}
       >
-        <input
-          ref={inputRef}
-          value={open ? query : label || ""}
-          onChange={(e) => {
-            setQuery(e.target.value);
-            setHighlight(0);
-            if (!open) setOpen(true);
-          }}
-          onFocus={() => {
-            if (!open) openMenu();
-          }}
-          onClick={() => {
-            if (!open) openMenu();
-          }}
-          onKeyDown={onKeyDown}
-          placeholder={open ? "Search" : placeholder}
-          className="min-w-0 flex-1 bg-transparent px-2.5 py-2 text-[13px] text-[#1a1a1f] outline-none placeholder:text-[#a0a0ab]"
-          autoComplete="off"
+        <ChevronDown
+          className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`}
+          aria-hidden
         />
-        <button
-          type="button"
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={() => (open ? setOpen(false) : openMenu())}
-          className="grid h-full shrink-0 place-items-center self-stretch border-l border-[#d0d0d8] px-2.5 text-[#4a4a4a]"
-          aria-label="Toggle accounts"
-          tabIndex={-1}
-        >
-          <svg
-            width="10"
-            height="6"
-            viewBox="0 0 10 6"
-            aria-hidden
-            className={open ? "rotate-180" : ""}
-          >
-            <path d="M0 0 L5 6 L10 0 Z" fill="#4a4a4a" />
-          </svg>
-        </button>
-      </div>
+      </button>
 
       {open && pos
         ? createPortal(
             <div
               ref={listRef}
+              id={listboxId}
               role="listbox"
-              className="fixed z-[9999] overflow-y-auto rounded-md border border-[#d0d0d8] bg-white shadow-xl"
+              className="fixed z-[9999] overflow-y-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xl"
               style={{
                 left: pos.left,
                 width: pos.width,
@@ -188,9 +190,13 @@ export default function AccountSearchSelect({
               }}
             >
               {options.length === 0 ? (
-                <div className="px-3 py-3 text-[13px] text-[#9a9aa5]">No accounts loaded</div>
+                <div className="px-3 py-3 text-[13px] text-[var(--color-text-muted)]">
+                  No accounts loaded
+                </div>
               ) : filtered.length === 0 ? (
-                <div className="px-3 py-3 text-[13px] text-[#9a9aa5]">No matching accounts</div>
+                <div className="px-3 py-3 text-[13px] text-[var(--color-text-muted)]">
+                  No matching accounts
+                </div>
               ) : (
                 filtered.map((opt, idx) => {
                   const active = idx === highlight || opt.value === value;
@@ -205,8 +211,10 @@ export default function AccountSearchSelect({
                         pick(opt);
                       }}
                       onMouseEnter={() => setHighlight(idx)}
-                      className={`block w-full px-3 py-2 text-left text-[13px] text-[#1a1a1f] ${
-                        active ? "bg-[#e8e8e8]" : "bg-white"
+                      className={`block w-full px-3 py-2 text-left text-[13px] ${
+                        active
+                          ? "bg-[var(--color-primary-soft)] text-[var(--color-primary-dark)]"
+                          : "bg-[var(--color-surface)] text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]"
                       }`}
                     >
                       {opt.label}

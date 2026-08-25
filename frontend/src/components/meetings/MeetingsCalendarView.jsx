@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 
 import DataTable from "../common/DataTable";
+import { SearchBar } from "../common/SearchFilter";
 import EmptyState from "../common/EmptyState";
 import StatusBadge from "../common/StatusBadge";
 import CreateDropdown from "./CreateDropdown";
@@ -310,13 +311,13 @@ export default function MeetingsCalendarView({
             }
           />
 
-          <div className="meetings-cal__meet-with">
-            <Search className="h-4 w-4 shrink-0" />
-            <input
-              type="text"
-              placeholder="Search"
+          <div className="meetings-cal__meet-with-search">
+            <SearchBar
+              size="compact"
               value={meetQuery}
-              onChange={(e) => setMeetQuery(e.target.value)}
+              onChange={setMeetQuery}
+              placeholder="Search"
+              className="w-full"
             />
           </div>
 

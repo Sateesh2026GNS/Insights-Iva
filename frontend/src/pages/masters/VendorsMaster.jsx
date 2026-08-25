@@ -6,13 +6,13 @@ import {
   FileSpreadsheet,
   Pencil,
   Plus,
-  Search,
   Trash2,
   Upload,
 } from "lucide-react";
 import { createPortal } from "react-dom";
 
 import Button from "../../components/common/Button";
+import { SearchBar } from "../../components/common/SearchFilter";
 import Loader from "../../components/common/Loader";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
 import AddNewPartyModal from "../../components/sales/AddNewPartyModal";
@@ -180,17 +180,9 @@ export default function VendorsMaster() {
     <div className="min-h-full" style={{ background: PAGE_BG }}>
       <div className="mx-auto max-w-[1400px] px-4 py-5 sm:px-6 lg:px-8">
 
-        <div className="rounded-xl border border-[#e4e4ea] bg-white p-4 shadow-sm sm:p-5">
+        <div className="ui-card p-4 sm:p-5">
           <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="relative ui-search-wrap min-w-[10rem] flex-1">
-              <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9a9aa5]" />
-              <input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search"
-                className="w-full rounded-full border border-[#e8e8ee] bg-[#f3f3f6] py-2.5 pl-10 pr-4 text-[13px] outline-none placeholder:text-[#a0a0ab] focus:border-[#d0d0d8] focus:bg-white"
-              />
-            </div>
+            <SearchBar value={query} onChange={setQuery} placeholder="Search" className="w-full" />
             <div className="flex flex-wrap items-center gap-2.5 sm:justify-end">
               <Button
                 variant="outline"
@@ -221,11 +213,10 @@ export default function VendorsMaster() {
             </div>
           </div>
 
-          <div className="overflow-hidden rounded-lg border border-[#ececf0]">
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[980px] border-collapse text-left text-[13px]">
-                <thead>
-                  <tr className="border-b border-[#e8e8ee] bg-[#f5f5f5] text-[12px] font-medium text-[#6b6b76]">
+          <div className="ui-table-wrap ui-table-wrap--scroll">
+              <table className="ui-table w-full min-w-[980px] border-collapse text-left text-[13px]">
+                <thead className="ui-table-head">
+                  <tr>
                     <SerialNumberHeader />
                     <th className="px-4 py-3 font-medium">Vendor Name</th>
                     <th className="px-4 py-3 font-medium">Email</th>
@@ -281,7 +272,6 @@ export default function VendorsMaster() {
                   ))}
                 </tbody>
               </table>
-            </div>
             {rows.length === 0 ? (
               <div className="px-4 py-16 text-center text-[13px] text-[#8a8a96]">No data available</div>
             ) : null}

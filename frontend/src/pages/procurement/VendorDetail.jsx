@@ -379,10 +379,10 @@ function EmptyState({ text }) {
 function HistoryTable({ rows, columns, empty }) {
   if (!rows?.length) return <EmptyState text={empty} />;
   return (
-    <div className="overflow-x-auto">
-      <table className="min-w-full text-left text-sm">
-        <thead>
-          <tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">
+    <div className="ui-table-wrap ui-table-wrap--scroll">
+      <table className="ui-table min-w-full text-left text-sm">
+        <thead className="ui-table-head">
+          <tr>
             <SerialNumberHeader className="px-3 py-2" />
             {columns.map((c) => (
               <th key={c.key} className="px-3 py-2 font-semibold">

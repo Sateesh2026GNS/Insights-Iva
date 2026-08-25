@@ -90,8 +90,8 @@ export default function MachineAnalytics() {
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead>
-              <tr className="border-b border-slate-200/80 dark:border-slate-700/80 bg-slate-50/50 dark:bg-slate-800/50">
+            <thead className="ui-table-head">
+              <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase text-slate-500 dark:text-slate-400">ID</th>
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase text-slate-500 dark:text-slate-400">Name</th>
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase text-slate-500 dark:text-slate-400">Status</th>

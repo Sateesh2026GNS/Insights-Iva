@@ -1,6 +1,6 @@
 # Insights Iva — Frontend UI/UX Audit Report
 
-**Date:** 24 August 2026  
+**Date:** 25 August 2026 (updated)  
 **Scope:** React frontend (`frontend/src`)  
 **Goal:** Premium, consistent, accessible ERP UI using the Insights Iva design system — without breaking architecture, APIs, routes, or business logic.
 
@@ -10,9 +10,84 @@
 
 Insights Iva uses a **centralized design system** with CSS tokens in `index.css`, a JavaScript barrel at `design-system/`, and domain shells for accounts, inventory, and settings. Brand primary is **forest green** (`#036f71`) on canvas `#f2f7f5`.
 
-August 2026 work hardened shared components, migrated high-traffic modules, integrated **Settings into the main ERP shell**, added **shared date/calendar controls**, and completed an **action-based button consistency pass** (24 Aug) covering toolbar Add/Create CTAs, table row actions, and semantic color roles.
+August 2026 work hardened shared components, migrated high-traffic modules, integrated **Settings into the main ERP shell**, added **shared date/calendar controls**, completed an **action-based button consistency pass** (24 Aug), and standardized **list and embedded search bars** (25 Aug) using the Vendors page as the visual reference.
 
 **Build status:** `npm run build` passes. **Button tests:** `Button.test.jsx` covers primary, add, view, and edit variants.
+
+---
+
+## Search Bar System (25 Aug 2026)
+
+### Principle
+
+**One search component, two sizes.** The **Vendors page** search bar is the reference for all main list/table toolbars. Embedded contexts (dropdowns, forms, filters, autocomplete) use the same brand styling at **`size="compact"`** — smaller height and padding, identical pill shape, icon, focus, and theme tokens.
+
+### Reference design (default)
+
+| Property | Value |
+|----------|-------|
+| Component | `SearchBar` in `components/common/SearchFilter.jsx` |
+| Wrap | `relative ui-search-wrap min-w-[10rem] flex-1` |
+| Input | `ui-input w-full !rounded-full !pl-10` |
+| Icon | Lucide `Search`, `left-3.5`, `text-[var(--color-text-icon)]` |
+| Clear | Optional `X` when value present |
+| Theme | `--color-*` tokens only — no hardcoded white/black backgrounds |
+
+### Compact variant (`size="compact"`)
+
+| Property | Value |
+|----------|-------|
+| Use when | Dropdown filter search, form party/item pickers, settings column filters, combobox/autocomplete |
+| **Do not use for** | Main page/table toolbar search (keep default size) |
+| Height | `--control-h-sm` via `.ui-search-input--compact` |
+| CSS | `.ui-search-wrap--compact` in `index.css` |
+
+### Shared components & wrappers
+
+| Component | Path | Role |
+|-----------|------|------|
+| `SearchBar` | `components/common/SearchFilter.jsx` | Canonical search UI |
+| `SearchFilter` / `FilterBar` | Same + `FilterBar.jsx` | Toolbar search + filter rows |
+| `DataTable` | `components/common/DataTable.jsx` | Built-in table search → `SearchBar` |
+| `AccountsSearchInput` | `accountsDesignSystem.jsx` | Delegates to `SearchBar` |
+| `InventorySearchInput` | `inventoryDesignSystem.jsx` | Delegates to `SearchBar` |
+| `SettingsSearchInput` | `pages/settings/settingsUi.jsx` | Delegates to `SearchBar` |
+| `SearchableSelect` | `components/common/SearchableSelect.jsx` | Dropdown list search → compact `SearchBar` |
+| `AccountSearchSelect` | `components/accounts/AccountSearchSelect.jsx` | Journal combobox → compact `SearchBar` + portaled list |
+
+Exported tokens: `SEARCH_BAR_*` and `SEARCH_BAR_COMPACT_*` via `design-system/index.js`.
+
+### Migration coverage (25 Aug)
+
+| Area | Status |
+|------|--------|
+| **Masters** — Vendors (reference), Products, Customers, BOM, Departments, Vendor Management | Default `SearchBar` |
+| **Sales** — quotations, bills, invoices, credit/debit notes, challans, refunds, export/proforma, invoice dashboard, customers | Default `SearchBar` |
+| **Purchases / procurement** — purchases, payments, debit notes, POs, create PO | Default + compact (filters/forms) |
+| **Inventory** — RM, FG, warehouses, transfer, adjustment, stock ledger, stock in/return, InventoryV2 | Default `SearchBar` |
+| **Production** — work orders, planning, schedule, machine allocation/status, task mgmt, daily reports, batch tracking | Default `SearchBar` |
+| **Quality** — in-process/final/incoming QC, defect tracking, batch reports | Default toolbar + compact in `MultiSelectDropdown` |
+| **Maintenance** — schedule, breakdown, machine history, equipment/spares | Default `SearchBar` |
+| **Accounts / finance** — ledger, COA, journals, expense, reports, audit trail, restore deleted | Default + compact (filter dropdowns) |
+| **HR list pages** | Via `DataTable` → `SearchBar` |
+| **Settings** — home search, teams/package type column filters, my permissions, audit logs panel | Default or compact as appropriate |
+| **Documents, alerts, job card filters** | Default `SearchBar` |
+| **ERP forms (10+)** — buyer/vendor pickers, line-item cells | Compact `SearchBar` |
+| **Pickers** — terms & conditions, dispatch address, payment receipt/make payment party search, refund party picker | Compact `SearchBar` |
+| **Meetings** — calendar sidebar “meet with” search | Compact `SearchBar` |
+
+**Intentionally unchanged:**
+
+- **`GlobalSearch`** — navbar global search (separate component)
+- **Login / auth** inputs — not list-search contexts
+
+### Dark theme
+
+All migrated search bars use `ui-input` and CSS variables (`--color-surface`, `--color-border`, `--color-text-placeholder`, `--color-focus-ring`). Legacy page-specific `bg-white` / `slate-*` search overrides were removed from maintenance and settings pages.
+
+### Functional preservation
+
+Search state, filtering logic, API parameters, pagination, combobox keyboard navigation, and portaled dropdown positioning were **not** changed — only component/UI wiring. `npm run build` passes after migration.
 
 ---
 
@@ -121,7 +196,8 @@ August 2026 work hardened shared components, migrated high-traffic modules, inte
 | Component | Notes |
 |-----------|-------|
 | `FormField.jsx` | Input, Select, Textarea; date types get single calendar trigger |
-| `FilterBar.jsx` | Finance, Quality, Maintenance filters |
+| `FilterBar.jsx` | Finance, Quality, Maintenance filters; uses `SearchBar` |
+| `SearchFilter.jsx` | `SearchBar` (default + compact), `SearchFilter` wrapper |
 | `LiveIndicator.jsx` | Workflow hub live badge |
 | `PermissionGate.jsx` | Via `usePermissions()` |
 
@@ -172,6 +248,8 @@ August 2026 work hardened shared components, migrated high-traffic modules, inte
 | Settings felt disconnected | Moved into ERP shell |
 | Store Manager missing purchase pages | Full Purchases group in store nav |
 | Row menus clipped in tables | Portal positioning |
+| Inconsistent search bar styles across modules | Unified `SearchBar`; Vendors page as reference |
+| Hardcoded light-only search on settings/maintenance | Theme tokens + `ui-input` |
 
 **No routing, API contract, or database schema changes for UI-only work.**
 
@@ -203,7 +281,7 @@ August 2026 work hardened shared components, migrated high-traffic modules, inte
 
 | Check | Result |
 |-------|--------|
-| `npm run build` | Pass |
+| `npm run build` | Pass (includes search bar migration, 25 Aug) |
 | `npm test -- --run src/components/common/Button.test.jsx` | Pass (primary, add, view, edit, loading, link) |
 | `pytest test_workflow_state_machine` | Pass |
 | Playwright E2E | Not configured — recommended |
@@ -247,3 +325,4 @@ August 2026 work hardened shared components, migrated high-traffic modules, inte
 | 2026-08-18 | Forest green rebrand; design-system module; ERP forms; manufacturing UI |
 | 2026-08-21 | Manufacturing IA pass; 9-step pipeline; Store Manager nav; date controls |
 | 2026-08-24 | **Action-based button system:** `add`/`view`/`edit` variants, `AddButton`, `TableActionButtons`, 80+ page Add/Create migration; button unit tests |
+| 2026-08-25 | **Search bar standardization:** `SearchBar` default + `size="compact"`; Vendors reference; 40+ list pages + forms/dropdowns/comboboxes; dark theme tokens |

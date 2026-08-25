@@ -41,6 +41,51 @@ def _item_status(qty: int, reorder: int) -> str:
     return "in_stock"
 
 
+def _batch_total_stock(db: Session, item_ids: list[int]) -> dict[int, int]:
+    if not item_ids:
+        return {}
+    rows = db.execute(
+        select(StockLevel.item_id, func.coalesce(func.sum(StockLevel.quantity), 0)).where(
+            StockLevel.item_id.in_(item_ids)
+        ).group_by(StockLevel.item_id)
+    ).all()
+    return {int(row[0]): int(row[1] or 0) for row in rows}
+
+
+def _batch_primary_warehouse(
+    db: Session, tenant_id: int, item_ids: list[int]
+) -> dict[int, tuple[Warehouse | None, int]]:
+    if not item_ids:
+        return {}
+    rows = db.execute(
+        select(StockLevel.item_id, Warehouse, StockLevel.quantity)
+        .join(Warehouse, StockLevel.warehouse_id == Warehouse.id)
+        .where(StockLevel.item_id.in_(item_ids), Warehouse.tenant_id == tenant_id)
+        .order_by(StockLevel.item_id, StockLevel.quantity.desc())
+    ).all()
+    result: dict[int, tuple[Warehouse | None, int]] = {}
+    for item_id, wh, qty in rows:
+        iid = int(item_id)
+        if iid not in result:
+            result[iid] = (wh, int(qty or 0))
+    if len(result) < len(item_ids):
+        primary_wh = db.scalars(
+            select(Warehouse).where(Warehouse.tenant_id == tenant_id, Warehouse.is_primary.is_(True))
+        ).first()
+        for iid in item_ids:
+            if iid not in result:
+                result[iid] = (primary_wh, 0)
+    return result
+
+
+def _batch_suppliers(db: Session, supplier_ids: list[int]) -> dict[int, Supplier]:
+    if not supplier_ids:
+        return {}
+    unique_ids = list({int(sid) for sid in supplier_ids if sid})
+    rows = db.scalars(select(Supplier).where(Supplier.id.in_(unique_ids))).all()
+    return {int(s.id): s for s in rows}
+
+
 def _primary_warehouse(db: Session, tenant_id: int, item_id: int) -> tuple[Warehouse | None, int]:
     row = db.execute(
         select(Warehouse, StockLevel.quantity)
@@ -69,8 +114,10 @@ def get_materials_summary(db: Session, tenant_id: int) -> InventorySummaryRead:
     available = low = out = expiring = reorder_count = 0
     value = 0.0
     today = date.today()
+    item_ids = [item.id for item in items]
+    stock_map = _batch_total_stock(db, item_ids)
     for item in items:
-        db_qty = get_total_stock(db, item.id)
+        db_qty = stock_map.get(item.id, 0)
         qty = item.quantity if (item.quantity is not None and item.quantity > 0) else db_qty
         item_cost = float(item.unit_cost or 0)
         value += item_cost * qty
@@ -116,16 +163,21 @@ def list_materials_enriched(db: Session, tenant_id: int) -> list[MaterialListRea
         ).all()
     )
     result = []
+    item_ids = [item.id for item in items]
+    stock_map = _batch_total_stock(db, item_ids)
+    warehouse_map = _batch_primary_warehouse(db, tenant_id, item_ids)
+    supplier_ids = [item.supplier_id for item in items if item.supplier_id]
+    supplier_map = _batch_suppliers(db, supplier_ids)
     for i, item in enumerate(items):
-        db_qty = get_total_stock(db, item.id)
+        db_qty = stock_map.get(item.id, 0)
         qty = item.quantity if (item.quantity is not None and item.quantity > 0) else db_qty
-        wh, wh_qty = _primary_warehouse(db, tenant_id, item.id)
+        wh, wh_qty = warehouse_map.get(item.id, (None, 0))
         wh_name = item.warehouse_name or (wh.name if wh else "—")
         batch_no = item.batch_number or f"BATCH-{item.id:04d}"
         reserved = min(max(0, item.reserved), qty) if item.reserved is not None else 0
         available = max(qty - reserved, 0)
         item_status = _item_status(qty, item.reorder_level)
-        supplier = db.get(Supplier, item.supplier_id) if item.supplier_id else None
+        supplier = supplier_map.get(item.supplier_id) if item.supplier_id else None
         result.append(
             MaterialListRead(
                 id=item.id,
@@ -292,10 +344,13 @@ def list_finished_goods_enriched(db: Session, tenant_id: int) -> list[FinishedGo
         ).all()
     )
     result = []
+    item_ids = [item.id for item in items]
+    stock_map = _batch_total_stock(db, item_ids)
+    warehouse_map = _batch_primary_warehouse(db, tenant_id, item_ids)
     for i, item in enumerate(items):
-        db_qty = get_total_stock(db, item.id)
+        db_qty = stock_map.get(item.id, 0)
         qty = item.quantity if (item.quantity is not None and item.quantity > 0) else db_qty
-        wh, _ = _primary_warehouse(db, tenant_id, item.id)
+        wh, _ = warehouse_map.get(item.id, (None, 0))
         wh_name = item.warehouse_name or (wh.name if wh else "—")
         reserved = min(max(0, item.reserved), qty) if item.reserved is not None else 0
         available = max(qty - reserved, 0)

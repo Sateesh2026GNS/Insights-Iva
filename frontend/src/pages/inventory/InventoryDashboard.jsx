@@ -504,7 +504,7 @@ export default function InventoryDashboard() {
         >
           <div className="overflow-x-auto">
             <table className="min-w-full text-left text-[13px]">
-              <thead className="bg-[var(--color-surface-muted)]/50 text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
+              <thead className="ui-table-head">
                 <tr>
                   <SerialNumberHeader />
                   <th className="px-4 py-2.5">Sales Order No.</th>
@@ -597,7 +597,7 @@ export default function InventoryDashboard() {
         <SectionCard title="Recent Stock Movements" viewAllTo="/inventory/stock-ledger" className="xl:col-span-8">
           <div className="overflow-x-auto">
             <table className="min-w-full text-left text-[13px]">
-              <thead className="bg-[var(--color-surface-muted)]/50 text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
+              <thead className="ui-table-head">
                 <tr>
                   <SerialNumberHeader />
                   <th className="whitespace-nowrap px-4 py-2.5">Date</th>
@@ -639,7 +639,7 @@ export default function InventoryDashboard() {
         <SectionCard title="Top Low Stock Items" viewAllTo="/alerts/low-stock">
           <div className="overflow-x-auto">
             <table className="min-w-full text-left text-[13px]">
-              <thead className="bg-[var(--color-surface-muted)]/50 text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
+              <thead className="ui-table-head">
                 <tr>
                   <SerialNumberHeader />
                   <th className="px-4 py-2.5">Item</th>
@@ -684,7 +684,7 @@ export default function InventoryDashboard() {
         <SectionCard title="Recent Transfers" viewAllTo="/inventory/stock-transfer">
           <div className="overflow-x-auto">
             <table className="min-w-full text-left text-[13px]">
-              <thead className="bg-[var(--color-surface-muted)]/50 text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
+              <thead className="ui-table-head">
                 <tr>
                   <SerialNumberHeader />
                   <th className="px-4 py-2.5">Reference No.</th>

@@ -156,10 +156,10 @@ export default function MultiBranchLedger() {
           <h2 className="font-bold text-slate-800">Consolidated General Ledger Postings</h2>
           <span className="text-xs text-slate-500">Showing {filtered.length} entries</span>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-slate-50 border-b text-slate-500 text-left font-semibold">
+        <div className="ui-table-wrap ui-table-wrap--scroll !rounded-none !border-0">
+          <table className="ui-table w-full text-sm">
+            <thead className="ui-table-head">
+              <tr>
                 <th className="p-3">Date</th>
                 <th className="p-3">Branch</th>
                 <th className="p-3">Ledger Account</th>

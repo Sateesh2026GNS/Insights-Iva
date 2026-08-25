@@ -195,7 +195,7 @@ export default function WorkflowOrderActions({ orderId, onSuccess }) {
           {materialLines.length ? (
             <div className="mb-3 overflow-x-auto">
               <table className="min-w-full text-left text-xs">
-                <thead className="border-b text-slate-500">
+                <thead className="ui-table-head">
                   <tr>
                     <th className="px-2 py-1">Material</th>
                     <th className="px-2 py-1">Required</th>

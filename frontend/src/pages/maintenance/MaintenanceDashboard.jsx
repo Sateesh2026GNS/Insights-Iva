@@ -334,7 +334,7 @@ export default function MaintenanceDashboard() {
       <Panel title="Recent Maintenance Requests">
         <div className="overflow-x-auto rounded-xl border border-slate-200">
           <table className="min-w-full w-full border-collapse text-left text-[13px]">
-            <thead className="bg-[#eef6ff] text-[12px] font-semibold text-slate-700">
+            <thead className="ui-table-head">
               <tr>
                 <th className="border-b border-slate-200 px-3 py-3">Request No</th>
                 <th className="border-b border-slate-200 px-3 py-3">Machine</th>

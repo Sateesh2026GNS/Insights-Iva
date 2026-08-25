@@ -5,6 +5,7 @@ import { useToast } from "../../context/ToastContext";
 import useTenantId from "../../hooks/useTenantId";
 import { getTasks, createTask, updateTask } from "../../api/tasksApi";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
+import { SearchBar } from "../../components/common/SearchFilter";
 
 const STATUSES = [
   { value: "open", label: "Open" },
@@ -222,13 +223,7 @@ export default function TaskManagement() {
 
       {/* ── Filters ───────────────────────────────────────────────── */}
       <div className="flex flex-wrap gap-3">
-        <input
-          type="text"
-          placeholder="Search"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="ui-search-wrap h-9 min-w-[10rem] flex-1 rounded-full border border-gray-200 bg-gray-50 px-4 text-sm outline-none focus:border-gray-400 focus:bg-white"
-        />
+        <SearchBar value={search} onChange={setSearch} placeholder="Search" className="w-full" />
         <select
           value={filterStatus}
           onChange={(e) => setFilterStatus(e.target.value)}
@@ -265,11 +260,11 @@ export default function TaskManagement() {
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-100 bg-gray-50">
-                  <SerialNumberHeader className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500" />
+          <div className="ui-table-wrap ui-table-wrap--scroll">
+            <table className="ui-table w-full text-sm">
+              <thead className="ui-table-head">
+                <tr className="border-b border-gray-100">
+                  <SerialNumberHeader className="px-4 py-3 text-[11px] font-semibold" />
                   {["Task / Order", "Assigned To", "Priority", "Status", "Start", "Due", "Action"].map((h) => (
                     <th key={h} className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-500">
                       {h}

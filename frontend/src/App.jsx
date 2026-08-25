@@ -1,16 +1,17 @@
-import { Suspense, useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { useLocation } from "react-router-dom";
 
 import AppRoutes from "./routes/AppRoutes";
 import RouteFallback from "./components/common/RouteFallback";
 import Navbar from "./components/layout/Navbar";
 import Sidebar from "./components/layout/Sidebar";
-import AiChatWidget from "./components/ai/AiChatWidget";
 import GlobalRefreshButton from "./components/common/GlobalRefreshButton";
 import Button from "./components/common/Button";
 import { isOperator } from "./config/permissions";
 import useAuth from "./hooks/useAuth";
 import { isAiCopilotEnabled, isOperatorAiRoute } from "./utils/aiCopilot";
+
+const AiChatWidget = lazy(() => import("./components/ai/AiChatWidget"));
 
 function normalizePath(pathname) {
   return (pathname || "/").replace(/\/+$/, "") || "/";
@@ -228,7 +229,11 @@ export default function App() {
               </Suspense>
             </div>
           )}
-          {showChatbot && <AiChatWidget />}
+          {showChatbot ? (
+            <Suspense fallback={null}>
+              <AiChatWidget />
+            </Suspense>
+          ) : null}
         </main>
         {!isInvoiceEditor ? <GlobalRefreshButton offsetForChat={showChatbot} /> : null}
       </div>

@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { ChevronDown, ChevronLeft, ChevronRight, Eye, FileSpreadsheet, FileText, Mail, MoreVertical, Search, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, Eye, FileSpreadsheet, FileText, Mail, MoreVertical, Trash2 } from "lucide-react";
 
 import AdjustBalanceModal from "../../components/accounts/AdjustBalanceModal";
+import { SearchBar } from "../../components/common/SearchFilter";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
 import ContraEntryModal from "../../components/accounts/ContraEntryModal";
 import DeleteBankModal from "../../components/accounts/DeleteBankModal";
@@ -293,18 +294,15 @@ export default function LedgerDetailsV2() {
 
         <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
           <div className="flex flex-1 flex-col gap-3 sm:flex-row sm:items-end">
-            <div className="relative w-full max-w-xs">
-              <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9a9aa5]" />
-              <input
-                value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value);
-                  setPage(1);
-                }}
-                placeholder="Search"
-                className="ui-input w-full !rounded-full py-2.5 pl-10 pr-4"
-              />
-            </div>
+            <SearchBar
+              value={search}
+              onChange={(val) => {
+                setSearch(val);
+                setPage(1);
+              }}
+              placeholder="Search"
+              className="max-w-xs w-full"
+            />
             <label className="block text-[12px] font-medium text-[#6b6b76]">
               From Date
               <input
@@ -399,7 +397,7 @@ export default function LedgerDetailsV2() {
 
         <div className="overflow-x-auto rounded-lg border border-[#e4e4ea]">
           <table className="min-w-full border-collapse text-left text-[13px]">
-            <thead className="bg-[#f3f3f6] text-[12px] font-semibold text-[#6b6b76]">
+            <thead className="ui-table-head">
               <tr>
                 <SerialNumberHeader />
                 {[

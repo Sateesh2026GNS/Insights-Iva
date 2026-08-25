@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 
 import Button from "../../components/common/Button";
+import { SearchBar } from "../../components/common/SearchFilter";
 import InventoryRowActionsMenu from "../../components/inventory/InventoryRowActionsMenu";
 import KpiCard from "../../components/common/KpiCard";
 import Loader from "../../components/common/Loader";
@@ -147,16 +148,13 @@ function MultiSelectDropdown({
         <div className="absolute left-0 top-[calc(100%+4px)] z-40 w-64 rounded-xl border border-[var(--color-border-soft)] bg-white p-2 shadow-xl">
           {normalizedOptions.length > 5 && (
             <div className="mb-2 px-1">
-              <div className="flex items-center gap-1.5 rounded-lg border border-[var(--color-border-soft)] bg-[var(--color-surface-muted)]/50 px-2.5 py-1.5">
-                <Search className="h-3.5 w-3.5 text-[var(--color-text-muted)]" />
-                <input
-                  type="text"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder={placeholder}
-                  className="w-full bg-transparent text-[12px] text-[var(--color-text)] outline-none placeholder:text-[var(--color-text-placeholder)]"
-                />
-              </div>
+              <SearchBar
+                size="compact"
+                value={query}
+                onChange={setQuery}
+                placeholder={placeholder}
+                className="w-full"
+              />
             </div>
           )}
 
@@ -393,16 +391,12 @@ export default function InProcessQC() {
 
       <div className="ui-card ui-card--padded">
         <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
-          <div className="relative min-w-0 flex-1">
-            <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]" />
-            <input
-              type="search"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by QC no, work order, operation, product..."
-              className="ui-input w-full !pl-10 text-[13px] text-[var(--color-text)]"
-            />
-          </div>
+          <SearchBar
+            value={search}
+            onChange={setSearch}
+            placeholder="Search by QC no, work order, operation, product..."
+            className="min-w-0 w-full"
+          />
           <MultiSelectDropdown
             label="Work Orders"
             options={workOrders}
@@ -477,7 +471,7 @@ export default function InProcessQC() {
       <div className="ui-card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-[1100px] w-full border-collapse text-left text-[13px]">
-            <thead className="bg-[var(--color-primary-soft)] text-[12px] font-semibold text-[var(--color-primary-dark)] border-b border-[#d0e5e0]">
+            <thead className="ui-table-head">
               <tr>
                 <SerialNumberHeader className="px-3 py-3" />
                 <th className="px-4 py-3">QC No.</th>

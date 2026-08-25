@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { MoreVertical, Pencil, Plus, Search, Trash2, User, X } from "lucide-react";
+import { MoreVertical, Pencil, Plus, Trash2, User, X } from "lucide-react";
 
 import AddTermsAndConditionsModal from "./AddTermsAndConditionsModal";
-import Button from "../common/Button";
+import { SearchBar } from "../common/SearchFilter";
 
 const PRIMARY = "var(--color-primary)";
 const STORAGE_KEY = "gns_invoice_terms_templates";
@@ -122,15 +122,13 @@ export default function TermsAndConditionsPicker({
   const panel = (
     <div className="w-full max-w-xl overflow-hidden rounded-2xl bg-white shadow-2xl">
       <div className="p-3">
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9a9aa5]" />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search"
-            className="w-full rounded-xl border border-[#dcdce3] bg-white py-2.5 pl-9 pr-3 text-[13px] text-[#1a1a1f] placeholder:text-[#a0a0ab] focus:border-[var(--color-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]"
-          />
-        </div>
+        <SearchBar
+          size="compact"
+          value={search}
+          onChange={setSearch}
+          placeholder="Search"
+          className="w-full"
+        />
       </div>
 
       <div className="max-h-56 space-y-2 overflow-y-auto px-3 pb-2">

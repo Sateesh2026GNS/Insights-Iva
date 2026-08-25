@@ -1,18 +1,14 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 
-import PlaceholderPage from "../components/common/PlaceholderPage";
 import ProtectedRoute from "../components/layout/ProtectedRoute";
-import Login from "../pages/auth/Login";
 /* Pages are lazy-loaded via lazyPages – see vite.config manualChunks for vendor splits */
 import * as P from "./lazyPages";
-import MachineStatus from "../pages/factoryMonitor/MachineStatus";
-import ProductionLines from "../pages/factoryMonitor/ProductionLines";
 
 export default function AppRoutes() {
   return (
     <Routes>
       <Route path="/landing" element={<P.Landing />} />
-      <Route path="/login" element={<Login />} />
+      <Route path="/login" element={<P.Login />} />
       <Route path="/register" element={<Navigate to="/login" replace />} />
       <Route path="/gns-admin/login" element={<P.SuperAdminLogin />} />
       <Route path="/gns-admin/verify-otp" element={<P.SuperAdminVerifyOtp />} />
@@ -723,8 +719,8 @@ export default function AppRoutes() {
       <Route path="/finance/general-ledger" element={<ProtectedRoute><P.GeneralLedger /></ProtectedRoute>} />
       <Route path="/finance" element={<ProtectedRoute><Navigate to="/accounts" replace /></ProtectedRoute>} />
       <Route path="/factory-monitor/live-production" element={<ProtectedRoute><Navigate to="/factory-monitor/machine-status" replace /></ProtectedRoute>} />
-      <Route path="/factory-monitor/machine-status" element={<ProtectedRoute><MachineStatus /></ProtectedRoute>} />
-      <Route path="/factory-monitor/production-lines" element={<ProtectedRoute><ProductionLines /></ProtectedRoute>} />
+      <Route path="/factory-monitor/machine-status" element={<ProtectedRoute><P.FactoryMonitorMachineStatus /></ProtectedRoute>} />
+      <Route path="/factory-monitor/production-lines" element={<ProtectedRoute><P.FactoryMonitorProductionLines /></ProtectedRoute>} />
       <Route path="/iot" element={<ProtectedRoute><P.IotDashboard /></ProtectedRoute>} />
       <Route path="/iot/wearables" element={<ProtectedRoute><P.Wearables /></ProtectedRoute>} />
       <Route path="/iot/machine-analytics" element={<ProtectedRoute><P.MachineAnalytics /></ProtectedRoute>} />
