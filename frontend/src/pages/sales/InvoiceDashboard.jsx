@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Calendar, ChevronLeft, ChevronRight, Filter, ListFilter, MoreVertical, Plus, Receipt, Search, X } from "lucide-react";
 
@@ -39,7 +39,7 @@ function fmtDisplayDate(iso) {
 }
 
 function daysUntilDue(dueDate) {
-  if (!dueDate) return "ΓÇö";
+  if (!dueDate) return "—";
   const due = new Date(dueDate);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -121,6 +121,26 @@ export default function InvoiceDashboard() {
   const [searchDebounced, setSearchDebounced] = useState("");
   const [dateFrom, setDateFrom] = useState("2026-04-01");
   const [dateTo, setDateTo] = useState("2027-03-31");
+  const dateFromRef = useRef(null);
+  const dateToRef = useRef(null);
+
+  const openDateFrom = () => {
+    if (typeof dateFromRef.current?.showPicker === "function") {
+      dateFromRef.current.showPicker();
+    } else {
+      dateFromRef.current?.focus();
+      dateFromRef.current?.click();
+    }
+  };
+
+  const openDateTo = () => {
+    if (typeof dateToRef.current?.showPicker === "function") {
+      dateToRef.current.showPicker();
+    } else {
+      dateToRef.current?.focus();
+      dateToRef.current?.click();
+    }
+  };
   const [showFilters, setShowFilters] = useState(false);
   const [showSort, setShowSort] = useState(false);
   const [sortId, setSortId] = useState("date_desc");
@@ -208,18 +228,66 @@ export default function InvoiceDashboard() {
     setShowSort(false);
   };
 
-  if (loading && rows.length === 0) return <Loader label="Loading invoicesΓÇª" />;
+  if (loading && rows.length === 0) return <Loader label="Loading invoices…" />;
 
   return (
     <div className="min-h-full bg-[var(--color-bg)] px-5 py-5 sm:px-6">
       {/* Toolbar row 1: calendar + create */}
       <div className="mb-4 flex justify-end gap-3">
-        <div className="inline-flex items-center gap-3 rounded-full bg-[var(--color-surface)] px-4 py-3 text-[13px] text-[var(--color-text-secondary)] shadow-sm shadow-[#00000010]">
-          <Calendar className="h-5 w-5 text-[var(--color-text-muted)]" />
-          <span className="text-[14px] font-medium text-[#2c2b3d]">{fmtDisplayDate(dateFrom)}</span>
-          <span className="text-[var(--color-text-faint)]">→</span>
-          <span className="text-[14px] font-medium text-[#2c2b3d]">{fmtDisplayDate(dateTo)}</span>
-          <Calendar className="h-5 w-5 text-[var(--color-text-muted)]" />
+        <div className="inline-flex items-center gap-3 rounded-full bg-[var(--color-surface)] px-4 py-2.5 text-[13px] text-[var(--color-text-secondary)] shadow-sm shadow-[#00000010] border border-[var(--color-border-soft)]">
+          <button
+            type="button"
+            onClick={openDateFrom}
+            className="flex items-center justify-center text-[var(--color-text-muted)] hover:text-[#0f6d84] transition-colors cursor-pointer"
+            aria-label="Open start date picker"
+          >
+            <Calendar className="h-5 w-5" />
+          </button>
+          <input
+            ref={dateFromRef}
+            type="date"
+            value={dateFrom}
+            onChange={(e) => {
+              setDateFrom(e.target.value);
+              setPage(1);
+            }}
+            className="sr-only"
+          />
+          <button
+            type="button"
+            onClick={openDateFrom}
+            className="text-[14px] font-medium text-[#2c2b3d] dark:text-slate-100 hover:text-[#0f6d84] transition-colors cursor-pointer"
+            title="Click to select start date"
+          >
+            {fmtDisplayDate(dateFrom) || "Start Date"}
+          </button>
+          <span className="text-[var(--color-text-faint)] select-none">→</span>
+          <button
+            type="button"
+            onClick={openDateTo}
+            className="text-[14px] font-medium text-[#2c2b3d] dark:text-slate-100 hover:text-[#0f6d84] transition-colors cursor-pointer"
+            title="Click to select end date"
+          >
+            {fmtDisplayDate(dateTo) || "End Date"}
+          </button>
+          <input
+            ref={dateToRef}
+            type="date"
+            value={dateTo}
+            onChange={(e) => {
+              setDateTo(e.target.value);
+              setPage(1);
+            }}
+            className="sr-only"
+          />
+          <button
+            type="button"
+            onClick={openDateTo}
+            className="flex items-center justify-center text-[var(--color-text-muted)] hover:text-[#0f6d84] transition-colors cursor-pointer"
+            aria-label="Open end date picker"
+          >
+            <Calendar className="h-5 w-5" />
+          </button>
         </div>
         <Button variant="add" to="/sales/invoices/create" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
           Create Invoice

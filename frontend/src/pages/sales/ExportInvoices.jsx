@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Calendar, ChevronLeft, ChevronRight, Filter, ListFilter, Plus, Receipt, Search, X } from "lucide-react";
 
@@ -121,6 +121,26 @@ export default function ExportInvoices() {
   const [searchDebounced, setSearchDebounced] = useState("");
   const [dateFrom, setDateFrom] = useState("2026-04-01");
   const [dateTo, setDateTo] = useState("2027-03-31");
+  const dateFromRef = useRef(null);
+  const dateToRef = useRef(null);
+
+  const openDateFrom = () => {
+    if (typeof dateFromRef.current?.showPicker === "function") {
+      dateFromRef.current.showPicker();
+    } else {
+      dateFromRef.current?.focus();
+      dateFromRef.current?.click();
+    }
+  };
+
+  const openDateTo = () => {
+    if (typeof dateToRef.current?.showPicker === "function") {
+      dateToRef.current.showPicker();
+    } else {
+      dateToRef.current?.focus();
+      dateToRef.current?.click();
+    }
+  };
   const [showFilters, setShowFilters] = useState(false);
   const [showSort, setShowSort] = useState(false);
   const [sortId, setSortId] = useState("date_desc");
@@ -245,22 +265,45 @@ export default function ExportInvoices() {
         <SearchBar value={search} onChange={setSearch} placeholder="Search" className="w-full" />
         <div className="flex flex-wrap items-center gap-2.5">
           <div className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-[13px] text-[var(--color-text-secondary)] shadow-sm">
-            <Calendar className="h-4 w-4 shrink-0 text-[var(--color-text-faint)]" />
+            <button
+              type="button"
+              onClick={openDateFrom}
+              className="flex items-center justify-center text-[var(--color-text-faint)] hover:text-[var(--color-primary)] transition-colors cursor-pointer"
+              aria-label="Open start date picker"
+            >
+              <Calendar className="h-4 w-4 shrink-0" />
+            </button>
             <input
+              ref={dateFromRef}
               type="date"
               value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
-              className="w-[118px] border-0 bg-transparent p-0 text-[13px] focus:outline-none"
+              onChange={(e) => {
+                setDateFrom(e.target.value);
+                setPage(1);
+              }}
+              className="w-[118px] border-0 bg-transparent p-0 text-[13px] focus:outline-none cursor-pointer"
               title={fmtDisplayDate(dateFrom)}
             />
             <span className="text-[var(--color-text-faint)]">→</span>
             <input
+              ref={dateToRef}
               type="date"
               value={dateTo}
-              onChange={(e) => setDateTo(e.target.value)}
-              className="w-[118px] border-0 bg-transparent p-0 text-[13px] focus:outline-none"
+              onChange={(e) => {
+                setDateTo(e.target.value);
+                setPage(1);
+              }}
+              className="w-[118px] border-0 bg-transparent p-0 text-[13px] focus:outline-none cursor-pointer"
               title={fmtDisplayDate(dateTo)}
             />
+            <button
+              type="button"
+              onClick={openDateTo}
+              className="flex items-center justify-center text-[var(--color-text-faint)] hover:text-[var(--color-primary)] transition-colors cursor-pointer"
+              aria-label="Open end date picker"
+            >
+              <Calendar className="h-4 w-4 shrink-0" />
+            </button>
           </div>
           <Button variant="add" to="/sales/export-invoices/create" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
             Export Invoice
