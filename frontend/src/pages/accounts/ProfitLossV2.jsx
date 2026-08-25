@@ -170,7 +170,7 @@ const BASE = {
   height: "26px",        /* keeps empty rows same height as data rows */
 };
 const thStyle = (extra = {}) => ({
-  ...BASE, background: "#e8e8e8", fontWeight: 700, padding: "7px 8px", ...extra,
+  ...BASE, background: "#172033", color: "#ffffff", fontWeight: 700, padding: "7px 8px", ...extra,
 });
 const headTd  = (extra = {}) => ({ ...BASE, fontWeight: 700, padding: "5px 8px", fontStyle: "normal", ...extra });
 const itemTd  = (extra = {}) => ({ ...BASE, fontWeight: 400, paddingLeft: 20, ...extra });
@@ -201,38 +201,38 @@ function GenerateModal({ open, onClose, onGenerate, defaultFrom, defaultTo }) {
   return createPortal(
     <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
       <button type="button" className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative w-full max-w-[520px] overflow-hidden rounded-2xl bg-[#f7f7f9] shadow-2xl">
+      <div className="relative w-full max-w-[520px] overflow-hidden rounded-2xl bg-[var(--color-surface-muted)] shadow-2xl">
         <div className="flex items-center justify-between px-5 py-4">
-          <h2 className="text-[18px] font-bold text-[#1a1a1f]">Generate P&amp;L Report</h2>
+          <h2 className="text-[18px] font-bold text-[var(--color-text)]">Generate P&amp;L Report</h2>
           <button type="button" onClick={onClose}
-            className="grid h-9 w-9 place-items-center rounded-full border border-[#d8d8e0] bg-white text-[#6b6b76] hover:bg-[#f0f0f4]">
+            className="grid h-9 w-9 place-items-center rounded-full border border-[var(--color-border-soft)] bg-[var(--color-surface)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)]">
             <X className="h-4 w-4" />
           </button>
         </div>
         <div className="space-y-4 px-5 pb-2">
           <div>
-            <label className="mb-1.5 block text-[13px] font-medium text-[#3a3a42]">
+            <label className="mb-1.5 block text-[13px] font-medium text-[var(--color-text-secondary)]">
               Report Name <span className="text-[#e11d48]">*</span>
             </label>
             <input value={reportName} onChange={(e) => setReportName(e.target.value)}
               placeholder="Enter Report Name"
-              className="w-full rounded-lg border border-[#1a1a1f] bg-white px-3 py-2.5 text-[14px] outline-none placeholder:text-[#a0a0ab]" />
+              className="w-full rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface)] px-3 py-2.5 text-[14px] outline-none placeholder:text-[var(--color-text-placeholder)]" />
           </div>
           <div>
-            <label className="mb-1.5 block text-[13px] font-medium text-[#3a3a42]">
+            <label className="mb-1.5 block text-[13px] font-medium text-[var(--color-text-secondary)]">
               Date Range <span className="text-[#e11d48]">*</span>
             </label>
-            <div className="relative flex items-center gap-2 rounded-lg border border-[#cfcfd6] bg-white px-3 py-2.5">
-              <Calendar className="h-4 w-4 shrink-0 text-[#9a9aa5]" />
-              <span className="min-w-0 flex-1 text-[13px] text-[#1a1a1f]">{dispDate(from)} → {dispDate(to)}</span>
+            <div className="relative flex items-center gap-2 rounded-lg border border-[var(--color-border-soft)] bg-[var(--color-surface)] px-3 py-2.5">
+              <Calendar className="h-4 w-4 shrink-0 text-[var(--color-text-faint)]" />
+              <span className="min-w-0 flex-1 text-[13px] text-[var(--color-text)]">{dispDate(from)} → {dispDate(to)}</span>
               <input type="date" value={from} onChange={(e) => setFrom(e.target.value)}
                 className="absolute inset-0 cursor-pointer opacity-0" />
               <input type="date" value={to} onChange={(e) => setTo(e.target.value)}
                 className="absolute right-0 top-0 h-full w-1/2 cursor-pointer opacity-0" />
             </div>
           </div>
-          <div className="flex gap-2.5 rounded-lg bg-[#ececf0] px-3 py-3 text-[12.5px] text-[#5a5a66]">
-            <Info className="mt-0.5 h-4 w-4 shrink-0 text-[#6b6b76]" />
+          <div className="flex gap-2.5 rounded-lg bg-[var(--color-surface-muted)] px-3 py-3 text-[12.5px] text-[#5a5a66]">
+            <Info className="mt-0.5 h-4 w-4 shrink-0 text-[var(--color-text-muted)]" />
             <p>Once generated, find the report in Accounting Reports.</p>
           </div>
         </div>
@@ -533,7 +533,7 @@ export default function ProfitLossV2() {
             </colgroup>
 
             {/* ── header ── */}
-            <thead>
+            <thead className="ui-table-head">
               <tr>
                 <th style={thStyle({ textAlign: "left" })}>Particulars</th>
                 <th style={thStyle({ textAlign: "right" })}></th>

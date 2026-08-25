@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { CheckCircle, FileText, Plus, TrendingUp, Download, Search } from "lucide-react";
 import DataTable from "../../components/common/DataTable";
+import { SearchBar } from "../../components/common/SearchFilter";
 import KpiCard from "../../components/common/KpiCard";
 import PageHeader from "../../components/common/PageHeader";
 import BillFormModal from "../../components/sales/BillFormModal";
@@ -284,12 +285,7 @@ export default function SalesBills() {
       {/* Search + Table */}
       <div className="space-y-4">
         <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
-          <div className="relative ui-search-wrap w-full sm:w-auto">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <input type="text" placeholder="Search"
-              value={search} onChange={(e) => setSearch(e.target.value)}
-              className="ui-input w-full pl-10" />
-          </div>
+          <SearchBar value={search} onChange={setSearch} placeholder="Search" className="sm:w-auto" />
           <span className="text-xs text-slate-400 font-medium">Showing {filteredBills.length} of {bills.length} bills</span>
         </div>
 

@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { CalendarDays, ChevronLeft, ChevronRight, Filter, ListFilter, Plus, Search, ShoppingCart, X } from "lucide-react";
 
 import Loader from "../../components/common/Loader";
+import { SearchBar } from "../../components/common/SearchFilter";
 import Button from "../../components/common/Button";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
 import { useToast } from "../../context/ToastContext";
@@ -53,7 +54,7 @@ function Chip({ label, active, onClick }) {
       className={`inline-flex items-center rounded-full px-3.5 py-1.5 text-[13px] font-medium transition ${
         active
           ? "border border-[var(--color-success)] bg-[var(--color-success-soft)] text-[var(--color-success)]"
-          : "bg-[#f0f0f3] text-[#4a4a55] hover:bg-[#e4e4ea]"
+          : "bg-[var(--color-surface-muted)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"
       }`}
     >
       {label}
@@ -63,8 +64,8 @@ function Chip({ label, active, onClick }) {
 
 function FilterSection({ label, children }) {
   return (
-    <div className="border-b border-[#e4e4ea] py-4 last:border-b-0">
-      <p className="mb-2.5 text-[12px] font-medium text-[#9a9aa5]">{label}</p>
+    <div className="border-b border-[var(--color-border)] py-4 last:border-b-0">
+      <p className="mb-2.5 text-[12px] font-medium text-[var(--color-text-faint)]">{label}</p>
       <div className="flex flex-wrap gap-2">{children}</div>
     </div>
   );
@@ -175,7 +176,7 @@ export default function Purchases() {
   return (
     <div className="min-h-full bg-[#F5F5F5] p-4 sm:p-6">
       <div className="mb-4 flex w-full flex-wrap items-center justify-end gap-2.5">
-        <div className="inline-flex items-center gap-2 rounded-lg border border-[#e4e4ea] bg-white px-3 py-2 text-[13px] text-[#4a4a55]">
+        <div className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-[13px] text-[var(--color-text-secondary)]">
           <button
             type="button"
             onClick={() => dateFromRef.current?.showPicker?.() || dateFromRef.current?.click()}
@@ -233,17 +234,9 @@ export default function Purchases() {
         </Button>
       </div>
 
-      <div className="rounded-t-2xl border border-[#e4e4ea] border-b-0 bg-white px-4 pb-6 pt-4 sm:px-6">
-        <div className="mb-3 flex flex-col gap-3 border-b border-[#e4e4ea] pb-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="relative ui-search-wrap w-full">
-            <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9a9aa5]" />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search"
-              className="w-full rounded-full border border-[#e4e4ea] bg-white py-2.5 pl-10 pr-4 text-[14px] text-[#1a1a1f] shadow-sm placeholder:text-[#9a9aa5] focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/25"
-            />
-          </div>
+      <div className="rounded-t-2xl border border-[var(--color-border)] border-b-0 bg-[var(--color-surface)] px-4 pb-6 pt-4 sm:px-6">
+        <div className="mb-3 flex flex-col gap-3 border-b border-[var(--color-border)] pb-3 sm:flex-row sm:items-center sm:justify-between">
+          <SearchBar value={search} onChange={setSearch} placeholder="Search" className="w-full" />
           <div className="relative flex gap-2">
             <button
               type="button"
@@ -251,7 +244,7 @@ export default function Purchases() {
                 setDraftDocUpload(docUpload);
                 setShowFilters(true);
               }}
-              className="inline-flex items-center gap-2 rounded-lg border border-[#e4e4ea] bg-[#f5f5f5] px-3.5 py-2 text-[13px] font-medium text-[#4a4a55]"
+              className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-3.5 py-2 text-[13px] font-medium text-[var(--color-text-secondary)]"
             >
               <Filter className="h-4 w-4" /> Filters
             </button>
@@ -259,7 +252,7 @@ export default function Purchases() {
               <button
                 type="button"
                 onClick={() => setShowSort((v) => !v)}
-                className="inline-flex items-center gap-2 rounded-lg border border-[#e4e4ea] bg-[#f5f5f5] px-3.5 py-2 text-[13px] font-medium text-[#4a4a55]"
+                className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-3.5 py-2 text-[13px] font-medium text-[var(--color-text-secondary)]"
               >
                 <ListFilter className="h-4 w-4" /> Sort by
               </button>
@@ -271,7 +264,7 @@ export default function Purchases() {
                     aria-label="Close sort"
                     onClick={() => setShowSort(false)}
                   />
-                  <div className="absolute right-0 z-20 mt-1.5 w-[260px] overflow-hidden rounded-xl border border-[#e4e4ea] bg-white py-1 shadow-lg">
+                  <div className="absolute right-0 z-20 mt-1.5 w-[260px] overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] py-1 shadow-lg">
                     {SORT_OPTIONS.map((opt) => (
                       <button
                         key={opt.id}
@@ -280,8 +273,8 @@ export default function Purchases() {
                           setSortId(opt.id);
                           setShowSort(false);
                         }}
-                        className={`block w-full border-b border-[#f0f0f3] px-4 py-2.5 text-left text-[13px] last:border-b-0 hover:bg-[#F5F5F5] ${
-                          sortId === opt.id ? "font-semibold" : "text-[#4a4a55]"
+                        className={`block w-full border-b border-[#f0f0f3] px-4 py-2.5 text-left text-[13px] last:border-b-0 hover:bg-[var(--color-surface-hover)] ${
+                          sortId === opt.id ? "font-semibold" : "text-[var(--color-text-secondary)]"
                         }`}
                       >
                         {opt.label}
@@ -294,12 +287,12 @@ export default function Purchases() {
           </div>
         </div>
 
-        <div className="overflow-hidden rounded-xl border border-[#e4e4ea]">
+        <div className="overflow-hidden rounded-xl border border-[var(--color-border)]">
           <div className="overflow-x-auto">
             <table className="min-w-full border-collapse text-left text-[13px]">
-              <thead className="bg-[var(--color-success-soft)] text-[12px] font-semibold uppercase tracking-wide text-[#6b6b76]">
+              <thead className="ui-table-head">
                 <tr>
-                  <SerialNumberHeader className="border-b border-r border-[#d0d0d8]" />
+                  <SerialNumberHeader className="border-b border-r border-[var(--color-table-border)]" />
                   {[
                     "Purchase Invoice No.",
                     "Date",
@@ -310,7 +303,7 @@ export default function Purchases() {
                   ].map((h) => (
                     <th
                       key={h}
-                      className="border-b border-r border-[#d0d0d8] px-4 py-3 last:border-r-0"
+                      className="border-b border-r border-[var(--color-table-border)] px-4 py-3 last:border-r-0"
                     >
                       {h}
                     </th>
@@ -320,38 +313,38 @@ export default function Purchases() {
               <tbody>
                 {pageRows.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="border-t border-[#e4e4ea] px-4 py-16 text-center">
-                      <ShoppingCart className="mx-auto h-14 w-14 text-[#c4c4cc]" strokeWidth={1.25} />
-                      <p className="mt-3 text-[14px] text-[#9a9aa5]">
+                    <td colSpan={7} className="border-t border-[var(--color-border)] px-4 py-16 text-center">
+                      <ShoppingCart className="mx-auto h-14 w-14 text-[var(--color-text-icon)]" strokeWidth={1.25} />
+                      <p className="mt-3 text-[14px] text-[var(--color-text-faint)]">
                         No Purchase available, Create new Purchase
                       </p>
                     </td>
                   </tr>
                 ) : (
                   pageRows.map((r, rowIndex) => (
-                    <tr key={r.id} className="hover:bg-[#fafafa]">
+                    <tr key={r.id} className="hover:bg-[var(--color-table-row-hover)]">
                       <SerialNumberCell
                         rowIndex={rowIndex}
                         page={page}
                         pageSize={pageSize}
-                        className="border-t border-r border-[#d0d0d8]"
+                        className="border-t border-r border-[var(--color-table-border)]"
                       />
-                      <td className="border-t border-r border-[#d0d0d8] px-4 py-3 font-semibold text-[var(--color-success)]">
+                      <td className="border-t border-r border-[var(--color-table-border)] px-4 py-3 font-semibold text-[var(--color-success)]">
                         {r.document_number}
                       </td>
-                      <td className="border-t border-r border-[#d0d0d8] px-4 py-3 text-[#4a4a55]">
+                      <td className="border-t border-r border-[var(--color-table-border)] px-4 py-3 text-[var(--color-text-secondary)]">
                         {fmtDate(r.document_date)}
                       </td>
-                      <td className="border-t border-r border-[#d0d0d8] px-4 py-3">
+                      <td className="border-t border-r border-[var(--color-table-border)] px-4 py-3">
                         {r.party_name || "—"}
                       </td>
-                      <td className="border-t border-r border-[#d0d0d8] px-4 py-3 tabular-nums font-medium">
+                      <td className="border-t border-r border-[var(--color-table-border)] px-4 py-3 tabular-nums font-medium">
                         {formatInr(r.amount)}
                       </td>
-                      <td className="border-t border-r border-[#d0d0d8] px-4 py-3 capitalize text-[#4a4a55]">
+                      <td className="border-t border-r border-[var(--color-table-border)] px-4 py-3 capitalize text-[var(--color-text-secondary)]">
                         {r.status || "—"}
                       </td>
-                      <td className="border-t border-[#d0d0d8] px-4 py-3">
+                      <td className="border-t border-[var(--color-table-border)] px-4 py-3">
                         <div className="flex flex-wrap gap-2">
                           <Link
                             to={`/purchases/${r.id}`}
@@ -361,7 +354,7 @@ export default function Purchases() {
                           </Link>
                           <Link
                             to={`/purchases/${r.id}/edit`}
-                            className="text-[12px] font-semibold text-[#4a4a55] hover:underline"
+                            className="text-[12px] font-semibold text-[var(--color-text-secondary)] hover:underline"
                           >
                             Edit
                           </Link>
@@ -383,7 +376,7 @@ export default function Purchases() {
         </div>
 
         <div className="mt-4 ui-pagination justify-between border-t border-[var(--color-border-soft)] pt-4">
-          <div className="flex items-center gap-2.5 flex-nowrap whitespace-nowrap text-[13px] text-[#596b82]">
+          <div className="flex items-center gap-2.5 flex-nowrap whitespace-nowrap text-[13px] text-[var(--color-text-muted)]">
             <span>Rows per page:</span>
             <select
               value={pageSize}
@@ -437,13 +430,13 @@ export default function Purchases() {
           role="presentation"
           onMouseDown={(e) => e.target === e.currentTarget && setShowFilters(false)}
         >
-          <aside className="flex h-full w-full max-w-[400px] flex-col border-l border-[#e4e4ea] bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-[#e4e4ea] px-5 py-4">
-              <h2 className="text-[18px] font-bold text-[#1a1a1f]">Filters</h2>
+          <aside className="flex h-full w-full max-w-[400px] flex-col border-l border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl">
+            <div className="flex items-center justify-between border-b border-[var(--color-border)] px-5 py-4">
+              <h2 className="text-[18px] font-bold text-[var(--color-text)]">Filters</h2>
               <button
                 type="button"
                 onClick={() => setShowFilters(false)}
-                className="rounded-lg p-1 text-[#9a9aa5] hover:bg-[#F5F5F5]"
+                className="rounded-lg p-1 text-[var(--color-text-faint)] hover:bg-[var(--color-surface-hover)]"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -464,7 +457,7 @@ export default function Purchases() {
                 ))}
               </FilterSection>
             </div>
-            <div className="grid grid-cols-2 gap-3 border-t border-[#e4e4ea] px-5 py-4">
+            <div className="grid grid-cols-2 gap-3 border-t border-[var(--color-border)] px-5 py-4">
               <button
                 type="button"
                 onClick={() => {
@@ -472,7 +465,7 @@ export default function Purchases() {
                   setDocUpload("all");
                   setShowFilters(false);
                 }}
-                className="rounded-xl border border-[#d8d8e0] bg-[#f0f0f4] py-3 text-[14px] font-semibold"
+                className="rounded-xl border border-[var(--color-border-soft)] bg-[#f0f0f4] py-3 text-[14px] font-semibold"
               >
                 Clear Filter
               </button>
@@ -482,7 +475,7 @@ export default function Purchases() {
                   setDocUpload(draftDocUpload);
                   setShowFilters(false);
                 }}
-                className="rounded-xl py-3 text-[14px] font-semibold text-[#1a1a1f]"
+                className="rounded-xl py-3 text-[14px] font-semibold text-[var(--color-text)]"
                 style={{ background: "#EAE5B3" }}
               >
                 Apply Filter

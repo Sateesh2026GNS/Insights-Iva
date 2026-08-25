@@ -160,10 +160,10 @@ export default function FixedAssets() {
           <div className="p-4 border-b bg-slate-50/50">
             <h2 className="font-bold text-slate-800">Capital Fixed Assets Schedule</h2>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-slate-50 border-b text-slate-500 text-left font-semibold">
+          <div className="ui-table-wrap ui-table-wrap--scroll !rounded-none !border-0">
+            <table className="ui-table w-full text-sm">
+              <thead className="ui-table-head">
+                <tr>
                   <SerialNumberHeader className="p-3" />
                   <th className="p-3">Asset Code</th>
                   <th className="p-3">Asset Description</th>

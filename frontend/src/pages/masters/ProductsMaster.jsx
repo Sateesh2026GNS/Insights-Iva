@@ -16,6 +16,7 @@ import useAuth from "../../hooks/useAuth";
 import { isProductionManager } from "../../config/permissions";
 import AddNewItemModal from "../../components/sales/AddNewItemModal";
 import Loader from "../../components/common/Loader";
+import { SearchBar } from "../../components/common/SearchFilter";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
 import { useToast } from "../../context/ToastContext";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
@@ -24,10 +25,9 @@ import { computeSummary, enrichApiProduct, getCategoryChartData } from "../../da
 import { exportToExcel } from "../../utils/exportUtils";
 import { apiErrorMessage } from "../../utils/apiError";
 
-import { theme } from "../../styles/theme";
-
 import Button from "../../components/common/Button";
-const PAGE_BG = theme.bg;
+import { rowActionClass } from "../../design-system/classes";
+
 const PAGE_SIZES = [20, 50, 100];
 
 const SCREENSHOT_DEMO = [];
@@ -43,20 +43,20 @@ function DeleteConfirmModal({ open, onClose, onConfirm, busy = false }) {
   if (!open) return null;
   return createPortal(
     <div
-      className="fixed inset-0 z-[90] flex items-center justify-center bg-black/45 p-4"
+      className="ui-modal-backdrop"
       onMouseDown={(e) => {
         if (!busy && e.target === e.currentTarget) onClose?.();
       }}
     >
       <div
-        className="w-full max-w-[420px] rounded-2xl bg-white px-8 py-8 text-center shadow-2xl"
+        className="ui-modal w-full max-w-[420px] px-8 py-8 text-center"
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <div className="mx-auto mb-5 grid h-[72px] w-[72px] place-items-center rounded-full bg-[#fee2e2]">
-          <Trash2 className="h-9 w-9 text-[#ef4444]" strokeWidth={1.75} />
+        <div className="mx-auto mb-5 grid h-[72px] w-[72px] place-items-center rounded-full bg-[var(--color-danger-soft)]">
+          <Trash2 className="h-9 w-9 text-[var(--color-danger)]" strokeWidth={1.75} />
         </div>
-        <h3 className="text-[28px] font-bold leading-tight text-[#1a1a1f]">Delete Product?</h3>
-        <p className="mt-3 text-[14px] leading-relaxed text-[#5a5a66]">
+        <h3 className="text-[28px] font-bold leading-tight text-[var(--color-text)]">Delete Product?</h3>
+        <p className="mt-3 text-[14px] leading-relaxed text-[var(--color-text-secondary)]">
           Are you sure you want to delete this Product?
         </p>
         <div className="mt-7 grid grid-cols-2 gap-4">
@@ -64,18 +64,19 @@ function DeleteConfirmModal({ open, onClose, onConfirm, busy = false }) {
             type="button"
             disabled={busy}
             onClick={onClose}
-            className="rounded-xl bg-[#eceef4] py-3 text-[15px] font-semibold text-[#1a1a1f] disabled:opacity-60"
+            className="rounded-xl bg-[var(--color-surface-muted)] py-3 text-[15px] font-semibold text-[var(--color-text)] hover:bg-[var(--color-surface-hover)] disabled:opacity-60"
           >
             No
           </button>
-          <button
+          <Button
             type="button"
+            variant="danger"
             disabled={busy}
             onClick={() => onConfirm?.()}
-            className="rounded-xl bg-[#ef5350] py-3 text-[15px] font-semibold text-white disabled:opacity-60"
+            className="w-full !rounded-xl !py-3 !text-[15px]"
           >
             {busy ? "Deleting…" : "Delete"}
-          </button>
+          </Button>
         </div>
       </div>
     </div>,
@@ -188,40 +189,32 @@ export default function ProductsMaster() {
   if (loading) return <Loader label="Loading products..." />;
 
   return (
-    <div className="min-h-full" style={{ background: PAGE_BG }}>
-      <div className="mx-auto max-w-[1400px] px-4 py-5 sm:px-6 lg:px-8">
+    <div className="min-h-full bg-[var(--color-bg)]">
+      <div className="ui-page mx-auto max-w-[1400px]">
 
         {/* Summary Cards */}
         <div className="mb-5 grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <div className="rounded-xl border border-[#e8e8ee] bg-white p-4 shadow-sm">
-            <p className="text-[12px] font-semibold text-[#6b6b76]">Total Products</p>
-            <p className="mt-1 text-2xl font-bold text-[#1a1a1f]">{summary.total}</p>
+          <div className="ui-card p-4">
+            <p className="text-[12px] font-semibold text-[var(--color-text-muted)]">Total Products</p>
+            <p className="mt-1 text-2xl font-bold text-[var(--color-text)]">{summary.total}</p>
           </div>
-          <div className="rounded-xl border border-[#e8e8ee] bg-white p-4 shadow-sm">
-            <p className="text-[12px] font-semibold text-[#6b6b76]">Categories</p>
-            <p className="mt-1 text-2xl font-bold text-[#1a1a1f]">{summary.categories}</p>
+          <div className="ui-card p-4">
+            <p className="text-[12px] font-semibold text-[var(--color-text-muted)]">Categories</p>
+            <p className="mt-1 text-2xl font-bold text-[var(--color-text)]">{summary.categories}</p>
           </div>
-          <div className="rounded-xl border border-[#e8e8ee] bg-white p-4 shadow-sm">
-            <p className="text-[12px] font-semibold text-[#6b6b76]">Active Products</p>
-            <p className="mt-1 text-2xl font-bold text-[#22c55e]">{summary.active}</p>
+          <div className="ui-card p-4">
+            <p className="text-[12px] font-semibold text-[var(--color-text-muted)]">Active Products</p>
+            <p className="mt-1 text-2xl font-bold ui-value-positive ui-num">{summary.active}</p>
           </div>
-          <div className="rounded-xl border border-[#e8e8ee] bg-white p-4 shadow-sm">
-            <p className="text-[12px] font-semibold text-[#6b6b76]">Low Stock</p>
-            <p className="mt-1 text-2xl font-bold text-[#f59e0b]">{summary.lowStock}</p>
+          <div className="ui-card p-4">
+            <p className="text-[12px] font-semibold text-[var(--color-text-muted)]">Low Stock</p>
+            <p className="mt-1 text-2xl font-bold text-[var(--color-warning)] ui-num">{summary.lowStock}</p>
           </div>
         </div>
 
         <div className="ui-card p-4 sm:p-5">
           <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="relative ui-search-wrap min-w-[10rem] flex-1">
-              <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-icon)]" />
-              <input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search"
-                className="ui-input !rounded-full !pl-10"
-              />
-            </div>
+            <SearchBar value={query} onChange={setQuery} placeholder="Search" className="w-full" />
             <div className="flex flex-wrap items-center gap-2 sm:justify-end">
               {!isPM && (
                 <Button
@@ -256,11 +249,10 @@ export default function ProductsMaster() {
             </div>
           </div>
 
-          <div className="ui-table-wrap">
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[880px] border-collapse text-left text-[13px]">
-                <thead>
-                  <tr className="border-b border-[var(--color-border-soft)] bg-[var(--color-surface-thead)] text-[12px] font-medium text-[var(--color-text-muted)]">
+          <div className="ui-table-wrap ui-table-wrap--scroll">
+              <table className="ui-table w-full min-w-[880px] border-collapse text-left text-[13px]">
+                <thead className="ui-table-head">
+                  <tr>
                     <SerialNumberHeader />
                     <th className="px-4 py-3 font-medium">Product Name</th>
                     <th className="px-4 py-3 font-medium">Category</th>
@@ -291,22 +283,22 @@ export default function ProductsMaster() {
                         ? "0 %"
                         : `${p.cess_percent} %`;
                     return (
-                      <tr key={p.id} className="border-b border-[#f0f0f4] text-[#1a1a1f] last:border-b-0">
+                      <tr key={p.id}>
                         <SerialNumberCell rowIndex={rowIndex} page={page} pageSize={pageSize} />
-                        <td className="px-4 py-3.5 font-normal">{p.name || ""}</td>
-                        <td className="px-4 py-3.5 text-[#4a4a55]">
-                          <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-700">
+                        <td className="px-4 py-3.5 font-normal text-[var(--color-table-text)]">{p.name || ""}</td>
+                        <td className="px-4 py-3.5">
+                          <span className="inline-flex items-center rounded-full bg-[var(--color-surface-muted)] px-2.5 py-0.5 text-xs font-semibold text-[var(--color-table-text-secondary)]">
                             {category}
                           </span>
                         </td>
-                        <td className="px-4 py-3.5 text-[#4a4a55]">{desc}</td>
-                        <td className="px-4 py-3.5 text-[#4a4a55]">{hsn}</td>
-                        <td className="px-4 py-3.5 text-[#4a4a55]">{unit}</td>
-                        <td className="px-4 py-3.5 tabular-nums">
+                        <td className="px-4 py-3.5 ui-table-text-secondary">{desc}</td>
+                        <td className="px-4 py-3.5 ui-table-text-secondary">{hsn}</td>
+                        <td className="px-4 py-3.5 ui-table-text-secondary">{unit}</td>
+                        <td className="px-4 py-3.5 tabular-nums text-[var(--color-table-text)]">
                           ₹ {Number(p.selling_price ?? p.unit_price ?? 0).toLocaleString("en-IN")}
                         </td>
-                        <td className="px-4 py-3.5 text-[#4a4a55]">{gst}</td>
-                        <td className="px-4 py-3.5 text-[#4a4a55]">{cess}</td>
+                        <td className="px-4 py-3.5 ui-table-text-secondary">{gst}</td>
+                        <td className="px-4 py-3.5 ui-table-text-secondary">{cess}</td>
                         <td className="px-4 py-3.5">
                           <div className="flex items-center justify-end gap-2">
                             <button
@@ -315,7 +307,7 @@ export default function ProductsMaster() {
                                 setEditing(p);
                                 setAddOpen(true);
                               }}
-                              className="grid h-8 w-8 place-items-center rounded-full bg-[var(--color-primary-soft)] text-[var(--color-primary)] hover:bg-[#e4e6fc]"
+                              className={`${rowActionClass} !rounded-full`}
                               title="Edit"
                               aria-label="Edit product"
                             >
@@ -324,7 +316,7 @@ export default function ProductsMaster() {
                             <button
                               type="button"
                               onClick={() => setDeleting(p)}
-                              className="grid h-8 w-8 place-items-center rounded-full bg-[#fde8e8] text-[#ef4444] hover:bg-[#fcdada]"
+                              className="grid h-8 w-8 place-items-center rounded-full border border-[var(--color-danger-soft)] bg-[var(--color-danger-soft)] text-[var(--color-danger)] transition-colors hover:opacity-90"
                               title="Delete"
                               aria-label="Delete product"
                             >
@@ -337,9 +329,8 @@ export default function ProductsMaster() {
                   })}
                 </tbody>
               </table>
-            </div>
             {rows.length === 0 ? (
-              <div className="px-4 py-16 text-center text-[13px] text-[#8a8a96]">No data available</div>
+              <div className="ui-empty">No data available</div>
             ) : null}
           </div>
 
@@ -392,9 +383,9 @@ export default function ProductsMaster() {
 
         {/* Product Categories Chart */}
         {categoryChart.length > 0 && (
-          <div className="mt-5 rounded-xl border border-[#e8e8ee] bg-white p-4 sm:p-5 shadow-sm">
-            <h3 className="text-sm font-bold text-[#1a1a1f]">Product Categories Chart</h3>
-            <p className="text-xs text-[#6b6b76]">Breakdown of products by category</p>
+          <div className="ui-card mt-5 p-4 sm:p-5">
+            <h3 className="text-sm font-bold text-[var(--color-text)]">Product Categories Chart</h3>
+            <p className="text-xs text-[var(--color-text-muted)]">Breakdown of products by category</p>
             <div className="mt-4 flex flex-col items-center gap-6 sm:flex-row">
               <div className="h-44 w-44 shrink-0">
                 <ResponsiveContainer width="100%" height="100%">
@@ -416,7 +407,9 @@ export default function ProductsMaster() {
                     <Tooltip
                       contentStyle={{
                         borderRadius: 8,
-                        border: "1px solid #e4e4ea",
+                        border: "1px solid var(--color-border)",
+                        backgroundColor: "var(--color-surface)",
+                        color: "var(--color-text)",
                         fontSize: 12,
                       }}
                       formatter={(value, name) => [`${value} products`, name]}
@@ -427,11 +420,11 @@ export default function ProductsMaster() {
               <ul className="flex-1 space-y-2 text-xs">
                 {categoryChart.map((item) => (
                   <li key={item.name} className="flex items-center justify-between gap-3">
-                    <span className="flex items-center gap-2 text-[#4a4a55]">
+                    <span className="flex items-center gap-2 text-[var(--color-text-secondary)]">
                       <span className="h-3 w-3 rounded-full" style={{ backgroundColor: item.color }} />
                       <span className="font-medium">{item.name}</span>
                     </span>
-                    <span className="font-bold text-[#1a1a1f]">{item.value}</span>
+                    <span className="font-bold text-[var(--color-text)]">{item.value}</span>
                   </li>
                 ))}
               </ul>

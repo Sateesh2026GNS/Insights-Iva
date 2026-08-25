@@ -371,8 +371,8 @@ export default function MachineDetailModal({ machine, detail, onClose, onStatusC
                 </div>
                 {maintHistory.length > 0 ? (
                   <table className="w-full text-left text-sm">
-                    <thead>
-                      <tr className="border-b text-xs uppercase text-slate-400">
+                    <thead className="ui-table-head">
+                      <tr>
                         <th className="py-2">Date</th>
                         <th className="py-2">Type</th>
                         <th className="py-2">Description</th>
@@ -402,8 +402,8 @@ export default function MachineDetailModal({ machine, detail, onClose, onStatusC
             {tab === "work_orders" && (
               workOrders.length > 0 ? (
                 <table className="w-full text-left text-sm">
-                  <thead>
-                    <tr className="border-b text-xs uppercase text-slate-400">
+                  <thead className="ui-table-head">
+                    <tr>
                       <th className="py-2">Work Order (WO) Number</th>
                       <th className="py-2">Status</th>
                       <th className="py-2 text-right">Planned</th>
@@ -431,8 +431,8 @@ export default function MachineDetailModal({ machine, detail, onClose, onStatusC
             {tab === "history" && (
               statusLogs.length > 0 ? (
                 <table className="w-full text-left text-sm">
-                  <thead>
-                    <tr className="border-b text-xs uppercase text-slate-400">
+                  <thead className="ui-table-head">
+                    <tr>
                       <th className="py-2">Status</th>
                       <th className="py-2">Started</th>
                       <th className="py-2">Reason</th>
@@ -499,8 +499,8 @@ export default function MachineDetailModal({ machine, detail, onClose, onStatusC
             {tab === "audit" && !operatorMode && (
               auditLogs.length > 0 ? (
                 <table className="w-full text-left text-sm">
-                  <thead>
-                    <tr className="border-b text-xs uppercase text-slate-400">
+                  <thead className="ui-table-head">
+                    <tr>
                       <th className="py-2">Action</th>
                       <th className="py-2">User</th>
                       <th className="py-2">Timestamp</th>

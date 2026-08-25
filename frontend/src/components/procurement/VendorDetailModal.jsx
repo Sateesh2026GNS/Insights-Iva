@@ -190,8 +190,8 @@ export default function VendorDetailModal({
           {tab === "purchase_orders" && (
             pos.length > 0 ? (
               <table className="w-full text-left text-sm">
-                <thead>
-                  <tr className="border-b text-xs uppercase text-slate-400">
+                <thead className="ui-table-head">
+                  <tr>
                     <th className="py-2">PO Number</th>
                     <th className="py-2">Date</th>
                     <th className="py-2">Status</th>
@@ -225,8 +225,8 @@ export default function VendorDetailModal({
           {tab === "payments" && (
             payments.length > 0 ? (
               <table className="w-full text-left text-sm">
-                <thead>
-                  <tr className="border-b text-xs uppercase text-slate-400">
+                <thead className="ui-table-head">
+                  <tr>
                     <th className="py-2">Date</th>
                     <th className="py-2">Reference</th>
                     <th className="py-2">Method</th>
@@ -252,8 +252,8 @@ export default function VendorDetailModal({
           {tab === "ledger" && (
             ledger.length > 0 ? (
               <table className="w-full text-left text-sm">
-                <thead>
-                  <tr className="border-b text-xs uppercase text-slate-400">
+                <thead className="ui-table-head">
+                  <tr>
                     <th className="py-2">Date</th>
                     <th className="py-2">Reference</th>
                     <th className="py-2">Description</th>

@@ -21,6 +21,12 @@ export {
   inputErrorClass,
   tableWrapClass,
   tableClass,
+  tableHeadClass,
+  tableTextSecondaryClass,
+  tableTextAccentClass,
+  valuePositiveClass,
+  valueNegativeClass,
+  valueNeutralClass,
   filterBarClass,
   filterLabelClass,
   toolbarClass,
@@ -32,6 +38,12 @@ export {
 } from "./classes";
 
 export { resolveStatusTone } from "./statusTone";
+
+export {
+  resolveValueTone,
+  valueToneClass,
+  formatSignedCurrency,
+} from "./tableValueTone";
 
 export {
   ERP_PRIMARY,
@@ -61,7 +73,14 @@ export { default as StandardPageLayout } from "../components/common/StandardPage
 export { default as Breadcrumbs } from "../components/common/Breadcrumbs";
 export { default as RowActionMenu } from "../components/common/RowActionMenu";
 export { default as FilterBar } from "../components/common/FilterBar";
-export { SearchBar, FilterSelect } from "../components/common/SearchFilter";
+export {
+  SearchBar,
+  FilterSelect,
+  SEARCH_BAR_WRAP_CLASS,
+  SEARCH_BAR_INPUT_CLASS,
+  SEARCH_BAR_COMPACT_WRAP_CLASS,
+  SEARCH_BAR_COMPACT_INPUT_CLASS,
+} from "../components/common/SearchFilter";
 
 export {
   DatePicker,

@@ -178,8 +178,8 @@ export default function WarehouseDetailModal({ warehouse, detail, onClose, onEdi
           {tab === "inventory" && (
             stockItems.length > 0 ? (
               <table className="w-full text-left text-sm">
-                <thead>
-                  <tr className="border-b text-xs uppercase text-slate-400">
+                <thead className="ui-table-head">
+                  <tr>
                     <th className="py-2">Stock Keeping Unit (SKU)</th>
                     <th className="py-2">Item</th>
                     <th className="py-2">Type</th>

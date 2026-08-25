@@ -2,6 +2,7 @@ import { getProducts } from "../api/productsApi";
 import { enrichApiProduct } from "../data/productsMasterData";
 import { asArray } from "./apiError";
 import { cleanProductLabel, isFinishedGoodProduct } from "./productLabel";
+import { getCachedReference } from "./referenceDataCache";
 
 export { cleanProductLabel, isFinishedGoodProduct } from "./productLabel";
 
@@ -13,10 +14,12 @@ export const DEFAULT_FALLBACK_PRODUCTS = [
 ];
 
 /** Load products from API and local storage (smrt_products). */
-export async function fetchProductsWithFallback() {
+export async function fetchProductsWithFallback(options = {}) {
   let productsList = [];
   try {
-    const res = await getProducts().catch(() => null);
+    const res = await getCachedReference("products", () => getProducts(), {
+      force: Boolean(options.force),
+    }).catch(() => null);
     const apiProds = asArray(res?.data ?? res);
     if (apiProds.length) {
       productsList = apiProds.map((p, i) => {

@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Activity, ChevronLeft, ChevronRight, Cpu, Download, FileSpreadsheet, FileText, Grid3X3, LayoutList, Plus, Printer, Search, Thermometer, Upload, Wrench, Zap } from "lucide-react";
+import { Activity, ChevronLeft, ChevronRight, Cpu, Download, FileSpreadsheet, FileText, Grid3X3, LayoutList, Plus, Printer, Thermometer, Upload, Wrench, Zap } from "lucide-react";
 
 import DataTable from "../../components/common/DataTable";
 import Loader from "../../components/common/Loader";
 import Button from "../../components/common/Button";
+import { SearchBar } from "../../components/common/SearchFilter";
 import MachineDetailModal from "../../components/production/MachineDetailModal";
 import { useToast } from "../../context/ToastContext";
 import usePageRefresh from "../../hooks/usePageRefresh";
@@ -343,16 +344,12 @@ export default function MachineStatus() {
 
         <div className="ui-card p-4 sm:p-5">
           <div className="mb-4 flex flex-wrap items-center gap-2.5">
-            <div className="relative ui-search-wrap min-w-[10rem] flex-1">
-              <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9a9aa5]" />
-              <input
-                type="search"
-                placeholder="Search"
-                value={filters.name}
-                onChange={(e) => setFilters((f) => ({ ...f, name: e.target.value }))}
-                className="w-full rounded-full border border-[#e8e8ee] bg-[#f3f3f6] py-2.5 pl-10 pr-4 text-[13px] outline-none placeholder:text-[#a0a0ab] focus:border-[#d0d0d8] focus:bg-white"
-              />
-            </div>
+            <SearchBar
+              value={filters.name}
+              onChange={(val) => setFilters((f) => ({ ...f, name: val }))}
+              placeholder="Search"
+              className="w-full"
+            />
             <select
               value={filters.status}
               onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value }))}

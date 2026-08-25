@@ -156,14 +156,14 @@ export default function ProfitLoss() {
 
   return (
     <div className="space-y-6 p-6">
-      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+      <section className="rounded-3xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="text-xs uppercase tracking-[0.28em] text-slate-500">Profit & Loss Statement</p>
-            <p className="mt-2 text-sm text-slate-500">{startDate} to {endDate}</p>
+            <p className="text-xs uppercase tracking-[0.28em] text-[var(--color-text-muted)]">Profit & Loss Statement</p>
+            <p className="mt-2 text-sm text-[var(--color-text-muted)]">{startDate} to {endDate}</p>
             {/* Download buttons right under title */}
             <div className="mt-3 flex flex-wrap items-center gap-2">
-              <span className="text-sm font-semibold text-slate-600">Download:</span>
+              <span className="text-sm font-semibold text-[var(--color-text-secondary)]">Download:</span>
               <button
                 type="button"
                 onClick={exportExcel}
@@ -188,17 +188,17 @@ export default function ProfitLoss() {
             </div>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2">
-              <span className="text-sm font-medium text-slate-700">From</span>
-              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" />
+            <div className="inline-flex items-center gap-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-3 py-2">
+              <span className="text-sm font-medium text-[var(--color-text-secondary)]">From</span>
+              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm" />
             </div>
-            <div className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2">
-              <span className="text-sm font-medium text-slate-700">To</span>
-              <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" />
+            <div className="inline-flex items-center gap-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-3 py-2">
+              <span className="text-sm font-medium text-[var(--color-text-secondary)]">To</span>
+              <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm" />
             </div>
-            <div className="inline-flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-              <span className="text-sm font-medium text-slate-700">Year</span>
-              <select value={year} onChange={(e) => setYear(Number(e.target.value))} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm">
+            <div className="inline-flex items-center gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-4 py-3">
+              <span className="text-sm font-medium text-[var(--color-text-secondary)]">Year</span>
+              <select value={year} onChange={(e) => setYear(Number(e.target.value))} className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm">
                 {[2026, 2025, 2024, 2023].map((y) => <option key={y} value={y}>{y}</option>)}
               </select>
             </div>
@@ -207,99 +207,99 @@ export default function ProfitLoss() {
       </section>
 
       {/* P&L Statement Table - Accounting Format */}
-      <section className="overflow-x-auto rounded-3xl border border-slate-200 bg-white shadow-sm">
-        <table className="w-full border-collapse text-sm">
-          <thead>
-            <tr className="border-b-2 border-slate-300 bg-slate-50">
-              <th className="border border-slate-200 px-4 py-3 text-left font-semibold text-slate-900 w-1/4">Particulars</th>
-              <th className="border border-slate-200 px-4 py-3 text-right font-semibold text-slate-900 w-1/4">1-Apr-{year} to 28-Jul-{year}</th>
-              <th className="border border-slate-200 px-4 py-3 text-left font-semibold text-slate-900 w-1/4">Particulars</th>
-              <th className="border border-slate-200 px-4 py-3 text-right font-semibold text-slate-900 w-1/4">1-Apr-{year} to 28-Jul-{year}</th>
+      <section className="ui-table-wrap ui-table-wrap--scroll overflow-x-auto">
+        <table className="ui-table w-full border-collapse text-sm">
+          <thead className="ui-table-head">
+            <tr>
+              <th className="border border-[var(--color-table-border)] px-4 py-3 text-left font-semibold w-1/4">Particulars</th>
+              <th className="border border-[var(--color-table-border)] px-4 py-3 text-right font-semibold w-1/4">1-Apr-{year} to 28-Jul-{year}</th>
+              <th className="border border-[var(--color-table-border)] px-4 py-3 text-left font-semibold w-1/4">Particulars</th>
+              <th className="border border-[var(--color-table-border)] px-4 py-3 text-right font-semibold w-1/4">1-Apr-{year} to 28-Jul-{year}</th>
             </tr>
           </thead>
           <tbody>
             {/* Opening Stock Section */}
-            <tr className="bg-white border-b border-slate-200">
-              <td className="border border-slate-200 px-4 py-2 font-semibold text-slate-900">Opening Stock</td>
-              <td className="border border-slate-200 px-4 py-2 text-right text-slate-700"></td>
-              <td className="border border-slate-200 px-4 py-2 font-semibold text-slate-900">Sales Accounts</td>
-              <td className="border border-slate-200 px-4 py-2 text-right text-slate-700"></td>
+            <tr className="bg-[var(--color-surface)] border-b border-[var(--color-border)]">
+              <td className="border border-[var(--color-border)] px-4 py-2 font-semibold text-[var(--color-text)]">Opening Stock</td>
+              <td className="border border-[var(--color-border)] px-4 py-2 text-right text-[var(--color-text-secondary)]"></td>
+              <td className="border border-[var(--color-border)] px-4 py-2 font-semibold text-[var(--color-text)]">Sales Accounts</td>
+              <td className="border border-[var(--color-border)] px-4 py-2 text-right text-[var(--color-text-secondary)]"></td>
             </tr>
             
             {/* Revenue rows on right side */}
             {(data.revenue_rows || []).slice(0, 3).map((row, idx) => (
-              <tr key={`rev-${idx}`} className={idx % 2 === 0 ? "bg-white" : "bg-slate-50"}>
+              <tr key={`rev-${idx}`} className={idx % 2 === 0 ? "bg-[var(--color-surface)]" : "bg-[var(--color-surface-muted)]"}>
                 <td colSpan="2"></td>
-                <td className="border border-slate-200 px-4 py-2 text-slate-700">{row.category || ""}</td>
-                <td className="border border-slate-200 px-4 py-2 text-right text-slate-700">{formatAmount(row.fy)}</td>
+                <td className="border border-[var(--color-border)] px-4 py-2 text-[var(--color-text-secondary)]">{row.category || ""}</td>
+                <td className="border border-[var(--color-border)] px-4 py-2 text-right text-[var(--color-text-secondary)]">{formatAmount(row.fy)}</td>
               </tr>
             ))}
             
-            <tr className="bg-slate-100 border-b border-slate-200">
+            <tr className="bg-[var(--color-surface-muted)] border-b border-[var(--color-border)]">
               <td colSpan="2"></td>
-              <td className="border border-slate-200 px-4 py-2 font-semibold text-slate-900">Total Sales</td>
-              <td className="border border-slate-200 px-4 py-2 text-right font-semibold text-slate-900">{formatAmount(totalRevenue)}</td>
+              <td className="border border-[var(--color-border)] px-4 py-2 font-semibold text-[var(--color-text)]">Total Sales</td>
+              <td className="border border-[var(--color-border)] px-4 py-2 text-right font-semibold text-[var(--color-text)]">{formatAmount(totalRevenue)}</td>
             </tr>
 
             {/* Purchase/Expenses Section */}
-            <tr className="bg-white border-b border-slate-200">
-              <td className="border border-slate-200 px-4 py-2 font-semibold text-slate-900">Purchase Accounts</td>
-              <td className="border border-slate-200 px-4 py-2 text-right text-slate-700"></td>
-              <td className="border border-slate-200 px-4 py-2 font-semibold text-slate-900">Income (Direct)</td>
-              <td className="border border-slate-200 px-4 py-2 text-right text-slate-700"></td>
+            <tr className="bg-[var(--color-surface)] border-b border-[var(--color-border)]">
+              <td className="border border-[var(--color-border)] px-4 py-2 font-semibold text-[var(--color-text)]">Purchase Accounts</td>
+              <td className="border border-[var(--color-border)] px-4 py-2 text-right text-[var(--color-text-secondary)]"></td>
+              <td className="border border-[var(--color-border)] px-4 py-2 font-semibold text-[var(--color-text)]">Income (Direct)</td>
+              <td className="border border-[var(--color-border)] px-4 py-2 text-right text-[var(--color-text-secondary)]"></td>
             </tr>
             
             {(data.expense_rows || []).slice(0, 4).map((row, idx) => (
-              <tr key={`exp-${idx}`} className={idx % 2 === 0 ? "bg-white" : "bg-slate-50"}>
-                <td className="border border-slate-200 px-4 py-2 text-slate-700">{row.category || ""}</td>
-                <td className="border border-slate-200 px-4 py-2 text-right text-slate-700">{formatAmount(row.fy)}</td>
+              <tr key={`exp-${idx}`} className={idx % 2 === 0 ? "bg-[var(--color-surface)]" : "bg-[var(--color-surface-muted)]"}>
+                <td className="border border-[var(--color-border)] px-4 py-2 text-[var(--color-text-secondary)]">{row.category || ""}</td>
+                <td className="border border-[var(--color-border)] px-4 py-2 text-right text-[var(--color-text-secondary)]">{formatAmount(row.fy)}</td>
                 <td colSpan="2"></td>
               </tr>
             ))}
             
-            <tr className="bg-slate-100 border-b border-slate-200">
-              <td className="border border-slate-200 px-4 py-2 font-semibold text-slate-900">Total Purchases</td>
-              <td className="border border-slate-200 px-4 py-2 text-right font-semibold text-slate-900">{formatAmount(data.inventory_cost || 0)}</td>
+            <tr className="bg-[var(--color-surface-muted)] border-b border-[var(--color-border)]">
+              <td className="border border-[var(--color-border)] px-4 py-2 font-semibold text-[var(--color-text)]">Total Purchases</td>
+              <td className="border border-[var(--color-border)] px-4 py-2 text-right font-semibold text-[var(--color-text)]">{formatAmount(data.inventory_cost || 0)}</td>
               <td colSpan="2"></td>
             </tr>
 
             {/* Closing Stock & Direct Expenses */}
-            <tr className="bg-white border-b border-slate-200">
-              <td className="border border-slate-200 px-4 py-2 font-semibold text-slate-900">Expenses (Direct)</td>
-              <td className="border border-slate-200 px-4 py-2 text-right text-slate-700"></td>
-              <td className="border border-slate-200 px-4 py-2 font-semibold text-slate-900">Closing Stock</td>
-              <td className="border border-slate-200 px-4 py-2 text-right text-slate-700"></td>
+            <tr className="bg-[var(--color-surface)] border-b border-[var(--color-border)]">
+              <td className="border border-[var(--color-border)] px-4 py-2 font-semibold text-[var(--color-text)]">Expenses (Direct)</td>
+              <td className="border border-[var(--color-border)] px-4 py-2 text-right text-[var(--color-text-secondary)]"></td>
+              <td className="border border-[var(--color-border)] px-4 py-2 font-semibold text-[var(--color-text)]">Closing Stock</td>
+              <td className="border border-[var(--color-border)] px-4 py-2 text-right text-[var(--color-text-secondary)]"></td>
             </tr>
 
             {/* Gross Profit Section */}
-            <tr className="bg-yellow-50 border-b border-slate-200">
-              <td className="border border-slate-200 px-4 py-2 font-semibold text-slate-900">Gross Profit c/o</td>
-              <td className="border border-slate-200 px-4 py-2 text-right font-semibold text-slate-900">{formatAmount(data.gross_profit || 0)}</td>
-              <td className="border border-slate-200 px-4 py-2 font-semibold text-slate-900">Gross Profit b/f</td>
-              <td className="border border-slate-200 px-4 py-2 text-right font-semibold text-slate-900">{formatAmount(data.gross_profit || 0)}</td>
+            <tr className="bg-yellow-50 border-b border-[var(--color-border)]">
+              <td className="border border-[var(--color-border)] px-4 py-2 font-semibold text-[var(--color-text)]">Gross Profit c/o</td>
+              <td className="border border-[var(--color-border)] px-4 py-2 text-right font-semibold text-[var(--color-text)]">{formatAmount(data.gross_profit || 0)}</td>
+              <td className="border border-[var(--color-border)] px-4 py-2 font-semibold text-[var(--color-text)]">Gross Profit b/f</td>
+              <td className="border border-[var(--color-border)] px-4 py-2 text-right font-semibold text-[var(--color-text)]">{formatAmount(data.gross_profit || 0)}</td>
             </tr>
 
             {/* Indirect Expenses & Income Indirect */}
-            <tr className="bg-white border-b border-slate-200">
-              <td className="border border-slate-200 px-4 py-2 font-semibold text-slate-900">Expenses (Indirect)</td>
-              <td className="border border-slate-200 px-4 py-2 text-right text-slate-700"></td>
-              <td className="border border-slate-200 px-4 py-2 font-semibold text-slate-900">Income (Indirect)</td>
-              <td className="border border-slate-200 px-4 py-2 text-right text-slate-700"></td>
+            <tr className="bg-[var(--color-surface)] border-b border-[var(--color-border)]">
+              <td className="border border-[var(--color-border)] px-4 py-2 font-semibold text-[var(--color-text)]">Expenses (Indirect)</td>
+              <td className="border border-[var(--color-border)] px-4 py-2 text-right text-[var(--color-text-secondary)]"></td>
+              <td className="border border-[var(--color-border)] px-4 py-2 font-semibold text-[var(--color-text)]">Income (Indirect)</td>
+              <td className="border border-[var(--color-border)] px-4 py-2 text-right text-[var(--color-text-secondary)]"></td>
             </tr>
 
             {/* Net Profit/Loss */}
             <tr className="bg-slate-200 border-b-2 border-slate-300">
               <td colSpan="2"></td>
-              <td className="border border-slate-200 px-4 py-2 font-semibold text-slate-900">{profitLabel}</td>
-              <td className="border border-slate-200 px-4 py-2 text-right font-semibold text-slate-900">{formatAmount(Math.abs(netProfitLoss))}</td>
+              <td className="border border-[var(--color-border)] px-4 py-2 font-semibold text-[var(--color-text)]">{profitLabel}</td>
+              <td className="border border-[var(--color-border)] px-4 py-2 text-right font-semibold text-[var(--color-text)]">{formatAmount(Math.abs(netProfitLoss))}</td>
             </tr>
 
             {/* Totals Row */}
             <tr className="bg-slate-300 font-semibold">
-              <td className="border border-slate-200 px-4 py-3 text-slate-900">Total</td>
-              <td className="border border-slate-200 px-4 py-3 text-right text-slate-900">{formatAmount((totalRevenue + data.gross_profit) || 0)}</td>
-              <td className="border border-slate-200 px-4 py-3 text-slate-900">Total</td>
-              <td className="border border-slate-200 px-4 py-3 text-right text-slate-900">{formatAmount((totalRevenue + data.gross_profit) || 0)}</td>
+              <td className="border border-[var(--color-border)] px-4 py-3 text-[var(--color-text)]">Total</td>
+              <td className="border border-[var(--color-border)] px-4 py-3 text-right text-[var(--color-text)]">{formatAmount((totalRevenue + data.gross_profit) || 0)}</td>
+              <td className="border border-[var(--color-border)] px-4 py-3 text-[var(--color-text)]">Total</td>
+              <td className="border border-[var(--color-border)] px-4 py-3 text-right text-[var(--color-text)]">{formatAmount((totalRevenue + data.gross_profit) || 0)}</td>
             </tr>
           </tbody>
         </table>

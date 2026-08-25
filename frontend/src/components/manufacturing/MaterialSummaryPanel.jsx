@@ -36,7 +36,7 @@ export default function MaterialSummaryPanel({ lines = [], loading = false }) {
       ) : (
         <div className="overflow-x-auto">
           <table className="min-w-full text-left text-[12px]">
-            <thead className="bg-[var(--color-surface-muted)]/60 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
+            <thead className="ui-table-head">
               <tr>
                 <th className="px-3 py-2">Material</th>
                 <th className="px-2 py-2 text-right">Required</th>

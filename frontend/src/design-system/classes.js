@@ -16,12 +16,18 @@ export const selectClass = "ui-select w-full";
 export const selectMtClass = "ui-select mt-1.5 w-full";
 export const textareaClass = "ui-textarea w-full";
 export const textareaMtClass = "ui-textarea mt-1.5 w-full";
-export const inputSearchClass = "ui-input w-full pl-10";
+export const inputSearchClass = "ui-input w-full !rounded-full !pl-10";
 export const inputErrorClass = "ui-input is-error w-full";
 
-/** Tables */
+/** Tables — BI/ERP slate palette (see index.css .ui-table-wrap) */
 export const tableWrapClass = "ui-table-wrap ui-table-wrap--scroll";
-export const tableClass = "w-full border-collapse text-left text-[var(--text-sm)]";
+export const tableClass = "ui-table w-full border-collapse text-left";
+export const tableHeadClass = "ui-table-head";
+export const tableTextSecondaryClass = "ui-table-text-secondary";
+export const tableTextAccentClass = "ui-table-text-accent";
+export const valuePositiveClass = "ui-value-positive ui-num";
+export const valueNegativeClass = "ui-value-negative ui-num";
+export const valueNeutralClass = "ui-value-neutral ui-num";
 
 /** Toolbar / filters */
 export const filterBarClass = "ui-card p-4";

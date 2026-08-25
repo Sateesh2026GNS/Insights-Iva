@@ -1,9 +1,9 @@
 export default function SkeletonTable({ rows = 5, cols = 6 }) {
   return (
     <div className="ui-table-wrap animate-pulse" aria-hidden>
-      <table className="w-full">
-        <thead>
-          <tr className="bg-[var(--color-surface-thead)]">
+      <table className="ui-table w-full">
+        <thead className="ui-table-head">
+          <tr>
             {Array.from({ length: cols }).map((_, i) => (
               <th key={i} className="px-4 py-3">
                 <div className="h-3 w-20 rounded bg-[var(--color-surface-hover)]" />

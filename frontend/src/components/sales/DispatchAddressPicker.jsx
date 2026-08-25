@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ChevronDown, Search, X } from "lucide-react";
+import { ChevronDown, X } from "lucide-react";
+
+import { SearchBar } from "../common/SearchFilter";
 
 import {
   createDispatchAddress,
@@ -337,16 +339,14 @@ export default function DispatchAddressPicker({
       {pickerOpen && (
         <div className="absolute left-0 z-30 mt-2 w-[320px] overflow-hidden rounded-xl border border-[#e4e4ea] bg-white shadow-[0_8px_30px_rgba(0,0,0,0.12)]">
           <div className="p-2.5">
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9a9aa5]" />
-              <input
-                autoFocus
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search"
-                className="w-full rounded-lg border border-[#1a1a1f]/80 bg-white py-2 pl-9 pr-3 text-[13px] focus:outline-none"
-              />
-            </div>
+            <SearchBar
+              size="compact"
+              value={search}
+              onChange={setSearch}
+              placeholder="Search"
+              autoFocus
+              className="w-full"
+            />
           </div>
 
           <div className="max-h-44 overflow-y-auto px-2 pb-2">

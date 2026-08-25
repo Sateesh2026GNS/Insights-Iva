@@ -3,10 +3,11 @@ import {
   Info,
   ChevronDown,
   ChevronRight,
-  Search,
   Shield,
   AlertTriangle,
 } from "lucide-react";
+
+import { SearchBar } from "../../components/common/SearchFilter";
 
 import useAuth from "../../hooks/useAuth";
 import { getEffectivePermissions } from "../../config/permissions";
@@ -344,24 +345,19 @@ export default function SettingsMyPermissions() {
       </div>
 
       {/* Permission Name search */}
-      <div className="mb-4">
-        <div className="relative max-w-xs">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Permission Name"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm placeholder-slate-400 focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
-          />
-        </div>
+      <div className="mb-4 max-w-xs">
+        <SearchBar
+          value={search}
+          onChange={setSearch}
+          placeholder="Permission Name"
+        />
       </div>
 
       {/* Permissions table */}
       <div className="mb-8 overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700">
         <div className="max-h-[400px] overflow-y-auto">
           <table className="w-full border-collapse">
-            <thead className="sticky top-0 bg-slate-50 dark:bg-slate-800/95">
+            <thead className="ui-table-head sticky top-0">
               <tr className="border-b border-slate-200 dark:border-slate-700">
                 <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700 dark:text-slate-300">
                   Permission Name

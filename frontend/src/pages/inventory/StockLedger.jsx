@@ -9,12 +9,12 @@ import {
   Download,
   Filter,
   Hash,
-  Search,
   RefreshCw,
   Wrench,
 } from "lucide-react";
 
 import Button from "../../components/common/Button";
+import { SearchBar } from "../../components/common/SearchFilter";
 import DataTable from "../../components/common/DataTable";
 import EmptyState from "../../components/common/EmptyState";
 import KpiCard from "../../components/common/KpiCard";
@@ -370,7 +370,7 @@ export default function StockLedger() {
       key: "qty_in",
       label: "Stock In",
       render: (r) => (
-        <span className={`ui-num text-[13px] font-semibold ${r.qty_in ? "text-[#16a34a]" : "text-[var(--color-text-muted)]"}`}>
+        <span className={`text-[13px] ${r.qty_in ? "ui-value-positive ui-num" : "ui-value-neutral ui-num"}`}>
           {r.qty_in ? formatQty(r.qty_in) : "—"}
         </span>
       ),
@@ -379,7 +379,7 @@ export default function StockLedger() {
       key: "qty_out",
       label: "Stock Out",
       render: (r) => (
-        <span className={`ui-num text-[13px] font-semibold ${r.qty_out ? "text-[#ef4444]" : "text-[var(--color-text-muted)]"}`}>
+        <span className={`text-[13px] ${r.qty_out ? "ui-value-negative ui-num" : "ui-value-neutral ui-num"}`}>
           {r.qty_out ? formatQty(r.qty_out) : "—"}
         </span>
       ),
@@ -608,17 +608,12 @@ export default function StockLedger() {
       <div className="ui-card p-3 sm:p-4">
         <div className="flex flex-col gap-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="relative min-w-0 flex-1 xl:max-w-md">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-icon)]" aria-hidden />
-            <input
-              type="search"
+            <SearchBar
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={setSearch}
               placeholder="Search stock movements"
-              className="ui-input w-full pl-10"
-              aria-label="Search stock movements"
+              className="min-w-0 flex-1 xl:max-w-md"
             />
-            </div>
             <div className="flex flex-wrap items-center gap-3">
               <Button
                 type="button"

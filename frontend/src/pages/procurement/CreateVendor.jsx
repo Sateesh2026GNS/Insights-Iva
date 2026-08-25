@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 
 import CompanyAddressFields from "../../components/common/CompanyAddressFields";
+import { SearchBar } from "../../components/common/SearchFilter";
 import { createDocument } from "../../api/documentsApi";
 import { getProducts } from "../../api/productsApi";
 import {
@@ -753,12 +754,13 @@ export default function CreateVendor() {
           </Section>
 
           <Section icon={Package} title="Products Supplied" subtitle="Link materials from Product Master.">
-            <input
-              className={`${inputClass} mb-3`}
-              placeholder="Search"
+            <SearchBar
+              size="compact"
               value={productSearch}
-              onChange={(e) => setProductSearch(e.target.value)}
+              onChange={setProductSearch}
+              placeholder="Search"
               disabled={loading}
+              className="mb-3 w-full"
             />
             <div className="max-h-56 space-y-1 overflow-y-auto rounded-xl border border-slate-200 p-2">
               {filteredProducts.length === 0 ? (

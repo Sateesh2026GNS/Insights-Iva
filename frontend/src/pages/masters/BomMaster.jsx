@@ -16,6 +16,7 @@ import {
 import DataTable from "../../components/common/DataTable";
 import Loader from "../../components/common/Loader";
 import Button from "../../components/common/Button";
+import { SearchBar } from "../../components/common/SearchFilter";
 import BomDetailModal, { BomFormModal, checkDuplicateBom } from "../../components/masters/BomDetailModal";
 import { useToast } from "../../context/ToastContext";
 import { addBomItem, deleteBomItem, getBillOfMaterials } from "../../api/bomApi";
@@ -411,12 +412,11 @@ export default function BomMaster() {
 
       <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
-          <input
-            type="search"
-            placeholder="Search"
+          <SearchBar
             value={filters.bom_number}
-            onChange={(e) => setFilters((f) => ({ ...f, bom_number: e.target.value }))}
-            className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
+            onChange={(v) => setFilters((f) => ({ ...f, bom_number: v }))}
+            placeholder="Search"
+            className="min-w-0"
           />
           <select value={filters.category} onChange={(e) => setFilters((f) => ({ ...f, category: e.target.value }))} className="rounded-lg border border-slate-200 px-3 py-2 text-sm">
             <option value="">Product Category</option>

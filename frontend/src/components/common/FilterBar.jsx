@@ -1,6 +1,5 @@
-import { Search } from "lucide-react";
-
-import { filterBarClass, filterLabelClass, inputSearchClass, selectClass } from "../../design-system/classes";
+import { SearchBar } from "./SearchFilter";
+import { filterBarClass, filterLabelClass, selectClass } from "../../design-system/classes";
 
 /**
  * Reusable filter toolbar — search + optional select filters + trailing actions.
@@ -12,6 +11,7 @@ export default function FilterBar({
   searchPlaceholder = "Search",
   searchLabel = "",
   showSearch = true,
+  searchClassName = "",
   filters = [],
   children,
   className = "",
@@ -26,21 +26,14 @@ export default function FilterBar({
     <div className={`${filterBarClass} ${className}`.trim()}>
       <div className={gridClass}>
         {showSearch ? (
-          <div className={layout === "grid" ? "lg:col-span-6 ui-search-wrap" : "min-w-[10rem] flex-1 ui-search-wrap"}>
+          <div className={layout === "grid" ? "lg:col-span-6" : ""}>
             {searchLabel ? <label className={filterLabelClass}>{searchLabel}</label> : null}
-            <div className="relative">
-              <Search
-                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-icon)]"
-                aria-hidden
-              />
-              <input
-                type="search"
-                value={search ?? ""}
-                onChange={(e) => onSearchChange?.(e.target.value)}
-                placeholder={searchPlaceholder}
-                className={inputSearchClass}
-              />
-            </div>
+            <SearchBar
+              value={search ?? ""}
+              onChange={onSearchChange}
+              placeholder={searchPlaceholder}
+              className={layout === "grid" ? `w-full ${searchClassName}`.trim() : searchClassName}
+            />
           </div>
         ) : null}
 

@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
-import { Plus, ChevronUp, ChevronDown, Pencil, Trash2, FileX2, Search } from "lucide-react";
+import { Plus, ChevronUp, ChevronDown, Pencil, Trash2, FileX2 } from "lucide-react";
 import { useToast } from "../../context/ToastContext";
 import Button from "../../components/common/Button";
+import { SearchBar } from "../../components/common/SearchFilter";
 
 const ROWS_PER_PAGE_OPTIONS = [5, 7, 10, 25, 50];
 const STORAGE_KEY = "gns_package_type_master_v1";
@@ -113,16 +114,13 @@ export default function SettingsPackageTypeMaster() {
           <ChevronDown className={"-ml-2 h-3.5 w-3.5 " + (sort.key === colKey && sort.dir === "desc" ? "text-teal-600" : "text-slate-400")} />
         </span>
       </button>
-      <div className="relative">
-        <input
-          type="text"
-          placeholder="Search"
-          value={search[colKey] ?? ""}
-          onChange={(e) => setSearch((s) => ({ ...s, [colKey]: e.target.value }))}
-          className="w-full rounded border border-slate-200 bg-white py-1 pl-7 pr-2 text-xs placeholder-slate-400 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
-        />
-        <Search className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-      </div>
+      <SearchBar
+        value={search[colKey] ?? ""}
+        onChange={(v) => setSearch((s) => ({ ...s, [colKey]: v }))}
+        placeholder="Search"
+        size="compact"
+        className="min-w-0 w-full flex-none"
+      />
     </div>
   );
 
@@ -142,7 +140,7 @@ export default function SettingsPackageTypeMaster() {
 
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
         <table className="w-full border-collapse text-left">
-          <thead className="bg-slate-50 dark:bg-slate-800/60">
+          <thead className="ui-table-head">
             <tr>
               {COLUMNS.map((col) => (
                 <th key={col.key} className="px-4 py-3">

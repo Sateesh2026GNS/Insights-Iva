@@ -1,6 +1,7 @@
-import { Search, X } from "lucide-react";
+import { X } from "lucide-react";
 
 import { Input, Select } from "../common/FormField";
+import { SearchBar } from "../common/SearchFilter";
 import { getWorkflowStatusLabel } from "../../config/workflowStages";
 
 const PRIORITY_OPTIONS = [
@@ -36,17 +37,14 @@ export default function JobCardQueueFilters({
 
   return (
     <div className="flex flex-col gap-3 border-b border-[var(--color-border-soft)] px-4 py-3 sm:flex-row sm:flex-wrap sm:items-end">
-      <div className="relative min-w-[200px] flex-1 sm:max-w-xs">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-faint)]" />
-        <Input
-          type="search"
-          placeholder="Search Job Card / Sales Order / Customer"
-          value={search}
-          onChange={(e) => onSearchChange?.(e.target.value)}
-          className="pl-9"
-          aria-label="Search job cards"
-        />
-      </div>
+      <SearchBar
+        value={search}
+        onChange={(v) => onSearchChange?.(v)}
+        placeholder="Search Job Card / Sales Order / Customer"
+        className="min-w-[200px] sm:max-w-xs"
+        aria-label="Search job cards"
+        clearable={false}
+      />
 
       <Select
         value={priority}

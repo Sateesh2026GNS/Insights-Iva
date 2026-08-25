@@ -169,7 +169,7 @@ export default function ManualJournalEntriesV2() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search"
-              className="ui-search-wrap flex-1"
+              className="flex-1"
             />
             <label className="inline-flex items-center gap-2 rounded-full border border-[#E2E8F0] bg-white px-3 py-2 text-[13px] text-[#17264A]">
               <Calendar className="h-4 w-4 text-[#64748B]" />

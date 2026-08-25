@@ -47,24 +47,21 @@ export default function HRDocuments() {
 
   const loadDocuments = useCallback(async () => {
     setLoading(true);
+    setError("");
     try {
-      const res = await getDocuments("hr").catch(() => ({ data: [] }));
+      const res = await getDocuments("hr");
       const apiDocs = Array.isArray(res?.data) ? res.data : [];
-      const stored = localStorage.getItem("smrt_hr_documents");
-      const localDocs = stored ? JSON.parse(stored) : [];
-      setDocuments([...localDocs, ...apiDocs]);
-    } catch {
-      const stored = localStorage.getItem("smrt_hr_documents");
-      const localDocs = stored ? JSON.parse(stored) : [];
-      setDocuments(localDocs);
+      setDocuments(apiDocs);
+    } catch (err) {
+      setDocuments([]);
+      setError("Failed to load HR documents.");
+      addToast("Failed to load HR documents", "error");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [addToast]);
 
   const handleRefresh = async () => {
-    setLoading(true);
-    await new Promise((r) => setTimeout(r, 350));
     await loadDocuments();
   };
 
@@ -210,7 +207,7 @@ Description : ${doc.description || 'N/A'}
   if (loading && documents.length === 0) return <Loader label="Loading HR documents..." />;
 
   return (
-    <div className="space-y-5 pb-4">
+    <div className="hr-page ui-page ui-stack space-y-5 pb-4">
       <PageHeader
         subtitle="Access and organize policy manuals, employee handbooks, and personnel files."
         action={

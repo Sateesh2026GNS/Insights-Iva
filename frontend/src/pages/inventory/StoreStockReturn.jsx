@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import useDebouncedValue from "../../hooks/useDebouncedValue";
 import { useSearchParams } from "react-router-dom";
 import {
   CheckCircle2,
@@ -6,12 +7,12 @@ import {
   Plus,
   RefreshCw,
   RotateCcw,
-  Search,
   Trash2,
   XCircle,
 } from "lucide-react";
 
 import Button from "../../components/common/Button";
+import { SearchBar } from "../../components/common/SearchFilter";
 import ConfirmDialog from "../../components/admin/ConfirmDialog";
 import DataTable from "../../components/common/DataTable";
 import EmptyState from "../../components/common/EmptyState";
@@ -234,6 +235,7 @@ export default function StoreStockReturn() {
   const [submitting, setSubmitting] = useState(false);
   const [updatingId, setUpdatingId] = useState(null);
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search, 350);
   const [statusFilter, setStatusFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
   const [deptFilter, setDeptFilter] = useState("");
@@ -244,11 +246,22 @@ export default function StoreStockReturn() {
   const [viewTarget, setViewTarget] = useState(null);
   const [confirm, setConfirm] = useState(null);
 
-  const load = useCallback(async (isRefresh = false) => {
+  const loadReferenceData = useCallback(async () => {
+    const [whRes, itemsRes, refRes] = await Promise.allSettled([
+      getWarehouses(),
+      getInventoryDashboard(),
+      getStoreMaterialRequests(),
+    ]);
+    if (whRes.status === "fulfilled") setWarehouses(asArray(whRes.value?.data));
+    if (itemsRes.status === "fulfilled") setItems(asArray(itemsRes.value?.data));
+    if (refRes.status === "fulfilled") setReferences(asArray(refRes.value?.data));
+  }, []);
+
+  const loadList = useCallback(async (isRefresh = false) => {
     if (!isRefresh) setLoading(true);
     try {
       const params = {};
-      if (search.trim()) params.search = search.trim();
+      if (debouncedSearch.trim()) params.search = debouncedSearch.trim();
       if (statusFilter) params.status = statusFilter;
       if (typeFilter) params.return_type = typeFilter;
       if (deptFilter) params.department = deptFilter;
@@ -256,25 +269,27 @@ export default function StoreStockReturn() {
       if (dateFrom) params.date_from = dateFrom;
       if (dateTo) params.date_to = dateTo;
 
-      const [retRes, whRes, itemsRes, refRes] = await Promise.allSettled([
-        getStockReturns(params),
-        getWarehouses(),
-        getInventoryDashboard(),
-        getStoreMaterialRequests(),
-      ]);
-      if (retRes.status === "fulfilled") setReturns(asArray(retRes.value?.data));
-      if (whRes.status === "fulfilled") setWarehouses(asArray(whRes.value?.data));
-      if (itemsRes.status === "fulfilled") setItems(asArray(itemsRes.value?.data));
-      if (refRes.status === "fulfilled") setReferences(asArray(refRes.value?.data));
+      const retRes = await getStockReturns(params);
+      setReturns(asArray(retRes?.data));
     } finally {
       setLoading(false);
     }
-  }, [search, statusFilter, typeFilter, deptFilter, warehouseFilter, dateFrom, dateTo]);
+  }, [debouncedSearch, statusFilter, typeFilter, deptFilter, warehouseFilter, dateFrom, dateTo]);
+
+  const load = useCallback(
+    async (isRefresh = false) => {
+      await Promise.all([loadReferenceData(), loadList(isRefresh)]);
+    },
+    [loadReferenceData, loadList]
+  );
 
   usePageRefresh(() => load(true));
   useEffect(() => {
-    load();
-  }, [load]);
+    loadReferenceData();
+  }, [loadReferenceData]);
+  useEffect(() => {
+    loadList();
+  }, [loadList]);
 
   useEffect(() => {
     if (!form.returned_by && user?.full_name) {
@@ -636,15 +651,12 @@ export default function StoreStockReturn() {
 
       <div className="ui-card p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="relative min-w-0 flex-1">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]" />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search return no., reference, returned by…"
-              className="ui-input w-full pl-9"
-            />
-          </div>
+          <SearchBar
+            value={search}
+            onChange={setSearch}
+            placeholder="Search return no., reference, returned by…"
+            className="w-full"
+          />
           <Button variant="secondary" onClick={() => setShowFilters((v) => !v)}>
             <Filter className="h-4 w-4" aria-hidden />
             Filters
@@ -779,7 +791,7 @@ export default function StoreStockReturn() {
             </div>
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
-                <thead className="bg-[var(--color-surface-muted)] text-left text-[11px] uppercase tracking-wide text-[var(--color-text-muted)]">
+                <thead className="ui-table-head">
                   <tr>
                     {["S.No.", "Material", "Batch/Lot", "Avail.", "Return Qty", "Unit", "Condition", "Warehouse", "Reason", ""].map((h) => (
                       <th key={h} className="px-3 py-2 font-semibold">{h}</th>

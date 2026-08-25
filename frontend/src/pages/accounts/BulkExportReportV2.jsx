@@ -115,10 +115,10 @@ export default function BulkExportReportV2() {
             </div>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-left">
-              <thead>
-                <tr className="bg-[#f0f0f4] text-[12px] font-semibold text-[#6b6b76]">
+          <div className="ui-table-wrap ui-table-wrap--scroll">
+            <table className="ui-table min-w-full text-left">
+              <thead className="ui-table-head">
+                <tr>
                   <SerialNumberHeader />
                   <th className="px-5 py-3.5 text-center font-semibold">Document Type</th>
                   <th className="px-5 py-3.5 text-center font-semibold">Requested On</th>

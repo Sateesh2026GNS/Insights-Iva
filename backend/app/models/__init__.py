@@ -19,6 +19,7 @@ import app.models.department  # noqa: F401
 import app.models.dispatch_address  # noqa: F401
 import app.models.document  # noqa: F401
 import app.models.erp_notification  # noqa: F401
+import app.models.hr  # noqa: F401
 import app.models.inventory  # noqa: F401
 import app.models.manufacturing_workflow  # noqa: F401
 import app.models.machine  # noqa: F401

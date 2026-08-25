@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 
 import Button from "../../components/common/Button";
+import { SearchBar } from "../../components/common/SearchFilter";
 import InventoryRowActionsMenu from "../../components/inventory/InventoryRowActionsMenu";
 import KpiCard from "../../components/common/KpiCard";
 import Loader from "../../components/common/Loader";
@@ -347,7 +348,7 @@ export default function FinalQC() {
       <div className="ui-card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-[1100px] w-full border-collapse text-left text-[13px]">
-            <thead className="bg-[var(--color-surface-thead)] text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
+            <thead className="ui-table-head">
               <tr className="border-b border-[var(--color-border-soft)]">
                 <SerialNumberHeader className="px-3 py-3" />
                 <th className="px-4 py-3">QC No.</th>

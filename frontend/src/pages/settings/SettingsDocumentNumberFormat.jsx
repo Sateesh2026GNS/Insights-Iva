@@ -71,10 +71,10 @@ export default function SettingsDocumentNumberFormat() {
         </Button>
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700">
-        <table className="w-full border-collapse">
-          <thead>
-            <tr className="bg-sky-50 dark:bg-sky-900/20">
+      <div className="ui-table-wrap ui-table-wrap--scroll overflow-hidden">
+        <table className="ui-table w-full border-collapse">
+          <thead className="ui-table-head">
+            <tr>
               <th className="border-b border-slate-200 px-4 py-3 text-left text-sm font-semibold text-slate-700 dark:border-slate-700 dark:text-slate-300">
                 Document Type
               </th>

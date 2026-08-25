@@ -153,10 +153,10 @@ export default function CostAllocation() {
           <div className="p-4 border-b bg-slate-50/50">
             <h2 className="font-bold text-slate-800">Direct Overhead Posting Ledger</h2>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-slate-50 border-b text-slate-500 text-left font-semibold">
+          <div className="ui-table-wrap ui-table-wrap--scroll !rounded-none !border-0">
+            <table className="ui-table w-full text-sm">
+              <thead className="ui-table-head">
+                <tr>
                   <th className="p-3">Posting Date</th>
                   <th className="p-3">Expense Voucher Item</th>
                   <th className="p-3">Allocated Center</th>

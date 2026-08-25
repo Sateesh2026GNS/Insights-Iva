@@ -808,10 +808,10 @@ function RecentWorkOrders({ workOrders = [] }) {
       {!workOrders.length ? (
         <p className="py-6 text-center text-sm text-[#8a8a96] dark:text-slate-400">{t("common.noRecords", "No records found.")}</p>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[420px] text-left text-sm">
-            <thead>
-              <tr className="border-b border-[#e8e8ee] bg-[#f5f5f5] text-[12px] font-medium text-[#6b6b76] dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-300">
+        <div className="ui-table-wrap ui-table-wrap--scroll">
+          <table className="ui-table w-full min-w-[420px] text-left text-sm">
+            <thead className="ui-table-head">
+              <tr>
                 <th className="px-3 py-2.5 font-medium">{t("refDashboard.woNo")}</th>
                 <th className="px-3 py-2.5 font-medium">{t("refDashboard.product")}</th>
                 <th className="px-3 py-2.5 font-medium">{t("refDashboard.qty")}</th>
@@ -821,7 +821,7 @@ function RecentWorkOrders({ workOrders = [] }) {
             </thead>
             <tbody>
               {workOrders.map((wo) => (
-                <tr key={wo.wo} className="border-b border-[#f0f0f4] last:border-0 dark:border-slate-700/60">
+                <tr key={wo.wo}>
                   <td className="px-3 py-2.5 font-semibold text-[var(--color-primary)]">{wo.wo}</td>
                   <td className="px-3 py-2.5 text-[#1a1a1f] dark:text-white">{wo.product}</td>
                   <td className="px-3 py-2.5 tabular-nums text-[#4a4a55] dark:text-slate-300">{wo.qty}</td>

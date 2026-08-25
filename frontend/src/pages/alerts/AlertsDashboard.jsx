@@ -25,6 +25,7 @@ import { getUsers } from "../../api/adminApi";
 import { isAdmin, userCanAction } from "../../config/permissions";
 import { exportToExcel, exportToPdf } from "../../utils/exportUtils";
 import Button from "../../components/common/Button";
+import { SearchBar } from "../../components/common/SearchFilter";
 import RowActionMenu from "../../components/common/RowActionMenu";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
 import {
@@ -480,15 +481,7 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
       {/* Search, status tabs & filters */}
       <div className="ui-card ui-card--padded print:hidden">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="relative ui-search-wrap min-w-0 flex-1">
-            <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]" />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search"
-              className="ui-input w-full !pl-10"
-            />
-          </div>
+          <SearchBar value={search} onChange={setSearch} placeholder="Search" className="w-full" />
           <div className="flex flex-wrap items-center gap-2">
             <Button type="button" variant="secondary" onClick={() => setShowFilters((v) => !v)}>
               <Filter className="h-4 w-4" />
@@ -585,7 +578,7 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
       <div className="ui-card overflow-hidden print:hidden">
         <div className="overflow-x-auto">
           <table className="min-w-[920px] w-full border-collapse text-left text-[13px]">
-            <thead className="bg-[var(--color-surface-thead)] text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
+            <thead className="ui-table-head">
               <tr className="border-b border-[var(--color-border-soft)]">
                 <SerialNumberHeader className="px-3 py-3" />
                 <th className="min-w-[280px] px-4 py-3">Alert</th>

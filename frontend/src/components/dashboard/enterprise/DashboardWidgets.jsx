@@ -264,10 +264,10 @@ export function CriticalAlertsWidget() {
 export function RecentWorkOrdersWidget() {
   return (
     <ChartPanel title="Recent Work Orders" className="lg:col-span-2" action={<WidgetLink to="/production/work-orders" label="All WOs" />}>
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[480px] text-left text-sm">
-          <thead>
-            <tr className="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-400 dark:border-slate-800">
+      <div className="ui-table-wrap ui-table-wrap--scroll">
+        <table className="ui-table w-full min-w-[480px] text-left text-sm">
+          <thead className="ui-table-head">
+            <tr>
               <th className="pb-2 pr-3 font-semibold">Work Order Number</th>
               <th className="pb-2 pr-3 font-semibold">Product</th>
               <th className="pb-2 pr-3 font-semibold">Quantity</th>

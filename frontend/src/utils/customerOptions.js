@@ -1,5 +1,8 @@
 import { createCustomer, getCustomers } from "../api/salesApi";
 import { asArray } from "./apiError";
+import { getCachedReference, invalidateReferenceCache } from "./referenceDataCache";
+
+export { invalidateReferenceCache };
 
 export const DEFAULT_FALLBACK_CUSTOMERS = [
   { id: "cust-1", customer_code: "CUS001", name: "Acme Industrial Suppliers", company: "Acme Industrial Suppliers", gstin: "29AAAAA0000A1Z5", phone: "+91 9876543210", city: "Bengaluru", state: "Karnataka" },
@@ -22,9 +25,11 @@ const STATE_CODES = {
 };
 
 /** Load customers created in Customer Management, API, and converted leads. */
-export async function fetchCustomersWithFallback() {
+export async function fetchCustomersWithFallback(options = {}) {
   try {
-    const res = await getCustomers().catch(() => null);
+    const res = await getCachedReference("customers", () => getCustomers(), {
+      force: Boolean(options.force),
+    }).catch(() => null);
     const apiCusts = asArray(res?.data ?? res);
     const storedCusts = localStorage.getItem("smrt_customers");
     const localCusts = storedCusts ? JSON.parse(storedCusts) : [];

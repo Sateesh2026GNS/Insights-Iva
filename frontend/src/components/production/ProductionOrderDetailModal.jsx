@@ -223,8 +223,8 @@ export default function ProductionOrderDetailModal({ order, detail, onClose, onS
           {tab === "work_orders" && (
             (o.work_orders?.length > 0) ? (
               <table className="w-full text-left text-sm">
-                <thead>
-                  <tr className="border-b text-xs uppercase text-slate-400">
+                <thead className="ui-table-head">
+                  <tr>
                     <th className="py-2">Work Order Number</th>
                     <th className="py-2">Machine</th>
                     <th className="py-2">Status</th>
@@ -257,8 +257,8 @@ export default function ProductionOrderDetailModal({ order, detail, onClose, onS
               </div>
               {(o.materials?.length > 0) ? (
                 <table className="w-full text-left text-sm">
-                  <thead>
-                    <tr className="border-b text-xs uppercase text-slate-400">
+                  <thead className="ui-table-head">
+                    <tr>
                       <th className="py-2">Material</th>
                       <th className="py-2 text-right">Required</th>
                       <th className="py-2 text-right">Available</th>
@@ -325,8 +325,8 @@ export default function ProductionOrderDetailModal({ order, detail, onClose, onS
 
           {tab === "audit" && (
             <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="border-b text-xs uppercase text-slate-400">
+              <thead className="ui-table-head">
+                <tr>
                   <th className="py-2">Action</th>
                   <th className="py-2">User</th>
                   <th className="py-2">Timestamp</th>

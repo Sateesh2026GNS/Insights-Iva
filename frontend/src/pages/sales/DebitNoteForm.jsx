@@ -3,6 +3,7 @@ import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Building2, Calendar, ChevronDown, FileText, Grid2x2, GripVertical, ImagePlus, MapPin, Package, PenLine, Plane, Plus, Ban, Search, Ship, TrainFront, Trash2, Truck, User, X } from "lucide-react";
 
 import Loader from "../../components/common/Loader";
+import { SearchBar } from "../../components/common/SearchFilter";
 import AddBankAccountModal from "../../components/sales/AddBankAccountModal";
 import AddCustomFieldModal from "../../components/sales/AddCustomFieldModal";
 import AddNewItemModal from "../../components/sales/AddNewItemModal";
@@ -844,16 +845,13 @@ export default function DebitNoteForm() {
           <div className="min-h-[88px] border-t-0 p-4">
             {showBuyerPicker && (
               <div className="mb-3 rounded-lg border border-[#e4e4ea] bg-[#fafafa] p-3">
-                <div className="relative mb-2">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9a9aa5]" />
-                  <input
-                    type="search"
-                    placeholder="Search"
-                    value={customerSearch}
-                    onChange={(e) => setCustomerSearch(e.target.value)}
-                    className="w-full rounded-lg border border-[#e4e4ea] bg-white py-2 pl-9 pr-3 text-[13px]"
-                  />
-                </div>
+                <SearchBar
+                  size="compact"
+                  value={customerSearch}
+                  onChange={setCustomerSearch}
+                  placeholder="Search"
+                  className="mb-2 w-full"
+                />
                 <div className="max-h-44 overflow-y-auto">
                   {filteredCustomers.length === 0 ? (
                     <p className="p-2 text-[13px] text-[#8a8a95]">
@@ -917,8 +915,8 @@ export default function DebitNoteForm() {
 
           <div className="overflow-x-auto">
             <table className="w-full min-w-[1180px] border-collapse text-left text-[12px]">
-              <thead>
-                <tr className="bg-[#f3f3f6] text-[#6b6b76]">
+              <thead className="ui-table-head">
+                <tr>
                   {["", "#", "Item Name", "HSN", "Qty", "Unit", "Price", "Tax Type", "Discount", "Taxable Value", "GST", "Total Amt", ""].map(
                     (h, hi) => (
                       <th
@@ -944,12 +942,13 @@ export default function DebitNoteForm() {
                       <td className={`${cell} text-[#9a9aa5]`}>{idx + 1}</td>
                       <td className={cell}>
                         <div className="relative min-w-[160px]">
-                          <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#9a9aa5]" />
-                          <input
+                          <SearchBar
+                            size="compact"
                             value={row.item_description}
-                            onChange={(e) => updateItem(idx, "item_description", e.target.value)}
+                            onChange={(v) => updateItem(idx, "item_description", v)}
                             placeholder="Select Item"
-                            className="w-full rounded-md border border-[#d0d0d8] bg-[#f7f7f9] py-1.5 pl-7 pr-2 text-[12px]"
+                            clearable={false}
+                            className="w-full"
                           />
                         </div>
                       </td>

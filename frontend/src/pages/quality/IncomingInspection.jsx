@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 
 import Button from "../../components/common/Button";
+import { SearchBar } from "../../components/common/SearchFilter";
 import InventoryRowActionsMenu from "../../components/inventory/InventoryRowActionsMenu";
 import KpiCard from "../../components/common/KpiCard";
 import Loader from "../../components/common/Loader";
@@ -142,16 +143,13 @@ function MultiSelectDropdown({
         <div className="absolute left-0 top-[calc(100%+4px)] z-40 w-64 rounded-xl border border-[var(--color-border-soft)] bg-white p-2 shadow-xl">
           {normalizedOptions.length > 5 && (
             <div className="mb-2 px-1">
-              <div className="flex items-center gap-1.5 rounded-lg border border-[var(--color-border-soft)] bg-[var(--color-surface-muted)]/50 px-2.5 py-1.5">
-                <Search className="h-3.5 w-3.5 text-[var(--color-text-muted)]" />
-                <input
-                  type="text"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder={placeholder}
-                  className="w-full bg-transparent text-[12px] text-[var(--color-text)] outline-none placeholder:text-[var(--color-text-placeholder)]"
-                />
-              </div>
+              <SearchBar
+                size="compact"
+                value={query}
+                onChange={setQuery}
+                placeholder={placeholder}
+                className="w-full"
+              />
             </div>
           )}
 
@@ -488,7 +486,7 @@ export default function IncomingInspection() {
       <div className="ui-card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-[1040px] w-full border-collapse text-left text-[13px]">
-            <thead className="bg-[var(--color-primary-soft)] text-[12px] font-semibold text-[var(--color-primary-dark)]">
+            <thead className="ui-table-head">
               <tr className="border-b border-[#d0e5e0]">
                 <SerialNumberHeader className="px-3 py-3" />
                 <th className="px-4 py-3">Inspection No.</th>

@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Check, ChevronDown, Search } from "lucide-react";
+import { Check, ChevronDown } from "lucide-react";
+
+import { SearchBar } from "./SearchFilter";
 
 /**
  * Lightweight searchable dropdown — no extra packages.
@@ -57,10 +59,10 @@ export default function SearchableSelect({
     }
   }, [open]);
 
-  const baseClass = `flex w-full items-center justify-between gap-2 rounded-xl border bg-white px-3.5 py-2.5 text-left text-sm shadow-sm transition focus:outline-none focus:ring-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500 dark:bg-slate-800 dark:text-slate-100 ${
+  const baseClass = `flex w-full items-center justify-between gap-2 rounded-xl border bg-[var(--color-surface)] px-3.5 py-2.5 text-left text-sm shadow-sm transition focus:outline-none focus:ring-2 disabled:cursor-not-allowed disabled:bg-[var(--color-surface-muted)] disabled:text-[var(--color-text-muted)] ${
     error
       ? "border-red-400 focus:ring-red-400/30"
-      : "border-slate-300/80 focus:border-[var(--color-primary)] focus:ring-[var(--color-primary)]/20 dark:border-slate-600"
+      : "border-[var(--color-border-soft)] focus:border-[var(--color-primary)] focus:ring-[var(--color-primary)]/20"
   } ${className}`;
 
   const pick = (opt) => {
@@ -79,23 +81,24 @@ export default function SearchableSelect({
         onClick={() => !disabled && setOpen((v) => !v)}
         className={baseClass}
       >
-        <span className={selectedLabel ? "truncate text-slate-800 dark:text-slate-100" : "truncate text-slate-400"}>
+        <span className={selectedLabel ? "truncate text-[var(--color-text)]" : "truncate text-[var(--color-text-placeholder)]"}>
           {selectedLabel || placeholder}
         </span>
-        <ChevronDown className={`h-4 w-4 shrink-0 text-slate-400 transition ${open ? "rotate-180" : ""}`} aria-hidden />
+        <ChevronDown className={`h-4 w-4 shrink-0 text-[var(--color-text-icon)] transition ${open ? "rotate-180" : ""}`} aria-hidden />
       </button>
 
       {open ? (
-        <div className="absolute left-0 right-0 top-full z-40 mt-1 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg dark:border-slate-600 dark:bg-slate-800">
-          <div className="flex items-center gap-2 border-b border-slate-100 px-3 py-2 dark:border-slate-700">
-            <Search className="h-4 w-4 text-slate-400" aria-hidden />
-            <input
-              ref={inputRef}
-              type="text"
+        <div className="absolute left-0 right-0 z-40 mt-1 overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-lg">
+          <div className="border-b border-[var(--color-border-muted)] p-2">
+            <SearchBar
+              size="compact"
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={setQuery}
               placeholder={searchPlaceholder}
-              className="w-full bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-400 dark:text-slate-100"
+              inputRef={inputRef}
+              clearable={false}
+              type="text"
+              className="w-full"
               onKeyDown={(e) => {
                 if (e.key === "Escape") setOpen(false);
                 if (e.key === "Enter" && allowCustom && query.trim()) {
@@ -107,7 +110,7 @@ export default function SearchableSelect({
           </div>
           <ul role="listbox" className="max-h-56 overflow-y-auto py-1">
             {filtered.length === 0 ? (
-              <li className="px-3 py-3 text-center text-xs text-slate-500">
+              <li className="px-3 py-3 text-center text-xs text-[var(--color-text-muted)]">
                 {allowCustom && query.trim() ? (
                   <button
                     type="button"

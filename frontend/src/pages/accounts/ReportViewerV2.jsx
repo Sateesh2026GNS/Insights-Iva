@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, ChevronDown, ChevronLeft, ChevronRight, Plus, Search, X } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronLeft, ChevronRight, Plus, X } from "lucide-react";
 
 import { useToast } from "../../context/ToastContext";
+import { SearchBar } from "../../components/common/SearchFilter";
 import { getReportView } from "../../data/reportViews";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
 import { FloatingDate, defaultDateRange, formatDisplayDate } from "../../design-system/dateControls";
@@ -369,18 +370,15 @@ export default function ReportViewerV2({ reportId }) {
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
-              <div className="relative ui-search-wrap flex-1">
-                <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9a9aa5]" />
-                <input
-                  value={search}
-                  onChange={(e) => {
-                    setSearch(e.target.value);
-                    setPage(1);
-                  }}
-                  placeholder="Search"
-                  className="w-full rounded-full border border-transparent bg-[#f0f0f4] py-2.5 pl-10 pr-4 text-[13px] text-[#1a1a1f] outline-none placeholder:text-[#9a9aa5] focus:border-[#c4b5fd] focus:bg-white"
-                />
-              </div>
+              <SearchBar
+                value={search}
+                onChange={(val) => {
+                  setSearch(val);
+                  setPage(1);
+                }}
+                placeholder="Search"
+                className="w-full"
+              />
 
               <FloatingDate
                 label="From"
@@ -418,10 +416,10 @@ export default function ReportViewerV2({ reportId }) {
             </div>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-left">
-              <thead>
-                <tr className="bg-[#f0f0f4] text-[12px] font-semibold text-[#6b6b76]">
+          <div className="ui-table-wrap ui-table-wrap--scroll">
+            <table className="ui-table min-w-full text-left">
+              <thead className="ui-table-head">
+                <tr>
                   <SerialNumberHeader />
                   {dataColumns.map((col) => (
                     <th

@@ -96,10 +96,10 @@ export default function Table({
   const cellPadding = compact ? "px-2.5 py-2 text-xs" : "px-4 py-3.5 text-[var(--text-sm)]";
 
   return (
-    <div className="ui-table-wrap overflow-x-auto print:overflow-visible print:rounded-none print:border-none print:shadow-none">
-      <table className="w-full border-collapse text-left text-[var(--text-sm)]">
-        <thead>
-          <tr className="border-b border-[var(--color-border-soft)] bg-[var(--color-surface-thead)] font-medium text-[var(--color-text-muted)]">
+    <div className="ui-table-wrap ui-table-wrap--scroll overflow-x-auto print:overflow-visible print:rounded-none print:border-none print:shadow-none">
+      <table className="ui-table w-full border-collapse text-left">
+        <thead className="ui-table-head">
+          <tr>
             {includeSerial ? (
               <th className="w-12 min-w-[3rem] px-2 py-3 text-center font-medium">S.No.</th>
             ) : null}
@@ -114,9 +114,7 @@ export default function Table({
                   className={`${headerPadding} font-semibold ${align} ${colClass} ${
                     isActionsCol ? "print:hidden" : ""
                   } ${
-                    sortable && col.sortable !== false
-                      ? "cursor-pointer select-none hover:bg-[var(--color-surface-hover)]"
-                      : ""
+                    sortable && col.sortable !== false ? "ui-table-th--sortable" : ""
                   }`}
                   style={col.width ? { width: col.width, minWidth: col.minWidth } : col.minWidth ? { minWidth: col.minWidth } : undefined}
                   onClick={() => col.sortable !== false && sortable && handleSort(col.key)}
@@ -129,12 +127,9 @@ export default function Table({
         </thead>
         <tbody>
           {sortedData.map((row, idx) => (
-            <tr
-              key={row.id ?? idx}
-              className="border-b border-[var(--color-border-muted)] text-[var(--color-text)] last:border-b-0 hover:bg-[var(--color-surface-muted)]/60 transition-colors"
-            >
+            <tr key={row.id ?? idx}>
               {includeSerial ? (
-                <td className="ui-num w-12 min-w-[3rem] px-2 py-3.5 text-center text-[var(--text-sm)] text-[var(--color-text-muted)]">
+                <td className="ui-num ui-table-text-secondary w-12 min-w-[3rem] px-2 py-3 text-center">
                   {serialOffset + idx + 1}
                 </td>
               ) : null}

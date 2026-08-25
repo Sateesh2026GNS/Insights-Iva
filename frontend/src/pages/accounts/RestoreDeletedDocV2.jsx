@@ -218,7 +218,7 @@ export default function RestoreDeletedDocV2() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search"
-              className="ui-search-wrap flex-1"
+              className="flex-1"
             />
 
             <AccountsSecondaryButton onClick={() => setFiltersOpen(true)}>
@@ -264,8 +264,8 @@ export default function RestoreDeletedDocV2() {
 
           <div className={accountsTableWrapClass}>
             <table className={accountsTableClass}>
-              <thead>
-                <tr className={accountsTableHeadClass}>
+              <thead className={accountsTableHeadClass}>
+                <tr>
                   <SerialNumberHeader className={accountsThClass} />
                   <th className={`w-12 ${accountsThClass}`}>
                     <input

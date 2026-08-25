@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import useDebouncedValue from "../../hooks/useDebouncedValue";
 import { useSearchParams } from "react-router-dom";
 import {
   Filter,
@@ -6,12 +7,12 @@ import {
   Paperclip,
   Plus,
   RefreshCw,
-  Search,
   Trash2,
   Upload,
 } from "lucide-react";
 
 import Button from "../../components/common/Button";
+import { SearchBar } from "../../components/common/SearchFilter";
 import ConfirmDialog from "../../components/admin/ConfirmDialog";
 import DataTable from "../../components/common/DataTable";
 import EmptyState from "../../components/common/EmptyState";
@@ -199,6 +200,7 @@ export default function StoreStockIn() {
   const [submitting, setSubmitting] = useState(false);
   const [updatingId, setUpdatingId] = useState(null);
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search, 350);
   const [statusFilter, setStatusFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
   const [warehouseFilter, setWarehouseFilter] = useState("");
@@ -250,41 +252,54 @@ export default function StoreStockIn() {
     return [];
   }, [form.reference_type, purchaseOrders, stockReturns]);
 
-  const load = useCallback(async (isRefresh = false) => {
+  const loadReferenceData = useCallback(async () => {
+    const [whRes, itemsRes, supRes, poRes, srRes] = await Promise.allSettled([
+      getWarehouses(),
+      getInventoryDashboard(),
+      getSuppliers(),
+      getPurchaseOrdersEnriched(),
+      getStockReturns({ status: "completed" }),
+    ]);
+
+    if (whRes.status === "fulfilled") setWarehouses(asArray(whRes.value?.data));
+    if (itemsRes.status === "fulfilled") setItems(asArray(itemsRes.value?.data));
+    if (supRes.status === "fulfilled") setSuppliers(asArray(supRes.value?.data));
+    if (poRes.status === "fulfilled") setPurchaseOrders(asArray(poRes.value?.data));
+    if (srRes.status === "fulfilled") setStockReturns(asArray(srRes.value?.data));
+  }, []);
+
+  const loadList = useCallback(async (isRefresh = false) => {
     if (!isRefresh) setLoading(true);
     try {
       const params = {};
-      if (search.trim()) params.search = search.trim();
+      if (debouncedSearch.trim()) params.search = debouncedSearch.trim();
       if (statusFilter) params.status = statusFilter;
       if (typeFilter) params.reference_type = typeFilter;
       if (warehouseFilter) params.warehouse_id = Number(warehouseFilter);
       if (dateFrom) params.date_from = dateFrom;
       if (dateTo) params.date_to = dateTo;
 
-      const [listRes, whRes, itemsRes, supRes, poRes, srRes] = await Promise.allSettled([
-        getStockIns(params),
-        getWarehouses(),
-        getInventoryDashboard(),
-        getSuppliers(),
-        getPurchaseOrdersEnriched(),
-        getStockReturns({ status: "completed" }),
-      ]);
-
-      if (listRes.status === "fulfilled") setStockIns(asArray(listRes.value?.data));
-      if (whRes.status === "fulfilled") setWarehouses(asArray(whRes.value?.data));
-      if (itemsRes.status === "fulfilled") setItems(asArray(itemsRes.value?.data));
-      if (supRes.status === "fulfilled") setSuppliers(asArray(supRes.value?.data));
-      if (poRes.status === "fulfilled") setPurchaseOrders(asArray(poRes.value?.data));
-      if (srRes.status === "fulfilled") setStockReturns(asArray(srRes.value?.data));
+      const listRes = await getStockIns(params);
+      setStockIns(asArray(listRes?.data));
     } finally {
       setLoading(false);
     }
-  }, [search, statusFilter, typeFilter, warehouseFilter, dateFrom, dateTo]);
+  }, [debouncedSearch, statusFilter, typeFilter, warehouseFilter, dateFrom, dateTo]);
+
+  const load = useCallback(
+    async (isRefresh = false) => {
+      await Promise.all([loadReferenceData(), loadList(isRefresh)]);
+    },
+    [loadReferenceData, loadList]
+  );
 
   usePageRefresh(() => load(true));
   useEffect(() => {
-    load();
-  }, [load]);
+    loadReferenceData();
+  }, [loadReferenceData]);
+  useEffect(() => {
+    loadList();
+  }, [loadList]);
 
   useEffect(() => {
     if (!form.received_by && user?.full_name) {
@@ -684,15 +699,12 @@ export default function StoreStockIn() {
         <>
           <div className="ui-card p-4">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-              <div className="relative min-w-0 flex-1">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]" />
-                <input
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search stock in no., reference, supplier…"
-                  className="ui-input w-full pl-9"
-                />
-              </div>
+              <SearchBar
+                value={search}
+                onChange={setSearch}
+                placeholder="Search stock in no., reference, supplier…"
+                className="w-full"
+              />
               <Button variant="secondary" onClick={() => setShowFilters((v) => !v)}>
                 <Filter className="h-4 w-4" aria-hidden />
                 Filters
@@ -860,7 +872,7 @@ export default function StoreStockIn() {
             ) : null}
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
-                <thead className="bg-[var(--color-surface-muted)] text-left text-[11px] uppercase tracking-wide text-[var(--color-text-muted)]">
+                <thead className="ui-table-head">
                   <tr>
                     {[
                       "S.No.",

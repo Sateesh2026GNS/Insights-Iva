@@ -24,8 +24,12 @@ export default function CompanyAddressFields({
   disabled = false,
   pinKey = "pincode",
   platform = false,
+  embedded = false,
+  inputClassName,
   className = "",
 }) {
+  const fieldInputClass = inputClassName ?? (platform ? "ap-input" : inputClass);
+  const labelClass = platform ? "ap-field-label" : "mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300";
   const country = value.country || "India";
   const isIndia = country.trim().toLowerCase() === "india";
   const pin = value[pinKey] || value.pincode || value.pin_code || "";
@@ -185,22 +189,26 @@ export default function CompanyAddressFields({
 
   const locationLocked = isIndia && autoFilled && !manualLocation && Boolean(state && city);
 
+  const wrapperClass = embedded
+    ? `ap-address-fields--embedded ${className}`.trim()
+    : `space-y-4 rounded-2xl border border-slate-200/90 bg-gradient-to-b from-slate-50/80 to-white p-4 sm:p-5 dark:from-slate-800/40 dark:to-slate-800/20 dark:border-slate-600 ${className}`;
+
   return (
-    <div
-      className={`space-y-4 rounded-2xl border border-slate-200/90 bg-gradient-to-b from-slate-50/80 to-white p-4 sm:p-5 dark:from-slate-800/40 dark:to-slate-800/20 dark:border-slate-600 ${className}`}
-    >
-      <div className="flex items-center gap-2 border-b border-slate-200/80 pb-3 dark:border-slate-600">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--color-primary)]/10 text-[var(--color-primary)]">
-          <MapPin className="h-4 w-4" aria-hidden />
+    <div className={wrapperClass}>
+      {!embedded ? (
+        <div className="flex items-center gap-2 border-b border-slate-200/80 pb-3 dark:border-slate-600">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--color-primary)]/10 text-[var(--color-primary)]">
+            <MapPin className="h-4 w-4" aria-hidden />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Company Address</p>
+            <p className="text-xs text-slate-500">PIN Code auto-fills State and City for India</p>
+          </div>
         </div>
-        <div>
-          <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Company Address</p>
-          <p className="text-xs text-slate-500">PIN Code auto-fills State and City for India</p>
-        </div>
-      </div>
+      ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Country" required error={errors.country}>
+        <Field label="Country" required error={errors.country} labelClass={labelClass}>
           <SearchableSelect
             value={country}
             onChange={setCountry}
@@ -212,12 +220,12 @@ export default function CompanyAddressFields({
           />
         </Field>
 
-        <Field label="PIN Code" required error={pinError || undefined}>
+        <Field label="PIN Code" required error={pinError || undefined} labelClass={labelClass}>
           <div className="relative">
             <input
               inputMode="numeric"
               maxLength={6}
-              className={`${inputClass} pr-10 ${pinError || serviceError ? "border-red-400" : locationLocked ? "border-emerald-300" : ""}`}
+              className={`${fieldInputClass} pr-10 ${pinError || serviceError ? "ap-input--error" : locationLocked ? "ap-input--success" : ""}`}
               value={pin}
               onChange={(e) => setPin(e.target.value)}
               disabled={disabled}
@@ -238,10 +246,15 @@ export default function CompanyAddressFields({
             ) : null}
           </div>
           {!pinError && !serviceError && isIndia && !locationLocked ? (
-            <p className="mt-1 text-xs text-slate-500">Enter a valid 6-digit PIN to auto-fill location</p>
+            <p className={labelClass?.includes("ap-field-label") ? "ap-field-hint" : "mt-1 text-xs text-slate-500"}>
+              Enter a valid 6-digit PIN to auto-fill location
+            </p>
           ) : null}
           {serviceError ? (
-            <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-amber-800" role="alert">
+            <div
+              className={`mt-1.5 flex flex-wrap items-center gap-2 text-xs ${labelClass?.includes("ap-field-label") ? "text-amber-700 dark:text-amber-300" : "text-amber-800"}`}
+              role="alert"
+            >
               <span>{serviceError}</span>
               <button
                 type="button"
@@ -256,11 +269,11 @@ export default function CompanyAddressFields({
           ) : null}
         </Field>
 
-        <Field label="State" required error={errors.state}>
+        <Field label="State" required error={errors.state} labelClass={labelClass}>
           {isIndia ? (
             locationLocked ? (
               <input
-                className={`${inputClass} border-emerald-200 bg-emerald-50/50 font-medium text-slate-900`}
+                className={`${fieldInputClass} ap-input--success font-medium`}
                 value={state}
                 readOnly
                 disabled={disabled}
@@ -279,7 +292,7 @@ export default function CompanyAddressFields({
             )
           ) : (
             <input
-              className={`${inputClass} ${errors.state ? "border-red-400" : ""}`}
+              className={`${fieldInputClass} ${errors.state ? "ap-input--error" : ""}`}
               value={state}
               onChange={(e) => setState(e.target.value)}
               disabled={disabled}
@@ -288,11 +301,11 @@ export default function CompanyAddressFields({
           )}
         </Field>
 
-        <Field label="City" required error={errors.city}>
+        <Field label="City" required error={errors.city} labelClass={labelClass}>
           {isIndia ? (
             locationLocked ? (
               <input
-                className={`${inputClass} border-emerald-200 bg-emerald-50/50 font-medium text-slate-900`}
+                className={`${fieldInputClass} ap-input--success font-medium`}
                 value={city}
                 readOnly
                 disabled={disabled}
@@ -312,7 +325,7 @@ export default function CompanyAddressFields({
             )
           ) : (
             <input
-              className={`${inputClass} ${errors.city ? "border-red-400" : ""}`}
+              className={`${fieldInputClass} ${errors.city ? "ap-input--error" : ""}`}
               value={city}
               onChange={(e) => setCity(e.target.value)}
               disabled={disabled}
@@ -323,7 +336,7 @@ export default function CompanyAddressFields({
       </div>
 
       {locationLocked ? (
-        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-900">
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-900 dark:border-emerald-800/60 dark:bg-emerald-950/40 dark:text-emerald-200">
           <span className="inline-flex items-center gap-1.5 font-medium">
             <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
             Location detected: {city}, {state}
@@ -341,14 +354,16 @@ export default function CompanyAddressFields({
         </div>
       ) : null}
 
-      <div className="grid gap-4 border-t border-slate-200/80 pt-4 dark:border-slate-600">
+      <div className={`grid gap-4 sm:grid-cols-2 ${embedded ? "ap-address-divider" : "border-t border-slate-200/80 pt-4 dark:border-slate-600"}`}>
         <Field
           label="Flat / House No. / Building / Company / Apartment"
           required
           error={errors.address_line1}
+          labelClass={labelClass}
+          className="sm:col-span-2"
         >
           <input
-            className={`${inputClass} ${errors.address_line1 ? "border-red-400" : ""}`}
+            className={`${fieldInputClass} ${errors.address_line1 ? "ap-input--error" : ""}`}
             value={value.address_line1 || ""}
             onChange={(e) => patch({ address_line1: e.target.value })}
             disabled={disabled}
@@ -356,9 +371,9 @@ export default function CompanyAddressFields({
           />
         </Field>
 
-        <Field label="Area / Street / Sector / Village" required error={errors.address_line2}>
+        <Field label="Area / Street / Sector / Village" required error={errors.address_line2} labelClass={labelClass} className="sm:col-span-2">
           <input
-            className={`${inputClass} ${errors.address_line2 ? "border-red-400" : ""}`}
+            className={`${fieldInputClass} ${errors.address_line2 ? "ap-input--error" : ""}`}
             value={value.address_line2 || ""}
             onChange={(e) => patch({ address_line2: e.target.value })}
             disabled={disabled}
@@ -366,9 +381,9 @@ export default function CompanyAddressFields({
           />
         </Field>
 
-        <Field label="Landmark" error={errors.landmark} hint="Optional">
+        <Field label="Landmark" error={errors.landmark} hint="Optional" labelClass={labelClass} className="sm:col-span-2">
           <input
-            className={inputClass}
+            className={fieldInputClass}
             value={value.landmark || ""}
             onChange={(e) => patch({ landmark: e.target.value })}
             disabled={disabled}
@@ -380,17 +395,22 @@ export default function CompanyAddressFields({
   );
 }
 
-function Field({ label, required, error, hint, className = "", children }) {
+function Field({ label, required, error, hint, className = "", labelClass, children }) {
+  const resolvedLabelClass =
+    labelClass || "mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300";
+  const errorClass = labelClass?.includes("ap-field-label") ? "ap-field-error" : "mt-1 text-xs font-medium text-red-600";
+  const hintClass = labelClass?.includes("ap-field-label") ? "ap-field-hint" : "mt-1 text-xs text-slate-500";
+
   return (
     <div className={className}>
-      <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">
+      <label className={resolvedLabelClass}>
         {label}
         {required ? <span className="text-red-500"> *</span> : null}
       </label>
       {children}
-      {hint && !error ? <p className="mt-1 text-xs text-slate-500">{hint}</p> : null}
+      {hint && !error ? <p className={hintClass}>{hint}</p> : null}
       {error ? (
-        <p className="mt-1 text-xs font-medium text-red-600" role="alert">
+        <p className={errorClass} role="alert">
           {error}
         </p>
       ) : null}

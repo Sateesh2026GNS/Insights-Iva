@@ -25,78 +25,29 @@ import {
 
 import Loader from "../../components/common/Loader";
 import { AddButton } from "../../components/common/Button";
+import {
+  HrAvatar,
+  HrKpiCard,
+  HrPage,
+  HrPageHeader,
+  HrPanel,
+  HrViewAllLink,
+} from "../../components/hr/hrUi";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { getHRHub } from "../../api/hrApi";
 import { EMPTY_HR_HUB, mergeHrHub } from "../../data/hrMasterData";
-
-const KPI_TONES = {
-  purple: { icon: "bg-[#ede9fe] text-[#7c3aed]" },
-  blue: { icon: "bg-[#dbeafe] text-[#2563eb]" },
-  green: { icon: "bg-[#dcfce7] text-[#16a34a]" },
-  red: { icon: "bg-[#fee2e2] text-[#ef4444]" },
-};
-
-function HrKpiCard({ label, value, icon: Icon, tone, trendPct, trendLabel }) {
-  const styles = KPI_TONES[tone] || KPI_TONES.purple;
-  return (
-    <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
-      <div className="mb-3 flex items-start justify-between gap-3">
-        <p className="text-[13px] font-medium text-slate-500">{label}</p>
-        <div className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${styles.icon}`}>
-          <Icon className="h-5 w-5" aria-hidden />
-        </div>
-      </div>
-      <p className="text-[28px] font-bold leading-tight text-slate-900">{value}</p>
-      {trendPct != null ? (
-        <p className="mt-1.5 text-[12px] font-medium text-emerald-600">
-          ↑ {trendPct}% {trendLabel}
-        </p>
-      ) : null}
-    </div>
-  );
-}
-
-function PanelCard({ title, action, children, className = "" }) {
-  return (
-    <div className={`rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm ${className}`}>
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <h2 className="text-[15px] font-semibold text-slate-900">{title}</h2>
-        {action}
-      </div>
-      {children}
-    </div>
-  );
-}
-
-function ViewAllLink({ to }) {
-  return (
-    <Link to={to} className="text-[13px] font-semibold text-[#6366f1] hover:text-[#4f46e5]">
-      View All
-    </Link>
-  );
-}
-
-function AvatarBadge({ label, className = "" }) {
-  return (
-    <div
-      className={`grid h-10 w-10 shrink-0 place-items-center rounded-full bg-gradient-to-br from-indigo-100 to-violet-200 text-[12px] font-bold text-indigo-700 ${className}`}
-    >
-      {label}
-    </div>
-  );
-}
 
 function LeaveStatusBadge({ status }) {
   const key = String(status || "").toLowerCase();
   if (key === "approved") {
     return (
-      <span className="rounded-md bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+      <span className="rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">
         Approved
       </span>
     );
   }
   return (
-    <span className="rounded-md bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
+    <span className="rounded-md bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-700">
       Pending
     </span>
   );
@@ -104,7 +55,7 @@ function LeaveStatusBadge({ status }) {
 
 function DateBadge({ children }) {
   return (
-    <span className="shrink-0 rounded-md bg-red-50 px-2 py-1 text-[11px] font-semibold text-red-600">
+    <span className="shrink-0 rounded-md bg-red-50 px-2 py-1 text-xs font-semibold text-red-600">
       {children}
     </span>
   );
@@ -112,20 +63,20 @@ function DateBadge({ children }) {
 
 function QuickLinkTile({ to, label, icon: Icon, tone }) {
   const tones = {
-    purple: "bg-[#f5f3ff] text-[#7c3aed]",
-    blue: "bg-[#eff6ff] text-[#2563eb]",
-    green: "bg-[#f0fdf4] text-[#16a34a]",
-    orange: "bg-[#fff7ed] text-[#ea580c]",
+    purple: "bg-[var(--kpi-violet-soft)] text-[var(--kpi-violet)]",
+    blue: "bg-[var(--kpi-info-soft)] text-[var(--kpi-info)]",
+    green: "bg-[var(--kpi-success-soft)] text-[var(--kpi-success)]",
+    orange: "bg-[var(--kpi-orange-soft)] text-[var(--kpi-orange)]",
   };
   return (
     <Link
       to={to}
-      className="flex flex-col items-center justify-center gap-2 rounded-xl border border-slate-100 bg-slate-50/50 px-4 py-5 text-center transition-colors hover:border-indigo-200 hover:bg-white"
+      className="flex flex-col items-center justify-center gap-2 rounded-xl border border-[var(--color-border-soft)] bg-[var(--color-surface-muted)] px-4 py-5 text-center transition-colors hover:border-[var(--color-primary)] hover:bg-[var(--color-surface)]"
     >
       <div className={`grid h-11 w-11 place-items-center rounded-xl ${tones[tone]}`}>
         <Icon className="h-5 w-5" aria-hidden />
       </div>
-      <span className="text-[13px] font-semibold text-slate-700">{label}</span>
+      <span className="text-sm font-semibold text-[var(--color-text-secondary)]">{label}</span>
     </Link>
   );
 }
@@ -163,28 +114,24 @@ export default function HRDashboard() {
   const trends = hub.kpi_trends || {};
 
   return (
-    <div className="min-w-0 space-y-5 pb-5">
-      {/* Page header — matches mockup */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="text-[22px] font-bold text-[#1e3a5f]">HR Dashboard</h1>
-          <nav className="mt-1 flex flex-wrap items-center gap-1 text-[13px] text-slate-500" aria-label="Breadcrumb">
-            <Link to="/" className="hover:text-indigo-600">
+    <HrPage>
+      <HrPageHeader
+        title="HR Dashboard"
+        breadcrumb={
+          <nav className="flex flex-wrap items-center gap-1 text-sm text-[var(--color-text-muted)]" aria-label="Breadcrumb">
+            <Link to="/" className="hover:text-[var(--color-primary)]">
               Home
             </Link>
-            <ChevronRight className="h-3.5 w-3.5 text-slate-400" aria-hidden />
-            <span className="text-slate-600">HR</span>
-            <ChevronRight className="h-3.5 w-3.5 text-slate-400" aria-hidden />
-            <span className="font-medium text-slate-700">Dashboard</span>
+            <ChevronRight className="h-3.5 w-3.5 text-[var(--color-text-faint)]" aria-hidden />
+            <span>HR</span>
+            <ChevronRight className="h-3.5 w-3.5 text-[var(--color-text-faint)]" aria-hidden />
+            <span className="font-medium text-[var(--color-text-secondary)]">Dashboard</span>
           </nav>
-        </div>
-        <AddButton to="/hr/employees/create">
-          Add Employee
-        </AddButton>
-      </div>
+        }
+        action={<AddButton to="/hr/employees/create">Add Employee</AddButton>}
+      />
 
-      {/* KPI row */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="ui-grid-kpi">
         <HrKpiCard
           label="Total Employees"
           value={hub.total_employees}
@@ -221,13 +168,13 @@ export default function HRDashboard() {
 
       {/* Charts + birthdays */}
       <div className="grid gap-4 xl:grid-cols-3">
-        <PanelCard
+        <HrPanel
           title="Attendance Overview"
           action={
             <select
               value={attendanceRange}
               onChange={(e) => setAttendanceRange(e.target.value)}
-              className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[12px] font-medium text-slate-600 outline-none focus:border-indigo-400"
+              className="ui-input rounded-lg px-2.5 py-1.5 text-xs font-medium outline-none"
             >
               <option value="this_week">This Week</option>
               <option value="last_week">Last Week</option>
@@ -260,9 +207,9 @@ export default function HRDashboard() {
               </BarChart>
             </ResponsiveContainer>
           </div>
-        </PanelCard>
+        </HrPanel>
 
-        <PanelCard title="Employees by Department">
+        <HrPanel title="Employees by Department">
           <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start">
             <div className="relative h-44 w-44 shrink-0">
               <ResponsiveContainer width="100%" height="100%">
@@ -284,90 +231,90 @@ export default function HRDashboard() {
                 </PieChart>
               </ResponsiveContainer>
               <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-[22px] font-bold text-slate-900">{deptTotal}</span>
-                <span className="text-[11px] font-medium text-slate-500">Total</span>
+                <span className="ui-kpi__value text-xl">{deptTotal}</span>
+                <span className="ui-caption">Total</span>
               </div>
             </div>
             <ul className="min-w-0 flex-1 space-y-2.5 pt-1">
               {(hub.departments || []).map((d) => (
-                <li key={d.name} className="flex items-center justify-between gap-2 text-[13px]">
-                  <span className="flex min-w-0 items-center gap-2 text-slate-600">
+                <li key={d.name} className="flex items-center justify-between gap-2 text-sm">
+                  <span className="flex min-w-0 items-center gap-2 text-[var(--color-text-muted)]">
                     <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: d.color }} />
                     <span className="truncate">{d.name}</span>
                   </span>
-                  <span className="font-semibold text-slate-800">{d.count}</span>
+                  <span className="font-semibold text-[var(--color-text)]">{d.count}</span>
                 </li>
               ))}
             </ul>
           </div>
-        </PanelCard>
+        </HrPanel>
 
-        <PanelCard title="Upcoming Birthdays" action={<ViewAllLink to="/hr/employees" />}>
+        <HrPanel title="Upcoming Birthdays" action={<HrViewAllLink to="/hr/employees" />}>
           <ul className="space-y-3">
             {(hub.upcoming_birthdays || []).map((person) => (
               <li key={person.id} className="flex items-center gap-3">
-                <AvatarBadge label={person.avatar || person.name?.slice(0, 2)?.toUpperCase()} />
+                <HrAvatar label={person.avatar || person.name?.slice(0, 2)?.toUpperCase()} />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-[13px] font-semibold text-slate-800">{person.name}</p>
-                  <p className="truncate text-[12px] text-slate-500">{person.role}</p>
+                  <p className="truncate text-sm font-semibold text-[var(--color-text)]">{person.name}</p>
+                  <p className="truncate text-xs text-[var(--color-text-muted)]">{person.role}</p>
                 </div>
                 <DateBadge>{person.date}</DateBadge>
               </li>
             ))}
           </ul>
-        </PanelCard>
+        </HrPanel>
       </div>
 
       {/* Recent joins, leave, quick links */}
       <div className="grid gap-4 xl:grid-cols-3">
-        <PanelCard title="Recent Joins" action={<ViewAllLink to="/hr/employees" />}>
+        <HrPanel title="Recent Joins" action={<HrViewAllLink to="/hr/employees" />}>
           <ul className="space-y-3">
             {(hub.recent_joins || []).map((person) => (
               <li key={person.id} className="flex items-center gap-3">
-                <AvatarBadge label={person.avatar || person.name?.slice(0, 2)?.toUpperCase()} />
+                <HrAvatar label={person.avatar || person.name?.slice(0, 2)?.toUpperCase()} />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-[13px] font-semibold text-slate-800">{person.name}</p>
-                  <p className="truncate text-[12px] text-slate-500">{person.role}</p>
+                  <p className="truncate text-sm font-semibold text-[var(--color-text)]">{person.name}</p>
+                  <p className="truncate text-xs text-[var(--color-text-muted)]">{person.role}</p>
                 </div>
                 <div className="shrink-0 text-right">
                   <span className="mb-1 inline-block rounded-md bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
                     Joined
                   </span>
-                  <p className="text-[11px] text-slate-500">{person.date}</p>
+                  <p className="text-xs text-[var(--color-text-muted)]">{person.date}</p>
                 </div>
               </li>
             ))}
           </ul>
-        </PanelCard>
+        </HrPanel>
 
-        <PanelCard title="Leave Requests" action={<ViewAllLink to="/hr/leave" />}>
+        <HrPanel title="Leave Requests" action={<HrViewAllLink to="/hr/leave" />}>
           <ul className="space-y-3">
             {(hub.leave_requests_list || []).map((req) => (
               <li key={req.id} className="flex items-center gap-3">
-                <AvatarBadge label={req.avatar || req.name?.slice(0, 2)?.toUpperCase()} />
+                <HrAvatar label={req.avatar || req.name?.slice(0, 2)?.toUpperCase()} />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-[13px] font-semibold text-slate-800">{req.name}</p>
-                  <p className="truncate text-[12px] text-slate-500">{req.type}</p>
+                  <p className="truncate text-sm font-semibold text-[var(--color-text)]">{req.name}</p>
+                  <p className="truncate text-xs text-[var(--color-text-muted)]">{req.type}</p>
                 </div>
                 <div className="shrink-0 text-right">
                   <div className="mb-1 flex justify-end">
                     <LeaveStatusBadge status={req.status} />
                   </div>
-                  <p className="text-[11px] text-slate-500">{req.dates}</p>
+                  <p className="text-xs text-[var(--color-text-muted)]">{req.dates}</p>
                 </div>
               </li>
             ))}
           </ul>
-        </PanelCard>
+        </HrPanel>
 
-        <PanelCard title="Quick Links">
+        <HrPanel title="Quick Links">
           <div className="grid grid-cols-2 gap-3">
             <QuickLinkTile to="/hr/employees" label="Employees" icon={Users} tone="purple" />
             <QuickLinkTile to="/hr/attendance" label="Attendance" icon={CalendarDays} tone="blue" />
             <QuickLinkTile to="/hr/leave" label="Leave" icon={Palmtree} tone="green" />
             <QuickLinkTile to="/hr/payroll" label="Payroll" icon={Wallet} tone="orange" />
           </div>
-        </PanelCard>
+        </HrPanel>
       </div>
 
       {/* HR notice bar */}
@@ -376,16 +323,16 @@ export default function HRDashboard() {
           <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-emerald-100 text-emerald-600">
             <Megaphone className="h-4 w-4" aria-hidden />
           </div>
-          <p className="text-[13px] font-medium leading-relaxed text-emerald-900">{hub.hr_notice}</p>
+          <p className="text-sm font-medium leading-relaxed text-[var(--color-text)]">{hub.hr_notice}</p>
         </div>
         <Link
           to="/hr/documents"
-          className="inline-flex shrink-0 items-center gap-1 text-[13px] font-semibold text-[#2563eb] hover:underline"
+          className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-[var(--color-primary)] hover:underline"
         >
           View All Notices
           <ChevronRight className="h-4 w-4" />
         </Link>
       </div>
-    </div>
+    </HrPage>
   );
 }

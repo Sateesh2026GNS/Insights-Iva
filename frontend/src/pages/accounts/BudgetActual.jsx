@@ -175,10 +175,10 @@ export default function BudgetActual() {
             <h2 className="font-bold text-slate-800">Operational Variance Audit Ledger</h2>
             <p className="text-xs text-slate-400 mt-0.5">Actuals from real invoices &amp; expenses • Budgets set by you</p>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-slate-50 border-b text-slate-500 text-left font-semibold">
+          <div className="ui-table-wrap ui-table-wrap--scroll !rounded-none !border-0">
+            <table className="ui-table w-full text-sm">
+              <thead className="ui-table-head">
+                <tr>
                   <th className="p-3">Cost Category</th>
                   <th className="p-3 text-right">Budget Target (₹)</th>
                   <th className="p-3 text-right">Actual (₹)</th>
@@ -196,7 +196,7 @@ export default function BudgetActual() {
                         {b.budget > 0 ? formatInr(b.budget) : <span className="text-slate-300 text-xs italic">not set</span>}
                       </td>
                       <td className="p-3 text-right font-semibold text-slate-800 tabular-nums">{formatInr(b.actual)}</td>
-                      <td className={`p-3 text-right font-bold tabular-nums ${b.variance >= 0 ? "text-green-600" : "text-red-600"}`}>
+                      <td className={`p-3 text-right font-bold tabular-nums ui-num ${b.variance > 0 ? "ui-value-positive" : b.variance < 0 ? "ui-value-negative" : "ui-value-neutral"}`}>
                         {b.budget > 0 ? (b.variance >= 0 ? "+" : "") + formatInr(b.variance) : "—"}
                       </td>
                       <td className="p-3 text-center">

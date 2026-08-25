@@ -41,7 +41,7 @@ export default function Shifts() {
   const loadShifts = useCallback(async () => {
     setLoading(true);
     try {
-      const r = await getShifts(tenantId);
+      const r = await getShifts();
       setShifts([...(r.data || [])]);
     } catch (err) {
       console.error(err);
@@ -51,8 +51,6 @@ export default function Shifts() {
   }, [tenantId]);
 
   const handleRefresh = async () => {
-    setLoading(true);
-    await new Promise((r) => setTimeout(r, 350));
     await loadShifts();
   };
 

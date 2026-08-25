@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Archive,
   Bell,
@@ -23,6 +23,9 @@ import {
 import Button from "../../components/common/Button";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { useToast } from "../../context/ToastContext";
+import { getFeatureSetting, putFeatureSetting } from "../../api/bizDocumentsApi";
+
+const HR_SETTINGS_KEY = "hr_preferences";
 
 const SETTINGS_CATEGORIES = [
   { id: "general", label: "General Settings", icon: Settings, description: "Basic system and application settings" },
@@ -72,14 +75,14 @@ function FieldLabel({ children, hint }) {
   return (
     <div>
       <label className="block text-xs font-bold uppercase tracking-wider text-slate-500">{children}</label>
-      {hint ? <p className="mt-1 text-[11px] text-slate-400">{hint}</p> : null}
+      {hint ? <p className="mt-1 text-xs text-slate-400">{hint}</p> : null}
     </div>
   );
 }
 
 function CheckboxRow({ checked, onChange, label }) {
   return (
-    <label className="flex cursor-pointer items-start gap-2.5 text-[13px] text-slate-700">
+    <label className="flex cursor-pointer items-start gap-2.5 text-sm text-slate-700">
       <input
         type="checkbox"
         checked={checked}
@@ -96,6 +99,30 @@ export default function HRSettings() {
   const [activeCategory, setActiveCategory] = useState("general");
   const [form, setForm] = useState({ ...DEFAULTS });
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const res = await getFeatureSetting(HR_SETTINGS_KEY);
+        const saved = res?.data?.value;
+        if (!cancelled && saved && typeof saved === "object") {
+          setForm((prev) => ({ ...prev, ...saved }));
+        }
+      } catch {
+        if (!cancelled) {
+          // First visit: no saved preferences yet — keep defaults.
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const setField = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -104,8 +131,10 @@ export default function HRSettings() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      await new Promise((r) => setTimeout(r, 400));
-      addToast("Settings saved successfully", "success");
+      await putFeatureSetting(HR_SETTINGS_KEY, form);
+      addToast("HR settings saved successfully", "success");
+    } catch {
+      addToast("Failed to save HR settings", "error");
     } finally {
       setSaving(false);
     }
@@ -113,31 +142,37 @@ export default function HRSettings() {
 
   const handleReset = () => {
     setForm({ ...DEFAULTS });
-    addToast("Settings reset to defaults", "info");
+    addToast("Form reset to defaults (save to persist)", "info");
   };
 
   const handleRefresh = useCallback(async () => {
-    setForm({ ...DEFAULTS });
-  }, []);
+    try {
+      const res = await getFeatureSetting(HR_SETTINGS_KEY);
+      const saved = res?.data?.value;
+      setForm(saved && typeof saved === "object" ? { ...DEFAULTS, ...saved } : { ...DEFAULTS });
+    } catch {
+      addToast("Could not refresh settings", "error");
+    }
+  }, [addToast]);
 
   usePageRefresh(handleRefresh);
 
   const showGeneralForm = activeCategory === "general";
 
   return (
-    <div className="min-w-0 space-y-5 pb-5">
+    <div className="hr-page ui-page ui-stack min-w-0">
       {/* Header */}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <h1 className="text-[22px] font-bold text-[#1e3a5f]">Settings</h1>
-          <p className="mt-1 text-[13px] text-slate-500">Manage your HRMS preferences and system configurations</p>
+          <h1 className="ui-page-title">Settings</h1>
+          <p className="ui-subtitle mt-0">Manage your HRMS preferences and system configurations</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={handleSave}
             disabled={saving}
-            className="inline-flex items-center gap-2 rounded-lg bg-[#6366f1] px-4 py-2.5 text-[13px] font-semibold text-white shadow-sm hover:bg-[#4f46e5] disabled:opacity-60"
+            className="inline-flex items-center gap-2 rounded-lg bg-[#6366f1] px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#4f46e5] disabled:opacity-60"
           >
             <Save className="h-4 w-4" />
             {saving ? "Saving..." : "Save Changes"}
@@ -145,7 +180,7 @@ export default function HRSettings() {
           <button
             type="button"
             onClick={handleReset}
-            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-[13px] font-semibold text-slate-700 hover:bg-slate-50"
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
           >
             <RefreshCw className="h-4 w-4" />
             Reset to Default
@@ -164,7 +199,7 @@ export default function HRSettings() {
                 key={tab.id}
                 type="button"
                 onClick={() => setActiveCategory(tab.id)}
-                className={`inline-flex shrink-0 items-center gap-2 border-b-2 px-4 py-3.5 text-[13px] font-semibold transition-colors sm:px-5 ${
+                className={`inline-flex shrink-0 items-center gap-2 border-b-2 px-4 py-3.5 text-sm font-semibold transition-colors sm:px-5 ${
                   active
                     ? "border-[#6366f1] text-[#6366f1]"
                     : "border-transparent text-slate-500 hover:text-slate-800"
@@ -181,7 +216,7 @@ export default function HRSettings() {
       <div className="grid gap-4 xl:grid-cols-4">
         {/* Left sidebar */}
         <aside className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm xl:col-span-1">
-          <h2 className="mb-3 px-2 text-[13px] font-semibold text-slate-900">Settings Categories</h2>
+          <h2 className="mb-3 px-2 text-sm font-semibold text-slate-900">Settings Categories</h2>
           <ul className="space-y-1">
             {SETTINGS_CATEGORIES.map((cat) => {
               const Icon = cat.icon;
@@ -197,8 +232,8 @@ export default function HRSettings() {
                   >
                     <Icon className={`mt-0.5 h-4 w-4 shrink-0 ${active ? "text-[#6366f1]" : "text-slate-400"}`} aria-hidden />
                     <div className="min-w-0 flex-1">
-                      <p className="text-[13px] font-semibold">{cat.label}</p>
-                      <p className={`mt-0.5 text-[11px] leading-snug ${active ? "text-indigo-400" : "text-slate-400"}`}>
+                      <p className="text-sm font-semibold">{cat.label}</p>
+                      <p className={`mt-0.5 text-xs leading-snug ${active ? "text-indigo-400" : "text-slate-400"}`}>
                         {cat.description}
                       </p>
                     </div>
@@ -216,8 +251,8 @@ export default function HRSettings() {
             <>
               <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
                 <div className="mb-5">
-                  <h2 className="text-[15px] font-semibold text-slate-900">General Settings</h2>
-                  <p className="mt-1 text-[13px] text-slate-500">Configure general application settings and preferences</p>
+                  <h2 className="ui-section-title">General Settings</h2>
+                  <p className="mt-1 text-sm text-slate-500">Configure general application settings and preferences</p>
                 </div>
 
                 <div className="grid gap-6 lg:grid-cols-2">
@@ -244,7 +279,7 @@ export default function HRSettings() {
                     <div>
                       <FieldLabel>Time Format</FieldLabel>
                       <div className="mt-2 space-y-2">
-                        <label className="flex cursor-pointer items-center gap-2 text-[13px] text-slate-700">
+                        <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
                           <input
                             type="radio"
                             name="time_format"
@@ -254,7 +289,7 @@ export default function HRSettings() {
                           />
                           12 Hours (10:24 AM)
                         </label>
-                        <label className="flex cursor-pointer items-center gap-2 text-[13px] text-slate-700">
+                        <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
                           <input
                             type="radio"
                             name="time_format"
@@ -291,7 +326,7 @@ export default function HRSettings() {
                           </div>
                         </div>
                         <p className="text-[12px] font-medium text-slate-600">Click to upload or drag and drop</p>
-                        <p className="mt-1 text-[11px] text-slate-400">PNG, JPG or SVG (Max. 2MB)</p>
+                        <p className="mt-1 text-xs text-slate-400">PNG, JPG or SVG (Max. 2MB)</p>
                         <button
                           type="button"
                           onClick={() => addToast("Logo upload coming soon", "info")}
@@ -399,10 +434,10 @@ export default function HRSettings() {
           ) : (
             <div className="rounded-2xl border border-slate-200/80 bg-white p-12 text-center shadow-sm">
               <Settings className="mx-auto h-10 w-10 text-slate-300" aria-hidden />
-              <h2 className="mt-4 text-[15px] font-semibold text-slate-900">
+              <h2 className="mt-4 ui-section-title">
                 {SETTINGS_CATEGORIES.find((c) => c.id === activeCategory)?.label}
               </h2>
-              <p className="mt-2 text-[13px] text-slate-500">
+              <p className="mt-2 text-sm text-slate-500">
                 {SETTINGS_CATEGORIES.find((c) => c.id === activeCategory)?.description}. Configuration UI coming soon.
               </p>
               <Button variant="primary" type="button" className="mt-4" onClick={() => setActiveCategory("general")}>
@@ -413,7 +448,7 @@ export default function HRSettings() {
 
           <div className="flex items-start gap-3 rounded-xl border border-sky-100 bg-sky-50/80 px-4 py-3.5">
             <Info className="mt-0.5 h-4 w-4 shrink-0 text-sky-600" aria-hidden />
-            <p className="text-[13px] font-medium text-sky-900">
+            <p className="text-sm font-medium text-sky-900">
               Note: Some changes may require users to log out and log in again to take effect.
             </p>
           </div>

@@ -387,7 +387,7 @@ export default function InventoryItemDetailV2() {
             <div className="bg-[#efeaf8] px-4 py-2.5 text-[13px] font-bold text-[#2d2a4a]">Stock TimeLine</div>
             <div className="overflow-x-auto bg-white">
               <table className="min-w-full text-left text-[13px]">
-                <thead className="border-b border-[#e4e4ea] text-[12px] font-semibold text-[#6b6b76]">
+                <thead className="ui-table-head">
                   <tr>
                     <th className="px-4 py-3">Activity</th>
                     <th className="px-4 py-3">Change</th>

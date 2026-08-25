@@ -5,7 +5,6 @@ import {
   CheckCircle2,
   Clock,
   Plus,
-  Search,
   Timer,
   Wrench,
   X,
@@ -13,6 +12,7 @@ import {
 } from "lucide-react";
 
 import Button from "../../components/common/Button";
+import { SearchBar } from "../../components/common/SearchFilter";
 import DataTable from "../../components/common/DataTable";
 import KpiCard from "../../components/common/KpiCard";
 import Loader from "../../components/common/Loader";
@@ -291,17 +291,12 @@ export default function BreakdownReports() {
       <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
         <div className="grid gap-3 lg:grid-cols-12 lg:items-end">
           <div className="lg:col-span-6">
-            <label className="mb-1 block text-[11px] font-medium text-slate-500">Search</label>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search breakdown no, machine, cause, engineer..."
-                className="w-full rounded-lg border border-slate-200 py-2 pl-9 pr-3 text-[13px] focus:border-[var(--color-primary)] focus:outline-none"
-              />
-            </div>
+            <SearchBar
+              value={search}
+              onChange={setSearch}
+              placeholder="Search breakdown no, machine, cause, engineer..."
+              className="w-full"
+            />
           </div>
           <div className="lg:col-span-3">
             <label className="mb-1 block text-[11px] font-medium text-slate-500">Status</label>

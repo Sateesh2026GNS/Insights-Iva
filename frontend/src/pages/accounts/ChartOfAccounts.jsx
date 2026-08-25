@@ -141,10 +141,10 @@ export default function ChartOfAccounts() {
       </div>
 
       <div className="rounded-b-2xl border border-t-0 border-slate-200 bg-white shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-slate-50 border-b text-slate-500 text-left font-semibold">
+        <div className="ui-table-wrap ui-table-wrap--scroll !rounded-none !border-0">
+          <table className="ui-table w-full text-sm">
+            <thead className="ui-table-head">
+              <tr>
                 <th className="p-3">Account Code</th>
                 <th className="p-3">Account Name</th>
                 <th className="p-3">Parent Group</th>

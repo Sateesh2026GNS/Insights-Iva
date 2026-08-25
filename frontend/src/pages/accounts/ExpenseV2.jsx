@@ -441,7 +441,7 @@ export default function ExpenseV2() {
                   setPage(1);
                 }}
                 placeholder="Search"
-                className="ui-search-wrap flex-1"
+                className="flex-1"
               />
               <div className="flex items-center gap-2 rounded-lg border border-[#E2E8F0] bg-white px-3 py-2 text-[13px] text-[#17264A]">
                 <input

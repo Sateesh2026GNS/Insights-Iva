@@ -130,9 +130,9 @@ export default function JobCardQueueTable({
 
   return (
     <>
-      <div className="hidden overflow-x-auto md:block">
-        <table className="min-w-full text-left text-[13px]">
-          <thead className="bg-[var(--color-surface-muted)]/60 text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
+      <div className="ui-table-wrap ui-table-wrap--scroll hidden md:block">
+        <table className="ui-table min-w-full text-left text-[13px]">
+          <thead className="ui-table-head">
             <tr>
               <SerialNumberHeader />
               <th className="whitespace-nowrap px-3 py-2.5">Job Card No.</th>

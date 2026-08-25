@@ -54,7 +54,7 @@ export default function MaterialDetailModal({ material, onClose, readOnly = true
             </dl>
           )}
           {tab === "Stock History" && (
-            <table className="w-full text-sm"><thead><tr className="text-left text-xs text-slate-500"><th className="pb-2">Date</th><th>Warehouse</th><th>Type</th><th>Qty</th><th>Ref</th></tr></thead><tbody>
+            <table className="ui-table w-full text-sm"><thead className="ui-table-head"><tr><th className="pb-2">Date</th><th>Warehouse</th><th>Type</th><th>Qty</th><th>Ref</th></tr></thead><tbody>
               {(material.stock_history || []).map((h, i) => (
                 <tr key={i} className="border-t"><td className="py-2">{h.date?.slice?.(0, 10) || h.date}</td><td>{h.warehouse}</td><td className="capitalize">{h.type}</td><td>{h.quantity}</td><td>{h.reference}</td></tr>
               ))}

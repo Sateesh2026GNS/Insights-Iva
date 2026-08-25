@@ -35,6 +35,7 @@ from app.api.documents import router as documents_router
 from app.api.factory_monitor import router as factory_monitor_router
 from app.api.forecasting import router as forecasting_router
 from app.api.departments import router as departments_router
+from app.api.hr import router as hr_router
 from app.api.integration import router as integration_router
 from app.api.inventory import router as inventory_router
 from app.api.inventory_v2 import router as inventory_v2_router
@@ -70,6 +71,7 @@ from app.models import (  # noqa: F401
     department,
     document,
     erp_notification,
+    hr,
     inventory,
     machine,
     maintenance,
@@ -369,6 +371,7 @@ def on_startup():
 
     from app.core.database import SessionLocal
     from app.core.seed_finance import seed_finance_data
+    from app.core.seed_hr import seed_hr_data
     from app.core.seed_roles import seed_roles
     from app.core.seed_super_admin import seed_super_admin
     from app.core.seed_tenant import seed_tenant
@@ -387,6 +390,7 @@ def on_startup():
             tenant_ids = list(db.scalars(select(Tenant.id)).all()) or [1]
             for tid in tenant_ids:
                 seed_roles(db, tenant_id=tid)
+                seed_hr_data(db, tenant_id=tid)
             seed_admin_user(db)
 
             all_tenants = db.scalars(select(Tenant)).all()
@@ -396,6 +400,7 @@ def on_startup():
                 )
                 if not inv_count:
                     seed_finance_data(db, tenant_id=t.id)
+                seed_hr_data(db, tenant_id=t.id)
         else:
             tenant_ids = list(db.scalars(select(Tenant.id)).all())
             for tid in tenant_ids:
@@ -433,6 +438,8 @@ app.include_router(quality_router)
 app.include_router(maintenance_router)
 app.include_router(analytics_router)
 app.include_router(departments_router)
+app.include_router(hr_router)
+app.include_router(hr_router, prefix="/api")
 app.include_router(inventory_router)
 app.include_router(inventory_v2_router)
 app.include_router(alerts_router)

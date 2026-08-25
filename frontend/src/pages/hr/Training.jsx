@@ -33,6 +33,7 @@ import PlaceholderPage from "../../components/common/PlaceholderPage";
 import InventoryRowActionsMenu from "../../components/inventory/InventoryRowActionsMenu";
 import Loader from "../../components/common/Loader";
 import { AddButton } from "../../components/common/Button";
+import { HrKpiCard, HrPage, HrPageHeader, HrPanel, hrInputClass } from "../../components/hr/hrUi";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { useToast } from "../../context/ToastContext";
 import {
@@ -50,8 +51,7 @@ import {
   trainingStatusLabel,
 } from "../../data/hrMasterData";
 
-const inputClass =
-  "mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:border-[#6366f1] focus:outline-none focus:ring-2 focus:ring-indigo-100";
+const inputClass = hrInputClass;
 
 const SUMMARY_ICONS = {
   enrolled: BookOpen,
@@ -60,53 +60,9 @@ const SUMMARY_ICONS = {
   certifications: Award,
 };
 
-function Panel({ title, action, children, className = "" }) {
-  return (
-    <div className={`rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm ${className}`}>
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <h2 className="text-[15px] font-semibold text-slate-900">{title}</h2>
-        {action}
-      </div>
-      {children}
-    </div>
-  );
-}
-
-function TrainKpiCard({ label, value, icon: Icon, tone, trend }) {
-  const tones = {
-    purple: "bg-[#ede9fe] text-[#7c3aed]",
-    green: "bg-[#dcfce7] text-[#16a34a]",
-    blue: "bg-[#dbeafe] text-[#2563eb]",
-    orange: "bg-[#ffedd5] text-[#ea580c]",
-    red: "bg-[#fee2e2] text-[#ef4444]",
-  };
-  let trendClass = "text-slate-500";
-  let trendText = "";
-  if (trend?.pct != null) {
-    const up = trend.dir === "up";
-    if (trend.positive === false && !up) trendClass = "text-red-600";
-    else trendClass = up ? "text-emerald-600" : "text-emerald-600";
-    trendText = `${up ? "↑" : "↓"} ${trend.pct}% vs last month`;
-  }
-  return (
-    <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-[11px] font-medium text-slate-500">{label}</p>
-          <p className="mt-1 text-[22px] font-bold leading-tight text-slate-900">{value}</p>
-          {trendText ? <p className={`mt-1 text-[11px] font-medium ${trendClass}`}>{trendText}</p> : null}
-        </div>
-        <div className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${tones[tone]}`}>
-          <Icon className="h-5 w-5" aria-hidden />
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function TrainingStatusBadge({ status }) {
   return (
-    <span className={`inline-flex rounded-md px-2 py-0.5 text-[11px] font-semibold ${trainingStatusBadgeClass(status)}`}>
+    <span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-semibold ${trainingStatusBadgeClass(status)}`}>
       {trainingStatusLabel(status)}
     </span>
   );
@@ -119,7 +75,7 @@ function ProgressBar({ pct, color = "#8b5cf6" }) {
       <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-100">
         <div className="h-full rounded-full" style={{ width: `${value}%`, background: color }} />
       </div>
-      <span className="w-9 text-right text-[12px] font-semibold tabular-nums text-slate-700">{value}%</span>
+      <span className="w-9 text-right text-xs font-semibold tabular-nums text-[var(--color-text-secondary)]">{value}%</span>
     </div>
   );
 }
@@ -298,40 +254,38 @@ function TrainingDashboard() {
   if (loading) return <Loader label="Loading training..." />;
 
   return (
-    <div className="min-w-0 space-y-5 pb-5">
-      {/* Header */}
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div>
-          <h1 className="text-[22px] font-bold text-[#1e3a5f]">Training</h1>
-          <p className="mt-1 text-[13px] text-slate-500">Manage and track employee training and development</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
+    <HrPage>
+      <HrPageHeader
+        title="Training"
+        subtitle="Manage and track employee training and development"
+        action={
+          <>
           <AddButton type="button" onClick={openCreateProgram}>
             Create Training Program
           </AddButton>
           <button
             type="button"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-[13px] font-semibold text-slate-700 hover:bg-slate-50"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2.5 text-sm font-semibold text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-muted)]"
           >
             <MoreVertical className="h-4 w-4" />
             More Actions
             <ChevronDown className="h-4 w-4" />
           </button>
-        </div>
-      </div>
+          </>
+        }
+      />
 
-      {/* KPI row */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
-        <TrainKpiCard label="Total Programs" value={data.total_programs} icon={BookOpen} tone="purple" trend={trends.programs} />
-        <TrainKpiCard label="In Progress" value={data.in_progress} icon={GraduationCap} tone="green" trend={trends.in_progress} />
-        <TrainKpiCard label="Completed" value={data.completed} icon={CheckCircle2} tone="blue" trend={trends.completed} />
-        <TrainKpiCard label="Not Started" value={data.not_started} icon={Clock} tone="orange" trend={trends.not_started} />
-        <TrainKpiCard label="Certifications Earned" value={data.certifications_earned} icon={Award} tone="red" trend={trends.certifications} />
+      <div className="ui-grid-kpi">
+        <HrKpiCard label="Total Programs" value={data.total_programs} icon={BookOpen} tone="purple" trend={trends.programs} />
+        <HrKpiCard label="In Progress" value={data.in_progress} icon={GraduationCap} tone="green" trend={trends.in_progress} />
+        <HrKpiCard label="Completed" value={data.completed} icon={CheckCircle2} tone="blue" trend={trends.completed} />
+        <HrKpiCard label="Not Started" value={data.not_started} icon={Clock} tone="orange" trend={trends.not_started} />
+        <HrKpiCard label="Certifications Earned" value={data.certifications_earned} icon={Award} tone="red" trend={trends.certifications} />
       </div>
 
       {/* Charts row */}
       <div className="grid gap-4 xl:grid-cols-3">
-        <Panel title="Training Overview">
+        <HrPanel title="Training Overview">
           <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start">
             <div className="relative h-44 w-44 shrink-0">
               <ResponsiveContainer width="100%" height="100%">
@@ -363,9 +317,9 @@ function TrainingDashboard() {
               ))}
             </ul>
           </div>
-        </Panel>
+        </HrPanel>
 
-        <Panel
+        <HrPanel
           title="Training Completion Trend"
           action={
             <select
@@ -401,9 +355,9 @@ function TrainingDashboard() {
               </AreaChart>
             </ResponsiveContainer>
           </div>
-        </Panel>
+        </HrPanel>
 
-        <Panel title="Top Training Categories">
+        <HrPanel title="Top Training Categories">
           <ul className="space-y-4">
             {data.top_categories.map((cat) => (
               <li key={cat.label}>
@@ -417,16 +371,16 @@ function TrainingDashboard() {
               </li>
             ))}
           </ul>
-        </Panel>
+        </HrPanel>
       </div>
 
       {/* Bottom row */}
       <div className="grid gap-4 xl:grid-cols-3">
         <div className="space-y-4 xl:col-span-2">
-          <Panel title="Ongoing Training Programs" action={<Link to="/hr/training" className="text-[13px] font-semibold text-[#6366f1]">View All</Link>}>
+          <HrPanel title="Ongoing Training Programs" action={<Link to="/hr/training" className="text-sm font-semibold text-[#6366f1]">View All</Link>}>
             <div className="overflow-x-auto rounded-xl border border-slate-200">
-              <table className="min-w-full w-full border-collapse text-left text-[13px]">
-                <thead className="bg-[#eef6ff] text-[12px] font-semibold text-slate-700">
+              <table className="min-w-full w-full border-collapse text-left text-sm">
+                  <thead className="ui-table-head">
                   <tr>
                     <th className="border-b border-slate-200 px-3 py-3 min-w-[180px]">Program Name</th>
                     <th className="border-b border-slate-200 px-3 py-3">Category</th>
@@ -442,7 +396,7 @@ function TrainingDashboard() {
                 <tbody>
                   {pageRows.length === 0 ? (
                     <tr>
-                      <td colSpan={9} className="border-b border-slate-100 px-3 py-8 text-center text-[13px] text-slate-500">
+                      <td colSpan={9} className="border-b border-slate-100 px-3 py-8 text-center text-sm text-slate-500">
                         No training records found
                       </td>
                     </tr>
@@ -495,7 +449,7 @@ function TrainingDashboard() {
               </table>
             </div>
 
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-[13px] text-slate-500">
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-slate-500">
               <span>
                 Showing {from} to {to} of {displayTotal} entries
               </span>
@@ -511,7 +465,7 @@ function TrainingDashboard() {
                       key={item}
                       type="button"
                       onClick={() => setPage(item)}
-                      className={`grid h-8 min-w-8 place-items-center rounded-md border px-2 text-[13px] font-semibold ${
+                      className={`grid h-8 min-w-8 place-items-center rounded-md border px-2 text-sm font-semibold ${
                         item === page ? "border-[#6366f1] bg-[#6366f1] text-white" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
                       }`}
                     >
@@ -523,16 +477,16 @@ function TrainingDashboard() {
                   <ChevronRight className="h-4 w-4" />
                 </button>
               </div>
-              <span className="rounded-md border border-slate-200 bg-white px-2 py-1.5 text-[13px] text-slate-600">
+              <span className="rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-600">
                 {pageSize} / page
               </span>
             </div>
-          </Panel>
+          </HrPanel>
 
-          <Panel title="Upcoming Training Programs">
+          <HrPanel title="Upcoming Training Programs">
             <div className="overflow-x-auto rounded-xl border border-slate-200">
-              <table className="min-w-full w-full border-collapse text-left text-[13px]">
-                <thead className="bg-[#eef6ff] text-[12px] font-semibold text-slate-700">
+              <table className="min-w-full w-full border-collapse text-left text-sm">
+                  <thead className="ui-table-head">
                   <tr>
                     <th className="border-b border-slate-200 px-3 py-3">Program Name</th>
                     <th className="border-b border-slate-200 px-3 py-3">Category</th>
@@ -546,7 +500,7 @@ function TrainingDashboard() {
                 <tbody>
                   {data.upcoming_programs.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="border-b border-slate-100 px-3 py-8 text-center text-[13px] text-slate-500">
+                      <td colSpan={7} className="border-b border-slate-100 px-3 py-8 text-center text-sm text-slate-500">
                         No upcoming programs
                       </td>
                     </tr>
@@ -574,17 +528,17 @@ function TrainingDashboard() {
                 </tbody>
               </table>
             </div>
-          </Panel>
+          </HrPanel>
         </div>
 
         <div className="space-y-4">
-          <Panel title="My Training Summary">
+          <HrPanel title="My Training Summary">
             <ul className="space-y-3">
               {data.my_summary.map((item) => {
                 const Icon = SUMMARY_ICONS[item.key] || BookOpen;
                 return (
                   <li key={item.key} className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50/50 px-3 py-2.5">
-                    <span className="flex items-center gap-2.5 text-[13px] text-slate-600">
+                    <span className="flex items-center gap-2.5 text-sm text-slate-600">
                       <Icon className="h-4 w-4 text-indigo-500" aria-hidden />
                       {item.label}
                     </span>
@@ -593,12 +547,12 @@ function TrainingDashboard() {
                 );
               })}
             </ul>
-          </Panel>
+          </HrPanel>
 
-          <Panel title="Recent Certifications">
+          <HrPanel title="Recent Certifications">
             <ul className="space-y-3">
               {data.recent_certifications.length === 0 ? (
-                <li className="text-center text-[13px] text-slate-500">No certifications yet</li>
+                <li className="text-center text-sm text-slate-500">No certifications yet</li>
               ) : (
               data.recent_certifications.map((cert) => (
                 <li key={cert.id} className="flex items-start gap-3">
@@ -606,16 +560,16 @@ function TrainingDashboard() {
                     <Medal className="h-4 w-4" aria-hidden />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-[13px] font-semibold text-slate-800">{cert.name}</p>
-                    <p className="text-[11px] text-slate-500">{cert.date}</p>
+                    <p className="text-sm font-semibold text-slate-800">{cert.name}</p>
+                    <p className="text-xs text-slate-500">{cert.date}</p>
                   </div>
                 </li>
               ))
               )}
             </ul>
-          </Panel>
+          </HrPanel>
 
-          <Panel title="Quick Links">
+          <HrPanel title="Quick Links">
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 xl:grid-cols-1">
               {[
                 { label: "Training Calendar", icon: CalendarDays },
@@ -633,7 +587,7 @@ function TrainingDashboard() {
                 </button>
               ))}
             </div>
-          </Panel>
+          </HrPanel>
         </div>
       </div>
 
@@ -715,7 +669,7 @@ function TrainingDashboard() {
           </div>
         </div>
       ) : null}
-    </div>
+    </HrPage>
   );
 }
 

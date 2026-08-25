@@ -4,6 +4,7 @@ import { Link, useLocation } from "react-router-dom";
 import { Calendar, ChevronLeft, ChevronRight, FileText, Filter, ListFilter, Plus, Search, X } from "lucide-react";
 
 import Loader from "../../components/common/Loader";
+import { SearchBar } from "../../components/common/SearchFilter";
 import Button from "../../components/common/Button";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
 import { useToast } from "../../context/ToastContext";
@@ -247,15 +248,7 @@ export default function ProformaInvoices() {
 
       <div className="rounded-t-2xl bg-white px-4 pb-6 pt-4 sm:px-6">
         <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="relative ui-search-wrap w-full">
-            <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9a9aa5]" />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search"
-              className="w-full rounded-full border border-[#e4e4ea] bg-white py-2.5 pl-10 pr-4 text-[14px] text-[#1a1a1f] shadow-sm placeholder:text-[#9a9aa5] focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/25"
-            />
-          </div>
+          <SearchBar value={search} onChange={setSearch} placeholder="Search" className="w-full" />
           <div className="relative flex gap-2">
             <button
               type="button"
@@ -309,7 +302,7 @@ export default function ProformaInvoices() {
         <div className="overflow-hidden rounded-xl border border-[#d0d0d8]">
           <div className="overflow-x-auto">
             <table className="min-w-full border-collapse text-left text-[13px]">
-              <thead className="bg-[#f3f3f6] text-[12px] font-semibold uppercase tracking-wide text-[#6b6b76]">
+              <thead className="ui-table-head">
                 <tr>
                   <SerialNumberHeader className="border-b border-r border-[#d0d0d8]" />
                   <th className="border-b border-r border-[#d0d0d8] px-4 py-3 last:border-r-0">Proforma No.</th>

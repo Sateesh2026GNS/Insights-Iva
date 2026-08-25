@@ -17,13 +17,13 @@ import {
   MoreVertical,
   Package,
   RefreshCw,
-  Search,
   Settings,
   Wrench,
 } from "lucide-react";
 
 import Loader from "../../components/common/Loader";
 import Button from "../../components/common/Button";
+import { SearchBar } from "../../components/common/SearchFilter";
 import PageHeader from "../../components/common/PageHeader";
 import MaintenanceErrorState from "../../components/maintenance/MaintenanceErrorState";
 import { useToast } from "../../context/ToastContext";
@@ -404,17 +404,12 @@ export default function MachineHistory() {
       <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
         <div className="grid gap-3 lg:grid-cols-12 lg:items-end">
           <div className="lg:col-span-3">
-            <label className="mb-1 block text-[11px] font-medium text-slate-500">Search</label>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-                placeholder="Search"
-                className="w-full rounded-lg border border-slate-200 py-2 pl-9 pr-3 text-[13px] focus:border-[var(--color-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]"
-              />
-            </div>
+            <SearchBar
+              value={search}
+              onChange={(v) => { setSearch(v); setPage(1); }}
+              placeholder="Search"
+              className="w-full"
+            />
           </div>
           <div className="lg:col-span-2">
             <label className="mb-1 block text-[11px] font-medium text-slate-500">All Machines</label>
@@ -494,7 +489,7 @@ export default function MachineHistory() {
         <h2 className="mb-4 text-[15px] font-semibold text-slate-900">Machine History Records</h2>
         <div className="overflow-x-auto rounded-xl border border-slate-200">
           <table className="min-w-full w-full border-collapse text-left text-[13px]">
-            <thead className="bg-[#eef6ff] text-[12px] font-semibold text-slate-700">
+            <thead className="ui-table-head">
               <tr>
                 <th className="border-b border-slate-200 px-3 py-3 min-w-[140px]">Date &amp; Time</th>
                 <th className="border-b border-slate-200 px-3 py-3">Machine</th>
