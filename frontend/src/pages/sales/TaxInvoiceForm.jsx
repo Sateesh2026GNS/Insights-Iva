@@ -287,8 +287,8 @@ export default function TaxInvoiceForm() {
   const [discountMeta, setDiscountMeta] = useState(null);
   const [transportOpen, setTransportOpen] = useState(true);
   const [otherDetailsOpen, setOtherDetailsOpen] = useState(true);
-  const [termsOpen, setTermsOpen] = useState(true);
-  const [termsAttached, setTermsAttached] = useState(true);
+  const [termsOpen, setTermsOpen] = useState(false);
+  const [termsAttached, setTermsAttached] = useState(false);
   const [termsPickerOpen, setTermsPickerOpen] = useState(false);
   const [termsAddOpen, setTermsAddOpen] = useState(false);
   const [transporterModalOpen, setTransporterModalOpen] = useState(false);
@@ -310,8 +310,12 @@ export default function TaxInvoiceForm() {
   });
   const [declOpen, setDeclOpen] = useState(false);
   const [signatureOn, setSignatureOn] = useState(true);
-  const [signatureDataUrl, setSignatureDataUrl] = useState(null);
-  const [stampDataUrl, setStampDataUrl] = useState(null);
+  const [signatureDataUrl, setSignatureDataUrl] = useState(() => {
+    try { return localStorage.getItem("gns_invoice_signature_data") || null; } catch { return null; }
+  });
+  const [stampDataUrl, setStampDataUrl] = useState(() => {
+    try { return localStorage.getItem("gns_invoice_stamp_data") || null; } catch { return null; }
+  });
   const [products, setProducts] = useState([]);
   const [itemPickerIdx, setItemPickerIdx] = useState(null);
   const [itemSearch, setItemSearch] = useState("");
@@ -330,9 +334,9 @@ export default function TaxInvoiceForm() {
     discount: 0,
     other_charge: 0,
     round_off: 0,
-    irn: (typeof window !== "undefined" ? localStorage.getItem("gns_invoice_irn") : "") || "",
-    ack_no: (typeof window !== "undefined" ? localStorage.getItem("gns_invoice_ack_no") : "") || "",
-    ack_date: (typeof window !== "undefined" ? localStorage.getItem("gns_invoice_ack_date") : "") || "",
+    irn: "",
+    ack_no: "",
+    ack_date: "",
     ewaybill_number: "",
     delivery_note: "",
     delivery_note_date: "",
@@ -354,7 +358,7 @@ export default function TaxInvoiceForm() {
     consignee_gstin: "",
     consignee_phone: "",
     consignee_email: "",
-    notes: DEFAULT_TERMS_BODY,
+    notes: "",
     transport_mode: "Road",
     lr_number: "",
     lr_date: "",
@@ -385,6 +389,24 @@ export default function TaxInvoiceForm() {
         setCustomers(custRes.status === "fulfilled" ? custRes.value || [] : []);
         const co = companyRes.status === "fulfilled" ? companyRes.value?.data || null : null;
         setCompany(co);
+        if (co) {
+          if (co.stamp_url) {
+            setStampDataUrl((prev) => prev || co.stamp_url);
+            try {
+              if (!localStorage.getItem("gns_invoice_stamp_data")) {
+                localStorage.setItem("gns_invoice_stamp_data", co.stamp_url);
+              }
+            } catch {}
+          }
+          if (co.signature_url) {
+            setSignatureDataUrl((prev) => prev || co.signature_url);
+            try {
+              if (!localStorage.getItem("gns_invoice_signature_data")) {
+                localStorage.setItem("gns_invoice_signature_data", co.signature_url);
+              }
+            } catch {}
+          }
+        }
         const prodRaw =
           productsRes.status === "fulfilled"
             ? productsRes.value?.data ?? productsRes.value ?? []
@@ -411,17 +433,29 @@ export default function TaxInvoiceForm() {
           });
         }
 
-        if (editId) {
-          const detail = await getInvoiceDetail(editId);
+        const proformaId = searchParams.get("proforma_id");
+        const targetId = editId || proformaId;
+        if (targetId) {
+          const detail = await getInvoiceDetail(targetId);
           const inv = detail?.data?.invoice || detail?.data;
           if (!inv) throw new Error("Invoice not found");
           const num = String(inv.invoice_number || "");
           const prefix = inv.invoice_prefix || "";
           const numberOnly =
             prefix && num.startsWith(prefix) ? num.slice(prefix.length) : num.replace(/^[A-Za-z-]+/, "") || num;
-          setInvoiceType(mapDocumentTypeToUi(inv.document_type));
-          setNumberManual(true);
+          if (editId) {
+            setInvoiceType(mapDocumentTypeToUi(inv.document_type));
+            setNumberManual(true);
+          } else {
+            setInvoiceType("tax");
+          }
           setSignatureOn(Boolean(inv.show_signature));
+          if (inv.stamp_url) {
+            setStampDataUrl(inv.stamp_url);
+          }
+          if (inv.signature_url) {
+            setSignatureDataUrl(inv.signature_url);
+          }
           if (inv.terms_and_conditions) {
             setTermsAttached(true);
           }
@@ -517,8 +551,12 @@ export default function TaxInvoiceForm() {
     setOtherChargeMeta(null);
     setDiscountMeta(null);
     setCustomFields([]);
-    setSignatureDataUrl(null);
-    setStampDataUrl(null);
+    setSignatureDataUrl(() => {
+      try { return localStorage.getItem("gns_invoice_signature_data") || company?.signature_url || null; } catch { return null; }
+    });
+    setStampDataUrl(() => {
+      try { return localStorage.getItem("gns_invoice_stamp_data") || company?.stamp_url || null; } catch { return null; }
+    });
     setSignatureOn(true);
     setTermsAttached(true);
     setTermsOpen(true);
@@ -1247,159 +1285,6 @@ export default function TaxInvoiceForm() {
           </div>
         </section>
 
-        {/* e-Invoice & ERP Document References */}
-        <section className="overflow-hidden rounded-xl border border-[#d0d0d8] bg-white">
-          <SectionHeader
-            icon={FileText}
-            title="e-Invoice &amp; ERP Document References"
-            collapsible
-            open={erpFieldsOpen}
-            onToggle={() => setErpFieldsOpen((v) => !v)}
-          />
-          {erpFieldsOpen ? (
-            <div className="space-y-4 p-4">
-              {/* e-Invoice Header Info */}
-              <div className="rounded-lg border border-[#e4e4ea] bg-[#fafafa] p-3">
-                <p className="mb-2.5 text-[12px] font-bold uppercase tracking-wide text-[#555]">
-                  e-Invoice Details (IRN, Ack No, e-Way Bill)
-                </p>
-                <div className="grid gap-3 sm:grid-cols-3">
-                  <label className="block sm:col-span-2">
-                    <FieldLabel>IRN (Invoice Reference Number)</FieldLabel>
-                    <SoftInput
-                      placeholder="64-character IRN hash (e.g. ac896ad46b9435f32300355098ed1f529f90b5ece59cb7e7874f12cc2dbe518)"
-                      value={form.irn}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setForm((f) => ({ ...f, irn: val }));
-                        try { localStorage.setItem("gns_invoice_irn", val); } catch {}
-                      }}
-                    />
-                  </label>
-                  <label className="block">
-                    <FieldLabel>e-Way Bill No.</FieldLabel>
-                    <SoftInput
-                      placeholder="e.g. 142474039666"
-                      value={form.ewaybill_number}
-                      onChange={(e) => setForm((f) => ({ ...f, ewaybill_number: e.target.value }))}
-                    />
-                  </label>
-                  <label className="block">
-                    <FieldLabel>Ack No.</FieldLabel>
-                    <SoftInput
-                      placeholder="e.g. 112631214245778"
-                      value={form.ack_no}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setForm((f) => ({ ...f, ack_no: val }));
-                        try { localStorage.setItem("gns_invoice_ack_no", val); } catch {}
-                      }}
-                    />
-                  </label>
-                  <label className="block">
-                    <FieldLabel>Ack Date</FieldLabel>
-                    <SoftInput
-                      type="date"
-                      value={form.ack_date}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setForm((f) => ({ ...f, ack_date: val }));
-                        try { localStorage.setItem("gns_invoice_ack_date", val); } catch {}
-                      }}
-                    />
-                  </label>
-                  <label className="block">
-                    <FieldLabel>Mode / Terms of Payment</FieldLabel>
-                    <SoftInput
-                      placeholder="e.g. Advance / 30 Days Credit"
-                      value={form.payment_terms}
-                      onChange={(e) => setForm((f) => ({ ...f, payment_terms: e.target.value }))}
-                    />
-                  </label>
-                </div>
-              </div>
-
-              {/* ERP Document & Dispatch Grid */}
-              <p className="text-[12px] font-bold uppercase tracking-wide text-[#555]">
-                Order, Delivery &amp; Dispatch References
-              </p>
-              <div className="grid gap-3 sm:grid-cols-3">
-                <label className="block">
-                  <FieldLabel>Delivery Note</FieldLabel>
-                  <SoftInput
-                    placeholder="Delivery Note No."
-                    value={form.delivery_note}
-                    onChange={(e) => setForm((f) => ({ ...f, delivery_note: e.target.value, challan_number: e.target.value }))}
-                  />
-                </label>
-                <label className="block">
-                  <FieldLabel>Delivery Note Date</FieldLabel>
-                  <SoftInput
-                    type="date"
-                    value={form.delivery_note_date}
-                    onChange={(e) => setForm((f) => ({ ...f, delivery_note_date: e.target.value }))}
-                  />
-                </label>
-                <label className="block">
-                  <FieldLabel>Reference No. &amp; Date</FieldLabel>
-                  <SoftInput
-                    placeholder="e.g. REF/2026/09"
-                    value={form.reference_no}
-                    onChange={(e) => setForm((f) => ({ ...f, reference_no: e.target.value }))}
-                  />
-                </label>
-                <label className="block">
-                  <FieldLabel>Other References</FieldLabel>
-                  <SoftInput
-                    placeholder="Other references"
-                    value={form.other_references}
-                    onChange={(e) => setForm((f) => ({ ...f, other_references: e.target.value }))}
-                  />
-                </label>
-                <label className="block">
-                  <FieldLabel>Buyer's Order No.</FieldLabel>
-                  <SoftInput
-                    placeholder="PO Number"
-                    value={form.po_number}
-                    onChange={(e) => setForm((f) => ({ ...f, po_number: e.target.value }))}
-                  />
-                </label>
-                <label className="block">
-                  <FieldLabel>Buyer's Order Date (Dated)</FieldLabel>
-                  <SoftInput
-                    type="date"
-                    value={form.po_date}
-                    onChange={(e) => setForm((f) => ({ ...f, po_date: e.target.value }))}
-                  />
-                </label>
-                <label className="block">
-                  <FieldLabel>Dispatch Doc No. (LR No.)</FieldLabel>
-                  <SoftInput
-                    placeholder="Dispatch Doc / LR No."
-                    value={form.dispatch_doc_no}
-                    onChange={(e) => setForm((f) => ({ ...f, dispatch_doc_no: e.target.value, lr_number: e.target.value }))}
-                  />
-                </label>
-                <label className="block">
-                  <FieldLabel>Dispatched through</FieldLabel>
-                  <SoftInput
-                    placeholder="e.g. DTDC"
-                    value={form.transporter_name}
-                    onChange={(e) => setForm((f) => ({ ...f, transporter_name: e.target.value }))}
-                  />
-                </label>
-                <label className="block">
-                  <FieldLabel>Destination</FieldLabel>
-                  <SoftInput
-                    placeholder="e.g. INDORE"
-                    value={form.destination}
-                    onChange={(e) => setForm((f) => ({ ...f, destination: e.target.value }))}
-                  />
-                </label>
-              </div>
-            </div>
-          ) : null}
-        </section>
 
         {/* Items */}
         <section className="overflow-hidden rounded-xl border border-[#d0d0d8] bg-white">
@@ -1670,145 +1555,108 @@ export default function TaxInvoiceForm() {
                 onToggle={() => setTransportOpen((v) => !v)}
               />
               {transportOpen ? (
-              <div className="space-y-4 p-4">
-                <div>
-                  <FieldLabel>Transportation Mode</FieldLabel>
-                  <div className="flex flex-wrap gap-2">
-                    {TRANSPORT_MODES.map(({ id, label, Icon }) => (
-                      <Pill
-                        key={id}
-                        soft
-                        active={form.transport_mode === id}
-                        onClick={() => setForm((f) => ({ ...f, transport_mode: id }))}
-                      >
-                        <Icon className="h-3.5 w-3.5" strokeWidth={2} />
-                        {label}
-                      </Pill>
-                    ))}
-                  </div>
-                </div>
-
-                {(() => {
-                  const docs = transportDocLabels(form.transport_mode);
-                  const withVehicle = showsVehicleNo(form.transport_mode);
-                  return (
-                    <div className={`grid gap-3 ${withVehicle ? "sm:grid-cols-2" : "sm:grid-cols-2"}`}>
-                      <label className="block">
-                        <FieldLabel>{docs.number}</FieldLabel>
-                        <SoftInput
-                          placeholder={docs.numberPh}
-                          value={form.lr_number}
-                          onChange={(e) => setForm((f) => ({ ...f, lr_number: e.target.value }))}
-                        />
-                      </label>
-                      <label className="block">
-                        <FieldLabel>{docs.date}</FieldLabel>
-                        <SoftInput
-                          type="date"
-                          value={form.lr_date}
-                          onChange={(e) => setForm((f) => ({ ...f, lr_date: e.target.value }))}
-                        />
-                      </label>
-                      {withVehicle ? (
-                        <label className="block">
-                          <FieldLabel>Vehicle No.</FieldLabel>
-                          <SoftInput
-                            placeholder="Enter Vehicle No."
-                            value={form.vehicle_no}
-                            onChange={(e) => setForm((f) => ({ ...f, vehicle_no: e.target.value }))}
-                          />
-                        </label>
-                      ) : null}
-                      <label className={`block ${withVehicle ? "" : "sm:col-span-2"}`}>
-                        <FieldLabel>Approximate Distance (in km)</FieldLabel>
-                        <div className="relative">
-                          <SoftInput
-                            type="number"
-                            value={form.distance_km}
-                            onChange={(e) =>
-                              setForm((f) => ({ ...f, distance_km: e.target.value }))
-                            }
-                            className="pr-28"
-                          />
-                          <button
-                            type="button"
-                            className="absolute right-2 top-1/2 inline-flex -translate-y-1/2 items-center gap-1 text-[12px] font-semibold text-[var(--color-primary)]"
-                          >
-                            <MapPin className="h-3.5 w-3.5" />
-                            Calculate
-                          </button>
-                        </div>
-                      </label>
-                    </div>
-                  );
-                })()}
-
-                <div className="flex items-center justify-between border-t border-[#ececf0] pt-3">
-                  <div className="min-w-0">
-                    <span className="text-[13px] font-semibold text-[#1a1a1f]">Transporter Details</span>
-                    {form.transporter_name ? (
-                      <p className="truncate text-[12px] text-[#6b6b76]">
-                        {form.transporter_name}
-                        {form.transporter_id ? ` · ${form.transporter_id}` : ""}
-                      </p>
-                    ) : null}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setTransporterModalOpen(true)}
-                    className="shrink-0 text-[13px] font-semibold text-[var(--color-primary)] hover:underline"
-                  >
-                    {form.transporter_name ? "Edit Transporter" : "+ Add New Transporter"}
-                  </button>
-                </div>
-
-                <div className="space-y-3 border-t border-[#ececf0] pt-3">
-                  <p className="text-[13px] font-semibold text-[#1a1a1f]">Other Details</p>
+                <div className="p-4">
                   <div className="grid gap-3 sm:grid-cols-2">
                     <label className="block">
-                      <FieldLabel>Place of Supply</FieldLabel>
-                      <SoftSelect
-                        value={form.place_of_supply}
+                      <FieldLabel>Delivery Note</FieldLabel>
+                      <SoftInput
+                        placeholder="Delivery Note No."
+                        value={form.delivery_note}
                         onChange={(e) =>
-                          setForm((f) => ({ ...f, place_of_supply: e.target.value }))
+                          setForm((f) => ({
+                            ...f,
+                            delivery_note: e.target.value,
+                            challan_number: e.target.value,
+                          }))
                         }
-                      >
-                        <option value="">Select State</option>
-                        {INDIAN_STATES.map((s) => (
-                          <option key={s} value={s}>
-                            {s}
-                          </option>
-                        ))}
-                      </SoftSelect>
+                      />
                     </label>
                     <label className="block">
-                      <FieldLabel>Date of Supply</FieldLabel>
+                      <FieldLabel>Delivery Note Date</FieldLabel>
                       <SoftInput
                         type="date"
-                        value={form.date_of_supply}
+                        value={form.delivery_note_date}
                         onChange={(e) =>
-                          setForm((f) => ({ ...f, date_of_supply: e.target.value }))
+                          setForm((f) => ({ ...f, delivery_note_date: e.target.value }))
+                        }
+                      />
+                    </label>
+                    <label className="block">
+                      <FieldLabel>Reference No. &amp; Date</FieldLabel>
+                      <SoftInput
+                        placeholder="e.g. REF/2026/09"
+                        value={form.reference_no}
+                        onChange={(e) =>
+                          setForm((f) => ({ ...f, reference_no: e.target.value }))
+                        }
+                      />
+                    </label>
+                    <label className="block">
+                      <FieldLabel>Other References</FieldLabel>
+                      <SoftInput
+                        placeholder="Other references"
+                        value={form.other_references}
+                        onChange={(e) =>
+                          setForm((f) => ({ ...f, other_references: e.target.value }))
+                        }
+                      />
+                    </label>
+                    <label className="block">
+                      <FieldLabel>Buyer's Order No.</FieldLabel>
+                      <SoftInput
+                        placeholder="PO Number"
+                        value={form.po_number}
+                        onChange={(e) =>
+                          setForm((f) => ({ ...f, po_number: e.target.value }))
+                        }
+                      />
+                    </label>
+                    <label className="block">
+                      <FieldLabel>Buyer's Order Date (Dated)</FieldLabel>
+                      <SoftInput
+                        type="date"
+                        value={form.po_date}
+                        onChange={(e) =>
+                          setForm((f) => ({ ...f, po_date: e.target.value }))
+                        }
+                      />
+                    </label>
+                    <label className="block">
+                      <FieldLabel>Dispatch Doc No. (LR No.)</FieldLabel>
+                      <SoftInput
+                        placeholder="Dispatch Doc / LR No."
+                        value={form.dispatch_doc_no || form.lr_number}
+                        onChange={(e) =>
+                          setForm((f) => ({
+                            ...f,
+                            dispatch_doc_no: e.target.value,
+                            lr_number: e.target.value,
+                          }))
+                        }
+                      />
+                    </label>
+                    <label className="block">
+                      <FieldLabel>Dispatched through</FieldLabel>
+                      <SoftInput
+                        placeholder="e.g. DTDC"
+                        value={form.transporter_name}
+                        onChange={(e) =>
+                          setForm((f) => ({ ...f, transporter_name: e.target.value }))
+                        }
+                      />
+                    </label>
+                    <label className="block">
+                      <FieldLabel>Destination</FieldLabel>
+                      <SoftInput
+                        placeholder="e.g. INDORE"
+                        value={form.destination}
+                        onChange={(e) =>
+                          setForm((f) => ({ ...f, destination: e.target.value }))
                         }
                       />
                     </label>
                   </div>
-                  <div>
-                    <FieldLabel>Supply Type</FieldLabel>
-                    <div className="flex flex-wrap gap-2">
-                      {["B2B", "SEZWP", "SEZWOP", "EXPWP", "EXPWOP", "DEXP"].map((t) => (
-                        <Pill
-                          key={t}
-                          soft
-                          active={form.supply_type === t}
-                          onClick={() => setForm((f) => ({ ...f, supply_type: t }))}
-                        >
-                          {t}
-                        </Pill>
-                      ))}
-                    </div>
-                  </div>
                 </div>
-              </div>
               ) : null}
             </section>
 
@@ -1824,28 +1672,40 @@ export default function TaxInvoiceForm() {
               {otherDetailsOpen ? (
               <div className="space-y-3 p-4">
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <label className="block">
-                    <FieldLabel>PO Number</FieldLabel>
+                  <label className="block sm:col-span-2">
+                    <FieldLabel>IRN (Invoice Reference Number)</FieldLabel>
                     <SoftInput
-                      placeholder="Enter PO Number"
-                      value={form.po_number}
-                      onChange={(e) => setForm((f) => ({ ...f, po_number: e.target.value }))}
+                      placeholder=""
+                      value={form.irn}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setForm((f) => ({ ...f, irn: val }));
+                        try { localStorage.setItem("gns_invoice_irn", val); } catch {}
+                      }}
                     />
                   </label>
                   <label className="block">
-                    <FieldLabel>PO Date</FieldLabel>
+                    <FieldLabel>Ack No.</FieldLabel>
+                    <SoftInput
+                      placeholder=""
+                      value={form.ack_no}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setForm((f) => ({ ...f, ack_no: val }));
+                        try { localStorage.setItem("gns_invoice_ack_no", val); } catch {}
+                      }}
+                    />
+                  </label>
+                  <label className="block">
+                    <FieldLabel>Ack Date</FieldLabel>
                     <SoftInput
                       type="date"
-                      value={form.po_date}
-                      onChange={(e) => setForm((f) => ({ ...f, po_date: e.target.value }))}
-                    />
-                  </label>
-                  <label className="block">
-                    <FieldLabel>Challan Number</FieldLabel>
-                    <SoftInput
-                      placeholder="Enter Challan Number"
-                      value={form.challan_number}
-                      onChange={(e) => setForm((f) => ({ ...f, challan_number: e.target.value }))}
+                      value={form.ack_date}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setForm((f) => ({ ...f, ack_date: val }));
+                        try { localStorage.setItem("gns_invoice_ack_date", val); } catch {}
+                      }}
                     />
                   </label>
                   <label className="block">
@@ -1853,35 +1713,37 @@ export default function TaxInvoiceForm() {
                     <SoftInput
                       placeholder="Enter E-Waybill Number"
                       value={form.ewaybill_number}
-                      onChange={(e) => setForm((f) => ({ ...f, ewaybill_number: e.target.value }))}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, ewaybill_number: e.target.value }))
+                      }
                     />
                   </label>
                   <label className="block">
-                    <FieldLabel>Sales Person</FieldLabel>
+                    <FieldLabel>Mode / Terms of Payment</FieldLabel>
                     <SoftInput
-                      placeholder="Enter Sales Person"
-                      value={form.sales_person}
-                      onChange={(e) => setForm((f) => ({ ...f, sales_person: e.target.value }))}
-                    />
-                  </label>
-                  <label className="block">
-                    <FieldLabel>Due Date</FieldLabel>
-                    <SoftInput
-                      type="date"
-                      value={form.due_date}
-                      onChange={(e) => setForm((f) => ({ ...f, due_date: e.target.value }))}
+                      placeholder="Mode/Terms of Payment"
+                      value={form.payment_terms}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, payment_terms: e.target.value }))
+                      }
                     />
                   </label>
                 </div>
-                <label className="inline-flex items-center gap-2 text-[13px] text-[#4a4a55]">
-                  <input
-                    type="checkbox"
-                    checked={form.reverse_charge}
-                    onChange={(e) => setForm((f) => ({ ...f, reverse_charge: e.target.checked }))}
-                    className="h-4 w-4 rounded border-[#c4c4cc]"
-                  />
-                  Reverse Charge Applicable?
-                </label>
+
+                {/* Reverse Charge row */}
+                <div className="flex items-center justify-between pt-1">
+                  <label className="inline-flex items-center gap-2 text-[13px] text-[#4a4a55]">
+                    <input
+                      type="checkbox"
+                      checked={form.reverse_charge}
+                      onChange={(e) => setForm((f) => ({ ...f, reverse_charge: e.target.checked }))}
+                      className="h-4 w-4 rounded border-[#c4c4cc]"
+                    />
+                    Reverse Charge Applicable?
+                  </label>
+                </div>
+
+                {/* Custom fields list */}
                 {customFields.map((field) => (
                   <div
                     key={field.id}
@@ -1907,14 +1769,18 @@ export default function TaxInvoiceForm() {
                     </button>
                   </div>
                 ))}
-                <button
-                  type="button"
-                  onClick={() => setCustomFieldOpen(true)}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--color-primary)] bg-white px-3 py-2 text-[13px] font-semibold text-[var(--color-primary)] hover:bg-[var(--color-primary-soft)] transition-colors"
-                >
-                  <Plus className="h-4 w-4" />
-                  Add Custom Field
-                </button>
+
+                {/* Add Custom Field button — full width, clearly separated */}
+                <div className="pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setCustomFieldOpen(true)}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--color-primary)] bg-white px-3 py-2 text-[13px] font-semibold text-[var(--color-primary)] hover:bg-[var(--color-primary-soft)] transition-colors"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Add Custom Field
+                  </button>
+                </div>
               </div>
               ) : null}
             </section>
@@ -2077,7 +1943,7 @@ export default function TaxInvoiceForm() {
                     }}
                     className="w-full rounded-lg border border-[#e4e4ea] bg-white px-3 py-2.5 text-[12px] leading-relaxed text-[#1a1a1f] focus:border-[var(--color-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]"
                   />
-                  <p className="mt-1 text-[11px] text-[#9a9aa5]">Leave blank to use default declaration text.</p>
+                  <p className="mt-1 text-[11px] text-[#9a9aa5]">Enter declaration points, or leave blank to keep empty.</p>
                 </div>
                 <div>
                   <label className="mb-1 block text-[12px] font-semibold text-[#4a4a55]">
@@ -2093,7 +1959,7 @@ export default function TaxInvoiceForm() {
                     }}
                     className="w-full rounded-lg border border-[#e4e4ea] bg-white px-3 py-2.5 text-[12px] leading-relaxed text-[#1a1a1f] focus:border-[var(--color-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]"
                   />
-                  <p className="mt-1 text-[11px] text-[#9a9aa5]">Leave blank to use default rejection policy text.</p>
+                  <p className="mt-1 text-[11px] text-[#9a9aa5]">Enter rejection policy points, or leave blank to keep empty.</p>
                 </div>
               </div>
             )}

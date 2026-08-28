@@ -126,3 +126,23 @@ describe("Store Manager settings access", () => {
     expect(userCanAccessPath({ role: "Store Manager", permissions: [] }, "/settings")).toBe(true);
   });
 });
+
+describe("getDashboardPathForRole", () => {
+  it("routes all company ERP roles to the main role-based dashboard /", async () => {
+    const { getDashboardPathForRole } = await import("../utils/roleRedirect");
+    expect(getDashboardPathForRole("Admin")).toBe("/");
+    expect(getDashboardPathForRole("Production Manager")).toBe("/");
+    expect(getDashboardPathForRole("Operator")).toBe("/");
+    expect(getDashboardPathForRole("operator")).toBe("/");
+    expect(getDashboardPathForRole("Store Manager")).toBe("/");
+    expect(getDashboardPathForRole("HR Manager")).toBe("/");
+    expect(getDashboardPathForRole("Sales Manager")).toBe("/");
+    expect(getDashboardPathForRole("Accountant")).toBe("/");
+  });
+
+  it("routes GNS Super Admin to /gns-admin", async () => {
+    const { getDashboardPathForRole } = await import("../utils/roleRedirect");
+    expect(getDashboardPathForRole("Super Admin")).toBe("/gns-admin");
+    expect(getDashboardPathForRole("GNS Super Admin")).toBe("/gns-admin");
+  });
+});

@@ -233,8 +233,12 @@ export default function CreditNoteForm() {
   const [prefixModalOpen, setPrefixModalOpen] = useState(false);
   const [customPrefixes, setCustomPrefixes] = useState(loadCustomPrefixes);
   const [signatureOn, setSignatureOn] = useState(true);
-  const [signatureDataUrl, setSignatureDataUrl] = useState(null);
-  const [stampDataUrl, setStampDataUrl] = useState(null);
+  const [signatureDataUrl, setSignatureDataUrl] = useState(() => {
+    try { return localStorage.getItem("gns_invoice_signature_data") || null; } catch { return null; }
+  });
+  const [stampDataUrl, setStampDataUrl] = useState(() => {
+    try { return localStorage.getItem("gns_invoice_stamp_data") || null; } catch { return null; }
+  });
   const [form, setForm] = useState({
     tenant_id: tenantId,
     customer_id: "",
@@ -281,6 +285,24 @@ export default function CreditNoteForm() {
         setCustomers(custRes.status === "fulfilled" ? custRes.value || [] : []);
         const co = companyRes.status === "fulfilled" ? companyRes.value?.data || null : null;
         setCompany(co);
+        if (co) {
+          if (co.stamp_url) {
+            setStampDataUrl((prev) => prev || co.stamp_url);
+            try {
+              if (!localStorage.getItem("gns_invoice_stamp_data")) {
+                localStorage.setItem("gns_invoice_stamp_data", co.stamp_url);
+              }
+            } catch {}
+          }
+          if (co.signature_url) {
+            setSignatureDataUrl((prev) => prev || co.signature_url);
+            try {
+              if (!localStorage.getItem("gns_invoice_signature_data")) {
+                localStorage.setItem("gns_invoice_signature_data", co.signature_url);
+              }
+            } catch {}
+          }
+        }
         if (co?.invoice_prefix) {
           setForm((f) =>
             f.invoice_prefix ? f : { ...f, invoice_prefix: co.invoice_prefix }
@@ -320,6 +342,8 @@ export default function CreditNoteForm() {
             ? num.slice(prefix.length)
             : num.replace(/^[A-Za-z-]+/, "") || num;
         setSignatureOn(Boolean(inv.show_signature));
+        if (inv.stamp_url) setStampDataUrl(inv.stamp_url);
+        if (inv.signature_url) setSignatureDataUrl(inv.signature_url);
         if (inv.terms_and_conditions) setTermsAttached(true);
         setForm((f) => ({
           ...f,
@@ -403,8 +427,12 @@ export default function CreditNoteForm() {
     setOtherChargeMeta(null);
     setDiscountMeta(null);
     setCustomFields([]);
-    setSignatureDataUrl(null);
-    setStampDataUrl(null);
+    setSignatureDataUrl(() => {
+      try { return localStorage.getItem("gns_invoice_signature_data") || company?.signature_url || null; } catch { return null; }
+    });
+    setStampDataUrl(() => {
+      try { return localStorage.getItem("gns_invoice_stamp_data") || company?.stamp_url || null; } catch { return null; }
+    });
     setSignatureOn(true);
     setTermsAttached(true);
     setTermsOpen(true);

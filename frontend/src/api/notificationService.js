@@ -37,3 +37,8 @@ export async function clearAllNotifications() {
 export async function createNotification(payload) {
   return unwrap(await api.post("/api/notifications", payload));
 }
+
+export async function shareDocumentNotification(payload) {
+  return unwrap(await api.post("/api/notifications/share", payload));
+}
+

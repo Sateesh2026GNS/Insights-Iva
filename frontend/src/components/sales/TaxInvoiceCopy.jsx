@@ -271,12 +271,12 @@ export default function TaxInvoiceCopy({ data, showPrintButton = true }) {
         <table className="w-full border-collapse">
           <thead>
             <tr>
-              <th className={`${th} w-[5%]`}>Sl<br />No.</th>
+              <th className={`${th} w-[5%]`}>S<br />No.</th>
               <th className={`${th} w-[35%] text-left`}>Description of Goods</th>
               <th className={`${th} w-[9%]`}>HSN/<br />SAC</th>
               <th className={`${th} w-[10%]`}>Quantity</th>
               <th className={`${th} w-[10%]`}>Rate</th>
-              <th className={`${th} w-[10%]`}>per</th>
+              <th className={`${th} w-[10%]`}>Per</th>
               <th className={`${th} w-[14%]`}>Amount</th>
             </tr>
           </thead>

@@ -33,6 +33,8 @@ class CompanySettings(Base, TimestampMixin):
     country: Mapped[str | None] = mapped_column(String(128))
     pincode: Mapped[str | None] = mapped_column(String(16))
     logo_url: Mapped[str | None] = mapped_column(Text)
+    stamp_url: Mapped[str | None] = mapped_column(Text)
+    signature_url: Mapped[str | None] = mapped_column(Text)
     custom_fields_json: Mapped[str | None] = mapped_column(Text)
 
     # Tax options

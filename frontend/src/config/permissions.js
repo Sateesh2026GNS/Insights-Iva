@@ -62,8 +62,8 @@ export const ROLE_PERMISSIONS = {
   ],
   "HR Manager": ["dashboard", "hr", "analytics", "alerts", "documents", "meetings", "settings"],
   hr_manager: ["dashboard", "hr", "analytics", "alerts", "documents", "meetings", "settings"],
-  Accountant: ["dashboard", "accounts", "sales", "documents", "analytics", "alerts", "masters", "meetings"],
-  accountant: ["dashboard", "accounts", "sales", "documents", "analytics", "alerts", "masters", "meetings"],
+  Accountant: ["dashboard", "accounts", "documents", "analytics", "alerts", "masters", "meetings", "settings"],
+  accountant: ["dashboard", "accounts", "documents", "analytics", "alerts", "masters", "meetings", "settings"],
   Operator: [
     "dashboard", "production", "factoryMonitor", "documents", "alerts",
   ],

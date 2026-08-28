@@ -197,6 +197,10 @@ def build_invoice_document(db: Session, tenant_id: int, invoice_id: int) -> dict
         "seller": {
             "name": company.company_name or company.legal_name or "Company",
             "logo": company.logo_url or "",
+            "stamp": getattr(inv, "stamp_url", None) or company.stamp_url or "",
+            "stamp_url": getattr(inv, "stamp_url", None) or company.stamp_url or "",
+            "signature": getattr(inv, "signature_url", None) or company.signature_url or "",
+            "signature_url": getattr(inv, "signature_url", None) or company.signature_url or "",
             "address": seller_address,
             "gstin": company.gstin or "",
             "pan": company.pan or "",
@@ -273,6 +277,8 @@ def build_invoice_document(db: Session, tenant_id: int, invoice_id: int) -> dict
         "prepared_by": inv.sales_person or "",
         "checked_by": "",
         "show_signature": bool(getattr(inv, "show_signature", False)),
+        "stamp_url": getattr(inv, "stamp_url", None) or company.stamp_url or "",
+        "signature_url": getattr(inv, "signature_url", None) or company.signature_url or "",
     }
 
 

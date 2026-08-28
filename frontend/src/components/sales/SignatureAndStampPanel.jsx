@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Check, Upload, X } from "lucide-react";
+import { updateCompanySettings } from "../../api/settingsApi";
 
 const PRIMARY = "var(--color-primary)";
 
@@ -137,6 +138,7 @@ export default function SignatureAndStampPanel({
     dirtyRef.current = false;
     setSavedFlash(false);
     try { localStorage.removeItem("gns_invoice_signature_data"); } catch { /* ignore */ }
+    updateCompanySettings({ signature_url: null }).catch(() => {});
     onSignatureChange?.(null);
   };
 
@@ -144,6 +146,7 @@ export default function SignatureAndStampPanel({
     e.preventDefault();
     e.stopPropagation();
     try { localStorage.removeItem("gns_invoice_stamp_data"); } catch { /* ignore */ }
+    updateCompanySettings({ stamp_url: null }).catch(() => {});
     onStampChange?.(null);
   };
 
@@ -167,6 +170,7 @@ export default function SignatureAndStampPanel({
     if (blank) {
       dirtyRef.current = false;
       try { localStorage.removeItem("gns_invoice_signature_data"); } catch { /* ignore */ }
+      updateCompanySettings({ signature_url: null }).catch(() => {});
       onSignatureChange?.(null);
       setSavedFlash(false);
       return;
@@ -174,6 +178,7 @@ export default function SignatureAndStampPanel({
     const url = canvas.toDataURL("image/png");
     dirtyRef.current = false;
     try { localStorage.setItem("gns_invoice_signature_data", url); } catch { /* ignore */ }
+    updateCompanySettings({ signature_url: url }).catch(() => {});
     onSignatureChange?.(url);
     setSavedFlash(true);
     window.setTimeout(() => setSavedFlash(false), 1500);
@@ -186,6 +191,7 @@ export default function SignatureAndStampPanel({
     reader.onload = () => {
       const url = String(reader.result);
       try { localStorage.setItem("gns_invoice_stamp_data", url); } catch { /* ignore */ }
+      updateCompanySettings({ stamp_url: url }).catch(() => {});
       onStampChange?.(url);
     };
     reader.readAsDataURL(file);

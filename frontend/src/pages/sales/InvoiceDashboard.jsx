@@ -78,27 +78,41 @@ function FilterSection({ label, children }) {
 }
 
 function SummaryTab({ label, count, amount, active, tone, onClick }) {
-  const activeStyles = {
-    blue: "border-[#0f6d84] text-[#0f6d84]",
-    purple: "border-[#0f6d84] text-[#0f6d84]",
-    green: "border-[#16a34a] text-[#16a34a]",
-    orange: "border-[#ea580c] text-[#ea580c]",
+  const toneStyles = {
+    blue: {
+      active: "border-[#0f6d84] text-[#0f6d84]",
+      hover: "hover:border-[#0f6d84] hover:text-[#0f6d84]",
+    },
+    purple: {
+      active: "border-[#0f6d84] text-[#0f6d84]",
+      hover: "hover:border-[#0f6d84] hover:text-[#0f6d84]",
+    },
+    green: {
+      active: "border-[#16a34a] text-[#16a34a]",
+      hover: "hover:border-[#16a34a] hover:text-[#16a34a]",
+    },
+    orange: {
+      active: "border-[#ea580c] text-[#ea580c]",
+      hover: "hover:border-[#ea580c] hover:text-[#ea580c]",
+    },
   };
+  const currentTone = toneStyles[tone] || toneStyles.purple;
+
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`min-w-0 flex-1 border-b-[3px] px-5 py-3.5 text-left transition ${
+      className={`min-w-0 flex-1 border-b-[3px] px-5 py-3.5 text-left transition duration-150 cursor-pointer ${
         active
-          ? `bg-[var(--color-surface)] ${activeStyles[tone]}`
-          : "border-transparent bg-transparent text-[var(--color-text-muted)] hover:bg-[var(--color-surface)]/70"
+          ? `bg-[var(--color-surface)] ${currentTone.active}`
+          : `border-transparent bg-transparent text-[var(--color-text-muted)] hover:bg-[var(--color-surface)]/80 ${currentTone.hover}`
       }`}
     >
-      <p className={`text-[13px] font-medium ${active ? "" : "text-[var(--color-text-muted)]"}`}>
+      <p className={`text-[13px] font-medium transition-colors ${active ? "" : "text-[var(--color-text-muted)]"}`}>
         {label}{" "}
         <span className={active ? "opacity-70" : "text-[#a0a0ab]"}>({count})</span>
       </p>
-      <p className={`mt-1 text-[18px] font-bold tabular-nums ${active ? "text-inherit" : "text-[var(--color-text)]"}`}>
+      <p className={`mt-1 text-[18px] font-bold tabular-nums transition-colors ${active ? "text-inherit" : "text-[var(--color-text)]"}`}>
         {amount}
       </p>
     </button>

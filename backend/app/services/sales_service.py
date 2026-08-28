@@ -442,28 +442,32 @@ def list_invoices(
 
 
 def create_payment(db: Session, payload: PaymentCreate) -> Payment:
-    inv = db.scalars(
-        select(Invoice).where(
-            Invoice.id == payload.invoice_id,
-            Invoice.tenant_id == payload.tenant_id,
-        )
-    ).first()
-    if not inv:
-        raise HTTPException(
-            status_code=404,
-            detail="Invoice not found or does not belong to the current tenant.",
-        )
+    inv = None
+    if payload.invoice_id:
+        inv = db.scalars(
+            select(Invoice).where(
+                Invoice.id == payload.invoice_id,
+                Invoice.tenant_id == payload.tenant_id,
+            )
+        ).first()
+        if not inv:
+            raise HTTPException(
+                status_code=404,
+                detail="Invoice not found or does not belong to the current tenant.",
+            )
 
     p = Payment(**payload.model_dump())
     db.add(p)
-    inv.amount_paid = (inv.amount_paid or 0) + payload.amount
-    inv.status = "paid" if inv.amount_paid >= inv.grand_total else "partial"
-    try:
-        from app.services.invoice_v2_service import sync_payment_status
+    if inv:
+        paid = float(inv.amount_paid or 0) + float(payload.amount or 0)
+        inv.amount_paid = paid
+        inv.status = "paid" if paid >= float(inv.grand_total or 0) else "partial"
+        try:
+            from app.services.invoice_v2_service import sync_payment_status
 
-        sync_payment_status(inv)
-    except Exception:
-        inv.payment_status = inv.status if inv.status in ("paid", "partial") else "unpaid"
+            sync_payment_status(inv)
+        except Exception:
+            inv.payment_status = inv.status if inv.status in ("paid", "partial") else "unpaid"
     try:
         from app.models.accounts import Income
 
@@ -471,15 +475,15 @@ def create_payment(db: Session, payload: PaymentCreate) -> Payment:
             tenant_id=payload.tenant_id,
             income_date=payload.payment_date,
             category="Sales Payment",
-            source=inv.invoice_number,
-            description=f"Payment for invoice #{inv.invoice_number}",
+            source=inv.invoice_number if inv else "Direct Receipt",
+            description=f"Payment for invoice #{inv.invoice_number}" if inv else "Direct/Advance Payment Receipt",
             amount=float(payload.amount),
         )
         db.add(income)
     except Exception as exc:
-        logger.exception("Failed to create Income entry for payment on invoice %s: %s", inv.invoice_number, exc)
+        logger.exception("Failed to create Income entry for payment on invoice %s: %s", inv.invoice_number if inv else "Direct", exc)
     # Close sales order when invoice fully paid (after ship/delivery)
-    if inv.status == "paid" and inv.sales_order_id:
+    if inv and inv.status == "paid" and inv.sales_order_id:
         so = db.scalars(
             select(SalesOrder).where(
                 SalesOrder.id == inv.sales_order_id,
@@ -499,7 +503,7 @@ def create_payment(db: Session, payload: PaymentCreate) -> Payment:
     try:
         from app.services.alert_event_service import emit_alert
 
-        inv_no = inv.invoice_number if inv else str(payload.invoice_id)
+        inv_no = inv.invoice_number if inv else (f"Receipt #{p.id}")
         emit_alert(
             db,
             tenant_id=payload.tenant_id,
@@ -507,7 +511,7 @@ def create_payment(db: Session, payload: PaymentCreate) -> Payment:
             title=f"Payment received: {inv_no}",
             message=f"Payment of ₹{float(payload.amount):,.2f} recorded for {inv_no}",
             severity="low",
-            link="/sales/payments",
+            link="/sales/payment-receipts",
             reference_type="payment",
             reference_id=p.id,
             created_by="Finance",

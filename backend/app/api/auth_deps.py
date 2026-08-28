@@ -59,5 +59,6 @@ def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Session expired due to inactivity",
         )
+    user.active_role = payload.get("role_name") or payload.get("role")
     touch_user_activity(db, user)
     return user

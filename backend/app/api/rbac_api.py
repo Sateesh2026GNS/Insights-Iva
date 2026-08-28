@@ -280,6 +280,9 @@ def team_directory(
             "email": u.get("email"),
             "name": u.get("full_name") or u.get("email"),
             "role": u.get("role"),
+            "designation": u.get("designation"),
+            "department": u.get("department"),
+            "employee_id": u.get("employee_id"),
             "is_active": u.get("is_active", True),
         }
         for u in users

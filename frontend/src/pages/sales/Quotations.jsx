@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { Link } from "react-router-dom";
 import { Calendar, ChevronLeft, ChevronRight, FileText, Filter, ListFilter, Plus, Search, X } from "lucide-react";
@@ -71,18 +71,18 @@ function SummaryTab({ label, count, amount, active, onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className={`min-w-0 flex-1 border-b-[3px] px-5 py-3.5 text-left transition ${
+      className={`min-w-0 flex-1 border-b-[3px] px-5 py-3.5 text-left transition duration-150 cursor-pointer ${
         active
           ? "border-[var(--color-primary)] bg-[var(--color-surface)] text-[var(--color-primary)]"
-          : "border-transparent bg-transparent text-[var(--color-text-muted)] hover:bg-[var(--color-surface)]/70"
+          : "border-transparent bg-transparent text-[var(--color-text-muted)] hover:bg-[var(--color-surface)]/80 hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
       }`}
     >
-      <p className={`text-[13px] font-medium ${active ? "" : "text-[var(--color-text-muted)]"}`}>
+      <p className={`text-[13px] font-medium transition-colors ${active ? "" : "text-[var(--color-text-muted)]"}`}>
         {label}{" "}
         <span className={active ? "opacity-70" : "text-[#a0a0ab]"}>({count})</span>
       </p>
       <p
-        className={`mt-1 text-[18px] font-bold tabular-nums ${
+        className={`mt-1 text-[18px] font-bold tabular-nums transition-colors ${
           active ? "text-[var(--color-primary)]" : "text-[var(--color-text)]"
         }`}
       >
@@ -113,6 +113,13 @@ function fmtDate(iso) {
   return `${d}/${m}/${y}`;
 }
 
+function fmtDisplayDate(iso) {
+  if (!iso) return "";
+  const [y, m, d] = String(iso).slice(0, 10).split("-");
+  if (!y || !m || !d) return String(iso).slice(0, 10);
+  return `${d}/${m}/${y}`;
+}
+
 export default function Quotations() {
   const { addToast } = useToast();
   const [loading, setLoading] = useState(true);
@@ -123,6 +130,27 @@ export default function Quotations() {
   const [search, setSearch] = useState("");
   const [dateFrom, setDateFrom] = useState("2026-04-01");
   const [dateTo, setDateTo] = useState("2027-03-31");
+  const dateFromRef = useRef(null);
+  const dateToRef = useRef(null);
+
+  const openDateFrom = () => {
+    if (typeof dateFromRef.current?.showPicker === "function") {
+      dateFromRef.current.showPicker();
+    } else {
+      dateFromRef.current?.focus();
+      dateFromRef.current?.click();
+    }
+  };
+
+  const openDateTo = () => {
+    if (typeof dateToRef.current?.showPicker === "function") {
+      dateToRef.current.showPicker();
+    } else {
+      dateToRef.current?.focus();
+      dateToRef.current?.click();
+    }
+  };
+
   const [showFilters, setShowFilters] = useState(false);
   const [showSort, setShowSort] = useState(false);
   const [sortId, setSortId] = useState("date_desc");
@@ -287,21 +315,60 @@ export default function Quotations() {
       </div>
 
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-[13px] text-[var(--color-text-secondary)] shadow-sm">
-          <Calendar className="h-4 w-4 shrink-0 text-[var(--color-text-faint)]" />
+        <div className="inline-flex items-center gap-3 rounded-full bg-[var(--color-surface)] px-4 py-2.5 text-[13px] text-[var(--color-text-secondary)] shadow-sm shadow-[#00000010] border border-[var(--color-border-soft)]">
+          <button
+            type="button"
+            onClick={openDateFrom}
+            className="flex items-center justify-center text-[var(--color-text-muted)] hover:text-[#0f6d84] transition-colors cursor-pointer"
+            aria-label="Open start date picker"
+          >
+            <Calendar className="h-5 w-5" />
+          </button>
           <input
+            ref={dateFromRef}
             type="date"
             value={dateFrom}
-            onChange={(e) => setDateFrom(e.target.value)}
-            className="w-[118px] border-0 bg-transparent p-0 text-[13px] focus:outline-none"
+            onChange={(e) => {
+              setDateFrom(e.target.value);
+              setPage(1);
+            }}
+            className="sr-only"
           />
-          <span className="text-[var(--color-text-faint)]">→</span>
+          <button
+            type="button"
+            onClick={openDateFrom}
+            className="text-[14px] font-medium text-[#2c2b3d] dark:text-slate-100 hover:text-[#0f6d84] transition-colors cursor-pointer"
+            title="Click to select start date"
+          >
+            {fmtDisplayDate(dateFrom) || "Start Date"}
+          </button>
+          <span className="text-[var(--color-text-faint)] select-none">→</span>
+          <button
+            type="button"
+            onClick={openDateTo}
+            className="text-[14px] font-medium text-[#2c2b3d] dark:text-slate-100 hover:text-[#0f6d84] transition-colors cursor-pointer"
+            title="Click to select end date"
+          >
+            {fmtDisplayDate(dateTo) || "End Date"}
+          </button>
           <input
+            ref={dateToRef}
             type="date"
             value={dateTo}
-            onChange={(e) => setDateTo(e.target.value)}
-            className="w-[118px] border-0 bg-transparent p-0 text-[13px] focus:outline-none"
+            onChange={(e) => {
+              setDateTo(e.target.value);
+              setPage(1);
+            }}
+            className="sr-only"
           />
+          <button
+            type="button"
+            onClick={openDateTo}
+            className="flex items-center justify-center text-[var(--color-text-muted)] hover:text-[#0f6d84] transition-colors cursor-pointer"
+            aria-label="Open end date picker"
+          >
+            <Calendar className="h-5 w-5" />
+          </button>
         </div>
         <Button variant="add" to="/sales/quotations/create" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
           Create Quotation

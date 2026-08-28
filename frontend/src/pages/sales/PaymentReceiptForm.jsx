@@ -86,6 +86,12 @@ function parseReceiptMeta(notes) {
   return {};
 }
 
+function round2(num) {
+  const n = Number(num);
+  if (!Number.isFinite(n)) return 0;
+  return Math.round((n + Number.EPSILON) * 100) / 100;
+}
+
 function SoftLabel({ children, required }) {
   return (
     <span className="mb-1.5 block text-[12px] font-semibold text-[#6b6b76]">
@@ -179,8 +185,10 @@ export default function PaymentReceiptForm() {
             accounts.find((a) => a.name === meta.account_name) ||
             accounts.find((a) => a.type === (mode === "cash" ? "cash" : "bank")) ||
             accounts[0];
-          const inv = invList.find((i) => String(i.id) === String(p.invoice_id));
-          setLinkedInvoiceId(p.invoice_id);
+          const inv = p.invoice_id
+            ? invList.find((i) => String(i.id) === String(p.invoice_id))
+            : null;
+          setLinkedInvoiceId(p.invoice_id || null);
           setForm({
             customer_id: String(
               meta.party_id || inv?.customer_id || ""
@@ -201,7 +209,11 @@ export default function PaymentReceiptForm() {
                 ? p.notes
                 : meta.remark || "",
           });
-          setSettle({ [p.invoice_id]: Number(p.amount) || 0 });
+          if (p.invoice_id) {
+            setSettle({ [p.invoice_id]: Number(p.amount) || 0 });
+          } else {
+            setSettle({});
+          }
         } else {
           const pre = searchParams.get("invoice_id");
           if (pre) {
@@ -265,19 +277,97 @@ export default function PaymentReceiptForm() {
   const selectedAccount = accounts.find((a) => a.id === form.account_id) || accounts[0];
 
   const buyerInvoices = useMemo(() => {
-    if (!form.customer_id) return [];
-    return invoices.filter((i) => {
-      const sameBuyer = String(i.customer_id) === String(form.customer_id);
+    const list = Array.isArray(invoices) ? invoices : [];
+    if (!form.customer_id && !selectedBuyer) {
+      // If no buyer selected yet, show ALL unpaid active invoices automatically!
+      return list.filter((i) => {
+        const status = String(i.payment_status || i.status || "").toLowerCase();
+        const invStatus = String(i.invoice_status || "").toLowerCase();
+        return status !== "paid" && status !== "cancelled" && invStatus !== "cancelled";
+      });
+    }
+    const buyerName = (selectedBuyer?.name || "").trim().toLowerCase();
+    const buyerCompany = (selectedBuyer?.company || "").trim().toLowerCase();
+    return list.filter((i) => {
+      const sameId = i.customer_id && String(i.customer_id) === String(form.customer_id);
+      const invBuyer = String(i.buyer_name || i.customer_name || "").trim().toLowerCase();
+      const sameName = Boolean(
+        invBuyer && (invBuyer === buyerName || (buyerCompany && invBuyer === buyerCompany))
+      );
+      const sameBuyer = Boolean(sameId || sameName);
       if (!sameBuyer) return false;
       if (isEdit && linkedInvoiceId && String(i.id) === String(linkedInvoiceId)) return true;
-      return String(i.payment_status || i.status || "").toLowerCase() !== "paid";
+      const status = String(i.payment_status || i.status || "").toLowerCase();
+      const invStatus = String(i.invoice_status || "").toLowerCase();
+      return status !== "paid" && status !== "cancelled" && invStatus !== "cancelled";
     });
-  }, [invoices, form.customer_id, isEdit, linkedInvoiceId]);
+  }, [invoices, form.customer_id, selectedBuyer, isEdit, linkedInvoiceId]);
 
-  const collected = Number(form.amount) || 0;
-  const tds = form.apply_tds ? Number(form.tds_amount) || 0 : 0;
-  const settledTotal = Object.values(settle).reduce((s, v) => s + (Number(v) || 0), 0);
-  const unused = Math.max(0, collected - settledTotal - tds);
+  const collected = round2(form.amount);
+  const tds = form.apply_tds ? round2(form.tds_amount) : 0;
+  const settledTotal = round2(Object.values(settle).reduce((s, v) => s + (Number(v) || 0), 0));
+  const unused = round2(Math.max(0, collected - settledTotal - tds));
+
+  const isAllSelected =
+    buyerInvoices.length > 0 && buyerInvoices.every((inv) => settle[inv.id] != null);
+
+  const handleToggleInvoice = (inv, isChecked) => {
+    const totalAmt = round2(inv.amount ?? inv.grand_total ?? inv.total_amount ?? 0);
+    const paidAmt = round2(inv.amount_paid ?? 0);
+    const rawPending =
+      Number(inv.amount_due ?? inv.pending_amount ?? inv.balance) ||
+      Math.max(0, totalAmt - paidAmt);
+    const pending = round2(rawPending);
+
+    let matchingCustId = form.customer_id;
+    if (isChecked && !matchingCustId) {
+      const matchedCust = customers.find((c) => {
+        if (inv.customer_id && String(c.id) === String(inv.customer_id)) return true;
+        const invName = String(inv.buyer_name || inv.customer_name || "").trim().toLowerCase();
+        return invName && (c.name?.trim().toLowerCase() === invName || c.company?.trim().toLowerCase() === invName);
+      });
+      matchingCustId = matchedCust ? String(matchedCust.id) : (inv.customer_id ? String(inv.customer_id) : "");
+    }
+
+    setSettle((prev) => {
+      const next = { ...prev };
+      if (isChecked) {
+        next[inv.id] = pending;
+      } else {
+        delete next[inv.id];
+      }
+      const sumSettle = round2(Object.values(next).reduce((s, v) => s + (Number(v) || 0), 0));
+      setForm((f) => ({
+        ...f,
+        customer_id: matchingCustId || f.customer_id,
+        amount: sumSettle > 0 ? String(sumSettle) : f.amount,
+      }));
+      return next;
+    });
+  };
+
+  const handleToggleAllInvoices = (isChecked) => {
+    if (!isChecked) {
+      setSettle({});
+      return;
+    }
+    const next = {};
+    let sum = 0;
+    buyerInvoices.forEach((inv) => {
+      const totalAmt = round2(inv.amount ?? inv.grand_total ?? inv.total_amount ?? 0);
+      const paidAmt = round2(inv.amount_paid ?? 0);
+      const rawPending =
+        Number(inv.amount_due ?? inv.pending_amount ?? inv.balance) ||
+        Math.max(0, totalAmt - paidAmt);
+      const pending = round2(rawPending);
+      next[inv.id] = pending;
+      sum = round2(sum + pending);
+    });
+    setSettle(next);
+    if (sum > 0) {
+      setForm((f) => ({ ...f, amount: String(sum) }));
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -291,10 +381,8 @@ export default function PaymentReceiptForm() {
       return;
     }
     const settleRows = Object.entries(settle).filter(([, v]) => Number(v) > 0);
-    if (!form.is_advance && settleRows.length === 0 && buyerInvoices.length > 0) {
-      addToast("Select invoices to settle or mark as advance", "error");
-      return;
-    }
+    const isAdvance = form.is_advance || settleRows.length === 0;
+
     setSaving(true);
     try {
       const customerId = await resolveCustomerId(form.customer_id, customers, tenantId);
@@ -316,7 +404,7 @@ export default function PaymentReceiptForm() {
         party_name: partyName,
         payment_mode: form.payment_mode,
         account_name: selectedAccount?.name || null,
-        is_advance: Boolean(form.is_advance),
+        is_advance: isAdvance,
         tds_amount: tds,
         unused_amount: unused,
         remark: form.notes || null,
@@ -325,15 +413,10 @@ export default function PaymentReceiptForm() {
       if (isEdit) {
         const targetInvoiceId = settleRows[0]
           ? Number(settleRows[0][0])
-          : linkedInvoiceId || buyerInvoices[0]?.id;
-        if (!targetInvoiceId) {
-          addToast("No invoice linked to this receipt", "error");
-          setSaving(false);
-          return;
-        }
+          : linkedInvoiceId || null;
         const amount = settleRows[0] ? Number(settleRows[0][1]) : collected;
         await updatePayment(editId, {
-          invoice_id: Number(targetInvoiceId),
+          invoice_id: targetInvoiceId ? Number(targetInvoiceId) : null,
           amount,
           payment_date: form.payment_date,
           method,
@@ -358,23 +441,19 @@ export default function PaymentReceiptForm() {
             notes: JSON.stringify({ ...metaBase, unused_amount: unused }),
           });
         }
-      } else if (buyerInvoices[0]) {
+      } else {
         await createPayment({
           tenant_id: tenantId,
-          invoice_id: Number(buyerInvoices[0].id),
+          invoice_id: null,
           amount: collected,
           payment_date: form.payment_date,
           method,
           notes: JSON.stringify({
             ...metaBase,
             is_advance: true,
-            unused_amount: collected,
+            unused_amount: Math.max(0, collected - tds),
           }),
         });
-      } else {
-        addToast("No invoice available to attach this receipt. Create an invoice first.", "error");
-        setSaving(false);
-        return;
       }
 
       notifyManufacturingSpine(MANUFACTURING_EVENTS.PAYMENT_RECORDED, {
@@ -825,98 +904,192 @@ export default function PaymentReceiptForm() {
             </div>
           </section>
 
-          {/* Settle Invoice */}
+          {/* Settle Invoice / Advance Payment Option */}
           <section className="rounded-xl border border-[#d0d0d8] bg-white p-4 lg:col-span-2">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-[15px] font-bold text-[#1a1a1f]">Settle Invoice</h2>
-              {collected > 0 ? (
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-[#ececf0] pb-3">
+              <div>
+                <h2 className="text-[15px] font-bold text-[#1a1a1f]">Invoice Settlement / Advance</h2>
                 <p className="text-[12px] text-[#6b6b76]">
-                  Unused: <span className="font-semibold text-[#1a1a1f]">{formatInr(unused)}</span>
+                  Choose whether to settle money against invoices or record as an advance payment.
                 </p>
-              ) : null}
+              </div>
+
+              {/* Toggle Switch */}
+              <div className="inline-flex rounded-lg border border-[#d0d0d8] bg-[#f5f5f7] p-1 text-[13px] font-medium">
+                <button
+                  type="button"
+                  onClick={() => setForm((f) => ({ ...f, is_advance: false }))}
+                  className={`cursor-pointer rounded-md px-3 py-1.5 transition-all ${
+                    !form.is_advance
+                      ? "bg-white text-[var(--color-primary)] font-semibold shadow-sm"
+                      : "text-[#6b6b76] hover:text-[#1a1a1f]"
+                  }`}
+                >
+                  Settle Invoices ({buyerInvoices.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setForm((f) => ({ ...f, is_advance: true }));
+                    setSettle({});
+                  }}
+                  className={`cursor-pointer rounded-md px-3 py-1.5 transition-all ${
+                    form.is_advance
+                      ? "bg-[var(--color-primary)] text-white font-semibold shadow-sm"
+                      : "text-[#6b6b76] hover:text-[#1a1a1f]"
+                  }`}
+                >
+                  Mark as Advance
+                </button>
+              </div>
             </div>
-            <div className="overflow-x-auto rounded-lg border border-[#ececf0]">
-              <table className="min-w-full text-left text-[13px]">
-                <thead className="ui-table-head">
-                  <tr>
-                    <th className="px-3 py-2.5 w-10" />
-                    <th className="px-3 py-2.5">Invoice Date</th>
-                    <th className="px-3 py-2.5">Invoice No.</th>
-                    <th className="px-3 py-2.5">Total Amount</th>
-                    <th className="px-3 py-2.5">Pending Amount</th>
-                    {form.apply_tds ? <th className="px-3 py-2.5">TDS</th> : null}
-                    <th className="px-3 py-2.5">Received Amount</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {!form.customer_id || buyerInvoices.length === 0 ? (
-                    <tr>
-                      <td
-                        colSpan={form.apply_tds ? 7 : 6}
-                        className="px-3 py-10 text-center text-[#9a9aa5]"
-                      >
-                        No data available
-                      </td>
-                    </tr>
-                  ) : (
-                    buyerInvoices.map((inv) => {
-                      const pending =
-                        Number(inv.amount_due ?? inv.pending_amount ?? inv.balance) ||
-                        Math.max(
-                          0,
-                          (Number(inv.grand_total) || 0) - (Number(inv.amount_paid) || 0)
-                        );
-                      const checked = settle[inv.id] != null;
-                      return (
-                        <tr key={inv.id} className="border-t border-[#ececf0]">
-                          <td className="px-3 py-2.5">
-                            <input
-                              type="checkbox"
-                              checked={checked}
-                              onChange={(e) => {
-                                setSettle((s) => {
-                                  const next = { ...s };
-                                  if (e.target.checked) next[inv.id] = pending;
-                                  else delete next[inv.id];
-                                  return next;
-                                });
-                              }}
-                            />
-                          </td>
-                          <td className="px-3 py-2.5">
-                            {String(inv.issue_date || inv.invoice_date || "").slice(0, 10) || "—"}
-                          </td>
-                          <td className="px-3 py-2.5 font-medium">
-                            {inv.invoice_number || inv.document_number || inv.id}
-                          </td>
-                          <td className="px-3 py-2.5 tabular-nums">
-                            {formatInr(inv.grand_total || inv.total_amount || 0)}
-                          </td>
-                          <td className="px-3 py-2.5 tabular-nums">{formatInr(pending)}</td>
-                          {form.apply_tds ? (
-                            <td className="px-3 py-2.5 text-[#9a9aa5]">—</td>
-                          ) : null}
-                          <td className="px-3 py-2.5">
-                            <input
-                              type="number"
-                              disabled={!checked}
-                              value={checked ? settle[inv.id] : ""}
-                              onChange={(e) =>
-                                setSettle((s) => ({
-                                  ...s,
-                                  [inv.id]: e.target.value,
-                                }))
-                              }
-                              className="w-28 rounded-md border border-[#e4e4ea] px-2 py-1.5 disabled:bg-[#f5f5f7]"
-                            />
+
+            {form.is_advance ? (
+              <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-5 text-[13px] text-amber-900">
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-200 text-amber-900 font-bold text-[12px]">
+                    i
+                  </div>
+                  <div>
+                    <h3 className="text-[14px] font-bold text-amber-900">Recording as On-Account Advance Receipt</h3>
+                    <p className="mt-1 text-amber-800 leading-relaxed">
+                      No invoices will be settled in this transaction. The collected amount of{" "}
+                      <strong>{formatInr(collected)}</strong> will be credited as an available advance balance for{" "}
+                      <strong>{selectedBuyer?.name || "the selected party"}</strong> and can be adjusted against future invoices at any time.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setForm((f) => ({ ...f, is_advance: false }))}
+                      className="mt-3 font-semibold text-[var(--color-primary)] hover:underline cursor-pointer"
+                    >
+                      ← Switch back to Settle Invoices
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <p className="text-[12px] text-[#6b6b76]">
+                      {selectedBuyer ? (
+                        <>
+                          Showing unpaid invoices for <strong className="text-[#1a1a1f]">{selectedBuyer.name}</strong> ({buyerInvoices.length})
+                          <button
+                            type="button"
+                            onClick={() => setForm((f) => ({ ...f, customer_id: "" }))}
+                            className="ml-2 font-medium text-[var(--color-primary)] hover:underline cursor-pointer"
+                          >
+                            Show all invoices
+                          </button>
+                        </>
+                      ) : (
+                        `Showing all unpaid invoices (${buyerInvoices.length}). Select any invoice to auto-fill payment.`
+                      )}
+                    </p>
+                  </div>
+                  {collected > 0 ? (
+                    <p className="text-[12px] text-[#6b6b76]">
+                      Unused / Advance: <span className="font-semibold text-[#1a1a1f]">{formatInr(unused)}</span>
+                    </p>
+                  ) : null}
+                </div>
+
+                <div className="overflow-x-auto rounded-lg border border-[#ececf0]">
+                  <table className="min-w-full text-left text-[13px]">
+                    <thead className="ui-table-head">
+                      <tr>
+                        <th className="px-3 py-2.5 w-10">
+                          <input
+                            type="checkbox"
+                            checked={isAllSelected}
+                            onChange={(e) => handleToggleAllInvoices(e.target.checked)}
+                            disabled={buyerInvoices.length === 0}
+                            title="Select all invoices"
+                          />
+                        </th>
+                        <th className="px-3 py-2.5">Invoice Date</th>
+                        <th className="px-3 py-2.5">Invoice No.</th>
+                        <th className="px-3 py-2.5">Party / Buyer Name</th>
+                        <th className="px-3 py-2.5">Total Amount</th>
+                        <th className="px-3 py-2.5">Pending Amount</th>
+                        {form.apply_tds ? <th className="px-3 py-2.5">TDS</th> : null}
+                        <th className="px-3 py-2.5">Received Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {buyerInvoices.length === 0 ? (
+                        <tr>
+                          <td
+                            colSpan={form.apply_tds ? 8 : 7}
+                            className="px-3 py-10 text-center text-[#9a9aa5]"
+                          >
+                            No unpaid invoices available
                           </td>
                         </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
+                      ) : (
+                        buyerInvoices.map((inv) => {
+                          const totalAmt = Number(inv.amount ?? inv.grand_total ?? inv.total_amount ?? 0);
+                          const paidAmt = Number(inv.amount_paid ?? 0);
+                          const pending =
+                            Number(inv.amount_due ?? inv.pending_amount ?? inv.balance) ||
+                            Math.max(0, totalAmt - paidAmt);
+                          const checked = settle[inv.id] != null;
+                          const invBuyerName = inv.buyer_name || inv.customer_name || selectedBuyer?.name || "—";
+                          return (
+                            <tr key={inv.id} className="border-t border-[#ececf0] hover:bg-[#fafafa]">
+                              <td className="px-3 py-2.5">
+                                <input
+                                  type="checkbox"
+                                  checked={checked}
+                                  onChange={(e) => handleToggleInvoice(inv, e.target.checked)}
+                                />
+                              </td>
+                              <td className="px-3 py-2.5">
+                                {String(inv.issue_date || inv.invoice_date || "").slice(0, 10) || "—"}
+                              </td>
+                              <td className="px-3 py-2.5 font-medium text-[var(--color-primary)]">
+                                {inv.invoice_number || inv.document_number || inv.id}
+                              </td>
+                              <td className="px-3 py-2.5 font-medium text-[#1a1a1f]">
+                                {invBuyerName}
+                              </td>
+                              <td className="px-3 py-2.5 tabular-nums">
+                                {formatInr(totalAmt)}
+                              </td>
+                              <td className="px-3 py-2.5 tabular-nums font-semibold text-[#1a1a1f]">{formatInr(pending)}</td>
+                              {form.apply_tds ? (
+                                <td className="px-3 py-2.5 text-[#9a9aa5]">—</td>
+                              ) : null}
+                              <td className="px-3 py-2.5">
+                                <input
+                                  type="number"
+                                  disabled={!checked}
+                                  value={checked ? settle[inv.id] : ""}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    setSettle((s) => {
+                                      const next = { ...s, [inv.id]: val };
+                                      const sumSettle = round2(Object.values(next).reduce((acc, v) => acc + (Number(v) || 0), 0));
+                                      setForm((f) => ({
+                                        ...f,
+                                        amount: sumSettle > 0 ? String(sumSettle) : f.amount,
+                                      }));
+                                      return next;
+                                    });
+                                  }}
+                                  className="w-28 rounded-md border border-[#e4e4ea] px-2 py-1.5 disabled:bg-[#f5f5f7]"
+                                />
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
           </section>
         </div>
       </div>

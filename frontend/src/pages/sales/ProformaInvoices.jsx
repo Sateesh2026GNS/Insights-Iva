@@ -75,6 +75,13 @@ function dueMatch(dueDate, dueFilter, customDueDate) {
   return true;
 }
 
+function fmtDisplayDate(iso) {
+  if (!iso) return "";
+  const [y, m, d] = String(iso).slice(0, 10).split("-");
+  if (!y || !m || !d) return String(iso).slice(0, 10);
+  return `${d}/${m}/${y}`;
+}
+
 function fmtDate(iso) {
   if (!iso) return "—";
   const [y, m, d] = String(iso).slice(0, 10).split("-");
@@ -243,14 +250,14 @@ export default function ProformaInvoices() {
 
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
           <div className="flex flex-wrap items-center gap-2.5">
-            <div className="inline-flex items-center gap-2 rounded-lg border border-[#e4e4ea] bg-white px-3 py-2 text-[13px] text-[#4a4a55] shadow-sm">
+            <div className="inline-flex items-center gap-3 rounded-full bg-[var(--color-surface)] px-4 py-2.5 text-[13px] text-[var(--color-text-secondary)] shadow-sm shadow-[#00000010] border border-[var(--color-border-soft)]">
               <button
                 type="button"
                 onClick={openDateFrom}
-                className="flex items-center justify-center text-[#9a9aa5] hover:text-[var(--color-primary)] transition-colors cursor-pointer"
+                className="flex items-center justify-center text-[var(--color-text-muted)] hover:text-[#0f6d84] transition-colors cursor-pointer"
                 aria-label="Open start date picker"
               >
-                <Calendar className="h-4 w-4 shrink-0" />
+                <Calendar className="h-5 w-5" />
               </button>
               <input
                 ref={dateFromRef}
@@ -260,9 +267,25 @@ export default function ProformaInvoices() {
                   setDateFrom(e.target.value);
                   setPage(1);
                 }}
-                className="w-[118px] border-0 bg-transparent p-0 text-[13px] focus:outline-none cursor-pointer"
+                className="sr-only"
               />
-              <span className="text-[#9a9aa5]">→</span>
+              <button
+                type="button"
+                onClick={openDateFrom}
+                className="text-[14px] font-medium text-[#2c2b3d] dark:text-slate-100 hover:text-[#0f6d84] transition-colors cursor-pointer"
+                title="Click to select start date"
+              >
+                {fmtDisplayDate(dateFrom) || "Start Date"}
+              </button>
+              <span className="text-[var(--color-text-faint)] select-none">→</span>
+              <button
+                type="button"
+                onClick={openDateTo}
+                className="text-[14px] font-medium text-[#2c2b3d] dark:text-slate-100 hover:text-[#0f6d84] transition-colors cursor-pointer"
+                title="Click to select end date"
+              >
+                {fmtDisplayDate(dateTo) || "End Date"}
+              </button>
               <input
                 ref={dateToRef}
                 type="date"
@@ -271,15 +294,15 @@ export default function ProformaInvoices() {
                   setDateTo(e.target.value);
                   setPage(1);
                 }}
-                className="w-[118px] border-0 bg-transparent p-0 text-[13px] focus:outline-none cursor-pointer"
+                className="sr-only"
               />
               <button
                 type="button"
                 onClick={openDateTo}
-                className="flex items-center justify-center text-[#9a9aa5] hover:text-[var(--color-primary)] transition-colors cursor-pointer"
+                className="flex items-center justify-center text-[var(--color-text-muted)] hover:text-[#0f6d84] transition-colors cursor-pointer"
                 aria-label="Open end date picker"
               >
-                <Calendar className="h-4 w-4 shrink-0" />
+                <Calendar className="h-5 w-5" />
               </button>
             </div>
             <Button variant="add" to={createTo} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
@@ -379,7 +402,12 @@ export default function ProformaInvoices() {
                         className="border-t border-r border-[#d0d0d8]"
                       />
                       <td className="border-t border-r border-[#d0d0d8] px-4 py-3 font-semibold text-[var(--color-primary)]">
-                        {r.invoice_number}
+                        <Link
+                          to={`/sales/proforma-invoices/${r.id}`}
+                          className="hover:underline"
+                        >
+                          {r.invoice_number}
+                        </Link>
                       </td>
                       <td className="border-t border-r border-[#d0d0d8] px-4 py-3 text-[#4a4a55]">{fmtDate(r.issue_date)}</td>
                       <td className="border-t border-r border-[#d0d0d8] px-4 py-3">{r.customer_name || "—"}</td>
@@ -388,9 +416,16 @@ export default function ProformaInvoices() {
                         {formatInr(r.grand_total ?? r.total_amount ?? 0)}
                       </td>
                       <td className="border-t border-r border-[#d0d0d8] px-4 py-3">
-                        <div className="flex flex-wrap gap-2">
+                        <div className="flex flex-wrap items-center gap-2.5">
                           <Link
-                            to={`/sales/proforma-invoices/${r.id}/edit`}
+                            to={`/sales/invoices/create?proforma_id=${r.id}`}
+                            className="inline-flex items-center gap-1 text-[12px] font-semibold text-[#036f71] hover:underline"
+                            title="Convert this Proforma to Tax Invoice"
+                          >
+                            Convert
+                          </Link>
+                          <Link
+                            to={`/sales/proforma-invoices/${r.id}`}
                             className="text-[12px] font-semibold text-[var(--color-primary)] hover:underline"
                           >
                             View

@@ -7,7 +7,9 @@ import Button from "../../components/common/Button";
 import WhatsAppIcon from "../../components/common/WhatsAppIcon";
 import GmailIcon from "../../components/common/GmailIcon";
 import GstTaxInvoice from "../../components/sales/GstTaxInvoice";
+import ShareToSalesTeamModal from "../../components/sales/ShareToSalesTeamModal";
 import { useToast } from "../../context/ToastContext";
+import usePermissions from "../../hooks/usePermissions";
 import {
   downloadInvoicePdf,
   emailInvoice,
@@ -22,15 +24,45 @@ export default function InvoiceCopyPage() {
   const { id } = useParams();
   const location = useLocation();
   const isDebitNote = location.pathname.includes("/debit-notes/");
-  const listPath = isDebitNote ? "/sales/debit-notes" : "/sales/invoices";
-  const listLabel = isDebitNote ? "Debit Notes" : "Invoices";
-  const docLabel = isDebitNote ? "Debit Note" : "Invoice";
+  const isExportProforma = location.pathname.includes("/export-proforma-invoices");
+  const isExportInvoice = location.pathname.includes("/export-invoices");
+  const isProforma = isExportProforma || location.pathname.includes("/proforma-invoices");
+
+  const listPath = isDebitNote
+    ? "/sales/debit-notes"
+    : isExportProforma
+    ? "/sales/export-proforma-invoices"
+    : isExportInvoice
+    ? "/sales/export-invoices"
+    : isProforma
+    ? "/sales/proforma-invoices"
+    : "/sales/invoices";
+  const listLabel = isDebitNote
+    ? "Debit Notes"
+    : isExportProforma
+    ? "Export Proforma Invoices"
+    : isExportInvoice
+    ? "Export Invoices"
+    : isProforma
+    ? "Proforma Invoices"
+    : "Invoices";
+  const docLabel = isDebitNote
+    ? "Debit Note"
+    : isExportProforma
+    ? "Export Proforma Invoice"
+    : isExportInvoice
+    ? "Export Invoice"
+    : isProforma
+    ? "Proforma Invoice"
+    : "Invoice";
   const { settings } = useCompanySettings();
   const { addToast } = useToast();
+  const { isAdmin } = usePermissions();
   const [loading, setLoading] = useState(Boolean(id));
   const [detail, setDetail] = useState(null);
   const [docPayload, setDocPayload] = useState(null);
   const [busy, setBusy] = useState("");
+  const [shareOpen, setShareOpen] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -55,11 +87,19 @@ export default function InvoiceCopyPage() {
     }
     if (base) {
       const sellerLogo = base.seller?.logo || base.seller?.logo_url || settings?.logo_url;
+      const sellerStamp = base.stamp_url || base.seller?.stamp || base.seller?.stamp_url || settings?.stamp_url || (typeof window !== "undefined" ? localStorage.getItem("gns_invoice_stamp_data") : null);
+      const sellerSignature = base.signature_url || base.seller?.signature || base.seller?.signature_url || settings?.signature_url || (typeof window !== "undefined" ? localStorage.getItem("gns_invoice_signature_data") : null);
       return {
         ...base,
+        stamp_url: sellerStamp,
+        signature_url: sellerSignature,
         seller: {
           ...base.seller,
           logo: sellerLogo || "",
+          stamp: sellerStamp || "",
+          stamp_url: sellerStamp || "",
+          signature: sellerSignature || "",
+          signature_url: sellerSignature || "",
         },
       };
     }
@@ -174,21 +214,21 @@ export default function InvoiceCopyPage() {
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `${isDebitNote ? "DebitNote" : "Invoice"}-${invoiceNo}.pdf`;
+        a.download = `${isDebitNote ? "DebitNote" : isExportInvoice ? "ExportInvoice" : isExportProforma ? "ExportProforma" : isProforma ? "Proforma" : "Invoice"}-${invoiceNo}.pdf`;
         a.click();
         URL.revokeObjectURL(url);
-        addToast("Invoice PDF downloaded! Opening WhatsApp...", "success");
+        addToast(`${docLabel} PDF downloaded! Opening WhatsApp...`, "success");
       } catch {
         // Fallback if download API errors
       }
     }
-    const docType = isDebitNote ? "Debit Note" : "Tax Invoice";
+    const docType = docLabel;
     const text = encodeURIComponent(
       `${docType} ${invoiceNo} from ${copyData?.seller?.name || "Insights Iva"}. Total: ₹${copyData?.summary?.grand_total ?? copyData?.grandTotal ?? 0}`
     );
     const url = `https://api.whatsapp.com/send?text=${text}`;
     window.open(url, "_blank", "noopener,noreferrer");
-  }, [id, isDebitNote, invoiceNo, copyData, addToast]);
+  }, [id, isDebitNote, isExportProforma, isProforma, docLabel, invoiceNo, copyData, addToast]);
 
   if (loading) return <Loader label={`Loading ${docLabel.toLowerCase()} preview...`} />;
 
@@ -199,7 +239,17 @@ export default function InvoiceCopyPage() {
           ← Back to {listLabel}
         </Link>
         <div className="flex flex-wrap items-center gap-2">
-          {!id && <span className="text-sm text-slate-500">Select an invoice to preview.</span>}
+          {!id && <span className="text-sm text-slate-500">Select a document to preview.</span>}
+          {isProforma && id ? (
+            <Button
+              variant="primary"
+              size="sm"
+              to={`/sales/invoices/create?proforma_id=${id}`}
+              className="bg-[#036f71] text-white hover:bg-[#025859]"
+            >
+              Convert to Tax Invoice
+            </Button>
+          ) : null}
           <button
             type="button"
             onClick={handlePrint}
@@ -230,12 +280,30 @@ export default function InvoiceCopyPage() {
           >
             <WhatsAppIcon className="h-4 w-4 shrink-0" /> WhatsApp
           </button>
+          {isAdmin && (
+            <button
+              type="button"
+              onClick={() => setShareOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-800 hover:bg-emerald-100 transition shadow-xs"
+            >
+              <Share2 className="h-4 w-4" /> Share to Sales Team
+            </button>
+          )}
           {id ? (
             <Button
               variant="edit"
               size="sm"
-              to={isDebitNote ? `/sales/debit-notes/${id}/edit` : `/sales/invoices/${id}/edit`}
-              leftIcon={<Share2 className="h-4 w-4" aria-hidden />}
+              to={
+                isDebitNote
+                  ? `/sales/debit-notes/${id}/edit`
+                  : isExportInvoice
+                  ? `/sales/export-invoices/${id}/edit`
+                  : isExportProforma
+                  ? `/sales/export-proforma-invoices/${id}/edit`
+                  : isProforma
+                  ? `/sales/proforma-invoices/${id}/edit`
+                  : `/sales/invoices/${id}/edit`
+              }
             >
               Edit {docLabel}
             </Button>
@@ -243,6 +311,18 @@ export default function InvoiceCopyPage() {
         </div>
       </div>
       <GstTaxInvoice data={copyData} />
+
+      {isAdmin && (
+        <ShareToSalesTeamModal
+          open={shareOpen}
+          onClose={() => setShareOpen(false)}
+          docType={isDebitNote ? "debit_note" : "invoice"}
+          docNo={copyData?.meta?.invoice_no || id || ""}
+          docId={id}
+          buyerName={copyData?.buyer?.name || ""}
+          grandTotal={copyData?.totals?.grand_total || null}
+        />
+      )}
     </div>
   );
 }

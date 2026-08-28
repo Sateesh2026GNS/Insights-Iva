@@ -837,21 +837,20 @@ export default function StockAdjustment() {
           </div>
         </div>
 
-        <div className="inventory-table-scroll inventory-table-scroll--adjustment rounded-lg border border-[var(--color-border-soft)]">
-          <DataTable
-            columns={columns}
-            data={filteredAdjustments}
-            showSearch={false}
-            pageSize={10}
-            emptyState={
-              <EmptyState
-                icon="clipboard"
-                title="No adjustments yet"
-                description="Create an adjustment to correct stock quantities."
-              />
-            }
-          />
-        </div>
+        <DataTable
+          columns={columns}
+          data={filteredAdjustments}
+          showSearch={false}
+          pageSize={10}
+          wrapClassName="inventory-table-scroll--adjustment rounded-lg border border-[var(--color-border-soft)]"
+          emptyState={
+            <EmptyState
+              icon="clipboard"
+              title="No adjustments yet"
+              description="Create an adjustment to correct stock quantities."
+            />
+          }
+        />
       </section>
 
       <RecordDetailModal

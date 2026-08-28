@@ -22,6 +22,8 @@ class CompanySettingsBase(BaseModel):
     country: str | None = None
     pincode: str | None = None
     logo_url: str | None = None
+    stamp_url: str | None = None
+    signature_url: str | None = None
     custom_fields: list[dict] | None = None
 
     default_gst_pct: float | None = Field(None, ge=0.0, le=100.0)
@@ -133,6 +135,8 @@ class CompanySettingsUpdate(BaseModel):
     country: str | None = None
     pincode: str | None = None
     logo_url: str | None = None
+    stamp_url: str | None = None
+    signature_url: str | None = None
     custom_fields: list[dict] | None = None
 
     default_gst_pct: float | None = Field(None, ge=0.0, le=100.0)

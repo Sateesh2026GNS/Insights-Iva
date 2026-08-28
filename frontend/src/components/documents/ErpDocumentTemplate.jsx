@@ -116,13 +116,14 @@ export default function ErpDocumentTemplate({ data, docType = "invoice" }) {
   const igstPct = igstPctFallback;
 
   const showEInvoice = cfg.showEInvoice ?? true;
-  const docNo = meta.document_no || meta.invoice_no || meta.invoiceNo || meta.quote_number || meta.purchase_no || "";
-  const docDate = meta.date || meta.document_date || "";
+  const docNo = meta.document_no || meta.quote_number || meta.invoice_no || meta.invoiceNo || meta.purchase_no || "";
+  const docDate = meta.date || meta.document_date || meta.quote_date || "";
+  const validUntil = meta.valid_until || meta.valid_till || data.valid_until || "";
   const irn = data.irn && data.irn !== "—" ? data.irn : ((typeof window !== "undefined" ? localStorage.getItem("gns_invoice_irn") : "") || (data.e_invoice_enabled ? data.irn : ""));
   const ackNo = data.ack_no || data.ackNo || ((typeof window !== "undefined" ? localStorage.getItem("gns_invoice_ack_no") : "") || "");
   const ackDate = data.ack_date || data.ackDate || ((typeof window !== "undefined" ? localStorage.getItem("gns_invoice_ack_date") : "") || docDate);
-  const displayTitle = docType === "invoice" ? "Tax Invoice" : (data.title || cfg.title);
-  const isExport = docType === "export_invoice" || data.is_export || (data.title && data.title.toLowerCase().includes("export"));
+  const displayTitle = data.title || cfg.title || (docType === "invoice" ? "Tax Invoice" : "Invoice");
+  const isExport = docType === "export_invoice" || docType === "export_proforma" || data.is_export || (data.title && data.title.toLowerCase().includes("export"));
 
   const invoiceId = data.id || data.invoice_id || data.document_id || "";
   const origin = typeof window !== "undefined" ? window.location.origin : "";
@@ -130,17 +131,16 @@ export default function ErpDocumentTemplate({ data, docType = "invoice" }) {
     data.download_url ||
     data.pdf_url ||
     data.qr_url ||
-    (invoiceId ? `${origin}/sales/invoices/${invoiceId}/copy` : "") ||
-    (docNo ? `${origin}/sales/invoices/${encodeURIComponent(docNo)}` : `${origin}/sales/invoices`);
+    (docType === "quotation" ? (invoiceId ? `${origin}/sales/quotations/${invoiceId}/copy` : `${origin}/sales/quotations`) : ((invoiceId ? `${origin}/sales/invoices/${invoiceId}/copy` : "") || (docNo ? `${origin}/sales/invoices/${encodeURIComponent(docNo)}` : `${origin}/sales/invoices`)));
 
-  const qrValue = data.qr_value || data.qrValue || (showEInvoice ? directUrl : "e-invoice");
+  const qrValue = data.qr_value || data.qrValue || (showEInvoice ? directUrl : (docType === "quotation" ? "e-quotation" : "e-invoice"));
 
-  const rawTerms = (data.terms || data.termsAndConditions || data.declaration || (typeof window !== "undefined" ? localStorage.getItem("gns_invoice_terms_data") : "") || "").split("\n").filter(Boolean);
+  const rawTerms = (data.declaration || data.terms || data.termsAndConditions || "").split("\n").map((s) => s.trim()).filter(Boolean);
   const isShortDefault = rawTerms.length > 0 && rawTerms.length <= 2 && rawTerms[0].includes("electronically generated");
-  const declItems = (rawTerms.length && !isShortDefault) ? rawTerms : DEFAULT_DECLARATION;
+  const declItems = isShortDefault ? [] : rawTerms;
 
-  const rawRejection = (data.rejection_policy || data.rejectionPolicy || (typeof window !== "undefined" ? localStorage.getItem("gns_invoice_rejection_policy") : "") || "").split("\n").filter(Boolean);
-  const rejectionPolicy = rawRejection.length ? rawRejection : DEFAULT_REJECTION;
+  const rawRejection = (data.rejection_policy || data.rejectionPolicy || "").split("\n").map((s) => s.trim()).filter(Boolean);
+  const rejectionPolicy = rawRejection;
 
   const stampSrc =
     data.stamp_url ||
@@ -243,33 +243,42 @@ export default function ErpDocumentTemplate({ data, docType = "invoice" }) {
         </div>
 
         <div className="erp-doc__header-left">
-          {irn ? (
-            <div className="erp-doc__irn-row">
-              <span className="erp-doc__lbl">IRN</span>
-              <span className="erp-doc__sep">:</span>
-              <span className="erp-doc__irn-val">{irn}</span>
+          {docType === "quotation" ? (
+            <div className="erp-doc__quote-header-date">
+              <span className="erp-doc__lbl">Quote Date &nbsp;: &nbsp;</span>
+              <strong>{docDate || "—"}</strong>
             </div>
-          ) : null}
-          {ackNo ? (
-            <div className="erp-doc__irn-row">
-              <span className="erp-doc__lbl">Ack No.</span>
-              <span className="erp-doc__sep">:</span>
-              <span className="erp-doc__ack-val"><strong>{ackNo}</strong></span>
-            </div>
-          ) : null}
-          {ackDate ? (
-            <div className="erp-doc__irn-row">
-              <span className="erp-doc__lbl">Ack Date</span>
-              <span className="erp-doc__sep">:</span>
-              <span className="erp-doc__ack-val"><strong>{ackDate}</strong></span>
-            </div>
-          ) : null}
+          ) : (
+            <>
+              {irn ? (
+                <div className="erp-doc__irn-row">
+                  <span className="erp-doc__lbl">IRN</span>
+                  <span className="erp-doc__sep">:</span>
+                  <span className="erp-doc__irn-val">{irn}</span>
+                </div>
+              ) : null}
+              {ackNo ? (
+                <div className="erp-doc__irn-row">
+                  <span className="erp-doc__lbl">Ack No.</span>
+                  <span className="erp-doc__sep">:</span>
+                  <span className="erp-doc__ack-val"><strong>{ackNo}</strong></span>
+                </div>
+              ) : null}
+              {ackDate ? (
+                <div className="erp-doc__irn-row">
+                  <span className="erp-doc__lbl">Ack Date</span>
+                  <span className="erp-doc__sep">:</span>
+                  <span className="erp-doc__ack-val"><strong>{ackDate}</strong></span>
+                </div>
+              ) : null}
+            </>
+          )}
         </div>
 
         <div className="erp-doc__header-right">
           {showEInvoice ? (
             <div className="erp-doc__einvoice-box">
-              <div className="erp-doc__einvoice-text">e-Invoice</div>
+              <div className="erp-doc__einvoice-text">{docType === "quotation" ? "e-Quotation" : (cfg.headerRightLabel || "e-Invoice")}</div>
               <div className="erp-doc__qr-wrapper">
                 <QRCanvas value={qrValue} size={88} />
               </div>
@@ -349,84 +358,182 @@ export default function ErpDocumentTemplate({ data, docType = "invoice" }) {
 
           {/* Right Column (50% Metadata Grid Table) */}
           <div className="erp-doc__top-right">
-            <table className="erp-doc__meta-grid">
-              <tbody>
-                <tr>
-                  <td className="erp-doc__meta-cell" style={{ width: "34%" }}>
-                    Invoice No.<br /><strong>{docNo || "—"}</strong>
-                  </td>
-                  <td className="erp-doc__meta-cell" style={{ width: "36%" }}>
-                    e-Way Bill No.<br /><strong>{meta.eway_bill_no || meta.ewaybill_number || data.ewaybill_number || data.eway_bill_no || meta.eWayBillNo || "—"}</strong>
-                  </td>
-                  <td className="erp-doc__meta-cell" style={{ width: "30%" }}>
-                    Dated<br /><strong>{docDate || "—"}</strong>
-                  </td>
-                </tr>
-                <tr>
-                  <td className="erp-doc__meta-cell" colSpan={2}>
-                    Delivery Note<br /><strong>{meta.delivery_note || data.delivery_note || meta.deliveryNote || meta.challan_number || data.challan_number || "—"}</strong>
-                  </td>
-                  <td className="erp-doc__meta-cell">
-                    Mode/Terms of Payment<br /><strong>{meta.payment_terms || data.payment_terms || meta.payment_mode || payment.terms || "—"}</strong>
-                  </td>
-                </tr>
-                <tr>
-                  <td className="erp-doc__meta-cell" colSpan={2}>
-                    Reference No. &amp; Date.<br /><strong>{meta.reference_no || data.reference_no || meta.referenceNo || "—"}</strong>
-                  </td>
-                  <td className="erp-doc__meta-cell">
-                    Other References<br /><strong>{meta.other_references || data.other_references || "—"}</strong>
-                  </td>
-                </tr>
-                <tr>
-                  <td className="erp-doc__meta-cell" colSpan={2}>
-                    Buyer's Order No.<br /><strong>{meta.buyer_order_no || meta.buyers_order_no || meta.po_number || data.po_number || "—"}</strong>
-                  </td>
-                  <td className="erp-doc__meta-cell">
-                    Dated<br /><strong>{meta.buyer_order_date || meta.order_date || meta.po_date || data.po_date || "—"}</strong>
-                  </td>
-                </tr>
-                <tr>
-                  <td className="erp-doc__meta-cell" colSpan={2}>
-                    Dispatch Doc No.<br /><strong>{dispatch.dispatch_doc_no || dispatch.lr_number || data.dispatch_doc_no || data.lr_number || "—"}</strong>
-                  </td>
-                  <td className="erp-doc__meta-cell">
-                    Delivery Note Date<br /><strong>{dispatch.delivery_note_date || dispatch.lr_date || data.delivery_note_date || data.lr_date || "—"}</strong>
-                  </td>
-                </tr>
-                <tr>
-                  <td className="erp-doc__meta-cell" colSpan={2}>
-                    Dispatched through<br /><strong>{dispatch.transporter_name || dispatch.dispatched_through || data.transporter_name || data.transport_mode || "DTDC"}</strong>
-                  </td>
-                  <td className="erp-doc__meta-cell">
-                    Destination<br /><strong>{dispatch.destination || data.destination || buyer.city || "—"}</strong>
-                  </td>
-                </tr>
-                <tr>
-                  <td className="erp-doc__meta-cell erp-doc__meta-terms" colSpan={3}>
-                    Terms of Delivery<br />
-                    <strong>
-                      {(() => {
-                        const raw = (dispatch.delivery_terms || dispatch.terms_of_delivery || meta.delivery_terms || data.terms_of_delivery || data.delivery_terms || data.terms || (typeof window !== "undefined" ? (localStorage.getItem("gns_invoice_delivery_terms") || localStorage.getItem("gns_invoice_terms_data") || "") : "") || "").trim();
-                        if (!raw) return "—";
-                        let lines = raw.split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
-                        if (lines.length === 1 && /\b\d+\.\s+/.test(lines[0])) {
-                          const splitPoints = lines[0].split(/(?=\b\d+\.\s+)/).map((s) => s.trim()).filter(Boolean);
-                          if (splitPoints.length > 1) {
-                            lines = splitPoints;
+            {docType === "quotation" ? (
+              <table className="erp-doc__meta-grid">
+                <tbody>
+                  <tr>
+                    <td className="erp-doc__meta-cell" style={{ width: "50%" }}>
+                      Quote No.<br /><strong>{docNo || "—"}</strong>
+                    </td>
+                    <td className="erp-doc__meta-cell" style={{ width: "50%" }}>
+                      Valid Till<br /><strong>{validUntil || "—"}</strong>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="erp-doc__meta-cell">
+                      Payment Terms<br /><strong>{meta.payment_terms || data.payment_terms || meta.payment_mode || payment.terms || "Net 30 Days"}</strong>
+                    </td>
+                    <td className="erp-doc__meta-cell">
+                      Quotation Date<br /><strong>{docDate || "—"}</strong>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="erp-doc__meta-cell">
+                      Reference No. &amp; Date<br /><strong>{meta.reference_no || data.reference_no || meta.referenceNo || "—"}</strong>
+                    </td>
+                    <td className="erp-doc__meta-cell">
+                      Other References<br /><strong>{meta.other_references || data.other_references || "—"}</strong>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="erp-doc__meta-cell">
+                      Buyer's Order No.<br /><strong>{meta.buyer_order_no || meta.buyers_order_no || meta.po_number || data.po_number || "—"}</strong>
+                    </td>
+                    <td className="erp-doc__meta-cell">
+                      Dated<br /><strong>{meta.buyer_order_date || meta.order_date || meta.po_date || data.po_date || "—"}</strong>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="erp-doc__meta-cell">
+                      Dispatch Doc No.<br /><strong>{dispatch.dispatch_doc_no || dispatch.lr_number || data.dispatch_doc_no || data.lr_number || "—"}</strong>
+                    </td>
+                    <td className="erp-doc__meta-cell">
+                      Delivery Note Date<br /><strong>{dispatch.delivery_note_date || dispatch.lr_date || data.delivery_note_date || data.lr_date || "—"}</strong>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="erp-doc__meta-cell">
+                      Dispatched through<br /><strong>{dispatch.transporter_name || dispatch.dispatched_through || data.transporter_name || data.transport_mode || "DTDC"}</strong>
+                    </td>
+                    <td className="erp-doc__meta-cell">
+                      Destination<br /><strong>{dispatch.destination || data.destination || buyer.city || "—"}</strong>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="erp-doc__meta-cell erp-doc__meta-terms" colSpan={2}>
+                      Terms of Delivery<br />
+                      <strong>
+                        {(() => {
+                          const raw = (
+                            dispatch.delivery_terms ||
+                            dispatch.terms_of_delivery ||
+                            meta.delivery_terms ||
+                            meta.terms_of_delivery ||
+                            data.terms_of_delivery ||
+                            data.delivery_terms ||
+                            ""
+                          ).trim();
+                          if (!raw) return "—";
+                          if (raw.toLowerCase().includes("electronically generated document")) return "—";
+                          let lines = raw.split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
+                          if (lines.length === 1 && /\b\d+\.\s+/.test(lines[0])) {
+                            const splitPoints = lines[0].split(/(?=\b\d+\.\s+)/).map((s) => s.trim()).filter(Boolean);
+                            if (splitPoints.length > 1) {
+                              lines = splitPoints;
+                            }
                           }
-                        }
-                        return lines.map((line, idx) => (
-                          <span key={idx} style={{ display: "block", marginTop: idx > 0 ? "2px" : "0" }}>
-                            {line}
-                          </span>
-                        ));
-                      })()}
-                    </strong>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+                          if (!lines.length) return "—";
+                          return lines.map((line, idx) => (
+                            <span key={idx} style={{ display: "block", marginTop: idx > 0 ? "2px" : "0" }}>
+                              {line}
+                            </span>
+                          ));
+                        })()}
+                      </strong>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            ) : (
+              <table className="erp-doc__meta-grid">
+                <tbody>
+                  <tr>
+                    <td className="erp-doc__meta-cell" style={{ width: "34%" }}>
+                      Invoice No.<br /><strong>{docNo || "—"}</strong>
+                    </td>
+                    <td className="erp-doc__meta-cell" style={{ width: "36%" }}>
+                      e-Way Bill No.<br /><strong>{meta.eway_bill_no || meta.ewaybill_number || data.ewaybill_number || data.eway_bill_no || meta.eWayBillNo || "—"}</strong>
+                    </td>
+                    <td className="erp-doc__meta-cell" style={{ width: "30%" }}>
+                      Dated<br /><strong>{docDate || "—"}</strong>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="erp-doc__meta-cell" colSpan={2}>
+                      Delivery Note<br /><strong>{meta.delivery_note || data.delivery_note || meta.deliveryNote || meta.challan_number || data.challan_number || "—"}</strong>
+                    </td>
+                    <td className="erp-doc__meta-cell">
+                      Mode/Terms of Payment<br /><strong>{meta.payment_terms || data.payment_terms || meta.payment_mode || payment.terms || "—"}</strong>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="erp-doc__meta-cell" colSpan={2}>
+                      Reference No. &amp; Date.<br /><strong>{meta.reference_no || data.reference_no || meta.referenceNo || "—"}</strong>
+                    </td>
+                    <td className="erp-doc__meta-cell">
+                      Other References<br /><strong>{meta.other_references || data.other_references || "—"}</strong>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="erp-doc__meta-cell" colSpan={2}>
+                      Buyer's Order No.<br /><strong>{meta.buyer_order_no || meta.buyers_order_no || meta.po_number || data.po_number || "—"}</strong>
+                    </td>
+                    <td className="erp-doc__meta-cell">
+                      Dated<br /><strong>{meta.buyer_order_date || meta.order_date || meta.po_date || data.po_date || "—"}</strong>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="erp-doc__meta-cell" colSpan={2}>
+                      Dispatch Doc No.<br /><strong>{dispatch.dispatch_doc_no || dispatch.lr_number || data.dispatch_doc_no || data.lr_number || "—"}</strong>
+                    </td>
+                    <td className="erp-doc__meta-cell">
+                      Delivery Note Date<br /><strong>{dispatch.delivery_note_date || dispatch.lr_date || data.delivery_note_date || data.lr_date || "—"}</strong>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="erp-doc__meta-cell" colSpan={2}>
+                      Dispatched through<br /><strong>{dispatch.transporter_name || dispatch.dispatched_through || data.transporter_name || data.transport_mode || "DTDC"}</strong>
+                    </td>
+                    <td className="erp-doc__meta-cell">
+                      Destination<br /><strong>{dispatch.destination || data.destination || buyer.city || "—"}</strong>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="erp-doc__meta-cell erp-doc__meta-terms" colSpan={3}>
+                      Terms of Delivery<br />
+                      <strong>
+                        {(() => {
+                          const raw = (
+                            dispatch.delivery_terms ||
+                            dispatch.terms_of_delivery ||
+                            meta.delivery_terms ||
+                            meta.terms_of_delivery ||
+                            data.terms_of_delivery ||
+                            data.delivery_terms ||
+                            ""
+                          ).trim();
+                          if (!raw) return "—";
+                          if (raw.toLowerCase().includes("electronically generated document")) return "—";
+                          let lines = raw.split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
+                          if (lines.length === 1 && /\b\d+\.\s+/.test(lines[0])) {
+                            const splitPoints = lines[0].split(/(?=\b\d+\.\s+)/).map((s) => s.trim()).filter(Boolean);
+                            if (splitPoints.length > 1) {
+                              lines = splitPoints;
+                            }
+                          }
+                          if (!lines.length) return "—";
+                          return lines.map((line, idx) => (
+                            <span key={idx} style={{ display: "block", marginTop: idx > 0 ? "2px" : "0" }}>
+                              {line}
+                            </span>
+                          ));
+                        })()}
+                      </strong>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
 
@@ -443,12 +550,12 @@ export default function ErpDocumentTemplate({ data, docType = "invoice" }) {
           </colgroup>
           <thead>
             <tr className="erp-doc__items-head">
-              <th>Sl<br />No.</th>
+              <th>Sl.<br />No.</th>
               <th style={{ textAlign: "left", paddingLeft: "8px" }}>Description of Goods</th>
               <th>HSN/SAC</th>
               <th>Quantity</th>
               <th>Rate</th>
-              <th>per</th>
+              <th>Per</th>
               <th>Amount</th>
             </tr>
           </thead>
@@ -561,8 +668,8 @@ export default function ErpDocumentTemplate({ data, docType = "invoice" }) {
             {/* Amount in words row — 6 columns on left, 1 column for E. & O.E on Amount side with vertical divider line */}
             <tr className="erp-doc__words-row">
               <td colSpan={6} className="erp-doc__words-cell">
-                <div className="erp-doc__lbl erp-doc__words-title">Amount Chargeable (in words)</div>
-                <strong className="erp-doc__words-text">{numberToWordsInr(grand)}</strong>
+                <div className="erp-doc__lbl erp-doc__words-title">Amount Chargable (in words)</div>
+                <strong className="erp-doc__words-text">{numberToWordsInr(grand).toUpperCase()}</strong>
               </td>
               <td className="erp-doc__eoe-cell">
                 <strong><em>E. &amp; O.E</em></strong>
@@ -673,29 +780,37 @@ export default function ErpDocumentTemplate({ data, docType = "invoice" }) {
         <div className="erp-doc__decl-section">
           <div className="erp-doc__decl-col erp-doc__decl-border-right">
             <div className="erp-doc__decl-heading">Declaration</div>
-            <div className="erp-doc__terms-list">
-              {declItems.map((t, i) => (
-                <div key={i} className="erp-doc__term-row">
-                  <span className="erp-doc__term-idx">{i + 1}.</span>
-                  <span className="erp-doc__term-body">{t.replace(/^\d+\.\s*/, "")}</span>
-                </div>
-              ))}
-            </div>
+            {declItems.length > 0 ? (
+              <div className="erp-doc__terms-list">
+                {declItems.map((t, i) => (
+                  <div key={i} className="erp-doc__term-row">
+                    <span className="erp-doc__term-idx">{i + 1}.</span>
+                    <span className="erp-doc__term-body">{t.replace(/^\d+\.\s*/, "")}</span>
+                  </div>
+                ))}
+              </div>
+            ) : null}
             <div className="erp-doc__remarks-block">
               <strong>Remarks:</strong><br />
-              {data.remarks || `Being material sold vide Invoice No : ${docNo}`}
+              {data.remarks || (docType === "quotation" ? `Being material sold vide Quotation No. : ${docNo || "—"}` : `Being material sold vide Invoice No : ${docNo || "—"}`)}
             </div>
           </div>
           <div className="erp-doc__decl-col">
-            <div className="erp-doc__decl-heading">Rejection Policy :</div>
-            <div className="erp-doc__terms-list">
-              {rejectionPolicy.map((t, i) => (
-                <div key={i} className="erp-doc__term-row">
-                  <span className="erp-doc__term-idx">{i + 1}.</span>
-                  <span className="erp-doc__term-body">{t.replace(/^\d+\.\s*/, "")}</span>
-                </div>
-              ))}
+            <div className="erp-doc__decl-heading">
+              {docType === "quotation" ? "Quotation Policy :" : (cfg.policyHeading || "Rejection Policy :")}
             </div>
+            {rejectionPolicy.length > 0 ? (
+              <div className="erp-doc__terms-list">
+                {rejectionPolicy.map((t, i) => (
+                  <div key={i} className="erp-doc__term-row">
+                    <span className="erp-doc__term-idx">{i + 1}.</span>
+                    <span className="erp-doc__term-body">{t.replace(/^\d+\.\s*/, "")}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ color: "#222", marginTop: "2px" }}>—</div>
+            )}
           </div>
         </div>
 
@@ -726,7 +841,7 @@ export default function ErpDocumentTemplate({ data, docType = "invoice" }) {
 
       {/* 3. Footer Outside the Main Box */}
       <div className="erp-doc__bottom-footer">
-        This is a Computer Generated Invoice
+        {cfg.footerText || (docType === "quotation" ? "This is a Computer Generated Quotation" : "This is a Computer Generated Invoice")}
       </div>
     </article>
   );

@@ -78,27 +78,41 @@ function FilterSection({ label, children }) {
 }
 
 function SummaryTab({ label, count, amount, active, tone, onClick }) {
-  const activeStyles = {
-    blue: "border-[var(--color-primary)] text-[var(--color-primary)]",
-    purple: "border-[var(--color-primary)] text-[var(--color-primary)]",
-    green: "border-[#16a34a] text-[#16a34a]",
-    orange: "border-[#ea580c] text-[#ea580c]",
+  const toneStyles = {
+    blue: {
+      active: "border-[var(--color-primary)] text-[var(--color-primary)]",
+      hover: "hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]",
+    },
+    purple: {
+      active: "border-[var(--color-primary)] text-[var(--color-primary)]",
+      hover: "hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]",
+    },
+    green: {
+      active: "border-[#16a34a] text-[#16a34a]",
+      hover: "hover:border-[#16a34a] hover:text-[#16a34a]",
+    },
+    orange: {
+      active: "border-[#ea580c] text-[#ea580c]",
+      hover: "hover:border-[#ea580c] hover:text-[#ea580c]",
+    },
   };
+  const currentTone = toneStyles[tone] || toneStyles.purple;
+
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`min-w-0 flex-1 border-b-[3px] px-5 py-3.5 text-left transition ${
+      className={`min-w-0 flex-1 border-b-[3px] px-5 py-3.5 text-left transition duration-150 cursor-pointer ${
         active
-          ? `bg-[var(--color-surface)] ${activeStyles[tone]}`
-          : "border-transparent bg-transparent text-[var(--color-text-muted)] hover:bg-[var(--color-surface)]/70"
+          ? `bg-[var(--color-surface)] ${currentTone.active}`
+          : `border-transparent bg-transparent text-[var(--color-text-muted)] hover:bg-[var(--color-surface)]/80 ${currentTone.hover}`
       }`}
     >
-      <p className={`text-[13px] font-medium ${active ? "" : "text-[var(--color-text-muted)]"}`}>
+      <p className={`text-[13px] font-medium transition-colors ${active ? "" : "text-[var(--color-text-muted)]"}`}>
         {label}{" "}
         <span className={active ? "opacity-70" : "text-[#a0a0ab]"}>({count})</span>
       </p>
-      <p className={`mt-1 text-[18px] font-bold tabular-nums ${active ? "text-inherit" : "text-[var(--color-text)]"}`}>
+      <p className={`mt-1 text-[18px] font-bold tabular-nums transition-colors ${active ? "text-inherit" : "text-[var(--color-text)]"}`}>
         {amount}
       </p>
     </button>
@@ -264,14 +278,14 @@ export default function ExportInvoices() {
       <div className="mb-3 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <SearchBar value={search} onChange={setSearch} placeholder="Search" className="w-full" />
         <div className="flex flex-wrap items-center gap-2.5">
-          <div className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-[13px] text-[var(--color-text-secondary)] shadow-sm">
+          <div className="inline-flex items-center gap-3 rounded-full bg-[var(--color-surface)] px-4 py-2.5 text-[13px] text-[var(--color-text-secondary)] shadow-sm shadow-[#00000010] border border-[var(--color-border-soft)]">
             <button
               type="button"
               onClick={openDateFrom}
-              className="flex items-center justify-center text-[var(--color-text-faint)] hover:text-[var(--color-primary)] transition-colors cursor-pointer"
+              className="flex items-center justify-center text-[var(--color-text-muted)] hover:text-[#0f6d84] transition-colors cursor-pointer"
               aria-label="Open start date picker"
             >
-              <Calendar className="h-4 w-4 shrink-0" />
+              <Calendar className="h-5 w-5" />
             </button>
             <input
               ref={dateFromRef}
@@ -281,10 +295,25 @@ export default function ExportInvoices() {
                 setDateFrom(e.target.value);
                 setPage(1);
               }}
-              className="w-[118px] border-0 bg-transparent p-0 text-[13px] focus:outline-none cursor-pointer"
-              title={fmtDisplayDate(dateFrom)}
+              className="sr-only"
             />
-            <span className="text-[var(--color-text-faint)]">→</span>
+            <button
+              type="button"
+              onClick={openDateFrom}
+              className="text-[14px] font-medium text-[#2c2b3d] dark:text-slate-100 hover:text-[#0f6d84] transition-colors cursor-pointer"
+              title="Click to select start date"
+            >
+              {fmtDisplayDate(dateFrom) || "Start Date"}
+            </button>
+            <span className="text-[var(--color-text-faint)] select-none">→</span>
+            <button
+              type="button"
+              onClick={openDateTo}
+              className="text-[14px] font-medium text-[#2c2b3d] dark:text-slate-100 hover:text-[#0f6d84] transition-colors cursor-pointer"
+              title="Click to select end date"
+            >
+              {fmtDisplayDate(dateTo) || "End Date"}
+            </button>
             <input
               ref={dateToRef}
               type="date"
@@ -293,16 +322,15 @@ export default function ExportInvoices() {
                 setDateTo(e.target.value);
                 setPage(1);
               }}
-              className="w-[118px] border-0 bg-transparent p-0 text-[13px] focus:outline-none cursor-pointer"
-              title={fmtDisplayDate(dateTo)}
+              className="sr-only"
             />
             <button
               type="button"
               onClick={openDateTo}
-              className="flex items-center justify-center text-[var(--color-text-faint)] hover:text-[var(--color-primary)] transition-colors cursor-pointer"
+              className="flex items-center justify-center text-[var(--color-text-muted)] hover:text-[#0f6d84] transition-colors cursor-pointer"
               aria-label="Open end date picker"
             >
-              <Calendar className="h-4 w-4 shrink-0" />
+              <Calendar className="h-5 w-5" />
             </button>
           </div>
           <Button variant="add" to="/sales/export-invoices/create" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
@@ -389,11 +417,8 @@ export default function ExportInvoices() {
                   <td colSpan={8} className="px-4 py-20 text-center">
                     <Receipt className="mx-auto h-14 w-14 text-[#d0d0d8]" strokeWidth={1.15} />
                     <p className="mt-3 text-[14px] text-[#8a8a95]">
-                      No export invoices yet. Create your first one.
+                      No export invoices yet.
                     </p>
-                    <Button variant="add" to="/sales/export-invoices/create" className="mt-4" leftIcon={<Plus className="h-4 w-4" aria-hidden />}>
-                      Export Invoice
-                    </Button>
                   </td>
                 </tr>
               ) : (
@@ -406,7 +431,12 @@ export default function ExportInvoices() {
                       className="border-t border-r border-[var(--color-table-border)]"
                     />
                     <td className="border-t border-r border-[var(--color-table-border)] px-4 py-3 text-[14px] font-medium text-[var(--color-primary)]">
-                      {r.invoice_number}
+                      <Link
+                        to={`/sales/export-invoices/${r.id}`}
+                        className="hover:underline text-[var(--color-primary)] font-semibold"
+                      >
+                        {r.invoice_number}
+                      </Link>
                     </td>
                     <td className="border-t border-r border-[var(--color-table-border)] px-4 py-3 text-[14px] text-[var(--color-text-secondary)]">
                       {fmtDisplayDate(r.issue_date || r.due_date) || "—"}
@@ -428,36 +458,46 @@ export default function ExportInvoices() {
                       </span>
                     </td>
                     <td className="border-t border-r border-[var(--color-table-border)] px-4 py-3">
-                      <div className="flex flex-wrap gap-3">
+                      <div className="flex flex-wrap items-center gap-3">
                         <Link
-                          to={`/sales/export-invoices/${r.id}/edit`}
+                          to={`/sales/export-invoices/${r.id}`}
                           className="text-[12px] font-semibold text-[var(--color-text-secondary)] hover:underline"
                         >
                           View
                         </Link>
+                        {(r.invoice_status || r.status) !== "cancelled" && (
+                          <Link
+                            to={`/sales/export-invoices/${r.id}/edit`}
+                            className="text-[12px] font-semibold text-[var(--color-primary)] hover:underline"
+                          >
+                            Edit
+                          </Link>
+                        )}
                         <Link
-                          to={`/sales/export-invoices/${r.id}/edit`}
-                          className="text-[12px] font-semibold text-[var(--color-primary)] hover:underline"
+                          to={`/sales/export-invoices/${r.id}`}
+                          className="text-[12px] font-semibold text-[var(--color-text-secondary)] hover:underline"
                         >
-                          Edit
+                          Print
                         </Link>
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            if (!window.confirm(`Cancel export invoice ${r.invoice_number}?`)) return;
-                            try {
-                              await cancelInvoice(r.id);
-                              addToast("Export invoice cancelled", "success");
-                              load();
-                            } catch (err) {
-                              addToast(apiErrorMessage(err, "Failed to cancel"), "error");
-                            }
-                          }}
-                          className="text-[12px] font-semibold text-[#dc2626] hover:underline"
-                        >
-                          Delete
-                        </button>
-                        {(r.payment_status || r.status) !== "paid" && (
+                        {(r.invoice_status || r.status) !== "cancelled" && (
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              if (!window.confirm(`Cancel export invoice ${r.invoice_number}?`)) return;
+                              try {
+                                await cancelInvoice(r.id);
+                                addToast("Export invoice cancelled", "success");
+                                load();
+                              } catch (err) {
+                                addToast(apiErrorMessage(err, "Failed to cancel"), "error");
+                              }
+                            }}
+                            className="text-[12px] font-semibold text-[#dc2626] hover:underline cursor-pointer"
+                          >
+                            Delete
+                          </button>
+                        )}
+                        {(r.payment_status || r.status) !== "paid" && (r.invoice_status || r.status) !== "cancelled" && (
                           <Link
                             to={`/sales/payments/create?invoice_id=${r.id}`}
                             className="text-[12px] font-semibold text-[var(--color-success)] hover:underline"

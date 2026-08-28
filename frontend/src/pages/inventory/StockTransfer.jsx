@@ -799,21 +799,20 @@ export default function StockTransfer() {
           </div>
         </div>
 
-        <div className="inventory-table-scroll inventory-table-scroll--transfer rounded-lg border border-[var(--color-border-soft)]">
-          <DataTable
-            columns={historyColumns}
-            data={filteredTransfers}
-            showSearch={false}
-            pageSize={10}
-            emptyState={
-              <EmptyState
-                icon="clipboard"
-                title="No transfers yet"
-                description="Create a transfer to move stock between warehouses."
-              />
-            }
-          />
-        </div>
+        <DataTable
+          columns={historyColumns}
+          data={filteredTransfers}
+          showSearch={false}
+          pageSize={10}
+          wrapClassName="inventory-table-scroll--transfer rounded-lg border border-[var(--color-border-soft)]"
+          emptyState={
+            <EmptyState
+              icon="clipboard"
+              title="No transfers yet"
+              description="Create a transfer to move stock between warehouses."
+            />
+          }
+        />
       </section>
 
       <RecordDetailModal

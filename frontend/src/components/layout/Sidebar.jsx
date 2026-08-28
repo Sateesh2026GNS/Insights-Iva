@@ -30,11 +30,13 @@ import BrandLogo from "../common/BrandLogo";
 import LogoutConfirmModal from "../common/LogoutConfirmModal";
 import useAuth from "../../hooks/useAuth";
 import { getSidebarMenus } from "../../api/authApi";
-import { userCanAccess, isStoreManager, isProductionManager, isOperator, isHRManager, storeManagerPathAllowed } from "../../config/permissions";
+import { userCanAccess, isStoreManager, isProductionManager, isOperator, isHRManager, isAccountant, storeManagerPathAllowed } from "../../config/permissions";
 import {
   PRODUCTION_MANAGER_ALLOWED_CHILDREN,
   PRODUCTION_MANAGER_ALLOWED_SECTIONS,
   HR_MANAGER_ALLOWED_SECTIONS,
+  ACCOUNTANT_ALLOWED_SECTIONS,
+  ACCOUNTANT_ALLOWED_CHILDREN,
   OPERATOR_BLOCKED_SECTIONS,
 } from "../../config/rbacNavFilters";
 import { SIDEBAR_NAV, sectionHasActiveChild } from "../../config/sidebarNav";
@@ -152,10 +154,12 @@ export function filterStaticNav(user) {
   const storeMgr = isStoreManager(user);
   const isPM = isProductionManager(user);
   const isHR = isHRManager(user);
+  const isAcct = isAccountant(user);
   const isOp = isOperator(user);
-  return SIDEBAR_NAV.map((section) => {
+  const filtered = SIDEBAR_NAV.map((section) => {
     if (isPM && !PRODUCTION_MANAGER_ALLOWED_SECTIONS.has(section.key)) return null;
     if (isHR && !HR_MANAGER_ALLOWED_SECTIONS.has(section.key)) return null;
+    if (isAcct && !ACCOUNTANT_ALLOWED_SECTIONS.has(section.key)) return null;
     if (isOp && OPERATOR_BLOCKED_SECTIONS.has(section.key)) return null;
     if (section.to) {
       if (!userCanAccess(user, section.module)) return null;
@@ -164,6 +168,9 @@ export function filterStaticNav(user) {
     }
     let children = (section.children || []).filter((c) => {
       if (isPM && !PRODUCTION_MANAGER_ALLOWED_CHILDREN.has(c.to)) return false;
+      if (isAcct && (section.key === "alerts" || section.key === "analytics")) {
+        if (!ACCOUNTANT_ALLOWED_CHILDREN.has(c.to)) return false;
+      }
       return userCanAccess(user, c.module);
     });
     if (storeMgr) {
@@ -172,6 +179,26 @@ export function filterStaticNav(user) {
     if (children.length === 0) return null;
     return { ...section, children };
   }).filter(Boolean);
+
+  if (isHR) {
+    const hrIndex = filtered.findIndex((s) => s.key === "hr");
+    if (hrIndex > -1) {
+      const [hrSection] = filtered.splice(hrIndex, 1);
+      const dashIdx = filtered.findIndex((s) => s.key === "dashboard");
+      filtered.splice(dashIdx > -1 ? dashIdx + 1 : 0, 0, hrSection);
+    }
+  }
+
+  if (isAcct) {
+    const finIndex = filtered.findIndex((s) => s.key === "finance");
+    if (finIndex > -1) {
+      const [finSection] = filtered.splice(finIndex, 1);
+      const dashIdx = filtered.findIndex((s) => s.key === "dashboard");
+      filtered.splice(dashIdx > -1 ? dashIdx + 1 : 0, 0, finSection);
+    }
+  }
+
+  return filtered;
 }
 
 function buildInitialExpanded(pathname, nav) {
@@ -232,6 +259,40 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose }
     }
     if (isOperator(user)) {
       return raw.filter((section) => !OPERATOR_BLOCKED_SECTIONS.has(section.key));
+    }
+    if (isHRManager(user)) {
+      const hrIndex = raw.findIndex((s) => s.key === "hr");
+      if (hrIndex > -1) {
+        const copy = [...raw];
+        const [hrSection] = copy.splice(hrIndex, 1);
+        const dashIdx = copy.findIndex((s) => s.key === "dashboard");
+        copy.splice(dashIdx > -1 ? dashIdx + 1 : 0, 0, hrSection);
+        return copy;
+      }
+    }
+    if (isAccountant(user)) {
+      const filtered = raw
+        .map((section) => {
+          if (!ACCOUNTANT_ALLOWED_SECTIONS.has(section.key)) return null;
+          if (!section.children) return section;
+          const children = section.children.filter((c) => {
+            if (section.key === "alerts" || section.key === "analytics") {
+              return ACCOUNTANT_ALLOWED_CHILDREN.has(c.to);
+            }
+            return true;
+          });
+          if (children.length === 0) return null;
+          return { ...section, children };
+        })
+        .filter(Boolean);
+
+      const finIndex = filtered.findIndex((s) => s.key === "finance");
+      if (finIndex > -1) {
+        const [finSection] = filtered.splice(finIndex, 1);
+        const dashIdx = filtered.findIndex((s) => s.key === "dashboard");
+        filtered.splice(dashIdx > -1 ? dashIdx + 1 : 0, 0, finSection);
+      }
+      return filtered;
     }
     return raw;
   }, [apiNav, user, storeMode]);

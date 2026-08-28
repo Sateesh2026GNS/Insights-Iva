@@ -498,21 +498,20 @@ export default function Warehouses() {
           </div>
         </div>
 
-        <div className="inventory-table-scroll inventory-table-scroll--warehouses rounded-lg border border-[var(--color-border-soft)]">
-          <DataTable
-            columns={columns}
-            data={filtered}
-            showSearch={false}
-            pageSize={10}
-            emptyState={
-              <EmptyState
-                icon="factory"
-                title="No warehouses yet"
-                description="Add a warehouse to organize stock by location."
-              />
-            }
-          />
-        </div>
+        <DataTable
+          columns={columns}
+          data={filtered}
+          showSearch={false}
+          pageSize={10}
+          wrapClassName="inventory-table-scroll--warehouses rounded-lg border border-[var(--color-border-soft)]"
+          emptyState={
+            <EmptyState
+              icon="factory"
+              title="No warehouses yet"
+              description="Add a warehouse to organize stock by location."
+            />
+          }
+        />
         {filtered.length > 0 ? (
           <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-[12px] text-[var(--color-text-muted)]">

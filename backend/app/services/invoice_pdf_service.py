@@ -97,26 +97,41 @@ def generate_invoice_pdf(doc: dict[str, Any]) -> bytes:
         if p.split(":", 1)[1]
     )
 
-    outer_rows: list[list[Any]] = []
+    is_quotation = doc.get("doc_type") == "quotation"
+    doc_title = doc.get("title") or ("Quotation" if is_quotation else "Tax Invoice")
+    doc_no = meta.get("document_no") or meta.get("quote_number") or meta.get("invoice_no") or ""
+    doc_date = meta.get("date") or ""
 
-    header_left = _p(
-        (
-            (f"<b>IRN</b> : {doc.get('irn', '')}<br/>" if doc.get("irn") else "")
-            + (f"<b>Ack No.</b> : {doc.get('ack_no', '')}<br/>" if doc.get("ack_no") else "")
-            + (f"<b>Ack Date</b> : {doc.get('ack_date', '')}" if doc.get("ack_date") else "")
-        ),
-        tiny,
-    )
-    header_right = (
-        Table(
-            [[_p("<b>e-Invoice</b>", tiny)], [_qr_cell(qr_value)]],
-            colWidths=[35 * mm],
-            rowHeights=[4 * mm, 27 * mm],
+    if is_quotation:
+        header_left = _p(f"<b>Quote Date</b> : {doc_date}", tiny)
+        header_right = (
+            Table(
+                [[_p("<b>e-Quotation</b>", tiny)], [_qr_cell(qr_value)]],
+                colWidths=[35 * mm],
+                rowHeights=[4 * mm, 27 * mm],
+            )
+            if show_einvoice
+            else _p("", tiny)
         )
-        if show_einvoice
-        else _p("", tiny)
-    )
-    outer_rows.append([header_left, _p("Tax Invoice", title_style), header_right])
+    else:
+        header_left = _p(
+            (
+                (f"<b>IRN</b> : {doc.get('irn', '')}<br/>" if doc.get("irn") else "")
+                + (f"<b>Ack No.</b> : {doc.get('ack_no', '')}<br/>" if doc.get("ack_no") else "")
+                + (f"<b>Ack Date</b> : {doc.get('ack_date', '')}" if doc.get("ack_date") else "")
+            ),
+            tiny,
+        )
+        header_right = (
+            Table(
+                [[_p("<b>e-Invoice</b>", tiny)], [_qr_cell(qr_value)]],
+                colWidths=[35 * mm],
+                rowHeights=[4 * mm, 27 * mm],
+            )
+            if show_einvoice
+            else _p("", tiny)
+        )
+    outer_rows.append([header_left, _p(doc_title, title_style), header_right])
 
     seller_text = "<b>{}</b><br/>{}".format(seller.get("name", ""), seller.get("address", ""))
     if seller.get("udyam"):
@@ -130,16 +145,29 @@ def generate_invoice_pdf(doc: dict[str, Any]) -> bytes:
     if seller.get("email"):
         seller_text += f"<br/><b>E-Mail</b> : {seller.get('email', '')}"
 
-    meta_grid = [
-        ["Invoice No.", meta.get("invoice_no", ""), "e-Way Bill No.", meta.get("eway_bill_no", ""), "Dated", meta.get("date", "")],
-        ["Delivery Note", meta.get("delivery_note", ""), "Mode/Terms of Payment", meta.get("payment_terms", ""), "", ""],
-        ["Reference No. & Date.", meta.get("reference_no", ""), "Other References", meta.get("other_references", ""), "", ""],
-        ["Buyer's Order No.", meta.get("buyers_order_no", ""), "Dated", meta.get("buyer_order_date", ""), "", ""],
-        ["Dispatch Doc No.", dispatch.get("dispatch_doc_no", ""), "Delivery Note Date", dispatch.get("delivery_note_date", ""), "", ""],
-        ["Dispatched through", dispatch.get("dispatch_through", "") or dispatch.get("transport_name", ""), "Destination", dispatch.get("destination", ""), "", ""],
-        ["Terms of Delivery", dispatch.get("delivery_terms", ""), "", "", "", ""],
-    ]
-    meta_table = Table(meta_grid, colWidths=[21 * mm, 26 * mm, 25 * mm, 24 * mm, 12 * mm, 15 * mm])
+    if is_quotation:
+        meta_grid = [
+            ["Quote No.", doc_no or "—", "Valid Till", meta.get("valid_until", "—")],
+            ["Payment Terms", meta.get("payment_terms", "Net 30 Days"), "Quotation Date", doc_date or "—"],
+            ["Reference No. & Date.", meta.get("reference_no", "—"), "Other References", meta.get("other_references", "—")],
+            ["Buyer's Order No.", meta.get("buyer_order_no", meta.get("buyers_order_no", "—")), "Dated", meta.get("buyer_order_date", "—")],
+            ["Dispatch Doc No.", dispatch.get("dispatch_doc_no", "—"), "Delivery Note Date", dispatch.get("delivery_note_date", "—")],
+            ["Dispatched through", dispatch.get("dispatched_through", dispatch.get("transporter_name", "DTDC")), "Destination", dispatch.get("destination", "—")],
+            ["Terms of Delivery", dispatch.get("delivery_terms", "—"), "", ""],
+        ]
+        meta_table = Table(meta_grid, colWidths=[24 * mm, 28 * mm, 24 * mm, 28 * mm])
+    else:
+        meta_grid = [
+            ["Invoice No.", meta.get("invoice_no", ""), "e-Way Bill No.", meta.get("eway_bill_no", ""), "Dated", meta.get("date", "")],
+            ["Delivery Note", meta.get("delivery_note", ""), "Mode/Terms of Payment", meta.get("payment_terms", ""), "", ""],
+            ["Reference No. & Date.", meta.get("reference_no", ""), "Other References", meta.get("other_references", ""), "", ""],
+            ["Buyer's Order No.", meta.get("buyers_order_no", ""), "Dated", meta.get("buyer_order_date", ""), "", ""],
+            ["Dispatch Doc No.", dispatch.get("dispatch_doc_no", ""), "Delivery Note Date", dispatch.get("delivery_note_date", ""), "", ""],
+            ["Dispatched through", dispatch.get("dispatch_through", "") or dispatch.get("transport_name", ""), "Destination", dispatch.get("destination", ""), "", ""],
+            ["Terms of Delivery", dispatch.get("delivery_terms", ""), "", "", "", ""],
+        ]
+        meta_table = Table(meta_grid, colWidths=[21 * mm, 26 * mm, 25 * mm, 24 * mm, 12 * mm, 15 * mm])
+
     meta_table.setStyle(
         TableStyle(
             [
@@ -338,14 +366,24 @@ def generate_invoice_pdf(doc: dict[str, Any]) -> bytes:
         "9. Any quality discrepancies are only accepted within 7 working days from the receipt of Material (Unconverted Rolls Only)"
     )
 
-    decl_raw = (doc.get("terms") or "").strip() or declaration_default
-    decl_lines = "<br/>".join([f"{ln.strip()}" for ln in decl_raw.splitlines() if ln.strip()])
-    rej_lines = "<br/>".join([f"{ln.strip()}" for ln in rejection_default.splitlines() if ln.strip()])
-    remarks_text = doc.get("remarks") or f"Being material sold vide Invoice No : {meta.get('invoice_no', '')}"
-    decl_cell_content = f"<b>Declaration</b><br/>{decl_lines}<br/><br/><b>Remarks:</b><br/>{remarks_text}"
+    if is_quotation:
+        decl_raw = (doc.get("terms") or "").strip()
+        decl_lines = "<br/>".join([f"{ln.strip()}" for ln in decl_raw.splitlines() if ln.strip()]) if decl_raw else ""
+        remarks_text = doc.get("remarks") or f"Being material sold vide Quotation No. : {doc_no}"
+        decl_cell_content = f"<b>Declaration</b><br/>{decl_lines + '<br/><br/>' if decl_lines else ''}<b>Remarks:</b><br/>{remarks_text}"
+        rej_policy = (doc.get("rejection_policy") or "").strip()
+        rej_lines = "<br/>".join([f"{ln.strip()}" for ln in rej_policy.splitlines() if ln.strip()]) if rej_policy else "—"
+        policy_title = "Quotation Policy :"
+    else:
+        decl_raw = (doc.get("terms") or "").strip() or declaration_default
+        decl_lines = "<br/>".join([f"{ln.strip()}" for ln in decl_raw.splitlines() if ln.strip()])
+        rej_lines = "<br/>".join([f"{ln.strip()}" for ln in rejection_default.splitlines() if ln.strip()])
+        remarks_text = doc.get("remarks") or f"Being material sold vide Invoice No : {meta.get('invoice_no', '')}"
+        decl_cell_content = f"<b>Declaration</b><br/>{decl_lines}<br/><br/><b>Remarks:</b><br/>{remarks_text}"
+        policy_title = "Rejection Policy :"
 
     bottom_text = Table(
-        [[_p(decl_cell_content, tiny), _p(f"<b>Rejection Policy :</b><br/>{rej_lines}", tiny)]],
+        [[_p(decl_cell_content, tiny), _p(f"<b>{policy_title}</b><br/>{rej_lines}", tiny)]],
         colWidths=[95 * mm, 95 * mm],
     )
     bottom_text.setStyle(TableStyle([("BOX", (0, 0), (-1, -1), 0.7, colors.black), ("INNERGRID", (0, 0), (-1, -1), 0.35, colors.black), ("VALIGN", (0, 0), (-1, -1), "TOP"), ("LEFTPADDING", (0, 0), (-1, -1), 2), ("RIGHTPADDING", (0, 0), (-1, -1), 2)]))
@@ -353,7 +391,7 @@ def generate_invoice_pdf(doc: dict[str, Any]) -> bytes:
 
     company_year = seller.get("financial_year") or "2025-26"
     seller_display = seller.get("name", "")
-    if seller_display and "-" not in seller_display:
+    if not is_quotation and seller_display and "-" not in seller_display:
         seller_display = f"{seller_display} - {company_year}"
     if not seller_display:
         seller_display = f"STIC-ON PAPERS PVT LTD - {company_year}"
@@ -368,6 +406,7 @@ def generate_invoice_pdf(doc: dict[str, Any]) -> bytes:
     outer = Table([[row[0]] for row in outer_rows], colWidths=[190 * mm], repeatRows=0)
     outer.setStyle(TableStyle([("BOX", (0, 0), (-1, -1), 0.8, colors.black), ("INNERGRID", (0, 0), (-1, -1), 0.4, colors.black), ("LEFTPADDING", (0, 0), (-1, -1), 0), ("RIGHTPADDING", (0, 0), (-1, -1), 0), ("TOPPADDING", (0, 0), (-1, -1), 0), ("BOTTOMPADDING", (0, 0), (-1, -1), 0)]))
 
-    foot_p = _p("This is a Computer Generated Invoice", ParagraphStyle("Foot", parent=tiny, alignment=TA_CENTER))
+    footer_label = "This is a Computer Generated Quotation" if is_quotation else "This is a Computer Generated Invoice"
+    foot_p = _p(footer_label, ParagraphStyle("Foot", parent=tiny, alignment=TA_CENTER))
     pdf.build([outer, Spacer(1, 2 * mm), foot_p])
     return buffer.getvalue()

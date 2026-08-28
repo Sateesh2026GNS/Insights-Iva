@@ -205,7 +205,9 @@ def api_profile(
 ):
     from app.services.auth_service import get_user_with_role
 
-    profile = get_user_with_role(db, current_user)
+    profile = get_user_with_role(
+        db, current_user, preferred_role=getattr(current_user, "active_role", None)
+    )
     profile["email_verified"] = bool(getattr(current_user, "email_verified", True))
     return success_response("Profile retrieved", profile)
 

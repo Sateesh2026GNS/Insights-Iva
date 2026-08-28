@@ -25,6 +25,7 @@ class InvoiceV2SummaryRead(BaseModel):
 class InvoiceV2ListItem(BaseModel):
     id: int
     invoice_number: str
+    customer_id: int | None = None
     issue_date: date | None = None
     buyer_name: str | None = None
     due_date: date | None = None
@@ -107,6 +108,8 @@ class InvoiceV2Create(BaseModel):
     reverse_charge: bool = False
     terms_and_conditions: str | None = None
     show_signature: bool = False
+    stamp_url: str | None = None
+    signature_url: str | None = None
     bank_details: dict[str, Any] | None = None
     notes: str | None = None
     custom_fields: list[dict[str, Any]] | dict[str, Any] | Any | None = None
@@ -187,6 +190,8 @@ class InvoiceV2Read(BaseModel):
     reverse_charge: bool = False
     terms_and_conditions: str | None = None
     show_signature: bool = False
+    stamp_url: str | None = None
+    signature_url: str | None = None
     notes: str | None = None
     buyer_name: str | None = None
     items: list[InvoiceV2ItemRead] = []

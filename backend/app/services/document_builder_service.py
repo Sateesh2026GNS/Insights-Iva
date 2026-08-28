@@ -58,6 +58,10 @@ def _seller_block(db: Session, tenant_id: int) -> dict[str, Any]:
     return {
         "name": company.company_name or company.legal_name or "Insights Iva",
         "logo": company.logo_url or "",
+        "stamp": company.stamp_url or "",
+        "stamp_url": company.stamp_url or "",
+        "signature": company.signature_url or "",
+        "signature_url": company.signature_url or "",
         "address": _address_parts(
             company.address_line1,
             company.address_line2,
@@ -171,20 +175,46 @@ def build_quotation_document(db: Session, tenant_id: int, quote_id: int) -> dict
     grand = float(quote.total_amount or 0)
     summary = _summary_from_items(items, grand, discount=float(quote.discount or 0))
 
+    dispatch_raw = meta_raw.get("transportation") or meta_raw.get("dispatch") or {}
+    cons_raw = meta_raw.get("consignee") or {}
+    delivery_terms_val = dispatch_raw.get("delivery_terms") or meta_raw.get("delivery_terms") or meta_raw.get("terms") or quote.notes or "—"
+    dispatch_payload = {
+        "dispatch_doc_no": dispatch_raw.get("dispatch_doc_no") or dispatch_raw.get("lr_number") or meta_raw.get("dispatch_doc_no") or "—",
+        "delivery_note_date": _format_date(dispatch_raw.get("delivery_note_date")) if dispatch_raw.get("delivery_note_date") else "—",
+        "dispatched_through": dispatch_raw.get("dispatched_through") or dispatch_raw.get("transporter_name") or "DTDC",
+        "transporter_name": dispatch_raw.get("transporter_name") or "DTDC",
+        "destination": dispatch_raw.get("destination") or meta_raw.get("destination") or (cust.city if cust else "—"),
+        "delivery_terms": delivery_terms_val,
+    }
+
+    consignee_block = {
+        "name": cons_raw.get("name") or (cust.name if cust else quote.customer_name) or "",
+        "address": cons_raw.get("address") or billing,
+        "gstin": cons_raw.get("gstin") or (cust.gstin if cust else ""),
+        "state": cons_raw.get("state") or (cust.state if cust else ""),
+        "state_code": cons_raw.get("state_code") or (cust.state_code if cust else ""),
+        "phone": cons_raw.get("phone") or (cust.phone if cust else ""),
+    }
+
     return {
         "doc_type": "quotation",
-        "title": "QUOTATION",
+        "title": "Quotation",
         "tax_mode": tax_mode,
-        "e_invoice_enabled": False,
+        "e_invoice_enabled": True,
         "seller": _seller_block(db, tenant_id),
         "meta": {
             "document_no": quote.quote_number,
             "quote_number": quote.quote_number,
             "date": _format_date(quote.quote_date),
             "valid_until": _format_date(quote.valid_until),
-            "reference_no": meta_raw.get("reference_no") or "",
+            "reference_no": dispatch_raw.get("reference_no") or meta_raw.get("reference_no") or "—",
+            "other_references": dispatch_raw.get("other_references") or meta_raw.get("other_references") or "—",
+            "buyer_order_no": dispatch_raw.get("buyer_order_no") or dispatch_raw.get("buyers_order_no") or dispatch_raw.get("po_number") or meta_raw.get("buyer_order_no") or meta_raw.get("buyers_order_no") or meta_raw.get("po_number") or "—",
+            "buyer_order_date": _format_date(dispatch_raw.get("buyer_order_date") or dispatch_raw.get("po_date") or meta_raw.get("buyer_order_date") or meta_raw.get("po_date")) if (dispatch_raw.get("buyer_order_date") or dispatch_raw.get("po_date") or meta_raw.get("buyer_order_date") or meta_raw.get("po_date")) else "—",
             "sales_person": quote.sales_person or "",
-            "payment_terms": meta_raw.get("payment_terms") or company.payment_terms_note or "",
+            "payment_terms": meta_raw.get("payment_terms") or company.payment_terms_note or "Net 30 Days",
+            "eway_bill_no": meta_raw.get("ewaybill_number") or meta_raw.get("eway_bill_no") or dispatch_raw.get("ewaybill_number") or "—",
+            "ewaybill_number": meta_raw.get("ewaybill_number") or meta_raw.get("eway_bill_no") or dispatch_raw.get("ewaybill_number") or "—",
         },
         "buyer": {
             "name": (cust.name if cust else quote.customer_name) or "",
@@ -196,25 +226,18 @@ def build_quotation_document(db: Session, tenant_id: int, quote_id: int) -> dict
             "phone": cust.phone if cust else "",
             "place_of_supply": cust.state if cust else "",
         },
-        "consignee": {
-            "name": (cust.name if cust else quote.customer_name) or "",
-            "address": billing,
-            "gstin": cust.gstin if cust else "",
-            "state": cust.state if cust else "",
-            "state_code": cust.state_code if cust else "",
-            "phone": cust.phone if cust else "",
-        },
-        "dispatch": meta_raw.get("transportation") or meta_raw.get("dispatch") or {},
+        "consignee": consignee_block,
+        "dispatch": dispatch_payload,
         "items": items,
         "summary": summary,
         "payment": {
-            "terms": meta_raw.get("payment_terms") or company.payment_terms_note or "",
+            "terms": meta_raw.get("payment_terms") or company.payment_terms_note or "Net 30 Days",
             "bank_name": company.bank_name or "",
             "account_number": company.bank_account_number or "",
             "ifsc": company.bank_ifsc or "",
         },
-        "terms": meta_raw.get("terms") or quote.notes or _default_terms(),
-        "remarks": meta_raw.get("remarks") or "",
+        "terms": meta_raw.get("terms") or quote.notes or "",
+        "remarks": meta_raw.get("remarks") or f"Being material sold vide Quotation No. : {quote.quote_number}",
         "prepared_by": quote.sales_person or "",
     }
 

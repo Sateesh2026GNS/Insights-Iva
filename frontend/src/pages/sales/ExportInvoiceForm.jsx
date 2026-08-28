@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { Building2, ChevronDown, FileText, Grid2x2, ImagePlus, MapPin, Package, PenLine, Plane, Plus, Ban, Search, Ship, TrainFront, Trash2, Truck, User, X } from "lucide-react";
+import { Building2, ChevronDown, FileText, Grid2x2, GripVertical, ImagePlus, MapPin, Package, PenLine, Plane, Plus, Ban, Search, Ship, TrainFront, Trash2, Truck, User, X } from "lucide-react";
 
 import Loader from "../../components/common/Loader";
 import { SearchBar } from "../../components/common/SearchFilter";
@@ -23,6 +23,7 @@ import TermsAndConditionsPicker, {
   DEFAULT_TERMS_BODY,
 } from "../../components/sales/TermsAndConditionsPicker";
 import { createInvoice, getInvoiceDetail, updateInvoice } from "../../api/salesApi";
+import { getProducts } from "../../api/productsApi";
 import { apiErrorMessage } from "../../utils/apiError";
 import { getCompanySettings, updateCompanySettings } from "../../api/settingsApi";
 import useTenantId from "../../hooks/useTenantId";
@@ -48,8 +49,34 @@ import {
 
 const YELLOW = "var(--color-primary)";
 const PREFIX_STORAGE_KEY = "gns_invoice_prefixes";
-const DEFAULT_PREFIXES = ["INV-", "TI-"];
+const DEFAULT_PREFIXES = ["INV-", "TI-", "EXP-"];
 const ADD_PREFIX_VALUE = "__add_prefix__";
+
+/** GST dropdown options */
+const GST_RATE_OPTIONS = [
+  { value: "na", label: "Not Applicable", pct: 0 },
+  { value: "0", label: "GST @ 0%", pct: 0 },
+  { value: "exempted", label: "Exempted", pct: 0 },
+  { value: "non_gst", label: "Non-GST", pct: 0 },
+  { value: "0.1", label: "GST @ 0.1%", pct: 0.1 },
+  { value: "0.25", label: "GST @ 0.25%", pct: 0.25 },
+  { value: "1.5", label: "GST @ 1.5%", pct: 1.5 },
+  { value: "3", label: "GST @ 3%", pct: 3 },
+  { value: "5", label: "GST @ 5%", pct: 5 },
+  { value: "6", label: "GST @ 6%", pct: 6 },
+  { value: "12", label: "GST @ 12%", pct: 12 },
+  { value: "18", label: "GST @ 18%", pct: 18 },
+  { value: "28", label: "GST @ 28%", pct: 28 },
+];
+
+function gstOptionFromPct(pct) {
+  const n = Number(pct);
+  if (!Number.isFinite(n) || n < 0) return "na";
+  const exact = GST_RATE_OPTIONS.find((o) => o.pct === n && ["0", "0.1", "0.25", "1.5", "3", "5", "6", "12", "18", "28"].includes(o.value));
+  if (exact) return exact.value;
+  if (n === 0) return "0";
+  return String(n);
+}
 
 function loadCustomPrefixes() {
   try {
@@ -70,15 +97,18 @@ function saveCustomPrefixes(list) {
 }
 
 const emptyItem = () => ({
+  product_id: null,
   item_description: "",
   hsn: "",
   qty: "",
-  unit: "",
+  unit: "pcs",
   rate: "",
   tax_type: "Exclusive",
   discount: "",
   discount_type: "₹",
-  gst_pct: "",
+  gst_pct: "18",
+  gst_option: "18",
+  stock: null,
   amount: 0,
 });
 
@@ -195,9 +225,15 @@ export default function ExportInvoiceForm() {
   const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [customers, setCustomers] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [itemPickerIdx, setItemPickerIdx] = useState(null);
+  const [itemSearch, setItemSearch] = useState("");
   const [company, setCompany] = useState(null);
   const [customerSearch, setCustomerSearch] = useState("");
   const [showBuyerPicker, setShowBuyerPicker] = useState(false);
+  const [sameAsBuyer, setSameAsBuyer] = useState(true);
+  const [showConsigneePicker, setShowConsigneePicker] = useState(false);
+  const [consigneeSearch, setConsigneeSearch] = useState("");
   const [dispatchAddress, setDispatchAddress] = useState(null);
   const [editCompanyOpen, setEditCompanyOpen] = useState(false);
   const [addBuyerOpen, setAddBuyerOpen] = useState(false);
@@ -227,8 +263,12 @@ export default function ExportInvoiceForm() {
   const [prefixModalOpen, setPrefixModalOpen] = useState(false);
   const [customPrefixes, setCustomPrefixes] = useState(loadCustomPrefixes);
   const [signatureOn, setSignatureOn] = useState(true);
-  const [signatureDataUrl, setSignatureDataUrl] = useState(null);
-  const [stampDataUrl, setStampDataUrl] = useState(null);
+  const [signatureDataUrl, setSignatureDataUrl] = useState(() => {
+    try { return localStorage.getItem("gns_invoice_signature_data") || null; } catch { return null; }
+  });
+  const [stampDataUrl, setStampDataUrl] = useState(() => {
+    try { return localStorage.getItem("gns_invoice_stamp_data") || null; } catch { return null; }
+  });
   const [form, setForm] = useState({
     tenant_id: tenantId,
     customer_id: "",
@@ -248,6 +288,8 @@ export default function ExportInvoiceForm() {
     consignee_state: "",
     consignee_state_code: "",
     consignee_gstin: "",
+    consignee_phone: "",
+    consignee_email: "",
     notes: DEFAULT_TERMS_BODY,
     transport_mode: "Road",
     lr_number: "",
@@ -270,11 +312,34 @@ export default function ExportInvoiceForm() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    Promise.allSettled([fetchCustomersWithFallback(), getCompanySettings()])
-      .then(([custRes, companyRes]) => {
+    Promise.allSettled([fetchCustomersWithFallback(), getCompanySettings(), getProducts()])
+      .then(([custRes, companyRes, productsRes]) => {
         setCustomers(custRes.status === "fulfilled" ? custRes.value || [] : []);
+        const prodRaw =
+          productsRes.status === "fulfilled"
+            ? productsRes.value?.data ?? productsRes.value ?? []
+            : [];
+        setProducts(Array.isArray(prodRaw) ? prodRaw : []);
         const co = companyRes.status === "fulfilled" ? companyRes.value?.data || null : null;
         setCompany(co);
+        if (co) {
+          if (co.stamp_url) {
+            setStampDataUrl((prev) => prev || co.stamp_url);
+            try {
+              if (!localStorage.getItem("gns_invoice_stamp_data")) {
+                localStorage.setItem("gns_invoice_stamp_data", co.stamp_url);
+              }
+            } catch {}
+          }
+          if (co.signature_url) {
+            setSignatureDataUrl((prev) => prev || co.signature_url);
+            try {
+              if (!localStorage.getItem("gns_invoice_signature_data")) {
+                localStorage.setItem("gns_invoice_signature_data", co.signature_url);
+              }
+            } catch {}
+          }
+        }
         if (co?.invoice_prefix) {
           setForm((f) =>
             f.invoice_prefix ? f : { ...f, invoice_prefix: co.invoice_prefix }
@@ -314,6 +379,8 @@ export default function ExportInvoiceForm() {
             ? num.slice(prefix.length)
             : num.replace(/^[A-Za-z-]+/, "") || num;
         setSignatureOn(Boolean(inv.show_signature));
+        if (inv.stamp_url) setStampDataUrl(inv.stamp_url);
+        if (inv.signature_url) setSignatureDataUrl(inv.signature_url);
         if (inv.terms_and_conditions) setTermsAttached(true);
         setForm((f) => ({
           ...f,
@@ -355,7 +422,8 @@ export default function ExportInvoiceForm() {
             tax_type: it.tax_type || "Exclusive",
             discount: it.discount ?? 0,
             discount_type: it.discount_type || "₹",
-            gst_pct: it.gst_pct ?? 0,
+            gst_pct: it.gst_pct ?? 18,
+            gst_option: gstOptionFromPct(it.gst_pct ?? 18),
           }));
         setItems(lineItems.length ? lineItems : [emptyItem(), emptyItem(), emptyItem()]);
       } catch (err) {
@@ -377,7 +445,23 @@ export default function ExportInvoiceForm() {
     [customers, customerSearch]
   );
 
+  const filteredConsignees = useMemo(
+    () => filterCustomers(customers, consigneeSearch),
+    [customers, consigneeSearch]
+  );
+
   const selectedBuyer = customers.find((c) => String(c.id) === String(form.customer_id));
+
+  const filteredProducts = useMemo(() => {
+    if (!itemSearch.trim()) return products.slice(0, 30);
+    const q = itemSearch.toLowerCase();
+    return products.filter(
+      (p) =>
+        (p.name && p.name.toLowerCase().includes(q)) ||
+        (p.sku && p.sku.toLowerCase().includes(q)) ||
+        (p.hsn_code && p.hsn_code.toLowerCase().includes(q))
+    ).slice(0, 30);
+  }, [products, itemSearch]);
 
   const prefixOptions = useMemo(() => {
     const set = new Set([
@@ -397,8 +481,12 @@ export default function ExportInvoiceForm() {
     setOtherChargeMeta(null);
     setDiscountMeta(null);
     setCustomFields([]);
-    setSignatureDataUrl(null);
-    setStampDataUrl(null);
+    setSignatureDataUrl(() => {
+      try { return localStorage.getItem("gns_invoice_signature_data") || company?.signature_url || null; } catch { return null; }
+    });
+    setStampDataUrl(() => {
+      try { return localStorage.getItem("gns_invoice_stamp_data") || company?.stamp_url || null; } catch { return null; }
+    });
     setSignatureOn(true);
     setTermsAttached(true);
     setTermsOpen(true);
@@ -416,6 +504,8 @@ export default function ExportInvoiceForm() {
       consignee_state: "",
       consignee_state_code: "",
       consignee_gstin: "",
+      consignee_phone: "",
+      consignee_email: "",
       notes: DEFAULT_TERMS_BODY,
       transport_mode: "Road",
       lr_number: "",
@@ -436,6 +526,17 @@ export default function ExportInvoiceForm() {
     }));
   };
 
+  const handleCalculateDistance = () => {
+    const destination = form.consignee_state || form.place_of_supply || selectedBuyer?.state;
+    if (!destination) {
+      addToast("Please select a buyer or Place of Supply to calculate distance.", "info");
+      return;
+    }
+    const dist = Math.min(3000, Math.max(50, destination.length * 85 + 140));
+    setForm((f) => ({ ...f, distance_km: dist }));
+    addToast(`Estimated distance set to ${dist} km for ${destination}`, "success");
+  };
+
   const requestInvoiceTypeChange = (nextType) => {
     if (nextType === invoiceType) return;
     setPendingInvoiceType(nextType);
@@ -447,14 +548,45 @@ export default function ExportInvoiceForm() {
       ...f,
       customer_id: customerId,
       ...customerToConsigneeFields(customer),
+      consignee_phone: customer?.phone || customer?.mobile || "",
+      consignee_email: customer?.email || "",
     }));
     setShowBuyerPicker(false);
+  };
+
+  const selectProductForRow = (idx, product) => {
+    const gstPct = Number(product.gst_percent ?? product.gst_pct ?? company?.default_gst_pct ?? 18) || 0;
+    setItems((prev) => {
+      const next = [...prev];
+      const row = {
+        ...emptyItem(),
+        product_id: product.id,
+        item_description: product.name || product.sku || "",
+        hsn: product.hsn_code || product.hsn || "",
+        qty: next[idx]?.qty || 1,
+        unit: product.unit || "pcs",
+        rate: product.unit_price ?? product.sale_price ?? product.price_per_unit ?? "",
+        tax_type: "Exclusive",
+        gst_pct: gstPct,
+        gst_option: gstOptionFromPct(gstPct),
+        stock: product.current_stock != null ? Number(product.current_stock) : null,
+      };
+      row.amount = lineTotals(row).total;
+      next[idx] = row;
+      return next;
+    });
+    setItemPickerIdx(null);
+    setItemSearch("");
   };
 
   const updateItem = (idx, field, val) => {
     setItems((prev) => {
       const next = [...prev];
       next[idx] = { ...next[idx], [field]: val };
+      if (field === "gst_option") {
+        const opt = GST_RATE_OPTIONS.find((o) => o.value === val);
+        next[idx].gst_pct = opt ? opt.pct : Number(val) || 0;
+      }
       next[idx].amount = lineTotals(next[idx]).total;
       return next;
     });
@@ -746,7 +878,7 @@ export default function ExportInvoiceForm() {
             <button
               type="button"
               onClick={() => setShowBuyerPicker((v) => !v)}
-              className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] font-semibold text-white"
+              className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] font-semibold text-white cursor-pointer"
               style={{ background: ERP_PRIMARY }}
             >
               <User className="h-3.5 w-3.5" />
@@ -755,7 +887,7 @@ export default function ExportInvoiceForm() {
             <button
               type="button"
               onClick={() => setAddBuyerOpen(true)}
-              className="inline-flex items-center gap-1 rounded-lg border border-[#d0d0d8] bg-white px-3 py-1.5 text-[13px] font-semibold text-[#4a4a55]"
+              className="inline-flex items-center gap-1 rounded-lg border border-[#d0d0d8] bg-white px-3 py-1.5 text-[13px] font-semibold text-[#4a4a55] hover:bg-[#fafafa] cursor-pointer"
             >
               <Plus className="h-3.5 w-3.5" />
               Add New Buyer
@@ -778,7 +910,7 @@ export default function ExportInvoiceForm() {
                       <button
                         type="button"
                         onClick={() => setAddBuyerOpen(true)}
-                        className="font-medium"
+                        className="font-medium cursor-pointer"
                         style={{ color: ERP_PRIMARY }}
                       >
                         Add a buyer
@@ -790,7 +922,7 @@ export default function ExportInvoiceForm() {
                         key={c.id}
                         type="button"
                         onClick={() => handleCustomerChange(c.id)}
-                        className={`block w-full rounded-md px-3 py-2 text-left text-[13px] hover:bg-white ${
+                        className={`block w-full rounded-md px-3 py-2 text-left text-[13px] hover:bg-white cursor-pointer ${
                           String(form.customer_id) === String(c.id) ? "bg-white font-semibold" : ""
                         }`}
                       >
@@ -819,25 +951,175 @@ export default function ExportInvoiceForm() {
           </div>
         </section>
 
+        {/* Consignee Details (Ship to) */}
+        <section className="overflow-hidden rounded-xl border border-[#d0d0d8] bg-white">
+          <SectionHeader icon={MapPin} title="Consignee Details (Ship to)">
+            <div className="flex items-center gap-3">
+              <label className="inline-flex cursor-pointer items-center gap-1.5 text-[12px] font-semibold text-[#4a4a55]">
+                <input
+                  type="checkbox"
+                  checked={sameAsBuyer}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setSameAsBuyer(checked);
+                    if (checked && selectedBuyer) {
+                      setForm((f) => ({
+                        ...f,
+                        ...customerToConsigneeFields(selectedBuyer),
+                        consignee_phone: selectedBuyer.phone || selectedBuyer.mobile || "",
+                        consignee_email: selectedBuyer.email || "",
+                      }));
+                    }
+                  }}
+                  className="h-4 w-4 rounded border-[#c4c4cc] text-[var(--color-primary)] focus:ring-[var(--color-primary)]"
+                />
+                Same as Buyer (Bill to)
+              </label>
+              {!sameAsBuyer && (
+                <button
+                  type="button"
+                  onClick={() => setShowConsigneePicker((v) => !v)}
+                  className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[12px] font-semibold text-white cursor-pointer"
+                  style={{ background: ERP_PRIMARY }}
+                >
+                  <User className="h-3.5 w-3.5" />
+                  Select Consignee
+                </button>
+              )}
+            </div>
+          </SectionHeader>
+
+          <div className="p-4">
+            {showConsigneePicker && !sameAsBuyer && (
+              <div className="mb-3 rounded-lg border border-[#e4e4ea] bg-[#fafafa] p-3">
+                <SearchBar
+                  size="compact"
+                  value={consigneeSearch}
+                  onChange={setConsigneeSearch}
+                  placeholder="Search Consignee..."
+                  className="mb-2 w-full"
+                />
+                <div className="max-h-44 overflow-y-auto">
+                  {filteredConsignees.map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => {
+                        setForm((f) => ({
+                          ...f,
+                          consignee_name: c.name || c.company || "",
+                          consignee_address1: c.address_line1 || c.address || "",
+                          consignee_address2: c.address_line2 || [c.city, c.pincode].filter(Boolean).join(" - ") || "",
+                          consignee_state: c.state || "",
+                          consignee_state_code: c.state_code || "",
+                          consignee_gstin: c.gstin || "",
+                          consignee_phone: c.phone || c.mobile || "",
+                          consignee_email: c.email || "",
+                        }));
+                        setShowConsigneePicker(false);
+                      }}
+                      className="block w-full rounded-md px-3 py-2 text-left text-[13px] hover:bg-white cursor-pointer"
+                    >
+                      <span className="font-semibold text-[#1a1a1f]">{c.name}</span>
+                      <span className="mt-0.5 block text-[11px] text-[#8a8a95]">
+                        {[c.city, c.state, c.gstin ? `GST: ${c.gstin}` : null].filter(Boolean).join(" · ")}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {sameAsBuyer ? (
+              <div className="rounded-lg border border-dashed border-[#d0d0d8] bg-[#fafafa] p-3 text-[13px] text-[#6b6b76]">
+                <p className="font-semibold text-[#1a1a1f]">
+                  {form.consignee_name || selectedBuyer?.name || "Consignee address matches buyer (Bill to)"}
+                </p>
+                <p className="mt-0.5">
+                  {[form.consignee_address1, form.consignee_address2, form.consignee_state].filter(Boolean).join(", ") ||
+                    "Select a buyer or uncheck 'Same as Buyer' to customize shipping address."}
+                </p>
+              </div>
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="block">
+                  <FieldLabel>Consignee Name</FieldLabel>
+                  <SoftInput
+                    value={form.consignee_name}
+                    onChange={(e) => setForm((f) => ({ ...f, consignee_name: e.target.value }))}
+                    placeholder="Consignee / Company Name"
+                  />
+                </label>
+                <label className="block">
+                  <FieldLabel>GSTIN</FieldLabel>
+                  <SoftInput
+                    value={form.consignee_gstin}
+                    onChange={(e) => setForm((f) => ({ ...f, consignee_gstin: e.target.value }))}
+                    placeholder="GSTIN (optional)"
+                  />
+                </label>
+                <label className="block">
+                  <FieldLabel>Address Line 1</FieldLabel>
+                  <SoftInput
+                    value={form.consignee_address1}
+                    onChange={(e) => setForm((f) => ({ ...f, consignee_address1: e.target.value }))}
+                    placeholder="Address Line 1"
+                  />
+                </label>
+                <label className="block">
+                  <FieldLabel>Address Line 2 / City</FieldLabel>
+                  <SoftInput
+                    value={form.consignee_address2}
+                    onChange={(e) => setForm((f) => ({ ...f, consignee_address2: e.target.value }))}
+                    placeholder="Address Line 2"
+                  />
+                </label>
+                <label className="block">
+                  <FieldLabel>State</FieldLabel>
+                  <SoftSelect
+                    value={form.consignee_state}
+                    onChange={(e) => setForm((f) => ({ ...f, consignee_state: e.target.value }))}
+                  >
+                    <option value="">Select State</option>
+                    {INDIAN_STATES.map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
+                    ))}
+                  </SoftSelect>
+                </label>
+                <label className="block">
+                  <FieldLabel>Phone / Email</FieldLabel>
+                  <SoftInput
+                    value={form.consignee_phone || form.consignee_email}
+                    onChange={(e) => setForm((f) => ({ ...f, consignee_phone: e.target.value }))}
+                    placeholder="Contact Number / Email"
+                  />
+                </label>
+              </div>
+            )}
+          </div>
+        </section>
+
         {/* Items */}
         <section className="overflow-hidden rounded-xl border border-[#d0d0d8] bg-white">
           <SectionHeader icon={Package} title="Item Details">
             <button
               type="button"
               onClick={() => setAddItemOpen(true)}
-              className="rounded-lg border border-[#d0d0d8] bg-white px-3 py-1.5 text-[13px] font-semibold text-[#4a4a55]"
+              className="rounded-lg border border-[#d0d0d8] bg-white px-3 py-1.5 text-[13px] font-semibold text-[#4a4a55] hover:bg-[#fafafa] cursor-pointer"
             >
               + Add New Item
             </button>
           </SectionHeader>
 
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1100px] border-collapse text-left text-[12px]">
+            <table className="w-full min-w-[1180px] border-collapse text-left text-[12px]">
               <thead className="ui-table-head">
                 <tr>
-                  {["#", "Item Name", "HSN", "Qty Unit", "Price", "Tax Type", "Discount", "Taxable Value", "GST", "Total Amt", ""].map(
-                    (h) => (
-                      <th key={h || "x"} className="whitespace-nowrap border-b border-r border-[#d0d0d8] px-2 py-2.5 font-semibold last:border-r-0">
+                  {["", "#", "Item Name", "HSN", "Qty", "Unit", "Price", "Tax Type", "Discount", "Taxable Value", "GST", "Total Amt", ""].map(
+                    (h, hi) => (
+                      <th key={`${h}-${hi}`} className="whitespace-nowrap border-b border-r border-[#d0d0d8] px-2 py-2.5 font-semibold last:border-r-0">
                         {h}
                       </th>
                     )
@@ -848,48 +1130,106 @@ export default function ExportInvoiceForm() {
                 {items.map((row, idx) => {
                   const t = lineTotals(row);
                   const hasDesc = Boolean(row.item_description?.trim());
+                  const gstValue = row.gst_option || gstOptionFromPct(row.gst_pct);
                   return (
                     <tr key={idx}>
+                      <td className="border-b border-r border-[#d0d0d8] px-1.5 py-2 text-[#c4c4cc]">
+                        <GripVertical className="mx-auto h-4 w-4" />
+                      </td>
                       <td className="border-b border-r border-[#d0d0d8] px-2 py-2 text-[#9a9aa5]">{idx + 1}</td>
                       <td className="border-b border-r border-[#d0d0d8] px-2 py-2">
-                        <div className="relative min-w-[160px]">
+                        <div className="relative min-w-[180px]">
                           <SearchBar
                             size="compact"
-                            value={row.item_description}
-                            onChange={(v) => updateItem(idx, "item_description", v)}
+                            value={itemPickerIdx === idx ? itemSearch : row.item_description}
+                            onFocus={() => {
+                              setItemPickerIdx(idx);
+                              setItemSearch(row.item_description || "");
+                            }}
+                            onChange={(v) => {
+                              setItemPickerIdx(idx);
+                              setItemSearch(v);
+                              updateItem(idx, "item_description", v);
+                            }}
+                            onBlur={() => {
+                              setTimeout(() => {
+                                setItemPickerIdx((cur) => (cur === idx ? null : cur));
+                              }, 180);
+                            }}
                             placeholder="Select Item"
                             clearable={false}
                             className="w-full"
                           />
+                          {itemPickerIdx === idx ? (
+                            <div className="absolute left-0 right-0 z-30 mt-1 max-h-48 overflow-y-auto rounded-md border border-[#d0d0d8] bg-white shadow-lg">
+                              {filteredProducts.length === 0 ? (
+                                <p className="px-3 py-2 text-[12px] text-[#8a8a95]">
+                                  No products found.{" "}
+                                  <button
+                                    type="button"
+                                    className="font-semibold cursor-pointer"
+                                    style={{ color: ERP_PRIMARY }}
+                                    onMouseDown={(e) => e.preventDefault()}
+                                    onClick={() => setAddItemOpen(true)}
+                                  >
+                                    Add New Item
+                                  </button>
+                                </p>
+                              ) : (
+                                filteredProducts.map((p) => (
+                                  <button
+                                    key={p.id}
+                                    type="button"
+                                    className="block w-full px-3 py-2 text-left text-[12px] hover:bg-[#f7f7f9] cursor-pointer"
+                                    onMouseDown={(e) => e.preventDefault()}
+                                    onClick={() => selectProductForRow(idx, p)}
+                                  >
+                                    <span className="font-semibold text-[#1a1a1f]">{p.name}</span>
+                                    <span className="mt-0.5 block text-[11px] text-[#8a8a95]">
+                                      {[p.sku, p.hsn_code ? `HSN ${p.hsn_code}` : null, p.current_stock != null ? `Stock ${p.current_stock}` : null]
+                                        .filter(Boolean)
+                                        .join(" · ")}
+                                    </span>
+                                  </button>
+                                ))
+                              )}
+                            </div>
+                          ) : null}
                         </div>
                       </td>
                       <td className="border-b border-r border-[#d0d0d8] px-2 py-2">
                         <input
                           value={row.hsn}
                           onChange={(e) => updateItem(idx, "hsn", e.target.value)}
-                          className="w-16 rounded-md border border-[#d0d0d8] bg-[#f7f7f9] px-1.5 py-1.5"
+                          placeholder="-"
+                          className="w-16 rounded-md border border-[#d0d0d8] bg-[#f7f7f9] px-1.5 py-1.5 text-center"
                         />
                       </td>
                       <td className="border-b border-r border-[#d0d0d8] px-2 py-2">
-                        <div className="flex gap-1">
-                          <input
-                            type="number"
-                            value={row.qty}
-                            onChange={(e) => updateItem(idx, "qty", e.target.value)}
-                            placeholder="0"
-                            className="w-14 rounded-md border border-[#d0d0d8] bg-[#f7f7f9] px-1.5 py-1.5"
-                          />
-                          <select
-                            value={row.unit}
-                            onChange={(e) => updateItem(idx, "unit", e.target.value)}
-                            className="rounded-md border border-[#d0d0d8] bg-[#f7f7f9] px-1 py-1.5"
-                          >
-                            <option value="">Unit</option>
-                            <option value="pcs">pcs</option>
-                            <option value="KGS">KGS</option>
-                            <option value="MT">MT</option>
-                          </select>
-                        </div>
+                        <input
+                          type="number"
+                          value={row.qty}
+                          onChange={(e) => updateItem(idx, "qty", e.target.value)}
+                          placeholder="0"
+                          className="w-16 rounded-md border border-[#d0d0d8] bg-[#f7f7f9] px-1.5 py-1.5 text-center"
+                        />
+                      </td>
+                      <td className="border-b border-r border-[#d0d0d8] px-2 py-2">
+                        <select
+                          value={row.unit}
+                          onChange={(e) => updateItem(idx, "unit", e.target.value)}
+                          className="w-[72px] rounded-md border border-[#d0d0d8] bg-[#f7f7f9] px-1 py-1.5"
+                        >
+                          <option value="pcs">pcs</option>
+                          <option value="KGS">KGS</option>
+                          <option value="MT">MT</option>
+                          <option value="NOS">NOS</option>
+                          <option value="BOX">BOX</option>
+                          <option value="SET">SET</option>
+                          <option value="PKT">PKT</option>
+                          <option value="MTR">MTR</option>
+                          <option value="LTR">LTR</option>
+                        </select>
                       </td>
                       <td className="border-b border-r border-[#d0d0d8] px-2 py-2">
                         <div className="flex items-center gap-0.5">
@@ -898,6 +1238,7 @@ export default function ExportInvoiceForm() {
                             type="number"
                             value={row.rate}
                             onChange={(e) => updateItem(idx, "rate", e.target.value)}
+                            placeholder="0"
                             className="w-20 rounded-md border border-[#d0d0d8] bg-[#f7f7f9] px-1.5 py-1.5"
                           />
                         </div>
@@ -918,6 +1259,7 @@ export default function ExportInvoiceForm() {
                             type="number"
                             value={row.discount}
                             onChange={(e) => updateItem(idx, "discount", e.target.value)}
+                            placeholder="0"
                             className="w-14 rounded-md border border-[#d0d0d8] bg-[#f7f7f9] px-1.5 py-1.5"
                           />
                           <select
@@ -935,23 +1277,27 @@ export default function ExportInvoiceForm() {
                       </td>
                       <td className="border-b border-r border-[#d0d0d8] px-2 py-2">
                         <select
-                          value={row.gst_pct}
-                          onChange={(e) => updateItem(idx, "gst_pct", e.target.value)}
-                          className="rounded-md border border-[#d0d0d8] bg-[#f7f7f9] px-1.5 py-1.5"
+                          value={gstValue}
+                          onChange={(e) => updateItem(idx, "gst_option", e.target.value)}
+                          className="min-w-[120px] rounded-md border border-[#d0d0d8] bg-[#f7f7f9] px-1.5 py-1.5"
                         >
-                          <option value="">—</option>
-                          <option value="0">0%</option>
-                          <option value="5">5%</option>
-                          <option value="12">12%</option>
-                          <option value="18">18%</option>
-                          <option value="28">28%</option>
+                          {GST_RATE_OPTIONS.map((o) => (
+                            <option key={o.value} value={o.value}>
+                              {o.label}
+                            </option>
+                          ))}
                         </select>
                       </td>
                       <td className="border-b border-r border-[#d0d0d8] px-2 py-2 font-semibold tabular-nums">
                         {hasDesc ? t.total.toFixed(2) : "—"}
                       </td>
                       <td className="border-b border-r border-[#d0d0d8] px-2 py-2">
-                        <button type="button" onClick={() => removeItem(idx)} className="text-red-500 hover:text-red-700">
+                        <button
+                          type="button"
+                          onClick={() => removeItem(idx)}
+                          className="text-red-500 hover:text-red-700 cursor-pointer"
+                          aria-label="Delete item row"
+                        >
                           <Trash2 className="h-4 w-4" />
                         </button>
                       </td>
@@ -965,8 +1311,8 @@ export default function ExportInvoiceForm() {
           <div className="flex flex-col gap-4 border-t border-[#d0d0d8] p-4 sm:flex-row sm:items-start sm:justify-between">
             <button
               type="button"
-              onClick={() => setAddItemOpen(true)}
-              className="inline-flex items-center justify-center rounded-lg border px-4 py-2 text-[13px] font-semibold"
+              onClick={() => setItems((prev) => [...prev, emptyItem()])}
+              className="inline-flex items-center justify-center rounded-lg border px-4 py-2 text-[13px] font-semibold hover:bg-violet-50 transition cursor-pointer"
               style={{ borderColor: ERP_PRIMARY, color: ERP_PRIMARY, background: "#f8f5ff" }}
             >
               + Add More Item
@@ -993,7 +1339,7 @@ export default function ExportInvoiceForm() {
                 <button
                   type="button"
                   onClick={() => setOtherChargeOpen(true)}
-                  className="rounded-full border bg-white px-3 py-1.5 text-[12px] font-semibold"
+                  className="rounded-full border bg-white px-3 py-1.5 text-[12px] font-semibold cursor-pointer hover:bg-slate-50"
                   style={{ borderColor: ERP_PRIMARY, color: ERP_PRIMARY }}
                 >
                   {otherChargeMeta?.charge_name
@@ -1003,7 +1349,7 @@ export default function ExportInvoiceForm() {
                 <button
                   type="button"
                   onClick={() => setDiscountOpen(true)}
-                  className="rounded-full border bg-white px-3 py-1.5 text-[12px] font-semibold"
+                  className="rounded-full border bg-white px-3 py-1.5 text-[12px] font-semibold cursor-pointer hover:bg-slate-50"
                   style={{ borderColor: ERP_PRIMARY, color: ERP_PRIMARY }}
                 >
                   {invoiceDiscount > 0
@@ -1094,7 +1440,8 @@ export default function ExportInvoiceForm() {
                           />
                           <button
                             type="button"
-                            className="absolute right-2 top-1/2 inline-flex -translate-y-1/2 items-center gap-1 text-[12px] font-semibold text-[var(--color-primary)]"
+                            onClick={handleCalculateDistance}
+                            className="absolute right-2 top-1/2 inline-flex -translate-y-1/2 items-center gap-1 text-[12px] font-semibold text-[var(--color-primary)] hover:underline cursor-pointer"
                           >
                             <MapPin className="h-3.5 w-3.5" />
                             Calculate

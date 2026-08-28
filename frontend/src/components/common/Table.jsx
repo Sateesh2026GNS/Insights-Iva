@@ -49,6 +49,8 @@ export default function Table({
   compact = false,
   showSerialNumber = true,
   serialOffset = 0,
+  wrapClassName = "",
+  className = "",
 }) {
   const [sortKey, setSortKey] = useState(null);
   const [sortOrder, setSortOrder] = useState("asc");
@@ -96,8 +98,8 @@ export default function Table({
   const cellPadding = compact ? "px-2.5 py-2 text-xs" : "px-4 py-3.5 text-[var(--text-sm)]";
 
   return (
-    <div className="ui-table-wrap ui-table-wrap--scroll overflow-x-auto print:overflow-visible print:rounded-none print:border-none print:shadow-none">
-      <table className="ui-table w-full border-collapse text-left">
+    <div className={`ui-table-wrap ui-table-wrap--scroll overflow-x-auto print:overflow-visible print:rounded-none print:border-none print:shadow-none ${wrapClassName}`}>
+      <table className={`ui-table w-full border-collapse text-left ${className}`}>
         <thead className="ui-table-head">
           <tr>
             {includeSerial ? (

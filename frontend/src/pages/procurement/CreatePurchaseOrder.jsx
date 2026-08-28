@@ -262,8 +262,12 @@ export default function CreatePurchaseOrder() {
   const [prefixModalOpen, setPrefixModalOpen] = useState(false);
   const [customPrefixes, setCustomPrefixes] = useState(loadCustomPrefixes);
   const [signatureOn, setSignatureOn] = useState(true);
-  const [signatureDataUrl, setSignatureDataUrl] = useState(null);
-  const [stampDataUrl, setStampDataUrl] = useState(null);
+  const [signatureDataUrl, setSignatureDataUrl] = useState(() => {
+    try { return localStorage.getItem("gns_invoice_signature_data") || null; } catch { return null; }
+  });
+  const [stampDataUrl, setStampDataUrl] = useState(() => {
+    try { return localStorage.getItem("gns_invoice_stamp_data") || null; } catch { return null; }
+  });
   const [catalogItems, setCatalogItems] = useState([]);
   const [showGstTds, setShowGstTds] = useState(false);
   const [showTaxType, setShowTaxType] = useState(false);
@@ -333,6 +337,24 @@ export default function CreatePurchaseOrder() {
         setVendors(vendorRes.status === "fulfilled" ? vendorRes.value?.data || [] : []);
         const co = companyRes.status === "fulfilled" ? companyRes.value?.data || null : null;
         setCompany(co);
+        if (co) {
+          if (co.stamp_url) {
+            setStampDataUrl((prev) => prev || co.stamp_url);
+            try {
+              if (!localStorage.getItem("gns_invoice_stamp_data")) {
+                localStorage.setItem("gns_invoice_stamp_data", co.stamp_url);
+              }
+            } catch {}
+          }
+          if (co.signature_url) {
+            setSignatureDataUrl((prev) => prev || co.signature_url);
+            try {
+              if (!localStorage.getItem("gns_invoice_signature_data")) {
+                localStorage.setItem("gns_invoice_signature_data", co.signature_url);
+              }
+            } catch {}
+          }
+        }
         const dash = itemRes.status === "fulfilled" ? itemRes.value?.data : null;
         const itemList = Array.isArray(dash)
           ? dash

@@ -54,6 +54,7 @@ export const Quotations = lazy(() => import("../pages/sales/Quotations"));
 export const QuotationForm = lazy(() => import("../pages/sales/QuotationForm"));
 export const PaymentReceipts = lazy(() => import("../pages/sales/PaymentReceipts"));
 export const PaymentReceiptForm = lazy(() => import("../pages/sales/PaymentReceiptForm"));
+export const PaymentReceiptCopyPage = lazy(() => import("../pages/sales/PaymentReceiptCopyPage"));
 export const RefundVouchers = lazy(() => import("../pages/sales/RefundVouchers"));
 export const Dispatch = lazy(() => import("../pages/sales/Dispatch"));
 export const SalesDashboard = lazy(() => import("../pages/sales/SalesDashboard"));

@@ -28,6 +28,11 @@ export default defineConfig({
         changeOrigin: true,
         bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
       },
+      "/accounts": {
+        target: "http://127.0.0.1:8000",
+        changeOrigin: true,
+        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+      },
       "/inventory": {
         target: "http://127.0.0.1:8000",
         changeOrigin: true,
@@ -39,6 +44,121 @@ export default defineConfig({
         bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
       },
       "/production": {
+        target: "http://127.0.0.1:8000",
+        changeOrigin: true,
+        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+      },
+      "/quality": {
+        target: "http://127.0.0.1:8000",
+        changeOrigin: true,
+        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+      },
+      "/maintenance": {
+        target: "http://127.0.0.1:8000",
+        changeOrigin: true,
+        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+      },
+      "/analytics": {
+        target: "http://127.0.0.1:8000",
+        changeOrigin: true,
+        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+      },
+      "/departments": {
+        target: "http://127.0.0.1:8000",
+        changeOrigin: true,
+        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+      },
+      "/hr": {
+        target: "http://127.0.0.1:8000",
+        changeOrigin: true,
+        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+      },
+      "/alerts": {
+        target: "http://127.0.0.1:8000",
+        changeOrigin: true,
+        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+      },
+      "/admin": {
+        target: "http://127.0.0.1:8000",
+        changeOrigin: true,
+        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+      },
+      "/company-settings": {
+        target: "http://127.0.0.1:8000",
+        changeOrigin: true,
+        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+      },
+      "/settings": {
+        target: "http://127.0.0.1:8000",
+        changeOrigin: true,
+        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+      },
+      "/documents": {
+        target: "http://127.0.0.1:8000",
+        changeOrigin: true,
+        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+      },
+      "/dispatch": {
+        target: "http://127.0.0.1:8000",
+        changeOrigin: true,
+        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+      },
+      "/dispatch-addresses": {
+        target: "http://127.0.0.1:8000",
+        changeOrigin: true,
+        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+      },
+      "/meetings": {
+        target: "http://127.0.0.1:8000",
+        changeOrigin: true,
+        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+      },
+      "/google-calendar": {
+        target: "http://127.0.0.1:8000",
+        changeOrigin: true,
+        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+      },
+      "/iot": {
+        target: "http://127.0.0.1:8000",
+        changeOrigin: true,
+        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+      },
+      "/audit": {
+        target: "http://127.0.0.1:8000",
+        changeOrigin: true,
+        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+      },
+      "/warehouse": {
+        target: "http://127.0.0.1:8000",
+        changeOrigin: true,
+        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+      },
+      "/supply-chain": {
+        target: "http://127.0.0.1:8000",
+        changeOrigin: true,
+        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+      },
+      "/notifications": {
+        target: "http://127.0.0.1:8000",
+        changeOrigin: true,
+        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+      },
+      "/operator": {
+        target: "http://127.0.0.1:8000",
+        changeOrigin: true,
+        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+      },
+      "/dashboard": {
+        target: "http://127.0.0.1:8000",
+        changeOrigin: true,
+        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+      },
+      "/masters": {
+        target: "http://127.0.0.1:8000",
+        changeOrigin: true,
+        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+      },
+      "/ai-assistant": {
         target: "http://127.0.0.1:8000",
         changeOrigin: true,
         bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),

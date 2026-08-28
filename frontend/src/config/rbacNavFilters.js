@@ -117,6 +117,24 @@ export const HR_MANAGER_ALLOWED_SECTIONS = new Set([
   "settings",
 ]);
 
+/** Accountant sidebar — Finance/Accounting, Masters, Documents, General Alerts, Finance Analytics. */
+export const ACCOUNTANT_ALLOWED_SECTIONS = new Set([
+  "dashboard",
+  "finance",
+  "masters",
+  "documents",
+  "alerts",
+  "analytics",
+  "settings",
+]);
+
+export const ACCOUNTANT_ALLOWED_CHILDREN = new Set([
+  "/alerts",
+  "/alerts/general",
+  "/analytics/finance",
+  "/analytics/executive",
+]);
+
 /** Sidebar sections hidden for Operator regardless of module grant. */
 export const OPERATOR_BLOCKED_SECTIONS = new Set([
   "masters",

@@ -399,6 +399,7 @@ def list_invoices_v2(
         InvoiceV2ListItem(
             id=i.id,
             invoice_number=i.invoice_number,
+            customer_id=i.customer_id,
             issue_date=i.issue_date,
             buyer_name=i.customer.name if i.customer else None,
             due_date=i.due_date,
@@ -505,6 +506,8 @@ def create_invoice_v2(db: Session, payload: InvoiceV2Create) -> Invoice:
         reverse_charge=bool(payload.reverse_charge),
         terms_and_conditions=payload.terms_and_conditions,
         show_signature=bool(payload.show_signature),
+        stamp_url=payload.stamp_url,
+        signature_url=payload.signature_url,
         bank_details_json=json.dumps(payload.bank_details) if payload.bank_details else None,
         custom_fields_json=json.dumps(payload.custom_fields) if payload.custom_fields else None,
         notes=getattr(payload, "notes", None),
@@ -711,6 +714,8 @@ def update_invoice_v2(db: Session, tenant_id: int, invoice_id: int, payload: Inv
     inv.reverse_charge = bool(payload.reverse_charge)
     inv.terms_and_conditions = payload.terms_and_conditions
     inv.show_signature = bool(payload.show_signature)
+    inv.stamp_url = payload.stamp_url
+    inv.signature_url = payload.signature_url
     inv.bank_details_json = json.dumps(payload.bank_details) if payload.bank_details else inv.bank_details_json
     inv.custom_fields_json = json.dumps(payload.custom_fields) if payload.custom_fields else inv.custom_fields_json
     inv.notes = payload.notes
@@ -930,6 +935,8 @@ def get_invoice_v2(db: Session, tenant_id: int, invoice_id: int) -> InvoiceV2Rea
         reverse_charge=bool(getattr(inv, "reverse_charge", False)),
         terms_and_conditions=getattr(inv, "terms_and_conditions", None),
         show_signature=bool(getattr(inv, "show_signature", False)),
+        stamp_url=getattr(inv, "stamp_url", None),
+        signature_url=getattr(inv, "signature_url", None),
         notes=getattr(inv, "notes", None),
         buyer_name=inv.customer.name if inv.customer else None,
         items=[

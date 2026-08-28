@@ -367,7 +367,7 @@ class InvoiceListRead(InvoiceRead):
 
 class PaymentBase(BaseModel):
     tenant_id: int
-    invoice_id: int
+    invoice_id: int | None = None
     amount: float = Field(..., gt=0.0)
     payment_date: date
     method: str = "cash"

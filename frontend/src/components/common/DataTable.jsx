@@ -21,6 +21,8 @@ export default function DataTable({
   emptyState,
   noResultsState,
   sortable = true,
+  wrapClassName = "",
+  tableClassName = "",
 }) {
   const { t } = useTranslation();
   const effectiveShowPagination = pagination !== undefined ? Boolean(pagination) : showPagination;
@@ -97,6 +99,8 @@ export default function DataTable({
         sortable={sortable}
         showSerialNumber={showSerialNumber}
         serialOffset={effectiveShowPagination ? (page - 1) * currentPageSize : 0}
+        wrapClassName={wrapClassName}
+        className={tableClassName}
       />
     );
   }

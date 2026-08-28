@@ -509,21 +509,20 @@ export default function FinishedGoods() {
           </div>
         </div>
 
-        <div className="inventory-table-scroll inventory-table-scroll--finished-goods rounded-lg border border-[var(--color-border-soft)]">
-          <DataTable
-            columns={columns}
-            data={filtered}
-            showSearch={false}
-            pageSize={10}
-            emptyState={
-              <EmptyState
-                icon="cube"
-                title="No finished goods found"
-                description="Add your first finished good to start tracking stock."
-              />
-            }
-          />
-        </div>
+        <DataTable
+          columns={columns}
+          data={filtered}
+          showSearch={false}
+          pageSize={10}
+          wrapClassName="inventory-table-scroll--finished-goods rounded-lg border border-[var(--color-border-soft)]"
+          emptyState={
+            <EmptyState
+              icon="cube"
+              title="No finished goods found"
+              description="Add your first finished good to start tracking stock."
+            />
+          }
+        />
       </div>
 
       {selected ? (

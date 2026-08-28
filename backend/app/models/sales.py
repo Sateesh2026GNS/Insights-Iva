@@ -219,6 +219,8 @@ class Invoice(Base, TimestampMixin):
     reverse_charge: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     terms_and_conditions: Mapped[str | None] = mapped_column(Text)
     show_signature: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    stamp_url: Mapped[str | None] = mapped_column(Text)
+    signature_url: Mapped[str | None] = mapped_column(Text)
     bank_details_json: Mapped[str | None] = mapped_column(Text)
     custom_fields_json: Mapped[str | None] = mapped_column(Text)
     notes: Mapped[str | None] = mapped_column(Text)
@@ -257,7 +259,7 @@ class Payment(Base, TimestampMixin):
     tenant_id: Mapped[int] = mapped_column(
         ForeignKey("tenants.id"), nullable=False, index=True
     )
-    invoice_id: Mapped[int] = mapped_column(ForeignKey("invoices.id"), nullable=False)
+    invoice_id: Mapped[int | None] = mapped_column(ForeignKey("invoices.id"), nullable=True)
     amount: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
     payment_date: Mapped[date] = mapped_column(Date, nullable=False)
     method: Mapped[str] = mapped_column(String(64), default="cash", nullable=False)

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Download, Mail, Printer, X } from "lucide-react";
 
-import { convertQuotationToSalesOrder } from "../../api/salesApi";
+import { convertQuotationToSalesOrder, downloadQuotationPdf } from "../../api/salesApi";
 import { getProducts } from "../../api/productionApi";
 import { formatInr, statusColor } from "../../data/salesMasterData";
 import { useToast } from "../../context/ToastContext";
@@ -24,14 +24,32 @@ export default function QuoteDetailModal({ quote, onClose, onStatusChange, onCon
   const amount = quote.amount ?? quote.total_amount;
 
   const handlePreview = () => {
-    addToast(
-      `${quote.quote_number}: ${quote.customer_name || "Customer"} — ${formatInr(amount)} (${quote.status})`,
-      "info"
-    );
-    window.print();
+    if (quote?.id) {
+      navigate(`/sales/quotations/${quote.id}/copy`);
+    } else {
+      window.print();
+    }
   };
 
-  const handlePdf = () => {
+  const handlePdf = async () => {
+    if (typeof quote.id === "number") {
+      try {
+        const res = await downloadQuotationPdf(quote.id);
+        const blob = new Blob([res.data], { type: "application/pdf" });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `Quotation-${quote.quote_number || quote.id}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+        addToast("Quote PDF downloaded", "success");
+        return;
+      } catch {
+        // fallback to client-side table export
+      }
+    }
     try {
       exportToPdf(
         [

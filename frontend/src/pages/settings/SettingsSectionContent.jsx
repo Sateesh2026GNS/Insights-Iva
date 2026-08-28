@@ -82,6 +82,8 @@ function CompanyProfileSection() {
   const [adjustModalOpen, setAdjustModalOpen] = useState(false);
   const [selectedImageForAdjust, setSelectedImageForAdjust] = useState(null);
   const fileInputRef = useRef(null);
+  const stampInputRef = useRef(null);
+  const sigInputRef = useRef(null);
 
   const load = useCallback(async (isRefresh = false) => {
     if (!isRefresh) setLoading(true);
@@ -94,6 +96,8 @@ function CompanyProfileSection() {
         regional = {};
       }
       const cachedLogo = localStorage.getItem("smrt-company-logo") || null;
+      const cachedStamp = localStorage.getItem("gns_invoice_stamp_data") || null;
+      const cachedSignature = localStorage.getItem("gns_invoice_signature_data") || null;
       const data = {
         company_name: "",
         legal_name: "",
@@ -111,6 +115,8 @@ function CompanyProfileSection() {
         country: "India",
         pincode: "",
         logo_url: res.data?.logo_url || cachedLogo || null,
+        stamp_url: res.data?.stamp_url || cachedStamp || null,
+        signature_url: res.data?.signature_url || cachedSignature || null,
         ...(res.data || {}),
       };
       if (res.data?.logo_url) {
@@ -118,7 +124,19 @@ function CompanyProfileSection() {
           localStorage.setItem("smrt-company-logo", res.data.logo_url);
         } catch {}
       }
+      if (data.stamp_url) {
+        try {
+          localStorage.setItem("gns_invoice_stamp_data", data.stamp_url);
+        } catch {}
+      }
+      if (data.signature_url) {
+        try {
+          localStorage.setItem("gns_invoice_signature_data", data.signature_url);
+        } catch {}
+      }
       data.logo_url = data.logo_url || cachedLogo || null;
+      data.stamp_url = data.stamp_url || cachedStamp || null;
+      data.signature_url = data.signature_url || cachedSignature || null;
       data.country = data.country || regional.country || "India";
       data.landmark = data.landmark || "";
       data.timezone = data.timezone || regional.timezone || "Asia/Kolkata";

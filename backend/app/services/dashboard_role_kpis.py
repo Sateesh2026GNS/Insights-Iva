@@ -57,27 +57,41 @@ def _kpi(
 
 
 def resolve_dashboard_profile(user: User | None) -> str:
-    """Map authenticated user to one of the 7 dashboard profiles (backend-enforced)."""
+    """Map authenticated user to one of the dashboard profiles (backend-enforced)."""
     if not user:
         return "operator"
 
     from app.core.permissions import get_role_names, user_is_admin
 
-    if user_is_admin(user):
+    active = getattr(user, "active_role", None)
+    if active:
+        roles = [active.lower().strip()]
+    elif user_is_admin(user):
         return "admin"
+    else:
+        roles = [r.lower().strip() for r in get_role_names(user)]
 
-    roles = set(get_role_names(user))
     # Priority matches business ownership when a user has multiple roles.
     ordered = [
-        ("Sales Manager", "sales"),
-        ("Production Manager", "production"),
-        ("Store Manager", "store"),
-        ("HR Manager", "admin"),
-        ("Accountant", "accountant"),
-        ("Operator", "operator"),
+        ("operator", "operator"),
+        ("sales manager", "sales"),
+        ("sales", "sales"),
+        ("production manager", "production"),
+        ("plant manager", "production"),
+        ("operations manager", "production"),
+        ("store manager", "store"),
+        ("inventory manager", "store"),
+        ("warehouse manager", "store"),
+        ("purchase manager", "store"),
+        ("procurement manager", "store"),
+        ("accountant", "accountant"),
+        ("finance manager", "accountant"),
+        ("billing", "accountant"),
+        ("admin", "admin"),
+        ("hr manager", "admin"),
     ]
-    for role_name, profile in ordered:
-        if role_name in roles:
+    for target_role, profile in ordered:
+        if any(target_role in r for r in roles):
             return profile
     return "admin"
 

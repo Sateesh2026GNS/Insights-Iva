@@ -1627,53 +1627,61 @@ table > tbody > tr:first-child:has(th) {
   background-color: transparent;
 }
 .inventory-table-scroll,
-.raw-materials-table-scroll {
+.raw-materials-table-scroll,
+.ui-table-wrap--scroll {
   overflow-x: auto;
   overflow-y: visible;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
-  scrollbar-color: rgba(100, 116, 139, 0.55) var(--color-surface-muted);
+  scrollbar-color: rgba(100, 116, 139, 0.45) var(--color-surface-muted);
 }
 .inventory-table-scroll::-webkit-scrollbar,
-.raw-materials-table-scroll::-webkit-scrollbar {
-  height: 10px;
+.raw-materials-table-scroll::-webkit-scrollbar,
+.ui-table-wrap--scroll::-webkit-scrollbar {
+  height: 8px;
 }
 .inventory-table-scroll::-webkit-scrollbar-track,
-.raw-materials-table-scroll::-webkit-scrollbar-track {
+.raw-materials-table-scroll::-webkit-scrollbar-track,
+.ui-table-wrap--scroll::-webkit-scrollbar-track {
   margin: 0 4px;
   background: var(--color-surface-muted);
   border-radius: 999px;
 }
 .inventory-table-scroll::-webkit-scrollbar-thumb,
-.raw-materials-table-scroll::-webkit-scrollbar-thumb {
-  background: rgba(100, 116, 139, 0.55);
+.raw-materials-table-scroll::-webkit-scrollbar-thumb,
+.ui-table-wrap--scroll::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.45);
   border-radius: 999px;
 }
 .inventory-table-scroll::-webkit-scrollbar-thumb:hover,
-.raw-materials-table-scroll::-webkit-scrollbar-thumb:hover {
+.raw-materials-table-scroll::-webkit-scrollbar-thumb:hover,
+.ui-table-wrap--scroll::-webkit-scrollbar-thumb:hover {
   background: rgba(71, 85, 105, 0.75);
 }
 .inventory-table-scroll .ui-table-wrap,
 .raw-materials-table-scroll .ui-table-wrap {
-  overflow: visible;
+  overflow-x: auto;
+  overflow-y: visible;
   border: none;
   border-radius: 0;
   background: var(--color-table-bg);
 }
-.inventory-table-scroll--materials .ui-table-wrap table,
-.inventory-table-scroll--finished-goods .ui-table-wrap table,
-.raw-materials-table-scroll .ui-table-wrap table {
-  min-width: 1280px;
+.inventory-table-scroll--materials table,
+.raw-materials-table-scroll table {
+  min-width: 960px;
 }
-.inventory-table-scroll--transfer .ui-table-wrap table,
-.inventory-table-scroll--adjustment .ui-table-wrap table {
-  min-width: 1100px;
+.inventory-table-scroll--finished-goods table {
+  min-width: 960px;
 }
-.inventory-table-scroll--ledger .ui-table-wrap table {
-  min-width: 1400px;
+.inventory-table-scroll--transfer table,
+.inventory-table-scroll--adjustment table {
+  min-width: 900px;
 }
-.inventory-table-scroll--warehouses .ui-table-wrap table {
-  min-width: 1200px;
+.inventory-table-scroll--ledger table {
+  min-width: 1050px;
+}
+.inventory-table-scroll--warehouses table {
+  min-width: 850px;
 }
 .planning-table-panel {
   min-width: 0;

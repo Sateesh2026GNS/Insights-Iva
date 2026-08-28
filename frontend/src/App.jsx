@@ -74,6 +74,8 @@ export default function App() {
     /^\/sales\/payment-receipts\/[^/]+\/edit$/.test(location.pathname) ||
     location.pathname === "/sales/proforma-invoices/create" ||
     /^\/sales\/proforma-invoices\/[^/]+\/edit$/.test(location.pathname) ||
+    location.pathname === "/sales/export-proforma-invoices/create" ||
+    /^\/sales\/export-proforma-invoices\/[^/]+\/edit$/.test(location.pathname) ||
     location.pathname === "/sales/export-invoices/create" ||
     /^\/sales\/export-invoices\/[^/]+\/edit$/.test(location.pathname) ||
     location.pathname === "/sales/delivery-challans/create" ||

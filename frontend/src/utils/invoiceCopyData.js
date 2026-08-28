@@ -195,17 +195,47 @@ export function mapDetailToInvoiceCopy(detail, companySettings = {}) {
   const ackNoVal = inv.ack_no || (typeof window !== "undefined" ? localStorage.getItem("gns_invoice_ack_no") : "") || "";
   const ackDateVal = formatDate(inv.ack_date) || (typeof window !== "undefined" ? localStorage.getItem("gns_invoice_ack_date") : "") || "";
 
+  const stampVal =
+    inv.stamp_url ||
+    companySettings.stamp_url ||
+    (typeof window !== "undefined" ? localStorage.getItem("gns_invoice_stamp_data") : null);
+  const signatureVal =
+    inv.signature_url ||
+    companySettings.signature_url ||
+    (typeof window !== "undefined" ? localStorage.getItem("gns_invoice_signature_data") : null);
+
+  const docType = String(inv.document_type || "").toLowerCase();
+  let documentTitle = "TAX INVOICE";
+  if (docType === "proforma") {
+    documentTitle = "PROFORMA INVOICE";
+  } else if (docType === "export_proforma") {
+    documentTitle = "EXPORT PROFORMA INVOICE";
+  } else if (docType === "debit_note") {
+    documentTitle = "DEBIT NOTE";
+  } else if (docType === "credit_note") {
+    documentTitle = "CREDIT NOTE";
+  } else if (docType === "export" || docType === "export_invoice") {
+    documentTitle = "EXPORT INVOICE";
+  }
+
   return {
-    title: "TAX INVOICE",
+    title: documentTitle,
+    doc_type: docType || "invoice",
     tax_mode: taxMode,
-    eInvoice: Boolean(irnVal || companySettings.e_invoice_enabled),
-    e_invoice_enabled: Boolean(irnVal || companySettings.e_invoice_enabled),
+    eInvoice: docType.includes("proforma") ? false : Boolean(irnVal || companySettings.e_invoice_enabled),
+    e_invoice_enabled: docType.includes("proforma") ? false : Boolean(irnVal || companySettings.e_invoice_enabled),
     irn: irnVal,
     ack_no: ackNoVal,
     ack_date: ackDateVal,
+    stamp_url: stampVal,
+    signature_url: signatureVal,
     seller: {
       name: companySettings.company_name || companySettings.name || "Insights Iva",
       logo: companySettings.logo_url || "",
+      stamp: stampVal || "",
+      stamp_url: stampVal || "",
+      signature: signatureVal || "",
+      signature_url: signatureVal || "",
       tagline: companySettings.tagline || "",
       address: [companySettings.address_line1, companySettings.address_line2, companySettings.city, companySettings.state, companySettings.pincode].filter(Boolean).join(", ") || "India",
       gstin: companySettings.gstin || companySettings.gst_number || "",

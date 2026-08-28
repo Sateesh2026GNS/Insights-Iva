@@ -725,21 +725,20 @@ export default function StockLedger() {
           </Button>
         </div>
 
-        <div className="inventory-table-scroll inventory-table-scroll--ledger rounded-lg border border-[var(--color-border-soft)]">
-          <DataTable
-            columns={columns}
-            data={filtered}
-            showSearch={false}
-            pageSize={10}
-            emptyState={
-              <EmptyState
-                icon="chart"
-                title="No movements found"
-                description="Stock ledger entries appear when stock is received, issued, transferred, or adjusted."
-              />
-            }
-          />
-        </div>
+        <DataTable
+          columns={columns}
+          data={filtered}
+          showSearch={false}
+          pageSize={10}
+          wrapClassName="inventory-table-scroll--ledger rounded-lg border border-[var(--color-border-soft)]"
+          emptyState={
+            <EmptyState
+              icon="chart"
+              title="No movements found"
+              description="Stock ledger entries appear when stock is received, issued, transferred, or adjusted."
+            />
+          }
+        />
       </div>
 
       <RecordDetailModal

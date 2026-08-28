@@ -10,8 +10,8 @@ export default function AppRoutes() {
       <Route path="/landing" element={<P.Landing />} />
       <Route path="/login" element={<P.Login />} />
       <Route path="/register" element={<Navigate to="/login" replace />} />
-      <Route path="/gns-admin/login" element={<P.SuperAdminLogin />} />
-      <Route path="/gns-admin/verify-otp" element={<P.SuperAdminVerifyOtp />} />
+      <Route path="/gns-admin/login" element={<Navigate to="/login" replace />} />
+      <Route path="/gns-admin/verify-otp" element={<Navigate to="/login" replace />} />
       <Route path="/gns-admin" element={<P.SuperAdminDashboard />} />
       <Route path="/gns-admin/companies/new" element={<P.CreateCompany />} />
       <Route path="/gns-admin/companies/:tenantId" element={<P.CompanyDetail />} />
@@ -363,6 +363,14 @@ export default function AppRoutes() {
         }
       />
       <Route
+        path="/sales/quotations/:id/copy"
+        element={
+          <ProtectedRoute>
+            <P.QuotationCopyPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/sales/dispatch"
         element={
           <ProtectedRoute>
@@ -545,15 +553,25 @@ export default function AppRoutes() {
       />
       <Route path="/sales/payment-receipts" element={<ProtectedRoute><P.PaymentReceipts /></ProtectedRoute>} />
       <Route path="/sales/payment-receipts/create" element={<ProtectedRoute><P.PaymentReceiptForm /></ProtectedRoute>} />
+      <Route path="/sales/payment-receipts/:id" element={<ProtectedRoute><P.PaymentReceiptCopyPage /></ProtectedRoute>} />
+      <Route path="/sales/payment-receipts/:id/view" element={<ProtectedRoute><P.PaymentReceiptCopyPage /></ProtectedRoute>} />
+      <Route path="/sales/payment-receipts/:id/copy" element={<ProtectedRoute><P.PaymentReceiptCopyPage /></ProtectedRoute>} />
       <Route path="/sales/payment-receipts/:id/edit" element={<ProtectedRoute><P.PaymentReceiptForm /></ProtectedRoute>} />
       <Route path="/sales/refund-vouchers" element={<ProtectedRoute><P.RefundVouchers /></ProtectedRoute>} />
       <Route path="/sales/proforma-invoices" element={<ProtectedRoute><P.ProformaInvoices /></ProtectedRoute>} />
       <Route path="/sales/proforma-invoices/create" element={<ProtectedRoute><P.ProformaInvoiceForm /></ProtectedRoute>} />
+      <Route path="/sales/proforma-invoices/:id" element={<ProtectedRoute><P.InvoiceCopyPage /></ProtectedRoute>} />
+      <Route path="/sales/proforma-invoices/:id/copy" element={<ProtectedRoute><P.InvoiceCopyPage /></ProtectedRoute>} />
       <Route path="/sales/proforma-invoices/:id/edit" element={<ProtectedRoute><P.ProformaInvoiceForm /></ProtectedRoute>} />
       <Route path="/sales/export-invoices" element={<ProtectedRoute><P.ExportInvoices /></ProtectedRoute>} />
       <Route path="/sales/export-invoices/create" element={<ProtectedRoute><P.ExportInvoiceForm /></ProtectedRoute>} />
       <Route path="/sales/export-invoices/:id/edit" element={<ProtectedRoute><P.ExportInvoiceForm /></ProtectedRoute>} />
+      <Route path="/sales/export-invoices/:id" element={<ProtectedRoute><P.InvoiceCopyPage /></ProtectedRoute>} />
+      <Route path="/sales/export-invoices/:id/copy" element={<ProtectedRoute><P.InvoiceCopyPage /></ProtectedRoute>} />
       <Route path="/sales/export-proforma-invoices" element={<ProtectedRoute><P.ProformaInvoices /></ProtectedRoute>} />
+      <Route path="/sales/export-proforma-invoices/:id" element={<ProtectedRoute><P.InvoiceCopyPage /></ProtectedRoute>} />
+      <Route path="/sales/export-proforma-invoices/:id/copy" element={<ProtectedRoute><P.InvoiceCopyPage /></ProtectedRoute>} />
+      <Route path="/sales/export-proforma-invoices/:id/edit" element={<ProtectedRoute><P.ProformaInvoiceForm /></ProtectedRoute>} />
       <Route path="/sales/delivery-challans" element={<ProtectedRoute><P.DeliveryChallans /></ProtectedRoute>} />
       <Route path="/sales/delivery-challans/create" element={<ProtectedRoute><P.DeliveryChallanForm /></ProtectedRoute>} />
       <Route path="/sales/delivery-challans/:id/edit" element={<ProtectedRoute><P.DeliveryChallanForm /></ProtectedRoute>} />

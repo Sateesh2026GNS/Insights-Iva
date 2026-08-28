@@ -205,13 +205,6 @@ export default function Login() {
                   {loading ? "Signing in..." : "SIGN IN"}
                 </Button>
               </form>
-
-              <p className="mt-4 text-center text-xs text-gray-500">
-                GNS Super Admin?{" "}
-                <Link to="/gns-admin/login" className="font-medium text-teal-600 hover:underline">
-                  Admin Portal
-                </Link>
-              </p>
             </div>
 
             <AuthSlider

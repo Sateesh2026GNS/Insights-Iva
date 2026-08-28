@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Calendar, ChevronLeft, ChevronRight, Filter, ListFilter, Plus, Receipt, Search, X } from "lucide-react";
 
@@ -12,6 +12,7 @@ import usePageRefresh from "../../hooks/usePageRefresh";
 import { deletePayment, getInvoicesV2, getPayments } from "../../api/salesApi";
 import { formatInr } from "../../data/salesMasterData";
 import { apiErrorMessage } from "../../utils/apiError";
+import ReceiptDetailModal from "../../components/sales/ReceiptDetailModal";
 
 const ACCENT = "var(--color-action-teal)"; /* #0F6D84 */
 const PAGE_SIZES = [10, 20, 50];
@@ -99,17 +100,17 @@ function SummaryTab({ label, count, amount, active, onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className={`min-w-0 flex-1 border-b-[3px] px-4 py-3.5 text-left transition ${
+      className={`min-w-0 flex-1 border-b-[3px] px-4 py-3.5 text-left transition duration-150 cursor-pointer ${
         active
           ? "border-[var(--color-primary)] bg-[var(--color-surface)] text-[var(--color-primary)]"
-          : "border-transparent bg-transparent text-[var(--color-text-muted)] hover:bg-[var(--color-surface)]/70"
+          : "border-transparent bg-transparent text-[var(--color-text-muted)] hover:bg-[var(--color-surface)]/80 hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
       }`}
     >
-      <p className={`text-[13px] font-medium ${active ? "" : "text-[var(--color-text-muted)]"}`}>
+      <p className={`text-[13px] font-medium transition-colors ${active ? "" : "text-[var(--color-text-muted)]"}`}>
         {label} <span className={active ? "opacity-70" : "text-[#a0a0ab]"}>({count})</span>
       </p>
       <p
-        className={`mt-1 text-[18px] font-bold tabular-nums ${
+        className={`mt-1 text-[18px] font-bold tabular-nums transition-colors ${
           active ? "text-[var(--color-primary)]" : "text-[var(--color-text)]"
         }`}
       >
@@ -135,6 +136,13 @@ function parseReceiptMeta(notes) {
   return {};
 }
 
+function fmtDisplayDate(iso) {
+  if (!iso) return "";
+  const [y, m, d] = String(iso).slice(0, 10).split("-");
+  if (!y || !m || !d) return String(iso).slice(0, 10);
+  return `${d}/${m}/${y}`;
+}
+
 export default function PaymentReceipts() {
   const { addToast } = useToast();
   const tenantId = useTenantId();
@@ -144,6 +152,27 @@ export default function PaymentReceipts() {
   const [search, setSearch] = useState("");
   const [dateFrom, setDateFrom] = useState("2026-04-01");
   const [dateTo, setDateTo] = useState("2027-03-31");
+  const dateFromRef = useRef(null);
+  const dateToRef = useRef(null);
+
+  const openDateFrom = () => {
+    if (typeof dateFromRef.current?.showPicker === "function") {
+      dateFromRef.current.showPicker();
+    } else {
+      dateFromRef.current?.focus();
+      dateFromRef.current?.click();
+    }
+  };
+
+  const openDateTo = () => {
+    if (typeof dateToRef.current?.showPicker === "function") {
+      dateToRef.current.showPicker();
+    } else {
+      dateToRef.current?.focus();
+      dateToRef.current?.click();
+    }
+  };
+
   const [showFilters, setShowFilters] = useState(false);
   const [showSort, setShowSort] = useState(false);
   const [sortId, setSortId] = useState("date_desc");
@@ -151,6 +180,7 @@ export default function PaymentReceipts() {
   const [pageSize, setPageSize] = useState(20);
   const [draftFilters, setDraftFilters] = useState(EMPTY_FILTERS);
   const [filters, setFilters] = useState(EMPTY_FILTERS);
+  const [selectedReceipt, setSelectedReceipt] = useState(null);
 
   const load = useCallback(async (isRefresh = false) => {
     if (!isRefresh) setLoading(true);
@@ -172,8 +202,19 @@ export default function PaymentReceipts() {
       const enriched = payments.map((p) => {
         const inv = invMap[String(p.invoice_id)] || {};
         const meta = parseReceiptMeta(p.notes);
+        const invTotal = Number(inv.amount ?? inv.grand_total ?? inv.total_amount ?? 0);
+        const invPaid = Number(inv.amount_paid ?? 0);
+        const invPending =
+          Number(inv.amount_due ?? inv.pending_amount ?? inv.balance) ||
+          Math.max(0, invTotal - invPaid);
+
         return {
           id: p.id,
+          invoice_id: p.invoice_id || null,
+          invoice_number: inv.invoice_number || (p.invoice_id ? `INV-${p.invoice_id}` : null),
+          invoice_total: invTotal,
+          invoice_pending: invPending,
+          invoice_paid: invPaid,
           receipt_number: meta.receipt_number || `RCPT-${p.id}`,
           payment_date: p.payment_date,
           party_name: meta.party_name || inv.customer_name || inv.buyer_name || "—",
@@ -291,36 +332,89 @@ export default function PaymentReceipts() {
         </div>
       </div>
 
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <SearchBar value={search} onChange={setSearch} placeholder="Search" className="w-full" />
-        <div className="flex flex-wrap items-center gap-2.5">
-          <div className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-[13px] text-[var(--color-text-secondary)] shadow-sm">
-            <Calendar className="h-4 w-4 shrink-0 text-[var(--color-text-faint)]" />
+      {/* Row 1: Date Range, Total Unused & Record Payment */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="inline-flex items-center gap-3 rounded-full bg-[var(--color-surface)] px-4 py-2.5 text-[13px] text-[var(--color-text-secondary)] shadow-sm shadow-[#00000010] border border-[var(--color-border-soft)]">
+            <button
+              type="button"
+              onClick={openDateFrom}
+              className="flex items-center justify-center text-[var(--color-text-muted)] hover:text-[#0f6d84] transition-colors cursor-pointer"
+              aria-label="Open start date picker"
+            >
+              <Calendar className="h-5 w-5" />
+            </button>
             <input
+              ref={dateFromRef}
               type="date"
               value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
-              className="w-[118px] border-0 bg-transparent p-0 text-[13px] focus:outline-none"
+              onChange={(e) => {
+                setDateFrom(e.target.value);
+                setPage(1);
+              }}
+              className="sr-only"
             />
-            <span className="text-[var(--color-text-faint)]">→</span>
+            <button
+              type="button"
+              onClick={openDateFrom}
+              className="text-[14px] font-medium text-[#2c2b3d] dark:text-slate-100 hover:text-[#0f6d84] transition-colors cursor-pointer"
+              title="Click to select start date"
+            >
+              {fmtDisplayDate(dateFrom) || "Start Date"}
+            </button>
+            <span className="text-[var(--color-text-faint)] select-none">→</span>
+            <button
+              type="button"
+              onClick={openDateTo}
+              className="text-[14px] font-medium text-[#2c2b3d] dark:text-slate-100 hover:text-[#0f6d84] transition-colors cursor-pointer"
+              title="Click to select end date"
+            >
+              {fmtDisplayDate(dateTo) || "End Date"}
+            </button>
             <input
+              ref={dateToRef}
               type="date"
               value={dateTo}
-              onChange={(e) => setDateTo(e.target.value)}
-              className="w-[118px] border-0 bg-transparent p-0 text-[13px] focus:outline-none"
+              onChange={(e) => {
+                setDateTo(e.target.value);
+                setPage(1);
+              }}
+              className="sr-only"
             />
+            <button
+              type="button"
+              onClick={openDateTo}
+              className="flex items-center justify-center text-[var(--color-text-muted)] hover:text-[#0f6d84] transition-colors cursor-pointer"
+              aria-label="Open end date picker"
+            >
+              <Calendar className="h-5 w-5" />
+            </button>
           </div>
-          <span className="text-[13px] font-medium text-[var(--color-text-secondary)]">
-            Total Unused:{" "}
-            <span className="tabular-nums text-[var(--color-text)]">{formatInr(totalUnused)}</span>
-          </span>
+          <div className="inline-flex items-center rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-[13px] font-medium text-[var(--color-text-secondary)] shadow-sm">
+            Total Unused:&nbsp;
+            <span className="font-semibold text-[var(--color-text)] tabular-nums">{formatInr(totalUnused)}</span>
+          </div>
+        </div>
+        <Button
+          variant="add"
+          to="/sales/payment-receipts/create"
+          leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}
+        >
+          Record Payment
+        </Button>
+      </div>
+
+      {/* Row 2: Search Bar & Filters/Sort */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <SearchBar value={search} onChange={setSearch} placeholder="Search" className="w-full" />
+        <div className="flex shrink-0 items-center gap-2">
           <button
             type="button"
             onClick={() => {
               setDraftFilters(filters);
               setShowFilters(true);
             }}
-            className="inline-flex items-center gap-2 rounded-lg bg-[var(--color-surface-muted)] px-3.5 py-2 text-[13px] font-medium text-[var(--color-text-secondary)]"
+            className="inline-flex items-center gap-2 rounded-lg bg-[var(--color-surface-muted)] px-3.5 py-2 text-[13px] font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"
           >
             <Filter className="h-4 w-4" /> Filters
           </button>
@@ -328,7 +422,7 @@ export default function PaymentReceipts() {
             <button
               type="button"
               onClick={() => setShowSort((v) => !v)}
-              className="inline-flex items-center gap-2 rounded-lg bg-[var(--color-surface-muted)] px-3.5 py-2 text-[13px] font-medium text-[var(--color-text-secondary)]"
+              className="inline-flex items-center gap-2 rounded-lg bg-[var(--color-surface-muted)] px-3.5 py-2 text-[13px] font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"
             >
               <ListFilter className="h-4 w-4" /> Sort by
             </button>
@@ -360,13 +454,6 @@ export default function PaymentReceipts() {
               </>
             ) : null}
           </div>
-          <Button
-            variant="add"
-            to="/sales/payment-receipts/create"
-            leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}
-          >
-            Record Payment
-          </Button>
         </div>
       </div>
 
@@ -405,26 +492,57 @@ export default function PaymentReceipts() {
                 </tr>
               ) : (
                 pageRows.map((r, rowIndex) => (
-                  <tr key={r.id} className="hover:bg-[var(--color-table-row-hover)]">
+                  <tr
+                    key={r.id}
+                    className="hover:bg-[var(--color-table-row-hover)] cursor-pointer"
+                    onClick={() => setSelectedReceipt(r)}
+                  >
                     <SerialNumberCell
                       rowIndex={rowIndex}
                       page={page}
                       pageSize={pageSize}
                       className="border-t border-r border-[var(--color-table-border)]"
                     />
-                    <td className="border-t border-r border-[var(--color-table-border)] px-4 py-3 font-semibold text-[var(--color-primary)]">{r.receipt_number}</td>
+                    <td className="border-t border-r border-[var(--color-table-border)] px-4 py-3 font-semibold text-[var(--color-primary)]">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedReceipt(r);
+                        }}
+                        className="hover:underline text-left font-semibold text-[var(--color-primary)]"
+                      >
+                        {r.receipt_number}
+                      </button>
+                    </td>
                     <td className="border-t border-r border-[var(--color-table-border)] px-4 py-3 text-[var(--color-text-secondary)]">{fmtDate(r.payment_date)}</td>
-                    <td className="border-t border-r border-[var(--color-table-border)] px-4 py-3">{r.party_name}</td>
-                    <td className="border-t border-r border-[var(--color-table-border)] px-4 py-3 tabular-nums font-medium">{formatInr(r.amount)}</td>
+                    <td className="border-t border-r border-[var(--color-table-border)] px-4 py-3 font-medium">{r.party_name}</td>
+                    <td className="border-t border-r border-[var(--color-table-border)] px-4 py-3 tabular-nums font-semibold">{formatInr(r.amount)}</td>
                     <td className="border-t border-r border-[var(--color-table-border)] px-4 py-3">{modeLabel(r.method)}</td>
-                    <td className="border-t border-r border-[var(--color-table-border)] px-4 py-3 capitalize">{r.status}</td>
-                    <td className="border-t border-r border-[var(--color-table-border)] px-4 py-3">
+                    <td className="border-t border-r border-[var(--color-table-border)] px-4 py-3 capitalize">
+                      <span className={`inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
+                        r.status?.toLowerCase() === "advance"
+                          ? "bg-amber-100 text-amber-800"
+                          : "bg-emerald-100 text-emerald-800"
+                      }`}>
+                        {r.status}
+                      </span>
+                    </td>
+                    <td className="border-t border-r border-[var(--color-table-border)] px-4 py-3" onClick={(e) => e.stopPropagation()}>
                       <div className="flex flex-wrap gap-2">
-                        <Link
-                          to={`/sales/payment-receipts/${r.id}/edit`}
+                        <button
+                          type="button"
+                          onClick={() => setSelectedReceipt(r)}
                           className="text-[12px] font-semibold text-[var(--color-primary)] hover:underline"
                         >
-                          View
+                          Preview
+                        </button>
+                        <Link
+                          to={`/sales/payment-receipts/${r.id}`}
+                          state={{ receipt: r }}
+                          className="text-[12px] font-semibold text-[#036f71] hover:underline"
+                        >
+                          Full Page
                         </Link>
                         <Link
                           to={`/sales/payment-receipts/${r.id}/edit`}
@@ -583,6 +701,12 @@ export default function PaymentReceipts() {
           </aside>
         </div>
       ) : null}
+
+      <ReceiptDetailModal
+        receipt={selectedReceipt}
+        onClose={() => setSelectedReceipt(null)}
+        onDelete={handleDelete}
+      />
     </div>
   );
 }

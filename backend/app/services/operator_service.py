@@ -86,6 +86,8 @@ class OperatorService:
         self.machines = MachineRepository(db, tenant_id)
         self.products = ProductRepository(db, tenant_id)
         self.bom = BomRepository(db, tenant_id)
+        self.batches = BatchRepository(db, tenant_id)
+        self.plans = ProductionPlanRepository(db, tenant_id)
 
     def _get_po(self, po_id: int | None):
         if not po_id:
@@ -108,8 +110,6 @@ class OperatorService:
                 Product.tenant_id == self.tenant_id,
             )
         ).first()
-        self.batches = BatchRepository(db, tenant_id)
-        self.plans = ProductionPlanRepository(db, tenant_id)
 
     # ── Dashboard ──────────────────────────────────────────────────────────
 

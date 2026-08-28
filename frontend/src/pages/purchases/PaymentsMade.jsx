@@ -68,17 +68,17 @@ function SummaryTab({ label, count, amount, active, onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className={`min-w-0 flex-1 border-b-[3px] px-4 py-3.5 text-left transition ${
+      className={`min-w-0 flex-1 border-b-[3px] px-4 py-3.5 text-left transition duration-150 cursor-pointer ${
         active
           ? "border-[var(--color-success)] bg-[var(--color-surface)] text-[var(--color-success)]"
-          : "border-transparent bg-transparent text-[var(--color-text-muted)] hover:bg-[var(--color-surface)]/70"
+          : "border-transparent bg-transparent text-[var(--color-text-muted)] hover:bg-[var(--color-surface)]/80 hover:border-[var(--color-success)] hover:text-[var(--color-success)]"
       }`}
     >
-      <p className={`text-[13px] font-medium ${active ? "" : "text-[var(--color-text-muted)]"}`}>
+      <p className={`text-[13px] font-medium transition-colors ${active ? "" : "text-[var(--color-text-muted)]"}`}>
         {label} <span className={active ? "opacity-70" : "text-[#a0a0ab]"}>({count})</span>
       </p>
       <p
-        className={`mt-1 text-[18px] font-bold tabular-nums ${
+        className={`mt-1 text-[18px] font-bold tabular-nums transition-colors ${
           active ? "text-[var(--color-success)]" : "text-[var(--color-text)]"
         }`}
       >

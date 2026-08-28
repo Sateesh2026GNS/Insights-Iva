@@ -533,25 +533,26 @@ export default function RawMaterials() {
           </div>
         </div>
 
-        <div className="inventory-table-scroll inventory-table-scroll--materials rounded-lg border border-[var(--color-border-soft)]">
-          {initialLoading ? (
+        {initialLoading ? (
+          <div className="rounded-lg border border-[var(--color-border-soft)] p-8">
             <Loader label="Loading raw materials…" />
-          ) : (
-            <DataTable
-              columns={columns}
-              data={filtered}
-              showSearch={false}
-              pageSize={10}
-              emptyState={
-                <EmptyState
-                  icon="cube"
-                  title="No raw materials found"
-                  description="Add your first raw material to start tracking stock."
-                />
-              }
-            />
-          )}
-        </div>
+          </div>
+        ) : (
+          <DataTable
+            columns={columns}
+            data={filtered}
+            showSearch={false}
+            pageSize={10}
+            wrapClassName="inventory-table-scroll--materials rounded-lg border border-[var(--color-border-soft)]"
+            emptyState={
+              <EmptyState
+                icon="cube"
+                title="No raw materials found"
+                description="Add your first raw material to start tracking stock."
+              />
+            }
+          />
+        )}
       </div>
 
       {selected ? (
