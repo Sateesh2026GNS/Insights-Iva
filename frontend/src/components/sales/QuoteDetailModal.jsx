@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Download, Mail, Printer, X } from "lucide-react";
 
 import { convertQuotationToSalesOrder, downloadQuotationPdf } from "../../api/salesApi";
@@ -227,14 +227,6 @@ export default function QuoteDetailModal({ quote, onClose, onStatusChange, onCon
           <Button type="button" variant="primary" disabled={converting} loading={converting} onClick={handleConvert}>
             {converting ? "Converting…" : "Convert to Sales Order"}
           </Button>
-          <Link
-            to={`/sales/orders/create?reference=${encodeURIComponent(quote.quote_number || "")}${
-              quote.customer_id ? `&customer_id=${quote.customer_id}` : ""
-            }`}
-            className="rounded-lg border px-4 py-2 text-sm font-semibold text-slate-700"
-          >
-            Create SO manually
-          </Link>
           {quote.status === "draft" && (
             <button
               type="button"

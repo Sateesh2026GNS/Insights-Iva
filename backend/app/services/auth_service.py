@@ -189,7 +189,10 @@ def find_user_by_phone(db: Session, phone: str) -> User | None:
     return None
 
 
-def login_user_by_phone(db: Session, phone: str) -> User:
+def login_user_by_phone(db: Session, phone: str, *, id_token: str | None = None) -> User:
+    from app.utils.firebase_auth import verify_firebase_phone_id_token
+
+    verify_firebase_phone_id_token(id_token or "", phone)
     from app.core.company_email import (
         MSG_ACCOUNT_DEACTIVATED,
         MSG_COMPANY_INACTIVE,

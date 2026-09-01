@@ -40,6 +40,17 @@ export function ToastProvider({ children }) {
       }
     }
 
+    if (type === "error") {
+      const now = Date.now();
+      if (
+        lastErrorRef.current.message === text &&
+        now - lastErrorRef.current.at < 4000
+      ) {
+        return;
+      }
+      lastErrorRef.current = { message: text, at: now };
+    }
+
     const id = Date.now() + Math.random();
     setToasts((prev) => [...prev, { id, message: text, type }]);
     const ttl = type === "error" ? 5000 : 3200;

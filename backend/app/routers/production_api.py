@@ -437,8 +437,9 @@ def work_order_start(
     db: Session = Depends(get_db),
 ):
     _, tenant_id = user_tenant
+    user, _ = user_tenant
     try:
-        return success_response("Work order started", _dump(start_work_order(db, tenant_id, work_order_id)))
+        return success_response("Work order started", _dump(start_work_order(db, tenant_id, work_order_id, user=user)))
     except HTTPException:
         raise
     except SQLAlchemyError as exc:

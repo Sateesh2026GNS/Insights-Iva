@@ -261,7 +261,7 @@ def phone_login(req: PhoneLoginRequest, request: Request, db: Session = Depends(
                 detail=ACCOUNT_LOCKED_MESSAGE,
             )
 
-        authenticated = login_user_by_phone(db, phone)
+        authenticated = login_user_by_phone(db, phone, id_token=req.id_token)
 
         try:
             actual_role = assert_user_has_role(authenticated, req.role)

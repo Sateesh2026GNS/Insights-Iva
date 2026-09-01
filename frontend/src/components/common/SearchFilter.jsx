@@ -5,6 +5,10 @@ import { useTranslation } from "react-i18next";
 export const SEARCH_BAR_WRAP_CLASS = "relative ui-search-wrap min-w-[10rem] flex-1";
 export const SEARCH_BAR_INPUT_CLASS = "ui-input w-full !rounded-full !pl-10";
 
+/** Navbar global search — same ui-input styling, wider cap */
+export const NAVBAR_SEARCH_WRAP_CLASS = "relative ui-search-wrap navbar-search-wrap min-w-0 w-full flex-1";
+export const NAVBAR_SEARCH_INPUT_CLASS = "ui-input global-search-input w-full !rounded-full !pl-10";
+
 /** Compact variant — dropdowns, forms, filters, autocomplete */
 export const SEARCH_BAR_COMPACT_WRAP_CLASS = "relative ui-search-wrap ui-search-wrap--compact min-w-0 flex-none";
 export const SEARCH_BAR_COMPACT_INPUT_CLASS =
@@ -59,6 +63,7 @@ export function SearchBar({
   role,
   "aria-expanded": ariaExpanded,
   "aria-controls": ariaControls,
+  "aria-activedescendant": ariaActivedescendant,
   "aria-label": ariaLabel,
 }) {
   const { t } = useTranslation();
@@ -96,6 +101,7 @@ export function SearchBar({
         role={role}
         aria-expanded={ariaExpanded}
         aria-controls={ariaControls}
+        aria-activedescendant={ariaActivedescendant}
         className={`${preset.input}${hasValue && clearable ? preset.clearPadding : ""}${
           inputClassName ? ` ${inputClassName}` : ""
         }`}

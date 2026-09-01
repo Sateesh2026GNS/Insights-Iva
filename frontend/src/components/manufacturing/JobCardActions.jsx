@@ -5,10 +5,10 @@ export default function JobCardActions({ actions = [], loading, onAction, labels
   if (!visible.length) return null;
 
   const labels = {
-    confirm_inventory: "Confirm Materials Available",
+    confirm_inventory: "Check Stock / Confirm Materials",
     hold_order: "Hold Order",
-    raise_material_request: "Material Shortage / Raise PR",
-    issue_materials: "Issue Materials",
+    raise_material_request: "Record Shortage",
+    issue_materials: "Issue Material",
     partial_issue: "Partial Issue",
     hold: "Hold",
     send_to_production: "Send to Production",

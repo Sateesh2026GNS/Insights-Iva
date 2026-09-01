@@ -85,7 +85,6 @@ export const BillDetail = lazy(() => import("../pages/sales/BillDetail"));
 export const CreateBill = lazy(() => import("../pages/sales/CreateBill"));
 export const SalesOrders = lazy(() => import("../pages/sales/SalesOrders"));
 export const SalesOrderDetail = lazy(() => import("../pages/sales/SalesOrderDetail"));
-export const CreateSalesOrder = lazy(() => import("../pages/sales/CreateSalesOrder"));
 export const Customers = lazy(() => import("../pages/sales/Customers"));
 export const CreateCustomer = lazy(() => import("../pages/sales/CreateCustomer"));
 export const BulkImportBuyer = lazy(() => import("../pages/sales/BulkImportBuyer"));
@@ -221,8 +220,9 @@ export const CreateProduct = lazy(() => import("../pages/masters/CreateProduct")
 export const BomMaster = lazy(() => import("../pages/masters/BomMaster"));
 export const DepartmentManagement = lazy(() => import("../pages/masters/DepartmentManagement"));
 export const StageJobCardPage = lazy(() => import("../pages/manufacturing/StageJobCardPage"));
-export const RoleWorkflowBoard = lazy(() => import("../pages/manufacturing/RoleWorkflowBoard"));
+export const JobCardDetailsPage = lazy(() => import("../pages/manufacturing/JobCardDetailsPage"));
 export const SalesJobCardPage = lazy(() => import("../pages/manufacturing/SalesJobCardPage"));
+export const MyJobCards = lazy(() => import("../pages/sales/MyJobCards"));
 export const HRDashboard = lazy(() => import("../pages/hr/HRDashboard"));
 export const HREmployees = lazy(() => import("../pages/hr/Employees"));
 export const HRCreateEmployee = lazy(() => import("../pages/hr/CreateEmployee"));

@@ -932,7 +932,7 @@ export default function ReferenceDashboard() {
     setError(null);
 
     Promise.allSettled([
-      getErpDashboard(),
+      getErpDashboard({ includeManufacturingWorkflow: false }),
       getProductionOrders(),
       getWorkOrders(),
       getMaterialRequests(),
@@ -1180,14 +1180,7 @@ export default function ReferenceDashboard() {
       <div className="ui-page mx-auto max-w-[var(--page-max)] ui-stack">
         {sectionVisible(sections, "kpi") ? <KpiStrip cards={kpiCardsLive} /> : null}
 
-        {sectionVisible(sections, "manufacturing_workflow") && apiData?.manufacturing_workflow ? (
-          <ManufacturingWorkflowHub
-            data={apiData.manufacturing_workflow}
-            onRefresh={async () => {
-              await load(true);
-            }}
-          />
-        ) : null}
+        {sectionVisible(sections, "manufacturing_workflow") ? <ManufacturingWorkflowHub /> : null}
 
         {topRowVisibleCount > 0 && (
           <div className={`grid gap-5 ${topRowGridCls}`}>

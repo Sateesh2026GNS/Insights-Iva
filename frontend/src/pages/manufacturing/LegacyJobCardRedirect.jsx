@@ -15,7 +15,7 @@ export default function LegacyJobCardRedirect() {
 
   useEffect(() => {
     if (!woId) {
-      setTarget("/manufacturing/workflow");
+      setTarget("/production/work-orders");
       return;
     }
 
@@ -36,7 +36,7 @@ export default function LegacyJobCardRedirect() {
           }
         }
       } catch {
-        if (!cancelled) setTarget("/manufacturing/workflow");
+        if (!cancelled) setTarget("/production/work-orders");
       }
     })();
 

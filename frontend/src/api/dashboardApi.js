@@ -8,8 +8,13 @@ function unwrap(res) {
   return res;
 }
 
-export async function getErpDashboard() {
-  return unwrap(await api.get("/api/erp/dashboard"));
+export async function getErpDashboard(options = {}) {
+  const { includeManufacturingWorkflow = true } = options;
+  return unwrap(
+    await api.get("/api/erp/dashboard", {
+      params: { include_manufacturing_workflow: includeManufacturingWorkflow },
+    })
+  );
 }
 
 export async function getDashboardSummary() {

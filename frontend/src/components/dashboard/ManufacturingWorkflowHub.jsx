@@ -1,19 +1,21 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { ChevronDown } from "lucide-react";
 
 import Button from "../common/Button";
-import LiveIndicator from "./LiveIndicator";
+import Loader from "../common/Loader";
 import { useToast } from "../../context/ToastContext";
 import useAuth from "../../hooks/useAuth";
-import { backfillWorkflowStatuses } from "../../api/workflowApi";
+import { backfillWorkflowStatuses, getWorkflowHub } from "../../api/workflowApi";
 import { userHasWorkflowTeam } from "../../config/manufacturingWorkflow";
+import useManufacturingRefresh from "../../hooks/useManufacturingRefresh";
 
 import WorkflowStagePipeline from "../manufacturing/WorkflowStagePipeline";
 
 function WorkflowKpiCard({ label, count, path }) {
   return (
     <Link
-      to={path || "/manufacturing/workflow"}
+      to={path || "/production/work-orders"}
       className="ui-card block p-3 transition hover:border-[var(--color-primary)]/40 hover:shadow-sm"
     >
       <p className="text-[10px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">{label}</p>
@@ -22,7 +24,29 @@ function WorkflowKpiCard({ label, count, path }) {
   );
 }
 
-export default function ManufacturingWorkflowHub({ data, onRefresh }) {
+function LiveToggleButton({ expanded, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-expanded={expanded}
+      aria-controls="live-manufacturing-panel"
+      className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-emerald-200/80 bg-emerald-50 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide text-emerald-700 shadow-sm transition hover:border-emerald-300 hover:bg-emerald-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)] active:scale-[0.98] dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 dark:hover:bg-emerald-900/50"
+    >
+      <span className="relative flex h-2 w-2 shrink-0" aria-hidden>
+        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+        <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+      </span>
+      Live
+      <ChevronDown
+        className={`h-3.5 w-3.5 shrink-0 transition-transform duration-200 ${expanded ? "rotate-180" : ""}`}
+        aria-hidden
+      />
+    </button>
+  );
+}
+
+function ManufacturingWorkflowPanel({ data, onRefresh }) {
   const { user } = useAuth();
   const { addToast } = useToast();
   const [backfilling, setBackfilling] = useState(false);
@@ -33,14 +57,6 @@ export default function ManufacturingWorkflowHub({ data, onRefresh }) {
     () => Object.fromEntries((counts || []).map((c) => [c.key, c.count])),
     [counts]
   );
-
-  useEffect(() => {
-    if (!onRefresh) return undefined;
-    const timer = setInterval(() => {
-      onRefresh().catch(() => {});
-    }, 30_000);
-    return () => clearInterval(timer);
-  }, [onRefresh]);
 
   const runBackfill = async (dryRun = false) => {
     setBackfilling(true);
@@ -62,17 +78,17 @@ export default function ManufacturingWorkflowHub({ data, onRefresh }) {
   };
 
   return (
-    <section className="ui-card space-y-4 p-4">
+    <section id="live-manufacturing-panel" className="ui-card space-y-4 p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <LiveIndicator />
+          <p className="text-sm font-semibold text-[var(--color-text)]">Live Manufacturing Orders</p>
           <p className="mt-1 text-sm text-[var(--color-text-muted)]">
             Live manufacturing orders across all teams — counts from PostgreSQL.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="primary" size="sm" to="/manufacturing/workflow">
-            Open workflow board
+          <Button variant="primary" size="sm" to="/production/work-orders">
+            Open work orders
           </Button>
           {isAdmin ? (
             <>
@@ -111,7 +127,7 @@ export default function ManufacturingWorkflowHub({ data, onRefresh }) {
             {data.live_cards.map((item) => (
               <li key={item.sales_order_id}>
                 <Link
-                  to={`/manufacturing/workflow?order=${item.sales_order_id}`}
+                  to={`/sales/orders/${item.sales_order_id}`}
                   className="block rounded-lg border border-[var(--color-border-muted)] bg-[var(--color-surface)] p-3 hover:border-[var(--color-primary)]/40"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
@@ -151,5 +167,100 @@ export default function ManufacturingWorkflowHub({ data, onRefresh }) {
         </p>
       )}
     </section>
+  );
+}
+
+export default function ManufacturingWorkflowHub() {
+  const [expanded, setExpanded] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState(null);
+
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    setLoadError(null);
+    try {
+      const res = await getWorkflowHub();
+      setData(res?.data ?? res);
+    } catch (err) {
+      setLoadError(
+        err?.response?.data?.detail ||
+          err?.response?.data?.message ||
+          err?.message ||
+          "Failed to load live manufacturing orders."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const toggleExpanded = () => {
+    setExpanded((prev) => {
+      const next = !prev;
+      if (next) setMounted(true);
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    if (!expanded) return undefined;
+    if (!data && !loading) {
+      fetchData();
+    }
+    return undefined;
+  }, [expanded, data, loading, fetchData]);
+
+  useEffect(() => {
+    if (!expanded || !data) return undefined;
+    const timer = setInterval(() => {
+      fetchData().catch(() => {});
+    }, 30_000);
+    return () => clearInterval(timer);
+  }, [expanded, data, fetchData]);
+
+  useManufacturingRefresh(
+    expanded && data ? () => fetchData() : null
+  );
+
+  useEffect(() => {
+    if (expanded || !mounted) return undefined;
+    const timer = setTimeout(() => setMounted(false), 200);
+    return () => clearTimeout(timer);
+  }, [expanded, mounted]);
+
+  return (
+    <div className="space-y-0">
+      <div className="flex justify-end">
+        <LiveToggleButton expanded={expanded} onClick={toggleExpanded} />
+      </div>
+
+      {mounted ? (
+        <div
+          className={`grid transition-[grid-template-rows] duration-200 ease-out ${
+            expanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+          }`}
+        >
+          <div className="overflow-hidden">
+            <div className={`pt-3 ${expanded ? "opacity-100" : "opacity-0"} transition-opacity duration-200`}>
+              {loading && !data ? (
+                <div className="ui-card p-6">
+                  <Loader label="Loading live manufacturing orders…" />
+                </div>
+              ) : loadError ? (
+                <div className="ui-card space-y-3 p-4" role="alert">
+                  <p className="text-sm text-[var(--color-danger)]">{loadError}</p>
+                  <Button variant="outline" size="sm" onClick={fetchData}>
+                    Retry
+                  </Button>
+                </div>
+              ) : data ? (
+                <ManufacturingWorkflowPanel data={data} onRefresh={fetchData} />
+              ) : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </div>
   );
 }

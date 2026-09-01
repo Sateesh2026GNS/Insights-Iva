@@ -17,6 +17,7 @@ import usePageRefresh from "../../hooks/usePageRefresh";
 import { PRIORITIES, SHIFTS } from "../../data/productionPlanningMasterData";
 import AddNewItemModal from "../../components/sales/AddNewItemModal";
 import CreateMachineModal from "../../components/production/CreateMachineModal";
+import { apiErrorMessage } from "../../utils/apiError";
 
 export default function QuickCreateWorkOrder() {
   const tenantId = useTenantId();
@@ -248,62 +249,20 @@ export default function QuickCreateWorkOrder() {
     };
 
     try {
-      await quickCreateWorkOrder(payload).catch(() => null);
-    } catch { /* ignore API error */ }
-
-    // Save to local storage for instant responsiveness
-    const newWO = {
-      id: `wo-${Date.now()}`,
-      work_order_number: woNum,
-      production_order_id: form.production_order_id ? Number(form.production_order_id) : null,
-      product_id: form.product_id,
-      product_name: prodName,
-      customer_name: form.customer_name || "",
-      planned_quantity: qty,
-      produced_quantity: 0,
-      machine_id: form.machine_id || "",
-      machine_name: selectedMachine?.name || selectedMachine?.machine_name || (form.machine_id ? `Machine #${form.machine_id}` : "Unassigned"),
-      operator_name: form.operator_name || "",
-      shift: shiftVal,
-      priority: form.priority || "medium",
-      status: "planned",
-      planned_start: form.planned_start || new Date().toISOString(),
-      planned_end: form.planned_end || new Date().toISOString(),
-      created_at: new Date().toISOString(),
-    };
-
-    try {
-      const storedWOs = localStorage.getItem("smrt_local_work_orders");
-      const localWOs = storedWOs ? JSON.parse(storedWOs) : [];
-      const updatedWOs = [newWO, ...localWOs];
-      localStorage.setItem("smrt_local_work_orders", JSON.stringify(updatedWOs));
-      localStorage.setItem("smrt_work_orders", JSON.stringify(updatedWOs));
-
-      if (form.production_order_id || poId) {
-        const targetPoId = form.production_order_id || poId;
-        const storedPOs = localStorage.getItem("smrt_local_production_orders");
-        if (storedPOs) {
-          const localPOs = JSON.parse(storedPOs);
-          const updatedPOs = localPOs.map((po) => {
-            if (String(po.id) === String(targetPoId) || String(po.order_number) === String(prefilledOrderNumber)) {
-              return {
-                ...po,
-                machine_id: form.machine_id || po.machine_id,
-                machine_name: selectedMachine?.name || selectedMachine?.machine_name || po.machine_name || `Machine #${form.machine_id}`,
-                work_order_number: woNum,
-                status: po.status === "draft" || po.status === "planned" ? "machine_assigned" : po.status,
-              };
-            }
-            return po;
-          });
-          localStorage.setItem("smrt_local_production_orders", JSON.stringify(updatedPOs));
-        }
-      }
-    } catch (e) {}
-
-    addToast(form.production_order_id ? "Machine & raw material allocated to order successfully" : "Work order created successfully", "success");
-    setSaving(false);
-    navigate(form.production_order_id ? "/production/planning" : "/production/work-orders");
+      await quickCreateWorkOrder(payload);
+      addToast(
+        form.production_order_id
+          ? "Machine & raw material allocated to order successfully"
+          : "Work order created successfully",
+        "success"
+      );
+      navigate(form.production_order_id ? "/production/planning" : "/production/work-orders");
+    } catch (err) {
+      setError(apiErrorMessage(err, "Failed to create work order."));
+      addToast(apiErrorMessage(err, "Failed to create work order."), "error");
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (loading) {

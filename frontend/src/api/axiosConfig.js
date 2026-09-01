@@ -4,6 +4,7 @@ import {
   getPageRefreshGeneration,
   isPageRefreshInProgress,
 } from "../utils/pageRefresh";
+import { httpStatusMessage } from "../utils/apiError";
 
 /** Resolve API base URL. Empty string = same-origin (Docker/nginx proxy). */
 export function getApiBaseURL() {
@@ -134,11 +135,10 @@ api.interceptors.response.use(
         window.location.assign("/login");
       }
     } else if (typeof onApiError === "function" && !error.config?.skipGlobalError && !isAuthUrl) {
-      if (error.code === "ERR_NETWORK" || (status && status >= 500)) {
-        const message = error.code === "ERR_NETWORK"
-          ? "Network error - please check your connection."
-          : "Something went wrong. Please try again.";
-        onApiError(message);
+      if (error.code === "ERR_NETWORK" || error.code === "ECONNABORTED" || (status && status >= 500)) {
+        onApiError(httpStatusMessage(error));
+      } else if (status === 403) {
+        onApiError(httpStatusMessage(error, "You don't have permission to perform this action."));
       }
     }
     return Promise.reject(error);

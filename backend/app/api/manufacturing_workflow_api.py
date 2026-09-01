@@ -36,6 +36,7 @@ from app.services.workflow_team_service import (
     operator_resume_production,
     operator_start_production,
     operator_update_production,
+    refresh_pending_material_check_stock,
     submit_material_check,
     submit_quality_check,
     update_packing_dispatch,
@@ -152,7 +153,7 @@ def workflow_team_queue(
 @router.get("/job-cards/my-queue")
 def my_job_card_queue(
     status: str | None = Query(None),
-    limit: int = Query(50, ge=1, le=200),
+    limit: int = Query(50, ge=1, le=500),
     user: User = Depends(require_any_permission(*WORKFLOW_MODULES)),
     db: Session = Depends(get_db),
 ):
@@ -295,19 +296,23 @@ def get_material_check(
     db: Session = Depends(get_db),
 ):
     from sqlalchemy import select
+    from sqlalchemy.orm import selectinload
 
     from app.models.manufacturing_workflow import SalesOrderMaterialCheck
-    from app.services.workflow_team_service import _serialize_material_check
 
     so = get_sales_order_or_404(db, user.tenant_id, order_id)
     mc = db.scalars(
-        select(SalesOrderMaterialCheck).where(
+        select(SalesOrderMaterialCheck)
+        .options(selectinload(SalesOrderMaterialCheck.lines))
+        .where(
             SalesOrderMaterialCheck.sales_order_id == so.id,
             SalesOrderMaterialCheck.tenant_id == user.tenant_id,
         )
     ).first()
     if not mc:
         mc = create_material_check_for_order(db, user.tenant_id, so, commit=True)
+    refresh_pending_material_check_stock(db, user.tenant_id, mc)
+    db.commit()
     return {"sales_order_id": so.id, "workflow_status": so.workflow_status, "material_check": _serialize_material_check(mc)}
 
 

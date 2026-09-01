@@ -6,7 +6,7 @@ describe("shouldShowChatbot", () => {
     expect(shouldShowChatbot({ role: "Operator" }, "/")).toBe(true);
     expect(shouldShowChatbot({ role: "Operator" }, "/production/tasks")).toBe(true);
     expect(shouldShowChatbot({ role: "Operator" }, "/production/dashboard")).toBe(true);
-    expect(shouldShowChatbot({ role: "Operator" }, "/manufacturing/workflow")).toBe(true);
+    expect(shouldShowChatbot({ role: "Operator" }, "/production/work-orders")).toBe(true);
     expect(shouldShowChatbot({ role: "Operator" }, "/factory-monitor/machine-status")).toBe(true);
     expect(shouldShowChatbot({ role: "Operator" }, "/iot/live-operations")).toBe(true);
     expect(shouldShowChatbot({ role: "Operator" }, "/operations")).toBe(true);

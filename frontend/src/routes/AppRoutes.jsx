@@ -1,8 +1,13 @@
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useParams } from "react-router-dom";
 
 import ProtectedRoute from "../components/layout/ProtectedRoute";
 /* Pages are lazy-loaded via lazyPages – see vite.config manualChunks for vendor splits */
 import * as P from "./lazyPages";
+
+function ManufacturingJobCardRedirect() {
+  const { orderId } = useParams();
+  return <Navigate to={`/job-cards/${orderId}`} replace />;
+}
 
 export default function AppRoutes() {
   return (
@@ -60,11 +65,7 @@ export default function AppRoutes() {
       />
       <Route
         path="/production/job-card"
-        element={
-          <ProtectedRoute>
-            <P.LegacyJobCardRedirect />
-          </ProtectedRoute>
-        }
+        element={<Navigate to="/my-job-cards" replace />}
       />
       <Route
         path="/production/operator-jobs"
@@ -458,11 +459,21 @@ export default function AppRoutes() {
           </ProtectedRoute>
         }
       />
+      <Route path="/sales/orders/create" element={<Navigate to="/sales/orders" replace />} />
       <Route
-        path="/sales/orders/create"
+        path="/my-job-cards"
         element={
           <ProtectedRoute>
-            <P.CreateSalesOrder />
+            <P.MyJobCards />
+          </ProtectedRoute>
+        }
+      />
+      <Route path="/sales/job-cards" element={<Navigate to="/my-job-cards" replace />} />
+      <Route
+        path="/job-cards/:orderId"
+        element={
+          <ProtectedRoute>
+            <P.JobCardDetailsPage />
           </ProtectedRoute>
         }
       />
@@ -482,14 +493,7 @@ export default function AppRoutes() {
           </ProtectedRoute>
         }
       />
-      <Route
-        path="/manufacturing/workflow"
-        element={
-          <ProtectedRoute>
-            <P.RoleWorkflowBoard />
-          </ProtectedRoute>
-        }
-      />
+      <Route path="/manufacturing/workflow" element={<Navigate to="/my-job-cards" replace />} />
       <Route
         path="/manufacturing/workflow/order/:orderId/:stage"
         element={
@@ -502,7 +506,7 @@ export default function AppRoutes() {
         path="/manufacturing/job-card/:orderId"
         element={
           <ProtectedRoute>
-            <P.SalesJobCardPage />
+            <ManufacturingJobCardRedirect />
           </ProtectedRoute>
         }
       />
@@ -768,7 +772,7 @@ export default function AppRoutes() {
       <Route path="/hr/incidents/create" element={<ProtectedRoute><P.HRCreateIncident /></ProtectedRoute>} />
       <Route path="/hr/documents" element={<ProtectedRoute><P.HRDocuments /></ProtectedRoute>} />
       <Route path="/hr/settings" element={<ProtectedRoute><P.HRSettings /></ProtectedRoute>} />
-      <Route path="*" element={<P.NotFound />} />
+      <Route path="*" element={<ProtectedRoute><P.NotFound /></ProtectedRoute>} />
     </Routes>
   );
 }

@@ -5,15 +5,18 @@ import { getWorkflowStatusLabel } from "../../config/workflowStages";
 const PRIORITY_STYLES = {
   high: {
     label: "High",
-    className: "border border-rose-400 bg-rose-50 text-rose-600",
+    className:
+      "border border-rose-400/70 bg-rose-50 text-rose-600 dark:bg-rose-950/50 dark:text-rose-300",
   },
   medium: {
     label: "Medium",
-    className: "border border-amber-400 bg-amber-50 text-amber-700",
+    className:
+      "border border-amber-400/70 bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300",
   },
   low: {
     label: "Low",
-    className: "border border-sky-400 bg-sky-50 text-sky-700",
+    className:
+      "border border-emerald-400/70 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300",
   },
 };
 

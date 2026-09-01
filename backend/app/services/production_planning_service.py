@@ -167,6 +167,7 @@ def _to_list_read(db: Session, tenant_id: int, order: ProductionOrder) -> Produc
         customer_name=order.customer_name,
         priority=order.priority or "medium",
         bom_version=order.bom_version,
+        sales_order_id=order.sales_order_id,
         sales_order_number=order.sales_order_number,
         department=order.department,
         shift=order.shift,

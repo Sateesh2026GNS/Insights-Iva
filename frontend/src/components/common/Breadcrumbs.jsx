@@ -1,6 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { ChevronRight, Home } from "lucide-react";
 
+import { isStoreManager } from "../../config/permissions";
 import { findSettingsCategory } from "../../pages/settings/settingsCatalog";
 
 const pathLabels = {
@@ -29,6 +30,7 @@ const pathLabels = {
   leads: "Leads",
   quotations: "Quotations",
   orders: "Sales Orders",
+  "job-cards": "Job Cards",
   dispatch: "Dispatch",
   invoices: "Invoices",
   customers: "Customers",
@@ -69,7 +71,7 @@ const pathLabels = {
   integrations: "Integrations",
   settings: "Settings",
   manufacturing: "Manufacturing",
-  workflow: "My Responsibilities",
+  workflow: "Job Cards",
   "factory-monitor": "Factory Monitor",
   "machine-status": "Machine Status",
   "production-lines": "Production Lines",
@@ -156,6 +158,7 @@ const pathLabels = {
 
 /** Exact pathname → navbar title (inventory and other routes where segment labels are ambiguous). */
 const PAGE_TITLE_OVERRIDES = {
+  "/my-job-cards": "My Job Cards",
   "/settings": "Settings",
   "/inventory": "Inventory",
   "/inventory/dashboard": "Store Dashboard",
@@ -290,8 +293,13 @@ export function getBreadcrumbTrail(pathname) {
 }
 
 /** Current page title from the last breadcrumb segment. */
-export function getPageTitle(pathname) {
+export function getPageTitle(pathname, user = null) {
   const path = (pathname || "/").replace(/\/$/, "") || "/";
+  if (user && isStoreManager(user)) {
+    if (path === "/my-job-cards" || path.startsWith("/job-cards/")) {
+      return "Store Manager – My Job Cards";
+    }
+  }
   if (PAGE_TITLE_OVERRIDES[path]) return PAGE_TITLE_OVERRIDES[path];
   const trail = getBreadcrumbTrail(pathname);
   return trail[trail.length - 1]?.label || "Dashboard";
@@ -306,15 +314,17 @@ export default function Breadcrumbs({ items: customItems, compact = false, class
   return (
     <nav
       aria-label="Breadcrumb"
-      className={`flex items-center gap-1 text-sm text-slate-500 dark:text-slate-400 print:hidden ${
-        compact ? "text-xs" : ""
+      className={`flex items-center gap-1 text-[var(--color-text-muted)] print:hidden ${
+        compact ? "text-xs" : "text-sm"
       } ${className}`}
     >
       {items.map((item, i) => (
         <span key={item.path + i} className="flex min-w-0 items-center gap-1">
-          {i > 0 && <ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-400" aria-hidden />}
+          {i > 0 && (
+            <ChevronRight className="h-3.5 w-3.5 shrink-0 text-[var(--color-text-icon)]" aria-hidden />
+          )}
           {i === items.length - 1 ? (
-            <span className="truncate font-medium text-slate-700 dark:text-slate-200">
+            <span className="truncate font-medium text-[var(--color-text-secondary)]">
               {i === 0 ? (
                 <span className="inline-flex items-center gap-1">
                   <Home className="h-3.5 w-3.5" aria-hidden />

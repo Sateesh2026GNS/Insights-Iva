@@ -171,3 +171,67 @@ export function canWoComplete(status) {
 export function priorityBadge(priority) {
   return PRIORITY_COLORS[priority] || PRIORITY_COLORS.medium;
 }
+
+const WO_WORKFLOW_STEP_DEFS = [
+  { key: "sales_orders", label: "Sales Order" },
+  { key: "inventory_check", label: "Inventory" },
+  { key: "store_manager", label: "Store Manager" },
+  { key: "production_manager", label: "Production Manager" },
+  { key: "operator", label: "Operator" },
+  { key: "quality_check", label: "Quality" },
+  { key: "packing_dispatch", label: "Packing & Dispatch" },
+  { key: "billing", label: "Billing" },
+  { key: "completed", label: "Completed" },
+];
+
+/** Map work order / linked sales workflow state to the current manufacturing stage key. */
+export function resolveWorkOrderWorkflowStageKey(row = {}) {
+  const ws = String(row.workflow_status || row.sales_order_workflow_status || "").toUpperCase();
+  if (ws) {
+    if (ws.includes("BILL") || ws.includes("INVOICE")) return "billing";
+    if (ws.includes("PACK") || ws.includes("DISPATCH")) return "packing_dispatch";
+    if (ws.includes("QUALITY") || ws.includes("QC")) return "quality_check";
+    if (ws.includes("PRODUCTION") || ws.includes("OPERATOR") || ws.includes("RUNNING")) return "operator";
+    if (ws.includes("STORE") || ws.includes("MATERIAL") || ws.includes("ISSUE")) return "store_manager";
+    if (ws.includes("INVENTORY")) return "inventory_check";
+    if (ws.includes("COMPLETE") || ws.includes("CLOSED")) return "completed";
+    if (ws.includes("SALES") || ws.includes("ORDER")) return "sales_orders";
+  }
+
+  const status = normalizeStatus(row.status);
+  if (["completed", "closed", "done"].includes(status)) return "completed";
+  if (status === "quality_check") return "quality_check";
+  if (["running", "in_progress", "paused"].includes(status)) return "operator";
+  if (row.materials_issued || ["material_ready", "machine_ready", "released"].includes(status)) {
+    return "production_manager";
+  }
+  if (["planned", "draft", "pending"].includes(status)) return "store_manager";
+  return "production_manager";
+}
+
+/** Build workflow tracker steps for the Work Order details drawer. */
+export function buildWorkOrderWorkflowSteps(row = {}) {
+  const currentKey = resolveWorkOrderWorkflowStageKey(row);
+  const currentIdx = WO_WORKFLOW_STEP_DEFS.findIndex((s) => s.key === currentKey);
+  const idx = currentIdx >= 0 ? currentIdx : 3;
+  return WO_WORKFLOW_STEP_DEFS.map((step, i) => ({
+    ...step,
+    status: i < idx ? "completed" : i === idx ? "current" : "pending",
+  }));
+}
+
+export function displayWoValue(value) {
+  if (value == null || value === "") return "—";
+  if (typeof value === "object") {
+    return value.label || value.name || value.title || (value.id != null ? String(value.id) : "—");
+  }
+  return String(value);
+}
+
+export function formatWoDateTime(value) {
+  if (!value) return "—";
+  const raw = typeof value === "string" ? value : value instanceof Date ? value.toISOString() : String(value);
+  const d = new Date(raw);
+  if (Number.isNaN(d.getTime())) return raw.slice(0, 16).replace("T", " ");
+  return d.toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" });
+}

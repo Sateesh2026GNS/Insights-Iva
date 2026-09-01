@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { useLocation, useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import {
   AlertTriangle,
   Calendar,
@@ -76,6 +76,7 @@ import { exportToExcel, exportToPdf } from "../../utils/exportUtils";
 import { cleanProductLabel } from "../../utils/productLabel";
 import QuickWorkOrderModal from "../../components/production/QuickWorkOrderModal";
 import IssueMaterialsModal from "../../components/production/IssueMaterialsModal";
+import { jobCardDetailsUrl } from "../../utils/jobCardRoutes";
 
 const PAGE_SIZES = [20, 50, 100, 200, 500];
 
@@ -329,6 +330,7 @@ export default function ProductionPlanning() {
   const { user } = useAuth();
   const tenantId = useTenantId();
   const { addToast } = useToast();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -668,6 +670,27 @@ export default function ProductionPlanning() {
         /* use list */
       }
     }
+  };
+
+  const viewJobCard = async (order) => {
+    let salesOrderId = order?.sales_order_id;
+    if (!salesOrderId && typeof order?.id === "number") {
+      try {
+        const res = await getProductionOrderDetail(order.id);
+        const enriched = enrichApiOrder(res.data);
+        salesOrderId = enriched?.sales_order_id;
+      } catch {
+        /* fall through */
+      }
+    }
+    if (salesOrderId) {
+      navigate(jobCardDetailsUrl(salesOrderId), {
+        state: { from: "/production/planning", productionOrderId: order.id },
+      });
+      return;
+    }
+    addToast("No linked sales order found for this production order.", "warning");
+    openOrder(order);
   };
 
   const handlePriorityChange = async (orderId, newPriority) => {
@@ -1031,7 +1054,7 @@ export default function ProductionPlanning() {
         <OrderActions
           row={r}
           canEdit={!isOperator(user)}
-          onView={openOrder}
+          onView={viewJobCard}
           onEdit={(order) => {
             setEditModalOrder(order);
             setCreateOrderModalOpen(true);

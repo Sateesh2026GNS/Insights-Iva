@@ -111,6 +111,7 @@ ACTIONABLE_STATUSES_BY_TEAM: dict[str, frozenset[str]] = {
         "MATERIAL_CHECK_PENDING",
         "MATERIAL_SHORTAGE",
         "MATERIAL_PARTIAL",
+        "MATERIAL_AVAILABLE",
         "STORE_ISSUE_PENDING",
         "STORE_ISSUE_PARTIAL",
     }),
@@ -146,6 +147,82 @@ PRIMARY_ROLE_LABEL: dict[str, str] = {
     TEAM_PACKING: "Packing & Dispatch",
     TEAM_BILLING: "Billing",
     TEAM_ADMIN: "Admin",
+}
+
+# Store Manager list labels (canonical workflow_status_label is unchanged)
+STORE_QUEUE_STATUS_LABELS: dict[str, str] = {
+    "MATERIAL_CHECK_PENDING": "Store Pending",
+    "MATERIAL_SHORTAGE": "Store Pending",
+    "MATERIAL_AVAILABLE": "Ready to Issue",
+    "STORE_ISSUE_PENDING": "Ready to Issue",
+    "MATERIAL_PARTIAL": "Partially Issued",
+    "STORE_ISSUE_PARTIAL": "Partially Issued",
+}
+
+STORE_KPI_BUCKETS: dict[str, frozenset[str]] = {
+    "store_pending": frozenset({"MATERIAL_CHECK_PENDING", "MATERIAL_SHORTAGE"}),
+    "ready_to_issue": frozenset({"MATERIAL_AVAILABLE", "STORE_ISSUE_PENDING"}),
+    "partially_issued": frozenset({"STORE_ISSUE_PARTIAL", "MATERIAL_PARTIAL"}),
+}
+
+POST_STORE_STATUSES: frozenset[str] = frozenset({
+    "READY_FOR_PRODUCTION",
+    "PRODUCTION_ASSIGNED",
+    "PRODUCTION_IN_PROGRESS",
+    "PRODUCTION_COMPLETED",
+    "PRODUCTION_REWORK",
+    "QUALITY_CHECK_PENDING",
+    "QUALITY_ON_HOLD",
+    "QUALITY_APPROVED",
+    "QUALITY_REJECTED",
+    "PACKING_PENDING",
+    "PACKING_IN_PROGRESS",
+    "PACKING_ISSUE",
+    "PACKED",
+    "BILLING_PENDING",
+    "BILLING_HOLD",
+    "INVOICED",
+    "COMPLETED",
+})
+
+QUEUE_ACTIONS_BY_STATUS: dict[str, list[str]] = {
+    "MATERIAL_CHECK_PENDING": ["view", "check_stock", "hold", "add_remarks"],
+    "MATERIAL_SHORTAGE": ["view", "check_stock", "record_shortage", "hold", "add_remarks"],
+    "MATERIAL_PARTIAL": ["view", "check_stock", "partial_issue", "hold", "add_remarks"],
+    "MATERIAL_AVAILABLE": [
+        "view",
+        "check_stock",
+        "issue_materials",
+        "partial_issue",
+        "send_to_production",
+        "hold",
+        "add_remarks",
+    ],
+    "STORE_ISSUE_PENDING": [
+        "view",
+        "issue_materials",
+        "partial_issue",
+        "send_to_production",
+        "hold",
+        "add_remarks",
+    ],
+    "STORE_ISSUE_PARTIAL": [
+        "view",
+        "issue_materials",
+        "partial_issue",
+        "send_to_production",
+        "hold",
+        "add_remarks",
+    ],
+}
+
+NEEDED_ACTION_BY_STATUS: dict[str, str] = {
+    "MATERIAL_CHECK_PENDING": "Check Stock",
+    "MATERIAL_SHORTAGE": "Record Shortage",
+    "MATERIAL_PARTIAL": "Partial Issue",
+    "MATERIAL_AVAILABLE": "Issue Material",
+    "STORE_ISSUE_PENDING": "Issue Material",
+    "STORE_ISSUE_PARTIAL": "Complete Issue / Send to Production",
 }
 
 
@@ -316,6 +393,125 @@ def _load_received_at_map(
     }
 
 
+def _material_line_totals(material_check: SalesOrderMaterialCheck | None) -> dict[str, Any]:
+    if not material_check or not material_check.lines:
+        return {
+            "required_qty": None,
+            "available_qty": None,
+            "shortage_qty": None,
+            "warehouse": None,
+        }
+    required = 0.0
+    available = 0.0
+    shortage = 0.0
+    warehouse = None
+    for ln in material_check.lines:
+        required += float(ln.required_qty or 0)
+        available += float(ln.available_qty or 0)
+        shortage += float(ln.shortage_qty or 0)
+        if not warehouse and ln.stock_location:
+            warehouse = ln.stock_location
+    return {
+        "required_qty": required,
+        "available_qty": available,
+        "shortage_qty": shortage,
+        "warehouse": warehouse,
+    }
+
+
+def _load_product_inventory_map(
+    db: Session, tenant_id: int, product_ids: set[int]
+) -> dict[int, dict[str, Any]]:
+    """Batch-load on-hand, reserved, and warehouse for finished-good products."""
+    if not product_ids:
+        return {}
+
+    from app.models.inventory import InventoryItem, StockLevel, Warehouse
+    from app.services.inventory_service import get_default_warehouse
+
+    products = list(db.scalars(select(Product).where(Product.id.in_(list(product_ids)))).all())
+    skus = [p.sku for p in products if p.sku]
+    items = []
+    if skus:
+        items = list(
+            db.scalars(
+                select(InventoryItem).where(
+                    InventoryItem.tenant_id == tenant_id,
+                    InventoryItem.sku.in_(skus),
+                )
+            ).all()
+        )
+    item_by_sku = {it.sku: it for it in items}
+    item_ids = [it.id for it in items]
+
+    stock_by_item: dict[int, float] = {}
+    warehouse_by_item: dict[int, str] = {}
+    if item_ids:
+        stock_rows = db.execute(
+            select(StockLevel.item_id, func.coalesce(func.sum(StockLevel.quantity), 0)).where(
+                StockLevel.item_id.in_(item_ids)
+            ).group_by(StockLevel.item_id)
+        ).all()
+        stock_by_item = {int(iid): float(qty or 0) for iid, qty in stock_rows}
+
+        wh_rows = db.execute(
+            select(StockLevel.item_id, Warehouse.name, StockLevel.quantity)
+            .join(Warehouse, StockLevel.warehouse_id == Warehouse.id)
+            .where(StockLevel.item_id.in_(item_ids))
+            .order_by(StockLevel.quantity.desc())
+        ).all()
+        for iid, name, _qty in wh_rows:
+            if int(iid) not in warehouse_by_item and name:
+                warehouse_by_item[int(iid)] = name
+
+    default_wh = get_default_warehouse(db, tenant_id)
+    default_name = default_wh.name if default_wh else None
+
+    result: dict[int, dict[str, Any]] = {}
+    for p in products:
+        item = item_by_sku.get(p.sku) if p.sku else None
+        if item:
+            on_hand = stock_by_item.get(item.id)
+            if on_hand is None:
+                on_hand = float(item.quantity or 0)
+            reserved = float(item.reserved or 0)
+            warehouse = warehouse_by_item.get(item.id) or item.warehouse_name or default_name
+        else:
+            on_hand = 0.0
+            reserved = 0.0
+            warehouse = default_name
+        result[p.id] = {
+            "available_qty": on_hand,
+            "reserved_qty": reserved,
+            "warehouse": warehouse,
+        }
+    return result
+
+
+def _store_kpi_counts(db: Session, tenant_id: int) -> dict[str, int]:
+    rows = db.execute(
+        select(SalesOrder.workflow_status, func.count())
+        .where(
+            SalesOrder.tenant_id == tenant_id,
+            SalesOrder.workflow_status.isnot(None),
+        )
+        .group_by(SalesOrder.workflow_status)
+    ).all()
+    by_status = {(status or "").upper(): int(cnt) for status, cnt in rows if status}
+    store_pending = sum(by_status.get(s, 0) for s in STORE_KPI_BUCKETS["store_pending"])
+    ready_to_issue = sum(by_status.get(s, 0) for s in STORE_KPI_BUCKETS["ready_to_issue"])
+    partially_issued = sum(by_status.get(s, 0) for s in STORE_KPI_BUCKETS["partially_issued"])
+    completed = sum(by_status.get(s, 0) for s in POST_STORE_STATUSES)
+    total = store_pending + ready_to_issue + partially_issued
+    return {
+        "total_job_cards": total,
+        "store_pending": store_pending,
+        "ready_to_issue": ready_to_issue,
+        "partially_issued": partially_issued,
+        "completed": completed,
+    }
+
+
 def serialize_queue_order(
     db: Session,
     so: SalesOrder,
@@ -325,6 +521,7 @@ def serialize_queue_order(
     assigned_to: str | None = None,
     received_at: str | None = None,
     work_order_id: int | None = None,
+    inventory: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     from app.services.workflow_team_service import _material_stock_status
 
@@ -363,6 +560,21 @@ def serialize_queue_order(
         else so.delivery_date
     )
 
+    inv = inventory or {}
+    mat = _material_line_totals(material_check)
+    required_qty = float(qty or 0)
+    available_qty = inv.get("available_qty")
+    reserved_qty = float(inv.get("reserved_qty") or 0)
+    warehouse = inv.get("warehouse") or mat.get("warehouse")
+    if available_qty is None:
+        available_qty = mat.get("available_qty")
+    if available_qty is None:
+        available_qty = 0.0
+    net_available = max(0.0, float(available_qty) - reserved_qty)
+    shortage_qty = max(0.0, required_qty - net_available)
+    if mat.get("shortage_qty") and (available_qty == 0 or product_id is None):
+        shortage_qty = float(mat["shortage_qty"])
+
     return {
         "sales_order_id": so.id,
         "job_card_id": job_card.id if job_card else None,
@@ -379,6 +591,7 @@ def serialize_queue_order(
         "current_stage": ws,
         "status_label": label,
         "status": label,
+        "queue_status_label": STORE_QUEUE_STATUS_LABELS.get((ws or "").upper(), label),
         "responsible_role": get_responsible_role(ws),
         "responsible_team": get_responsible_team(ws),
         "delivery_date": delivery.isoformat() if delivery else None,
@@ -388,7 +601,139 @@ def serialize_queue_order(
         "assigned_to": assigned_to,
         "received_at": received_at,
         "work_order_id": work_order_id,
+        "warehouse": warehouse,
+        "required_qty": required_qty,
+        "available_qty": float(available_qty),
+        "reserved_qty": reserved_qty,
+        "shortage_qty": shortage_qty,
+        "allowed_actions": list(QUEUE_ACTIONS_BY_STATUS.get((ws or "").upper(), ["view"])),
+        "needed_action": NEEDED_ACTION_BY_STATUS.get((ws or "").upper()),
     }
+
+
+_STORE_CONTEXT_KEYS = (
+    "warehouse",
+    "required_qty",
+    "available_qty",
+    "reserved_qty",
+    "shortage_qty",
+    "queue_status_label",
+    "needed_action",
+    "allowed_actions",
+    "responsible_role",
+    "material_stock_status",
+    "order_number",
+    "customer_name",
+    "product_name",
+    "product_code",
+    "quantity",
+    "unit",
+    "delivery_date",
+    "order_date",
+    "sales_person",
+    "priority",
+    "workflow_status",
+    "sales_order_id",
+    "job_card_id",
+    "job_card_no",
+    "notes",
+    "next_stage",
+)
+
+
+def _material_stock_status_label(req: float, avail: float, reserved: float, short: float) -> str:
+    net = max(0.0, avail - reserved)
+    if short > 0 and net <= 0:
+        return "Out of Stock"
+    if short > 0:
+        return "Shortage"
+    if req > 0 and net >= req:
+        return "Ready to Issue"
+    return "Available"
+
+
+def serialize_material_requirements(db: Session, mc: SalesOrderMaterialCheck | None) -> list[dict[str, Any]]:
+    """BOM/material lines for Store Manager job card detail."""
+    if not mc:
+        return []
+
+    from app.models.inventory import InventoryItem
+    from app.models.product import Product
+
+    materials: list[dict[str, Any]] = []
+    for ln in mc.lines or []:
+        req = float(ln.required_qty or 0)
+        avail = float(ln.available_qty or 0)
+        reserved = float(getattr(ln, "_reserved_qty", 0) or 0)
+        short = float(ln.shortage_qty or 0)
+        code = ""
+        if ln.product_id:
+            prod = db.get(Product, ln.product_id)
+            code = (prod.sku if prod else "") or ""
+        elif ln.inventory_item_id:
+            item = db.get(InventoryItem, int(ln.inventory_item_id))
+            code = (item.sku if item else "") or ""
+        stock_status = _material_stock_status_label(req, avail, reserved, short)
+        materials.append(
+            {
+                "id": ln.id,
+                "material": ln.material_name,
+                "material_name": ln.material_name,
+                "material_code": code,
+                "required_qty": req,
+                "available_qty": avail,
+                "reserved_qty": reserved,
+                "shortage_qty": short,
+                "unit": getattr(ln, "unit", None) or "Nos",
+                "stock_status": stock_status,
+                "stock_location": ln.stock_location,
+            }
+        )
+    return materials
+
+
+def build_store_queue_context(
+    db: Session,
+    tenant_id: int,
+    so: SalesOrder,
+    *,
+    job_card: SalesJobCard | None = None,
+    material_check: SalesOrderMaterialCheck | None = None,
+    work_order_id: int | None = None,
+    refresh_stock: bool = True,
+) -> dict[str, Any]:
+    """Inventory and store-queue fields for a single sales-order job card."""
+    from app.services.workflow_team_service import refresh_pending_material_check_stock
+
+    mc = material_check
+    if mc and refresh_stock:
+        refresh_pending_material_check_stock(db, tenant_id, mc)
+
+    product_id = job_card.product_id if job_card and job_card.product_id else None
+    if product_id is None and so.line_items:
+        product_id = so.line_items[0].product_id
+    inv_map = _load_product_inventory_map(db, tenant_id, {product_id} if product_id else set())
+    row = serialize_queue_order(
+        db,
+        so,
+        job_card=job_card,
+        material_check=mc,
+        work_order_id=work_order_id,
+        inventory=inv_map.get(product_id) if product_id else None,
+    )
+    ctx = {key: row.get(key) for key in _STORE_CONTEXT_KEYS if key not in {"order_date", "sales_person", "job_card_id", "notes", "next_stage"}}
+    ctx["order_date"] = so.order_date.isoformat() if so.order_date else None
+    ctx["sales_person"] = so.sales_person
+    ctx["job_card_id"] = job_card.id if job_card else row.get("job_card_id")
+    ctx["notes"] = mc.notes if mc else None
+    ws = (row.get("workflow_status") or "").upper()
+    ctx["next_stage"] = (
+        "Production Manager"
+        if ws in POST_STORE_STATUSES or ws in {"READY_FOR_PRODUCTION", "PRODUCTION_ASSIGNED"}
+        else "Production Manager (after store stage)"
+    )
+    ctx["material_requirements"] = serialize_material_requirements(db, mc)
+    return ctx
 
 
 def get_my_job_card_queue(
@@ -494,6 +839,9 @@ def get_my_job_card_queue(
         orders = orders[:limit]
 
     items = _enrich_queue_orders(db, tenant_id, orders)
+    metadata = dict(metadata)
+    if TEAM_INVENTORY in teams or is_admin:
+        metadata["counts"] = _store_kpi_counts(db, tenant_id)
     return {"items": items, "meta": metadata, "total": len(items)}
 
 
@@ -604,14 +952,32 @@ def _enrich_queue_orders(
 
     received_map = _load_received_at_map(db, tenant_id, order_ids)
 
-    return [
-        serialize_queue_order(
-            db,
-            so,
-            job_card=jc_map.get(so.id),
-            material_check=mc_map.get(so.id),
-            assigned_to=assign_map.get(so.id),
-            received_at=received_map.get(so.id),
+    product_ids: set[int] = set()
+    for so in orders:
+        jc = jc_map.get(so.id)
+        if jc and jc.product_id:
+            product_ids.add(jc.product_id)
+        elif so.line_items:
+            pid = so.line_items[0].product_id
+            if pid:
+                product_ids.add(pid)
+    inv_map = _load_product_inventory_map(db, tenant_id, product_ids)
+
+    result = []
+    for so in orders:
+        jc = jc_map.get(so.id)
+        pid = jc.product_id if jc and jc.product_id else None
+        if pid is None and so.line_items:
+            pid = so.line_items[0].product_id
+        result.append(
+            serialize_queue_order(
+                db,
+                so,
+                job_card=jc,
+                material_check=mc_map.get(so.id),
+                assigned_to=assign_map.get(so.id),
+                received_at=received_map.get(so.id),
+                inventory=inv_map.get(pid) if pid else None,
+            )
         )
-        for so in orders
-    ]
+    return result

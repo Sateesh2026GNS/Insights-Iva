@@ -71,22 +71,8 @@ export default function CreateMachineModal({
     };
 
     try {
-      const res = await createMachine(payload).catch(() => null);
-      const createdMachine = res?.data || {
-        id: `local-mch-${Date.now()}`,
-        ...payload,
-      };
-
-      try {
-        const stored = localStorage.getItem("smrt_machines");
-        const existing = stored ? JSON.parse(stored) : [];
-        localStorage.setItem(
-          "smrt_machines",
-          JSON.stringify([createdMachine, ...existing.filter((m) => m.code !== code)])
-        );
-      } catch {
-        // ignore
-      }
+      const res = await createMachine(payload);
+      const createdMachine = res?.data || payload;
 
       addToast("Machine created successfully", "success");
       setForm(EMPTY_FORM);

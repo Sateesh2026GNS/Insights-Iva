@@ -18,15 +18,18 @@ import {
   Users,
   Wallet,
   Wrench,
-  X,
 } from "lucide-react";
 
 import useAuth from "../../hooks/useAuth";
 import { userCanAccessPath } from "../../config/permissions";
 import { flattenNavForSearch } from "../../config/sidebarNav";
+import {
+  NAVBAR_SEARCH_INPUT_CLASS,
+  NAVBAR_SEARCH_WRAP_CLASS,
+  SearchBar,
+} from "./SearchFilter";
 
 const EXTRA_ROUTES = [
-  { path: "/manufacturing/workflow", labelKey: "erpNav.roleWorkflow", module: "dashboard", sectionKey: null },
   { path: "/alerts", labelKey: "nav.allAlerts", module: "alerts", sectionKey: null },
   {
     path: "/production/reports",
@@ -117,7 +120,10 @@ function HighlightText({ text, query }) {
     <span className="truncate">
       {parts.map((part, i) =>
         part.toLowerCase() === q.toLowerCase() ? (
-          <mark key={`${part}-${i}`} className="rounded bg-[var(--color-primary-soft)] px-0.5 text-inherit dark:bg-[var(--color-primary)]/30">
+          <mark
+            key={`${part}-${i}`}
+            className="rounded bg-[var(--color-primary-soft)] px-0.5 text-inherit dark:bg-[var(--color-primary)]/30"
+          >
             {part}
           </mark>
         ) : (
@@ -128,7 +134,7 @@ function HighlightText({ text, query }) {
   );
 }
 
-export default function GlobalSearch({ onSelect, placeholderKey = "common.search" }) {
+export default function GlobalSearch({ onSelect, placeholderKey = "common.search", className = "" }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -187,13 +193,6 @@ export default function GlobalSearch({ onSelect, placeholderKey = "common.search
     const el = listRef.current.querySelector(`[data-index="${highlight}"]`);
     el?.scrollIntoView({ block: "nearest" });
   }, [highlight, showDropdown]);
-
-  const clearQuery = useCallback(() => {
-    setQuery("");
-    setOpen(true);
-    setFocus(true);
-    inputRef.current?.focus();
-  }, []);
 
   const handleSelect = useCallback(
     (path) => {
@@ -256,49 +255,37 @@ export default function GlobalSearch({ onSelect, placeholderKey = "common.search
   }, [showDropdown, matches, highlight, handleSelect, query]);
 
   return (
-    <div ref={wrapRef} className="relative w-full">
-      {/* Input wrapper keeps the icon centered on the field only (not the dropdown). */}
-      <div className="relative">
-        <Search
-          className="pointer-events-none absolute left-3.5 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-[var(--color-text-icon)]"
-          aria-hidden
-        />
-        <input
-          ref={inputRef}
-          type="search"
-          placeholder={t(placeholderKey)}
-          value={query}
-          onChange={(e) => {
-            setQuery(e.target.value);
-            setOpen(true);
-          }}
-          onFocus={() => {
-            setOpen(true);
-            setFocus(true);
-          }}
-          className="global-search-input w-full rounded-full border border-[var(--color-border)] bg-[var(--color-surface-muted)] py-2 pl-10 pr-10 text-sm text-[var(--color-text)] placeholder:text-[var(--color-text-placeholder)] focus:border-[var(--color-primary)] focus:bg-[var(--color-surface)] focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)]"
-          aria-label={t("common.search")}
-          aria-expanded={showDropdown}
-          aria-controls="global-search-results"
-          aria-activedescendant={
-            showDropdown && matches[highlight] ? `global-search-option-${highlight}` : undefined
-          }
-          role="combobox"
-          autoComplete="off"
-        />
-        <div className="absolute right-2 top-1/2 flex -translate-y-1/2 items-center gap-1">
-          {hasQuery ? (
-            <button
-              type="button"
-              onClick={clearQuery}
-              className="rounded-full p-1 text-[var(--color-text-icon)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
-              aria-label="Clear search"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          ) : null}
-        </div>
-      </div>
+    <div ref={wrapRef} className={`relative w-full${className ? ` ${className}` : ""}`}>
+      <SearchBar
+        value={query}
+        onChange={(value) => {
+          setQuery(value);
+          setOpen(true);
+        }}
+        onFocus={() => {
+          setOpen(true);
+          setFocus(true);
+        }}
+        onBlur={() => {
+          // Dropdown selection uses mousedown preventDefault; blur handled by outside click.
+        }}
+        onClear={() => {
+          setOpen(true);
+          setFocus(true);
+          inputRef.current?.focus();
+        }}
+        inputRef={inputRef}
+        placeholder={t(placeholderKey, { defaultValue: "Search" })}
+        className={NAVBAR_SEARCH_WRAP_CLASS}
+        inputClassName={NAVBAR_SEARCH_INPUT_CLASS}
+        role="combobox"
+        aria-expanded={showDropdown}
+        aria-controls="global-search-results"
+        aria-activedescendant={
+          showDropdown && matches[highlight] ? `global-search-option-${highlight}` : undefined
+        }
+        autoComplete="off"
+      />
 
       {showDropdown ? (
         <div

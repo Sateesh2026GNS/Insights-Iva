@@ -112,8 +112,10 @@ def test_forgot_password_generic_response(client):
     resp = client.post(
         "/auth/forgot-password", json={"email": "nobody@example.com"}
     )
-    assert resp.status_code == 404
-    assert "email" in resp.json()["detail"].lower()
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body.get("success") is True
+    assert "message" in body
 
 
 def test_protected_route_requires_token(client):

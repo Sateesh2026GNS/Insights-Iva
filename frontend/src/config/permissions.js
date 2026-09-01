@@ -125,6 +125,9 @@ export const ROUTE_MODULE_OVERRIDES = {
   "/analytics/finance": "analytics",
   "/manufacturing/workflow": "dashboard",
   "/manufacturing/job-card": "sales",
+  "/my-job-cards": "sales",
+  "/job-cards": "sales",
+  "/sales/job-cards": "sales",
   "/hr": "hr",
   "/ewaybill/login": "sales",
   "/digital-signature": "sales",
@@ -309,6 +312,7 @@ export const STORE_MANAGER_ALLOWED_PATHS = new Set([
   "/documents",
   "/documents/purchase",
   "/manufacturing/workflow",
+  "/my-job-cards",
 ]);
 
 export function isProductionManager(user) {
@@ -335,10 +339,20 @@ export function isAccountant(user) {
   return hasRole(user, "Accountant");
 }
 
+/** Modules that may access the unified My Job Cards queue (matches backend WORKFLOW_MODULES). */
+export const MY_JOB_CARDS_MODULES = ["sales", "production", "inventory", "quality", "accounts", "admin"];
+
+export function userCanAccessMyJobCards(user) {
+  if (!user) return false;
+  if (isAdmin(user)) return true;
+  return MY_JOB_CARDS_MODULES.some((m) => userCanAccess(user, m));
+}
+
 export function storeManagerPathAllowed(pathname) {
   if (!pathname) return false;
   const path = pathname.replace(/\/$/, "") || "/";
   if (path === "/") return true;
+  if (path.startsWith("/job-cards/")) return true;
   if (STORE_MANAGER_ALLOWED_PATHS.has(path)) return true;
   if (path.startsWith("/inventory")) return true;
   if (path.startsWith("/purchases")) return true;
@@ -371,6 +385,13 @@ export function userCanAccessPath(user, pathname) {
   if (!user) return false;
   if (isAdmin(user)) return true;
   const path = (pathname || "").replace(/\/$/, "") || "/";
+  if (path === "/my-job-cards" || path.startsWith("/job-cards/")) {
+    if (!userCanAccessMyJobCards(user)) return false;
+    if (isStoreManager(user) && !storeManagerPathAllowed(pathname)) return false;
+    if (isProductionManager(user) && !productionManagerPathAllowed(pathname)) return false;
+    if (isOperator(user) && !operatorPathAllowed(pathname)) return false;
+    return true;
+  }
   if (path.startsWith("/procurement/vendors") || path.startsWith("/masters/vendors")) {
     if (isProductionManager(user)) return false;
     if (!userCanAccess(user, "masters") && !userCanAccess(user, "procurement")) return false;

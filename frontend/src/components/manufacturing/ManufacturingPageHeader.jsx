@@ -13,7 +13,7 @@ export default function ManufacturingPageHeader({
 }) {
   const defaultCrumbs = [
     { label: "Dashboard", to: "/" },
-    { label: "Manufacturing", to: "/manufacturing/workflow" },
+    { label: "Manufacturing", to: "/production/work-orders" },
   ];
   const trail = crumbs.length ? crumbs : defaultCrumbs;
 

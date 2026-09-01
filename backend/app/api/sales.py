@@ -5,7 +5,13 @@ from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db
-from app.core.permissions import require_any_permission, require_permission, tenant_scope, tenant_scope_any
+from app.core.permissions import (
+    require_any_permission,
+    require_permission,
+    tenant_scope,
+    tenant_scope_action,
+    tenant_scope_any,
+)
 from app.models.sales import Customer
 from app.models.user import User
 from app.schemas.sales import (
@@ -41,6 +47,7 @@ from app.services.sales_service import (
     create_sales_order,
     delete_payment,
     delete_quotation,
+    delete_sales_order,
     get_payment,
     get_quotation,
     list_customers,
@@ -280,6 +287,17 @@ def so_summary(tenant_id: int = Depends(tenant_scope(MODULE)), db: Session = Dep
 @router.get("/sales-orders/enriched", response_model=list[SOListRead])
 def so_enriched(tenant_id: int = Depends(tenant_scope(MODULE)), db: Session = Depends(get_db)):
     return list_so_enriched(db, tenant_id)
+
+
+@router.delete("/sales-orders/{order_id}")
+def delete_sales_order_endpoint(
+    order_id: int,
+    tenant_id: int = Depends(tenant_scope_action(MODULE, "delete")),
+    db: Session = Depends(get_db),
+):
+    if not delete_sales_order(db, tenant_id, order_id):
+        raise HTTPException(404, "Sales order not found")
+    return {"ok": True, "id": order_id}
 
 
 @router.patch("/sales-orders/{order_id}/status", response_model=SalesOrderRead)

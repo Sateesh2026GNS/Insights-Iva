@@ -34,7 +34,7 @@ export function workflowStatusToStagePath(workflowStatus) {
 
 export function stageJobCardUrl(orderId, workflowStatus) {
   const stage = workflowStatusToStagePath(workflowStatus);
-  if (!stage) return `/sales/orders/${orderId}/job-card`;
+  if (!stage) return `/job-cards/${orderId}`;
   return `/manufacturing/workflow/order/${orderId}/${stage}`;
 }
 

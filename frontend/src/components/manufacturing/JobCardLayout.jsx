@@ -7,6 +7,7 @@ import JobCardTimeline from "./JobCardTimeline";
 import WorkflowTracker from "./WorkflowTracker";
 import { getStageNavLinks } from "../../config/workflowStages";
 import { getWorkflowStatusLabel } from "../../config/workflowStages";
+import { jobCardDetailsUrl } from "../../utils/jobCardRoutes";
 
 /**
  * Shared shell for all workflow stage job cards.
@@ -20,7 +21,7 @@ export default function JobCardLayout({
   editable,
   onSave,
   onBack,
-  backTo = "/manufacturing/workflow",
+  backTo = "/production/work-orders",
   statusLabel,
   statusVariant,
   headerActions,
@@ -77,8 +78,8 @@ export default function JobCardLayout({
                 </Button>
               ) : null}
               {!isSales && card.sales_order_id ? (
-                <Button variant="outline" size="sm" to={`/sales/orders/${card.sales_order_id}/job-card`}>
-                  Sales Job Card
+                <Button variant="outline" size="sm" to={jobCardDetailsUrl(card.sales_order_id)}>
+                  View Job Card
                 </Button>
               ) : null}
             </>
@@ -128,7 +129,7 @@ export function StageNavLinks({ orderId, currentStage }) {
           className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
             currentStage === s.key
               ? "bg-[var(--color-primary)] text-white shadow-sm"
-              : "bg-white text-[var(--color-text-muted)] hover:bg-[var(--color-primary-soft)] hover:text-[var(--color-primary)]"
+              : "bg-[var(--color-surface)] text-[var(--color-text-muted)] hover:bg-[var(--color-primary-soft)] hover:text-[var(--color-primary)]"
           }`}
         >
           {s.label}

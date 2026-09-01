@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { Link, useNavigate } from "react-router-dom";
-import { ClipboardList, Download, Edit2, ExternalLink, Eye, Filter, IndianRupee, Plus, ShoppingCart, Truck } from "lucide-react";
+import { ClipboardList, Download, ExternalLink, Eye, Filter, IndianRupee, ShoppingCart, Trash2, Truck } from "lucide-react";
 import KpiCard from "../../components/common/KpiCard";
 
+import ConfirmDialog from "../../components/admin/ConfirmDialog";
 import DataTable from "../../components/common/DataTable";
 import EmptyState from "../../components/common/EmptyState";
 import PageHeader from "../../components/common/PageHeader";
@@ -13,9 +14,13 @@ import { ErrorState, NoResultsState, OfflineState } from "../../components/commo
 import SODetailModal from "../../components/sales/SODetailModal";
 import { useToast } from "../../context/ToastContext";
 import { useNetworkStatus } from "../../context/NetworkStatusContext";
-import { getSOSummary, getSalesOrdersEnriched } from "../../api/salesApi";
+import { getSOSummary, getSalesOrdersEnriched, deleteSalesOrder } from "../../api/salesApi";
 import { formatInr, statusColor } from "../../data/salesMasterData";
 import { exportToExcel } from "../../utils/exportUtils";
+import { apiErrorMessage, asArray } from "../../utils/apiError";
+import useAuth from "../../hooks/useAuth";
+import { userCanAction } from "../../config/permissions";
+import { jobCardDetailsUrl } from "../../utils/jobCardRoutes";
 
 
 import Button from "../../components/common/Button";
@@ -23,7 +28,9 @@ const defaultFilters = { customer: "", status: "", sales_person: "" };
 
 export default function SalesOrders() {
   const { addToast } = useToast();
+  const { user } = useAuth();
   const navigate = useNavigate();
+  const canDelete = userCanAction(user, "sales", "delete");
   const { online, markRequestStart, markRequestEnd } = useNetworkStatus();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -33,17 +40,21 @@ export default function SalesOrders() {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [selected, setSelected] = useState(null);
   const [openMenu, setOpenMenu] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteError, setDeleteError] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const deleteInFlight = useRef(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     setLoadError("");
     if (typeof markRequestStart === "function") markRequestStart();
     try {
-      const res = await getSalesOrdersEnriched().catch(() => ({ data: [] }));
-      setRows(Array.isArray(res?.data) ? res.data : []);
-    } catch {
+      const res = await getSalesOrdersEnriched();
+      setRows(Array.isArray(res?.data) ? res.data : asArray(res?.data));
+    } catch (err) {
       setRows([]);
-      setLoadError("Could not load sales orders.");
+      setLoadError(apiErrorMessage(err, "Could not load sales orders."));
     } finally {
       if (typeof markRequestEnd === "function") markRequestEnd();
       setLoading(false);
@@ -78,6 +89,27 @@ export default function SalesOrders() {
   const hasAdvancedFilters = Boolean(
     filters.customer || filters.status || filters.sales_person
   );
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget?.id || typeof deleteTarget.id !== "number") return;
+    if (deleteInFlight.current) return;
+    deleteInFlight.current = true;
+    setDeleteError("");
+    setDeleting(true);
+    try {
+      await deleteSalesOrder(deleteTarget.id);
+      addToast(`Sales order ${deleteTarget.order_number || deleteTarget.id} deleted successfully.`, "success");
+      setDeleteTarget(null);
+      if (selected?.id === deleteTarget.id) setSelected(null);
+      await load();
+    } catch (err) {
+      const message = apiErrorMessage(err, "Failed to delete sales order.");
+      setDeleteError(message);
+    } finally {
+      deleteInFlight.current = false;
+      setDeleting(false);
+    }
+  };
 
   const columns = [
     {
@@ -152,19 +184,6 @@ export default function SalesOrders() {
               icon: <Eye className="h-4 w-4" />,
               onClick: () => setSelected(r),
             },
-            {
-              label: "Edit",
-              icon: <Edit2 className="h-4 w-4" />,
-              onClick: () => {
-                if (typeof r.id === "number") {
-                  navigate(`/sales/orders/create?edit=${r.id}`);
-                  return;
-                }
-                navigate(
-                  `/sales/orders/create?edit=${encodeURIComponent(r.order_number || r.so_number || "")}`
-                );
-              },
-            },
             ...(typeof r.id === "number"
               ? [
                   {
@@ -175,7 +194,7 @@ export default function SalesOrders() {
                   {
                     label: "Job Card",
                     icon: <ClipboardList className="h-4 w-4" />,
-                    onClick: () => navigate(`/sales/orders/${r.id}/job-card`),
+                    onClick: () => navigate(jobCardDetailsUrl(r.id), { state: { from: "/sales/orders" } }),
                   },
                 ]
               : []),
@@ -184,6 +203,19 @@ export default function SalesOrders() {
               icon: <Truck className="h-4 w-4" />,
               onClick: () => navigate("/sales/dispatch"),
             },
+            ...(typeof r.id === "number" && canDelete
+              ? [
+                  {
+                    label: "Delete",
+                    icon: <Trash2 className="h-4 w-4" />,
+                    danger: true,
+                    onClick: () => {
+                      setDeleteError("");
+                      setDeleteTarget(r);
+                    },
+                  },
+                ]
+              : []),
           ]}
         />
       ),
@@ -195,24 +227,19 @@ export default function SalesOrders() {
       <PageHeader
         subtitle="Manage orders from quotation to dispatch with production and inventory integration."
         action={
-          <>
-            <Button variant="add" to="/sales/orders/create" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
-              New Sales Order
-            </Button>
-            <Button
-              variant="secondary"
-              type="button"
-              onClick={() =>
-                exportToExcel(
-                  filtered,
-                  columns.filter((c) => !c.render),
-                  "sales-orders"
-                )
-              }
-            >
-              <Download className="h-4 w-4" /> Export
-            </Button>
-          </>
+          <Button
+            variant="secondary"
+            type="button"
+            onClick={() =>
+              exportToExcel(
+                filtered,
+                columns.filter((c) => !c.render),
+                "sales-orders"
+              )
+            }
+          >
+            <Download className="h-4 w-4" /> Export
+          </Button>
         }
       />
 
@@ -283,9 +310,7 @@ export default function SalesOrders() {
                 <EmptyState
                   icon="clipboard"
                   title="No sales orders yet"
-                  description="Create your first sales order to start the order-to-cash flow."
-                  actionLabel="New Sales Order"
-                  actionHref="/sales/orders/create"
+                  description="Sales orders appear here when converted from quotations or created through the sales workflow."
                 />
               ) : hasAdvancedFilters ? (
                 <NoResultsState
@@ -295,9 +320,7 @@ export default function SalesOrders() {
               ) : (
                 <EmptyState
                   title="No sales orders yet"
-                  description="Create your first sales order to get started."
-                  actionLabel="New Sales Order"
-                  actionHref="/sales/orders/create"
+                  description="Sales orders appear here when converted from quotations or created through the sales workflow."
                 />
               )
             }
@@ -311,6 +334,24 @@ export default function SalesOrders() {
           onClose={() => setSelected(null)}
         />
       )}
+
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        title="Delete Sales Order?"
+        message="Are you sure you want to delete this sales order? This action cannot be undone."
+        error={deleteError}
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        destructive
+        loading={deleting}
+        onConfirm={handleDeleteConfirm}
+        onClose={() => {
+          if (!deleting) {
+            setDeleteTarget(null);
+            setDeleteError("");
+          }
+        }}
+      />
     </div>
   );
 }

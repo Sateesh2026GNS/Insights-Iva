@@ -430,11 +430,15 @@ def _build_inventory_check(
     materials = []
     stock_status = "Available"
     if mc:
+        from app.services.workflow_team_service import refresh_pending_material_check_stock
+
+        refresh_pending_material_check_stock(db, tenant_id, mc)
         for ln in mc.lines or []:
             req = float(ln.required_qty or 0)
             avail = float(ln.available_qty or 0)
+            reserved = float(getattr(ln, "_reserved_qty", 0) or 0)
             short = float(ln.shortage_qty or 0)
-            avail_st = _availability_status(req, avail)
+            avail_st = _availability_status(req, max(0.0, avail - reserved))
             if avail_st != "Available":
                 stock_status = avail_st if stock_status == "Available" else stock_status
             code = ""
@@ -447,6 +451,7 @@ def _build_inventory_check(
                 "material_name": ln.material_name,
                 "required_qty": req,
                 "available_qty": avail,
+                "reserved_qty": reserved,
                 "shortage_qty": short,
                 "unit": "Nos",
                 "stock_location": ln.stock_location,

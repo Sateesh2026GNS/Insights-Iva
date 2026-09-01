@@ -2,17 +2,12 @@ import { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
-  Calendar,
   ChevronDown,
   Maximize2,
-  Menu,
   Minimize2,
 } from "lucide-react";
 
 import useAuth from "../../hooks/useAuth";
-import useLiveClock from "../../hooks/useLiveClock";
-import { useCompanySettings } from "../../hooks/useCompanySettings";
-import { DEFAULT_TIMEZONE } from "../../utils/headerDateTime";
 import GlobalSearch from "../common/GlobalSearch";
 import AppPageTitle from "../common/AppPageTitle";
 import Breadcrumbs, { getPageTitle } from "../common/Breadcrumbs";
@@ -20,24 +15,25 @@ import ClientProfilePanel from "../common/ClientProfilePanel";
 import LogoutConfirmModal from "../common/LogoutConfirmModal";
 import NotificationBell from "../notifications/NotificationBell";
 
-export default function Navbar({ onMenuClick }) {
+function formatRoleLabel(role) {
+  if (!role || typeof role !== "string") return "";
+  return role.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+export default function Navbar() {
   const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const { settings } = useCompanySettings();
-  const timeZone = settings?.timezone || DEFAULT_TIMEZONE;
-  const { weekdayLabel, dateLabel, timeLabel } = useLiveClock(timeZone);
   const [showProfile, setShowProfile] = useState(false);
   const [logoutOpen, setLogoutOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const profileRef = useRef(null);
 
-  const pageTitle = getPageTitle(location.pathname);
+  const pageTitle = getPageTitle(location.pathname, user);
   const displayName = user?.full_name || user?.name || "User";
-  const firstName = String(displayName).trim().split(/\s+/)[0] || "User";
-  const displayRole = user?.role_name || user?.role || "";
+  const displayRole = formatRoleLabel(user?.role_name || user?.role || "");
 
   useEffect(() => {
     const onFullscreenChange = () => {
@@ -87,107 +83,91 @@ export default function Navbar({ onMenuClick }) {
     }
   };
 
-  const iconBtn =
-    "flex h-9 w-9 items-center justify-center rounded-lg text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-surface-muted)] dark:text-slate-300 dark:hover:bg-slate-800";
+  const fullscreenLabel = isFullscreen
+    ? t("common.exitFullscreen", { defaultValue: "Exit fullscreen" })
+    : t("common.fullscreen", { defaultValue: "Enter fullscreen" });
 
   return (
-    <header className="sticky top-0 z-20 shrink-0 border-b border-[var(--color-border)] bg-[var(--color-surface)]/95 shadow-[var(--shadow-card)] backdrop-blur-md print:hidden">
-      <div className="flex items-center gap-3 px-4 py-2.5 lg:gap-4 lg:px-6">
-        {/* Left: menu + title + breadcrumbs */}
-        <div className="flex min-w-0 flex-1 items-center gap-2.5 lg:max-w-[min(420px,36%)]">
-          <button
-            type="button"
-            onClick={onMenuClick}
-            className={`${iconBtn} shrink-0 lg:hidden`}
-            aria-label="Open menu"
-          >
-            <Menu className="h-5 w-5" />
-          </button>
-          <div className="min-w-0">
+    <header className="app-navbar print:hidden">
+      <div className="app-navbar__row">
+        {/* Left: page title */}
+        <div className="app-navbar__left">
+          <div className="app-navbar__title-block">
             <AppPageTitle title={pageTitle} />
-            <div className="mt-0.5 hidden sm:block">
+            <div className="mt-0.5 hidden lg:block">
               <Breadcrumbs compact />
             </div>
-            <p className="mt-0.5 truncate text-[var(--text-xs)] text-[var(--color-primary)] sm:hidden">
-              {t("common.welcomeUser", { name: firstName })}
-            </p>
           </div>
         </div>
 
-        {/* Center: search */}
-        <div className="navbar-search-wrap hidden min-w-0 flex-1 md:block">
+        {/* Center: global search */}
+        <div className="app-navbar__center">
           <GlobalSearch />
         </div>
 
-        {/* Right: actions */}
-        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+        {/* Right: notifications, fullscreen, profile */}
+        <div className="app-navbar__actions">
           <NotificationBell />
 
           <button
             type="button"
             onClick={toggleFullscreen}
-            className={`hidden sm:flex ${iconBtn}`}
-            title={
-              isFullscreen
-                ? t("common.exitFullscreen", { defaultValue: "Exit fullscreen" })
-                : t("common.fullscreen")
-            }
-            aria-label={
-              isFullscreen
-                ? t("common.exitFullscreen", { defaultValue: "Exit fullscreen" })
-                : t("common.fullscreen")
-            }
+            className="app-navbar__icon-btn hidden sm:inline-flex"
+            title={fullscreenLabel}
+            aria-label={fullscreenLabel}
             aria-pressed={isFullscreen}
           >
             {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
           </button>
 
-          <div className="hidden items-center gap-2 rounded-lg bg-[var(--color-primary)] px-2.5 py-1.5 text-white shadow-sm lg:flex">
-            <Calendar className="h-3.5 w-3.5 text-white" aria-hidden />
-            <div className="leading-tight">
-              <p className="text-[10px] font-semibold text-white">
-                {weekdayLabel} · {dateLabel}
-              </p>
-              <p className="text-[var(--text-xs)] font-bold tabular-nums text-white">{timeLabel}</p>
-            </div>
-          </div>
-
           <div className="relative" ref={profileRef}>
             <button
               type="button"
               onClick={() => setShowProfile(!showProfile)}
-              className="flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-2 py-1.5 transition-colors hover:bg-[var(--color-surface-hover)] dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 sm:px-2.5"
+              className="app-navbar__user-btn"
               aria-expanded={showProfile}
               aria-haspopup="menu"
+              aria-label={`Account menu for ${displayName}`}
             >
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--color-primary)] text-xs font-bold text-white shadow-sm ring-1 ring-slate-200/60 dark:ring-slate-700">
+              <div className="app-navbar__avatar">
                 {user?.avatar ? (
                   <img
                     src={user.avatar}
-                    alt={displayName}
+                    alt=""
                     className="h-full w-full object-cover"
                   />
                 ) : (
                   String(displayName)[0].toUpperCase()
                 )}
               </div>
-              <div className="hidden text-left sm:block">
-                <p className="text-sm font-semibold leading-tight text-[var(--color-text)]">{displayRole}</p>
+              <div className="hidden min-w-0 text-left md:block">
+                <p className="truncate text-sm font-semibold leading-tight text-[var(--color-text)]">
+                  {displayName}
+                </p>
+                {displayRole ? (
+                  <p className="truncate text-[11px] leading-tight text-[var(--color-text-muted)]">
+                    {displayRole}
+                  </p>
+                ) : null}
               </div>
-              <ChevronDown className="hidden h-4 w-4 text-slate-400 sm:block" aria-hidden />
+              <ChevronDown
+                className="hidden h-4 w-4 shrink-0 text-[var(--color-text-icon)] md:block"
+                aria-hidden
+              />
             </button>
-            {showProfile && (
+            {showProfile ? (
               <ClientProfilePanel
+                key="profile-menu"
                 onClose={() => setShowProfile(false)}
                 onRequestLogout={openLogout}
               />
-            )}
+            ) : null}
           </div>
         </div>
       </div>
 
-      {/* Mobile search + breadcrumbs */}
-      <div className="space-y-2 border-t border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2 md:hidden">
+      {/* Mobile: search + breadcrumbs */}
+      <div className="app-navbar__mobile-search space-y-2 md:hidden">
         <GlobalSearch />
         <Breadcrumbs compact />
       </div>

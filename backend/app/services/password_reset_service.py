@@ -65,10 +65,7 @@ class PasswordResetService:
         user = self.repo.get_user_by_email(email)
         if not user:
             logger.info("password_reset_request_unknown_email email=%s", email)
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=MSG_EMAIL_NOT_FOUND,
-            )
+            return MSG_RESET_SENT
 
         if not user.is_active:
             logger.warning("password_reset_request_inactive user_id=%s", user.id)

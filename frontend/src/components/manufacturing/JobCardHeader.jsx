@@ -14,7 +14,7 @@ export default function JobCardHeader({
   workflowStatus,
   statusLabel,
   statusVariant,
-  backTo = "/manufacturing/workflow",
+  backTo = "/production/work-orders",
   onBack,
   actions,
 }) {

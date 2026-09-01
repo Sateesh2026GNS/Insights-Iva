@@ -44,7 +44,7 @@ import {
   notifyManufacturingSpine,
 } from "../../utils/manufacturingEvents";
 import { asArray, apiErrorMessage } from "../../utils/apiError";
-import { stageJobCardUrl } from "../../utils/workflowStageRoutes";
+import { jobCardDetailsUrl } from "../../utils/jobCardRoutes";
 
 const STATUS_COLORS = {
   in: "#22c55e",
@@ -465,7 +465,7 @@ export default function InventoryDashboard() {
           <KpiCard label="Today's Stock Out" value={formatInrAmount(view.stockOutValue)} icon={ArrowUpFromLine} tone="danger" meta={`${Number(view.stockOutTxns || 0)} Transactions`} />
         </ClickableKpiCard>
         <ClickableKpiCard
-          to="/manufacturing/workflow?status=MATERIAL_CHECK_PENDING"
+          to="/inventory/material-requests"
           title="Sales orders awaiting inventory check"
           tone="warning"
         >
@@ -485,7 +485,7 @@ export default function InventoryDashboard() {
       {pendingInventoryOrders.length > 0 ? (
         <SectionCard
           title="Sales Orders Awaiting Inventory Check"
-          viewAllTo="/manufacturing/workflow?status=MATERIAL_CHECK_PENDING"
+          viewAllTo="/inventory/material-requests"
         >
           <div className="overflow-x-auto">
             <table className="min-w-full text-left text-[13px]">
@@ -527,9 +527,9 @@ export default function InventoryDashboard() {
                       <Button
                         variant="primary"
                         size="sm"
-                        to={stageJobCardUrl(row.sales_order_id, row.workflow_status || "MATERIAL_CHECK_PENDING")}
+                        to={jobCardDetailsUrl(row.sales_order_id)}
                       >
-                        Check Inventory
+                        View
                       </Button>
                     </td>
                   </tr>

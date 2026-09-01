@@ -14,6 +14,7 @@ from app.models.production import (
     ProductionOrder,
     WorkOrder,
 )
+from app.models.sales import SalesOrder
 from app.models.user import User
 from app.schemas.work_order import (
     WorkOrderActionResponse,
@@ -117,6 +118,14 @@ def _to_list_read(db: Session, tenant_id: int, wo: WorkOrder) -> WorkOrderListRe
     product = ctx["product"]
     machine = ctx["machine"]
     operator = ctx["operator"]
+    sales_order = None
+    if po and po.sales_order_id:
+        sales_order = db.scalars(
+            select(SalesOrder).where(
+                SalesOrder.id == po.sales_order_id,
+                SalesOrder.tenant_id == tenant_id,
+            )
+        ).first()
     return WorkOrderListRead(
         id=wo.id,
         tenant_id=wo.tenant_id,
@@ -138,6 +147,10 @@ def _to_list_read(db: Session, tenant_id: int, wo: WorkOrder) -> WorkOrderListRe
         department=wo.department or (po.department if po else None),
         supervisor=wo.supervisor,
         production_order_number=po.order_number if po else None,
+        sales_order_id=po.sales_order_id if po else None,
+        product_id=po.product_id if po else None,
+        customer_id=sales_order.customer_id if sales_order else None,
+        workflow_status=sales_order.workflow_status if sales_order else None,
         product_name=product.name if product else None,
         customer_name=po.customer_name if po else None,
         bom_version=po.bom_version if po else None,
@@ -315,7 +328,9 @@ def preview_work_order_start_checks(db: Session, tenant_id: int, work_order_id: 
     return _start_checks(db, tenant_id, wo)
 
 
-def start_work_order(db: Session, tenant_id: int, work_order_id: int) -> WorkOrderActionResponse:
+def start_work_order(
+    db: Session, tenant_id: int, work_order_id: int, *, user: User | None = None
+) -> WorkOrderActionResponse:
     wo = db.scalars(select(WorkOrder).where(WorkOrder.id == work_order_id, WorkOrder.tenant_id == tenant_id)).first()
     if not wo:
         return WorkOrderActionResponse(success=False, message="Work order not found")
@@ -332,6 +347,11 @@ def start_work_order(db: Session, tenant_id: int, work_order_id: int) -> WorkOrd
     wo.status = "running"
     if not wo.planned_start:
         wo.planned_start = datetime.now(timezone.utc)
+
+    from app.services.workflow_team_service import sync_sales_workflow_on_work_order_start
+
+    sync_sales_workflow_on_work_order_start(db, tenant_id, wo, user=user)
+
     db.commit()
     db.refresh(wo)
     return WorkOrderActionResponse(success=True, checks=checks, work_order=_to_list_read(db, tenant_id, wo), message="Work order started")

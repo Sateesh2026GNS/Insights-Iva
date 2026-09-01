@@ -2,13 +2,17 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { FormField, Input, Select, Textarea } from "../../components/common/FormField";
+import Button from "../../components/common/Button";
 import OperatorJobCardBody from "../../components/manufacturing/OperatorJobCardBody";
 import JobCardActions from "../../components/manufacturing/JobCardActions";
-import JobCardLayout, { StageNavLinks } from "../../components/manufacturing/JobCardLayout";
+import JobCardDetailsShell from "../../components/manufacturing/JobCardDetailsShell";
+import { StageNavLinks } from "../../components/manufacturing/JobCardLayout";
 import MaterialTable from "../../components/manufacturing/MaterialTable";
 import { CardSectionHeader } from "../../components/manufacturing/jobCardUiShared";
 import { useToast } from "../../context/ToastContext";
 import useAuth from "../../hooks/useAuth";
+import useJobCardDetails from "../../hooks/useJobCardDetails";
+import useTenantId from "../../hooks/useTenantId";
 import { getTeamDirectory } from "../../api/adminApi";
 import { getMachines } from "../../api/productionApi";
 import {
@@ -29,11 +33,34 @@ import {
 } from "../../api/workflowApi";
 import { ROUTE_SEGMENT_TO_STAGE, STAGE_TITLES } from "../../config/workflowStages";
 
+function formFromStageCard(card) {
+  const sp = card?.summary_panel || {};
+  const f = card?.form || {};
+  return {
+    customer_id: f.customer_id ?? card?.customer_id,
+    customer_name: sp.customer || f.customer_name,
+    sales_person_id: f.sales_person_id,
+    sales_person_name: f.sales_person_name || sp.sales_person,
+    product_id: f.product_id ?? card?.product_id,
+    product_name: sp.product || f.product_name,
+    product_code: f.product_code,
+    quantity: sp.order_quantity ?? f.quantity,
+    unit: sp.uom || f.unit || "Nos",
+    required_delivery_date: sp.required_delivery || f.required_delivery_date,
+    priority: sp.priority || f.priority || "medium",
+    sales_order_no: sp.sales_order_no || f.sales_order_no,
+    job_card_no: sp.job_card_no || f.job_card_no,
+    notes: f.notes || "",
+    workflow_status: sp.workflow_status || card?.workflow_status,
+  };
+}
+
 export default function StageJobCardPage() {
   const { orderId, stage: routeStage } = useParams();
   const navigate = useNavigate();
   const { addToast } = useToast();
   const { user } = useAuth();
+  const tenantId = useTenantId();
 
   const stage = ROUTE_SEGMENT_TO_STAGE[routeStage] || routeStage;
   const [loading, setLoading] = useState(true);
@@ -54,6 +81,19 @@ export default function StageJobCardPage() {
     actual_start_time: "",
     actual_end_time: "",
   });
+
+  const {
+    loading: detailsLoading,
+    card: detailsCard,
+    form: detailsForm,
+    salesOrder,
+    productLines,
+    customers,
+    products,
+    salesPeople,
+    errors,
+    load: loadDetails,
+  } = useJobCardDetails(orderId, tenantId);
 
   const load = useCallback(async () => {
     if (!orderId || !stage) return;
@@ -91,7 +131,8 @@ export default function StageJobCardPage() {
 
   useEffect(() => {
     load();
-  }, [load]);
+    loadDetails();
+  }, [load, loadDetails]);
 
   useEffect(() => {
     if (stage !== "production_manager") return;
@@ -110,6 +151,42 @@ export default function StageJobCardPage() {
       })
       .catch(() => {});
   }, [stage]);
+
+  const inventorySnapshot = useMemo(() => {
+    const lines = stage === "store" ? issueLines : materialLines;
+    if (!Array.isArray(lines) || !lines.length) return null;
+    const required = lines.reduce((s, ln) => s + Number(ln.required_qty || 0), 0);
+    const available = lines.reduce((s, ln) => s + Number(ln.available_qty || 0), 0);
+    const reserved = lines.reduce((s, ln) => s + Number(ln.reserved_qty || 0), 0);
+    const shortage = lines.reduce((s, ln) => s + Number(ln.shortage_qty || 0), 0);
+    const warehouse = lines.find((ln) => ln.stock_location || ln.store_location);
+    return {
+      required,
+      available,
+      reserved,
+      shortage,
+      warehouse: warehouse?.stock_location || warehouse?.store_location || "—",
+    };
+  }, [stage, materialLines, issueLines]);
+
+  const stockSnapshot = inventorySnapshot ? (
+    <div className="grid grid-cols-2 gap-2 border-b border-[var(--color-border-muted)] px-4 py-3 text-xs sm:grid-cols-5">
+      {[
+        ["Required", inventorySnapshot.required],
+        ["Available", inventorySnapshot.available],
+        ["Reserved", inventorySnapshot.reserved],
+        ["Shortage", inventorySnapshot.shortage],
+        ["Warehouse", inventorySnapshot.warehouse],
+      ].map(([label, value]) => (
+        <div key={label}>
+          <p className="text-[var(--color-text-faint)]">{label}</p>
+          <p className={`font-semibold tabular-nums ${label === "Shortage" && Number(value) > 0 ? "text-[var(--color-danger)]" : "text-[var(--color-text)]"}`}>
+            {typeof value === "number" ? value.toLocaleString("en-IN") : value}
+          </p>
+        </div>
+      ))}
+    </div>
+  ) : null;
 
   const woId = card?.production_plan?.work_order_id || card?.execution?.work_order_id;
   const inspectionId = card?.inspection_id;
@@ -148,6 +225,8 @@ export default function StageJobCardPage() {
             })),
           });
           addToast("Inventory check submitted", "success");
+          navigate(`/manufacturing/workflow/order/${orderId}/store`);
+          return;
         } else if (action === "hold_order") {
           await holdWorkflowOrder(orderId, { reason: "On hold by store" });
           addToast("Order placed on hold", "success");
@@ -169,7 +248,8 @@ export default function StageJobCardPage() {
             send_to_production: true,
           });
           addToast("Sent to production", "success");
-          navigate(`/manufacturing/workflow/order/${orderId}/production`);
+          navigate("/my-job-cards");
+          return;
         } else if (action === "hold") {
           await holdWorkflowOrder(orderId, { reason: "Store hold" });
           addToast("Order on hold", "success");
@@ -249,6 +329,7 @@ export default function StageJobCardPage() {
       { key: "material_name", label: "Material" },
       { key: "required_qty", label: "Required" },
       { key: "available_qty", label: "Available", editable: card?.editable, type: "number" },
+      { key: "reserved_qty", label: "Reserved" },
       { key: "shortage_qty", label: "Shortage" },
       { key: "unit", label: "Unit" },
       { key: "stock_location", label: "Location", editable: card?.editable },
@@ -276,6 +357,7 @@ export default function StageJobCardPage() {
       return (
         <article className="ui-card overflow-hidden">
           <CardSectionHeader title="Required Materials" />
+          {stockSnapshot}
           <MaterialTable
             columns={inventoryColumns}
             rows={materialLines}
@@ -295,7 +377,7 @@ export default function StageJobCardPage() {
             onAction={runAction}
             labels={{
               confirm_inventory: "Confirm Materials",
-              raise_material_request: "Report Shortage",
+              raise_material_request: "Record Shortage",
             }}
           />
         </article>
@@ -305,6 +387,7 @@ export default function StageJobCardPage() {
       return (
         <article className="ui-card overflow-hidden">
           <CardSectionHeader title="Material Issue" />
+          {stockSnapshot}
           <MaterialTable
             columns={issueColumns}
             rows={issueLines}
@@ -460,28 +543,70 @@ export default function StageJobCardPage() {
     return null;
   };
 
-  const operatorStatusVariant =
-    card?.status_label === "Paused"
-      ? "draft"
-      : card?.status_label === "In Progress"
-        ? "confirmed"
-        : "draft";
+  if (loading || (detailsLoading && !card)) {
+    return (
+      <div className="ui-page flex min-h-[40vh] items-center justify-center">
+        <p className="text-sm text-[var(--color-text-muted)]">Loading job card…</p>
+      </div>
+    );
+  }
+
+  if (!card) {
+    return (
+      <div className="ui-page ui-stack">
+        <p className="text-sm text-[var(--color-danger)]">Job card not found.</p>
+        <Button variant="outline" to="/my-job-cards">
+          Back to My Job Cards
+        </Button>
+      </div>
+    );
+  }
+
+  const displayForm = detailsForm || formFromStageCard(card);
+  const selectedProduct = products.find((p) => String(p.id) === String(displayForm?.product_id));
+  const productCode = selectedProduct?.product_code || selectedProduct?.sku || displayForm?.product_code || "";
+
+  const stageActions = (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <StageNavLinks
+          orderId={orderId}
+          currentStage={stage === "inventory_check" ? "inventory" : routeStage}
+        />
+        <Button variant="outline" size="sm" onClick={() => load()} loading={loading}>
+          Refresh
+        </Button>
+      </div>
+      {stageBody()}
+    </div>
+  );
 
   return (
-    <JobCardLayout
-      title={STAGE_TITLES[stage]}
-      card={card}
-      loading={loading}
-      saving={submitting}
-      editable={card?.editable}
-      onBack={() => navigate("/manufacturing/workflow")}
-      currentStage={stage}
-      statusLabel={card?.status_label || card?.card_status?.replace(/_/g, " ") || "In Progress"}
-      statusVariant={stage === "operator" ? operatorStatusVariant : "confirmed"}
-      sidebarExtra={<StageNavLinks orderId={orderId} currentStage={stage === "inventory_check" ? "inventory" : routeStage} />}
-      hideSummary={stage === "operator"}
-    >
-      {stageBody()}
-    </JobCardLayout>
+    <JobCardDetailsShell
+      orderId={orderId}
+      card={detailsCard || card}
+      form={displayForm}
+      salesOrder={salesOrder}
+      productLines={productLines}
+      customers={customers}
+      products={products}
+      salesPeople={salesPeople}
+      errors={errors}
+      mode="view"
+      readOnly
+      linesReadOnly
+      selectedProduct={selectedProduct}
+      productCode={productCode}
+      onPatchField={() => {}}
+      onAddLine={() => {}}
+      onRemoveLine={() => {}}
+      onUpdateLine={() => {}}
+      isCreated
+      canEditSales={false}
+      backTo="/my-job-cards"
+      stageTitle={STAGE_TITLES[stage]}
+      stageActions={stageActions}
+      showWorkflowTracker={false}
+    />
   );
 }

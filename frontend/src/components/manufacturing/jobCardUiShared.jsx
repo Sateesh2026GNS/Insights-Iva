@@ -27,13 +27,16 @@ export function fmtDeliveryDisplay(iso) {
   return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
 }
 
-export function CardSectionHeader({ title }) {
+export function CardSectionHeader({ title = "Job Card Details" }) {
+  const displayTitle = title.toUpperCase().includes("JOB CARD") ? title.toUpperCase() : title;
   return (
-    <header className="flex items-center gap-2.5 border-b border-[var(--color-border-muted)] bg-gradient-to-r from-[var(--color-primary-soft)] to-[var(--color-surface)] px-4 py-3">
-      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--color-primary-soft)] text-[var(--color-primary)]">
-        <ClipboardList className="h-4 w-4" strokeWidth={2} />
+    <header className="flex items-center gap-2.5 border-b border-[var(--color-border-muted)] bg-gradient-to-r from-[var(--color-primary-soft)]/80 to-[var(--color-surface)] px-5 py-3.5">
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--color-primary-soft)] text-[var(--color-primary)]">
+        <ClipboardList className="h-[18px] w-[18px]" strokeWidth={2} />
       </span>
-      <h3 className="text-[13px] font-bold uppercase tracking-[0.06em] text-[var(--color-primary)]">{title}</h3>
+      <h3 className="text-[13px] font-bold uppercase tracking-[0.08em] text-[var(--color-primary)]">
+        {displayTitle}
+      </h3>
     </header>
   );
 }

@@ -829,6 +829,15 @@ def complete_work_order_integrated(
             # Audit must not block completion
             pass
 
+        actor = None
+        if user_id:
+            from app.models.user import User
+
+            actor = db.get(User, user_id)
+        from app.services.workflow_team_service import sync_sales_workflow_on_work_order_complete
+
+        sync_sales_workflow_on_work_order_complete(db, tenant_id, wo, user=actor)
+
         db.commit()
         db.refresh(wo)
     except HTTPException as exc:

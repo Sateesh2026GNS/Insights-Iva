@@ -75,12 +75,13 @@ export default function NotificationBell() {
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
-        className="relative flex h-10 w-10 items-center justify-center rounded-xl text-slate-600 hover:bg-slate-100"
-        title={t("common.notifications")}
+        className="app-navbar__icon-btn relative"
+        title={t("common.notifications", { defaultValue: "Notifications" })}
+        aria-label={t("common.notifications", { defaultValue: "Notifications" })}
         aria-expanded={open}
         aria-haspopup="true"
       >
-        <Bell className="h-5 w-5" />
+        <Bell className="h-[1.125rem] w-[1.125rem]" />
         <NotificationBadge count={count} />
       </button>
 

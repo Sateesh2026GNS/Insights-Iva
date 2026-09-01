@@ -1,18 +1,20 @@
 import { ClipboardList } from "lucide-react";
 
-export default function JobCardTimeline({ events = [] }) {
-  return (
-    <article className="ui-card overflow-hidden">
-      <header className="flex items-center gap-2.5 border-b border-[var(--color-border-muted)] bg-gradient-to-r from-[var(--color-primary-soft)] to-[var(--color-surface)] px-4 py-3">
-        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--color-primary-soft)] text-[var(--color-primary)]">
-          <ClipboardList className="h-4 w-4" strokeWidth={2} />
-        </span>
-        <h3 className="text-[13px] font-bold uppercase tracking-[0.06em] text-[var(--color-primary)]">
-          Workflow Timeline
-        </h3>
-      </header>
+export default function JobCardTimeline({ events = [], embedded = false }) {
+  const content = (
+    <>
+      {!embedded ? (
+        <header className="flex items-center gap-2.5 border-b border-[var(--color-border-muted)] bg-gradient-to-r from-[var(--color-primary-soft)] to-[var(--color-surface)] px-4 py-3">
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--color-primary-soft)] text-[var(--color-primary)]">
+            <ClipboardList className="h-4 w-4" strokeWidth={2} />
+          </span>
+          <h3 className="text-[13px] font-bold uppercase tracking-[0.06em] text-[var(--color-primary)]">
+            Workflow Timeline
+          </h3>
+        </header>
+      ) : null}
 
-      <div className="px-4 py-4">
+      <div className={embedded ? "" : "px-4 py-4"}>
         {events.length === 0 ? (
           <p className="py-4 text-center text-sm text-[var(--color-text-faint)]">No timeline events yet.</p>
         ) : (
@@ -75,6 +77,10 @@ export default function JobCardTimeline({ events = [] }) {
         </ol>
         )}
       </div>
-    </article>
+    </>
   );
+
+  if (embedded) return content;
+
+  return <article className="ui-card overflow-hidden">{content}</article>;
 }

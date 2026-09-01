@@ -248,7 +248,7 @@ SIDEBAR_MENU_CATALOG = [
         "path": "/",
         "module": "dashboard",
         "children": [
-            {"label": "Manufacturing Workflow", "path": "/manufacturing/workflow", "module": "dashboard"},
+            {"label": "My Job Cards", "path": "/my-job-cards", "module": "dashboard"},
         ],
     },
     {
@@ -270,7 +270,7 @@ SIDEBAR_MENU_CATALOG = [
         "children": [
             {"label": "Production Planning", "path": "/production/planning", "module": "production"},
             {"label": "Work Orders", "path": "/production/work-orders", "module": "production"},
-            {"label": "Job Card", "path": "/production/job-card", "module": "production"},
+            {"label": "My Job Cards", "path": "/my-job-cards", "module": "production"},
             {"label": "Production Schedule", "path": "/production/schedule", "module": "production"},
             {"label": "Machine Allocation", "path": "/production/tasks", "module": "production"},
             {"label": "Daily Production Reports", "path": "/production/reports", "module": "production"},
@@ -283,6 +283,7 @@ SIDEBAR_MENU_CATALOG = [
         "module": "inventory",
         "children": [
             {"label": "Inventory", "path": "/inventory", "module": "inventory"},
+            {"label": "My Job Cards", "path": "/my-job-cards", "module": "inventory"},
             {"label": "Store Dashboard", "path": "/inventory/dashboard", "module": "inventory"},
             {"label": "Raw Materials", "path": "/inventory/raw-materials", "module": "inventory"},
             {"label": "Finished Goods", "path": "/inventory/finished-goods", "module": "inventory"},
@@ -315,11 +316,10 @@ SIDEBAR_MENU_CATALOG = [
             {"label": "Leads", "path": "/sales/leads", "module": "sales"},
             {"label": "Quotations", "path": "/sales/quotations", "module": "sales"},
             {"label": "Sales Orders", "path": "/sales/orders", "module": "sales"},
+            {"label": "My Job Cards", "path": "/my-job-cards", "module": "sales"},
             {"label": "Customers", "path": "/masters/customers", "module": "sales"},
             {"label": "Work Orders", "path": "/production/work-orders", "module": "sales"},
-            {"label": "Job Card", "path": "/production/job-card", "module": "sales"},
             {"label": "Dispatch", "path": "/sales/dispatch", "module": "sales"},
-            {"label": "Manufacturing Workflow", "path": "/manufacturing/workflow", "module": "dashboard"},
         ],
     },
     {
@@ -336,6 +336,7 @@ SIDEBAR_MENU_CATALOG = [
         "module": "accounts",
         "children": [
             {"label": "Invoices", "path": "/sales/invoices", "module": "accounts"},
+            {"label": "My Job Cards", "path": "/my-job-cards", "module": "accounts"},
             {"label": "Quotations", "path": "/sales/quotations", "module": "accounts"},
             {"label": "Payment Receipts", "path": "/sales/payment-receipts", "module": "accounts"},
             {"label": "Refund Vouchers", "path": "/sales/refund-vouchers", "module": "accounts"},
@@ -366,6 +367,7 @@ SIDEBAR_MENU_CATALOG = [
         "module": "quality",
         "children": [
             {"label": "Quality Dashboard", "path": "/quality", "module": "quality"},
+            {"label": "My Job Cards", "path": "/my-job-cards", "module": "quality"},
             {"label": "Incoming Inspection", "path": "/quality/incoming", "module": "quality"},
             {"label": "In-Process QC", "path": "/quality/in-process", "module": "quality"},
             {"label": "Final QC", "path": "/quality/final", "module": "quality"},

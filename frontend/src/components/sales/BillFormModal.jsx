@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { X, Plus, Trash2, Save } from "lucide-react";
-import { createInvoice } from "../../api/salesApi";
+import { createInvoice, getCustomers } from "../../api/salesApi";
 import { useToast } from "../../context/ToastContext";
 import useTenantId from "../../hooks/useTenantId";
 import Button from "../common/Button";
+import { apiErrorMessage } from "../../utils/apiError";
+import { asArray } from "../../utils/apiError";
 
 const SELLER_STATE_CODE = "36";
 const DEFAULT_CGST = 9;
@@ -41,14 +43,19 @@ export default function BillFormModal({ invoice, onClose, onSave }) {
     shipping_address: "",
   });
 
-  // Load customers from localStorage instantly — no API
+  // Load customers from API
   useEffect(() => {
-    try {
-      const stored = JSON.parse(localStorage.getItem("smrt_customers") || "[]");
-      setCustomers(stored);
-    } catch {
-      setCustomers([]);
-    }
+    let cancelled = false;
+    getCustomers()
+      .then((res) => {
+        if (!cancelled) setCustomers(asArray(res?.data));
+      })
+      .catch(() => {
+        if (!cancelled) setCustomers([]);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const uniqueCustomers = useMemo(() => {
@@ -97,7 +104,7 @@ export default function BillFormModal({ invoice, onClose, onSave }) {
   const roundOff = Number(form.round_off) || 0;
   const grandTotal = Math.round((subtotal - discount + cgst + sgst + igst + roundOff) * 100) / 100;
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setError("");
     const validItems = items.filter((i) => String(i.item_description || "").trim());
     if (validItems.length === 0) {
@@ -146,18 +153,17 @@ export default function BillFormModal({ invoice, onClose, onSave }) {
     };
 
     try {
-      const existingBills = JSON.parse(localStorage.getItem("smrt_sales_bills") || "[]");
-      const existingInvoices = JSON.parse(localStorage.getItem("smrt_invoices") || "[]");
-      localStorage.setItem("smrt_sales_bills", JSON.stringify([payload, ...existingBills.filter((b) => b.invoice_number !== billNo)]));
-      localStorage.setItem("smrt_invoices", JSON.stringify([payload, ...existingInvoices.filter((b) => b.invoice_number !== billNo)]));
-    } catch { /* ignore */ }
-
-    createInvoice(payload).catch(() => null);
-
-    addToast("Bill created successfully!", "success");
-    setSaving(false);
-    onSave?.(payload);
-    onClose?.();
+      const res = await createInvoice(payload);
+      const saved = res?.data || payload;
+      addToast("Bill created successfully!", "success");
+      onSave?.(saved);
+      onClose?.();
+    } catch (err) {
+      setError(apiErrorMessage(err, "Failed to create bill."));
+      addToast(apiErrorMessage(err, "Failed to create bill."), "error");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (

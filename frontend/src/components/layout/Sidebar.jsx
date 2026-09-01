@@ -368,7 +368,7 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose }
         <button
           type="button"
           onClick={onToggleCollapse}
-          className="absolute -right-3 top-[48%] z-20 hidden h-11 w-6 -translate-y-1/2 items-center justify-center rounded-l-md border border-r-0 border-[#c8c8d0] bg-[var(--color-nav-bg)] text-white shadow-sm hover:bg-[var(--color-nav-bg-hover)] lg:flex"
+          className="absolute -right-3 top-[48%] z-20 flex h-11 w-6 -translate-y-1/2 items-center justify-center rounded-l-md border border-r-0 border-[#c8c8d0] bg-[var(--color-nav-bg)] text-white shadow-sm hover:bg-[var(--color-nav-bg-hover)]"
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         >

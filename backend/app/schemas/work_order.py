@@ -24,6 +24,10 @@ class WorkOrderListRead(BaseModel):
     department: str | None = None
     supervisor: str | None = None
     production_order_number: str | None = None
+    sales_order_id: int | None = None
+    product_id: int | None = None
+    customer_id: int | None = None
+    workflow_status: str | None = None
     product_name: str | None = None
     customer_name: str | None = None
     bom_version: str | None = None

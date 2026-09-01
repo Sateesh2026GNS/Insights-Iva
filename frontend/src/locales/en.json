@@ -618,8 +618,5 @@
   "iot": {
     "title": "Internet of Things (IoT) & Smart Factory",
     "subtitle": "Monitor wearables, sensors, cobots, AGVs, drones and machine analytics"
-  },
-  "roleWorkflowPage": {
-    "section": "My Responsibilities"
   }
 }

@@ -118,6 +118,8 @@ class SOListRead(BaseModel):
     packed: bool = False
     shipped: bool = False
     invoiced: bool = False
+    workflow_status: str | None = None
+    deletable: bool = False
     line_items: list[SOLineItemRead] = Field(default_factory=list)
 
     @field_validator("amount", "total_amount", mode="before")

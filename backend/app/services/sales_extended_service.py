@@ -113,6 +113,12 @@ def get_so_summary(db: Session, tenant_id: int) -> SOSummaryRead:
 
 def list_so_enriched(db: Session, tenant_id: int) -> list[SOListRead]:
     from sqlalchemy.orm import selectinload
+
+    from app.services.sales_service import (
+        delete_blockers_by_sales_order_ids,
+        sales_order_can_delete,
+    )
+
     orders = list(
         db.scalars(
             select(SalesOrder)
@@ -121,6 +127,8 @@ def list_so_enriched(db: Session, tenant_id: int) -> list[SOListRead]:
             .order_by(SalesOrder.order_date.desc())
         ).all()
     )
+    order_ids = [o.id for o in orders]
+    blockers_by_order = delete_blockers_by_sales_order_ids(db, tenant_id, order_ids)
     result = []
     for o in orders:
         wh_name = None
@@ -155,6 +163,8 @@ def list_so_enriched(db: Session, tenant_id: int) -> list[SOListRead]:
                 packed=o.packed,
                 shipped=o.shipped,
                 invoiced=o.invoiced,
+                workflow_status=getattr(o, "workflow_status", None),
+                deletable=sales_order_can_delete(o, blockers_by_order.get(o.id, [])),
                 line_items=lines,
             )
         )

@@ -17,6 +17,7 @@ export const PRODUCTION_MANAGER_ALLOWED_CHILDREN = new Set([
   // Dashboard
   "/",
   "/manufacturing/workflow",
+  "/my-job-cards",
 
   // Masters — products reference only
   "/masters/products",
@@ -90,6 +91,7 @@ export const PRODUCTION_MANAGER_ALLOWED_CHILDREN = new Set([
 export const OPERATOR_ALLOWED_PATHS = new Set([
   "/",
   "/manufacturing/workflow",
+  "/my-job-cards",
   "/production",
   "/production/dashboard",
   "/manufacturing/workflow",
@@ -129,6 +131,7 @@ export const ACCOUNTANT_ALLOWED_SECTIONS = new Set([
 ]);
 
 export const ACCOUNTANT_ALLOWED_CHILDREN = new Set([
+  "/my-job-cards",
   "/alerts",
   "/alerts/general",
   "/analytics/finance",
@@ -153,6 +156,7 @@ export const OPERATOR_BLOCKED_SECTIONS = new Set([
 export function productionManagerPathAllowed(pathname) {
   if (!pathname) return false;
   const path = pathname.replace(/\/$/, "") || "/";
+  if (path === "/my-job-cards" || path.startsWith("/job-cards/")) return true;
   if (PRODUCTION_MANAGER_ALLOWED_CHILDREN.has(path)) return true;
   if (path.startsWith("/production/")) return true;
   if (path.startsWith("/inventory/raw-materials")) return true;
@@ -175,6 +179,7 @@ export function operatorPathAllowed(pathname) {
   if (!pathname) return false;
   const path = pathname.replace(/\/$/, "") || "/";
   if (path === "/") return true;
+  if (path === "/my-job-cards" || path.startsWith("/job-cards/")) return true;
   if (OPERATOR_ALLOWED_PATHS.has(path)) return true;
   if (path.startsWith("/production/")) return true;
   if (path.startsWith("/manufacturing/")) return true;

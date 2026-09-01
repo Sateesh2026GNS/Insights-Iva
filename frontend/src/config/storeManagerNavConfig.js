@@ -60,10 +60,11 @@ export const STORE_MANAGER_NAV_ITEMS = [
     end: true,
   },
   {
-    key: "jobCards",
-    label: "Job Cards",
-    to: "/manufacturing/workflow",
+    key: "myJobCards",
+    label: "Store Manager – My Job Cards",
+    to: "/my-job-cards",
     icon: ClipboardList,
+    end: true,
   },
   {
     key: "purchases",
@@ -93,7 +94,7 @@ export const STORE_MANAGER_NAV_ITEMS = [
       {
         key: "inventoryCheck",
         label: "Inventory Check",
-        to: "/manufacturing/workflow?status=MATERIAL_CHECK_PENDING",
+        to: "/inventory/material-requests",
         icon: ClipboardList,
       },
       {

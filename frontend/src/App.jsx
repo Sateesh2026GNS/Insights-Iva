@@ -61,8 +61,10 @@ export function shouldShowChatbot(user, pathname) {
 export default function App() {
   const location = useLocation();
   const { user } = useAuth();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.matchMedia("(max-width: 1023px)").matches;
+  });
   const showChatbot = shouldShowChatbot(user, location.pathname);
   const isInvoiceEditor =
     location.pathname === "/sales/invoices/create" ||
@@ -187,24 +189,19 @@ export default function App() {
       >
         Skip to main content
       </Button>
-      <div
-        className={`fixed inset-0 z-40 bg-slate-900/60 backdrop-blur-sm lg:hidden transition-opacity ${sidebarOpen ? "opacity-100" : "opacity-0 pointer-events-none"}`}
-        onClick={() => setSidebarOpen(false)}
-        aria-hidden="true"
-      />
       <aside
-        className={`fixed left-0 top-0 z-50 h-full shrink-0 transform transition-[width,transform] duration-300 ease-in-out lg:relative lg:translate-x-0 ${
-          sidebarCollapsed ? "w-[72px] overflow-visible" : "w-60 overflow-hidden"
-        } ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}
+        id="app-sidebar"
+        className={`relative z-50 h-full shrink-0 transition-[width] duration-300 ease-in-out ${
+          sidebarCollapsed ? "w-[72px] overflow-visible" : "w-60 overflow-visible"
+        }`}
       >
         <Sidebar
           collapsed={sidebarCollapsed}
           onToggleCollapse={() => setSidebarCollapsed((v) => !v)}
-          onClose={() => setSidebarOpen(false)}
         />
       </aside>
       <div className="flex min-h-0 min-w-0 w-full flex-1 flex-col overflow-hidden">
-        <Navbar onMenuClick={() => setSidebarOpen(true)} />
+        <Navbar />
         <main
           id="main-content"
           tabIndex={-1}

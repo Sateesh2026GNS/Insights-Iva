@@ -179,6 +179,22 @@ def test_confirmed_sales_order_appears_in_store_manager_queue(client):
     assert matched.get("job_card_no"), f"Expected job card number, got {matched.get('job_card_no')}"
     assert str(matched["job_card_no"]).startswith("JC-")
 
+    my_queue = client.get("/manufacturing/workflow/my-queue", headers=store_headers)
+    assert my_queue.status_code == 200, my_queue.text
+    mine = next((row for row in my_queue.json()["items"] if row["sales_order_id"] == order_id), None)
+    assert mine is not None, my_queue.json()["items"]
+    assert mine.get("job_card_no")
+    assert mine.get("customer_name") == "Workflow Test Customer"
+    assert mine.get("product_name") == "1L Plastic Bottle"
+    assert mine.get("required_qty") == 10000
+    assert "available_qty" in mine
+    assert "reserved_qty" in mine
+    assert "shortage_qty" in mine
+    assert mine.get("responsible_role") == "Store Manager"
+    assert mine.get("queue_status_label") == "Store Pending"
+    assert "check_stock" in (mine.get("allowed_actions") or [])
+    assert my_queue.json().get("meta", {}).get("counts") is not None
+
     dashboard = client.get("/inventory/store/dashboard", headers=store_headers)
     assert dashboard.status_code == 200, dashboard.text
     dash = dashboard.json()
@@ -297,3 +313,127 @@ def test_repair_confirmed_order_without_workflow_creates_job_card(client):
     assert matched is not None, queue.json()["items"]
     assert matched.get("workflow_status") == "MATERIAL_CHECK_PENDING"
     assert matched.get("job_card_no"), f"Expected job card after repair, got {matched}"
+
+
+def test_record_shortage_creates_material_request_lines(client):
+    tenant_id = 1
+    customer_id, product_id = _ensure_customer_and_product(tenant_id)
+    sales_headers = _create_role_user(client, tenant_id, "Sales Manager")
+    store_headers = _create_role_user(client, tenant_id, "Store Manager")
+
+    order_id = _create_sales_order(client, sales_headers, customer_id, product_id)
+    confirm = client.post(f"/sales/sales-orders/{order_id}/confirm", headers=sales_headers)
+    assert confirm.status_code == 200, confirm.text
+
+    raised = client.post(
+        f"/manufacturing/workflow/sales-orders/{order_id}/material-request",
+        headers=store_headers,
+        json={"notes": "Shortage from store check"},
+    )
+    assert raised.status_code == 200, raised.text
+    body = raised.json()
+    assert body.get("material_request_number")
+    assert body.get("lines_added", 0) >= 1
+    assert body.get("material_request_id")
+
+
+def test_job_card_store_context_includes_material_requirements(client):
+    tenant_id = 1
+    customer_id, product_id = _ensure_customer_and_product(tenant_id)
+    sales_headers = _create_role_user(client, tenant_id, "Sales Manager")
+    store_headers = _create_role_user(client, tenant_id, "Store Manager")
+
+    order_id = _create_sales_order(client, sales_headers, customer_id, product_id)
+    confirm = client.post(f"/sales/sales-orders/{order_id}/confirm", headers=sales_headers)
+    assert confirm.status_code == 200, confirm.text
+
+    jc = client.get(
+        f"/manufacturing/workflow/sales-orders/{order_id}/job-card",
+        headers=store_headers,
+    )
+    assert jc.status_code == 200, jc.text
+    body = jc.json()
+    ctx = body.get("store_context") or {}
+    assert ctx.get("job_card_no")
+    assert ctx.get("sales_order_id") == order_id
+    assert isinstance(ctx.get("material_requirements"), list)
+    assert ctx.get("responsible_role") == "Store Manager"
+    assert "hold" in (ctx.get("allowed_actions") or [])
+
+
+def test_complete_store_stage_moves_to_production_manager_queue(client):
+    tenant_id = 1
+    customer_id, product_id = _ensure_customer_and_product(tenant_id)
+    sales_headers = _create_role_user(client, tenant_id, "Sales Manager")
+    store_headers = _create_role_user(client, tenant_id, "Store Manager")
+    prod_headers = _create_role_user(client, tenant_id, "Production Manager")
+
+    order_id = _create_sales_order(client, sales_headers, customer_id, product_id)
+    confirm = client.post(f"/sales/sales-orders/{order_id}/confirm", headers=sales_headers)
+    assert confirm.status_code == 200, confirm.text
+
+    mat = client.get(
+        f"/manufacturing/workflow/sales-orders/{order_id}/material-check",
+        headers=store_headers,
+    )
+    lines = mat.json().get("material_check", {}).get("lines") or []
+    client.post(
+        f"/manufacturing/workflow/sales-orders/{order_id}/material-check",
+        headers=store_headers,
+        json={"lines": [{"id": ln["id"], "available_qty": ln["required_qty"]} for ln in lines if ln.get("id")]},
+    )
+
+    store_issue = client.get(
+        f"/manufacturing/workflow/sales-orders/{order_id}/stage/store",
+        headers=store_headers,
+    )
+    assert store_issue.status_code == 200, store_issue.text
+    issue_lines = store_issue.json().get("material_issue_lines") or []
+    issue_payload = {
+        "send_to_production": True,
+        "partial": True,
+    }
+    if issue_lines:
+        issue_payload["lines"] = [
+            {
+                "id": ln["id"],
+                "issued_qty": ln.get("required_qty", 0),
+                "store_location": ln.get("store_location"),
+            }
+            for ln in issue_lines
+            if ln.get("id")
+        ]
+        issue_payload["partial"] = False
+    issue = client.post(
+        f"/manufacturing/workflow/sales-orders/{order_id}/store-issue",
+        headers=store_headers,
+        json=issue_payload,
+    )
+    assert issue.status_code == 200, issue.text
+    if issue.json().get("workflow_status") == "STORE_ISSUE_PARTIAL" and issue_lines:
+        complete = client.post(
+            f"/manufacturing/workflow/sales-orders/{order_id}/store-issue",
+            headers=store_headers,
+            json={
+                "lines": issue_payload.get("lines", []),
+                "send_to_production": True,
+            },
+        )
+        assert complete.status_code == 200, complete.text
+        issue = complete
+    assert issue.json().get("workflow_status") in {"READY_FOR_PRODUCTION", "PRODUCTION_ASSIGNED", "STORE_ISSUE_PARTIAL"}
+
+    final_status = issue.json().get("workflow_status")
+    store_queue = client.get("/manufacturing/workflow/my-queue", headers=store_headers)
+    assert store_queue.status_code == 200
+    in_store_queue = any(row["sales_order_id"] == order_id for row in store_queue.json().get("items", []))
+
+    if final_status in {"READY_FOR_PRODUCTION", "PRODUCTION_ASSIGNED"}:
+        assert not in_store_queue
+        prod_queue = client.get("/manufacturing/workflow/my-queue", headers=prod_headers)
+        assert prod_queue.status_code == 200, prod_queue.text
+        assert any(row["sales_order_id"] == order_id for row in prod_queue.json().get("items", []))
+        matched = next(row for row in prod_queue.json()["items"] if row["sales_order_id"] == order_id)
+        assert matched.get("job_card_no")
+    else:
+        assert in_store_queue

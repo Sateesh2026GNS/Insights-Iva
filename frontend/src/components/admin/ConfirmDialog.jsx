@@ -7,6 +7,7 @@ export default function ConfirmDialog({
   open,
   title = "Are you sure?",
   message,
+  error,
   confirmLabel = "Confirm",
   cancelLabel = "Cancel",
   destructive = true,
@@ -24,7 +25,14 @@ export default function ConfirmDialog({
         >
           <AlertTriangle className="h-5 w-5" />
         </div>
-        <p className="pt-1 text-sm text-slate-600 dark:text-slate-300">{message}</p>
+        <div className="space-y-2">
+          <p className="pt-1 text-sm text-slate-600 dark:text-slate-300">{message}</p>
+          {error ? (
+            <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300">
+              {error}
+            </p>
+          ) : null}
+        </div>
       </div>
       <div className="mt-6 flex justify-end gap-3">
         <Button type="button" variant="secondary" onClick={onClose} disabled={loading}>

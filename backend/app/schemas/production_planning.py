@@ -18,6 +18,7 @@ class ProductionOrderListRead(BaseModel):
     customer_name: str | None = None
     priority: str = "medium"
     bom_version: str | None = None
+    sales_order_id: int | None = Field(None, ge=1)
     sales_order_number: str | None = None
     department: str | None = None
     shift: str | None = None

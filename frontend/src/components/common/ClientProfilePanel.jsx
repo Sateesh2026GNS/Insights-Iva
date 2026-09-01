@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Camera, LogOut, Palette, Settings, UserRound, Sliders } from "lucide-react";
+import { Camera, LogOut, Palette, Settings, UserRound } from "lucide-react";
 
 import useAuth from "../../hooks/useAuth";
 import { useToast } from "../../context/ToastContext";
@@ -11,6 +11,12 @@ function formatRoleLabel(role) {
   return role.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+const MENU_ITEMS = [
+  { id: "account", label: "My Account", icon: UserRound, path: "/settings/my-account", iconBrand: true },
+  { id: "settings", label: "Settings", icon: Settings, path: "/settings" },
+  { id: "appearance", label: "Appearance", icon: Palette, path: "/settings/appearance" },
+];
+
 export default function ClientProfilePanel({ onClose, onRequestLogout }) {
   const navigate = useNavigate();
   const { user, refreshUser, updateUserAvatar } = useAuth();
@@ -18,20 +24,70 @@ export default function ClientProfilePanel({ onClose, onRequestLogout }) {
   const [adjustModalOpen, setAdjustModalOpen] = useState(false);
   const [selectedImageForAdjust, setSelectedImageForAdjust] = useState(null);
   const fileInputRef = useRef(null);
+  const menuRef = useRef(null);
+  const itemRefs = useRef([]);
 
   useEffect(() => {
     refreshUser?.();
   }, [refreshUser]);
 
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      itemRefs.current[0]?.focus();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+        onClose?.();
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [onClose]);
+
+  const go = useCallback(
+    (path) => {
+      onClose?.();
+      navigate(path);
+    },
+    [navigate, onClose]
+  );
+
+  const focusItem = useCallback((index) => {
+    const total = itemRefs.current.length;
+    if (total === 0) return;
+    const next = ((index % total) + total) % total;
+    itemRefs.current[next]?.focus();
+  }, []);
+
+  const handleItemKeyDown = useCallback(
+    (e, index) => {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        focusItem(index + 1);
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        focusItem(index - 1);
+      } else if (e.key === "Home") {
+        e.preventDefault();
+        focusItem(0);
+      } else if (e.key === "End") {
+        e.preventDefault();
+        focusItem(itemRefs.current.length - 1);
+      }
+    },
+    [focusItem]
+  );
+
   if (!user) return null;
 
   const displayName = user.full_name || user.name || "User";
   const displayRole = formatRoleLabel(user.role_name || user.role);
-
-  const go = (path) => {
-    onClose?.();
-    navigate(path);
-  };
 
   const handleOpenAdjuster = () => {
     if (user?.avatar) {
@@ -78,26 +134,35 @@ export default function ClientProfilePanel({ onClose, onRequestLogout }) {
     addToast("Profile picture removed", "success");
   };
 
+  let menuIndex = 0;
+
   return (
     <>
-      <div className="absolute right-0 top-full z-50 mt-2 w-72 rounded-xl border border-slate-200 bg-white p-4 shadow-xl dark:border-slate-700 dark:bg-slate-800">
+      <div
+        ref={menuRef}
+        role="menu"
+        aria-label="Account menu"
+        className="profile-dropdown"
+      >
         <input
           type="file"
           ref={fileInputRef}
           onChange={handleFileChange}
           accept="image/png,image/jpeg,image/jpg,image/webp"
           className="hidden"
+          aria-hidden
         />
-        <div className="mb-4 flex items-center gap-3 border-b border-slate-100 pb-3 dark:border-slate-700">
-          <div className="relative group shrink-0">
+
+        <div className="profile-dropdown__header">
+          <div className="profile-dropdown__avatar-wrap">
             <button
               type="button"
               onClick={handleOpenAdjuster}
-              title={user?.avatar ? "Click to view & adjust profile photo" : "Click to upload profile photo"}
-              className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-full bg-teal-600 text-sm font-bold text-white shadow-sm ring-2 ring-teal-500/20 transition-transform hover:scale-105"
+              className="profile-dropdown__avatar-btn"
+              aria-label={user?.avatar ? "View or change profile photo" : "Upload profile photo"}
             >
               {user?.avatar ? (
-                <img src={user.avatar} alt={displayName} className="h-full w-full object-cover transition-opacity group-hover:opacity-90" />
+                <img src={user.avatar} alt="" className="h-full w-full object-cover" />
               ) : (
                 String(displayName)[0].toUpperCase()
               )}
@@ -105,84 +170,99 @@ export default function ClientProfilePanel({ onClose, onRequestLogout }) {
             <button
               type="button"
               onClick={handleOpenAdjuster}
-              title={user?.avatar ? "Adjust profile photo" : "Upload profile photo (PNG, JPG)"}
-              className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border border-white bg-slate-900 text-white shadow transition-transform hover:scale-110 hover:bg-teal-600 dark:border-slate-800"
+              className="profile-dropdown__camera-btn"
+              aria-label={user?.avatar ? "Edit profile photo" : "Upload profile photo"}
+              title={user?.avatar ? "Edit photo" : "Upload photo"}
             >
-              <Camera className="h-2.5 w-2.5" />
+              <Camera className="h-2 w-2" aria-hidden />
             </button>
           </div>
-          <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
+          <div className="profile-dropdown__identity">
+            <p className="profile-dropdown__name" title={displayName}>
               {displayName}
             </p>
             {displayRole ? (
-              <p className="truncate text-xs text-slate-500 dark:text-slate-400">{displayRole}</p>
+              <p className="profile-dropdown__role" title={displayRole}>
+                {displayRole}
+              </p>
             ) : null}
           </div>
         </div>
 
-      <div className="space-y-1">
-        <button
-          type="button"
-          onClick={() => go("/settings/my-account")}
-          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-700/60"
-        >
-          <UserRound className="h-4 w-4 text-teal-600" />
-          My Account
-        </button>
-        <button
-          type="button"
-          onClick={() => go("/settings")}
-          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-700/60"
-        >
-          <Settings className="h-4 w-4 text-slate-500" />
-          Settings
-        </button>
-        <button
-          type="button"
-          onClick={() => go("/settings/appearance")}
-          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-700/60"
-        >
-          <Palette className="h-4 w-4 text-indigo-500" />
-          Appearance
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            onClose?.();
-            onRequestLogout?.();
-          }}
-          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40"
-        >
-          <LogOut className="h-4 w-4" />
-          Sign Out
-        </button>
+        <div className="profile-dropdown__menu">
+          {MENU_ITEMS.map((item) => {
+            const Icon = item.icon;
+            const refIndex = menuIndex;
+            menuIndex += 1;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                role="menuitem"
+                ref={(el) => {
+                  itemRefs.current[refIndex] = el;
+                }}
+                onClick={() => go(item.path)}
+                onKeyDown={(e) => handleItemKeyDown(e, refIndex)}
+                className="profile-dropdown__item"
+              >
+                <span
+                  className={`profile-dropdown__item-icon${
+                    item.iconBrand ? " profile-dropdown__item-icon--brand" : ""
+                  }`}
+                >
+                  <Icon className="h-4 w-4" aria-hidden />
+                </span>
+                {item.label}
+              </button>
+            );
+          })}
+
+          <div className="profile-dropdown__divider" role="separator" />
+
+          <button
+            type="button"
+            role="menuitem"
+            ref={(el) => {
+              itemRefs.current[menuIndex] = el;
+            }}
+            onClick={() => {
+              onClose?.();
+              onRequestLogout?.();
+            }}
+            onKeyDown={(e) => handleItemKeyDown(e, menuIndex)}
+            className="profile-dropdown__item profile-dropdown__item--danger"
+          >
+            <span className="profile-dropdown__item-icon">
+              <LogOut className="h-4 w-4" aria-hidden />
+            </span>
+            Sign Out
+          </button>
+        </div>
+
+        <p className="profile-dropdown__footer">
+          Company &amp; subscription:{" "}
+          <Link
+            to="/settings/my-account"
+            onClick={onClose}
+            className="profile-dropdown__footer-link"
+          >
+            My Account
+          </Link>
+        </p>
       </div>
 
-      <p className="mt-3 border-t border-slate-100 pt-3 text-[11px] leading-relaxed text-slate-500 dark:border-slate-700">
-        Company and subscription details are available under{" "}
-        <Link
-          to="/settings/my-account"
-          onClick={onClose}
-          className="font-semibold text-teal-600 hover:underline dark:text-teal-400"
-        >
-          Settings → My Account
-        </Link>
-        .
-      </p>
-    </div>
-
-    <AdjustProfilePhotoModal
-      open={adjustModalOpen}
-      onClose={() => setAdjustModalOpen(false)}
-      initialImage={selectedImageForAdjust}
-      onSave={(dataUrl) => {
-        updateUserAvatar(dataUrl);
-        setAdjustModalOpen(false);
-      }}
-      onRemove={handleRemoveAvatar}
-      userName={displayName}
-    />
-  </>
+      <AdjustProfilePhotoModal
+        open={adjustModalOpen}
+        onClose={() => setAdjustModalOpen(false)}
+        initialImage={selectedImageForAdjust}
+        onSave={(dataUrl) => {
+          updateUserAvatar(dataUrl);
+          setAdjustModalOpen(false);
+        }}
+        onRemove={handleRemoveAvatar}
+        userName={displayName}
+      />
+    </>
   );
 }

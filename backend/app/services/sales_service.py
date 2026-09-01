@@ -152,6 +152,140 @@ def list_sales_orders(db: Session, tenant_id: int, status: str | None = None) ->
     return list(db.scalars(stmt).all())
 
 
+_DELETABLE_SO_STATUSES = frozenset({"draft", "pending"})
+
+
+def _count_records_by_sales_order(
+    db: Session,
+    tenant_id: int,
+    order_ids: list[int],
+    model,
+    fk_column,
+) -> dict[int, int]:
+    if not order_ids:
+        return {}
+    rows = db.execute(
+        select(fk_column, func.count())
+        .where(model.tenant_id == tenant_id, fk_column.in_(order_ids))
+        .group_by(fk_column)
+    ).all()
+    return {int(order_id): int(count) for order_id, count in rows}
+
+
+def delete_blockers_by_sales_order_ids(
+    db: Session, tenant_id: int, order_ids: list[int]
+) -> dict[int, list[str]]:
+    """Return downstream blocker descriptions keyed by sales order id."""
+    if not order_ids:
+        return {}
+
+    from app.models.manufacturing_workflow import (
+        ManufacturingWorkflowTransition,
+        SalesJobCard,
+        SalesOrderMaterialCheck,
+        WorkflowStageJobCard,
+    )
+    from app.models.production import ProductionOrder
+
+    blocker_specs = [
+        (Invoice, Invoice.sales_order_id, "linked invoice(s)"),
+        (DispatchShipment, DispatchShipment.sales_order_id, "dispatch record(s)"),
+        (ProductionOrder, ProductionOrder.sales_order_id, "production order(s)"),
+        (SalesJobCard, SalesJobCard.sales_order_id, "job card(s)"),
+        (SalesOrderMaterialCheck, SalesOrderMaterialCheck.sales_order_id, "material check(s)"),
+        (WorkflowStageJobCard, WorkflowStageJobCard.sales_order_id, "workflow stage job card(s)"),
+        (
+            ManufacturingWorkflowTransition,
+            ManufacturingWorkflowTransition.sales_order_id,
+            "workflow transition(s)",
+        ),
+    ]
+
+    counts_by_type: list[tuple[str, dict[int, int]]] = [
+        (label, _count_records_by_sales_order(db, tenant_id, order_ids, model, fk_column))
+        for model, fk_column, label in blocker_specs
+    ]
+
+    blockers_by_order: dict[int, list[str]] = {order_id: [] for order_id in order_ids}
+    for label, counts in counts_by_type:
+        for order_id, count in counts.items():
+            if count:
+                blockers_by_order.setdefault(order_id, []).append(f"{count} {label}")
+    return blockers_by_order
+
+
+def sales_order_can_delete(order: SalesOrder, blockers: list[str] | None = None) -> bool:
+    status = (order.status or "").lower().strip()
+    if status not in _DELETABLE_SO_STATUSES:
+        return False
+
+    workflow_status = (order.workflow_status or "").strip().upper()
+    if workflow_status and workflow_status not in {"", "DRAFT", "PENDING"}:
+        return False
+
+    if order.invoiced or order.packed or order.shipped:
+        return False
+
+    return not blockers
+
+
+def delete_sales_order(db: Session, tenant_id: int, order_id: int) -> bool:
+    """Hard-delete a sales order when it has no downstream manufacturing or billing links."""
+    from fastapi import HTTPException
+
+    order = db.scalars(
+        select(SalesOrder).where(
+            SalesOrder.id == order_id,
+            SalesOrder.tenant_id == tenant_id,
+        )
+    ).first()
+    if not order:
+        return False
+
+    status = (order.status or "").lower().strip()
+    if status not in _DELETABLE_SO_STATUSES:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Cannot delete sales order {order.order_number} with status "
+                f"'{order.status}'. Only draft or pending orders can be deleted."
+            ),
+        )
+
+    workflow_status = (order.workflow_status or "").strip().upper()
+    if workflow_status and workflow_status not in {"", "DRAFT", "PENDING"}:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Cannot delete sales order {order.order_number} because it is linked to the "
+                f"manufacturing workflow (status: {order.workflow_status})."
+            ),
+        )
+
+    if order.invoiced or order.packed or order.shipped:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Cannot delete sales order {order.order_number} because it has already been "
+                "invoiced, packed, or shipped."
+            ),
+        )
+
+    blockers = delete_blockers_by_sales_order_ids(db, tenant_id, [order_id]).get(order_id, [])
+    if blockers:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Cannot delete sales order {order.order_number} because it has downstream "
+                f"records: {', '.join(blockers)}."
+            ),
+        )
+
+    db.delete(order)
+    db.commit()
+    return True
+
+
 def update_sales_order_status(
     db: Session,
     tenant_id: int,

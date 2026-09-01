@@ -638,6 +638,8 @@ def apply_role_dashboard(
     tenant_id: int,
     user: User | None,
     ctx: dict[str, Any],
+    *,
+    include_manufacturing_workflow: bool = True,
 ) -> dict[str, Any]:
     """Replace KPI cards / sections based on authenticated role. Mutates and returns payload."""
     profile = resolve_dashboard_profile(user)
@@ -647,30 +649,31 @@ def apply_role_dashboard(
     today = ctx["today"]
     if profile == "admin":
         payload["kpi_cards"] = build_admin_kpis(db, tenant_id, user, ctx)
-        from app.services.workflow_state_service import (
-            recent_workflow_activity,
-            workflow_status_counts,
-        )
-        from app.services.stage_job_card_service import list_live_workflow_cards
-        from app.core.workflow_constants import WORKFLOW_COUNT_BUCKETS
-
-        counts_raw = workflow_status_counts(db, tenant_id)
-        workflow_counts = []
-        for bucket in WORKFLOW_COUNT_BUCKETS:
-            statuses = [s.strip() for s in bucket["statuses"].split(",")]
-            workflow_counts.append(
-                {
-                    "key": bucket["key"],
-                    "label": bucket["label"],
-                    "count": sum(counts_raw.get(s, 0) for s in statuses),
-                    "path": bucket["path"],
-                }
+        if include_manufacturing_workflow:
+            from app.services.workflow_state_service import (
+                recent_workflow_activity,
+                workflow_status_counts,
             )
-        payload["manufacturing_workflow"] = {
-            "counts": workflow_counts,
-            "activity": recent_workflow_activity(db, tenant_id, limit=15),
-            "live_cards": list_live_workflow_cards(db, tenant_id, limit=12),
-        }
+            from app.services.stage_job_card_service import list_live_workflow_cards
+            from app.core.workflow_constants import WORKFLOW_COUNT_BUCKETS
+
+            counts_raw = workflow_status_counts(db, tenant_id)
+            workflow_counts = []
+            for bucket in WORKFLOW_COUNT_BUCKETS:
+                statuses = [s.strip() for s in bucket["statuses"].split(",")]
+                workflow_counts.append(
+                    {
+                        "key": bucket["key"],
+                        "label": bucket["label"],
+                        "count": sum(counts_raw.get(s, 0) for s in statuses),
+                        "path": bucket["path"],
+                    }
+                )
+            payload["manufacturing_workflow"] = {
+                "counts": workflow_counts,
+                "activity": recent_workflow_activity(db, tenant_id, limit=15),
+                "live_cards": list_live_workflow_cards(db, tenant_id, limit=12),
+            }
         if "manufacturing_workflow" not in payload.get("visible_sections", []):
             payload["visible_sections"] = list(payload.get("visible_sections", [])) + [
                 "manufacturing_workflow"

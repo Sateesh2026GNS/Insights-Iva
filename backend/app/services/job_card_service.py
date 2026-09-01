@@ -680,7 +680,7 @@ JOB_CARD_UI_WORKFLOW_STEPS = [
     {"key": "sales_orders", "label": "Sales Order", "statuses": {"SALES_CONFIRMED"}},
     {
         "key": "inventory_check",
-        "label": "Inventory Check",
+        "label": "Inventory",
         "statuses": {
             "MATERIAL_CHECK_PENDING",
             "MATERIAL_SHORTAGE",
@@ -716,12 +716,12 @@ JOB_CARD_UI_WORKFLOW_STEPS = [
     },
     {
         "key": "quality_check",
-        "label": "Quality Check",
+        "label": "Quality",
         "statuses": {"QUALITY_CHECK_PENDING", "QUALITY_ON_HOLD", "QUALITY_APPROVED", "QUALITY_REJECTED"},
     },
     {
         "key": "packing_dispatch",
-        "label": "Packing & Dispatch",
+        "label": "Packing",
         "statuses": {
             "PACKING_PENDING",
             "PACKING_IN_PROGRESS",
@@ -1383,6 +1383,29 @@ def build_sales_job_card(
     card["job_card_created"] = job_card_created
     if jc:
         card["job_card_no"] = jc.job_card_no
+
+    if job_card_created:
+        from app.models.manufacturing_workflow import SalesOrderMaterialCheck
+        from app.services.workflow_routing_service import build_store_queue_context
+        from sqlalchemy.orm import selectinload
+
+        mc = db.scalars(
+            select(SalesOrderMaterialCheck)
+            .options(selectinload(SalesOrderMaterialCheck.lines))
+            .where(
+                SalesOrderMaterialCheck.tenant_id == tenant_id,
+                SalesOrderMaterialCheck.sales_order_id == so.id,
+            )
+        ).first()
+        card["store_context"] = build_store_queue_context(
+            db,
+            tenant_id,
+            so,
+            job_card=jc,
+            material_check=mc,
+            work_order_id=wo.id if wo else None,
+        )
+
     return card
 
 

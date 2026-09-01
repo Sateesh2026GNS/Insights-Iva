@@ -29,8 +29,8 @@ export default function Pagination({
 
   return (
     <div className={`ui-pagination justify-between w-full border-t border-[var(--color-border-soft)] pt-3 ${className}`.trim()}>
-      <div className="flex items-center gap-2.5 flex-nowrap whitespace-nowrap text-[13px] text-[#596b82]">
-        <span>Rows per page:</span>
+      <div className="flex items-center gap-2.5 flex-nowrap whitespace-nowrap text-[13px] text-[var(--color-text-muted)]">
+        <span className="text-[var(--color-text-muted)]">Rows per page:</span>
         {onPageSizeChange ? (
           <select
             value={pageSize}
@@ -49,7 +49,7 @@ export default function Pagination({
             {pageSize}
           </span>
         )}
-        <span className="font-medium text-[#596b82]">
+        <span className="font-medium text-[var(--color-text-muted)]">
           {total != null
             ? total === 0
               ? "0–0 of 0"

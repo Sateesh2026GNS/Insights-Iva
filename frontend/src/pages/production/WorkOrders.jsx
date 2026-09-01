@@ -69,14 +69,34 @@ import {
   MANUFACTURING_EVENTS,
   notifyManufacturingSpine,
 } from "../../utils/manufacturingEvents";
+import { asArray, apiErrorMessage } from "../../utils/apiError";
 import { exportToExcel, exportToPdf } from "../../utils/exportUtils";
-import { printWorkOrder } from "../../utils/printUtils";
 import { cleanProductLabel } from "../../utils/productLabel";
 
 const PAGE_SIZES = [20, 50, 100, 200, 500];
 
 function isServerWoId(id) {
   return typeof id === "number" || (typeof id === "string" && /^\d+$/.test(id));
+}
+
+function workOrderSortKey(row) {
+  const raw = row?.created_at || row?.created_date || row?.planned_start || row?.planned_end || "";
+  if (raw == null || raw === "") return "";
+  if (typeof raw === "string") return raw;
+  if (raw instanceof Date) return raw.toISOString();
+  return String(raw);
+}
+
+function compareWorkOrders(a, b) {
+  const idA = typeof a.id === "number" ? a.id : Number(String(a.id).replace(/\D/g, "")) || 0;
+  const idB = typeof b.id === "number" ? b.id : Number(String(b.id).replace(/\D/g, "")) || 0;
+  if (idA && idB && idA !== idB) return idB - idA;
+  const dateA = workOrderSortKey(a);
+  const dateB = workOrderSortKey(b);
+  if (dateA && dateB) return dateB.localeCompare(dateA);
+  if (dateB) return 1;
+  if (dateA) return -1;
+  return 0;
 }
 
 function woStatusTone(row) {
@@ -293,6 +313,8 @@ export default function WorkOrders() {
   const [workOrders, setWorkOrders] = useState([]);
   const [selected, setSelected] = useState(null);
   const [detail, setDetail] = useState(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState(null);
   const [filters, setFilters] = useState(defaultFilters);
   const [appliedFilters, setAppliedFilters] = useState(defaultFilters);
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -323,20 +345,24 @@ export default function WorkOrders() {
     try {
       const poId = poFilter ? Number(poFilter) : undefined;
       const wRes = await getWorkOrders(poId);
-      const apiRows = wRes?.data || [];
+      const apiRows = asArray(wRes?.data);
       const enriched = apiRows.map((r, i) => enrichApiWorkOrder(r, i));
-      enriched.sort((a, b) => {
-        const idA = typeof a.id === "number" ? a.id : Number(String(a.id).replace(/\D/g, "")) || 0;
-        const idB = typeof b.id === "number" ? b.id : Number(String(b.id).replace(/\D/g, "")) || 0;
-        if (idA && idB && idA !== idB) return idB - idA;
-        const dateA = a.created_at || a.created_date || a.planned_start || "";
-        const dateB = b.created_at || b.created_date || b.planned_start || "";
-        return dateB.localeCompare(dateA);
-      });
+      enriched.sort(compareWorkOrders);
       setWorkOrders(enriched);
+      setSelected((prev) => {
+        if (!prev?.id) return prev;
+        return enriched.find((w) => w.id === prev.id) || prev;
+      });
     } catch (e) {
       setWorkOrders([]);
-      addToast(e?.response?.data?.detail || "Could not load work orders", "error");
+      const detail = e?.response?.data?.detail;
+      const message =
+        typeof detail === "string"
+          ? detail
+          : e?.message && !String(e.message).includes("localeCompare")
+            ? e.message
+            : "Could not load work orders";
+      addToast(message, "error");
     } finally {
       setLoading(false);
     }
@@ -346,7 +372,7 @@ export default function WorkOrders() {
 
   useEffect(() => {
     getMachines()
-      .then((res) => setMachines(res?.data || []))
+      .then((res) => setMachines(asArray(res?.data)))
       .catch(() => setMachines([]));
   }, []);
 
@@ -557,15 +583,32 @@ export default function WorkOrders() {
   // in sync with what is shown in the table.
   const summary = useMemo(() => computeWorkOrderSummary(workOrders), [workOrders]);
 
+  const fetchWoDetail = useCallback(async (wo) => {
+    if (typeof wo?.id !== "number") {
+      setDetail(null);
+      setDetailError(null);
+      setDetailLoading(false);
+      return;
+    }
+    setDetailLoading(true);
+    setDetailError(null);
+    try {
+      const res = await getWorkOrderDetail(wo.id);
+      setDetail(enrichApiWorkOrder(res.data));
+    } catch (e) {
+      setDetail(null);
+      const msg = apiErrorMessage(e, "Could not load work order details");
+      setDetailError(msg);
+      addToast(msg, "error");
+    } finally {
+      setDetailLoading(false);
+    }
+  }, [addToast]);
+
   const openWo = async (wo) => {
     setSelected(wo);
     setDetail(null);
-    if (typeof wo.id === "number") {
-      try {
-        const res = await getWorkOrderDetail(wo.id);
-        setDetail(enrichApiWorkOrder(res.data));
-      } catch { /* list data */ }
-    }
+    await fetchWoDetail(wo);
   };
 
   const handleStartClick = async (wo) => {
@@ -1171,7 +1214,9 @@ export default function WorkOrders() {
         <WorkOrderDetailModal
           workOrder={selected}
           detail={detail}
-          onClose={() => { setSelected(null); setDetail(null); }}
+          detailLoading={detailLoading}
+          detailError={detailError}
+          onClose={() => { setSelected(null); setDetail(null); setDetailError(null); }}
           onIssueMaterials={handleIssueMaterials}
           issuing={issuingId === selected.id}
           onStart={handleStartClick}

@@ -144,7 +144,7 @@ export default function OperatorJobsPage() {
             title="No jobs assigned yet"
             description="When Production Manager assigns you a job, it will appear here. For local testing, run the demo seed script on the backend."
             actionLabel="Open Workflow Board"
-            actionHref="/manufacturing/workflow?status=PRODUCTION_ASSIGNED"
+            actionHref="/production/operator-jobs"
           />
         ) : (
           <div className="ui-table-wrap ui-table-wrap--scroll">

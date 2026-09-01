@@ -33,22 +33,24 @@ const STATE_STYLES = {
 };
 
 /** 9-step workflow tracker with completed / current / pending / blocked / rejected states. */
-export default function WorkflowTracker({ steps = [], currentStage = null }) {
+export default function WorkflowTracker({ steps = [], currentStage = null, embedded = false }) {
   const stageLabel = currentStage?.stage_label || steps.find((s) => s.status === "current")?.label || "—";
   const stageHint = currentStage?.stage_hint || "Track progress across manufacturing stages.";
 
-  return (
-    <article className="ui-card overflow-hidden">
-      <header className="flex items-center gap-2.5 border-b border-[var(--color-border-muted)] bg-gradient-to-r from-[var(--color-primary-soft)] to-[var(--color-surface)] px-4 py-3">
-        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--color-primary-soft)] text-[var(--color-primary)]">
-          <ClipboardList className="h-4 w-4" strokeWidth={2} />
-        </span>
-        <h3 className="text-[13px] font-bold uppercase tracking-[0.06em] text-[var(--color-primary)]">
-          Workflow Status
-        </h3>
-      </header>
+  const content = (
+    <>
+      {!embedded ? (
+        <header className="flex items-center gap-2.5 border-b border-[var(--color-border-muted)] bg-gradient-to-r from-[var(--color-primary-soft)] to-[var(--color-surface)] px-4 py-3">
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--color-primary-soft)] text-[var(--color-primary)]">
+            <ClipboardList className="h-4 w-4" strokeWidth={2} />
+          </span>
+          <h3 className="text-[13px] font-bold uppercase tracking-[0.06em] text-[var(--color-primary)]">
+            Workflow Status
+          </h3>
+        </header>
+      ) : null}
 
-      <div className="px-2 py-4 sm:px-3">
+      <div className={embedded ? "" : "px-2 py-4 sm:px-3"}>
         <div className="flex items-start justify-between gap-0 overflow-x-auto pb-1">
           {steps.map((step, idx) => {
             const state = step.status || "pending";
@@ -102,6 +104,10 @@ export default function WorkflowTracker({ steps = [], currentStage = null }) {
           <p className="mt-1 text-xs text-[var(--color-text-muted)]">{stageHint}</p>
         </div>
       </div>
-    </article>
+    </>
   );
+
+  if (embedded) return content;
+
+  return <article className="ui-card overflow-hidden">{content}</article>;
 }

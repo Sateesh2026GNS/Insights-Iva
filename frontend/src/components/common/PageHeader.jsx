@@ -9,13 +9,15 @@ export default function PageHeader({
   title,
   subtitle,
   action,
+  actions,
   backTo,
   backLabel = "Back",
   eyebrow,
   showTitle = false,
   className = "",
 }) {
-  const hasBody = Boolean(backTo || eyebrow || (showTitle && title) || subtitle || action);
+  const toolbar = action ?? actions;
+  const hasBody = Boolean(backTo || eyebrow || (showTitle && title) || subtitle || toolbar);
   if (!hasBody) return null;
 
   return (
@@ -34,7 +36,7 @@ export default function PageHeader({
         {showTitle && title ? <h2 className="ui-title">{title}</h2> : null}
         {subtitle ? <p className="ui-subtitle mt-0">{subtitle}</p> : null}
       </div>
-      {action ? <div className="ui-toolbar shrink-0">{action}</div> : null}
+      {toolbar ? <div className="ui-toolbar shrink-0">{toolbar}</div> : null}
     </header>
   );
 }

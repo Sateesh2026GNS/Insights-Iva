@@ -2,7 +2,7 @@
 
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -20,12 +20,18 @@ router = APIRouter(prefix="/api/erp", tags=["ERP Dashboard API"])
 
 @router.get("/dashboard")
 def erp_dashboard(
+    include_manufacturing_workflow: bool = Query(True),
     user_tenant: tuple[User, int] = Depends(require_tenant("dashboard")),
     db: Session = Depends(get_db),
 ):
     try:
         user, tenant_id = user_tenant
-        data = get_erp_dashboard(db, tenant_id, user=user)
+        data = get_erp_dashboard(
+            db,
+            tenant_id,
+            user=user,
+            include_manufacturing_workflow=include_manufacturing_workflow,
+        )
         return success_response("ERP dashboard retrieved", data)
     except HTTPException as exc:
         logger.error("HTTP error in GET /api/erp/dashboard: %s", exc.detail, exc_info=True)

@@ -307,7 +307,13 @@ def _yearly_overview(db: Session, tenant_id: int) -> list[dict]:
     return rows
 
 
-def get_erp_dashboard(db: Session, tenant_id: int, user: User | None = None) -> dict:
+def get_erp_dashboard(
+    db: Session,
+    tenant_id: int,
+    user: User | None = None,
+    *,
+    include_manufacturing_workflow: bool = True,
+) -> dict:
     today = date.today()
     yesterday = today - timedelta(days=1)
 
@@ -743,4 +749,11 @@ def get_erp_dashboard(db: Session, tenant_id: int, user: User | None = None) -> 
         "warehouse_count": warehouse_count,
         "pending_approvals_total": pending_approvals_total,
     }
-    return apply_role_dashboard(payload, db, tenant_id, user, role_ctx)
+    return apply_role_dashboard(
+        payload,
+        db,
+        tenant_id,
+        user,
+        role_ctx,
+        include_manufacturing_workflow=include_manufacturing_workflow,
+    )

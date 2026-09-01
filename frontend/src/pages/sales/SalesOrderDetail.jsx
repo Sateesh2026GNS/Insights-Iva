@@ -1,17 +1,22 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, CheckCircle2, ClipboardList, Factory } from "lucide-react";
+import { ArrowLeft, CheckCircle2, ClipboardList, Factory, Trash2 } from "lucide-react";
 
+import ConfirmDialog from "../../components/admin/ConfirmDialog";
 import Loader from "../../components/common/Loader";
 import PageHeader from "../../components/common/PageHeader";
 import EmptyState from "../../components/common/EmptyState";
 import { StatusBadge } from "../../components/common/Table";
 import { useToast } from "../../context/ToastContext";
 import Button from "../../components/common/Button";
+import useAuth from "../../hooks/useAuth";
+import { userCanAction } from "../../config/permissions";
+import { apiErrorMessage } from "../../utils/apiError";
 import {
   confirmSalesOrder,
   confirmSalesOrderDelivery,
+  deleteSalesOrder,
   getSalesOrderDetail,
   getSalesOrderWorkflow,
   updateSalesOrderDispatch,
@@ -20,16 +25,23 @@ import {
   MANUFACTURING_EVENTS,
   notifyManufacturingSpine,
 } from "../../utils/manufacturingEvents";
+import { jobCardDetailsUrl } from "../../utils/jobCardRoutes";
 
 export default function SalesOrderDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { addToast } = useToast();
+  const { user } = useAuth();
+  const canDelete = userCanAction(user, "sales", "delete");
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState(null);
   const [confirming, setConfirming] = useState(false);
   const [workflowResult, setWorkflowResult] = useState(null);
   const [orderWorkflow, setOrderWorkflow] = useState(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const deleteInFlight = useRef(false);
 
   const loadWorkflow = useCallback(async () => {
     try {
@@ -58,6 +70,23 @@ export default function SalesOrderDetail() {
   useEffect(() => {
     load();
   }, [load]);
+
+  const handleDeleteConfirm = async () => {
+    if (!data?.order?.id || deleteInFlight.current) return;
+    deleteInFlight.current = true;
+    setDeleteError("");
+    setDeleting(true);
+    try {
+      await deleteSalesOrder(data.order.id);
+      addToast(`Sales order ${data.order.order_number} deleted successfully.`, "success");
+      navigate("/sales/orders");
+    } catch (err) {
+      setDeleteError(apiErrorMessage(err, "Failed to delete sales order."));
+    } finally {
+      deleteInFlight.current = false;
+      setDeleting(false);
+    }
+  };
 
   if (loading) return <Loader label="Loading sales order..." />;
 
@@ -138,7 +167,7 @@ export default function SalesOrderDetail() {
                 <span className="ml-2 font-normal text-slate-400">· {orderWorkflow.viewer_role}</span>
               ) : null}
             </h3>
-            <Link to="/manufacturing/workflow" className="text-xs font-semibold text-[var(--color-success)] hover:underline">
+            <Link to="/production/work-orders" className="text-xs font-semibold text-[var(--color-success)] hover:underline">
               Open board →
             </Link>
           </div>
@@ -185,7 +214,7 @@ export default function SalesOrderDetail() {
           <>
             <Button
               variant="primary"
-              to={`/sales/orders/${order.id}/job-card`}
+              to={jobCardDetailsUrl(order.id)}
               className="inline-flex items-center gap-2"
             >
               <ClipboardList className="h-4 w-4" />
@@ -203,6 +232,20 @@ export default function SalesOrderDetail() {
         <Button variant="secondary" to="/production/planning">
           Production Planning
         </Button>
+        {canDelete ? (
+          <Button
+            variant="danger"
+            type="button"
+            className="inline-flex items-center gap-2"
+            onClick={() => {
+              setDeleteError("");
+              setDeleteOpen(true);
+            }}
+          >
+            <Trash2 className="h-4 w-4" />
+            Delete
+          </Button>
+        ) : null}
       </div>
 
       {!lineItems.length && (
@@ -444,6 +487,23 @@ export default function SalesOrderDetail() {
           </div>
         </div>
       )}
+      <ConfirmDialog
+        open={deleteOpen}
+        title="Delete Sales Order?"
+        message="Are you sure you want to delete this sales order? This action cannot be undone."
+        error={deleteError}
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        destructive
+        loading={deleting}
+        onConfirm={handleDeleteConfirm}
+        onClose={() => {
+          if (!deleting) {
+            setDeleteOpen(false);
+            setDeleteError("");
+          }
+        }}
+      />
     </div>
   );
 }

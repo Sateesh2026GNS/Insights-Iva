@@ -61,6 +61,7 @@ export default function KpiCard({
   title,
   to,
   onClick,
+  active = false,
 }) {
   const resolved = resolveTone(tone, color);
   const supporting = meta ?? sub ?? trend;
@@ -73,7 +74,10 @@ export default function KpiCard({
         : value;
 
   const hoverBorderClass = TONE_HOVER_BORDER[resolved] || TONE_HOVER_BORDER.teal;
-  const cardClass = `ui-kpi ui-kpi--${resolved} group cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none ${hoverBorderClass} ${className}`.trim();
+  const activeClass = active
+    ? "ring-2 ring-[var(--color-primary)] border-[var(--color-primary)] shadow-md"
+    : "";
+  const cardClass = `ui-kpi ui-kpi--${resolved} group cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none ${hoverBorderClass} ${activeClass} ${className}`.trim();
 
   const inner = (
     <>

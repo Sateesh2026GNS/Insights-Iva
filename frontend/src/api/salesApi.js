@@ -12,6 +12,8 @@ export const getSalesOrdersEnriched = () => api.get("/sales/sales-orders/enriche
 export const getSOSummary = () => api.get("/sales/sales-orders/summary");
 export const getSalesOrderDetail = (orderId) => api.get(`/sales/sales-orders/${orderId}`);
 export const createSalesOrder = (payload) => api.post("/sales/sales-orders", payload);
+export const deleteSalesOrder = (orderId) =>
+  api.delete(`/sales/sales-orders/${orderId}`, { skipGlobalError: true });
 export const updateSalesOrderStatus = (orderId, status) =>
   api.patch(`/sales/sales-orders/${orderId}/status`, null, { params: { status } });
 export const confirmSalesOrder = (orderId) =>

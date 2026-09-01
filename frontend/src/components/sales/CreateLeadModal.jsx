@@ -4,6 +4,7 @@ import { createLead } from "../../api/salesApi";
 import { useToast } from "../../context/ToastContext";
 import { LEAD_SOURCES } from "../../data/salesMasterData";
 import Button from "../common/Button";
+import { apiErrorMessage } from "../../utils/apiError";
 
 import { inputMtClass as inputClass } from "../../design-system/classes";
 
@@ -65,16 +66,10 @@ export default function CreateLeadModal({ isOpen, onClose, onSuccess }) {
     };
 
     try {
-      // 1. Try Backend API call
-      await createLead(payload).catch(() => null);
-
-      // 2. LocalStorage Persistence
-      const stored = localStorage.getItem("smrt_leads");
-      const currentLeads = stored ? JSON.parse(stored) : [];
-      localStorage.setItem("smrt_leads", JSON.stringify([payload, ...currentLeads]));
-
+      const res = await createLead(payload);
+      const created = res?.data || payload;
       if (addToast) addToast("New lead created successfully!", "success");
-      if (onSuccess) onSuccess(payload);
+      if (onSuccess) onSuccess(created);
       onClose();
       setForm({
         customer_name: "",
@@ -89,8 +84,9 @@ export default function CreateLeadModal({ isOpen, onClose, onSuccess }) {
         notes: "",
       });
     } catch (err) {
-      setError("Failed to create lead entry.");
-      if (addToast) addToast("Failed to create lead", "error");
+      const message = apiErrorMessage(err, "Failed to create lead.");
+      setError(message);
+      if (addToast) addToast(message, "error");
     } finally {
       setSaving(false);
     }

@@ -102,6 +102,12 @@ export function NetworkStatusProvider({ children }) {
 
   return (
     <NetworkStatusContext.Provider value={value}>
+      {!online ? <OfflineBanner onRetry={runRetries} /> : null}
+      {online && slow ? (
+        <div className="sticky top-0 z-[79] px-4 pt-2">
+          <SlowNetworkBanner />
+        </div>
+      ) : null}
       {children}
     </NetworkStatusContext.Provider>
   );
