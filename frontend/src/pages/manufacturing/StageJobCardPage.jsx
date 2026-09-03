@@ -1,8 +1,22 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import {
+  Boxes,
+  CheckCircle2,
+  CheckSquare,
+  Clock,
+  Factory,
+  Layers,
+  PackageCheck,
+  Plus,
+  Receipt,
+  ShoppingCart,
+} from "lucide-react";
 
 import { FormField, Input, Select, Textarea } from "../../components/common/FormField";
 import Button from "../../components/common/Button";
+import AddUserModal from "../../components/admin/AddUserModal";
+import CreateMachineModal from "../../components/production/CreateMachineModal";
 import OperatorJobCardBody from "../../components/manufacturing/OperatorJobCardBody";
 import JobCardActions from "../../components/manufacturing/JobCardActions";
 import JobCardDetailsShell from "../../components/manufacturing/JobCardDetailsShell";
@@ -11,10 +25,30 @@ import MaterialTable from "../../components/manufacturing/MaterialTable";
 import { CardSectionHeader } from "../../components/manufacturing/jobCardUiShared";
 import { useToast } from "../../context/ToastContext";
 import useAuth from "../../hooks/useAuth";
+import usePermissions from "../../hooks/usePermissions";
 import useJobCardDetails from "../../hooks/useJobCardDetails";
-import useTenantId from "../../hooks/useTenantId";
-import { getTeamDirectory } from "../../api/adminApi";
+import CompletedJobCardAllStagesReport from "../../components/manufacturing/CompletedJobCardAllStagesReport";
+import { getTeamDirectory, getUsers } from "../../api/adminApi";
 import { getMachines } from "../../api/productionApi";
+
+function extractOperators(usersList) {
+  if (!Array.isArray(usersList) || usersList.length === 0) return [];
+  const matched = usersList.filter((u) => {
+    if (!u) return false;
+    const roleStr = String(u.role || u.role_name || u.designation || u.department || "").toLowerCase();
+    if (roleStr.includes("operator") || roleStr.includes("machinist") || roleStr.includes("technician")) {
+      return true;
+    }
+    const rolesList = Array.isArray(u.roles) ? u.roles : [];
+    return rolesList.some((r) => {
+      const name = String(typeof r === "string" ? r : r?.name || r?.role_name || "").toLowerCase();
+      return name.includes("operator") || name.includes("machinist") || name.includes("technician");
+    });
+  });
+
+  if (matched.length > 0) return matched;
+  return usersList.filter((u) => u && u.is_active !== false);
+}
 import {
   assignOperator,
   completePacking,
@@ -60,6 +94,7 @@ export default function StageJobCardPage() {
   const navigate = useNavigate();
   const { addToast } = useToast();
   const { user } = useAuth();
+  const { isAdmin } = usePermissions();
   const tenantId = useTenantId();
 
   const stage = ROUTE_SEGMENT_TO_STAGE[routeStage] || routeStage;
@@ -70,6 +105,8 @@ export default function StageJobCardPage() {
   const [issueLines, setIssueLines] = useState([]);
   const [operators, setOperators] = useState([]);
   const [machines, setMachines] = useState([]);
+  const [showAddOperatorModal, setShowAddOperatorModal] = useState(false);
+  const [showAddMachineModal, setShowAddMachineModal] = useState(false);
   const [assignForm, setAssignForm] = useState({ operator_user_id: "", machine_id: "", planned_quantity: "" });
   const [qualityForm, setQualityForm] = useState({ result: "pass", notes: "", defects: "" });
   const [packingForm, setPackingForm] = useState({ packing_status: "packed", packed_quantity: "", courier: "", lr_number: "", remarks: "" });
@@ -134,23 +171,71 @@ export default function StageJobCardPage() {
     loadDetails();
   }, [load, loadDetails]);
 
+  const loadOperators = useCallback(async () => {
+    try {
+      const rawUsers = await getTeamDirectory()
+        .then((r) => r?.data?.items ?? r?.data ?? r ?? [])
+        .catch(() => getUsers().then((r) => r?.data?.items ?? r?.data ?? r ?? []))
+        .catch(() => []);
+      const usersList = Array.isArray(rawUsers) ? rawUsers : [];
+      const ops = extractOperators(usersList);
+      setOperators(ops);
+      return ops;
+    } catch {
+      return [];
+    }
+  }, []);
+
+  const handleOperatorCreated = async (createdUser) => {
+    const updatedOps = await loadOperators();
+    if (createdUser?.id) {
+      setAssignForm((f) => ({ ...f, operator_user_id: String(createdUser.id) }));
+    } else if (updatedOps.length > 0) {
+      const matched = updatedOps.find(
+        (o) =>
+          (createdUser?.email && o.email === createdUser.email) ||
+          (createdUser?.full_name && o.full_name === createdUser.full_name)
+      );
+      if (matched) {
+        setAssignForm((f) => ({ ...f, operator_user_id: String(matched.id) }));
+      }
+    }
+  };
+
+  const loadMachines = useCallback(async () => {
+    try {
+      const r = await getMachines().catch(() => []);
+      const macs = Array.isArray(r) ? r : r?.data?.items ?? r?.data ?? [];
+      setMachines(macs);
+      return macs;
+    } catch {
+      return [];
+    }
+  }, []);
+
+  const handleMachineCreated = async (createdMachine) => {
+    const updatedMacs = await loadMachines();
+    if (createdMachine?.id) {
+      setAssignForm((f) => ({ ...f, machine_id: String(createdMachine.id) }));
+    } else if (updatedMacs.length > 0) {
+      const matched = updatedMacs.find(
+        (m) =>
+          (createdMachine?.name && m.name === createdMachine.name) ||
+          (createdMachine?.code && m.code === createdMachine.code)
+      );
+      if (matched) {
+        setAssignForm((f) => ({ ...f, machine_id: String(matched.id) }));
+      }
+    }
+  };
+
   useEffect(() => {
     if (stage !== "production_manager") return;
     Promise.all([
-      getTeamDirectory().then((r) => {
-        const rows = r?.data?.items ?? r?.data ?? r ?? [];
-        return (Array.isArray(rows) ? rows : []).filter((u) =>
-          (u.roles || []).some((role) => (typeof role === "string" ? role : role?.name) === "Operator")
-        );
-      }),
-      getMachines().then((r) => r?.data ?? r ?? []),
-    ])
-      .then(([ops, macs]) => {
-        setOperators(ops);
-        setMachines(Array.isArray(macs) ? macs : macs?.items ?? []);
-      })
-      .catch(() => {});
-  }, [stage]);
+      loadOperators(),
+      loadMachines(),
+    ]).catch(() => {});
+  }, [stage, loadOperators, loadMachines]);
 
   const inventorySnapshot = useMemo(() => {
     const lines = stage === "store" ? issueLines : materialLines;
@@ -224,15 +309,15 @@ export default function StageJobCardPage() {
               stock_location: ln.stock_location,
             })),
           });
-          addToast("Inventory check submitted", "success");
+          addToast("Inventory check submitted. Advanced to Stage 3: Store Issue.", "success");
           navigate(`/manufacturing/workflow/order/${orderId}/store`);
           return;
         } else if (action === "hold_order") {
           await holdWorkflowOrder(orderId, { reason: "On hold by store" });
-          addToast("Order placed on hold", "success");
+          addToast("Order placed on hold by Store Manager", "success");
         } else if (action === "raise_material_request") {
           await raiseMaterialRequest(orderId, {});
-          addToast("Material request raised", "success");
+          addToast("Material request raised for shortage items", "success");
         }
       } else if (stage === "store") {
         if (action === "issue_materials" || action === "partial_issue") {
@@ -241,18 +326,18 @@ export default function StageJobCardPage() {
             partial: action === "partial_issue",
             send_to_production: false,
           });
-          addToast("Material issue updated", "success");
+          addToast("Material issue updated in store", "success");
         } else if (action === "send_to_production") {
           await submitStoreIssue(orderId, {
             lines: issueLines.map((ln) => ({ id: ln.id, issued_qty: ln.issued_qty || ln.required_qty, store_location: ln.store_location })),
             send_to_production: true,
           });
-          addToast("Sent to production", "success");
-          navigate("/my-job-cards");
+          addToast("Materials issued. Work Order created & advanced to Stage 4: Production Planning.", "success");
+          navigate(`/manufacturing/workflow/order/${orderId}/production`);
           return;
         } else if (action === "hold") {
           await holdWorkflowOrder(orderId, { reason: "Store hold" });
-          addToast("Order on hold", "success");
+          addToast("Order placed on hold by Store Manager", "success");
         }
       } else if (stage === "production_manager" && woId) {
         if (action === "assign_operator" || action === "send_to_operator") {
@@ -261,16 +346,16 @@ export default function StageJobCardPage() {
             machine_id: assignForm.machine_id ? Number(assignForm.machine_id) : undefined,
             planned_quantity: assignForm.planned_quantity ? Number(assignForm.planned_quantity) : undefined,
           });
-          addToast("Operator assigned", "success");
+          addToast("Machine & Operator allocated. Advanced to Stage 5: Shop Floor Execution.", "success");
           navigate(`/manufacturing/workflow/order/${orderId}/operator`);
         } else if (action === "hold") {
           await holdWorkflowOrder(orderId, { reason: "Production hold" });
-          addToast("Order on hold", "success");
+          addToast("Order placed on hold by Production Manager", "success");
         }
       } else if (stage === "operator" && woId) {
         if (action === "start_work") {
           await startProduction(woId);
-          addToast("Production started", "success");
+          addToast("Production started on machine", "success");
         } else if (action === "pause") {
           await pauseProduction(woId);
           addToast("Production paused", "success");
@@ -284,7 +369,7 @@ export default function StageJobCardPage() {
             rework_qty: productionForm.rework_qty ? Number(productionForm.rework_qty) : undefined,
             notes: productionForm.notes,
           });
-          addToast("Production completed and sent to Quality Check", "success");
+          addToast("Production completed (Output recorded). Advanced to Stage 6: Quality Inspection (QA).", "success");
           navigate(`/manufacturing/workflow/order/${orderId}/quality`);
         }
       } else if (stage === "quality" && inspectionId) {
@@ -294,25 +379,33 @@ export default function StageJobCardPage() {
           notes: qualityForm.notes,
           defects: qualityForm.defects,
         });
-        addToast("Quality check submitted", "success");
-        if (action === "approve") navigate(`/manufacturing/workflow/order/${orderId}/packing`);
+        if (action === "approve") {
+          addToast("Quality Approved! Inspection stamp issued & advanced to Stage 7: Packing & Dispatch.", "success");
+          navigate(`/manufacturing/workflow/order/${orderId}/packing`);
+        } else {
+          addToast("Quality check record updated", "success");
+        }
       } else if (stage === "packing") {
         if (action === "start_packing") {
           await completePacking(orderId, { ...packingForm, packing_status: "in_progress" });
+          addToast("Packing started", "success");
         } else if (action === "complete_packing" || action === "dispatch") {
           await completePacking(orderId, {
             ...packingForm,
             packing_status: action === "dispatch" ? "dispatched" : "packed",
           });
-          addToast("Packing updated", "success");
+          addToast("Packing confirmed & FG stock updated. Advanced to Stage 8: Finance & Billing.", "success");
           navigate(`/manufacturing/workflow/order/${orderId}/billing`);
         } else if (action === "hold") {
           await holdWorkflowOrder(orderId, { reason: "Packing hold" });
+          addToast("Order placed on hold by Packing team", "success");
         }
       } else if (stage === "billing") {
         if (action === "create_invoice" || action === "confirm_billing") {
           await createBillingInvoice(orderId, { remarks: packingForm.remarks });
-          addToast("Billing completed", "success");
+          addToast("GST Tax Invoice generated & Job Card completed successfully!", "success");
+          navigate("/my-job-cards?dept=billing");
+          return;
         }
       }
       await load();
@@ -363,7 +456,21 @@ export default function StageJobCardPage() {
             rows={materialLines}
             editable={card?.editable}
             onChange={(id, key, val) =>
-              setMaterialLines((rows) => rows.map((r) => (r.id === id ? { ...r, [key]: val } : r)))
+              setMaterialLines((rows) =>
+                rows.map((r) => {
+                  if (r.id !== id) return r;
+                  const updated = { ...r, [key]: val };
+                  if (key === "available_qty") {
+                    const req = Number(updated.required_qty || 0);
+                    const avail = Number(val || 0);
+                    const res = Number(updated.reserved_qty || 0);
+                    const net = Math.max(0, avail - res);
+                    updated.shortage_qty = Math.max(0, req - net);
+                    updated.availability_status = (net >= req && req > 0) ? "Available" : (net > 0 ? "Partial" : "Not Available");
+                  }
+                  return updated;
+                })
+              )
             }
           />
           {card?.stock_status ? (
@@ -393,7 +500,19 @@ export default function StageJobCardPage() {
             rows={issueLines}
             editable={card?.editable}
             onChange={(id, key, val) =>
-              setIssueLines((rows) => rows.map((r) => (r.id === id ? { ...r, [key]: val } : r)))
+              setIssueLines((rows) =>
+                rows.map((r) => {
+                  if (r.id !== id) return r;
+                  const updated = { ...r, [key]: val };
+                  if (key === "issued_qty") {
+                    const req = Number(updated.required_qty || 0);
+                    const iss = Number(val || 0);
+                    updated.remaining_qty = Math.max(0, req - iss);
+                    updated.issue_status = iss >= req ? "issued" : (iss > 0 ? "partial" : "pending");
+                  }
+                  return updated;
+                })
+              )
             }
           />
           <JobCardActions actions={card?.allowed_actions} loading={submitting} onAction={runAction} />
@@ -420,27 +539,49 @@ export default function StageJobCardPage() {
             <FormField label="Assign Operator">
               <Select
                 value={assignForm.operator_user_id}
-                onChange={(e) => setAssignForm((f) => ({ ...f, operator_user_id: e.target.value }))}
+                onChange={(e) => {
+                  if (e.target.value === "__add_operator__") {
+                    setShowAddOperatorModal(true);
+                    return;
+                  }
+                  setAssignForm((f) => ({ ...f, operator_user_id: e.target.value }));
+                }}
                 disabled={!card?.editable}
               >
                 <option value="">Select operator</option>
-                {operators.map((op) => (
-                  <option key={op.id} value={op.id}>
-                    {op.full_name || op.email}
-                  </option>
-                ))}
+                {isAdmin ? (
+                  <option value="__add_operator__">+ Add Operator</option>
+                ) : null}
+                {operators.map((op) => {
+                  const displayName = op.full_name || op.name || op.username || op.email || `Operator #${op.id}`;
+                  const roleLabel = op.role || op.role_name || op.designation ? ` (${op.role || op.role_name || op.designation})` : "";
+                  return (
+                    <option key={op.id} value={op.id}>
+                      {displayName}{roleLabel}
+                    </option>
+                  );
+                })}
               </Select>
             </FormField>
             <FormField label="Machine">
               <Select
                 value={assignForm.machine_id}
-                onChange={(e) => setAssignForm((f) => ({ ...f, machine_id: e.target.value }))}
+                onChange={(e) => {
+                  if (e.target.value === "__add_machine__") {
+                    setShowAddMachineModal(true);
+                    return;
+                  }
+                  setAssignForm((f) => ({ ...f, machine_id: e.target.value }));
+                }}
                 disabled={!card?.editable}
               >
-                <option value="">Select machine</option>
+                <option value="">Select Machine...</option>
+                {isAdmin ? (
+                  <option value="__add_machine__">+ Add new Machine</option>
+                ) : null}
                 {machines.map((m) => (
                   <option key={m.id} value={m.id}>
-                    {m.name || m.machine_name || m.id}
+                    {m.name || m.machine_name || m.code || m.id}
                   </option>
                 ))}
               </Select>
@@ -540,6 +681,17 @@ export default function StageJobCardPage() {
         </article>
       );
     }
+
+    if (stage === "completed" || card?.workflow_status === "completed") {
+      return (
+        <CompletedJobCardAllStagesReport
+          card={card}
+          form={detailsForm}
+          salesOrder={salesOrder}
+          orderId={orderId}
+        />
+      );
+    }
     return null;
   };
 
@@ -582,31 +734,53 @@ export default function StageJobCardPage() {
   );
 
   return (
-    <JobCardDetailsShell
-      orderId={orderId}
-      card={detailsCard || card}
-      form={displayForm}
-      salesOrder={salesOrder}
-      productLines={productLines}
-      customers={customers}
-      products={products}
-      salesPeople={salesPeople}
-      errors={errors}
-      mode="view"
-      readOnly
-      linesReadOnly
-      selectedProduct={selectedProduct}
-      productCode={productCode}
-      onPatchField={() => {}}
-      onAddLine={() => {}}
-      onRemoveLine={() => {}}
-      onUpdateLine={() => {}}
-      isCreated
-      canEditSales={false}
-      backTo="/my-job-cards"
-      stageTitle={STAGE_TITLES[stage]}
-      stageActions={stageActions}
-      showWorkflowTracker={false}
-    />
+    <>
+      <JobCardDetailsShell
+        orderId={orderId}
+        card={detailsCard || card}
+        form={displayForm}
+        salesOrder={salesOrder}
+        productLines={productLines}
+        customers={customers}
+        products={products}
+        salesPeople={salesPeople}
+        errors={errors}
+        mode="view"
+        readOnly
+        linesReadOnly
+        selectedProduct={selectedProduct}
+        productCode={productCode}
+        onPatchField={() => {}}
+        onAddLine={() => {}}
+        onRemoveLine={() => {}}
+        onUpdateLine={() => {}}
+        isCreated
+        canEditSales={false}
+        backTo="/my-job-cards"
+        stageTitle={STAGE_TITLES[stage]}
+        stageActions={stageActions}
+        showWorkflowTracker={true}
+      />
+      {isAdmin && (
+        <>
+          <AddUserModal
+            open={showAddOperatorModal}
+            onClose={() => setShowAddOperatorModal(false)}
+            onSuccess={handleOperatorCreated}
+            defaultRole="Operator"
+            defaultDept="Production"
+            defaultDesignation="Operator"
+            title="Add Operator"
+            subtitle="Create a new operator user and assign to production."
+          />
+          <CreateMachineModal
+            open={showAddMachineModal}
+            onClose={() => setShowAddMachineModal(false)}
+            onSaved={handleMachineCreated}
+            placement="modal"
+          />
+        </>
+      )}
+    </>
   );
 }

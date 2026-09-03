@@ -1,10 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Plus } from "lucide-react";
 
 import Button from "../../components/common/Button";
 import Loader from "../../components/common/Loader";
+import AddUserModal from "../../components/admin/AddUserModal";
+import CreateMachineModal from "../../components/production/CreateMachineModal";
 import { useToast } from "../../context/ToastContext";
 import useAuth from "../../hooks/useAuth";
-import { getTeamDirectory } from "../../api/adminApi";
+import usePermissions from "../../hooks/usePermissions";
+import { getTeamDirectory, getUsers } from "../../api/adminApi";
 import { getMachines } from "../../api/productionApi";
 import { confirmSalesOrder } from "../../api/salesApi";
 import {
@@ -33,6 +38,8 @@ const inputCls = "ui-input";
 
 export default function WorkflowOrderActions({ orderId, onSuccess }) {
   const { user } = useAuth();
+  const { isAdmin } = usePermissions();
+  const navigate = useNavigate();
   const { addToast } = useToast();
   const teams = useMemo(() => getUserWorkflowTeams(user), [user]);
 
@@ -45,6 +52,8 @@ export default function WorkflowOrderActions({ orderId, onSuccess }) {
   const [materialNotes, setMaterialNotes] = useState("");
   const [materialLines, setMaterialLines] = useState([]);
 
+  const [showAddOperatorModal, setShowAddOperatorModal] = useState(false);
+  const [showAddMachineModal, setShowAddMachineModal] = useState(false);
   const [assignForm, setAssignForm] = useState({
     operator_user_id: "",
     machine_id: "",
@@ -62,6 +71,71 @@ export default function WorkflowOrderActions({ orderId, onSuccess }) {
     remarks: "",
   });
   const [billingRemarks, setBillingRemarks] = useState("");
+
+  const loadOperators = useCallback(async () => {
+    try {
+      const rawUsers = await getTeamDirectory()
+        .then((r) => r?.data ?? r ?? [])
+        .catch(() => getUsers().then((r) => r?.data ?? r ?? []))
+        .catch(() => []);
+      const rows = Array.isArray(rawUsers) ? rawUsers : [];
+      const ops = rows.filter((u) => {
+        const roleStr = String(u.role || u.role_name || u.designation || u.department || "").toLowerCase();
+        if (roleStr.includes("operator") || roleStr.includes("machinist") || roleStr.includes("technician")) return true;
+        return (u.roles || []).some((role) => {
+          const name = String(typeof role === "string" ? role : role?.name || "").toLowerCase();
+          return name.includes("operator") || name.includes("machinist") || name.includes("technician");
+        });
+      });
+      setOperators(ops);
+      return ops;
+    } catch {
+      return [];
+    }
+  }, []);
+
+  const handleOperatorCreated = async (createdUser) => {
+    const updatedOps = await loadOperators();
+    if (createdUser?.id) {
+      setAssignForm((f) => ({ ...f, operator_user_id: String(createdUser.id) }));
+    } else if (updatedOps.length > 0) {
+      const matched = updatedOps.find(
+        (o) =>
+          (createdUser?.email && o.email === createdUser.email) ||
+          (createdUser?.full_name && o.full_name === createdUser.full_name)
+      );
+      if (matched) {
+        setAssignForm((f) => ({ ...f, operator_user_id: String(matched.id) }));
+      }
+    }
+  };
+
+  const loadMachines = useCallback(async () => {
+    try {
+      const r = await getMachines().catch(() => []);
+      const macs = Array.isArray(r) ? r : r?.data?.items ?? r?.data ?? [];
+      setMachines(macs);
+      return macs;
+    } catch {
+      return [];
+    }
+  }, []);
+
+  const handleMachineCreated = async (createdMachine) => {
+    const updatedMacs = await loadMachines();
+    if (createdMachine?.id) {
+      setAssignForm((f) => ({ ...f, machine_id: String(createdMachine.id) }));
+    } else if (updatedMacs.length > 0) {
+      const matched = updatedMacs.find(
+        (m) =>
+          (createdMachine?.name && m.name === createdMachine.name) ||
+          (createdMachine?.code && m.code === createdMachine.code)
+      );
+      if (matched) {
+        setAssignForm((f) => ({ ...f, machine_id: String(matched.id) }));
+      }
+    }
+  };
 
   const load = useCallback(async () => {
     if (!orderId) return;
@@ -82,10 +156,10 @@ export default function WorkflowOrderActions({ orderId, onSuccess }) {
         );
       } else {
         const mcRes = await getMaterialCheck(orderId).catch(() => null);
-        const mc = mcRes?.data?.material_check ?? mcRes?.material_check;
-        if (mc?.lines) {
+        const mcData = mcRes?.data ?? mcRes;
+        if (mcData?.lines) {
           setMaterialLines(
-            mc.lines.map((ln) => ({
+            mcData.lines.map((ln) => ({
               id: ln.id,
               material_name: ln.material_name,
               required_qty: ln.required_qty,
@@ -115,23 +189,10 @@ export default function WorkflowOrderActions({ orderId, onSuccess }) {
   useEffect(() => {
     if (!teams.includes("production") && !teams.includes("admin")) return;
     Promise.all([
-      getTeamDirectory().then((r) => {
-        const rows = r?.data ?? r ?? [];
-        return rows.filter((u) =>
-          (u.roles || []).some((role) => {
-            const name = typeof role === "string" ? role : role?.name;
-            return name === "Operator";
-          })
-        );
-      }),
-      getMachines().then((r) => r?.data ?? r ?? []),
-    ])
-      .then(([ops, macs]) => {
-        setOperators(Array.isArray(ops) ? ops : []);
-        setMachines(Array.isArray(macs) ? macs : macs?.items ?? []);
-      })
-      .catch(() => {});
-  }, [teams]);
+      loadOperators(),
+      loadMachines(),
+    ]).catch(() => {});
+  }, [teams, loadOperators, loadMachines]);
 
   const ws = (ctx?.workflow_status || "").toUpperCase();
   const primaryWo = ctx?.work_orders?.[0];
@@ -286,9 +347,18 @@ export default function WorkflowOrderActions({ orderId, onSuccess }) {
               <select
                 className={inputCls}
                 value={assignForm.operator_user_id}
-                onChange={(e) => setAssignForm((f) => ({ ...f, operator_user_id: e.target.value }))}
+                onChange={(e) => {
+                  if (e.target.value === "__add_operator__") {
+                    setShowAddOperatorModal(true);
+                    return;
+                  }
+                  setAssignForm((f) => ({ ...f, operator_user_id: e.target.value }));
+                }}
               >
                 <option value="">Select operator</option>
+                {isAdmin ? (
+                  <option value="__add_operator__">+ Add Operator</option>
+                ) : null}
                 {operators.map((op) => (
                   <option key={op.id} value={op.id}>
                     {op.full_name || op.email}
@@ -300,12 +370,21 @@ export default function WorkflowOrderActions({ orderId, onSuccess }) {
               <select
                 className={inputCls}
                 value={assignForm.machine_id}
-                onChange={(e) => setAssignForm((f) => ({ ...f, machine_id: e.target.value }))}
+                onChange={(e) => {
+                  if (e.target.value === "__add_machine__") {
+                    setShowAddMachineModal(true);
+                    return;
+                  }
+                  setAssignForm((f) => ({ ...f, machine_id: e.target.value }));
+                }}
               >
-                <option value="">Select machine</option>
+                <option value="">Select Machine...</option>
+                {isAdmin ? (
+                  <option value="__add_machine__">+ Add new Machine</option>
+                ) : null}
                 {machines.map((m) => (
                   <option key={m.id} value={m.id}>
-                    {m.name || m.machine_name || m.code}
+                    {m.name || m.machine_name || m.code || m.id}
                   </option>
                 ))}
               </select>
@@ -610,6 +689,26 @@ export default function WorkflowOrderActions({ orderId, onSuccess }) {
           </p>
         </div>
       ) : null}
+      {isAdmin && (
+        <>
+          <AddUserModal
+            open={showAddOperatorModal}
+            onClose={() => setShowAddOperatorModal(false)}
+            onSuccess={handleOperatorCreated}
+            defaultRole="Operator"
+            defaultDept="Production"
+            defaultDesignation="Operator"
+            title="Add Operator"
+            subtitle="Create a new operator user and assign to production."
+          />
+          <CreateMachineModal
+            open={showAddMachineModal}
+            onClose={() => setShowAddMachineModal(false)}
+            onSaved={handleMachineCreated}
+            placement="modal"
+          />
+        </>
+      )}
     </div>
   );
 }

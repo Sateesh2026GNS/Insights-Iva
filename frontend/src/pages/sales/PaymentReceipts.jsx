@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Calendar, ChevronLeft, ChevronRight, Filter, ListFilter, Plus, Receipt, Search, X } from "lucide-react";
 
 import Button from "../../components/common/Button";
@@ -144,6 +144,7 @@ function fmtDisplayDate(iso) {
 }
 
 export default function PaymentReceipts() {
+  const navigate = useNavigate();
   const { addToast } = useToast();
   const tenantId = useTenantId();
   const [loading, setLoading] = useState(true);
@@ -495,7 +496,7 @@ export default function PaymentReceipts() {
                   <tr
                     key={r.id}
                     className="hover:bg-[var(--color-table-row-hover)] cursor-pointer"
-                    onClick={() => setSelectedReceipt(r)}
+                    onClick={() => navigate(`/sales/payment-receipts/${r.id}`, { state: { receipt: r } })}
                   >
                     <SerialNumberCell
                       rowIndex={rowIndex}
@@ -504,16 +505,14 @@ export default function PaymentReceipts() {
                       className="border-t border-r border-[var(--color-table-border)]"
                     />
                     <td className="border-t border-r border-[var(--color-table-border)] px-4 py-3 font-semibold text-[var(--color-primary)]">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedReceipt(r);
-                        }}
+                      <Link
+                        to={`/sales/payment-receipts/${r.id}`}
+                        state={{ receipt: r }}
+                        onClick={(e) => e.stopPropagation()}
                         className="hover:underline text-left font-semibold text-[var(--color-primary)]"
                       >
                         {r.receipt_number}
-                      </button>
+                      </Link>
                     </td>
                     <td className="border-t border-r border-[var(--color-table-border)] px-4 py-3 text-[var(--color-text-secondary)]">{fmtDate(r.payment_date)}</td>
                     <td className="border-t border-r border-[var(--color-table-border)] px-4 py-3 font-medium">{r.party_name}</td>
@@ -529,20 +528,13 @@ export default function PaymentReceipts() {
                       </span>
                     </td>
                     <td className="border-t border-r border-[var(--color-table-border)] px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setSelectedReceipt(r)}
-                          className="text-[12px] font-semibold text-[var(--color-primary)] hover:underline"
-                        >
-                          Preview
-                        </button>
+                      <div className="flex flex-wrap gap-2.5 items-center">
                         <Link
                           to={`/sales/payment-receipts/${r.id}`}
                           state={{ receipt: r }}
-                          className="text-[12px] font-semibold text-[#036f71] hover:underline"
+                          className="text-[12px] font-semibold text-[var(--color-primary)] hover:underline"
                         >
-                          Full Page
+                          View
                         </Link>
                         <Link
                           to={`/sales/payment-receipts/${r.id}/edit`}

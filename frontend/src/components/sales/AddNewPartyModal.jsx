@@ -497,7 +497,7 @@ export default function AddNewPartyModal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[80] flex items-center justify-end bg-black/40"
+      className="fixed inset-0 z-[110] flex items-center justify-end bg-black/40"
       role="presentation"
       onMouseDown={(e) => e.target === e.currentTarget && onClose?.()}
     >

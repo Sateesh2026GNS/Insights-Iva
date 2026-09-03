@@ -17,6 +17,7 @@ export const ROLES = [
   { id: "sales_manager", name: "Sales Manager", description: "Leads, quotations, sales orders, customers" },
   { id: "production_manager", name: "Production Manager", description: "Production modules for assigned plant" },
   { id: "store_manager", name: "Store Manager", description: "Inventory and store operations" },
+  { id: "quality_control", name: "Quality Control", description: "Quality inspection (QA), tests, and approval stamps" },
   { id: "hr_manager", name: "HR Manager", description: "Departments and organizational data" },
   { id: "accountant", name: "Accountant", description: "Finance and accounts" },
   { id: "operator", name: "Operator", description: "Assigned work orders and machine only" },
@@ -59,6 +60,12 @@ export const ROLE_PERMISSIONS = {
   ],
   procurement_manager: [
     "dashboard", "procurement", "inventory", "masters", "accounts", "alerts", "documents", "analytics",
+  ],
+  "Quality Control": [
+    "dashboard", "quality", "production", "inventory", "masters", "documents", "alerts", "analytics", "meetings",
+  ],
+  quality_control: [
+    "dashboard", "quality", "production", "inventory", "masters", "documents", "alerts", "analytics", "meetings",
   ],
   "HR Manager": ["dashboard", "hr", "analytics", "alerts", "documents", "meetings", "settings"],
   hr_manager: ["dashboard", "hr", "analytics", "alerts", "documents", "meetings", "settings"],
@@ -337,6 +344,17 @@ export function isSalesManager(user) {
 export function isAccountant(user) {
   if (!user || isAdmin(user)) return false;
   return hasRole(user, "Accountant");
+}
+
+export function isQualityTeam(user) {
+  if (!user || isAdmin(user)) return false;
+  return (
+    hasRole(user, "Quality Control") ||
+    hasRole(user, "Quality Manager") ||
+    hasRole(user, "Quality Inspector") ||
+    hasRole(user, "QA") ||
+    hasRole(user, "QC")
+  );
 }
 
 /** Modules that may access the unified My Job Cards queue (matches backend WORKFLOW_MODULES). */

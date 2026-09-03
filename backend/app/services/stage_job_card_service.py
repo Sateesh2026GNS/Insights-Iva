@@ -558,7 +558,7 @@ def _build_production_manager_card(
         "card_status": stage_card.status if stage_card else "pending",
         "materials_issued": materials_issued,
         "production_plan": plan,
-        "production_instructions": wo.notes if wo else None,
+        "production_instructions": getattr(wo, "notes", None) or getattr(wo, "description", None) if wo else None,
     }
 
 

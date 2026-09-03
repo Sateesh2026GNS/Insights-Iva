@@ -4,6 +4,7 @@ import {
   Boxes,
   CalendarDays,
   CheckCircle2,
+  ClipboardList,
   Factory,
   FolderOpen,
   Landmark,
@@ -30,6 +31,14 @@ export const SIDEBAR_NAV = [
     end: true,
   },
   {
+    key: "myJobCards",
+    label: "My Job Cards",
+    to: "/my-job-cards",
+    icon: ClipboardList,
+    module: "dashboard",
+    end: true,
+  },
+  {
     key: "masters",
     labelKey: "erpNav.masters",
     label: "Masters",
@@ -47,7 +56,6 @@ export const SIDEBAR_NAV = [
     children: [
       { labelKey: "erpNav.productionPlanning", to: "/production/planning", module: "production" },
       { labelKey: "erpNav.workOrders", to: "/production/work-orders", module: "production" },
-      { label: "My Job Cards", to: "/my-job-cards", module: "production" },
       { label: "My Operator Jobs", to: "/production/operator-jobs", module: "production" },
       { labelKey: "erpNav.productionSchedule", to: "/production/schedule", module: "production" },
       { labelKey: "erpNav.machineAllocation", to: "/production/tasks", module: "production" },
@@ -62,7 +70,6 @@ export const SIDEBAR_NAV = [
     module: "inventory",
     children: [
       { label: "Inventory", to: "/inventory", module: "inventory", end: true },
-      { label: "My Job Cards", to: "/my-job-cards", module: "inventory" },
       { label: "Store Dashboard", to: "/inventory/dashboard", module: "inventory" },
       { labelKey: "erpNav.rawMaterials", to: "/inventory/raw-materials", module: "inventory" },
       { labelKey: "erpNav.finishedGoods", to: "/inventory/finished-goods", module: "inventory" },
@@ -95,7 +102,6 @@ export const SIDEBAR_NAV = [
       { label: "Leads", to: "/sales/leads", module: "sales" },
       { label: "Quotations", to: "/sales/quotations", module: "sales" },
       { label: "Sales Orders", to: "/sales/orders", module: "sales" },
-      { label: "My Job Cards", to: "/my-job-cards", module: "sales" },
       { label: "Customers", to: "/masters/customers", module: "sales" },
       { labelKey: "erpNav.workOrders", label: "Work Orders", to: "/production/work-orders", module: "sales" },
       { label: "Dispatch", to: "/sales/dispatch", module: "sales" },
@@ -108,7 +114,6 @@ export const SIDEBAR_NAV = [
     icon: Landmark,
     children: [
       { label: "Invoices", to: "/sales/invoices", module: "accounts" },
-      { label: "My Job Cards", to: "/my-job-cards", module: "accounts" },
       { label: "Quotations", to: "/sales/quotations", module: "accounts" },
       { label: "Payment Receipts", to: "/sales/payment-receipts", module: "accounts" },
       { label: "Refund Vouchers", to: "/sales/refund-vouchers", module: "accounts" },
@@ -138,7 +143,6 @@ export const SIDEBAR_NAV = [
     icon: CheckCircle2,
     children: [
       { labelKey: "erpNav.qualityDashboard", to: "/quality", module: "quality" },
-      { label: "My Job Cards", to: "/my-job-cards", module: "quality" },
       { labelKey: "erpNav.incomingInspection", to: "/quality/incoming", module: "quality" },
       { labelKey: "erpNav.inProcessQc", to: "/quality/in-process", module: "quality" },
       { labelKey: "erpNav.finalQc", to: "/quality/final", module: "quality" },

@@ -134,8 +134,36 @@ export default function RawMaterials() {
         if (sumRes.status === "fulfilled" && sumRes.value?.data) setSummary(sumRes.value.data);
         else setSummary({});
 
-        if (listRes.status === "fulfilled") setMaterials(asArray(listRes.value?.data));
-        else setMaterials([]);
+        let serverMaterials = [];
+        if (listRes.status === "fulfilled") serverMaterials = asArray(listRes.value?.data);
+
+        // Seamlessly include any newly created raw materials from local storage cache
+        let localMaterials = [];
+        try {
+          const stored = localStorage.getItem("smrt_products");
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            localMaterials = (Array.isArray(parsed) ? parsed : []).filter(
+              (p) =>
+                p &&
+                (p.item_type === "raw_material" ||
+                  String(p.sku || "").toUpperCase().startsWith("RM-") ||
+                  String(p.sku || "").toUpperCase().startsWith("RAW-"))
+            );
+          }
+        } catch {}
+
+        const serverSkus = new Set(
+          serverMaterials.map((m) => String(m.sku || m.name || "").trim().toLowerCase()).filter(Boolean)
+        );
+        const merged = [
+          ...serverMaterials,
+          ...localMaterials.filter(
+            (lm) => !serverSkus.has(String(lm.sku || lm.name || "").trim().toLowerCase())
+          ),
+        ];
+
+        setMaterials(merged);
 
         if (whRes.status === "fulfilled") setWarehousesApi(asArray(whRes.value?.data));
         else setWarehousesApi([]);

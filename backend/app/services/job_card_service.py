@@ -54,6 +54,110 @@ def _stage(id_: str, number: int, title: str, description: str, status: str) -> 
     }
 
 
+JOB_CARD_UI_WORKFLOW_STEPS = [
+    {"key": "sales_orders", "label": "Sales Order", "statuses": {"SALES_CONFIRMED", "DRAFT", "PENDING"}},
+    {
+        "key": "inventory_check",
+        "label": "Inventory",
+        "statuses": {
+            "MATERIAL_CHECK_PENDING",
+            "MATERIAL_SHORTAGE",
+            "MATERIAL_PARTIAL",
+        },
+    },
+    {
+        "key": "store_manager",
+        "label": "Store Manager",
+        "statuses": {
+            "MATERIAL_AVAILABLE",
+            "STORE_ISSUE_PENDING",
+            "STORE_ISSUE_PARTIAL",
+        },
+    },
+    {
+        "key": "production_manager",
+        "label": "Production Manager",
+        "statuses": {
+            "READY_FOR_PRODUCTION",
+            "PRODUCTION_REWORK",
+            "QUALITY_REJECTED",
+        },
+    },
+    {
+        "key": "operator",
+        "label": "Operator",
+        "statuses": {
+            "PRODUCTION_ASSIGNED",
+            "PRODUCTION_IN_PROGRESS",
+            "PRODUCTION_COMPLETED",
+        },
+    },
+    {
+        "key": "quality_check",
+        "label": "Quality",
+        "statuses": {"QUALITY_CHECK_PENDING", "QUALITY_ON_HOLD", "QUALITY_APPROVED"},
+    },
+    {
+        "key": "packing_dispatch",
+        "label": "Packing",
+        "statuses": {
+            "PACKING_PENDING",
+            "PACKING_IN_PROGRESS",
+            "PACKED",
+            "PACKING_ISSUE",
+        },
+    },
+    {
+        "key": "billing",
+        "label": "Billing",
+        "statuses": {"BILLING_PENDING", "BILLING_HOLD", "INVOICED"},
+    },
+    {"key": "completed", "label": "Completed", "statuses": {"COMPLETED", "WORKFLOW_ON_HOLD"}},
+]
+
+WORKFLOW_STAGE_HINTS: dict[str, str] = {
+    "sales_orders": "Waiting for inventory check",
+    "inventory_check": "Material availability verification in progress.",
+    "store_manager": "Store material issue and verification.",
+    "production_manager": "Production planning and operator assignment.",
+    "operator": "Production execution on shop floor.",
+    "quality_check": "Quality inspection pending.",
+    "packing_dispatch": "Packing and dispatch preparation.",
+    "billing": "Invoice and billing processing.",
+    "completed": "Manufacturing workflow completed.",
+}
+
+
+def _build_job_card_workflow_steps(workflow_status: str | None) -> list[dict[str, Any]]:
+    current = (workflow_status or "SALES_CONFIRMED").upper()
+    active_idx = 0
+    for idx, step in enumerate(JOB_CARD_UI_WORKFLOW_STEPS):
+        if current in step["statuses"]:
+            active_idx = idx
+            break
+
+    steps_out = []
+    for idx, step in enumerate(JOB_CARD_UI_WORKFLOW_STEPS):
+        if idx < active_idx:
+            state = "completed"
+        elif idx == active_idx:
+            state = "current"
+        else:
+            state = "pending"
+        steps_out.append({"key": step["key"], "label": step["label"], "status": state})
+    return steps_out
+
+
+def _build_workflow_current_stage(workflow_status: str | None) -> dict[str, str]:
+    steps = _build_job_card_workflow_steps(workflow_status)
+    current = next((s for s in steps if s["status"] == "current"), steps[0] if steps else None)
+    key = current["key"] if current else "sales_orders"
+    return {
+        "stage_label": current["label"] if current else "Sales Orders",
+        "stage_hint": WORKFLOW_STAGE_HINTS.get(key, "Waiting for next stage."),
+    }
+
+
 def _derive_workflow(
     *,
     has_sales_order: bool,
@@ -609,6 +713,10 @@ def build_job_card(
         "workflow": workflow,
         "status_timeline": status_timeline,
         "closed": closed,
+        "workflow_status": so.workflow_status if so and so.workflow_status else ("COMPLETED" if closed else "INVOICED" if invoiced else "PACKED" if (packing_done and dispatched) else "QUALITY_APPROVED" if (final_qc and (final_qc.result or "").lower() in {"pass", "passed", "approved"}) else "QUALITY_CHECK_PENDING" if (wo.status or "").lower() in COMPLETED_STATUSES else "PRODUCTION_IN_PROGRESS" if (wo.status or "").lower() in RUNNING_STATUSES else "READY_FOR_PRODUCTION" if wo.materials_issued else "MATERIAL_CHECK_PENDING"),
+        "workflow_steps": _build_job_card_workflow_steps(so.workflow_status if so and so.workflow_status else ("COMPLETED" if closed else "INVOICED" if invoiced else "PACKED" if (packing_done and dispatched) else "QUALITY_APPROVED" if (final_qc and (final_qc.result or "").lower() in {"pass", "passed", "approved"}) else "QUALITY_CHECK_PENDING" if (wo.status or "").lower() in COMPLETED_STATUSES else "PRODUCTION_IN_PROGRESS" if (wo.status or "").lower() in RUNNING_STATUSES else "READY_FOR_PRODUCTION" if wo.materials_issued else "MATERIAL_CHECK_PENDING")),
+        "workflow_tracker": _build_job_card_workflow_steps(so.workflow_status if so and so.workflow_status else ("COMPLETED" if closed else "INVOICED" if invoiced else "PACKED" if (packing_done and dispatched) else "QUALITY_APPROVED" if (final_qc and (final_qc.result or "").lower() in {"pass", "passed", "approved"}) else "QUALITY_CHECK_PENDING" if (wo.status or "").lower() in COMPLETED_STATUSES else "PRODUCTION_IN_PROGRESS" if (wo.status or "").lower() in RUNNING_STATUSES else "READY_FOR_PRODUCTION" if wo.materials_issued else "MATERIAL_CHECK_PENDING")),
+        "workflow_current_stage": _build_workflow_current_stage(so.workflow_status if so and so.workflow_status else ("COMPLETED" if closed else "INVOICED" if invoiced else "PACKED" if (packing_done and dispatched) else "QUALITY_APPROVED" if (final_qc and (final_qc.result or "").lower() in {"pass", "passed", "approved"}) else "QUALITY_CHECK_PENDING" if (wo.status or "").lower() in COMPLETED_STATUSES else "PRODUCTION_IN_PROGRESS" if (wo.status or "").lower() in RUNNING_STATUSES else "READY_FOR_PRODUCTION" if wo.materials_issued else "MATERIAL_CHECK_PENDING")),
         "can_issue_materials": not bool(wo.materials_issued),
         "can_start_production": bool(wo.materials_issued)
         and (wo.status or "").lower()
@@ -674,110 +782,6 @@ def _workflow_stage_label(status: str | None) -> str:
         "COMPLETED": "Completed",
     }
     return mapping.get(status.upper(), status.replace("_", " ").title())
-
-
-JOB_CARD_UI_WORKFLOW_STEPS = [
-    {"key": "sales_orders", "label": "Sales Order", "statuses": {"SALES_CONFIRMED"}},
-    {
-        "key": "inventory_check",
-        "label": "Inventory",
-        "statuses": {
-            "MATERIAL_CHECK_PENDING",
-            "MATERIAL_SHORTAGE",
-            "MATERIAL_PARTIAL",
-        },
-    },
-    {
-        "key": "store_manager",
-        "label": "Store Manager",
-        "statuses": {
-            "MATERIAL_AVAILABLE",
-            "STORE_ISSUE_PENDING",
-            "STORE_ISSUE_PARTIAL",
-        },
-    },
-    {
-        "key": "production_manager",
-        "label": "Production Manager",
-        "statuses": {
-            "READY_FOR_PRODUCTION",
-            "PRODUCTION_REWORK",
-            "QUALITY_REJECTED",
-        },
-    },
-    {
-        "key": "operator",
-        "label": "Operator",
-        "statuses": {
-            "PRODUCTION_ASSIGNED",
-            "PRODUCTION_IN_PROGRESS",
-            "PRODUCTION_COMPLETED",
-        },
-    },
-    {
-        "key": "quality_check",
-        "label": "Quality",
-        "statuses": {"QUALITY_CHECK_PENDING", "QUALITY_ON_HOLD", "QUALITY_APPROVED", "QUALITY_REJECTED"},
-    },
-    {
-        "key": "packing_dispatch",
-        "label": "Packing",
-        "statuses": {
-            "PACKING_PENDING",
-            "PACKING_IN_PROGRESS",
-            "PACKED",
-            "PACKING_ISSUE",
-        },
-    },
-    {
-        "key": "billing",
-        "label": "Billing",
-        "statuses": {"BILLING_PENDING", "BILLING_HOLD", "INVOICED"},
-    },
-    {"key": "completed", "label": "Completed", "statuses": {"COMPLETED", "WORKFLOW_ON_HOLD"}},
-]
-
-WORKFLOW_STAGE_HINTS: dict[str, str] = {
-    "sales_orders": "Waiting for inventory check",
-    "inventory_check": "Material availability verification in progress.",
-    "store_manager": "Store material issue and verification.",
-    "production_manager": "Production planning and operator assignment.",
-    "operator": "Production execution on shop floor.",
-    "quality_check": "Quality inspection pending.",
-    "packing_dispatch": "Packing and dispatch preparation.",
-    "billing": "Invoice and billing processing.",
-    "completed": "Manufacturing workflow completed.",
-}
-
-
-def _build_job_card_workflow_steps(workflow_status: str | None) -> list[dict[str, Any]]:
-    current = (workflow_status or "SALES_CONFIRMED").upper()
-    active_idx = 0
-    for idx, step in enumerate(JOB_CARD_UI_WORKFLOW_STEPS):
-        if current in step["statuses"]:
-            active_idx = idx
-            break
-
-    steps_out = []
-    for idx, step in enumerate(JOB_CARD_UI_WORKFLOW_STEPS):
-        if idx < active_idx:
-            state = "completed"
-        elif idx == active_idx:
-            state = "current"
-        else:
-            state = "pending"
-        steps_out.append({"key": step["key"], "label": step["label"], "status": state})
-    return steps_out
-
-
-def _build_workflow_current_stage(workflow_status: str | None) -> dict[str, str]:
-    steps = _build_job_card_workflow_steps(workflow_status)
-    current = next((s for s in steps if s["status"] == "current"), steps[0] if steps else None)
-    key = current["key"] if current else "sales_orders"
-    return {
-        "stage_label": current["label"] if current else "Sales Orders",
-        "stage_hint": WORKFLOW_STAGE_HINTS.get(key, "Waiting for next stage."),
-    }
 
 
 def _build_job_card_timeline(

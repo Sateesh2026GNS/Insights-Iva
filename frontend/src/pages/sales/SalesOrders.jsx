@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { Link, useNavigate } from "react-router-dom";
-import { ClipboardList, Download, ExternalLink, Eye, Filter, IndianRupee, ShoppingCart, Trash2, Truck } from "lucide-react";
+import { ClipboardList, Download, ExternalLink, Eye, Filter, IndianRupee, Plus, ShoppingCart, Trash2, Truck } from "lucide-react";
 import KpiCard from "../../components/common/KpiCard";
 
 import ConfirmDialog from "../../components/admin/ConfirmDialog";
@@ -12,6 +12,7 @@ import RowActionMenu from "../../components/common/RowActionMenu";
 import SkeletonTable from "../../components/common/SkeletonTable";
 import { ErrorState, NoResultsState, OfflineState } from "../../components/common/states";
 import SODetailModal from "../../components/sales/SODetailModal";
+import SalesOrderFormModal from "../../components/sales/SalesOrderFormModal";
 import { useToast } from "../../context/ToastContext";
 import { useNetworkStatus } from "../../context/NetworkStatusContext";
 import { getSOSummary, getSalesOrdersEnriched, deleteSalesOrder } from "../../api/salesApi";
@@ -30,6 +31,7 @@ export default function SalesOrders() {
   const { addToast } = useToast();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const canCreate = userCanAction(user, "sales", "create");
   const canDelete = userCanAction(user, "sales", "delete");
   const { online, markRequestStart, markRequestEnd } = useNetworkStatus();
   const [loading, setLoading] = useState(true);
@@ -39,6 +41,7 @@ export default function SalesOrders() {
   const [filters, setFilters] = useState(defaultFilters);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [selected, setSelected] = useState(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const [openMenu, setOpenMenu] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteError, setDeleteError] = useState("");
@@ -227,19 +230,30 @@ export default function SalesOrders() {
       <PageHeader
         subtitle="Manage orders from quotation to dispatch with production and inventory integration."
         action={
-          <Button
-            variant="secondary"
-            type="button"
-            onClick={() =>
-              exportToExcel(
-                filtered,
-                columns.filter((c) => !c.render),
-                "sales-orders"
-              )
-            }
-          >
-            <Download className="h-4 w-4" /> Export
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            {canCreate ? (
+              <Button
+                variant="primary"
+                type="button"
+                onClick={() => setShowCreateModal(true)}
+              >
+                <Plus className="mr-1.5 inline h-4 w-4" /> Create Sales Order
+              </Button>
+            ) : null}
+            <Button
+              variant="secondary"
+              type="button"
+              onClick={() =>
+                exportToExcel(
+                  filtered,
+                  columns.filter((c) => !c.render),
+                  "sales-orders"
+                )
+              }
+            >
+              <Download className="mr-1.5 inline h-4 w-4" /> Export
+            </Button>
+          </div>
         }
       />
 
@@ -310,7 +324,9 @@ export default function SalesOrders() {
                 <EmptyState
                   icon="clipboard"
                   title="No sales orders yet"
-                  description="Sales orders appear here when converted from quotations or created through the sales workflow."
+                  description="Sales orders appear here when created or converted from quotations."
+                  actionLabel={canCreate ? "Create Sales Order" : undefined}
+                  onAction={canCreate ? () => setShowCreateModal(true) : undefined}
                 />
               ) : hasAdvancedFilters ? (
                 <NoResultsState
@@ -320,13 +336,25 @@ export default function SalesOrders() {
               ) : (
                 <EmptyState
                   title="No sales orders yet"
-                  description="Sales orders appear here when converted from quotations or created through the sales workflow."
+                  description="Sales orders appear here when created or converted from quotations."
+                  actionLabel={canCreate ? "Create Sales Order" : undefined}
+                  onAction={canCreate ? () => setShowCreateModal(true) : undefined}
                 />
               )
             }
           />
         )}
       </div>
+
+      {showCreateModal && (
+        <SalesOrderFormModal
+          onClose={() => setShowCreateModal(false)}
+          onSave={() => {
+            setShowCreateModal(false);
+            load();
+          }}
+        />
+      )}
 
       {selected && (
         <SODetailModal

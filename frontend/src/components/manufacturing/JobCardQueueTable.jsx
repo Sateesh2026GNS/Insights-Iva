@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Eye } from "lucide-react";
+import { Download, Eye, Printer, Trash2 } from "lucide-react";
 
 import Button from "../common/Button";
+import RowActionMenu from "../common/RowActionMenu";
 import { SerialNumberCell, SerialNumberHeader } from "../common/SerialNumberCell";
 import EmptyState from "../common/EmptyState";
 import { PriorityBadge, WorkflowStatusBadge, fmtDeliveryDisplay } from "./jobCardUiShared";
@@ -9,6 +11,8 @@ import { WORKFLOW_STAGES } from "../../config/workflowStages";
 import { jobCardDetailsUrl } from "../../utils/jobCardRoutes";
 import { stageJobCardUrl } from "../../utils/workflowStageRoutes";
 import { storeQueueStatusLabel, storeStatusVariant } from "../../utils/storeJobCardQueue";
+import { downloadJobCardPdf, printProductionOrder } from "../../utils/printUtils";
+import useAuth from "../../hooks/useAuth";
 
 function isOverdue(deliveryDate) {
   if (!deliveryDate) return false;
@@ -58,48 +62,84 @@ function ShortageCell({ value }) {
   const n = Number(value);
   if (value == null || Number.isNaN(n)) return <span className="text-[var(--color-text-muted)]">—</span>;
   if (n > 0) {
-    return <span className="font-semibold tabular-nums text-[var(--color-danger)]">{n.toLocaleString("en-IN")}</span>;
+    return <span className="font-semibold text-[var(--color-danger)]">-{n.toLocaleString("en-IN")}</span>;
   }
-  return <span className="tabular-nums text-[var(--color-success)]">0</span>;
+  return <span className="text-[var(--color-text-muted)]">0</span>;
 }
 
 function storeActionLabel(row) {
-  if (row.needed_action) return row.needed_action;
   const ws = String(row.workflow_status || "").toUpperCase();
-  if (ws === "MATERIAL_CHECK_PENDING") return "Inventory Check";
-  if (ws === "MATERIAL_SHORTAGE") return "Record Shortage";
-  if (ws === "STORE_ISSUE_PENDING" || ws === "MATERIAL_AVAILABLE") return "Issue Material";
-  if (ws === "STORE_ISSUE_PARTIAL" || ws === "MATERIAL_PARTIAL") return "Continue Issue";
-  return "Open Job Card";
+  if (ws === "MATERIAL_CHECK_PENDING") return "Verify Stock";
+  if (ws === "STORE_ISSUE_PENDING" || ws === "STORE_ISSUE_PARTIAL" || ws === "MATERIAL_AVAILABLE") return "Issue Materials";
+  return "View";
 }
 
-function QueueRowCard({ row, idx, isSelected, onSelect, detailsUrl, linkState, storeMode }) {
+function QueueRowCard({
+  row,
+  idx,
+  isSelected,
+  onSelect,
+  onViewDetails,
+  detailsUrl,
+  linkState,
+  storeMode,
+  onDelete,
+  canDelete = false,
+  user,
+  openMenu,
+  setOpenMenu,
+}) {
   const orderId = row.sales_order_id ?? row.id;
+  const stageUrl = stageJobCardUrl(orderId, row.workflow_status);
   const workflowStatus = resolveWorkflowStatus(row);
   const high = String(row.priority || "").toLowerCase() === "high";
   const overdue = isOverdue(row.delivery_date);
-  const statusLabel = storeMode ? storeQueueStatusLabel(row) : row.status_label;
+  const statusLabel = storeMode ? storeQueueStatusLabel(row) : (row.status_label || row.status);
+
+  const isCompleted = String(workflowStatus || row.status || "").toLowerCase() === "completed";
+
+  const menuItems = [
+    {
+      label: "View",
+      icon: <Eye className="h-4 w-4" />,
+      onClick: () => {
+        if (onViewDetails) onViewDetails(row);
+        else onSelect?.(orderId);
+      },
+    },
+    {
+      label: "Print",
+      icon: <Printer className="h-4 w-4" />,
+      onClick: () => printProductionOrder(row, user),
+    },
+    {
+      label: "Download PDF",
+      icon: <Download className="h-4 w-4" />,
+      onClick: () => downloadJobCardPdf(row, user),
+    },
+    canDelete && onDelete
+      ? {
+          label: "Delete",
+          icon: <Trash2 className="h-4 w-4" />,
+          tone: "danger",
+          onClick: () => onDelete(row),
+        }
+      : null,
+  ].filter(Boolean);
 
   return (
     <article
-      role="button"
-      tabIndex={0}
-      onClick={() => onSelect?.(orderId)}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onSelect?.(orderId);
-        }
-      }}
-      className={`ui-card cursor-pointer p-4 transition ${
-        isSelected ? "ring-2 ring-[var(--color-primary)]/40 bg-[var(--color-primary-soft)]/30" : ""
-      } ${high ? "border-l-4 border-l-[var(--color-danger)]" : overdue ? "border-l-4 border-l-amber-400" : ""}`}
+      onClick={() => (onViewDetails ? onViewDetails(row) : onSelect?.(orderId))}
+      className="ui-card cursor-pointer p-4 transition-all hover:border-[var(--color-primary-soft)]"
     >
       <div className="flex items-start justify-between gap-2">
         <div>
-          <p className="text-[11px] font-semibold uppercase text-[var(--color-text-faint)]">#{idx + 1}</p>
-          <p className="font-semibold text-[var(--color-primary)]">{row.job_card_no || row.order_number || "—"}</p>
-          <p className="text-xs text-[var(--color-text-muted)]">SO {row.order_number || "—"}</p>
+          <span className="text-sm font-semibold text-[var(--color-primary)]">
+            {row.job_card_no || row.order_number || "—"}
+          </span>
+          {row.job_card_no && row.order_number ? (
+            <p className="text-xs text-[var(--color-text-muted)]">SO: {row.order_number}</p>
+          ) : null}
         </div>
         <WorkflowStatusBadge
           status={workflowStatus}
@@ -107,52 +147,45 @@ function QueueRowCard({ row, idx, isSelected, onSelect, detailsUrl, linkState, s
           variant={storeMode ? storeStatusVariant(row) : undefined}
         />
       </div>
-      <dl className="mt-3 grid grid-cols-2 gap-2 text-xs">
+      <dl className="mt-3 grid grid-cols-2 gap-2 text-xs text-[var(--color-text-secondary)]">
         <div>
-          <dt className="text-[var(--color-text-faint)]">Customer</dt>
-          <dd className="truncate font-medium">{row.customer_name || "—"}</dd>
+          <dt className="text-[var(--color-text-muted)]">Customer</dt>
+          <dd className="font-medium">{row.customer_name || "—"}</dd>
         </div>
         <div>
-          <dt className="text-[var(--color-text-faint)]">Product</dt>
-          <dd className="truncate font-medium">{row.product_name || "—"}</dd>
+          <dt className="text-[var(--color-text-muted)]">Product</dt>
+          <dd className="font-medium">{row.product_name || "—"}</dd>
         </div>
         <div>
-          <dt className="text-[var(--color-text-faint)]">Qty</dt>
+          <dt className="text-[var(--color-text-muted)]">Qty</dt>
           <dd className="font-medium tabular-nums">{fmtQty(row.quantity, row.unit)}</dd>
         </div>
         <div>
-          <dt className="text-[var(--color-text-faint)]">Delivery</dt>
-          <dd>{fmtDeliveryDisplay(row.delivery_date)}</dd>
+          <dt className="text-[var(--color-text-muted)]">Delivery</dt>
+          <dd className="font-medium">{fmtDeliveryDisplay(row.delivery_date)}</dd>
         </div>
-        {storeMode ? (
-          <>
-            <div>
-              <dt className="text-[var(--color-text-faint)]">Available</dt>
-              <dd className="font-medium tabular-nums">{fmtQty(row.available_qty, row.unit)}</dd>
-            </div>
-            <div>
-              <dt className="text-[var(--color-text-faint)]">Shortage</dt>
-              <dd>
-                <ShortageCell value={row.shortage_qty} />
-              </dd>
-            </div>
-          </>
-        ) : null}
       </dl>
       {storeMode && row.needed_action ? (
         <p className="mt-2 text-xs font-medium text-[var(--color-primary)]">{row.needed_action}</p>
       ) : null}
       <div className="mt-3 flex items-center justify-between gap-2">
         <PriorityBadge priority={row.priority || "medium"} showDot={false} />
-        <Button
-          variant={actionVariantForRow(row)}
-          size="sm"
-          to={detailsUrl}
-          state={linkState}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {storeMode ? storeActionLabel(row) : "Open Job Card"}
-        </Button>
+        <div className="inline-flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+          <Button
+            variant={actionVariantForRow(row)}
+            size="sm"
+            to={stageUrl}
+            state={linkState}
+          >
+            {storeMode ? storeActionLabel(row) : "Open Job Card"}
+          </Button>
+          <RowActionMenu
+            rowId={`mobile-${orderId}`}
+            openMenu={openMenu}
+            setOpenMenu={setOpenMenu}
+            items={menuItems}
+          />
+        </div>
       </div>
     </article>
   );
@@ -162,13 +195,18 @@ export default function JobCardQueueTable({
   rows = [],
   selectedOrderId,
   onSelect,
+  onViewDetails,
   emptyTitle = "No Job Cards Assigned",
   emptyDescription = "Job cards assigned to your role will appear here.",
   emptyAction,
   onRefresh,
   snoOffset = 0,
   storeMode = false,
+  onDelete,
+  canDelete = false,
 }) {
+  const { user } = useAuth();
+  const [openMenu, setOpenMenu] = useState(null);
   const location = useLocation();
   const linkState = { from: location.pathname };
 
@@ -178,9 +216,9 @@ export default function JobCardQueueTable({
         icon="clipboard"
         title={emptyTitle}
         description={emptyDescription}
-        actionLabel={onRefresh ? "Refresh" : emptyAction?.label}
-        actionHref={onRefresh ? undefined : emptyAction?.to}
-        onAction={onRefresh || emptyAction?.onClick}
+        actionLabel={emptyAction?.label || (onRefresh ? "Refresh" : undefined)}
+        actionHref={emptyAction?.to}
+        onAction={emptyAction?.onClick || (emptyAction?.to ? undefined : onRefresh)}
       />
     );
   }
@@ -191,73 +229,60 @@ export default function JobCardQueueTable({
         <table className="ui-table min-w-full text-left text-[13px]">
           <thead className="ui-table-head">
             <tr>
-              <SerialNumberHeader />
-              <th className="whitespace-nowrap px-3 py-2.5">Job Card No.</th>
-              <th className="whitespace-nowrap px-3 py-2.5">Sales Order No.</th>
-              <th className="px-3 py-2.5">Customer</th>
-              <th className="px-3 py-2.5">Product</th>
-              {storeMode ? <th className="whitespace-nowrap px-3 py-2.5">Product Code</th> : null}
-              <th className="whitespace-nowrap px-2 py-2.5 text-right">{storeMode ? "Order Qty" : "Quantity"}</th>
-              <th className="whitespace-nowrap px-2 py-2.5 text-right">Available</th>
-              <th className="whitespace-nowrap px-2 py-2.5 text-right">Shortage</th>
-              <th className="whitespace-nowrap px-3 py-2.5">Req. Delivery Date</th>
-              <th className="whitespace-nowrap px-2 py-2.5">Priority</th>
+              <SerialNumberHeader label="S.No" />
+              <th className="whitespace-nowrap px-3 py-2 font-semibold">Job Card / SO</th>
+              <th className="whitespace-nowrap px-3 py-2 font-semibold">Customer</th>
+              <th className="whitespace-nowrap px-3 py-2 font-semibold">Product</th>
+              {storeMode ? <th className="whitespace-nowrap px-3 py-2 font-semibold">Code</th> : null}
+              <th className="whitespace-nowrap px-2 py-2 text-right font-semibold">Qty</th>
+              <th className="whitespace-nowrap px-2 py-2 text-right font-semibold">Available</th>
+              <th className="whitespace-nowrap px-2 py-2 text-right font-semibold">Shortage</th>
+              <th className="whitespace-nowrap px-3 py-2 font-semibold">Delivery Date</th>
+              <th className="whitespace-nowrap px-2 py-2 font-semibold">Priority</th>
               {storeMode ? (
-                <th className="whitespace-nowrap px-3 py-2.5">Needed Action</th>
+                <th className="whitespace-nowrap px-3 py-2 font-semibold">Action Needed</th>
               ) : (
-                <th className="whitespace-nowrap px-3 py-2.5">Current Stage</th>
+                <th className="whitespace-nowrap px-3 py-2 font-semibold">Stage</th>
               )}
-              <th className="whitespace-nowrap px-3 py-2.5">Status</th>
+              <th className="whitespace-nowrap px-3 py-2 font-semibold">Status</th>
               {storeMode ? null : (
                 <>
-                  <th className="whitespace-nowrap px-3 py-2.5">Assigned To</th>
-                  <th className="whitespace-nowrap px-3 py-2.5">Created Date</th>
+                  <th className="whitespace-nowrap px-3 py-2 font-semibold">Assigned To</th>
+                  <th className="whitespace-nowrap px-3 py-2 font-semibold">Created / Recd</th>
                 </>
               )}
-              <th className="whitespace-nowrap px-3 py-2.5 text-right">Action</th>
+              <th className="whitespace-nowrap px-3 py-2 text-right font-semibold">Actions</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-[var(--color-border-muted)]">
             {rows.map((row, idx) => {
               const orderId = row.sales_order_id ?? row.id;
-              const isSelected = selectedOrderId === orderId;
               const detailsUrl = jobCardDetailsUrl(orderId);
-              const stageUrl = storeMode
-                ? stageJobCardUrl(orderId, row.workflow_status)
-                : detailsUrl;
+              const stageUrl = stageJobCardUrl(orderId, row.workflow_status);
+              const isSelected = selectedOrderId === orderId;
               const workflowStatus = resolveWorkflowStatus(row);
               const high = String(row.priority || "").toLowerCase() === "high";
               const overdue = isOverdue(row.delivery_date);
-              const rowClass = high
-                ? "border-l-4 border-l-[var(--color-danger)]"
-                : overdue
-                  ? "border-l-4 border-l-amber-400"
-                  : "";
-              const statusLabel = storeMode ? storeQueueStatusLabel(row) : row.status_label;
+              const statusLabel = storeMode ? storeQueueStatusLabel(row) : (row.status_label || row.status);
 
               return (
                 <tr
                   key={orderId}
-                  onClick={() => onSelect?.(orderId)}
-                  className={`cursor-pointer border-t border-[var(--color-border-soft)] transition ${rowClass} ${
-                    isSelected
-                      ? "bg-[var(--color-primary-soft)]/50 ring-1 ring-inset ring-[var(--color-primary)]/20"
-                      : "hover:bg-[var(--color-surface-muted)]/30"
-                  }`}
+                  onClick={() => (onViewDetails ? onViewDetails(row) : onSelect?.(orderId))}
+                  className={`cursor-pointer transition-colors hover:bg-[var(--color-surface-hover)] ${
+                    isSelected ? "bg-[var(--color-primary-soft)]/40" : ""
+                  } ${high ? "border-l-4 border-l-[var(--color-danger)]" : overdue ? "border-l-4 border-l-amber-400" : ""}`}
                 >
-                  <SerialNumberCell rowIndex={snoOffset + idx} />
-                  <td className="whitespace-nowrap px-3 py-2.5 font-semibold tabular-nums">
-                    <Link
-                      to={detailsUrl}
-                      state={linkState}
-                      onClick={(e) => e.stopPropagation()}
-                      className="text-[var(--color-primary)] hover:underline"
-                    >
-                      {row.job_card_no || "—"}
-                    </Link>
-                  </td>
-                  <td className="whitespace-nowrap px-3 py-2.5 tabular-nums text-[var(--color-text-secondary)]">
-                    {row.order_number || "—"}
+                  <SerialNumberCell index={idx} offset={snoOffset} />
+                  <td className="whitespace-nowrap px-3 py-2.5 font-semibold text-[var(--color-primary)]">
+                    <div className="flex flex-col">
+                      <span className="hover:underline">{row.job_card_no || row.order_number || "—"}</span>
+                      {row.job_card_no && row.order_number ? (
+                        <span className="text-[11px] font-normal text-[var(--color-text-muted)]">
+                          SO: {row.order_number}
+                        </span>
+                      ) : null}
+                    </div>
                   </td>
                   <td className="px-3 py-2.5">
                     <TruncateCell value={row.customer_name} className="text-[var(--color-text-secondary)]" />
@@ -315,28 +340,43 @@ export default function JobCardQueueTable({
                     </>
                   )}
                   <td className="whitespace-nowrap px-3 py-2.5 text-right" onClick={(e) => e.stopPropagation()}>
-                    <div className="inline-flex items-center justify-end gap-1">
-                      {storeMode ? (
-                        <Button variant={actionVariantForRow(row)} size="sm" to={detailsUrl} state={linkState}>
-                          {storeActionLabel(row)}
-                        </Button>
-                      ) : (
-                        <>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            to={detailsUrl}
-                            state={linkState}
-                            aria-label="Open Job Card"
-                            title="Open Job Card"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button variant={actionVariantForRow(row)} size="sm" to={stageUrl} state={linkState}>
-                            Open Job Card
-                          </Button>
-                        </>
-                      )}
+                    <div className="inline-flex items-center justify-end gap-1.5">
+                      <Button variant={actionVariantForRow(row)} size="sm" to={stageUrl} state={linkState}>
+                        {storeMode ? storeActionLabel(row) : "Open Job Card"}
+                      </Button>
+                      <RowActionMenu
+                        rowId={orderId}
+                        openMenu={openMenu}
+                        setOpenMenu={setOpenMenu}
+                        items={[
+                          {
+                            label: "View",
+                            icon: <Eye className="h-4 w-4" />,
+                            onClick: () => {
+                              if (onViewDetails) onViewDetails(row);
+                              else onSelect?.(orderId);
+                            },
+                          },
+                          {
+                            label: "Print",
+                            icon: <Printer className="h-4 w-4" />,
+                            onClick: () => printProductionOrder(row, user),
+                          },
+                          {
+                            label: "Download PDF",
+                            icon: <Download className="h-4 w-4" />,
+                            onClick: () => downloadJobCardPdf(row, user),
+                          },
+                          canDelete && onDelete
+                            ? {
+                                label: "Delete",
+                                icon: <Trash2 className="h-4 w-4" />,
+                                tone: "danger",
+                                onClick: () => onDelete(row),
+                              }
+                            : null,
+                        ].filter(Boolean)}
+                      />
                     </div>
                   </td>
                 </tr>
@@ -356,9 +396,14 @@ export default function JobCardQueueTable({
               idx={idx}
               isSelected={selectedOrderId === orderId}
               onSelect={onSelect}
-              detailsUrl={jobCardDetailsUrl(orderId)}
+              onViewDetails={onViewDetails}
               linkState={linkState}
               storeMode={storeMode}
+              onDelete={onDelete}
+              canDelete={canDelete}
+              user={user}
+              openMenu={openMenu}
+              setOpenMenu={setOpenMenu}
             />
           );
         })}

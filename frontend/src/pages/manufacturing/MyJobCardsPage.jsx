@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   ArrowUpRight,
   CheckCircle2,
@@ -16,12 +16,16 @@ import PageHeader from "../../components/common/PageHeader";
 import Pagination from "../../components/common/Pagination";
 import SkeletonTable from "../../components/common/SkeletonTable";
 import { ErrorState } from "../../components/common/states";
+import ConfirmDialog from "../../components/admin/ConfirmDialog";
 import JobCardQueueFilters from "../../components/manufacturing/JobCardQueueFilters";
 import JobCardQueueTable from "../../components/manufacturing/JobCardQueueTable";
+import JobCardQuickViewModal from "../../components/manufacturing/JobCardQuickViewModal";
 import useAuth from "../../hooks/useAuth";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { getMyJobCardQueue, getWorkflowRoutingMeta } from "../../api/workflowApi";
-import { isStoreManager, userCanAction } from "../../config/permissions";
+import { deleteSalesOrder } from "../../api/salesApi";
+import { isAdmin, isStoreManager, userCanAction } from "../../config/permissions";
+import { useToast } from "../../context/ToastContext";
 import { apiErrorMessage } from "../../utils/apiError";
 import {
   matchesStoreStatusBucket,
@@ -73,24 +77,88 @@ function inDateRange(iso, from, to) {
 
 const STORE_DEFAULT_FILTERS = { ...EMPTY_FILTERS };
 
+const TEAM_STATUS_MAP = {
+  inventory: new Set([
+    "MATERIAL_CHECK_PENDING",
+    "MATERIAL_SHORTAGE",
+    "MATERIAL_PARTIAL",
+    "MATERIAL_AVAILABLE",
+    "STORE_ISSUE_PENDING",
+    "STORE_ISSUE_PARTIAL",
+    "PACKING_PENDING",
+    "PACKING_IN_PROGRESS",
+    "PACKED",
+  ]),
+  production: new Set([
+    "READY_FOR_PRODUCTION",
+    "PRODUCTION_ASSIGNED",
+    "PRODUCTION_IN_PROGRESS",
+    "PRODUCTION_COMPLETED",
+    "PRODUCTION_REWORK",
+    "QUALITY_REJECTED",
+  ]),
+  operator: new Set([
+    "PRODUCTION_ASSIGNED",
+    "PRODUCTION_IN_PROGRESS",
+  ]),
+  quality: new Set([
+    "QUALITY_CHECK_PENDING",
+    "QUALITY_ON_HOLD",
+    "QUALITY_APPROVED",
+    "QUALITY_REJECTED",
+  ]),
+  billing: new Set([
+    "BILLING_PENDING",
+    "BILLING_HOLD",
+    "PACKED",
+    "INVOICED",
+  ]),
+};
+
 export default function MyJobCardsPage() {
   const { user } = useAuth();
+  const { addToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [loadError, setLoadError] = useState("");
   const [rows, setRows] = useState([]);
   const [queueMeta, setQueueMeta] = useState(null);
-  const isStoreUser = isStoreManager(user);
+  const [searchParams] = useSearchParams();
+  const deptParam = searchParams.get("dept");
+  const isStoreUser = isStoreManager(user) || deptParam === "inventory";
   const initialFilters = isStoreUser ? STORE_DEFAULT_FILTERS : EMPTY_FILTERS;
   const [draftFilters, setDraftFilters] = useState(initialFilters);
   const [appliedFilters, setAppliedFilters] = useState(initialFilters);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [selectedOrderId, setSelectedOrderId] = useState(null);
+  const [previewRow, setPreviewRow] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteError, setDeleteError] = useState("");
+  const [deleting, setDeleting] = useState(false);
 
   const canCreateSales = userCanAction(user, "sales", "create");
-  const storeMode = isStoreManager(user) || queueMeta?.primary_team === "inventory";
-  const showStockFilter = queueMeta?.primary_team === "inventory";
+  const canDelete = userCanAction(user, "sales", "delete") || userCanAction(user, "production", "delete") || isAdmin(user);
+  const effectiveTeam = deptParam || (isStoreManager(user) ? "inventory" : (queueMeta?.primary_team || "all"));
+  const storeMode = effectiveTeam === "inventory";
+  const showStockFilter = storeMode;
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
+    const orderId = deleteTarget.sales_order_id ?? deleteTarget.id;
+    setDeleting(true);
+    setDeleteError("");
+    try {
+      await deleteSalesOrder(orderId);
+      addToast("Job card / sales order deleted successfully", "success");
+      setDeleteTarget(null);
+      await load(true);
+    } catch (err) {
+      setDeleteError(apiErrorMessage(err, "Failed to delete job card."));
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
@@ -151,6 +219,12 @@ export default function MyJobCardsPage() {
     if (showStockFilter && f.stock) {
       list = list.filter((r) => matchesStockFilter(r, f.stock));
     }
+    if (effectiveTeam && effectiveTeam !== "all" && effectiveTeam !== "sales") {
+      const allowed = TEAM_STATUS_MAP[effectiveTeam];
+      if (allowed) {
+        list = list.filter((r) => allowed.has(String(r.workflow_status || "").toUpperCase()));
+      }
+    }
     if (f.stage) {
       list = list.filter((r) => String(r.responsible_role || "").toLowerCase() === f.stage.toLowerCase());
     }
@@ -173,7 +247,7 @@ export default function MyJobCardsPage() {
       list = list.filter((r) => inDateRange(r.order_date || r.received_at, f.dateFrom, f.dateTo));
     }
     return list;
-  }, [rows, appliedFilters, showStockFilter, storeMode]);
+  }, [rows, appliedFilters, showStockFilter, storeMode, effectiveTeam]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const safePage = Math.min(page, totalPages);
@@ -222,12 +296,25 @@ export default function MyJobCardsPage() {
       }
     : null;
 
-  const queueSubtitle = storeMode
-    ? "Review inventory, issue materials, and move job cards to production."
-    : queueMeta?.queue_title ||
-      (queueMeta?.responsible_role_label
-        ? `Job cards assigned to ${queueMeta.responsible_role_label}.`
-        : "Job cards assigned to your role will appear here.");
+  const eyebrow = effectiveTeam === "inventory"
+    ? "Inventory · Store Manager"
+    : effectiveTeam === "production"
+    ? "Production · Production Manager"
+    : effectiveTeam === "quality"
+    ? "Quality · QA / QC Team"
+    : effectiveTeam === "billing" || effectiveTeam === "accounts"
+    ? "Accounting · Billing & Finance"
+    : "Sales & Manufacturing";
+
+  const queueSubtitle = effectiveTeam === "inventory"
+    ? "Store Manager queue for Stage 2 (Inventory Check) & Stage 3 (Store Issue)."
+    : effectiveTeam === "production"
+    ? "Production planning queue for Stage 4 (Machine & Operator Allocation) & Stage 5 (Shop Floor Execution)."
+    : effectiveTeam === "quality"
+    ? "Quality inspection queue for Stage 6 (QA Approval & Remarks)."
+    : effectiveTeam === "billing" || effectiveTeam === "accounts"
+    ? "Invoicing queue for Stage 8 (GST Tax Invoice Generation)."
+    : "Full Sales & Manufacturing status tracking for all orders.";
 
   const emptyTitle = storeMode ? "No Store Manager Job Cards" : "No Job Cards Assigned";
   const emptyDescription = storeMode
@@ -241,26 +328,28 @@ export default function MyJobCardsPage() {
   return (
     <div className="ui-page ui-stack">
       <PageHeader
-        eyebrow={storeMode ? "Manufacturing · Store" : undefined}
+        eyebrow={eyebrow}
         subtitle={queueSubtitle}
         actions={
           <div className="flex flex-wrap items-center gap-2">
             {!storeMode && canCreateSales ? (
-              <Button variant="primary" size="sm" to="/sales/orders">
-                <Plus className="mr-1.5 inline h-4 w-4" />
-                Create from Sales Order
+              <Button
+                variant="add"
+                to="/sales/orders"
+                leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}
+              >
+                Create Job Card
               </Button>
             ) : null}
             {!storeMode ? (
               <Button
-                variant="outline"
-                size="sm"
+                variant="secondary"
                 loading={refreshing}
                 onClick={() => {
                   load(true);
                 }}
+                leftIcon={<RefreshCw className="h-4 w-4" aria-hidden />}
               >
-                <RefreshCw className="mr-1.5 inline h-4 w-4" />
                 Refresh
               </Button>
             ) : null}
@@ -331,12 +420,11 @@ export default function MyJobCardsPage() {
               </p>
             </div>
             <Button
-              variant="outline"
-              size="sm"
+              variant="secondary"
               loading={refreshing}
               onClick={() => load(true)}
+              leftIcon={<RefreshCw className="h-4 w-4" aria-hidden />}
             >
-              <RefreshCw className="mr-1.5 inline h-4 w-4" />
               Refresh
             </Button>
           </div>
@@ -390,12 +478,18 @@ export default function MyJobCardsPage() {
               rows={pageRows.map((row, idx) => ({ ...row, __sno: from + idx + 1 }))}
               selectedOrderId={selectedOrderId}
               onSelect={setSelectedOrderId}
+              onViewDetails={(row) => setPreviewRow(row)}
               emptyTitle={emptyTitle}
               emptyDescription={emptyDescription}
-              emptyAction={!storeMode && canCreateSales ? { label: "View Sales Orders", to: "/sales/orders" } : undefined}
+              emptyAction={!storeMode && canCreateSales ? { label: "Create Job Card", to: "/sales/orders" } : undefined}
               onRefresh={() => load(true)}
               snoOffset={from}
               storeMode={storeMode}
+              onDelete={(row) => {
+                setDeleteError("");
+                setDeleteTarget(row);
+              }}
+              canDelete={canDelete}
             />
 
             {filtered.length > 0 ? (
@@ -426,6 +520,32 @@ export default function MyJobCardsPage() {
           .
         </p>
       ) : null}
+
+      <JobCardQuickViewModal
+        row={previewRow}
+        open={Boolean(previewRow)}
+        onClose={() => setPreviewRow(null)}
+      />
+
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        title="Delete Job Card / Sales Order?"
+        message={`Are you sure you want to delete ${
+          deleteTarget?.job_card_no || deleteTarget?.order_number || "this job card"
+        }? This will remove the sales order and its manufacturing workflow records.`}
+        error={deleteError}
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        destructive
+        loading={deleting}
+        onConfirm={handleDeleteConfirm}
+        onClose={() => {
+          if (!deleting) {
+            setDeleteTarget(null);
+            setDeleteError("");
+          }
+        }}
+      />
     </div>
   );
 }

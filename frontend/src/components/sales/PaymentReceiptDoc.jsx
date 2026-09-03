@@ -183,9 +183,11 @@ const PaymentReceiptDoc = forwardRef(function PaymentReceiptDoc({ receipt, setti
         <div className="text-[15px] font-extrabold text-[#1a1a1f] mt-1">
           {receipt.party_name || "—"}
         </div>
-        <div className="text-[11.5px] text-[#4a4a55] mt-0.5 leading-snug">
-          {meta.party_address || meta.buyer_address || "—"}
-        </div>
+        {(meta.party_address || meta.buyer_address) && (
+          <div className="text-[11.5px] text-[#4a4a55] mt-0.5 leading-snug">
+            {meta.party_address || meta.buyer_address}
+          </div>
+        )}
         <div className="flex flex-wrap gap-x-5 gap-y-1 text-[11.5px] mt-1.5 text-[#1a1a1f]">
           {meta.party_gstin || meta.buyer_gstin ? (
             <span>
@@ -199,63 +201,84 @@ const PaymentReceiptDoc = forwardRef(function PaymentReceiptDoc({ receipt, setti
       </div>
 
       {/* Invoices / Settlement Table */}
-      <table className="w-full border-collapse text-left text-[11.5px]">
+      <table className="w-full border-collapse text-left text-[11.5px] border-b-2 border-[#1a1a1f]">
         <thead>
-          <tr className="bg-[#f2f2f5] text-[#1a1a1f] border-b-2 border-[#1a1a1f]">
-            <th className="border-r border-[#1a1a1f] px-2.5 py-2 text-center w-10 font-bold">Sl.</th>
-            <th className="border-r border-[#1a1a1f] px-3 py-2 font-bold">Description / Settlement Reference</th>
-            <th className="border-r border-[#1a1a1f] px-2.5 py-2 text-center w-28 font-bold">Invoice No.</th>
-            <th className="border-r border-[#1a1a1f] px-2.5 py-2 text-center w-24 font-bold">Invoice Date</th>
-            <th className="border-r border-[#1a1a1f] px-2.5 py-2 text-right w-24 font-bold">Invoice Total</th>
-            <th className="border-r border-[#1a1a1f] px-2.5 py-2 text-right w-24 font-bold">Prev Due</th>
-            <th className="px-3 py-2 text-right w-28 font-bold">Amount Received</th>
+          <tr className="bg-[#f2f2f5] text-[#1a1a1f]">
+            <th className="border-r border-b-2 border-[#1a1a1f] px-2.5 py-2 text-center w-10 font-bold align-middle">
+              Sl.
+            </th>
+            <th className="border-r border-b-2 border-[#1a1a1f] px-3 py-2 font-bold align-middle">
+              Description / Settlement Reference
+            </th>
+            <th className="border-r border-b-2 border-[#1a1a1f] px-2.5 py-2 text-center w-28 font-bold align-middle">
+              Invoice No.
+            </th>
+            <th className="border-r border-b-2 border-[#1a1a1f] px-2.5 py-2 text-center w-24 font-bold align-middle">
+              Invoice Date
+            </th>
+            <th className="border-r border-b-2 border-[#1a1a1f] px-2.5 py-2 text-right w-24 font-bold align-middle">
+              Invoice Total
+            </th>
+            <th className="border-r border-b-2 border-[#1a1a1f] px-2.5 py-2 text-right w-24 font-bold align-middle">
+              Prev Due
+            </th>
+            <th className="border-b-2 border-[#1a1a1f] px-3 py-2 text-right w-28 font-bold align-middle">
+              Amount Received
+            </th>
           </tr>
         </thead>
         <tbody>
-          <tr className="border-b border-[#1a1a1f]">
-            <td className="border-r border-[#1a1a1f] px-2.5 py-3.5 text-center font-medium">1</td>
-            <td className="border-r border-[#1a1a1f] px-3 py-3.5">
+          <tr>
+            <td className="border-r border-b border-[#1a1a1f] px-2.5 py-3 text-center font-medium align-top">
+              1
+            </td>
+            <td className="border-r border-b border-[#1a1a1f] px-3 py-3 align-top leading-relaxed">
               {receipt.invoice_number ? (
                 <div>
-                  <strong className="text-[#1a1a1f]">Payment Settlement</strong> against Tax Invoice #{receipt.invoice_number}
-                  <div className="text-[10.5px] text-[#6b6b76] mt-0.5">
+                  <div className="font-bold text-[#1a1a1f]">
+                    Payment Settlement against Tax Invoice #{receipt.invoice_number}
+                  </div>
+                  <div className="text-[10.5px] text-[#6b6b76] mt-1">
                     Settled via {paymentMode} into {accountName}
                   </div>
                 </div>
               ) : (
                 <div>
-                  <strong className="text-[#1a1a1f]">Advance Payment / On Account Receipt</strong>
-                  <div className="text-[10.5px] text-[#6b6b76] mt-0.5">
+                  <div className="font-bold text-[#1a1a1f]">Advance Payment / On Account Receipt</div>
+                  <div className="text-[10.5px] text-[#6b6b76] mt-1">
                     Credit balance received against future orders & invoices
                   </div>
                 </div>
               )}
             </td>
-            <td className="border-r border-[#1a1a1f] px-2.5 py-3.5 text-center font-bold">
+            <td className="border-r border-b border-[#1a1a1f] px-2.5 py-3 text-center font-bold text-[#1a1a1f] align-top whitespace-nowrap">
               {receipt.invoice_number ? `#${receipt.invoice_number}` : "—"}
             </td>
-            <td className="border-r border-[#1a1a1f] px-2.5 py-3.5 text-center text-[#4a4a55]">
+            <td className="border-r border-b border-[#1a1a1f] px-2.5 py-3 text-center text-[#4a4a55] align-top whitespace-nowrap">
               {receiptDate}
             </td>
-            <td className="border-r border-[#1a1a1f] px-2.5 py-3.5 text-right tabular-nums">
+            <td className="border-r border-b border-[#1a1a1f] px-2.5 py-3 text-right tabular-nums text-[#1a1a1f] align-top whitespace-nowrap font-medium">
               {receipt.invoice_number ? formatInr(receipt.invoice_total || 0) : "—"}
             </td>
-            <td className="border-r border-[#1a1a1f] px-2.5 py-3.5 text-right tabular-nums text-[#4a4a55]">
+            <td className="border-r border-b border-[#1a1a1f] px-2.5 py-3 text-right tabular-nums text-[#4a4a55] align-top whitespace-nowrap font-medium">
               {receipt.invoice_number
                 ? formatInr((Number(receipt.invoice_pending) || 0) + amount)
                 : "—"}
             </td>
-            <td className="px-3 py-3.5 text-right font-black tabular-nums text-[#1a1a1f] text-[13px]">
+            <td className="border-b border-[#1a1a1f] px-3 py-3 text-right font-black tabular-nums text-[#1a1a1f] text-[13px] align-top whitespace-nowrap">
               {formatInr(amount)}
             </td>
           </tr>
         </tbody>
         <tfoot>
-          <tr className="bg-[#fafafa] border-b-2 border-[#1a1a1f]">
-            <td colSpan={6} className="border-r border-[#1a1a1f] px-3 py-2 text-right font-extrabold text-[12px]">
+          <tr className="bg-[#fafafa]">
+            <td
+              colSpan={6}
+              className="border-r border-b-2 border-[#1a1a1f] px-3 py-2.5 text-right font-extrabold text-[12px] align-middle"
+            >
               Total Amount Received
             </td>
-            <td className="px-3 py-2 text-right font-black text-[13.5px] tabular-nums text-[#1a1a1f]">
+            <td className="border-b-2 border-[#1a1a1f] px-3 py-2.5 text-right font-black text-[13.5px] tabular-nums text-[#1a1a1f] align-middle whitespace-nowrap">
               {formatInr(amount)}
             </td>
           </tr>

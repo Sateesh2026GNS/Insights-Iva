@@ -183,7 +183,13 @@ export default function RowActionMenu({
                       }}
                       className={rowActionMenuItemClass(label, { danger: isDanger })}
                     >
-                      {item.icon ? <span className="shrink-0">{item.icon}</span> : null}
+                      {item.icon ? (
+                        <span className="shrink-0">
+                          {typeof item.icon === "function" || (typeof item.icon === "object" && item.icon.$$typeof && item.icon.render)
+                            ? <item.icon className="h-4 w-4" />
+                            : item.icon}
+                        </span>
+                      ) : null}
                       <span>{label}</span>
                     </button>
                   );

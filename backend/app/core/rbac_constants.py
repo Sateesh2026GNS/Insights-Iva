@@ -44,6 +44,7 @@ REGISTERABLE_ROLES = [
     "Store Manager",
     "Purchase Manager",
     "Procurement Manager",
+    "Quality Control",
     "HR Manager",
     "Accountant",
     "Operator",
@@ -131,6 +132,29 @@ PERMISSION_MATRIX = {
             "analytics",
         ],
         "description": "Full Vendor Master and procurement operations access.",
+    },
+    "Quality Control": {
+        "modules": [
+            "dashboard",
+            "quality",
+            "production",
+            "inventory",
+            "masters",
+            "documents",
+            "alerts",
+            "analytics",
+            "meetings",
+        ],
+        "actions": [
+            "quality:read",
+            "quality:create",
+            "quality:update",
+            "quality:approve",
+            "documents:read",
+        ],
+        "description": (
+            "Quality inspection (QA), in-process checks, approval stamps, defect logging, and reports."
+        ),
     },
     "HR Manager": {
         "modules": ["dashboard", "hr", "analytics", "alerts", "documents", "meetings", "settings"],

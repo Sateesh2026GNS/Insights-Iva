@@ -241,7 +241,7 @@ export default function QuickWorkOrderModal({ order, onClose, onSuccess, addToas
 
   const modal = (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/60 p-4 backdrop-blur-sm sm:items-center"
+      className="fixed inset-0 z-[80] flex items-end justify-center bg-slate-900/60 p-4 backdrop-blur-sm sm:items-center"
       role="dialog"
       aria-modal="true"
       aria-labelledby="quick-wo-title"

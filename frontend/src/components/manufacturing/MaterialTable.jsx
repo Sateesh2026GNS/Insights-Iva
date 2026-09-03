@@ -24,15 +24,29 @@ export default function MaterialTable({ columns, rows, editable = false, onChang
               {columns.map((col) => {
                 const val = row[col.key];
                 if (editable && col.editable) {
+                  const isNum = col.type === "number";
+                  const displayVal = isNum && (val === 0 || val === "0" || val == null) ? "" : String(val);
                   return (
                     <td key={col.key} className="px-3 py-2">
                       <input
                         type={col.type || "text"}
-                        className="ui-input w-full min-w-[5rem] py-1 text-sm"
-                        value={val ?? ""}
-                        onChange={(e) =>
-                          onChange?.(row.id, col.key, col.type === "number" ? Number(e.target.value) : e.target.value)
-                        }
+                        className="ui-input w-full min-w-[5rem] py-1 text-sm tabular-nums"
+                        value={displayVal}
+                        placeholder={isNum ? "0" : ""}
+                        onChange={(e) => {
+                          const raw = e.target.value;
+                          if (isNum) {
+                            if (raw === "") {
+                              onChange?.(row.id, col.key, 0);
+                            } else {
+                              const cleaned = raw.replace(/^0+(?=\d)/, "");
+                              const num = Number(cleaned);
+                              onChange?.(row.id, col.key, Number.isNaN(num) ? 0 : num);
+                            }
+                          } else {
+                            onChange?.(row.id, col.key, raw);
+                          }
+                        }}
                       />
                     </td>
                   );

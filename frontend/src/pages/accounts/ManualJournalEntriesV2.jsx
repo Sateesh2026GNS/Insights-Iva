@@ -164,32 +164,36 @@ export default function ManualJournalEntriesV2() {
     <AccountsPageShell>
       <AccountsCard>
         <div className="p-4 sm:p-5">
-          <div className="mb-4 flex flex-wrap items-center gap-3">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <AccountsSearchInput
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search"
-              className="flex-1"
+              placeholder="Search journals..."
+              className="min-w-[220px] flex-1 max-w-sm"
             />
-            <label className="inline-flex items-center gap-2 rounded-full border border-[#E2E8F0] bg-white px-3 py-2 text-[13px] text-[#17264A]">
-              <Calendar className="h-4 w-4 text-[#64748B]" />
-              <input
-                type="date"
-                value={fromDate}
-                onChange={(e) => setFromDate(e.target.value)}
-                className="w-[108px] border-0 bg-transparent text-[12px] outline-none"
-              />
-              <span className="text-[#94A3B8]">→</span>
-              <input
-                type="date"
-                value={toDate}
-                onChange={(e) => setToDate(e.target.value)}
-                className="w-[108px] border-0 bg-transparent text-[12px] outline-none"
-              />
-            </label>
-            <AccountsAddButton onClick={goNew} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
-              New Journal Entry
-            </AccountsAddButton>
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="inline-flex items-center gap-2 rounded-lg border border-[#E2E8F0] dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2 text-[13px] text-[#17264A] dark:text-slate-200 shadow-xs">
+                <Calendar className="h-4 w-4 text-teal-600 dark:text-teal-400 shrink-0" />
+                <input
+                  type="date"
+                  value={fromDate}
+                  onChange={(e) => setFromDate(e.target.value)}
+                  onClick={(e) => e.target.showPicker?.()}
+                  className="w-[110px] border-0 bg-transparent text-[12px] font-medium outline-none cursor-pointer [&::-webkit-calendar-picker-indicator]:hidden"
+                />
+                <span className="text-[#94A3B8] font-semibold">→</span>
+                <input
+                  type="date"
+                  value={toDate}
+                  onChange={(e) => setToDate(e.target.value)}
+                  onClick={(e) => e.target.showPicker?.()}
+                  className="w-[110px] border-0 bg-transparent text-[12px] font-medium outline-none cursor-pointer [&::-webkit-calendar-picker-indicator]:hidden"
+                />
+              </div>
+              <AccountsAddButton onClick={goNew} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
+                New Journal Entry
+              </AccountsAddButton>
+            </div>
           </div>
 
           <div className={accountsTableWrapClass}>

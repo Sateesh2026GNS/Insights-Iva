@@ -106,7 +106,7 @@ export default function JobCardQueueFilters({
               <SearchBar
                 value={search}
                 onChange={(v) => onSearchChange?.(v)}
-                placeholder="Job card, sales order, customer, product…"
+                placeholder="Search"
                 className="w-full"
                 aria-label="Search job cards"
                 size="compact"
@@ -146,26 +146,31 @@ export default function JobCardQueueFilters({
               <div className="col-span-2 flex flex-wrap items-center gap-2 sm:col-span-1 sm:pb-0.5">
                 <Button
                   type="button"
-                  variant="outline"
-                  size="sm"
+                  variant="secondary"
                   onClick={() => setAdvancedOpen((v) => !v)}
                   aria-expanded={advancedOpen}
+                  leftIcon={<SlidersHorizontal className="h-3.5 w-3.5" />}
+                  rightIcon={
+                    <ChevronDown
+                      className={`h-3.5 w-3.5 transition-transform ${advancedOpen ? "rotate-180" : ""}`}
+                      aria-hidden
+                    />
+                  }
                 >
-                  <SlidersHorizontal className="mr-1.5 h-3.5 w-3.5" />
                   More filters
                   {advancedCount > 0 ? (
                     <span className="ml-1.5 rounded-full bg-[var(--color-primary)] px-1.5 py-px text-[10px] font-bold text-white">
                       {advancedCount}
                     </span>
                   ) : null}
-                  <ChevronDown
-                    className={`ml-1 h-3.5 w-3.5 transition-transform ${advancedOpen ? "rotate-180" : ""}`}
-                    aria-hidden
-                  />
                 </Button>
                 {hasFilters ? (
-                  <Button type="button" variant="ghost" size="sm" onClick={onClear}>
-                    <X className="mr-1 h-3.5 w-3.5" />
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={onClear}
+                    leftIcon={<X className="h-3.5 w-3.5" />}
+                  >
                     Clear
                   </Button>
                 ) : null}
@@ -263,7 +268,7 @@ export default function JobCardQueueFilters({
             <SearchBar
               value={search}
               onChange={(v) => onSearchChange?.(v)}
-              placeholder="Search by Job Card No, SO No, Customer..."
+              placeholder="Search"
               className="w-full"
               aria-label="Search job cards"
               clearable={false}
@@ -349,11 +354,19 @@ export default function JobCardQueueFilters({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <Button type="button" variant="outline" size="sm" onClick={onClear}>
-            {hasFilters ? <X className="mr-1 h-3.5 w-3.5" /> : null}
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={onClear}
+            leftIcon={hasFilters ? <X className="h-3.5 w-3.5" /> : null}
+          >
             Clear
           </Button>
-          <Button type="button" variant="primary" size="sm" onClick={onApply}>
+          <Button
+            type="button"
+            variant="add"
+            onClick={onApply}
+          >
             Apply Filters
           </Button>
         </div>

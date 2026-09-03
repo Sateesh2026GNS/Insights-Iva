@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useLocation, useSearchParams } from "react-router-dom";
 import { Plus, Pencil, Trash2, ShieldCheck, UserCog, KeyRound } from "lucide-react";
 
 import PageHeader from "../../components/common/PageHeader";
@@ -59,6 +60,9 @@ export default function UserManagement() {
   const [toDelete, setToDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [resettingId, setResettingId] = useState(null);
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const initialOpenedRef = useRef(false);
 
   const load = useCallback(async (isRefresh = false) => {
     if (!isRefresh) setLoading(true);
@@ -79,6 +83,48 @@ export default function UserManagement() {
   useEffect(() => {
     if (isAdmin) load();
   }, [isAdmin, load]);
+
+  useEffect(() => {
+    if (!loading && !initialOpenedRef.current) {
+      const shouldOpen =
+        location.state?.openAddUser ||
+        location.state?.openAddModal ||
+        searchParams.get("add") === "true";
+      const targetRoleName = (
+        location.state?.defaultRole ||
+        searchParams.get("role") ||
+        ""
+      ).toLowerCase();
+
+      if (shouldOpen) {
+        initialOpenedRef.current = true;
+        setEditing(null);
+        let defaultRoleIds = [];
+        let defaultDept = "";
+        let defaultDesignation = "";
+        if (targetRoleName && roles.length > 0) {
+          const matchedRole = roles.find((r) =>
+            r.name?.toLowerCase().includes(targetRoleName)
+          );
+          if (matchedRole) {
+            defaultRoleIds = [matchedRole.id];
+            if (targetRoleName.includes("operator")) {
+              defaultDept = "Production";
+              defaultDesignation = "Operator";
+            }
+          }
+        }
+        setForm({
+          ...EMPTY_FORM,
+          role_ids: defaultRoleIds,
+          department: defaultDept,
+          designation: defaultDesignation,
+        });
+        setErrors({});
+        setModalOpen(true);
+      }
+    }
+  }, [loading, roles, location.state, searchParams]);
 
   if (!isAdmin) return <AccessDenied />;
 

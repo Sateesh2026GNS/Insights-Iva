@@ -93,6 +93,9 @@ ROLE_TO_TEAMS: dict[str, frozenset[str]] = {
     "Accountant": frozenset({TEAM_BILLING}),
     "Purchase Manager": frozenset({TEAM_INVENTORY}),
     "Procurement Manager": frozenset({TEAM_INVENTORY}),
+    "Quality Control": frozenset({TEAM_QUALITY}),
+    "Quality Manager": frozenset({TEAM_QUALITY}),
+    "Quality Inspector": frozenset({TEAM_QUALITY}),
 }
 
 # Allowed transitions: from_status → {to_status: required_team}

@@ -154,12 +154,13 @@ def workflow_team_queue(
 def my_job_card_queue(
     status: str | None = Query(None),
     limit: int = Query(50, ge=1, le=500),
+    include_completed: bool = Query(True),
     user: User = Depends(require_any_permission(*WORKFLOW_MODULES)),
     db: Session = Depends(get_db),
 ):
     """Role-filtered actionable job card queue — backend determines visibility."""
     return get_my_job_card_queue(
-        db, user.tenant_id, user, status_filter=status, limit=limit, strict=True
+        db, user.tenant_id, user, status_filter=status, limit=limit, strict=True, include_completed=include_completed
     )
 
 

@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   AlertTriangle,
+  Boxes,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
@@ -17,6 +18,7 @@ import {
   Play,
   Plus,
   Printer,
+  Square,
   Star,
 } from "lucide-react";
 
@@ -163,25 +165,67 @@ function WoRowActions({
   const menuBtnRef = useRef(null);
   const [menuPos, setMenuPos] = useState({ top: 0, left: 0 });
   const serverId = isServerWoId(row.id);
+  const canIssue = (r) => canWoIssueMaterials(r.status, r.materials_issued);
 
-  const more = [];
-  if (canWoIssueMaterials(row.status, row.materials_issued)) {
-    more.push({
-      label: issuing ? "Issuing…" : "Issue Materials",
-      onClick: () => onIssue(row),
-      disabled: issuing,
-    });
-  }
-  if (canWoPause(row.status)) more.push({ label: "Pause", onClick: () => onPause(row) });
-  if (canWoStop(row.status)) more.push({ label: "Stop", onClick: () => onStop(row) });
-  more.push({ label: "Print", onClick: () => onPrint(row) });
-  more.push({ label: "Export PDF", onClick: () => onPdf(row) });
+  const menuItems = [
+    {
+      label: "View",
+      icon: <Eye className="h-3.5 w-3.5 text-emerald-600" />,
+      onClick: () => onView(row),
+    },
+    serverId
+      ? {
+          label: "Job Card",
+          icon: <ClipboardList className="h-3.5 w-3.5 text-indigo-600" />,
+          to: operatorJobCardUrl(row),
+        }
+      : null,
+    canWoStart(row.status)
+      ? {
+          label: "Start",
+          icon: <Play className="h-3.5 w-3.5 text-teal-600" />,
+          onClick: () => onStart(row),
+        }
+      : null,
+    canIssue(row)
+      ? {
+          label: issuing ? "Issuing…" : "Issue Materials",
+          icon: <Boxes className="h-3.5 w-3.5 text-blue-600" />,
+          onClick: () => onIssue(row),
+          disabled: issuing,
+        }
+      : null,
+    canWoPause(row.status)
+      ? {
+          label: "Pause",
+          icon: <Pause className="h-3.5 w-3.5 text-amber-600" />,
+          onClick: () => onPause(row),
+        }
+      : null,
+    canWoStop(row.status)
+      ? {
+          label: "Stop",
+          icon: <Square className="h-3.5 w-3.5 text-rose-600" />,
+          onClick: () => onStop(row),
+        }
+      : null,
+    {
+      label: "Print",
+      icon: <Printer className="h-3.5 w-3.5 text-slate-600" />,
+      onClick: () => onPrint(row),
+    },
+    {
+      label: "Export PDF",
+      icon: <FileText className="h-3.5 w-3.5 text-slate-600" />,
+      onClick: () => onPdf(row),
+    },
+  ].filter(Boolean);
 
   const openMenu = (e) => {
     e?.stopPropagation?.();
     const rect = menuBtnRef.current?.getBoundingClientRect();
     if (rect) {
-      const menuHeight = more.length * 36 + 16;
+      const menuHeight = menuItems.length * 36 + 16;
       const spaceBelow = window.innerHeight - rect.bottom;
       const top = spaceBelow < menuHeight ? Math.max(8, rect.top - menuHeight - 4) : rect.bottom + 4;
       setMenuPos({
@@ -193,68 +237,71 @@ function WoRowActions({
   };
 
   return (
-    <div className="flex items-center justify-end gap-1 whitespace-nowrap">
-      <IconButton variant="view" aria-label="View" title="View" onClick={() => onView(row)}>
-        <Eye className="h-3.5 w-3.5" />
-      </IconButton>
-      {serverId ? (
-        <IconButton to={operatorJobCardUrl(row)} aria-label="Job Card" title="Job Card">
-          <ClipboardList className="h-3.5 w-3.5" />
-        </IconButton>
-      ) : null}
-      {canWoStart(row.status) ? (
-        <IconButton variant="primary" aria-label="Start" title="Start" onClick={() => onStart(row)}>
-          <Play className="h-3.5 w-3.5" />
-        </IconButton>
-      ) : null}
-      {more.length ? (
-        <div className="relative">
-          <span ref={menuBtnRef} className="inline-flex">
-            <IconButton
-              aria-label="More actions"
-              title="More actions"
-              onClick={openMenu}
-            >
-              <MoreVertical className="h-3.5 w-3.5" />
-            </IconButton>
-          </span>
-          {open
-            ? createPortal(
-                <>
-                  <button
-                    type="button"
-                    className="fixed inset-0 z-[80] cursor-default"
-                    aria-label="Close menu"
-                    onClick={() => setOpen(false)}
-                  />
-                  <div
-                    className="fixed z-[90] w-48 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] py-1 shadow-lg"
-                    style={{ top: menuPos.top, left: menuPos.left }}
-                  >
-                    {more.map((item) => (
+    <div className="flex items-center justify-end whitespace-nowrap print:hidden">
+      <div className="relative">
+        <span ref={menuBtnRef} className="inline-flex">
+          <IconButton
+            aria-label="Actions"
+            title="Actions"
+            onClick={openMenu}
+          >
+            <MoreVertical className="h-4 w-4" />
+          </IconButton>
+        </span>
+        {open
+          ? createPortal(
+              <>
+                <button
+                  type="button"
+                  className="fixed inset-0 z-[80] cursor-default"
+                  aria-label="Close menu"
+                  onClick={(e) => {
+                    e?.stopPropagation?.();
+                    setOpen(false);
+                  }}
+                />
+                <div
+                  className="fixed z-[90] w-48 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] py-1 shadow-lg"
+                  style={{ top: menuPos.top, left: menuPos.left }}
+                  onClick={(e) => e?.stopPropagation?.()}
+                >
+                  {menuItems.map((item) =>
+                    item.to ? (
+                      <Link
+                        key={item.label}
+                        to={item.to}
+                        className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] transition-colors"
+                        onClick={(e) => {
+                          e?.stopPropagation?.();
+                          setOpen(false);
+                        }}
+                      >
+                        {item.icon}
+                        <span>{item.label}</span>
+                      </Link>
+                    ) : (
                       <button
                         key={item.label}
                         type="button"
                         disabled={item.disabled}
-                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] disabled:opacity-50"
-                        onClick={() => {
+                        className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] disabled:opacity-50 transition-colors"
+                        onClick={(e) => {
+                          e?.stopPropagation?.();
                           setOpen(false);
                           item.onClick?.();
                         }}
                       >
-                        {item.label === "Pause" ? <Pause className="h-3.5 w-3.5" /> : null}
-                        {item.label === "Print" ? <Printer className="h-3.5 w-3.5" /> : null}
-                        {item.label === "Export PDF" ? <FileText className="h-3.5 w-3.5" /> : null}
-                        {item.label}
+                        {item.icon}
+                        <span>{item.label}</span>
                       </button>
-                    ))}
-                  </div>
-                </>,
-                document.body
-              )
-            : null}
-        </div>
-      ) : null}
+                    )
+                  )}
+                </div>
+              </>,
+              document.body
+            )
+          : null}
+      </div>
     </div>
   );
 }

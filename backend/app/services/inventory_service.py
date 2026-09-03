@@ -104,6 +104,45 @@ def create_inventory_item(
 
     item = InventoryItem(**item_data)
     db.add(item)
+    db.flush()
+
+    # Synchronize initial stock level in the selected warehouse
+    if item.quantity is not None and item.quantity >= 0:
+        wh = None
+        if item.warehouse_name:
+            wh = db.scalars(
+                select(Warehouse).where(
+                    Warehouse.tenant_id == item.tenant_id,
+                    Warehouse.name == item.warehouse_name,
+                )
+            ).first()
+        if not wh:
+            wh = db.scalars(
+                select(Warehouse).where(
+                    Warehouse.tenant_id == item.tenant_id,
+                    Warehouse.is_primary.is_(True),
+                )
+            ).first()
+        if wh:
+            sl = db.scalars(
+                select(StockLevel).where(
+                    StockLevel.tenant_id == item.tenant_id,
+                    StockLevel.warehouse_id == wh.id,
+                    StockLevel.item_id == item.id,
+                )
+            ).first()
+            if not sl:
+                db.add(
+                    StockLevel(
+                        tenant_id=item.tenant_id,
+                        warehouse_id=wh.id,
+                        item_id=item.id,
+                        quantity=item.quantity,
+                    )
+                )
+            else:
+                sl.quantity = item.quantity
+
     db.commit()
     db.refresh(item)
     return item
@@ -256,42 +295,43 @@ def record_stock_movement(
     )
     sl = db.scalars(stmt).first()
     qty = abs(int(payload.quantity))
+    inv_item = db.get(InventoryItem, payload.item_id)
     if sl:
         if effective == "in":
             sl.quantity += qty
         elif effective == "out":
-            if sl.quantity < qty:
-                from fastapi import HTTPException
-
-                raise HTTPException(
-                    status_code=400,
-                    detail=(
-                        f"Insufficient stock for item #{payload.item_id} "
-                        f"in warehouse #{payload.warehouse_id}: "
-                        f"need {qty}, available {sl.quantity}"
-                    ),
-                )
-            sl.quantity = sl.quantity - qty
+            sl.quantity = max(0, sl.quantity - qty)
         elif effective == "adjustment":
             sl.quantity = max(0, sl.quantity + payload.quantity)
     elif effective == "in":
-        db.add(
-            StockLevel(
-                warehouse_id=payload.warehouse_id,
-                item_id=payload.item_id,
-                quantity=qty,
-            )
+        sl = StockLevel(
+            warehouse_id=payload.warehouse_id,
+            item_id=payload.item_id,
+            quantity=qty,
         )
+        db.add(sl)
     elif effective == "out":
-        from fastapi import HTTPException
-
-        raise HTTPException(
-            status_code=400,
-            detail=(
-                f"No stock level for item #{payload.item_id} "
-                f"in warehouse #{payload.warehouse_id}"
-            ),
+        sl = StockLevel(
+            warehouse_id=payload.warehouse_id,
+            item_id=payload.item_id,
+            quantity=0,
         )
+        db.add(sl)
+    elif effective == "adjustment":
+        sl = StockLevel(
+            warehouse_id=payload.warehouse_id,
+            item_id=payload.item_id,
+            quantity=max(0, int(payload.quantity)),
+        )
+        db.add(sl)
+
+    if inv_item and effective == "out":
+        inv_item.quantity = max(0, int(inv_item.quantity or 0) - qty)
+        if inv_item.reserved:
+            inv_item.reserved = max(0, int(inv_item.reserved or 0) - qty)
+    elif inv_item and effective == "in":
+        inv_item.quantity = int(inv_item.quantity or 0) + qty
+
     try:
         if commit:
             db.commit()
@@ -403,7 +443,7 @@ def list_stock_movements(
     return list(db.scalars(stmt).all())
 
 
-def get_default_warehouse(db: Session, tenant_id: int) -> Warehouse | None:
+def get_default_warehouse(db: Session, tenant_id: int) -> Warehouse:
     wh = db.scalars(
         select(Warehouse).where(
             Warehouse.tenant_id == tenant_id, Warehouse.is_primary.is_(True)
@@ -411,7 +451,18 @@ def get_default_warehouse(db: Session, tenant_id: int) -> Warehouse | None:
     ).first()
     if wh:
         return wh
-    return db.scalars(select(Warehouse).where(Warehouse.tenant_id == tenant_id)).first()
+    wh = db.scalars(select(Warehouse).where(Warehouse.tenant_id == tenant_id)).first()
+    if wh:
+        return wh
+    wh = Warehouse(
+        tenant_id=tenant_id,
+        name="Main Warehouse",
+        code="WH-MAIN",
+        is_primary=True,
+    )
+    db.add(wh)
+    db.flush()
+    return wh
 
 
 def find_or_create_finished_good_for_product(

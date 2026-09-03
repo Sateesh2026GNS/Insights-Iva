@@ -850,6 +850,11 @@ def _resolve_issue_warehouse(db: Session, tenant_id: int, store_location: str | 
                     Warehouse.code == loc,
                 )
             ).first()
+        if not wh:
+            all_wh = list(db.scalars(select(Warehouse).where(Warehouse.tenant_id == tenant_id)).all())
+            for w in all_wh:
+                if w.name and (w.name in loc or loc.startswith(w.name)):
+                    return w
         if wh:
             return wh
     return get_default_warehouse(db, tenant_id)

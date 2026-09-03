@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Edit3, Play, Plus, Printer, Save } from "lucide-react";
+import { ArrowLeft, Download, Edit3, Play, Plus, Printer, Save } from "lucide-react";
 
 import Button from "../common/Button";
+import CompletedJobCardAllStagesReport from "./CompletedJobCardAllStagesReport";
 import JobCardDetailsForm from "./JobCardDetailsForm";
 import JobCardTimeline from "./JobCardTimeline";
 import StoreManagerJobCardPanel from "./StoreManagerJobCardPanel";
@@ -12,7 +13,7 @@ import { getProductionOrderDetail, getProductionOrders } from "../../api/product
 import { PRIORITY_COLORS, enrichApiOrder } from "../../data/productionPlanningMasterData";
 import { getWorkflowStatusLabel } from "../../config/workflowStages";
 import { isStoreManager } from "../../config/permissions";
-import { printProductionOrder } from "../../utils/printUtils";
+import { downloadJobCardPdf, printProductionOrder } from "../../utils/printUtils";
 import { storeRowMenuItems } from "../../utils/storeJobCardQueue";
 import useAuth from "../../hooks/useAuth";
 
@@ -93,12 +94,28 @@ export default function JobCardDetailsShell({
     };
   }, [orderId, initialPoId, card?.header?.production_order_id]);
 
+  const getJobCardPrintPayload = () => ({
+    ...(productionOrder || {}),
+    ...(card || {}),
+    ...(form || {}),
+    card,
+    form,
+    salesOrder,
+    productLines,
+    selectedProduct,
+    product_code: productCode,
+    productionOrder,
+    orderId,
+    sales_order_id: orderId,
+    id: orderId,
+  });
+
   const handlePrint = () => {
-    if (productionOrder) {
-      printProductionOrder(productionOrder, user);
-      return;
-    }
-    window.print();
+    printProductionOrder(getJobCardPrintPayload(), user);
+  };
+
+  const handleDownloadPdf = () => {
+    downloadJobCardPdf(getJobCardPrintPayload(), user);
   };
 
   const isEdit = mode === "edit";
@@ -164,6 +181,10 @@ export default function JobCardDetailsShell({
         <Printer className="mr-1.5 inline h-4 w-4" />
         Print
       </Button>
+      <Button variant="outline" size="sm" onClick={handleDownloadPdf}>
+        <Download className="mr-1.5 inline h-4 w-4" />
+        Download PDF
+      </Button>
       <Button variant="outline" size="sm" to={`/sales/orders/${orderId}`}>
         Sales Order
       </Button>
@@ -196,23 +217,9 @@ export default function JobCardDetailsShell({
             >
               {priorityStyle.dot} {priorityStyle.label}
             </span>
-            <PriorityBadge priority={priority} showDot={false} />
           </div>
         ) : null}
 
-        {storeMode ? (
-          <StoreManagerJobCardPanel
-            orderId={orderId}
-            storeContext={storeContext}
-            summary={summary}
-            form={form}
-            productCode={productCode}
-            onRefresh={onRefreshStoreContext}
-            refreshing={refreshingStoreContext}
-          />
-        ) : null}
-
-        {!storeMode ? (
         <JobCardDetailsForm
           showHeader
           form={form}
@@ -232,22 +239,38 @@ export default function JobCardDetailsShell({
           onUpdateLine={onUpdateLine}
           footer={footer}
         />
-        ) : (
-          <article className="ui-card overflow-hidden p-4 sm:p-5">
-            <div className="flex flex-wrap items-center gap-2 border-t border-[var(--color-border-soft)] pt-4">{footer}</div>
-          </article>
-        )}
 
         {stageActions}
 
-        {!isEdit && showWorkflowTracker && (card?.workflow_tracker?.length || card?.workflow_steps?.length) ? (
+        {!isEdit && !stageActions && (String(ws || "").toUpperCase() === "COMPLETED" || card?.workflow_status === "completed" || form?.workflow_status === "completed") ? (
+          <CompletedJobCardAllStagesReport
+            card={card}
+            form={form}
+            salesOrder={salesOrder}
+            orderId={orderId}
+          />
+        ) : null}
+
+        {storeMode && storeContext?.material_requirements?.length ? (
+          <StoreManagerJobCardPanel
+            orderId={orderId}
+            storeContext={storeContext}
+            summary={summary}
+            form={form}
+            productCode={productCode}
+            onRefresh={onRefreshStoreContext}
+            refreshing={refreshingStoreContext}
+          />
+        ) : null}
+
+        {!isEdit && showWorkflowTracker && (card?.workflow_tracker?.length || card?.workflow_steps?.length || card?.workflow?.length) ? (
           <article className="ui-card overflow-hidden p-4 sm:p-5">
             <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-[var(--color-text-muted)]">
               Workflow Timeline
             </h2>
             <WorkflowTracker
               embedded
-              steps={card?.workflow_tracker || card?.workflow_steps || []}
+              steps={card?.workflow_tracker || card?.workflow_steps || card?.workflow || []}
               currentStage={card?.workflow_current_stage}
             />
           </article>

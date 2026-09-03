@@ -1,6 +1,7 @@
 /** Production Manager sidebar sections (module grants are broader for API access). */
 export const PRODUCTION_MANAGER_ALLOWED_SECTIONS = new Set([
   "dashboard",
+  "myJobCards",
   "masters",
   "production",
   "inventory",
@@ -122,6 +123,7 @@ export const HR_MANAGER_ALLOWED_SECTIONS = new Set([
 /** Accountant sidebar — Finance/Accounting, Masters, Documents, General Alerts, Finance Analytics. */
 export const ACCOUNTANT_ALLOWED_SECTIONS = new Set([
   "dashboard",
+  "myJobCards",
   "finance",
   "masters",
   "documents",

@@ -1,6 +1,7 @@
 import {
   Check,
   ClipboardList,
+  Factory,
   FileText,
   Flag,
   Package,
@@ -14,12 +15,19 @@ import {
 const STEP_ICONS = {
   sales_order: ClipboardList,
   sales_orders: ClipboardList,
+  production_request: ClipboardList,
+  job_card: ClipboardList,
   inventory_check: Package,
+  material_issue: Warehouse,
   store_manager: Warehouse,
+  store: Warehouse,
   production_manager: Settings,
+  production: Factory,
   operator: User,
   quality_check: ShieldCheck,
+  quality: ShieldCheck,
   packing_dispatch: Truck,
+  packing: Truck,
   billing: FileText,
   completed: Flag,
 };
@@ -34,7 +42,11 @@ const STATE_STYLES = {
 
 /** 9-step workflow tracker with completed / current / pending / blocked / rejected states. */
 export default function WorkflowTracker({ steps = [], currentStage = null, embedded = false }) {
-  const stageLabel = currentStage?.stage_label || steps.find((s) => s.status === "current")?.label || "—";
+  const stageLabel =
+    currentStage?.stage_label ||
+    steps.find((s) => s.status === "current")?.label ||
+    steps.find((s) => s.status === "current")?.title ||
+    "—";
   const stageHint = currentStage?.stage_hint || "Track progress across manufacturing stages.";
 
   const content = (
@@ -55,9 +67,11 @@ export default function WorkflowTracker({ steps = [], currentStage = null, embed
           {steps.map((step, idx) => {
             const state = step.status || "pending";
             const isCompleted = state === "completed";
-            const Icon = STEP_ICONS[step.key] || ClipboardList;
+            const key = step.key || step.id || `step-${idx}`;
+            const label = step.label || step.title || step.name || key;
+            const Icon = STEP_ICONS[key] || STEP_ICONS[step.key] || STEP_ICONS[step.id] || ClipboardList;
             return (
-              <div key={step.key} className="flex min-w-[3.5rem] flex-1 flex-col items-center">
+              <div key={key} className="flex min-w-[3.5rem] flex-1 flex-col items-center">
                 <div className="flex w-full items-center">
                   {idx > 0 ? (
                     <div
@@ -68,7 +82,7 @@ export default function WorkflowTracker({ steps = [], currentStage = null, embed
                   )}
                   <span
                     className={`relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${STATE_STYLES[state] || STATE_STYLES.pending}`}
-                    title={step.label}
+                    title={label}
                   >
                     {isCompleted ? <Check className="h-3.5 w-3.5" strokeWidth={2.5} /> : <Icon className="h-3.5 w-3.5" strokeWidth={2} />}
                   </span>
@@ -91,7 +105,7 @@ export default function WorkflowTracker({ steps = [], currentStage = null, embed
                             : "text-[var(--color-text-faint)]"
                   }`}
                 >
-                  {step.label}
+                  {label}
                 </p>
               </div>
             );

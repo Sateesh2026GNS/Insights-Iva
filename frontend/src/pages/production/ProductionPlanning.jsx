@@ -142,16 +142,53 @@ function OrderActions({
   const menuBtnRef = useRef(null);
   const [menuPos, setMenuPos] = useState({ top: 0, left: 0 });
   const needsMachine = !row.machine_name || row.machine_name === "—" || row.machine_name === "Unassigned";
-  const more = [];
-  if (canPause(row.status)) more.push({ label: "Pause", onClick: () => onPause(row) });
-  more.push({ label: "Print", onClick: () => onPrint(row) });
-  if (needsMachine) more.push({ label: "Create Work Order", onClick: () => onWorkOrder(row) });
+
+  const menuItems = [
+    {
+      label: "View",
+      icon: <Eye className="h-3.5 w-3.5 text-emerald-600" />,
+      onClick: () => onView(row),
+    },
+    canEdit
+      ? {
+          label: "Edit",
+          icon: <Pencil className="h-3.5 w-3.5 text-blue-600" />,
+          onClick: () => onEdit(row),
+        }
+      : null,
+    canStart(row.status)
+      ? {
+          label: "Start",
+          icon: <Play className="h-3.5 w-3.5 text-teal-600" />,
+          onClick: () => onStart(row),
+        }
+      : null,
+    canPause(row.status)
+      ? {
+          label: "Pause",
+          icon: <Pause className="h-3.5 w-3.5 text-amber-600" />,
+          onClick: () => onPause(row),
+        }
+      : null,
+    {
+      label: "Print",
+      icon: <Printer className="h-3.5 w-3.5 text-slate-600" />,
+      onClick: () => onPrint(row),
+    },
+    needsMachine
+      ? {
+          label: "Create Work Order",
+          icon: <ClipboardList className="h-3.5 w-3.5 text-indigo-600" />,
+          onClick: () => onWorkOrder(row),
+        }
+      : null,
+  ].filter(Boolean);
 
   const openMenu = (e) => {
     e?.stopPropagation?.();
     const rect = menuBtnRef.current?.getBoundingClientRect();
     if (rect) {
-      const menuHeight = more.length * 36 + 16;
+      const menuHeight = menuItems.length * 36 + 16;
       const spaceBelow = window.innerHeight - rect.bottom;
       const top = spaceBelow < menuHeight ? Math.max(8, rect.top - menuHeight - 4) : rect.bottom + 4;
       setMenuPos({
@@ -163,67 +200,55 @@ function OrderActions({
   };
 
   return (
-    <div className="flex items-center justify-end gap-1 whitespace-nowrap print:hidden">
-      <IconButton variant="view" aria-label="View" title="View" onClick={() => onView(row)}>
-        <Eye className="h-3.5 w-3.5" />
-      </IconButton>
-      {canEdit ? (
-        <IconButton variant="edit" aria-label="Edit" title="Edit" onClick={() => onEdit(row)}>
-          <Pencil className="h-3.5 w-3.5" />
-        </IconButton>
-      ) : null}
-      {canStart(row.status) ? (
-        <IconButton variant="primary" aria-label="Start" title="Start" onClick={() => onStart(row)}>
-          <Play className="h-3.5 w-3.5" />
-        </IconButton>
-      ) : null}
-      {more.length ? (
-        <div className="relative">
-          <span ref={menuBtnRef} className="inline-flex">
-            <IconButton
-              aria-label="More actions"
-              title="More actions"
-              onClick={openMenu}
-            >
-              <MoreVertical className="h-3.5 w-3.5" />
-            </IconButton>
-          </span>
-          {open
-            ? createPortal(
-                <>
-                  <button
-                    type="button"
-                    className="fixed inset-0 z-[80] cursor-default"
-                    aria-label="Close menu"
-                    onClick={() => setOpen(false)}
-                  />
-                  <div
-                    className="fixed z-[90] w-48 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] py-1 shadow-lg"
-                    style={{ top: menuPos.top, left: menuPos.left }}
-                  >
-                    {more.map((item) => (
-                      <button
-                        key={item.label}
-                        type="button"
-                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-muted)]"
-                        onClick={() => {
-                          setOpen(false);
-                          item.onClick?.();
-                        }}
-                      >
-                        {item.label === "Pause" ? <Pause className="h-3.5 w-3.5" /> : null}
-                        {item.label === "Print" ? <Printer className="h-3.5 w-3.5" /> : null}
-                        {item.label === "Create Work Order" ? <ClipboardList className="h-3.5 w-3.5" /> : null}
-                        {item.label}
-                      </button>
-                    ))}
-                  </div>
-                </>,
-                document.body
-              )
-            : null}
-        </div>
-      ) : null}
+    <div className="flex items-center justify-end whitespace-nowrap print:hidden">
+      <div className="relative">
+        <span ref={menuBtnRef} className="inline-flex">
+          <IconButton
+            aria-label="Actions"
+            title="Actions"
+            onClick={openMenu}
+          >
+            <MoreVertical className="h-4 w-4" />
+          </IconButton>
+        </span>
+        {open
+          ? createPortal(
+              <>
+                <button
+                  type="button"
+                  className="fixed inset-0 z-[80] cursor-default"
+                  aria-label="Close menu"
+                  onClick={(e) => {
+                    e?.stopPropagation?.();
+                    setOpen(false);
+                  }}
+                />
+                <div
+                  className="fixed z-[90] w-48 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] py-1 shadow-lg"
+                  style={{ top: menuPos.top, left: menuPos.left }}
+                  onClick={(e) => e?.stopPropagation?.()}
+                >
+                  {menuItems.map((item) => (
+                    <button
+                      key={item.label}
+                      type="button"
+                      className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] transition-colors"
+                      onClick={(e) => {
+                        e?.stopPropagation?.();
+                        setOpen(false);
+                        item.onClick?.();
+                      }}
+                    >
+                      {item.icon}
+                      <span>{item.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </>,
+              document.body
+            )
+          : null}
+      </div>
     </div>
   );
 }

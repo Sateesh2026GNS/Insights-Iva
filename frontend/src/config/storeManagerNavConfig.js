@@ -61,8 +61,8 @@ export const STORE_MANAGER_NAV_ITEMS = [
   },
   {
     key: "myJobCards",
-    label: "Store Manager – My Job Cards",
-    to: "/my-job-cards",
+    label: "My Job Cards",
+    to: "/my-job-cards?dept=inventory",
     icon: ClipboardList,
     end: true,
   },

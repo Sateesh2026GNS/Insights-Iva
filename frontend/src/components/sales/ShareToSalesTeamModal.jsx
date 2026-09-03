@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { Send, Share2, Users, X } from "lucide-react";
 import api from "../../api/axiosConfig";
 import { shareDocumentNotification } from "../../api/notificationService";
@@ -69,16 +70,37 @@ export default function ShareToSalesTeamModal({
     };
   }, [open]);
 
-  // Filtered users according to active tab
+  // Filtered users according to active tab (excluding HR / HR Manager users)
   const displayedUsers = useMemo(() => {
+    const nonHrUsers = users.filter((u) => {
+      const role = String(u.role || "").toLowerCase().trim();
+      const desig = String(u.designation || "").toLowerCase().trim();
+      const dept = String(u.department || "").toLowerCase().trim();
+
+      const isHr =
+        role === "hr" ||
+        role === "hr_manager" ||
+        role.includes("hr_manager") ||
+        role.includes("hr manager") ||
+        role.includes("human resource") ||
+        desig.includes("hr manager") ||
+        desig.includes("human resource") ||
+        desig === "hr" ||
+        dept === "hr" ||
+        dept === "human resources" ||
+        dept.includes("human resource");
+
+      return !isHr;
+    });
+
     if (activeTab === "sales") {
-      const filtered = users.filter((u) => {
+      const salesFiltered = nonHrUsers.filter((u) => {
         const text = `${u.role || ""} ${u.designation || ""} ${u.department || ""}`.toLowerCase();
-        return text.includes("sales") || text.includes("manager");
+        return text.includes("sales");
       });
-      return filtered.length > 0 ? filtered : users;
+      return salesFiltered.length > 0 ? salesFiltered : nonHrUsers;
     }
-    return users;
+    return nonHrUsers;
   }, [users, activeTab]);
 
   if (!open) return null;
@@ -126,18 +148,18 @@ export default function ShareToSalesTeamModal({
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
-      <div className="w-full max-w-lg overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl animate-in fade-in zoom-in-95">
+  const modalContent = (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs overflow-y-auto">
+      <div className="relative my-auto flex max-h-[calc(100vh-2rem)] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl animate-in fade-in zoom-in-95">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-100 bg-gradient-to-r from-emerald-50 via-teal-50 to-cyan-50 px-5 py-4">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-sm">
+        <div className="shrink-0 flex items-center justify-between border-b border-slate-100 bg-gradient-to-r from-emerald-50 via-teal-50 to-cyan-50 px-5 py-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-sm shrink-0">
               <Share2 className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-slate-900">Share to Sales Manager</h3>
-              <p className="text-xs text-slate-500">Select Sales Manager or team to receive instant notification</p>
+              <h3 className="text-base font-bold text-slate-900 leading-tight">Share to Sales Manager</h3>
+              <p className="text-xs text-slate-500 mt-0.5">Select Sales Manager or team to receive instant notification</p>
             </div>
           </div>
           <button
@@ -150,7 +172,7 @@ export default function ShareToSalesTeamModal({
         </div>
 
         {/* Content */}
-        <div className="space-y-4 p-5">
+        <div className="flex-1 space-y-4 overflow-y-auto p-5">
           {/* Document Summary Card */}
           <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-emerald-200 bg-emerald-50/70 p-3 text-xs text-emerald-950">
             <div className="space-y-0.5">
@@ -213,14 +235,14 @@ export default function ShareToSalesTeamModal({
                 Loading Sales Managers...
               </div>
             ) : displayedUsers.length > 0 ? (
-              <div className="max-h-56 space-y-1.5 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50/50 p-2">
+              <div className="max-h-48 space-y-1.5 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50/50 p-2">
                 {displayedUsers.map((u) => {
                   const isChecked = selectedUserIds.includes(u.id);
                   return (
                     <label
                       key={u.id}
                       onClick={() => toggleUser(u.id)}
-                      className={`flex cursor-pointer items-center justify-between rounded-lg border px-3 py-2.5 text-xs transition ${
+                      className={`flex cursor-pointer items-center justify-between rounded-lg border px-3 py-2 text-xs transition ${
                         isChecked
                           ? "border-emerald-500 bg-emerald-50/80 text-emerald-950 font-medium shadow-xs"
                           : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
@@ -270,7 +292,7 @@ export default function ShareToSalesTeamModal({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50 px-5 py-3.5">
+        <div className="shrink-0 flex items-center justify-between border-t border-slate-100 bg-slate-50 px-5 py-3.5">
           <div className="text-[11px] text-slate-500">
             Selected: <span className="font-bold text-slate-800">{selectedUserIds.length} recipient(s)</span>
           </div>
@@ -297,4 +319,6 @@ export default function ShareToSalesTeamModal({
       </div>
     </div>
   );
+
+  return typeof document !== "undefined" ? createPortal(modalContent, document.body) : modalContent;
 }

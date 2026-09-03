@@ -187,10 +187,24 @@ const PAGE_TITLE_OVERRIDES = {
   "/production/operator-jobs": "My Operator Jobs",
 };
 
+const STAGE_LABELS = {
+  inventory: "Inventory Check",
+  store: "Store Issue",
+  production: "Production Planning",
+  operator: "Shop Floor Execution",
+  quality: "Quality Inspection",
+  packing: "Packing & Dispatch",
+  billing: "GST Tax Invoice",
+};
+
 const ENTITY_SINGULAR = {
   invoices: "Invoice",
   quotations: "Quotation",
   orders: "Sales Order",
+  "job-cards": "Job Card",
+  "job-card": "Job Card",
+  workflow: "Job Card",
+  order: "Job Card",
   bills: "Bill",
   "debit-notes": "Debit Note",
   "credit-notes": "Credit Note",
@@ -229,6 +243,8 @@ const ENTITY_SINGULAR = {
 
 function getLabel(segment, segments, index) {
   const prev = index > 0 ? segments[index - 1] : null;
+  const prevPrev = index > 1 ? segments[index - 2] : null;
+
   if (segment === "dashboard" && prev === "inventory") return "Store Dashboard";
   if (segment === "settings" && prev === "inventory") return "Inventory Settings";
   if (segment === "create-quick" && prev === "work-orders") return "Quick Work Order";
@@ -249,11 +265,35 @@ function getLabel(segment, segments, index) {
     const cat = findSettingsCategory(segment);
     if (cat) return cat.title;
   }
-  // If segment is a numeric or alphanumeric ID (like "1", "INV-000001", etc.) under an entity list
-  const isIdSegment = /^\d+$/.test(segment) || (prev && ENTITY_SINGULAR[prev] && !pathLabels[segment] && segment.length > 0 && !["create", "edit", "copy", "bulk-import"].includes(segment));
-  if (isIdSegment && prev && ENTITY_SINGULAR[prev]) {
+
+  // Manufacturing workflow stage handling
+  if (STAGE_LABELS[segment]) {
+    return STAGE_LABELS[segment];
+  }
+
+  // If segment is a numeric ID under an entity or order
+  const isIdSegment = /^\d+$/.test(segment);
+  if (isIdSegment) {
+    if (prev === "job-cards" || prev === "order" || prev === "workflow") {
+      return "Job Card Details";
+    }
+    if (prev && ENTITY_SINGULAR[prev]) {
+      return `${ENTITY_SINGULAR[prev]} Details`;
+    }
+    return "Details";
+  }
+
+  // If segment is an alphanumeric ID under an entity list
+  if (
+    prev &&
+    ENTITY_SINGULAR[prev] &&
+    !pathLabels[segment] &&
+    segment.length > 0 &&
+    !["create", "edit", "copy", "bulk-import"].includes(segment)
+  ) {
     return `${ENTITY_SINGULAR[prev]} Details`;
   }
+
   return pathLabels[segment] || segment.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
@@ -295,14 +335,27 @@ export function getBreadcrumbTrail(pathname) {
 /** Current page title from the last breadcrumb segment. */
 export function getPageTitle(pathname, user = null) {
   const path = (pathname || "/").replace(/\/$/, "") || "/";
-  if (user && isStoreManager(user)) {
-    if (path === "/my-job-cards" || path.startsWith("/job-cards/")) {
-      return "Store Manager – My Job Cards";
+  if (PAGE_TITLE_OVERRIDES[path]) return PAGE_TITLE_OVERRIDES[path];
+
+  // Specific dynamic pattern matches
+  if (/^\/job-cards\/\d+$/i.test(path)) {
+    return "Job Card Details";
+  }
+  const stageMatch = path.match(/^\/manufacturing\/workflow\/order\/\d+\/([a-z0-9_-]+)$/i);
+  if (stageMatch && stageMatch[1]) {
+    const stageKey = stageMatch[1].toLowerCase();
+    if (STAGE_LABELS[stageKey]) {
+      return `Job Card – ${STAGE_LABELS[stageKey]}`;
     }
   }
-  if (PAGE_TITLE_OVERRIDES[path]) return PAGE_TITLE_OVERRIDES[path];
+  if (/^\/manufacturing\/workflow\/order\/\d+$/i.test(path)) {
+    return "Job Card Details";
+  }
+
   const trail = getBreadcrumbTrail(pathname);
-  return trail[trail.length - 1]?.label || "Dashboard";
+  const last = trail[trail.length - 1]?.label;
+  if (/^\d+$/.test(last)) return "Job Card Details";
+  return last || "Dashboard";
 }
 
 export default function Breadcrumbs({ items: customItems, compact = false, className = "" }) {

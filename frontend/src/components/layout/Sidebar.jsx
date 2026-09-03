@@ -30,7 +30,7 @@ import BrandLogo from "../common/BrandLogo";
 import LogoutConfirmModal from "../common/LogoutConfirmModal";
 import useAuth from "../../hooks/useAuth";
 import { getSidebarMenus } from "../../api/authApi";
-import { userCanAccess, isStoreManager, isProductionManager, isOperator, isHRManager, isAccountant, storeManagerPathAllowed } from "../../config/permissions";
+import { userCanAccess, isStoreManager, isProductionManager, isOperator, isHRManager, isAccountant, isSalesManager, isQualityTeam, storeManagerPathAllowed } from "../../config/permissions";
 import {
   PRODUCTION_MANAGER_ALLOWED_CHILDREN,
   PRODUCTION_MANAGER_ALLOWED_SECTIONS,
@@ -41,6 +41,16 @@ import {
 } from "../../config/rbacNavFilters";
 import { SIDEBAR_NAV, sectionHasActiveChild } from "../../config/sidebarNav";
 import { STORE_MANAGER_NAV_ITEMS } from "../../config/storeManagerNavConfig";
+
+export function getRoleJobCardUrl(user) {
+  if (isStoreManager(user)) return "/my-job-cards?dept=inventory";
+  if (isProductionManager(user)) return "/my-job-cards?dept=production";
+  if (isOperator(user)) return "/my-job-cards?dept=production";
+  if (isQualityTeam(user)) return "/my-job-cards?dept=quality";
+  if (isAccountant(user)) return "/my-job-cards?dept=billing";
+  if (isSalesManager(user)) return "/my-job-cards?dept=sales";
+  return "/my-job-cards";
+}
 
 const ICON_BY_KEY = {
   dashboard: LayoutDashboard,
@@ -167,14 +177,18 @@ export function filterStaticNav(user) {
       return section;
     }
     let children = (section.children || []).filter((c) => {
-      if (isPM && !PRODUCTION_MANAGER_ALLOWED_CHILDREN.has(c.to)) return false;
+      const pathOnly = (c.to || "").split("?")[0];
+      if (isPM && !PRODUCTION_MANAGER_ALLOWED_CHILDREN.has(c.to) && !PRODUCTION_MANAGER_ALLOWED_CHILDREN.has(pathOnly)) return false;
       if (isAcct && (section.key === "alerts" || section.key === "analytics")) {
-        if (!ACCOUNTANT_ALLOWED_CHILDREN.has(c.to)) return false;
+        if (!ACCOUNTANT_ALLOWED_CHILDREN.has(c.to) && !ACCOUNTANT_ALLOWED_CHILDREN.has(pathOnly)) return false;
       }
       return userCanAccess(user, c.module);
     });
     if (storeMgr) {
-      children = children.filter((c) => storeManagerPathAllowed(c.to));
+      children = children.filter((c) => {
+        const pathOnly = (c.to || "").split("?")[0];
+        return storeManagerPathAllowed(c.to) || storeManagerPathAllowed(pathOnly);
+      });
     }
     if (children.length === 0) return null;
     return { ...section, children };
@@ -240,61 +254,77 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose }
   }, [isAuthenticated, user?.id, user?.role, user?.role_id]);
 
   const visibleNav = useMemo(() => {
+    let result = [];
     if (storeMode) {
-      return buildStoreManagerSidebarNav();
-    }
-    // Prefer local SIDEBAR_NAV so new pages (Inventory v2, Ledger) appear even if API catalog is stale.
-    const staticNav = filterStaticNav(user);
-    const raw = staticNav.length ? staticNav : apiNav && apiNav.length ? apiNav : [];
-    if (isProductionManager(user)) {
-      return raw
-        .map((section) => {
-          if (!PRODUCTION_MANAGER_ALLOWED_SECTIONS.has(section.key)) return null;
-          if (!section.children) return section;
-          const children = section.children.filter((c) => PRODUCTION_MANAGER_ALLOWED_CHILDREN.has(c.to));
-          if (children.length === 0) return null;
-          return { ...section, children };
-        })
-        .filter(Boolean);
-    }
-    if (isOperator(user)) {
-      return raw.filter((section) => !OPERATOR_BLOCKED_SECTIONS.has(section.key));
-    }
-    if (isHRManager(user)) {
-      const hrIndex = raw.findIndex((s) => s.key === "hr");
-      if (hrIndex > -1) {
-        const copy = [...raw];
-        const [hrSection] = copy.splice(hrIndex, 1);
-        const dashIdx = copy.findIndex((s) => s.key === "dashboard");
-        copy.splice(dashIdx > -1 ? dashIdx + 1 : 0, 0, hrSection);
-        return copy;
-      }
-    }
-    if (isAccountant(user)) {
-      const filtered = raw
-        .map((section) => {
-          if (!ACCOUNTANT_ALLOWED_SECTIONS.has(section.key)) return null;
-          if (!section.children) return section;
-          const children = section.children.filter((c) => {
-            if (section.key === "alerts" || section.key === "analytics") {
-              return ACCOUNTANT_ALLOWED_CHILDREN.has(c.to);
-            }
-            return true;
-          });
-          if (children.length === 0) return null;
-          return { ...section, children };
-        })
-        .filter(Boolean);
+      result = buildStoreManagerSidebarNav();
+    } else {
+      const staticNav = filterStaticNav(user);
+      const raw = staticNav.length ? staticNav : apiNav && apiNav.length ? apiNav : [];
+      if (isProductionManager(user)) {
+        result = raw
+          .map((section) => {
+            if (!PRODUCTION_MANAGER_ALLOWED_SECTIONS.has(section.key)) return null;
+            if (!section.children) return section;
+            const children = section.children.filter((c) => {
+              const pathOnly = (c.to || "").split("?")[0];
+              return PRODUCTION_MANAGER_ALLOWED_CHILDREN.has(c.to) || PRODUCTION_MANAGER_ALLOWED_CHILDREN.has(pathOnly);
+            });
+            if (children.length === 0) return null;
+            return { ...section, children };
+          })
+          .filter(Boolean);
+      } else if (isOperator(user)) {
+        result = raw.filter((section) => !OPERATOR_BLOCKED_SECTIONS.has(section.key));
+      } else if (isHRManager(user)) {
+        const hrIndex = raw.findIndex((s) => s.key === "hr");
+        if (hrIndex > -1) {
+          const copy = [...raw];
+          const [hrSection] = copy.splice(hrIndex, 1);
+          const dashIdx = copy.findIndex((s) => s.key === "dashboard");
+          copy.splice(dashIdx > -1 ? dashIdx + 1 : 0, 0, hrSection);
+          result = copy;
+        } else {
+          result = raw;
+        }
+      } else if (isAccountant(user)) {
+        const filtered = raw
+          .map((section) => {
+            if (!ACCOUNTANT_ALLOWED_SECTIONS.has(section.key)) return null;
+            if (!section.children) return section;
+            const children = section.children.filter((c) => {
+              if (section.key === "alerts" || section.key === "analytics") {
+                const pathOnly = (c.to || "").split("?")[0];
+                return ACCOUNTANT_ALLOWED_CHILDREN.has(c.to) || ACCOUNTANT_ALLOWED_CHILDREN.has(pathOnly);
+              }
+              return true;
+            });
+            if (children.length === 0) return null;
+            return { ...section, children };
+          })
+          .filter(Boolean);
 
-      const finIndex = filtered.findIndex((s) => s.key === "finance");
-      if (finIndex > -1) {
-        const [finSection] = filtered.splice(finIndex, 1);
-        const dashIdx = filtered.findIndex((s) => s.key === "dashboard");
-        filtered.splice(dashIdx > -1 ? dashIdx + 1 : 0, 0, finSection);
+        const finIndex = filtered.findIndex((s) => s.key === "finance");
+        if (finIndex > -1) {
+          const [finSection] = filtered.splice(finIndex, 1);
+          const dashIdx = filtered.findIndex((s) => s.key === "dashboard");
+          filtered.splice(dashIdx > -1 ? dashIdx + 1 : 0, 0, finSection);
+        }
+        result = filtered;
+      } else {
+        result = raw;
       }
-      return filtered;
     }
-    return raw;
+
+    const roleJobCardUrl = getRoleJobCardUrl(user);
+    return result.map((section) => {
+      if (section.key === "myJobCards") {
+        return {
+          ...section,
+          to: roleJobCardUrl,
+        };
+      }
+      return section;
+    });
   }, [apiNav, user, storeMode]);
 
   const [expanded, setExpanded] = useState(() =>

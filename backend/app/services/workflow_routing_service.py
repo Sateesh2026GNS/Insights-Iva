@@ -361,14 +361,20 @@ def get_admin_dashboard_counts(db: Session, tenant_id: int, counts_raw: dict[str
 
 
 def _sales_person_matches(user: User, so: SalesOrder) -> bool:
+    if user_is_admin(user):
+        return True
     sp = (so.sales_person or "").strip().lower()
     if not sp:
-        return False
+        return True
     candidates = {
         (user.full_name or "").strip().lower(),
         (user.email or "").strip().lower(),
+        (getattr(user, "username", None) or "").strip().lower(),
     }
-    return sp in candidates
+    candidates = {c for c in candidates if c}
+    if not candidates:
+        return True
+    return sp in candidates or any(c in sp or sp in c for c in candidates)
 
 
 def _load_received_at_map(
@@ -744,7 +750,7 @@ def get_my_job_card_queue(
     status_filter: str | None = None,
     limit: int = 50,
     strict: bool = True,
-    include_completed: bool = False,
+    include_completed: bool = True,
 ) -> dict[str, Any]:
     """Return job cards actionable by the current user — backend role filtering only."""
     from app.services.workflow_team_service import repair_confirmed_orders_missing_workflow
@@ -752,8 +758,8 @@ def get_my_job_card_queue(
     teams = user_teams(get_role_names(user))
     is_admin = user_is_admin(user)
 
-    if TEAM_INVENTORY in teams or is_admin:
-        repair_confirmed_orders_missing_workflow(db, tenant_id, user=user)
+    # Always ensure confirmed sales orders are linked to workflow
+    repair_confirmed_orders_missing_workflow(db, tenant_id, user=user)
 
     metadata = get_queue_metadata_for_user(user)
     allowed = get_actionable_statuses_for_user(user, strict=strict) if not is_admin else set()
