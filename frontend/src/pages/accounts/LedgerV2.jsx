@@ -6,6 +6,7 @@ import { Banknote, Building2, ChevronLeft, ChevronRight, Download, Eye, FileText
 import Loader from "../../components/common/Loader";
 import { SearchBar } from "../../components/common/SearchFilter";
 import Button from "../../components/common/Button";
+import RowActionMenu from "../../components/common/RowActionMenu";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
 import AddLedgerCustomerModal from "../../components/accounts/AddLedgerCustomerModal";
 import AddLedgerVendorModal from "../../components/accounts/AddLedgerVendorModal";
@@ -402,171 +403,58 @@ function partyRow(row, kind) {
   };
 }
 
-function CashActionIcons({ onView, onEdit, onDelete }) {
-  const circleBtn =
-    "grid h-8 w-8 shrink-0 place-items-center rounded-full transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]";
-
+function CashActionIcons({ rowId, openMenu, setOpenMenu, onView, onEdit, onDelete }) {
   return (
-    <div className="flex min-w-[7rem] items-center justify-end gap-1.5">
-      <button
-        type="button"
-        title="View"
-        onClick={onView}
-        className={`${circleBtn} text-white`}
-        style={{ backgroundColor: "#17264A" }}
-      >
-        <Eye className="h-3.5 w-3.5" />
-      </button>
-      <button type="button" title="Edit" onClick={onEdit} className={`${circleBtn} text-white`} style={{ backgroundColor: BLUE }}>
-        <Pencil className="h-3.5 w-3.5" />
-      </button>
-      <button
-        type="button"
-        title="Delete"
-        onClick={onDelete}
-        className={`${circleBtn} bg-[#FEE2E2] text-[#EF4444] hover:opacity-100`}
-      >
-        <Trash2 className="h-3.5 w-3.5" />
-      </button>
+    <div className="flex items-center justify-end" onClick={(e) => e.stopPropagation()}>
+      <RowActionMenu
+        rowId={rowId}
+        openMenu={openMenu}
+        setOpenMenu={setOpenMenu}
+        items={[
+          onView ? { label: "View Statement", icon: <Eye className="h-4 w-4" />, onClick: onView } : null,
+          onEdit ? { label: "Edit Account", icon: <Pencil className="h-4 w-4" />, onClick: onEdit } : null,
+          onDelete ? { divider: true } : null,
+          onDelete ? { label: "Delete Account", icon: <Trash2 className="h-4 w-4" />, danger: true, onClick: onDelete } : null,
+        ].filter(Boolean)}
+      />
     </div>
   );
 }
 
-function OtherActionIcons({ onView, onEdit, onDelete, onSendMail, deleteLabel = "Delete Account" }) {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const rootRef = useRef(null);
-
-  useEffect(() => {
-    if (!menuOpen) return undefined;
-    const onDoc = (e) => {
-      if (rootRef.current && !rootRef.current.contains(e.target)) setMenuOpen(false);
-    };
-    document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
-  }, [menuOpen]);
-
-  const circleBtn =
-    "grid h-8 w-8 shrink-0 place-items-center rounded-full transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]";
-
+function OtherActionIcons({ rowId, openMenu, setOpenMenu, onView, onEdit, onDelete, onSendMail, deleteLabel = "Delete Account" }) {
   return (
-    <div className="relative flex min-w-[7rem] items-center justify-end gap-1.5" ref={rootRef}>
-      <button type="button" title="View" onClick={onView} className={`${circleBtn} text-white`} style={{ backgroundColor: BLUE }}>
-        <Eye className="h-3.5 w-3.5" />
-      </button>
-      <button type="button" title="Edit" onClick={onEdit} className={`${circleBtn} text-white`} style={{ backgroundColor: BLUE }}>
-        <Pencil className="h-3.5 w-3.5" />
-      </button>
-      <button
-        type="button"
-        title="More"
-        onClick={() => setMenuOpen((v) => !v)}
-        className={`${circleBtn} border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-muted)] hover:opacity-100`}
-      >
-        <MoreVertical className="h-3.5 w-3.5" />
-      </button>
-      {menuOpen ? (
-        <div className="absolute right-0 top-9 z-30 min-w-[180px] overflow-hidden rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] py-1 shadow-lg">
-          {onDelete ? (
-            <button
-              type="button"
-              className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-[var(--color-text)] hover:bg-[var(--color-surface-muted)]"
-              onClick={() => {
-                setMenuOpen(false);
-                onDelete();
-              }}
-            >
-              <Trash2 className="h-4 w-4 text-[var(--color-text-muted)]" />
-              {deleteLabel}
-            </button>
-          ) : null}
-          {onSendMail ? (
-            <button
-              type="button"
-              className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-[var(--color-text)] hover:bg-[var(--color-surface-muted)]"
-              onClick={() => {
-                setMenuOpen(false);
-                onSendMail();
-              }}
-            >
-              <Mail className="h-4 w-4 text-[var(--color-text-muted)]" />
-              Send On Mail
-            </button>
-          ) : null}
-        </div>
-      ) : null}
+    <div className="flex items-center justify-end" onClick={(e) => e.stopPropagation()}>
+      <RowActionMenu
+        rowId={rowId}
+        openMenu={openMenu}
+        setOpenMenu={setOpenMenu}
+        items={[
+          onView ? { label: "View Statement", icon: <Eye className="h-4 w-4" />, onClick: onView } : null,
+          onEdit ? { label: "Edit Account", icon: <Pencil className="h-4 w-4" />, onClick: onEdit } : null,
+          onSendMail ? { label: "Send On Mail", icon: <Mail className="h-4 w-4" />, onClick: onSendMail } : null,
+          onDelete ? { divider: true } : null,
+          onDelete ? { label: deleteLabel, icon: <Trash2 className="h-4 w-4" />, danger: true, onClick: onDelete } : null,
+        ].filter(Boolean)}
+      />
     </div>
   );
 }
 
-function ActionIcons({ onView, onEdit, onSendLedger, onDelete, deleteLabel = "Delete Transaction" }) {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const rootRef = useRef(null);
-
-  useEffect(() => {
-    if (!menuOpen) return undefined;
-    const onDoc = (e) => {
-      if (rootRef.current && !rootRef.current.contains(e.target)) setMenuOpen(false);
-    };
-    document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
-  }, [menuOpen]);
-
-  const circleBtn =
-    "grid h-8 w-8 shrink-0 place-items-center rounded-full transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]";
-
+function ActionIcons({ rowId, openMenu, setOpenMenu, onView, onEdit, onSendLedger, onDelete, deleteLabel = "Delete Transaction" }) {
   return (
-    <div className="relative flex min-w-[10.5rem] items-center justify-end gap-1.5" ref={rootRef}>
-      <button type="button" title="View" onClick={onView} className={`${circleBtn} text-white`} style={{ backgroundColor: BLUE }}>
-        <Eye className="h-3.5 w-3.5" />
-      </button>
-      <button type="button" title="Edit" onClick={onEdit} className={`${circleBtn} text-white`} style={{ backgroundColor: BLUE }}>
-        <Pencil className="h-3.5 w-3.5" />
-      </button>
-      <button
-        type="button"
-        title="Send Ledger"
-        onClick={onSendLedger}
-        className={`${circleBtn} text-white`}
-        style={{ backgroundColor: "#16A34A" }}
-      >
-        <FileText className="h-3.5 w-3.5" />
-      </button>
-      <button
-        type="button"
-        title="More"
-        onClick={() => setMenuOpen((v) => !v)}
-        className={`${circleBtn} bg-[#E2E8F0] text-[var(--color-text-muted)] hover:opacity-100`}
-      >
-        <MoreVertical className="h-3.5 w-3.5" />
-      </button>
-      {menuOpen ? (
-        <div className="absolute right-0 top-9 z-30 min-w-[180px] overflow-hidden rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] py-1 shadow-lg">
-          {onDelete ? (
-            <button
-              type="button"
-              className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-[var(--color-text)] hover:bg-[var(--color-surface-muted)]"
-              onClick={() => {
-                setMenuOpen(false);
-                onDelete();
-              }}
-            >
-              <Trash2 className="h-4 w-4 text-[var(--color-text-muted)]" />
-              {deleteLabel}
-            </button>
-          ) : null}
-          <button
-            type="button"
-            className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-[var(--color-text)] hover:bg-[var(--color-surface-muted)]"
-            onClick={() => {
-              setMenuOpen(false);
-              onSendLedger?.();
-            }}
-          >
-            <Mail className="h-4 w-4 text-[var(--color-text-muted)]" />
-            Send On Mail
-          </button>
-        </div>
-      ) : null}
+    <div className="flex items-center justify-end" onClick={(e) => e.stopPropagation()}>
+      <RowActionMenu
+        rowId={rowId}
+        openMenu={openMenu}
+        setOpenMenu={setOpenMenu}
+        items={[
+          onView ? { label: "View Statement", icon: <Eye className="h-4 w-4" />, onClick: onView } : null,
+          onEdit ? { label: "Edit Details", icon: <Pencil className="h-4 w-4" />, onClick: onEdit } : null,
+          onSendLedger ? { label: "Send Ledger", icon: <FileText className="h-4 w-4" />, onClick: onSendLedger } : null,
+          onDelete ? { divider: true } : null,
+          onDelete ? { label: deleteLabel, icon: <Trash2 className="h-4 w-4" />, danger: true, onClick: onDelete } : null,
+        ].filter(Boolean)}
+      />
     </div>
   );
 }
@@ -649,6 +537,7 @@ export default function LedgerV2() {
   const [editCustomer, setEditCustomer] = useState(null);
   const [addVendorOpen, setAddVendorOpen] = useState(false);
   const [editVendor, setEditVendor] = useState(null);
+  const [openMenu, setOpenMenu] = useState(null);
   const [sendLedger, setSendLedger] = useState(null);
   const [downloadOpen, setDownloadOpen] = useState(false);
   const [mailOpen, setMailOpen] = useState(false);
@@ -1099,6 +988,9 @@ export default function LedgerV2() {
                           </td>
                           <td className="px-4 py-3.5">
                             <ActionIcons
+                              rowId={row.id}
+                              openMenu={openMenu}
+                              setOpenMenu={setOpenMenu}
                               onView={() =>
                                 navigate(`/accounts/ledger/${row.kind}/${row.sourceId}`, {
                                   state: {
@@ -1130,8 +1022,8 @@ export default function LedgerV2() {
                                   scope: "party",
                                   kind: row.kind,
                                   name: row.company_name,
-                                  title: "Delete Party",
-                                  message: `Are you sure you want to delete ${row.company_name}?`,
+                                  title: `Delete ${row.kind === "vendor" ? "Vendor" : "Customer"}`,
+                                  message: `Are you sure you want to delete ${row.company_name}? This action cannot be undone.`,
                                 })
                               }
                             />
@@ -1180,8 +1072,11 @@ export default function LedgerV2() {
                           <td className="px-4 py-3.5">
                             <AccountBalanceCell value={row.balance} />
                           </td>
-                          <td className="px-4 py-3.5">
+                          <td className="px-4 py-2">
                             <CashActionIcons
+                              rowId={row.id}
+                              openMenu={openMenu}
+                              setOpenMenu={setOpenMenu}
                               onView={() =>
                                 navigate(`/accounts/ledger/cash/${row.id}`, {
                                   state: { name: row.name, balance: row.balance || 0 },
@@ -1251,8 +1146,11 @@ export default function LedgerV2() {
                           <td className="px-4 py-3.5">
                             <AccountStatusBadge status={row.status} />
                           </td>
-                          <td className="px-4 py-3.5">
+                          <td className="px-4 py-2">
                             <OtherActionIcons
+                              rowId={row.id}
+                              openMenu={openMenu}
+                              setOpenMenu={setOpenMenu}
                               onView={() =>
                                 navigate(`/accounts/ledger/other/${row.id}`, {
                                   state: { name: row.name, balance: row.balance || 0 },

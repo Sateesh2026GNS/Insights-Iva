@@ -26,6 +26,7 @@ import { exportToExcel } from "../../utils/exportUtils";
 import { apiErrorMessage } from "../../utils/apiError";
 
 import Button from "../../components/common/Button";
+import RowActionMenu from "../../components/common/RowActionMenu";
 import { rowActionClass } from "../../design-system/classes";
 
 const PAGE_SIZES = [20, 50, 100];
@@ -100,6 +101,7 @@ export default function ProductsMaster() {
   const [editing, setEditing] = useState(null);
   const [deleting, setDeleting] = useState(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
+  const [openMenu, setOpenMenu] = useState(null);
 
   const loadProducts = useCallback(async () => {
     setLoading(true);
@@ -299,29 +301,30 @@ export default function ProductsMaster() {
                         </td>
                         <td className="px-4 py-3.5 ui-table-text-secondary">{gst}</td>
                         <td className="px-4 py-3.5 ui-table-text-secondary">{cess}</td>
-                        <td className="px-4 py-3.5">
-                          <div className="flex items-center justify-end gap-2">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setEditing(p);
-                                setAddOpen(true);
-                              }}
-                              className={`${rowActionClass} !rounded-full`}
-                              title="Edit"
-                              aria-label="Edit product"
-                            >
-                              <Pencil className="h-3.5 w-3.5" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setDeleting(p)}
-                              className="grid h-8 w-8 place-items-center rounded-full border border-[var(--color-danger-soft)] bg-[var(--color-danger-soft)] text-[var(--color-danger)] transition-colors hover:opacity-90"
-                              title="Delete"
-                              aria-label="Delete product"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </button>
+                        <td className="px-4 py-2" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center justify-end">
+                            <RowActionMenu
+                              rowId={p.id}
+                              openMenu={openMenu}
+                              setOpenMenu={setOpenMenu}
+                              items={[
+                                {
+                                  label: "Edit",
+                                  icon: <Pencil className="h-4 w-4" />,
+                                  onClick: () => {
+                                    setEditing(p);
+                                    setAddOpen(true);
+                                  },
+                                },
+                                { divider: true },
+                                {
+                                  label: "Delete",
+                                  icon: <Trash2 className="h-4 w-4" />,
+                                  danger: true,
+                                  onClick: () => setDeleting(p),
+                                },
+                              ]}
+                            />
                           </div>
                         </td>
                       </tr>

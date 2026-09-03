@@ -1,9 +1,9 @@
 import { Eye, Pencil, Trash2 } from "lucide-react";
-import Button from "./Button";
+import { useNavigate } from "react-router-dom";
+import RowActionMenu from "./RowActionMenu";
 
 /**
- * Compact inline View / Edit / Delete actions for table rows.
- * View → green, Edit → blue, Delete → red.
+ * 3-dots vertical action menu for table rows with View / Edit / Delete.
  */
 export default function TableActionButtons({
   onView,
@@ -17,49 +17,72 @@ export default function TableActionButtons({
   deleteLabel = "Delete",
   viewTo,
   editTo,
-  size = "sm",
+  extraItems = [],
+  rowId,
+  openMenu,
+  setOpenMenu,
   className = "",
   viewDisabled = false,
   editDisabled = false,
   deleteDisabled = false,
 }) {
+  const navigate = useNavigate();
+
+  const handleView = () => {
+    if (viewDisabled) return;
+    if (onView) onView();
+    else if (viewTo) navigate(viewTo);
+  };
+
+  const handleEdit = () => {
+    if (editDisabled) return;
+    if (onEdit) onEdit();
+    else if (editTo) navigate(editTo);
+  };
+
+  const handleDelete = () => {
+    if (deleteDisabled) return;
+    if (onDelete) onDelete();
+  };
+
+  const items = [
+    showView && (onView || viewTo)
+      ? {
+          label: viewLabel,
+          icon: <Eye className="h-4 w-4" />,
+          onClick: handleView,
+          disabled: viewDisabled,
+        }
+      : null,
+    showEdit && (onEdit || editTo)
+      ? {
+          label: editLabel,
+          icon: <Pencil className="h-4 w-4" />,
+          onClick: handleEdit,
+          disabled: editDisabled,
+        }
+      : null,
+    ...(Array.isArray(extraItems) ? extraItems : []),
+    showDelete && onDelete ? { divider: true } : null,
+    showDelete && onDelete
+      ? {
+          label: deleteLabel,
+          icon: <Trash2 className="h-4 w-4" />,
+          danger: true,
+          onClick: handleDelete,
+          disabled: deleteDisabled,
+        }
+      : null,
+  ].filter(Boolean);
+
   return (
-    <div className={`flex flex-wrap items-center justify-end gap-1.5 ${className}`}>
-      {showView && (onView || viewTo) ? (
-        <Button
-          variant="view"
-          size={size}
-          to={viewTo}
-          onClick={onView}
-          disabled={viewDisabled}
-          leftIcon={<Eye className="h-3.5 w-3.5" aria-hidden />}
-        >
-          {viewLabel}
-        </Button>
-      ) : null}
-      {showEdit && (onEdit || editTo) ? (
-        <Button
-          variant="edit"
-          size={size}
-          to={editTo}
-          onClick={onEdit}
-          disabled={editDisabled}
-          leftIcon={<Pencil className="h-3.5 w-3.5" aria-hidden />}
-        >
-          {editLabel}
-        </Button>
-      ) : null}
-      {showDelete && onDelete ? (
-        <Button
-          variant="danger"
-          size={size}
-          onClick={onDelete}
-          disabled={deleteDisabled}
-          leftIcon={<Trash2 className="h-3.5 w-3.5" aria-hidden />}
-        >
-          {deleteLabel}
-        </Button>
-      ) : null}
+    <div className={`flex items-center justify-end ${className}`}>
+      <RowActionMenu
+        rowId={rowId || "action-menu"}
+        openMenu={openMenu}
+        setOpenMenu={setOpenMenu}
+        items={items}
+      />
     </div>
   );
 }

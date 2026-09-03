@@ -1,10 +1,27 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
-import { Calendar, ChevronLeft, ChevronRight, Filter, ListFilter, MoreVertical, Plus, Receipt, Search, X } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import {
+  Calendar,
+  ChevronLeft,
+  ChevronRight,
+  CreditCard,
+  Edit2,
+  Eye,
+  Filter,
+  ListFilter,
+  MoreVertical,
+  Plus,
+  Printer,
+  Receipt,
+  Search,
+  Trash2,
+  X,
+} from "lucide-react";
 
 import Loader from "../../components/common/Loader";
 import { SearchBar } from "../../components/common/SearchFilter";
 import Button from "../../components/common/Button";
+import RowActionMenu from "../../components/common/RowActionMenu";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
 import { useToast } from "../../context/ToastContext";
 import { cancelInvoice, getInvoicesV2 } from "../../api/salesApi";
@@ -120,9 +137,11 @@ function SummaryTab({ label, count, amount, active, tone, onClick }) {
 }
 
 export default function InvoiceDashboard() {
+  const navigate = useNavigate();
   const { addToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState([]);
+  const [openMenu, setOpenMenu] = useState(null);
   const [total, setTotal] = useState(0);
   const [summary, setSummary] = useState({
     total_sales: { count: 0, amount: 0 },
@@ -464,37 +483,52 @@ export default function InvoiceDashboard() {
                         {r.payment_status || r.status}
                       </span>
                     </td>
-                    <td className="border-t border-r border-[var(--color-table-border)] px-4 py-3">
-                      <div className="relative flex flex-wrap items-center gap-3">
-                        <Link
-                          to={`/sales/invoices/${r.id}`}
-                          className="text-[12px] font-semibold text-[var(--color-text-secondary)] hover:underline"
-                        >
-                          View
-                        </Link>
-                        {(r.invoice_status || "active") !== "cancelled" ? (
-                          <Link
-                            to={`/sales/invoices/${r.id}/edit`}
-                            className="text-[12px] font-semibold text-[var(--color-primary)] hover:underline"
-                          >
-                            Edit
-                          </Link>
-                        ) : null}
-                        <Link
-                          to={`/sales/invoices/${r.id}`}
-                          className="text-[12px] font-semibold text-[var(--color-text-secondary)] hover:underline"
-                        >
-                          Print
-                        </Link>
-                        {(r.payment_status || r.status) !== "paid" &&
-                        (r.invoice_status || "active") !== "cancelled" ? (
-                          <Link
-                            to={`/sales/payments/create?invoice_id=${r.id}`}
-                            className="text-[12px] font-semibold text-[var(--color-success)] hover:underline"
-                          >
-                            Pay
-                          </Link>
-                        ) : null}
+                    <td className="border-t border-r border-[var(--color-table-border)] px-4 py-2 last:border-r-0" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center justify-end">
+                        <RowActionMenu
+                          rowId={r.id}
+                          openMenu={openMenu}
+                          setOpenMenu={setOpenMenu}
+                          items={[
+                            {
+                              label: "View / Print",
+                              icon: <Eye className="h-4 w-4" />,
+                              onClick: () => navigate(`/sales/invoices/${r.id}`),
+                            },
+                            (r.invoice_status || "active") !== "cancelled"
+                              ? {
+                                  label: "Edit",
+                                  icon: <Edit2 className="h-4 w-4" />,
+                                  onClick: () => navigate(`/sales/invoices/${r.id}/edit`),
+                                }
+                              : null,
+                            (r.payment_status || r.status) !== "paid" && (r.invoice_status || "active") !== "cancelled"
+                              ? {
+                                  label: "Record Payment",
+                                  icon: <CreditCard className="h-4 w-4" />,
+                                  onClick: () => navigate(`/sales/payments/create?invoice_id=${r.id}`),
+                                }
+                              : null,
+                            (r.invoice_status || "active") !== "cancelled" ? { divider: true } : null,
+                            (r.invoice_status || "active") !== "cancelled"
+                              ? {
+                                  label: "Cancel Invoice",
+                                  icon: <Trash2 className="h-4 w-4" />,
+                                  danger: true,
+                                  onClick: async () => {
+                                    if (!window.confirm(`Cancel invoice ${r.invoice_number}?`)) return;
+                                    try {
+                                      await cancelInvoice(r.id);
+                                      addToast("Invoice cancelled", "success");
+                                      load();
+                                    } catch (err) {
+                                      addToast(apiErrorMessage(err, "Failed to cancel"), "error");
+                                    }
+                                  },
+                                }
+                              : null,
+                          ].filter(Boolean)}
+                        />
                       </div>
                     </td>
                   </tr>

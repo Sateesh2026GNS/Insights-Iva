@@ -1,11 +1,25 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import usePageRefresh from "../../hooks/usePageRefresh";
-import { Link } from "react-router-dom";
-import { CalendarDays, ChevronLeft, ChevronRight, Filter, ListFilter, Plus, Search, ShoppingCart, X } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import {
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  Edit2,
+  Eye,
+  Filter,
+  ListFilter,
+  Plus,
+  Search,
+  ShoppingCart,
+  Trash2,
+  X,
+} from "lucide-react";
 
 import Loader from "../../components/common/Loader";
 import { SearchBar } from "../../components/common/SearchFilter";
 import Button from "../../components/common/Button";
+import RowActionMenu from "../../components/common/RowActionMenu";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
 import { useToast } from "../../context/ToastContext";
 import { deleteBizDocument, listBizDocuments } from "../../api/bizDocumentsApi";
@@ -72,9 +86,11 @@ function FilterSection({ label, children }) {
 }
 
 export default function Purchases() {
+  const navigate = useNavigate();
   const { addToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState([]);
+  const [openMenu, setOpenMenu] = useState(null);
   const [search, setSearch] = useState("");
   const [dateFrom, setDateFrom] = useState("2026-04-01");
   const [dateTo, setDateTo] = useState("2027-03-31");
@@ -344,27 +360,32 @@ export default function Purchases() {
                       <td className="border-t border-r border-[var(--color-table-border)] px-4 py-3 capitalize text-[var(--color-text-secondary)]">
                         {r.status || "—"}
                       </td>
-                      <td className="border-t border-[var(--color-table-border)] px-4 py-3">
-                        <div className="flex flex-wrap gap-2">
-                          <Link
-                            to={`/purchases/${r.id}`}
-                            className="text-[12px] font-semibold text-[var(--color-success)] hover:underline"
-                          >
-                            View
-                          </Link>
-                          <Link
-                            to={`/purchases/${r.id}/edit`}
-                            className="text-[12px] font-semibold text-[var(--color-text-secondary)] hover:underline"
-                          >
-                            Edit
-                          </Link>
-                          <button
-                            type="button"
-                            onClick={() => handleDelete(r)}
-                            className="text-[12px] font-semibold text-[#dc2626] hover:underline"
-                          >
-                            Delete
-                          </button>
+                      <td className="border-t border-[var(--color-table-border)] px-4 py-2" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-end">
+                          <RowActionMenu
+                            rowId={r.id}
+                            openMenu={openMenu}
+                            setOpenMenu={setOpenMenu}
+                            items={[
+                              {
+                                label: "View / Print",
+                                icon: <Eye className="h-4 w-4" />,
+                                onClick: () => navigate(`/purchases/${r.id}`),
+                              },
+                              {
+                                label: "Edit",
+                                icon: <Edit2 className="h-4 w-4" />,
+                                onClick: () => navigate(`/purchases/${r.id}/edit`),
+                              },
+                              { divider: true },
+                              {
+                                label: "Delete",
+                                icon: <Trash2 className="h-4 w-4" />,
+                                danger: true,
+                                onClick: () => handleDelete(r),
+                              },
+                            ]}
+                          />
                         </div>
                       </td>
                     </tr>

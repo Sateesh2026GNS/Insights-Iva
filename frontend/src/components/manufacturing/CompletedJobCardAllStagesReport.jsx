@@ -74,7 +74,7 @@ export default function CompletedJobCardAllStagesReport({ card, form, salesOrder
           <div className='flex flex-wrap items-center gap-2'>
             <Button variant="outline" size="sm" onClick={handlePrint} className="bg-white/80 dark:bg-slate-900/80 border-emerald-300 dark:border-emerald-700">
               <Printer className="mr-1.5 inline h-4 w-4" />
-              Print Traveler
+              Print
             </Button>
             <Button variant="primary" size="sm" onClick={handleDownloadPdf} className="bg-emerald-700 hover:bg-emerald-800 text-white">
               <Download className="mr-1.5 inline h-4 w-4" />

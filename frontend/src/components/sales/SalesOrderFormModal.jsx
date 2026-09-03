@@ -239,6 +239,14 @@ export default function SalesOrderFormModal({ onClose, onSave }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    if (!form.customer_id) {
+      setError("Please select a customer.");
+      return;
+    }
+    if (!form.product_id) {
+      setError("Please select a product.");
+      return;
+    }
     setSaving(true);
     try {
       const customerId = await resolveCustomerId(form.customer_id, uniqueCustomers, tenantId);
@@ -582,7 +590,7 @@ export default function SalesOrderFormModal({ onClose, onSave }) {
               <Button
                 type="submit"
                 variant="primary"
-                disabled={saving || !form.customer_id || !form.product_id}
+                disabled={saving}
                 loading={saving}
                 leftIcon={!saving ? <Save className="h-4 w-4" aria-hidden /> : undefined}
               >

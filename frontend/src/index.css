@@ -47,19 +47,19 @@
   --color-text-icon: #8a9d97;
   --color-text-placeholder: #9aaca6;
 
-  /* Brand — forest green primary; blue reserved for info / in-progress */
+  /* Brand — deep teal (#0f5f78) primary; used uniformly for all action & create buttons */
   --color-cta: #e6a817;
   --color-cta-hover: #cc9414;
-  --color-primary: #036f71;
-  --color-primary-hover: #048484;
-  --color-primary-active: #02595b;
-  --color-primary-dark: #063530;
+  --color-primary: #0f5f78;
+  --color-primary-hover: #0a4d63;
+  --color-primary-active: #083f52;
+  --color-primary-dark: #083f52;
   --color-primary-soft: #e6f4f4;
   --color-primary-light: #c5e8e8;
   --color-secondary: #5c8a7e;
   --color-secondary-hover: #4a756a;
-  --color-accent: #036f71;
-  --color-accent-dark: #02595b;
+  --color-accent: #0f5f78;
+  --color-accent-dark: #083f52;
   --color-accent-light: #e6f4f4;
   --color-neutral: #7a8f88;
 
@@ -68,23 +68,23 @@
   --color-danger: #e24a4a;
   --color-danger-hover: #cf4040;
   --color-danger-soft: #fde8e8;
-  /* View / Open / Approve — action green (distinct from brand primary) */
-  --color-action-view: #2e9b72;
-  --color-action-view-hover: #268a64;
-  --color-action-view-active: #1f7856;
+  /* View / Open / Approve — brand deep teal #0f5f78 */
+  --color-action-view: #0f5f78;
+  --color-action-view-hover: #0a4d63;
+  --color-action-view-active: #083f52;
   --color-action-view-soft: #e8f6f0;
   /* Edit / Update — action blue */
   --color-action-edit: #3182ce;
   --color-action-edit-hover: #2c72b8;
   --color-action-edit-active: #2563a8;
   --color-action-edit-soft: #ebf4fc;
-  /* Semantic success maps to view green for approve/confirm actions */
-  --color-success: var(--color-action-view);
-  --color-success-hover: var(--color-action-view-hover);
-  --color-success-soft: var(--color-action-view-soft);
-  --color-action-teal: #036f71;
-  --color-action-teal-hover: #02595b;
-  --color-action-teal-active: #024a4c;
+  /* Semantic success maps to brand deep teal */
+  --color-success: #0f5f78;
+  --color-success-hover: #0a4d63;
+  --color-success-soft: #e8f6f0;
+  --color-action-teal: #0f5f78;
+  --color-action-teal-hover: #0a4d63;
+  --color-action-teal-active: #083f52;
   --color-action-blue: var(--color-action-edit);
   --color-action-blue-hover: var(--color-action-edit-hover);
   --color-action-blue-active: var(--color-action-edit-active);
@@ -552,11 +552,10 @@ textarea {
 .ui-btn-ghost.is-loading,
 .ui-btn-hr.is-loading,
 .ui-btn-outline.is-loading {
-  opacity: 0.55;
+  opacity: 0.65;
   cursor: not-allowed;
   transform: none;
   pointer-events: none;
-  filter: grayscale(0.15);
 }
 
 .ui-btn--sm {

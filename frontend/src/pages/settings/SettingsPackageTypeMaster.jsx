@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Plus, ChevronUp, ChevronDown, Pencil, Trash2, FileX2 } from "lucide-react";
 import { useToast } from "../../context/ToastContext";
 import Button from "../../components/common/Button";
+import RowActionMenu from "../../components/common/RowActionMenu";
 import { SearchBar } from "../../components/common/SearchFilter";
 
 const ROWS_PER_PAGE_OPTIONS = [5, 7, 10, 25, 50];
@@ -34,6 +35,7 @@ export default function SettingsPackageTypeMaster() {
   const [sort, setSort] = useState({ key: "package_type", dir: "asc" });
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(7);
+  const [openMenu, setOpenMenu] = useState(null);
 
   const persist = (next) => {
     setItems(next);
@@ -168,24 +170,27 @@ export default function SettingsPackageTypeMaster() {
                   <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-300">
                     {row.volumetric_weight}
                   </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        title="Edit"
-                        onClick={() => editItem(row)}
-                        className="rounded p-1.5 text-teal-600 hover:bg-[var(--color-success-soft)]"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </button>
-                      <button
-                        type="button"
-                        title="Delete"
-                        onClick={() => deleteItem(row)}
-                        className="rounded p-1.5 text-red-600 hover:bg-red-50"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                  <td className="px-4 py-2" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center justify-end">
+                      <RowActionMenu
+                        rowId={row.id}
+                        openMenu={openMenu}
+                        setOpenMenu={setOpenMenu}
+                        items={[
+                          {
+                            label: "Edit",
+                            icon: <Pencil className="h-4 w-4" />,
+                            onClick: () => editItem(row),
+                          },
+                          { divider: true },
+                          {
+                            label: "Delete",
+                            icon: <Trash2 className="h-4 w-4" />,
+                            danger: true,
+                            onClick: () => deleteItem(row),
+                          },
+                        ]}
+                      />
                     </div>
                   </td>
                 </tr>

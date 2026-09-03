@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from datetime import date, datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
@@ -76,8 +76,8 @@ def list_documents(
     doc_type: str | None = Query(None),
     search: str | None = Query(None),
     page: int = Query(1, ge=1),
-    page_size: int = Query(20, ge=1, le=100),
-    user: User = Depends(require_any_permission("sales", "procurement", "accounts", "settings")),
+    page_size: int = Query(20, ge=1, le=500),
+    user: User = Depends(require_any_permission("sales", "procurement", "accounts", "settings", "admin")),
     db: Session = Depends(get_db),
 ):
     tenant_id = user.tenant_id
@@ -112,7 +112,7 @@ def list_documents(
 @router.post("/documents", response_model=BusinessDocumentRead)
 def create_document(
     payload: BusinessDocumentCreate,
-    user: User = Depends(require_any_permission("sales", "procurement")),
+    user: User = Depends(require_any_permission("sales", "procurement", "accounts", "admin")),
     db: Session = Depends(get_db),
 ):
     if payload.tenant_id is not None and payload.tenant_id != user.tenant_id:
@@ -201,7 +201,7 @@ def download_purchase_pdf_endpoint(
 def update_document(
     doc_id: int,
     payload: BusinessDocumentUpdate,
-    user: User = Depends(require_any_permission("sales", "procurement")),
+    user: User = Depends(require_any_permission("sales", "procurement", "accounts", "admin")),
     db: Session = Depends(get_db),
 ):
     row = db.get(BusinessDocument, doc_id)
@@ -221,7 +221,7 @@ def update_document(
 @router.delete("/documents/{doc_id}")
 def delete_document(
     doc_id: int,
-    user: User = Depends(require_any_permission("sales", "procurement")),
+    user: User = Depends(require_any_permission("sales", "procurement", "accounts", "admin")),
     db: Session = Depends(get_db),
 ):
     row = db.get(BusinessDocument, doc_id)

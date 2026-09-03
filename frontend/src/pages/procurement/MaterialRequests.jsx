@@ -1,13 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
+  ArrowRightCircle,
   CheckCircle2,
   ClipboardList,
   Clock,
   Download,
+  Eye,
   Filter,
   Plus,
   ShoppingCart,
+  Trash2,
   XCircle,
   Zap,
 } from "lucide-react";
@@ -17,6 +20,7 @@ import PageHeader from "../../components/common/PageHeader";
 import DataTable from "../../components/common/DataTable";
 import Loader from "../../components/common/Loader";
 import Button from "../../components/common/Button";
+import RowActionMenu from "../../components/common/RowActionMenu";
 import { useToast } from "../../context/ToastContext";
 import {
   approveMaterialRequest,
@@ -318,6 +322,7 @@ export default function MaterialRequests() {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [selected, setSelected] = useState(null);
   const [convertRow, setConvertRow] = useState(null);
+  const [openMenu, setOpenMenu] = useState(null);
 
   const scrollToTable = useCallback(() => {
     tableRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -443,35 +448,37 @@ export default function MaterialRequests() {
     },
     {
       key: "actions",
-      label: "Actions",
+      label: "",
       render: (r) => (
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => setSelected(r)}
-            className="text-xs font-semibold text-[var(--color-primary)] hover:underline"
-          >
-            View
-          </button>
-          {typeof r.id === "number" &&
-            !["converted", "fulfilled", "cancelled"].includes(r.status) && (
-              <button
-                type="button"
-                onClick={() => setConvertRow(r)}
-                className="text-xs font-semibold text-[var(--color-success)] hover:underline"
-              >
-                To PO
-              </button>
-            )}
-          {typeof r.id === "number" ? (
-            <button
-              type="button"
-              onClick={() => handleDelete(r)}
-              className="text-xs font-semibold text-red-600 hover:underline"
-            >
-              Delete
-            </button>
-          ) : null}
+        <div className="flex items-center justify-end" onClick={(e) => e.stopPropagation()}>
+          <RowActionMenu
+            rowId={r.id}
+            openMenu={openMenu}
+            setOpenMenu={setOpenMenu}
+            items={[
+              {
+                label: "View Request",
+                icon: <Eye className="h-4 w-4" />,
+                onClick: () => setSelected(r),
+              },
+              typeof r.id === "number" && !["converted", "fulfilled", "cancelled"].includes(r.status)
+                ? {
+                    label: "Convert to PO",
+                    icon: <ArrowRightCircle className="h-4 w-4" />,
+                    onClick: () => setConvertRow(r),
+                  }
+                : null,
+              typeof r.id === "number" ? { divider: true } : null,
+              typeof r.id === "number"
+                ? {
+                    label: "Delete",
+                    icon: <Trash2 className="h-4 w-4" />,
+                    danger: true,
+                    onClick: () => handleDelete(r),
+                  }
+                : null,
+            ].filter(Boolean)}
+          />
         </div>
       ),
     },

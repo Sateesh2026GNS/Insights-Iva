@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
-import { CheckCircle, Package, Plus, X } from "lucide-react";
+import { CheckCircle, Eye, Package, Plus, Trash2, X } from "lucide-react";
 import KpiCard from "../../components/common/KpiCard";
 import PageHeader from "../../components/common/PageHeader";
 
 import DataTable from "../../components/common/DataTable";
 import Loader from "../../components/common/Loader";
+import RowActionMenu from "../../components/common/RowActionMenu";
 import StoreManagerNav from "../../components/inventory/StoreManagerNav";
 import { useToast } from "../../context/ToastContext";
 import {
@@ -132,6 +133,7 @@ export default function GoodsReceipt() {
   const [summary, setSummary] = useState(emptySummary);
   const [rows, setRows] = useState([]);
   const [selected, setSelected] = useState(null);
+  const [openMenu, setOpenMenu] = useState(null);
   const [qcBusy, setQcBusy] = useState(false);
 
   const load = useCallback(async () => {
@@ -235,23 +237,28 @@ export default function GoodsReceipt() {
     },
     {
       key: "actions",
-      label: "Actions",
+      label: "",
       render: (r) => (
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => setSelected(r)}
-            className="text-xs font-semibold text-[var(--color-primary)] hover:underline"
-          >
-            View
-          </button>
-          <button
-            type="button"
-            onClick={() => handleDelete(r)}
-            className="text-xs font-semibold text-red-600 hover:underline"
-          >
-            Delete
-          </button>
+        <div className="flex items-center justify-end" onClick={(e) => e.stopPropagation()}>
+          <RowActionMenu
+            rowId={r.id}
+            openMenu={openMenu}
+            setOpenMenu={setOpenMenu}
+            items={[
+              {
+                label: "View / QC",
+                icon: <Eye className="h-4 w-4" />,
+                onClick: () => setSelected(r),
+              },
+              { divider: true },
+              {
+                label: "Delete",
+                icon: <Trash2 className="h-4 w-4" />,
+                danger: true,
+                onClick: () => handleDelete(r),
+              },
+            ]}
+          />
         </div>
       ),
     },

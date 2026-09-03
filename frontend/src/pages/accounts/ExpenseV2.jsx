@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 
 import AddExpenseModal from "../../components/accounts/AddExpenseModal";
+import RowActionMenu from "../../components/common/RowActionMenu";
 import {
   AccountsCard,
   AccountsPageShell,
@@ -135,38 +136,33 @@ function mapApiExpense(row) {
   };
 }
 
-function ExpenseActionIcons({ onView, onEdit, onDelete }) {
-  const circleBtn =
-    "grid h-8 w-8 shrink-0 place-items-center rounded-full transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6C4CFF]";
-
+function ExpenseActionIcons({ rowId, openMenu, setOpenMenu, onView, onEdit, onDelete }) {
   return (
-    <div className="flex min-w-[7rem] items-center justify-end gap-1.5">
-      <button
-        type="button"
-        title="View"
-        onClick={onView}
-        className={`${circleBtn} text-white`}
-        style={{ backgroundColor: ACCOUNTS_TEAL }}
-      >
-        <Eye className="h-3.5 w-3.5" />
-      </button>
-      <button
-        type="button"
-        title="Edit"
-        onClick={onEdit}
-        className={`${circleBtn} text-white`}
-        style={{ backgroundColor: ACCOUNTS_BLUE }}
-      >
-        <Pencil className="h-3.5 w-3.5" />
-      </button>
-      <button
-        type="button"
-        title="Delete"
-        onClick={onDelete}
-        className={`${circleBtn} bg-[#FEE2E2] text-[#EF4444] hover:opacity-100`}
-      >
-        <Trash2 className="h-3.5 w-3.5" />
-      </button>
+    <div className="flex items-center justify-end" onClick={(e) => e.stopPropagation()}>
+      <RowActionMenu
+        rowId={rowId}
+        openMenu={openMenu}
+        setOpenMenu={setOpenMenu}
+        items={[
+          {
+            label: "View Details",
+            icon: <Eye className="h-4 w-4" />,
+            onClick: onView,
+          },
+          {
+            label: "Edit Expense",
+            icon: <Pencil className="h-4 w-4" />,
+            onClick: onEdit,
+          },
+          { divider: true },
+          {
+            label: "Delete",
+            icon: <Trash2 className="h-4 w-4" />,
+            danger: true,
+            onClick: onDelete,
+          },
+        ]}
+      />
     </div>
   );
 }
@@ -250,6 +246,7 @@ export default function ExpenseV2() {
   const [pageSize, setPageSize] = useState(10);
   const [addOpen, setAddOpen] = useState(false);
   const [editExpense, setEditExpense] = useState(null);
+  const [openMenu, setOpenMenu] = useState(null);
 
   const load = useCallback(async (isRefresh = false) => {
     if (!isRefresh) setLoading(true);
@@ -527,8 +524,11 @@ export default function ExpenseV2() {
                           <td className="px-4 py-3.5">
                             <span className="tabular-nums font-bold text-[#FF3B30]">{formatAccountsInr(row.amount)}</span>
                           </td>
-                          <td className="px-4 py-3.5">
+                          <td className="px-4 py-2">
                             <ExpenseActionIcons
+                              rowId={row.id}
+                              openMenu={openMenu}
+                              setOpenMenu={setOpenMenu}
                               onView={() =>
                                 addToast(
                                   `${row.spend_for} · ${row.category} · ${formatAccountsInr(row.amount)} · ${formatPaymentMode(row.payment_mode)}${row.note ? ` · ${row.note}` : ""}`,

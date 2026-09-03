@@ -1,8 +1,22 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Calendar, ChevronLeft, ChevronRight, Filter, ListFilter, Plus, Receipt, Search, X } from "lucide-react";
+import {
+  Calendar,
+  ChevronLeft,
+  ChevronRight,
+  Edit2,
+  Eye,
+  Filter,
+  ListFilter,
+  Plus,
+  Receipt,
+  Search,
+  Trash2,
+  X,
+} from "lucide-react";
 
 import Button from "../../components/common/Button";
+import RowActionMenu from "../../components/common/RowActionMenu";
 import Loader from "../../components/common/Loader";
 import { SearchBar } from "../../components/common/SearchFilter";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
@@ -149,6 +163,7 @@ export default function PaymentReceipts() {
   const tenantId = useTenantId();
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState([]);
+  const [openMenu, setOpenMenu] = useState(null);
   const [kpiFilter, setKpiFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [dateFrom, setDateFrom] = useState("2026-04-01");
@@ -527,28 +542,32 @@ export default function PaymentReceipts() {
                         {r.status}
                       </span>
                     </td>
-                    <td className="border-t border-r border-[var(--color-table-border)] px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex flex-wrap gap-2.5 items-center">
-                        <Link
-                          to={`/sales/payment-receipts/${r.id}`}
-                          state={{ receipt: r }}
-                          className="text-[12px] font-semibold text-[var(--color-primary)] hover:underline"
-                        >
-                          View
-                        </Link>
-                        <Link
-                          to={`/sales/payment-receipts/${r.id}/edit`}
-                          className="text-[12px] font-semibold text-[var(--color-text-secondary)] hover:underline"
-                        >
-                          Edit
-                        </Link>
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(r)}
-                          className="text-[12px] font-semibold text-[#dc2626] hover:underline"
-                        >
-                          Delete
-                        </button>
+                    <td className="border-t border-r border-[var(--color-table-border)] px-4 py-2 last:border-r-0" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center justify-end">
+                        <RowActionMenu
+                          rowId={r.id}
+                          openMenu={openMenu}
+                          setOpenMenu={setOpenMenu}
+                          items={[
+                            {
+                              label: "View Receipt",
+                              icon: <Eye className="h-4 w-4" />,
+                              onClick: () => navigate(`/sales/payment-receipts/${r.id}`, { state: { receipt: r } }),
+                            },
+                            {
+                              label: "Edit",
+                              icon: <Edit2 className="h-4 w-4" />,
+                              onClick: () => navigate(`/sales/payment-receipts/${r.id}/edit`),
+                            },
+                            { divider: true },
+                            {
+                              label: "Delete",
+                              icon: <Trash2 className="h-4 w-4" />,
+                              danger: true,
+                              onClick: () => handleDelete(r),
+                            },
+                          ]}
+                        />
                       </div>
                     </td>
                   </tr>

@@ -12,6 +12,7 @@ import {
 import { createPortal } from "react-dom";
 
 import Button from "../../components/common/Button";
+import RowActionMenu from "../../components/common/RowActionMenu";
 import { SearchBar } from "../../components/common/SearchFilter";
 import Loader from "../../components/common/Loader";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
@@ -81,6 +82,7 @@ export default function VendorsMaster() {
   const [editing, setEditing] = useState(null);
   const [deleting, setDeleting] = useState(null);
   const [deletingBusy, setDeletingBusy] = useState(false);
+  const [openMenu, setOpenMenu] = useState(null);
 
   const loadVendors = useCallback(async () => {
     setLoading(true);
@@ -243,29 +245,30 @@ export default function VendorsMaster() {
                       <td className="px-4 py-3.5 text-[#4a4a55]">{blankOr(v.city)}</td>
                       <td className="px-4 py-3.5 text-[#4a4a55]">{blankOr(v.state)}</td>
                       <td className="px-4 py-3.5 text-[#4a4a55]">{blankOr(v.pincode)}</td>
-                      <td className="px-4 py-3.5">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setEditing(v);
-                              setPartyOpen(true);
-                            }}
-                            className="grid h-8 w-8 place-items-center rounded-full bg-[var(--color-primary-soft)] text-[var(--color-primary)] hover:bg-[#e4e6fc]"
-                            title="Edit"
-                            aria-label="Edit vendor"
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setDeleting(v)}
-                            className="grid h-8 w-8 place-items-center rounded-full bg-[#fde8e8] text-[#ef4444] hover:bg-[#fcdada]"
-                            title="Delete"
-                            aria-label="Delete vendor"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
+                      <td className="px-4 py-2" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-end">
+                          <RowActionMenu
+                            rowId={v.id}
+                            openMenu={openMenu}
+                            setOpenMenu={setOpenMenu}
+                            items={[
+                              {
+                                label: "Edit",
+                                icon: <Pencil className="h-4 w-4" />,
+                                onClick: () => {
+                                  setEditing(v);
+                                  setPartyOpen(true);
+                                },
+                              },
+                              { divider: true },
+                              {
+                                label: "Delete",
+                                icon: <Trash2 className="h-4 w-4" />,
+                                danger: true,
+                                onClick: () => setDeleting(v),
+                              },
+                            ]}
+                          />
                         </div>
                       </td>
                     </tr>

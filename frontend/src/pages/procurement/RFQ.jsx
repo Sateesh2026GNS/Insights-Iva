@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { Link } from "react-router-dom";
-import { Award, FileSearch, Plus, Star, Trophy, X } from "lucide-react";
+import { Award, Eye, FileSearch, Plus, Star, Trash2, Trophy, X } from "lucide-react";
 import KpiCard from "../../components/common/KpiCard";
 import PageHeader from "../../components/common/PageHeader";
 
 import DataTable from "../../components/common/DataTable";
 import Loader from "../../components/common/Loader";
+import RowActionMenu from "../../components/common/RowActionMenu";
 import { useToast } from "../../context/ToastContext";
 import {
   addVendorQuotation,
@@ -297,13 +298,14 @@ function VendorComparisonPanel({ rfq, vendors, bestVendor, suppliers, onRefreshC
               <Trophy className="h-3.5 w-3.5" /> Best: {bestVendor.supplier_name}
             </span>
           )}
-          <button
-            type="button"
+          <Button
+            variant="add"
+            size="sm"
             onClick={() => setIsAddQuoteOpen(true)}
-            className="inline-flex items-center gap-1 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-indigo-700"
+            leftIcon={<Plus className="h-3.5 w-3.5" />}
           >
-            <Plus className="h-3.5 w-3.5" /> Add Quote
-          </button>
+            Add Quote
+          </Button>
         </div>
       </div>
 
@@ -388,6 +390,7 @@ export default function RFQ() {
   const [rows, setRows] = useState([]);
   const [comparison, setComparison] = useState([]);
   const [selectedRfq, setSelectedRfq] = useState(null);
+  const [openMenu, setOpenMenu] = useState(null);
   const [materialRequests, setMaterialRequests] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -479,23 +482,28 @@ export default function RFQ() {
     },
     {
       key: "actions",
-      label: "Actions",
+      label: "",
       render: (r) => (
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => setSelectedRfq(r)}
-            className={`text-xs font-semibold ${selectedRfq?.id === r.id ? "text-emerald-700 font-bold" : "text-[var(--color-primary)] hover:underline"}`}
-          >
-            {selectedRfq?.id === r.id ? "Viewing Quotes" : "Compare Quotes"}
-          </button>
-          <button
-            type="button"
-            onClick={() => handleDelete(r)}
-            className="text-xs font-semibold text-red-600 hover:underline"
-          >
-            Delete
-          </button>
+        <div className="flex items-center justify-end" onClick={(e) => e.stopPropagation()}>
+          <RowActionMenu
+            rowId={r.id}
+            openMenu={openMenu}
+            setOpenMenu={setOpenMenu}
+            items={[
+              {
+                label: selectedRfq?.id === r.id ? "Viewing Quotes" : "Compare Quotes",
+                icon: <FileSearch className="h-4 w-4" />,
+                onClick: () => setSelectedRfq(r),
+              },
+              { divider: true },
+              {
+                label: "Delete",
+                icon: <Trash2 className="h-4 w-4" />,
+                danger: true,
+                onClick: () => handleDelete(r),
+              },
+            ]}
+          />
         </div>
       ),
     },
