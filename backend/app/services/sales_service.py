@@ -248,14 +248,6 @@ def delete_blockers_by_sales_order_ids(
     """Return downstream business-record blockers keyed by sales order id."""
     if not order_ids:
         return {}
-    blocker_specs = [
-        (Invoice, Invoice.sales_order_id, "linked invoice(s)"),
-        (DispatchShipment, DispatchShipment.sales_order_id, "dispatch record(s)"),
-    ]
-
-    counts_by_type: list[tuple[str, dict[int, int]]] = [
-        (label, _count_records_by_sales_order(db, tenant_id, order_ids, model, fk_column))
-        for model, fk_column, label in blocker_specs
     from app.models.manufacturing_workflow import (
         SalesJobCard,
         SalesOrderMaterialCheck,
