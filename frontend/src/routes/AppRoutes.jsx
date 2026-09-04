@@ -17,6 +17,7 @@ export default function AppRoutes() {
       <Route path="/register" element={<Navigate to="/login" replace />} />
       <Route path="/gns-admin/login" element={<P.SuperAdminLogin />} />
       <Route path="/gns-admin/verify-otp" element={<P.SuperAdminVerifyOtp />} />
+      <Route path="/super-admin/login" element={<Navigate to="/gns-admin/login" replace />} />
       <Route path="/super-admin" element={<Navigate to="/gns-admin/login" replace />} />
       <Route path="/superadmin" element={<Navigate to="/gns-admin/login" replace />} />
       <Route path="/gns-admin" element={<P.SuperAdminDashboard />} />

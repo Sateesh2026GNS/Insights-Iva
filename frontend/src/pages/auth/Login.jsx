@@ -189,12 +189,12 @@ export default function Login() {
                 />
 
                 <div className="flex items-center justify-between text-xs">
-                  <Link to="/forgot-password" className="text-gray-600 hover:text-teal-600">
+                  <Link to="/forgot-password" className="text-gray-600 hover:text-teal-600 transition-colors">
                     Forgot Your Password?
                   </Link>
                   <Link
                     to="/gns-admin/login"
-                    className="font-medium text-teal-600 hover:text-teal-700 hover:underline"
+                    className="font-semibold text-teal-600 hover:text-teal-700 hover:underline transition-colors"
                   >
                     Super Admin
                   </Link>
