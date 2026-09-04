@@ -4,7 +4,7 @@ import { getPlatformToken } from "../../api/platformApi";
 export default function PlatformProtectedRoute({ children }) {
   const token = getPlatformToken();
   if (!token) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/gns-admin/login" replace />;
   }
   return children;
 }
