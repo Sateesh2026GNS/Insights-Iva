@@ -90,7 +90,13 @@ class PlatformCompanyService:
         self.db = db
 
     def list_companies(self) -> list[dict]:
-        tenants = list(self.db.scalars(select(Tenant).order_by(Tenant.id)).all())
+        tenants = list(
+            self.db.scalars(
+                select(Tenant)
+                .where(func.lower(func.coalesce(Tenant.status, "")) != "deleted")
+                .order_by(Tenant.id)
+            ).all()
+        )
         if not tenants:
             return []
 

@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import {
   Camera,
   RotateCw,
@@ -44,8 +45,14 @@ export default function AdjustProfilePhotoModal({
       setZoom(1);
       setRotation(0);
       setPan({ x: 0, y: 0 });
+
+      const onKey = (e) => {
+        if (e.key === "Escape" && !saving) onClose?.();
+      };
+      document.addEventListener("keydown", onKey);
+      return () => document.removeEventListener("keydown", onKey);
     }
-  }, [open, initialImage]);
+  }, [open, initialImage, saving, onClose]);
 
   const handleImageLoad = (e) => {
     const { naturalWidth, naturalHeight } = e.target;
@@ -241,9 +248,9 @@ export default function AdjustProfilePhotoModal({
 
   if (!open) return null;
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm animate-in fade-in duration-200"
+      className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-slate-950/70 p-4 backdrop-blur-sm animate-in fade-in duration-200"
       onMouseDown={(e) => e.target === e.currentTarget && onClose?.()}
     >
       <input
@@ -255,7 +262,7 @@ export default function AdjustProfilePhotoModal({
       />
 
       <div
-        className="flex w-full max-w-md flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900"
+        className="flex w-full max-w-md max-h-[90vh] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900"
         onMouseDown={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
@@ -450,6 +457,7 @@ export default function AdjustProfilePhotoModal({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

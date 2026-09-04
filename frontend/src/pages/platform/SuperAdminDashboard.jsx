@@ -117,7 +117,8 @@ function SuperAdminDashboardContent() {
     setError("");
     try {
       const data = await listCompanies();
-      setCompanies(Array.isArray(data) ? data : []);
+      const list = Array.isArray(data) ? data : [];
+      setCompanies(list.filter((c) => (c.status || "").toLowerCase() !== "deleted"));
     } catch (err) {
       if (!isRefresh) setError("Failed to load companies.");
       if (isRefresh) throw err;
@@ -165,7 +166,7 @@ function SuperAdminDashboardContent() {
         <header className="ap-header">
           <div className="ap-header__inner">
             <div className="ap-header__brand">
-              <BrandLogo size="hero" />
+              <BrandLogo size="md" imageClassName="h-10 w-auto" />
               <div>
                 <div className="ap-header__title">Insights Iva Admin Portal</div>
                 <div className="ap-header__sub">Super Admin — Company Management</div>

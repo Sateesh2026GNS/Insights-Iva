@@ -132,7 +132,7 @@ export default function Table({
             <tr key={row.id ?? idx}>
               {includeSerial ? (
                 <td className="ui-num ui-table-text-secondary w-12 min-w-[3rem] px-2 py-3 text-center">
-                  {serialOffset + idx + 1}
+                  {(Number(serialOffset) || 0) + idx + 1}
                 </td>
               ) : null}
               {columns.map((col) => {
@@ -153,7 +153,7 @@ export default function Table({
                     style={col.width ? { width: col.width, minWidth: col.minWidth } : col.minWidth ? { minWidth: col.minWidth } : undefined}
                   >
                     {col.render
-                      ? col.render(row)
+                      ? col.render(row, col, idx, Number(serialOffset) || 0)
                       : col.statusBadge
                         ? <StatusBadge status={row[col.key]} />
                         : typeof row[col.key] === "object" && row[col.key] !== null

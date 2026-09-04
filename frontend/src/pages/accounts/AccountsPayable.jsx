@@ -720,7 +720,7 @@ export default function AccountsPayable() {
     },
     { key: "status", label: "Status", render: (r) => <StatusBadge status={r.status} /> },
     {
-      key: "actions", label: "", sortable: false,
+      key: "actions", label: "Actions", align: "center", sortable: false,
       render: (r) => (
         <RowActionMenu
           rowId={r.id}

@@ -192,6 +192,12 @@ export default function Login() {
                   <Link to="/forgot-password" className="text-gray-600 hover:text-teal-600">
                     Forgot Your Password?
                   </Link>
+                  <Link
+                    to="/gns-admin/login"
+                    className="font-medium text-teal-600 hover:text-teal-700 hover:underline"
+                  >
+                    Super Admin
+                  </Link>
                 </div>
 
                 <Button

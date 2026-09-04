@@ -15,8 +15,10 @@ export default function AppRoutes() {
       <Route path="/landing" element={<P.Landing />} />
       <Route path="/login" element={<P.Login />} />
       <Route path="/register" element={<Navigate to="/login" replace />} />
-      <Route path="/gns-admin/login" element={<Navigate to="/login" replace />} />
-      <Route path="/gns-admin/verify-otp" element={<Navigate to="/login" replace />} />
+      <Route path="/gns-admin/login" element={<P.SuperAdminLogin />} />
+      <Route path="/gns-admin/verify-otp" element={<P.SuperAdminVerifyOtp />} />
+      <Route path="/super-admin" element={<Navigate to="/gns-admin/login" replace />} />
+      <Route path="/superadmin" element={<Navigate to="/gns-admin/login" replace />} />
       <Route path="/gns-admin" element={<P.SuperAdminDashboard />} />
       <Route path="/gns-admin/companies/new" element={<P.CreateCompany />} />
       <Route path="/gns-admin/companies/:tenantId" element={<P.CompanyDetail />} />

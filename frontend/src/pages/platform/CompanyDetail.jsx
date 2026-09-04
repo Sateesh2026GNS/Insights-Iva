@@ -132,7 +132,7 @@ function CompanyDetailContent() {
         <header className="ap-header">
           <div className="ap-header__inner">
             <div className="ap-header__brand">
-              <BrandLogo size="hero" />
+              <BrandLogo size="md" imageClassName="h-10 w-auto" />
               <div>
                 <div className="ap-header__title">Insights Iva Admin Portal</div>
                 <div className="ap-header__sub">Company Detail</div>

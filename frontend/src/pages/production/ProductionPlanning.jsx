@@ -1001,9 +1001,24 @@ export default function ProductionPlanning() {
 
   const columns = [
     {
-      key: "id",
+      key: "_sno",
       label: "S.No.",
-      render: (_, __, i) => <span className="tabular-nums font-medium text-[var(--color-text-muted)]">{from + i}</span>,
+      width: "3rem",
+      minWidth: "3rem",
+      className: "w-12 min-w-[3rem] text-center",
+      cellClassName: "text-center",
+      render: (_r, _col, i, serialOffset) => {
+        const rowIdx = typeof i === "number" && Number.isFinite(i) ? i : 0;
+        const offset =
+          typeof serialOffset === "number" && Number.isFinite(serialOffset) && serialOffset > 0
+            ? serialOffset
+            : Math.max(0, (page - 1) * pageSize);
+        return (
+          <span className="tabular-nums font-medium text-[var(--color-text-muted)]">
+            {offset + rowIdx + 1}
+          </span>
+        );
+      },
       sortable: false,
     },
     {

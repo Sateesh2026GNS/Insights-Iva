@@ -273,7 +273,7 @@ export default function JobCardQueueTable({
                     isSelected ? "bg-[var(--color-primary-soft)]/40" : ""
                   } ${high ? "border-l-4 border-l-[var(--color-danger)]" : overdue ? "border-l-4 border-l-amber-400" : ""}`}
                 >
-                  <SerialNumberCell index={idx} offset={snoOffset} />
+                  <SerialNumberCell rowIndex={idx} serialOffset={snoOffset} />
                   <td className="whitespace-nowrap px-3 py-2.5 font-semibold text-[var(--color-primary)]">
                     <div className="flex flex-col">
                       <span className="hover:underline">{row.job_card_no || row.order_number || "—"}</span>

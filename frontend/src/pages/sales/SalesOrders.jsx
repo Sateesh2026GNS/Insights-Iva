@@ -174,7 +174,9 @@ export default function SalesOrders() {
     },
     {
       key: "actions",
-      label: "",
+      label: "Actions",
+      align: "center",
+      sortable: false,
       render: (r) => (
         <RowActionMenu
           rowId={r.id ?? r.order_number}

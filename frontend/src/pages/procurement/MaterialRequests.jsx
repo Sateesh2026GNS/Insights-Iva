@@ -448,7 +448,9 @@ export default function MaterialRequests() {
     },
     {
       key: "actions",
-      label: "",
+      label: "Actions",
+      align: "center",
+      sortable: false,
       render: (r) => (
         <div className="flex items-center justify-end" onClick={(e) => e.stopPropagation()}>
           <RowActionMenu

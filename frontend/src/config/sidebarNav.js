@@ -56,7 +56,6 @@ export const SIDEBAR_NAV = [
     children: [
       { labelKey: "erpNav.productionPlanning", to: "/production/planning", module: "production" },
       { labelKey: "erpNav.workOrders", to: "/production/work-orders", module: "production" },
-      { label: "My Operator Jobs", to: "/production/operator-jobs", module: "production" },
       { labelKey: "erpNav.productionSchedule", to: "/production/schedule", module: "production" },
       { labelKey: "erpNav.machineAllocation", to: "/production/tasks", module: "production" },
       { labelKey: "erpNav.dailyProductionReports", to: "/production/reports", module: "production" },
