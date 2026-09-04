@@ -6,7 +6,6 @@ import {
   ChevronLeft,
   ChevronRight,
   ClipboardList,
-  Download,
   GanttChart,
   LayoutGrid,
   Plus,
@@ -17,7 +16,9 @@ import {
 
 import DataTable from "../../components/common/DataTable";
 import EmptyState from "../../components/common/EmptyState";
+import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
 import KpiCard from "../../components/common/KpiCard";
+import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
 import Loader from "../../components/common/Loader";
 import Button, { IconButton } from "../../components/common/Button";
 import { SearchBar } from "../../components/common/SearchFilter";
@@ -49,7 +50,7 @@ import {
   formatScheduleDate,
   priorityBadge,
 } from "../../data/productionScheduleMasterData";
-import { exportToExcel } from "../../utils/exportUtils";
+import { runListExport } from "../../utils/listExport";
 import { cleanProductLabel } from "../../utils/productLabel";
 
 const VIEWS = [
@@ -614,8 +615,8 @@ function NewScheduleModal({ onClose, onSuccess }) {
   const selectCls = "ui-select";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-2xl overflow-hidden rounded-2xl bg-[var(--color-surface)] shadow-2xl ring-1 ring-slate-900/10">
+    <div className="ui-modal-backdrop">
+      <div className="ui-modal w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-surface-muted)] px-6 py-4">
           <div className="flex items-center gap-2.5">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--color-action-teal)]/15 text-[var(--color-action-teal)]">
@@ -990,11 +991,25 @@ export default function ProductionSchedule() {
     },
   ];
 
-  const handleExport = () => {
-    const exportCols = tableColumns.filter((c) => !c.render);
+  const exportColumns = [
+    { key: "work_order_number", label: "Work Order" },
+    { key: "product_name", label: "Product" },
+    { key: "machine_name", label: "Machine" },
+    { key: "quantity", label: "Qty" },
+    { key: "priority", label: "Priority" },
+    { key: "status", label: "Status" },
+    { key: "end", label: "Due" },
+  ];
+
+  const handleExport = (format) => {
     const data = filteredTable.length ? filteredTable : tableRows;
-    exportToExcel(data, exportCols, "production-schedule");
-    addToast("Schedule exported to Excel", "success");
+    runListExport(format, {
+      data,
+      columns: exportColumns,
+      filename: "production-schedule",
+      title: "Production Schedule",
+    });
+    addToast(format === "pdf" ? "Exported to PDF" : "Exported to Excel", "success");
   };
 
   const openCreate = !operatorMode ? () => setShowNewModal(true) : undefined;
@@ -1005,7 +1020,7 @@ export default function ProductionSchedule() {
   if (loading) return <Loader label="Loading production schedule…" />;
 
   return (
-    <div className="space-y-5 pb-4">
+    <ListPageShell>
       <div className="ui-grid-kpi">
         <ClickableKpiCard onClick={() => applySchedulePreset("all")} title="Show all production targets" tone="primary">
           <KpiCard label="Target" value={(dashboard.production_target ?? 0).toLocaleString()} icon={Target} tone="primary" meta="Click to filter" />
@@ -1036,7 +1051,8 @@ export default function ProductionSchedule() {
         </div>
       ) : null}
 
-      <div className="ui-card overflow-hidden p-4 sm:p-5">
+      <ListPageCard>
+        <ListPageCardBody>
         <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
             <ViewTabs view={view} onChange={setView} />
@@ -1047,10 +1063,10 @@ export default function ProductionSchedule() {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Button type="button" variant="secondary" onClick={handleExport}>
-              <Download className="h-4 w-4" />
-              <span className="hidden sm:inline">Export</span>
-            </Button>
+            <ExportDownloadMenu
+              disabled={!(filteredTable.length ? filteredTable : tableRows).length}
+              onExport={handleExport}
+            />
             {openCreate ? (
               <Button type="button" variant="add" onClick={openCreate} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
                 New Schedule
@@ -1087,7 +1103,8 @@ export default function ProductionSchedule() {
             )}
           </div>
         ) : null}
-      </div>
+        </ListPageCardBody>
+      </ListPageCard>
 
       {showFloorStrip ? (
         <div className="grid gap-4 lg:grid-cols-3">
@@ -1157,6 +1174,6 @@ export default function ProductionSchedule() {
       {!operatorMode && showNewModal ? (
         <NewScheduleModal onClose={() => setShowNewModal(false)} onSuccess={load} />
       ) : null}
-    </div>
+    </ListPageShell>
   );
 }

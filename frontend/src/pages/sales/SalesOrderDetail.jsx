@@ -3,7 +3,7 @@ import usePageRefresh from "../../hooks/usePageRefresh";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, CheckCircle2, ClipboardList, Factory, Trash2 } from "lucide-react";
 
-import ConfirmDialog from "../../components/admin/ConfirmDialog";
+import DeleteSalesOrderDialog from "../../components/sales/DeleteSalesOrderDialog";
 import Loader from "../../components/common/Loader";
 import PageHeader from "../../components/common/PageHeader";
 import EmptyState from "../../components/common/EmptyState";
@@ -12,7 +12,11 @@ import { useToast } from "../../context/ToastContext";
 import Button from "../../components/common/Button";
 import useAuth from "../../hooks/useAuth";
 import { userCanAction } from "../../config/permissions";
-import { apiErrorMessage } from "../../utils/apiError";
+import {
+  isSalesOrderDeletePreBlocked,
+  SALES_ORDER_DELETE_SUCCESS_MESSAGE,
+  salesOrderDeleteErrorMessage,
+} from "../../utils/salesOrderDelete";
 import {
   confirmSalesOrder,
   confirmSalesOrderDelivery,
@@ -73,15 +77,25 @@ export default function SalesOrderDetail() {
 
   const handleDeleteConfirm = async () => {
     if (!data?.order?.id || deleteInFlight.current) return;
+
+    if (
+      isSalesOrderDeletePreBlocked({
+        deleteError,
+      })
+    ) {
+      return;
+    }
+
     deleteInFlight.current = true;
     setDeleteError("");
     setDeleting(true);
     try {
       await deleteSalesOrder(data.order.id);
-      addToast(`Sales order ${data.order.order_number} deleted successfully.`, "success");
+      addToast(SALES_ORDER_DELETE_SUCCESS_MESSAGE, "success");
       navigate("/sales/orders");
     } catch (err) {
-      setDeleteError(apiErrorMessage(err, "Failed to delete sales order."));
+      const structured = err?.response?.data?.detail;
+      setDeleteError(structured || salesOrderDeleteErrorMessage(err, "Failed to delete sales order."));
     } finally {
       deleteInFlight.current = false;
       setDeleting(false);
@@ -487,14 +501,10 @@ export default function SalesOrderDetail() {
           </div>
         </div>
       )}
-      <ConfirmDialog
+      <DeleteSalesOrderDialog
         open={deleteOpen}
-        title="Delete Sales Order?"
-        message="Are you sure you want to delete this sales order? This action cannot be undone."
-        error={deleteError}
-        confirmLabel="Delete"
-        cancelLabel="Cancel"
-        destructive
+        orderNumber={order.order_number}
+        deleteError={deleteError}
         loading={deleting}
         onConfirm={handleDeleteConfirm}
         onClose={() => {

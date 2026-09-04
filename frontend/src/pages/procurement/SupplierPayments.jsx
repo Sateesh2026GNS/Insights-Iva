@@ -5,6 +5,8 @@ import Loader from "../../components/common/Loader";
 import Button from "../../components/common/Button";
 import { Plus } from "lucide-react";
 import PageHeader from "../../components/common/PageHeader";
+import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
+import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
 import DataTable from "../../components/common/DataTable";
 import EmptyState from "../../components/common/EmptyState";
 import { useToast } from "../../context/ToastContext";
@@ -14,6 +16,7 @@ import {
   getVendors,
 } from "../../api/procurementApi";
 import { apiErrorMessage } from "../../utils/apiError";
+import { runListExport } from "../../utils/listExport";
 
 export default function SupplierPayments() {
   const { addToast } = useToast();
@@ -25,8 +28,6 @@ export default function SupplierPayments() {
     if (!isRefresh) setLoading(true);
     try {
       const [p, v] = await Promise.all([getSupplierPayments(), getVendors()]);
-
-
       setPayments(p.data || []);
       setVendors(v.data || []);
     } catch (err) {
@@ -62,10 +63,6 @@ export default function SupplierPayments() {
     }
   };
 
-  if (loading) return <Loader label="Loading supplier payments..." />;
-
-  const total = payments.reduce((s, p) => s + (Number(p.amount) || 0), 0);
-
   const columns = [
     {
       key: "supplier_id",
@@ -87,7 +84,7 @@ export default function SupplierPayments() {
         <button
           type="button"
           onClick={() => handleDelete(r)}
-          className="text-xs font-semibold text-red-600 hover:underline"
+          className="text-xs font-semibold text-[var(--color-danger)] hover:underline"
         >
           Delete
         </button>
@@ -95,18 +92,36 @@ export default function SupplierPayments() {
     },
   ];
 
+  if (loading) return <Loader label="Loading supplier payments..." />;
+
+  const total = payments.reduce((s, p) => s + (Number(p.amount) || 0), 0);
+
+  const handleExport = (format) => {
+    runListExport(format, {
+      data: payments,
+      columns,
+      filename: "supplier-payments",
+      title: "Supplier Payments",
+    });
+    addToast(format === "pdf" ? "Exported to PDF" : "Exported to Excel", "success");
+  };
+
   return (
-    <div className="space-y-5 pb-4">
+    <ListPageShell>
       <PageHeader
         title="Supplier Payments"
         subtitle={`Total paid: ₹${total.toLocaleString()}`}
         action={
-          <Button variant="add" to="/procurement/supplier-payments/create" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
-            Record Payment
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <ExportDownloadMenu disabled={!payments.length} onExport={handleExport} />
+            <Button variant="add" to="/procurement/supplier-payments/create" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
+              Record Payment
+            </Button>
+          </div>
         }
       />
-      <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-sm">
+      <ListPageCard>
+        <ListPageCardBody className="overflow-x-auto">
         <DataTable
           columns={columns}
           data={payments}
@@ -120,7 +135,8 @@ export default function SupplierPayments() {
             />
           }
         />
-      </div>
-    </div>
+        </ListPageCardBody>
+      </ListPageCard>
+    </ListPageShell>
   );
 }

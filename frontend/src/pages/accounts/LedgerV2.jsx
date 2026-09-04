@@ -234,7 +234,7 @@ function BalanceCell({ row }) {
   );
 }
 
-function LedgerKpiCard({ label, value, sub, icon: Icon, bg, iconColor, valueColor = "#17264A", cardTint }) {
+function LedgerKpiCard({ label, value, sub, icon: Icon, bg, iconColor, valueColor = "var(--color-text)", cardTint }) {
   const tint = cardTint || bg;
   return (
     <div
@@ -258,7 +258,7 @@ function LedgerKpiCard({ label, value, sub, icon: Icon, bg, iconColor, valueColo
   );
 }
 
-function kpiCard(label, value, sub, icon, tint, iconColor, valueColor = "#17264A") {
+function kpiCard(label, value, sub, icon, tint, iconColor, valueColor = "var(--color-text)") {
   return { label, value, sub, icon, bg: tint, cardTint: tint, iconColor, valueColor };
 }
 
@@ -697,6 +697,8 @@ export default function LedgerV2() {
       exportToCsv(rows, columns, filename);
     } else if (format === "PDF") {
       exportToPdf(rows, columns, title, filename);
+    } else if (format === "Excel") {
+      exportToExcel(rows, columns, filename);
     } else {
       exportToExcel(rows, columns, filename);
     }
@@ -911,14 +913,14 @@ export default function LedgerV2() {
                 </Button>
               ) : null}
 
-              <button
+              <Button
                 type="button"
+                variant="secondary"
                 onClick={() => setDownloadOpen(true)}
-                className="inline-flex items-center gap-1.5 rounded-lg px-4 py-2.5 text-[13px] font-semibold text-white hover:opacity-90"
-                style={{ backgroundColor: isPartyTab || tab === "other" ? BLUE : PURPLE }}
+                leftIcon={<Download className="h-4 w-4" aria-hidden />}
               >
-                <Download className="h-4 w-4" /> Download
-              </button>
+                Download
+              </Button>
               {isPartyTab || tab === "other" ? (
                 <button
                   type="button"

@@ -15,8 +15,9 @@ import usePageRefresh from "../../hooks/usePageRefresh";
 import { deptColor, formatInr, statusColor } from "../../data/hrMasterData";
 
 import Button from "../../components/common/Button";
-const inputClass =
-  "mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:border-[var(--color-cta)] focus:outline-none focus:ring-2 focus:ring-amber-100 transition-all";
+import { ListPageCard, ListPageCardBody } from "../../components/common/ListPageShell";
+const inputClass = "ui-input mt-1.5 w-full";
+const selectClass = "ui-select mt-1.5 w-full";
 
 
 const defaultFilters = { department: "", employment_type: "", shift: "", status: "" };
@@ -226,7 +227,8 @@ export default function Employees() {
         <KpiCard label="New Joiners" value={summary.new_joiners} icon={UserPlus} color="bg-purple-600" />
       </div>
 
-      <div className="ui-card p-4">
+      <ListPageCard>
+        <ListPageCardBody>
         <button type="button" onClick={() => setShowAdvanced(!showAdvanced)} className="mb-3 inline-flex items-center gap-2 text-[var(--text-sm)] font-semibold text-[var(--color-text-secondary)]"><Filter className="h-4 w-4" /> Filters</button>
         {showAdvanced && (
           <div className="mb-4 grid gap-3 sm:grid-cols-3">
@@ -245,7 +247,8 @@ export default function Employees() {
           </div>
         )}
         <DataTable columns={columns} data={filtered} searchPlaceholder="Search" searchKeys={["full_name", "employee_id", "department", "designation"]} />
-      </div>
+        </ListPageCardBody>
+      </ListPageCard>
 
       {selected && <EmployeeDetailModal employee={selected} onClose={() => setSelected(null)} />}
 
@@ -269,17 +272,25 @@ export default function Employees() {
       )}
 
       {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl border border-slate-200 max-w-lg w-full p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
+        <div
+          className="ui-modal-backdrop"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) setShowCreateModal(false);
+          }}
+        >
+          <div
+            className="ui-modal max-w-lg w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto"
+            onMouseDown={(e) => e.stopPropagation()}
+          >
             <div className="flex items-start justify-between">
               <div>
-                <h3 className="text-lg font-bold text-slate-900">Create Employee</h3>
-                <p className="text-xs text-slate-500 mt-0.5">Add a new employee record for your organization.</p>
+                <h3 className="text-lg font-bold text-[var(--color-text)]">Create Employee</h3>
+                <p className="ui-subtitle mt-0.5">Add a new employee record for your organization.</p>
               </div>
               <button
                 type="button"
                 onClick={() => setShowCreateModal(false)}
-                className="rounded-lg p-2 text-slate-400 hover:bg-slate-100"
+                className="rounded-lg p-2 text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)]"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -287,14 +298,14 @@ export default function Employees() {
 
             <form onSubmit={handleSubmit} className="space-y-4">
               {error && (
-                <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs font-semibold text-rose-700">
+                <div className="rounded-xl border border-[var(--color-danger)]/30 bg-[var(--color-danger-soft)] px-4 py-2.5 text-xs font-semibold text-[var(--color-danger)]">
                   {error}
                 </div>
               )}
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Employee Code *</label>
+                  <label className="ui-label block">Employee Code *</label>
                   <input
                     type="text"
                     required
@@ -305,7 +316,7 @@ export default function Employees() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Full Name (As per Aadhar) *</label>
+                  <label className="ui-label block">Full Name (As per Aadhar) *</label>
                   <input
                     type="text"
                     required
@@ -317,11 +328,11 @@ export default function Employees() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5">
+              <div className="flex items-center justify-between gap-2 rounded-xl border border-[var(--color-border-soft)] bg-[var(--color-surface-muted)] px-3 py-2.5">
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Address</p>
+                  <p className="ui-label">Address</p>
                   {form.address ? (
-                    <p className="mt-1 text-sm text-slate-700">{form.address}</p>
+                    <p className="mt-1 text-sm text-[var(--color-text)]">{form.address}</p>
                   ) : (
                     <p className="ui-subtitle">No address added yet.</p>
                   )}
@@ -338,7 +349,7 @@ export default function Employees() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Email Address</label>
+                  <label className="ui-label block">Email Address</label>
                   <input
                     type="email"
                     placeholder="name@company.com"
@@ -348,7 +359,7 @@ export default function Employees() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Hire Date</label>
+                  <label className="ui-label block">Hire Date</label>
                   <input
                     type="date"
                     value={form.hire_date}
@@ -361,7 +372,7 @@ export default function Employees() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <div className="flex items-center justify-between gap-2">
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Department</label>
+                    <label className="ui-label block">Department</label>
                     <button
                       type="button"
                       onClick={() => setShowDeptForm(true)}
@@ -373,7 +384,7 @@ export default function Employees() {
                   <select
                     value={form.department}
                     onChange={(e) => handleFormChange("department", e.target.value)}
-                    className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-700 focus:border-[#2563EB] focus:outline-none focus:ring-2 focus:ring-blue-100"
+                    className={selectClass}
                   >
                     <option value="">Select Department</option>
                     {deptList.length > 0
@@ -387,11 +398,11 @@ export default function Employees() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Assign Shift</label>
+                  <label className="ui-label block">Assign Shift</label>
                   <select
                     value={form.shift_name}
                     onChange={(e) => handleFormChange("shift_name", e.target.value)}
-                    className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-700 focus:border-[#2563EB] focus:outline-none focus:ring-2 focus:ring-blue-100"
+                    className={selectClass}
                   >
                     <option value="">Select Shift</option>
                     {shifts.map((s) => (
@@ -403,7 +414,7 @@ export default function Employees() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Designation</label>
+                  <label className="ui-label block">Designation</label>
                   <input
                     type="text"
                     placeholder="e.g. Operator"
@@ -413,7 +424,7 @@ export default function Employees() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Hourly Rate ($)</label>
+                  <label className="ui-label block">Hourly Rate ($)</label>
                   <input
                     type="number"
                     min="0"
@@ -428,7 +439,7 @@ export default function Employees() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Reporting Manager</label>
+                  <label className="ui-label block">Reporting Manager</label>
                   <input
                     type="text"
                     placeholder="e.g. Gogula Sowmya"
@@ -438,7 +449,7 @@ export default function Employees() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Phone Number</label>
+                  <label className="ui-label block">Phone Number</label>
                   <input
                     type="text"
                     placeholder="e.g. +91 90591 86584"
@@ -456,14 +467,14 @@ export default function Employees() {
                 onSave={(value) => handleFormChange("address", value)}
               />
 
-              <div className="flex justify-end gap-2 border-t pt-4">
-                <button
+              <div className="flex justify-end gap-2 border-t border-[var(--color-border-soft)] pt-4">
+                <Button
                   type="button"
+                  variant="cancel"
                   onClick={() => setShowCreateModal(false)}
-                  className="rounded-xl border px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
                 >
                   Cancel
-                </button>
+                </Button>
                 <Button variant="primary" type="submit" disabled={saving}>
                   <Save className="h-4 w-4" />
                   {saving ? "Saving..." : "Create Employee"}

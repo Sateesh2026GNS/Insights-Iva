@@ -264,7 +264,7 @@ export default function AddBankAccountModal({ open, onClose, onSave, initial }) 
         </div>
 
         <div className="grid shrink-0 grid-cols-2 gap-3 border-t border-[#ececf0] bg-white px-5 py-4">
-          <Button type="button" variant="secondary" onClick={onClose} fullWidth>
+          <Button type="button" variant="cancel" onClick={onClose} fullWidth>
             Cancel
           </Button>
           <Button type="submit" variant="primary" fullWidth>

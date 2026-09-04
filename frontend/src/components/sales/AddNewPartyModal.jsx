@@ -240,7 +240,7 @@ function AddressModal({ open, onClose, initial, onSave }) {
           </div>
         </div>
         <div className="grid shrink-0 grid-cols-2 gap-3 border-t border-[#ececf0] px-5 py-3.5">
-          <Button type="button" variant="secondary" onClick={onClose} fullWidth>
+          <Button type="button" variant="cancel" onClick={onClose} fullWidth>
             Cancel
           </Button>
           <Button
@@ -661,7 +661,7 @@ export default function AddNewPartyModal({
         </div>
 
         <div className="grid shrink-0 grid-cols-2 gap-3 border-t border-[#ececf0] px-5 py-3.5">
-          <Button type="button" variant="secondary" onClick={onClose} fullWidth>
+          <Button type="button" variant="cancel" onClick={onClose} fullWidth>
             Cancel
           </Button>
           <Button type="submit" variant="primary" loading={saving} disabled={saving} fullWidth>

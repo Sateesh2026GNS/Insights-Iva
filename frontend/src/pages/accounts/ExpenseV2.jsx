@@ -3,14 +3,13 @@ import { Link } from "react-router-dom";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import {
   Eye,
-  FileSpreadsheet,
-  FileText,
   Pencil,
   Settings,
   Trash2,
 } from "lucide-react";
 
 import AddExpenseModal from "../../components/accounts/AddExpenseModal";
+import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
 import RowActionMenu from "../../components/common/RowActionMenu";
 import {
   AccountsCard,
@@ -18,7 +17,6 @@ import {
   AccountsPagination,
   AccountsPrimaryButton,
   AccountsSearchInput,
-  AccountsSecondaryButton,
   AccountsTabs,
   ACCOUNTS_BLUE,
   ACCOUNTS_TEAL,
@@ -473,12 +471,10 @@ export default function ExpenseV2() {
               >
                 + Add Expense
               </AccountsPrimaryButton>
-              <AccountsSecondaryButton type="button" onClick={onPdf}>
-                <FileText className="h-4 w-4 text-[#EF4444]" aria-hidden /> PDF
-              </AccountsSecondaryButton>
-              <AccountsSecondaryButton type="button" onClick={onExcel}>
-                <FileSpreadsheet className="h-4 w-4 text-[#22C55E]" aria-hidden /> Excel
-              </AccountsSecondaryButton>
+              <ExportDownloadMenu
+                disabled={tab === "all" ? !filtered.length : !categoryRows.length}
+                onExport={(format) => (format === "pdf" ? onPdf() : onExcel())}
+              />
             </div>
           </div>
 
@@ -502,7 +498,7 @@ export default function ExpenseV2() {
                   <tbody>
                     {pageRows.length === 0 ? (
                       <tr>
-                        <td colSpan={8} className="px-4 py-14 text-center text-sm text-[#64748B]">
+                        <td colSpan={8} className="px-4 py-14 text-center text-sm text-[var(--color-text-muted)]">
                           No expenses found for the selected range.
                         </td>
                       </tr>

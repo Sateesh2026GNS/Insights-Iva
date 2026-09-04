@@ -3,7 +3,6 @@ import { useLocation } from "react-router-dom";
 import {
   ChevronLeft,
   ChevronRight,
-  FileSpreadsheet,
   Pencil,
   Plus,
   Search,
@@ -22,14 +21,26 @@ import { useToast } from "../../context/ToastContext";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { deleteProduct, getProducts } from "../../api/productsApi";
 import { computeSummary, enrichApiProduct, getCategoryChartData } from "../../data/productsMasterData";
-import { exportToExcel } from "../../utils/exportUtils";
+import { runListExport } from "../../utils/listExport";
 import { apiErrorMessage } from "../../utils/apiError";
 
 import Button from "../../components/common/Button";
+import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
 import RowActionMenu from "../../components/common/RowActionMenu";
 import { rowActionClass } from "../../design-system/classes";
 
 const PAGE_SIZES = [20, 50, 100];
+
+const PRODUCT_EXPORT_COLUMNS = [
+  { key: "name", label: "Product Name" },
+  { key: "category", label: "Category" },
+  { key: "description", label: "Description" },
+  { key: "hsn_code", label: "HSN" },
+  { key: "unit", label: "Unit" },
+  { key: "selling_price", label: "Price" },
+  { key: "gst_percent", label: "GST Tax" },
+  { key: "cess_percent", label: "CESS %" },
+];
 
 const SCREENSHOT_DEMO = [];
 
@@ -145,22 +156,14 @@ export default function ProductsMaster() {
   const summary = useMemo(() => computeSummary(products), [products]);
   const categoryChart = useMemo(() => getCategoryChartData(products), [products]);
 
-  const onExport = () => {
-    exportToExcel(
-      filtered,
-      [
-        { key: "name", label: "Product Name" },
-        { key: "category", label: "Category" },
-        { key: "description", label: "Description" },
-        { key: "hsn_code", label: "HSN" },
-        { key: "unit", label: "Unit" },
-        { key: "selling_price", label: "Price" },
-        { key: "gst_percent", label: "GST Tax" },
-        { key: "cess_percent", label: "CESS %" },
-      ],
-      "products"
-    );
-    addToast("Exported to Excel", "success");
+  const handleExport = (format) => {
+    runListExport(format, {
+      data: filtered,
+      columns: PRODUCT_EXPORT_COLUMNS,
+      filename: "products",
+      title: "Products",
+    });
+    addToast(format === "pdf" ? "Exported to PDF" : "Exported to Excel", "success");
   };
 
   const confirmDelete = async () => {
@@ -231,10 +234,7 @@ export default function ProductsMaster() {
                   Bulk Import
                 </Button>
               )}
-              <Button variant="secondary" type="button" onClick={onExport}>
-                <FileSpreadsheet className="h-4 w-4" />
-                Export (xlsx)
-              </Button>
+              <ExportDownloadMenu disabled={!filtered.length} onExport={handleExport} />
               {!isPM && (
                 <Button
                   variant="add"

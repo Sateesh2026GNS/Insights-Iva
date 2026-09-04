@@ -120,6 +120,7 @@ class SOListRead(BaseModel):
     invoiced: bool = False
     workflow_status: str | None = None
     deletable: bool = False
+    delete_blockers: list[str] = Field(default_factory=list)
     line_items: list[SOLineItemRead] = Field(default_factory=list)
 
     @field_validator("amount", "total_amount", mode="before")

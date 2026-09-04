@@ -29,8 +29,10 @@ import {
 } from "../../api/procurementApi";
 import { formatInr } from "../../data/salesMasterData";
 import { apiErrorMessage } from "../../utils/apiError";
+import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
+import { ListPageShell } from "../../components/common/ListPageShell";
+import { runListExport } from "../../utils/listExport";
 
-const PAGE_BG = "var(--color-bg)";
 const PAGE_SIZES = [10, 20, 50];
 
 const SORT_OPTIONS = [
@@ -106,7 +108,7 @@ function SummaryTab({ label, count, amount, active, onClick }) {
     >
       <p className={`text-[13px] font-medium transition-colors ${active ? "text-[var(--color-primary)]" : "text-[var(--color-text-muted)]"}`}>
         {label}{" "}
-        <span className={active ? "opacity-70" : "text-[#a0a0ab]"}>({count})</span>
+        <span className={active ? "opacity-70" : "text-[var(--color-text-muted)]"}>({count})</span>
       </p>
       <p className={`mt-1 text-[18px] font-bold tabular-nums transition-colors ${active ? "text-[var(--color-primary)]" : "text-[var(--color-text)]"}`}>
         {amount}
@@ -237,16 +239,35 @@ export default function PurchaseOrders() {
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const pageRows = filteredSorted.slice((page - 1) * pageSize, page * pageSize);
 
+  const exportColumns = [
+    { key: "po_number", label: "PO No." },
+    { key: "order_date", label: "Date" },
+    { key: "vendor_name", label: "Seller Name" },
+    { key: "total_amount", label: "PO Amount" },
+  ];
+
+  const handleExport = (format) => {
+    runListExport(format, {
+      data: filteredSorted,
+      columns: exportColumns,
+      filename: "purchase-orders",
+      title: "Purchase Orders",
+    });
+    addToast(format === "pdf" ? "Exported to PDF" : "Exported to Excel", "success");
+  };
+
   if (loading) {
     return (
-      <div className="flex min-h-[50vh] items-center justify-center" style={{ background: PAGE_BG }}>
-        <Loader label="Loading purchase orders..." />
-      </div>
+      <ListPageShell>
+        <div className="flex min-h-[50vh] items-center justify-center">
+          <Loader label="Loading purchase orders..." />
+        </div>
+      </ListPageShell>
     );
   }
 
   return (
-    <div className="min-h-full space-y-4 bg-[#F5F5F5] p-4 sm:p-6">
+    <ListPageShell className="space-y-4">
       <div className="overflow-hidden rounded-xl border border-[var(--color-table-border)] bg-[var(--color-primary-soft)]">
         <div className="flex flex-col lg:flex-row lg:items-stretch">
           <div className="flex min-w-0 flex-1 flex-wrap">
@@ -277,7 +298,7 @@ export default function PurchaseOrders() {
               <button
                 type="button"
                 onClick={() => dateFromRef.current?.showPicker?.() || dateFromRef.current?.click()}
-                className="flex items-center justify-center text-[#697b78] hover:text-[#1f3935] transition-colors"
+                className="flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors"
                 aria-label="Open start date picker"
               >
                 <CalendarDays className="h-4 w-4" />
@@ -292,16 +313,16 @@ export default function PurchaseOrders() {
               <button
                 type="button"
                 onClick={() => dateFromRef.current?.showPicker?.() || dateFromRef.current?.click()}
-                className="font-medium text-[#1f3935] hover:text-black transition-colors cursor-pointer"
+                className="font-medium text-[var(--color-text)] hover:text-[var(--color-primary)] transition-colors cursor-pointer"
                 title="Change start date"
               >
                 {displayDate(dateFrom)}
               </button>
-              <span className="text-[#697b78] select-none font-medium px-0.5">→</span>
+              <span className="text-[var(--color-text-muted)] select-none font-medium px-0.5">→</span>
               <button
                 type="button"
                 onClick={() => dateToRef.current?.showPicker?.() || dateToRef.current?.click()}
-                className="font-medium text-[#1f3935] hover:text-black transition-colors cursor-pointer"
+                className="font-medium text-[var(--color-text)] hover:text-[var(--color-primary)] transition-colors cursor-pointer"
                 title="Change end date"
               >
                 {displayDate(dateTo)}
@@ -316,12 +337,13 @@ export default function PurchaseOrders() {
               <button
                 type="button"
                 onClick={() => dateToRef.current?.showPicker?.() || dateToRef.current?.click()}
-                className="flex items-center justify-center text-[#697b78] hover:text-[#1f3935] transition-colors"
+                className="flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors"
                 aria-label="Open end date picker"
               >
                 <CalendarDays className="h-4 w-4" />
               </button>
             </div>
+            <ExportDownloadMenu disabled={!filteredSorted.length} onExport={handleExport} />
             <Button variant="add" to="/procurement/purchase-orders/create" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
               Create Purchase Order
             </Button>
@@ -368,7 +390,7 @@ export default function PurchaseOrders() {
                           setSortId(opt.id);
                           setShowSort(false);
                         }}
-                        className={`block w-full border-b border-[#f0f0f3] px-4 py-2.5 text-left text-[13px] last:border-b-0 hover:bg-[var(--color-surface-hover)] ${
+                        className={`block w-full border-b border-[var(--color-border-soft)] px-4 py-2.5 text-left text-[13px] last:border-b-0 hover:bg-[var(--color-surface-hover)] ${
                           sortId === opt.id ? "font-semibold" : "text-[var(--color-text-secondary)]"
                         }`}
                       >
@@ -592,6 +614,6 @@ export default function PurchaseOrders() {
           onReject={(po) => handleStatus(po, "cancelled")}
         />
       ) : null}
-    </div>
+    </ListPageShell>
   );
 }

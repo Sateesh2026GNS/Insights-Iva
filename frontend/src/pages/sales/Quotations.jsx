@@ -19,6 +19,9 @@ import {
 } from "lucide-react";
 
 import Loader from "../../components/common/Loader";
+import PageHeader from "../../components/common/PageHeader";
+import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
+import { ListPageShell } from "../../components/common/ListPageShell";
 import { SearchBar } from "../../components/common/SearchFilter";
 import Button from "../../components/common/Button";
 import RowActionMenu from "../../components/common/RowActionMenu";
@@ -33,8 +36,15 @@ import {
 } from "../../api/salesApi";
 import { apiErrorMessage } from "../../utils/apiError";
 import { formatInr, statusColor } from "../../data/salesMasterData";
+import { runListExport } from "../../utils/listExport";
 
-const ACCENT = "#0f6d84";
+const QUOTATION_EXPORT_COLUMNS = [
+  { key: "quote_number", label: "Quotation No." },
+  { key: "quote_date", label: "Date" },
+  { key: "customer_name", label: "Party Name" },
+  { key: "amount", label: "Amount" },
+  { key: "status", label: "Status" },
+];
 const PAGE_SIZES = [10, 20, 50];
 
 const SORT_OPTIONS = [
@@ -64,7 +74,7 @@ function Chip({ label, active, onClick }) {
       onClick={onClick}
       className={`inline-flex items-center rounded-full px-3.5 py-1.5 text-[13px] font-medium transition ${
         active
-          ? "bg-[#0f6d84] text-white"
+          ? "bg-[var(--color-primary)] text-white"
           : "bg-[var(--color-surface-muted)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"
       }`}
     >
@@ -95,7 +105,7 @@ function SummaryTab({ label, count, amount, active, onClick }) {
     >
       <p className={`text-[13px] font-medium transition-colors ${active ? "" : "text-[var(--color-text-muted)]"}`}>
         {label}{" "}
-        <span className={active ? "opacity-70" : "text-[#a0a0ab]"}>({count})</span>
+        <span className={active ? "opacity-70" : "text-[var(--color-text-faint)]"}>({count})</span>
       </p>
       <p
         className={`mt-1 text-[18px] font-bold tabular-nums transition-colors ${
@@ -285,19 +295,47 @@ export default function Quotations() {
     }
   };
 
+  const handleExport = (format) => {
+    const exportRows = filteredSorted.map((r) => ({
+      quote_number: r.quote_number,
+      quote_date: fmtDate(r.quote_date || r.valid_until),
+      customer_name: r.customer_name,
+      amount: r.amount,
+      status: r.status,
+    }));
+    runListExport(format, {
+      data: exportRows,
+      columns: QUOTATION_EXPORT_COLUMNS,
+      filename: "quotations",
+      title: "Quotations",
+    });
+    addToast(format === "pdf" ? "Exported to PDF" : "Exported to Excel", "success");
+  };
+
   if (loading) {
     return (
-      <div className="flex min-h-[50vh] items-center justify-center bg-[var(--color-bg)]">
-        <Loader label="Loading quotations..." />
-      </div>
+      <ListPageShell>
+        <div className="flex min-h-[50vh] items-center justify-center">
+          <Loader label="Loading quotations..." />
+        </div>
+      </ListPageShell>
     );
   }
 
   return (
-    <div className="min-h-full space-y-4 bg-[var(--color-bg)] p-4 sm:p-6">
-      <div className="mb-1">
-        <p className="ui-eyebrow">Sales</p>
-      </div>
+    <ListPageShell stackClassName="space-y-4">
+      <PageHeader
+        title="Quotations"
+        subtitle="Create, track, and convert quotations into sales orders."
+        action={
+          <div className="flex flex-wrap items-center gap-2">
+            <ExportDownloadMenu disabled={!filteredSorted.length} onExport={handleExport} />
+            <Button variant="add" to="/sales/quotations/create" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
+              Create Quotation
+            </Button>
+          </div>
+        }
+      />
 
       <div className="overflow-hidden rounded-xl border border-[var(--color-table-border)] bg-[var(--color-surface-muted)]">
         <div className="flex overflow-x-auto">
@@ -337,7 +375,7 @@ export default function Quotations() {
           <button
             type="button"
             onClick={openDateFrom}
-            className="flex items-center justify-center text-[var(--color-text-muted)] hover:text-[#0f6d84] transition-colors cursor-pointer"
+            className="flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-primary)] transition-colors cursor-pointer"
             aria-label="Open start date picker"
           >
             <Calendar className="h-5 w-5" />
@@ -355,7 +393,7 @@ export default function Quotations() {
           <button
             type="button"
             onClick={openDateFrom}
-            className="text-[14px] font-medium text-[#2c2b3d] dark:text-slate-100 hover:text-[#0f6d84] transition-colors cursor-pointer"
+            className="text-[14px] font-medium text-[var(--color-text)] hover:text-[var(--color-primary)] transition-colors cursor-pointer"
             title="Click to select start date"
           >
             {fmtDisplayDate(dateFrom) || "Start Date"}
@@ -364,7 +402,7 @@ export default function Quotations() {
           <button
             type="button"
             onClick={openDateTo}
-            className="text-[14px] font-medium text-[#2c2b3d] dark:text-slate-100 hover:text-[#0f6d84] transition-colors cursor-pointer"
+            className="text-[14px] font-medium text-[var(--color-text)] hover:text-[var(--color-primary)] transition-colors cursor-pointer"
             title="Click to select end date"
           >
             {fmtDisplayDate(dateTo) || "End Date"}
@@ -382,15 +420,12 @@ export default function Quotations() {
           <button
             type="button"
             onClick={openDateTo}
-            className="flex items-center justify-center text-[var(--color-text-muted)] hover:text-[#0f6d84] transition-colors cursor-pointer"
+            className="flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-primary)] transition-colors cursor-pointer"
             aria-label="Open end date picker"
           >
             <Calendar className="h-5 w-5" />
           </button>
         </div>
-        <Button variant="add" to="/sales/quotations/create" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
-          Create Quotation
-        </Button>
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -487,7 +522,7 @@ export default function Quotations() {
                       pageSize={pageSize}
                       className="border-t border-r border-[var(--color-table-border)]"
                     />
-                    <td className="border-t border-r border-[var(--color-table-border)] px-4 py-3 font-semibold" style={{ color: ACCENT }}>
+                    <td className="border-t border-r border-[var(--color-table-border)] px-4 py-3 font-semibold text-[var(--color-primary)]">
                       {r.quote_number}
                     </td>
                     <td className="border-t border-r border-[var(--color-table-border)] px-4 py-3 text-[var(--color-text-secondary)]">{fmtDate(r.quote_date)}</td>
@@ -650,7 +685,7 @@ export default function Quotations() {
                   setFilters(EMPTY_FILTERS);
                   setShowFilters(false);
                 }}
-                className="rounded-xl border border-[var(--color-border-soft)] bg-[#f0f0f4] py-3 text-[14px] font-semibold text-[var(--color-text)]"
+                className="rounded-xl border border-[var(--color-border-soft)] bg-[var(--color-surface-muted)] py-3 text-[14px] font-semibold text-[var(--color-text)]"
               >
                 Clear Filter
               </button>
@@ -660,8 +695,7 @@ export default function Quotations() {
                   setFilters(draftFilters);
                   setShowFilters(false);
                 }}
-                className="rounded-xl py-3 text-[14px] font-semibold text-white"
-                style={{ background: ACCENT }}
+                className="rounded-xl bg-[var(--color-primary)] py-3 text-[14px] font-semibold text-white"
               >
                 Apply Filter
               </button>
@@ -677,6 +711,6 @@ export default function Quotations() {
           onStatusChange={handleStatus}
         />
       ) : null}
-    </div>
+    </ListPageShell>
   );
 }

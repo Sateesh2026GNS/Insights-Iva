@@ -6,6 +6,8 @@ import KpiCard from "../../components/common/KpiCard";
 import DataTable from "../../components/common/DataTable";
 import Loader from "../../components/common/Loader";
 import PageHeader from "../../components/common/PageHeader";
+import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
+import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
 import Button from "../../components/common/Button";
 import CreateLeadModal from "../../components/sales/CreateLeadModal";
 import LeadDetailModal from "../../components/sales/LeadDetailModal";
@@ -28,8 +30,19 @@ import {
   priorityColor,
   statusColor,
 } from "../../data/salesMasterData";
-import { exportToExcel } from "../../utils/exportUtils";
+import { runListExport } from "../../utils/listExport";
 
+const LEAD_EXPORT_COLUMNS = [
+  { key: "lead_id", label: "Lead ID" },
+  { key: "customer_name", label: "Customer" },
+  { key: "company", label: "Company" },
+  { key: "contact", label: "Contact" },
+  { key: "source", label: "Source" },
+  { key: "sales_executive", label: "Sales Exec" },
+  { key: "priority", label: "Priority" },
+  { key: "next_followup", label: "Next Follow-up" },
+  { key: "status", label: "Status" },
+];
 
 const defaultFilters = { sales_executive: "", source: "", industry: "", region: "", status: "", priority: "" };
 
@@ -143,7 +156,7 @@ export default function Leads() {
 
   const columns = [
     { key: "lead_id", label: "Lead ID", render: (r) => <span className="rounded bg-[var(--color-success-soft)] px-2 py-0.5 font-mono text-xs font-bold text-[var(--color-success)]">{r.lead_id || `LD-${r.id}`}</span> },
-    { key: "customer_name", label: "Customer", render: (r) => <span className="font-bold text-slate-900">{r.customer_name}</span> },
+    { key: "customer_name", label: "Customer", render: (r) => <span className="font-bold text-[var(--color-text)]">{r.customer_name}</span> },
     { key: "company", label: "Company" },
     { key: "contact", label: "Contact" },
     { key: "source", label: "Source" },
@@ -169,7 +182,7 @@ export default function Leads() {
                 Create Quote
               </Link>
             ) : (
-              <span className="text-[11px] font-medium text-slate-400 cursor-not-allowed" title="Quotation requires Qualified status">
+              <span className="text-[11px] font-medium text-[var(--color-text-faint)] cursor-not-allowed" title="Quotation requires Qualified status">
                 Quote Locked
               </span>
             )}
@@ -179,21 +192,45 @@ export default function Leads() {
     },
   ];
 
+  const handleExport = (format) => {
+    const exportRows = filtered.map((r) => ({
+      lead_id: r.lead_id || `LD-${r.id}`,
+      customer_name: r.customer_name,
+      company: r.company,
+      contact: r.contact,
+      source: r.source,
+      sales_executive: r.sales_executive,
+      priority: r.priority,
+      next_followup: String(r.next_followup || "").slice(0, 10),
+      status: r.status,
+    }));
+    runListExport(format, {
+      data: exportRows,
+      columns: LEAD_EXPORT_COLUMNS,
+      filename: "leads",
+      title: "Leads",
+    });
+    addToast(format === "pdf" ? "Exported to PDF" : "Exported to Excel", "success");
+  };
+
   if (loading) return <Loader label="Loading leads..." />;
 
   return (
-    <div className="space-y-5 pb-4">
+    <ListPageShell stackClassName="space-y-5 pb-4">
       <PageHeader
         subtitle="Enterprise CRM pipeline with Kanban view, 360° lead profile, and opportunity tracking."
         action={
-          <Button
-            variant="add"
-            type="button"
-            onClick={() => setShowCreateModal(true)}
-            leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}
-          >
-            New Lead
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <ExportDownloadMenu disabled={!filtered.length} onExport={handleExport} />
+            <Button
+              variant="add"
+              type="button"
+              onClick={() => setShowCreateModal(true)}
+              leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}
+            >
+              New Lead
+            </Button>
+          </div>
         }
       />
 
@@ -215,8 +252,9 @@ export default function Leads() {
         ))}
       </div>
 
-      <div className="ui-card p-4">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+      <ListPageCard>
+        <ListPageCardBody>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <button type="button" onClick={() => setShowAdvanced(!showAdvanced)} className="inline-flex items-center gap-2 text-[var(--text-sm)] font-semibold text-[var(--color-text-secondary)]"><Filter className="h-4 w-4" /> Advanced Filters</button>
           <div className="flex gap-1 rounded-lg bg-[var(--color-surface-muted)] p-0.5">
             <button type="button" onClick={() => setView("table")} className={`inline-flex items-center gap-1 rounded-md px-3 py-1.5 text-xs font-semibold ${view === "table" ? "bg-[var(--color-surface)] text-[var(--color-primary)] shadow-sm" : "text-[var(--color-text-muted)]"}`}><List className="h-3.5 w-3.5" /> Table View</button>
@@ -257,8 +295,8 @@ export default function Leads() {
             {KANBAN_COLUMNS.map((col) => (
               <div key={col.id} className={`min-w-[220px] rounded-xl border p-3 ${col.color}`}>
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs font-bold uppercase tracking-wider text-slate-700">{col.label}</p>
-                  <span className="rounded-full bg-white/80 px-2 py-0.5 text-[10px] font-extrabold text-slate-700 shadow-xs">
+                  <p className="text-xs font-bold uppercase tracking-wider text-[var(--color-text)]">{col.label}</p>
+                  <span className="rounded-full bg-[var(--color-surface)]/80 px-2 py-0.5 text-[10px] font-extrabold text-[var(--color-text)] shadow-xs">
                     {filtered.filter((r) => String(r.status || "").toLowerCase() === col.id.toLowerCase() || (col.id === "converted" && (r.status === "converted" || r.status === "won"))).length}
                   </span>
                 </div>
@@ -268,12 +306,12 @@ export default function Leads() {
                     .map((r) => {
                       const isQualified = ["qualified", "converted", "won"].includes(String(r.status || "").toLowerCase());
                       return (
-                        <div key={r.lead_id || r.id} className="rounded-xl border border-slate-200/80 bg-white p-3.5 shadow-sm transition-all hover:shadow-md">
+                        <div key={r.lead_id || r.id} className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3.5 shadow-sm transition-all hover:shadow-md">
                           <div className="flex items-start justify-between gap-1">
-                            <p className="text-sm font-bold text-slate-900 line-clamp-1">{r.customer_name}</p>
+                            <p className="text-sm font-bold text-[var(--color-text)] line-clamp-1">{r.customer_name}</p>
                             <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold capitalize ${priorityColor(r.priority)}`}>{r.priority}</span>
                           </div>
-                          <p className="text-xs text-slate-500 font-medium">{r.company}</p>
+                          <p className="text-xs text-[var(--color-text-muted)] font-medium">{r.company}</p>
                           {(r.opportunity_value || r.estimated_value) && (
                             <p className="mt-1.5 text-xs font-black text-[var(--color-success)]">{formatInr(r.opportunity_value || r.estimated_value)}</p>
                           )}
@@ -284,12 +322,12 @@ export default function Leads() {
                             {isQualified ? (
                               <Link
                                 to={`/sales/quotations?create=true&customer_name=${encodeURIComponent(r.customer_name || r.company || "")}`}
-                                className="text-[11px] font-bold text-slate-600 hover:text-[var(--color-success)] hover:underline"
+                                className="text-[11px] font-bold text-[var(--color-text-secondary)] hover:text-[var(--color-success)] hover:underline"
                               >
                                 + Quote
                               </Link>
                             ) : (
-                              <span className="text-[10px] font-semibold text-slate-400 cursor-not-allowed">
+                              <span className="text-[10px] font-semibold text-[var(--color-text-faint)] cursor-not-allowed">
                                 Unqualified
                               </span>
                             )}
@@ -302,10 +340,11 @@ export default function Leads() {
             ))}
           </div>
         )}
-      </div>
+        </ListPageCardBody>
+      </ListPageCard>
 
       {selected && <LeadDetailModal lead={selected} onClose={() => setSelected(null)} onStatusChange={handleStatus} />}
       <CreateLeadModal isOpen={showCreateModal} onClose={() => setShowCreateModal(false)} onSuccess={load} />
-    </div>
+    </ListPageShell>
   );
 }

@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Activity, ChevronLeft, ChevronRight, Cpu, Download, FileSpreadsheet, FileText, Grid3X3, LayoutList, Plus, Printer, Thermometer, Upload, Wrench, Zap } from "lucide-react";
+import { Activity, ChevronLeft, ChevronRight, Cpu, FileText, Grid3X3, LayoutList, Plus, Printer, Thermometer, Upload, Wrench, Zap } from "lucide-react";
 
 import DataTable from "../../components/common/DataTable";
+import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
 import Loader from "../../components/common/Loader";
+import PageHeader from "../../components/common/PageHeader";
+import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
 import Button from "../../components/common/Button";
 import { SearchBar } from "../../components/common/SearchFilter";
 import MachineDetailModal from "../../components/production/MachineDetailModal";
@@ -32,10 +35,8 @@ import {
   normalizeStatus,
   statusLabel,
 } from "../../data/machinesMasterData";
-import { exportToExcel, exportToPdf } from "../../utils/exportUtils";
+import { runListExport } from "../../utils/listExport";
 
-const PAGE_BG = "var(--color-bg)";
-const YELLOW = "var(--color-cta)";
 const PAGE_SIZES = [20, 50, 100];
 
 function SummaryCard({ label, value, icon: Icon, color, sub }) {
@@ -51,7 +52,7 @@ function SummaryCard({ label, value, icon: Icon, color, sub }) {
       </div>
       <div className="mt-2">
         <p className="truncate text-xl font-bold tabular-nums text-[var(--color-text)] leading-none sm:text-2xl">{value}</p>
-        {sub && <p className="mt-1 text-[10px] text-slate-400">{sub}</p>}
+        {sub && <p className="mt-1 text-[10px] text-[var(--color-text-faint)]">{sub}</p>}
       </div>
     </div>
   );
@@ -77,56 +78,56 @@ function MachineCard({ machine, onClick }) {
     <button
       type="button"
       onClick={() => onClick(machine)}
-      className="w-full rounded-2xl border border-slate-200 bg-white p-5 text-left shadow-sm transition-all hover:border-[#2563EB]/40 hover:shadow-md"
+      className="w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 text-left shadow-sm transition-all hover:border-[var(--color-action-blue)]/40 hover:shadow-md"
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <h3 className="truncate text-base font-bold text-slate-900">{machine.name}</h3>
-          <p className="text-xs text-slate-500">{machine.code}</p>
+          <h3 className="truncate text-base font-bold text-[var(--color-text)]">{machine.name}</h3>
+          <p className="text-xs text-[var(--color-text-muted)]">{machine.code}</p>
         </div>
         <StatusBadge status={s} />
       </div>
       <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
         <div>
-          <p className="text-slate-400">Department</p>
-          <p className="font-medium text-slate-700">{machine.department || "—"}</p>
+          <p className="text-[var(--color-text-faint)]">Department</p>
+          <p className="font-medium text-[var(--color-text-secondary)]">{machine.department || "—"}</p>
         </div>
         <div>
-          <p className="text-slate-400">Line</p>
-          <p className="font-medium text-slate-700">{machine.production_line || "—"}</p>
+          <p className="text-[var(--color-text-faint)]">Line</p>
+          <p className="font-medium text-[var(--color-text-secondary)]">{machine.production_line || "—"}</p>
         </div>
         <div>
-          <p className="text-slate-400">Operator</p>
-          <p className="font-medium text-slate-700 truncate">{machine.assigned_operator || "—"}</p>
+          <p className="text-[var(--color-text-faint)]">Operator</p>
+          <p className="font-medium text-[var(--color-text-secondary)] truncate">{machine.assigned_operator || "—"}</p>
         </div>
         <div>
-          <p className="text-slate-400">Current Job</p>
-          <p className="font-medium text-[#2563EB] truncate">{machine.current_work_order || "—"}</p>
+          <p className="text-[var(--color-text-faint)]">Current Job</p>
+          <p className="font-medium text-[var(--color-action-blue)] truncate">{machine.current_work_order || "—"}</p>
         </div>
         <div>
-          <p className="text-slate-400">Health</p>
-          <p className="font-medium text-slate-700">{machine.health_score != null ? `${machine.health_score}%` : "—"}</p>
+          <p className="text-[var(--color-text-faint)]">Health</p>
+          <p className="font-medium text-[var(--color-text-secondary)]">{machine.health_score != null ? `${machine.health_score}%` : "—"}</p>
         </div>
         <div>
-          <p className="text-slate-400">Efficiency</p>
-          <p className="font-medium text-slate-700">{machine.efficiency_pct != null ? `${machine.efficiency_pct}%` : "—"}</p>
+          <p className="text-[var(--color-text-faint)]">Efficiency</p>
+          <p className="font-medium text-[var(--color-text-secondary)]">{machine.efficiency_pct != null ? `${machine.efficiency_pct}%` : "—"}</p>
         </div>
         <div>
-          <p className="text-slate-400">Today's Output</p>
-          <p className="font-bold text-slate-900">{machine.todays_output ?? 0}</p>
+          <p className="text-[var(--color-text-faint)]">Today's Output</p>
+          <p className="font-bold text-[var(--color-text)]">{machine.todays_output ?? 0}</p>
         </div>
         <div>
-          <p className="text-slate-400">Temperature</p>
-          <p className="font-medium text-slate-700 flex items-center gap-1">
+          <p className="text-[var(--color-text-faint)]">Temperature</p>
+          <p className="font-medium text-[var(--color-text-secondary)] flex items-center gap-1">
             {machine.temperature_c != null ? (
               <><Thermometer className="h-3 w-3" />{machine.temperature_c}°C</>
             ) : "—"}
           </p>
         </div>
       </div>
-      <div className="mt-3 flex items-center gap-2 border-t border-slate-100 pt-3">
+      <div className="mt-3 flex items-center gap-2 border-t border-[var(--color-border-soft)] pt-3">
         <div className={`h-2 w-2 rounded-full ${c.ring} ${s === "running" ? "animate-pulse" : ""}`} />
-        <span className="text-[10px] text-slate-500">Last maint: {machine.last_maintenance_date || "—"}</span>
+        <span className="text-[10px] text-[var(--color-text-muted)]">Last maint: {machine.last_maintenance_date || "—"}</span>
       </div>
     </button>
   );
@@ -247,16 +248,15 @@ export default function MachineStatus() {
     { key: "todays_output", label: "Today's Output" },
   ];
 
-  const handleExportExcel = () => {
+  const handleExport = (format) => {
     const rows = filteredMachines.map((m) => ({ ...m, display_status: normalizeStatus(m) }));
-    exportToExcel(rows, exportColumns, "machines");
-    addToast("Exported to Excel");
-  };
-
-  const handleExportPdf = () => {
-    const rows = filteredMachines.map((m) => ({ ...m, display_status: normalizeStatus(m) }));
-    exportToPdf(rows, exportColumns, "Machine Master", "machines");
-    addToast("Exported to PDF");
+    runListExport(format, {
+      data: rows,
+      columns: exportColumns,
+      filename: "machines",
+      title: "Machine Master",
+    });
+    addToast(format === "pdf" ? "Exported to PDF" : "Exported to Excel", "success");
   };
 
   const handleDownloadTemplate = () => {
@@ -313,7 +313,7 @@ export default function MachineStatus() {
       label: "Actions",
       sortable: false,
       render: (r) => (
-        <button type="button" onClick={() => openMachine(r)} className="text-xs font-semibold text-[#2563EB] hover:underline">
+        <button type="button" onClick={() => openMachine(r)} className="text-xs font-semibold text-[var(--color-action-blue)] hover:underline">
           View Dashboard
         </button>
       ),
@@ -325,24 +325,22 @@ export default function MachineStatus() {
   }
 
   return (
-    <div className="min-h-full pb-8" style={{ background: PAGE_BG }}>
-      <div className="mx-auto max-w-[1400px] space-y-5 px-4 py-5 sm:px-6 lg:px-8">
-        <div>
-          <p className="mt-0.5 text-xs text-slate-500">Digital profiles · Live status · OEE · Production integration</p>
-        </div>
+    <ListPageShell>
+      <PageHeader subtitle="Digital profiles · Live status · OEE · Production integration" />
 
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8">
-          <SummaryCard label="Total Machines" value={summary.total_machines} icon={Cpu} color="bg-slate-600" />
+          <SummaryCard label="Total Machines" value={summary.total_machines} icon={Cpu} color="bg-[var(--color-text-muted)]" />
           <SummaryCard label="Running" value={summary.running} icon={Zap} color="bg-green-600" />
           <SummaryCard label="Idle" value={summary.idle} icon={Activity} color="bg-yellow-500" />
           <SummaryCard label="Maintenance" value={summary.maintenance} icon={Wrench} color="bg-[var(--color-primary)]" />
           <SummaryCard label="Breakdown" value={summary.breakdown} icon={Activity} color="bg-red-600" />
-          <SummaryCard label="Offline" value={summary.offline} icon={Cpu} color="bg-slate-800" />
+          <SummaryCard label="Offline" value={summary.offline} icon={Cpu} color="bg-[var(--color-text)]" />
           <SummaryCard label="Utilization" value={`${summary.utilization_pct}%`} icon={Activity} color="bg-indigo-600" />
           <SummaryCard label="Today's Production" value={summary.todays_production?.toLocaleString?.() ?? summary.todays_production} icon={FileText} color="bg-teal-600" />
         </div>
 
-        <div className="ui-card p-4 sm:p-5">
+        <ListPageCard>
+          <ListPageCardBody>
           <div className="mb-4 flex flex-wrap items-center gap-2.5">
             <SearchBar
               value={filters.name}
@@ -353,7 +351,7 @@ export default function MachineStatus() {
             <select
               value={filters.status}
               onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value }))}
-              className="rounded-lg border border-[#e4e4ea] bg-[#f3f3f6] px-3 py-2 text-[13px] font-semibold text-[#1a1a1f]"
+              className="ui-select w-auto min-w-[140px]"
             >
               <option value="">All Status</option>
               {MACHINE_STATUSES.map((s) => (
@@ -363,26 +361,16 @@ export default function MachineStatus() {
             <button
               type="button"
               onClick={() => setShowAdvanced((v) => !v)}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-[#e4e4ea] bg-[#f3f3f6] px-3.5 py-2.5 text-[13px] font-semibold text-[#1a1a1f] hover:bg-[#ececf0]"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-3.5 py-2.5 text-[13px] font-semibold text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]"
             >
               {showAdvanced ? "Hide Filters" : "More Filters"}
             </button>
             {!operatorMode && (
               <>
-                <button
-                  type="button"
-                  onClick={handleDownloadTemplate}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-[#e4e4ea] bg-[#f3f3f6] px-3.5 py-2.5 text-[13px] font-semibold text-[#1a1a1f] hover:bg-[#ececf0]"
-                >
+                <Button type="button" variant="secondary" onClick={handleDownloadTemplate}>
                   <Upload className="h-4 w-4" /> Import
-                </button>
-                <button
-                  type="button"
-                  onClick={handleExportExcel}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-[#e4e4ea] bg-[#f3f3f6] px-3.5 py-2.5 text-[13px] font-semibold text-[#1a1a1f] hover:bg-[#ececf0]"
-                >
-                  <FileSpreadsheet className="h-4 w-4" /> Export
-                </button>
+                </Button>
+                <ExportDownloadMenu disabled={!filteredMachines.length} onExport={handleExport} />
               </>
             )}
             {!operatorMode && (
@@ -390,11 +378,11 @@ export default function MachineStatus() {
                 New Machine
               </Button>
             )}
-            <div className="ml-auto flex rounded-lg border border-slate-200 p-0.5">
+            <div className="ml-auto flex rounded-lg border border-[var(--color-border)] p-0.5">
               <button
                 type="button"
                 onClick={() => setViewMode("grid")}
-                className={`rounded-md p-2 ${viewMode === "grid" ? "bg-[var(--color-primary)] text-white" : "text-slate-500"}`}
+                className={`rounded-md p-2 ${viewMode === "grid" ? "bg-[var(--color-primary)] text-white" : "text-[var(--color-text-muted)]"}`}
                 title="Grid view"
               >
                 <Grid3X3 className="h-4 w-4" />
@@ -402,7 +390,7 @@ export default function MachineStatus() {
               <button
                 type="button"
                 onClick={() => setViewMode("list")}
-                className={`rounded-md p-2 ${viewMode === "list" ? "bg-[var(--color-primary)] text-white" : "text-slate-500"}`}
+                className={`rounded-md p-2 ${viewMode === "list" ? "bg-[var(--color-primary)] text-white" : "text-[var(--color-text-muted)]"}`}
                 title="List view"
               >
                 <LayoutList className="h-4 w-4" />
@@ -412,21 +400,21 @@ export default function MachineStatus() {
 
           {showAdvanced && (
             <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <input placeholder="Machine Code" value={filters.code} onChange={(e) => setFilters((f) => ({ ...f, code: e.target.value }))} className="rounded-lg border border-slate-200 px-3 py-2 text-sm" />
-              <select value={filters.department} onChange={(e) => setFilters((f) => ({ ...f, department: e.target.value }))} className="rounded-lg border border-slate-200 px-3 py-2 text-sm">
+              <input placeholder="Machine Code" value={filters.code} onChange={(e) => setFilters((f) => ({ ...f, code: e.target.value }))} className="ui-input" />
+              <select value={filters.department} onChange={(e) => setFilters((f) => ({ ...f, department: e.target.value }))} className="ui-select">
                 <option value="">All Departments</option>
                 {DEPARTMENTS.map((d) => <option key={d} value={d}>{d}</option>)}
               </select>
-              <select value={filters.production_line} onChange={(e) => setFilters((f) => ({ ...f, production_line: e.target.value }))} className="rounded-lg border border-slate-200 px-3 py-2 text-sm">
+              <select value={filters.production_line} onChange={(e) => setFilters((f) => ({ ...f, production_line: e.target.value }))} className="ui-select">
                 <option value="">All Lines</option>
                 {PRODUCTION_LINES.map((l) => <option key={l} value={l}>{l}</option>)}
               </select>
-              <select value={filters.machine_type} onChange={(e) => setFilters((f) => ({ ...f, machine_type: e.target.value }))} className="rounded-lg border border-slate-200 px-3 py-2 text-sm">
+              <select value={filters.machine_type} onChange={(e) => setFilters((f) => ({ ...f, machine_type: e.target.value }))} className="ui-select">
                 <option value="">All Types</option>
                 {MACHINE_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
               </select>
-              <input placeholder="Operator" value={filters.operator} onChange={(e) => setFilters((f) => ({ ...f, operator: e.target.value }))} className="rounded-lg border border-slate-200 px-3 py-2 text-sm" />
-              <select value={filters.shift} onChange={(e) => setFilters((f) => ({ ...f, shift: e.target.value }))} className="rounded-lg border border-slate-200 px-3 py-2 text-sm">
+              <input placeholder="Operator" value={filters.operator} onChange={(e) => setFilters((f) => ({ ...f, operator: e.target.value }))} className="ui-input" />
+              <select value={filters.shift} onChange={(e) => setFilters((f) => ({ ...f, shift: e.target.value }))} className="ui-select">
                 <option value="">All Shifts</option>
                 {SHIFTS.map((s) => {
                   const id = typeof s === "object" ? s.id : s;
@@ -434,23 +422,23 @@ export default function MachineStatus() {
                   return <option key={id} value={id}>{label}</option>;
                 })}
               </select>
-              <select value={filters.work_center} onChange={(e) => setFilters((f) => ({ ...f, work_center: e.target.value }))} className="rounded-lg border border-slate-200 px-3 py-2 text-sm">
+              <select value={filters.work_center} onChange={(e) => setFilters((f) => ({ ...f, work_center: e.target.value }))} className="ui-select">
                 <option value="">All Work Centers</option>
                 {WORK_CENTERS.map((w) => <option key={w} value={w}>{w}</option>)}
               </select>
-              <button type="button" onClick={() => setFilters(defaultFilters)} className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50">
+              <button type="button" onClick={() => setFilters(defaultFilters)} className="rounded-lg border border-[var(--color-border)] px-3 py-2 text-sm font-semibold text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-muted)]">
                 Clear Filters
               </button>
             </div>
           )}
 
           {filteredMachines.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/60 py-16 text-center">
-              <Cpu className="mx-auto h-12 w-12 text-slate-300" />
+            <div className="rounded-xl border border-dashed border-[var(--color-border)] bg-[var(--color-surface-muted)]/60 py-16 text-center">
+              <Cpu className="mx-auto h-12 w-12 text-[var(--color-text-faint)]" />
               {machines.length === 0 ? (
                 <>
-                  <p className="mt-4 text-sm font-semibold text-slate-700">No machines found.</p>
-                  <p className="mt-1 text-sm text-slate-500">Add a machine to get started.</p>
+                  <p className="mt-4 text-sm font-semibold text-[var(--color-text-secondary)]">No machines found.</p>
+                  <p className="mt-1 text-sm text-[var(--color-text-muted)]">Add a machine to get started.</p>
                   {!operatorMode && (
                     <Button variant="add" to="/production/machines/create" className="mt-4" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
                       New Machine
@@ -459,14 +447,14 @@ export default function MachineStatus() {
                 </>
               ) : (
                 <>
-                  <p className="mt-4 text-sm font-medium text-slate-600">
+                  <p className="mt-4 text-sm font-medium text-[var(--color-text-secondary)]">
                     {hasActiveFilters ? "No machines match your filters." : "No machines found."}
                   </p>
                   {hasActiveFilters && (
                     <button
                       type="button"
                       onClick={() => setFilters(defaultFilters)}
-                      className="mt-2 text-sm font-semibold text-[#2563EB] hover:underline"
+                      className="mt-2 text-sm font-semibold text-[var(--color-action-blue)] hover:underline"
                     >
                       Clear filters
                     </button>
@@ -476,7 +464,7 @@ export default function MachineStatus() {
             </div>
           ) : viewMode === "list" ? (
             <>
-              <div className="overflow-hidden rounded-lg border border-[#ececf0]">
+              <div className="overflow-hidden rounded-lg border border-[var(--color-border-soft)]">
                 <DataTable columns={columns} data={paginatedMachines} showSearch={false} pagination={false} />
               </div>
               <div className="mt-4 ui-pagination justify-between">
@@ -530,12 +518,12 @@ export default function MachineStatus() {
               ))}
             </div>
           )}
-        </div>
-      </div>
+        </ListPageCardBody>
+      </ListPageCard>
 
       {filteredMachines.length > 0 && (
-        <div className="flex flex-wrap gap-2 text-xs text-slate-500 px-4 sm:px-6 lg:px-8">
-          <button type="button" onClick={handleExportPdf} className="inline-flex items-center gap-1 font-semibold text-slate-600 hover:text-[#2563EB]">
+        <div className="flex flex-wrap gap-2 text-xs text-[var(--color-text-muted)]">
+          <button type="button" onClick={() => handleExport("pdf")} className="inline-flex items-center gap-1 font-semibold text-[var(--color-text-secondary)] hover:text-[var(--color-action-blue)]">
             <Printer className="h-3 w-3" /> Print Report
           </button>
         </div>
@@ -550,6 +538,6 @@ export default function MachineStatus() {
           operatorMode={operatorMode}
         />
       )}
-    </div>
+    </ListPageShell>
   );
 }

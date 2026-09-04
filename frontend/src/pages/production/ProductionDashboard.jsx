@@ -162,7 +162,7 @@ export default function ProductionDashboard() {
           ]}
         />
         <section className="ui-card p-4">
-          <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-800">
+          <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-[var(--color-text)]">
             <AlertTriangle className="h-4 w-4 text-amber-500" />
             Quick Module Access
           </h3>
@@ -177,29 +177,29 @@ export default function ProductionDashboard() {
       <div className="grid gap-4 lg:grid-cols-2">
         <section className="ui-card p-4">
           <div className="mb-3 flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-slate-800">Running Jobs</h3>
+            <h3 className="text-sm font-semibold text-[var(--color-text)]">Running Jobs</h3>
             <Link to="/production/work-orders" className="text-xs font-semibold text-[var(--color-success)] hover:underline">
               View all
             </Link>
           </div>
           {(hub.recent_jobs || []).length === 0 ? (
-            <p className="py-8 text-center text-sm text-slate-500">No running jobs right now.</p>
+            <p className="py-8 text-center text-sm text-[var(--color-text-muted)]">No running jobs right now.</p>
           ) : (
             <div className="space-y-2">
               {(hub.recent_jobs || []).map((j) => (
                 <div
                   key={j.work_order_number}
-                  className="flex items-center justify-between rounded-lg border border-slate-100 px-3 py-2.5"
+                  className="flex items-center justify-between rounded-lg border border-[var(--color-border-soft)] px-3 py-2.5"
                 >
                   <div>
-                    <p className="text-sm font-semibold text-slate-800">{j.work_order_number}</p>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-sm font-semibold text-[var(--color-text)]">{j.work_order_number}</p>
+                    <p className="text-xs text-[var(--color-text-muted)]">
                       {j.product} · {j.machine}
                     </p>
                   </div>
                   <div className="text-right">
                     <p className="text-xs font-semibold tabular-nums text-[var(--color-success)]">{j.progress_pct}%</p>
-                    <p className="text-[10px] capitalize text-slate-500">{j.status}</p>
+                    <p className="text-[10px] capitalize text-[var(--color-text-muted)]">{j.status}</p>
                   </div>
                 </div>
               ))}
@@ -210,13 +210,13 @@ export default function ProductionDashboard() {
         <MachineControlCard onRefreshData={() => load(true)} />
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Module integration flow</p>
+      <div className="rounded-xl border border-[var(--color-border-soft)] bg-[var(--color-surface-muted)] px-4 py-3">
+        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">Module integration flow</p>
         <div className="flex flex-wrap items-center gap-2">
           {HUB_FLOW.map((step, i) => (
-            <span key={step} className="flex items-center gap-2 text-xs text-slate-600">
-              <span className="rounded-md bg-white px-2 py-1 font-semibold text-[var(--color-success)] ring-1 ring-slate-200">{step}</span>
-              {i < HUB_FLOW.length - 1 ? <ArrowRight className="h-3 w-3 text-slate-300" aria-hidden /> : null}
+            <span key={step} className="flex items-center gap-2 text-xs text-[var(--color-text-secondary)]">
+              <span className="rounded-md bg-[var(--color-surface)] px-2 py-1 font-semibold text-[var(--color-success)] ring-1 ring-[var(--color-border)]">{step}</span>
+              {i < HUB_FLOW.length - 1 ? <ArrowRight className="h-3 w-3 text-[var(--color-text-faint)]" aria-hidden /> : null}
             </span>
           ))}
         </div>

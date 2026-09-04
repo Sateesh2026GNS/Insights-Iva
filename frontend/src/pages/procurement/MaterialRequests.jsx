@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import {
   ArrowRightCircle,
   CheckCircle2,
   ClipboardList,
   Clock,
-  Download,
   Eye,
   Filter,
   Plus,
@@ -16,6 +15,8 @@ import {
 } from "lucide-react";
 import KpiCard from "../../components/common/KpiCard";
 import PageHeader from "../../components/common/PageHeader";
+import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
+import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
 
 import DataTable from "../../components/common/DataTable";
 import Loader from "../../components/common/Loader";
@@ -37,7 +38,7 @@ import {
   priorityColor,
   statusColor,
 } from "../../data/procurementMasterData";
-import { exportToExcel } from "../../utils/exportUtils";
+import { runListExport } from "../../utils/listExport";
 import useManufacturingRefresh from "../../hooks/useManufacturingRefresh";
 import {
   MANUFACTURING_EVENTS,
@@ -120,22 +121,22 @@ function ConvertToPOModal({ row, onClose, onConverted }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center">
-      <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
-        <h2 className="text-lg font-bold text-slate-900">Convert to Purchase Order</h2>
-        <p className="text-sm text-slate-500">
+    <div className="ui-modal-backdrop">
+      <div className="ui-modal w-full max-w-lg">
+        <h2 className="text-lg font-bold text-[var(--color-text)]">Convert to Purchase Order</h2>
+        <p className="text-sm text-[var(--color-text-muted)]">
           {row.mr_number} · {detail?.line_items?.length ?? row.item_count ?? 0} line(s)
         </p>
         {loading ? (
-          <p className="mt-4 text-sm text-slate-500">Loading…</p>
+          <p className="mt-4 text-sm text-[var(--color-text-muted)]">Loading…</p>
         ) : (
           <div className="mt-4 space-y-3">
-            <label className="block text-sm font-medium text-slate-700">
-              Supplier *
+            <div>
+              <label className="ui-label">Supplier *</label>
               <select
                 value={supplierId}
                 onChange={(e) => setSupplierId(e.target.value)}
-                className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+                className="ui-select w-full"
               >
                 <option value="">Select supplier</option>
                 {vendors.map((v) => (
@@ -144,29 +145,29 @@ function ConvertToPOModal({ row, onClose, onConverted }) {
                   </option>
                 ))}
               </select>
-            </label>
-            <label className="block text-sm font-medium text-slate-700">
-              Expected date
+            </div>
+            <div>
+              <label className="ui-label">Expected date</label>
               <input
                 type="date"
                 value={expectedDate}
                 onChange={(e) => setExpectedDate(e.target.value)}
-                className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+                className="ui-input w-full"
               />
-            </label>
-            <label className="block text-sm font-medium text-slate-700">
-              Default unit price
+            </div>
+            <div>
+              <label className="ui-label">Default unit price</label>
               <input
                 type="number"
                 min="0"
                 step="0.01"
                 value={unitPrice}
                 onChange={(e) => setUnitPrice(e.target.value)}
-                className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+                className="ui-input w-full"
               />
-            </label>
+            </div>
             {(detail?.line_items || []).length > 0 && (
-              <ul className="max-h-32 overflow-auto rounded-lg border bg-slate-50 px-3 py-2 text-xs text-slate-600">
+              <ul className="max-h-32 overflow-auto rounded-lg border border-[var(--color-border-soft)] bg-[var(--color-surface-muted)] px-3 py-2 text-xs text-[var(--color-text-secondary)]">
                 {detail.line_items.map((l) => (
                   <li key={l.id}>
                     Item #{l.item_id} · qty {l.quantity}
@@ -177,7 +178,7 @@ function ConvertToPOModal({ row, onClose, onConverted }) {
           </div>
         )}
         <div className="mt-6 flex justify-end gap-2">
-          <Button type="button" variant="secondary" onClick={onClose}>
+          <Button type="button" variant="cancel" onClick={onClose}>
             Cancel
           </Button>
           <Button
@@ -224,65 +225,62 @@ function MRDetailModal({ row, onClose, onConvert, onApproved }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center">
-      <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
-        <h2 className="text-lg font-bold text-slate-900">{row.mr_number}</h2>
-        <p className="text-sm text-slate-500">
+    <div className="ui-modal-backdrop">
+      <div className="ui-modal w-full max-w-lg">
+        <h2 className="text-lg font-bold text-[var(--color-text)]">{row.mr_number}</h2>
+        <p className="text-sm text-[var(--color-text-muted)]">
           {row.department} · {row.requested_by}
         </p>
         <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
           <div>
-            <p className="text-xs text-slate-400">Priority</p>
+            <p className="text-xs text-[var(--color-text-muted)]">Priority</p>
             <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${priorityColor(row.priority)}`}>
               {row.priority}
             </span>
           </div>
           <div>
-            <p className="text-xs text-slate-400">Items</p>
-            <p className="font-medium">{row.item_count}</p>
+            <p className="text-xs text-[var(--color-text-muted)]">Items</p>
+            <p className="font-medium text-[var(--color-text)]">{row.item_count}</p>
           </div>
           <div>
-            <p className="text-xs text-slate-400">Required Date</p>
-            <p className="font-medium">{row.required_date || "—"}</p>
+            <p className="text-xs text-[var(--color-text-muted)]">Required Date</p>
+            <p className="font-medium text-[var(--color-text)]">{row.required_date || "—"}</p>
           </div>
           <div>
-            <p className="text-xs text-slate-400">Approval</p>
+            <p className="text-xs text-[var(--color-text-muted)]">Approval</p>
             <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${statusColor(row.approval_status)}`}>
               {row.approval_status}
             </span>
           </div>
         </div>
         {canApprove ? (
-          <p className="mt-3 text-xs text-amber-700">
+          <p className="mt-3 text-xs text-[var(--kpi-warning)]">
             Purchase Manager must approve this requisition before creating a Purchase Order.
           </p>
         ) : null}
         <div className="mt-6 flex flex-wrap justify-end gap-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg border px-4 py-2 text-sm font-semibold text-slate-700"
-          >
+          <Button type="button" variant="cancel" onClick={onClose}>
             Close
-          </button>
+          </Button>
           {canApprove && (
             <>
-              <button
+              <Button
                 type="button"
+                variant="secondary"
                 disabled={approving}
                 onClick={() => handleApprove(false)}
-                className="rounded-lg border border-red-200 px-4 py-2 text-sm font-semibold text-red-700 disabled:opacity-50"
+                className="!border-[var(--color-danger-soft)] !text-[var(--color-danger)]"
               >
                 Reject
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="primary"
                 disabled={approving}
                 onClick={() => handleApprove(true)}
-                className="rounded-lg bg-[var(--color-success)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
               >
                 {approving ? "Saving…" : "Approve PR"}
-              </button>
+              </Button>
             </>
           )}
           {canConvert && (
@@ -290,12 +288,9 @@ function MRDetailModal({ row, onClose, onConvert, onApproved }) {
               Convert to PO
             </Button>
           )}
-          <Link
-            to="/procurement/purchase-orders"
-            className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700"
-          >
+          <Button variant="secondary" to="/procurement/purchase-orders">
             Purchase Orders
-          </Link>
+          </Button>
         </div>
       </div>
     </div>
@@ -488,29 +483,27 @@ export default function MaterialRequests() {
 
   if (loading) return <Loader label="Loading material requests..." />;
 
+  const handleExport = (format) => {
+    runListExport(format, {
+      data: filtered,
+      columns,
+      filename: "material-requests",
+      title: "Material Requests",
+    });
+    addToast(format === "pdf" ? "Exported to PDF" : "Exported to Excel", "success");
+  };
+
   return (
-    <div className="space-y-5 pb-4">
+    <ListPageShell>
       <PageHeader
         subtitle="MRP shortages become purchase requests, then purchase orders."
         action={
-          <>
+          <div className="flex flex-wrap items-center gap-2">
+            <ExportDownloadMenu disabled={!filtered.length} onExport={handleExport} />
             <Button variant="add" to="/procurement/material-requests/create" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
-            New Material Request
-          </Button>
-          <Button
-            variant="secondary"
-            type="button"
-            onClick={() =>
-              exportToExcel(
-                filtered,
-                columns.filter((c) => !c.render),
-                "material-requests"
-              )
-            }
-          >
-            <Download className="h-4 w-4" /> Export
-          </Button>
-          </>
+              New Material Request
+            </Button>
+          </div>
         }
       />
 
@@ -559,11 +552,12 @@ export default function MaterialRequests() {
         />
       </div>
 
-      <div ref={tableRef} className="ui-card p-4">
+      <ListPageCard>
+        <ListPageCardBody ref={tableRef}>
         <button
           type="button"
           onClick={() => setShowAdvanced(!showAdvanced)}
-          className="mb-3 inline-flex items-center gap-2 text-[var(--text-sm)] font-semibold text-[var(--color-text-secondary)]"
+          className="mb-3 inline-flex items-center gap-2 text-[13px] font-semibold text-[var(--color-text-secondary)]"
         >
           <Filter className="h-4 w-4" /> Advanced Filters
         </button>
@@ -572,7 +566,7 @@ export default function MaterialRequests() {
             <select
               value={filters.department}
               onChange={(e) => setFilters({ ...filters, department: e.target.value })}
-              className="ui-input"
+              className="ui-select w-full"
             >
               <option value="">All Departments</option>
               {MR_DEPARTMENTS.map((d) => (
@@ -584,7 +578,7 @@ export default function MaterialRequests() {
             <select
               value={filters.priority}
               onChange={(e) => setFilters({ ...filters, priority: e.target.value })}
-              className="ui-input"
+              className="ui-select w-full"
             >
               <option value="">All Priorities</option>
               {MR_PRIORITIES.map((p) => (
@@ -596,7 +590,7 @@ export default function MaterialRequests() {
             <select
               value={filters.status}
               onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-              className="ui-input"
+              className="ui-select w-full"
             >
               <option value="">All Status</option>
               {["pending", "approved", "rejected", "converted"].map((s) => (
@@ -609,7 +603,7 @@ export default function MaterialRequests() {
               value={filters.requested_by}
               onChange={(e) => setFilters({ ...filters, requested_by: e.target.value })}
               placeholder="Requested by"
-              className="ui-input"
+              className="ui-input w-full"
             />
           </div>
         )}
@@ -619,7 +613,8 @@ export default function MaterialRequests() {
           searchPlaceholder="Search"
           searchKeys={["mr_number", "department", "requested_by"]}
         />
-      </div>
+        </ListPageCardBody>
+      </ListPageCard>
 
       {selected && (
         <MRDetailModal
@@ -631,13 +626,15 @@ export default function MaterialRequests() {
             setConvertRow(r);
           }}
         />
-      )}      {convertRow && (
+      )}
+
+      {convertRow && (
         <ConvertToPOModal
           row={convertRow}
           onClose={() => setConvertRow(null)}
           onConverted={() => load()}
         />
       )}
-    </div>
+    </ListPageShell>
   );
 }

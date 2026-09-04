@@ -9,9 +9,7 @@ import {
   ChevronRight,
   ClipboardCheck,
   ClipboardList,
-  Download,
   Eye,
-  FileSpreadsheet,
   FileText,
   LayoutDashboard,
   MoreVertical,
@@ -23,6 +21,8 @@ import {
 
 import Loader from "../../components/common/Loader";
 import Button from "../../components/common/Button";
+import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
+import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
 import { SearchBar } from "../../components/common/SearchFilter";
 import PageHeader from "../../components/common/PageHeader";
 import MaintenanceErrorState from "../../components/maintenance/MaintenanceErrorState";
@@ -38,8 +38,20 @@ import {
   historyStatusLabel,
   mntStatusColor,
 } from "../../data/maintenanceMasterData";
+import { exportToExcel, exportToPdf } from "../../utils/exportUtils";
 
 const PAGE_SIZE = 8;
+
+const HISTORY_EXPORT_COLUMNS = [
+  { key: "date", label: "Date & Time" },
+  { key: "machine", label: "Machine" },
+  { key: "activity", label: "Activity Type" },
+  { key: "description", label: "Description" },
+  { key: "performed_by", label: "Performed By" },
+  { key: "status", label: "Status" },
+  { key: "duration", label: "Duration" },
+  { key: "downtime", label: "Downtime" },
+];
 
 const KPI_TONES = {
   violet: {
@@ -68,12 +80,11 @@ const ACTIVITY_VISUALS = {
   parts: { icon: Wrench, tone: "violet", text: "text-[var(--kpi-violet)]" },
 };
 
-const filterSelectClass =
-  "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-[13px] text-slate-700 focus:border-[var(--color-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]";
+const filterSelectClass = "ui-select w-full";
 
 function HistoryKpiCard({ label, value, icon: Icon, tone, trend }) {
   const styles = KPI_TONES[tone] || KPI_TONES.violet;
-  let trendClass = "text-slate-500";
+  let trendClass = "text-[var(--color-text-muted)]";
   let trendText = "";
   if (trend?.pct != null) {
     const up = trend.dir === "up";
@@ -83,15 +94,15 @@ function HistoryKpiCard({ label, value, icon: Icon, tone, trend }) {
   }
 
   return (
-    <article className="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
+    <article className="relative overflow-hidden rounded-2xl border border-[var(--color-border-soft)] bg-[var(--color-surface)] p-4 shadow-sm">
       <span className={`absolute inset-x-0 top-0 h-0.5 ${styles.bar}`} aria-hidden />
       <div className="flex items-start gap-3">
         <div className={`grid h-10 w-10 shrink-0 place-items-center rounded-full ${styles.iconBg}`}>
           <Icon className="h-5 w-5" aria-hidden />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-medium text-slate-500">{label}</p>
-          <p className="mt-1 text-[22px] font-bold leading-tight tabular-nums text-slate-900">{value}</p>
+          <p className="text-[11px] font-medium text-[var(--color-text-muted)]">{label}</p>
+          <p className="mt-1 text-[22px] font-bold leading-tight tabular-nums text-[var(--color-text)]">{value}</p>
           {trendText ? <p className={`mt-1 text-[11px] font-medium ${trendClass}`}>{trendText}</p> : null}
         </div>
       </div>
@@ -144,28 +155,17 @@ function formatEventDateTime(value) {
   return d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
 }
 
-function exportCsv(rows) {
-  const headers = ["Date", "Machine", "Activity", "Description", "Performed By", "Status", "Duration", "Downtime"];
-  const lines = rows.map((r) => [
-    formatEventDateTime(r.event_date),
-    r.machine_name || "",
-    historyActivityLabel(r.activity),
-    r.description || r.remarks || "",
-    r.engineer || "",
-    historyStatusLabel(r.status, r.activity),
-    formatDurationMinutes(r.downtime_minutes),
-    formatDowntimeDisplay(r.downtime_minutes),
-  ]);
-  const csv = [headers, ...lines]
-    .map((line) => line.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
-    .join("\n");
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "machine-history.csv";
-  a.click();
-  URL.revokeObjectURL(url);
+function mapHistoryExportRows(rows) {
+  return rows.map((r) => ({
+    date: formatEventDateTime(r.event_date),
+    machine: r.machine_name || "",
+    activity: historyActivityLabel(r.activity),
+    description: r.description || r.remarks || "",
+    performed_by: r.engineer || "",
+    status: historyStatusLabel(r.status, r.activity),
+    duration: formatDurationMinutes(r.downtime_minutes),
+    downtime: formatDowntimeDisplay(r.downtime_minutes),
+  }));
 }
 
 function ActivityTypeCell({ activity }) {
@@ -312,39 +312,40 @@ export default function MachineHistory() {
   if (loading) return <Loader label="Loading machine history..." />;
   if (error && !rows.length) return <MaintenanceErrorState message={error} onRetry={load} />;
 
+  const handleExport = (format) => {
+    const data = mapHistoryExportRows(filtered);
+    if (format === "pdf") {
+      exportToPdf(data, HISTORY_EXPORT_COLUMNS, "Machine History", "machine-history");
+    } else {
+      exportToExcel(data, HISTORY_EXPORT_COLUMNS, "machine-history");
+    }
+    addToast(format === "pdf" ? "Exported to PDF" : "Exported to Excel", "success");
+  };
+
   return (
+    <ListPageShell>
     <div className="min-w-0 space-y-5 pb-5">
       <PageHeader
         subtitle="Track machine usage, maintenance, breakdowns, and activities"
         action={
           <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                exportCsv(filtered);
-                addToast("Machine history exported to CSV", "success");
-              }}
-              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-[13px] font-semibold text-slate-700 shadow-xs transition-colors hover:bg-slate-50 hover:border-[var(--color-primary)] cursor-pointer"
-            >
-              <Download className="h-4 w-4 text-[var(--color-primary)]" />
-              Export
-            </button>
+            <ExportDownloadMenu disabled={!filtered.length} onExport={handleExport} />
             <div className="relative" ref={moreMenuRef}>
-              <button
+              <Button
+                variant="secondary"
                 type="button"
                 onClick={() => setShowMoreMenu((v) => !v)}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-[13px] font-semibold text-slate-700 shadow-xs transition-colors hover:bg-slate-50 hover:border-[var(--color-primary)] cursor-pointer"
+                rightIcon={<ChevronDown className={`h-4 w-4 transition-transform duration-200 ${showMoreMenu ? "rotate-180" : ""}`} aria-hidden />}
               >
-                <MoreVertical className="h-4 w-4 text-slate-500" />
+                <MoreVertical className="h-4 w-4" aria-hidden />
                 More Actions
-                <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform duration-200 ${showMoreMenu ? "rotate-180" : ""}`} />
-              </button>
+              </Button>
               {showMoreMenu && (
-                <div className="absolute right-0 top-[calc(100%+6px)] z-40 w-56 rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl animate-in fade-in zoom-in-95 duration-100">
+                <div className="absolute right-0 top-[calc(100%+6px)] z-40 w-56 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-1.5 shadow-xl">
                   <Link
                     to="/maintenance"
                     onClick={() => setShowMoreMenu(false)}
-                    className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                    className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium text-[var(--color-text)] transition-colors hover:bg-[var(--color-surface-muted)]"
                   >
                     <LayoutDashboard className="h-4 w-4 text-[var(--color-primary)]" />
                     Maintenance Dashboard
@@ -352,7 +353,7 @@ export default function MachineHistory() {
                   <Link
                     to="/maintenance/preventive"
                     onClick={() => setShowMoreMenu(false)}
-                    className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                    className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium text-[var(--color-text)] transition-colors hover:bg-[var(--color-surface-muted)]"
                   >
                     <Wrench className="h-4 w-4 text-[var(--color-primary)]" />
                     Preventive Maintenance
@@ -360,20 +361,20 @@ export default function MachineHistory() {
                   <Link
                     to="/maintenance/breakdowns"
                     onClick={() => setShowMoreMenu(false)}
-                    className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                    className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium text-[var(--color-text)] transition-colors hover:bg-[var(--color-surface-muted)]"
                   >
-                    <AlertTriangle className="h-4 w-4 text-amber-500" />
+                    <AlertTriangle className="h-4 w-4 text-[var(--kpi-orange)]" />
                     Breakdown Reports
                   </Link>
                   <Link
                     to="/maintenance/equipment"
                     onClick={() => setShowMoreMenu(false)}
-                    className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                    className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium text-[var(--color-text)] transition-colors hover:bg-[var(--color-surface-muted)]"
                   >
-                    <Package className="h-4 w-4 text-indigo-600" />
+                    <Package className="h-4 w-4 text-[var(--color-primary)]" />
                     Equipment & Spares
                   </Link>
-                  <div className="my-1 border-t border-slate-100" />
+                  <div className="my-1 border-t border-[var(--color-border-soft)]" />
                   <button
                     type="button"
                     onClick={() => {
@@ -381,7 +382,7 @@ export default function MachineHistory() {
                       load(true);
                       addToast("Refreshing history logs...", "info");
                     }}
-                    className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-[13px] font-medium text-slate-700 transition-colors hover:bg-slate-50 cursor-pointer"
+                    className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-[13px] font-medium text-[var(--color-text)] transition-colors hover:bg-[var(--color-surface-muted)] cursor-pointer"
                   >
                     <RefreshCw className="h-4 w-4 text-[var(--color-primary)]" />
                     Refresh Logs
@@ -401,7 +402,7 @@ export default function MachineHistory() {
         <HistoryKpiCard label="Inspections" value={counts.inspections} icon={ClipboardCheck} tone="violet" trend={trends.inspections} />
       </div>
 
-      <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
+      <div className="ui-card ui-card--padded">
         <div className="grid gap-3 lg:grid-cols-12 lg:items-end">
           <div className="lg:col-span-3">
             <SearchBar
@@ -412,7 +413,7 @@ export default function MachineHistory() {
             />
           </div>
           <div className="lg:col-span-2">
-            <label className="mb-1 block text-[11px] font-medium text-slate-500">All Machines</label>
+            <label className="ui-label mb-1 block">All Machines</label>
             <select value={machineFilter} onChange={(e) => { setMachineFilter(e.target.value); setPage(1); }} className={filterSelectClass}>
               <option value="">All Machines</option>
               {machines.map((m) => (
@@ -421,7 +422,7 @@ export default function MachineHistory() {
             </select>
           </div>
           <div className="lg:col-span-2">
-            <label className="mb-1 block text-[11px] font-medium text-slate-500">All Activity Types</label>
+            <label className="ui-label mb-1 block">All Activity Types</label>
             <select value={activityFilter} onChange={(e) => { setActivityFilter(e.target.value); setPage(1); }} className={filterSelectClass}>
               <option value="">All Activity Types</option>
               <option value="maintenance">Maintenance</option>
@@ -432,7 +433,7 @@ export default function MachineHistory() {
             </select>
           </div>
           <div className="lg:col-span-2">
-            <label className="mb-1 block text-[11px] font-medium text-slate-500">All Status</label>
+            <label className="ui-label mb-1 block">All Status</label>
             <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }} className={filterSelectClass}>
               <option value="">All Status</option>
               <option value="completed">Completed</option>
@@ -442,15 +443,15 @@ export default function MachineHistory() {
             </select>
           </div>
           <div className="lg:col-span-3">
-            <label className="mb-1 block text-[11px] font-medium text-slate-500">Date Range</label>
+            <label className="ui-label mb-1 block">Date Range</label>
             <div className="flex items-center gap-2">
               <div className="relative min-w-0 flex-1">
-                <Calendar className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <Calendar className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]" />
                 <input type="date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); setPage(1); }} className={`${filterSelectClass} pl-9`} />
               </div>
-              <span className="text-slate-400">–</span>
+              <span className="text-[var(--color-text-muted)]">–</span>
               <div className="relative min-w-0 flex-1">
-                <Calendar className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <Calendar className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]" />
                 <input type="date" value={dateTo} onChange={(e) => { setDateTo(e.target.value); setPage(1); }} className={`${filterSelectClass} pl-9`} />
               </div>
             </div>
@@ -466,7 +467,7 @@ export default function MachineHistory() {
         </div>
       </div>
 
-      <div className="border-b border-slate-200">
+      <div className="border-b border-[var(--color-border-soft)]">
         <div className="flex flex-wrap gap-1">
           {HISTORY_TABS.map((tab) => (
             <button
@@ -476,7 +477,7 @@ export default function MachineHistory() {
               className={`border-b-2 px-4 py-2.5 text-[13px] font-semibold transition-colors ${
                 activeTab === tab.id
                   ? "border-[var(--color-primary)] text-[var(--color-primary)]"
-                  : "border-transparent text-slate-500 hover:text-slate-700"
+                  : "border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
               }`}
             >
               {tab.label}
@@ -485,63 +486,64 @@ export default function MachineHistory() {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
-        <h2 className="mb-4 text-[15px] font-semibold text-slate-900">Machine History Records</h2>
-        <div className="overflow-x-auto rounded-xl border border-slate-200">
-          <table className="min-w-full w-full border-collapse text-left text-[13px]">
+      <ListPageCard>
+        <ListPageCardBody>
+        <h2 className="mb-4 text-[15px] font-semibold text-[var(--color-text)]">Machine History Records</h2>
+        <div className="ui-table-wrap overflow-x-auto">
+          <table className="ui-table min-w-full w-full border-collapse text-left text-[13px]">
             <thead className="ui-table-head">
               <tr>
-                <th className="border-b border-slate-200 px-3 py-3 min-w-[140px]">Date &amp; Time</th>
-                <th className="border-b border-slate-200 px-3 py-3">Machine</th>
-                <th className="border-b border-slate-200 px-3 py-3">Activity Type</th>
-                <th className="border-b border-slate-200 px-3 py-3 min-w-[180px]">Description</th>
-                <th className="border-b border-slate-200 px-3 py-3">Performed By</th>
-                <th className="border-b border-slate-200 px-3 py-3">Status</th>
-                <th className="border-b border-slate-200 px-3 py-3">Duration</th>
-                <th className="border-b border-slate-200 px-3 py-3">Downtime</th>
-                <th className="border-b border-slate-200 px-3 py-3">Next Due</th>
-                <th className="border-b border-slate-200 px-3 py-3 text-center">Actions</th>
+                <th className="border-b border-[var(--color-border-soft)] px-3 py-3 min-w-[140px]">Date &amp; Time</th>
+                <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Machine</th>
+                <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Activity Type</th>
+                <th className="border-b border-[var(--color-border-soft)] px-3 py-3 min-w-[180px]">Description</th>
+                <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Performed By</th>
+                <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Status</th>
+                <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Duration</th>
+                <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Downtime</th>
+                <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Next Due</th>
+                <th className="border-b border-[var(--color-border-soft)] px-3 py-3 text-center">Actions</th>
               </tr>
             </thead>
             <tbody>
               {pageRows.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="border-b border-slate-100 px-3 py-10 text-center text-[13px] text-slate-500">
+                  <td colSpan={10} className="border-b border-[var(--color-border-soft)] px-3 py-10 text-center text-[13px] text-[var(--color-text-muted)]">
                     No machine history records found
                   </td>
                 </tr>
               ) : (
                 pageRows.map((row, idx) => (
-                  <tr key={row.id} className={idx % 2 === 1 ? "bg-slate-50/60 hover:bg-slate-50" : "hover:bg-slate-50/80"}>
-                    <td className="border-b border-slate-100 px-3 py-3 text-slate-600">{formatEventDateTime(row.event_date)}</td>
-                    <td className="border-b border-slate-100 px-3 py-3 font-semibold text-slate-800">{row.machine_name || "—"}</td>
-                    <td className="border-b border-slate-100 px-3 py-3">
+                  <tr key={row.id} className={idx % 2 === 1 ? "bg-[var(--color-surface-muted)]/60 hover:bg-[var(--color-surface-muted)]" : "hover:bg-[var(--color-surface-muted)]/80"}>
+                    <td className="border-b border-[var(--color-border-soft)] px-3 py-3 text-[var(--color-text-secondary)]">{formatEventDateTime(row.event_date)}</td>
+                    <td className="border-b border-[var(--color-border-soft)] px-3 py-3 font-semibold text-[var(--color-text)]">{row.machine_name || "—"}</td>
+                    <td className="border-b border-[var(--color-border-soft)] px-3 py-3">
                       <ActivityTypeCell activity={row.activity} />
                     </td>
-                    <td className="border-b border-slate-100 px-3 py-3 text-slate-600">{row.description || row.remarks || "—"}</td>
-                    <td className="border-b border-slate-100 px-3 py-3 text-slate-600">{row.engineer || "—"}</td>
-                    <td className="border-b border-slate-100 px-3 py-3">
+                    <td className="border-b border-[var(--color-border-soft)] px-3 py-3 text-[var(--color-text-secondary)]">{row.description || row.remarks || "—"}</td>
+                    <td className="border-b border-[var(--color-border-soft)] px-3 py-3 text-[var(--color-text-secondary)]">{row.engineer || "—"}</td>
+                    <td className="border-b border-[var(--color-border-soft)] px-3 py-3">
                       <StatusBadge status={row.status} activity={row.activity} />
                     </td>
-                    <td className="border-b border-slate-100 px-3 py-3 tabular-nums text-slate-700">
+                    <td className="border-b border-[var(--color-border-soft)] px-3 py-3 tabular-nums text-[var(--color-text-secondary)]">
                       {formatDurationMinutes(row.downtime_minutes)}
                     </td>
-                    <td className={`border-b border-slate-100 px-3 py-3 tabular-nums ${downtimeColorClass(row.downtime_minutes)}`}>
+                    <td className={`border-b border-[var(--color-border-soft)] px-3 py-3 tabular-nums ${downtimeColorClass(row.downtime_minutes)}`}>
                       {formatDowntimeDisplay(row.downtime_minutes)}
                     </td>
-                    <td className="border-b border-slate-100 px-3 py-3 text-slate-600">—</td>
-                    <td className="border-b border-slate-100 px-3 py-3">
+                    <td className="border-b border-[var(--color-border-soft)] px-3 py-3 text-[var(--color-text-secondary)]">—</td>
+                    <td className="border-b border-[var(--color-border-soft)] px-3 py-3">
                       <div className="flex items-center justify-center gap-1">
                         <button
                           type="button"
-                          className="grid h-8 w-8 place-items-center rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50"
+                          className="grid h-8 w-8 place-items-center rounded-md border border-[var(--color-border-soft)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-muted)]"
                           aria-label="View record"
                         >
                           <Eye className="h-4 w-4" />
                         </button>
                         <button
                           type="button"
-                          className="grid h-8 w-8 place-items-center rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50"
+                          className="grid h-8 w-8 place-items-center rounded-md border border-[var(--color-border-soft)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-muted)]"
                           aria-label="View document"
                         >
                           <FileText className="h-4 w-4" />
@@ -557,7 +559,7 @@ export default function MachineHistory() {
 
         {filtered.length > 0 ? (
           <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-[12px] text-slate-500">
+            <p className="text-[12px] text-[var(--color-text-muted)]">
               Showing {from} to {to} of {filtered.length} records
             </p>
             <div className="flex items-center gap-1">
@@ -565,7 +567,7 @@ export default function MachineHistory() {
                 type="button"
                 disabled={page <= 1}
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="grid h-8 w-8 place-items-center rounded-md border border-slate-200 text-slate-600 disabled:opacity-40"
+                className="grid h-8 w-8 place-items-center rounded-md border border-[var(--color-border-soft)] text-[var(--color-text-secondary)] disabled:opacity-40"
                 aria-label="Previous page"
               >
                 <ChevronLeft className="h-4 w-4" />
@@ -578,7 +580,7 @@ export default function MachineHistory() {
                   className={`grid h-8 min-w-[2rem] place-items-center rounded-md px-2 text-[12px] font-semibold ${
                     page === n
                       ? "bg-[var(--color-primary)] text-white"
-                      : "border border-slate-200 text-slate-600 hover:bg-slate-50"
+                      : "border border-[var(--color-border-soft)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-muted)]"
                   }`}
                 >
                   {n}
@@ -588,7 +590,7 @@ export default function MachineHistory() {
                 type="button"
                 disabled={page >= totalPages}
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                className="grid h-8 w-8 place-items-center rounded-md border border-slate-200 text-slate-600 disabled:opacity-40"
+                className="grid h-8 w-8 place-items-center rounded-md border border-[var(--color-border-soft)] text-[var(--color-text-secondary)] disabled:opacity-40"
                 aria-label="Next page"
               >
                 <ChevronRight className="h-4 w-4" />
@@ -596,7 +598,9 @@ export default function MachineHistory() {
             </div>
           </div>
         ) : null}
-      </div>
+        </ListPageCardBody>
+      </ListPageCard>
     </div>
+    </ListPageShell>
   );
 }

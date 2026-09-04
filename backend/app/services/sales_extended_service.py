@@ -165,6 +165,7 @@ def list_so_enriched(db: Session, tenant_id: int) -> list[SOListRead]:
                 invoiced=o.invoiced,
                 workflow_status=getattr(o, "workflow_status", None),
                 deletable=sales_order_can_delete(o, blockers_by_order.get(o.id, [])),
+                delete_blockers=blockers_by_order.get(o.id, []),
                 line_items=lines,
             )
         )

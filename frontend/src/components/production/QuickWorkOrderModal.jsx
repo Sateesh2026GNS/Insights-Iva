@@ -464,7 +464,7 @@ export default function QuickWorkOrderModal({ order, onClose, onSuccess, addToas
             <DateTimeField name="due_date" value={form.due_date} onChange={handleChange} label="Due" />
           </div>
           <div className="flex justify-end gap-2 border-t border-[var(--color-border)] pt-4">
-            <Button variant="secondary" type="button" onClick={onClose}  disabled={saving}>
+            <Button variant="cancel" type="button" onClick={onClose}  disabled={saving}>
               Cancel
             </Button>
             <Button variant="success" type="submit" disabled={saving || loadingOptions}>

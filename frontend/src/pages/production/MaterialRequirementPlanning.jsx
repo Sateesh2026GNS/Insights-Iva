@@ -2,8 +2,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { AlertTriangle, CheckCircle2, ClipboardList, Package, ShoppingCart } from "lucide-react";
 
 import DataTable from "../../components/common/DataTable";
+import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
 import Loader from "../../components/common/Loader";
 import PageHeader from "../../components/common/PageHeader";
+import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
 import { useToast } from "../../context/ToastContext";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { runMrp } from "../../api/productionApi";
@@ -14,14 +16,14 @@ import {
 } from "../../utils/manufacturingEvents";
 import useAuth from "../../hooks/useAuth";
 import { isOperator } from "../../config/permissions";
-import { exportToExcel, exportToPdf } from "../../utils/exportUtils";
+import { runListExport } from "../../utils/listExport";
 
 import Button from "../../components/common/Button";
 function SummaryCard({ label, value, icon: Icon, color }) {
   return (
     <div className="ui-card p-4 min-h-[86px] flex flex-col justify-between min-w-0 overflow-hidden">
       <div className="flex items-center justify-between gap-1.5 min-w-0">
-        <p className="truncate text-[11px] font-medium text-[var(--color-text-muted)] dark:text-slate-400 sm:text-xs min-w-0 flex-1">{label}</p>
+        <p className="truncate text-[11px] font-medium text-[var(--color-text-muted)] sm:text-xs min-w-0 flex-1">{label}</p>
         {Icon && (
           <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md ${color}`}>
             <Icon className="h-3.5 w-3.5 text-white" />
@@ -29,7 +31,7 @@ function SummaryCard({ label, value, icon: Icon, color }) {
         )}
       </div>
       <div className="mt-2">
-        <p className="truncate text-xl font-bold tabular-nums text-[var(--color-text)] dark:text-slate-100 leading-none sm:text-2xl">{value}</p>
+        <p className="truncate text-xl font-bold tabular-nums text-[var(--color-text)] leading-none sm:text-2xl">{value}</p>
       </div>
     </div>
   );
@@ -162,7 +164,7 @@ export default function MaterialRequirementPlanning() {
       key: "shortage_qty",
       label: "Shortage",
       render: (r) => (
-        <span className={r.shortage_qty > 0 ? "font-semibold text-rose-600" : "text-emerald-600"}>
+        <span className={r.shortage_qty > 0 ? "font-semibold text-[var(--color-danger)]" : "text-[var(--color-success)]"}>
           {r.shortage_qty}
         </span>
       ),
@@ -172,9 +174,9 @@ export default function MaterialRequirementPlanning() {
       label: "Status",
       render: (r) =>
         r.enough ? (
-          <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">OK</span>
+          <span className="rounded-full bg-[var(--color-success-soft)] px-2 py-0.5 text-xs font-semibold text-[var(--color-success)]">OK</span>
         ) : (
-          <span className="rounded-full bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-700">Buy</span>
+          <span className="rounded-full bg-[var(--color-danger-soft)] px-2 py-0.5 text-xs font-semibold text-[var(--color-danger)]">Buy</span>
         ),
     },
   ];
@@ -190,41 +192,55 @@ export default function MaterialRequirementPlanning() {
 
   if (loadingProducts) {
     return (
-      <div className="flex min-h-[40vh] items-center justify-center">
-        <Loader />
-      </div>
+      <ListPageShell>
+        <div className="flex min-h-[40vh] items-center justify-center">
+          <Loader />
+        </div>
+      </ListPageShell>
     );
   }
 
-const PAGE_BG = "var(--color-bg)";
+  const handleExport = (format) => {
+    runListExport(format, {
+      data: tableRows,
+      columns: exportCols,
+      filename: "mrp-requirements",
+      title: "MRP Requirements",
+    });
+    addToast(format === "pdf" ? "Exported to PDF" : "Exported to Excel", "success");
+  };
 
   return (
-    <div className="min-h-full pb-8" style={{ background: PAGE_BG }}>
-      <div className="mx-auto max-w-[1400px] space-y-5 px-4 py-5 sm:px-6 lg:px-8">
-        <PageHeader
-          title="Material Requirement Planning"
-          action={
-            <div className="flex flex-wrap gap-2">
-              <Button variant="secondary" to="/procurement/material-requests">
-                <ShoppingCart className="h-4 w-4" /> Purchase Requests
-              </Button>
-              <Button variant="success" to="/production/planning">
-                Production Planning
-              </Button>
-            </div>
-          }
-        />
+    <ListPageShell>
+      <PageHeader
+        title="Material Requirement Planning"
+        action={
+          <div className="flex flex-wrap items-center gap-2">
+            {result && tableRows.length > 0 ? (
+              <ExportDownloadMenu onExport={handleExport} />
+            ) : null}
+            <Button variant="secondary" to="/procurement/material-requests">
+              <ShoppingCart className="h-4 w-4" /> Purchase Requests
+            </Button>
+            <Button variant="success" to="/production/planning">
+              Production Planning
+            </Button>
+          </div>
+        }
+      />
 
+      <ListPageCard>
+        <ListPageCardBody>
       <form
         onSubmit={handleRun}
-        className="grid gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900 sm:grid-cols-2 lg:grid-cols-4"
+        className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
       >
         <label className="block text-sm">
-          <span className="mb-1.5 block font-medium text-slate-700 dark:text-slate-300">Product</span>
+          <span className="ui-label">Product</span>
           <select
             value={productId}
             onChange={(e) => setProductId(e.target.value)}
-            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm dark:border-slate-600 dark:bg-slate-800"
+            className="ui-select w-full"
             required
           >
             <option value="">Select product</option>
@@ -236,14 +252,14 @@ const PAGE_BG = "var(--color-bg)";
           </select>
         </label>
         <label className="block text-sm">
-          <span className="mb-1.5 block font-medium text-slate-700 dark:text-slate-300">Quantity</span>
+          <span className="ui-label">Quantity</span>
           <input
             type="number"
             min="0.001"
             step="any"
             value={quantity}
             onChange={(e) => setQuantity(e.target.value)}
-            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm dark:border-slate-600 dark:bg-slate-800"
+            className="ui-input w-full"
             required
           />
         </label>
@@ -252,9 +268,9 @@ const PAGE_BG = "var(--color-bg)";
             type="checkbox"
             checked={createPr}
             onChange={(e) => setCreatePr(e.target.checked)}
-            className="h-4 w-4 rounded border-slate-300"
+            className="h-4 w-4 rounded border-[var(--color-border)]"
           />
-          <span className="font-medium text-slate-700 dark:text-slate-300">
+          <span className="font-medium text-[var(--color-text-secondary)]">
             Auto-create Purchase Request on shortage
           </span>
         </label>
@@ -269,18 +285,20 @@ const PAGE_BG = "var(--color-bg)";
           </Button>
         </div>
       </form>
+        </ListPageCardBody>
+      </ListPageCard>
 
       {error && (
-        <div className="flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-200">
+        <div className="flex items-start gap-2 rounded-xl border border-[var(--color-danger)]/30 bg-[var(--color-danger-soft)] px-4 py-3 text-sm text-[var(--color-danger)]">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           {error}
         </div>
       )}
 
       {!products.length && !error && (
-        <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-6 py-10 text-center dark:border-slate-700 dark:bg-slate-900/50">
-          <ClipboardList className="mx-auto h-10 w-10 text-slate-300" />
-          <p className="mt-3 text-sm font-medium text-slate-600 dark:text-slate-300">No products in masters.</p>
+        <div className="rounded-xl border border-dashed border-[var(--color-border)] bg-[var(--color-surface-muted)] px-6 py-10 text-center">
+          <ClipboardList className="mx-auto h-10 w-10 text-[var(--color-text-faint)]" />
+          <p className="mt-3 text-sm font-medium text-[var(--color-text-secondary)]">No products in masters.</p>
           {!isOperator(user) && (
             <Button variant="success" to="/masters/products" className="mt-4 inline-flex">
               Add products
@@ -305,10 +323,10 @@ const PAGE_BG = "var(--color-bg)";
 
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+              <h2 className="text-lg font-semibold text-[var(--color-text)]">
                 {result.product_name} × {result.quantity ?? result.planned_qty}
               </h2>
-              <p className="text-sm text-slate-500">
+              <p className="text-sm text-[var(--color-text-muted)]">
                 {result.enough_stock
                   ? "Enough stock — proceed to production planning / work orders."
                   : "Shortage detected — review purchase request, then GRN before material issue."}
@@ -325,36 +343,27 @@ const PAGE_BG = "var(--color-bg)";
                   Go to Production Planning
                 </Button>
               )}
-              <Button variant="secondary" type="button" onClick={() => exportToExcel(tableRows, exportCols, "mrp-requirements")}
-                disabled={!tableRows.length}
-              >
-                Export Excel
-              </Button>
-              <Button variant="secondary" type="button" onClick={() => exportToPdf(tableRows, exportCols, "MRP Requirements")}
-                disabled={!tableRows.length}
-              >
-                Export PDF
-              </Button>
             </div>
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
+          <ListPageCard>
+            <ListPageCardBody className="overflow-x-auto p-0 sm:p-0">
             <DataTable
               columns={columns}
               data={tableRows}
               emptyState={
                 <div className="py-12 text-center">
-                  <p className="text-sm text-slate-600">No BOM components for this product.</p>
+                  <p className="text-sm text-[var(--color-text-secondary)]">No BOM components for this product.</p>
                   <Button variant="primary" to="/masters/bom" className="mt-4 inline-flex">
                     Maintain BOM
                   </Button>
                 </div>
               }
             />
-          </div>
+            </ListPageCardBody>
+          </ListPageCard>
         </>
       )}
-      </div>
-    </div>
+    </ListPageShell>
   );
 }

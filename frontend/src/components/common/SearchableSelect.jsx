@@ -7,16 +7,47 @@ import { SearchBar } from "./SearchFilter";
  * Lightweight searchable dropdown — no extra packages.
  * options: string[] | { value, label }[]
  */
+function OptionButton({ opt, active, onPick }) {
+  const isAdd =
+    String(opt.label || "").startsWith("+") ||
+    /add new|create new|add customer|add product/i.test(String(opt.label || "")) ||
+    String(opt.value || "").startsWith("__add") ||
+    String(opt.value || "").startsWith("__new");
+
+  return (
+    <li key={opt.value}>
+      <button
+        type="button"
+        role="option"
+        aria-selected={active}
+        onClick={() => onPick(opt)}
+        className={`flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm ${
+          active
+            ? "bg-[var(--color-success-soft)] font-semibold text-[var(--color-success)] dark:bg-teal-900/30 dark:text-teal-200"
+            : isAdd
+              ? "font-semibold text-[var(--color-primary)] hover:bg-[var(--color-primary-soft)] dark:text-[#2dd4bf] dark:hover:bg-teal-950/30"
+              : "text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] dark:hover:bg-slate-700/50"
+        }`}
+      >
+        <span className="truncate">{opt.label}</span>
+        {active ? <Check className="h-4 w-4 shrink-0" aria-hidden /> : null}
+      </button>
+    </li>
+  );
+}
+
 export default function SearchableSelect({
   value = "",
   onChange,
   options = [],
+  footerOptions = [],
   placeholder = "Select…",
   searchPlaceholder = "Search",
   disabled = false,
   error = false,
   allowCustom = false,
   className = "",
+  menuClassName = "",
   id,
 }) {
   const [open, setOpen] = useState(false);
@@ -24,13 +55,11 @@ export default function SearchableSelect({
   const rootRef = useRef(null);
   const inputRef = useRef(null);
 
-  const normalized = useMemo(
-    () =>
-      options.map((o) =>
-        typeof o === "string" ? { value: o, label: o } : { value: o.value, label: o.label }
-      ),
-    [options]
-  );
+  const normalizeOptions = (list) =>
+    list.map((o) => (typeof o === "string" ? { value: o, label: o } : { value: o.value, label: o.label }));
+
+  const normalized = useMemo(() => normalizeOptions(options), [options]);
+  const normalizedFooter = useMemo(() => normalizeOptions(footerOptions), [footerOptions]);
 
   const selectedLabel =
     normalized.find((o) => o.value === value)?.label || (allowCustom ? value : "") || "";
@@ -88,7 +117,9 @@ export default function SearchableSelect({
       </button>
 
       {open ? (
-        <div className="absolute left-0 right-0 z-40 mt-1 overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-lg">
+        <div
+          className={`absolute left-0 right-0 z-40 mt-1 overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-lg ${menuClassName}`.trim()}
+        >
           <div className="border-b border-[var(--color-border-muted)] p-2">
             <SearchBar
               size="compact"
@@ -127,35 +158,18 @@ export default function SearchableSelect({
                 )}
               </li>
             ) : (
-              filtered.map((opt) => {
-                const active = opt.value === value;
-                const isAdd =
-                  String(opt.label || "").startsWith("+") ||
-                  /add new|create new/i.test(String(opt.label || "")) ||
-                  String(opt.value || "").startsWith("__add") ||
-                  String(opt.value || "").startsWith("__new");
-                return (
-                  <li key={opt.value}>
-                    <button
-                      type="button"
-                      role="option"
-                      aria-selected={active}
-                      onClick={() => pick(opt)}
-                      className={`flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm ${
-                        active
-                          ? "bg-[var(--color-success-soft)] text-[var(--color-success)] font-semibold dark:bg-teal-900/30 dark:text-teal-200"
-                          : isAdd
-                            ? "text-[var(--color-primary)] font-semibold hover:bg-[var(--color-primary-soft)] dark:text-[#2dd4bf] dark:hover:bg-teal-950/30"
-                            : "text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-700/50"
-                      }`}
-                    >
-                      <span className="truncate">{opt.label}</span>
-                      {active ? <Check className="h-4 w-4 shrink-0" aria-hidden /> : null}
-                    </button>
-                  </li>
-                );
-              })
+              filtered.map((opt) => (
+                <OptionButton key={opt.value} opt={opt} active={opt.value === value} onPick={pick} />
+              ))
             )}
+            {normalizedFooter.length > 0 ? (
+              <>
+                <li role="separator" className="my-1 border-t border-[var(--color-border-muted)]" />
+                {normalizedFooter.map((opt) => (
+                  <OptionButton key={opt.value} opt={opt} active={opt.value === value} onPick={pick} />
+                ))}
+              </>
+            ) : null}
           </ul>
         </div>
       ) : null}

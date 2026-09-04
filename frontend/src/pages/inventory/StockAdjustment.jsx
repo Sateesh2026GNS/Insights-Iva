@@ -16,6 +16,8 @@ import {
 } from "lucide-react";
 
 import Button from "../../components/common/Button";
+import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
+import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
 import DataTable from "../../components/common/DataTable";
 import EmptyState from "../../components/common/EmptyState";
 import Loader from "../../components/common/Loader";
@@ -41,6 +43,21 @@ import {
 import { ADJUSTMENT_REASONS } from "../../data/inventoryMasterData";
 import { asArray } from "../../utils/apiError";
 import { todayIso } from "../../utils/dateUtils";
+import { exportToExcel, exportToPdf } from "../../utils/exportUtils";
+
+const ADJUSTMENT_EXPORT_COLUMNS = [
+  { key: "adjustment_number", label: "Adjustment No." },
+  { key: "adjustment_date", label: "Date" },
+  { key: "item_name", label: "Item" },
+  { key: "warehouse_name", label: "Warehouse" },
+  { key: "type", label: "Type" },
+  { key: "adjustment_qty", label: "Adjustment Qty" },
+  { key: "unit", label: "UOM" },
+  { key: "new_qty", label: "New Stock" },
+  { key: "reason", label: "Reason" },
+  { key: "created_by", label: "Created By" },
+  { key: "status", label: "Status" },
+];
 
 const STEPS = [
   { id: 1, label: "Adjustment Details" },
@@ -513,14 +530,40 @@ export default function StockAdjustment() {
 
   if (loading) {
     return (
+      <ListPageShell>
       <div className="space-y-5 pb-4">
         {storeMode ? <StoreManagerNav /> : null}
         <Loader label="Loading stock adjustments…" />
       </div>
+      </ListPageShell>
     );
   }
 
+  const exportRows = filteredAdjustments.map((r) => ({
+    adjustment_number: r.adjustment_number,
+    adjustment_date: formatDateTime(r.adjustment_date),
+    item_name: r.item_name,
+    warehouse_name: r.warehouse_name || "",
+    type: r.type === "increase" ? "Increase" : "Decrease",
+    adjustment_qty: `${r.type === "increase" ? "+" : "-"}${formatQty(r.adjustment_qty)}`,
+    unit: r.unit || "",
+    new_qty: formatQty(r.new_qty),
+    reason: r.reason || "",
+    created_by: r.created_by || "",
+    status: String(r.status || "").replace(/_/g, " "),
+  }));
+
+  const handleExport = (format) => {
+    if (format === "pdf") {
+      exportToPdf(exportRows, ADJUSTMENT_EXPORT_COLUMNS, "Stock Adjustments", "stock-adjustments");
+    } else {
+      exportToExcel(exportRows, ADJUSTMENT_EXPORT_COLUMNS, "stock-adjustments");
+    }
+    addToast(format === "pdf" ? "Exported to PDF" : "Exported to Excel", "success");
+  };
+
   return (
+    <ListPageShell>
     <div className="min-w-0 space-y-5 pb-4">
       {storeMode ? <StoreManagerNav /> : null}
 
@@ -761,7 +804,7 @@ export default function StockAdjustment() {
               </div>
             </div>
 
-            <aside className="h-fit rounded-xl border border-[var(--color-success)]/25 bg-[#ecfdf5] p-4">
+            <aside className="h-fit rounded-xl border border-[var(--color-success)]/25 bg-[var(--color-success-soft)] p-4">
               <div className="mb-3 flex items-center gap-2">
                 <ClipboardList className="h-4 w-4 text-[var(--color-success)]" />
                 <h3 className="text-sm font-semibold text-[var(--color-text)]">Adjustment Summary</h3>
@@ -805,11 +848,13 @@ export default function StockAdjustment() {
         </section>
       ) : null}
 
-      <section className="ui-card p-4 sm:p-5">
+      <ListPageCard>
+        <ListPageCardBody>
         <div className="mb-4 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
           <h2 className="text-sm font-semibold text-[var(--color-text)]">Recent Adjustments</h2>
           <div className="flex flex-wrap items-center gap-2">
             <SearchBar value={search} onChange={setSearch} placeholder="Search" className="w-full" />
+            <ExportDownloadMenu disabled={!exportRows.length} onExport={handleExport} />
             <Button type="button" variant="secondary" onClick={() => setShowFilters((v) => !v)}>
               <Filter className="h-4 w-4" /> Filters
             </Button>
@@ -851,7 +896,8 @@ export default function StockAdjustment() {
             />
           }
         />
-      </section>
+        </ListPageCardBody>
+      </ListPageCard>
 
       <RecordDetailModal
         open={Boolean(viewTarget)}
@@ -874,5 +920,6 @@ export default function StockAdjustment() {
         }}
       />
     </div>
+    </ListPageShell>
   );
 }

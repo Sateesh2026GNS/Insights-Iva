@@ -184,7 +184,7 @@ export default function ContraEntryModal({
         </div>
 
         <div className="grid grid-cols-2 gap-3 bg-white px-5 py-4">
-          <Button type="button" variant="secondary" onClick={onClose} fullWidth>
+          <Button type="button" variant="cancel" onClick={onClose} fullWidth>
             Cancel
           </Button>
           <Button type="submit" variant="primary" fullWidth>

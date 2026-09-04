@@ -3,7 +3,6 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   ChevronLeft,
   ChevronRight,
-  FileSpreadsheet,
   Pencil,
   Plus,
   Trash2,
@@ -11,22 +10,34 @@ import {
 } from "lucide-react";
 import { createPortal } from "react-dom";
 
-import Button from "../../components/common/Button";
+import Button, { CancelButton } from "../../components/common/Button";
 import RowActionMenu from "../../components/common/RowActionMenu";
 import { SearchBar } from "../../components/common/SearchFilter";
+import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
+import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
 import Loader from "../../components/common/Loader";
+import EmptyState from "../../components/common/EmptyState";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
 import AddNewPartyModal from "../../components/sales/AddNewPartyModal";
 import { useToast } from "../../context/ToastContext";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { deleteCustomer, getCustomers } from "../../api/salesApi";
 import { enrichApiCustomer, REPORT_TYPES, WORKFLOW_STEPS } from "../../data/customersMasterData";
-import { exportToExcel } from "../../utils/exportUtils";
+import { runListExport } from "../../utils/listExport";
 import { apiErrorMessage } from "../../utils/apiError";
 
-const PAGE_BG = "var(--color-bg)";
-const ACCENT = "var(--color-action-teal)"; /* #0F6D84 */
 const PAGE_SIZES = [20, 50, 100];
+
+const CUSTOMER_EXPORT_COLUMNS = [
+  { key: "company", label: "Customer Name" },
+  { key: "gstin", label: "GSTIN" },
+  { key: "email", label: "Email" },
+  { key: "phone", label: "Mobile No." },
+  { key: "address_line1", label: "Address" },
+  { key: "city", label: "City" },
+  { key: "state", label: "State" },
+  { key: "pincode", label: "Pincode" },
+];
 
 function blankOr(value) {
   if (value == null) return "";
@@ -38,23 +49,23 @@ function DeleteConfirmModal({ open, onClose, onConfirm, busy }) {
   if (!open) return null;
   return createPortal(
     <div
-      className="fixed inset-0 z-[90] flex items-center justify-center bg-black/45 p-4"
+      className="ui-modal-backdrop"
       onMouseDown={(e) => e.target === e.currentTarget && !busy && onClose?.()}
     >
-      <div className="w-full max-w-[420px] rounded-2xl bg-white px-8 py-8 text-center shadow-2xl">
-        <div className="mx-auto mb-5 grid h-[72px] w-[72px] place-items-center rounded-full bg-[#fee2e2]">
-          <Trash2 className="h-9 w-9 text-[#ef4444]" strokeWidth={1.75} />
+      <div className="ui-modal w-full max-w-[420px] px-8 py-8 text-center" onMouseDown={(e) => e.stopPropagation()}>
+        <div className="mx-auto mb-5 grid h-[72px] w-[72px] place-items-center rounded-full bg-[var(--color-danger-soft)]">
+          <Trash2 className="h-9 w-9 text-[var(--color-danger)]" strokeWidth={1.75} />
         </div>
-        <h3 className="text-[28px] font-bold leading-tight text-[#1a1a1f]">Delete Customer?</h3>
-        <p className="mt-3 text-[14px] leading-relaxed text-[#5a5a66]">
+        <h3 className="text-[28px] font-bold leading-tight text-[var(--color-text)]">Delete Customer?</h3>
+        <p className="mt-3 text-[14px] leading-relaxed text-[var(--color-text-secondary)]">
           Are you sure you want to delete this Customer?
           <br />
           This action is not reversible.
         </p>
         <div className="mt-7 grid grid-cols-2 gap-4">
-          <Button type="button" variant="secondary" disabled={busy} onClick={onClose} fullWidth>
+          <CancelButton type="button" disabled={busy} onClick={onClose} fullWidth>
             No
-          </Button>
+          </CancelButton>
           <Button type="button" variant="danger" disabled={busy} loading={busy} onClick={onConfirm} fullWidth>
             {busy ? "Deleting…" : "Delete"}
           </Button>
@@ -153,26 +164,24 @@ export default function Customers() {
   const from = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const to = Math.min(page * pageSize, total);
 
-  const onExport = () => {
-    exportToExcel(
+  const exportRows = useMemo(
+    () =>
       filtered.map((c) => ({
         ...c,
         company: c.company || c.name || "",
         address_line1: c.address_line1 || c.billing_address || "",
       })),
-      [
-        { key: "company", label: "Customer Name" },
-        { key: "gstin", label: "GSTIN" },
-        { key: "email", label: "Email" },
-        { key: "phone", label: "Mobile No." },
-        { key: "address_line1", label: "Address" },
-        { key: "city", label: "City" },
-        { key: "state", label: "State" },
-        { key: "pincode", label: "Pincode" },
-      ],
-      "customers"
-    );
-    addToast("Exported to Excel", "success");
+    [filtered]
+  );
+
+  const handleExport = (format) => {
+    runListExport(format, {
+      data: exportRows,
+      columns: CUSTOMER_EXPORT_COLUMNS,
+      filename: "customers",
+      title: "Customers",
+    });
+    addToast(format === "pdf" ? "Exported to PDF" : "Exported to Excel", "success");
   };
 
   const confirmDelete = async () => {
@@ -193,12 +202,14 @@ export default function Customers() {
   if (loading) return <Loader label="Loading customers..." />;
 
   return (
-    <div className="min-h-full" style={{ background: PAGE_BG }}>
-      <div className="mx-auto max-w-[1400px] px-4 py-5 sm:px-6 lg:px-8">
-        <div className="ui-card p-4 sm:p-5">
-          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <SearchBar value={query} onChange={setQuery} placeholder="Search" className="w-full" />
-            <div className="flex flex-wrap items-center gap-2.5 sm:justify-end">
+    <ListPageShell>
+      <ListPageCard>
+        <ListPageCardBody>
+          <div className="ui-list-toolbar">
+            <div className="ui-list-toolbar__start">
+              <SearchBar value={query} onChange={setQuery} placeholder="Search" className="w-full max-w-md" />
+            </div>
+            <div className="ui-list-toolbar__end">
               <Button
                 variant="outline"
                 to="/masters/customers/bulk-import"
@@ -206,14 +217,7 @@ export default function Customers() {
               >
                 Bulk Import
               </Button>
-              <Button
-                variant="outline"
-                type="button"
-                onClick={onExport}
-                leftIcon={<FileSpreadsheet className="h-4 w-4" />}
-              >
-                Export (xlsx)
-              </Button>
+              <ExportDownloadMenu disabled={!exportRows.length} onExport={handleExport} />
               <Button
                 variant="add"
                 type="button"
@@ -246,20 +250,20 @@ export default function Customers() {
                 </thead>
                 <tbody>
                   {rows.map((c, rowIndex) => (
-                    <tr key={c.id} className="border-b border-[#f0f0f4] text-[#1a1a1f] last:border-b-0">
+                    <tr key={c.id}>
                       <SerialNumberCell rowIndex={rowIndex} page={page} pageSize={pageSize} />
-                      <td className="max-w-[220px] truncate px-4 py-3.5 font-medium text-[#1a1a1f]" title={c.company || c.name || ""}>
+                      <td className="max-w-[220px] truncate px-4 py-3.5 font-medium text-[var(--color-text)]" title={c.company || c.name || ""}>
                         {c.company || c.name || ""}
                       </td>
-                      <td className="px-4 py-3.5 text-[#4a4a55]">{blankOr(c.gstin)}</td>
-                      <td className="max-w-[180px] truncate px-4 py-3.5 text-[#4a4a55]" title={c.email || ""}>{blankOr(c.email)}</td>
-                      <td className="px-4 py-3.5 text-[#4a4a55]">{blankOr(c.phone)}</td>
-                      <td className="max-w-[220px] truncate px-4 py-3.5 text-[#4a4a55]" title={c.address_line1 || c.billing_address || ""}>
+                      <td className="px-4 py-3.5 text-[var(--color-text-secondary)]">{blankOr(c.gstin)}</td>
+                      <td className="max-w-[180px] truncate px-4 py-3.5 text-[var(--color-text-secondary)]" title={c.email || ""}>{blankOr(c.email)}</td>
+                      <td className="px-4 py-3.5 text-[var(--color-text-secondary)]">{blankOr(c.phone)}</td>
+                      <td className="max-w-[220px] truncate px-4 py-3.5 text-[var(--color-text-secondary)]" title={c.address_line1 || c.billing_address || ""}>
                         {blankOr(c.address_line1 || c.billing_address)}
                       </td>
-                      <td className="px-4 py-3.5 text-[#4a4a55]">{blankOr(c.city)}</td>
-                      <td className="px-4 py-3.5 text-[#4a4a55]">{blankOr(c.state)}</td>
-                      <td className="px-4 py-3.5 text-[#4a4a55]">{blankOr(c.pincode)}</td>
+                      <td className="px-4 py-3.5 text-[var(--color-text-secondary)]">{blankOr(c.city)}</td>
+                      <td className="px-4 py-3.5 text-[var(--color-text-secondary)]">{blankOr(c.state)}</td>
+                      <td className="px-4 py-3.5 text-[var(--color-text-secondary)]">{blankOr(c.pincode)}</td>
                       <td className="px-4 py-2" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end">
                           <RowActionMenu
@@ -291,7 +295,17 @@ export default function Customers() {
                 </tbody>
               </table>
             {rows.length === 0 ? (
-              <div className="px-4 py-16 text-center text-[13px] text-[#8a8a96]">No data available</div>
+              <EmptyState
+                title={query ? "No customers found" : "No customers yet"}
+                description={
+                  query
+                    ? "Try adjusting your search terms."
+                    : "Create your first customer to start recording sales."
+                }
+                actionLabel={!query ? "Create Customer" : undefined}
+                onAction={!query ? () => setPartyOpen(true) : undefined}
+                className="border-none bg-transparent shadow-none"
+              />
             ) : null}
           </div>
 
@@ -338,9 +352,8 @@ export default function Customers() {
               </button>
             </div>
           </div>
-        </div>
-      </div>
-
+        </ListPageCardBody>
+      </ListPageCard>
 
       <AddNewPartyModal
         open={partyOpen}
@@ -361,6 +374,6 @@ export default function Customers() {
         onClose={() => !deletingBusy && setDeleting(null)}
         onConfirm={confirmDelete}
       />
-    </div>
+    </ListPageShell>
   );
 }

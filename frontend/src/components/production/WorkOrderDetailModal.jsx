@@ -151,7 +151,7 @@ export function WorkOrderStartModal({ workOrder, checks, onClose, onConfirm, loa
           ))}
         </ul>
         <div className="mt-4 flex justify-end gap-2">
-          <Button variant="secondary" type="button" onClick={onClose}>Cancel</Button>
+          <Button variant="cancel" type="button" onClick={onClose}>Cancel</Button>
           <Button variant="primary" type="button" disabled={!allReady || loading} onClick={onConfirm}>
             {loading ? "Starting…" : "Start"}
           </Button>

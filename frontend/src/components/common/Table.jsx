@@ -1,6 +1,16 @@
 import { useState } from "react";
 import { columnsIncludeSerial } from "../../utils/serialNumber";
 
+const NUMERIC_KEY_RE =
+  /amount|price|qty|quantity|total|balance|credit|debit|cost|rate|revenue|value|units|stock|weight/i;
+
+function columnAlign(col) {
+  if (col.align === "right" || col.numeric) return "right";
+  if (col.align === "center") return "center";
+  if (NUMERIC_KEY_RE.test(col.key || "") || NUMERIC_KEY_RE.test(col.label || "")) return "right";
+  return "left";
+}
+
 function StatusBadge({ status }) {
   const val =
     typeof status === "object" && status !== null
@@ -107,8 +117,9 @@ export default function Table({
             ) : null}
             {columns.map((col) => {
               const isActionsCol = col.key === "actions" || col.printHidden;
+              const alignDir = columnAlign(col);
               const align =
-                col.align === "right" ? "text-right" : col.align === "center" ? "text-center" : "text-left";
+                alignDir === "right" ? "text-right" : alignDir === "center" ? "text-center" : "text-left";
               const colClass = col.className || "";
               return (
                 <th
@@ -137,10 +148,11 @@ export default function Table({
               ) : null}
               {columns.map((col) => {
                 const isActionsCol = col.key === "actions" || col.printHidden;
+                const alignDir = columnAlign(col);
                 const align =
-                  col.align === "right"
+                  alignDir === "right"
                     ? "ui-num text-right"
-                    : col.align === "center"
+                    : alignDir === "center"
                       ? "text-center"
                       : "";
                 const colClass = col.className || col.cellClassName || "";

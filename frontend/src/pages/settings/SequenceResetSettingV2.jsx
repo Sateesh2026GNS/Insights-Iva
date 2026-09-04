@@ -77,7 +77,7 @@ function ConfirmFyModal({ open, fy, busy, onCancel, onConfirm }) {
           >
             {busy ? "Saving…" : `Change to ${fy.label}`}
           </Button>
-          <Button type="button" variant="secondary" fullWidth disabled={busy} onClick={onCancel}>
+          <Button type="button" variant="cancel" fullWidth disabled={busy} onClick={onCancel}>
             Cancel
           </Button>
         </div>

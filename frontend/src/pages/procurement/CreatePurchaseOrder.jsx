@@ -104,15 +104,15 @@ function PrefixDropdown({ value, options, onChange, onAddNew }) {
       <button
         type="button"
         onClick={() => setOpen((current) => !current)}
-        className="flex w-full items-center justify-between border-0 border-b border-[#1a1a1f] bg-transparent py-2 text-left text-[13px] font-medium text-[#1a1a1f] focus:outline-none"
+        className="flex w-full items-center justify-between border-0 border-b border-[var(--color-text)] bg-transparent py-2 text-left text-[13px] font-medium text-[var(--color-text)] focus:outline-none"
       >
         <span>{value || "No Prefix"}</span>
-        <ChevronDown className={`h-4 w-4 text-[#6b6b76] transition ${open ? "rotate-180" : ""}`} />
+        <ChevronDown className={`h-4 w-4 text-[var(--color-text-muted)] transition ${open ? "rotate-180" : ""}`} />
       </button>
       {open ? (
         <>
           <button type="button" className="fixed inset-0 z-10 cursor-default" aria-label="Close prefix menu" onClick={() => setOpen(false)} />
-          <div className="absolute left-0 right-0 z-20 mt-1 overflow-hidden rounded-xl border border-[#e4e4ea] bg-white shadow-lg">
+          <div className="absolute left-0 right-0 z-20 mt-1 overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-lg">
             <div className="space-y-2 p-2">
               {["", ...options].map((prefix) => (
                 <button
@@ -182,12 +182,12 @@ function showsVehicleNo(mode) {
 
 function SectionHeader({ icon: Icon, title, children, className = "", collapsible, open, onToggle }) {
   const titleRow = (
-    <div className="flex min-w-0 items-center gap-2 text-[13px] font-bold uppercase tracking-wide text-[#3d3560]">
+    <div className="flex min-w-0 items-center gap-2 text-[13px] font-bold uppercase tracking-wide text-[var(--color-text)]">
       {Icon ? <Icon className="h-4 w-4 shrink-0" /> : null}
       <span className="truncate">{title}</span>
       {collapsible ? (
         <ChevronDown
-          className={`ml-0.5 h-4 w-4 shrink-0 text-[#6b6b76] transition-transform ${
+          className={`ml-0.5 h-4 w-4 shrink-0 text-[var(--color-text-muted)] transition-transform ${
             open ? "rotate-180" : ""
           }`}
         />
@@ -197,7 +197,7 @@ function SectionHeader({ icon: Icon, title, children, className = "", collapsibl
 
   return (
     <div
-      className={`flex flex-wrap items-center justify-between gap-2 border-b border-[#d0d0d8] px-4 py-3 ${className}`}
+      className={`flex flex-wrap items-center justify-between gap-2 border-b border-[var(--color-border)] px-4 py-3 ${className}`}
       style={{ background: ERP_PRIMARY_SOFT }}
     >
       {collapsible ? (
@@ -551,7 +551,7 @@ export default function CreatePurchaseOrder() {
 
   if (loading) {
     return (
-      <div className="flex h-full min-h-[50vh] items-center justify-center bg-[#F5F5F5]">
+      <div className="flex h-full min-h-[50vh] items-center justify-center bg-[var(--color-bg)]">
         <Loader label={isEdit ? "Loading purchase order…" : "Loading form…"} />
       </div>
     );
@@ -562,15 +562,15 @@ export default function CreatePurchaseOrder() {
   return (
     <form
       onSubmit={handleSubmit}
-      className="flex h-full min-h-0 flex-col bg-[#F5F5F5]"
+      className="flex h-full min-h-0 flex-col bg-[var(--color-bg)]"
     >
       {/* Sticky header — matches screenshot */}
-      <div className="flex shrink-0 items-center justify-between gap-3 border-b border-[#e4e4ea] bg-white px-5 py-3.5">
+      <div className="flex shrink-0 items-center justify-between gap-3 border-b border-[var(--color-border)] bg-[var(--color-surface)] px-5 py-3.5">
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => navigate("/procurement/purchase-orders")}
-            className="rounded-lg p-1.5 text-[#4a4a55] hover:bg-[#F5F5F5]"
+            className="rounded-lg p-1.5 text-[var(--color-text-secondary)] hover:bg-[var(--color-bg)]"
             aria-label="Back"
           >
             <ArrowLeft className="h-5 w-5" />
@@ -580,7 +580,7 @@ export default function CreatePurchaseOrder() {
           <button
             type="button"
             onClick={() => navigate("/procurement/purchase-orders")}
-            className="rounded-lg border border-[#e4e4ea] bg-white px-4 py-2 text-[13px] font-semibold text-[#4a4a55] hover:bg-[#F5F5F5]"
+            className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2 text-[13px] font-semibold text-[var(--color-text-secondary)] hover:bg-[var(--color-bg)]"
           >
             Cancel
           </button>
@@ -598,8 +598,8 @@ export default function CreatePurchaseOrder() {
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto w-full max-w-[1200px] space-y-4 p-5 pb-10">
           {/* Top: purchase type + company buyer — bordered two-column panel */}
-          <div className="grid overflow-hidden rounded-xl border border-[#d0d0d8] bg-white lg:grid-cols-[1fr_1.35fr]">
-          <section className="border-b border-[#d0d0d8] p-4 lg:border-b-0 lg:border-r">
+          <div className="grid overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] lg:grid-cols-[1fr_1.35fr]">
+          <section className="border-b border-[var(--color-border)] p-4 lg:border-b-0 lg:border-r">
             <div className="grid gap-3 sm:grid-cols-3">
               <label className="block">
                 <FieldLabel>Purchase Order Prefix</FieldLabel>
@@ -628,16 +628,16 @@ export default function CreatePurchaseOrder() {
             </div>
           </section>
 
-          <section className="overflow-hidden bg-white">
+          <section className="overflow-hidden bg-[var(--color-surface)]">
             <SectionHeader icon={Building2} title="Buyer Details" />
             <div className="flex items-start justify-between gap-4 border-t-0 p-4">
               <div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <p className="text-[15px] font-semibold text-[#1a1a1f]">{companyName}</p>
+                  <p className="text-[15px] font-semibold text-[var(--color-text)]">{companyName}</p>
                   <button
                     type="button"
                     onClick={() => setEditCompanyOpen(true)}
-                    className="inline-flex items-center gap-1 text-[13px] font-medium text-[#6b4eff] hover:underline"
+                    className="inline-flex items-center gap-1 text-[13px] font-medium text-[var(--color-primary)] hover:underline"
                   >
                     <PenLine className="h-3.5 w-3.5" />
                     Edit Company Details
@@ -649,7 +649,7 @@ export default function CreatePurchaseOrder() {
                   addLabel="+ Add Shipping Address (Consignee)"
                 />
                 {dispatchAddress ? (
-                  <p className="mt-2 max-w-sm text-[12px] leading-relaxed text-[#6b6b76]">
+                  <p className="mt-2 max-w-sm text-[12px] leading-relaxed text-[var(--color-text-muted)]">
                     {[dispatchAddress.address, dispatchAddress.city, dispatchAddress.state, dispatchAddress.pincode]
                       .filter(Boolean)
                       .join(", ")}
@@ -660,7 +660,7 @@ export default function CreatePurchaseOrder() {
               <button
                 type="button"
                 onClick={() => setEditCompanyOpen(true)}
-                className="flex h-[72px] w-[72px] shrink-0 flex-col items-center justify-center overflow-hidden rounded-full border border-dashed border-[#c4c4cc] bg-[#fafafa] text-[10px] text-[#9a9aa5]"
+                className="flex h-[72px] w-[72px] shrink-0 flex-col items-center justify-center overflow-hidden rounded-full border border-dashed border-[var(--color-border)] bg-[var(--color-surface-muted)] text-[10px] text-[var(--color-text-faint)]"
               >
                 {company?.logo_url ? (
                   <img
@@ -680,7 +680,7 @@ export default function CreatePurchaseOrder() {
         </div>
 
         {/* Seller */}
-        <section className="overflow-hidden rounded-xl border border-[#d0d0d8] bg-white">
+        <section className="overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)]">
           <SectionHeader icon={User} title="Seller Details">
             <button
               type="button"
@@ -696,16 +696,16 @@ export default function CreatePurchaseOrder() {
                 setShowSellerPicker(false);
                 setAddSellerOpen(true);
               }}
-              className="inline-flex items-center gap-1 rounded-lg border border-[var(--color-action-teal)] bg-white px-3 py-1.5 text-[13px] font-semibold text-[var(--color-action-teal)] hover:bg-[var(--color-success-soft)]"
+              className="inline-flex items-center gap-1 rounded-lg border border-[var(--color-action-teal)] bg-[var(--color-surface)] px-3 py-1.5 text-[13px] font-semibold text-[var(--color-action-teal)] hover:bg-[var(--color-success-soft)]"
             >
               <Plus className="h-3.5 w-3.5" />
               Add New Seller
             </button>
           </SectionHeader>
           <div className="min-h-[88px] border-t-0 p-4">
-            <div className="min-h-[56px] rounded-lg border border-[#d0d0d8] bg-[#fafafa] p-3">
+            <div className="min-h-[56px] rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-muted)] p-3">
             {showSellerPicker && (
-              <div className="mb-3 rounded-lg border border-[#d0d0d8] bg-white p-3">
+              <div className="mb-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-3">
                 <SearchBar
                   size="compact"
                   value={vendorSearch}
@@ -715,7 +715,7 @@ export default function CreatePurchaseOrder() {
                 />
                 <div className="max-h-44 overflow-y-auto">
                   {filteredVendors.length === 0 ? (
-                    <p className="p-2 text-[13px] text-[#8a8a95]">
+                    <p className="p-2 text-[13px] text-[var(--color-text-faint)]">
                       No sellers found.{" "}
                       <button
                         type="button"
@@ -734,8 +734,8 @@ export default function CreatePurchaseOrder() {
                         key={vendor.id}
                         type="button"
                         onClick={() => handleVendorChange(vendor.id)}
-                        className={`block w-full rounded-md px-3 py-2 text-left text-[13px] hover:bg-white ${
-                          String(form.supplier_id) === String(vendor.id) ? "bg-white font-semibold" : ""
+                        className={`block w-full rounded-md px-3 py-2 text-left text-[13px] hover:bg-[var(--color-surface)] ${
+                          String(form.supplier_id) === String(vendor.id) ? "bg-[var(--color-surface)] font-semibold" : ""
                         }`}
                       >
                         {vendor.name || vendor.vendor_name}
@@ -749,23 +749,23 @@ export default function CreatePurchaseOrder() {
             )}
             {selectedSeller ? (
               <div className="grid gap-1 text-[13px] sm:grid-cols-2">
-                <p className="font-semibold text-[#1a1a1f]">{selectedSeller.name || selectedSeller.vendor_name}</p>
-                <p className="text-[#6b6b76]">{selectedSeller.gstin || "—"}</p>
-                <p className="text-[#6b6b76] sm:col-span-2">
+                <p className="font-semibold text-[var(--color-text)]">{selectedSeller.name || selectedSeller.vendor_name}</p>
+                <p className="text-[var(--color-text-muted)]">{selectedSeller.gstin || "—"}</p>
+                <p className="text-[var(--color-text-muted)] sm:col-span-2">
                   {[form.consignee_address1, form.consignee_address2, form.consignee_state]
                     .filter(Boolean)
                     .join(", ") || "—"}
                 </p>
               </div>
             ) : !showSellerPicker ? (
-              <p className="py-4 text-center text-[13px] text-[#a0a0ab]">Select a seller to continue</p>
+              <p className="py-4 text-center text-[13px] text-[var(--color-text-muted)]">Select a seller to continue</p>
             ) : null}
             </div>
           </div>
         </section>
 
         {/* Items */}
-        <section className="overflow-hidden rounded-xl border border-[#d0d0d8] bg-white">
+        <section className="overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)]">
           <SectionHeader icon={Package} title="Item Details">
             <button
               type="button"
@@ -784,7 +784,7 @@ export default function CreatePurchaseOrder() {
                     (h) => (
                       <th
                         key={h || "x"}
-                        className="whitespace-nowrap border-b border-r border-[#d0d0d8] px-2 py-2.5 font-semibold last:border-r-0"
+                        className="whitespace-nowrap border-b border-r border-[var(--color-border)] px-2 py-2.5 font-semibold last:border-r-0"
                       >
                         {h}
                       </th>
@@ -796,10 +796,10 @@ export default function CreatePurchaseOrder() {
                 {items.map((row, idx) => {
                   const t = lineTotals(row);
                   const hasDesc = Boolean(row.item_description?.trim());
-                  const cell = "border-b border-r border-[#d0d0d8] px-2 py-2 last:border-r-0";
+                  const cell = "border-b border-r border-[var(--color-border)] px-2 py-2 last:border-r-0";
                   return (
                     <tr key={idx}>
-                      <td className={`${cell} text-[#9a9aa5]`}>{idx + 1}</td>
+                      <td className={`${cell} text-[var(--color-text-faint)]`}>{idx + 1}</td>
                       <td className={cell}>
                         <div className="relative min-w-[160px]">
                           <SearchBar
@@ -826,7 +826,7 @@ export default function CreatePurchaseOrder() {
                         <input
                           value={row.hsn}
                           onChange={(e) => updateItem(idx, "hsn", e.target.value)}
-                          className="w-16 rounded-md border border-[#d0d0d8] bg-[#f7f7f9] px-1.5 py-1.5"
+                          className="w-16 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-1.5 py-1.5"
                         />
                       </td>
                       <td className={cell}>
@@ -835,14 +835,14 @@ export default function CreatePurchaseOrder() {
                           value={row.qty}
                           onChange={(e) => updateItem(idx, "qty", e.target.value)}
                           placeholder="0"
-                          className="w-14 rounded-md border border-[#d0d0d8] bg-[#f7f7f9] px-1.5 py-1.5 text-[12px] text-[#1a1a1f] focus:border-[var(--color-action-blue)] focus:bg-white focus:outline-none focus:ring-1 focus:ring-[var(--color-action-blue)]/30"
+                          className="w-14 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-1.5 py-1.5 text-[12px] text-[var(--color-text)] focus:border-[var(--color-action-blue)] focus:bg-[var(--color-surface)] focus:outline-none focus:ring-1 focus:ring-[var(--color-action-blue)]/30"
                         />
                       </td>
                       <td className={cell}>
                         <select
                           value={row.unit}
                           onChange={(e) => updateItem(idx, "unit", e.target.value)}
-                          className="w-full rounded-md border border-[#d0d0d8] bg-[#f7f7f9] px-1 py-1.5"
+                          className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-1 py-1.5"
                         >
                           <option value="">Unit</option>
                           <option value="pcs">pcs</option>
@@ -852,12 +852,12 @@ export default function CreatePurchaseOrder() {
                       </td>
                       <td className={cell}>
                         <div className="flex items-center gap-0.5">
-                          <span className="text-[#9a9aa5]">₹</span>
+                          <span className="text-[var(--color-text-faint)]">₹</span>
                           <input
                             type="number"
                             value={row.rate}
                             onChange={(e) => updateItem(idx, "rate", e.target.value)}
-                            className="w-20 rounded-md border border-[#d0d0d8] bg-[#f7f7f9] px-1.5 py-1.5"
+                            className="w-20 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-1.5 py-1.5"
                           />
                         </div>
                       </td>
@@ -865,7 +865,7 @@ export default function CreatePurchaseOrder() {
                         <select
                           value={row.tax_type}
                           onChange={(e) => updateItem(idx, "tax_type", e.target.value)}
-                          className="w-full rounded-md border border-[#d0d0d8] bg-[#f7f7f9] px-1.5 py-1.5"
+                          className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-1.5 py-1.5"
                         >
                           <option>Exclusive</option>
                           <option>Inclusive</option>
@@ -877,26 +877,26 @@ export default function CreatePurchaseOrder() {
                             type="number"
                             value={row.discount}
                             onChange={(e) => updateItem(idx, "discount", e.target.value)}
-                            className="w-14 rounded-md border border-[#d0d0d8] bg-[#f7f7f9] px-1.5 py-1.5"
+                            className="w-14 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-1.5 py-1.5"
                           />
                           <select
                             value={row.discount_type}
                             onChange={(e) => updateItem(idx, "discount_type", e.target.value)}
-                            className="rounded-md border border-[#d0d0d8] bg-[#f7f7f9] px-1 py-1.5"
+                            className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-1 py-1.5"
                           >
                             <option value="₹">₹</option>
                             <option value="%">%</option>
                           </select>
                         </div>
                       </td>
-                      <td className={`${cell} tabular-nums text-[#6b6b76]`}>
+                      <td className={`${cell} tabular-nums text-[var(--color-text-muted)]`}>
                         {hasDesc ? t.taxable.toFixed(2) : "—"}
                       </td>
                       <td className={cell}>
                         <select
                           value={row.gst_pct}
                           onChange={(e) => updateItem(idx, "gst_pct", e.target.value)}
-                          className="w-full rounded-md border border-[#d0d0d8] bg-[#f7f7f9] px-1.5 py-1.5"
+                          className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-1.5 py-1.5"
                         >
                           <option value="">—</option>
                           <option value="0">0%</option>
@@ -909,7 +909,7 @@ export default function CreatePurchaseOrder() {
                       <td className={`${cell} font-semibold tabular-nums`}>
                         {hasDesc ? t.total.toFixed(2) : "—"}
                       </td>
-                      <td className="border-b border-[#d0d0d8] px-2 py-2">
+                      <td className="border-b border-[var(--color-border)] px-2 py-2">
                         <button type="button" onClick={() => removeItem(idx)} className="text-red-500 hover:text-red-700">
                           <Trash2 className="h-4 w-4" />
                         </button>
@@ -921,7 +921,7 @@ export default function CreatePurchaseOrder() {
             </table>
           </div>
 
-          <div className="flex flex-col gap-4 border-t border-[#d0d0d8] p-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex flex-col gap-4 border-t border-[var(--color-border)] p-4 sm:flex-row sm:items-start sm:justify-between">
             <button
               type="button"
               onClick={() => setAddItemOpen(true)}
@@ -930,30 +930,30 @@ export default function CreatePurchaseOrder() {
               + Add More Item
             </button>
 
-            <div className="min-w-[260px] overflow-hidden rounded-lg border border-[#d0d0d8] text-[13px]">
-              <div className="flex justify-between border-b border-dashed border-[#d0d0d8] px-3 py-2 text-[#6b6b76]">
+            <div className="min-w-[260px] overflow-hidden rounded-lg border border-[var(--color-border)] text-[13px]">
+              <div className="flex justify-between border-b border-dashed border-[var(--color-border)] px-3 py-2 text-[var(--color-text-muted)]">
                 <span>Taxable Amount</span>
                 <span className="tabular-nums">₹ {taxableAmount.toFixed(2)}</span>
               </div>
-              <div className="flex justify-between border-b border-dashed border-[#d0d0d8] px-3 py-2 text-[#6b6b76]">
+              <div className="flex justify-between border-b border-dashed border-[var(--color-border)] px-3 py-2 text-[var(--color-text-muted)]">
                 <span>GST Amount</span>
                 <span className="tabular-nums">₹ {gstAmount.toFixed(2)}</span>
               </div>
-              <div className="flex justify-between border-b border-dashed border-[#d0d0d8] px-3 py-2 font-medium text-[#1a1a1f]">
+              <div className="flex justify-between border-b border-dashed border-[var(--color-border)] px-3 py-2 font-medium text-[var(--color-text)]">
                 <span>Total Amount</span>
                 <span className="tabular-nums">₹ {itemsTotal.toFixed(2)}</span>
               </div>
               {showGstTds ? (
-                <div className="flex items-center justify-between border-b border-dashed border-[#d0d0d8] px-3 py-2 text-[#b42318]">
+                <div className="flex items-center justify-between border-b border-dashed border-[var(--color-border)] px-3 py-2 text-[var(--color-danger)]">
                   <span><button type="button" onClick={() => setShowGstTds(false)} className="mr-1"><X className="inline h-3.5 w-3.5" /></button>2% GST TDS</span>
                   <span>₹ {gstTdsAmount.toFixed(2)} (deducted)</span>
                 </div>
               ) : null}
               {showTaxType ? (
-                <div className="space-y-2 border-b border-dashed border-[#d0d0d8] p-3">
-                  <div className="flex items-center justify-between text-[#1a1a1f]">
+                <div className="space-y-2 border-b border-dashed border-[var(--color-border)] p-3">
+                  <div className="flex items-center justify-between text-[var(--color-text)]">
                     <span className="font-medium">Select Tax Type</span>
-                    <button type="button" onClick={() => setShowTaxType(false)} className="text-[#b42318]"><X className="h-4 w-4" /></button>
+                    <button type="button" onClick={() => setShowTaxType(false)} className="text-[var(--color-danger)]"><X className="h-4 w-4" /></button>
                   </div>
                   <div className="flex gap-3 text-[12px]">
                     {["tcs", "tds"].map((type) => <label key={type}><input type="radio" checked={taxType === type} onChange={() => setTaxType(type)} /> {type.toUpperCase()}</label>)}
@@ -961,25 +961,25 @@ export default function CreatePurchaseOrder() {
                   {taxType === "tcs" ? (
                     <div className="grid grid-cols-2 gap-2">
                       <SoftInput type="number" placeholder="TCS %" value={tcsPct} onChange={(e) => setTcsPct(e.target.value)} />
-                      <label className="text-[11px] text-[#6b6b76]">TCS on<SoftSelect value={tcsOn} onChange={(e) => setTcsOn(e.target.value)}><option value="taxable">Taxable Amount</option><option value="final">Final Amount</option></SoftSelect></label>
+                      <label className="text-[11px] text-[var(--color-text-muted)]">TCS on<SoftSelect value={tcsOn} onChange={(e) => setTcsOn(e.target.value)}><option value="taxable">Taxable Amount</option><option value="final">Final Amount</option></SoftSelect></label>
                     </div>
                   ) : (
                     <div className="grid grid-cols-2 gap-2">
                       <SoftSelect value={tdsCode} onChange={(e) => setTdsCode(e.target.value)}><option value="">Select TDS</option><option value="194Q">194Q (0.1%)</option><option value="194C">194C (1%)</option></SoftSelect>
-                      <label className="text-[11px] text-[#6b6b76]">TDS on<SoftSelect value={tdsOn} onChange={(e) => setTdsOn(e.target.value)}><option value="taxable">Taxable Amount</option><option value="final">Final Amount</option></SoftSelect></label>
+                      <label className="text-[11px] text-[var(--color-text-muted)]">TDS on<SoftSelect value={tdsOn} onChange={(e) => setTdsOn(e.target.value)}><option value="taxable">Taxable Amount</option><option value="final">Final Amount</option></SoftSelect></label>
                     </div>
                   )}
-                  <div className="flex justify-between text-[#b42318]"><span>{taxType.toUpperCase()} deducted</span><span>₹ {tcsOrTdsAmount.toFixed(2)}</span></div>
+                  <div className="flex justify-between text-[var(--color-danger)]"><span>{taxType.toUpperCase()} deducted</span><span>₹ {tcsOrTdsAmount.toFixed(2)}</span></div>
                 </div>
               ) : null}
               {showPurchaseDiscount ? (
-                <div className="flex items-center gap-2 border-b border-dashed border-[#d0d0d8] p-3">
-                  <button type="button" onClick={() => setShowPurchaseDiscount(false)} className="text-[#b42318]"><X className="h-4 w-4" /></button>
+                <div className="flex items-center gap-2 border-b border-dashed border-[var(--color-border)] p-3">
+                  <button type="button" onClick={() => setShowPurchaseDiscount(false)} className="text-[var(--color-danger)]"><X className="h-4 w-4" /></button>
                   <SoftInput type="number" placeholder="Discount" value={purchaseDiscountVal} onChange={(e) => setPurchaseDiscountVal(e.target.value)} />
                   <SoftSelect value={purchaseDiscountType} onChange={(e) => setPurchaseDiscountType(e.target.value)} className="max-w-16"><option>%</option><option>₹</option></SoftSelect>
                 </div>
               ) : null}
-              <div className="flex justify-between border-b border-[#d0d0d8] bg-[#fafafa] px-3 py-2.5 text-[16px] font-bold text-[#1a1a1f]">
+              <div className="flex justify-between border-b border-[var(--color-border)] bg-[var(--color-surface-muted)] px-3 py-2.5 text-[16px] font-bold text-[var(--color-text)]">
                 <span>Final Amount</span>
                 <span className="tabular-nums">₹ {finalAmount.toFixed(2)}</span>
               </div>
@@ -987,7 +987,7 @@ export default function CreatePurchaseOrder() {
                 <button
                   type="button"
                   onClick={() => setOtherChargeOpen(true)}
-                  className="rounded-full border bg-white px-3 py-1.5 text-[12px] font-semibold"
+                  className="rounded-full border bg-[var(--color-surface)] px-3 py-1.5 text-[12px] font-semibold"
                   style={{ borderColor: ERP_PRIMARY, color: ERP_PRIMARY }}
                 >
                   {otherChargeMeta?.charge_name
@@ -997,15 +997,15 @@ export default function CreatePurchaseOrder() {
                 <button
                   type="button"
                   onClick={() => setShowGstTds(true)}
-                  className="rounded-full border bg-white px-3 py-1.5 text-[12px] font-semibold"
+                  className="rounded-full border bg-[var(--color-surface)] px-3 py-1.5 text-[12px] font-semibold"
                   style={{ borderColor: ERP_PRIMARY, color: ERP_PRIMARY }}
                 >
                   + Add 2% GST TDS
                 </button>
-                <button type="button" onClick={() => setShowTaxType(true)} className="rounded-full border bg-white px-3 py-1.5 text-[12px] font-semibold" style={{ borderColor: ERP_PRIMARY, color: ERP_PRIMARY }}>
+                <button type="button" onClick={() => setShowTaxType(true)} className="rounded-full border bg-[var(--color-surface)] px-3 py-1.5 text-[12px] font-semibold" style={{ borderColor: ERP_PRIMARY, color: ERP_PRIMARY }}>
                   + Add TCS/TDS
                 </button>
-                <button type="button" onClick={() => setShowPurchaseDiscount(true)} className="rounded-full border bg-white px-3 py-1.5 text-[12px] font-semibold" style={{ borderColor: ERP_PRIMARY, color: ERP_PRIMARY }}>
+                <button type="button" onClick={() => setShowPurchaseDiscount(true)} className="rounded-full border bg-[var(--color-surface)] px-3 py-1.5 text-[12px] font-semibold" style={{ borderColor: ERP_PRIMARY, color: ERP_PRIMARY }}>
                   + Add Purchase Order Level Discount
                 </button>
               </div>
@@ -1014,17 +1014,17 @@ export default function CreatePurchaseOrder() {
         </section>
 
         {/* OPTIONAL FIELDS */}
-        <div className="overflow-hidden rounded-xl border border-[#d0d0d8] bg-white">
+        <div className="overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)]">
           <div
-            className="border-b border-[#d0d0d8] px-4 py-3 text-center text-[12px] font-bold uppercase tracking-[0.12em] text-[#3d3560]"
+            className="border-b border-[var(--color-border)] px-4 py-3 text-center text-[12px] font-bold uppercase tracking-[0.12em] text-[var(--color-text)]"
             style={{ background: ERP_PRIMARY_SOFT }}
           >
             Optional Fields
           </div>
 
-          <div className="grid gap-0 lg:grid-cols-2 lg:divide-x lg:divide-[#d0d0d8]">
+          <div className="grid gap-0 lg:grid-cols-2 lg:divide-x lg:divide-[var(--color-border)]">
             {/* Transportation */}
-            <section className="overflow-hidden border-b border-[#d0d0d8] bg-white lg:border-b-0">
+            <section className="overflow-hidden border-b border-[var(--color-border)] bg-[var(--color-surface)] lg:border-b-0">
               <SectionHeader
                 icon={Truck}
                 title="Transportation Details"
@@ -1034,7 +1034,7 @@ export default function CreatePurchaseOrder() {
               />
               {transportOpen ? (
               <div className="space-y-4 border-t-0 p-4">
-                <div className="border-b border-[#e8e8ee] pb-4">
+                <div className="border-b border-[var(--color-border-soft)] pb-4">
                   <FieldLabel>Transportation Mode</FieldLabel>
                   <div className="flex flex-wrap gap-2">
                     {TRANSPORT_MODES.map(({ id, label, Icon }) => (
@@ -1095,7 +1095,7 @@ export default function CreatePurchaseOrder() {
                           />
                           <button
                             type="button"
-                            className="absolute right-2 top-1/2 inline-flex -translate-y-1/2 items-center gap-1 text-[12px] font-semibold text-[#2563eb]"
+                            className="absolute right-2 top-1/2 inline-flex -translate-y-1/2 items-center gap-1 text-[12px] font-semibold text-[var(--color-action-blue)]"
                           >
                             <MapPin className="h-3.5 w-3.5" />
                             Calculate
@@ -1106,11 +1106,11 @@ export default function CreatePurchaseOrder() {
                   );
                 })()}
 
-                <div className="flex items-center justify-between border-t border-[#ececf0] pt-3">
+                <div className="flex items-center justify-between border-t border-[var(--color-border-soft)] pt-3">
                   <div className="min-w-0">
-                    <span className="text-[13px] font-semibold text-[#1a1a1f]">Transporter Details</span>
+                    <span className="text-[13px] font-semibold text-[var(--color-text)]">Transporter Details</span>
                     {form.transporter_name ? (
-                      <p className="truncate text-[12px] text-[#6b6b76]">
+                      <p className="truncate text-[12px] text-[var(--color-text-muted)]">
                         {form.transporter_name}
                         {form.transporter_id ? ` · ${form.transporter_id}` : ""}
                       </p>
@@ -1119,14 +1119,14 @@ export default function CreatePurchaseOrder() {
                   <button
                     type="button"
                     onClick={() => setTransporterModalOpen(true)}
-                    className="shrink-0 text-[13px] font-semibold text-[#2563eb]"
+                    className="shrink-0 text-[13px] font-semibold text-[var(--color-action-blue)]"
                   >
                     {form.transporter_name ? "Edit Transporter" : "+ Add New Transporter"}
                   </button>
                 </div>
 
-                <div className="space-y-3 border-t border-[#ececf0] pt-3">
-                  <p className="text-[13px] font-semibold text-[#1a1a1f]">Other Details</p>
+                <div className="space-y-3 border-t border-[var(--color-border-soft)] pt-3">
+                  <p className="text-[13px] font-semibold text-[var(--color-text)]">Other Details</p>
                   <div className="grid gap-3 sm:grid-cols-2">
                     <label className="block">
                       <FieldLabel>Place of Supply</FieldLabel>
@@ -1176,7 +1176,7 @@ export default function CreatePurchaseOrder() {
             </section>
 
             {/* Other details */}
-            <section className="overflow-hidden bg-white">
+            <section className="overflow-hidden bg-[var(--color-surface)]">
               <SectionHeader
                 icon={Grid2x2}
                 title="Other Details"
@@ -1186,8 +1186,8 @@ export default function CreatePurchaseOrder() {
               />
               {otherDetailsOpen ? (
               <div className="space-y-3 p-4">
-                <div className="grid gap-0 sm:grid-cols-2 sm:divide-x sm:divide-[#e8e8ee]">
-                  <label className="block border-b border-[#e8e8ee] p-3 sm:border-b">
+                <div className="grid gap-0 sm:grid-cols-2 sm:divide-x sm:divide-[var(--color-border-soft)]">
+                  <label className="block border-b border-[var(--color-border-soft)] p-3 sm:border-b">
                     <FieldLabel>Invoice No</FieldLabel>
                     <SoftInput
                       placeholder="Enter Invoice No"
@@ -1195,7 +1195,7 @@ export default function CreatePurchaseOrder() {
                       onChange={(e) => setRefInvoiceNo(e.target.value)}
                     />
                   </label>
-                  <label className="block border-b border-[#e8e8ee] p-3">
+                  <label className="block border-b border-[var(--color-border-soft)] p-3">
                     <FieldLabel>Invoice Date</FieldLabel>
                     <SoftInput
                       type="date"
@@ -1203,7 +1203,7 @@ export default function CreatePurchaseOrder() {
                       onChange={(e) => setRefInvoiceDate(e.target.value)}
                     />
                   </label>
-                  <label className="block border-b border-[#e8e8ee] p-3">
+                  <label className="block border-b border-[var(--color-border-soft)] p-3">
                     <FieldLabel>Challan Number</FieldLabel>
                     <SoftInput
                       placeholder="Enter Challan Number"
@@ -1211,7 +1211,7 @@ export default function CreatePurchaseOrder() {
                       onChange={(e) => setForm((f) => ({ ...f, challan_number: e.target.value }))}
                     />
                   </label>
-                  <label className="block border-b border-[#e8e8ee] p-3">
+                  <label className="block border-b border-[var(--color-border-soft)] p-3">
                     <FieldLabel>E-Waybill Number</FieldLabel>
                     <SoftInput
                       placeholder="Enter E-Waybill Number"
@@ -1219,7 +1219,7 @@ export default function CreatePurchaseOrder() {
                       onChange={(e) => setForm((f) => ({ ...f, ewaybill_number: e.target.value }))}
                     />
                   </label>
-                  <label className="block border-b border-[#e8e8ee] p-3">
+                  <label className="block border-b border-[var(--color-border-soft)] p-3">
                     <FieldLabel>Payment Mode</FieldLabel>
                     <SoftInput
                       placeholder="Enter Payment Mode"
@@ -1227,7 +1227,7 @@ export default function CreatePurchaseOrder() {
                       onChange={(e) => setPaymentMode(e.target.value)}
                     />
                   </label>
-                  <label className="block border-b border-[#e8e8ee] p-3">
+                  <label className="block border-b border-[var(--color-border-soft)] p-3">
                     <FieldLabel>Dispatched Doc No</FieldLabel>
                     <SoftInput
                       placeholder="Enter Dispatched Doc No"
@@ -1235,7 +1235,7 @@ export default function CreatePurchaseOrder() {
                       onChange={(e) => setDispatchedDocNo(e.target.value)}
                     />
                   </label>
-                  <label className="block border-b border-[#e8e8ee] p-3">
+                  <label className="block border-b border-[var(--color-border-soft)] p-3">
                     <FieldLabel>Dispatched Through</FieldLabel>
                     <SoftInput
                       placeholder="Enter Dispatched Through"
@@ -1243,7 +1243,7 @@ export default function CreatePurchaseOrder() {
                       onChange={(e) => setDispatchedThrough(e.target.value)}
                     />
                   </label>
-                  <label className="block border-b border-[#e8e8ee] p-3">
+                  <label className="block border-b border-[var(--color-border-soft)] p-3">
                     <FieldLabel>Destination</FieldLabel>
                     <SoftInput
                       placeholder="Enter Destination"
@@ -1252,7 +1252,7 @@ export default function CreatePurchaseOrder() {
                     />
                   </label>
                 </div>
-                <label className="block border border-[#e8e8ee] p-3">
+                <label className="block border border-[var(--color-border-soft)] p-3">
                   <FieldLabel>Reason/Remark</FieldLabel>
                   <SoftInput
                     placeholder="Enter Reason/Remark"
@@ -1263,14 +1263,14 @@ export default function CreatePurchaseOrder() {
                 {customFields.map((field) => (
                   <div
                     key={field.id}
-                    className="flex items-start justify-between gap-3 rounded-lg border border-[#e8e8ee] bg-[#fafafa] px-3 py-2.5"
+                    className="flex items-start justify-between gap-3 rounded-lg border border-[var(--color-border-soft)] bg-[var(--color-surface-muted)] px-3 py-2.5"
                   >
                     <div className="min-w-0">
-                      <p className="truncate text-[13px] font-semibold text-[#1a1a1f]">
+                      <p className="truncate text-[13px] font-semibold text-[var(--color-text)]">
                         {field.label}
                       </p>
                       {field.value ? (
-                        <p className="mt-0.5 truncate text-[12px] text-[#6b6b76]">{field.value}</p>
+                        <p className="mt-0.5 truncate text-[12px] text-[var(--color-text-muted)]">{field.value}</p>
                       ) : null}
                     </div>
                     <button
@@ -1278,7 +1278,7 @@ export default function CreatePurchaseOrder() {
                       onClick={() =>
                         setCustomFields((rows) => rows.filter((x) => x.id !== field.id))
                       }
-                      className="rounded p-1 text-[#9a9aa5] hover:bg-[#f0f0f4] hover:text-[#e11d48]"
+                      className="rounded p-1 text-[var(--color-text-faint)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-danger)]"
                       aria-label={`Remove ${field.label}`}
                     >
                       <Trash2 className="h-4 w-4" />
@@ -1288,7 +1288,7 @@ export default function CreatePurchaseOrder() {
                 <button
                   type="button"
                   onClick={() => setCustomFieldOpen(true)}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-[#c4b5fd] bg-white px-3 py-2 text-[13px] font-semibold"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--color-primary-soft)] bg-[var(--color-surface)] px-3 py-2 text-[13px] font-semibold"
                   style={{ color: ERP_PRIMARY }}
                 >
                   <Plus className="h-4 w-4" />
@@ -1301,7 +1301,7 @@ export default function CreatePurchaseOrder() {
         </div>
 
           {/* Terms */}
-          <section className="overflow-hidden rounded-xl border border-[#d0d0d8] bg-white">
+          <section className="overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)]">
             <SectionHeader
               icon={FileText}
               title="Terms and Conditions"
@@ -1343,60 +1343,60 @@ export default function CreatePurchaseOrder() {
                   e.stopPropagation();
                   setTermsAddOpen(true);
                 }}
-                className="rounded-full border border-[#d8d8e0] bg-white px-3.5 py-1.5 text-[12px] font-semibold text-[#4a4a55]"
+                className="rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-3.5 py-1.5 text-[12px] font-semibold text-[var(--color-text-secondary)]"
               >
                 + Add New Terms and Conditions
               </button>
             </SectionHeader>
             {termsOpen && termsAttached && form.notes ? (
-              <div className="border-t border-[#d0d0d8] p-4">
+              <div className="border-t border-[var(--color-border)] p-4">
                 <textarea
                   rows={3}
                   value={form.notes}
                   onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-                  className="w-full rounded-md border border-[#d0d0d8] bg-white px-3 py-2.5 text-[13px] leading-relaxed text-[#1a1a1f] focus:border-[#6b4eff] focus:outline-none focus:ring-1 focus:ring-[#c4b5fd]"
+                  className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2.5 text-[13px] leading-relaxed text-[var(--color-text)] focus:border-[var(--color-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-primary-soft)]"
                 />
               </div>
             ) : null}
           </section>
 
-          <section className="overflow-hidden rounded-xl border border-[#d0d0d8] bg-white">
+          <section className="overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)]">
             <SectionHeader icon={Paperclip} title="Attach Document" />
-            <label className="m-4 flex min-h-24 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-[#d0d0d8] bg-[#fafafa] text-[13px] text-[#6b6b76] hover:bg-[#f8f5ff]">
-              <Paperclip className="mb-2 h-5 w-5 text-[#6b4eff]" />
+            <label className="m-4 flex min-h-24 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-[var(--color-border)] bg-[var(--color-surface-muted)] text-[13px] text-[var(--color-text-muted)] hover:bg-[var(--color-primary-soft)]">
+              <Paperclip className="mb-2 h-5 w-5 text-[var(--color-primary)]" />
               {attachmentName || "Choose or drop a purchase document"}
               <input type="file" className="sr-only" onChange={(e) => setAttachmentName(e.target.files?.[0]?.name || "")} />
             </label>
           </section>
 
           {/* Notes */}
-          <section className="overflow-hidden rounded-xl border border-[#d0d0d8] bg-white">
+          <section className="overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)]">
             <SectionHeader icon={FileText} title="Notes">
               <button
                 type="button"
                 onClick={() => setNoteModalOpen(true)}
-                className="rounded-full border border-[#d0d0d8] bg-white px-3.5 py-1.5 text-[12px] font-semibold text-[#4a4a55]"
+                className="rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-3.5 py-1.5 text-[12px] font-semibold text-[var(--color-text-secondary)]"
               >
                 + Add New Note
               </button>
             </SectionHeader>
             {notesText ? (
-              <div className="border-t border-[#d0d0d8] p-4 text-[13px] leading-relaxed text-[#4a4a55] whitespace-pre-wrap">
+              <div className="border-t border-[var(--color-border)] p-4 text-[13px] leading-relaxed text-[var(--color-text-secondary)] whitespace-pre-wrap">
                 {notesText}
               </div>
             ) : (
-              <div className="min-h-[48px] border-t border-[#d0d0d8]" />
+              <div className="min-h-[48px] border-t border-[var(--color-border)]" />
             )}
           </section>
 
-          <section className="overflow-hidden rounded-xl border border-[#d0d0d8] bg-white">
+          <section className="overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)]">
             <SectionHeader icon={User} title="Signature and Stamp">
               <button
                 type="button"
                 role="switch"
                 aria-checked={signatureOn}
                 onClick={() => setSignatureOn((current) => !current)}
-                className={`relative h-6 w-11 rounded-full transition ${signatureOn ? "bg-[var(--color-primary)]" : "bg-[#d4d4d8]"}`}
+                className={`relative h-6 w-11 rounded-full transition ${signatureOn ? "bg-[var(--color-primary)]" : "bg-[var(--color-border)]"}`}
               >
                 <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition ${signatureOn ? "left-[22px]" : "left-0.5"}`} />
               </button>

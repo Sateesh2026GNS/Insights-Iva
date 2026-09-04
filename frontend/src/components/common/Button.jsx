@@ -9,7 +9,8 @@ import { Plus } from "lucide-react";
  * Variants:
  *   add       — + Add New / Add Customer / Create New (teal-blue #0F5F78)
  *   primary   — Create / Submit / Save (brand green)
- *   secondary — Cancel / Back / Close
+ *   secondary — Back / Reset / neutral close
+ *   cancel    — Cancel / discard (soft danger)
  *   view      — View / Open / Approve / Confirm (#2E9B72)
  *   edit      — Edit / Update (#3182CE)
  *   success   — alias of view (backward compat)
@@ -25,6 +26,7 @@ export const BUTTON_VARIANTS = [
   "add",
   "primary",
   "secondary",
+  "cancel",
   "view",
   "edit",
   "success",
@@ -38,6 +40,7 @@ const VARIANT_CLASS = {
   add: "ui-btn--add",
   primary: "ui-btn--primary",
   secondary: "ui-btn--secondary",
+  cancel: "ui-btn--cancel",
   view: "ui-btn--view",
   edit: "ui-btn--edit",
   success: "ui-btn--success",
@@ -184,6 +187,9 @@ export function PrimaryButton(props) {
 }
 export function SecondaryButton(props) {
   return <Button variant="secondary" {...props} />;
+}
+export function CancelButton(props) {
+  return <Button variant="cancel" {...props} />;
 }
 export function ViewButton(props) {
   return <Button variant="view" {...props} />;

@@ -315,7 +315,7 @@ function CompanyProfileSection() {
       actions={
         <>
           <Button
-            variant="secondary"
+            variant="cancel"
             type="button"
             onClick={handleCancel}
           >

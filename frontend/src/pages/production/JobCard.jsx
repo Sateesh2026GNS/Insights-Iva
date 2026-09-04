@@ -29,6 +29,9 @@ import {
   X,
 } from "lucide-react";
 import Loader from "../../components/common/Loader";
+import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
+import PageHeader from "../../components/common/PageHeader";
+import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
 import EmptyState, { DocumentEmptyIcon } from "../../components/common/EmptyState";
 import Button, { IconButton } from "../../components/common/Button";
@@ -55,6 +58,20 @@ import {
   MANUFACTURING_EVENTS,
   notifyManufacturingSpine,
 } from "../../utils/manufacturingEvents";
+import { runListExport } from "../../utils/listExport";
+
+const JOB_CARD_EXPORT_COLUMNS = [
+  { key: "job_card_no", label: "Job Card" },
+  { key: "production_order_number", label: "Production Order" },
+  { key: "customer_name", label: "Customer" },
+  { key: "product_name", label: "Product" },
+  { key: "planned_quantity", label: "Planned Qty" },
+  { key: "produced_quantity", label: "Produced Qty" },
+  { key: "machine_name", label: "Machine" },
+  { key: "operator_name", label: "Operator" },
+  { key: "display_status", label: "Status" },
+  { key: "priority", label: "Priority" },
+];
 
 /* ── Reference image stage chrome ──────────────────────────────────────── */
 const STAGE_META = [
@@ -110,9 +127,7 @@ function Card({ id, title, icon: Icon, children, className = "", action, bodyCla
       className={`ui-card scroll-mt-24 ${fill ? "flex h-full min-h-0 flex-col" : ""} ${className}`.trim()}
     >
       <div
-        className={`flex items-center justify-between gap-2 border-b px-3.5 py-2.5 ${
-          isForm ? "border-[#e2e8f0]" : "border-[var(--color-border-soft)]"
-        }`}
+        className="flex items-center justify-between gap-2 border-b border-[var(--color-border-soft)] px-3.5 py-2.5"
       >
         <h3
           className={`flex min-w-0 items-center gap-2 font-bold ${
@@ -133,13 +148,13 @@ function Card({ id, title, icon: Icon, children, className = "", action, bodyCla
 
 /** Compact controls for Job Card Material / Machine / Operator trio. */
 const JC_CTRL =
-  "!min-h-0 h-[34px] w-full !rounded-md !border-[#d5dbe6] !bg-white !px-2.5 !py-1 !text-[12px] !leading-tight !text-slate-700 !shadow-none focus:!border-[var(--color-primary)] focus:!ring-1 focus:!ring-[var(--color-primary)]/25";
+  "!min-h-0 h-[34px] w-full !rounded-md !border-[var(--color-border)] !bg-[var(--color-surface)] !px-2.5 !py-1 !text-[12px] !leading-tight !text-[var(--color-text)] !shadow-none focus:!border-[var(--color-primary)] focus:!ring-1 focus:!ring-[var(--color-primary)]/25";
 
 /** Label-left / control-right row (Form screenshot layout). */
 function FormRow({ label, children }) {
   return (
     <div className="grid grid-cols-[6.75rem_minmax(0,1fr)] items-center gap-x-2 gap-y-1 py-[5px] sm:grid-cols-[7.5rem_minmax(0,1fr)]">
-      <span className="text-[11px] font-medium text-slate-500">{label}</span>
+      <span className="text-[11px] font-medium text-[var(--color-text-muted)]">{label}</span>
       <div className="min-w-0">{children}</div>
     </div>
   );
@@ -149,7 +164,7 @@ function FormRow({ label, children }) {
 function StackField({ label, children, className = "" }) {
   return (
     <div className={`min-w-0 ${className}`.trim()}>
-      <p className="mb-1 truncate text-[11px] font-medium text-slate-500" title={label}>
+      <p className="mb-1 truncate text-[11px] font-medium text-[var(--color-text-muted)]" title={label}>
         {label}
       </p>
       <div className="min-w-0">{children}</div>
@@ -285,7 +300,7 @@ function JcDateTime({ value, onChange, readOnly, disabled, placeholder, mode = "
         tabIndex={-1}
         disabled={locked}
         onClick={openPicker}
-        className="pointer-events-none absolute right-0.5 top-1/2 z-[1] flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded text-slate-400 disabled:opacity-40"
+        className="pointer-events-none absolute right-0.5 top-1/2 z-[1] flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded text-[var(--color-text-faint)] disabled:opacity-40"
         aria-hidden
       >
         <Calendar className="h-3.5 w-3.5" strokeWidth={1.75} />
@@ -388,7 +403,7 @@ function JobCardHeaderSectionsMenu({ onSelect, hideIds = [] }) {
 function KV({ label, value, valueClass = "" }) {
   return (
     <div className="flex items-baseline justify-between gap-2 py-1 print:py-0.5 print:border-b print:border-slate-100 last:border-b-0">
-      <span className="text-[12px] text-[var(--color-text-muted)] print:text-[10px] print:text-slate-600 print:whitespace-nowrap">{label}</span>
+      <span className="text-[12px] text-[var(--color-text-muted)] print:text-[10px] print:text-[var(--color-text-secondary)] print:whitespace-nowrap">{label}</span>
       <span className={`text-right text-[12px] font-semibold text-[var(--color-text)] print:text-[10px] print:font-bold print:text-slate-900 ${valueClass}`}>{dash(value)}</span>
     </div>
   );
@@ -406,7 +421,7 @@ function SalesOrderInfoPanel({ header, uom, priority }) {
       <KV label="Order Quantity" value={fmtQty(h.order_qty, uom)} />
       <KV label="Required Delivery" value={h.required_delivery} />
       <div className="flex items-center justify-between py-1 print:py-0.5">
-        <span className="text-[12px] text-slate-500 print:text-[10px] print:text-slate-600">Priority</span>
+        <span className="text-[12px] text-[var(--color-text-muted)] print:text-[10px] print:text-[var(--color-text-secondary)]">Priority</span>
         <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold print:text-[9.5px] print:px-2 print:py-0.5 ${priority.bg} ${priority.text}`}>
           {priority.label}
         </span>
@@ -452,10 +467,10 @@ function QtyStat({ label, value, tone }) {
           ? "text-orange-500"
           : tone === "info"
             ? "text-[var(--color-primary)]"
-            : "text-slate-800";
+            : "text-[var(--color-text)]";
   return (
     <div className="min-w-0 px-0.5 text-center">
-      <p className="text-[9px] font-medium leading-tight text-slate-500">{label}</p>
+      <p className="text-[9px] font-medium leading-tight text-[var(--color-text-muted)]">{label}</p>
       <p className={`mt-0.5 text-[12px] font-bold tabular-nums leading-tight ${color}`}>{value}</p>
     </div>
   );
@@ -465,12 +480,12 @@ function JcTextarea({ className = "", ...props }) {
   return (
     <textarea
       {...props}
-      className={`min-h-[56px] w-full resize-y rounded-md border border-[#d5dbe6] bg-white px-2.5 py-1.5 text-[12px] text-slate-700 outline-none focus:border-[var(--color-primary)] focus:ring-1 focus:ring-[var(--color-primary)]/25 disabled:bg-slate-50 ${className}`.trim()}
+      className={`ui-input min-h-[56px] resize-y !text-[12px] disabled:bg-[var(--color-surface-muted)] ${className}`.trim()}
     />
   );
 }
 
-const JC_CARD = "!rounded-lg !border-[#e2e8f0] !shadow-none";
+const JC_CARD = "!rounded-lg !border-[var(--color-border-soft)] !shadow-none";
 
 function QtyBox({ label, value, tone }) {
   const color =
@@ -612,36 +627,36 @@ function OverviewDashboard({ card, uom, priority, progressPct, canManage = true,
             <div className="flex items-start gap-2">
               <Play className="mt-0.5 h-3.5 w-3.5 text-emerald-600" />
               <div>
-                <p className="font-semibold text-slate-700">Production Start</p>
-                <p className="text-slate-600">{dash(h.planned_start)}</p>
+                <p className="font-semibold text-[var(--color-text)]">Production Start</p>
+                <p className="text-[var(--color-text-secondary)]">{dash(h.planned_start)}</p>
               </div>
             </div>
             <div className="flex items-start gap-2">
               <StopCircle className="mt-0.5 h-3.5 w-3.5 text-rose-600" />
               <div>
-                <p className="font-semibold text-slate-700">Production End</p>
-                <p className="text-slate-600">{dash(h.planned_end)}</p>
+                <p className="font-semibold text-[var(--color-text)]">Production End</p>
+                <p className="text-[var(--color-text-secondary)]">{dash(h.planned_end)}</p>
               </div>
             </div>
             <div className="flex items-start gap-2">
               <Clock className="mt-0.5 h-3.5 w-3.5 text-orange-500" />
               <div>
-                <p className="font-semibold text-slate-700">Packing</p>
-                <p className="text-slate-600">{dash(h.packing_time || card.packing?.packing_start)}</p>
+                <p className="font-semibold text-[var(--color-text)]">Packing</p>
+                <p className="text-[var(--color-text-secondary)]">{dash(h.packing_time || card.packing?.packing_start)}</p>
               </div>
             </div>
             <div className="flex items-start gap-2">
               <Truck className="mt-0.5 h-3.5 w-3.5 text-blue-600" />
               <div>
-                <p className="font-semibold text-slate-700">Dispatch</p>
-                <p className="text-slate-600">{dash(h.dispatch_date || card.dispatch?.dispatch_date)}</p>
+                <p className="font-semibold text-[var(--color-text)]">Dispatch</p>
+                <p className="text-[var(--color-text-secondary)]">{dash(h.dispatch_date || card.dispatch?.dispatch_date)}</p>
               </div>
             </div>
             <div className="flex items-start gap-2">
               <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 text-emerald-600" />
               <div>
-                <p className="font-semibold text-slate-700">Delivery</p>
-                <p className="text-slate-600">{dash(h.delivery_date)}</p>
+                <p className="font-semibold text-[var(--color-text)]">Delivery</p>
+                <p className="text-[var(--color-text-secondary)]">{dash(h.delivery_date)}</p>
               </div>
             </div>
           </div>
@@ -663,15 +678,15 @@ function OverviewDashboard({ card, uom, priority, progressPct, canManage = true,
                   <tr>
                     <td colSpan={4} className="px-3 py-6 text-center">
                       <div className="flex flex-col items-center justify-center">
-                        <DocumentEmptyIcon className="mb-1.5 h-8 w-8 text-slate-300 dark:text-slate-600" />
-                        <p className="text-xs font-medium text-slate-500">No BOM materials</p>
+                        <DocumentEmptyIcon className="mb-1.5 h-8 w-8 text-[var(--color-text-faint)] dark:text-[var(--color-text-secondary)]" />
+                        <p className="text-xs font-medium text-[var(--color-text-muted)]">No BOM materials</p>
                       </div>
                     </td>
                   </tr>
                 ) : (
                   materials.map((m) => (
-                    <tr key={m.item_id || m.material} className="border-b border-slate-50">
-                      <td className="px-3 py-2 font-medium text-slate-800">{m.material}</td>
+                    <tr key={m.item_id || m.material} className="border-b border-[var(--color-border-muted)]">
+                      <td className="px-3 py-2 font-medium text-[var(--color-text)]">{m.material}</td>
                       <td className="px-2 py-2 tabular-nums">
                         {m.required} {m.unit}
                       </td>
@@ -705,10 +720,10 @@ function OverviewDashboard({ card, uom, priority, progressPct, canManage = true,
         <Card title="Production Progress" icon={Factory} action={menu("production")}>
           <div className="mb-3">
             <div className="mb-1 flex justify-between text-[11px]">
-              <span className="text-slate-500">Progress</span>
+              <span className="text-[var(--color-text-muted)]">Progress</span>
               <span className="font-bold text-emerald-600">{progressPct}%</span>
             </div>
-            <div className="h-3 overflow-hidden rounded-full bg-slate-100">
+            <div className="h-3 overflow-hidden rounded-full bg-[var(--color-surface-muted)]">
               <div className="h-full rounded-full bg-emerald-500" style={{ width: `${progressPct}%` }} />
             </div>
           </div>
@@ -744,7 +759,7 @@ function OverviewDashboard({ card, uom, priority, progressPct, canManage = true,
                       className={`rounded-md px-2 py-0.5 text-[11px] font-bold ${
                         card.quality?.status === "Approved"
                           ? "bg-emerald-100 text-emerald-700"
-                          : "bg-slate-100 text-slate-600"
+                          : "bg-[var(--color-surface-muted)] text-[var(--color-text-secondary)]"
                       }`}
                     >
                       {card.quality?.status || "Pending"}
@@ -778,10 +793,10 @@ function OverviewDashboard({ card, uom, priority, progressPct, canManage = true,
           <KV label="Invoice Amount" value={fmtMoney(card.billing?.invoice_amount)} />
           <KV label="Payment Terms" value={card.billing?.payment_terms} />
           <div className="flex items-center justify-between py-1">
-            <span className="text-[12px] text-slate-500">Status</span>
+            <span className="text-[12px] text-[var(--color-text-muted)]">Status</span>
             <span
               className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
-                card.billing?.done ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-600"
+                card.billing?.done ? "bg-emerald-100 text-emerald-700" : "bg-[var(--color-surface-muted)] text-[var(--color-text-secondary)]"
               }`}
             >
               {card.billing?.done ? "Completed" : card.billing?.status || "Pending"}
@@ -790,15 +805,15 @@ function OverviewDashboard({ card, uom, priority, progressPct, canManage = true,
         </Card>
         <Card title="Approvals" icon={CheckCircle2} action={menu("approvals")}>
           {approvals.length === 0 ? (
-            <p className="text-xs text-slate-400">No approval events yet.</p>
+            <p className="text-xs text-[var(--color-text-faint)]">No approval events yet.</p>
           ) : (
             <ul className="space-y-2">
               {approvals.slice(0, 4).map((a, i) => (
                 <li key={a._key || `${a.step}-${i}`} className="flex gap-2">
                   <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600" />
                   <div>
-                    <p className="text-xs font-bold text-slate-800">{a.step || "Approval"}</p>
-                    <p className="text-[11px] text-slate-500">
+                    <p className="text-xs font-bold text-[var(--color-text)]">{a.step || "Approval"}</p>
+                    <p className="text-[11px] text-[var(--color-text-muted)]">
                       {a.name || "—"}
                       {a.role ? ` · ${a.role}` : ""}
                     </p>
@@ -1385,16 +1400,16 @@ function DetailForm({
         <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[var(--color-border-soft)] px-5 py-4 print:border-b-2 print:border-slate-800 print:px-3 print:py-2.5">
           <div>
             <div className="flex items-center gap-2">
-              <span className="hidden text-sm font-black uppercase tracking-wider text-slate-800 print:inline-block">Insights Iva ·</span>
+              <span className="hidden text-sm font-black uppercase tracking-wider text-[var(--color-text)] print:inline-block">Insights Iva ·</span>
               <h1 className="text-xl font-bold tracking-tight text-[var(--color-text)] print:text-lg print:font-black print:text-slate-950">Job Card</h1>
             </div>
-            <p className="text-sm text-[var(--color-text-muted)] print:text-[11px] print:text-slate-600">Shop-floor work instruction & production traveler</p>
+            <p className="text-sm text-[var(--color-text-muted)] print:text-[11px] print:text-[var(--color-text-secondary)]">Shop-floor work instruction & production traveler</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <span className="rounded-full bg-[var(--color-success-soft)] px-3 py-1 text-xs font-bold capitalize text-[var(--color-success)] print:border print:border-emerald-600 print:bg-emerald-50 print:text-emerald-800 print:py-0.5 print:px-2 print:text-[10px]">
               {card.display_status || card.status || "—"}
             </span>
-            <span className="text-sm font-semibold text-[var(--color-text)] print:text-xs print:font-bold print:border print:border-slate-300 print:px-2 print:py-0.5 print:rounded print:bg-slate-100">{card.job_card_no}</span>
+            <span className="text-sm font-semibold text-[var(--color-text)] print:text-xs print:font-bold print:border print:border-slate-300 print:px-2 print:py-0.5 print:rounded print:bg-[var(--color-surface-muted)]">{card.job_card_no}</span>
             <JobCardHeaderSectionsMenu
               onSelect={goToSection}
               hideIds={
@@ -1408,14 +1423,14 @@ function DetailForm({
 
         <div className={`grid gap-4 p-5 ${operatorMode ? "lg:grid-cols-2" : "lg:grid-cols-4"} print:grid-cols-4 print:gap-2.5 print:p-2.5`}>
           <div className="space-y-0.5 rounded-lg p-2 print:border print:border-slate-200 print:bg-slate-50/50">
-            <p className="hidden mb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-700 print:block">Order Info</p>
+            <p className="hidden mb-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--color-text)] print:block">Order Info</p>
             <SalesOrderInfoPanel header={h} uom={uom} priority={priority} />
           </div>
 
           {!operatorMode ? (
             <>
               <div className="space-y-0.5 rounded-lg p-2 print:border print:border-slate-200 print:bg-slate-50/50">
-                <p className="hidden mb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-700 print:block">Schedule</p>
+                <p className="hidden mb-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--color-text)] print:block">Schedule</p>
                 <KV label="Job Card Date" value={h.job_card_date} />
                 <KV label="Planned Start" value={h.planned_start} />
                 <KV label="Planned End" value={h.planned_end} />
@@ -1424,7 +1439,7 @@ function DetailForm({
                 <KV label="Delivery Date" value={h.delivery_date} />
               </div>
               <div className="space-y-0.5 rounded-lg p-2 print:border print:border-slate-200 print:bg-slate-50/50">
-                <p className="hidden mb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-700 print:block">Production & Unit</p>
+                <p className="hidden mb-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--color-text)] print:block">Production & Unit</p>
                 <KV label="Production Manager" value={h.production_manager} />
                 <KV label="Department" value={h.department} />
                 <KV label="Production Type" value={h.production_type || "Manufacturing"} />
@@ -1442,8 +1457,8 @@ function DetailForm({
                   </Field>
                 </div>
                 {draft.remarks ? (
-                  <div className="hidden print:block text-[10px] text-slate-700 pt-1">
-                    <span className="font-semibold text-slate-500">Remarks: </span>
+                  <div className="hidden print:block text-[10px] text-[var(--color-text)] pt-1">
+                    <span className="font-semibold text-[var(--color-text-muted)]">Remarks: </span>
                     {draft.remarks}
                   </div>
                 ) : null}
@@ -1458,7 +1473,7 @@ function DetailForm({
             </div>
           )}
 
-          <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-muted)] p-3 print:rounded-lg print:border print:border-slate-300 print:bg-white print:p-2">
+          <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-muted)] p-3 print:rounded-lg print:border print:border-slate-300 print:bg-[var(--color-surface)] print:p-2">
             <p className="mb-2 text-[11px] font-bold text-[var(--color-text)] print:mb-1.5 print:text-[10px] print:uppercase print:tracking-wider print:text-slate-900">Summary</p>
             <KV label="Target Quantity" value={fmtQty(s.target_qty, uom)} />
             <KV label="Produced Quantity" value={fmtQty(s.produced_qty, uom)} valueClass="text-[var(--color-success)]" />
@@ -1481,7 +1496,7 @@ function DetailForm({
           headerStyle="form"
           fill
           bodyClass="p-3"
-          className="!rounded-lg !border-[#e2e8f0] !shadow-none print:col-span-2 print:w-full"
+          className="!rounded-lg !border-[var(--color-border-soft)] !shadow-none print:col-span-2 print:w-full"
           action={
             <SectionCrudMenu
               canManage={canManageMaterials}
@@ -1499,7 +1514,7 @@ function DetailForm({
           <div className="min-h-0 flex-1 overflow-x-auto print:overflow-visible">
             <table className="w-full min-w-[420px] print:min-w-0 print:w-full border-collapse text-left text-[11px] print:text-[10px]">
               <thead className="ui-table-head">
-                <tr className="border-b border-[#e8edf4] bg-[#f7f9fc] text-[10px] font-semibold uppercase tracking-wide text-slate-500 print:bg-slate-100 print:text-slate-800">
+                <tr className="border-b border-[var(--color-border-muted)] bg-[var(--color-surface-muted)] text-[10px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)] print:bg-[var(--color-surface-muted)] print:text-[var(--color-text)]">
                   <th className="px-2 py-1.5 font-semibold print:w-[35%]">Material</th>
                   <th className="px-2 py-1.5 font-semibold whitespace-nowrap print:w-[15%]">Required</th>
                   <th className="px-2 py-1.5 font-semibold whitespace-nowrap print:w-[15%]">Available</th>
@@ -1512,8 +1527,8 @@ function DetailForm({
                   <tr>
                     <td colSpan={5} className="px-2 py-4 text-center">
                       <div className="flex flex-col items-center justify-center">
-                        <DocumentEmptyIcon className="mb-1 h-6 w-6 text-slate-300 print:text-slate-400" />
-                        <p className="text-xs font-medium text-slate-500">No BOM materials linked</p>
+                        <DocumentEmptyIcon className="mb-1 h-6 w-6 text-[var(--color-text-faint)] print:text-[var(--color-text-faint)]" />
+                        <p className="text-xs font-medium text-[var(--color-text-muted)]">No BOM materials linked</p>
                       </div>
                     </td>
                   </tr>
@@ -1522,18 +1537,18 @@ function DetailForm({
                     const key = materialKey(m, i);
                     const ok = m.status === "available";
                     return (
-                      <tr key={key} className="border-b border-[#eef2f7] last:border-b-0 print:border-slate-200">
-                        <td className="max-w-[9rem] truncate px-2 py-1.5 font-medium text-slate-800 print:max-w-none print:whitespace-normal" title={m.material}>
+                      <tr key={key} className="border-b border-[var(--color-border-muted)] last:border-b-0 print:border-slate-200">
+                        <td className="max-w-[9rem] truncate px-2 py-1.5 font-medium text-[var(--color-text)] print:max-w-none print:whitespace-normal" title={m.material}>
                           {m.material}
                         </td>
-                        <td className="whitespace-nowrap px-2 py-1.5 tabular-nums text-slate-700 font-medium">
+                        <td className="whitespace-nowrap px-2 py-1.5 tabular-nums text-[var(--color-text)] font-medium">
                           {Number(m.required).toLocaleString()} {m.unit}
                         </td>
-                        <td className="whitespace-nowrap px-2 py-1.5 tabular-nums text-slate-700">
+                        <td className="whitespace-nowrap px-2 py-1.5 tabular-nums text-[var(--color-text)]">
                           {Number(m.available).toLocaleString()} {m.unit}
                         </td>
                         <td className="px-2 py-1 text-center print:text-left print:px-2">
-                          <span className="hidden print:inline-block font-semibold tabular-nums text-slate-800 text-[10px]">
+                          <span className="hidden print:inline-block font-semibold tabular-nums text-[var(--color-text)] text-[10px]">
                             {m.to_issue != null && m.to_issue !== "" ? m.to_issue : m.required || "0"} {m.unit}
                           </span>
                           <input
@@ -1541,7 +1556,7 @@ function DetailForm({
                             min="0"
                             step="any"
                             disabled={!!card.materials_issued || !canManageMaterials}
-                            className="mx-auto h-[28px] w-[4.75rem] rounded border border-[#d5dbe6] bg-white px-1 text-center text-[11px] tabular-nums text-slate-700 outline-none focus:border-[var(--color-primary)] focus:ring-1 focus:ring-[var(--color-primary)]/25 disabled:bg-slate-50 print:hidden"
+                            className="mx-auto h-[28px] w-[4.75rem] rounded border border-[var(--color-border)] bg-[var(--color-surface)] px-1 text-center text-[11px] tabular-nums text-[var(--color-text)] outline-none focus:border-[var(--color-primary)] focus:ring-1 focus:ring-[var(--color-primary)]/25 disabled:bg-[var(--color-surface-muted)] print:hidden"
                             value={m.to_issue ?? ""}
                             onChange={(e) => updateToIssue(key, e.target.value)}
                           />
@@ -1596,7 +1611,7 @@ function DetailForm({
               headerStyle="form"
               fill
               bodyClass="p-3"
-              className="!rounded-lg !border-[#e2e8f0] !shadow-none"
+              className="!rounded-lg !border-[var(--color-border-soft)] !shadow-none"
               action={
                 <SectionCrudMenu
                   canManage={canManageMaterials}
@@ -1661,7 +1676,7 @@ function DetailForm({
               headerStyle="form"
               fill
               bodyClass="p-3"
-              className="!rounded-lg !border-[#e2e8f0] !shadow-none"
+              className="!rounded-lg !border-[var(--color-border-soft)] !shadow-none"
               action={
                 <SectionCrudMenu
                   canManage={canManageMaterials}
@@ -1771,20 +1786,20 @@ function DetailForm({
         >
           <div className="space-y-2">
             <div>
-              <p className="mb-1 text-[11px] font-medium text-slate-500">Target Quantity</p>
+              <p className="mb-1 text-[11px] font-medium text-[var(--color-text-muted)]">Target Quantity</p>
               <div className="flex items-center gap-1.5">
                 <JcInp value={s.target_qty != null ? Number(s.target_qty).toLocaleString() : ""} readOnly />
-                <span className="shrink-0 text-[11px] text-slate-500">{uom}</span>
+                <span className="shrink-0 text-[11px] text-[var(--color-text-muted)]">{uom}</span>
               </div>
             </div>
             <div>
-              <p className="mb-1 text-[11px] font-medium text-slate-500">UOM</p>
+              <p className="mb-1 text-[11px] font-medium text-[var(--color-text-muted)]">UOM</p>
               <JcSel value={uom} disabled>
                 <option value={uom}>{uom}</option>
               </JcSel>
             </div>
           </div>
-          <div className="my-2 grid grid-cols-5 gap-1 rounded-md border border-[#e8edf4] bg-[#fafbfd] px-1 py-2">
+          <div className="my-2 grid grid-cols-5 gap-1 rounded-md border border-[var(--color-border-muted)] bg-[var(--color-surface-muted)] px-1 py-2">
             <QtyStat label="Produced Qty" value={Number(s.produced_qty || 0).toLocaleString()} tone="good" />
             <QtyStat label="Rejected Qty" value={Number(s.rejected_qty || 0).toLocaleString()} tone="bad" />
             <QtyStat label="Rework Qty" value={Number(s.rework_qty || 0).toLocaleString()} tone="warn" />
@@ -1793,17 +1808,17 @@ function DetailForm({
           </div>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             <div>
-              <p className="mb-1 text-[11px] font-medium text-slate-500">Production Start</p>
+              <p className="mb-1 text-[11px] font-medium text-[var(--color-text-muted)]">Production Start</p>
               <JcDateTime value={card.production?.production_start || ""} readOnly />
             </div>
             <div>
-              <p className="mb-1 text-[11px] font-medium text-slate-500">Production End</p>
+              <p className="mb-1 text-[11px] font-medium text-[var(--color-text-muted)]">Production End</p>
               <JcDateTime value={card.production?.production_end || ""} readOnly />
             </div>
           </div>
           {(roles.operator || mgr) && (
             <div className="mt-1">
-              <p className="mb-1 text-[11px] font-medium text-slate-500">Produced Qty (update)</p>
+              <p className="mb-1 text-[11px] font-medium text-[var(--color-text-muted)]">Produced Qty (update)</p>
               <JcInp
                 type="number"
                 min="0"
@@ -1814,7 +1829,7 @@ function DetailForm({
             </div>
           )}
           <div className="mt-1">
-            <p className="mb-1 text-[11px] font-medium text-slate-500">Operator Remarks</p>
+            <p className="mb-1 text-[11px] font-medium text-[var(--color-text-muted)]">Operator Remarks</p>
             <JcTextarea
               value={draft.operator_remarks}
               onChange={(e) => setDraft((d) => ({ ...d, operator_remarks: e.target.value }))}
@@ -1843,7 +1858,7 @@ function DetailForm({
             >
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <div>
-                  <p className="mb-1 text-[11px] font-medium text-slate-500">Checked By</p>
+                  <p className="mb-1 text-[11px] font-medium text-[var(--color-text-muted)]">Checked By</p>
                   <JcNameCombo
                     listId={`jc-qc-by-${card.id || "x"}`}
                     value={quality.checked_by || ""}
@@ -1854,7 +1869,7 @@ function DetailForm({
                   />
                 </div>
                 <div>
-                  <p className="mb-1 text-[11px] font-medium text-slate-500">Checked Date</p>
+                  <p className="mb-1 text-[11px] font-medium text-[var(--color-text-muted)]">Checked Date</p>
                   <JcDateTime
                     mode="date"
                     value={quality.checked_date || ""}
@@ -1863,14 +1878,14 @@ function DetailForm({
                   />
                 </div>
               </div>
-              <div className="my-2 grid grid-cols-4 gap-1 rounded-md border border-[#e8edf4] bg-[#fafbfd] px-1 py-2">
+              <div className="my-2 grid grid-cols-4 gap-1 rounded-md border border-[var(--color-border-muted)] bg-[var(--color-surface-muted)] px-1 py-2">
                 <QtyStat label="Checked Qty" value={Number(quality.checked_qty || 0).toLocaleString()} tone="info" />
                 <QtyStat label="Passed Qty" value={Number(quality.passed_qty || 0).toLocaleString()} tone="good" />
                 <QtyStat label="Rejected Qty" value={Number(quality.rejected_qty || 0).toLocaleString()} tone="bad" />
                 <QtyStat label="Rework Qty" value={Number(quality.rework_qty || 0).toLocaleString()} tone="warn" />
               </div>
               <div className="mt-1 flex-1">
-                <p className="mb-1 text-[11px] font-medium text-slate-500">QC Remarks</p>
+                <p className="mb-1 text-[11px] font-medium text-[var(--color-text-muted)]">QC Remarks</p>
                 <JcTextarea
                   value={quality.remarks || ""}
                   onChange={(e) => setQuality((q) => ({ ...q, remarks: e.target.value }))}
@@ -1879,7 +1894,7 @@ function DetailForm({
                 />
               </div>
               <div className="mt-auto flex flex-wrap items-center justify-end gap-2 pt-2">
-                <span className="text-[11px] font-medium text-slate-500">QC Status</span>
+                <span className="text-[11px] font-medium text-[var(--color-text-muted)]">QC Status</span>
                 {canManageMaterials ? (
                   <JcSel
                     value={quality.status || "Pending"}
@@ -1893,7 +1908,7 @@ function DetailForm({
                 ) : (
                   <span
                     className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase ${
-                      qcApproved ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-600"
+                      qcApproved ? "bg-emerald-100 text-emerald-700" : "bg-[var(--color-surface-muted)] text-[var(--color-text-secondary)]"
                     }`}
                   >
                     {(quality.status || "Pending").toUpperCase()}
@@ -1948,7 +1963,7 @@ function DetailForm({
                       disabled={!canManageMaterials}
                       placeholder="0"
                     />
-                    <span className="shrink-0 text-[11px] text-slate-500">{uom}</span>
+                    <span className="shrink-0 text-[11px] text-[var(--color-text-muted)]">{uom}</span>
                   </div>
                 </StackField>
                 <StackField label="No. of Cartons">
@@ -2062,16 +2077,16 @@ function DetailForm({
                   disabled={!canManageMaterials}
                   placeholder="0"
                 />
-                <span className="shrink-0 text-[11px] text-slate-500">{uom}</span>
+                <span className="shrink-0 text-[11px] text-[var(--color-text-muted)]">{uom}</span>
               </div>
             </StackField>
             <div className="mt-auto flex items-center justify-end gap-2 pt-1">
-              <span className="text-[11px] font-medium text-slate-500">Dispatch Status</span>
+              <span className="text-[11px] font-medium text-[var(--color-text-muted)]">Dispatch Status</span>
               <span
                 className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase ${
                   dispatch.done || String(dispatch.status || "").toLowerCase() === "dispatched"
                     ? "bg-emerald-100 text-emerald-700"
-                    : "bg-slate-100 text-slate-600"
+                    : "bg-[var(--color-surface-muted)] text-[var(--color-text-secondary)]"
                 }`}
               >
                 {(dispatch.done ? "DISPATCHED" : String(dispatch.status || "Pending")).toUpperCase()}
@@ -2147,12 +2162,12 @@ function DetailForm({
               />
             </StackField>
             <div className="mt-auto flex items-center justify-end gap-2 pt-1">
-              <span className="text-[11px] font-medium text-slate-500">Invoice Status</span>
+              <span className="text-[11px] font-medium text-[var(--color-text-muted)]">Invoice Status</span>
               <span
                 className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase ${
                   billing.done || String(billing.status || "").toLowerCase() === "completed"
                     ? "bg-emerald-100 text-emerald-700"
-                    : "bg-slate-100 text-slate-600"
+                    : "bg-[var(--color-surface-muted)] text-[var(--color-text-secondary)]"
                 }`}
               >
                 {(billing.done ? "COMPLETED" : String(billing.status || "Pending")).toUpperCase()}
@@ -2177,12 +2192,12 @@ function DetailForm({
             }
           >
             {approvals.length === 0 ? (
-              <p className="text-xs text-slate-400">No approval events yet.</p>
+              <p className="text-xs text-[var(--color-text-faint)]">No approval events yet.</p>
             ) : (
               <div className="min-h-0 flex-1 overflow-x-auto print:overflow-visible">
                 <table className="w-full min-w-[240px] print:min-w-0 print:w-full border-collapse text-left text-[11px] print:text-[10px]">
                   <thead className="ui-table-head">
-                    <tr className="border-b border-[#e8edf4] text-[9px] font-semibold uppercase tracking-wide text-slate-500 print:bg-slate-100 print:text-slate-800 print:text-[9.5px]">
+                    <tr className="border-b border-[var(--color-border-muted)] text-[9px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)] print:bg-[var(--color-surface-muted)] print:text-[var(--color-text)] print:text-[9.5px]">
                       <th className="py-1.5 px-2 font-semibold print:w-[28%]">Action / Step</th>
                       <th className="py-1.5 px-2 font-semibold print:w-[42%]">Person / Role</th>
                       <th className="py-1.5 px-2 text-right font-semibold print:w-[30%]">Date / Time</th>
@@ -2197,10 +2212,10 @@ function DetailForm({
                           ? `${person} · ${role}`
                           : person || role || "—";
                       return (
-                        <tr key={a._key || `${a.step}-${a.at}`} className="border-b border-[#eef2f7] last:border-b-0 print:border-slate-200">
-                          <td className="py-1.5 px-2 font-medium text-slate-800">{a.step || "—"}</td>
-                          <td className="py-1.5 px-2 text-slate-600 print:text-slate-800">{personRole}</td>
-                          <td className="whitespace-nowrap py-1.5 px-2 text-right tabular-nums text-slate-500 print:text-slate-800">{a.at || "—"}</td>
+                        <tr key={a._key || `${a.step}-${a.at}`} className="border-b border-[var(--color-border-muted)] last:border-b-0 print:border-slate-200">
+                          <td className="py-1.5 px-2 font-medium text-[var(--color-text)]">{a.step || "—"}</td>
+                          <td className="py-1.5 px-2 text-[var(--color-text-secondary)] print:text-[var(--color-text)]">{personRole}</td>
+                          <td className="whitespace-nowrap py-1.5 px-2 text-right tabular-nums text-[var(--color-text-muted)] print:text-[var(--color-text)]">{a.at || "—"}</td>
                         </tr>
                       );
                     })}
@@ -2245,10 +2260,10 @@ function DetailForm({
 
       {/* Notes + actions — screenshot footer */}
       <section className={`ui-card p-3.5 ${JC_CARD}`}>
-        <h3 className="mb-2 text-[12px] font-bold uppercase tracking-[0.04em] text-[var(--color-primary)] print:text-[10px] print:text-slate-800">
+        <h3 className="mb-2 text-[12px] font-bold uppercase tracking-[0.04em] text-[var(--color-primary)] print:text-[10px] print:text-[var(--color-text)]">
           Notes / Instructions
         </h3>
-        <ol className="mb-3 grid list-decimal gap-2 pl-4 text-[11px] leading-snug text-slate-600 sm:grid-cols-2 xl:grid-cols-4 print:grid-cols-2 print:text-[9.5px] print:gap-1.5 print:mb-0">
+        <ol className="mb-3 grid list-decimal gap-2 pl-4 text-[11px] leading-snug text-[var(--color-text-secondary)] sm:grid-cols-2 xl:grid-cols-4 print:grid-cols-2 print:text-[9.5px] print:gap-1.5 print:mb-0">
           {(card.notes || []).map((n) => (
             <li key={n} className="pl-0.5">
               {n}
@@ -2269,31 +2284,31 @@ function DetailForm({
       </section>
 
       {/* Sign-off / Authorization Box for Print */}
-      <section className="hidden print:block rounded-lg border border-slate-300 bg-white p-3 break-inside-avoid my-2">
-        <h4 className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-800 border-b border-slate-200 pb-1">
+      <section className="hidden print:block rounded-lg border border-slate-300 bg-[var(--color-surface)] p-3 break-inside-avoid my-2">
+        <h4 className="mb-2 text-[10px] font-bold uppercase tracking-wider text-[var(--color-text)] border-b border-slate-200 pb-1">
           Authorizations & Shop-Floor Sign-Off
         </h4>
         <div className="grid grid-cols-3 gap-4 text-[10px]">
           <div className="border border-dashed border-slate-300 rounded p-2 bg-slate-50/50">
-            <p className="font-semibold text-slate-700">Operator Sign-Off</p>
-            <p className="text-[9px] text-slate-500 mt-0.5">Name: {card.operator?.operator_name || "—"}</p>
-            <div className="mt-6 border-t border-slate-300 pt-1 text-slate-500 flex justify-between text-[9px]">
+            <p className="font-semibold text-[var(--color-text)]">Operator Sign-Off</p>
+            <p className="text-[9px] text-[var(--color-text-muted)] mt-0.5">Name: {card.operator?.operator_name || "—"}</p>
+            <div className="mt-6 border-t border-slate-300 pt-1 text-[var(--color-text-muted)] flex justify-between text-[9px]">
               <span>Signature: ________________</span>
               <span>Date: _________</span>
             </div>
           </div>
           <div className="border border-dashed border-slate-300 rounded p-2 bg-slate-50/50">
-            <p className="font-semibold text-slate-700">QC Inspector Sign-Off</p>
-            <p className="text-[9px] text-slate-500 mt-0.5">Name: {quality.checked_by || "QC Team"}</p>
-            <div className="mt-6 border-t border-slate-300 pt-1 text-slate-500 flex justify-between text-[9px]">
+            <p className="font-semibold text-[var(--color-text)]">QC Inspector Sign-Off</p>
+            <p className="text-[9px] text-[var(--color-text-muted)] mt-0.5">Name: {quality.checked_by || "QC Team"}</p>
+            <div className="mt-6 border-t border-slate-300 pt-1 text-[var(--color-text-muted)] flex justify-between text-[9px]">
               <span>Signature: ________________</span>
               <span>Date: _________</span>
             </div>
           </div>
           <div className="border border-dashed border-slate-300 rounded p-2 bg-slate-50/50">
-            <p className="font-semibold text-slate-700">Production Head / Manager</p>
-            <p className="text-[9px] text-slate-500 mt-0.5">Name: {h.production_manager || "—"}</p>
-            <div className="mt-6 border-t border-slate-300 pt-1 text-slate-500 flex justify-between text-[9px]">
+            <p className="font-semibold text-[var(--color-text)]">Production Head / Manager</p>
+            <p className="text-[9px] text-[var(--color-text-muted)] mt-0.5">Name: {h.production_manager || "—"}</p>
+            <div className="mt-6 border-t border-slate-300 pt-1 text-[var(--color-text-muted)] flex justify-between text-[9px]">
               <span>Signature: ________________</span>
               <span>Date: _________</span>
             </div>
@@ -3117,8 +3132,7 @@ function JobCardList({ rows, loading, onOpen, onCreate, canCreate }) {
     );
   }
   return (
-    <section className="ui-card overflow-hidden">
-      <div className="ui-table-wrap ui-table-wrap--scroll">
+    <div className="ui-table-wrap ui-table-wrap--scroll">
         <table className="ui-table w-full min-w-[720px] text-left text-sm">
           <thead className="ui-table-head">
             <tr>
@@ -3179,7 +3193,6 @@ function JobCardList({ rows, loading, onOpen, onCreate, canCreate }) {
           </tbody>
         </table>
       </div>
-    </section>
   );
 }
 
@@ -3349,15 +3362,28 @@ export default function JobCard() {
   };
 
   if (!woId) {
+    const handleListExport = (format) => {
+      const exportRows = list.map((row) => ({
+        ...row,
+        display_status: row.display_status || row.status || "",
+      }));
+      runListExport(format, {
+        data: exportRows,
+        columns: JOB_CARD_EXPORT_COLUMNS,
+        filename: "job-cards",
+        title: "Job Cards",
+      });
+      addToast(format === "pdf" ? "Exported to PDF" : "Exported to Excel", "success");
+    };
+
     return (
-      <div className="space-y-5 pb-4">
-        <div className="ui-card px-4 py-3">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h2 className="text-base font-semibold text-[var(--color-text)]">Job Cards</h2>
-              <p className="text-xs text-[var(--color-text-muted)]">Shop-floor documents linked to live work orders</p>
-            </div>
-            <div className="flex gap-2">
+      <ListPageShell stackClassName="space-y-5 pb-4">
+        <PageHeader
+          title="Job Cards"
+          subtitle="Shop-floor documents linked to live work orders"
+          action={
+            <div className="flex flex-wrap items-center gap-2">
+              <ExportDownloadMenu disabled={!list.length} onExport={handleListExport} />
               <Button variant="secondary" to="/production/work-orders">
                 Work Orders
               </Button>
@@ -3367,9 +3393,13 @@ export default function JobCard() {
                 </Button>
               ) : null}
             </div>
-          </div>
-        </div>
-        <JobCardList rows={list} loading={loading} onOpen={openCard} canCreate={canCreate} onCreate={() => setShowCreate(true)} />
+          }
+        />
+        <ListPageCard>
+          <ListPageCardBody className="!p-0">
+            <JobCardList rows={list} loading={loading} onOpen={openCard} canCreate={canCreate} onCreate={() => setShowCreate(true)} />
+          </ListPageCardBody>
+        </ListPageCard>
         {showCreate ? (
           <QuickWorkOrderModal
             onClose={() => setShowCreate(false)}
@@ -3385,7 +3415,7 @@ export default function JobCard() {
             }}
           />
         ) : null}
-      </div>
+      </ListPageShell>
     );
   }
 
@@ -3413,7 +3443,7 @@ export default function JobCard() {
   const view = operatorMode ? "form" : viewParam;
 
   return (
-    <div className="space-y-4 pb-4">
+    <ListPageShell stackClassName="space-y-4 pb-4 print:p-0">
       <div className="flex flex-wrap items-center justify-between gap-2 print:hidden">
         <div className="inline-flex rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-1">
           {!operatorMode ? (
@@ -3488,6 +3518,6 @@ export default function JobCard() {
       )}
 
       <StatusTimeline timeline={card.status_timeline} closed={card.closed} />
-    </div>
+    </ListPageShell>
   );
 }

@@ -110,7 +110,7 @@ export default function LogoutConfirmModal({ open, onCancel, onConfirm, busy = f
 
         {/* Actions */}
         <div className="flex gap-2.5 border-t border-[var(--color-border-soft)] bg-[var(--color-surface-muted)]/50 px-6 py-4">
-          <Button type="button" variant="secondary" disabled={busy} onClick={onCancel} fullWidth>
+          <Button type="button" variant="cancel" disabled={busy} onClick={onCancel} fullWidth>
             Cancel
           </Button>
           <Button

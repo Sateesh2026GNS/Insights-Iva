@@ -21,6 +21,8 @@ import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 
 import InventoryRowActionsMenu from "../../components/inventory/InventoryRowActionsMenu";
 import Button, { AddButton } from "../../components/common/Button";
+import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
+import { ListPageShell } from "../../components/common/ListPageShell";
 import Loader from "../../components/common/Loader";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
 import usePageRefresh from "../../hooks/usePageRefresh";
@@ -74,6 +76,20 @@ import {
   avatarTone,
   hrInputClass,
 } from "../../components/hr/hrUi";
+import { exportToExcel, exportToPdf } from "../../utils/exportUtils";
+
+const selectClass = "ui-select !w-auto min-w-[8.5rem]";
+
+const LEAVE_EXPORT_COLUMNS = [
+  { key: "employee_name", label: "Employee" },
+  { key: "department", label: "Department" },
+  { key: "leave_type", label: "Leave Type" },
+  { key: "start_date", label: "From Date" },
+  { key: "end_date", label: "To Date" },
+  { key: "days", label: "Days" },
+  { key: "status", label: "Status" },
+  { key: "applied_on", label: "Applied On" },
+];
 
 function LeaveTypeBadge({ type }) {
   return (
@@ -259,7 +275,28 @@ export default function Leave({ autoOpenCreate = false }) {
 
   if (loading) return <Loader label="Loading leave requests..." />;
 
+  const exportRows = filtered.map((r) => ({
+    employee_name: r.employee_name || r.name,
+    department: r.department,
+    leave_type: leaveTypeLabel(r.leave_type),
+    start_date: formatLeaveDate(r.start_date),
+    end_date: formatLeaveDate(r.end_date),
+    days: r.days,
+    status: String(r.status || "").replace(/_/g, " "),
+    applied_on: formatLeaveDate(r.applied_on),
+  }));
+
+  const handleExport = (format) => {
+    if (format === "pdf") {
+      exportToPdf(exportRows, LEAVE_EXPORT_COLUMNS, "Leave Requests", "leave-requests");
+    } else {
+      exportToExcel(exportRows, LEAVE_EXPORT_COLUMNS, "leave-requests");
+    }
+    addToast(format === "pdf" ? "Exported to PDF" : "Exported to Excel", "success");
+  };
+
   return (
+    <ListPageShell>
     <HrPage>
       <HrPageHeader
         title="Leave Management"
@@ -269,21 +306,18 @@ export default function Leave({ autoOpenCreate = false }) {
           <AddButton type="button" onClick={() => setShowCreateModal(true)}>
             Apply Leave
           </AddButton>
-          <button
+          <ExportDownloadMenu disabled={!exportRows.length} onExport={handleExport} />
+          <Button
             type="button"
+            variant="secondary"
             onClick={() => addToast("Leave calendar coming soon", "info")}
-            className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2.5 text-sm font-semibold text-[var(--color-primary)] hover:bg-[var(--color-surface-muted)]"
+            leftIcon={<CalendarDays className="h-4 w-4" aria-hidden />}
           >
-            <CalendarDays className="h-4 w-4" />
             Leave Calendar
-          </button>
-          <button
-            type="button"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2.5 text-sm font-semibold text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-muted)]"
-          >
+          </Button>
+          <Button type="button" variant="secondary" rightIcon={<ChevronDown className="h-4 w-4" aria-hidden />}>
             More Actions
-            <ChevronDown className="h-4 w-4" />
-          </button>
+          </Button>
           </>
         }
       />
@@ -317,9 +351,8 @@ export default function Leave({ autoOpenCreate = false }) {
       <div className="grid gap-4 xl:grid-cols-3">
         {/* Main column */}
         <div className="xl:col-span-2">
-          <div className="rounded-2xl border border-slate-200/80 bg-white shadow-sm">
-            {/* Tabs */}
-            <div className="flex overflow-x-auto border-b border-slate-200">
+          <div className="ui-card shadow-sm">
+            <div className="flex overflow-x-auto border-b border-[var(--color-border-soft)]">
               {LEAVE_TABS.map((t) => (
                 <button
                   key={t.id}
@@ -330,8 +363,8 @@ export default function Leave({ autoOpenCreate = false }) {
                   }}
                   className={`shrink-0 border-b-2 px-4 py-3.5 text-sm font-semibold transition-colors sm:px-5 ${
                     tab === t.id
-                      ? "border-[#6366f1] text-[#6366f1]"
-                      : "border-transparent text-slate-500 hover:text-slate-800"
+                      ? "border-[var(--color-primary)] text-[var(--color-primary)]"
+                      : "border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
                   }`}
                 >
                   {t.label}
@@ -342,90 +375,89 @@ export default function Leave({ autoOpenCreate = false }) {
             <div className="p-4 sm:p-5">
               {/* Filters */}
               <div className="mb-4 flex flex-wrap items-center gap-2">
-                <label className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
-                  <CalendarDays className="h-4 w-4 text-slate-400" />
-                  <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="border-none bg-transparent outline-none" />
-                  <span className="text-slate-400">–</span>
-                  <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="border-none bg-transparent outline-none" />
+                <label className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border-soft)] bg-[var(--color-surface-muted)] px-3 py-2 text-sm text-[var(--color-text-secondary)]">
+                  <CalendarDays className="h-4 w-4 text-[var(--color-text-muted)]" />
+                  <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="border-none bg-transparent outline-none text-[var(--color-text)]" />
+                  <span className="text-[var(--color-text-muted)]">–</span>
+                  <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="border-none bg-transparent outline-none text-[var(--color-text)]" />
                 </label>
-                <select value={department} onChange={(e) => setDepartment(e.target.value)} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 outline-none">
+                <select value={department} onChange={(e) => setDepartment(e.target.value)} className={selectClass}>
                   <option value="">All Departments</option>
                   {departments.map((d) => (
                     <option key={d} value={d}>{d}</option>
                   ))}
                 </select>
-                <select value={leaveType} onChange={(e) => setLeaveType(e.target.value)} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 outline-none">
+                <select value={leaveType} onChange={(e) => setLeaveType(e.target.value)} className={selectClass}>
                   <option value="">All Leave Types</option>
                   {ALL_LEAVE_TYPES.map((t) => (
                     <option key={t.value} value={t.value}>{t.label}</option>
                   ))}
                 </select>
-                <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 outline-none">
+                <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className={selectClass}>
                   <option value="">All Status</option>
                   <option value="pending">Pending</option>
                   <option value="approved">Approved</option>
                   <option value="rejected">Rejected</option>
                   <option value="cancelled">Cancelled</option>
                 </select>
-                <button type="button" className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
-                  <Filter className="h-4 w-4" />
+                <Button type="button" variant="secondary" leftIcon={<Filter className="h-4 w-4" aria-hidden />}>
                   Filter
-                </button>
-                <button type="button" onClick={() => load(true)} className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white p-2 text-slate-600 hover:bg-slate-50" aria-label="Refresh">
+                </Button>
+                <Button type="button" variant="secondary" onClick={() => load(true)} aria-label="Refresh">
                   <RefreshCw className="h-4 w-4" />
-                </button>
+                </Button>
               </div>
 
               <div className="ui-table-wrap ui-table-wrap--scroll">
                 <table className="ui-table min-w-full w-full border-collapse text-left text-sm">
                   <thead className="ui-table-head">
                     <tr>
-                      <SerialNumberHeader className="border-b border-slate-200 px-3 py-3" />
-                      <th className="border-b border-slate-200 px-3 py-3 min-w-[160px]">Employee</th>
-                      <th className="border-b border-slate-200 px-3 py-3">Department</th>
-                      <th className="border-b border-slate-200 px-3 py-3">Leave Type</th>
-                      <th className="border-b border-slate-200 px-3 py-3">From Date</th>
-                      <th className="border-b border-slate-200 px-3 py-3">To Date</th>
-                      <th className="border-b border-slate-200 px-3 py-3 text-center">Days</th>
-                      <th className="border-b border-slate-200 px-3 py-3">Status</th>
-                      <th className="border-b border-slate-200 px-3 py-3">Applied On</th>
-                      <th className="border-b border-slate-200 px-3 py-3 text-center">Action</th>
+                      <SerialNumberHeader className="border-b border-[var(--color-border-soft)] px-3 py-3" />
+                      <th className="border-b border-[var(--color-border-soft)] px-3 py-3 min-w-[160px]">Employee</th>
+                      <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Department</th>
+                      <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Leave Type</th>
+                      <th className="border-b border-[var(--color-border-soft)] px-3 py-3">From Date</th>
+                      <th className="border-b border-[var(--color-border-soft)] px-3 py-3">To Date</th>
+                      <th className="border-b border-[var(--color-border-soft)] px-3 py-3 text-center">Days</th>
+                      <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Status</th>
+                      <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Applied On</th>
+                      <th className="border-b border-[var(--color-border-soft)] px-3 py-3 text-center">Action</th>
                     </tr>
                   </thead>
                   <tbody>
                     {pageRows.length === 0 ? (
                       <tr>
-                        <td colSpan={10} className="px-4 py-12 text-center text-slate-500">
+                        <td colSpan={10} className="px-4 py-12 text-center text-[var(--color-text-muted)]">
                           No leave requests match your filters.
                         </td>
                       </tr>
                     ) : (
                       pageRows.map((row, rowIndex) => (
-                        <tr key={row.id} className="hover:bg-slate-50/80">
-                          <SerialNumberCell rowIndex={rowIndex} page={page} pageSize={pageSize} className="border-b border-slate-100 px-3 py-3" />
-                          <td className="border-b border-slate-100 px-3 py-3">
+                        <tr key={row.id} className="hover:bg-[var(--color-surface-muted)]/80">
+                          <SerialNumberCell rowIndex={rowIndex} page={page} pageSize={pageSize} className="border-b border-[var(--color-border-soft)] px-3 py-3" />
+                          <td className="border-b border-[var(--color-border-soft)] px-3 py-3">
                             <div className="flex items-center gap-2">
                               <HrAvatar label={row.avatar} />
-                              <span className="font-semibold text-slate-800">{row.employee_name}</span>
+                              <span className="font-semibold text-[var(--color-text)]">{row.employee_name}</span>
                             </div>
                           </td>
-                          <td className="border-b border-slate-100 px-3 py-3 text-slate-600">{row.department}</td>
-                          <td className="border-b border-slate-100 px-3 py-3">
+                          <td className="border-b border-[var(--color-border-soft)] px-3 py-3 text-[var(--color-text-secondary)]">{row.department}</td>
+                          <td className="border-b border-[var(--color-border-soft)] px-3 py-3">
                             <LeaveTypeBadge type={row.leave_type} />
                           </td>
-                          <td className="border-b border-slate-100 px-3 py-3 whitespace-nowrap text-slate-600">{formatLeaveDate(row.start_date)}</td>
-                          <td className="border-b border-slate-100 px-3 py-3 whitespace-nowrap text-slate-600">{formatLeaveDate(row.end_date)}</td>
-                          <td className="border-b border-slate-100 px-3 py-3 text-center tabular-nums text-slate-700">{row.days}</td>
-                          <td className="border-b border-slate-100 px-3 py-3">
+                          <td className="border-b border-[var(--color-border-soft)] px-3 py-3 whitespace-nowrap text-[var(--color-text-secondary)]">{formatLeaveDate(row.start_date)}</td>
+                          <td className="border-b border-[var(--color-border-soft)] px-3 py-3 whitespace-nowrap text-[var(--color-text-secondary)]">{formatLeaveDate(row.end_date)}</td>
+                          <td className="border-b border-[var(--color-border-soft)] px-3 py-3 text-center tabular-nums text-[var(--color-text)]">{row.days}</td>
+                          <td className="border-b border-[var(--color-border-soft)] px-3 py-3">
                             <LeaveStatusBadge status={row.status} />
                           </td>
-                          <td className="border-b border-slate-100 px-3 py-3 whitespace-nowrap text-slate-600">{formatLeaveDate(row.applied_on)}</td>
-                          <td className="border-b border-slate-100 px-3 py-3">
+                          <td className="border-b border-[var(--color-border-soft)] px-3 py-3 whitespace-nowrap text-[var(--color-text-secondary)]">{formatLeaveDate(row.applied_on)}</td>
+                          <td className="border-b border-[var(--color-border-soft)] px-3 py-3">
                             <div className="flex items-center justify-center gap-1">
                               <button
                                 type="button"
                                 onClick={() => addToast(`View leave for ${row.employee_name}`, "info")}
-                                className="grid h-8 w-8 place-items-center rounded-md text-[#6366f1] hover:bg-indigo-50"
+                                className="grid h-8 w-8 place-items-center rounded-md text-[var(--color-primary)] hover:bg-indigo-50"
                                 aria-label="View"
                               >
                                 <Eye className="h-4 w-4" />
@@ -458,12 +490,12 @@ export default function Leave({ autoOpenCreate = false }) {
                 </table>
               </div>
 
-              <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-slate-500">
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-[var(--color-text-muted)]">
                 <span>
                   Showing {from} to {to} of {displayTotal} entries
                 </span>
                 <div className="flex items-center gap-1">
-                  <button type="button" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))} className="grid h-8 w-8 place-items-center rounded-md border border-slate-200 bg-white disabled:opacity-40">
+                  <button type="button" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))} className="grid h-8 w-8 place-items-center rounded-md border border-[var(--color-border-soft)] bg-[var(--color-surface)] disabled:opacity-40">
                     <ChevronLeft className="h-4 w-4" />
                   </button>
                   {pageItems(page, totalPages).map((item) =>
@@ -475,18 +507,18 @@ export default function Leave({ autoOpenCreate = false }) {
                         type="button"
                         onClick={() => setPage(item)}
                         className={`grid h-8 min-w-8 place-items-center rounded-md border px-2 text-sm font-semibold ${
-                          item === page ? "border-[#6366f1] bg-[#6366f1] text-white" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                          item === page ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-white" : "border-[var(--color-border-soft)] bg-[var(--color-surface)] text-[var(--color-text)] hover:bg-[var(--color-surface-muted)]"
                         }`}
                       >
                         {item}
                       </button>
                     )
                   )}
-                  <button type="button" disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))} className="grid h-8 w-8 place-items-center rounded-md border border-slate-200 bg-white disabled:opacity-40">
+                  <button type="button" disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))} className="grid h-8 w-8 place-items-center rounded-md border border-[var(--color-border-soft)] bg-[var(--color-surface)] disabled:opacity-40">
                     <ChevronRight className="h-4 w-4" />
                   </button>
                 </div>
-                <select value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }} className="rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm outline-none">
+                <select value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }} className="ui-select !w-auto">
                   {[10, 20, 50].map((n) => (
                     <option key={n} value={n}>{n} / page</option>
                   ))}
@@ -498,7 +530,7 @@ export default function Leave({ autoOpenCreate = false }) {
 
         {/* Sidebar */}
         <div className="space-y-4">
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
+          <div className="ui-card p-5 shadow-sm">
             <h2 className="mb-4 ui-section-title">Leave Status Overview</h2>
             <div className="relative mx-auto h-44 w-44">
               <ResponsiveContainer width="100%" height="100%">
@@ -512,18 +544,18 @@ export default function Leave({ autoOpenCreate = false }) {
                 </PieChart>
               </ResponsiveContainer>
               <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-[20px] font-bold text-slate-900">{donutTotal}</span>
-                <span className="text-xs text-slate-500">Total</span>
+                <span className="text-[20px] font-bold text-[var(--color-text)]">{donutTotal}</span>
+                <span className="text-xs text-[var(--color-text-muted)]">Total</span>
               </div>
             </div>
             <ul className="mt-4 space-y-2 text-[12px]">
               {donutData.map((d) => (
                 <li key={d.name} className="flex items-center justify-between gap-2">
-                  <span className="flex items-center gap-2 text-slate-600">
+                  <span className="flex items-center gap-2 text-[var(--color-text-secondary)]">
                     <span className="h-2.5 w-2.5 rounded-full" style={{ background: d.color }} />
                     {d.name}
                   </span>
-                  <span className="font-semibold text-slate-800">
+                  <span className="font-semibold text-[var(--color-text)]">
                     {d.value} ({d.pct}%)
                   </span>
                 </li>
@@ -531,10 +563,10 @@ export default function Leave({ autoOpenCreate = false }) {
             </ul>
           </div>
 
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
+          <div className="ui-card p-5 shadow-sm">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="ui-section-title">Leave Balance Summary</h2>
-              <Link to="/hr/leave" className="text-sm font-semibold text-[#6366f1]">View All</Link>
+              <Link to="/hr/leave" className="text-sm font-semibold text-[var(--color-primary)]">View All</Link>
             </div>
             <ul className="space-y-4">
               {data.leave_balances.map((bal) => {
@@ -542,12 +574,12 @@ export default function Leave({ autoOpenCreate = false }) {
                 return (
                   <li key={bal.key}>
                     <div className="mb-1.5 flex items-center justify-between text-[12px]">
-                      <span className="font-medium text-slate-700">{bal.label}</span>
-                      <span className="font-semibold text-slate-800">
+                      <span className="font-medium text-[var(--color-text)]">{bal.label}</span>
+                      <span className="font-semibold text-[var(--color-text)]">
                         {bal.used} / {bal.total} days
                       </span>
                     </div>
-                    <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+                    <div className="h-2 overflow-hidden rounded-full bg-[var(--color-surface-muted)]">
                       <div className="h-full rounded-full" style={{ width: `${pct}%`, background: bal.color }} />
                     </div>
                   </li>
@@ -556,25 +588,25 @@ export default function Leave({ autoOpenCreate = false }) {
             </ul>
           </div>
 
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
+          <div className="ui-card p-5 shadow-sm">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="ui-section-title">Upcoming Holidays</h2>
-              <button type="button" onClick={() => addToast("Holiday calendar coming soon", "info")} className="text-sm font-semibold text-[#6366f1]">
+              <button type="button" onClick={() => addToast("Holiday calendar coming soon", "info")} className="text-sm font-semibold text-[var(--color-primary)]">
                 View Calendar
               </button>
             </div>
             <ul className="space-y-3 text-sm">
               {data.upcoming_holidays.map((h) => (
-                <li key={h.name} className="flex flex-wrap items-baseline gap-x-2 text-slate-600">
-                  <span className="font-semibold text-slate-800">{h.date}</span>
-                  <span className="text-slate-400">|</span>
+                <li key={h.name} className="flex flex-wrap items-baseline gap-x-2 text-[var(--color-text-secondary)]">
+                  <span className="font-semibold text-[var(--color-text)]">{h.date}</span>
+                  <span className="text-[var(--color-text-muted)]">|</span>
                   <span>{h.day}</span>
-                  <span className="text-slate-400">|</span>
-                  <span className="text-slate-700">{h.name}</span>
+                  <span className="text-[var(--color-text-muted)]">|</span>
+                  <span className="text-[var(--color-text)]">{h.name}</span>
                 </li>
               ))}
             </ul>
-            <p className="mt-4 text-[12px] font-medium text-slate-500">
+            <p className="mt-4 text-[12px] font-medium text-[var(--color-text-muted)]">
               Total Holidays: {data.total_holidays}
             </p>
           </div>
@@ -582,14 +614,14 @@ export default function Leave({ autoOpenCreate = false }) {
       </div>
 
       {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl border border-slate-200 max-w-md w-full p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
+        <div className="ui-modal-backdrop">
+          <div className="ui-modal max-w-md w-full max-h-[90vh] overflow-y-auto space-y-4">
             <div className="flex items-start justify-between">
               <div>
-                <h3 className="text-lg font-bold text-slate-900">Apply Leave</h3>
-                <p className="text-xs text-slate-500 mt-0.5">Submit a new employee leave request.</p>
+                <h3 className="text-lg font-bold text-[var(--color-text)]">Apply Leave</h3>
+                <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Submit a new employee leave request.</p>
               </div>
-              <button type="button" onClick={() => setShowCreateModal(false)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100">
+              <button type="button" onClick={() => setShowCreateModal(false)} className="rounded-lg p-2 text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)]">
                 <X className="h-5 w-5" />
               </button>
             </div>
@@ -602,12 +634,12 @@ export default function Leave({ autoOpenCreate = false }) {
               )}
 
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Employee *</label>
+                <label className="ui-label">Employee *</label>
                 <select
                   value={form.employee_id}
                   onChange={(e) => handleFormChange("employee_id", e.target.value)}
                   required
-                  className={hrInputClass}
+                  className="ui-select w-full"
                 >
                   <option value="">Select employee</option>
                   {employees.map((emp) => (
@@ -619,8 +651,8 @@ export default function Leave({ autoOpenCreate = false }) {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Leave Type</label>
-                <select value={form.leave_type} onChange={(e) => handleFormChange("leave_type", e.target.value)} className={hrInputClass}>
+                <label className="ui-label">Leave Type</label>
+                <select value={form.leave_type} onChange={(e) => handleFormChange("leave_type", e.target.value)} className="ui-select w-full">
                   {ALL_LEAVE_TYPES.map((t) => (
                     <option key={t.value} value={t.value}>{t.label}</option>
                   ))}
@@ -629,30 +661,30 @@ export default function Leave({ autoOpenCreate = false }) {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Start Date *</label>
-                  <input type="date" required value={form.start_date} onChange={(e) => handleFormChange("start_date", e.target.value)} className={hrInputClass} />
+                  <label className="ui-label">Start Date *</label>
+                  <input type="date" required value={form.start_date} onChange={(e) => handleFormChange("start_date", e.target.value)} className="ui-input w-full" />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">End Date *</label>
-                  <input type="date" required value={form.end_date} onChange={(e) => handleFormChange("end_date", e.target.value)} className={hrInputClass} />
+                  <label className="ui-label">End Date *</label>
+                  <input type="date" required value={form.end_date} onChange={(e) => handleFormChange("end_date", e.target.value)} className="ui-input w-full" />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Reason</label>
+                <label className="ui-label">Reason</label>
                 <textarea
                   rows={3}
                   placeholder="Describe reason for leave request..."
                   value={form.reason}
                   onChange={(e) => handleFormChange("reason", e.target.value)}
-                  className={hrInputClass}
+                  className="ui-input w-full min-h-[5rem]"
                 />
               </div>
 
-              <div className="flex justify-end gap-2 border-t pt-4">
-                <button type="button" onClick={() => setShowCreateModal(false)} className="rounded-xl border px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors">
+              <div className="flex justify-end gap-2 border-t border-[var(--color-border-soft)] pt-4">
+                <Button type="button" variant="cancel" onClick={() => setShowCreateModal(false)}>
                   Cancel
-                </button>
+                </Button>
                 <Button variant="primary" type="submit" disabled={saving}>
                   <Save className="h-4 w-4" />
                   {saving ? "Saving..." : "Submit Request"}
@@ -663,5 +695,6 @@ export default function Leave({ autoOpenCreate = false }) {
         </div>
       )}
     </HrPage>
+    </ListPageShell>
   );
 }

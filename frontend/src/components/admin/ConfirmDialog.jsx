@@ -35,7 +35,7 @@ export default function ConfirmDialog({
         </div>
       </div>
       <div className="mt-6 flex justify-end gap-3">
-        <Button type="button" variant="secondary" onClick={onClose} disabled={loading}>
+        <Button type="button" variant="cancel" onClick={onClose} disabled={loading}>
           {cancelLabel}
         </Button>
         <Button

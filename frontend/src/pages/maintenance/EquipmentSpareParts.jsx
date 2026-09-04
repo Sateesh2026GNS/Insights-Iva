@@ -8,21 +8,20 @@ import {
   ChevronRight,
   Cog,
   Eye,
-  FileSpreadsheet,
   History,
-  Layers,
   MoreVertical,
   Package,
   PauseCircle,
   PlayCircle,
   Plus,
   RefreshCw,
-  Search,
   Wrench,
   X,
 } from "lucide-react";
 
 import Button from "../../components/common/Button";
+import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
+import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
 import { DocumentEmptyIcon } from "../../components/common/EmptyState";
 import { SearchBar } from "../../components/common/SearchFilter";
 import Loader from "../../components/common/Loader";
@@ -33,7 +32,7 @@ import MaintenanceKpiCard from "../../components/maintenance/MaintenanceKpiCard"
 import { getMaintenanceHub } from "../../api/maintenanceApi";
 import { getMachines } from "../../api/productionApi";
 import { useToast } from "../../context/ToastContext";
-import { exportToExcel } from "../../utils/exportUtils";
+import { exportToExcel, exportToPdf } from "../../utils/exportUtils";
 import {
   computeMonthTrend,
   equipmentStatusBadgeClass,
@@ -153,14 +152,14 @@ function MultiSelectDropdown({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className={`inline-flex items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-[13px] font-medium text-[var(--color-text)] shadow-xs transition-colors hover:border-[var(--color-primary)] ${minWidth}`}
+        className={`inline-flex items-center justify-between gap-2 rounded-lg border border-[var(--color-border-soft)] bg-[var(--color-surface)] px-3 py-2 text-[13px] font-medium text-[var(--color-text)] shadow-xs transition-colors hover:border-[var(--color-primary)] ${minWidth}`}
       >
         <span className="truncate">{triggerLabel}</span>
         <ChevronDown className={`h-4 w-4 shrink-0 text-[var(--color-text-muted)] transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
       </button>
 
       {open && (
-        <div className="absolute left-0 top-[calc(100%+4px)] z-40 w-64 rounded-xl border border-slate-200 bg-white p-2 shadow-xl animate-in fade-in zoom-in-95 duration-100">
+        <div className="absolute left-0 top-[calc(100%+4px)] z-40 w-64 rounded-xl border border-[var(--color-border-soft)] bg-[var(--color-surface)] p-2 shadow-xl animate-in fade-in zoom-in-95 duration-100">
           {normalizedOptions.length > 5 && (
             <div className="mb-2 px-1">
               <SearchBar
@@ -173,7 +172,7 @@ function MultiSelectDropdown({
             </div>
           )}
 
-          <div className="flex items-center justify-between border-b border-slate-100 px-2 py-1 text-[11px]">
+          <div className="flex items-center justify-between border-b border-[var(--color-border-soft)] px-2 py-1 text-[11px]">
             <button
               type="button"
               onClick={selectAll}
@@ -184,7 +183,7 @@ function MultiSelectDropdown({
             <button
               type="button"
               onClick={clearAll}
-              className="text-slate-500 hover:text-red-600 cursor-pointer"
+              className="text-[var(--color-text-muted)] hover:text-red-600 cursor-pointer"
             >
               Clear
             </button>
@@ -192,20 +191,20 @@ function MultiSelectDropdown({
 
           <div className="max-h-48 overflow-y-auto pt-1 space-y-0.5">
             {filteredOptions.length === 0 ? (
-              <p className="px-2 py-3 text-center text-xs text-slate-400">No options found</p>
+              <p className="px-2 py-3 text-center text-xs text-[var(--color-text-muted)]">No options found</p>
             ) : (
               filteredOptions.map((opt) => {
                 const isSelected = selected.includes(opt.value);
                 return (
                   <label
                     key={opt.value}
-                    className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-[12px] text-slate-700 hover:bg-slate-50 cursor-pointer"
+                    className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-[12px] text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] cursor-pointer"
                   >
                     <input
                       type="checkbox"
                       checked={isSelected}
                       onChange={() => toggleOption(opt.value)}
-                      className="h-4 w-4 rounded border-slate-300 text-[var(--color-primary)] focus:ring-[var(--color-primary)]"
+                      className="h-4 w-4 rounded border-[var(--color-border-soft)] text-[var(--color-primary)] focus:ring-[var(--color-primary)]"
                     />
                     <span className="truncate">{opt.label}</span>
                   </label>
@@ -261,22 +260,22 @@ function AddSparePartModal({ open, onClose, onSaved }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
-      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-xl animate-in fade-in zoom-in-95 duration-100">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+    <div className="ui-modal-backdrop">
+      <div className="ui-modal max-w-lg w-full max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between border-b border-[var(--color-border-soft)] pb-4">
           <div className="flex items-center gap-2.5">
             <div className="grid h-9 w-9 place-items-center rounded-lg bg-[var(--color-primary-soft)] text-[var(--color-primary)]">
               <Package className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-slate-900">Add Spare Part</h2>
-              <p className="text-xs text-slate-500">Record a new spare part in equipment inventory</p>
+              <h2 className="text-lg font-bold text-[var(--color-text)]">Add Spare Part</h2>
+              <p className="text-xs text-[var(--color-text-muted)]">Record a new spare part in equipment inventory</p>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 cursor-pointer"
+            className="rounded-lg p-2 text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)] hover:text-[var(--color-text)] cursor-pointer"
           >
             <X className="h-5 w-5" />
           </button>
@@ -285,7 +284,7 @@ function AddSparePartModal({ open, onClose, onSaved }) {
         <form onSubmit={handleSubmit} className="mt-4 space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
+              <label className="ui-label">
                 Part Number / SKU <span className="text-red-500">*</span>
               </label>
               <input
@@ -293,15 +292,15 @@ function AddSparePartModal({ open, onClose, onSaved }) {
                 required
                 value={formData.part_number}
                 onChange={(e) => setFormData({ ...formData, part_number: e.target.value })}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-[13px] focus:border-[var(--color-primary)] focus:outline-none"
+                className="ui-input w-full"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Category</label>
+              <label className="ui-label">Category</label>
               <select
                 value={formData.category}
                 onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-[13px] focus:border-[var(--color-primary)] focus:outline-none"
+                className="ui-select w-full"
               >
                 <option value="Mechanical">Mechanical</option>
                 <option value="Electrical">Electrical</option>
@@ -314,7 +313,7 @@ function AddSparePartModal({ open, onClose, onSaved }) {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
+            <label className="ui-label">
               Spare Part Name <span className="text-red-500">*</span>
             </label>
             <input
@@ -323,35 +322,35 @@ function AddSparePartModal({ open, onClose, onSaved }) {
               placeholder="e.g. Deep Groove Ball Bearing 6205-2RS"
               value={formData.spare_name}
               onChange={(e) => setFormData({ ...formData, spare_name: e.target.value })}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-[13px] focus:border-[var(--color-primary)] focus:outline-none"
+              className="ui-input w-full"
             />
           </div>
 
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Stock Qty</label>
+              <label className="ui-label">Stock Qty</label>
               <input
                 type="number"
                 min="0"
                 required
                 value={formData.stock}
                 onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-[13px] focus:border-[var(--color-primary)] focus:outline-none"
+                className="ui-input w-full"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Min. Stock</label>
+              <label className="ui-label">Min. Stock</label>
               <input
                 type="number"
                 min="0"
                 required
                 value={formData.minimum_stock}
                 onChange={(e) => setFormData({ ...formData, minimum_stock: e.target.value })}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-[13px] focus:border-[var(--color-primary)] focus:outline-none"
+                className="ui-input w-full"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Unit Cost (₹)</label>
+              <label className="ui-label">Unit Cost (₹)</label>
               <input
                 type="number"
                 min="0"
@@ -359,36 +358,36 @@ function AddSparePartModal({ open, onClose, onSaved }) {
                 placeholder="450"
                 value={formData.unit_cost}
                 onChange={(e) => setFormData({ ...formData, unit_cost: e.target.value })}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-[13px] focus:border-[var(--color-primary)] focus:outline-none"
+                className="ui-input w-full"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Vendor / Supplier</label>
+              <label className="ui-label">Vendor / Supplier</label>
               <input
                 type="text"
                 placeholder="e.g. SKF Bearings India"
                 value={formData.vendor}
                 onChange={(e) => setFormData({ ...formData, vendor: e.target.value })}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-[13px] focus:border-[var(--color-primary)] focus:outline-none"
+                className="ui-input w-full"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Storage Location</label>
+              <label className="ui-label">Storage Location</label>
               <input
                 type="text"
                 placeholder="e.g. Warehouse - Rack 1 / Shelf B"
                 value={formData.location}
                 onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-[13px] focus:border-[var(--color-primary)] focus:outline-none"
+                className="ui-input w-full"
               />
             </div>
           </div>
 
-          <div className="flex justify-end gap-2 border-t border-slate-100 pt-4">
-            <Button type="button" variant="secondary" onClick={onClose}>
+          <div className="flex justify-end gap-2 border-t border-[var(--color-border-soft)] pt-4">
+            <Button type="button" variant="cancel" onClick={onClose}>
               Cancel
             </Button>
             <Button type="submit" variant="primary" disabled={saving}>
@@ -480,7 +479,7 @@ export default function EquipmentSpareParts() {
   usePageRefresh(() => load(true));
   useEffect(() => { load(); }, [load]);
 
-  const handleExport = () => {
+  const handleExport = (format) => {
     if (activeTab === "equipment") {
       const rows = filteredEquipment.map((m) => ({
         code: m.code || `EQ-${m.id}`,
@@ -490,19 +489,19 @@ export default function EquipmentSpareParts() {
         location: m.location || "Floor A",
         status: m.display_status || m.status || "Running",
       }));
-      exportToExcel(
-        rows,
-        [
-          { key: "code", label: "Equipment ID" },
-          { key: "name", label: "Equipment Name" },
-          { key: "type", label: "Category" },
-          { key: "manufacturer", label: "Manufacturer" },
-          { key: "location", label: "Location" },
-          { key: "status", label: "Status" },
-        ],
-        "equipment-inventory"
-      );
-      addToast("Equipment list exported to Excel", "success");
+      const cols = [
+        { key: "code", label: "Equipment ID" },
+        { key: "name", label: "Equipment Name" },
+        { key: "type", label: "Category" },
+        { key: "manufacturer", label: "Manufacturer" },
+        { key: "location", label: "Location" },
+        { key: "status", label: "Status" },
+      ];
+      if (format === "pdf") {
+        exportToPdf(rows, cols, "Equipment Inventory", "equipment-inventory");
+      } else {
+        exportToExcel(rows, cols, "equipment-inventory");
+      }
     } else {
       const rows = filteredSpares.map((p) => ({
         part_number: p.part_number,
@@ -514,22 +513,23 @@ export default function EquipmentSpareParts() {
         location: p.location || "Warehouse",
         status: p.is_low_stock ? "Low Stock" : "In Stock",
       }));
-      exportToExcel(
-        rows,
-        [
-          { key: "part_number", label: "Part Number" },
-          { key: "spare_name", label: "Spare Part Name" },
-          { key: "category", label: "Category" },
-          { key: "stock", label: "Stock" },
-          { key: "minimum_stock", label: "Min Stock" },
-          { key: "vendor", label: "Vendor" },
-          { key: "location", label: "Location" },
-          { key: "status", label: "Status" },
-        ],
-        "spare-parts-inventory"
-      );
-      addToast("Spare parts list exported to Excel", "success");
+      const cols = [
+        { key: "part_number", label: "Part Number" },
+        { key: "spare_name", label: "Spare Part Name" },
+        { key: "category", label: "Category" },
+        { key: "stock", label: "Stock" },
+        { key: "minimum_stock", label: "Min Stock" },
+        { key: "vendor", label: "Vendor" },
+        { key: "location", label: "Location" },
+        { key: "status", label: "Status" },
+      ];
+      if (format === "pdf") {
+        exportToPdf(rows, cols, "Spare Parts Inventory", "spare-parts-inventory");
+      } else {
+        exportToExcel(rows, cols, "spare-parts-inventory");
+      }
     }
+    addToast(format === "pdf" ? "Exported to PDF" : "Exported to Excel", "success");
   };
 
   const totalEquipment = machines.length;
@@ -606,6 +606,7 @@ export default function EquipmentSpareParts() {
   }
 
   return (
+    <ListPageShell>
     <div className="min-w-0 space-y-5 pb-5">
       <PageHeader
         subtitle="Manage all plant equipment and spare parts inventory"
@@ -619,30 +620,34 @@ export default function EquipmentSpareParts() {
             >
               Add Equipment
             </Button>
-            <button
+            <Button
               type="button"
+              variant="secondary"
               onClick={() => setShowAddSpareModal(true)}
-              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-[13px] font-semibold text-slate-700 shadow-xs hover:bg-slate-50 hover:border-[var(--color-primary)] cursor-pointer"
+              leftIcon={<Plus className="h-4 w-4 text-[var(--color-primary)]" aria-hidden />}
             >
-              <Plus className="h-4 w-4 text-[var(--color-primary)]" />
               Add Spare Part
-            </button>
+            </Button>
+            <ExportDownloadMenu
+              disabled={activeTab === "equipment" ? !filteredEquipment.length : !filteredSpares.length}
+              onExport={handleExport}
+            />
             <div className="relative" ref={moreMenuRef}>
-              <button
+              <Button
+                variant="secondary"
                 type="button"
                 onClick={() => setShowMoreMenu((v) => !v)}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-[13px] font-semibold text-slate-700 shadow-xs transition-colors hover:bg-slate-50 hover:border-[var(--color-primary)] cursor-pointer"
+                rightIcon={<ChevronDown className={`h-4 w-4 transition-transform duration-200 ${showMoreMenu ? "rotate-180" : ""}`} aria-hidden />}
               >
-                <MoreVertical className="h-4 w-4 text-slate-500" />
+                <MoreVertical className="h-4 w-4" aria-hidden />
                 More Actions
-                <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform duration-200 ${showMoreMenu ? "rotate-180" : ""}`} />
-              </button>
+              </Button>
               {showMoreMenu && (
-                <div className="absolute right-0 top-[calc(100%+6px)] z-40 w-56 rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl animate-in fade-in zoom-in-95 duration-100">
+                <div className="absolute right-0 top-[calc(100%+6px)] z-40 w-56 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-1.5 shadow-xl">
                   <Link
                     to="/maintenance/preventive"
                     onClick={() => setShowMoreMenu(false)}
-                    className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                    className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium text-[var(--color-text)] transition-colors hover:bg-[var(--color-surface-muted)]"
                   >
                     <Wrench className="h-4 w-4 text-[var(--color-primary)]" />
                     Preventive Maintenance
@@ -650,7 +655,7 @@ export default function EquipmentSpareParts() {
                   <Link
                     to="/maintenance/breakdowns"
                     onClick={() => setShowMoreMenu(false)}
-                    className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                    className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium text-[var(--color-text)] transition-colors hover:bg-[var(--color-surface-muted)]"
                   >
                     <AlertTriangle className="h-4 w-4 text-amber-500" />
                     Breakdown Reports
@@ -658,23 +663,12 @@ export default function EquipmentSpareParts() {
                   <Link
                     to="/maintenance/history"
                     onClick={() => setShowMoreMenu(false)}
-                    className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                    className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium text-[var(--color-text)] transition-colors hover:bg-[var(--color-surface-muted)]"
                   >
                     <History className="h-4 w-4 text-indigo-600" />
                     Machine History Logs
                   </Link>
-                  <div className="my-1 border-t border-slate-100" />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowMoreMenu(false);
-                      handleExport();
-                    }}
-                    className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-[13px] font-medium text-slate-700 transition-colors hover:bg-slate-50 cursor-pointer"
-                  >
-                    <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
-                    Export to Excel
-                  </button>
+                  <div className="my-1 border-t border-[var(--color-border)]" />
                   <button
                     type="button"
                     onClick={() => {
@@ -682,7 +676,7 @@ export default function EquipmentSpareParts() {
                       load(true);
                       addToast("Refreshing equipment data...", "info");
                     }}
-                    className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-[13px] font-medium text-slate-700 transition-colors hover:bg-slate-50 cursor-pointer"
+                    className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-[13px] font-medium text-[var(--color-text)] transition-colors hover:bg-[var(--color-surface-muted)] cursor-pointer"
                   >
                     <RefreshCw className="h-4 w-4 text-[var(--color-primary)]" />
                     Refresh Metrics
@@ -709,7 +703,7 @@ export default function EquipmentSpareParts() {
         />
       </div>
 
-      <div className="border-b border-slate-200">
+      <div className="border-b border-[var(--color-border-soft)]">
         <div className="flex flex-wrap gap-1">
           {[
             { id: "equipment", label: "Equipment" },
@@ -722,7 +716,7 @@ export default function EquipmentSpareParts() {
               className={`border-b-2 px-4 py-2.5 text-[13px] font-semibold transition-colors ${
                 activeTab === tab.id
                   ? "border-[var(--color-primary)] text-[var(--color-primary)]"
-                  : "border-transparent text-slate-500 hover:text-slate-700"
+                  : "border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
               }`}
             >
               {tab.label}
@@ -731,7 +725,8 @@ export default function EquipmentSpareParts() {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
+      <ListPageCard>
+        <ListPageCardBody>
         <div className="grid gap-3 lg:grid-cols-12 lg:items-end">
           <div className="lg:col-span-3">
             <SearchBar
@@ -742,7 +737,7 @@ export default function EquipmentSpareParts() {
             />
           </div>
           <div className="lg:col-span-2">
-            <label className="mb-1 block text-[11px] font-medium text-slate-500">Status</label>
+            <label className="ui-label mb-1">Status</label>
             <MultiSelectDropdown
               label="Status"
               options={activeTab === "equipment" ? STATUS_EQUIPMENT_OPTIONS : STATUS_SPARE_OPTIONS}
@@ -754,7 +749,7 @@ export default function EquipmentSpareParts() {
           {activeTab === "equipment" ? (
             <>
               <div className="lg:col-span-2">
-                <label className="mb-1 block text-[11px] font-medium text-slate-500">Categories</label>
+                <label className="ui-label mb-1">Categories</label>
                 <MultiSelectDropdown
                   label="Categories"
                   options={categories}
@@ -764,7 +759,7 @@ export default function EquipmentSpareParts() {
                 />
               </div>
               <div className="lg:col-span-2">
-                <label className="mb-1 block text-[11px] font-medium text-slate-500">Locations</label>
+                <label className="ui-label mb-1">Locations</label>
                 <MultiSelectDropdown
                   label="Locations"
                   options={locations}
@@ -774,7 +769,7 @@ export default function EquipmentSpareParts() {
                 />
               </div>
               <div className="lg:col-span-3">
-                <label className="mb-1 block text-[11px] font-medium text-slate-500">Brands / Branches</label>
+                <label className="ui-label mb-1">Brands / Branches</label>
                 <MultiSelectDropdown
                   label="Brands"
                   options={brands}
@@ -794,32 +789,35 @@ export default function EquipmentSpareParts() {
             Reset
           </Button>
         </div>
-      </div>
+        </ListPageCardBody>
+      </ListPageCard>
 
-      <div id={activeTab === "spare" ? "spare-table" : undefined} className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
-        <h2 className="mb-4 text-[15px] font-semibold text-slate-900">
+      <div id={activeTab === "spare" ? "spare-table" : undefined}>
+      <ListPageCard>
+        <ListPageCardBody>
+        <h2 className="mb-4 text-[15px] font-semibold text-[var(--color-text)]">
           {activeTab === "equipment" ? "Equipment List" : "Spare Parts Inventory"}
         </h2>
-        <div className="overflow-x-auto rounded-xl border border-slate-200">
+        <div className="ui-table-wrap ui-table-wrap--scroll">
           {activeTab === "equipment" ? (
-            <table className="min-w-full w-full border-collapse text-left text-[13px]">
+            <table className="ui-table min-w-full w-full border-collapse text-left text-[13px]">
               <thead className="ui-table-head">
                 <tr>
-                  <th className="border-b border-slate-200 px-3 py-3">Equipment Code</th>
-                  <th className="border-b border-slate-200 px-3 py-3">Name</th>
-                  <th className="border-b border-slate-200 px-3 py-3">Category</th>
-                  <th className="border-b border-slate-200 px-3 py-3">Location</th>
-                  <th className="border-b border-slate-200 px-3 py-3">Status</th>
-                  <th className="border-b border-slate-200 px-3 py-3">Utilization</th>
-                  <th className="border-b border-slate-200 px-3 py-3 text-center">Actions</th>
+                  <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Equipment Code</th>
+                  <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Name</th>
+                  <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Category</th>
+                  <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Location</th>
+                  <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Status</th>
+                  <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Utilization</th>
+                  <th className="border-b border-[var(--color-border-soft)] px-3 py-3 text-center">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {pageRows.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="border-b border-slate-100 px-3 py-12 text-center text-slate-500">
+                    <td colSpan={7} className="border-b border-[var(--color-border-soft)] px-3 py-12 text-center text-[var(--color-text-muted)]">
                       <div className="flex flex-col items-center justify-center">
-                        <DocumentEmptyIcon className="mb-2 h-10 w-10 text-slate-300 dark:text-slate-600" />
+                        <DocumentEmptyIcon className="mb-2 h-10 w-10 text-[var(--color-text-muted)]/50" />
                         <p className="text-sm font-medium">No equipment found</p>
                       </div>
                     </td>
@@ -829,27 +827,27 @@ export default function EquipmentSpareParts() {
                     const status = normalizeMachineStatus(row.display_status || row.status);
                     const util = Math.round(Number(row.efficiency_pct ?? row.oee_pct ?? 0));
                     return (
-                      <tr key={row.id ?? row.code} className={idx % 2 === 1 ? "bg-slate-50/60 hover:bg-slate-50" : "hover:bg-slate-50/80"}>
-                        <td className="border-b border-slate-100 px-3 py-3 font-semibold text-slate-800">{row.code}</td>
-                        <td className="border-b border-slate-100 px-3 py-3 text-slate-700">{row.name}</td>
-                        <td className="border-b border-slate-100 px-3 py-3 text-slate-600">{row.machine_type || "—"}</td>
-                        <td className="border-b border-slate-100 px-3 py-3 text-slate-600">{row.location || "—"}</td>
-                        <td className="border-b border-slate-100 px-3 py-3">
+                      <tr key={row.id ?? row.code} className={idx % 2 === 1 ? "bg-[var(--color-surface-muted)]/60 hover:bg-[var(--color-surface-muted)]" : "hover:bg-[var(--color-surface-muted)]/80"}>
+                        <td className="border-b border-[var(--color-border-soft)] px-3 py-3 font-semibold text-[var(--color-text)]">{row.code}</td>
+                        <td className="border-b border-[var(--color-border-soft)] px-3 py-3 text-[var(--color-text)]">{row.name}</td>
+                        <td className="border-b border-[var(--color-border-soft)] px-3 py-3 text-[var(--color-text-secondary)]">{row.machine_type || "—"}</td>
+                        <td className="border-b border-[var(--color-border-soft)] px-3 py-3 text-[var(--color-text-secondary)]">{row.location || "—"}</td>
+                        <td className="border-b border-[var(--color-border-soft)] px-3 py-3">
                           <span className={`inline-flex rounded-md px-2 py-0.5 text-[11px] font-semibold ${equipmentStatusBadgeClass(status)}`}>
                             {equipmentStatusLabel(status)}
                           </span>
                         </td>
-                        <td className="border-b border-slate-100 px-3 py-3">
+                        <td className="border-b border-[var(--color-border-soft)] px-3 py-3">
                           <div className="flex items-center gap-2">
-                            <div className="h-2 w-24 overflow-hidden rounded-full bg-slate-100">
+                            <div className="h-2 w-24 overflow-hidden rounded-full bg-[var(--color-surface-muted)]">
                               <div className="h-full rounded-full bg-[var(--kpi-success)]" style={{ width: `${Math.min(100, Math.max(0, util))}%` }} />
                             </div>
-                            <span className="tabular-nums text-slate-600">{util}%</span>
+                            <span className="tabular-nums text-[var(--color-text-secondary)]">{util}%</span>
                           </div>
                         </td>
-                        <td className="border-b border-slate-100 px-3 py-3">
+                        <td className="border-b border-[var(--color-border-soft)] px-3 py-3">
                           <div className="flex items-center justify-center">
-                            <button type="button" className="grid h-8 w-8 place-items-center rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50" aria-label="View equipment">
+                            <button type="button" className="grid h-8 w-8 place-items-center rounded-md border border-[var(--color-border-soft)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-muted)]" aria-label="View equipment">
                               <Eye className="h-4 w-4" />
                             </button>
                           </div>
@@ -861,46 +859,46 @@ export default function EquipmentSpareParts() {
               </tbody>
             </table>
           ) : (
-            <table className="min-w-full w-full border-collapse text-left text-[13px]">
+            <table className="ui-table min-w-full w-full border-collapse text-left text-[13px]">
               <thead className="ui-table-head">
                 <tr>
-                  <th className="border-b border-slate-200 px-3 py-3">Part No</th>
-                  <th className="border-b border-slate-200 px-3 py-3">Name</th>
-                  <th className="border-b border-slate-200 px-3 py-3">Stock</th>
-                  <th className="border-b border-slate-200 px-3 py-3">Min</th>
-                  <th className="border-b border-slate-200 px-3 py-3">Vendor</th>
-                  <th className="border-b border-slate-200 px-3 py-3">Cost</th>
-                  <th className="border-b border-slate-200 px-3 py-3">Status</th>
-                  <th className="border-b border-slate-200 px-3 py-3 text-center">Actions</th>
+                  <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Part No</th>
+                  <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Name</th>
+                  <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Stock</th>
+                  <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Min</th>
+                  <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Vendor</th>
+                  <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Cost</th>
+                  <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Status</th>
+                  <th className="border-b border-[var(--color-border-soft)] px-3 py-3 text-center">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {pageRows.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="border-b border-slate-100 px-3 py-12 text-center text-slate-500">
+                    <td colSpan={8} className="border-b border-[var(--color-border-soft)] px-3 py-12 text-center text-[var(--color-text-muted)]">
                       <div className="flex flex-col items-center justify-center">
-                        <DocumentEmptyIcon className="mb-2 h-10 w-10 text-slate-300 dark:text-slate-600" />
+                        <DocumentEmptyIcon className="mb-2 h-10 w-10 text-[var(--color-text-muted)]/50" />
                         <p className="text-sm font-medium">No spare parts found</p>
                       </div>
                     </td>
                   </tr>
                 ) : (
                   pageRows.map((row, idx) => (
-                    <tr key={row.id ?? row.part_number} className={idx % 2 === 1 ? "bg-slate-50/60 hover:bg-slate-50" : "hover:bg-slate-50/80"}>
-                      <td className="border-b border-slate-100 px-3 py-3 font-semibold text-slate-800">{row.part_number}</td>
-                      <td className="border-b border-slate-100 px-3 py-3 text-slate-700">{row.spare_name}</td>
-                      <td className="border-b border-slate-100 px-3 py-3 tabular-nums text-slate-700">{row.stock}</td>
-                      <td className="border-b border-slate-100 px-3 py-3 tabular-nums text-slate-600">{row.minimum_stock}</td>
-                      <td className="border-b border-slate-100 px-3 py-3 text-slate-600">{row.vendor || "—"}</td>
-                      <td className="border-b border-slate-100 px-3 py-3 tabular-nums text-slate-700">{formatInr(row.cost)}</td>
-                      <td className="border-b border-slate-100 px-3 py-3">
+                    <tr key={row.id ?? row.part_number} className={idx % 2 === 1 ? "bg-[var(--color-surface-muted)]/60 hover:bg-[var(--color-surface-muted)]" : "hover:bg-[var(--color-surface-muted)]/80"}>
+                      <td className="border-b border-[var(--color-border-soft)] px-3 py-3 font-semibold text-[var(--color-text)]">{row.part_number}</td>
+                      <td className="border-b border-[var(--color-border-soft)] px-3 py-3 text-[var(--color-text)]">{row.spare_name}</td>
+                      <td className="border-b border-[var(--color-border-soft)] px-3 py-3 tabular-nums text-[var(--color-text)]">{row.stock}</td>
+                      <td className="border-b border-[var(--color-border-soft)] px-3 py-3 tabular-nums text-[var(--color-text-secondary)]">{row.minimum_stock}</td>
+                      <td className="border-b border-[var(--color-border-soft)] px-3 py-3 text-[var(--color-text-secondary)]">{row.vendor || "—"}</td>
+                      <td className="border-b border-[var(--color-border-soft)] px-3 py-3 tabular-nums text-[var(--color-text)]">{formatInr(row.cost)}</td>
+                      <td className="border-b border-[var(--color-border-soft)] px-3 py-3">
                         <span className={`inline-flex rounded-md px-2 py-0.5 text-[11px] font-semibold ${spareStockBadge(row.stock, row.minimum_stock)}`}>
                           {row.is_low_stock ? "Low Stock" : "In Stock"}
                         </span>
                       </td>
-                      <td className="border-b border-slate-100 px-3 py-3">
+                      <td className="border-b border-[var(--color-border-soft)] px-3 py-3">
                         <div className="flex items-center justify-center">
-                          <button type="button" className="grid h-8 w-8 place-items-center rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50" aria-label="View part">
+                          <button type="button" className="grid h-8 w-8 place-items-center rounded-md border border-[var(--color-border-soft)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-muted)]" aria-label="View part">
                             <Eye className="h-4 w-4" />
                           </button>
                         </div>
@@ -915,11 +913,11 @@ export default function EquipmentSpareParts() {
 
         {activeRows.length > 0 ? (
           <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-[12px] text-slate-500">
+            <p className="text-[12px] text-[var(--color-text-muted)]">
               Showing {from} to {to} of {activeRows.length} entries
             </p>
             <div className="flex items-center gap-1">
-              <button type="button" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))} className="grid h-8 w-8 place-items-center rounded-md border border-slate-200 disabled:opacity-40">
+              <button type="button" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))} className="grid h-8 w-8 place-items-center rounded-md border border-[var(--color-border-soft)] disabled:opacity-40">
                 <ChevronLeft className="h-4 w-4" />
               </button>
               {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => i + 1).map((n) => (
@@ -928,18 +926,20 @@ export default function EquipmentSpareParts() {
                   type="button"
                   onClick={() => setPage(n)}
                   className={`grid h-8 min-w-[2rem] place-items-center rounded-md px-2 text-[12px] font-semibold ${
-                    page === n ? "bg-[var(--color-primary)] text-white" : "border border-slate-200 text-slate-600 hover:bg-slate-50"
+                    page === n ? "bg-[var(--color-primary)] text-white" : "border border-[var(--color-border-soft)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-muted)]"
                   }`}
                 >
                   {n}
                 </button>
               ))}
-              <button type="button" disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))} className="grid h-8 w-8 place-items-center rounded-md border border-slate-200 disabled:opacity-40">
+              <button type="button" disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))} className="grid h-8 w-8 place-items-center rounded-md border border-[var(--color-border-soft)] disabled:opacity-40">
                 <ChevronRight className="h-4 w-4" />
               </button>
             </div>
           </div>
         ) : null}
+        </ListPageCardBody>
+      </ListPageCard>
       </div>
 
       <CreateMachineModal
@@ -959,5 +959,6 @@ export default function EquipmentSpareParts() {
         }}
       />
     </div>
+    </ListPageShell>
   );
 }

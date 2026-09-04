@@ -13,6 +13,8 @@ import {
 } from "lucide-react";
 
 import Button from "../../components/common/Button";
+import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
+import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
 import { SearchBar } from "../../components/common/SearchFilter";
 import DataTable from "../../components/common/DataTable";
 import KpiCard from "../../components/common/KpiCard";
@@ -22,6 +24,16 @@ import MaintenanceErrorState from "../../components/maintenance/MaintenanceError
 import { createSchedule, getSchedule } from "../../api/maintenanceApi";
 import { getMachines } from "../../api/productionApi";
 import { useToast } from "../../context/ToastContext";
+import { exportToExcel, exportToPdf } from "../../utils/exportUtils";
+
+const SCHEDULE_EXPORT_COLUMNS = [
+  { key: "machine", label: "Machine" },
+  { key: "task", label: "Scheduled Task" },
+  { key: "frequency", label: "Frequency" },
+  { key: "next_due", label: "Next Due Date" },
+  { key: "assigned", label: "Assigned To" },
+  { key: "status", label: "Status" },
+];
 
 const FREQUENCY_OPTIONS = [
   { label: "Weekly (7 Days)", value: 7 },
@@ -230,6 +242,24 @@ export default function MaintenanceSchedule() {
     });
   }, [rows, search, frequencyFilter, statusFilter]);
 
+  const handleExport = (format) => {
+    const data = filtered.map((r) => ({
+      machine: r.machine_name || r.machine_id,
+      task: r.task_name,
+      frequency: `Every ${r.frequency_days} Days`,
+      next_due: String(r.next_due_date || "").slice(0, 10),
+      assigned: r.assigned_engineer || "Unassigned",
+      status: r.is_active ? "Active" : "Paused",
+    }));
+    if (format === "pdf") {
+      exportToPdf(data, SCHEDULE_EXPORT_COLUMNS, "Maintenance Schedules", "maintenance-schedules");
+      addToast("Exported to PDF", "success");
+    } else {
+      exportToExcel(data, SCHEDULE_EXPORT_COLUMNS, "maintenance-schedules");
+      addToast("Exported to Excel", "success");
+    }
+  };
+
   const activeCount = rows.filter((r) => r.is_active).length;
   const overdueCount = rows.filter((r) => r.is_overdue || (r.next_due_date && new Date(r.next_due_date) < new Date())).length;
   const dueSoonCount = rows.filter((r) => {
@@ -244,8 +274,8 @@ export default function MaintenanceSchedule() {
       label: "Machine",
       render: (r) => (
         <div>
-          <div className="font-semibold text-slate-900">{r.machine_name || r.machine_id}</div>
-          <div className="text-[11px] text-slate-500">{r.department || "Production"}</div>
+          <div className="font-semibold text-[var(--color-text)]">{r.machine_name || r.machine_id}</div>
+          <div className="text-[11px] text-[var(--color-text-muted)]">{r.department || "Production"}</div>
         </div>
       ),
     },
@@ -254,8 +284,8 @@ export default function MaintenanceSchedule() {
       label: "Scheduled Task",
       render: (r) => (
         <div>
-          <div className="font-medium text-slate-800">{r.task_name}</div>
-          {r.description && <div className="text-[11px] text-slate-500 line-clamp-1">{r.description}</div>}
+          <div className="font-medium text-[var(--color-text)]">{r.task_name}</div>
+          {r.description && <div className="text-[11px] text-[var(--color-text-muted)] line-clamp-1">{r.description}</div>}
         </div>
       ),
     },
@@ -274,9 +304,9 @@ export default function MaintenanceSchedule() {
       render: (r) => {
         const isPast = r.is_overdue || (r.next_due_date && new Date(r.next_due_date) < new Date());
         return (
-          <span className={isPast ? "font-semibold text-red-600" : "text-slate-800"}>
+          <span className={isPast ? "font-semibold text-[var(--kpi-danger)]" : "text-[var(--color-text)]"}>
             {String(r.next_due_date || "").slice(0, 10)}
-            {isPast && <span className="ml-1.5 text-[11px] font-semibold text-red-500">(Overdue)</span>}
+            {isPast && <span className="ml-1.5 text-[11px] font-semibold text-[var(--kpi-danger)]">(Overdue)</span>}
           </span>
         );
       },
@@ -284,7 +314,7 @@ export default function MaintenanceSchedule() {
     {
       key: "assigned_engineer",
       label: "Assigned To",
-      render: (r) => <span className="text-slate-700">{r.assigned_engineer || "Unassigned"}</span>,
+      render: (r) => <span className="text-[var(--color-text-secondary)]">{r.assigned_engineer || "Unassigned"}</span>,
     },
     {
       key: "is_active",
@@ -294,7 +324,7 @@ export default function MaintenanceSchedule() {
           type="button"
           onClick={() => toggleActive(r.id)}
           className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold cursor-pointer ${
-            r.is_active ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100" : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+            r.is_active ? "bg-[var(--kpi-success-soft)] text-[var(--kpi-success)] hover:opacity-90" : "bg-[var(--color-surface-muted)] text-[var(--color-text-muted)] hover:opacity-90"
           }`}
         >
           {r.is_active ? "Active" : "Paused"}
@@ -307,13 +337,17 @@ export default function MaintenanceSchedule() {
   if (error && !rows.length) return <MaintenanceErrorState message={error} onRetry={load} />;
 
   return (
+    <ListPageShell>
     <div className="space-y-5 pb-5">
       <PageHeader
         subtitle="Define and automate recurring preventive maintenance schedules."
         action={
-          <Button variant="add" type="button" onClick={() => setShowModal(true)} leftIcon={<Plus className="h-4 w-4" aria-hidden />}>
-            Schedule Maintenance
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="add" type="button" onClick={() => setShowModal(true)} leftIcon={<Plus className="h-4 w-4" aria-hidden />}>
+              Schedule Maintenance
+            </Button>
+            <ExportDownloadMenu disabled={!filtered.length} onExport={handleExport} />
+          </div>
         }
       />
 
@@ -324,7 +358,8 @@ export default function MaintenanceSchedule() {
         <KpiCard label="Overdue Schedules" value={overdueCount} icon={AlertTriangle} color="bg-red-500" />
       </div>
 
-      <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
+      <ListPageCard>
+        <ListPageCardBody>
         <div className="grid gap-3 lg:grid-cols-12 lg:items-end">
           <div className="lg:col-span-6">
             <SearchBar
@@ -335,11 +370,11 @@ export default function MaintenanceSchedule() {
             />
           </div>
           <div className="lg:col-span-3">
-            <label className="mb-1 block text-[11px] font-medium text-slate-500">Frequency</label>
+            <label className="ui-label mb-1 block">Frequency</label>
             <select
               value={frequencyFilter}
               onChange={(e) => setFrequencyFilter(e.target.value)}
-              className="w-full rounded-lg border border-slate-200 bg-white py-2 px-3 text-[13px] focus:border-[var(--color-primary)] focus:outline-none"
+              className="ui-select w-full"
             >
               <option value="">All Frequencies</option>
               {FREQUENCY_OPTIONS.map((f) => (
@@ -350,11 +385,11 @@ export default function MaintenanceSchedule() {
             </select>
           </div>
           <div className="lg:col-span-3">
-            <label className="mb-1 block text-[11px] font-medium text-slate-500">Status</label>
+            <label className="ui-label mb-1 block">Status</label>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full rounded-lg border border-slate-200 bg-white py-2 px-3 text-[13px] focus:border-[var(--color-primary)] focus:outline-none"
+              className="ui-select w-full"
             >
               <option value="">All Schedules</option>
               <option value="active">Active Only</option>
@@ -362,29 +397,32 @@ export default function MaintenanceSchedule() {
             </select>
           </div>
         </div>
-      </div>
+        </ListPageCardBody>
+      </ListPageCard>
 
-      <div className="ui-card p-4 sm:p-5 overflow-x-auto">
+      <ListPageCard>
+        <ListPageCardBody className="overflow-x-auto">
         <DataTable columns={columns} data={filtered} searchPlaceholder="" searchKeys={[]} />
-      </div>
+        </ListPageCardBody>
+      </ListPageCard>
 
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-xl animate-in fade-in zoom-in-95 duration-100">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+        <div className="ui-modal-backdrop">
+          <div className="ui-modal max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-[var(--color-border-soft)] pb-4">
               <div className="flex items-center gap-2.5">
                 <div className="grid h-9 w-9 place-items-center rounded-lg bg-[var(--color-primary-soft)] text-[var(--color-primary)]">
                   <Calendar className="h-5 w-5" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold text-slate-900">Schedule Maintenance</h2>
-                  <p className="text-xs text-slate-500">Set up a recurring preventive maintenance routine</p>
+                  <h2 className="text-lg font-bold text-[var(--color-text)]">Schedule Maintenance</h2>
+                  <p className="text-xs text-[var(--color-text-muted)]">Set up a recurring preventive maintenance routine</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setShowModal(false)}
-                className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 cursor-pointer"
+                className="rounded-lg p-2 text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)] hover:text-[var(--color-text)] cursor-pointer"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -393,14 +431,14 @@ export default function MaintenanceSchedule() {
             <form onSubmit={handleCreateSchedule} className="mt-4 space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  <label className="ui-label">
                     Machine Name / ID <span className="text-red-500">*</span>
                   </label>
                   {machinesList.length > 0 ? (
                     <select
                       value={formData.machine_name}
                       onChange={handleMachineChange}
-                      className="w-full rounded-lg border border-slate-200 px-3 py-2 text-[13px] focus:border-[var(--color-primary)] focus:outline-none"
+                      className="ui-select w-full"
                     >
                       {machinesList.map((m) => (
                         <option key={m.id} value={m.name}>
@@ -415,16 +453,16 @@ export default function MaintenanceSchedule() {
                       placeholder="e.g. CNC Milling Machine 01"
                       value={formData.machine_name}
                       onChange={(e) => setFormData({ ...formData, machine_name: e.target.value })}
-                      className="w-full rounded-lg border border-slate-200 px-3 py-2 text-[13px] focus:border-[var(--color-primary)] focus:outline-none"
+                      className="ui-input w-full"
                     />
                   )}
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Department</label>
+                  <label className="ui-label">Department</label>
                   <select
                     value={formData.department}
                     onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-[13px] focus:border-[var(--color-primary)] focus:outline-none"
+                    className="ui-select w-full"
                   >
                     <option value="Machining">Machining</option>
                     <option value="Press Shop">Press Shop</option>
@@ -436,7 +474,7 @@ export default function MaintenanceSchedule() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                <label className="ui-label">
                   Task Name <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -445,19 +483,17 @@ export default function MaintenanceSchedule() {
                   placeholder="e.g. Monthly Lubrication & Spindle Alignment"
                   value={formData.task_name}
                   onChange={(e) => setFormData({ ...formData, task_name: e.target.value })}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-[13px] focus:border-[var(--color-primary)] focus:outline-none"
+                  className="ui-input w-full"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Frequency
-                  </label>
+                  <label className="ui-label">Frequency</label>
                   <select
                     value={formData.frequency_days}
                     onChange={(e) => setFormData({ ...formData, frequency_days: Number(e.target.value) })}
-                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-[13px] focus:border-[var(--color-primary)] focus:outline-none"
+                    className="ui-select w-full"
                   >
                     {FREQUENCY_OPTIONS.map((f) => (
                       <option key={f.value} value={f.value}>
@@ -467,7 +503,7 @@ export default function MaintenanceSchedule() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  <label className="ui-label">
                     Next Due Date <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -475,39 +511,35 @@ export default function MaintenanceSchedule() {
                     required
                     value={formData.next_due_date}
                     onChange={(e) => setFormData({ ...formData, next_due_date: e.target.value })}
-                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-[13px] focus:border-[var(--color-primary)] focus:outline-none"
+                    className="ui-input w-full"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Assigned Engineer / Technician
-                </label>
+                <label className="ui-label">Assigned Engineer / Technician</label>
                 <input
                   type="text"
                   placeholder="e.g. R. Kumar (Senior Mech Engineer)"
                   value={formData.assigned_engineer}
                   onChange={(e) => setFormData({ ...formData, assigned_engineer: e.target.value })}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-[13px] focus:border-[var(--color-primary)] focus:outline-none"
+                  className="ui-input w-full"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Checklist & Inspection Description
-                </label>
+                <label className="ui-label">Checklist & Inspection Description</label>
                 <textarea
                   rows={3}
                   placeholder="Specify task checklist, lubricants to use, tolerances to measure..."
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-[13px] focus:border-[var(--color-primary)] focus:outline-none"
+                  className="ui-input w-full min-h-[80px]"
                 />
               </div>
 
-              <div className="flex justify-end gap-2 border-t border-slate-100 pt-4">
-                <Button type="button" variant="secondary" onClick={() => setShowModal(false)}>
+              <div className="flex justify-end gap-2 border-t border-[var(--color-border-soft)] pt-4">
+                <Button type="button" variant="cancel" onClick={() => setShowModal(false)}>
                   Cancel
                 </Button>
                 <Button
@@ -524,5 +556,6 @@ export default function MaintenanceSchedule() {
         </div>
       )}
     </div>
+    </ListPageShell>
   );
 }

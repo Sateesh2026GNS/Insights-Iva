@@ -20,6 +20,7 @@ import { starRating } from "../../data/vendorsMasterData";
 import { useToast } from "../../context/ToastContext";
 
 import Button from "../../components/common/Button";
+import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
 const TABS = [
   { id: "overview", label: "Overview" },
@@ -33,9 +34,9 @@ const TABS = [
 
 function Field({ label, value }) {
   return (
-    <div className="rounded-xl bg-slate-50 px-3 py-2.5">
-      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{label}</p>
-      <p className="mt-0.5 text-sm font-medium text-slate-900 break-words">{value || "—"}</p>
+    <div className="rounded-xl bg-[var(--color-surface-muted)] px-3 py-2.5">
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">{label}</p>
+      <p className="mt-0.5 text-sm font-medium text-[var(--color-text)] break-words">{value || "—"}</p>
     </div>
   );
 }
@@ -97,37 +98,44 @@ export default function VendorDetail() {
 
   if (loading) {
     return (
-      <div className="flex min-h-[40vh] items-center justify-center text-sm text-slate-500">
-        <Loader2 className="mr-2 h-5 w-5 animate-spin text-[var(--color-primary)]" />
-        Loading vendor…
-      </div>
+      <ListPageShell>
+        <div className="flex min-h-[40vh] items-center justify-center text-sm text-[var(--color-text-muted)]">
+          <Loader2 className="mr-2 h-5 w-5 animate-spin text-[var(--color-primary)]" />
+          Loading vendor…
+        </div>
+      </ListPageShell>
     );
   }
 
   if (error || !vendor) {
     return (
-      <div className="mx-auto max-w-lg space-y-4 py-16 text-center">
-        <p className="text-sm font-medium text-red-600">{error || "Vendor not found"}</p>
-        <div className="flex justify-center gap-2">
-          <button
-            type="button"
-            onClick={load}
-            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold"
-          >
-            <RefreshCw className="h-4 w-4" /> Retry
-          </button>
-          <Link to="/procurement/vendors" className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white">
-            Back to list
-          </Link>
+      <ListPageShell>
+        <div className="mx-auto max-w-lg space-y-4 py-16 text-center">
+          <p className="text-sm font-medium text-[var(--color-danger)]">{error || "Vendor not found"}</p>
+          <div className="flex justify-center gap-2">
+            <button
+              type="button"
+              onClick={load}
+              className="inline-flex items-center gap-2 rounded-xl border border-[var(--color-border)] px-4 py-2 text-sm font-semibold text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"
+            >
+              <RefreshCw className="h-4 w-4" /> Retry
+            </button>
+            <Link
+              to="/procurement/vendors"
+              className="rounded-xl bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
+            >
+              Back to list
+            </Link>
+          </div>
         </div>
-      </div>
+      </ListPageShell>
     );
   }
 
   const v = vendor;
 
   return (
-    <div className="space-y-5 pb-4">
+    <ListPageShell>
       <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <Link
@@ -137,19 +145,19 @@ export default function VendorDetail() {
             <ArrowLeft className="h-4 w-4" /> Back to vendors
           </Link>
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-2xl font-bold text-slate-900">{v.name}</h1>
+            <h1 className="text-2xl font-bold text-[var(--color-text)]">{v.name}</h1>
             {v.preferred_vendor ? (
-              <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-700 ring-1 ring-amber-200">
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-700 ring-1 ring-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:ring-amber-800">
                 <Star className="h-3 w-3 fill-amber-500 text-amber-500" /> Preferred
               </span>
             ) : null}
             <span
               className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize ${
                 (v.status || "").toLowerCase() === "active"
-                  ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200"
+                  ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:ring-emerald-800"
                   : (v.status || "").toLowerCase() === "blacklisted"
-                    ? "bg-red-50 text-red-700 ring-1 ring-red-200"
-                    : "bg-slate-50 text-slate-600 ring-1 ring-slate-200"
+                    ? "bg-red-50 text-red-700 ring-1 ring-red-200 dark:bg-red-950/40 dark:text-red-300 dark:ring-red-800"
+                    : "bg-[var(--color-surface-muted)] text-[var(--color-text-secondary)] ring-1 ring-[var(--color-border)]"
               }`}
             >
               {v.status || "—"}
@@ -175,7 +183,7 @@ export default function VendorDetail() {
         </div>
       </header>
 
-      <div className="flex flex-wrap gap-1 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-sm">
+      <div className="flex flex-wrap gap-1 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-1.5 shadow-sm">
         {TABS.map((t) => (
           <button
             key={t.id}
@@ -184,7 +192,7 @@ export default function VendorDetail() {
             className={`rounded-xl px-3 py-2 text-xs font-semibold transition sm:text-sm ${
               tab === t.id
                 ? "bg-[var(--color-primary)] text-white shadow-sm"
-                : "text-slate-600 hover:bg-slate-50"
+                : "text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"
             }`}
           >
             {t.label}
@@ -192,11 +200,12 @@ export default function VendorDetail() {
         ))}
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+      <ListPageCard>
+        <ListPageCardBody className="sm:p-6">
         {tab === "overview" && (
           <div className="space-y-5 pb-4">
             <div>
-              <h3 className="mb-3 text-sm font-bold text-slate-800">General</h3>
+              <h3 className="mb-3 text-sm font-bold text-[var(--color-text)]">General</h3>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 <Field label="Vendor Code" value={v.vendor_code} />
                 <Field label="Company Name" value={v.name} />
@@ -208,7 +217,7 @@ export default function VendorDetail() {
               </div>
             </div>
             <div>
-              <h3 className="mb-3 text-sm font-bold text-slate-800">Business</h3>
+              <h3 className="mb-3 text-sm font-bold text-[var(--color-text)]">Business</h3>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 <Field label="GSTIN" value={v.gstin} />
                 <Field label="PAN" value={v.pan} />
@@ -217,7 +226,7 @@ export default function VendorDetail() {
               </div>
             </div>
             <div>
-              <h3 className="mb-3 text-sm font-bold text-slate-800">Address</h3>
+              <h3 className="mb-3 text-sm font-bold text-[var(--color-text)]">Address</h3>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 <Field label="Address Line 1" value={v.address_line1} />
                 <Field label="Address Line 2" value={v.address_line2} />
@@ -229,7 +238,7 @@ export default function VendorDetail() {
               </div>
             </div>
             <div>
-              <h3 className="mb-3 text-sm font-bold text-slate-800">Bank & Procurement</h3>
+              <h3 className="mb-3 text-sm font-bold text-[var(--color-text)]">Bank & Procurement</h3>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 <Field label="Bank" value={v.bank_name} />
                 <Field label="Branch" value={v.bank_branch} />
@@ -302,13 +311,13 @@ export default function VendorDetail() {
               (v.documents || []).map((d) => (
                 <div
                   key={d.id}
-                  className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 px-4 py-3"
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--color-border)] px-4 py-3"
                 >
                   <div className="flex min-w-0 items-center gap-3">
-                    <FileText className="h-5 w-5 shrink-0 text-slate-400" />
+                    <FileText className="h-5 w-5 shrink-0 text-[var(--color-text-icon)]" />
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-slate-900">{d.title}</p>
-                      <p className="text-xs text-slate-500">{d.file_name || d.doc_type}</p>
+                      <p className="truncate text-sm font-semibold text-[var(--color-text)]">{d.title}</p>
+                      <p className="text-xs text-[var(--color-text-muted)]">{d.file_name || d.doc_type}</p>
                     </div>
                   </div>
                   <div className="flex gap-2">
@@ -317,7 +326,7 @@ export default function VendorDetail() {
                         href={d.file_path}
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-700"
+                        className="inline-flex items-center gap-1 rounded-lg border border-[var(--color-border)] px-2.5 py-1.5 text-xs font-semibold text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"
                       >
                         <Download className="h-3.5 w-3.5" /> Preview
                       </a>
@@ -326,7 +335,7 @@ export default function VendorDetail() {
                       <button
                         type="button"
                         onClick={() => handleDeleteDoc(d.id)}
-                        className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-semibold text-red-600"
+                        className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-semibold text-[var(--color-danger)] dark:border-red-900/50"
                       >
                         <Trash2 className="h-3.5 w-3.5" /> Delete
                       </button>
@@ -367,13 +376,14 @@ export default function VendorDetail() {
             </div>
           </div>
         )}
-      </div>
-    </div>
+        </ListPageCardBody>
+      </ListPageCard>
+    </ListPageShell>
   );
 }
 
 function EmptyState({ text }) {
-  return <p className="py-10 text-center text-sm text-slate-500">{text}</p>;
+  return <p className="py-10 text-center text-sm text-[var(--color-text-muted)]">{text}</p>;
 }
 
 function HistoryTable({ rows, columns, empty }) {
@@ -393,10 +403,10 @@ function HistoryTable({ rows, columns, empty }) {
         </thead>
         <tbody>
           {rows.map((r, i) => (
-            <tr key={r.id || i} className="border-b border-slate-100">
+            <tr key={r.id || i} className="border-b border-[var(--color-border-soft)]">
               <SerialNumberCell rowIndex={i} className="px-3 py-2.5" />
               {columns.map((c) => (
-                <td key={c.key} className="px-3 py-2.5 text-slate-800">
+                <td key={c.key} className="px-3 py-2.5 text-[var(--color-text)]">
                   {c.render ? c.render(r) : r[c.key] ?? "—"}
                 </td>
               ))}

@@ -3,7 +3,6 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   ChevronLeft,
   ChevronRight,
-  FileSpreadsheet,
   Pencil,
   Plus,
   Trash2,
@@ -11,10 +10,13 @@ import {
 } from "lucide-react";
 import { createPortal } from "react-dom";
 
-import Button from "../../components/common/Button";
+import Button, { CancelButton } from "../../components/common/Button";
+import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
+import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
 import RowActionMenu from "../../components/common/RowActionMenu";
 import { SearchBar } from "../../components/common/SearchFilter";
 import Loader from "../../components/common/Loader";
+import EmptyState from "../../components/common/EmptyState";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
 import AddNewPartyModal from "../../components/sales/AddNewPartyModal";
 import { useToast } from "../../context/ToastContext";
@@ -25,12 +27,21 @@ import {
   listMastersVendors,
 } from "../../api/mastersVendorsApi";
 import { enrichApiVendor } from "../../data/vendorsMasterData";
-import { exportToExcel } from "../../utils/exportUtils";
+import { runListExport } from "../../utils/listExport";
 import { apiErrorMessage } from "../../utils/apiError";
 
-const PAGE_BG = "var(--color-bg)";
-const VENDOR_BTN = "var(--color-action-teal)"; /* #0F6D84 */
 const PAGE_SIZES = [20, 50, 100];
+
+const VENDOR_EXPORT_COLUMNS = [
+  { key: "name", label: "Vendor Name" },
+  { key: "email", label: "Email" },
+  { key: "gstin", label: "GSTIN" },
+  { key: "phone", label: "Mobile No." },
+  { key: "address_line1", label: "Address" },
+  { key: "city", label: "City" },
+  { key: "state", label: "State" },
+  { key: "pincode", label: "Pincode" },
+];
 
 function blankOr(value) {
   if (value == null) return "";
@@ -42,10 +53,10 @@ function DeleteConfirmModal({ open, onClose, onConfirm, busy }) {
   if (!open) return null;
   return createPortal(
     <div
-      className="fixed inset-0 z-[90] flex items-center justify-center bg-black/45 p-4"
+      className="ui-modal-backdrop"
       onMouseDown={(e) => e.target === e.currentTarget && !busy && onClose?.()}
     >
-      <div className="w-full max-w-[400px] rounded-2xl bg-white px-6 py-6 text-center shadow-2xl">
+      <div className="ui-modal w-full max-w-[400px] px-6 py-6 text-center" onMouseDown={(e) => e.stopPropagation()}>
         <div className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-full bg-[var(--color-danger-soft)]">
           <Trash2 className="h-6 w-6 text-[var(--color-danger)]" strokeWidth={1.75} />
         </div>
@@ -56,9 +67,9 @@ function DeleteConfirmModal({ open, onClose, onConfirm, busy }) {
           This action cannot be undone.
         </p>
         <div className="mt-6 grid grid-cols-2 gap-3">
-          <Button type="button" variant="secondary" disabled={busy} onClick={onClose} fullWidth>
+          <CancelButton type="button" disabled={busy} onClick={onClose} fullWidth>
             No
-          </Button>
+          </CancelButton>
           <Button type="button" variant="danger" disabled={busy} loading={busy} onClick={onConfirm} fullWidth>
             {busy ? "Deleting…" : "Delete"}
           </Button>
@@ -140,25 +151,23 @@ export default function VendorsMaster() {
   const from = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const to = Math.min(page * pageSize, total);
 
-  const onExport = () => {
-    exportToExcel(
+  const exportRows = useMemo(
+    () =>
       filtered.map((v) => ({
         ...v,
         address_line1: v.address_line1 || v.billing_address || "",
       })),
-      [
-        { key: "name", label: "Vendor Name" },
-        { key: "email", label: "Email" },
-        { key: "gstin", label: "GSTIN" },
-        { key: "phone", label: "Mobile No." },
-        { key: "address_line1", label: "Address" },
-        { key: "city", label: "City" },
-        { key: "state", label: "State" },
-        { key: "pincode", label: "Pincode" },
-      ],
-      "vendors"
-    );
-    addToast("Exported to Excel", "success");
+    [filtered]
+  );
+
+  const handleExport = (format) => {
+    runListExport(format, {
+      data: exportRows,
+      columns: VENDOR_EXPORT_COLUMNS,
+      filename: "vendors",
+      title: "Vendors",
+    });
+    addToast(format === "pdf" ? "Exported to PDF" : "Exported to Excel", "success");
   };
 
   const confirmDelete = async () => {
@@ -179,13 +188,14 @@ export default function VendorsMaster() {
   if (loading) return <Loader label="Loading vendors..." />;
 
   return (
-    <div className="min-h-full" style={{ background: PAGE_BG }}>
-      <div className="mx-auto max-w-[1400px] px-4 py-5 sm:px-6 lg:px-8">
-
-        <div className="ui-card p-4 sm:p-5">
-          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <SearchBar value={query} onChange={setQuery} placeholder="Search" className="w-full" />
-            <div className="flex flex-wrap items-center gap-2.5 sm:justify-end">
+    <ListPageShell>
+      <ListPageCard>
+        <ListPageCardBody>
+          <div className="ui-list-toolbar">
+            <div className="ui-list-toolbar__start">
+              <SearchBar value={query} onChange={setQuery} placeholder="Search" className="w-full max-w-md" />
+            </div>
+            <div className="ui-list-toolbar__end">
               <Button
                 variant="outline"
                 to="/procurement/vendors/bulk-import"
@@ -193,14 +203,7 @@ export default function VendorsMaster() {
               >
                 Bulk Import
               </Button>
-              <Button
-                variant="outline"
-                type="button"
-                onClick={onExport}
-                leftIcon={<FileSpreadsheet className="h-4 w-4" />}
-              >
-                Export (xlsx)
-              </Button>
+              <ExportDownloadMenu disabled={!exportRows.length} onExport={handleExport} />
               <Button
                 variant="add"
                 type="button"
@@ -233,18 +236,18 @@ export default function VendorsMaster() {
                 </thead>
                 <tbody>
                   {rows.map((v, rowIndex) => (
-                    <tr key={v.id} className="border-b border-[#f0f0f4] text-[#1a1a1f] last:border-b-0">
+                    <tr key={v.id}>
                       <SerialNumberCell rowIndex={rowIndex} page={page} pageSize={pageSize} />
-                      <td className="px-4 py-3.5">{v.name || ""}</td>
-                      <td className="px-4 py-3.5 text-[#4a4a55]">{blankOr(v.email)}</td>
-                      <td className="px-4 py-3.5 text-[#4a4a55]">{blankOr(v.gstin)}</td>
-                      <td className="px-4 py-3.5 text-[#4a4a55]">{blankOr(v.phone)}</td>
-                      <td className="px-4 py-3.5 text-[#4a4a55]">
+                      <td className="px-4 py-3.5 font-medium text-[var(--color-text)]">{v.name || ""}</td>
+                      <td className="px-4 py-3.5 text-[var(--color-text-secondary)]">{blankOr(v.email)}</td>
+                      <td className="px-4 py-3.5 text-[var(--color-text-secondary)]">{blankOr(v.gstin)}</td>
+                      <td className="px-4 py-3.5 text-[var(--color-text-secondary)]">{blankOr(v.phone)}</td>
+                      <td className="px-4 py-3.5 text-[var(--color-text-secondary)]">
                         {blankOr(v.address_line1 || v.billing_address)}
                       </td>
-                      <td className="px-4 py-3.5 text-[#4a4a55]">{blankOr(v.city)}</td>
-                      <td className="px-4 py-3.5 text-[#4a4a55]">{blankOr(v.state)}</td>
-                      <td className="px-4 py-3.5 text-[#4a4a55]">{blankOr(v.pincode)}</td>
+                      <td className="px-4 py-3.5 text-[var(--color-text-secondary)]">{blankOr(v.city)}</td>
+                      <td className="px-4 py-3.5 text-[var(--color-text-secondary)]">{blankOr(v.state)}</td>
+                      <td className="px-4 py-3.5 text-[var(--color-text-secondary)]">{blankOr(v.pincode)}</td>
                       <td className="px-4 py-2" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end">
                           <RowActionMenu
@@ -276,7 +279,17 @@ export default function VendorsMaster() {
                 </tbody>
               </table>
             {rows.length === 0 ? (
-              <div className="px-4 py-16 text-center text-[13px] text-[#8a8a96]">No data available</div>
+              <EmptyState
+                title={query ? "No vendors found" : "No vendors yet"}
+                description={
+                  query
+                    ? "Try adjusting your search terms."
+                    : "Create your first vendor to start recording purchases."
+                }
+                actionLabel={!query ? "Create Vendor" : undefined}
+                onAction={!query ? () => setPartyOpen(true) : undefined}
+                className="border-none bg-transparent shadow-none"
+              />
             ) : null}
           </div>
 
@@ -327,8 +340,8 @@ export default function VendorsMaster() {
               </button>
             </div>
           </div>
-        </div>
-      </div>
+        </ListPageCardBody>
+      </ListPageCard>
 
       <AddNewPartyModal
         open={partyOpen}
@@ -351,6 +364,6 @@ export default function VendorsMaster() {
         onClose={() => !deletingBusy && setDeleting(null)}
         onConfirm={confirmDelete}
       />
-    </div>
+    </ListPageShell>
   );
 }

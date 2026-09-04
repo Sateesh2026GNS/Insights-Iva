@@ -4,8 +4,6 @@ import { Link, useNavigate } from "react-router-dom";
 import { createPortal } from "react-dom";
 import {
   ChevronDown,
-  FileSpreadsheet,
-  FileText,
   ListFilter,
   Settings,
   Trash2,
@@ -17,6 +15,7 @@ import InventoryRowActionsMenu from "../../components/inventory/InventoryRowActi
 import RecordDetailModal from "../../components/inventory/RecordDetailModal";
 import Loader from "../../components/common/Loader";
 import Button from "../../components/common/Button";
+import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
 import { useToast } from "../../context/ToastContext";
 import {
@@ -366,13 +365,14 @@ export default function InventoryV2() {
     { key: "current_stock", label: "Stock In Hand" },
   ];
 
-  const onExportExcel = () => {
-    exportToExcel(filteredItems, exportCols, "inventory-items");
-    addToast("Excel exported.");
-  };
-  const onExportPdf = () => {
-    exportToPdf(filteredItems, exportCols, "Inventory Items", "inventory-items");
-    addToast("PDF exported.");
+  const handleExport = (format) => {
+    if (format === "pdf") {
+      exportToPdf(filteredItems, exportCols, "Inventory Items", "inventory-items");
+      addToast("Exported to PDF", "success");
+    } else {
+      exportToExcel(filteredItems, exportCols, "inventory-items");
+      addToast("Exported to Excel", "success");
+    }
   };
 
   const onDelete = (row) => setDeleting(row);
@@ -568,16 +568,10 @@ export default function InventoryV2() {
                 >
                   Add Items
                 </InventoryAddButton>
-                <InventoryOutlineButton type="button" onClick={onExportPdf}>
-                  <span className="inline-flex items-center gap-1.5">
-                    <FileText className="h-4 w-4" /> PDF
-                  </span>
-                </InventoryOutlineButton>
-                <InventoryOutlineButton type="button" onClick={onExportExcel}>
-                  <span className="inline-flex items-center gap-1.5">
-                    <FileSpreadsheet className="h-4 w-4" /> Excel
-                  </span>
-                </InventoryOutlineButton>
+                <ExportDownloadMenu
+                  disabled={!filteredItems.length}
+                  onExport={handleExport}
+                />
               </div>
             ) : (
               <InventoryAddButton type="button" onClick={() => setCategoryModal(true)}>

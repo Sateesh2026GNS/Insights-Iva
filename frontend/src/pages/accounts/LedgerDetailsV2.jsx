@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { ChevronDown, ChevronLeft, ChevronRight, Eye, FileSpreadsheet, FileText, Mail, MoreVertical, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, Eye, Mail, MoreVertical, Trash2 } from "lucide-react";
 
 import AdjustBalanceModal from "../../components/accounts/AdjustBalanceModal";
+import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
 import { SearchBar } from "../../components/common/SearchFilter";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
 import ContraEntryModal from "../../components/accounts/ContraEntryModal";
@@ -379,12 +380,10 @@ export default function LedgerDetailsV2() {
                 ) : null}
               </div>
             )}
-            <button type="button" onClick={onPdf} className={outlineBtn}>
-              <FileText className="h-4 w-4 text-[#ef4444]" /> PDF
-            </button>
-            <button type="button" onClick={onExcel} className={outlineBtn}>
-              <FileSpreadsheet className="h-4 w-4 text-[#22c55e]" /> Excel
-            </button>
+            <ExportDownloadMenu
+              disabled={!filtered.length}
+              onExport={(format) => (format === "pdf" ? onPdf() : onExcel())}
+            />
           </div>
         </div>
 

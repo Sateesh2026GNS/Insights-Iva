@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { AlertTriangle, Bell, CheckCircle2, Eye, Filter, Search, ShieldAlert, Trash2, X, Plus, Calendar, Save, Tag } from "lucide-react";
+import { AlertTriangle, Bell, CheckCircle2, Eye, Filter, ShieldAlert, Trash2, X, Plus, Calendar, Save, Tag } from "lucide-react";
+import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
+import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
 import KpiCard from "../../components/common/KpiCard";
 import PageHeader from "../../components/common/PageHeader";
 
 import SkeletonTable from "../../components/common/SkeletonTable";
 import EmptyState from "../../components/common/EmptyState";
 import { ErrorState, NoResultsState, OfflineState } from "../../components/common/states";
-import ExportButtons from "../../components/finance/ExportButtons";
 import { useNetworkStatus } from "../../context/NetworkStatusContext";
 import { useToast } from "../../context/ToastContext";
 import useAuth from "../../hooks/useAuth";
@@ -37,7 +38,6 @@ import {
   formatAlertDate,
   computeAlertSummary,
 } from "../../utils/alertUtils";
-import { inputMtClass as inputClass } from "../../design-system/classes";
 
 const PAGE_SIZE = 10;
 
@@ -68,7 +68,7 @@ function Badge({ value, styles }) {
   return (
     <span
       className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold tracking-wide border ${
-        styles[key] || "bg-slate-100 text-slate-700 border-slate-200"
+        styles[key] || "bg-[var(--color-surface-muted)] text-[var(--color-text-secondary)] border-[var(--color-border-soft)]"
       }`}
     >
       {value || "—"}
@@ -113,7 +113,7 @@ function normalizeAlert(a) {
   };
 }
 
-export default function AlertsDashboard({ initialAlertType = null, title, subtitle }) {
+export default function AlertsDashboard({ initialAlertType = null, title, subtitle, topContent = null }) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { addToast } = useToast();
@@ -363,22 +363,36 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
     acknowledged_date: r.acknowledged_date,
   }));
 
+  const handleExport = (format) => {
+    if (format === "pdf") {
+      exportToPdf(exportRows, EXPORT_COLUMNS, "Alerts Report", "alerts");
+      addToast("Exported to PDF", "success");
+    } else {
+      exportToExcel(exportRows, EXPORT_COLUMNS, "alerts");
+      addToast("Exported to Excel", "success");
+    }
+  };
+
   if (loading) {
     return (
+      <ListPageShell>
       <div className="space-y-5 pb-4">
-        <div className="h-8 w-48 animate-pulse rounded bg-slate-200" />
+        <div className="h-8 w-48 animate-pulse rounded bg-[var(--color-surface-muted)]" />
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-24 animate-pulse rounded-2xl bg-slate-100" />
+            <div key={i} className="h-24 animate-pulse rounded-2xl bg-[var(--color-surface-muted)]" />
           ))}
         </div>
         <SkeletonTable rows={8} cols={8} />
       </div>
+      </ListPageShell>
     );
   }
 
   return (
+    <ListPageShell>
     <div className="min-w-0 space-y-5 pb-4">
+      {topContent}
       <PageHeader
         title={title}
         showTitle={Boolean(title)}
@@ -402,10 +416,7 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
                 Mark all read
               </Button>
             )}
-            <ExportButtons
-              onExcel={() => exportToExcel(exportRows, EXPORT_COLUMNS, "alerts")}
-              onPdf={() => exportToPdf(exportRows, EXPORT_COLUMNS, "Alerts Report", "alerts")}
-            />
+            <ExportDownloadMenu disabled={!exportRows.length} onExport={handleExport} />
             {canCreate && (
               <Button variant="add" type="button" onClick={() => setShowCreate(true)} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
                 New Alert
@@ -420,7 +431,7 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
       ) : error && rows.length === 0 ? (
         <ErrorState description={error} onRetry={load} />
       ) : error ? (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 print:hidden font-medium" role="alert">
+        <div className="rounded-xl border border-[var(--kpi-warning-soft)] bg-[var(--kpi-warning-soft)]/40 px-4 py-3 text-sm text-[var(--color-text)] print:hidden font-medium" role="alert">
           {error} Showing cached/local alerts where available.{" "}
           <button type="button" onClick={load} className="font-semibold underline">
             Retry
@@ -479,7 +490,8 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
       </div>
 
       {/* Search, status tabs & filters */}
-      <div className="ui-card ui-card--padded print:hidden">
+      <ListPageCard className="print:hidden">
+        <ListPageCardBody>
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <SearchBar value={search} onChange={setSearch} placeholder="Search" className="w-full" />
           <div className="flex flex-wrap items-center gap-2">
@@ -572,12 +584,13 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
             </div>
           </div>
         ) : null}
-      </div>
+        </ListPageCardBody>
+      </ListPageCard>
 
-      {/* Alerts table */}
-      <div className="ui-card overflow-hidden print:hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-[920px] w-full border-collapse text-left text-[13px]">
+      <ListPageCard className="overflow-hidden print:hidden">
+        <ListPageCardBody className="p-0">
+        <div className="ui-table-wrap overflow-x-auto">
+          <table className="ui-table min-w-[920px] w-full border-collapse text-left text-[13px]">
             <thead className="ui-table-head">
               <tr className="border-b border-[var(--color-border-soft)]">
                 <SerialNumberHeader className="px-3 py-3" />
@@ -753,13 +766,13 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
             </button>
           </div>
         </div>
-      </div>
+        </ListPageCardBody>
+      </ListPageCard>
 
-      {/* View Alert Detail Modal */}
       {viewRow && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4 print:hidden">
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white shadow-xl">
-            <div className="flex items-start justify-between border-b px-6 py-4">
+        <div className="ui-modal-backdrop print:hidden">
+          <div className="ui-modal max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex items-start justify-between border-b border-[var(--color-border-soft)] px-6 py-4">
               <div className="min-w-0 pr-4">
                 <h2 className="text-lg font-bold text-[var(--color-text)]">{viewRow.title}</h2>
                 <p className="mt-0.5 text-xs font-mono text-[var(--color-text-muted)]">Alert #{viewRow.id}</p>
@@ -810,7 +823,7 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
                     <CheckCircle2 className="h-4 w-4" /> Resolve
                   </Button>
                 )}
-                <Button type="button" variant="secondary" onClick={() => setViewRow(null)}>
+                <Button type="button" variant="cancel" onClick={() => setViewRow(null)}>
                   Close
                 </Button>
               </div>
@@ -819,54 +832,53 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
         </div>
       )}
 
-      {/* New Alert Modal Form */}
       {showCreate && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 print:hidden">
+        <div className="ui-modal-backdrop print:hidden">
           <form
             onSubmit={handleCreate}
-            className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150 border border-slate-200 max-h-[90vh] overflow-y-auto"
+            className="ui-modal max-w-lg w-full max-h-[90vh] overflow-y-auto space-y-4"
           >
-            <div className="flex items-start justify-between border-b pb-3">
+            <div className="flex items-start justify-between border-b border-[var(--color-border-soft)] pb-3">
               <div>
-                <h2 className="text-lg font-bold text-slate-900">Create New Alert</h2>
-                <p className="text-xs text-slate-500 mt-0.5">Register a system or operational alert across modules.</p>
+                <h2 className="text-lg font-bold text-[var(--color-text)]">Create New Alert</h2>
+                <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Register a system or operational alert across modules.</p>
               </div>
-              <button type="button" onClick={() => setShowCreate(false)} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100">
+              <button type="button" onClick={() => setShowCreate(false)} className="rounded-lg p-1.5 text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)]">
                 <X className="h-5 w-5" />
               </button>
             </div>
 
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Alert Title *</label>
+                <label className="ui-label">Alert Title *</label>
                 <input
                   type="text"
                   required
                   placeholder="e.g. Critical Safety Equipment Check Required"
                   value={form.title}
                   onChange={(e) => setForm({ ...form, title: e.target.value })}
-                  className={inputClass}
+                  className="ui-input w-full"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Description / Instructions</label>
+                <label className="ui-label">Description / Instructions</label>
                 <textarea
                   rows={3}
                   placeholder="Provide detailed description of the alert, location, or recommended action..."
                   value={form.message}
                   onChange={(e) => setForm({ ...form, message: e.target.value })}
-                  className={`${inputClass} resize-none`}
+                  className="ui-input w-full min-h-[80px] resize-none"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Category / Module</label>
+                  <label className="ui-label">Category / Module</label>
                   <select
                     value={form.alert_type}
                     onChange={(e) => setForm({ ...form, alert_type: e.target.value })}
-                    className={inputClass}
+                    className="ui-select w-full"
                   >
                     {MODULE_OPTIONS.filter((o) => o.value).map((o) => (
                       <option key={o.value} value={o.value}>
@@ -876,11 +888,11 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Severity Level</label>
+                  <label className="ui-label">Severity Level</label>
                   <select
                     value={form.severity}
                     onChange={(e) => setForm({ ...form, severity: e.target.value })}
-                    className={inputClass}
+                    className="ui-select w-full"
                   >
                     {SEVERITY_OPTIONS.filter((o) => o.value).map((o) => (
                       <option key={o.value} value={o.value}>
@@ -893,12 +905,12 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Assigned To</label>
+                  <label className="ui-label">Assigned To</label>
                   {assignees.length > 0 ? (
                     <select
                       value={form.assigned_to}
                       onChange={(e) => setForm({ ...form, assigned_to: e.target.value })}
-                      className={inputClass}
+                      className="ui-select w-full"
                     >
                       <option value="">-- Select Assigned --</option>
                       {assignees.map((user) => {
@@ -916,26 +928,26 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
                       placeholder="Assigned name..."
                       value={form.assigned_to}
                       onChange={(e) => setForm({ ...form, assigned_to: e.target.value })}
-                      className={inputClass}
+                      className="ui-input w-full"
                     />
                   )}
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Triggered Date & Time *</label>
+                  <label className="ui-label">Triggered Date & Time *</label>
                   <input
                     type="datetime-local"
                     required
                     value={form.triggered_at}
                     onChange={(e) => setForm({ ...form, triggered_at: e.target.value })}
-                    className={inputClass}
+                    className="ui-input w-full"
                   />
                 </div>
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 border-t pt-4">
+            <div className="flex justify-end gap-2 border-t border-[var(--color-border-soft)] pt-4">
               <Button
-                variant="secondary"
+                variant="cancel"
                 type="button"
                 onClick={() => setShowCreate(false)}
               >
@@ -950,5 +962,6 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
         </div>
       )}
     </div>
+    </ListPageShell>
   );
 }

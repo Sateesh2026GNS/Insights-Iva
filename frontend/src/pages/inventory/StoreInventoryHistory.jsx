@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
-import { Download } from "lucide-react";
 
 import DataTable from "../../components/common/DataTable";
+import EmptyState from "../../components/common/EmptyState";
+import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
+import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
 import Loader from "../../components/common/Loader";
+import PageHeader from "../../components/common/PageHeader";
 import StoreManagerNav from "../../components/inventory/StoreManagerNav";
 import { useToast } from "../../context/ToastContext";
 import {
@@ -11,7 +14,7 @@ import {
   getWarehouses,
 } from "../../api/inventoryApi";
 import useManufacturingRefresh from "../../hooks/useManufacturingRefresh";
-import { exportToExcel } from "../../utils/exportUtils";
+import { runListExport } from "../../utils/listExport";
 
 const TXN_TYPES = [
   { value: "", label: "All types" },
@@ -82,110 +85,150 @@ export default function StoreInventoryHistory() {
       render: (r) => <span className="capitalize">{String(r.transaction || "").replace(/_/g, " ")}</span>,
     },
     { key: "product", label: "Product" },
-    { key: "quantity", label: "Quantity", render: (r) => <span className="font-semibold tabular-nums">{r.quantity}</span> },
+    { key: "quantity", label: "Quantity", numeric: true, render: (r) => <span className="font-semibold tabular-nums">{r.quantity}</span> },
     { key: "user", label: "User" },
     { key: "machine", label: "Machine", render: (r) => r.machine || "—" },
     { key: "warehouse", label: "Warehouse" },
   ];
 
-  return (
-    <div className="space-y-6 pb-8">
-      <StoreManagerNav />
-      <header className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <p className="ui-subtitle">
-            Complete movement trail for every stock in, issue, return, transfer, and adjustment.
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              exportToExcel(rows, columns.filter((c) => !c.render), "inventory-history");
-              addToast("Exported");
-            }}
-            className="inline-flex items-center gap-2 rounded-lg border bg-white px-4 py-2.5 text-sm font-semibold text-slate-700"
-          >
-            <Download className="h-4 w-4" /> Export
-          </button>
-        </div>
-      </header>
+  const handleExport = (format) => {
+    runListExport(format, {
+      data: rows,
+      columns,
+      filename: "inventory-history",
+      title: "Store Inventory History",
+    });
+    addToast(format === "pdf" ? "Exported to PDF" : "Exported to Excel", "success");
+  };
 
-      <div className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-        <label className="text-xs font-semibold text-slate-600">
-          Product
-          <select
-            value={filters.item_id}
-            onChange={(e) => setFilters((f) => ({ ...f, item_id: e.target.value }))}
-            className="mt-1 w-full rounded-lg border px-2 py-2 text-sm font-normal"
-          >
-            <option value="">All</option>
-            {items.map((i) => (
-              <option key={i.id} value={i.id}>{i.name}</option>
-            ))}
-          </select>
-        </label>
-        <label className="text-xs font-semibold text-slate-600">
-          Warehouse
-          <select
-            value={filters.warehouse_id}
-            onChange={(e) => setFilters((f) => ({ ...f, warehouse_id: e.target.value }))}
-            className="mt-1 w-full rounded-lg border px-2 py-2 text-sm font-normal"
-          >
-            <option value="">All</option>
-            {warehouses.map((w) => (
-              <option key={w.id} value={w.id}>{w.name}</option>
-            ))}
-          </select>
-        </label>
-        <label className="text-xs font-semibold text-slate-600">
-          Type
-          <select
-            value={filters.movement_type}
-            onChange={(e) => setFilters((f) => ({ ...f, movement_type: e.target.value }))}
-            className="mt-1 w-full rounded-lg border px-2 py-2 text-sm font-normal"
-          >
-            {TXN_TYPES.map((t) => (
-              <option key={t.value || "all"} value={t.value}>{t.label}</option>
-            ))}
-          </select>
-        </label>
-        <label className="text-xs font-semibold text-slate-600">
-          Employee
-          <input
-            value={filters.user_name}
-            onChange={(e) => setFilters((f) => ({ ...f, user_name: e.target.value }))}
-            placeholder="Name"
-            className="mt-1 w-full rounded-lg border px-2 py-2 text-sm font-normal"
-          />
-        </label>
-        <label className="text-xs font-semibold text-slate-600">
-          From
-          <input
-            type="date"
-            value={filters.date_from}
-            onChange={(e) => setFilters((f) => ({ ...f, date_from: e.target.value }))}
-            className="mt-1 w-full rounded-lg border px-2 py-2 text-sm font-normal"
-          />
-        </label>
-        <label className="text-xs font-semibold text-slate-600">
-          To
-          <input
-            type="date"
-            value={filters.date_to}
-            onChange={(e) => setFilters((f) => ({ ...f, date_to: e.target.value }))}
-            className="mt-1 w-full rounded-lg border px-2 py-2 text-sm font-normal"
-          />
-        </label>
-      </div>
+  const hasFilters = Object.values(filters).some(Boolean);
+
+  return (
+    <ListPageShell>
+      <StoreManagerNav />
+      <PageHeader
+        subtitle="Complete movement trail for every stock in, issue, return, transfer, and adjustment."
+        action={<ExportDownloadMenu disabled={!rows.length} onExport={handleExport} />}
+      />
+
+      <ListPageCard>
+        <ListPageCardBody>
+          <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+            <label className="ui-label">
+              Product
+              <select
+                value={filters.item_id}
+                onChange={(e) => setFilters((f) => ({ ...f, item_id: e.target.value }))}
+                className="ui-select mt-1 w-full"
+              >
+                <option value="">All</option>
+                {items.map((i) => (
+                  <option key={i.id} value={i.id}>
+                    {i.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="ui-label">
+              Warehouse
+              <select
+                value={filters.warehouse_id}
+                onChange={(e) => setFilters((f) => ({ ...f, warehouse_id: e.target.value }))}
+                className="ui-select mt-1 w-full"
+              >
+                <option value="">All</option>
+                {warehouses.map((w) => (
+                  <option key={w.id} value={w.id}>
+                    {w.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="ui-label">
+              Type
+              <select
+                value={filters.movement_type}
+                onChange={(e) => setFilters((f) => ({ ...f, movement_type: e.target.value }))}
+                className="ui-select mt-1 w-full"
+              >
+                {TXN_TYPES.map((t) => (
+                  <option key={t.value || "all"} value={t.value}>
+                    {t.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="ui-label">
+              Employee
+              <input
+                value={filters.user_name}
+                onChange={(e) => setFilters((f) => ({ ...f, user_name: e.target.value }))}
+                placeholder="Name"
+                className="ui-input mt-1 w-full"
+              />
+            </label>
+            <label className="ui-label">
+              From
+              <input
+                type="date"
+                value={filters.date_from}
+                onChange={(e) => setFilters((f) => ({ ...f, date_from: e.target.value }))}
+                className="ui-input mt-1 w-full"
+              />
+            </label>
+            <label className="ui-label">
+              To
+              <input
+                type="date"
+                value={filters.date_to}
+                onChange={(e) => setFilters((f) => ({ ...f, date_to: e.target.value }))}
+                className="ui-input mt-1 w-full"
+              />
+            </label>
+          </div>
+          {hasFilters ? (
+            <div className="mb-4">
+              <button
+                type="button"
+                className="ui-link-clear"
+                onClick={() =>
+                  setFilters({
+                    item_id: "",
+                    warehouse_id: "",
+                    movement_type: "",
+                    user_name: "",
+                    date_from: "",
+                    date_to: "",
+                  })
+                }
+              >
+                Clear filters
+              </button>
+            </div>
+          ) : null}
+        </ListPageCardBody>
+      </ListPageCard>
 
       {loading ? (
         <Loader label="Loading history…" />
       ) : (
-        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <DataTable columns={columns} data={rows} showSearch pageSize={15} />
-        </section>
+        <ListPageCard>
+          <ListPageCardBody>
+            <DataTable
+              columns={columns}
+              data={rows}
+              showSearch
+              pageSize={15}
+              emptyState={
+                <EmptyState
+                  title="No inventory movements found"
+                  description="Stock movement history appears here when stock is received, issued, returned, or adjusted."
+                />
+              }
+            />
+          </ListPageCardBody>
+        </ListPageCard>
       )}
-    </div>
+    </ListPageShell>
   );
 }

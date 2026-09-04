@@ -229,7 +229,7 @@ function AddComponentModal({ open, onClose, onAdd, bomId }) {
         </div>
 
         <div className="mt-4 flex justify-end gap-3 pt-2">
-          <Button type="button" variant="secondary" onClick={onClose}>
+          <Button type="button" variant="cancel" onClick={onClose}>
             Cancel
           </Button>
           <Button type="submit" variant="primary" disabled={busy} loading={busy}>
@@ -1148,7 +1148,7 @@ export function BomFormModal({ bom, onClose, onSave, existingBoms = [] }) {
 
         {/* Footer */}
         <div className="pt-2 flex items-center justify-end gap-3">
-          <Button type="button" variant="secondary" onClick={onClose}>
+          <Button type="button" variant="cancel" onClick={onClose}>
             Cancel
           </Button>
           <Button type="submit" variant="primary" disabled={saving} loading={saving}>

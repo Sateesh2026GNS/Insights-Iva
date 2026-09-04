@@ -9,7 +9,6 @@ import {
   ChevronRight,
   ClipboardList,
   Clock,
-  FileSpreadsheet,
   Filter,
   Plus,
   Search,
@@ -18,6 +17,8 @@ import {
 } from "lucide-react";
 
 import Button from "../../components/common/Button";
+import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
+import { ListPageShell } from "../../components/common/ListPageShell";
 import { SearchBar } from "../../components/common/SearchFilter";
 import InventoryRowActionsMenu from "../../components/inventory/InventoryRowActionsMenu";
 import KpiCard from "../../components/common/KpiCard";
@@ -33,9 +34,20 @@ import {
   mergeIncomingSummary,
   normalizeIncomingStatus,
 } from "../../data/qualityMasterData";
-import { exportToExcel } from "../../utils/exportUtils";
+import { exportToExcel, exportToPdf } from "../../utils/exportUtils";
 
 const PAGE_SIZES = [10, 25, 50];
+
+const INCOMING_EXPORT_COLUMNS = [
+  { key: "inspection_number", label: "Inspection No." },
+  { key: "date", label: "Date" },
+  { key: "supplier", label: "Supplier" },
+  { key: "material", label: "Material" },
+  { key: "batch", label: "Batch / Lot No." },
+  { key: "quantity", label: "Quantity" },
+  { key: "status", label: "Status" },
+  { key: "inspector", label: "Inspector" },
+];
 
 const INSPECTION_TYPE_OPTIONS = [
   { value: "incoming", label: "Incoming Inspection" },
@@ -133,14 +145,14 @@ function MultiSelectDropdown({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className={`inline-flex items-center justify-between gap-2 rounded-lg border border-[var(--color-border-soft)] bg-white px-3 py-2 text-[13px] font-medium text-[var(--color-text)] shadow-xs transition-colors hover:border-[var(--color-primary)] ${minWidth}`}
+        className={`inline-flex items-center justify-between gap-2 rounded-lg border border-[var(--color-border-soft)] bg-[var(--color-surface)] px-3 py-2 text-[13px] font-medium text-[var(--color-text)] shadow-xs transition-colors hover:border-[var(--color-primary)] ${minWidth}`}
       >
         <span className="truncate">{triggerLabel}</span>
         <ChevronDown className={`h-4 w-4 shrink-0 text-[var(--color-text-muted)] transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
       </button>
 
       {open && (
-        <div className="absolute left-0 top-[calc(100%+4px)] z-40 w-64 rounded-xl border border-[var(--color-border-soft)] bg-white p-2 shadow-xl">
+        <div className="absolute left-0 top-[calc(100%+4px)] z-40 w-64 rounded-xl border border-[var(--color-border-soft)] bg-[var(--color-surface)] p-2 shadow-xl">
           {normalizedOptions.length > 5 && (
             <div className="mb-2 px-1">
               <SearchBar
@@ -334,34 +346,23 @@ export default function IncomingInspection() {
 
   if (loading) return <Loader label="Loading incoming inspections..." />;
 
+  const handleExport = (format) => {
+    if (format === "pdf") {
+      exportToPdf(exportRows, INCOMING_EXPORT_COLUMNS, "Incoming Inspection", "incoming-inspections");
+    } else {
+      exportToExcel(exportRows, INCOMING_EXPORT_COLUMNS, "incoming-inspections");
+    }
+    addToast(format === "pdf" ? "Exported to PDF" : "Exported to Excel", "success");
+  };
+
   return (
+    <ListPageShell>
     <div className="min-w-0 space-y-5 pb-4">
       <PageHeader
         subtitle="Track and manage all incoming material inspections."
         action={
           <div className="flex flex-wrap items-center gap-2">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() =>
-                exportToExcel(
-                  exportRows,
-                  [
-                    { key: "inspection_number", label: "Inspection No." },
-                    { key: "date", label: "Date" },
-                    { key: "supplier", label: "Supplier" },
-                    { key: "material", label: "Material" },
-                    { key: "batch", label: "Batch / Lot No." },
-                    { key: "quantity", label: "Quantity" },
-                    { key: "status", label: "Status" },
-                    { key: "inspector", label: "Inspector" },
-                  ],
-                  "incoming-inspections"
-                )
-              }
-            >
-              <FileSpreadsheet className="h-4 w-4" /> Export
-            </Button>
+            <ExportDownloadMenu disabled={!exportRows.length} onExport={handleExport} />
             <Button variant="add" to="/quality/inspection" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
               New Inspection
             </Button>
@@ -383,7 +384,7 @@ export default function IncomingInspection() {
             />
           </div>
           <div className="flex flex-wrap items-center gap-2.5">
-            <div className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border-soft)] bg-white px-3 py-1.5 text-[13px] shadow-xs">
+            <div className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border-soft)] bg-[var(--color-surface)] px-3 py-1.5 text-[13px] shadow-xs">
               <CalendarDays className="h-4 w-4 shrink-0 text-[var(--color-text-muted)]" />
               <input
                 type="date"
@@ -609,7 +610,7 @@ export default function IncomingInspection() {
       {/* View modal */}
       {viewRow ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4 backdrop-blur-xs">
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white shadow-xl border border-[var(--color-border)]">
+          <div className="ui-modal max-h-[90vh] w-full max-w-lg overflow-y-auto">
             <div className="flex items-start justify-between border-b border-[var(--color-border-soft)] px-6 py-4">
               <div>
                 <h2 className="text-lg font-bold text-[var(--color-text)]">{viewRow.inspection_number}</h2>
@@ -652,5 +653,6 @@ export default function IncomingInspection() {
         </div>
       ) : null}
     </div>
+    </ListPageShell>
   );
 }

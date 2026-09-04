@@ -8,7 +8,6 @@ import {
   ChevronDown,
   Clock,
   Cog,
-  FileSpreadsheet,
   History,
   LayoutDashboard,
   MoreVertical,
@@ -19,6 +18,8 @@ import {
   X,
 } from "lucide-react";
 import Button from "../../components/common/Button";
+import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
+import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
 import KpiCard from "../../components/common/KpiCard";
 import PageHeader from "../../components/common/PageHeader";
 
@@ -29,7 +30,7 @@ import Loader from "../../components/common/Loader";
 import { useToast } from "../../context/ToastContext";
 import { createPreventive, getPreventiveEnriched, getPreventiveSummary } from "../../api/maintenanceApi";
 import { DEMO_PREVENTIVE_SUMMARY, mntStatusColor } from "../../data/maintenanceMasterData";
-import { exportToExcel } from "../../utils/exportUtils";
+import { exportToExcel, exportToPdf } from "../../utils/exportUtils";
 
 export default function PreventiveMaintenance() {
   const { addToast } = useToast();
@@ -97,7 +98,7 @@ export default function PreventiveMaintenance() {
   usePageRefresh(() => load(true));
   useEffect(() => { load(); }, [load]);
 
-  const handleExport = () => {
+  const handleExport = (format) => {
     const data = filtered.map((r) => ({
       machine_id: r.machine_id,
       machine_name: r.machine_name,
@@ -109,22 +110,23 @@ export default function PreventiveMaintenance() {
       status: r.status,
       next_due_date: String(r.next_due_date || "").slice(0, 10),
     }));
-    exportToExcel(
-      data,
-      [
-        { key: "machine_id", label: "Machine ID" },
-        { key: "machine_name", label: "Machine Name" },
-        { key: "department", label: "Department" },
-        { key: "maintenance_type", label: "Maintenance Type" },
-        { key: "scheduled_date", label: "Scheduled Date" },
-        { key: "assigned_engineer", label: "Assigned Engineer" },
-        { key: "estimated_duration", label: "Duration" },
-        { key: "status", label: "Status" },
-        { key: "next_due_date", label: "Next Due Date" },
-      ],
-      "preventive-maintenance-tasks"
-    );
-    addToast("Exported tasks to Excel", "success");
+    const cols = [
+      { key: "machine_id", label: "Machine ID" },
+      { key: "machine_name", label: "Machine Name" },
+      { key: "department", label: "Department" },
+      { key: "maintenance_type", label: "Maintenance Type" },
+      { key: "scheduled_date", label: "Scheduled Date" },
+      { key: "assigned_engineer", label: "Assigned Engineer" },
+      { key: "estimated_duration", label: "Duration" },
+      { key: "status", label: "Status" },
+      { key: "next_due_date", label: "Next Due Date" },
+    ];
+    if (format === "pdf") {
+      exportToPdf(data, cols, "Preventive Maintenance Tasks", "preventive-maintenance-tasks");
+    } else {
+      exportToExcel(data, cols, "preventive-maintenance-tasks");
+    }
+    addToast(format === "pdf" ? "Exported to PDF" : "Exported to Excel", "success");
   };
 
   const handleCreateTask = async (e) => {
@@ -191,18 +193,18 @@ export default function PreventiveMaintenance() {
   }, [rows, search, statusFilter]);
 
   const columns = [
-    { key: "machine_id", label: "Machine ID", render: (r) => <span className="font-semibold text-slate-800">{r.machine_id}</span> },
+    { key: "machine_id", label: "Machine ID", render: (r) => <span className="font-semibold text-[var(--color-text)]">{r.machine_id}</span> },
     { key: "machine_name", label: "Machine Name" },
     { key: "department", label: "Department" },
     { key: "maintenance_type", label: "Maintenance Type" },
     { key: "scheduled_date", label: "Scheduled Date", render: (r) => String(r.scheduled_date || "").slice(0, 10) },
-    { key: "assigned_engineer", label: "Assigned Engineer", render: (r) => <span className="text-slate-700">{r.assigned_engineer || "Unassigned"}</span> },
+    { key: "assigned_engineer", label: "Assigned Engineer", render: (r) => <span className="text-[var(--color-text)]">{r.assigned_engineer || "Unassigned"}</span> },
     { key: "estimated_duration", label: "Est. Duration" },
     { key: "status", label: "Status", render: (r) => <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize ${mntStatusColor(r.status)}`}>{r.status}</span> },
     {
       key: "next_due_date", label: "Next Due Date",
       render: (r) => (
-        <span className={r.is_overdue ? "font-semibold text-red-600" : "text-slate-800"}>
+        <span className={r.is_overdue ? "font-semibold text-red-600" : "text-[var(--color-text)]"}>
           {String(r.next_due_date || "").slice(0, 10)}
           {r.is_overdue && <span className="ml-1 text-xs text-red-500 font-semibold">(Overdue)</span>}
         </span>
@@ -214,6 +216,7 @@ export default function PreventiveMaintenance() {
   if (error && !rows.length) return <MaintenanceErrorState message={error} onRetry={load} />;
 
   return (
+    <ListPageShell>
     <div className="space-y-5 pb-5">
       <PageHeader
         subtitle="Schedule and track recurring maintenance tasks across all machines."
@@ -222,22 +225,23 @@ export default function PreventiveMaintenance() {
             <Button variant="add" type="button" onClick={() => setShowModal(true)} leftIcon={<Plus className="h-4 w-4" aria-hidden />}>
               New Maintenance Task
             </Button>
+            <ExportDownloadMenu disabled={!filtered.length} onExport={handleExport} />
             <div className="relative" ref={moreMenuRef}>
-              <button
+              <Button
+                variant="secondary"
                 type="button"
                 onClick={() => setShowMoreMenu((v) => !v)}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-[13px] font-semibold text-slate-700 shadow-xs transition-colors hover:bg-slate-50 hover:border-[var(--color-primary)] cursor-pointer"
+                rightIcon={<ChevronDown className={`h-4 w-4 transition-transform duration-200 ${showMoreMenu ? "rotate-180" : ""}`} aria-hidden />}
               >
-                <MoreVertical className="h-4 w-4 text-slate-500" />
+                <MoreVertical className="h-4 w-4" aria-hidden />
                 More Actions
-                <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform duration-200 ${showMoreMenu ? "rotate-180" : ""}`} />
-              </button>
+              </Button>
               {showMoreMenu && (
-                <div className="absolute right-0 top-[calc(100%+6px)] z-40 w-56 rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl animate-in fade-in zoom-in-95 duration-100">
+                <div className="absolute right-0 top-[calc(100%+6px)] z-40 w-56 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-1.5 shadow-xl">
                   <Link
                     to="/maintenance"
                     onClick={() => setShowMoreMenu(false)}
-                    className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                    className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium text-[var(--color-text)] transition-colors hover:bg-[var(--color-surface-muted)]"
                   >
                     <LayoutDashboard className="h-4 w-4 text-[var(--color-primary)]" />
                     Maintenance Dashboard
@@ -245,7 +249,7 @@ export default function PreventiveMaintenance() {
                   <Link
                     to="/maintenance/breakdowns"
                     onClick={() => setShowMoreMenu(false)}
-                    className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                    className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium text-[var(--color-text)] transition-colors hover:bg-[var(--color-surface-muted)]"
                   >
                     <AlertTriangle className="h-4 w-4 text-amber-500" />
                     Breakdown Reports
@@ -253,7 +257,7 @@ export default function PreventiveMaintenance() {
                   <Link
                     to="/maintenance/equipment"
                     onClick={() => setShowMoreMenu(false)}
-                    className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                    className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium text-[var(--color-text)] transition-colors hover:bg-[var(--color-surface-muted)]"
                   >
                     <Package className="h-4 w-4 text-indigo-600" />
                     Equipment & Spares
@@ -261,23 +265,12 @@ export default function PreventiveMaintenance() {
                   <Link
                     to="/maintenance/history"
                     onClick={() => setShowMoreMenu(false)}
-                    className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                    className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium text-[var(--color-text)] transition-colors hover:bg-[var(--color-surface-muted)]"
                   >
                     <History className="h-4 w-4 text-emerald-600" />
                     Machine History Logs
                   </Link>
-                  <div className="my-1 border-t border-slate-100" />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowMoreMenu(false);
-                      handleExport();
-                    }}
-                    className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-[13px] font-medium text-slate-700 transition-colors hover:bg-slate-50 cursor-pointer"
-                  >
-                    <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
-                    Export to Excel
-                  </button>
+                  <div className="my-1 border-t border-[var(--color-border)]" />
                   <button
                     type="button"
                     onClick={() => {
@@ -285,7 +278,7 @@ export default function PreventiveMaintenance() {
                       load(true);
                       addToast("Refreshing maintenance tasks...", "info");
                     }}
-                    className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-[13px] font-medium text-slate-700 transition-colors hover:bg-slate-50 cursor-pointer"
+                    className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-[13px] font-medium text-[var(--color-text)] transition-colors hover:bg-[var(--color-surface-muted)] cursor-pointer"
                   >
                     <RefreshCw className="h-4 w-4 text-[var(--color-primary)]" />
                     Refresh Data
@@ -308,34 +301,36 @@ export default function PreventiveMaintenance() {
 
       <MaintenanceFilters search={search} onSearchChange={setSearch} statusFilter={statusFilter} onStatusFilterChange={setStatusFilter} searchPlaceholder="Search tasks, machines..." />
 
-      <div className="ui-card p-4 sm:p-5 overflow-x-auto">
+      <ListPageCard>
+        <ListPageCardBody className="overflow-x-auto">
         <DataTable columns={columns} data={filtered} searchPlaceholder="" searchKeys={[]} />
-      </div>
+        </ListPageCardBody>
+      </ListPageCard>
 
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-xl animate-in fade-in zoom-in-95 duration-100">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+        <div className="ui-modal-backdrop">
+          <div className="ui-modal max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-[var(--color-border-soft)] pb-4">
               <div className="flex items-center gap-2.5">
                 <div className="grid h-9 w-9 place-items-center rounded-lg bg-[var(--color-primary-soft)] text-[var(--color-primary)]">
                   <Wrench className="h-5 w-5" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold text-slate-900">New Maintenance Task</h2>
-                  <p className="text-xs text-slate-500">Plan and assign a preventive task</p>
+                  <h2 className="text-lg font-bold text-[var(--color-text)]">New Maintenance Task</h2>
+                  <p className="text-xs text-[var(--color-text-muted)]">Plan and assign a preventive task</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setShowModal(false)}
-                className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 cursor-pointer"
+                className="rounded-lg p-2 text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)] hover:text-[var(--color-text)] cursor-pointer"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
             <form onSubmit={handleCreateTask} className="mt-4 space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                <label className="ui-label">
                   Machine Name <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -344,27 +339,27 @@ export default function PreventiveMaintenance() {
                   placeholder="e.g. CNC Milling Machine #01"
                   value={formData.machine_name}
                   onChange={(e) => setFormData({ ...formData, machine_name: e.target.value })}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-[13px] focus:border-[var(--color-primary)] focus:outline-none"
+                  className="ui-input w-full"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Department</label>
+                  <label className="ui-label">Department</label>
                   <input
                     type="text"
                     placeholder="e.g. Machining"
                     value={formData.department}
                     onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-[13px] focus:border-[var(--color-primary)] focus:outline-none"
+                    className="ui-input w-full"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Maintenance Type</label>
+                  <label className="ui-label">Maintenance Type</label>
                   <select
                     value={formData.maintenance_type}
                     onChange={(e) => setFormData({ ...formData, maintenance_type: e.target.value })}
-                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-[13px] focus:border-[var(--color-primary)] focus:outline-none"
+                    className="ui-select w-full"
                   >
                     <option value="Preventive">Preventive</option>
                     <option value="Inspection">Inspection</option>
@@ -376,21 +371,21 @@ export default function PreventiveMaintenance() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Scheduled Date</label>
+                  <label className="ui-label">Scheduled Date</label>
                   <input
                     type="date"
                     required
                     value={formData.scheduled_date}
                     onChange={(e) => setFormData({ ...formData, scheduled_date: e.target.value })}
-                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-[13px] focus:border-[var(--color-primary)] focus:outline-none"
+                    className="ui-input w-full"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Frequency</label>
+                  <label className="ui-label">Frequency</label>
                   <select
                     value={formData.frequency}
                     onChange={(e) => setFormData({ ...formData, frequency: e.target.value })}
-                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-[13px] focus:border-[var(--color-primary)] focus:outline-none"
+                    className="ui-select w-full"
                   >
                     <option value="daily">Daily</option>
                     <option value="weekly">Weekly</option>
@@ -404,29 +399,29 @@ export default function PreventiveMaintenance() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Assigned Engineer</label>
+                  <label className="ui-label">Assigned Engineer</label>
                   <input
                     type="text"
                     placeholder="e.g. Ramesh Kumar"
                     value={formData.assigned_engineer}
                     onChange={(e) => setFormData({ ...formData, assigned_engineer: e.target.value })}
-                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-[13px] focus:border-[var(--color-primary)] focus:outline-none"
+                    className="ui-input w-full"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Est. Duration</label>
+                  <label className="ui-label">Est. Duration</label>
                   <input
                     type="text"
                     placeholder="e.g. 2h"
                     value={formData.estimated_duration}
                     onChange={(e) => setFormData({ ...formData, estimated_duration: e.target.value })}
-                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-[13px] focus:border-[var(--color-primary)] focus:outline-none"
+                    className="ui-input w-full"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                <label className="ui-label">
                   Task Description <span className="text-red-500">*</span>
                 </label>
                 <textarea
@@ -435,12 +430,12 @@ export default function PreventiveMaintenance() {
                   placeholder="Describe the maintenance steps or checks to perform..."
                   value={formData.task_description}
                   onChange={(e) => setFormData({ ...formData, task_description: e.target.value })}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-[13px] focus:border-[var(--color-primary)] focus:outline-none"
+                  className="ui-input w-full min-h-[5rem]"
                 />
               </div>
 
-              <div className="flex justify-end gap-2 border-t border-slate-100 pt-4">
-                <Button type="button" variant="secondary" onClick={() => setShowModal(false)}>
+              <div className="flex justify-end gap-2 border-t border-[var(--color-border-soft)] pt-4">
+                <Button type="button" variant="cancel" onClick={() => setShowModal(false)}>
                   Cancel
                 </Button>
                 <Button
@@ -457,5 +452,6 @@ export default function PreventiveMaintenance() {
         </div>
       )}
     </div>
+    </ListPageShell>
   );
 }

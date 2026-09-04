@@ -253,7 +253,7 @@ export default function AddUserModal({
         </label>
 
         <div className="flex justify-end gap-3 pt-2">
-          <Button variant="secondary" type="button" onClick={onClose} disabled={saving}>
+          <Button variant="cancel" type="button" onClick={onClose} disabled={saving}>
             Cancel
           </Button>
           <Button variant="primary" type="submit" loading={saving}>

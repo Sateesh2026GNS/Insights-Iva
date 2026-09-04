@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { ArrowLeft } from "lucide-react";
 
 import PageHeader from "../../components/common/PageHeader";
+import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
 import { createMachine } from "../../api/productionApi";
 import useTenantId from "../../hooks/useTenantId";
 import { DEPARTMENTS, PRODUCTION_LINES, MACHINE_NAMES } from "../../data/machinesMasterData";
@@ -83,10 +84,11 @@ export default function CreateMachine() {
   };
 
   return (
+    <ListPageShell>
     <div className="mx-auto max-w-2xl space-y-6">
       <Link
         to="/production/machines"
-        className="inline-flex items-center gap-2 text-sm font-medium text-teal-600 hover:text-[var(--color-success)] dark:text-teal-400"
+        className="inline-flex items-center gap-2 text-sm font-medium text-[var(--color-primary)] hover:underline"
       >
         <ArrowLeft className="h-4 w-4" />
         {t("production.backToMachineStatus", { defaultValue: "Back to machine status" })}
@@ -97,15 +99,17 @@ export default function CreateMachine() {
           defaultValue: "Register a machine to monitor availability and status on the floor.",
         })}
       />
-      <form onSubmit={handleSubmit} className="ui-card space-y-4 p-6">
+      <ListPageCard>
+        <ListPageCardBody>
+      <form onSubmit={handleSubmit} className="space-y-4">
         {error && (
-          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-800 dark:bg-red-900/20 dark:text-red-200">
+          <div className="rounded-lg border border-[var(--color-danger)]/30 bg-[var(--color-danger-soft)] px-4 py-3 text-sm text-[var(--color-danger)]">
             {typeof error === "string" ? error : JSON.stringify(error)}
           </div>
         )}
         <div className="grid gap-4 sm:grid-cols-2">
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-            {t("production.machineCode", { defaultValue: "Machine code" })} *
+          <label className="block">
+            <span className="ui-label">{t("production.machineCode", { defaultValue: "Machine code" })} *</span>
             <input
               required
               value={form.code}
@@ -114,8 +118,8 @@ export default function CreateMachine() {
               className={inputClass}
             />
           </label>
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-            {t("production.machineName", { defaultValue: "Name" })} *
+          <label className="block">
+            <span className="ui-label">{t("production.machineName", { defaultValue: "Name" })} *</span>
             <select
               required={!isCustomName}
               value={isCustomName ? "custom" : form.name}
@@ -155,8 +159,8 @@ export default function CreateMachine() {
               />
             )}
           </label>
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-            {t("dashboard.status", { defaultValue: "Status" })}
+          <label className="block">
+            <span className="ui-label">{t("dashboard.status", { defaultValue: "Status" })}</span>
             <select
               value={form.status}
               onChange={(e) => set("status", e.target.value)}
@@ -169,8 +173,8 @@ export default function CreateMachine() {
               ))}
             </select>
           </label>
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-            {t("production.location", { defaultValue: "Location" })}
+          <label className="block">
+            <span className="ui-label">{t("production.location", { defaultValue: "Location" })}</span>
             <input
               value={form.location}
               onChange={(e) => set("location", e.target.value)}
@@ -178,8 +182,8 @@ export default function CreateMachine() {
               className={inputClass}
             />
           </label>
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-            Department
+          <label className="block">
+            <span className="ui-label">Department</span>
             <select
               value={form.department}
               onChange={(e) => set("department", e.target.value)}
@@ -190,8 +194,8 @@ export default function CreateMachine() {
               ))}
             </select>
           </label>
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-            Line
+          <label className="block">
+            <span className="ui-label">Line</span>
             <select
               value={form.production_line}
               onChange={(e) => set("production_line", e.target.value)}
@@ -202,8 +206,8 @@ export default function CreateMachine() {
               ))}
             </select>
           </label>
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-            Operator
+          <label className="block">
+            <span className="ui-label">Operator</span>
             <input
               type="text"
               placeholder="e.g. Ravi Kumar"
@@ -212,8 +216,8 @@ export default function CreateMachine() {
               className={inputClass}
             />
           </label>
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-            Current Job
+          <label className="block">
+            <span className="ui-label">Current Job</span>
             <input
               type="text"
               placeholder="e.g. WO-2026-001"
@@ -222,8 +226,8 @@ export default function CreateMachine() {
               className={inputClass}
             />
           </label>
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-            Health (%)
+          <label className="block">
+            <span className="ui-label">Health (%)</span>
             <input
               type="number"
               min="0"
@@ -234,8 +238,8 @@ export default function CreateMachine() {
               className={inputClass}
             />
           </label>
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-            Efficiency (%)
+          <label className="block">
+            <span className="ui-label">Efficiency (%)</span>
             <input
               type="number"
               min="0"
@@ -246,8 +250,8 @@ export default function CreateMachine() {
               className={inputClass}
             />
           </label>
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-            Today's Output
+          <label className="block">
+            <span className="ui-label">Today's Output</span>
             <input
               type="number"
               min="0"
@@ -257,8 +261,8 @@ export default function CreateMachine() {
               className={inputClass}
             />
           </label>
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-            Temperature (°C)
+          <label className="block">
+            <span className="ui-label">Temperature (°C)</span>
             <input
               type="text"
               placeholder="e.g. 45"
@@ -267,8 +271,8 @@ export default function CreateMachine() {
               className={inputClass}
             />
           </label>
-          <label className="block sm:col-span-2 text-sm font-medium text-slate-700 dark:text-slate-300">
-            Last Maintenance
+          <label className="block sm:col-span-2">
+            <span className="ui-label">Last Maintenance</span>
             <input
               type="date"
               value={form.last_maintenance_date}
@@ -277,12 +281,12 @@ export default function CreateMachine() {
             />
           </label>
         </div>
-        <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700 dark:text-slate-300 pt-1">
+        <label className="flex cursor-pointer items-center gap-2 text-sm text-[var(--color-text-secondary)] pt-1">
           <input
             type="checkbox"
             checked={form.is_active}
             onChange={(e) => set("is_active", e.target.checked)}
-            className="rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+            className="rounded border-[var(--color-border)] text-[var(--color-primary)] focus:ring-[var(--color-primary-soft)]"
           />
           {t("production.machineActive", { defaultValue: "Active" })}
         </label>
@@ -290,14 +294,14 @@ export default function CreateMachine() {
           <Button variant="primary" type="submit" disabled={saving} className="disabled:opacity-50">
             {saving ? t("common.saving", { defaultValue: "Saving…" }) : t("production.addMachine", { defaultValue: "Add machine" })}
           </Button>
-          <Link
-            to="/production/machines"
-            className="inline-flex items-center justify-center rounded-xl border border-slate-200 dark:border-slate-600 px-4 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
-          >
+          <Button variant="cancel" to="/production/machines">
             {t("common.cancel", { defaultValue: "Cancel" })}
-          </Link>
+          </Button>
         </div>
       </form>
+        </ListPageCardBody>
+      </ListPageCard>
     </div>
+    </ListPageShell>
   );
 }

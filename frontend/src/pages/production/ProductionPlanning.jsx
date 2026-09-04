@@ -12,7 +12,6 @@ import {
   ChevronsRight,
   ClipboardList,
   Eye,
-  FileSpreadsheet,
   FileText,
   Filter,
   MoreVertical,
@@ -28,6 +27,8 @@ import {
 } from "lucide-react";
 
 import Button, { IconButton } from "../../components/common/Button";
+import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
+import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
 import { SearchBar } from "../../components/common/SearchFilter";
 import DataTable from "../../components/common/DataTable";
 import KpiCard from "../../components/common/KpiCard";
@@ -77,6 +78,22 @@ import { cleanProductLabel } from "../../utils/productLabel";
 import QuickWorkOrderModal from "../../components/production/QuickWorkOrderModal";
 import IssueMaterialsModal from "../../components/production/IssueMaterialsModal";
 import { jobCardDetailsUrl } from "../../utils/jobCardRoutes";
+
+const PLANNING_EXPORT_COLUMNS = [
+  { key: "order_number", label: "Order Number" },
+  { key: "product_name", label: "Product" },
+  { key: "customer_name", label: "Customer" },
+  { key: "planned_quantity", label: "Planned Quantity" },
+  { key: "produced_quantity", label: "Produced Quantity" },
+  { key: "priority", label: "Priority" },
+  { key: "status", label: "Status" },
+  { key: "machine_name", label: "Machine" },
+  { key: "operator_name", label: "Operator" },
+  { key: "department", label: "Department" },
+  { key: "shift", label: "Shift" },
+  { key: "start_date", label: "Start Date" },
+  { key: "due_date", label: "Due Date" },
+];
 
 const PAGE_SIZES = [20, 50, 100, 200, 500];
 
@@ -172,7 +189,7 @@ function OrderActions({
       : null,
     {
       label: "Print",
-      icon: <Printer className="h-3.5 w-3.5 text-slate-600" />,
+      icon: <Printer className="h-3.5 w-3.5 text-[var(--color-text-muted)]" />,
       onClick: () => onPrint(row),
     },
     needsMachine
@@ -304,7 +321,7 @@ function OrderCreatedToast({ order, onClose }) {
 
   return (
     <div className="fixed bottom-6 right-6 z-[9999] w-full max-w-sm animate-in slide-in-from-bottom-5 duration-300 print:hidden">
-      <div className="relative overflow-hidden rounded-2xl bg-white p-5 shadow-2xl ring-1 ring-yellow-400/40 border-l-6 border-[var(--color-cta)]">
+      <div className="relative overflow-hidden rounded-2xl bg-[var(--color-surface)] p-5 shadow-2xl ring-1 ring-yellow-400/40 border-l-6 border-[var(--color-cta)]">
         {/* close */}
         <button
           onClick={onClose}
@@ -953,38 +970,13 @@ export default function ProductionPlanning() {
     reader.readAsText(file);
   };
 
-  const handleExportExcel = () => {
-    const cols = [
-      { key: "order_number", label: "Order Number" },
-      { key: "product_name", label: "Product" },
-      { key: "customer_name", label: "Customer" },
-      { key: "planned_quantity", label: "Planned Quantity" },
-      { key: "produced_quantity", label: "Produced Quantity" },
-      { key: "priority", label: "Priority" },
-      { key: "status", label: "Status" },
-      { key: "machine_name", label: "Machine" },
-      { key: "operator_name", label: "Operator" },
-      { key: "department", label: "Department" },
-      { key: "shift", label: "Shift" },
-      { key: "start_date", label: "Start Date" },
-      { key: "due_date", label: "Due Date" },
-    ];
-    exportToExcel(filteredOrders, cols, "production-planning-orders");
-    addToast("Exported to Excel", "success");
-  };
-
-  const handleExportPdf = () => {
-    const cols = [
-      { key: "order_number", label: "Order No." },
-      { key: "product_name", label: "Product" },
-      { key: "planned_quantity", label: "Planned" },
-      { key: "produced_quantity", label: "Produced" },
-      { key: "priority", label: "Priority" },
-      { key: "status", label: "Status" },
-      { key: "due_date", label: "Due Date" },
-    ];
-    exportToPdf(filteredOrders, cols, "production-planning-orders", "Production Planning Report");
-    addToast("Exported to PDF", "success");
+  const handleListExport = (format) => {
+    if (format === "pdf") {
+      exportToPdf(filteredOrders, PLANNING_EXPORT_COLUMNS, "Production Planning Report", "production-planning-orders");
+    } else {
+      exportToExcel(filteredOrders, PLANNING_EXPORT_COLUMNS, "production-planning-orders");
+    }
+    addToast(format === "pdf" ? "Exported to PDF" : "Exported to Excel", "success");
   };
 
   const handleGlobalPrint = () => {
@@ -1114,8 +1106,11 @@ export default function ProductionPlanning() {
 
   return (
     <>
-      <div
-        className={`min-w-0 w-full space-y-5 pb-4 ${printDetailOrder ? "hidden print:hidden" : "print:m-0 print:p-0 print:space-y-4 print:block"}`}
+      <ListPageShell
+        className="print:bg-transparent"
+        stackClassName={`min-w-0 w-full space-y-5 pb-4 print:p-0 print:space-y-4 ${
+          printDetailOrder ? "hidden print:hidden" : "print:m-0 print:block"
+        }`}
       >
           <div className="mb-4 hidden border-b pb-4 print:block">
             <h1 className="text-xl font-bold text-black">Production Planning Report</h1>
@@ -1170,25 +1165,25 @@ export default function ProductionPlanning() {
             </ClickableKpiCard>
           </div>
 
-          <div className="ui-card min-w-0 p-4 sm:p-5 print:border-0 print:bg-white print:p-0 print:shadow-none">
-            <div className="mb-4 flex flex-col gap-3 print:hidden lg:flex-row lg:items-center lg:justify-between">
-              <SearchBar
-                value={filters.q}
-                onChange={(val) => {
-                  setFilters((f) => ({ ...f, q: val, preset: "" }));
-                  setAppliedFilters((f) => ({ ...f, q: val, preset: "" }));
-                }}
-                placeholder="Search"
-                className="w-full"
-              />
-              <div className="flex flex-wrap items-center gap-2">
+          <ListPageCard className="min-w-0 print:border-0 print:bg-transparent print:shadow-none">
+            <ListPageCardBody className="print:p-0">
+            <div className="ui-list-toolbar mb-0 print:hidden">
+              <div className="ui-list-toolbar__start">
+                <SearchBar
+                  value={filters.q}
+                  onChange={(val) => {
+                    setFilters((f) => ({ ...f, q: val, preset: "" }));
+                    setAppliedFilters((f) => ({ ...f, q: val, preset: "" }));
+                  }}
+                  placeholder="Search"
+                  className="w-full max-w-md"
+                />
+              </div>
+              <div className="ui-list-toolbar__end">
                 <Button variant="secondary" type="button" onClick={() => setShowAdvanced(!showAdvanced)}>
                   {showAdvanced ? "Hide Filters" : "Filters"}
                 </Button>
-                <Button variant="secondary" type="button" onClick={handleExportExcel} title="Export Excel">
-                  <FileSpreadsheet className="h-4 w-4" />
-                  <span className="hidden sm:inline">Excel</span>
-                </Button>
+                <ExportDownloadMenu disabled={!filteredOrders.length} onExport={handleListExport} />
                 <Button variant="secondary" type="button" onClick={handleGlobalPrint} title="Print">
                   <Printer className="h-4 w-4" />
                   <span className="hidden sm:inline">Print</span>
@@ -1476,8 +1471,9 @@ export default function ProductionPlanning() {
                 </button>
               </div>
             </div>
-          </div>
-      </div>
+            </ListPageCardBody>
+          </ListPageCard>
+      </ListPageShell>
 
       {/* Single Item Print View */}
       {printDetailOrder && (

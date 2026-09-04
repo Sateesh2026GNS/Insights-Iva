@@ -8,7 +8,6 @@ import {
   ChevronRight,
   ClipboardList,
   Clock,
-  FileSpreadsheet,
   Filter,
   Plus,
   Search,
@@ -17,6 +16,8 @@ import {
 } from "lucide-react";
 
 import Button from "../../components/common/Button";
+import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
+import { ListPageShell } from "../../components/common/ListPageShell";
 import { SearchBar } from "../../components/common/SearchFilter";
 import InventoryRowActionsMenu from "../../components/inventory/InventoryRowActionsMenu";
 import KpiCard from "../../components/common/KpiCard";
@@ -34,9 +35,20 @@ import {
   processResultLabel,
   processStatusLabel,
 } from "../../data/qualityMasterData";
-import { exportToExcel } from "../../utils/exportUtils";
+import { exportToExcel, exportToPdf } from "../../utils/exportUtils";
 
 const PAGE_SIZES = [10, 25, 50];
+
+const FINAL_EXPORT_COLUMNS = [
+  { key: "qc_number", label: "QC No." },
+  { key: "date", label: "Date" },
+  { key: "customer", label: "Customer" },
+  { key: "sales_order", label: "Sales Order" },
+  { key: "item", label: "Item" },
+  { key: "checked_by", label: "Checked By" },
+  { key: "status", label: "Status" },
+  { key: "result", label: "Result" },
+];
 
 function FinalStatusBadge({ row }) {
   const key = normalizeProcessStatus(row);
@@ -202,7 +214,17 @@ export default function FinalQC() {
 
   if (loading) return <Loader label="Loading final QC..." />;
 
+  const handleExport = (format) => {
+    if (format === "pdf") {
+      exportToPdf(exportRows, FINAL_EXPORT_COLUMNS, "Final QC", "final-qc");
+    } else {
+      exportToExcel(exportRows, FINAL_EXPORT_COLUMNS, "final-qc");
+    }
+    addToast(format === "pdf" ? "Exported to PDF" : "Exported to Excel", "success");
+  };
+
   return (
+    <ListPageShell>
     <div className="min-w-0 space-y-5 pb-4">
       <PageHeader
         title="Final QC"
@@ -210,28 +232,7 @@ export default function FinalQC() {
         subtitle="Monitor and manage pre-dispatch quality checks before packing and dispatch"
         action={
           <div className="flex flex-wrap items-center gap-2">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() =>
-                exportToExcel(
-                  exportRows,
-                  [
-                    { key: "qc_number", label: "QC No." },
-                    { key: "date", label: "Date" },
-                    { key: "customer", label: "Customer" },
-                    { key: "sales_order", label: "Sales Order" },
-                    { key: "item", label: "Item" },
-                    { key: "checked_by", label: "Checked By" },
-                    { key: "status", label: "Status" },
-                    { key: "result", label: "Result" },
-                  ],
-                  "final-qc"
-                )
-              }
-            >
-              <FileSpreadsheet className="h-4 w-4" /> Export
-            </Button>
+            <ExportDownloadMenu disabled={!exportRows.length} onExport={handleExport} />
             <Button variant="add" to="/quality/inspection" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
               New Final QC
             </Button>
@@ -252,7 +253,7 @@ export default function FinalQC() {
             />
           </div>
           <div className="flex flex-wrap items-center gap-2.5">
-            <div className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border-soft)] bg-white px-3 py-1.5 text-[13px] shadow-xs">
+            <div className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border-soft)] bg-[var(--color-surface)] px-3 py-1.5 text-[13px] shadow-xs">
               <CalendarDays className="h-4 w-4 shrink-0 text-[var(--color-text-muted)]" />
               <input
                 type="date"
@@ -469,7 +470,7 @@ export default function FinalQC() {
 
       {viewRow ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white shadow-xl">
+          <div className="ui-modal max-h-[90vh] w-full max-w-lg overflow-y-auto">
             <div className="flex items-start justify-between border-b px-6 py-4">
               <div>
                 <h2 className="text-lg font-bold text-[var(--color-text)]">
@@ -520,5 +521,6 @@ export default function FinalQC() {
         </div>
       ) : null}
     </div>
+    </ListPageShell>
   );
 }

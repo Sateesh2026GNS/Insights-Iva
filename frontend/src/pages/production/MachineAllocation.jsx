@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Cpu,
-  Download,
   Gauge,
   GripVertical,
   LayoutList,
@@ -14,7 +13,9 @@ import Button from "../../components/common/Button";
 import { SearchBar } from "../../components/common/SearchFilter";
 import DataTable from "../../components/common/DataTable";
 import EmptyState from "../../components/common/EmptyState";
+import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
 import KpiCard from "../../components/common/KpiCard";
+import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
 import Loader from "../../components/common/Loader";
 import StatusBadge from "../../components/common/StatusBadge";
 import { useToast } from "../../context/ToastContext";
@@ -30,7 +31,7 @@ import {
   DEMO_MACHINE_AVAIL,
   priorityStyle,
 } from "../../data/machineAllocationMasterData";
-import { exportToExcel } from "../../utils/exportUtils";
+import { runListExport } from "../../utils/listExport";
 import { cleanProductLabel } from "../../utils/productLabel";
 
 const VIEWS = [
@@ -400,27 +401,30 @@ export default function MachineAllocation() {
     []
   );
 
-  const handleExport = () => {
-    exportToExcel(
-      filtered.length ? filtered : allocations,
-      [
-        { key: "work_order_number", label: "Work Order" },
-        { key: "product_name", label: "Product" },
-        { key: "machine_name", label: "Machine" },
-        { key: "operator_name", label: "Operator" },
-        { key: "shift", label: "Shift" },
-        { key: "status", label: "Status" },
-        { key: "priority", label: "Priority" },
-      ],
-      "machine-allocation"
-    );
-    addToast("Allocation exported to Excel", "success");
+  const exportColumns = [
+    { key: "work_order_number", label: "Work Order" },
+    { key: "product_name", label: "Product" },
+    { key: "machine_name", label: "Machine" },
+    { key: "operator_name", label: "Operator" },
+    { key: "shift", label: "Shift" },
+    { key: "status", label: "Status" },
+    { key: "priority", label: "Priority" },
+  ];
+
+  const handleExport = (format) => {
+    runListExport(format, {
+      data: filtered.length ? filtered : allocations,
+      columns: exportColumns,
+      filename: "machine-allocation",
+      title: "Machine Allocation",
+    });
+    addToast(format === "pdf" ? "Exported to PDF" : "Exported to Excel", "success");
   };
 
   if (loading) return <Loader label="Loading machine allocation…" />;
 
   return (
-    <div className="space-y-5 pb-4">
+    <ListPageShell>
       <div className="ui-grid-kpi">
         <ClickableKpiCard onClick={() => { setFilter("all"); setSearch(""); }} title="Show all machines" tone="primary">
           <KpiCard label="Machines" value={summary.total_machines ?? 0} icon={Cpu} tone="primary" meta="Click to filter" />
@@ -462,7 +466,8 @@ export default function MachineAllocation() {
         </div>
       ) : null}
 
-      <div className="ui-card overflow-hidden p-4 sm:p-5">
+      <ListPageCard>
+        <ListPageCardBody>
         <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
             <ViewTabs view={view} onChange={setView} />
@@ -472,10 +477,10 @@ export default function MachineAllocation() {
             <Button type="button" variant="secondary" to="/production/work-orders">
               Work Orders
             </Button>
-            <Button type="button" variant="secondary" onClick={handleExport}>
-              <Download className="h-4 w-4" />
-              <span className="hidden sm:inline">Export</span>
-            </Button>
+            <ExportDownloadMenu
+              disabled={!(filtered.length ? filtered : allocations).length}
+              onExport={handleExport}
+            />
           </div>
         </div>
 
@@ -625,7 +630,8 @@ export default function MachineAllocation() {
             )}
           </div>
         )}
-      </div>
-    </div>
+        </ListPageCardBody>
+      </ListPageCard>
+    </ListPageShell>
   );
 }

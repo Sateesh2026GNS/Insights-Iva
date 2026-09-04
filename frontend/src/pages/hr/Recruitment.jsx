@@ -19,7 +19,10 @@ import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import PlaceholderPage from "../../components/common/PlaceholderPage";
 import InventoryRowActionsMenu from "../../components/inventory/InventoryRowActionsMenu";
 import Loader from "../../components/common/Loader";
-import { AddButton } from "../../components/common/Button";
+import Button, { AddButton } from "../../components/common/Button";
+import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
+import { ListPageShell } from "../../components/common/ListPageShell";
+import { HrPanel } from "../../components/hr/hrUi";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { useToast } from "../../context/ToastContext";
 import {
@@ -39,18 +42,27 @@ import {
   recruitmentApplicantStatusLabel,
   recruitmentJobStatusBadgeClass,
 } from "../../data/hrMasterData";
+import { exportToExcel, exportToPdf } from "../../utils/exportUtils";
 
-const inputClass =
-  "mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:border-[#6366f1] focus:outline-none focus:ring-2 focus:ring-indigo-100";
+const inputClass = "ui-input mt-1.5 w-full";
+const selectClass = "ui-select mt-1.5 w-full";
+
+const APPLICANT_EXPORT_COLUMNS = [
+  { key: "full_name", label: "Candidate Name" },
+  { key: "job_title", label: "Job Title" },
+  { key: "applied_on", label: "Applied On" },
+  { key: "stage", label: "Current Stage" },
+  { key: "status", label: "Status" },
+  { key: "source", label: "Source" },
+];
 
 const FUNNEL_WIDTHS = [100, 88, 76, 64, 52, 40];
 
 function Panel({ title, children, className = "" }) {
   return (
-    <div className={`rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm ${className}`}>
-      <h2 className="mb-4 ui-section-title">{title}</h2>
+    <HrPanel title={title} className={className}>
       {children}
-    </div>
+    </HrPanel>
   );
 }
 
@@ -62,7 +74,7 @@ function RecKpiCard({ label, value, icon: Icon, tone, trend }) {
     pink: "bg-[#fce7f3] text-[#db2777]",
     red: "bg-[#fee2e2] text-[#ef4444]",
   };
-  let trendClass = "text-slate-500";
+  let trendClass = "text-[var(--color-text-muted)]";
   let trendText = "";
   if (trend?.pct != null) {
     const up = trend.dir === "up";
@@ -72,11 +84,11 @@ function RecKpiCard({ label, value, icon: Icon, tone, trend }) {
     trendText = `${up ? "↑" : "↓"} ${trend.pct}% vs last month`;
   }
   return (
-    <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
+    <div className="ui-card ui-card--padded">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-xs font-medium text-slate-500">{label}</p>
-          <p className="mt-1 text-[22px] font-bold leading-tight text-slate-900">{value}</p>
+          <p className="text-xs font-medium text-[var(--color-text-muted)]">{label}</p>
+          <p className="mt-1 text-[22px] font-bold leading-tight text-[var(--color-text)]">{value}</p>
           {trendText ? <p className={`mt-1 text-xs font-medium ${trendClass}`}>{trendText}</p> : null}
         </div>
         <div className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${tones[tone]}`}>
@@ -126,14 +138,14 @@ function RecruitmentFunnel({ stages }) {
       <ul className="min-w-0 flex-1 space-y-2.5 text-[12px]">
         {stages.map((stage) => (
           <li key={stage.key} className="flex items-center justify-between gap-2">
-            <span className="flex items-center gap-2 text-slate-600">
+            <span className="flex items-center gap-2 text-[var(--color-text-secondary)]">
               <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: stage.color }} />
               {stage.label}
             </span>
-            <span className="font-semibold text-slate-800">
+            <span className="font-semibold text-[var(--color-text)]">
               {stage.count}
               {stage.key !== "applicants" ? (
-                <span className="ml-1 font-medium text-slate-500">({stage.pct}%)</span>
+                <span className="ml-1 font-medium text-[var(--color-text-muted)]">({stage.pct}%)</span>
               ) : null}
             </span>
           </li>
@@ -390,7 +402,26 @@ function RecruitmentDashboard() {
 
   if (loading) return <Loader label="Loading recruitment..." />;
 
+  const exportRows = (data.recent_applicants || []).map((r) => ({
+    full_name: r.full_name || r.candidate_name,
+    job_title: r.job_title,
+    applied_on: r.applied_on,
+    stage: r.stage,
+    status: recruitmentApplicantStatusLabel(r.status),
+    source: r.source || "",
+  }));
+
+  const handleExport = (format) => {
+    if (format === "pdf") {
+      exportToPdf(exportRows, APPLICANT_EXPORT_COLUMNS, "Recruitment Applicants", "recruitment-applicants");
+    } else {
+      exportToExcel(exportRows, APPLICANT_EXPORT_COLUMNS, "recruitment-applicants");
+    }
+    addToast(format === "pdf" ? "Exported to PDF" : "Exported to Excel", "success");
+  };
+
   return (
+    <ListPageShell>
     <div className="hr-page ui-page ui-stack min-w-0">
       {/* Header */}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -402,25 +433,22 @@ function RecruitmentDashboard() {
           <AddButton type="button" onClick={openCreateJob}>
             Create Job Opening
           </AddButton>
-          <button
+          <Button
             type="button"
+            variant="secondary"
             onClick={() => {
               resetApplicantForm();
               setShowApplicantModal(true);
             }}
-            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            leftIcon={<UserPlus className="h-4 w-4" aria-hidden />}
           >
-            <UserPlus className="h-4 w-4" />
             Add Applicant
-          </button>
-          <button
-            type="button"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-          >
-            <MoreVertical className="h-4 w-4" />
+          </Button>
+          <ExportDownloadMenu disabled={!exportRows.length} onExport={handleExport} />
+          <Button type="button" variant="secondary" rightIcon={<ChevronDown className="h-4 w-4" aria-hidden />}>
+            <MoreVertical className="h-4 w-4" aria-hidden />
             More Actions
-            <ChevronDown className="h-4 w-4" />
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -446,41 +474,41 @@ function RecruitmentDashboard() {
         </Panel>
 
         <Panel title="Job Openings">
-          <div className="overflow-x-auto rounded-xl border border-slate-200">
+          <div className="overflow-x-auto rounded-xl border border-[var(--color-border-soft)]">
             <table className="min-w-full w-full border-collapse text-left text-sm">
               <thead className="ui-table-head">
                 <tr>
-                  <th className="border-b border-slate-200 px-3 py-3">Job Title</th>
-                  <th className="border-b border-slate-200 px-3 py-3">Department</th>
-                  <th className="border-b border-slate-200 px-3 py-3 text-center">Openings</th>
-                  <th className="border-b border-slate-200 px-3 py-3 text-center">Applicants</th>
-                  <th className="border-b border-slate-200 px-3 py-3">Status</th>
-                  <th className="border-b border-slate-200 px-3 py-3 text-center">Action</th>
+                  <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Job Title</th>
+                  <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Department</th>
+                  <th className="border-b border-[var(--color-border-soft)] px-3 py-3 text-center">Openings</th>
+                  <th className="border-b border-[var(--color-border-soft)] px-3 py-3 text-center">Applicants</th>
+                  <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Status</th>
+                  <th className="border-b border-[var(--color-border-soft)] px-3 py-3 text-center">Action</th>
                 </tr>
               </thead>
               <tbody>
                 {data.job_openings.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="border-b border-slate-100 px-3 py-8 text-center text-sm text-slate-500">
+                    <td colSpan={6} className="border-b border-[var(--color-border-soft)] px-3 py-8 text-center text-sm text-[var(--color-text-muted)]">
                       No recruitment records found
                     </td>
                   </tr>
                 ) : (
                 data.job_openings.map((job, idx) => (
-                  <tr key={job.id} className={idx % 2 === 1 ? "bg-slate-50/60 hover:bg-slate-50" : "hover:bg-slate-50/80"}>
-                    <td className="border-b border-slate-100 px-3 py-3 font-semibold text-slate-800">{job.title}</td>
-                    <td className="border-b border-slate-100 px-3 py-3 text-slate-600">{job.department}</td>
-                    <td className="border-b border-slate-100 px-3 py-3 text-center tabular-nums text-slate-700">{job.openings}</td>
-                    <td className="border-b border-slate-100 px-3 py-3 text-center tabular-nums text-slate-700">{job.applicants}</td>
-                    <td className="border-b border-slate-100 px-3 py-3">
+                  <tr key={job.id} className={idx % 2 === 1 ? "bg-[var(--color-surface-muted)]/60 hover:bg-[var(--color-surface-hover)]" : "hover:bg-[var(--color-surface-hover)]/80"}>
+                    <td className="border-b border-[var(--color-border-soft)] px-3 py-3 font-semibold text-[var(--color-text)]">{job.title}</td>
+                    <td className="border-b border-[var(--color-border-soft)] px-3 py-3 text-[var(--color-text-secondary)]">{job.department}</td>
+                    <td className="border-b border-[var(--color-border-soft)] px-3 py-3 text-center tabular-nums text-[var(--color-text-secondary)]">{job.openings}</td>
+                    <td className="border-b border-[var(--color-border-soft)] px-3 py-3 text-center tabular-nums text-[var(--color-text-secondary)]">{job.applicants}</td>
+                    <td className="border-b border-[var(--color-border-soft)] px-3 py-3">
                       <JobStatusBadge status={job.status} />
                     </td>
-                    <td className="border-b border-slate-100 px-3 py-3">
+                    <td className="border-b border-[var(--color-border-soft)] px-3 py-3">
                       <div className="flex items-center justify-center gap-1">
                         <button
                           type="button"
                           onClick={() => setViewJob(job)}
-                          className="grid h-8 w-8 place-items-center rounded-md text-[#6366f1] hover:bg-indigo-50"
+                          className="grid h-8 w-8 place-items-center rounded-md text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10"
                           aria-label="View job"
                         >
                           <Eye className="h-4 w-4" />
@@ -510,48 +538,48 @@ function RecruitmentDashboard() {
       <div className="grid gap-4 xl:grid-cols-3">
         <div className="xl:col-span-2">
           <Panel title="Recent Applicants">
-            <div className="overflow-x-auto rounded-xl border border-slate-200">
+            <div className="overflow-x-auto rounded-xl border border-[var(--color-border-soft)]">
               <table className="min-w-full w-full border-collapse text-left text-sm">
                 <thead className="ui-table-head">
                   <tr>
-                    <th className="border-b border-slate-200 px-3 py-3 min-w-[160px]">Candidate Name</th>
-                    <th className="border-b border-slate-200 px-3 py-3">Job Title</th>
-                    <th className="border-b border-slate-200 px-3 py-3">Applied On</th>
-                    <th className="border-b border-slate-200 px-3 py-3">Current Stage</th>
-                    <th className="border-b border-slate-200 px-3 py-3">Status</th>
-                    <th className="border-b border-slate-200 px-3 py-3 text-center">Action</th>
+                    <th className="border-b border-[var(--color-border-soft)] px-3 py-3 min-w-[160px]">Candidate Name</th>
+                    <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Job Title</th>
+                    <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Applied On</th>
+                    <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Current Stage</th>
+                    <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Status</th>
+                    <th className="border-b border-[var(--color-border-soft)] px-3 py-3 text-center">Action</th>
                   </tr>
                 </thead>
                 <tbody>
                   {pageRows.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="border-b border-slate-100 px-3 py-8 text-center text-sm text-slate-500">
+                      <td colSpan={6} className="border-b border-[var(--color-border-soft)] px-3 py-8 text-center text-sm text-[var(--color-text-muted)]">
                         No applicants found
                       </td>
                     </tr>
                   ) : (
                   pageRows.map((row, idx) => (
-                    <tr key={row.id} className={idx % 2 === 1 ? "bg-slate-50/60 hover:bg-slate-50" : "hover:bg-slate-50/80"}>
-                      <td className="border-b border-slate-100 px-3 py-3">
+                    <tr key={row.id} className={idx % 2 === 1 ? "bg-[var(--color-surface-muted)]/60 hover:bg-[var(--color-surface-muted)]" : "hover:bg-[var(--color-surface-muted)]/80"}>
+                      <td className="border-b border-[var(--color-border-soft)] px-3 py-3">
                         <div className="flex items-center gap-2">
                           <div className={`grid h-8 w-8 shrink-0 place-items-center rounded-full text-[10px] font-bold ${row.avatar_tone}`}>
                             {row.avatar}
                           </div>
-                          <span className="font-semibold text-slate-800">{row.name}</span>
+                          <span className="font-semibold text-[var(--color-text)]">{row.name}</span>
                         </div>
                       </td>
-                      <td className="border-b border-slate-100 px-3 py-3 text-slate-600">{row.job_title}</td>
-                      <td className="border-b border-slate-100 px-3 py-3 text-slate-600">{row.applied_on}</td>
-                      <td className="border-b border-slate-100 px-3 py-3 text-slate-600">{row.stage}</td>
-                      <td className="border-b border-slate-100 px-3 py-3">
+                      <td className="border-b border-[var(--color-border-soft)] px-3 py-3 text-[var(--color-text-secondary)]">{row.job_title}</td>
+                      <td className="border-b border-[var(--color-border-soft)] px-3 py-3 text-[var(--color-text-secondary)]">{row.applied_on}</td>
+                      <td className="border-b border-[var(--color-border-soft)] px-3 py-3 text-[var(--color-text-secondary)]">{row.stage}</td>
+                      <td className="border-b border-[var(--color-border-soft)] px-3 py-3">
                         <ApplicantStatusBadge status={row.status} />
                       </td>
-                      <td className="border-b border-slate-100 px-3 py-3">
+                      <td className="border-b border-[var(--color-border-soft)] px-3 py-3">
                         <div className="flex items-center justify-center gap-1">
                           <button
                             type="button"
                             onClick={() => openEditApplicant(row)}
-                            className="grid h-8 w-8 place-items-center rounded-md text-[#6366f1] hover:bg-indigo-50"
+                            className="grid h-8 w-8 place-items-center rounded-md text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10"
                             aria-label="View applicant"
                           >
                             <Eye className="h-4 w-4" />
@@ -575,12 +603,12 @@ function RecruitmentDashboard() {
               </table>
             </div>
 
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-slate-500">
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-[var(--color-text-muted)]">
               <span>
                 Showing {from} to {to} of {displayTotal} entries
               </span>
               <div className="flex items-center gap-1">
-                <button type="button" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))} className="grid h-8 w-8 place-items-center rounded-md border border-slate-200 bg-white disabled:opacity-40">
+                <button type="button" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))} className="grid h-8 w-8 place-items-center rounded-md border border-[var(--color-border-soft)] bg-[var(--color-surface)] disabled:opacity-40">
                   <ChevronLeft className="h-4 w-4" />
                 </button>
                 {pageItems(page, totalPages).map((item) =>
@@ -592,18 +620,18 @@ function RecruitmentDashboard() {
                       type="button"
                       onClick={() => setPage(item)}
                       className={`grid h-8 min-w-8 place-items-center rounded-md border px-2 text-sm font-semibold ${
-                        item === page ? "border-[#6366f1] bg-[#6366f1] text-white" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                        item === page ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-white" : "border-[var(--color-border-soft)] bg-[var(--color-surface)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"
                       }`}
                     >
                       {item}
                     </button>
                   )
                 )}
-                <button type="button" disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))} className="grid h-8 w-8 place-items-center rounded-md border border-slate-200 bg-white disabled:opacity-40">
+                <button type="button" disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))} className="grid h-8 w-8 place-items-center rounded-md border border-[var(--color-border-soft)] bg-[var(--color-surface)] disabled:opacity-40">
                   <ChevronRight className="h-4 w-4" />
                 </button>
               </div>
-              <span className="rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-600">
+              <span className="rounded-md border border-[var(--color-border-soft)] bg-[var(--color-surface)] px-2 py-1.5 text-sm text-[var(--color-text-secondary)]">
                 {pageSize} / page
               </span>
             </div>
@@ -623,21 +651,21 @@ function RecruitmentDashboard() {
               </PieChart>
             </ResponsiveContainer>
             <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-              <span className="text-[20px] font-bold text-slate-900">{data.source_total}</span>
-              <span className="text-xs text-slate-500">Total</span>
+              <span className="text-[20px] font-bold text-[var(--color-text)]">{data.source_total}</span>
+              <span className="text-xs text-[var(--color-text-muted)]">Total</span>
             </div>
           </div>
           <ul className="mt-4 space-y-2 text-[12px]">
             {sourceData.length === 0 ? (
-              <li className="text-center text-slate-500">No source data yet</li>
+              <li className="text-center text-[var(--color-text-muted)]">No source data yet</li>
             ) : (
             sourceData.map((d) => (
               <li key={d.name} className="flex items-center justify-between gap-2">
-                <span className="flex items-center gap-2 text-slate-600">
+                <span className="flex items-center gap-2 text-[var(--color-text-secondary)]">
                   <span className="h-2.5 w-2.5 rounded-full" style={{ background: d.color }} />
                   {d.name}
                 </span>
-                <span className="font-semibold text-slate-800">
+                <span className="font-semibold text-[var(--color-text)]">
                   {d.pct}% ({d.value})
                 </span>
               </li>
@@ -648,49 +676,57 @@ function RecruitmentDashboard() {
       </div>
 
       {showJobModal ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-xl">
+        <div
+          className="ui-modal-backdrop"
+          onMouseDown={(e) => {
+            if (!saving && e.target === e.currentTarget) {
+              setShowJobModal(false);
+              resetJobForm();
+            }
+          }}
+        >
+          <div className="ui-modal max-h-[90vh] w-full max-w-lg overflow-y-auto p-6" onMouseDown={(e) => e.stopPropagation()}>
             <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-slate-900">{editJob ? "Edit Job Opening" : "Create Job Opening"}</h3>
-              <button type="button" onClick={() => { setShowJobModal(false); resetJobForm(); }} className="text-slate-400 hover:text-slate-600">
+              <h3 className="text-lg font-semibold text-[var(--color-text)]">{editJob ? "Edit Job Opening" : "Create Job Opening"}</h3>
+              <button type="button" onClick={() => { setShowJobModal(false); resetJobForm(); }} className="text-[var(--color-text-muted)] hover:text-[var(--color-text)]">
                 <X className="h-5 w-5" />
               </button>
             </div>
-            {formError ? <p className="mb-3 text-sm text-red-600">{formError}</p> : null}
+            {formError ? <p className="mb-3 text-sm text-[var(--color-danger)]">{formError}</p> : null}
             <form onSubmit={handleSaveJob} className="space-y-3">
-              <label className="block text-sm font-medium text-slate-700">
+              <label className="ui-label block">
                 Job Title *
                 <input className={inputClass} value={jobForm.title} onChange={(e) => setJobForm((f) => ({ ...f, title: e.target.value }))} required />
               </label>
-              <label className="block text-sm font-medium text-slate-700">
+              <label className="ui-label block">
                 Department
                 <input className={inputClass} value={jobForm.department} onChange={(e) => setJobForm((f) => ({ ...f, department: e.target.value }))} />
               </label>
               <div className="grid grid-cols-2 gap-3">
-                <label className="block text-sm font-medium text-slate-700">
+                <label className="ui-label block">
                   Openings
                   <input type="number" min={1} className={inputClass} value={jobForm.openings_count} onChange={(e) => setJobForm((f) => ({ ...f, openings_count: e.target.value }))} />
                 </label>
-                <label className="block text-sm font-medium text-slate-700">
+                <label className="ui-label block">
                   Status
-                  <select className={inputClass} value={jobForm.status} onChange={(e) => setJobForm((f) => ({ ...f, status: e.target.value }))}>
+                  <select className={selectClass} value={jobForm.status} onChange={(e) => setJobForm((f) => ({ ...f, status: e.target.value }))}>
                     <option value="open">Open</option>
                     <option value="closed">Closed</option>
                     <option value="on_hold">On Hold</option>
                   </select>
                 </label>
               </div>
-              <label className="block text-sm font-medium text-slate-700">
+              <label className="ui-label block">
                 Location
                 <input className={inputClass} value={jobForm.location} onChange={(e) => setJobForm((f) => ({ ...f, location: e.target.value }))} />
               </label>
-              <label className="block text-sm font-medium text-slate-700">
+              <label className="ui-label block">
                 Description
                 <textarea className={inputClass} rows={3} value={jobForm.description} onChange={(e) => setJobForm((f) => ({ ...f, description: e.target.value }))} />
               </label>
-              <div className="flex justify-end gap-2 pt-2">
-                <button type="button" onClick={() => { setShowJobModal(false); resetJobForm(); }} className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700">Cancel</button>
-                <button type="submit" disabled={saving} className="rounded-lg bg-[#6366f1] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">{saving ? "Saving..." : "Save"}</button>
+              <div className="flex justify-end gap-2 border-t border-[var(--color-border-soft)] pt-2">
+                <Button type="button" variant="cancel" onClick={() => { setShowJobModal(false); resetJobForm(); }}>Cancel</Button>
+                <Button type="submit" variant="primary" disabled={saving}>{saving ? "Saving..." : "Save"}</Button>
               </div>
             </form>
           </div>
@@ -698,23 +734,31 @@ function RecruitmentDashboard() {
       ) : null}
 
       {showApplicantModal ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-xl">
+        <div
+          className="ui-modal-backdrop"
+          onMouseDown={(e) => {
+            if (!saving && e.target === e.currentTarget) {
+              setShowApplicantModal(false);
+              resetApplicantForm();
+            }
+          }}
+        >
+          <div className="ui-modal max-h-[90vh] w-full max-w-lg overflow-y-auto p-6" onMouseDown={(e) => e.stopPropagation()}>
             <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-slate-900">{editApplicant ? "Edit Applicant" : "Add Applicant"}</h3>
-              <button type="button" onClick={() => { setShowApplicantModal(false); resetApplicantForm(); }} className="text-slate-400 hover:text-slate-600">
+              <h3 className="text-lg font-semibold text-[var(--color-text)]">{editApplicant ? "Edit Applicant" : "Add Applicant"}</h3>
+              <button type="button" onClick={() => { setShowApplicantModal(false); resetApplicantForm(); }} className="text-[var(--color-text-muted)] hover:text-[var(--color-text)]">
                 <X className="h-5 w-5" />
               </button>
             </div>
-            {formError ? <p className="mb-3 text-sm text-red-600">{formError}</p> : null}
+            {formError ? <p className="mb-3 text-sm text-[var(--color-danger)]">{formError}</p> : null}
             <form onSubmit={handleSaveApplicant} className="space-y-3">
-              <label className="block text-sm font-medium text-slate-700">
+              <label className="ui-label block">
                 Candidate Name *
                 <input className={inputClass} value={applicantForm.full_name} onChange={(e) => setApplicantForm((f) => ({ ...f, full_name: e.target.value }))} required />
               </label>
-              <label className="block text-sm font-medium text-slate-700">
+              <label className="ui-label block">
                 Job Opening
-                <select className={inputClass} value={applicantForm.job_opening_id} onChange={(e) => setApplicantForm((f) => ({ ...f, job_opening_id: e.target.value }))}>
+                <select className={selectClass} value={applicantForm.job_opening_id} onChange={(e) => setApplicantForm((f) => ({ ...f, job_opening_id: e.target.value }))}>
                   <option value="">— Select job —</option>
                   {data.job_openings.map((j) => (
                     <option key={j.id} value={j.id}>{j.title}</option>
@@ -722,9 +766,9 @@ function RecruitmentDashboard() {
                 </select>
               </label>
               <div className="grid grid-cols-2 gap-3">
-                <label className="block text-sm font-medium text-slate-700">
+                <label className="ui-label block">
                   Stage
-                  <select className={inputClass} value={applicantForm.stage} onChange={(e) => setApplicantForm((f) => ({ ...f, stage: e.target.value }))}>
+                  <select className={selectClass} value={applicantForm.stage} onChange={(e) => setApplicantForm((f) => ({ ...f, stage: e.target.value }))}>
                     <option value="applied">Applied</option>
                     <option value="screening">Screening</option>
                     <option value="interview">Interview</option>
@@ -732,9 +776,9 @@ function RecruitmentDashboard() {
                     <option value="hired">Hired</option>
                   </select>
                 </label>
-                <label className="block text-sm font-medium text-slate-700">
+                <label className="ui-label block">
                   Status
-                  <select className={inputClass} value={applicantForm.status} onChange={(e) => setApplicantForm((f) => ({ ...f, status: e.target.value }))}>
+                  <select className={selectClass} value={applicantForm.status} onChange={(e) => setApplicantForm((f) => ({ ...f, status: e.target.value }))}>
                     <option value="new">New</option>
                     <option value="in_progress">In Progress</option>
                     <option value="hired">Hired</option>
@@ -742,13 +786,13 @@ function RecruitmentDashboard() {
                   </select>
                 </label>
               </div>
-              <label className="block text-sm font-medium text-slate-700">
+              <label className="ui-label block">
                 Source
                 <input className={inputClass} value={applicantForm.source} onChange={(e) => setApplicantForm((f) => ({ ...f, source: e.target.value }))} placeholder="LinkedIn, Referral, etc." />
               </label>
-              <div className="flex justify-end gap-2 pt-2">
-                <button type="button" onClick={() => { setShowApplicantModal(false); resetApplicantForm(); }} className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700">Cancel</button>
-                <button type="submit" disabled={saving} className="rounded-lg bg-[#6366f1] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">{saving ? "Saving..." : "Save"}</button>
+              <div className="flex justify-end gap-2 border-t border-[var(--color-border-soft)] pt-2">
+                <Button type="button" variant="cancel" onClick={() => { setShowApplicantModal(false); resetApplicantForm(); }}>Cancel</Button>
+                <Button type="submit" variant="primary" disabled={saving}>{saving ? "Saving..." : "Save"}</Button>
               </div>
             </form>
           </div>
@@ -756,23 +800,29 @@ function RecruitmentDashboard() {
       ) : null}
 
       {viewJob ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+        <div
+          className="ui-modal-backdrop"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) setViewJob(null);
+          }}
+        >
+          <div className="ui-modal w-full max-w-md p-6" onMouseDown={(e) => e.stopPropagation()}>
             <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-slate-900">{viewJob.title}</h3>
-              <button type="button" onClick={() => setViewJob(null)} className="text-slate-400 hover:text-slate-600"><X className="h-5 w-5" /></button>
+              <h3 className="text-lg font-semibold text-[var(--color-text)]">{viewJob.title}</h3>
+              <button type="button" onClick={() => setViewJob(null)} className="text-[var(--color-text-muted)] hover:text-[var(--color-text)]"><X className="h-5 w-5" /></button>
             </div>
-            <dl className="space-y-2 text-sm text-slate-600">
-              <div><dt className="font-medium text-slate-800">Department</dt><dd>{viewJob.department}</dd></div>
-              <div><dt className="font-medium text-slate-800">Openings</dt><dd>{viewJob.openings}</dd></div>
-              <div><dt className="font-medium text-slate-800">Applicants</dt><dd>{viewJob.applicants}</dd></div>
-              <div><dt className="font-medium text-slate-800">Status</dt><dd><JobStatusBadge status={viewJob.status} /></dd></div>
-              {viewJob.description ? <div><dt className="font-medium text-slate-800">Description</dt><dd>{viewJob.description}</dd></div> : null}
+            <dl className="space-y-2 text-sm text-[var(--color-text-secondary)]">
+              <div><dt className="font-medium text-[var(--color-text)]">Department</dt><dd>{viewJob.department}</dd></div>
+              <div><dt className="font-medium text-[var(--color-text)]">Openings</dt><dd>{viewJob.openings}</dd></div>
+              <div><dt className="font-medium text-[var(--color-text)]">Applicants</dt><dd>{viewJob.applicants}</dd></div>
+              <div><dt className="font-medium text-[var(--color-text)]">Status</dt><dd><JobStatusBadge status={viewJob.status} /></dd></div>
+              {viewJob.description ? <div><dt className="font-medium text-[var(--color-text)]">Description</dt><dd>{viewJob.description}</dd></div> : null}
             </dl>
           </div>
         </div>
       ) : null}
     </div>
+    </ListPageShell>
   );
 }
 

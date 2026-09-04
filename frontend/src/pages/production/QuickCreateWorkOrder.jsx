@@ -1,9 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { ArrowLeft } from "lucide-react";
 
 import { useToast } from "../../context/ToastContext";
 import Button from "../../components/common/Button";
+import Loader from "../../components/common/Loader";
+import PageHeader from "../../components/common/PageHeader";
+import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
+import { inputMtClass as inputClass } from "../../design-system/classes";
 import {
   getProducts,
   getMachines,
@@ -265,43 +270,47 @@ export default function QuickCreateWorkOrder() {
     }
   };
 
+  const isQuickAssign = Boolean(poId);
+  const pageTitle = isQuickAssign
+    ? "Quick Assign Machine and Raw Material"
+    : t("quickCreateWorkOrder.title", { defaultValue: "Create Work Order" });
+
   if (loading) {
     return (
-      <div className="mx-auto max-w-2xl rounded-xl border border-slate-200 bg-white p-6 shadow-sm animate-pulse">
-        <div className="h-6 w-48 rounded bg-slate-200" />
-        <div className="mt-6 space-y-4">
-          <div className="h-10 rounded bg-slate-100" />
-          <div className="h-10 rounded bg-slate-100" />
-          <div className="h-10 rounded bg-slate-100" />
+      <ListPageShell>
+        <div className="mx-auto flex max-w-3xl justify-center py-16">
+          <Loader />
         </div>
-      </div>
+      </ListPageShell>
     );
   }
 
-  const isQuickAssign = Boolean(poId);
-
   return (
-    <div className="mx-auto max-w-3xl rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 p-6 shadow-sm">
-      <div className="mb-6 flex items-center justify-between">
-        <h2 className="text-xl font-bold text-slate-800 dark:text-white">
-          {isQuickAssign ? "Quick Assign Machine and Raw Material" : t("quickCreateWorkOrder.title", { defaultValue: "Create Work Order" })}
-        </h2>
+    <ListPageShell>
+      <div className="mx-auto max-w-3xl space-y-6">
         <Link
           to="/production/work-orders"
-          className="text-sm font-medium text-teal-600 dark:text-teal-400 hover:underline"
+          className="inline-flex items-center gap-2 text-sm font-medium text-[var(--color-primary)] hover:underline"
         >
-          ← Back to Work Orders
+          <ArrowLeft className="h-4 w-4" />
+          {t("quickCreateWorkOrder.backToWorkOrders", { defaultValue: "Back to Work Orders" })}
         </Link>
-      </div>
-
+        <PageHeader
+          title={pageTitle}
+          subtitle={t("quickCreateWorkOrder.subtitle", {
+            defaultValue: "Allocate product, machine, and schedule details for a new work order.",
+          })}
+        />
+        <ListPageCard>
+          <ListPageCardBody>
       <form onSubmit={handleSubmit} className="space-y-5">
         <div className="grid gap-5 sm:grid-cols-2">
           <div>
             <label
               htmlFor="product_id"
-              className="block text-sm font-medium text-slate-700 dark:text-slate-300"
+              className="ui-label"
             >
-              Product <span className="text-red-500">*</span>
+              Product <span className="text-[var(--color-danger)]">*</span>
             </label>
             {customProductMode ? (
               <div className="mt-1.5 flex gap-1.5">
@@ -311,7 +320,7 @@ export default function QuickCreateWorkOrder() {
                   value={form.product_name || ""}
                   onChange={handleChange}
                   placeholder="Enter product name…"
-                  className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+                  className={inputClass}
                   autoFocus
                 />
                 <button
@@ -320,7 +329,7 @@ export default function QuickCreateWorkOrder() {
                     setCustomProductMode(false);
                     setForm((prev) => ({ ...prev, product_id: "", product_name: "" }));
                   }}
-                  className="rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-xs font-medium text-teal-600 hover:bg-slate-100 dark:hover:bg-slate-700"
+                  className="rounded-lg border border-[var(--color-border)] px-3 py-2 text-xs font-medium text-[var(--color-primary)] hover:bg-[var(--color-surface-muted)]"
                 >
                   Select
                 </button>
@@ -333,7 +342,7 @@ export default function QuickCreateWorkOrder() {
                 onChange={handleProductChange}
                 required={!customProductMode}
                 disabled={products.length === 0}
-                className="mt-1.5 w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500 disabled:opacity-50"
+                className={`${inputClass} disabled:opacity-50`}
               >
                 <option value="">
                   {products.length === 0
@@ -342,8 +351,7 @@ export default function QuickCreateWorkOrder() {
                 </option>
                 <option
                   value="__add_product__"
-                  className="add-new-option text-[#036f71] font-semibold bg-[#e6f4f4] dark:text-[#2dd4bf] dark:bg-[#0d3d38]"
-                  style={{ color: "#036f71", fontWeight: "600" }}
+                  className="add-new-option"
                 >
                   + Add new Product
                 </option>
@@ -362,7 +370,7 @@ export default function QuickCreateWorkOrder() {
           <div>
             <label
               htmlFor="work_order_number"
-              className="block text-sm font-medium text-slate-700 dark:text-slate-300"
+              className="ui-label"
             >
               Work Order Number
             </label>
@@ -373,7 +381,7 @@ export default function QuickCreateWorkOrder() {
               value={form.work_order_number}
               onChange={handleChange}
               placeholder="e.g. Work Order 2024-001 (auto-generated if empty)"
-              className="mt-1.5 w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+              className={inputClass}
             />
           </div>
         </div>
@@ -382,7 +390,7 @@ export default function QuickCreateWorkOrder() {
           <div>
             <label
               htmlFor="customer_name"
-              className="block text-sm font-medium text-slate-700 dark:text-slate-300"
+              className="ui-label"
             >
               Customer Name
             </label>
@@ -395,7 +403,7 @@ export default function QuickCreateWorkOrder() {
                   value={form.customer_name}
                   onChange={handleChange}
                   placeholder="Enter customer name…"
-                  className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+                  className={inputClass}
                   autoFocus
                 />
                 <button
@@ -404,7 +412,7 @@ export default function QuickCreateWorkOrder() {
                     setCustomCustomerMode(false);
                     setForm((prev) => ({ ...prev, customer_id: "", customer_name: "" }));
                   }}
-                  className="rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-xs font-medium text-teal-600 hover:bg-slate-100 dark:hover:bg-slate-700"
+                  className="rounded-lg border border-[var(--color-border)] px-3 py-2 text-xs font-medium text-[var(--color-primary)] hover:bg-[var(--color-surface-muted)]"
                 >
                   Select
                 </button>
@@ -416,7 +424,7 @@ export default function QuickCreateWorkOrder() {
                 value={form.customer_id}
                 onChange={handleCustomerChange}
                 disabled={loading}
-                className="mt-1.5 w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+                className={inputClass}
               >
                 <option value="">{loading ? "Loading customers…" : "Select customer…"}</option>
                 {customers.map((c) => (
@@ -431,9 +439,9 @@ export default function QuickCreateWorkOrder() {
           <div>
             <label
               htmlFor="planned_quantity"
-              className="block text-sm font-medium text-slate-700 dark:text-slate-300"
+              className="ui-label"
             >
-              Planned Quantity <span className="text-red-500">*</span>
+              Planned Quantity <span className="text-[var(--color-danger)]">*</span>
             </label>
             <input
               id="planned_quantity"
@@ -445,7 +453,7 @@ export default function QuickCreateWorkOrder() {
               min="1"
               step="1"
               placeholder="e.g. 100"
-              className="mt-1.5 w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+              className={inputClass}
             />
           </div>
         </div>
@@ -454,7 +462,7 @@ export default function QuickCreateWorkOrder() {
           <div>
             <label
               htmlFor="machine_id"
-              className="block text-sm font-medium text-slate-700 dark:text-slate-300"
+              className="ui-label"
             >
               Machine
             </label>
@@ -466,7 +474,7 @@ export default function QuickCreateWorkOrder() {
                   value={form.machine_name || ""}
                   onChange={handleChange}
                   placeholder="Enter machine name…"
-                  className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+                  className={inputClass}
                   autoFocus
                 />
                 <button
@@ -475,7 +483,7 @@ export default function QuickCreateWorkOrder() {
                     setCustomMachineMode(false);
                     setForm((prev) => ({ ...prev, machine_id: "", machine_name: "" }));
                   }}
-                  className="rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-xs font-medium text-teal-600 hover:bg-slate-100 dark:hover:bg-slate-700"
+                  className="rounded-lg border border-[var(--color-border)] px-3 py-2 text-xs font-medium text-[var(--color-primary)] hover:bg-[var(--color-surface-muted)]"
                 >
                   Select
                 </button>
@@ -486,13 +494,12 @@ export default function QuickCreateWorkOrder() {
                 name="machine_id"
                 value={form.machine_id}
                 onChange={handleMachineChange}
-                className="mt-1.5 w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+                className={inputClass}
               >
                 <option value="">Select Machine (Optional)</option>
                 <option
                   value="__custom__"
-                  className="add-new-option text-[#036f71] font-semibold bg-[#e6f4f4] dark:text-[#2dd4bf] dark:bg-[#0d3d38]"
-                  style={{ color: "#036f71", fontWeight: "600" }}
+                  className="add-new-option"
                 >
                   + Add new Machine
                 </option>
@@ -509,7 +516,7 @@ export default function QuickCreateWorkOrder() {
             <div>
               <label
                 htmlFor="raw_material_id"
-                className="block text-sm font-medium text-slate-700 dark:text-slate-300"
+                className="ui-label"
               >
                 Raw Material
               </label>
@@ -526,7 +533,7 @@ export default function QuickCreateWorkOrder() {
                     raw_material_name: sel?.name || "",
                   }));
                 }}
-                className="mt-1.5 w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+                className={inputClass}
               >
                 <option value="">Select Raw Material (Optional)</option>
                 {rawMaterials.map((rm) => (
@@ -536,7 +543,7 @@ export default function QuickCreateWorkOrder() {
                 ))}
               </select>
               {rawMaterials.length === 0 && !loading && (
-                <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+                <p className="mt-1 text-xs text-[var(--color-warning)]">
                   No raw materials found in inventory.
                 </p>
               )}
@@ -546,7 +553,7 @@ export default function QuickCreateWorkOrder() {
           <div>
             <label
               htmlFor="shift"
-              className="block text-sm font-medium text-slate-700 dark:text-slate-300"
+              className="ui-label"
             >
               Shift
             </label>
@@ -555,7 +562,7 @@ export default function QuickCreateWorkOrder() {
               name="shift"
               value={form.shift}
               onChange={handleChange}
-              className="mt-1.5 w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+              className={inputClass}
             >
               <option value="">Select Shift (Optional)</option>
               {shiftOptions.map((s) => (
@@ -569,7 +576,7 @@ export default function QuickCreateWorkOrder() {
           <div>
             <label
               htmlFor="operator_name"
-              className="block text-sm font-medium text-slate-700 dark:text-slate-300"
+              className="ui-label"
             >
               Operator
             </label>
@@ -580,14 +587,14 @@ export default function QuickCreateWorkOrder() {
               value={form.operator_name}
               onChange={handleChange}
               placeholder="e.g. John Doe"
-              className="mt-1.5 w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+              className={inputClass}
             />
           </div>
 
           <div>
             <label
               htmlFor="priority"
-              className="block text-sm font-medium text-slate-700 dark:text-slate-300"
+              className="ui-label"
             >
               Priority
             </label>
@@ -596,7 +603,7 @@ export default function QuickCreateWorkOrder() {
               name="priority"
               value={form.priority}
               onChange={handleChange}
-              className="mt-1.5 w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500 capitalize"
+              className={`${inputClass} capitalize`}
             >
               {(PRIORITIES || ["low", "medium", "high", "critical"]).map((p) => (
                 <option key={p} value={p} className="capitalize">
@@ -611,7 +618,7 @@ export default function QuickCreateWorkOrder() {
           <div>
             <label
               htmlFor="planned_start"
-              className="block text-sm font-medium text-slate-700 dark:text-slate-300"
+              className="ui-label"
             >
               Start Date
             </label>
@@ -621,14 +628,14 @@ export default function QuickCreateWorkOrder() {
               name="planned_start"
               value={form.planned_start}
               onChange={handleChange}
-              className="mt-1.5 w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+              className={inputClass}
             />
           </div>
 
           <div>
             <label
               htmlFor="planned_end"
-              className="block text-sm font-medium text-slate-700 dark:text-slate-300"
+              className="ui-label"
             >
               Due Date
             </label>
@@ -638,29 +645,29 @@ export default function QuickCreateWorkOrder() {
               name="planned_end"
               value={form.planned_end}
               onChange={handleChange}
-              className="mt-1.5 w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+              className={inputClass}
             />
           </div>
         </div>
 
         {error && (
-          <div className="rounded-lg bg-red-50 dark:bg-red-900/20 px-4 py-3 text-sm text-red-700 dark:text-red-300">
+          <div className="rounded-lg border border-[var(--color-danger)]/30 bg-[var(--color-danger-soft)] px-4 py-3 text-sm text-[var(--color-danger)]">
             {error}
           </div>
         )}
 
-        <div className="flex gap-3 pt-2">
+        <div className="flex flex-wrap gap-3 pt-2">
           <Button type="submit" variant="primary" disabled={saving || products.length === 0} loading={saving}>
-            {saving ? "Saving..." : "Save & Done"}
+            {saving ? t("common.saving", { defaultValue: "Saving…" }) : t("common.saveAndDone", { defaultValue: "Save & Done" })}
           </Button>
-          <Link
-            to="/production/work-orders"
-            className="rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
-          >
-            Cancel
-          </Link>
+          <Button variant="cancel" to="/production/work-orders">
+            {t("common.cancel", { defaultValue: "Cancel" })}
+          </Button>
         </div>
       </form>
+          </ListPageCardBody>
+        </ListPageCard>
+      </div>
 
       <AddNewItemModal
         open={showAddProductModal}
@@ -705,6 +712,6 @@ export default function QuickCreateWorkOrder() {
           }
         }}
       />
-    </div>
+    </ListPageShell>
   );
 }

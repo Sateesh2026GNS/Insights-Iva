@@ -180,13 +180,74 @@ def _count_records_by_sales_order(
     return {int(order_id): int(count) for order_id, count in rows}
 
 
+def _count_work_orders_by_sales_order(
+    db: Session, tenant_id: int, order_ids: list[int]
+) -> dict[int, int]:
+    if not order_ids:
+        return {}
+    from app.models.production import ProductionOrder, WorkOrder
+
+    rows = db.execute(
+        select(ProductionOrder.sales_order_id, func.count(WorkOrder.id))
+        .join(WorkOrder, WorkOrder.production_order_id == ProductionOrder.id)
+        .where(
+            ProductionOrder.tenant_id == tenant_id,
+            ProductionOrder.sales_order_id.in_(order_ids),
+        )
+        .group_by(ProductionOrder.sales_order_id)
+    ).all()
+    return {int(so_id): int(count) for so_id, count in rows if so_id is not None}
+
+
+def _count_quality_inspections_by_sales_order(
+    db: Session, tenant_id: int, order_ids: list[int]
+) -> dict[int, int]:
+    if not order_ids:
+        return {}
+    from app.models.quality import QualityInspection
+
+    orders = list(
+        db.scalars(
+            select(SalesOrder).where(
+                SalesOrder.tenant_id == tenant_id,
+                SalesOrder.id.in_(order_ids),
+            )
+        ).all()
+    )
+    if not orders:
+        return {}
+    number_by_id = {o.id: o.order_number for o in orders}
+    numbers = list(number_by_id.values())
+    rows = db.execute(
+        select(QualityInspection.sales_order_number, func.count())
+        .where(
+            QualityInspection.tenant_id == tenant_id,
+            QualityInspection.sales_order_number.in_(numbers),
+        )
+        .group_by(QualityInspection.sales_order_number)
+    ).all()
+    count_by_number = {str(num): int(count) for num, count in rows}
+    result: dict[int, int] = {}
+    for order_id, order_number in number_by_id.items():
+        count = count_by_number.get(order_number, 0)
+        if count:
+            result[order_id] = count
+    return result
+
+
+def _append_delete_blocker(
+    blockers_by_order: dict[int, list[str]], order_id: int, count: int, label: str
+) -> None:
+    if count:
+        blockers_by_order.setdefault(order_id, []).append(f"{count} {label}")
+
+
 def delete_blockers_by_sales_order_ids(
     db: Session, tenant_id: int, order_ids: list[int]
 ) -> dict[int, list[str]]:
-    """Return downstream blocker descriptions keyed by sales order id."""
+    """Return downstream business-record blockers keyed by sales order id."""
     if not order_ids:
         return {}
-
     blocker_specs = [
         (Invoice, Invoice.sales_order_id, "linked invoice(s)"),
         (DispatchShipment, DispatchShipment.sales_order_id, "dispatch record(s)"),
@@ -195,25 +256,73 @@ def delete_blockers_by_sales_order_ids(
     counts_by_type: list[tuple[str, dict[int, int]]] = [
         (label, _count_records_by_sales_order(db, tenant_id, order_ids, model, fk_column))
         for model, fk_column, label in blocker_specs
+    from app.models.manufacturing_workflow import (
+        SalesJobCard,
+        SalesOrderMaterialCheck,
+    )
+    from app.models.production import ProductionOrder
+
+    blocker_specs = [
+        (SalesOrderMaterialCheck, SalesOrderMaterialCheck.sales_order_id, "material check"),
+        (SalesJobCard, SalesJobCard.sales_order_id, "job card"),
+        (ProductionOrder, ProductionOrder.sales_order_id, "production order"),
+        (DispatchShipment, DispatchShipment.sales_order_id, "dispatch"),
+        (Invoice, Invoice.sales_order_id, "invoice"),
     ]
 
     blockers_by_order: dict[int, list[str]] = {order_id: [] for order_id in order_ids}
-    for label, counts in counts_by_type:
+    for model, fk_column, label in blocker_specs:
+        counts = _count_records_by_sales_order(db, tenant_id, order_ids, model, fk_column)
         for order_id, count in counts.items():
-            if count:
-                blockers_by_order.setdefault(order_id, []).append(f"{count} {label}")
+            _append_delete_blocker(blockers_by_order, order_id, count, label)
+
+    for order_id, count in _count_work_orders_by_sales_order(db, tenant_id, order_ids).items():
+        _append_delete_blocker(blockers_by_order, order_id, count, "work order")
+
+    for order_id, count in _count_quality_inspections_by_sales_order(
+        db, tenant_id, order_ids
+    ).items():
+        _append_delete_blocker(blockers_by_order, order_id, count, "quality inspection")
+
     return blockers_by_order
 
 
-def sales_order_can_delete(order: SalesOrder, blockers: list[str] | None = None) -> bool:
-    status = (order.status or "").lower().strip()
-    if status not in _DELETABLE_SO_STATUSES:
-        return False
+def build_sales_order_delete_blocked_detail(
+    order_number: str, blockers: list[str]
+) -> dict[str, object]:
+    display = order_number or "this sales order"
+    return {
+        "code": "downstream_dependencies",
+        "message": (
+            f"Sales Order {display} cannot be deleted because it is already linked to "
+            "downstream records."
+        ),
+        "blockers": blockers,
+    }
 
+
+def sales_order_can_delete(order: SalesOrder, blockers: list[str] | None = None) -> bool:
+    """True when the sales order has no linked downstream business records."""
+    return not (blockers or [])
     if order.invoiced or order.packed or order.shipped:
         return False
 
-    return not blockers
+def _purge_sales_order_audit_rows(db: Session, tenant_id: int, order_id: int) -> None:
+    """Remove workflow audit rows that are not business dependencies but block FK delete."""
+    from app.models.manufacturing_workflow import ManufacturingWorkflowTransition
+
+    transitions = list(
+        db.scalars(
+            select(ManufacturingWorkflowTransition).where(
+                ManufacturingWorkflowTransition.tenant_id == tenant_id,
+                ManufacturingWorkflowTransition.sales_order_id == order_id,
+            )
+        ).all()
+    )
+    for row in transitions:
+        db.delete(row)
+    if transitions:
+        db.flush()
 
 
 def delete_sales_order(db: Session, tenant_id: int, order_id: int) -> bool:
@@ -260,10 +369,7 @@ def delete_sales_order(db: Session, tenant_id: int, order_id: int) -> bool:
     if blockers:
         raise HTTPException(
             status_code=400,
-            detail=(
-                f"Cannot delete sales order {order.order_number} because it has downstream "
-                f"records: {', '.join(blockers)}."
-            ),
+            detail=build_sales_order_delete_blocked_detail(order.order_number, blockers),
         )
 
     # Delete linked stage job cards (and cascaded material issue lines)
@@ -329,6 +435,8 @@ def delete_sales_order(db: Session, tenant_id: int, order_id: int) -> bool:
         else:
             db.delete(po)
 
+
+    _purge_sales_order_audit_rows(db, tenant_id, order_id)
     db.delete(order)
     db.commit()
     return True

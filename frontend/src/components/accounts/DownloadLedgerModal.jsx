@@ -2,15 +2,12 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
-import Button from "../common/Button";
-
-const field =
-  "w-full rounded border border-[#1a1a1f]/70 bg-white px-3 py-2.5 text-[13px] text-[#1a1a1f] outline-none focus:border-[#1a1a1f] focus:ring-1 focus:ring-[#1a1a1f]/20";
+import Button, { CancelButton } from "../common/Button";
 
 function OutlinedField({ label, children }) {
   return (
     <label className="relative block">
-      <span className="absolute -top-2 left-3 z-10 bg-white px-1 text-[11px] font-medium text-[#6b6b76]">
+      <span className="absolute -top-2 left-3 z-10 bg-[var(--color-surface)] px-1 text-[11px] font-medium text-[var(--color-text-muted)]">
         {label}
       </span>
       {children}
@@ -38,21 +35,21 @@ export default function DownloadLedgerModal({ open, onClose, onDownload }) {
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[90] flex items-center justify-center bg-black/40 p-4"
+      className="ui-modal-backdrop"
       role="presentation"
       onMouseDown={(e) => e.target === e.currentTarget && onClose?.()}
     >
       <form
         onSubmit={submit}
-        className="w-full max-w-md overflow-hidden rounded-lg bg-white shadow-2xl"
+        className="ui-modal w-full max-w-md overflow-hidden"
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-5 pt-5">
-          <h2 className="text-[18px] font-bold text-[#1a1a1f]">Download Ledger</h2>
+        <div className="flex items-center justify-between border-b border-[var(--color-border)] px-5 py-4">
+          <h2 className="text-[18px] font-bold text-[var(--color-text)]">Download Ledger</h2>
           <button
             type="button"
             onClick={onClose}
-            className="rounded p-1 text-[#6b6b76] hover:bg-[#f5f5f7]"
+            className="rounded p-1 text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)]"
             aria-label="Close"
           >
             <X className="h-5 w-5" />
@@ -61,31 +58,28 @@ export default function DownloadLedgerModal({ open, onClose, onDownload }) {
 
         <div className="space-y-4 px-5 py-5">
           <OutlinedField label="Format">
-            <select
-              className={field}
-              value={format}
-              onChange={(e) => setFormat(e.target.value)}
-            >
+            <select className="ui-select w-full" value={format} onChange={(e) => setFormat(e.target.value)}>
               <option value="PDF">PDF</option>
+              <option value="Excel">Excel</option>
               <option value="CSV">CSV</option>
             </select>
           </OutlinedField>
 
-          <label className="flex items-center gap-2 text-[13px] text-[#1a1a1f]">
+          <label className="flex items-center gap-2 text-[13px] text-[var(--color-text)]">
             <input
               type="checkbox"
               checked={includeZero}
               onChange={(e) => setIncludeZero(e.target.checked)}
-              className="h-4 w-4 rounded border-[#c4c4cc]"
+              className="h-4 w-4 rounded border-[var(--color-border)]"
             />
             Include Parties with Zero Balance
           </label>
         </div>
 
-        <div className="flex justify-end gap-3 px-5 pb-5">
-          <Button type="button" variant="secondary" onClick={onClose}>
+        <div className="flex justify-end gap-3 border-t border-[var(--color-border)] px-5 py-4">
+          <CancelButton type="button" onClick={onClose}>
             Cancel
-          </Button>
+          </CancelButton>
           <Button type="submit" variant="primary">
             Download
           </Button>

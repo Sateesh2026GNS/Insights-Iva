@@ -24,6 +24,8 @@ import { Cell, Pie, PieChart as RechartsPie, ResponsiveContainer, Tooltip } from
 
 import InventoryRowActionsMenu from "../../components/inventory/InventoryRowActionsMenu";
 import Button, { AddButton } from "../../components/common/Button";
+import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
+import { ListPageShell } from "../../components/common/ListPageShell";
 import Loader from "../../components/common/Loader";
 import PayrollDetailModal from "../../components/hr/PayrollDetailModal";
 import {
@@ -33,6 +35,18 @@ import {
   HrPageHeader,
   hrInputClass,
 } from "../../components/hr/hrUi";
+import { exportToExcel, exportToPdf } from "../../utils/exportUtils";
+
+const PAYROLL_RUN_EXPORT_COLUMNS = [
+  { key: "name", label: "Run Name" },
+  { key: "period", label: "Pay Period" },
+  { key: "employees", label: "Employees" },
+  { key: "total_payroll", label: "Total Payroll" },
+  { key: "net_pay", label: "Net Pay" },
+  { key: "status", label: "Status" },
+];
+
+const selectClass = "ui-select !w-auto min-w-[8.5rem]";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import useTenantId from "../../hooks/useTenantId";
 import { useToast } from "../../context/ToastContext";
@@ -234,7 +248,26 @@ export default function Payroll() {
 
   if (loading) return <Loader label="Loading payroll..." />;
 
+  const exportRows = filteredRuns.map((r) => ({
+    name: r.name,
+    period: r.period,
+    employees: r.employees,
+    total_payroll: formatPayrollInr(r.total_payroll),
+    net_pay: formatPayrollInr(r.net_pay),
+    status: String(r.status || "").replace(/_/g, " "),
+  }));
+
+  const handleExport = (format) => {
+    if (format === "pdf") {
+      exportToPdf(exportRows, PAYROLL_RUN_EXPORT_COLUMNS, "Payroll Runs", "payroll-runs");
+    } else {
+      exportToExcel(exportRows, PAYROLL_RUN_EXPORT_COLUMNS, "payroll-runs");
+    }
+    addToast(format === "pdf" ? "Exported to PDF" : "Exported to Excel", "success");
+  };
+
   return (
+    <ListPageShell>
     <HrPage>
       <HrPageHeader
         title="Payroll"
@@ -244,21 +277,18 @@ export default function Payroll() {
           <AddButton type="button" onClick={() => setShowCreateModal(true)}>
             New Payroll Run
           </AddButton>
-          <button
+          <ExportDownloadMenu disabled={!exportRows.length} onExport={handleExport} />
+          <Button
             type="button"
+            variant="secondary"
             onClick={() => addToast("Import payroll data coming soon", "info")}
-            className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2.5 text-sm font-semibold text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-muted)]"
+            leftIcon={<Upload className="h-4 w-4" aria-hidden />}
           >
-            <Upload className="h-4 w-4" />
             Import Data
-          </button>
-          <button
-            type="button"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2.5 text-sm font-semibold text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-muted)]"
-          >
+          </Button>
+          <Button type="button" variant="secondary" rightIcon={<ChevronDown className="h-4 w-4" aria-hidden />}>
             More Actions
-            <ChevronDown className="h-4 w-4" />
-          </button>
+          </Button>
           </>
         }
       />
@@ -286,9 +316,8 @@ export default function Payroll() {
       <div className="grid gap-4 xl:grid-cols-3">
         {/* Main column */}
         <div className="space-y-4 xl:col-span-2">
-          <div className="rounded-2xl border border-slate-200/80 bg-white shadow-sm">
-            {/* Tabs */}
-            <div className="flex overflow-x-auto border-b border-slate-200">
+          <div className="ui-card shadow-sm">
+            <div className="flex overflow-x-auto border-b border-[var(--color-border-soft)]">
               {PAYROLL_TABS.map((t) => (
                 <button
                   key={t.id}
@@ -296,8 +325,8 @@ export default function Payroll() {
                   onClick={() => setTab(t.id)}
                   className={`shrink-0 border-b-2 px-4 py-3.5 text-sm font-semibold transition-colors sm:px-5 ${
                     tab === t.id
-                      ? "border-[#6366f1] text-[#6366f1]"
-                      : "border-transparent text-slate-500 hover:text-slate-800"
+                      ? "border-[var(--color-primary)] text-[var(--color-primary)]"
+                      : "border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
                   }`}
                 >
                   {t.label}
@@ -309,75 +338,74 @@ export default function Payroll() {
               <div className="p-4 sm:p-5">
                 {/* Filters */}
                 <div className="mb-4 flex flex-wrap items-center gap-2">
-                  <label className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
-                    <CalendarDays className="h-4 w-4 text-slate-400" />
+                  <label className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border-soft)] bg-[var(--color-surface-muted)] px-3 py-2 text-sm text-[var(--color-text-secondary)]">
+                    <CalendarDays className="h-4 w-4 text-[var(--color-text-muted)]" />
                     <input
                       type="month"
                       value={period}
                       onChange={(e) => setPeriod(e.target.value)}
-                      className="border-none bg-transparent outline-none"
+                      className="border-none bg-transparent outline-none text-[var(--color-text)]"
                     />
                   </label>
-                  <select value={department} onChange={(e) => setDepartment(e.target.value)} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 outline-none">
+                  <select value={department} onChange={(e) => setDepartment(e.target.value)} className={selectClass}>
                     <option value="">All Departments</option>
                     <option value="Engineering">Engineering</option>
                     <option value="HR">HR</option>
                     <option value="Sales">Sales</option>
                   </select>
-                  <select value={location} onChange={(e) => setLocation(e.target.value)} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 outline-none">
+                  <select value={location} onChange={(e) => setLocation(e.target.value)} className={selectClass}>
                     <option value="">All Locations</option>
                     <option value="HQ">Head Office</option>
                     <option value="Plant">Plant</option>
                   </select>
-                  <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 outline-none">
+                  <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className={selectClass}>
                     <option value="">All Status</option>
                     <option value="draft">Draft</option>
                     <option value="approved">Approved</option>
                     <option value="paid">Paid</option>
                   </select>
-                  <button type="button" className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
-                    <Filter className="h-4 w-4" />
+                  <Button type="button" variant="secondary" leftIcon={<Filter className="h-4 w-4" aria-hidden />}>
                     Filter
-                  </button>
-                  <button type="button" onClick={() => load(true)} className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white p-2 text-slate-600 hover:bg-slate-50" aria-label="Refresh">
+                  </Button>
+                  <Button type="button" variant="secondary" onClick={() => load(true)} aria-label="Refresh">
                     <RefreshCw className="h-4 w-4" />
-                  </button>
+                  </Button>
                 </div>
 
                 <h2 className="mb-3 ui-section-title">Payroll Runs</h2>
-                <div className="overflow-x-auto rounded-xl border border-slate-200">
+                <div className="overflow-x-auto rounded-xl border border-[var(--color-border-soft)]">
                   <table className="min-w-full w-full border-collapse text-left text-sm">
                     <thead className="ui-table-head">
                       <tr>
-                        <th className="border-b border-slate-200 px-3 py-3">Run Name</th>
-                        <th className="border-b border-slate-200 px-3 py-3">Pay Period</th>
-                        <th className="border-b border-slate-200 px-3 py-3 text-right">Employees</th>
-                        <th className="border-b border-slate-200 px-3 py-3 text-right">Total Payroll</th>
-                        <th className="border-b border-slate-200 px-3 py-3 text-right">Net Pay</th>
-                        <th className="border-b border-slate-200 px-3 py-3">Status</th>
-                        <th className="border-b border-slate-200 px-3 py-3 text-center">Action</th>
+                        <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Run Name</th>
+                        <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Pay Period</th>
+                        <th className="border-b border-[var(--color-border-soft)] px-3 py-3 text-right">Employees</th>
+                        <th className="border-b border-[var(--color-border-soft)] px-3 py-3 text-right">Total Payroll</th>
+                        <th className="border-b border-[var(--color-border-soft)] px-3 py-3 text-right">Net Pay</th>
+                        <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Status</th>
+                        <th className="border-b border-[var(--color-border-soft)] px-3 py-3 text-center">Action</th>
                       </tr>
                     </thead>
                     <tbody>
                       {pageRows.map((run) => (
-                        <tr key={run.id} className="hover:bg-slate-50/80">
-                          <td className="border-b border-slate-100 px-3 py-3 font-semibold text-slate-800">{run.name}</td>
-                          <td className="border-b border-slate-100 px-3 py-3 text-slate-600">{run.period}</td>
-                          <td className="border-b border-slate-100 px-3 py-3 text-right tabular-nums text-slate-700">{run.employees}</td>
-                          <td className="border-b border-slate-100 px-3 py-3 text-right tabular-nums text-slate-700">{formatPayrollInr(run.total_payroll)}</td>
-                          <td className="border-b border-slate-100 px-3 py-3 text-right tabular-nums font-medium text-slate-800">{formatPayrollInr(run.net_pay)}</td>
-                          <td className="border-b border-slate-100 px-3 py-3">
+                        <tr key={run.id} className="hover:bg-[var(--color-surface-hover)]/80">
+                          <td className="border-b border-[var(--color-border-soft)] px-3 py-3 font-semibold text-[var(--color-text)]">{run.name}</td>
+                          <td className="border-b border-[var(--color-border-soft)] px-3 py-3 text-[var(--color-text-secondary)]">{run.period}</td>
+                          <td className="border-b border-[var(--color-border-soft)] px-3 py-3 text-right tabular-nums text-[var(--color-text-secondary)]">{run.employees}</td>
+                          <td className="border-b border-[var(--color-border-soft)] px-3 py-3 text-right tabular-nums text-[var(--color-text-secondary)]">{formatPayrollInr(run.total_payroll)}</td>
+                          <td className="border-b border-[var(--color-border-soft)] px-3 py-3 text-right tabular-nums font-medium text-[var(--color-text)]">{formatPayrollInr(run.net_pay)}</td>
+                          <td className="border-b border-[var(--color-border-soft)] px-3 py-3">
                             <StatusBadge status={run.status} />
                           </td>
-                          <td className="border-b border-slate-100 px-3 py-3">
+                          <td className="border-b border-[var(--color-border-soft)] px-3 py-3">
                             <div className="flex items-center justify-center gap-1">
-                              <button type="button" className="grid h-8 w-8 place-items-center rounded-md text-[#6366f1] hover:bg-indigo-50" aria-label="View run">
+                              <button type="button" className="grid h-8 w-8 place-items-center rounded-md text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10" aria-label="View run">
                                 <Eye className="h-4 w-4" />
                               </button>
                               <button
                                 type="button"
                                 onClick={() => addToast("Downloading payroll run…", "success")}
-                                className="grid h-8 w-8 place-items-center rounded-md text-[#6366f1] hover:bg-indigo-50"
+                                className="grid h-8 w-8 place-items-center rounded-md text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10"
                                 aria-label="Download run"
                               >
                                 <Download className="h-4 w-4" />
@@ -401,12 +429,12 @@ export default function Payroll() {
                   </table>
                 </div>
 
-                <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-slate-500">
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-[var(--color-text-muted)]">
                   <span>
                     Showing {from} to {to} of {filteredRuns.length} entries
                   </span>
                   <div className="flex items-center gap-1">
-                    <button type="button" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))} className="grid h-8 w-8 place-items-center rounded-md border border-slate-200 bg-white disabled:opacity-40">
+                    <button type="button" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))} className="grid h-8 w-8 place-items-center rounded-md border border-[var(--color-border-soft)] bg-[var(--color-surface)] disabled:opacity-40">
                       <ChevronLeft className="h-4 w-4" />
                     </button>
                     {pageItems(page, totalPages).map((item) =>
@@ -418,18 +446,18 @@ export default function Payroll() {
                           type="button"
                           onClick={() => setPage(item)}
                           className={`grid h-8 min-w-8 place-items-center rounded-md border px-2 text-sm font-semibold ${
-                            item === page ? "border-[#6366f1] bg-[#6366f1] text-white" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                            item === page ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-white" : "border-[var(--color-border-soft)] bg-[var(--color-surface)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"
                           }`}
                         >
                           {item}
                         </button>
                       )
                     )}
-                    <button type="button" disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))} className="grid h-8 w-8 place-items-center rounded-md border border-slate-200 bg-white disabled:opacity-40">
+                    <button type="button" disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))} className="grid h-8 w-8 place-items-center rounded-md border border-[var(--color-border-soft)] bg-[var(--color-surface)] disabled:opacity-40">
                       <ChevronRight className="h-4 w-4" />
                     </button>
                   </div>
-                  <select value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }} className="rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm outline-none">
+                  <select value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }} className="rounded-md border border-[var(--color-border-soft)] bg-[var(--color-surface)] px-2 py-1.5 text-sm outline-none">
                     {[10, 20, 50].map((n) => (
                       <option key={n} value={n}>{n} / page</option>
                     ))}
@@ -437,47 +465,47 @@ export default function Payroll() {
                 </div>
               </div>
             ) : (
-              <div className="p-8 text-center text-sm text-slate-500">
+              <div className="p-8 text-center text-sm text-[var(--color-text-muted)]">
                 {PAYROLL_TABS.find((t) => t.id === tab)?.label} view — use Payroll Runs for the full dashboard.
               </div>
             )}
           </div>
 
           {/* Recent Payslips */}
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
+          <div className="ui-card p-5">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="ui-section-title">Recent Payslips</h2>
-              <Link to="/hr/payroll" className="text-sm font-semibold text-[#6366f1]">View All</Link>
+              <Link to="/hr/payroll" className="text-sm font-semibold text-[var(--color-primary)]">View All</Link>
             </div>
-            <div className="overflow-x-auto rounded-xl border border-slate-200">
+            <div className="overflow-x-auto rounded-xl border border-[var(--color-border-soft)]">
               <table className="min-w-full w-full border-collapse text-left text-sm">
                 <thead className="ui-table-head">
                   <tr>
-                    <th className="border-b border-slate-200 px-3 py-3">Employee</th>
-                    <th className="border-b border-slate-200 px-3 py-3">Department</th>
-                    <th className="border-b border-slate-200 px-3 py-3 text-right">Net Pay</th>
-                    <th className="border-b border-slate-200 px-3 py-3">Pay Period</th>
-                    <th className="border-b border-slate-200 px-3 py-3">Status</th>
-                    <th className="border-b border-slate-200 px-3 py-3 text-center">Action</th>
+                    <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Employee</th>
+                    <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Department</th>
+                    <th className="border-b border-[var(--color-border-soft)] px-3 py-3 text-right">Net Pay</th>
+                    <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Pay Period</th>
+                    <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Status</th>
+                    <th className="border-b border-[var(--color-border-soft)] px-3 py-3 text-center">Action</th>
                   </tr>
                 </thead>
                 <tbody>
                   {data.recent_payslips.map((row) => (
-                    <tr key={row.id} className="hover:bg-slate-50/80">
-                      <td className="border-b border-slate-100 px-3 py-3">
+                    <tr key={row.id} className="hover:bg-[var(--color-surface-hover)]/80">
+                      <td className="border-b border-[var(--color-border-soft)] px-3 py-3">
                         <div className="flex items-center gap-2">
                           <HrAvatar label={row.avatar} />
-                          <span className="font-semibold text-slate-800">{row.name}</span>
+                          <span className="font-semibold text-[var(--color-text)]">{row.name}</span>
                         </div>
                       </td>
-                      <td className="border-b border-slate-100 px-3 py-3 text-slate-600">{row.department}</td>
-                      <td className="border-b border-slate-100 px-3 py-3 text-right tabular-nums font-medium text-slate-800">{formatPayrollInr(row.net_pay)}</td>
-                      <td className="border-b border-slate-100 px-3 py-3 text-slate-600">{row.period}</td>
-                      <td className="border-b border-slate-100 px-3 py-3">
+                      <td className="border-b border-[var(--color-border-soft)] px-3 py-3 text-[var(--color-text-secondary)]">{row.department}</td>
+                      <td className="border-b border-[var(--color-border-soft)] px-3 py-3 text-right tabular-nums font-medium text-[var(--color-text)]">{formatPayrollInr(row.net_pay)}</td>
+                      <td className="border-b border-[var(--color-border-soft)] px-3 py-3 text-[var(--color-text-secondary)]">{row.period}</td>
+                      <td className="border-b border-[var(--color-border-soft)] px-3 py-3">
                         <StatusBadge status={row.status} />
                       </td>
-                      <td className="border-b border-slate-100 px-3 py-3 text-center">
-                        <button type="button" onClick={() => openPayslip(row)} className="inline-grid h-8 w-8 place-items-center rounded-md text-[#6366f1] hover:bg-indigo-50" aria-label="View payslip">
+                      <td className="border-b border-[var(--color-border-soft)] px-3 py-3 text-center">
+                        <button type="button" onClick={() => openPayslip(row)} className="inline-grid h-8 w-8 place-items-center rounded-md text-[var(--color-primary)] hover:bg-[var(--color-primary-soft)]" aria-label="View payslip">
                           <Eye className="h-4 w-4" />
                         </button>
                       </td>
@@ -491,7 +519,7 @@ export default function Payroll() {
 
         {/* Sidebar */}
         <div className="space-y-4">
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
+          <div className="ui-card p-5">
             <h2 className="mb-4 ui-section-title">Payroll Summary ({data.period_label})</h2>
             <div className="relative mx-auto h-44 w-44">
               <ResponsiveContainer width="100%" height="100%">
@@ -505,18 +533,18 @@ export default function Payroll() {
                 </RechartsPie>
               </ResponsiveContainer>
               <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center px-2 text-center">
-                <span className="text-sm font-bold leading-tight text-slate-900">{formatPayrollInr(data.total_payroll)}</span>
-                <span className="text-[10px] text-slate-500">Total Payroll</span>
+                <span className="text-sm font-bold leading-tight text-[var(--color-text)]">{formatPayrollInr(data.total_payroll)}</span>
+                <span className="text-[10px] text-[var(--color-text-muted)]">Total Payroll</span>
               </div>
             </div>
             <ul className="mt-4 space-y-2 text-[12px]">
               {data.summary_slices.map((s) => (
                 <li key={s.key} className="flex items-center justify-between gap-2">
-                  <span className="flex items-center gap-2 text-slate-600">
+                  <span className="flex items-center gap-2 text-[var(--color-text-secondary)]">
                     <span className="h-2.5 w-2.5 rounded-full" style={{ background: s.color }} />
                     {s.label}
                   </span>
-                  <span className="font-semibold text-slate-800">
+                  <span className="font-semibold text-[var(--color-text)]">
                     {formatPayrollInr(s.amount)} ({s.pct}%)
                   </span>
                 </li>
@@ -524,34 +552,34 @@ export default function Payroll() {
             </ul>
           </div>
 
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
+          <div className="ui-card p-5">
             <h2 className="mb-3 ui-section-title">Quick Links</h2>
             <ul className="space-y-1">
               {data.quick_links.map((link) => (
                 <li key={link.label}>
-                  <Link to={link.to} className="flex items-center justify-between rounded-lg px-2 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                  <Link to={link.to} className="flex items-center justify-between rounded-lg px-2 py-2.5 text-sm font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]">
                     <span className="flex items-center gap-2">
-                      <UserRound className="h-4 w-4 text-slate-400" />
+                      <UserRound className="h-4 w-4 text-[var(--color-text-muted)]" />
                       {link.label}
                     </span>
-                    <ChevronRight className="h-4 w-4 text-slate-400" />
+                    <ChevronRight className="h-4 w-4 text-[var(--color-text-muted)]" />
                   </Link>
                 </li>
               ))}
             </ul>
           </div>
 
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
+          <div className="ui-card p-5">
             <h2 className="mb-3 ui-section-title">Important Dates</h2>
             <ul className="space-y-3">
               {data.important_dates.map((d) => (
                 <li key={d.label} className="flex items-start gap-3">
-                  <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-slate-100 text-slate-500">
+                  <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[var(--color-surface-muted)] text-[var(--color-text-muted)]">
                     {d.icon === "calendar" ? <CalendarDays className="h-4 w-4" /> : d.icon === "clock" ? <Clock className="h-4 w-4" /> : <Wallet className="h-4 w-4" />}
                   </div>
                   <div>
-                    <p className="text-[12px] font-medium text-slate-500">{d.label}</p>
-                    <p className="text-sm font-semibold text-slate-800">{d.value}</p>
+                    <p className="text-[12px] font-medium text-[var(--color-text-muted)]">{d.label}</p>
+                    <p className="text-sm font-semibold text-[var(--color-text)]">{d.value}</p>
                   </div>
                 </li>
               ))}
@@ -563,24 +591,29 @@ export default function Payroll() {
       {selected ? <PayrollDetailModal record={selected} onClose={() => setSelected(null)} /> : null}
 
       {showCreateModal ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-          <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
+        <div
+          className="ui-modal-backdrop"
+          onMouseDown={(e) => {
+            if (!saving && e.target === e.currentTarget) setShowCreateModal(false);
+          }}
+        >
+          <div className="ui-modal max-h-[90vh] w-full max-w-xl overflow-y-auto p-6" onMouseDown={(e) => e.stopPropagation()}>
             <div className="mb-4 flex items-start justify-between">
               <div>
-                <h3 className="text-lg font-bold text-slate-900">New Payroll Run</h3>
-                <p className="mt-0.5 text-xs text-slate-500">Create a payroll entry for an employee.</p>
+                <h3 className="text-lg font-bold text-[var(--color-text)]">New Payroll Run</h3>
+                <p className="ui-subtitle mt-0.5">Create a payroll entry for an employee.</p>
               </div>
-              <button type="button" onClick={() => setShowCreateModal(false)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100">
+              <button type="button" onClick={() => setShowCreateModal(false)} className="rounded-lg p-2 text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)]">
                 <X className="h-5 w-5" />
               </button>
             </div>
             <form onSubmit={handleSubmit} className="space-y-4">
               {error ? (
-                <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs font-semibold text-rose-700">{error}</div>
+                <div className="rounded-xl border border-[var(--color-danger)]/30 bg-[var(--color-danger-soft)] px-4 py-2.5 text-xs font-semibold text-[var(--color-danger)]">{error}</div>
               ) : null}
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500">Employee *</label>
-                <select value={form.employee_id} onChange={(e) => handleFormChange("employee_id", e.target.value)} required className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-700 outline-none focus:border-[#6366f1]">
+                <label className="ui-label block">Employee *</label>
+                <select value={form.employee_id} onChange={(e) => handleFormChange("employee_id", e.target.value)} required className="ui-select mt-1.5 w-full">
                   <option value="">Select Employee</option>
                   {employees.map((e) => (
                     <option key={e.id} value={e.id}>{e.full_name}</option>
@@ -589,56 +622,56 @@ export default function Payroll() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500">Period Start *</label>
+                  <label className="ui-label block">Period Start *</label>
                   <input type="date" required value={form.period_start} onChange={(e) => handleFormChange("period_start", e.target.value)} className={hrInputClass} />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500">Period End *</label>
+                  <label className="ui-label block">Period End *</label>
                   <input type="date" required value={form.period_end} onChange={(e) => handleFormChange("period_end", e.target.value)} className={hrInputClass} />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500">Regular Pay (₹)</label>
+                  <label className="ui-label block">Regular Pay (₹)</label>
                   <input type="number" value={form.regular_pay} onChange={(e) => handleFormChange("regular_pay", e.target.value)} className={hrInputClass} />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500">Overtime Pay (₹)</label>
+                  <label className="ui-label block">Overtime Pay (₹)</label>
                   <input type="number" value={form.overtime_pay} onChange={(e) => handleFormChange("overtime_pay", e.target.value)} className={hrInputClass} />
                 </div>
               </div>
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-slate-500">PF (₹)</label>
+                  <label className="block text-xs font-medium text-[var(--color-text-muted)]">PF (₹)</label>
                   <input type="number" value={form.pf} onChange={(e) => handleFormChange("pf", e.target.value)} className={hrInputClass} />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-500">ESI (₹)</label>
+                  <label className="block text-xs font-medium text-[var(--color-text-muted)]">ESI (₹)</label>
                   <input type="number" value={form.esi} onChange={(e) => handleFormChange("esi", e.target.value)} className={hrInputClass} />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-500">Tax (₹)</label>
+                  <label className="block text-xs font-medium text-[var(--color-text-muted)]">Tax (₹)</label>
                   <input type="number" value={form.tax} onChange={(e) => handleFormChange("tax", e.target.value)} className={hrInputClass} />
                 </div>
               </div>
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500">Gross Pay</label>
-                  <input type="number" disabled value={form.gross_pay} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-100 px-4 py-2.5 text-sm font-semibold text-slate-700" />
+                  <label className="ui-label block">Gross Pay</label>
+                  <input type="number" disabled value={form.gross_pay} className="ui-input mt-1.5 w-full bg-[var(--color-surface-muted)] font-semibold text-[var(--color-text-secondary)]" />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500">Deductions</label>
-                  <input type="number" disabled value={form.deductions} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-100 px-4 py-2.5 text-sm font-semibold text-red-600" />
+                  <label className="ui-label block">Deductions</label>
+                  <input type="number" disabled value={form.deductions} className="ui-input mt-1.5 w-full bg-[var(--color-surface-muted)] font-semibold text-[var(--color-danger)]" />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500">Net Pay</label>
-                  <input type="number" disabled value={form.net_pay} className="mt-1.5 w-full rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-2.5 text-sm font-bold text-emerald-700" />
+                  <label className="ui-label block">Net Pay</label>
+                  <input type="number" disabled value={form.net_pay} className="ui-input mt-1.5 w-full border-[var(--color-success)]/40 bg-[var(--color-success-soft)] font-bold text-[var(--color-success)]" />
                 </div>
               </div>
-              <div className="flex justify-end gap-2 border-t pt-4">
-                <button type="button" onClick={() => setShowCreateModal(false)} className="rounded-xl border px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+              <div className="flex justify-end gap-2 border-t border-[var(--color-border-soft)] pt-4">
+                <Button type="button" variant="cancel" onClick={() => setShowCreateModal(false)}>
                   Cancel
-                </button>
+                </Button>
                 <Button variant="primary" type="submit" disabled={saving}>
                   <Save className="h-4 w-4" />
                   {saving ? "Saving…" : "Create Payroll"}
@@ -649,5 +682,6 @@ export default function Payroll() {
         </div>
       ) : null}
     </HrPage>
+    </ListPageShell>
   );
 }

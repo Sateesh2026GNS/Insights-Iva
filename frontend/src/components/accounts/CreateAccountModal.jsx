@@ -304,7 +304,7 @@ export default function CreateAccountModal({
         </div>
 
         <div className="flex shrink-0 items-center justify-between gap-3 border-t border-[#ececf0] bg-white px-5 py-4">
-          <Button type="button" variant="secondary" onClick={onClose}>
+          <Button type="button" variant="cancel" onClick={onClose}>
             Cancel
           </Button>
           <Button type="submit" variant="primary" disabled={!canSubmit}>

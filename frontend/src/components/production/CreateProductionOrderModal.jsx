@@ -547,7 +547,7 @@ export default function CreateProductionOrderModal({
           </div>
 
           <div className="flex items-center justify-end gap-3 border-t border-[var(--color-border-soft)] pt-4">
-            <Button variant="secondary" type="button" onClick={onClose} disabled={submitting}>
+            <Button variant="cancel" type="button" onClick={onClose} disabled={submitting}>
               Cancel
             </Button>
             <Button variant="success" type="submit" disabled={submitting || loadingOptions} className="inline-flex items-center gap-2">

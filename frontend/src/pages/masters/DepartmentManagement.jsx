@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Building2, Cpu, Download, FileText, Layers, Plus, Printer, Upload, UserCheck, Users } from "lucide-react";
+import { Building2, Plus, Printer, Upload, UserCheck, Users, Cpu, Layers } from "lucide-react";
 
 import DataTable from "../../components/common/DataTable";
 import TableActionButtons from "../../components/common/TableActionButtons";
+import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
+import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
 import Loader from "../../components/common/Loader";
 import Button from "../../components/common/Button";
+import PageHeader from "../../components/common/PageHeader";
 import { SearchBar } from "../../components/common/SearchFilter";
 import DepartmentDetailModal, { DepartmentFormModal } from "../../components/masters/DepartmentDetailModal";
 import { useToast } from "../../context/ToastContext";
@@ -160,6 +163,11 @@ export default function DepartmentManagement() {
 
   const handlePrint = () => handleExportPdf();
 
+  const handleListExport = (format) => {
+    if (format === "pdf") handleExportPdf();
+    else handleExportExcel();
+  };
+
   const handleDownloadTemplate = () => {
     const header = IMPORT_TEMPLATE_HEADERS.join(",");
     const blob = new Blob([`${header}\nDEP013,IT,support,Plant 1,Hyderabad,Rajesh Kumar,+919999999999,rajesh@smrt.local,active`], { type: "text/csv" });
@@ -292,32 +300,25 @@ export default function DepartmentManagement() {
   if (loading) return <Loader label="Loading departments..." />;
 
   return (
+    <ListPageShell>
     <div className="space-y-6 pb-8">
-      <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <p className="text-xs font-semibold text-slate-400">Masters &gt; Departments</p>
-          <p className="mt-1 text-sm text-slate-500">
-            Manage all company departments and assign employees, machines, and work centers.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="add" type="button" onClick={() => setFormDept({})} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
-            Add Department
-          </Button>
-          <button type="button" onClick={handleDownloadTemplate} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
-            <Upload className="h-4 w-4" /> Import
-          </button>
-          <button type="button" onClick={handleExportExcel} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
-            <Download className="h-4 w-4" /> Export Excel
-          </button>
-          <button type="button" onClick={handleExportPdf} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
-            <FileText className="h-4 w-4" /> Export PDF
-          </button>
-          <button type="button" onClick={handlePrint} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
-            <Printer className="h-4 w-4" /> Print
-          </button>
-        </div>
-      </header>
+      <PageHeader
+        subtitle="Manage all company departments and assign employees, machines, and work centers."
+        action={
+          <div className="flex flex-wrap gap-2">
+            <Button variant="add" type="button" onClick={() => setFormDept({})} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
+              Add Department
+            </Button>
+            <Button variant="outline" type="button" onClick={handleDownloadTemplate} leftIcon={<Upload className="h-4 w-4" />}>
+              Import
+            </Button>
+            <ExportDownloadMenu disabled={!filteredDepartments.length} onExport={handleListExport} />
+            <Button variant="secondary" type="button" onClick={handlePrint} leftIcon={<Printer className="h-4 w-4" />}>
+              Print
+            </Button>
+          </div>
+        }
+      />
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-6">
         <SummaryCard label="Total Departments" value={summary.total_departments} icon={Building2} color="bg-[var(--color-primary)]" />
@@ -328,7 +329,8 @@ export default function DepartmentManagement() {
         <SummaryCard label="Machines" value={summary.total_machines} icon={Cpu} color="bg-slate-600" />
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <ListPageCard>
+        <ListPageCardBody>
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap gap-2">
             <SearchBar
@@ -337,37 +339,33 @@ export default function DepartmentManagement() {
               placeholder="Search"
               className="min-w-[200px]"
             />
-            <button
-              type="button"
-              onClick={() => setShowAdvanced(!showAdvanced)}
-              className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
-            >
+            <Button variant="secondary" type="button" onClick={() => setShowAdvanced(!showAdvanced)}>
               {showAdvanced ? "Hide Filters" : "Advanced Filters"}
-            </button>
+            </Button>
           </div>
         </div>
 
         {showAdvanced && (
           <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
-            <input placeholder="Department Code" value={filters.code} onChange={(e) => setFilters((f) => ({ ...f, code: e.target.value }))} className="rounded-lg border border-slate-200 px-3 py-2 text-sm" />
-            <select value={filters.department_type} onChange={(e) => setFilters((f) => ({ ...f, department_type: e.target.value }))} className="rounded-lg border border-slate-200 px-3 py-2 text-sm">
+            <input placeholder="Department Code" value={filters.code} onChange={(e) => setFilters((f) => ({ ...f, code: e.target.value }))} className="ui-input" />
+            <select value={filters.department_type} onChange={(e) => setFilters((f) => ({ ...f, department_type: e.target.value }))} className="ui-select">
               <option value="">Department Type</option>
               {DEPARTMENT_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
             </select>
-            <input placeholder="Manager" value={filters.manager} onChange={(e) => setFilters((f) => ({ ...f, manager: e.target.value }))} className="rounded-lg border border-slate-200 px-3 py-2 text-sm" />
-            <select value={filters.plant} onChange={(e) => setFilters((f) => ({ ...f, plant: e.target.value }))} className="rounded-lg border border-slate-200 px-3 py-2 text-sm">
+            <input placeholder="Manager" value={filters.manager} onChange={(e) => setFilters((f) => ({ ...f, manager: e.target.value }))} className="ui-input" />
+            <select value={filters.plant} onChange={(e) => setFilters((f) => ({ ...f, plant: e.target.value }))} className="ui-select">
               <option value="">Plant</option>
               {PLANTS.map((p) => <option key={p} value={p}>{p}</option>)}
             </select>
-            <select value={filters.branch} onChange={(e) => setFilters((f) => ({ ...f, branch: e.target.value }))} className="rounded-lg border border-slate-200 px-3 py-2 text-sm">
+            <select value={filters.branch} onChange={(e) => setFilters((f) => ({ ...f, branch: e.target.value }))} className="ui-select">
               <option value="">Branch</option>
               {BRANCHES.map((b) => <option key={b} value={b}>{b}</option>)}
             </select>
-            <select value={filters.status} onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value }))} className="rounded-lg border border-slate-200 px-3 py-2 text-sm">
+            <select value={filters.status} onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value }))} className="ui-select">
               <option value="">Status</option>
               {DEPARTMENT_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
-            <button type="button" onClick={() => setFilters(defaultFilters)} className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50">
+            <button type="button" onClick={() => setFilters(defaultFilters)} className="ui-link-clear self-center">
               Clear
             </button>
           </div>
@@ -379,27 +377,30 @@ export default function DepartmentManagement() {
           onRowClick={openDepartment}
           emptyMessage="No departments found. Click Add Department to create one."
         />
-      </div>
+        </ListPageCardBody>
+      </ListPageCard>
 
-      <div className="flex flex-wrap gap-2 rounded-xl bg-slate-50 px-4 py-3">
+      <div className="flex flex-wrap gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-4 py-3">
         {WORKFLOW_STEPS.map((step, i) => (
-          <span key={step} className="flex items-center gap-2 text-xs text-slate-600">
-            <span className="font-semibold text-[#2563EB]">{step}</span>
-            {i < WORKFLOW_STEPS.length - 1 && <span className="text-slate-300">→</span>}
+          <span key={step} className="flex items-center gap-2 text-xs text-[var(--color-text-muted)]">
+            <span className="font-semibold text-[var(--color-primary)]">{step}</span>
+            {i < WORKFLOW_STEPS.length - 1 && <span className="text-[var(--color-border)]">→</span>}
           </span>
         ))}
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h3 className="mb-3 text-sm font-bold text-slate-800">Reports</h3>
+      <ListPageCard>
+        <ListPageCardBody>
+        <h3 className="mb-3 text-sm font-bold text-[var(--color-text)]">Reports</h3>
         <div className="flex flex-wrap gap-2">
           {REPORT_TYPES.map((r) => (
-            <button key={r} type="button" onClick={handleExportPdf} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50">
+            <Button key={r} type="button" variant="secondary" size="sm" onClick={handleExportPdf}>
               {r}
-            </button>
+            </Button>
           ))}
         </div>
-      </div>
+        </ListPageCardBody>
+      </ListPageCard>
 
       {selected && (
         <DepartmentDetailModal
@@ -419,5 +420,6 @@ export default function DepartmentManagement() {
         />
       )}
     </div>
+    </ListPageShell>
   );
 }

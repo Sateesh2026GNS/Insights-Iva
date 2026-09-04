@@ -23,6 +23,8 @@ export default function DataTable({
   sortable = true,
   wrapClassName = "",
   tableClassName = "",
+  toolbarActions = null,
+  toolbarClassName = "",
 }) {
   const { t } = useTranslation();
   const effectiveShowPagination = pagination !== undefined ? Boolean(pagination) : showPagination;
@@ -107,45 +109,45 @@ export default function DataTable({
 
   return (
     <div className="space-y-4">
-      {(showSearch && (searchKeys.length > 0 || filters.length > 0)) && (
-        <div className="flex flex-wrap items-center gap-3 print:hidden">
-          {showSearch && searchKeys.length > 0 && (
-            <SearchBar
-              value={search}
-              onChange={(v) => {
-                setSearch(v);
-                resetPage();
-              }}
-              placeholder={searchPlaceholder}
-            />
-          )}
-          {filters.map((f) => (
-            <FilterSelect
-              key={f.key}
-              label={f.label}
-              value={filterValues[f.key]}
-              options={f.options}
-              onChange={(v) => {
-                setFilterValues((prev) => ({ ...prev, [f.key]: v }));
-                resetPage();
-              }}
-              placeholder={f.placeholder}
-            />
-          ))}
-          {hasActiveFilters ? (
-            <button
-              type="button"
-              onClick={clearFilters}
-              className="text-sm font-medium text-[var(--color-success)] hover:text-[var(--color-success)] dark:text-teal-400"
-            >
-              Clear filters
-            </button>
-          ) : null}
-          <span className="text-sm text-slate-500 dark:text-slate-400">
-            {filtered.length} {t("common.results")}
-          </span>
+      {(showSearch && (searchKeys.length > 0 || filters.length > 0)) || toolbarActions ? (
+        <div className={`ui-list-toolbar print:hidden ${toolbarClassName}`.trim()}>
+          <div className="ui-list-toolbar__start">
+            {showSearch && searchKeys.length > 0 ? (
+              <SearchBar
+                value={search}
+                onChange={(v) => {
+                  setSearch(v);
+                  resetPage();
+                }}
+                placeholder={searchPlaceholder}
+                className="w-full max-w-md"
+              />
+            ) : null}
+            {filters.map((f) => (
+              <FilterSelect
+                key={f.key}
+                label={f.label}
+                value={filterValues[f.key]}
+                options={f.options}
+                onChange={(v) => {
+                  setFilterValues((prev) => ({ ...prev, [f.key]: v }));
+                  resetPage();
+                }}
+                placeholder={f.placeholder}
+              />
+            ))}
+            {hasActiveFilters ? (
+              <button type="button" onClick={clearFilters} className="ui-link-clear">
+                {t("common.clearFilters", { defaultValue: "Clear filters" })}
+              </button>
+            ) : null}
+            <span className="ui-caption">
+              {filtered.length} {t("common.results", { defaultValue: "results" })}
+            </span>
+          </div>
+          {toolbarActions ? <div className="ui-list-toolbar__end">{toolbarActions}</div> : null}
         </div>
-      )}
+      ) : null}
       {body}
       {effectiveShowPagination && filtered.length > 0 ? (
         <Pagination

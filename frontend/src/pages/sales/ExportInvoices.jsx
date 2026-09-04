@@ -18,6 +18,9 @@ import {
 } from "lucide-react";
 
 import Loader from "../../components/common/Loader";
+import PageHeader from "../../components/common/PageHeader";
+import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
+import { ListPageShell } from "../../components/common/ListPageShell";
 import { SearchBar } from "../../components/common/SearchFilter";
 import Button from "../../components/common/Button";
 import RowActionMenu from "../../components/common/RowActionMenu";
@@ -27,6 +30,16 @@ import { cancelInvoice, getInvoicesV2 } from "../../api/salesApi";
 import { apiErrorMessage } from "../../utils/apiError";
 import { formatInr, statusColor } from "../../data/salesMasterData";
 import useManufacturingRefresh from "../../hooks/useManufacturingRefresh";
+import { runListExport } from "../../utils/listExport";
+
+const EXPORT_INVOICE_COLUMNS = [
+  { key: "invoice_number", label: "Invoice No." },
+  { key: "issue_date", label: "Date" },
+  { key: "buyer_name", label: "Buyer Name" },
+  { key: "due_in", label: "Due in" },
+  { key: "amount", label: "Amount" },
+  { key: "status", label: "Status" },
+];
 
 const PAGE_SIZES = [10, 20, 50];
 
@@ -74,7 +87,7 @@ function Chip({ label, active, onClick, icon: Icon }) {
       onClick={onClick}
       className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[13px] font-medium transition ${
         active
-          ? "bg-[#2d2a4a] text-white"
+          ? "bg-[var(--color-primary)] text-white"
           : "bg-[var(--color-surface-muted)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"
       }`}
     >
@@ -126,7 +139,7 @@ function SummaryTab({ label, count, amount, active, tone, onClick }) {
     >
       <p className={`text-[13px] font-medium transition-colors ${active ? "" : "text-[var(--color-text-muted)]"}`}>
         {label}{" "}
-        <span className={active ? "opacity-70" : "text-[#a0a0ab]"}>({count})</span>
+        <span className={active ? "opacity-70" : "text-[var(--color-text-faint)]"}>({count})</span>
       </p>
       <p className={`mt-1 text-[18px] font-bold tabular-nums transition-colors ${active ? "text-inherit" : "text-[var(--color-text)]"}`}>
         {amount}
@@ -242,19 +255,48 @@ export default function ExportInvoices() {
     setShowSort(false);
   };
 
+  const handleExport = (format) => {
+    const exportRows = rows.map((r) => ({
+      invoice_number: r.invoice_number,
+      issue_date: fmtDisplayDate(r.issue_date || r.due_date),
+      buyer_name: r.buyer_name || r.customer_name || "",
+      due_in: r.due_in || daysUntilDue(r.due_date),
+      amount: r.amount,
+      status: r.payment_status || r.status || "",
+    }));
+    runListExport(format, {
+      data: exportRows,
+      columns: EXPORT_INVOICE_COLUMNS,
+      filename: "export-invoices",
+      title: "Export Invoices",
+    });
+    addToast(format === "pdf" ? "Exported to PDF" : "Exported to Excel", "success");
+  };
+
   if (loading && rows.length === 0) {
     return (
-      <div className="flex min-h-[50vh] items-center justify-center bg-[var(--color-bg)]">
-        <Loader label="Loading export invoices…" />
-      </div>
+      <ListPageShell>
+        <div className="flex min-h-[50vh] items-center justify-center">
+          <Loader label="Loading export invoices…" />
+        </div>
+      </ListPageShell>
     );
   }
 
   return (
-    <div className="min-h-full bg-[var(--color-bg)] px-5 py-5 sm:px-6">
-      {/* Title */}
-
-      {/* KPI strip */}
+    <ListPageShell stackClassName="space-y-4">
+      <PageHeader
+        title="Export Invoices"
+        subtitle="Track export sales invoices, payment status, and compliance."
+        action={
+          <div className="flex flex-wrap items-center gap-2">
+            <ExportDownloadMenu disabled={!rows.length} onExport={handleExport} />
+            <Button variant="add" to="/sales/export-invoices/create" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
+              Export Invoice
+            </Button>
+          </div>
+        }
+      />
       <div className="mb-4 overflow-hidden rounded-xl bg-[var(--color-surface-muted)]">
         <div className="flex flex-wrap">
           <SummaryTab
@@ -300,7 +342,7 @@ export default function ExportInvoices() {
             <button
               type="button"
               onClick={openDateFrom}
-              className="flex items-center justify-center text-[var(--color-text-muted)] hover:text-[#0f6d84] transition-colors cursor-pointer"
+              className="flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-primary)] transition-colors cursor-pointer"
               aria-label="Open start date picker"
             >
               <Calendar className="h-5 w-5" />
@@ -318,7 +360,7 @@ export default function ExportInvoices() {
             <button
               type="button"
               onClick={openDateFrom}
-              className="text-[14px] font-medium text-[#2c2b3d] dark:text-slate-100 hover:text-[#0f6d84] transition-colors cursor-pointer"
+              className="text-[14px] font-medium text-[var(--color-text)] hover:text-[var(--color-primary)] transition-colors cursor-pointer"
               title="Click to select start date"
             >
               {fmtDisplayDate(dateFrom) || "Start Date"}
@@ -327,7 +369,7 @@ export default function ExportInvoices() {
             <button
               type="button"
               onClick={openDateTo}
-              className="text-[14px] font-medium text-[#2c2b3d] dark:text-slate-100 hover:text-[#0f6d84] transition-colors cursor-pointer"
+              className="text-[14px] font-medium text-[var(--color-text)] hover:text-[var(--color-primary)] transition-colors cursor-pointer"
               title="Click to select end date"
             >
               {fmtDisplayDate(dateTo) || "End Date"}
@@ -345,15 +387,12 @@ export default function ExportInvoices() {
             <button
               type="button"
               onClick={openDateTo}
-              className="flex items-center justify-center text-[var(--color-text-muted)] hover:text-[#0f6d84] transition-colors cursor-pointer"
+              className="flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-primary)] transition-colors cursor-pointer"
               aria-label="Open end date picker"
             >
               <Calendar className="h-5 w-5" />
             </button>
           </div>
-          <Button variant="add" to="/sales/export-invoices/create" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
-            Export Invoice
-          </Button>
         </div>
       </div>
 
@@ -433,8 +472,8 @@ export default function ExportInvoices() {
               {rows.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-4 py-20 text-center">
-                    <Receipt className="mx-auto h-14 w-14 text-[#d0d0d8]" strokeWidth={1.15} />
-                    <p className="mt-3 text-[14px] text-[#8a8a95]">
+                    <Receipt className="mx-auto h-14 w-14 text-[var(--color-text-faint)]" strokeWidth={1.15} />
+                    <p className="mt-3 text-[14px] text-[var(--color-text-muted)]">
                       No export invoices yet.
                     </p>
                   </td>
@@ -779,6 +818,6 @@ export default function ExportInvoices() {
           </aside>
         </div>
       )}
-    </div>
+    </ListPageShell>
   );
 }

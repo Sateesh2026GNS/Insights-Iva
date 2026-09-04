@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Download, Eye, File, FileArchive, FileImage, FileSpreadsheet, FileText, Filter, FolderOpen, HardDrive, Pencil, Plus, Search, Trash2, Upload, X, User, CheckCircle, Tag, Calendar } from "lucide-react";
+import { Download, Eye, File, FileArchive, FileImage, FileSpreadsheet, FileText, Filter, FolderOpen, HardDrive, Pencil, Plus, Trash2, Upload, X, User, Tag } from "lucide-react";
+import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
+import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
 import KpiCard from "../../components/common/KpiCard";
+import PageHeader from "../../components/common/PageHeader";
 
 import Loader from "../../components/common/Loader";
 import { SearchBar } from "../../components/common/SearchFilter";
@@ -28,11 +31,20 @@ import {
   computeDocumentSummary,
   fileExtension,
 } from "../../utils/documentUtils";
+import { exportToExcel, exportToPdf } from "../../utils/exportUtils";
 
 const PAGE_SIZE = 10;
 const SUPPORTED = ["pdf", "docx", "xlsx", "pptx", "png", "jpg", "jpeg", "zip", "txt", "csv"];
 
-import { inputMtClass as inputClass } from "../../design-system/classes";
+const EXPORT_COLUMNS = [
+  { key: "title", label: "Document Name" },
+  { key: "category", label: "Category" },
+  { key: "department", label: "Department" },
+  { key: "uploaded_by", label: "Uploaded By" },
+  { key: "version", label: "Version" },
+  { key: "file_size_label", label: "File Size" },
+  { key: "created_label", label: "Created Date" },
+];
 
 const FILE_ICONS = {
   pdf: FileText,
@@ -377,28 +389,47 @@ Description:  ${doc.description || "No description provided."}
     setPreview(doc);
   };
 
+  const handleExport = (format) => {
+    const data = sorted.map((d) => ({
+      title: d.title,
+      category: d.category,
+      department: d.department,
+      uploaded_by: d.uploaded_by || "System",
+      version: d.version,
+      file_size_label: d.file_size_label,
+      created_label: d.created_label,
+    }));
+    const slug = initialDocType ? `documents-${initialDocType}` : "documents";
+    if (format === "pdf") {
+      exportToPdf(data, EXPORT_COLUMNS, title || "Documents", slug);
+      addToast("Exported to PDF", "success");
+    } else {
+      exportToExcel(data, EXPORT_COLUMNS, slug);
+      addToast("Exported to Excel", "success");
+    }
+  };
+
   const deptOptions = [...new Set(Object.values(DEPARTMENT_BY_TYPE))];
 
   if (loading) return <Loader label="Loading documents repository..." />;
 
   return (
-    <div className="min-h-full bg-[var(--color-bg)] pb-8 print:p-0">
-      <div className="ui-page mx-auto max-w-[1400px] space-y-5">
-        <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            {title ? <h1 className="ui-page-title">{title}</h1> : null}
-            <p className="mt-0.5 text-xs text-[var(--color-text-muted)] print:hidden">
-              {subtitle || "Central document management for purchase, production, quality, finance, and HR files."}
-            </p>
+    <ListPageShell>
+      <PageHeader
+        title={title}
+        showTitle={Boolean(title)}
+        subtitle={subtitle || "Central document management for purchase, production, quality, finance, and HR files."}
+        action={
+          <div className="flex flex-wrap items-center gap-2">
+            <ExportDownloadMenu disabled={!sorted.length} onExport={handleExport} />
+            {canWrite && (
+              <Button variant="add" type="button" onClick={openCreate} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
+                Upload Document
+              </Button>
+            )}
           </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {canWrite && (
-            <Button variant="add" type="button" onClick={openCreate} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
-              Upload Document
-            </Button>
-          )}
-        </div>
-      </header>
+        }
+      />
 
       {error && (
         <div className="rounded-xl border border-[var(--color-danger-soft)] bg-[var(--color-danger-soft)] px-4 py-3 text-sm font-medium text-[var(--color-danger)]">
@@ -406,7 +437,6 @@ Description:  ${doc.description || "No description provided."}
         </div>
       )}
 
-      {/* KPI Cards Grid */}
       <div className="ui-grid-kpi">
         <KpiCard label="Total Documents" value={summary.total} icon={FolderOpen} color="bg-[var(--color-primary)]" />
         <KpiCard label="PDF Files" value={summary.pdf} icon={FileText} color="bg-rose-600" />
@@ -422,27 +452,24 @@ Description:  ${doc.description || "No description provided."}
         />
       </div>
 
-      {/* Search & Filters */}
-      <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm">
+      <ListPageCard className="print:hidden">
+        <ListPageCardBody>
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
           <SearchBar value={search} onChange={setSearch} placeholder="Search" className="w-full" />
-          <button
-            type="button"
-            onClick={() => setShowFilters((v) => !v)}
-            className="inline-flex items-center gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2.5 text-sm font-semibold text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-muted)] transition-all"
-          >
-            <Filter className="h-4 w-4 text-[var(--color-text-muted)]" /> Filters
-          </button>
+          <Button type="button" variant="secondary" onClick={() => setShowFilters((v) => !v)}>
+            <Filter className="h-4 w-4" aria-hidden />
+            Filters
+          </Button>
         </div>
 
         {showFilters && (
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 border-t pt-4 border-[var(--color-border-muted)]">
+          <div className="mt-4 grid gap-3 border-t border-[var(--color-border-soft)] pt-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
             <div>
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--color-text-faint)] mb-1">Category</label>
+              <label className="ui-label mb-1 block">Category</label>
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-secondary)] font-medium cursor-pointer"
+                className="ui-select w-full"
               >
                 <option value="">All categories</option>
                 {DOC_TYPES.filter((t) => admin || allowedTypes.includes(t.value)).map((t) => (
@@ -453,11 +480,11 @@ Description:  ${doc.description || "No description provided."}
               </select>
             </div>
             <div>
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--color-text-faint)] mb-1">Department</label>
+              <label className="ui-label mb-1 block">Department</label>
               <select
                 value={department}
                 onChange={(e) => setDepartment(e.target.value)}
-                className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-secondary)]"
+                className="ui-select w-full"
               >
                 <option value="">All departments</option>
                 {deptOptions.map((d) => (
@@ -468,29 +495,29 @@ Description:  ${doc.description || "No description provided."}
               </select>
             </div>
             <div>
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--color-text-faint)] mb-1">Uploader</label>
+              <label className="ui-label mb-1 block">Uploader</label>
               <input
                 value={uploadedBy}
                 onChange={(e) => setUploadedBy(e.target.value)}
                 placeholder="Uploaded by..."
-                className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-secondary)]"
+                className="ui-input w-full"
               />
             </div>
             <div>
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--color-text-faint)] mb-1">Created Date</label>
+              <label className="ui-label mb-1 block">Created Date</label>
               <input
                 type="date"
                 value={dateFrom}
                 onChange={(e) => setDateFrom(e.target.value)}
-                className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-secondary)]"
+                className="ui-input w-full"
               />
             </div>
             <div>
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--color-text-faint)] mb-1">File Type</label>
+              <label className="ui-label mb-1 block">File Type</label>
               <select
                 value={fileType}
                 onChange={(e) => setFileType(e.target.value)}
-                className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-secondary)]"
+                className="ui-select w-full"
               >
                 <option value="">All file types</option>
                 {Object.entries(FILE_TYPE_LABELS).map(([k, v]) => (
@@ -501,11 +528,11 @@ Description:  ${doc.description || "No description provided."}
               </select>
             </div>
             <div>
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--color-text-faint)] mb-1">Status</label>
+              <label className="ui-label mb-1 block">Status</label>
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value)}
-                className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-secondary)]"
+                className="ui-select w-full"
               >
                 <option value="">All statuses</option>
                 <option value="Available">Available</option>
@@ -514,9 +541,11 @@ Description:  ${doc.description || "No description provided."}
             </div>
           </div>
         )}
-      </div>
+        </ListPageCardBody>
+      </ListPageCard>
 
-      {/* Data Table */}
+      <ListPageCard className="print:hidden">
+        <ListPageCardBody className="p-0">
       <div className="ui-table-wrap ui-table-wrap--scroll">
           <table className="ui-table min-w-full text-left text-sm">
             <thead className="ui-table-head">
@@ -618,8 +647,7 @@ Description:  ${doc.description || "No description provided."}
             </tbody>
           </table>
 
-        {/* Pagination Footer */}
-        <div className="ui-pagination flex flex-col items-center justify-between gap-3 border-t border-[var(--color-border-muted)] px-4 py-3 sm:flex-row">
+        <div className="ui-pagination flex flex-col items-center justify-between gap-3 border-t border-[var(--color-border-soft)] px-4 py-3 sm:flex-row">
           <p className="text-xs font-semibold text-[var(--color-text-muted)]">
             Showing {sorted.length === 0 ? 0 : (page - 1) * PAGE_SIZE + 1}–
             {Math.min(page * PAGE_SIZE, sorted.length)} of {sorted.length} documents
@@ -629,7 +657,7 @@ Description:  ${doc.description || "No description provided."}
               type="button"
               disabled={page <= 1}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
-              className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3.5 py-1.5 text-xs font-semibold text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-muted)] disabled:opacity-40 transition-colors"
+              className="ui-page-btn disabled:opacity-40"
             >
               Previous
             </button>
@@ -640,13 +668,15 @@ Description:  ${doc.description || "No description provided."}
               type="button"
               disabled={page >= totalPages}
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3.5 py-1.5 text-xs font-semibold text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-muted)] disabled:opacity-40 transition-colors"
+              className="ui-page-btn disabled:opacity-40"
             >
               Next
             </button>
           </div>
         </div>
       </div>
+        </ListPageCardBody>
+      </ListPageCard>
 
       {/* Upload / Edit Modal */}
       {modal && (
@@ -687,24 +717,24 @@ Description:  ${doc.description || "No description provided."}
 
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Document Title *</label>
+                <label className="ui-label">Document Title *</label>
                 <input
                   type="text"
                   required
                   placeholder="e.g. Standard Operating Procedure Q3"
                   value={form.title}
                   onChange={(e) => setForm({ ...form, title: e.target.value })}
-                  className={inputClass}
+                  className="ui-input w-full"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Category</label>
+                  <label className="ui-label">Category</label>
                   <select
                     value={form.doc_type}
                     onChange={(e) => setForm({ ...form, doc_type: e.target.value })}
-                    className={inputClass}
+                    className="ui-select w-full"
                   >
                     {DOC_TYPES.filter((t) => admin || allowedTypes.includes(t.value)).map((t) => (
                       <option key={t.value} value={t.value}>
@@ -714,11 +744,11 @@ Description:  ${doc.description || "No description provided."}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Department</label>
+                  <label className="ui-label">Department</label>
                   <select
                     value={form.department}
                     onChange={(e) => setForm({ ...form, department: e.target.value })}
-                    className={inputClass}
+                    className="ui-select w-full"
                   >
                     {deptOptions.map((dept) => (
                       <option key={dept} value={dept}>
@@ -731,11 +761,11 @@ Description:  ${doc.description || "No description provided."}
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Version *</label>
+                  <label className="ui-label">Version *</label>
                   <select
                     value={form.version}
                     onChange={(e) => setForm({ ...form, version: e.target.value })}
-                    className={inputClass}
+                    className="ui-select w-full"
                   >
                     {VERSION_OPTIONS.map((v) => (
                       <option key={v.value} value={v.value}>
@@ -745,60 +775,56 @@ Description:  ${doc.description || "No description provided."}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">File Name</label>
+                  <label className="ui-label">File Name</label>
                   <input
                     type="text"
                     placeholder="report.pdf"
                     value={form.file_name}
                     onChange={(e) => setForm({ ...form, file_name: e.target.value })}
-                    className={inputClass}
+                    className="ui-input w-full"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Uploaded By</label>
+                  <label className="ui-label">Uploaded By</label>
                   <input
                     type="text"
                     placeholder="Uploader name..."
                     value={form.uploaded_by}
                     onChange={(e) => setForm({ ...form, uploaded_by: e.target.value })}
-                    className={inputClass}
+                    className="ui-input w-full"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">File Size (Bytes)</label>
+                  <label className="ui-label">File Size (Bytes)</label>
                   <input
                     type="number"
                     placeholder="e.g. 245000"
                     value={form.file_size || ""}
                     onChange={(e) => setForm({ ...form, file_size: Number(e.target.value) })}
-                    className={inputClass}
+                    className="ui-input w-full"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Description</label>
+                <label className="ui-label">Description</label>
                 <textarea
                   rows={3}
                   placeholder="Document notes or description..."
                   value={form.description}
                   onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  className={`${inputClass} resize-none`}
+                  className="ui-input w-full min-h-[80px] resize-none"
                 />
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 border-t pt-4">
-              <button
-                type="button"
-                onClick={() => setModal(null)}
-                className="rounded-xl border border-[var(--color-border)] px-4 py-2 text-sm font-semibold text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-muted)] transition-colors"
-              >
+            <div className="flex justify-end gap-2 border-t border-[var(--color-border-soft)] pt-4">
+              <Button type="button" variant="cancel" onClick={() => setModal(null)}>
                 Cancel
-              </button>
+              </Button>
               <Button variant="primary" type="submit" disabled={saving}>
                 {saving ? "Saving..." : "Save Document"}
               </Button>
@@ -860,22 +886,17 @@ Description:  ${doc.description || "No description provided."}
               </div>
             </dl>
 
-            <div className="flex justify-end gap-2 border-t pt-4">
+            <div className="flex justify-end gap-2 border-t border-[var(--color-border-soft)] pt-4">
               <Button type="button" variant="primary" size="sm" onClick={() => handleDownload(preview)} leftIcon={<Download className="h-4 w-4" aria-hidden />}>
                 Download File
               </Button>
-              <button
-                type="button"
-                onClick={() => setPreview(null)}
-                className="rounded-xl border border-[var(--color-border)] px-4 py-2 text-xs font-semibold text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-muted)] transition-colors"
-              >
+              <Button type="button" variant="cancel" onClick={() => setPreview(null)}>
                 Close
-              </button>
+              </Button>
             </div>
           </div>
         </div>
       )}
-      </div>
-    </div>
+    </ListPageShell>
   );
 }

@@ -7,7 +7,6 @@ import {
   ChevronDown,
   Clock3,
   Eye,
-  FileSpreadsheet,
   FileStack,
   History,
   IndianRupee,
@@ -35,13 +34,15 @@ import {
 } from "recharts";
 
 import Button from "../../components/common/Button";
+import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
+import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
 import Loader from "../../components/common/Loader";
 import PageHeader from "../../components/common/PageHeader";
 import MaintenanceErrorState from "../../components/maintenance/MaintenanceErrorState";
 import MaintenanceKpiCard from "../../components/maintenance/MaintenanceKpiCard";
 import { getMaintenanceHub } from "../../api/maintenanceApi";
 import { useToast } from "../../context/ToastContext";
-import { exportToExcel } from "../../utils/exportUtils";
+import { exportToExcel, exportToPdf } from "../../utils/exportUtils";
 import {
   DEMO_MAINTENANCE_HUB,
   computeMonthTrend,
@@ -112,7 +113,7 @@ export default function MaintenanceDashboard() {
   usePageRefresh(() => load(true));
   useEffect(() => { load(); }, [load]);
 
-  const handleExport = () => {
+  const handleExport = (format) => {
     const rows = (hub.recent_requests || []).map((r) => ({
       code: r.code || r.id,
       machine: r.machine_name || r.machine || `Machine ${r.machine_id}`,
@@ -122,20 +123,22 @@ export default function MaintenanceDashboard() {
       due_date: r.due_date || r.sort_date || "—",
       status: r.status || "open",
     }));
-    exportToExcel(
-      rows,
-      [
-        { key: "code", label: "Request ID" },
-        { key: "machine", label: "Machine" },
-        { key: "type", label: "Type" },
-        { key: "priority", label: "Priority" },
-        { key: "assigned_to", label: "Assigned To" },
-        { key: "due_date", label: "Due Date" },
-        { key: "status", label: "Status" },
-      ],
-      "maintenance-overview"
-    );
-    addToast("Maintenance overview exported to Excel", "success");
+    const columns = [
+      { key: "code", label: "Request ID" },
+      { key: "machine", label: "Machine" },
+      { key: "type", label: "Type" },
+      { key: "priority", label: "Priority" },
+      { key: "assigned_to", label: "Assigned To" },
+      { key: "due_date", label: "Due Date" },
+      { key: "status", label: "Status" },
+    ];
+    if (format === "pdf") {
+      exportToPdf(rows, columns, "Maintenance Overview", "maintenance-overview");
+      addToast("Maintenance overview exported to PDF", "success");
+    } else {
+      exportToExcel(rows, columns, "maintenance-overview");
+      addToast("Maintenance overview exported to Excel", "success");
+    }
   };
 
   const requestRows = useMemo(
@@ -165,6 +168,7 @@ export default function MaintenanceDashboard() {
   }
 
   return (
+    <ListPageShell>
     <div className="min-w-0 space-y-5 pb-5">
       <PageHeader
         subtitle="Overview of maintenance requests, equipment status, and costs"
@@ -173,18 +177,19 @@ export default function MaintenanceDashboard() {
             <Button variant="add" to="/maintenance/preventive" leftIcon={<Plus className="h-4 w-4" aria-hidden />}>
               New Maintenance Request
             </Button>
+            <ExportDownloadMenu disabled={!(hub.recent_requests || []).length} onExport={handleExport} />
             <div className="relative" ref={moreMenuRef}>
-              <button
+              <Button
+                variant="secondary"
                 type="button"
                 onClick={() => setShowMoreMenu((v) => !v)}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--color-border-soft)] bg-white px-3.5 py-2.5 text-[13px] font-semibold text-[var(--color-text)] shadow-xs transition-colors hover:bg-[var(--color-surface-muted)] hover:border-[var(--color-primary)]"
+                rightIcon={<ChevronDown className={`h-4 w-4 transition-transform duration-200 ${showMoreMenu ? "rotate-180" : ""}`} aria-hidden />}
               >
-                <MoreVertical className="h-4 w-4 text-[var(--color-text-secondary)]" />
+                <MoreVertical className="h-4 w-4" aria-hidden />
                 More Actions
-                <ChevronDown className={`h-4 w-4 text-[var(--color-text-muted)] transition-transform duration-200 ${showMoreMenu ? "rotate-180" : ""}`} />
-              </button>
+              </Button>
               {showMoreMenu && (
-                <div className="absolute right-0 top-[calc(100%+6px)] z-40 w-56 rounded-xl border border-[var(--color-border-soft)] bg-white p-1.5 shadow-xl animate-in fade-in zoom-in-95 duration-100">
+                <div className="absolute right-0 top-[calc(100%+6px)] z-40 w-56 rounded-xl border border-[var(--color-border-soft)] bg-[var(--color-surface)] p-1.5 shadow-xl animate-in fade-in zoom-in-95 duration-100">
                   <Link
                     to="/maintenance/preventive"
                     onClick={() => setShowMoreMenu(false)}
@@ -218,17 +223,6 @@ export default function MaintenanceDashboard() {
                     Machine History Logs
                   </Link>
                   <div className="my-1 border-t border-[var(--color-border-soft)]" />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowMoreMenu(false);
-                      handleExport();
-                    }}
-                    className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-[13px] font-medium text-[var(--color-text)] transition-colors hover:bg-[var(--color-surface-muted)] cursor-pointer"
-                  >
-                    <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
-                    Export to Excel
-                  </button>
                   <button
                     type="button"
                     onClick={() => {
@@ -331,47 +325,49 @@ export default function MaintenanceDashboard() {
         </Panel>
       </div>
 
-      <Panel title="Recent Maintenance Requests">
-        <div className="overflow-x-auto rounded-xl border border-slate-200">
-          <table className="min-w-full w-full border-collapse text-left text-[13px]">
+      <ListPageCard>
+        <ListPageCardBody>
+        <h2 className="mb-4 text-[15px] font-semibold text-[var(--color-text)]">Recent Maintenance Requests</h2>
+        <div className="ui-table-wrap overflow-x-auto">
+          <table className="ui-table min-w-full w-full border-collapse text-left text-[13px]">
             <thead className="ui-table-head">
               <tr>
-                <th className="border-b border-slate-200 px-3 py-3">Request No</th>
-                <th className="border-b border-slate-200 px-3 py-3">Machine</th>
-                <th className="border-b border-slate-200 px-3 py-3">Type</th>
-                <th className="border-b border-slate-200 px-3 py-3">Priority</th>
-                <th className="border-b border-slate-200 px-3 py-3">Status</th>
-                <th className="border-b border-slate-200 px-3 py-3">Assigned To</th>
-                <th className="border-b border-slate-200 px-3 py-3">Due Date</th>
-                <th className="border-b border-slate-200 px-3 py-3 text-center">Action</th>
+                <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Request No</th>
+                <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Machine</th>
+                <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Type</th>
+                <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Priority</th>
+                <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Status</th>
+                <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Assigned To</th>
+                <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Due Date</th>
+                <th className="border-b border-[var(--color-border-soft)] px-3 py-3 text-center">Action</th>
               </tr>
             </thead>
             <tbody>
               {(hub.recent_requests || []).length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="border-b border-slate-100 px-3 py-10 text-center text-[13px] text-slate-500">
+                  <td colSpan={8} className="border-b border-[var(--color-border-soft)] px-3 py-10 text-center text-[13px] text-[var(--color-text-muted)]">
                     No maintenance requests found
                   </td>
                 </tr>
               ) : (
                 hub.recent_requests.map((row, idx) => (
-                  <tr key={row.id} className={idx % 2 === 1 ? "bg-slate-50/60 hover:bg-slate-50" : "hover:bg-slate-50/80"}>
-                    <td className="border-b border-slate-100 px-3 py-3 font-semibold text-slate-800">{row.request_number}</td>
-                    <td className="border-b border-slate-100 px-3 py-3 text-slate-600">{row.machine_name}</td>
-                    <td className="border-b border-slate-100 px-3 py-3 text-slate-600">{row.request_type}</td>
-                    <td className="border-b border-slate-100 px-3 py-3">
+                  <tr key={row.id} className={idx % 2 === 1 ? "bg-[var(--color-surface-muted)]/60 hover:bg-[var(--color-surface-muted)]" : "hover:bg-[var(--color-surface-muted)]/80"}>
+                    <td className="border-b border-[var(--color-border-soft)] px-3 py-3 font-semibold text-[var(--color-text)]">{row.request_number}</td>
+                    <td className="border-b border-[var(--color-border-soft)] px-3 py-3 text-[var(--color-text-secondary)]">{row.machine_name}</td>
+                    <td className="border-b border-[var(--color-border-soft)] px-3 py-3 text-[var(--color-text-secondary)]">{row.request_type}</td>
+                    <td className="border-b border-[var(--color-border-soft)] px-3 py-3">
                       <span className={`inline-flex rounded-md px-2 py-0.5 text-[11px] font-semibold capitalize ${priorityColor(row.priority)}`}>
                         {row.priority}
                       </span>
                     </td>
-                    <td className="border-b border-slate-100 px-3 py-3">
+                    <td className="border-b border-[var(--color-border-soft)] px-3 py-3">
                       <RequestStatusBadge status={row.status} />
                     </td>
-                    <td className="border-b border-slate-100 px-3 py-3 text-slate-600">{row.assigned_to}</td>
-                    <td className="border-b border-slate-100 px-3 py-3 text-slate-600">
+                    <td className="border-b border-[var(--color-border-soft)] px-3 py-3 text-[var(--color-text-secondary)]">{row.assigned_to}</td>
+                    <td className="border-b border-[var(--color-border-soft)] px-3 py-3 text-[var(--color-text-secondary)]">
                       {row.due_date ? String(row.due_date).slice(0, 10) : "—"}
                     </td>
-                    <td className="border-b border-slate-100 px-3 py-3">
+                    <td className="border-b border-[var(--color-border-soft)] px-3 py-3">
                       <div className="flex items-center justify-center">
                         <button type="button" className="grid h-8 w-8 place-items-center rounded-md text-[var(--color-primary)] hover:bg-[var(--kpi-primary-soft)]" aria-label="View request">
                           <Eye className="h-4 w-4" />
@@ -384,7 +380,8 @@ export default function MaintenanceDashboard() {
             </tbody>
           </table>
         </div>
-      </Panel>
+        </ListPageCardBody>
+      </ListPageCard>
 
       {(hub.alerts || []).length > 0 ? (
         <Panel title="Alerts & Notifications">
@@ -392,7 +389,7 @@ export default function MaintenanceDashboard() {
             {hub.alerts.map((a, i) => (
               <div key={i} className="flex items-start gap-3 rounded-xl border border-[var(--kpi-warning-soft)] bg-[var(--kpi-warning-soft)]/40 px-4 py-3">
                 <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[var(--kpi-warning)]" />
-                <p className="text-sm text-slate-700">{a.message}</p>
+                <p className="text-sm text-[var(--color-text-secondary)]">{a.message}</p>
               </div>
             ))}
           </div>
@@ -406,13 +403,14 @@ export default function MaintenanceDashboard() {
         <QuickLink to="/maintenance/machine-history" label="Machine History" />
       </div>
     </div>
+    </ListPageShell>
   );
 }
 
 function Panel({ title, children, className = "" }) {
   return (
-    <div className={`rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm ${className}`}>
-      <h2 className="mb-4 text-[15px] font-semibold text-slate-900">{title}</h2>
+    <div className={`rounded-2xl border border-[var(--color-border-soft)] bg-[var(--color-surface)] p-5 shadow-sm ${className}`}>
+      <h2 className="mb-4 text-[15px] font-semibold text-[var(--color-text)]">{title}</h2>
       {children}
     </div>
   );
@@ -420,7 +418,7 @@ function Panel({ title, children, className = "" }) {
 
 function EmptyChart({ message }) {
   return (
-    <div className="flex h-56 items-center justify-center rounded-xl border border-dashed border-slate-200 text-[13px] text-slate-500">
+    <div className="flex h-56 items-center justify-center rounded-xl border border-dashed border-[var(--color-border-soft)] text-[13px] text-[var(--color-text-muted)]">
       {message}
     </div>
   );
@@ -428,7 +426,7 @@ function EmptyChart({ message }) {
 
 function QuickLink({ to, label }) {
   return (
-    <Link to={to} className="rounded-2xl border border-slate-200/80 bg-white px-4 py-3 text-sm font-semibold text-[var(--color-primary)] shadow-sm transition hover:bg-[var(--kpi-primary-soft)]">
+    <Link to={to} className="rounded-2xl border border-[var(--color-border-soft)] bg-[var(--color-surface)] px-4 py-3 text-sm font-semibold text-[var(--color-primary)] shadow-sm transition hover:bg-[var(--kpi-primary-soft)]">
       {label} →
     </Link>
   );

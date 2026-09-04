@@ -254,7 +254,7 @@ export default function RecordPaymentModal({
 
           {/* ── Footer ── */}
           <div className="flex justify-end gap-2 border-t border-slate-100 pt-4">
-            <Button type="button" variant="secondary" onClick={onClose}>
+            <Button type="button" variant="cancel" onClick={onClose}>
               Cancel
             </Button>
             <Button type="submit" variant="primary" loading={saving} disabled={saving} leftIcon={<Save className="h-4 w-4" />}>

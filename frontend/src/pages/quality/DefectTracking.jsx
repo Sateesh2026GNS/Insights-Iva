@@ -7,7 +7,6 @@ import {
   CheckCircle,
   ChevronLeft,
   ChevronRight,
-  FileSpreadsheet,
   Filter,
   Gauge,
   RotateCcw,
@@ -17,6 +16,8 @@ import {
 } from "lucide-react";
 
 import Button from "../../components/common/Button";
+import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
+import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
 import { SearchBar } from "../../components/common/SearchFilter";
 import InventoryRowActionsMenu from "../../components/inventory/InventoryRowActionsMenu";
 import KpiCard from "../../components/common/KpiCard";
@@ -34,7 +35,19 @@ import {
   normalizeRejectionStatus,
   rejectionStatusLabel,
 } from "../../data/qualityMasterData";
-import { exportToExcel } from "../../utils/exportUtils";
+import { exportToExcel, exportToPdf } from "../../utils/exportUtils";
+
+const REJECTION_EXPORT_COLUMNS = [
+  { key: "rejection_no", label: "Rejection No." },
+  { key: "date", label: "Date" },
+  { key: "reference_type", label: "Reference Type" },
+  { key: "reference_no", label: "Reference No." },
+  { key: "product", label: "Product / Material" },
+  { key: "quantity", label: "Quantity" },
+  { key: "reason", label: "Reason" },
+  { key: "department", label: "Department" },
+  { key: "status", label: "Status" },
+];
 
 const PAGE_SIZES = [10, 25, 50];
 
@@ -199,7 +212,17 @@ export default function DefectTracking() {
 
   if (loading) return <Loader label="Loading rejections..." />;
 
+  const handleExport = (format) => {
+    if (format === "pdf") {
+      exportToPdf(exportRows, REJECTION_EXPORT_COLUMNS, "Rejections", "rejections");
+    } else {
+      exportToExcel(exportRows, REJECTION_EXPORT_COLUMNS, "rejections");
+    }
+    addToast(format === "pdf" ? "Exported to PDF" : "Exported to Excel", "success");
+  };
+
   return (
+    <ListPageShell>
     <div className="min-w-0 space-y-5 pb-4">
       <PageHeader
         title="Rejections"
@@ -207,29 +230,7 @@ export default function DefectTracking() {
         subtitle="Track and manage all rejected materials and products"
         action={
           <div className="flex flex-wrap items-center gap-2">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() =>
-                exportToExcel(
-                  exportRows,
-                  [
-                    { key: "rejection_no", label: "Rejection No." },
-                    { key: "date", label: "Date" },
-                    { key: "reference_type", label: "Reference Type" },
-                    { key: "reference_no", label: "Reference No." },
-                    { key: "product", label: "Product / Material" },
-                    { key: "quantity", label: "Quantity" },
-                    { key: "reason", label: "Reason" },
-                    { key: "department", label: "Department" },
-                    { key: "status", label: "Status" },
-                  ],
-                  "rejections"
-                )
-              }
-            >
-              <FileSpreadsheet className="h-4 w-4" /> Export
-            </Button>
+            <ExportDownloadMenu disabled={!exportRows.length} onExport={handleExport} />
             <Button type="button" variant="primary" onClick={() => setShowFilters((v) => !v)}>
               <Filter className="h-4 w-4" /> Filters
             </Button>
@@ -290,7 +291,7 @@ export default function DefectTracking() {
               />
             </div>
             <div className="flex flex-wrap items-center gap-2.5">
-              <div className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border-soft)] bg-white px-3 py-1.5 text-[13px] shadow-xs">
+              <div className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border-soft)] bg-[var(--color-surface)] px-3 py-1.5 text-[13px] shadow-xs">
                 <CalendarDays className="h-4 w-4 shrink-0 text-[var(--color-text-muted)]" />
                 <input
                   type="date"
@@ -475,7 +476,7 @@ export default function DefectTracking() {
 
       {viewRow ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white shadow-xl">
+          <div className="ui-modal max-h-[90vh] w-full max-w-lg overflow-y-auto">
             <div className="flex items-start justify-between border-b px-6 py-4">
               <div>
                 <h2 className="text-lg font-bold text-[var(--color-text)]">{viewRow.rejection_number}</h2>
@@ -518,5 +519,6 @@ export default function DefectTracking() {
         </div>
       ) : null}
     </div>
+    </ListPageShell>
   );
 }

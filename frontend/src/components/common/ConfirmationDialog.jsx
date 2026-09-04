@@ -50,7 +50,7 @@ export default function ConfirmationDialog({
           {message}
         </p>
         <div className="mt-6 flex items-center justify-end gap-2.5">
-          <Button type="button" variant="secondary" onClick={onCancel}>
+          <Button type="button" variant="cancel" onClick={onCancel}>
             {cancelLabel}
           </Button>
           <Button ref={confirmRef} type="button" variant={variant} onClick={onConfirm}>

@@ -14,6 +14,8 @@ import {
 } from "lucide-react";
 
 import Button from "../../components/common/Button";
+import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
+import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
 import DataTable from "../../components/common/DataTable";
 import EmptyState from "../../components/common/EmptyState";
 import Loader from "../../components/common/Loader";
@@ -35,6 +37,41 @@ import {
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { asArray } from "../../utils/apiError";
 import { todayIso } from "../../utils/dateUtils";
+import { exportToExcel, exportToPdf } from "../../utils/exportUtils";
+
+const STATUS_LABEL = {
+  draft: "Draft",
+  pending: "Pending",
+  pending_approval: "Pending",
+  approved: "Approved",
+  in_transit: "In Transit",
+  completed: "Completed",
+  cancelled: "Cancelled",
+  rejected: "Cancelled",
+};
+
+const STATUS_TONE = {
+  draft: "neutral",
+  pending: "warning",
+  pending_approval: "warning",
+  approved: "info",
+  in_transit: "warning",
+  completed: "success",
+  cancelled: "neutral",
+  rejected: "neutral",
+};
+
+const TRANSFER_EXPORT_COLUMNS = [
+  { key: "transfer_number", label: "Transfer No." },
+  { key: "transfer_date", label: "Date" },
+  { key: "from_warehouse", label: "From Warehouse" },
+  { key: "to_warehouse", label: "To Warehouse" },
+  { key: "item_name", label: "Item" },
+  { key: "quantity", label: "Quantity" },
+  { key: "status", label: "Status" },
+  { key: "expected_date", label: "Expected Date" },
+  { key: "created_by", label: "Created By" },
+];
 
 const STEPS = [
   { id: 1, label: "Transfer Details" },
@@ -473,7 +510,32 @@ export default function StockTransfer() {
 
   if (loading) return <Loader label="Loading stock transfers…" />;
 
+  const exportRows = filteredTransfers.map((r) => {
+    const st = String(r.status || "").toLowerCase();
+    return {
+      transfer_number: r.transfer_number,
+      transfer_date: formatDate(r.transfer_date),
+      from_warehouse: r.from_warehouse || "",
+      to_warehouse: r.to_warehouse || "",
+      item_name: r.item_name || "",
+      quantity: formatQty(r.quantity),
+      status: STATUS_LABEL[st] || String(r.status || "").replace(/_/g, " "),
+      expected_date: formatDate(r.expected_date),
+      created_by: r.created_by || "",
+    };
+  });
+
+  const handleExport = (format) => {
+    if (format === "pdf") {
+      exportToPdf(exportRows, TRANSFER_EXPORT_COLUMNS, "Stock Transfers", "stock-transfers");
+    } else {
+      exportToExcel(exportRows, TRANSFER_EXPORT_COLUMNS, "stock-transfers");
+    }
+    addToast(format === "pdf" ? "Exported to PDF" : "Exported to Excel", "success");
+  };
+
   return (
+    <ListPageShell>
     <div className="min-w-0 space-y-5 pb-4">
       <PageHeader
         subtitle="Transfer stock between warehouses."
@@ -740,7 +802,7 @@ export default function StockTransfer() {
               </div>
             </div>
 
-            <aside className="h-fit rounded-xl border border-[var(--color-success)]/25 bg-[#ecfdf5] p-4">
+            <aside className="h-fit rounded-xl border border-[var(--color-success)]/25 bg-[var(--color-success-soft)] p-4">
               <div className="mb-3 flex items-center gap-2">
                 <ArrowLeftRight className="h-4 w-4 text-[var(--color-success)]" />
                 <h3 className="text-sm font-semibold text-[var(--color-text)]">Transfer Summary</h3>
@@ -764,11 +826,13 @@ export default function StockTransfer() {
         </section>
       ) : null}
 
-      <section className="ui-card p-4 sm:p-5">
+      <ListPageCard>
+        <ListPageCardBody>
         <div className="mb-4 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
           <h2 className="text-sm font-semibold text-[var(--color-text)]">Recent Transfers</h2>
           <div className="flex flex-wrap items-center gap-2">
             <SearchBar value={search} onChange={setSearch} placeholder="Search" className="w-full" />
+            <ExportDownloadMenu disabled={!exportRows.length} onExport={handleExport} />
             <Button type="button" variant="secondary" onClick={() => setShowFilters((v) => !v)}>
               <Filter className="h-4 w-4" /> Filters
             </Button>
@@ -813,7 +877,8 @@ export default function StockTransfer() {
             />
           }
         />
-      </section>
+        </ListPageCardBody>
+      </ListPageCard>
 
       <RecordDetailModal
         open={Boolean(viewTarget)}
@@ -836,5 +901,6 @@ export default function StockTransfer() {
         }}
       />
     </div>
+    </ListPageShell>
   );
 }

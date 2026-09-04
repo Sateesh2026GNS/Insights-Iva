@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import { CheckCircle, Eye, Package, Plus, Trash2, X } from "lucide-react";
 import KpiCard from "../../components/common/KpiCard";
 import PageHeader from "../../components/common/PageHeader";
+import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
+import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
 
 import DataTable from "../../components/common/DataTable";
 import Loader from "../../components/common/Loader";
@@ -22,43 +24,44 @@ import {
 } from "../../utils/manufacturingEvents";
 import useAuth from "../../hooks/useAuth";
 import { isStoreManager } from "../../config/permissions";
-
+import { runListExport } from "../../utils/listExport";
 
 import Button from "../../components/common/Button";
+
 function GRNDetailModal({ row, onClose, onQC }) {
   if (!row) return null;
   const pending =
     (row.qc_status || "pending") === "pending" || row.status === "pending_qc";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center">
-      <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
+    <div className="ui-modal-backdrop">
+      <div className="ui-modal w-full max-w-lg">
         <div className="flex items-start justify-between">
           <div>
-            <h2 className="text-lg font-bold text-slate-900">{row.grn_number}</h2>
-            <p className="text-sm text-slate-500">
+            <h2 className="text-lg font-bold text-[var(--color-text)]">{row.grn_number}</h2>
+            <p className="text-sm text-[var(--color-text-muted)]">
               PO: {row.po_number || "—"} · {row.vendor_name || "—"}
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg p-2 text-slate-400 hover:bg-slate-100"
+            className="rounded-lg p-2 text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)]"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
         <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
           <div>
-            <p className="text-xs text-slate-400">Warehouse</p>
-            <p className="font-medium">{row.warehouse_name || "—"}</p>
+            <p className="text-xs text-[var(--color-text-muted)]">Warehouse</p>
+            <p className="font-medium text-[var(--color-text)]">{row.warehouse_name || "—"}</p>
           </div>
           <div>
-            <p className="text-xs text-slate-400">Quantity</p>
-            <p className="font-medium">{row.quantity}</p>
+            <p className="text-xs text-[var(--color-text-muted)]">Quantity</p>
+            <p className="font-medium text-[var(--color-text)]">{row.quantity}</p>
           </div>
           <div>
-            <p className="text-xs text-slate-400">QC Status</p>
+            <p className="text-xs text-[var(--color-text-muted)]">QC Status</p>
             <span
               className={`rounded-full px-2 py-0.5 text-xs font-semibold capitalize ${statusColor(row.qc_status)}`}
             >
@@ -66,17 +69,17 @@ function GRNDetailModal({ row, onClose, onQC }) {
             </span>
           </div>
           <div>
-            <p className="text-xs text-slate-400">Received By</p>
-            <p className="font-medium">{row.received_by || "—"}</p>
+            <p className="text-xs text-[var(--color-text-muted)]">Received By</p>
+            <p className="font-medium text-[var(--color-text)]">{row.received_by || "—"}</p>
           </div>
         </div>
         <div
           className={`mt-4 rounded-lg border px-4 py-3 text-xs ${
             pending
-              ? "border-amber-200 bg-amber-50 text-amber-900"
+              ? "border-[var(--kpi-warning-soft)] bg-[var(--kpi-warning-soft)]/40 text-[var(--color-text)]"
               : row.qc_status === "pass" || row.qc_status === "passed"
-                ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                : "border-red-200 bg-red-50 text-red-800"
+                ? "border-[var(--kpi-success-soft)] bg-[var(--kpi-success-soft)]/40 text-[var(--color-text)]"
+                : "border-[var(--color-danger-soft)] bg-[var(--color-danger-soft)]/40 text-[var(--color-text)]"
           }`}
         >
           {pending
@@ -88,29 +91,22 @@ function GRNDetailModal({ row, onClose, onQC }) {
         <div className="mt-4 flex flex-wrap gap-2">
           {pending && typeof row.id === "number" && (
             <>
-              <button
-                type="button"
-                onClick={() => onQC(row, "pass")}
-                className="rounded-lg bg-[var(--color-success)] px-4 py-2 text-sm font-semibold text-white"
-              >
+              <Button type="button" variant="primary" onClick={() => onQC(row, "pass")}>
                 Pass QC (post stock)
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="secondary"
                 onClick={() => onQC(row, "fail")}
-                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white"
+                className="!border-[var(--color-danger-soft)] !text-[var(--color-danger)]"
               >
                 Fail QC
-              </button>
+              </Button>
             </>
           )}
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg border px-4 py-2 text-sm font-semibold text-slate-700"
-          >
+          <Button type="button" variant="cancel" onClick={onClose}>
             Close
-          </button>
+          </Button>
         </div>
       </div>
     </div>
@@ -268,24 +264,35 @@ export default function GoodsReceipt() {
 
   if (loading) {
     return (
-      <div className="space-y-5 pb-4">
+      <ListPageShell>
         {storeMode ? <StoreManagerNav /> : null}
         <Loader label="Loading goods receipts..." />
-      </div>
+      </ListPageShell>
     );
   }
 
+  const handleExport = (format) => {
+    runListExport(format, {
+      data: rows,
+      columns,
+      filename: "goods-receipts",
+      title: "Goods Receipt Notes",
+    });
+    addToast(format === "pdf" ? "Exported to PDF" : "Exported to Excel", "success");
+  };
+
   return (
-    <div className="space-y-5 pb-4">
+    <ListPageShell>
       {storeMode ? <StoreManagerNav /> : null}
       <PageHeader
         subtitle="Receive materials against purchase orders and post accepted quantity to inventory."
         action={
-          <>
+          <div className="flex flex-wrap items-center gap-2">
+            <ExportDownloadMenu disabled={!rows.length} onExport={handleExport} />
             <Button variant="add" to="/procurement/goods-receipt/create" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
-            New GRN
-          </Button>
-          </>
+              New GRN
+            </Button>
+          </div>
         }
       />
 
@@ -302,14 +309,16 @@ export default function GoodsReceipt() {
         />
       </div>
 
-      <div className="ui-card p-4">
+      <ListPageCard>
+        <ListPageCardBody className="overflow-x-auto">
         <DataTable
           columns={columns}
           data={rows}
           searchPlaceholder="Search"
           searchKeys={["grn_number", "po_number", "vendor_name"]}
         />
-      </div>
+        </ListPageCardBody>
+      </ListPageCard>
 
       {selected && (
         <GRNDetailModal
@@ -318,6 +327,6 @@ export default function GoodsReceipt() {
           onQC={handleQC}
         />
       )}
-    </div>
+    </ListPageShell>
   );
 }

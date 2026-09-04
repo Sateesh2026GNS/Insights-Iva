@@ -3,7 +3,9 @@ import { AddButton } from "./Button";
 /**
  * Clean document empty icon matching the official reference illustration.
  */
-export function DocumentEmptyIcon({ className = "h-16 w-16 text-slate-300 dark:text-slate-600" }) {
+export function DocumentEmptyIcon({
+  className = "h-16 w-16 text-[var(--color-text-muted)] opacity-40",
+}) {
   return (
     <svg
       className={className}
@@ -119,7 +121,7 @@ export default function EmptyState({
       className={`flex flex-col items-center justify-center rounded-[var(--radius-lg)] border border-dashed border-[var(--color-border)] bg-[var(--color-surface)] px-8 py-14 text-center ${className}`}
       role="status"
     >
-      <div className="mb-3.5 flex items-center justify-center text-slate-300 dark:text-slate-600">
+      <div className="mb-3.5 flex items-center justify-center text-[var(--color-text-muted)] opacity-40">
         {IconElement}
       </div>
       <h3 className="text-[var(--text-lg)] font-semibold text-[var(--color-text)]">{title}</h3>

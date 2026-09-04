@@ -246,7 +246,7 @@ export default function CreateMachineModal({
         </div>
 
         <div className="flex shrink-0 items-center justify-end gap-2 border-t border-slate-100 bg-slate-50 px-5 py-3">
-          <Button variant="secondary" size="sm" type="button" onClick={onClose} disabled={saving}>
+          <Button variant="cancel" size="sm" type="button" onClick={onClose} disabled={saving}>
             Cancel
           </Button>
           <Button variant="primary" size="sm" type="submit" loading={saving}>

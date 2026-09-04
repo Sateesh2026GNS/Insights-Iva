@@ -6,18 +6,18 @@ import {
   ChevronRight,
   Clock3,
   Factory,
-  FileDown,
-  FileSpreadsheet,
   Plus,
-  Search,
   X,
 } from "lucide-react";
 
 import Button, { IconButton } from "../../components/common/Button";
 import DataTable from "../../components/common/DataTable";
 import EmptyState from "../../components/common/EmptyState";
+import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
 import KpiCard from "../../components/common/KpiCard";
+import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
 import Loader from "../../components/common/Loader";
+import PageHeader from "../../components/common/PageHeader";
 import { SearchBar } from "../../components/common/SearchFilter";
 import StatusBadge from "../../components/common/StatusBadge";
 import { useToast } from "../../context/ToastContext";
@@ -29,7 +29,7 @@ import {
 } from "../../api/productionApi";
 import useManufacturingRefresh from "../../hooks/useManufacturingRefresh";
 import useTenantId from "../../hooks/useTenantId";
-import { exportToExcel, exportToPdf } from "../../utils/exportUtils";
+import { runListExport } from "../../utils/listExport";
 import { cleanProductLabel } from "../../utils/productLabel";
 
 const PAGE_SIZES = [20, 50, 100];
@@ -177,8 +177,8 @@ function NewReportModal({ onClose, onSuccess }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--color-text)]/40 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-lg rounded-[var(--radius-xl)] border border-[var(--color-border)] bg-[var(--color-surface)] p-5 shadow-xl">
+    <div className="ui-modal-backdrop">
+      <div className="ui-modal w-full max-w-lg">
         <div className="mb-4 flex items-start justify-between gap-3">
           <div>
             <h3 className="text-base font-semibold text-[var(--color-text)]">New daily report</h3>
@@ -279,6 +279,7 @@ function ClickableKpiCard({ onClick, title, children }) {
 
 export default function DailyReports() {
   const tenantId = useTenantId();
+  const { addToast } = useToast();
   const initial = lastDaysRange(30);
   const [loading, setLoading] = useState(true);
   const [reports, setReports] = useState([]);
@@ -527,12 +528,30 @@ export default function DailyReports() {
     setDateTo(r.to);
   };
 
+  const handleExport = (format) => {
+    runListExport(format, {
+      data: exportRows,
+      columns: exportCols,
+      filename: "daily-reports",
+      title: "Daily Production Reports",
+    });
+    addToast(format === "pdf" ? "Exported to PDF" : "Exported to Excel", "success");
+  };
+
   if (loading && reports.length === 0) {
     return <Loader label="Loading daily production reports…" />;
   }
 
   return (
-    <div className="space-y-5 pb-4">
+    <ListPageShell>
+      <PageHeader
+        subtitle="Shift output, scrap, downtime, and yield by work order."
+        action={
+          <Button type="button" variant="add" onClick={() => setShowNew(true)} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
+            New Report
+          </Button>
+        }
+      />
       <div className="ui-grid-kpi">
         <ClickableKpiCard onClick={() => applyKpiPreset("all")} title="Show all reports" tone="primary">
           <KpiCard label="Produced" value={kpis.produced.toLocaleString()} icon={Factory} tone="primary" meta="Click to filter" />
@@ -548,34 +567,15 @@ export default function DailyReports() {
         </ClickableKpiCard>
       </div>
 
-      <div className="ui-card overflow-hidden p-4 sm:p-5">
+      <ListPageCard>
+        <ListPageCardBody>
         <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <SearchBar value={searchQuery} onChange={setSearchQuery} placeholder="Search" className="w-full" />
           <div className="flex flex-wrap items-center gap-2">
             <Button type="button" variant="secondary" onClick={() => setShowFilters((v) => !v)}>
               {showFilters ? "Hide Filters" : "Filters"}
             </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              disabled={!exportRows.length}
-              onClick={() => exportToExcel(exportRows, exportCols, "daily-reports")}
-            >
-              <FileSpreadsheet className="h-4 w-4" />
-              <span className="hidden sm:inline">Excel</span>
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              disabled={!exportRows.length}
-              onClick={() => exportToPdf(exportRows, exportCols, "Daily Production Reports", "daily-reports")}
-            >
-              <FileDown className="h-4 w-4" />
-              <span className="hidden sm:inline">PDF</span>
-            </Button>
-            <Button type="button" variant="add" onClick={() => setShowNew(true)} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
-              New Report
-            </Button>
+            <ExportDownloadMenu disabled={!exportRows.length} onExport={handleExport} />
           </div>
         </div>
 
@@ -698,9 +698,10 @@ export default function DailyReports() {
             </div>
           </>
         )}
-      </div>
+        </ListPageCardBody>
+      </ListPageCard>
 
       {showNew ? <NewReportModal onClose={() => setShowNew(false)} onSuccess={loadReports} /> : null}
-    </div>
+    </ListPageShell>
   );
 }

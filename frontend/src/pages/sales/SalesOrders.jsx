@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { Link, useNavigate } from "react-router-dom";
-import { ClipboardList, Download, ExternalLink, Eye, Filter, IndianRupee, Plus, ShoppingCart, Trash2, Truck } from "lucide-react";
+import { ClipboardList, ExternalLink, Eye, Filter, IndianRupee, Plus, ShoppingCart, Trash2, Truck } from "lucide-react";
 import KpiCard from "../../components/common/KpiCard";
+import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
+import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
 
-import ConfirmDialog from "../../components/admin/ConfirmDialog";
+import DeleteSalesOrderDialog from "../../components/sales/DeleteSalesOrderDialog";
 import DataTable from "../../components/common/DataTable";
 import EmptyState from "../../components/common/EmptyState";
 import PageHeader from "../../components/common/PageHeader";
@@ -17,8 +19,13 @@ import { useToast } from "../../context/ToastContext";
 import { useNetworkStatus } from "../../context/NetworkStatusContext";
 import { getSOSummary, getSalesOrdersEnriched, deleteSalesOrder } from "../../api/salesApi";
 import { formatInr, statusColor } from "../../data/salesMasterData";
-import { exportToExcel } from "../../utils/exportUtils";
+import { runListExport } from "../../utils/listExport";
 import { apiErrorMessage, asArray } from "../../utils/apiError";
+import {
+  isSalesOrderDeletePreBlocked,
+  SALES_ORDER_DELETE_SUCCESS_MESSAGE,
+  salesOrderDeleteErrorMessage,
+} from "../../utils/salesOrderDelete";
 import useAuth from "../../hooks/useAuth";
 import { userCanAction } from "../../config/permissions";
 import { jobCardDetailsUrl } from "../../utils/jobCardRoutes";
@@ -96,18 +103,28 @@ export default function SalesOrders() {
   const handleDeleteConfirm = async () => {
     if (!deleteTarget?.id || typeof deleteTarget.id !== "number") return;
     if (deleteInFlight.current) return;
+
+    if (
+      isSalesOrderDeletePreBlocked({
+        deleteBlockers: deleteTarget.delete_blockers,
+        deleteError,
+      })
+    ) {
+      return;
+    }
+
     deleteInFlight.current = true;
     setDeleteError("");
     setDeleting(true);
     try {
       await deleteSalesOrder(deleteTarget.id);
-      addToast(`Sales order ${deleteTarget.order_number || deleteTarget.id} deleted successfully.`, "success");
+      addToast(SALES_ORDER_DELETE_SUCCESS_MESSAGE, "success");
       setDeleteTarget(null);
       if (selected?.id === deleteTarget.id) setSelected(null);
       await load();
     } catch (err) {
-      const message = apiErrorMessage(err, "Failed to delete sales order.");
-      setDeleteError(message);
+      const structured = err?.response?.data?.detail;
+      setDeleteError(structured || salesOrderDeleteErrorMessage(err, "Failed to delete sales order."));
     } finally {
       deleteInFlight.current = false;
       setDeleting(false);
@@ -142,6 +159,7 @@ export default function SalesOrders() {
     {
       key: "quantity",
       label: "Qty",
+      numeric: true,
       render: (r) => {
         const lines = r.line_items || [];
         if (!lines.length) return "—";
@@ -156,13 +174,14 @@ export default function SalesOrders() {
     {
       key: "unit_price",
       label: "Unit Price",
+      numeric: true,
       render: (r) => {
         const lines = r.line_items || [];
         if (!lines.length) return "—";
         return formatInr(lines[0].unit_price);
       },
     },
-    { key: "total_amount", label: "Total Amount", render: (r) => formatInr(r.total_amount || r.amount) },
+    { key: "total_amount", label: "Total Amount", numeric: true, render: (r) => formatInr(r.total_amount || r.amount) },
     {
       key: "status",
       label: "Status",
@@ -227,12 +246,26 @@ export default function SalesOrders() {
     },
   ];
 
+  const handleExport = (format) => {
+    runListExport(format, {
+      data: filtered,
+      columns,
+      filename: "sales-orders",
+      title: "Sales Orders",
+    });
+    addToast(format === "pdf" ? "Exported to PDF" : "Exported to Excel", "success");
+  };
+
   return (
-    <div className="space-y-5 pb-4">
+    <ListPageShell>
       <PageHeader
         subtitle="Manage orders from quotation to dispatch with production and inventory integration."
         action={
           <div className="flex flex-wrap items-center gap-2">
+            <ExportDownloadMenu
+              disabled={!filtered.length}
+              onExport={handleExport}
+            />
             {canCreate ? (
               <Button
                 variant="primary"
@@ -242,19 +275,6 @@ export default function SalesOrders() {
                 <Plus className="mr-1.5 inline h-4 w-4" /> Create Sales Order
               </Button>
             ) : null}
-            <Button
-              variant="secondary"
-              type="button"
-              onClick={() =>
-                exportToExcel(
-                  filtered,
-                  columns.filter((c) => !c.render),
-                  "sales-orders"
-                )
-              }
-            >
-              <Download className="mr-1.5 inline h-4 w-4" /> Export
-            </Button>
           </div>
         }
       />
@@ -270,14 +290,26 @@ export default function SalesOrders() {
         <KpiCard label="Revenue" value={formatInr(summary.revenue ?? 0)} icon={IndianRupee} tone="teal" onClick={() => setFilters((f) => ({ ...f, status: "" }))} title="Total orders revenue" />
       </div>
 
-      <div className="ui-card p-4">
-        <button
-          type="button"
-          onClick={() => setShowAdvanced(!showAdvanced)}
-          className="mb-3 inline-flex items-center gap-2 text-[var(--text-sm)] font-semibold text-[var(--color-text-secondary)]"
-        >
-          <Filter className="h-4 w-4" /> Filters
-        </button>
+      <ListPageCard>
+        <ListPageCardBody>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <button
+            type="button"
+            onClick={() => setShowAdvanced(!showAdvanced)}
+            className="inline-flex items-center gap-2 text-[var(--text-sm)] font-semibold text-[var(--color-text-secondary)]"
+          >
+            <Filter className="h-4 w-4" /> Filters
+          </button>
+          {hasAdvancedFilters ? (
+            <button
+              type="button"
+              onClick={() => setFilters(defaultFilters)}
+              className="ui-link-clear"
+            >
+              Clear filters
+            </button>
+          ) : null}
+        </div>
         {showAdvanced && (
           <div className="mb-4 grid gap-3 sm:grid-cols-3">
             <input
@@ -346,7 +378,8 @@ export default function SalesOrders() {
             }
           />
         )}
-      </div>
+        </ListPageCardBody>
+      </ListPageCard>
 
       {showCreateModal && (
         <SalesOrderFormModal
@@ -365,14 +398,11 @@ export default function SalesOrders() {
         />
       )}
 
-      <ConfirmDialog
+      <DeleteSalesOrderDialog
         open={Boolean(deleteTarget)}
-        title="Delete Sales Order?"
-        message="Are you sure you want to delete this sales order? This action cannot be undone."
-        error={deleteError}
-        confirmLabel="Delete"
-        cancelLabel="Cancel"
-        destructive
+        orderNumber={deleteTarget?.order_number}
+        deleteBlockers={deleteTarget?.delete_blockers}
+        deleteError={deleteError}
         loading={deleting}
         onConfirm={handleDeleteConfirm}
         onClose={() => {
@@ -382,6 +412,6 @@ export default function SalesOrders() {
           }
         }}
       />
-    </div>
+    </ListPageShell>
   );
 }

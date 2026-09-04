@@ -3,6 +3,8 @@ import usePageRefresh from "../../hooks/usePageRefresh";
 import { CheckCircle2, FileText, IndianRupee, Plus, X, XCircle } from "lucide-react";
 import KpiCard from "../../components/common/KpiCard";
 import PageHeader from "../../components/common/PageHeader";
+import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
+import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
 
 import DataTable from "../../components/common/DataTable";
 import Loader from "../../components/common/Loader";
@@ -18,17 +20,17 @@ import {
   updateVendorBillStatus,
 } from "../../api/procurementApi";
 import { formatInr, statusColor } from "../../data/procurementMasterData";
-
+import { runListExport } from "../../utils/listExport";
 
 import Button from "../../components/common/Button";
 function WorkflowStrip() {
   const steps = ["Purchase Order (PO)", "Goods Receipt Note (GRN)", "Vendor Invoice", "Finance Approval", "Payment"];
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-medium text-slate-600">
+    <div className="flex flex-wrap items-center gap-2 rounded-xl border border-[var(--color-border-soft)] bg-[var(--color-surface-muted)] px-4 py-3 text-xs font-medium text-[var(--color-text-secondary)]">
       {steps.map((s, i) => (
         <span key={s} className="flex items-center gap-2">
-          <span className="rounded-lg bg-white px-2.5 py-1 shadow-2xs font-semibold">{s}</span>
-          {i < steps.length - 1 && <span className="text-slate-400">→</span>}
+          <span className="rounded-lg bg-[var(--color-surface)] px-2.5 py-1 shadow-xs font-semibold">{s}</span>
+          {i < steps.length - 1 && <span className="text-[var(--color-text-muted)]">→</span>}
         </span>
       ))}
     </div>
@@ -76,34 +78,34 @@ function CreateBillModal({ isOpen, onClose, onCreated, suppliers, purchaseOrders
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-xs">
-      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+    <div className="ui-modal-backdrop">
+      <div className="ui-modal w-full max-w-md max-h-[90vh] overflow-y-auto">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-slate-900">Create Vendor Bill</h2>
-          <button type="button" onClick={onClose} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100">
+          <h2 className="text-lg font-bold text-[var(--color-text)]">Create Vendor Bill</h2>
+          <button type="button" onClick={onClose} className="rounded-lg p-1 text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)]">
             <X className="h-5 w-5" />
           </button>
         </div>
         <form onSubmit={handleSubmit} className="space-y-3">
           <div>
-            <label className="block text-xs font-semibold text-slate-700">
-              Bill Number <span className="text-slate-400 font-normal">(Optional)</span>
+            <label className="ui-label">
+              Bill Number <span className="font-normal text-[var(--color-text-muted)]">(Optional)</span>
             </label>
             <input
               placeholder="Auto-generated (e.g. V-BILL-2026-0001)"
               value={form.bill_number}
               onChange={(e) => setForm((f) => ({ ...f, bill_number: e.target.value }))}
-              className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+              className="ui-input w-full"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700">Vendor / Supplier</label>
+            <label className="ui-label">Vendor / Supplier</label>
             <select
               value={form.supplier_id}
               onChange={(e) => setForm((f) => ({ ...f, supplier_id: e.target.value }))}
               required
-              className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+              className="ui-select w-full"
             >
               <option value="">Select Vendor</option>
               {suppliers.map((s) => (
@@ -116,11 +118,11 @@ function CreateBillModal({ isOpen, onClose, onCreated, suppliers, purchaseOrders
 
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="block text-xs font-semibold text-slate-700">Purchase Order</label>
+              <label className="ui-label">Purchase Order</label>
               <select
                 value={form.purchase_order_id}
                 onChange={(e) => setForm((f) => ({ ...f, purchase_order_id: e.target.value }))}
-                className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+                className="ui-select w-full"
               >
                 <option value="">Select PO (Opt)</option>
                 {purchaseOrders.map((po) => (
@@ -131,11 +133,11 @@ function CreateBillModal({ isOpen, onClose, onCreated, suppliers, purchaseOrders
               </select>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-700">Goods Receipt Note (GRN)</label>
+              <label className="ui-label">Goods Receipt Note (GRN)</label>
               <select
                 value={form.goods_receipt_id}
                 onChange={(e) => setForm((f) => ({ ...f, goods_receipt_id: e.target.value }))}
-                className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+                className="ui-select w-full"
               >
                 <option value="">Select Goods Receipt Note (GRN) (Opt)</option>
                 {goodsReceipts.map((grn) => (
@@ -149,53 +151,53 @@ function CreateBillModal({ isOpen, onClose, onCreated, suppliers, purchaseOrders
 
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="block text-xs font-semibold text-slate-700">Bill Amount (₹)</label>
+              <label className="ui-label">Bill Amount (₹)</label>
               <input
                 type="number"
                 min="0"
                 required
                 value={form.amount}
                 onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
-                className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+                className="ui-input w-full"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-700">GST Amount (₹)</label>
+              <label className="ui-label">GST Amount (₹)</label>
               <input
                 type="number"
                 min="0"
                 value={form.gst_amount}
                 onChange={(e) => setForm((f) => ({ ...f, gst_amount: e.target.value }))}
-                className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+                className="ui-input w-full"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="block text-xs font-semibold text-slate-700">Bill Date</label>
+              <label className="ui-label">Bill Date</label>
               <input
                 type="date"
                 required
                 value={form.bill_date}
                 onChange={(e) => setForm((f) => ({ ...f, bill_date: e.target.value }))}
-                className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+                className="ui-input w-full"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-700">Due Date</label>
+              <label className="ui-label">Due Date</label>
               <input
                 type="date"
                 required
                 value={form.due_date}
                 onChange={(e) => setForm((f) => ({ ...f, due_date: e.target.value }))}
-                className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+                className="ui-input w-full"
               />
             </div>
           </div>
 
           <div className="flex gap-2 pt-2">
-            <Button type="button" variant="secondary" onClick={onClose} className="w-1/2">
+            <Button type="button" variant="cancel" onClick={onClose} className="w-1/2">
               Cancel
             </Button>
             <Button variant="primary" type="submit" disabled={submitting} className="w-1/2">
@@ -304,7 +306,7 @@ export default function VendorBills() {
           <button
             type="button"
             onClick={() => handleDelete(r)}
-            className="text-xs font-semibold text-red-600 hover:underline"
+            className="text-xs font-semibold text-[var(--color-danger)] hover:underline"
           >
             Delete
           </button>
@@ -351,7 +353,7 @@ export default function VendorBills() {
         }
         return (
           <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-emerald-700">Paid ✓</span>
+            <span className="text-xs font-semibold text-[var(--kpi-success)]">Paid ✓</span>
             {deleteBtn}
           </div>
         );
@@ -361,21 +363,32 @@ export default function VendorBills() {
 
   if (loading) return <Loader label="Loading vendor bills..." />;
 
+  const handleExport = (format) => {
+    runListExport(format, {
+      data: rows,
+      columns,
+      filename: "vendor-bills",
+      title: "Vendor Bills",
+    });
+    addToast(format === "pdf" ? "Exported to PDF" : "Exported to Excel", "success");
+  };
+
   return (
-    <div className="space-y-5 pb-4">
+    <ListPageShell>
       <PageHeader
         subtitle="Invoice module with three-way matching (Purchase Order (PO) ↔ Goods Receipt Note (GRN) ↔ Vendor Invoice) and finance approval."
         action={
-          <>
+          <div className="flex flex-wrap items-center gap-2">
+            <ExportDownloadMenu disabled={!rows.length} onExport={handleExport} />
             <Button
-            variant="add"
-            type="button"
-            onClick={() => setIsCreateOpen(true)}
-            leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}
-          >
-            Create Vendor Bill
-          </Button>
-          </>
+              variant="add"
+              type="button"
+              onClick={() => setIsCreateOpen(true)}
+              leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}
+            >
+              Create Vendor Bill
+            </Button>
+          </div>
         }
       />
 
@@ -388,14 +401,16 @@ export default function VendorBills() {
 
       <WorkflowStrip />
 
-      <div className="ui-card p-4">
+      <ListPageCard>
+        <ListPageCardBody className="overflow-x-auto">
         <DataTable
           columns={columns}
           data={rows}
           searchPlaceholder="Search"
           searchKeys={["bill_number", "vendor_name", "po_number"]}
         />
-      </div>
+        </ListPageCardBody>
+      </ListPageCard>
 
       <CreateBillModal
         isOpen={isCreateOpen}
@@ -405,6 +420,6 @@ export default function VendorBills() {
         purchaseOrders={purchaseOrders}
         goodsReceipts={goodsReceipts}
       />
-    </div>
+    </ListPageShell>
   );
 }

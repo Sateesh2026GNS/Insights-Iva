@@ -12,6 +12,8 @@ import {
 } from "lucide-react";
 
 import Button from "../../components/common/Button";
+import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
+import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
 import { SearchBar } from "../../components/common/SearchFilter";
 import DataTable from "../../components/common/DataTable";
 import KpiCard from "../../components/common/KpiCard";
@@ -30,6 +32,22 @@ import {
   mntStatusColor,
   priorityColor,
 } from "../../data/maintenanceMasterData";
+import { exportToExcel, exportToPdf } from "../../utils/exportUtils";
+
+const inputClass = "ui-input w-full";
+const selectClass = "ui-select w-full";
+
+const BREAKDOWN_EXPORT_COLUMNS = [
+  { key: "breakdown_number", label: "Breakdown No" },
+  { key: "machine_name", label: "Machine" },
+  { key: "department", label: "Department" },
+  { key: "reported_time", label: "Reported At" },
+  { key: "reported_by", label: "Reported By" },
+  { key: "cause", label: "Failure Cause" },
+  { key: "severity", label: "Severity" },
+  { key: "engineer", label: "Assigned Engineer" },
+  { key: "status", label: "Status" },
+];
 
 const BREAKDOWN_STATUSES = ["All Statuses", "Reported", "In Progress", "Resolved", "Closed"];
 const SEVERITY_LEVELS = ["All Severities", "Critical", "High", "Medium", "Low"];
@@ -190,15 +208,15 @@ export default function BreakdownReports() {
     {
       key: "breakdown_number",
       label: "Breakdown No",
-      render: (r) => <span className="font-semibold text-slate-900">{r.breakdown_number}</span>,
+      render: (r) => <span className="font-semibold text-[var(--color-text)]">{r.breakdown_number}</span>,
     },
     {
       key: "machine_name",
       label: "Machine & Dept",
       render: (r) => (
         <div>
-          <div className="font-medium text-slate-800">{r.machine_name}</div>
-          <div className="text-[11px] text-slate-500">{r.department}</div>
+          <div className="font-medium text-[var(--color-text)]">{r.machine_name}</div>
+          <div className="text-[11px] text-[var(--color-text-muted)]">{r.department}</div>
         </div>
       ),
     },
@@ -207,8 +225,8 @@ export default function BreakdownReports() {
       label: "Reported At",
       render: (r) => (
         <div>
-          <div className="text-slate-800">{String(r.reported_time || "").slice(0, 10)}</div>
-          <div className="text-[11px] text-slate-500">By: {r.reported_by || "Operator"}</div>
+          <div className="text-[var(--color-text)]">{String(r.reported_time || "").slice(0, 10)}</div>
+          <div className="text-[11px] text-[var(--color-text-muted)]">By: {r.reported_by || "Operator"}</div>
         </div>
       ),
     },
@@ -229,7 +247,7 @@ export default function BreakdownReports() {
     {
       key: "engineer",
       label: "Assigned Engineer",
-      render: (r) => <span className="text-slate-700">{r.engineer || "Unassigned"}</span>,
+      render: (r) => <span className="text-[var(--color-text)]">{r.engineer || "Unassigned"}</span>,
     },
     {
       key: "status",
@@ -260,7 +278,7 @@ export default function BreakdownReports() {
             </button>
           );
         }
-        return <span className="text-xs text-slate-400 font-medium">Closed</span>;
+        return <span className="text-xs text-[var(--color-text-muted)] font-medium">Closed</span>;
       },
     },
   ];
@@ -268,14 +286,39 @@ export default function BreakdownReports() {
   if (loading) return <Loader label="Loading breakdown maintenance..." />;
   if (error && !rows.length) return <MaintenanceErrorState message={error} onRetry={load} />;
 
+  const exportRows = filtered.map((r) => ({
+    breakdown_number: r.breakdown_number,
+    machine_name: r.machine_name,
+    department: r.department,
+    reported_time: String(r.reported_time || "").slice(0, 10),
+    reported_by: r.reported_by || "Operator",
+    cause: r.cause,
+    severity: r.severity,
+    engineer: r.engineer || "Unassigned",
+    status: String(r.status || "").replace(/_/g, " "),
+  }));
+
+  const handleExport = (format) => {
+    if (format === "pdf") {
+      exportToPdf(exportRows, BREAKDOWN_EXPORT_COLUMNS, "Breakdown Reports", "breakdown-reports");
+    } else {
+      exportToExcel(exportRows, BREAKDOWN_EXPORT_COLUMNS, "breakdown-reports");
+    }
+    addToast(format === "pdf" ? "Exported to PDF" : "Exported to Excel", "success");
+  };
+
   return (
+    <ListPageShell>
     <div className="space-y-5 pb-4">
       <PageHeader
         subtitle="Critical production breakdowns — downtime tracking, MTTR, and repair workflow."
         action={
-          <Button variant="add" onClick={() => setShowModal(true)} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
-            Report Breakdown
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <ExportDownloadMenu disabled={!exportRows.length} onExport={handleExport} />
+            <Button variant="add" onClick={() => setShowModal(true)} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
+              Report Breakdown
+            </Button>
+          </div>
         }
       />
 
@@ -288,7 +331,7 @@ export default function BreakdownReports() {
         <KpiCard label="Emergency" value={summary.emergency_breakdowns} icon={Zap} color="bg-red-700" />
       </div>
 
-      <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
+      <div className="ui-card ui-card--padded">
         <div className="grid gap-3 lg:grid-cols-12 lg:items-end">
           <div className="lg:col-span-6">
             <SearchBar
@@ -299,11 +342,11 @@ export default function BreakdownReports() {
             />
           </div>
           <div className="lg:col-span-3">
-            <label className="mb-1 block text-[11px] font-medium text-slate-500">Status</label>
+            <label className="ui-label mb-1 block">Status</label>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full rounded-lg border border-slate-200 bg-white py-2 px-3 text-[13px] focus:border-[var(--color-primary)] focus:outline-none"
+              className={selectClass}
             >
               {BREAKDOWN_STATUSES.map((s) => (
                 <option
@@ -316,11 +359,11 @@ export default function BreakdownReports() {
             </select>
           </div>
           <div className="lg:col-span-3">
-            <label className="mb-1 block text-[11px] font-medium text-slate-500">Severity</label>
+            <label className="ui-label mb-1 block">Severity</label>
             <select
               value={severityFilter}
               onChange={(e) => setSeverityFilter(e.target.value)}
-              className="w-full rounded-lg border border-slate-200 bg-white py-2 px-3 text-[13px] focus:border-[var(--color-primary)] focus:outline-none"
+              className={selectClass}
             >
               {SEVERITY_LEVELS.map((sev) => (
                 <option key={sev} value={sev === "All Severities" ? "" : sev.toLowerCase()}>
@@ -332,27 +375,37 @@ export default function BreakdownReports() {
         </div>
       </div>
 
-      <div className="ui-card p-4 sm:p-5 overflow-x-auto">
+      <ListPageCard>
+        <ListPageCardBody className="overflow-x-auto">
         <DataTable columns={columns} data={filtered} searchPlaceholder="" searchKeys={[]} />
-      </div>
+        </ListPageCardBody>
+      </ListPageCard>
 
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-xl animate-in fade-in zoom-in-95 duration-100">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+        <div
+          className="ui-modal-backdrop"
+          onMouseDown={(e) => {
+            if (!saving && e.target === e.currentTarget) setShowModal(false);
+          }}
+        >
+          <div
+            className="ui-modal max-h-[90vh] w-full max-w-lg overflow-y-auto p-6"
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-[var(--color-border-soft)] pb-4">
               <div className="flex items-center gap-2.5">
-                <div className="grid h-9 w-9 place-items-center rounded-lg bg-red-50 text-red-600">
+                <div className="grid h-9 w-9 place-items-center rounded-lg bg-[var(--color-danger-soft)] text-[var(--color-danger)]">
                   <AlertTriangle className="h-5 w-5" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold text-slate-900">Report Breakdown</h2>
-                  <p className="text-xs text-slate-500">Log a machine failure or downtime incident</p>
+                  <h2 className="text-lg font-bold text-[var(--color-text)]">Report Breakdown</h2>
+                  <p className="ui-subtitle">Log a machine failure or downtime incident</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setShowModal(false)}
-                className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 cursor-pointer"
+                className="rounded-lg p-2 text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] cursor-pointer"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -361,8 +414,8 @@ export default function BreakdownReports() {
             <form onSubmit={handleCreateBreakdown} className="mt-4 space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Machine Name / ID <span className="text-red-500">*</span>
+                  <label className="ui-label mb-1 block">
+                    Machine Name / ID <span className="text-[var(--color-danger)]">*</span>
                   </label>
                   <input
                     type="text"
@@ -370,15 +423,15 @@ export default function BreakdownReports() {
                     placeholder="e.g. CNC Milling Machine 01"
                     value={formData.machine_name}
                     onChange={(e) => setFormData({ ...formData, machine_name: e.target.value })}
-                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-[13px] focus:border-[var(--color-primary)] focus:outline-none"
+                    className={inputClass}
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Department</label>
+                  <label className="ui-label mb-1 block">Department</label>
                   <select
                     value={formData.department}
                     onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-[13px] focus:border-[var(--color-primary)] focus:outline-none"
+                    className={selectClass}
                   >
                     <option value="Machining">Machining</option>
                     <option value="Fabrication">Fabrication</option>
@@ -390,8 +443,8 @@ export default function BreakdownReports() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Breakdown Cause / Problem Description <span className="text-red-500">*</span>
+                <label className="ui-label mb-1 block">
+                  Breakdown Cause / Problem Description <span className="text-[var(--color-danger)]">*</span>
                 </label>
                 <textarea
                   required
@@ -399,17 +452,17 @@ export default function BreakdownReports() {
                   placeholder="Describe the failure, error code, or observed issue..."
                   value={formData.cause}
                   onChange={(e) => setFormData({ ...formData, cause: e.target.value })}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-[13px] focus:border-[var(--color-primary)] focus:outline-none"
+                  className={`${inputClass} min-h-[5rem] resize-y`}
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Severity</label>
+                  <label className="ui-label mb-1 block">Severity</label>
                   <select
                     value={formData.severity}
                     onChange={(e) => setFormData({ ...formData, severity: e.target.value })}
-                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-[13px] focus:border-[var(--color-primary)] focus:outline-none"
+                    className={selectClass}
                   >
                     <option value="Critical">Critical</option>
                     <option value="High">High</option>
@@ -418,49 +471,43 @@ export default function BreakdownReports() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Reported By
-                  </label>
+                  <label className="ui-label mb-1 block">Reported By</label>
                   <input
                     type="text"
                     placeholder="e.g. Line Operator"
                     value={formData.reported_by}
                     onChange={(e) => setFormData({ ...formData, reported_by: e.target.value })}
-                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-[13px] focus:border-[var(--color-primary)] focus:outline-none"
+                    className={inputClass}
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Assigned Engineer / Tech
-                  </label>
+                  <label className="ui-label mb-1 block">Assigned Engineer / Tech</label>
                   <input
                     type="text"
                     placeholder="e.g. R. Kumar (Mech)"
                     value={formData.engineer}
                     onChange={(e) => setFormData({ ...formData, engineer: e.target.value })}
-                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-[13px] focus:border-[var(--color-primary)] focus:outline-none"
+                    className={inputClass}
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Est. Downtime (Hours)
-                  </label>
+                  <label className="ui-label mb-1 block">Est. Downtime (Hours)</label>
                   <input
                     type="number"
                     min="0.5"
                     step="0.5"
                     value={formData.estimated_downtime}
                     onChange={(e) => setFormData({ ...formData, estimated_downtime: e.target.value })}
-                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-[13px] focus:border-[var(--color-primary)] focus:outline-none"
+                    className={inputClass}
                   />
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2 border-t border-slate-100 pt-4">
-                <Button type="button" variant="secondary" onClick={() => setShowModal(false)}>
+              <div className="flex justify-end gap-2 border-t border-[var(--color-border-soft)] pt-4">
+                <Button type="button" variant="cancel" onClick={() => setShowModal(false)}>
                   Cancel
                 </Button>
                 <Button type="submit" variant="primary" disabled={saving}>
@@ -472,5 +519,6 @@ export default function BreakdownReports() {
         </div>
       )}
     </div>
+    </ListPageShell>
   );
 }

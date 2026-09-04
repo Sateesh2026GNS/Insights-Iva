@@ -333,7 +333,7 @@ export default function AddLedgerVendorModal({ open, onClose, onSaved, vendor = 
         </div>
 
         <div className="flex shrink-0 justify-end gap-3 border-t border-[#ececf0] px-5 py-4">
-          <Button type="button" variant="secondary" onClick={onClose}>
+          <Button type="button" variant="cancel" onClick={onClose}>
             Cancel
           </Button>
           <Button type="submit" variant="primary" loading={saving} disabled={saving}>

@@ -112,7 +112,7 @@ export default function EditInventoryItemModal({ item, onClose, onSaved, addToas
           </label>
         </div>
         <div className="flex justify-end gap-2 border-t px-5 py-4">
-          <Button type="button" variant="secondary" onClick={onClose}>
+          <Button type="button" variant="cancel" onClick={onClose}>
             Cancel
           </Button>
           <Button type="submit" variant="primary" disabled={saving} loading={saving}>

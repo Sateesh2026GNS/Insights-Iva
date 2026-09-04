@@ -240,7 +240,7 @@ export default function MaterialFormModal({
           </div>
 
           <div className="mt-6 flex justify-end gap-2">
-            <Button type="button" variant="secondary" onClick={onClose} disabled={saving}>
+            <Button type="button" variant="cancel" onClick={onClose} disabled={saving}>
               Cancel
             </Button>
             <Button type="submit" variant="primary" disabled={saving}>

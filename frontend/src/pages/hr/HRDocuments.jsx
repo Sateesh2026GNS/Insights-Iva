@@ -2,17 +2,26 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { Plus, FileText, Upload, Calendar, User, X, Save, Download, CheckCircle, Trash2, ShieldCheck, FolderCheck } from "lucide-react";
 import KpiCard from "../../components/common/KpiCard";
 import PageHeader from "../../components/common/PageHeader";
-
+import Button from "../../components/common/Button";
+import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
+import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
 import DataTable from "../../components/common/DataTable";
 import Loader from "../../components/common/Loader";
 import { useToast } from "../../context/ToastContext";
 import { getDocuments, createDocument } from "../../api/documentsApi";
 import useTenantId from "../../hooks/useTenantId";
 import usePageRefresh from "../../hooks/usePageRefresh";
+import { exportToExcel, exportToPdf } from "../../utils/exportUtils";
 
-import Button from "../../components/common/Button";
-const inputClass =
-  "mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:border-[#2563EB] focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all";
+const inputClass = "ui-input mt-1.5 w-full";
+
+const DOC_EXPORT_COLUMNS = [
+  { key: "title", label: "Document Title" },
+  { key: "description", label: "Description" },
+  { key: "file_name", label: "File Name" },
+  { key: "uploaded_by", label: "Uploaded By" },
+  { key: "created_at", label: "Date" },
+];
 
 
 function formatBytes(bytes, decimals = 1) {
@@ -161,20 +170,20 @@ Description : ${doc.description || 'N/A'}
       key: "title",
       label: "Document Title",
       render: (r) => (
-        <span className="flex items-center gap-2 font-semibold text-slate-900">
+        <span className="flex items-center gap-2 font-semibold text-[var(--color-text)]">
           <FileText className="h-4 w-4 text-[var(--color-primary)] shrink-0" />
           {r.title}
         </span>
       ),
     },
-    { key: "description", label: "Description", render: (r) => <span className="text-slate-500 text-xs">{r.description || "—"}</span> },
-    { key: "file_name", label: "File Name", render: (r) => <span className="font-mono text-xs text-slate-700 bg-slate-100 rounded px-2 py-0.5 border border-slate-200">{r.file_name}</span> },
+    { key: "description", label: "Description", render: (r) => <span className="text-[var(--color-text-muted)] text-xs">{r.description || "—"}</span> },
+    { key: "file_name", label: "File Name", render: (r) => <span className="font-mono text-xs text-[var(--color-text)] bg-[var(--color-surface-muted)] rounded px-2 py-0.5 border border-[var(--color-border-soft)]">{r.file_name}</span> },
     {
       key: "uploaded_by",
       label: "Uploaded By",
       render: (r) => (
-        <span className="inline-flex items-center gap-1 text-slate-700 text-xs">
-          <User className="h-3 w-3 text-slate-400 shrink-0" />
+        <span className="inline-flex items-center gap-1 text-[var(--color-text-secondary)] text-xs">
+          <User className="h-3 w-3 text-[var(--color-text-muted)] shrink-0" />
           {r.uploaded_by || "HR Manager"}
         </span>
       ),
@@ -183,8 +192,8 @@ Description : ${doc.description || 'N/A'}
       key: "created_at",
       label: "Date",
       render: (r) => (
-        <span className="inline-flex items-center gap-1 text-slate-600 text-xs">
-          <Calendar className="h-3 w-3 text-slate-400 shrink-0" />
+        <span className="inline-flex items-center gap-1 text-[var(--color-text-secondary)] text-xs">
+          <Calendar className="h-3 w-3 text-[var(--color-text-muted)] shrink-0" />
           {r.created_at ? String(r.created_at).slice(0, 10) : new Date().toISOString().slice(0, 10)}
         </span>
       ),
@@ -206,12 +215,31 @@ Description : ${doc.description || 'N/A'}
 
   if (loading && documents.length === 0) return <Loader label="Loading HR documents..." />;
 
+  const exportRows = documents.map((r) => ({
+    title: r.title,
+    description: r.description || "",
+    file_name: r.file_name,
+    uploaded_by: r.uploaded_by || "HR Manager",
+    created_at: r.created_at ? String(r.created_at).slice(0, 10) : "",
+  }));
+
+  const handleExport = (format) => {
+    if (format === "pdf") {
+      exportToPdf(exportRows, DOC_EXPORT_COLUMNS, "HR Documents", "hr-documents");
+    } else {
+      exportToExcel(exportRows, DOC_EXPORT_COLUMNS, "hr-documents");
+    }
+    addToast(format === "pdf" ? "Exported to PDF" : "Exported to Excel", "success");
+  };
+
   return (
+    <ListPageShell>
     <div className="hr-page ui-page ui-stack space-y-5 pb-4">
       <PageHeader
         subtitle="Access and organize policy manuals, employee handbooks, and personnel files."
         action={
-          <>
+          <div className="flex flex-wrap items-center gap-2">
+            <ExportDownloadMenu disabled={!exportRows.length} onExport={handleExport} />
             <Button
             variant="add"
             type="button"
@@ -220,7 +248,7 @@ Description : ${doc.description || 'N/A'}
           >
             Add Document
           </Button>
-          </>
+          </div>
         }
       />
 
@@ -230,27 +258,37 @@ Description : ${doc.description || 'N/A'}
         <KpiCard label="Access Control" value="HR Admin & Execs" icon={FolderCheck} color="bg-purple-600" />
       </div>
 
-      <div className="ui-card p-4">
+      <ListPageCard>
+        <ListPageCardBody>
         <DataTable
           columns={columns}
           data={documents}
           searchPlaceholder="Search"
           searchKeys={["title", "description", "file_name"]}
         />
-      </div>
+        </ListPageCardBody>
+      </ListPageCard>
 
       {showUploadModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl border border-slate-200 max-w-md w-full p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
+        <div
+          className="ui-modal-backdrop"
+          onMouseDown={(e) => {
+            if (!saving && e.target === e.currentTarget) setShowUploadModal(false);
+          }}
+        >
+          <div
+            className="ui-modal max-w-md w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto"
+            onMouseDown={(e) => e.stopPropagation()}
+          >
             <div className="flex items-start justify-between">
               <div>
-                <h3 className="text-lg font-bold text-slate-900">Upload HR Document</h3>
-                <p className="text-xs text-slate-500 mt-0.5">Select a file from your computer to store in the HR Vault.</p>
+                <h3 className="text-lg font-bold text-[var(--color-text)]">Upload HR Document</h3>
+                <p className="ui-subtitle mt-0.5">Select a file from your computer to store in the HR Vault.</p>
               </div>
               <button
                 type="button"
                 onClick={() => setShowUploadModal(false)}
-                className="rounded-lg p-2 text-slate-400 hover:bg-slate-100"
+                className="rounded-lg p-2 text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)]"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -258,7 +296,7 @@ Description : ${doc.description || 'N/A'}
 
             <form onSubmit={handleSubmit} className="space-y-4">
               {error && (
-                <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs font-semibold text-rose-700">
+                <div className="rounded-xl border border-[var(--color-danger)]/30 bg-[var(--color-danger-soft)] px-4 py-2.5 text-xs font-semibold text-[var(--color-danger)]">
                   {error}
                 </div>
               )}
@@ -274,27 +312,27 @@ Description : ${doc.description || 'N/A'}
 
               {/* Upload Drop Zone / Selected File Card */}
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">File Upload *</label>
+                <label className="ui-label block mb-1.5">File Upload *</label>
                 {!selectedFile && !form.file_name ? (
                   <div
                     onClick={() => fileInputRef.current?.click()}
-                    className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/80 p-6 text-center hover:border-blue-400 hover:bg-blue-50/30 cursor-pointer transition-all group"
+                    className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-[var(--color-border-soft)] bg-[var(--color-surface-muted)] p-6 text-center hover:border-[var(--color-primary)] hover:bg-[var(--color-primary-soft)] cursor-pointer transition-all group"
                   >
-                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-100/80 text-[var(--color-primary)] group-hover:scale-110 transition-transform mb-2">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--color-primary-soft)] text-[var(--color-primary)] group-hover:scale-110 transition-transform mb-2">
                       <Upload className="h-6 w-6" />
                     </div>
-                    <p className="text-sm font-semibold text-slate-800">Click to browse file</p>
-                    <p className="text-xs text-slate-400 mt-1">Supports PDF, DOCX, PNG, JPG, XLSX (up to 25MB)</p>
+                    <p className="text-sm font-semibold text-[var(--color-text)]">Click to browse file</p>
+                    <p className="text-xs text-[var(--color-text-muted)] mt-1">Supports PDF, DOCX, PNG, JPG, XLSX (up to 25MB)</p>
                   </div>
                 ) : (
-                  <div className="flex items-center justify-between rounded-2xl border border-blue-200 bg-blue-50/60 p-3.5">
+                  <div className="flex items-center justify-between rounded-2xl border border-[var(--color-primary)]/30 bg-[var(--color-primary-soft)] p-3.5">
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--color-primary)] text-white shadow-xs">
                         <CheckCircle className="h-5 w-5" />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-xs font-bold text-slate-900 truncate">{form.file_name}</p>
-                        <p className="text-[11px] text-slate-500 mt-0.5">
+                        <p className="text-xs font-bold text-[var(--color-text)] truncate">{form.file_name}</p>
+                        <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">
                           {selectedFile ? formatBytes(selectedFile.size) : "Ready for upload"}
                         </p>
                       </div>
@@ -303,14 +341,14 @@ Description : ${doc.description || 'N/A'}
                       <button
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
-                        className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+                        className="rounded-lg border border-[var(--color-border-soft)] bg-[var(--color-surface)] px-2.5 py-1 text-xs font-semibold text-[var(--color-text)] hover:bg-[var(--color-surface-hover)] transition-colors"
                       >
                         Change
                       </button>
                       <button
                         type="button"
                         onClick={handleRemoveFile}
-                        className="rounded-lg p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                        className="rounded-lg p-1 text-[var(--color-text-muted)] hover:text-[var(--color-danger)] hover:bg-[var(--color-danger-soft)] transition-colors"
                         title="Remove File"
                       >
                         <Trash2 className="h-4 w-4" />
@@ -321,7 +359,7 @@ Description : ${doc.description || 'N/A'}
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Document Title *</label>
+                <label className="ui-label block">Document Title *</label>
                 <input
                   type="text"
                   required
@@ -333,7 +371,7 @@ Description : ${doc.description || 'N/A'}
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Description</label>
+                <label className="ui-label block">Description</label>
                 <textarea
                   rows="3"
                   placeholder="Summary of document purpose, department coverage..."
@@ -343,14 +381,14 @@ Description : ${doc.description || 'N/A'}
                 />
               </div>
 
-              <div className="flex justify-end gap-2 border-t pt-4">
-                <button
+              <div className="flex justify-end gap-2 border-t border-[var(--color-border-soft)] pt-4">
+                <Button
                   type="button"
+                  variant="cancel"
                   onClick={() => setShowUploadModal(false)}
-                  className="rounded-xl border px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
                 >
                   Cancel
-                </button>
+                </Button>
                 <Button variant="primary" type="submit" disabled={saving}>
                   <Save className="h-4 w-4" />
                   {saving ? "Saving..." : "Upload Document"}
@@ -361,5 +399,6 @@ Description : ${doc.description || 'N/A'}
         </div>
       )}
     </div>
+    </ListPageShell>
   );
 }

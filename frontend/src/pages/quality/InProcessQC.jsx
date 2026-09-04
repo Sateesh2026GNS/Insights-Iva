@@ -9,7 +9,6 @@ import {
   ChevronRight,
   ClipboardList,
   Clock,
-  FileSpreadsheet,
   Filter,
   Plus,
   Search,
@@ -18,6 +17,8 @@ import {
 } from "lucide-react";
 
 import Button from "../../components/common/Button";
+import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
+import { ListPageShell } from "../../components/common/ListPageShell";
 import { SearchBar } from "../../components/common/SearchFilter";
 import InventoryRowActionsMenu from "../../components/inventory/InventoryRowActionsMenu";
 import KpiCard from "../../components/common/KpiCard";
@@ -35,9 +36,20 @@ import {
   processResultLabel,
   processStatusLabel,
 } from "../../data/qualityMasterData";
-import { exportToExcel } from "../../utils/exportUtils";
+import { exportToExcel, exportToPdf } from "../../utils/exportUtils";
 
 const PAGE_SIZES = [10, 25, 50];
+
+const PROCESS_EXPORT_COLUMNS = [
+  { key: "qc_number", label: "QC No." },
+  { key: "date", label: "Date" },
+  { key: "work_order", label: "Work Order" },
+  { key: "process", label: "Process / Operation" },
+  { key: "item", label: "Item" },
+  { key: "checked_by", label: "Checked By" },
+  { key: "status", label: "Status" },
+  { key: "result", label: "Result" },
+];
 
 const PROCESS_STATUS_OPTIONS = [
   { value: "passed", label: "Passed" },
@@ -138,14 +150,14 @@ function MultiSelectDropdown({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className={`inline-flex items-center justify-between gap-2 rounded-lg border border-[var(--color-border-soft)] bg-white px-3 py-2 text-[13px] font-medium text-[var(--color-text)] shadow-xs transition-colors hover:border-[var(--color-primary)] ${minWidth}`}
+        className={`inline-flex items-center justify-between gap-2 rounded-lg border border-[var(--color-border-soft)] bg-[var(--color-surface)] px-3 py-2 text-[13px] font-medium text-[var(--color-text)] shadow-xs transition-colors hover:border-[var(--color-primary)] ${minWidth}`}
       >
         <span className="truncate">{triggerLabel}</span>
         <ChevronDown className={`h-4 w-4 shrink-0 text-[var(--color-text-muted)] transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
       </button>
 
       {open && (
-        <div className="absolute left-0 top-[calc(100%+4px)] z-40 w-64 rounded-xl border border-[var(--color-border-soft)] bg-white p-2 shadow-xl">
+        <div className="absolute left-0 top-[calc(100%+4px)] z-40 w-64 rounded-xl border border-[var(--color-border-soft)] bg-[var(--color-surface)] p-2 shadow-xl">
           {normalizedOptions.length > 5 && (
             <div className="mb-2 px-1">
               <SearchBar
@@ -354,34 +366,23 @@ export default function InProcessQC() {
 
   if (loading) return <Loader label="Loading in-process QC..." />;
 
+  const handleExport = (format) => {
+    if (format === "pdf") {
+      exportToPdf(exportRows, PROCESS_EXPORT_COLUMNS, "In-Process QC", "in-process-qc");
+    } else {
+      exportToExcel(exportRows, PROCESS_EXPORT_COLUMNS, "in-process-qc");
+    }
+    addToast(format === "pdf" ? "Exported to PDF" : "Exported to Excel", "success");
+  };
+
   return (
+    <ListPageShell>
     <div className="min-w-0 space-y-5 pb-4">
       <PageHeader
         subtitle="Monitor and manage quality checks during the production process"
         action={
           <div className="flex flex-wrap items-center gap-2">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() =>
-                exportToExcel(
-                  exportRows,
-                  [
-                    { key: "qc_number", label: "QC No." },
-                    { key: "date", label: "Date" },
-                    { key: "work_order", label: "Work Order" },
-                    { key: "process", label: "Process / Operation" },
-                    { key: "item", label: "Item" },
-                    { key: "checked_by", label: "Checked By" },
-                    { key: "status", label: "Status" },
-                    { key: "result", label: "Result" },
-                  ],
-                  "in-process-qc"
-                )
-              }
-            >
-              <FileSpreadsheet className="h-4 w-4" /> Export
-            </Button>
+            <ExportDownloadMenu disabled={!exportRows.length} onExport={handleExport} />
             <Button variant="add" to="/quality/inspection" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
               New In-Process QC
             </Button>
@@ -402,7 +403,7 @@ export default function InProcessQC() {
             />
           </div>
           <div className="flex flex-wrap items-center gap-2.5">
-            <div className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border-soft)] bg-white px-3 py-1.5 text-[13px] shadow-xs">
+            <div className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border-soft)] bg-[var(--color-surface)] px-3 py-1.5 text-[13px] shadow-xs">
               <CalendarDays className="h-4 w-4 shrink-0 text-[var(--color-text-muted)]" />
               <input
                 type="date"
@@ -622,7 +623,7 @@ export default function InProcessQC() {
 
       {viewRow ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white shadow-xl">
+          <div className="ui-modal max-h-[90vh] w-full max-w-lg overflow-y-auto">
             <div className="flex items-start justify-between border-b px-6 py-4">
               <div>
                 <h2 className="text-lg font-bold text-[var(--color-text)]">{viewRow.qc_number}</h2>
@@ -669,5 +670,6 @@ export default function InProcessQC() {
         </div>
       ) : null}
     </div>
+    </ListPageShell>
   );
 }

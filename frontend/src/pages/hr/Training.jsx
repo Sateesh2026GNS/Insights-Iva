@@ -13,7 +13,6 @@ import {
   FileText,
   GraduationCap,
   Medal,
-  MoreVertical,
   Plus,
   X,
 } from "lucide-react";
@@ -32,7 +31,9 @@ import {
 import PlaceholderPage from "../../components/common/PlaceholderPage";
 import InventoryRowActionsMenu from "../../components/inventory/InventoryRowActionsMenu";
 import Loader from "../../components/common/Loader";
-import { AddButton } from "../../components/common/Button";
+import Button, { AddButton } from "../../components/common/Button";
+import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
+import { ListPageShell } from "../../components/common/ListPageShell";
 import { HrKpiCard, HrPage, HrPageHeader, HrPanel, hrInputClass } from "../../components/hr/hrUi";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { useToast } from "../../context/ToastContext";
@@ -50,6 +51,20 @@ import {
   trainingStatusBadgeClass,
   trainingStatusLabel,
 } from "../../data/hrMasterData";
+import { exportToExcel, exportToPdf } from "../../utils/exportUtils";
+
+const selectClass = "ui-select !w-auto min-w-[7rem]";
+
+const TRAINING_EXPORT_COLUMNS = [
+  { key: "name", label: "Program Name" },
+  { key: "category", label: "Category" },
+  { key: "trainer", label: "Trainer" },
+  { key: "start_date", label: "Start Date" },
+  { key: "end_date", label: "End Date" },
+  { key: "participants", label: "Participants" },
+  { key: "progress", label: "Progress %" },
+  { key: "status", label: "Status" },
+];
 
 const inputClass = hrInputClass;
 
@@ -72,7 +87,7 @@ function ProgressBar({ pct, color = "#8b5cf6" }) {
   const value = Math.min(100, Math.max(0, Number(pct) || 0));
   return (
     <div className="flex min-w-[100px] items-center gap-2">
-      <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-100">
+      <div className="h-2 flex-1 overflow-hidden rounded-full bg-[var(--color-surface-muted)]">
         <div className="h-full rounded-full" style={{ width: `${value}%`, background: color }} />
       </div>
       <span className="w-9 text-right text-xs font-semibold tabular-nums text-[var(--color-text-secondary)]">{value}%</span>
@@ -253,7 +268,28 @@ function TrainingDashboard() {
 
   if (loading) return <Loader label="Loading training..." />;
 
+  const exportRows = pageRows.map((r) => ({
+    name: r.name,
+    category: r.category,
+    trainer: r.trainer,
+    start_date: r.start_date,
+    end_date: r.end_date,
+    participants: r.participants,
+    progress: r.progress,
+    status: trainingStatusLabel(r.status),
+  }));
+
+  const handleExport = (format) => {
+    if (format === "pdf") {
+      exportToPdf(exportRows, TRAINING_EXPORT_COLUMNS, "Training Programs", "training-programs");
+    } else {
+      exportToExcel(exportRows, TRAINING_EXPORT_COLUMNS, "training-programs");
+    }
+    addToast(format === "pdf" ? "Exported to PDF" : "Exported to Excel", "success");
+  };
+
   return (
+    <ListPageShell>
     <HrPage>
       <HrPageHeader
         title="Training"
@@ -263,14 +299,10 @@ function TrainingDashboard() {
           <AddButton type="button" onClick={openCreateProgram}>
             Create Training Program
           </AddButton>
-          <button
-            type="button"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2.5 text-sm font-semibold text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-muted)]"
-          >
-            <MoreVertical className="h-4 w-4" />
+          <ExportDownloadMenu disabled={!exportRows.length} onExport={handleExport} />
+          <Button type="button" variant="secondary" rightIcon={<ChevronDown className="h-4 w-4" aria-hidden />}>
             More Actions
-            <ChevronDown className="h-4 w-4" />
-          </button>
+          </Button>
           </>
         }
       />
@@ -299,18 +331,18 @@ function TrainingDashboard() {
                 </PieChart>
               </ResponsiveContainer>
               <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center px-2 text-center">
-                <span className="text-[18px] font-bold text-slate-900">{data.overview_total}</span>
-                <span className="text-[10px] leading-tight text-slate-500">Total Programs</span>
+                <span className="text-[18px] font-bold text-[var(--color-text)]">{data.overview_total}</span>
+                <span className="text-[10px] leading-tight text-[var(--color-text-muted)]">Total Programs</span>
               </div>
             </div>
             <ul className="min-w-0 flex-1 space-y-2 text-[12px]">
               {overviewData.map((d) => (
                 <li key={d.name} className="flex items-center justify-between gap-2">
-                  <span className="flex items-center gap-2 text-slate-600">
+                  <span className="flex items-center gap-2 text-[var(--color-text-secondary)]">
                     <span className="h-2.5 w-2.5 rounded-full" style={{ background: d.color }} />
                     {d.name}
                   </span>
-                  <span className="font-semibold text-slate-800">
+                  <span className="font-semibold text-[var(--color-text)]">
                     {d.pct}% ({d.value})
                   </span>
                 </li>
@@ -325,7 +357,7 @@ function TrainingDashboard() {
             <select
               value={trendRange}
               onChange={(e) => setTrendRange(e.target.value)}
-              className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[12px] font-medium text-slate-600 outline-none"
+              className={selectClass}
             >
               <option value="this_month">This Month</option>
               <option value="last_month">Last Month</option>
@@ -362,10 +394,10 @@ function TrainingDashboard() {
             {data.top_categories.map((cat) => (
               <li key={cat.label}>
                 <div className="mb-1.5 flex items-center justify-between text-[12px]">
-                  <span className="font-medium text-slate-700">{cat.label}</span>
-                  <span className="font-semibold text-slate-800">{cat.pct}%</span>
+                  <span className="font-medium text-[var(--color-text)]">{cat.label}</span>
+                  <span className="font-semibold text-[var(--color-text)]">{cat.pct}%</span>
                 </div>
-                <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+                <div className="h-2 overflow-hidden rounded-full bg-[var(--color-surface-muted)]">
                   <div className="h-full rounded-full" style={{ width: `${cat.pct}%`, background: cat.color }} />
                 </div>
               </li>
@@ -377,55 +409,55 @@ function TrainingDashboard() {
       {/* Bottom row */}
       <div className="grid gap-4 xl:grid-cols-3">
         <div className="space-y-4 xl:col-span-2">
-          <HrPanel title="Ongoing Training Programs" action={<Link to="/hr/training" className="text-sm font-semibold text-[#6366f1]">View All</Link>}>
-            <div className="overflow-x-auto rounded-xl border border-slate-200">
+          <HrPanel title="Ongoing Training Programs" action={<Link to="/hr/training" className="text-sm font-semibold text-[var(--color-primary)]">View All</Link>}>
+            <div className="overflow-x-auto rounded-xl border border-[var(--color-border-soft)]">
               <table className="min-w-full w-full border-collapse text-left text-sm">
                   <thead className="ui-table-head">
                   <tr>
-                    <th className="border-b border-slate-200 px-3 py-3 min-w-[180px]">Program Name</th>
-                    <th className="border-b border-slate-200 px-3 py-3">Category</th>
-                    <th className="border-b border-slate-200 px-3 py-3">Trainer</th>
-                    <th className="border-b border-slate-200 px-3 py-3">Start Date</th>
-                    <th className="border-b border-slate-200 px-3 py-3">End Date</th>
-                    <th className="border-b border-slate-200 px-3 py-3 text-center">Participants</th>
-                    <th className="border-b border-slate-200 px-3 py-3 min-w-[120px]">Progress</th>
-                    <th className="border-b border-slate-200 px-3 py-3">Status</th>
-                    <th className="border-b border-slate-200 px-3 py-3 text-center">Action</th>
+                    <th className="border-b border-[var(--color-border-soft)] px-3 py-3 min-w-[180px]">Program Name</th>
+                    <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Category</th>
+                    <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Trainer</th>
+                    <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Start Date</th>
+                    <th className="border-b border-[var(--color-border-soft)] px-3 py-3">End Date</th>
+                    <th className="border-b border-[var(--color-border-soft)] px-3 py-3 text-center">Participants</th>
+                    <th className="border-b border-[var(--color-border-soft)] px-3 py-3 min-w-[120px]">Progress</th>
+                    <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Status</th>
+                    <th className="border-b border-[var(--color-border-soft)] px-3 py-3 text-center">Action</th>
                   </tr>
                 </thead>
                 <tbody>
                   {pageRows.length === 0 ? (
                     <tr>
-                      <td colSpan={9} className="border-b border-slate-100 px-3 py-8 text-center text-sm text-slate-500">
+                      <td colSpan={9} className="border-b border-[var(--color-border-soft)] px-3 py-8 text-center text-sm text-[var(--color-text-muted)]">
                         No training records found
                       </td>
                     </tr>
                   ) : (
                   pageRows.map((row, idx) => (
-                    <tr key={row.id} className={idx % 2 === 1 ? "bg-slate-50/60 hover:bg-slate-50" : "hover:bg-slate-50/80"}>
-                      <td className="border-b border-slate-100 px-3 py-3">
+                    <tr key={row.id} className={idx % 2 === 1 ? "bg-[var(--color-surface-muted)]/60 hover:bg-[var(--color-surface-muted)]" : "hover:bg-[var(--color-surface-muted)]/80"}>
+                      <td className="border-b border-[var(--color-border-soft)] px-3 py-3">
                         <div className="flex items-center gap-2">
                           <FileText className="h-4 w-4 shrink-0 text-indigo-400" aria-hidden />
-                          <span className="font-semibold text-slate-800">{row.name}</span>
+                          <span className="font-semibold text-[var(--color-text)]">{row.name}</span>
                         </div>
                       </td>
-                      <td className="border-b border-slate-100 px-3 py-3 text-slate-600">{row.category}</td>
-                      <td className="border-b border-slate-100 px-3 py-3 text-slate-600">{row.trainer}</td>
-                      <td className="border-b border-slate-100 px-3 py-3 whitespace-nowrap text-slate-600">{row.start_date}</td>
-                      <td className="border-b border-slate-100 px-3 py-3 whitespace-nowrap text-slate-600">{row.end_date}</td>
-                      <td className="border-b border-slate-100 px-3 py-3 text-center tabular-nums text-slate-700">{row.participants}</td>
-                      <td className="border-b border-slate-100 px-3 py-3">
+                      <td className="border-b border-[var(--color-border-soft)] px-3 py-3 text-[var(--color-text-secondary)]">{row.category}</td>
+                      <td className="border-b border-[var(--color-border-soft)] px-3 py-3 text-[var(--color-text-secondary)]">{row.trainer}</td>
+                      <td className="border-b border-[var(--color-border-soft)] px-3 py-3 whitespace-nowrap text-[var(--color-text-secondary)]">{row.start_date}</td>
+                      <td className="border-b border-[var(--color-border-soft)] px-3 py-3 whitespace-nowrap text-[var(--color-text-secondary)]">{row.end_date}</td>
+                      <td className="border-b border-[var(--color-border-soft)] px-3 py-3 text-center tabular-nums text-[var(--color-text)]">{row.participants}</td>
+                      <td className="border-b border-[var(--color-border-soft)] px-3 py-3">
                         <ProgressBar pct={row.progress} />
                       </td>
-                      <td className="border-b border-slate-100 px-3 py-3">
+                      <td className="border-b border-[var(--color-border-soft)] px-3 py-3">
                         <TrainingStatusBadge status={row.status} />
                       </td>
-                      <td className="border-b border-slate-100 px-3 py-3">
+                      <td className="border-b border-[var(--color-border-soft)] px-3 py-3">
                         <div className="flex items-center justify-center gap-1">
                           <button
                             type="button"
                             onClick={() => setViewProgram(row)}
-                            className="grid h-8 w-8 place-items-center rounded-md text-[#6366f1] hover:bg-indigo-50"
+                            className="grid h-8 w-8 place-items-center rounded-md text-[var(--color-primary)] hover:bg-indigo-50"
                             aria-label="View program"
                           >
                             <Eye className="h-4 w-4" />
@@ -449,12 +481,12 @@ function TrainingDashboard() {
               </table>
             </div>
 
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-slate-500">
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-[var(--color-text-muted)]">
               <span>
                 Showing {from} to {to} of {displayTotal} entries
               </span>
               <div className="flex items-center gap-1">
-                <button type="button" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))} className="grid h-8 w-8 place-items-center rounded-md border border-slate-200 bg-white disabled:opacity-40">
+                <button type="button" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))} className="grid h-8 w-8 place-items-center rounded-md border border-[var(--color-border-soft)] bg-[var(--color-surface)] disabled:opacity-40">
                   <ChevronLeft className="h-4 w-4" />
                 </button>
                 {pageItems(page, totalPages).map((item) =>
@@ -466,58 +498,58 @@ function TrainingDashboard() {
                       type="button"
                       onClick={() => setPage(item)}
                       className={`grid h-8 min-w-8 place-items-center rounded-md border px-2 text-sm font-semibold ${
-                        item === page ? "border-[#6366f1] bg-[#6366f1] text-white" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                        item === page ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-white" : "border-[var(--color-border-soft)] bg-[var(--color-surface)] text-[var(--color-text)] hover:bg-[var(--color-surface-muted)]"
                       }`}
                     >
                       {item}
                     </button>
                   )
                 )}
-                <button type="button" disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))} className="grid h-8 w-8 place-items-center rounded-md border border-slate-200 bg-white disabled:opacity-40">
+                <button type="button" disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))} className="grid h-8 w-8 place-items-center rounded-md border border-[var(--color-border-soft)] bg-[var(--color-surface)] disabled:opacity-40">
                   <ChevronRight className="h-4 w-4" />
                 </button>
               </div>
-              <span className="rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-600">
+              <span className="rounded-md border border-[var(--color-border-soft)] bg-[var(--color-surface)] px-2 py-1.5 text-sm text-[var(--color-text-secondary)]">
                 {pageSize} / page
               </span>
             </div>
           </HrPanel>
 
           <HrPanel title="Upcoming Training Programs">
-            <div className="overflow-x-auto rounded-xl border border-slate-200">
+            <div className="overflow-x-auto rounded-xl border border-[var(--color-border-soft)]">
               <table className="min-w-full w-full border-collapse text-left text-sm">
                   <thead className="ui-table-head">
                   <tr>
-                    <th className="border-b border-slate-200 px-3 py-3">Program Name</th>
-                    <th className="border-b border-slate-200 px-3 py-3">Category</th>
-                    <th className="border-b border-slate-200 px-3 py-3">Trainer</th>
-                    <th className="border-b border-slate-200 px-3 py-3">Start Date</th>
-                    <th className="border-b border-slate-200 px-3 py-3">End Date</th>
-                    <th className="border-b border-slate-200 px-3 py-3 text-center">Participants</th>
-                    <th className="border-b border-slate-200 px-3 py-3 text-center">Action</th>
+                    <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Program Name</th>
+                    <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Category</th>
+                    <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Trainer</th>
+                    <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Start Date</th>
+                    <th className="border-b border-[var(--color-border-soft)] px-3 py-3">End Date</th>
+                    <th className="border-b border-[var(--color-border-soft)] px-3 py-3 text-center">Participants</th>
+                    <th className="border-b border-[var(--color-border-soft)] px-3 py-3 text-center">Action</th>
                   </tr>
                 </thead>
                 <tbody>
                   {data.upcoming_programs.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="border-b border-slate-100 px-3 py-8 text-center text-sm text-slate-500">
+                      <td colSpan={7} className="border-b border-[var(--color-border-soft)] px-3 py-8 text-center text-sm text-[var(--color-text-muted)]">
                         No upcoming programs
                       </td>
                     </tr>
                   ) : (
                   data.upcoming_programs.map((row) => (
-                    <tr key={row.id} className="hover:bg-slate-50/80">
-                      <td className="border-b border-slate-100 px-3 py-3 font-semibold text-slate-800">{row.name}</td>
-                      <td className="border-b border-slate-100 px-3 py-3 text-slate-600">{row.category}</td>
-                      <td className="border-b border-slate-100 px-3 py-3 text-slate-600">{row.trainer}</td>
-                      <td className="border-b border-slate-100 px-3 py-3 text-slate-600">{row.start_date}</td>
-                      <td className="border-b border-slate-100 px-3 py-3 text-slate-600">{row.end_date}</td>
-                      <td className="border-b border-slate-100 px-3 py-3 text-center tabular-nums text-slate-700">{row.participants}</td>
-                      <td className="border-b border-slate-100 px-3 py-3 text-center">
+                    <tr key={row.id} className="hover:bg-[var(--color-surface-muted)]/80">
+                      <td className="border-b border-[var(--color-border-soft)] px-3 py-3 font-semibold text-[var(--color-text)]">{row.name}</td>
+                      <td className="border-b border-[var(--color-border-soft)] px-3 py-3 text-[var(--color-text-secondary)]">{row.category}</td>
+                      <td className="border-b border-[var(--color-border-soft)] px-3 py-3 text-[var(--color-text-secondary)]">{row.trainer}</td>
+                      <td className="border-b border-[var(--color-border-soft)] px-3 py-3 text-[var(--color-text-secondary)]">{row.start_date}</td>
+                      <td className="border-b border-[var(--color-border-soft)] px-3 py-3 text-[var(--color-text-secondary)]">{row.end_date}</td>
+                      <td className="border-b border-[var(--color-border-soft)] px-3 py-3 text-center tabular-nums text-[var(--color-text)]">{row.participants}</td>
+                      <td className="border-b border-[var(--color-border-soft)] px-3 py-3 text-center">
                         <button
                           type="button"
                           onClick={() => handleRegister(row)}
-                          className="rounded-lg border border-[#6366f1] px-3 py-1.5 text-[12px] font-semibold text-[#6366f1] hover:bg-indigo-50"
+                          className="rounded-lg border border-[var(--color-primary)] px-3 py-1.5 text-[12px] font-semibold text-[var(--color-primary)] hover:bg-indigo-50"
                         >
                           Register
                         </button>
@@ -537,12 +569,12 @@ function TrainingDashboard() {
               {data.my_summary.map((item) => {
                 const Icon = SUMMARY_ICONS[item.key] || BookOpen;
                 return (
-                  <li key={item.key} className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50/50 px-3 py-2.5">
-                    <span className="flex items-center gap-2.5 text-sm text-slate-600">
+                  <li key={item.key} className="flex items-center justify-between gap-3 rounded-xl border border-[var(--color-border-soft)] bg-[var(--color-surface-muted)]/50 px-3 py-2.5">
+                    <span className="flex items-center gap-2.5 text-sm text-[var(--color-text-secondary)]">
                       <Icon className="h-4 w-4 text-indigo-500" aria-hidden />
                       {item.label}
                     </span>
-                    <span className="text-[15px] font-bold tabular-nums text-slate-900">{item.count}</span>
+                    <span className="text-[15px] font-bold tabular-nums text-[var(--color-text)]">{item.count}</span>
                   </li>
                 );
               })}
@@ -552,7 +584,7 @@ function TrainingDashboard() {
           <HrPanel title="Recent Certifications">
             <ul className="space-y-3">
               {data.recent_certifications.length === 0 ? (
-                <li className="text-center text-sm text-slate-500">No certifications yet</li>
+                <li className="text-center text-sm text-[var(--color-text-muted)]">No certifications yet</li>
               ) : (
               data.recent_certifications.map((cert) => (
                 <li key={cert.id} className="flex items-start gap-3">
@@ -560,8 +592,8 @@ function TrainingDashboard() {
                     <Medal className="h-4 w-4" aria-hidden />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-slate-800">{cert.name}</p>
-                    <p className="text-xs text-slate-500">{cert.date}</p>
+                    <p className="text-sm font-semibold text-[var(--color-text)]">{cert.name}</p>
+                    <p className="text-xs text-[var(--color-text-muted)]">{cert.date}</p>
                   </div>
                 </li>
               ))
@@ -580,7 +612,7 @@ function TrainingDashboard() {
                   key={link.label}
                   type="button"
                   onClick={() => addToast(`${link.label} coming soon`, "info")}
-                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-3 text-[12px] font-semibold text-slate-700 hover:border-indigo-200 hover:bg-indigo-50/50 hover:text-[#6366f1]"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-[var(--color-border-soft)] bg-[var(--color-surface)] px-3 py-3 text-[12px] font-semibold text-[var(--color-text)] hover:border-indigo-200 hover:bg-indigo-50/50 hover:text-[var(--color-primary)]"
                 >
                   <link.icon className="h-4 w-4" aria-hidden />
                   {link.label}
@@ -592,60 +624,60 @@ function TrainingDashboard() {
       </div>
 
       {showProgramModal ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-xl">
+        <div className="ui-modal-backdrop">
+          <div className="ui-modal max-w-lg w-full max-h-[90vh] overflow-y-auto">
             <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-slate-900">{editProgram ? "Edit Training Program" : "Create Training Program"}</h3>
-              <button type="button" onClick={() => { setShowProgramModal(false); resetProgramForm(); }} className="text-slate-400 hover:text-slate-600">
+              <h3 className="text-lg font-semibold text-[var(--color-text)]">{editProgram ? "Edit Training Program" : "Create Training Program"}</h3>
+              <button type="button" onClick={() => { setShowProgramModal(false); resetProgramForm(); }} className="text-[var(--color-text-muted)] hover:text-[var(--color-text)]">
                 <X className="h-5 w-5" />
               </button>
             </div>
             {formError ? <p className="mb-3 text-sm text-red-600">{formError}</p> : null}
             <form onSubmit={handleSaveProgram} className="space-y-3">
-              <label className="block text-sm font-medium text-slate-700">
+              <label className="ui-label">
                 Program Name *
-                <input className={inputClass} value={programForm.name} onChange={(e) => setProgramForm((f) => ({ ...f, name: e.target.value }))} required />
+                <input className="ui-input w-full mt-1" value={programForm.name} onChange={(e) => setProgramForm((f) => ({ ...f, name: e.target.value }))} required />
               </label>
-              <label className="block text-sm font-medium text-slate-700">
+              <label className="ui-label">
                 Category
-                <input className={inputClass} value={programForm.category} onChange={(e) => setProgramForm((f) => ({ ...f, category: e.target.value }))} />
+                <input className="ui-input w-full mt-1" value={programForm.category} onChange={(e) => setProgramForm((f) => ({ ...f, category: e.target.value }))} />
               </label>
-              <label className="block text-sm font-medium text-slate-700">
+              <label className="ui-label">
                 Trainer
-                <input className={inputClass} value={programForm.trainer} onChange={(e) => setProgramForm((f) => ({ ...f, trainer: e.target.value }))} />
+                <input className="ui-input w-full mt-1" value={programForm.trainer} onChange={(e) => setProgramForm((f) => ({ ...f, trainer: e.target.value }))} />
               </label>
               <div className="grid grid-cols-2 gap-3">
-                <label className="block text-sm font-medium text-slate-700">
+                <label className="ui-label">
                   Start Date
-                  <input type="date" className={inputClass} value={programForm.start_date} onChange={(e) => setProgramForm((f) => ({ ...f, start_date: e.target.value }))} />
+                  <input type="date" className="ui-input w-full mt-1" value={programForm.start_date} onChange={(e) => setProgramForm((f) => ({ ...f, start_date: e.target.value }))} />
                 </label>
-                <label className="block text-sm font-medium text-slate-700">
+                <label className="ui-label">
                   End Date
-                  <input type="date" className={inputClass} value={programForm.end_date} onChange={(e) => setProgramForm((f) => ({ ...f, end_date: e.target.value }))} />
+                  <input type="date" className="ui-input w-full mt-1" value={programForm.end_date} onChange={(e) => setProgramForm((f) => ({ ...f, end_date: e.target.value }))} />
                 </label>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <label className="block text-sm font-medium text-slate-700">
+                <label className="ui-label">
                   Status
-                  <select className={inputClass} value={programForm.status} onChange={(e) => setProgramForm((f) => ({ ...f, status: e.target.value }))}>
+                  <select className="ui-select w-full mt-1" value={programForm.status} onChange={(e) => setProgramForm((f) => ({ ...f, status: e.target.value }))}>
                     <option value="not_started">Not Started</option>
                     <option value="in_progress">In Progress</option>
                     <option value="completed">Completed</option>
                     <option value="upcoming">Upcoming</option>
                   </select>
                 </label>
-                <label className="block text-sm font-medium text-slate-700">
+                <label className="ui-label">
                   Progress %
-                  <input type="number" min={0} max={100} className={inputClass} value={programForm.progress_pct} onChange={(e) => setProgramForm((f) => ({ ...f, progress_pct: e.target.value }))} />
+                  <input type="number" min={0} max={100} className="ui-input w-full mt-1" value={programForm.progress_pct} onChange={(e) => setProgramForm((f) => ({ ...f, progress_pct: e.target.value }))} />
                 </label>
               </div>
-              <label className="block text-sm font-medium text-slate-700">
+              <label className="ui-label">
                 Description
-                <textarea className={inputClass} rows={3} value={programForm.description} onChange={(e) => setProgramForm((f) => ({ ...f, description: e.target.value }))} />
+                <textarea className="ui-input w-full mt-1 min-h-[5rem]" rows={3} value={programForm.description} onChange={(e) => setProgramForm((f) => ({ ...f, description: e.target.value }))} />
               </label>
-              <div className="flex justify-end gap-2 pt-2">
-                <button type="button" onClick={() => { setShowProgramModal(false); resetProgramForm(); }} className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700">Cancel</button>
-                <button type="submit" disabled={saving} className="rounded-lg bg-[#6366f1] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">{saving ? "Saving..." : "Save"}</button>
+              <div className="flex justify-end gap-2 pt-2 border-t border-[var(--color-border-soft)]">
+                <Button type="button" variant="cancel" onClick={() => { setShowProgramModal(false); resetProgramForm(); }}>Cancel</Button>
+                <Button type="submit" variant="primary" disabled={saving}>{saving ? "Saving..." : "Save"}</Button>
               </div>
             </form>
           </div>
@@ -653,23 +685,24 @@ function TrainingDashboard() {
       ) : null}
 
       {viewProgram ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+        <div className="ui-modal-backdrop">
+          <div className="ui-modal max-w-md w-full">
             <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-slate-900">{viewProgram.name}</h3>
-              <button type="button" onClick={() => setViewProgram(null)} className="text-slate-400 hover:text-slate-600"><X className="h-5 w-5" /></button>
+              <h3 className="text-lg font-semibold text-[var(--color-text)]">{viewProgram.name}</h3>
+              <button type="button" onClick={() => setViewProgram(null)} className="text-[var(--color-text-muted)] hover:text-[var(--color-text)]"><X className="h-5 w-5" /></button>
             </div>
-            <dl className="space-y-2 text-sm text-slate-600">
-              <div><dt className="font-medium text-slate-800">Category</dt><dd>{viewProgram.category}</dd></div>
-              <div><dt className="font-medium text-slate-800">Trainer</dt><dd>{viewProgram.trainer}</dd></div>
-              <div><dt className="font-medium text-slate-800">Dates</dt><dd>{viewProgram.start_date} — {viewProgram.end_date}</dd></div>
-              <div><dt className="font-medium text-slate-800">Participants</dt><dd>{viewProgram.participants}</dd></div>
-              <div><dt className="font-medium text-slate-800">Status</dt><dd><TrainingStatusBadge status={viewProgram.status} /></dd></div>
+            <dl className="space-y-2 text-sm text-[var(--color-text-secondary)]">
+              <div><dt className="font-medium text-[var(--color-text)]">Category</dt><dd>{viewProgram.category}</dd></div>
+              <div><dt className="font-medium text-[var(--color-text)]">Trainer</dt><dd>{viewProgram.trainer}</dd></div>
+              <div><dt className="font-medium text-[var(--color-text)]">Dates</dt><dd>{viewProgram.start_date} — {viewProgram.end_date}</dd></div>
+              <div><dt className="font-medium text-[var(--color-text)]">Participants</dt><dd>{viewProgram.participants}</dd></div>
+              <div><dt className="font-medium text-[var(--color-text)]">Status</dt><dd><TrainingStatusBadge status={viewProgram.status} /></dd></div>
             </dl>
           </div>
         </div>
       ) : null}
     </HrPage>
+    </ListPageShell>
   );
 }
 

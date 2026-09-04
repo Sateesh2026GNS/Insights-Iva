@@ -12,6 +12,8 @@ import {
 } from "lucide-react";
 
 import Button from "../../components/common/Button";
+import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
+import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
 import DataTable from "../../components/common/DataTable";
 import EmptyState from "../../components/common/EmptyState";
 import KpiCard from "../../components/common/KpiCard";
@@ -37,6 +39,20 @@ import { stockStatusLabel, stockStatusTone } from "../../data/inventoryMasterDat
 import useManufacturingRefresh from "../../hooks/useManufacturingRefresh";
 import { asArray } from "../../utils/apiError";
 import { todayIso } from "../../utils/dateUtils";
+import { exportToExcel, exportToPdf } from "../../utils/exportUtils";
+
+const RAW_MATERIALS_EXPORT_COLUMNS = [
+  { key: "name", label: "Item Name" },
+  { key: "sku", label: "Item Code" },
+  { key: "category", label: "Category" },
+  { key: "unit", label: "UOM" },
+  { key: "quantity", label: "Quantity" },
+  { key: "available", label: "Available" },
+  { key: "reorder_level", label: "Reorder Level" },
+  { key: "warehouse_name", label: "Warehouse" },
+  { key: "status", label: "Status" },
+  { key: "last_updated", label: "Last Updated" },
+];
 
 const EMPTY_SUMMARY = {
   total_items: 0,
@@ -453,7 +469,30 @@ export default function RawMaterials() {
     },
   ];
 
+  const exportRows = filtered.map((r) => ({
+    name: r.name,
+    sku: r.sku || "",
+    category: r.category || "",
+    unit: r.unit || "",
+    quantity: formatQty(r.quantity ?? r.available),
+    available: formatQty(r.available ?? r.quantity),
+    reorder_level: r.reorder_level ?? "",
+    warehouse_name: r.warehouse_name || "",
+    status: stockStatusLabel(resolveStatus(r)),
+    last_updated: formatUpdated(r.last_updated),
+  }));
+
+  const handleExport = (format) => {
+    if (format === "pdf") {
+      exportToPdf(exportRows, RAW_MATERIALS_EXPORT_COLUMNS, "Raw Materials", "raw-materials");
+    } else {
+      exportToExcel(exportRows, RAW_MATERIALS_EXPORT_COLUMNS, "raw-materials");
+    }
+    addToast(format === "pdf" ? "Exported to PDF" : "Exported to Excel", "success");
+  };
+
   return (
+    <ListPageShell>
     <div className="min-w-0 space-y-5 pb-4">
       <PageHeader
         subtitle="Manage and track your raw materials inventory"
@@ -521,11 +560,13 @@ export default function RawMaterials() {
         )}
       </div>
 
-      <div className="ui-card min-w-0 p-4 sm:p-5">
+      <ListPageCard>
+        <ListPageCardBody>
         <div className="mb-4 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
           <SearchBar value={search} onChange={setSearch} placeholder="Search" className="w-full" />
 
           <div className="flex flex-wrap items-center gap-2">
+            <ExportDownloadMenu disabled={!exportRows.length} onExport={handleExport} />
             <Button type="button" variant="secondary" onClick={() => setShowFilters((v) => !v)}>
               <Filter className="h-4 w-4" /> Filters
             </Button>
@@ -581,7 +622,8 @@ export default function RawMaterials() {
             }
           />
         )}
-      </div>
+        </ListPageCardBody>
+      </ListPageCard>
 
       {selected ? (
         <MaterialDetailModal material={selected} readOnly={selected.readOnly !== false} onClose={() => setSelected(null)} />
@@ -600,5 +642,6 @@ export default function RawMaterials() {
         }}
       />
     </div>
+    </ListPageShell>
   );
 }

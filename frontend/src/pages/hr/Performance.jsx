@@ -30,6 +30,8 @@ import {
 
 import InventoryRowActionsMenu from "../../components/inventory/InventoryRowActionsMenu";
 import Button, { AddButton } from "../../components/common/Button";
+import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
+import { ListPageShell } from "../../components/common/ListPageShell";
 import Loader from "../../components/common/Loader";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
 import { HrPage, HrPageHeader, HrPanel } from "../../components/hr/hrUi";
@@ -48,6 +50,18 @@ import {
   performanceStatusBadgeClass,
   performanceStatusLabel,
 } from "../../data/hrMasterData";
+import { exportToExcel, exportToPdf } from "../../utils/exportUtils";
+
+const selectClass = "ui-select !w-auto min-w-[8.5rem]";
+
+const PERFORMANCE_EXPORT_COLUMNS = [
+  { key: "employee_name", label: "Employee" },
+  { key: "department", label: "Department" },
+  { key: "review_period", label: "Review Period" },
+  { key: "rating", label: "Rating" },
+  { key: "productivity_score", label: "Productivity" },
+  { key: "status", label: "Status" },
+];
 
 const AVATAR_TONES = [
   "bg-indigo-100 text-indigo-700",
@@ -92,7 +106,7 @@ function StarRating({ value }) {
           />
         ))}
       </span>
-      <span className="font-semibold tabular-nums text-slate-800">{rating.toFixed(1)}</span>
+      <span className="font-semibold tabular-nums text-[var(--color-text)]">{rating.toFixed(1)}</span>
     </span>
   );
 }
@@ -253,7 +267,26 @@ export default function Performance({ autoOpenCreate = false }) {
 
   const trendBadge = data.trend_badge || {};
 
+  const exportRows = filteredReviews.map((r) => ({
+    employee_name: r.employee_name,
+    department: r.department,
+    review_period: r.review_period,
+    rating: r.rating,
+    productivity_score: r.productivity_score,
+    status: performanceStatusLabel(r.status),
+  }));
+
+  const handleExport = (format) => {
+    if (format === "pdf") {
+      exportToPdf(exportRows, PERFORMANCE_EXPORT_COLUMNS, "Performance Reviews", "performance-reviews");
+    } else {
+      exportToExcel(exportRows, PERFORMANCE_EXPORT_COLUMNS, "performance-reviews");
+    }
+    addToast(format === "pdf" ? "Exported to PDF" : "Exported to Excel", "success");
+  };
+
   return (
+    <ListPageShell>
     <HrPage>
       <HrPageHeader
         title="Performance"
@@ -263,57 +296,53 @@ export default function Performance({ autoOpenCreate = false }) {
           <AddButton type="button" onClick={() => setShowCreateModal(true)}>
             Create Review
           </AddButton>
-          <button
+          <ExportDownloadMenu disabled={!exportRows.length} onExport={handleExport} />
+          <Button
             type="button"
+            variant="secondary"
             onClick={() => addToast("Goals & OKRs module coming soon", "info")}
-            className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2.5 text-sm font-semibold text-[var(--color-primary)] hover:bg-[var(--color-surface-muted)]"
+            leftIcon={<Target className="h-4 w-4" aria-hidden />}
           >
-            <Target className="h-4 w-4" />
             Goals & OKRs
-          </button>
-          <button
-            type="button"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2.5 text-sm font-semibold text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-muted)]"
-          >
+          </Button>
+          <Button type="button" variant="secondary" rightIcon={<ChevronDown className="h-4 w-4" aria-hidden />}>
             More Actions
-            <ChevronDown className="h-4 w-4" />
-          </button>
+          </Button>
           </>
         }
       />
 
       <div className="flex flex-wrap items-center gap-2 ui-card p-4">
-        <label className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
-          <CalendarDays className="h-4 w-4 text-slate-400" />
-          <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="border-none bg-transparent outline-none" />
-          <span className="text-slate-400">–</span>
-          <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="border-none bg-transparent outline-none" />
+        <label className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border-soft)] bg-[var(--color-surface-muted)] px-3 py-2 text-sm text-[var(--color-text-secondary)]">
+          <CalendarDays className="h-4 w-4 text-[var(--color-text-muted)]" />
+          <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="border-none bg-transparent outline-none text-[var(--color-text)]" />
+          <span className="text-[var(--color-text-muted)]">–</span>
+          <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="border-none bg-transparent outline-none text-[var(--color-text)]" />
         </label>
-        <select value={department} onChange={(e) => setDepartment(e.target.value)} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 outline-none">
+        <select value={department} onChange={(e) => setDepartment(e.target.value)} className={selectClass}>
           <option value="">All Departments</option>
           {departments.map((d) => (
             <option key={d} value={d}>{d}</option>
           ))}
         </select>
-        <select value={designation} onChange={(e) => setDesignation(e.target.value)} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 outline-none">
+        <select value={designation} onChange={(e) => setDesignation(e.target.value)} className={selectClass}>
           <option value="">All Designations</option>
           {designations.map((d) => (
             <option key={d} value={d}>{d}</option>
           ))}
         </select>
-        <select value={employeeFilter} onChange={(e) => setEmployeeFilter(e.target.value)} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 outline-none">
+        <select value={employeeFilter} onChange={(e) => setEmployeeFilter(e.target.value)} className={selectClass}>
           <option value="">All Employees</option>
           {employees.map((e) => (
             <option key={e.id} value={e.full_name}>{e.full_name}</option>
           ))}
         </select>
-        <button type="button" className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
-          <Filter className="h-4 w-4" />
+        <Button type="button" variant="secondary" leftIcon={<Filter className="h-4 w-4" aria-hidden />}>
           Filter
-        </button>
-        <button type="button" onClick={() => load(true)} className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white p-2 text-slate-600 hover:bg-slate-50" aria-label="Refresh">
+        </Button>
+        <Button type="button" variant="secondary" onClick={() => load(true)} aria-label="Refresh">
           <RefreshCw className="h-4 w-4" />
-        </button>
+        </Button>
       </div>
 
       {/* Top widgets row */}
@@ -358,25 +387,25 @@ export default function Performance({ autoOpenCreate = false }) {
                 </PieChart>
               </ResponsiveContainer>
               <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-[20px] font-bold text-slate-900">{data.rating_total}</span>
-                <span className="text-xs text-slate-500">Total</span>
+                <span className="text-[20px] font-bold text-[var(--color-text)]">{data.rating_total}</span>
+                <span className="text-xs text-[var(--color-text-muted)]">Total</span>
               </div>
             </div>
             <ul className="min-w-0 flex-1 space-y-2 text-[12px]">
               {donutData.map((d) => (
                 <li key={d.name} className="flex items-center justify-between gap-2">
-                  <span className="flex items-center gap-2 text-slate-600">
+                  <span className="flex items-center gap-2 text-[var(--color-text-secondary)]">
                     <span className="h-2.5 w-2.5 rounded-full" style={{ background: d.color }} />
                     {d.name}
                   </span>
-                  <span className="font-semibold text-slate-800">{d.pct}%</span>
+                  <span className="font-semibold text-[var(--color-text)]">{d.pct}%</span>
                 </li>
               ))}
             </ul>
           </div>
         </HrPanel>
 
-        <HrPanel title="Top Performers" action={<Link to="/hr/performance" className="text-sm font-semibold text-[#6366f1]">View All</Link>}>
+        <HrPanel title="Top Performers" action={<Link to="/hr/performance" className="text-sm font-semibold text-[var(--color-primary)]">View All</Link>}>
           <ul className="space-y-4">
             {data.top_performers.map((p) => {
               const Icon = p.icon === "trophy" ? Trophy : UserRound;
@@ -390,13 +419,13 @@ export default function Performance({ autoOpenCreate = false }) {
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-2">
-                        <p className="truncate text-sm font-semibold text-slate-800">{p.name}</p>
-                        <span className="shrink-0 text-sm font-bold tabular-nums text-slate-800">{Number(p.rating).toFixed(1)}</span>
+                        <p className="truncate text-sm font-semibold text-[var(--color-text)]">{p.name}</p>
+                        <span className="shrink-0 text-sm font-bold tabular-nums text-[var(--color-text)]">{Number(p.rating).toFixed(1)}</span>
                       </div>
-                      <p className="truncate text-xs text-slate-500">{p.department}</p>
+                      <p className="truncate text-xs text-[var(--color-text-muted)]">{p.department}</p>
                     </div>
                   </div>
-                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100">
+                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[var(--color-surface-muted)]">
                     <div className="h-full rounded-full" style={{ width: `${barPct}%`, background: p.bar_color || "#8b5cf6" }} />
                   </div>
                 </li>
@@ -409,55 +438,55 @@ export default function Performance({ autoOpenCreate = false }) {
       {/* Bottom row */}
       <div className="grid gap-4 xl:grid-cols-3">
         <div className="xl:col-span-2">
-          <HrPanel title="Recent Performance Reviews" action={<Link to="/hr/performance" className="text-sm font-semibold text-[#6366f1]">View All</Link>}>
-            <div className="overflow-x-auto rounded-xl border border-slate-200">
+          <HrPanel title="Recent Performance Reviews" action={<Link to="/hr/performance" className="text-sm font-semibold text-[var(--color-primary)]">View All</Link>}>
+            <div className="overflow-x-auto rounded-xl border border-[var(--color-border-soft)]">
               <table className="min-w-full w-full border-collapse text-left text-sm">
                   <thead className="ui-table-head">
                   <tr>
-                    <SerialNumberHeader className="border-b border-slate-200 px-3 py-3" />
-                    <th className="border-b border-slate-200 px-3 py-3 min-w-[140px]">Employee Name</th>
-                    <th className="border-b border-slate-200 px-3 py-3">Department</th>
-                    <th className="border-b border-slate-200 px-3 py-3">Review Type</th>
-                    <th className="border-b border-slate-200 px-3 py-3">Rating</th>
-                    <th className="border-b border-slate-200 px-3 py-3">Review Date</th>
-                    <th className="border-b border-slate-200 px-3 py-3">Status</th>
-                    <th className="border-b border-slate-200 px-3 py-3 text-center">Action</th>
+                    <SerialNumberHeader className="border-b border-[var(--color-border-soft)] px-3 py-3" />
+                    <th className="border-b border-[var(--color-border-soft)] px-3 py-3 min-w-[140px]">Employee Name</th>
+                    <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Department</th>
+                    <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Review Type</th>
+                    <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Rating</th>
+                    <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Review Date</th>
+                    <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Status</th>
+                    <th className="border-b border-[var(--color-border-soft)] px-3 py-3 text-center">Action</th>
                   </tr>
                 </thead>
                 <tbody>
                   {pageRows.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="px-4 py-12 text-center text-slate-500">
+                      <td colSpan={8} className="px-4 py-12 text-center text-[var(--color-text-muted)]">
                         No performance reviews match your filters.
                       </td>
                     </tr>
                   ) : (
                     pageRows.map((row, rowIndex) => (
-                      <tr key={row.id} className="hover:bg-slate-50/80">
-                        <SerialNumberCell rowIndex={rowIndex} page={page} pageSize={pageSize} className="border-b border-slate-100 px-3 py-3" />
-                        <td className="border-b border-slate-100 px-3 py-3">
+                      <tr key={row.id} className="hover:bg-[var(--color-surface-muted)]/80">
+                        <SerialNumberCell rowIndex={rowIndex} page={page} pageSize={pageSize} className="border-b border-[var(--color-border-soft)] px-3 py-3" />
+                        <td className="border-b border-[var(--color-border-soft)] px-3 py-3">
                           <div className="flex items-center gap-2">
                             <div className={`grid h-8 w-8 shrink-0 place-items-center rounded-full text-[10px] font-bold ${avatarTone(row.avatar)}`}>
                               {row.avatar}
                             </div>
-                            <span className="font-semibold text-slate-800">{row.employee_name}</span>
+                            <span className="font-semibold text-[var(--color-text)]">{row.employee_name}</span>
                           </div>
                         </td>
-                        <td className="border-b border-slate-100 px-3 py-3 text-slate-600">{row.department}</td>
-                        <td className="border-b border-slate-100 px-3 py-3 text-slate-600">{row.review_type}</td>
-                        <td className="border-b border-slate-100 px-3 py-3">
+                        <td className="border-b border-[var(--color-border-soft)] px-3 py-3 text-[var(--color-text-secondary)]">{row.department}</td>
+                        <td className="border-b border-[var(--color-border-soft)] px-3 py-3 text-[var(--color-text-secondary)]">{row.review_type}</td>
+                        <td className="border-b border-[var(--color-border-soft)] px-3 py-3">
                           {row.rating ? <StarRating value={row.rating} /> : "—"}
                         </td>
-                        <td className="border-b border-slate-100 px-3 py-3 text-slate-600">{row.review_date}</td>
-                        <td className="border-b border-slate-100 px-3 py-3">
+                        <td className="border-b border-[var(--color-border-soft)] px-3 py-3 text-[var(--color-text-secondary)]">{row.review_date}</td>
+                        <td className="border-b border-[var(--color-border-soft)] px-3 py-3">
                           <ReviewStatusBadge status={row.status} />
                         </td>
-                        <td className="border-b border-slate-100 px-3 py-3">
+                        <td className="border-b border-[var(--color-border-soft)] px-3 py-3">
                           <div className="flex items-center justify-center gap-1">
                             <button
                               type="button"
                               onClick={() => addToast(`View review for ${row.employee_name}`, "info")}
-                              className="grid h-8 w-8 place-items-center rounded-md text-[#6366f1] hover:bg-indigo-50"
+                              className="grid h-8 w-8 place-items-center rounded-md text-[var(--color-primary)] hover:bg-indigo-50"
                               aria-label="View"
                             >
                               <Eye className="h-4 w-4" />
@@ -481,12 +510,12 @@ export default function Performance({ autoOpenCreate = false }) {
               </table>
             </div>
 
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-slate-500">
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-[var(--color-text-muted)]">
               <span>
                 Showing {from} to {to} of {displayTotal} entries
               </span>
               <div className="flex items-center gap-1">
-                <button type="button" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))} className="grid h-8 w-8 place-items-center rounded-md border border-slate-200 bg-white disabled:opacity-40">
+                <button type="button" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))} className="grid h-8 w-8 place-items-center rounded-md border border-[var(--color-border-soft)] bg-[var(--color-surface)] disabled:opacity-40">
                   <ChevronLeft className="h-4 w-4" />
                 </button>
                 {pageItems(page, totalPages).map((item) =>
@@ -498,14 +527,14 @@ export default function Performance({ autoOpenCreate = false }) {
                       type="button"
                       onClick={() => setPage(item)}
                       className={`grid h-8 min-w-8 place-items-center rounded-md border px-2 text-sm font-semibold ${
-                        item === page ? "border-[#6366f1] bg-[#6366f1] text-white" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                        item === page ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-white" : "border-[var(--color-border-soft)] bg-[var(--color-surface)] text-[var(--color-text)] hover:bg-[var(--color-surface-muted)]"
                       }`}
                     >
                       {item}
                     </button>
                   )
                 )}
-                <button type="button" disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))} className="grid h-8 w-8 place-items-center rounded-md border border-slate-200 bg-white disabled:opacity-40">
+                <button type="button" disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))} className="grid h-8 w-8 place-items-center rounded-md border border-[var(--color-border-soft)] bg-[var(--color-surface)] disabled:opacity-40">
                   <ChevronRight className="h-4 w-4" />
                 </button>
               </div>
@@ -519,12 +548,12 @@ export default function Performance({ autoOpenCreate = false }) {
               {data.performance_insights.map((item) => (
                 <li key={item.key}>
                   <div className="mb-1.5 flex items-center justify-between text-[12px]">
-                    <span className="font-medium text-slate-700">{item.label}</span>
-                    <span className="font-semibold text-slate-800">
+                    <span className="font-medium text-[var(--color-text)]">{item.label}</span>
+                    <span className="font-semibold text-[var(--color-text)]">
                       {item.count} ({item.pct}%)
                     </span>
                   </div>
-                  <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+                  <div className="h-2 overflow-hidden rounded-full bg-[var(--color-surface-muted)]">
                     <div className="h-full rounded-full" style={{ width: `${item.pct}%`, background: item.color }} />
                   </div>
                 </li>
@@ -535,7 +564,7 @@ export default function Performance({ autoOpenCreate = false }) {
           <HrPanel
             title="Upcoming Reviews"
             action={
-              <button type="button" onClick={() => addToast("Review calendar coming soon", "info")} className="text-sm font-semibold text-[#6366f1]">
+              <button type="button" onClick={() => addToast("Review calendar coming soon", "info")} className="text-sm font-semibold text-[var(--color-primary)]">
                 View Calendar
               </button>
             }
@@ -544,12 +573,12 @@ export default function Performance({ autoOpenCreate = false }) {
               {data.upcoming_reviews.map((item) => (
                 <li key={item.id} className="flex gap-3">
                   <div className="flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-xl bg-indigo-50 text-center">
-                    <span className="text-[15px] font-bold leading-none text-[#6366f1]">{item.day}</span>
+                    <span className="text-[15px] font-bold leading-none text-[var(--color-primary)]">{item.day}</span>
                     <span className="text-[10px] font-semibold uppercase text-indigo-400">{item.month}</span>
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-slate-800">{item.title}</p>
-                    <p className="mt-0.5 truncate text-xs text-slate-500">{item.employees}</p>
+                    <p className="text-sm font-semibold text-[var(--color-text)]">{item.title}</p>
+                    <p className="mt-0.5 truncate text-xs text-[var(--color-text-muted)]">{item.employees}</p>
                   </div>
                 </li>
               ))}
@@ -559,14 +588,14 @@ export default function Performance({ autoOpenCreate = false }) {
       </div>
 
       {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl border border-slate-200 max-w-md w-full p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
+        <div className="ui-modal-backdrop">
+          <div className="ui-modal max-w-md w-full max-h-[90vh] overflow-y-auto space-y-4">
             <div className="flex items-start justify-between">
               <div>
-                <h3 className="text-lg font-bold text-slate-900">Create Performance Review</h3>
-                <p className="text-xs text-slate-500 mt-0.5">Submit manager evaluation and productivity score.</p>
+                <h3 className="text-lg font-bold text-[var(--color-text)]">Create Performance Review</h3>
+                <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Submit manager evaluation and productivity score.</p>
               </div>
-              <button type="button" onClick={() => setShowCreateModal(false)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100">
+              <button type="button" onClick={() => setShowCreateModal(false)} className="rounded-lg p-2 text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)]">
                 <X className="h-5 w-5" />
               </button>
             </div>
@@ -579,8 +608,8 @@ export default function Performance({ autoOpenCreate = false }) {
               )}
 
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Employee *</label>
-                <select value={form.employee_id} onChange={(e) => handleFormChange("employee_id", e.target.value)} required className={inputClass}>
+                <label className="ui-label">Employee *</label>
+                <select value={form.employee_id} onChange={(e) => handleFormChange("employee_id", e.target.value)} required className="ui-select w-full">
                   <option value="">Select Employee</option>
                   {employees.map((e) => (
                     <option key={e.id} value={e.id}>{e.full_name}</option>
@@ -589,41 +618,41 @@ export default function Performance({ autoOpenCreate = false }) {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Review Period *</label>
-                <input type="text" required placeholder="e.g. Q3 2026" value={form.review_period} onChange={(e) => handleFormChange("review_period", e.target.value)} className={inputClass} />
+                <label className="ui-label">Review Period *</label>
+                <input type="text" required placeholder="e.g. Q3 2026" value={form.review_period} onChange={(e) => handleFormChange("review_period", e.target.value)} className="ui-input w-full" />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Rating (1-5)</label>
-                  <input type="number" min="1" max="5" step="0.1" value={form.rating} onChange={(e) => handleFormChange("rating", e.target.value)} className={inputClass} />
+                  <label className="ui-label">Rating (1-5)</label>
+                  <input type="number" min="1" max="5" step="0.1" value={form.rating} onChange={(e) => handleFormChange("rating", e.target.value)} className="ui-input w-full" />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Productivity (0-100)</label>
-                  <input type="number" min="0" max="100" value={form.productivity_score} onChange={(e) => handleFormChange("productivity_score", e.target.value)} className={inputClass} />
+                  <label className="ui-label">Productivity (0-100)</label>
+                  <input type="number" min="0" max="100" value={form.productivity_score} onChange={(e) => handleFormChange("productivity_score", e.target.value)} className="ui-input w-full" />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Goals Achieved</label>
-                  <input type="number" value={form.goals_achieved} onChange={(e) => handleFormChange("goals_achieved", e.target.value)} className={inputClass} />
+                  <label className="ui-label">Goals Achieved</label>
+                  <input type="number" value={form.goals_achieved} onChange={(e) => handleFormChange("goals_achieved", e.target.value)} className="ui-input w-full" />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Goals Total</label>
-                  <input type="number" value={form.goals_total} onChange={(e) => handleFormChange("goals_total", e.target.value)} className={inputClass} />
+                  <label className="ui-label">Goals Total</label>
+                  <input type="number" value={form.goals_total} onChange={(e) => handleFormChange("goals_total", e.target.value)} className="ui-input w-full" />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Notes / Feedback</label>
-                <textarea value={form.notes} onChange={(e) => handleFormChange("notes", e.target.value)} rows={3} placeholder="Review comments..." className={inputClass} />
+                <label className="ui-label">Notes / Feedback</label>
+                <textarea value={form.notes} onChange={(e) => handleFormChange("notes", e.target.value)} rows={3} placeholder="Review comments..." className="ui-input w-full min-h-[5rem]" />
               </div>
 
-              <div className="flex justify-end gap-2 border-t pt-4">
-                <button type="button" onClick={() => setShowCreateModal(false)} className="rounded-xl border px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors">
+              <div className="flex justify-end gap-2 border-t border-[var(--color-border-soft)] pt-4">
+                <Button type="button" variant="cancel" onClick={() => setShowCreateModal(false)}>
                   Cancel
-                </button>
+                </Button>
                 <Button variant="primary" type="submit" disabled={saving}>
                   <Save className="h-4 w-4" />
                   {saving ? "Saving..." : "Create"}
@@ -634,5 +663,6 @@ export default function Performance({ autoOpenCreate = false }) {
         </div>
       )}
     </HrPage>
+    </ListPageShell>
   );
 }

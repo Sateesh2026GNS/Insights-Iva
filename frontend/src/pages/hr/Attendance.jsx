@@ -6,7 +6,6 @@ import {
   ChevronRight,
   CircleCheck,
   Clock,
-  Download,
   Eye,
   Filter,
   MoreVertical,
@@ -21,6 +20,9 @@ import {
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 
 import Loader from "../../components/common/Loader";
+import Button from "../../components/common/Button";
+import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
+import { ListPageShell } from "../../components/common/ListPageShell";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
 import {
   HrAvatar,
@@ -43,6 +45,20 @@ import {
   attendanceStatusLabel,
   mergeAttendanceDashboard,
 } from "../../data/hrMasterData";
+import { exportToExcel, exportToPdf } from "../../utils/exportUtils";
+
+const selectClass = "ui-select !w-auto min-w-[8.5rem]";
+
+const ATTENDANCE_EXPORT_COLUMNS = [
+  { key: "employee_id", label: "Employee ID" },
+  { key: "name", label: "Employee Name" },
+  { key: "department", label: "Department" },
+  { key: "check_in", label: "Check In" },
+  { key: "check_out", label: "Check Out" },
+  { key: "working_hours", label: "Working Hours" },
+  { key: "status", label: "Status" },
+  { key: "remarks", label: "Remarks" },
+];
 
 const MONTHS = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -81,7 +97,7 @@ function AttendanceCalendar({ year, month, selectedIso, marks, onSelectDay }) {
 
   return (
     <div>
-      <div className="mb-3 grid grid-cols-7 gap-1 text-center text-xs font-semibold text-slate-400">
+      <div className="mb-3 grid grid-cols-7 gap-1 text-center text-xs font-semibold text-[var(--color-text-muted)]">
         {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
           <div key={d}>{d}</div>
         ))}
@@ -98,7 +114,7 @@ function AttendanceCalendar({ year, month, selectedIso, marks, onSelectDay }) {
               type="button"
               onClick={() => onSelectDay?.(iso)}
               className={`relative grid h-9 place-items-center rounded-lg text-[12px] font-medium transition-colors ${
-                isSelected ? "bg-[#6366f1] text-white" : "text-slate-700 hover:bg-slate-50"
+                isSelected ? "bg-[var(--color-primary)] text-white" : "text-[var(--color-text)] hover:bg-[var(--color-surface-muted)]"
               }`}
             >
               {day}
@@ -112,7 +128,7 @@ function AttendanceCalendar({ year, month, selectedIso, marks, onSelectDay }) {
           );
         })}
       </div>
-      <div className="mt-4 flex flex-wrap gap-3 text-xs text-slate-500">
+      <div className="mt-4 flex flex-wrap gap-3 text-xs text-[var(--color-text-muted)]">
         {["present", "late", "absent", "on_leave", "holiday"].map((key) => (
           <span key={key} className="inline-flex items-center gap-1.5">
             <span className="h-2 w-2 rounded-full" style={{ background: ATTENDANCE_STATUS_COLORS[key].fill }} />
@@ -228,36 +244,46 @@ export default function Attendance() {
 
   if (loading) return <Loader label="Loading attendance..." />;
 
+  const exportRows = filteredRecords.map((r) => ({
+    employee_id: r.employee_id,
+    name: r.name,
+    department: r.department,
+    check_in: r.check_in || "—",
+    check_out: r.check_out || "—",
+    working_hours: r.working_hours,
+    status: attendanceStatusLabel(r.status),
+    remarks: r.remarks || "",
+  }));
+
+  const handleExport = (format) => {
+    if (format === "pdf") {
+      exportToPdf(exportRows, ATTENDANCE_EXPORT_COLUMNS, `Attendance — ${formatDisplayDate(recordDate)}`, "attendance-records");
+    } else {
+      exportToExcel(exportRows, ATTENDANCE_EXPORT_COLUMNS, "attendance-records");
+    }
+    addToast(format === "pdf" ? "Exported to PDF" : "Exported to Excel", "success");
+  };
+
   return (
+    <ListPageShell>
     <HrPage>
       <HrPageHeader
         title="Attendance"
         subtitle="Track and manage employee attendance"
         action={
           <>
-          <button
+          <Button
             type="button"
-            className="inline-flex items-center gap-2 rounded-lg bg-[var(--color-primary)] px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:opacity-90"
+            variant="primary"
             onClick={() => addToast("Upload attendance coming soon", "info")}
+            leftIcon={<Upload className="h-4 w-4" aria-hidden />}
           >
-            <Upload className="h-4 w-4" />
             Upload Attendance
-          </button>
-          <button
-            type="button"
-            className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2.5 text-sm font-semibold text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-muted)]"
-            onClick={() => addToast("Report download started", "success")}
-          >
-            <Download className="h-4 w-4" />
-            Attendance Report
-          </button>
-          <button
-            type="button"
-            className="inline-flex items-center justify-center rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2.5 text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)]"
-            aria-label="More actions"
-          >
+          </Button>
+          <ExportDownloadMenu disabled={!exportRows.length} onExport={handleExport} />
+          <Button type="button" variant="secondary" aria-label="More actions">
             <MoreVertical className="h-4 w-4" />
-          </button>
+          </Button>
           </>
         }
       />
@@ -271,9 +297,9 @@ export default function Attendance() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200/80 bg-white p-3 shadow-sm">
-        <label className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
-          <CalendarDays className="h-4 w-4 text-slate-400" />
+      <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm">
+        <label className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-3 py-2 text-sm text-[var(--color-text-secondary)]">
+          <CalendarDays className="h-4 w-4 text-[var(--color-text-muted)]" />
           <input
             type="date"
             value={recordDate}
@@ -281,43 +307,37 @@ export default function Attendance() {
             className="border-none bg-transparent text-sm outline-none"
           />
         </label>
-        <select value={department} onChange={(e) => setDepartment(e.target.value)} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 outline-none">
+        <select value={department} onChange={(e) => setDepartment(e.target.value)} className={selectClass}>
           <option value="">All Departments</option>
           {departments.map((d) => (
             <option key={d} value={d}>{d}</option>
           ))}
         </select>
-        <select value={designation} onChange={(e) => setDesignation(e.target.value)} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 outline-none">
+        <select value={designation} onChange={(e) => setDesignation(e.target.value)} className={selectClass}>
           <option value="">All Designations</option>
           <option value="manager">Manager</option>
           <option value="engineer">Engineer</option>
           <option value="executive">Executive</option>
         </select>
-        <select value={location} onChange={(e) => setLocation(e.target.value)} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 outline-none">
+        <select value={location} onChange={(e) => setLocation(e.target.value)} className={selectClass}>
           <option value="">All Locations</option>
           <option value="engineering">Engineering</option>
           <option value="hr">HR</option>
           <option value="sales">Sales</option>
         </select>
-        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 outline-none">
+        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className={selectClass}>
           <option value="">All Status</option>
           <option value="present">Present</option>
           <option value="late">Late</option>
           <option value="absent">Absent</option>
           <option value="on_leave">On Leave</option>
         </select>
-        <button type="button" className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
-          <Filter className="h-4 w-4" />
+        <Button type="button" variant="secondary" leftIcon={<Filter className="h-4 w-4" aria-hidden />}>
           Filter
-        </button>
-        <button
-          type="button"
-          onClick={() => load(true)}
-          className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white p-2 text-slate-600 hover:bg-slate-50"
-          aria-label="Refresh"
-        >
+        </Button>
+        <Button type="button" variant="secondary" onClick={() => load(true)} aria-label="Refresh">
           <RefreshCw className="h-4 w-4" />
-        </button>
+        </Button>
       </div>
 
       {/* Middle widgets */}
@@ -336,18 +356,18 @@ export default function Attendance() {
                 </PieChart>
               </ResponsiveContainer>
               <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-[20px] font-bold text-slate-900">{data.total_employees}</span>
-                <span className="text-xs text-slate-500">Total</span>
+                <span className="text-[20px] font-bold text-[var(--color-text)]">{data.total_employees}</span>
+                <span className="text-xs text-[var(--color-text-muted)]">Total</span>
               </div>
             </div>
             <ul className="min-w-0 flex-1 space-y-2 text-[12px]">
               {donutData.map((d) => (
                 <li key={d.name} className="flex items-center justify-between gap-2">
-                  <span className="flex items-center gap-2 text-slate-600">
+                  <span className="flex items-center gap-2 text-[var(--color-text-secondary)]">
                     <span className="h-2.5 w-2.5 rounded-full" style={{ background: d.color }} />
                     {d.name}
                   </span>
-                  <span className="font-semibold text-slate-800">
+                  <span className="font-semibold text-[var(--color-text)]">
                     {d.value} ({d.pct}%)
                   </span>
                 </li>
@@ -356,10 +376,10 @@ export default function Attendance() {
           </div>
           <div className="mt-4">
             <div className="mb-1.5 flex items-center justify-between text-[12px]">
-              <span className="font-medium text-slate-600">Attendance %</span>
+              <span className="font-medium text-[var(--color-text-secondary)]">Attendance %</span>
               <span className="font-bold text-emerald-600">{data.attendance_pct}%</span>
             </div>
-            <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+            <div className="h-2 overflow-hidden rounded-full bg-[var(--color-surface-muted)]">
               <div className="h-full rounded-full bg-emerald-500" style={{ width: `${data.attendance_pct}%` }} />
             </div>
           </div>
@@ -369,16 +389,16 @@ export default function Attendance() {
           title="Attendance Calendar"
           action={
             <div className="flex items-center gap-1">
-              <button type="button" onClick={goPrevMonth} className="grid h-7 w-7 place-items-center rounded-md border border-slate-200 text-slate-500 hover:bg-slate-50">
+              <button type="button" onClick={goPrevMonth} className="grid h-7 w-7 place-items-center rounded-md border border-[var(--color-border-soft)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)]">
                 <ChevronLeft className="h-4 w-4" />
               </button>
-              <span className="min-w-[88px] text-center text-sm font-semibold text-slate-700">
+              <span className="min-w-[88px] text-center text-sm font-semibold text-[var(--color-text)]">
                 {MONTHS[calMonth]} {calYear}
               </span>
-              <button type="button" onClick={goNextMonth} className="grid h-7 w-7 place-items-center rounded-md border border-slate-200 text-slate-500 hover:bg-slate-50">
+              <button type="button" onClick={goNextMonth} className="grid h-7 w-7 place-items-center rounded-md border border-[var(--color-border-soft)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)]">
                 <ChevronRight className="h-4 w-4" />
               </button>
-              <button type="button" onClick={() => { setCalYear(new Date().getFullYear()); setCalMonth(new Date().getMonth()); setRecordDate(todayIso()); }} className="ml-1 rounded-md border border-slate-200 px-2 py-1 text-xs font-semibold text-[#6366f1] hover:bg-indigo-50">
+              <button type="button" onClick={() => { setCalYear(new Date().getFullYear()); setCalMonth(new Date().getMonth()); setRecordDate(todayIso()); }} className="ml-1 rounded-md border border-[var(--color-border-soft)] px-2 py-1 text-xs font-semibold text-[var(--color-primary)] hover:bg-[var(--color-surface-muted)]">
                 Today
               </button>
             </div>
@@ -393,25 +413,25 @@ export default function Attendance() {
           />
         </HrPanel>
 
-        <HrPanel title="Today's Status Overview" action={<Link to="/hr/attendance" className="text-sm font-semibold text-[#6366f1]">View All</Link>}>
+        <HrPanel title="Today's Status Overview" action={<Link to="/hr/attendance" className="text-sm font-semibold text-[var(--color-primary)]">View All</Link>}>
           <ul className="space-y-3">
             {data.today_overview.map((row) => (
               <li key={row.id} className="flex items-center gap-3">
                 <HrAvatar label={row.avatar} />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold text-slate-800">{row.name}</p>
-                  <p className="truncate text-xs text-slate-500">{row.department}</p>
+                  <p className="truncate text-sm font-semibold text-[var(--color-text)]">{row.name}</p>
+                  <p className="truncate text-xs text-[var(--color-text-muted)]">{row.department}</p>
                 </div>
                 <div className="shrink-0 text-right">
                   <StatusBadge status={row.status} />
-                  <p className="mt-1 text-xs text-slate-500">{row.check_in || "—"}</p>
+                  <p className="mt-1 text-xs text-[var(--color-text-muted)]">{row.check_in || "—"}</p>
                 </div>
               </li>
             ))}
           </ul>
-          <button type="button" className="mt-4 w-full rounded-lg border border-slate-200 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+          <Button type="button" variant="secondary" className="mt-4 w-full">
             View All Attendance
-          </button>
+          </Button>
         </HrPanel>
       </div>
 
@@ -420,58 +440,58 @@ export default function Attendance() {
         title="Attendance Records"
         action={
           <div className="flex items-center gap-2">
-            <Link to="/hr/attendance" className="text-sm font-semibold text-[#6366f1]">View All</Link>
-            <button type="button" className="text-slate-400 hover:text-slate-600" aria-label="Settings">
+            <Link to="/hr/attendance" className="text-sm font-semibold text-[var(--color-primary)]">View All</Link>
+            <button type="button" className="text-[var(--color-text-muted)] hover:text-[var(--color-text)]" aria-label="Settings">
               <Settings className="h-4 w-4" />
             </button>
           </div>
         }
       >
-        <div className="overflow-x-auto rounded-xl border border-slate-200">
-          <table className="min-w-full w-full border-collapse text-left text-sm">
+        <div className="ui-table-wrap ui-table-wrap--scroll">
+          <table className="ui-table min-w-full w-full border-collapse text-left text-sm">
             <thead className="ui-table-head">
               <tr>
-                <SerialNumberHeader className="border-b border-slate-200 px-3 py-3" />
-                <th className="border-b border-slate-200 px-3 py-3">Employee ID</th>
-                <th className="border-b border-slate-200 px-3 py-3 min-w-[160px]">Employee Name</th>
-                <th className="border-b border-slate-200 px-3 py-3">Department</th>
-                <th className="border-b border-slate-200 px-3 py-3">Check In</th>
-                <th className="border-b border-slate-200 px-3 py-3">Check Out</th>
-                <th className="border-b border-slate-200 px-3 py-3">Working Hours</th>
-                <th className="border-b border-slate-200 px-3 py-3">Status</th>
-                <th className="border-b border-slate-200 px-3 py-3">Remarks</th>
-                <th className="border-b border-slate-200 px-3 py-3 text-center">Action</th>
+                <SerialNumberHeader className="border-b border-[var(--color-border-soft)] px-3 py-3" />
+                <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Employee ID</th>
+                <th className="border-b border-[var(--color-border-soft)] px-3 py-3 min-w-[160px]">Employee Name</th>
+                <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Department</th>
+                <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Check In</th>
+                <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Check Out</th>
+                <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Working Hours</th>
+                <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Status</th>
+                <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Remarks</th>
+                <th className="border-b border-[var(--color-border-soft)] px-3 py-3 text-center">Action</th>
               </tr>
             </thead>
             <tbody>
               {pageRows.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="px-4 py-12 text-center text-slate-500">
+                  <td colSpan={10} className="px-4 py-12 text-center text-[var(--color-text-muted)]">
                     No attendance records for {formatDisplayDate(recordDate)}.
                   </td>
                 </tr>
               ) : (
                 pageRows.map((row, rowIndex) => (
-                  <tr key={row.id} className="hover:bg-slate-50/80">
-                    <SerialNumberCell rowIndex={rowIndex} page={page} pageSize={pageSize} className="border-b border-slate-100 px-3 py-3" />
-                    <td className="border-b border-slate-100 px-3 py-3 font-medium text-slate-700">{row.employee_id}</td>
-                    <td className="border-b border-slate-100 px-3 py-3">
+                  <tr key={row.id} className="hover:bg-[var(--color-surface-muted)]/80">
+                    <SerialNumberCell rowIndex={rowIndex} page={page} pageSize={pageSize} className="border-b border-[var(--color-border-soft)] px-3 py-3" />
+                    <td className="border-b border-[var(--color-border-soft)] px-3 py-3 font-medium text-[var(--color-text)]">{row.employee_id}</td>
+                    <td className="border-b border-[var(--color-border-soft)] px-3 py-3">
                       <div className="flex items-center gap-2">
                         <HrAvatar label={row.avatar} />
-                        <span className="font-semibold text-slate-800">{row.name}</span>
+                        <span className="font-semibold text-[var(--color-text)]">{row.name}</span>
                       </div>
                     </td>
-                    <td className="border-b border-slate-100 px-3 py-3 text-slate-600">{row.department}</td>
-                    <td className="border-b border-slate-100 px-3 py-3 tabular-nums text-slate-600">{row.check_in || "—"}</td>
-                    <td className="border-b border-slate-100 px-3 py-3 tabular-nums text-slate-600">{row.check_out || "—"}</td>
-                    <td className="border-b border-slate-100 px-3 py-3 tabular-nums text-slate-600">{row.working_hours}</td>
-                    <td className="border-b border-slate-100 px-3 py-3">
+                    <td className="border-b border-[var(--color-border-soft)] px-3 py-3 text-[var(--color-text-secondary)]">{row.department}</td>
+                    <td className="border-b border-[var(--color-border-soft)] px-3 py-3 tabular-nums text-[var(--color-text-secondary)]">{row.check_in || "—"}</td>
+                    <td className="border-b border-[var(--color-border-soft)] px-3 py-3 tabular-nums text-[var(--color-text-secondary)]">{row.check_out || "—"}</td>
+                    <td className="border-b border-[var(--color-border-soft)] px-3 py-3 tabular-nums text-[var(--color-text-secondary)]">{row.working_hours}</td>
+                    <td className="border-b border-[var(--color-border-soft)] px-3 py-3">
                       <StatusBadge status={row.status} />
                     </td>
-                    <td className="border-b border-slate-100 px-3 py-3 text-slate-500">{row.remarks}</td>
-                    <td className="relative border-b border-slate-100 px-3 py-3 text-center">
+                    <td className="border-b border-[var(--color-border-soft)] px-3 py-3 text-[var(--color-text-muted)]">{row.remarks}</td>
+                    <td className="relative border-b border-[var(--color-border-soft)] px-3 py-3 text-center">
                       <div className="inline-flex items-center gap-1">
-                        <button type="button" className="grid h-8 w-8 place-items-center rounded-md text-[#6366f1] hover:bg-indigo-50" aria-label="View">
+                        <button type="button" className="grid h-8 w-8 place-items-center rounded-md text-[var(--color-primary)] hover:bg-indigo-50" aria-label="View">
                           <Eye className="h-4 w-4" />
                         </button>
                         <button type="button" className="grid h-8 w-8 place-items-center rounded-md text-[#2563eb] hover:bg-blue-50" aria-label="Edit">
@@ -479,7 +499,7 @@ export default function Attendance() {
                         </button>
                         <button
                           type="button"
-                          className="grid h-8 w-8 place-items-center rounded-md border border-slate-200 text-[#6366f1] hover:bg-slate-50"
+                          className="grid h-8 w-8 place-items-center rounded-md border border-[var(--color-border-soft)] text-[var(--color-primary)] hover:bg-[var(--color-surface-muted)]"
                           aria-label="More"
                         >
                           <MoreVertical className="h-4 w-4" />
@@ -493,12 +513,12 @@ export default function Attendance() {
           </table>
         </div>
 
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-slate-500">
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-[var(--color-text-muted)]">
           <span>
             Showing {from} to {to} of {filteredRecords.length} entries
           </span>
           <div className="flex items-center gap-1">
-            <button type="button" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))} className="grid h-8 w-8 place-items-center rounded-md border border-slate-200 bg-white disabled:opacity-40">
+            <button type="button" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))} className="grid h-8 w-8 place-items-center rounded-md border border-[var(--color-border-soft)] bg-[var(--color-surface)] disabled:opacity-40">
               <ChevronLeft className="h-4 w-4" />
             </button>
             {pageItems(page, totalPages).map((item) =>
@@ -510,21 +530,21 @@ export default function Attendance() {
                   type="button"
                   onClick={() => setPage(item)}
                   className={`grid h-8 min-w-8 place-items-center rounded-md border px-2 text-sm font-semibold ${
-                    item === page ? "border-[#6366f1] bg-[#6366f1] text-white" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                    item === page ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-white" : "border-[var(--color-border-soft)] bg-[var(--color-surface)] text-[var(--color-text)] hover:bg-[var(--color-surface-muted)]"
                   }`}
                 >
                   {item}
                 </button>
               )
             )}
-            <button type="button" disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))} className="grid h-8 w-8 place-items-center rounded-md border border-slate-200 bg-white disabled:opacity-40">
+            <button type="button" disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))} className="grid h-8 w-8 place-items-center rounded-md border border-[var(--color-border-soft)] bg-[var(--color-surface)] disabled:opacity-40">
               <ChevronRight className="h-4 w-4" />
             </button>
           </div>
           <select
             value={pageSize}
             onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
-            className="rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm outline-none"
+            className="ui-select !w-auto"
           >
             {[10, 20, 50].map((n) => (
               <option key={n} value={n}>{n} / page</option>
@@ -533,5 +553,6 @@ export default function Attendance() {
         </div>
       </HrPanel>
     </HrPage>
+    </ListPageShell>
   );
 }

@@ -7,7 +7,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock,
-  FileSpreadsheet,
   Filter,
   Layers,
   LineChart,
@@ -18,6 +17,8 @@ import {
 } from "lucide-react";
 
 import Button from "../../components/common/Button";
+import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
+import { ListPageShell } from "../../components/common/ListPageShell";
 import { SearchBar } from "../../components/common/SearchFilter";
 import InventoryRowActionsMenu from "../../components/inventory/InventoryRowActionsMenu";
 import KpiCard from "../../components/common/KpiCard";
@@ -36,9 +37,22 @@ import {
   mergeBatchSummary,
   normalizeBatchStatus,
 } from "../../data/qualityMasterData";
-import { exportToExcel } from "../../utils/exportUtils";
+import { exportToExcel, exportToPdf } from "../../utils/exportUtils";
 
 const PAGE_SIZES = [10, 25, 50];
+
+const BATCH_EXPORT_COLUMNS = [
+  { key: "batch_no", label: "Batch No." },
+  { key: "product", label: "Product" },
+  { key: "work_order", label: "Work Order" },
+  { key: "process", label: "Process" },
+  { key: "quantity", label: "Quantity" },
+  { key: "start_date", label: "Start Date" },
+  { key: "end_date", label: "End Date" },
+  { key: "status", label: "Status" },
+  { key: "result", label: "Result" },
+  { key: "pass_rate", label: "Pass Rate" },
+];
 
 const BATCH_STATUS_OPTIONS = [
   { value: "completed", label: "Completed" },
@@ -143,14 +157,14 @@ function MultiSelectDropdown({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className={`inline-flex items-center justify-between gap-2 rounded-lg border border-[var(--color-border-soft)] bg-white px-3.5 py-2 text-[13px] font-medium text-[var(--color-text)] shadow-xs transition-colors hover:border-[var(--color-primary)] ${minWidth}`}
+        className={`inline-flex items-center justify-between gap-2 rounded-lg border border-[var(--color-border-soft)] bg-[var(--color-surface)] px-3.5 py-2 text-[13px] font-medium text-[var(--color-text)] shadow-xs transition-colors hover:border-[var(--color-primary)] ${minWidth}`}
       >
         <span className="truncate">{triggerLabel}</span>
         <ChevronDown className={`h-4 w-4 shrink-0 text-[var(--color-text-muted)] transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
       </button>
 
       {open && (
-        <div className="absolute left-0 top-[calc(100%+4px)] z-40 w-64 rounded-xl border border-[var(--color-border-soft)] bg-white p-2 shadow-xl">
+        <div className="absolute left-0 top-[calc(100%+4px)] z-40 w-64 rounded-xl border border-[var(--color-border-soft)] bg-[var(--color-surface)] p-2 shadow-xl">
           {normalizedOptions.length > 5 && (
             <div className="mb-2 px-1">
               <SearchBar
@@ -341,36 +355,23 @@ export default function BatchQualityReports() {
 
   if (loading) return <Loader label="Loading batch quality reports..." />;
 
+  const handleExport = (format) => {
+    if (format === "pdf") {
+      exportToPdf(exportRows, BATCH_EXPORT_COLUMNS, "Batch Quality Reports", "batch-quality-reports");
+    } else {
+      exportToExcel(exportRows, BATCH_EXPORT_COLUMNS, "batch-quality-reports");
+    }
+    addToast(format === "pdf" ? "Exported to PDF" : "Exported to Excel", "success");
+  };
+
   return (
+    <ListPageShell>
     <div className="min-w-0 space-y-5 pb-4">
       <PageHeader
         subtitle="View and analyze quality results by batch"
         action={
           <div className="flex flex-wrap items-center gap-2">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() =>
-                exportToExcel(
-                  exportRows,
-                  [
-                    { key: "batch_no", label: "Batch No." },
-                    { key: "product", label: "Product" },
-                    { key: "work_order", label: "Work Order" },
-                    { key: "process", label: "Process" },
-                    { key: "quantity", label: "Quantity" },
-                    { key: "start_date", label: "Start Date" },
-                    { key: "end_date", label: "End Date" },
-                    { key: "status", label: "Status" },
-                    { key: "result", label: "Result" },
-                    { key: "pass_rate", label: "Pass Rate" },
-                  ],
-                  "batch-quality-reports"
-                )
-              }
-            >
-              <FileSpreadsheet className="h-4 w-4" /> Export
-            </Button>
+            <ExportDownloadMenu disabled={!exportRows.length} onExport={handleExport} />
             <Button
               type="button"
               variant="primary"
@@ -435,7 +436,7 @@ export default function BatchQualityReports() {
             />
           </div>
           <div className="flex flex-wrap items-center gap-2.5">
-            <div className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border-soft)] bg-white px-3 py-1.5 text-[13px] shadow-xs">
+            <div className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border-soft)] bg-[var(--color-surface)] px-3 py-1.5 text-[13px] shadow-xs">
               <CalendarDays className="h-4 w-4 shrink-0 text-[var(--color-text-muted)]" />
               <input
                 type="date"
@@ -668,7 +669,7 @@ export default function BatchQualityReports() {
 
       {viewRow ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white shadow-xl">
+          <div className="ui-modal max-h-[90vh] w-full max-w-lg overflow-y-auto">
             <div className="flex items-start justify-between border-b px-6 py-4">
               <div>
                 <h2 className="text-lg font-bold text-[var(--color-text)]">{viewRow.batch_code}</h2>
@@ -718,5 +719,6 @@ export default function BatchQualityReports() {
         </div>
       ) : null}
     </div>
+    </ListPageShell>
   );
 }

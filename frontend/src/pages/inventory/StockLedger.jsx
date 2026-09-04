@@ -6,7 +6,6 @@ import {
   ArrowUpFromLine,
   CalendarDays,
   ClipboardList,
-  Download,
   Filter,
   Hash,
   RefreshCw,
@@ -14,6 +13,8 @@ import {
 } from "lucide-react";
 
 import Button from "../../components/common/Button";
+import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
+import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
 import { SearchBar } from "../../components/common/SearchFilter";
 import DataTable from "../../components/common/DataTable";
 import EmptyState from "../../components/common/EmptyState";
@@ -28,7 +29,7 @@ import StoreManagerNav from "../../components/inventory/StoreManagerNav";
 import { useToast } from "../../context/ToastContext";
 import { getLedgerSummary, getStockLedger, getWarehouses } from "../../api/inventoryApi";
 import useManufacturingRefresh from "../../hooks/useManufacturingRefresh";
-import { exportToExcel } from "../../utils/exportUtils";
+import { exportToExcel, exportToPdf } from "../../utils/exportUtils";
 import useAuth from "../../hooks/useAuth";
 import { isStoreManager } from "../../config/permissions";
 import { asArray } from "../../utils/apiError";
@@ -41,6 +42,21 @@ const EMPTY_SUMMARY = {
   total_transactions: 0,
   uom: "KG",
 };
+
+const STOCK_LEDGER_EXPORT_COLUMNS = [
+  { key: "date", label: "Date" },
+  { key: "item_name", label: "Item" },
+  { key: "item_code", label: "Item Code" },
+  { key: "transaction", label: "Type" },
+  { key: "reference", label: "Reference" },
+  { key: "warehouse_name", label: "Warehouse" },
+  { key: "qty_in", label: "Stock In" },
+  { key: "qty_out", label: "Stock Out" },
+  { key: "balance", label: "Balance" },
+  { key: "unit", label: "UOM" },
+  { key: "user_name", label: "User" },
+  { key: "remarks", label: "Remarks" },
+];
 
 function formatQty(value, { dashZero = true } = {}) {
   if (value == null || value === "") return "—";
@@ -440,6 +456,24 @@ export default function StockLedger() {
     },
   ];
 
+  const exportRows = useMemo(
+    () =>
+      filtered.map((r) => ({
+        ...r,
+        transaction: txnBadge(resolveTxnType(r)).label,
+      })),
+    [filtered]
+  );
+
+  const handleExport = (format) => {
+    if (format === "pdf") {
+      exportToPdf(exportRows, STOCK_LEDGER_EXPORT_COLUMNS, "Stock Ledger", "stock-ledger");
+    } else {
+      exportToExcel(exportRows, STOCK_LEDGER_EXPORT_COLUMNS, "stock-ledger");
+    }
+    addToast(format === "pdf" ? "Exported to PDF" : "Exported to Excel", "success");
+  };
+
   if (loading) {
     return (
       <div className="space-y-5 pb-4">
@@ -450,6 +484,7 @@ export default function StockLedger() {
   }
 
   return (
+    <ListPageShell>
     <div className="min-w-0 space-y-5 pb-4">
       {storeMode ? <StoreManagerNav /> : null}
 
@@ -690,39 +725,11 @@ export default function StockLedger() {
         </div>
       </div>
 
-      <div className="ui-card p-4 sm:p-5">
+      <ListPageCard>
+        <ListPageCardBody>
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-sm font-semibold text-[var(--color-text)]">Stock Movements</h2>
-          <Button
-            variant="outline"
-            type="button"
-            className="!border-[#16a34a] !text-[#16a34a]"
-            onClick={() =>
-              exportToExcel(
-                filtered.map((r) => ({
-                  ...r,
-                  transaction: txnBadge(resolveTxnType(r)).label,
-                })),
-                [
-                  { key: "date", label: "Date" },
-                  { key: "item_name", label: "Item" },
-                  { key: "item_code", label: "Item Code" },
-                  { key: "transaction", label: "Type" },
-                  { key: "reference", label: "Reference" },
-                  { key: "warehouse_name", label: "Warehouse" },
-                  { key: "qty_in", label: "Stock In" },
-                  { key: "qty_out", label: "Stock Out" },
-                  { key: "balance", label: "Balance" },
-                  { key: "unit", label: "UOM" },
-                  { key: "user_name", label: "User" },
-                  { key: "remarks", label: "Remarks" },
-                ],
-                "stock-ledger"
-              )
-            }
-          >
-            <Download className="h-4 w-4" /> Export
-          </Button>
+          <ExportDownloadMenu disabled={!exportRows.length} onExport={handleExport} />
         </div>
 
         <DataTable
@@ -739,7 +746,8 @@ export default function StockLedger() {
             />
           }
         />
-      </div>
+        </ListPageCardBody>
+      </ListPageCard>
 
       <RecordDetailModal
         open={Boolean(viewTarget)}
@@ -749,5 +757,6 @@ export default function StockLedger() {
         onClose={() => setViewTarget(null)}
       />
     </div>
+    </ListPageShell>
   );
 }

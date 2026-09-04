@@ -11,7 +11,6 @@ import {
   ChevronsRight,
   ClipboardList,
   Eye,
-  FileSpreadsheet,
   FileText,
   MoreVertical,
   Pause,
@@ -23,6 +22,8 @@ import {
 } from "lucide-react";
 
 import Button, { IconButton } from "../../components/common/Button";
+import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
+import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
 import { SearchBar } from "../../components/common/SearchFilter";
 import { operatorJobCardUrl } from "../../utils/jobCardRoutes";
 import DataTable from "../../components/common/DataTable";
@@ -211,12 +212,12 @@ function WoRowActions({
       : null,
     {
       label: "Print",
-      icon: <Printer className="h-3.5 w-3.5 text-slate-600" />,
+      icon: <Printer className="h-3.5 w-3.5 text-[var(--color-text-muted)]" />,
       onClick: () => onPrint(row),
     },
     {
       label: "Export PDF",
-      icon: <FileText className="h-3.5 w-3.5 text-slate-600" />,
+      icon: <FileText className="h-3.5 w-3.5 text-[var(--color-text-muted)]" />,
       onClick: () => onPdf(row),
     },
   ].filter(Boolean);
@@ -904,11 +905,21 @@ export default function WorkOrders() {
 
   if (loading) return <Loader label="Loading work orders..." />;
 
+  const handleListExport = (format) => {
+    if (format === "pdf") {
+      exportToPdf(filtered, exportCols, "Work Orders", "work-orders");
+    } else {
+      exportToExcel(filtered, exportCols, "work-orders");
+    }
+    addToast(format === "pdf" ? "Exported to PDF" : "Exported to Excel", "success");
+  };
+
   return (
     <>
-      <div
-        className={`min-w-0 w-full space-y-5 pb-4 ${
-          printDetailWorkOrder ? "hidden print:hidden" : "print:m-0 print:p-0 print:space-y-4 print:block"
+      <ListPageShell
+        className="print:bg-transparent"
+        stackClassName={`min-w-0 w-full space-y-5 pb-4 print:p-0 print:space-y-4 ${
+          printDetailWorkOrder ? "hidden print:hidden" : "print:m-0 print:block"
         }`}
       >
         <div className="mb-4 hidden border-b pb-4 print:block">
@@ -959,30 +970,25 @@ export default function WorkOrders() {
           </ClickableKpiCard>
         </div>
 
-        <div className="ui-card min-w-0 p-4 sm:p-5 print:border-0 print:bg-white print:p-0 print:shadow-none">
-          <div className="mb-4 flex flex-col gap-3 print:hidden lg:flex-row lg:items-center lg:justify-between">
-            <SearchBar
-              value={filters.search}
-              onChange={(val) => {
-                setFilters((f) => ({ ...f, search: val }));
-                setAppliedFilters((f) => ({ ...f, search: val }));
-              }}
-              placeholder="Search"
-              className="w-full"
-            />
-            <div className="flex flex-wrap items-center gap-2">
+        <ListPageCard className="min-w-0 print:border-0 print:bg-transparent print:shadow-none">
+          <ListPageCardBody className="print:p-0">
+          <div className="ui-list-toolbar mb-0 print:hidden">
+            <div className="ui-list-toolbar__start">
+              <SearchBar
+                value={filters.search}
+                onChange={(val) => {
+                  setFilters((f) => ({ ...f, search: val }));
+                  setAppliedFilters((f) => ({ ...f, search: val }));
+                }}
+                placeholder="Search"
+                className="w-full max-w-md"
+              />
+            </div>
+            <div className="ui-list-toolbar__end">
               <Button variant="secondary" type="button" onClick={() => setShowAdvanced(!showAdvanced)}>
                 {showAdvanced ? "Hide Filters" : "Filters"}
               </Button>
-              <Button
-                variant="secondary"
-                type="button"
-                onClick={() => exportToExcel(filtered, exportCols, "work-orders")}
-                title="Export Excel"
-              >
-                <FileSpreadsheet className="h-4 w-4" />
-                <span className="hidden sm:inline">Excel</span>
-              </Button>
+              <ExportDownloadMenu disabled={!filtered.length} onExport={handleListExport} />
               <Button variant="secondary" type="button" onClick={handleGlobalPrint} title="Print">
                 <Printer className="h-4 w-4" />
                 <span className="hidden sm:inline">Print</span>
@@ -1168,8 +1174,9 @@ export default function WorkOrders() {
               </button>
             </div>
           </div>
-        </div>
-      </div>
+          </ListPageCardBody>
+        </ListPageCard>
+      </ListPageShell>
 
       {/* Single Item Print View */}
       {printDetailWorkOrder && (
