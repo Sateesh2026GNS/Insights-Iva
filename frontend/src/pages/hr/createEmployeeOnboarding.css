@@ -1,0 +1,401 @@
+/* Employee Onboarding Form */
+.hr-create-employee {
+  --ce-title: #1a1c1e;
+  --ce-text: #374151;
+  --ce-muted: #5e6278;
+  --ce-border: #e5e7eb;
+  --ce-primary: #2563eb;
+  --ce-surface: #ffffff;
+  --ce-section-bg: #ffffff;
+
+  color: var(--ce-text);
+  font-family: inherit;
+  font-size: 14px;
+  padding-bottom: 32px;
+}
+
+.hr-create-employee__title {
+  margin: 0 0 20px;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--ce-title);
+}
+
+.hr-create-employee__section {
+  margin-bottom: 20px;
+  border: 1px solid var(--ce-border);
+  border-radius: 10px;
+  background: var(--ce-section-bg);
+  padding: 20px 24px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+}
+
+.hr-create-employee__section-title {
+  margin: 0 0 16px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--ce-border);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ce-title);
+}
+
+.hr-create-employee__section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--ce-border);
+}
+
+.hr-create-employee__section-header h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ce-title);
+}
+
+.hr-create-employee__add-icon-btn {
+  display: grid;
+  height: 28px;
+  width: 28px;
+  place-items: center;
+  border: 0;
+  border-radius: 4px;
+  background: var(--ce-primary);
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.hr-create-employee__grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px 20px;
+}
+
+.hr-create-employee__grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px 20px;
+}
+
+@media (max-width: 900px) {
+  .hr-create-employee__grid-3,
+  .hr-create-employee__grid-2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+.hr-create-employee__field {}
+
+.hr-create-employee__label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ce-title);
+}
+
+.hr-create-employee__label span {
+  color: #ef4444;
+}
+
+.hr-create-employee__input,
+.hr-create-employee__select,
+.hr-create-employee__textarea {
+  width: 100%;
+  border: 1px solid var(--ce-border);
+  border-radius: 6px;
+  background: var(--ce-surface);
+  padding: 10px 12px;
+  font-size: 14px;
+  color: var(--ce-text);
+}
+
+.hr-create-employee__select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 32px;
+  cursor: pointer;
+}
+
+.hr-create-employee__textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+.hr-create-employee__input::placeholder,
+.hr-create-employee__textarea::placeholder {
+  color: #9ca3af;
+}
+
+.hr-create-employee__date-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--ce-border);
+  border-radius: 6px;
+  background: var(--ce-surface);
+  padding: 10px 12px;
+}
+
+.hr-create-employee__date-wrap span {
+  flex: 1;
+  font-size: 14px;
+}
+
+.hr-create-employee__date-wrap span.is-placeholder {
+  color: #9ca3af;
+}
+
+.hr-create-employee__date-wrap input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.hr-create-employee__suffix-group {
+  display: flex;
+  align-items: stretch;
+}
+
+.hr-create-employee__suffix-group .hr-create-employee__input {
+  border-radius: 6px 0 0 6px;
+}
+
+.hr-create-employee__suffix {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--ce-border);
+  border-left: 0;
+  border-radius: 0 6px 6px 0;
+  background: #f9fafb;
+  padding: 0 12px;
+  font-size: 13px;
+  color: var(--ce-muted);
+  white-space: nowrap;
+}
+
+.hr-create-employee__experience-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.hr-create-employee__experience-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid var(--ce-border);
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-size: 13px;
+}
+
+.hr-create-employee__edu-table-wrap {
+  overflow: auto;
+}
+
+.hr-create-employee__edu-table {
+  width: 100%;
+  min-width: 640px;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.hr-create-employee__edu-table th {
+  border-bottom: 1px solid var(--ce-border);
+  background: #eef5ff;
+  padding: 10px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ce-title);
+  text-align: left;
+}
+
+.hr-create-employee__edu-table td {
+  border-bottom: 1px solid var(--ce-border);
+  padding: 8px;
+}
+
+.hr-create-employee__edu-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.hr-create-employee__edu-action-btn {
+  display: grid;
+  height: 28px;
+  width: 28px;
+  place-items: center;
+  border: 1px solid var(--ce-border);
+  border-radius: 9999px;
+  background: var(--ce-surface);
+  cursor: pointer;
+}
+
+.hr-create-employee__edu-action-btn--add {
+  border-color: var(--ce-primary);
+  color: var(--ce-primary);
+}
+
+.hr-create-employee__edu-action-btn--remove {
+  border-color: #fca5a5;
+  color: #dc2626;
+}
+
+.hr-create-employee__edu-action-btn--save {
+  border-color: #86efac;
+  color: #16a34a;
+}
+
+.hr-create-employee__edu-add-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+.hr-create-employee__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.hr-create-employee__save-btn {
+  border: 0;
+  border-radius: 6px;
+  background: var(--ce-primary);
+  padding: 10px 24px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.hr-create-employee__cancel-btn {
+  border: 1px solid var(--ce-border);
+  border-radius: 6px;
+  background: var(--ce-surface);
+  padding: 10px 24px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ce-title);
+  cursor: pointer;
+}
+
+/* Work experience modal (portaled) */
+.hr-create-employee__overlay {
+  --ce-title: #1a1c1e;
+  --ce-text: #374151;
+  --ce-muted: #5e6278;
+  --ce-border: #e5e7eb;
+  --ce-primary: #2563eb;
+  --ce-surface: #ffffff;
+
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.35);
+}
+
+.hr-create-employee__modal {
+  display: flex;
+  width: 100%;
+  max-width: 560px;
+  max-height: calc(100vh - 48px);
+  flex-direction: column;
+  border-radius: 10px;
+  background: var(--ce-surface);
+  box-shadow: 0 20px 48px rgba(15, 23, 42, 0.18);
+}
+
+.hr-create-employee__modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--ce-border);
+  padding: 16px 20px;
+}
+
+.hr-create-employee__modal-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ce-title);
+}
+
+.hr-create-employee__modal-close {
+  border: 0;
+  background: transparent;
+  color: var(--ce-muted);
+  cursor: pointer;
+}
+
+.hr-create-employee__modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.hr-create-employee__modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  border-top: 1px solid var(--ce-border);
+  padding: 14px 20px;
+}
+
+.hr-create-employee__outline-btn {
+  border: 1px solid var(--ce-border);
+  border-radius: 6px;
+  background: var(--ce-surface);
+  padding: 8px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ce-title);
+  cursor: pointer;
+}
+
+.hr-create-employee__solid-btn {
+  border: 0;
+  border-radius: 6px;
+  background: var(--ce-primary);
+  padding: 8px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.hr-create-employee__rte-toolbar {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+.hr-create-employee__rte-btn {
+  display: grid;
+  height: 28px;
+  min-width: 28px;
+  place-items: center;
+  border: 1px solid var(--ce-border);
+  border-radius: 4px;
+  background: var(--ce-surface);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.hr-create-employee__error {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #ef4444;
+}

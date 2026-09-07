@@ -1,154 +1,148 @@
-﻿import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+﻿import { useCallback, useEffect, useState } from "react";
+import { Search } from "lucide-react";
 
-import { createPayroll, getEmployees } from "../../api/hrApi";
-import useTenantId from "../../hooks/useTenantId";
+import Loader from "../../components/common/Loader";
+import { ListPageShell } from "../../components/common/ListPageShell";
+import usePageRefresh from "../../hooks/usePageRefresh";
+import { useToast } from "../../context/ToastContext";
+import { generatePayroll, getPayrollRunStatus, getSalaryBreakups } from "../../api/hrApi";
+import "./runPayroll.css";
 
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
+const CURRENT_YEAR = new Date().getFullYear();
+const YEAR_OPTIONS = Array.from({ length: 11 }, (_, i) => CURRENT_YEAR - 5 + i);
 
-import Button from "../../components/common/Button";
+function PayrollIllustration() {
+  return (
+    <div className="hr-run-payroll__illustration" aria-hidden>
+      <div className="hr-run-payroll__illustration-circle">
+        <div className="hr-run-payroll__illustration-docs">
+          <span />
+          <span />
+          <span />
+        </div>
+        <div className="hr-run-payroll__illustration-search">
+          <Search className="h-6 w-6" strokeWidth={2} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function CreatePayroll() {
-  const tenantId = useTenantId();
-  const navigate = useNavigate();
-  const [employees, setEmployees] = useState([]);
-  const [form, setForm] = useState({
-    tenant_id: tenantId,
-    employee_id: "",
-    period_start: "",
-    period_end: "",
-    regular_hours: "0",
-    overtime_hours: "0",
-    regular_pay: "0",
-    overtime_pay: "0",
-    gross_pay: "0",
-    deductions: "0",
-    net_pay: "0",
-    status: "draft",
-  });
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
+  const { addToast } = useToast();
+  const [loading, setLoading] = useState(true);
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
+  const [selectedYear, setSelectedYear] = useState(CURRENT_YEAR);
+  const [hasGenerated, setHasGenerated] = useState(false);
+  const [generating, setGenerating] = useState(false);
 
-  useEffect(() => {
-    getEmployees(tenantId).then((r) => setEmployees(r.data || [])).catch(console.error);
-  }, []);
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setSaving(true);
-    setError("");
+  const load = useCallback(async (isRefresh = false) => {
+    if (!isRefresh) setLoading(true);
     try {
-      await createPayroll({
-        ...form,
-        employee_id: Number(form.employee_id),
-        regular_hours: Number(form.regular_hours) || 0,
-        overtime_hours: Number(form.overtime_hours) || 0,
-        regular_pay: Number(form.regular_pay) || 0,
-        overtime_pay: Number(form.overtime_pay) || 0,
-        gross_pay: Number(form.gross_pay) || 0,
-        deductions: Number(form.deductions) || 0,
-        net_pay: Number(form.net_pay) || 0,
+      const res = await getPayrollRunStatus({
+        month: selectedMonth + 1,
+        year: selectedYear,
       });
-      navigate("/hr/payroll");
-    } catch (err) {
-      setError("Failed to create payroll record.");
+      const generated = Boolean(res?.data?.generated);
+      setHasGenerated(generated);
+    } catch {
+      setHasGenerated(false);
     } finally {
-      setSaving(false);
+      setLoading(false);
+    }
+  }, [selectedMonth, selectedYear]);
+
+  usePageRefresh(() => load(true));
+  useEffect(() => { load(); }, [load]);
+
+  const handleGenerate = async () => {
+    let breakups = [];
+    try {
+      const res = await getSalaryBreakups();
+      const rows = res?.data?.items || res?.data || [];
+      breakups = Array.isArray(rows) ? rows : [];
+    } catch {
+      addToast("Failed to verify salary breakups", "error");
+      return;
+    }
+
+    if (!breakups.length) {
+      addToast("Please define the salary breakup to process the salary.", "error");
+      return;
+    }
+
+    setGenerating(true);
+    const payload = {
+      month: selectedMonth + 1,
+      year: selectedYear,
+      period_key: `${selectedYear}-${selectedMonth + 1}`,
+    };
+
+    try {
+      await generatePayroll(payload);
+      setHasGenerated(true);
+      addToast("Salary generated successfully", "success");
+    } catch {
+      addToast("Failed to generate salary", "error");
+    } finally {
+      setGenerating(false);
     }
   };
 
+  if (loading) return <Loader label="Loading payroll..." />;
+
   return (
-    <div style={{ maxWidth: "640px" }}>
-      <h2>Create Payroll Record</h2>
-      <form onSubmit={handleSubmit} style={{ display: "grid", gap: "12px", marginTop: "16px" }}>
-        <label>
-          Employee
+    <ListPageShell>
+      <div className="hr-run-payroll min-w-0">
+        <h1 className="hr-run-payroll__title">Run Payroll</h1>
+
+        <div className="hr-run-payroll__toolbar">
+          <div className="hr-run-payroll__months">
+            {MONTHS.map((label, index) => (
+              <button
+                key={label}
+                type="button"
+                className={`hr-run-payroll__month ${selectedMonth === index ? "hr-run-payroll__month--active" : ""}`}
+                onClick={() => setSelectedMonth(index)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
           <select
-            value={form.employee_id}
-            onChange={(e) => setForm((f) => ({ ...f, employee_id: e.target.value }))}
-            required
-            style={{ width: "100%", padding: "8px", marginTop: "6px" }}
+            className="hr-run-payroll__year"
+            value={selectedYear}
+            onChange={(e) => setSelectedYear(Number(e.target.value))}
           >
-            <option value="">Select</option>
-            {employees.map((e) => (
-              <option key={e.id} value={e.id}>{e.full_name}</option>
+            {YEAR_OPTIONS.map((year) => (
+              <option key={year} value={year}>{year}</option>
             ))}
           </select>
-        </label>
-        <label>
-          Period Start
-          <input
-            type="date"
-            value={form.period_start}
-            onChange={(e) => setForm((f) => ({ ...f, period_start: e.target.value }))}
-            required
-            style={{ width: "100%", padding: "8px", marginTop: "6px" }}
-          />
-        </label>
-        <label>
-          Period End
-          <input
-            type="date"
-            value={form.period_end}
-            onChange={(e) => setForm((f) => ({ ...f, period_end: e.target.value }))}
-            required
-            style={{ width: "100%", padding: "8px", marginTop: "6px" }}
-          />
-        </label>
-        <label>
-          Regular Hours
-          <input
-            type="number"
-            step="0.5"
-            value={form.regular_hours}
-            onChange={(e) => setForm((f) => ({ ...f, regular_hours: e.target.value }))}
-            style={{ width: "100%", padding: "8px", marginTop: "6px" }}
-          />
-        </label>
-        <label>
-          Overtime Hours
-          <input
-            type="number"
-            step="0.5"
-            value={form.overtime_hours}
-            onChange={(e) => setForm((f) => ({ ...f, overtime_hours: e.target.value }))}
-            style={{ width: "100%", padding: "8px", marginTop: "6px" }}
-          />
-        </label>
-        <label>
-          Gross Pay ($)
-          <input
-            type="number"
-            step="0.01"
-            value={form.gross_pay}
-            onChange={(e) => setForm((f) => ({ ...f, gross_pay: e.target.value }))}
-            style={{ width: "100%", padding: "8px", marginTop: "6px" }}
-          />
-        </label>
-        <label>
-          Deductions ($)
-          <input
-            type="number"
-            step="0.01"
-            value={form.deductions}
-            onChange={(e) => setForm((f) => ({ ...f, deductions: e.target.value }))}
-            style={{ width: "100%", padding: "8px", marginTop: "6px" }}
-          />
-        </label>
-        <label>
-          Net Pay ($)
-          <input
-            type="number"
-            step="0.01"
-            value={form.net_pay}
-            onChange={(e) => setForm((f) => ({ ...f, net_pay: e.target.value }))}
-            style={{ width: "100%", padding: "8px", marginTop: "6px" }}
-          />
-        </label>
-        {error && <div style={{ color: "#b91c1c" }}>{error}</div>}
-        <Button variant="primary" type="submit" disabled={saving}>
-          {saving ? "Saving..." : "Create Payroll"}
-        </Button>
-      </form>
-    </div>
+          <button
+            type="button"
+            className="hr-run-payroll__generate-btn"
+            disabled={generating}
+            onClick={handleGenerate}
+          >
+            Generate Salary
+          </button>
+        </div>
+
+        <div className="hr-run-payroll__card">
+          {hasGenerated ? (
+            <p className="hr-run-payroll__empty-text">
+              Payroll generated for {MONTHS[selectedMonth]} {selectedYear}.
+            </p>
+          ) : (
+            <>
+              <PayrollIllustration />
+              <p className="hr-run-payroll__empty-text">Get Started with Your Payroll</p>
+            </>
+          )}
+        </div>
+      </div>
+    </ListPageShell>
   );
 }

@@ -128,16 +128,17 @@ describe("Store Manager settings access", () => {
 });
 
 describe("getDashboardPathForRole", () => {
-  it("routes all company ERP roles to the main role-based dashboard /", async () => {
+  it("routes ERP roles to their module home dashboards", async () => {
     const { getDashboardPathForRole } = await import("../utils/roleRedirect");
-    expect(getDashboardPathForRole("Admin")).toBe("/");
-    expect(getDashboardPathForRole("Production Manager")).toBe("/");
-    expect(getDashboardPathForRole("Operator")).toBe("/");
-    expect(getDashboardPathForRole("operator")).toBe("/");
-    expect(getDashboardPathForRole("Store Manager")).toBe("/");
-    expect(getDashboardPathForRole("HR Manager")).toBe("/");
-    expect(getDashboardPathForRole("Sales Manager")).toBe("/");
-    expect(getDashboardPathForRole("Accountant")).toBe("/");
+    expect(getDashboardPathForRole("Admin")).toBe("/production");
+    expect(getDashboardPathForRole("Production Manager")).toBe("/production");
+    expect(getDashboardPathForRole("Operator")).toBe("/my-job-cards");
+    expect(getDashboardPathForRole("operator")).toBe("/my-job-cards");
+    expect(getDashboardPathForRole("Store Manager")).toBe("/inventory");
+    expect(getDashboardPathForRole("HR Manager")).toBe("/hr");
+    expect(getDashboardPathForRole("Sales Manager")).toBe("/sales");
+    expect(getDashboardPathForRole("Accountant")).toBe("/accounts");
+    expect(getDashboardPathForRole("Quality Control")).toBe("/quality");
   });
 
   it("routes GNS Super Admin to /gns-admin", async () => {

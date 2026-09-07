@@ -1,0 +1,148 @@
+/* Add Candidate — reference screenshot styling */
+.hr-add-candidate {
+  --ac-title: #1a1c1e;
+  --ac-text: #374151;
+  --ac-muted: #5e6278;
+  --ac-border: #e5e7eb;
+  --ac-primary: #2563eb;
+  --ac-surface: #ffffff;
+  --ac-page-bg: #f8f9fd;
+
+  color: var(--ac-text);
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.hr-add-candidate__title {
+  margin: 0 0 20px;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--ac-title);
+}
+
+.hr-add-candidate__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+@media (max-width: 900px) {
+  .hr-add-candidate__grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.hr-add-candidate__card {
+  border: 1px solid var(--ac-border);
+  border-radius: 10px;
+  background: var(--ac-surface);
+  padding: 24px 28px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+}
+
+.hr-add-candidate__field {
+  display: grid;
+  grid-template-columns: minmax(120px, 140px) 1fr;
+  align-items: start;
+  gap: 12px 16px;
+  margin-bottom: 16px;
+}
+
+.hr-add-candidate__field-label {
+  padding-top: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ac-title);
+  white-space: nowrap;
+}
+
+.hr-add-candidate__field-label span {
+  color: #ef4444;
+}
+
+.hr-add-candidate__field-control {
+  min-width: 0;
+}
+
+.hr-add-candidate__input,
+.hr-add-candidate__select {
+  width: 100%;
+  border: 1px solid var(--ac-border);
+  border-radius: 6px;
+  background: var(--ac-surface);
+  padding: 10px 12px;
+  font-size: 14px;
+  color: var(--ac-text);
+}
+
+.hr-add-candidate__input::placeholder {
+  color: #9ca3af;
+}
+
+.hr-add-candidate__select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 32px;
+  cursor: pointer;
+}
+
+.hr-add-candidate__date-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--ac-border);
+  border-radius: 6px;
+  background: var(--ac-surface);
+  padding: 10px 12px;
+}
+
+.hr-add-candidate__date-wrap span {
+  flex: 1;
+  font-size: 14px;
+  color: var(--ac-text);
+}
+
+.hr-add-candidate__date-wrap span.is-placeholder {
+  color: #9ca3af;
+}
+
+.hr-add-candidate__date-wrap input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.hr-add-candidate__error {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #ef4444;
+}
+
+.hr-add-candidate__actions {
+  display: flex;
+  justify-content: center;
+  margin-top: 24px;
+}
+
+.hr-add-candidate__save-btn {
+  border: 0;
+  border-radius: 6px;
+  background: var(--ac-primary);
+  padding: 10px 36px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.hr-add-candidate__save-btn:hover {
+  background: #1d4ed8;
+}
+
+.hr-add-candidate__save-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

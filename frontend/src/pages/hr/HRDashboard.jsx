@@ -1,99 +1,305 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
 import {
-  AlertTriangle,
+  Baby,
+  Calendar,
   CalendarDays,
-  ChevronRight,
-  Megaphone,
+  ClipboardList,
+  Clock,
   Palmtree,
-  Plus,
+  Plane,
+  Sparkles,
+  Umbrella,
+  UserCheck,
+  UserMinus,
+  UserX,
   Users,
-  Wallet,
 } from "lucide-react";
-import {
-  Bar,
-  BarChart,
-  Cell,
-  LabelList,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
+import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
 
 import Loader from "../../components/common/Loader";
-import { AddButton } from "../../components/common/Button";
-import {
-  HrAvatar,
-  HrKpiCard,
-  HrPage,
-  HrPageHeader,
-  HrPanel,
-  HrViewAllLink,
-} from "../../components/hr/hrUi";
+import useAuth from "../../hooks/useAuth";
 import usePageRefresh from "../../hooks/usePageRefresh";
-import { getHRHub } from "../../api/hrApi";
-import { EMPTY_HR_HUB, mergeHrHub } from "../../data/hrMasterData";
+import {
+  getAttendanceEnriched,
+  getEmployeeSummary,
+  getEmployeesEnriched,
+  getHRHub,
+  getLeaveEnriched,
+  getLeaveSummary,
+  getPayrollEnriched,
+  getShifts,
+} from "../../api/hrApi";
+import { DEMO_HR_DASHBOARD, mergeHrDashboard } from "../../data/hrMasterData";
+import "./hrDashboard.css";
 
-function LeaveStatusBadge({ status }) {
-  const key = String(status || "").toLowerCase();
-  if (key === "approved") {
-    return (
-      <span className="rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">
-        Approved
+const LEAVE_TONES = {
+  green: { text: "#16a34a", bg: "#dcfce7", icon: Palmtree },
+  orange: { text: "#d97706", bg: "#ffedd5", icon: Sparkles },
+  blue: { text: "#1d4ed8", bg: "#dbeafe", icon: CalendarDays },
+  sky: { text: "#0284c7", bg: "#e0f2fe", icon: Baby },
+  red: { text: "#dc2626", bg: "#fee2e2", icon: Users },
+  yellow: { text: "#ca8a04", bg: "#fef9c3", icon: Plane },
+};
+
+const STAT_TONES = {
+  success: { text: "#16a34a", bg: "#dcfce7" },
+  info: { text: "#2563eb", bg: "#dbeafe" },
+  muted: { text: "#64748b", bg: "#f1f5f9" },
+  danger: { text: "#e11d8f", bg: "#fce7f3" },
+};
+
+function DashCard({ title, action, children, bodyClassName = "", className = "" }) {
+  return (
+    <section className={`hr-dash-card ${className}`.trim()}>
+      {title || action ? (
+        <div className="hr-dash-card__header">
+          {title ? <h2>{title}</h2> : <span />}
+          {action}
+        </div>
+      ) : null}
+      <div className={`hr-dash-card__body ${bodyClassName}`.trim()}>{children}</div>
+    </section>
+  );
+}
+
+function MonthBadge({ children }) {
+  return <span className="hr-dash-badge">{children}</span>;
+}
+
+function StatMini({ icon: Icon, label, value, tone = "info" }) {
+  const colors = STAT_TONES[tone] || STAT_TONES.info;
+  return (
+    <div className="hr-dash-stat">
+      <div className="hr-dash-stat__icon" style={{ background: colors.bg, color: colors.text }}>
+        <Icon className="h-[18px] w-[18px]" aria-hidden />
+      </div>
+      <div className="min-w-0">
+        <p className="hr-dash-stat__value" style={{ color: colors.text }}>{value}</p>
+        <p className="hr-dash-stat__label">{label}</p>
+      </div>
+    </div>
+  );
+}
+
+function WelcomeIllustration() {
+  return (
+    <svg viewBox="0 0 240 140" className="mx-auto h-32 w-full max-w-[220px] shrink-0 sm:mx-0" aria-hidden>
+      <ellipse cx="120" cy="118" rx="72" ry="8" fill="#e2e8f0" opacity="0.6" />
+      <rect x="72" y="88" width="96" height="22" rx="6" fill="#cbd5e1" />
+      <rect x="88" y="96" width="28" height="10" rx="2" fill="#94a3b8" />
+      <circle cx="98" cy="72" r="14" fill="#fdba74" />
+      <path d="M88 84 Q98 78 108 84 L108 102 Q98 108 88 102 Z" fill="#3b82f6" />
+      <circle cx="142" cy="68" r="14" fill="#fcd34d" />
+      <path d="M132 80 Q142 74 152 80 L152 104 Q142 110 132 104 Z" fill="#0751b2" />
+      <path d="M92 66 L100 56 L108 66" stroke="#fbbf24" strokeWidth="3" fill="none" strokeLinecap="round" />
+      <circle cx="100" cy="48" r="10" fill="#fef9c3" stroke="#fbbf24" strokeWidth="2" />
+      <path d="M84 74 L96 68 M144 68 L156 74" stroke="#3b82f6" strokeWidth="3" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function formatLongDate(date = new Date()) {
+  return date.toLocaleDateString("en-IN", {
+    weekday: "long",
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
+
+function formatTimer(totalSeconds) {
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = totalSeconds % 60;
+  return [h, m, s].map((v) => String(v).padStart(2, "0")).join(" : ");
+}
+
+function CheckInPanel() {
+  const [checkedIn, setCheckedIn] = useState(false);
+  const [elapsed, setElapsed] = useState(7);
+  const [startTs, setStartTs] = useState(null);
+
+  useEffect(() => {
+    if (!checkedIn || !startTs) return undefined;
+    const id = window.setInterval(() => {
+      setElapsed(Math.floor((Date.now() - startTs) / 1000));
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [checkedIn, startTs]);
+
+  const handleCheckIn = () => {
+    if (checkedIn) return;
+    setCheckedIn(true);
+    setStartTs(Date.now());
+    setElapsed(0);
+  };
+
+  return (
+    <DashCard
+      action={
+        <div className="grid h-9 w-9 place-items-center rounded-lg bg-[#e8f1ff] text-[#2563eb]">
+          <ClipboardList className="h-5 w-5" aria-hidden />
+        </div>
+      }
+    >
+      <div className="-mt-1">
+        <h3 className="hr-dash-checkin-title">Let&apos;s Get To Work</h3>
+        <p className="hr-dash-checkin-date">{formatLongDate()}</p>
+        <p className="hr-dash-timer">{formatTimer(elapsed)}</p>
+        <div className="hr-dash-timer-bar" />
+        <div className="mt-4 grid grid-cols-2 gap-2.5">
+          <button type="button" className="hr-dash-action-btn" onClick={handleCheckIn} disabled={checkedIn}>
+            {checkedIn ? "Checked In" : "Check In"}
+          </button>
+          <button type="button" className="hr-dash-action-btn">Start Over Time</button>
+        </div>
+      </div>
+    </DashCard>
+  );
+}
+
+function DonutChart({ data, centerValue, emptyColor = "#c7d2fe", innerRadius = 58, outerRadius = 78 }) {
+  const chartData = data?.length ? data : [{ name: "Empty", value: 1, color: emptyColor }];
+  return (
+    <div className="relative mx-auto h-52 w-full max-w-[220px]">
+      <ResponsiveContainer width="100%" height="100%">
+        <PieChart>
+          <Pie
+            data={chartData}
+            dataKey="value"
+            nameKey="name"
+            innerRadius={innerRadius}
+            outerRadius={outerRadius}
+            paddingAngle={data?.length > 1 ? 1 : 0}
+            stroke="none"
+          >
+            {chartData.map((entry) => (
+              <Cell key={entry.name} fill={entry.color} />
+            ))}
+          </Pie>
+        </PieChart>
+      </ResponsiveContainer>
+      {centerValue != null ? (
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+          <span className="text-2xl font-bold tabular-nums text-[#1e293b]">{centerValue}</span>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function CelebrationItem({ item }) {
+  return (
+    <li className="flex items-center gap-3 border-b border-[#e8ecf3] px-[18px] py-3 last:border-0">
+      <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#e8f1ff] text-[#2563eb]">
+        <Users className="h-4 w-4" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-semibold text-[#2563eb]">{item.name}</p>
+        <p className="text-xs text-[#64748b]">{item.date_label}</p>
+      </div>
+    </li>
+  );
+}
+
+function LeaveRow({ leave }) {
+  const tone = LEAVE_TONES[leave.tone] || LEAVE_TONES.blue;
+  const Icon = tone.icon;
+  return (
+    <li className="hr-dash-leave-row">
+      <div className="hr-dash-leave-icon" style={{ background: tone.bg, color: tone.text }}>
+        <Icon className="h-4 w-4" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-semibold text-[#1e293b]">{leave.label}</p>
+        <p className="text-xs text-[#64748b]">Available {leave.available} Days</p>
+      </div>
+      <span className="hr-dash-leave-count" style={{ color: tone.text }}>
+        {leave.available}
       </span>
+    </li>
+  );
+}
+
+function EmptyIllustration({ type }) {
+  if (type === "holidays") {
+    return (
+      <div className="mb-3 text-5xl" aria-hidden>🏝️</div>
+    );
+  }
+  if (type === "celebrations") {
+    return (
+      <div className="mb-3 text-5xl" aria-hidden>🎉</div>
+    );
+  }
+  if (type === "approvals") {
+    return (
+      <div className="mb-3 grid h-16 w-16 place-items-center rounded-lg border border-[#e8ecf3] bg-[#f8fafc] text-[#94a3b8]" aria-hidden>
+        <svg viewBox="0 0 48 48" className="h-10 w-10" fill="none">
+          <rect x="8" y="10" width="32" height="24" rx="2" stroke="currentColor" strokeWidth="1.5" />
+          <path d="M14 18h20M14 24h14" stroke="currentColor" strokeWidth="1.5" />
+          <circle cx="34" cy="14" r="6" fill="#ef4444" />
+          <path d="M31.5 14h5M34 11.5v5" stroke="#fff" strokeWidth="1.2" />
+        </svg>
+      </div>
+    );
+  }
+  if (type === "announcements") {
+    return (
+      <div className="mb-3 grid h-16 w-16 place-items-center rounded-full bg-[#e0f2fe] text-[#0284c7]" aria-hidden>
+        <svg viewBox="0 0 32 32" className="h-9 w-9" fill="currentColor">
+          <path d="M6 12v8h3l5 4V8l-5 4H6zm14.5 2c0 2.1-1.2 3.9-3 4.8V22c3.3-.9 5.5-3.7 5.5-7s-2.2-6.1-5.5-7v3.2c1.8.9 3 2.7 3 4.8z" />
+        </svg>
+      </div>
     );
   }
   return (
-    <span className="rounded-md bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-700">
-      Pending
-    </span>
-  );
-}
-
-function DateBadge({ children }) {
-  return (
-    <span className="shrink-0 rounded-md bg-red-50 px-2 py-1 text-xs font-semibold text-red-600">
-      {children}
-    </span>
-  );
-}
-
-function QuickLinkTile({ to, label, icon: Icon, tone }) {
-  const tones = {
-    purple: "bg-[var(--kpi-violet-soft)] text-[var(--kpi-violet)]",
-    blue: "bg-[var(--kpi-info-soft)] text-[var(--kpi-info)]",
-    green: "bg-[var(--kpi-success-soft)] text-[var(--kpi-success)]",
-    orange: "bg-[var(--kpi-orange-soft)] text-[var(--kpi-orange)]",
-  };
-  return (
-    <Link
-      to={to}
-      className="flex flex-col items-center justify-center gap-2 rounded-xl border border-[var(--color-border-soft)] bg-[var(--color-surface-muted)] px-4 py-5 text-center transition-colors hover:border-[var(--color-primary)] hover:bg-[var(--color-surface)]"
-    >
-      <div className={`grid h-11 w-11 place-items-center rounded-xl ${tones[tone]}`}>
-        <Icon className="h-5 w-5" aria-hidden />
-      </div>
-      <span className="text-sm font-semibold text-[var(--color-text-secondary)]">{label}</span>
-    </Link>
+    <div className="mb-3 grid h-16 w-16 place-items-center rounded-full bg-[#dbeafe] text-[#2563eb]" aria-hidden>
+      <svg viewBox="0 0 40 40" className="h-9 w-9" fill="none">
+        <rect x="10" y="8" width="20" height="26" rx="2" fill="currentColor" opacity="0.15" stroke="currentColor" strokeWidth="1.5" />
+        <rect x="14" y="14" width="12" height="2" fill="currentColor" />
+        <rect x="14" y="19" width="8" height="2" fill="currentColor" />
+        <circle cx="28" cy="12" r="5" fill="#ef4444" />
+        <path d="M26 12h4M28 10v4" stroke="#fff" strokeWidth="1.2" />
+      </svg>
+    </div>
   );
 }
 
 export default function HRDashboard() {
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
-  const [hub, setHub] = useState(EMPTY_HR_HUB);
-  const [attendanceRange, setAttendanceRange] = useState("this_week");
+  const [data, setData] = useState(DEMO_HR_DASHBOARD);
 
   const load = useCallback(async (isRefresh = false) => {
     if (!isRefresh) setLoading(true);
     try {
-      const res = await getHRHub();
-      setHub(mergeHrHub(res.data));
+      const results = await Promise.allSettled([
+        getHRHub(),
+        getEmployeeSummary(),
+        getLeaveSummary(),
+        getLeaveEnriched(),
+        getShifts(),
+        getPayrollEnriched(),
+        getEmployeesEnriched(),
+        getAttendanceEnriched(),
+      ]);
+      const pick = (idx) => (results[idx].status === "fulfilled" ? results[idx].value.data : null);
+      setData(
+        mergeHrDashboard({
+          hub: pick(0) || {},
+          empSummary: pick(1) || {},
+          leaveSummary: pick(2) || {},
+          leaves: pick(3) || [],
+          shifts: pick(4) || [],
+          payrollRows: pick(5) || [],
+          employees: pick(6) || [],
+          attendanceRows: pick(7) || [],
+        })
+      );
     } catch (err) {
       if (isRefresh) throw err;
-      setHub(EMPTY_HR_HUB);
+      setData(DEMO_HR_DASHBOARD);
     } finally {
       setLoading(false);
     }
@@ -104,235 +310,192 @@ export default function HRDashboard() {
     load();
   }, [load]);
 
-  const deptTotal = useMemo(
-    () => (hub.departments || []).reduce((sum, d) => sum + (Number(d.count) || 0), 0) || hub.total_employees,
-    [hub.departments, hub.total_employees]
+  const userName = user?.full_name || user?.name || "Satish Gogulothu";
+
+  const overallChart = useMemo(() => {
+    const hired = data.hired_total || 0;
+    const exits = data.exits_total || 0;
+    if (!hired && !exits) return [{ name: "Employees", value: 1, color: "#1e40af" }];
+    const items = [];
+    if (hired > 0) items.push({ name: "Hired", value: hired, color: "#1e40af" });
+    if (exits > 0) items.push({ name: "Exits", value: exits, color: "#93c5fd" });
+    return items.length ? items : [{ name: "Employees", value: 1, color: "#1e40af" }];
+  }, [data.hired_total, data.exits_total]);
+
+  const expenseChart = useMemo(
+    () => (data.expense_categories || []).filter((c) => c.value > 0),
+    [data.expense_categories]
   );
 
   if (loading) return <Loader label="Loading HR dashboard..." />;
 
-  const trends = hub.kpi_trends || {};
-
   return (
-    <HrPage>
-      <HrPageHeader
-        title="HR Dashboard"
-        breadcrumb={
-          <nav className="flex flex-wrap items-center gap-1 text-sm text-[var(--color-text-muted)]" aria-label="Breadcrumb">
-            <Link to="/" className="hover:text-[var(--color-primary)]">
-              Home
-            </Link>
-            <ChevronRight className="h-3.5 w-3.5 text-[var(--color-text-faint)]" aria-hidden />
-            <span>HR</span>
-            <ChevronRight className="h-3.5 w-3.5 text-[var(--color-text-faint)]" aria-hidden />
-            <span className="font-medium text-[var(--color-text-secondary)]">Dashboard</span>
-          </nav>
-        }
-        action={<AddButton to="/hr/employees/create">Add Employee</AddButton>}
-      />
+    <div className="hr-dashboard ui-page ui-stack min-w-0 space-y-4">
+      <div className="grid gap-4 lg:grid-cols-3">
+        <DashCard className="lg:col-span-2" bodyClassName="py-5">
+          <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <h1 className="hr-dash-welcome-title text-center sm:text-left">Welcome, {userName}</h1>
+            <WelcomeIllustration />
+          </div>
+        </DashCard>
 
-      <div className="ui-grid-kpi">
-        <HrKpiCard
-          label="Total Employees"
-          value={hub.total_employees}
-          icon={Users}
-          tone="purple"
-          trendPct={trends.employees?.pct}
-          trendLabel={trends.employees?.label}
-        />
-        <HrKpiCard
-          label="Present Today"
-          value={`${hub.present_today} / ${hub.total_for_present || hub.total_employees}`}
-          icon={CalendarDays}
-          tone="blue"
-          trendPct={trends.present?.pct}
-          trendLabel={trends.present?.label}
-        />
-        <HrKpiCard
-          label="Leave Requests"
-          value={hub.leave_requests}
-          icon={Palmtree}
-          tone="green"
-          trendPct={trends.leave?.pct}
-          trendLabel={trends.leave?.label}
-        />
-        <HrKpiCard
-          label="Pending Tasks"
-          value={hub.pending_tasks}
-          icon={AlertTriangle}
-          tone="red"
-          trendPct={trends.tasks?.pct}
-          trendLabel={trends.tasks?.label}
-        />
+        <CheckInPanel />
+
+        <div className="flex flex-col gap-4">
+          <DashCard title="Employee Analytics" action={<MonthBadge>{data.analytics_month_label}</MonthBadge>}>
+            <div className="grid grid-cols-3 gap-2">
+              <StatMini icon={Users} label="Active" value={data.active_employees} tone="success" />
+              <StatMini icon={UserCheck} label="Hired" value={data.hired_month} tone="info" />
+              <StatMini icon={UserMinus} label="Exits" value={data.exits_month} tone="muted" />
+            </div>
+          </DashCard>
+          <DashCard action={<MonthBadge>Today</MonthBadge>}>
+            <div className="grid grid-cols-3 gap-2">
+              <StatMini icon={UserCheck} label="Present" value={data.present_today} tone="success" />
+              <StatMini icon={UserX} label="Absent" value={data.absent_today} tone="danger" />
+              <StatMini icon={Umbrella} label="On leave" value={data.on_leave_today} tone="info" />
+            </div>
+          </DashCard>
+        </div>
+
+        <DashCard title="Celebration Corner" bodyClassName="hr-dash-card__body--flush min-h-[280px]">
+          {(data.celebrations || []).length ? (
+            <ul className="max-h-[320px] overflow-y-auto">
+              {data.celebrations.map((item) => (
+                <CelebrationItem key={item.id} item={item} />
+              ))}
+            </ul>
+          ) : (
+            <div className="hr-dash-empty min-h-[240px]">
+              <EmptyIllustration type="celebrations" />
+              <p>No Celebrations Found</p>
+            </div>
+          )}
+        </DashCard>
+
+        <DashCard title="Overall Employees">
+          <DonutChart data={overallChart} centerValue={data.overall_employees} />
+        </DashCard>
       </div>
 
-      {/* Charts + birthdays */}
-      <div className="grid gap-4 xl:grid-cols-3">
-        <HrPanel
-          title="Attendance Overview"
-          action={
-            <select
-              value={attendanceRange}
-              onChange={(e) => setAttendanceRange(e.target.value)}
-              className="ui-input rounded-lg px-2.5 py-1.5 text-xs font-medium outline-none"
-            >
-              <option value="this_week">This Week</option>
-              <option value="last_week">Last Week</option>
-            </select>
-          }
-        >
-          <div className="h-56">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={hub.attendance_week} margin={{ top: 16, right: 8, left: -20, bottom: 0 }}>
-                <XAxis dataKey="day" tick={{ fontSize: 12, fill: "#64748b" }} axisLine={false} tickLine={false} />
-                <YAxis
-                  domain={[0, 100]}
-                  tick={{ fontSize: 11, fill: "#94a3b8" }}
-                  axisLine={false}
-                  tickLine={false}
-                  tickFormatter={(v) => `${v}%`}
-                />
-                <Tooltip
-                  formatter={(v) => [`${v}%`, "Attendance"]}
-                  contentStyle={{ fontSize: 12, borderRadius: 8 }}
-                />
-                <Bar dataKey="pct" fill="#8b5cf6" radius={[6, 6, 0, 0]} maxBarSize={42}>
-                  <LabelList
-                    dataKey="pct"
-                    position="top"
-                    formatter={(v) => `${v}%`}
-                    style={{ fontSize: 11, fontWeight: 600, fill: "#64748b" }}
-                  />
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </HrPanel>
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <DashCard title="Upcoming Holidays">
+          {(data.upcoming_holidays || []).length ? (
+            <ul className="space-y-2">
+              {data.upcoming_holidays.map((h) => (
+                <li key={h.id} className="text-sm text-[#64748b]">{h.name} — {h.date}</li>
+              ))}
+            </ul>
+          ) : (
+            <div className="hr-dash-empty py-8">
+              <EmptyIllustration type="holidays" />
+              <p>No Holidays Found</p>
+            </div>
+          )}
+        </DashCard>
 
-        <HrPanel title="Employees by Department">
-          <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start">
-            <div className="relative h-44 w-44 shrink-0">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={hub.departments}
-                    dataKey="count"
-                    nameKey="name"
-                    innerRadius={52}
-                    outerRadius={72}
-                    paddingAngle={2}
-                    stroke="none"
-                  >
-                    {(hub.departments || []).map((entry) => (
-                      <Cell key={entry.name} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-                <span className="ui-kpi__value text-xl">{deptTotal}</span>
-                <span className="ui-caption">Total</span>
+        <DashCard title="Shift Schedule">
+          {data.shift_schedule ? (
+            <div className="flex gap-3">
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#dbeafe] text-sm font-bold text-[#2563eb]">
+                {data.shift_schedule.initial}
+              </div>
+              <div className="min-w-0">
+                <p className="font-semibold text-[#1e293b]">{data.shift_schedule.name}</p>
+                <p className="mt-1 flex items-center gap-1.5 text-xs text-[#64748b]">
+                  <Calendar className="h-3.5 w-3.5 shrink-0" />
+                  {data.shift_schedule.date_range}
+                </p>
+                <p className="mt-0.5 flex items-center gap-1.5 text-xs text-[#64748b]">
+                  <Clock className="h-3.5 w-3.5 shrink-0" />
+                  {data.shift_schedule.time_range}
+                </p>
               </div>
             </div>
-            <ul className="min-w-0 flex-1 space-y-2.5 pt-1">
-              {(hub.departments || []).map((d) => (
-                <li key={d.name} className="flex items-center justify-between gap-2 text-sm">
-                  <span className="flex min-w-0 items-center gap-2 text-[var(--color-text-muted)]">
-                    <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: d.color }} />
-                    <span className="truncate">{d.name}</span>
-                  </span>
-                  <span className="font-semibold text-[var(--color-text)]">{d.count}</span>
+          ) : (
+            <p className="hr-dash-empty py-6">No shift assigned</p>
+          )}
+        </DashCard>
+
+        <DashCard title="Total Expenses" bodyClassName="md:col-span-2 xl:col-span-1">
+          <DonutChart
+            data={expenseChart}
+            centerValue={`₹ ${Number(data.expense_total).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+            emptyColor="#c7d2fe"
+          />
+        </DashCard>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        <DashCard title="My Leaves" bodyClassName="hr-dash-card__body--flush p-0">
+          <ul className="hr-dash-leaves-scroll">
+            {(data.my_leaves || []).map((leave) => (
+              <LeaveRow key={leave.key} leave={leave} />
+            ))}
+          </ul>
+        </DashCard>
+
+        <DashCard title="Approval Requests">
+          {(data.approval_requests || []).length ? (
+            <ul className="divide-y divide-[#e8ecf3]">
+              {data.approval_requests.map((req) => (
+                <li key={req.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
+                  <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#e8f1ff] text-xs font-semibold text-[#2563eb]">
+                    {(req.name || "?").slice(0, 2).toUpperCase()}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-[#1e293b]">{req.name}</p>
+                    <p className="text-xs text-[#64748b]">{req.date_label}</p>
+                  </div>
                 </li>
               ))}
             </ul>
-          </div>
-        </HrPanel>
+          ) : (
+            <div className="hr-dash-empty py-10">
+              <EmptyIllustration type="approvals" />
+              <p>No Approval Requests</p>
+            </div>
+          )}
+        </DashCard>
 
-        <HrPanel title="Upcoming Birthdays" action={<HrViewAllLink to="/hr/employees" />}>
-          <ul className="space-y-3">
-            {(hub.upcoming_birthdays || []).map((person) => (
-              <li key={person.id} className="flex items-center gap-3">
-                <HrAvatar label={person.avatar || person.name?.slice(0, 2)?.toUpperCase()} />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold text-[var(--color-text)]">{person.name}</p>
-                  <p className="truncate text-xs text-[var(--color-text-muted)]">{person.role}</p>
-                </div>
-                <DateBadge>{person.date}</DateBadge>
+        <DashCard title="Announcements">
+          {(data.announcements || []).length ? (
+            <ul className="divide-y divide-[#e8ecf3]">
+              {data.announcements.map((item) => (
+                <li key={item.id} className="py-3 first:pt-0 last:pb-0">
+                  <p className="text-sm font-semibold text-[#2563eb]">{item.title}</p>
+                  <p className="text-xs text-[#64748b]">{item.date}</p>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="hr-dash-empty py-10">
+              <EmptyIllustration type="announcements" />
+              <p>No Announcements Found</p>
+            </div>
+          )}
+        </DashCard>
+      </div>
+
+      <DashCard title="Payslips" bodyClassName="max-w-md">
+        {(data.payslips || []).length ? (
+          <ul className="space-y-2">
+            {data.payslips.map((p) => (
+              <li key={p.id} className="flex items-center justify-between text-sm">
+                <span className="text-[#64748b]">{p.period}</span>
+                <span className="font-semibold tabular-nums text-[#1e293b]">
+                  ₹ {Number(p.amount).toLocaleString("en-IN")}
+                </span>
               </li>
             ))}
           </ul>
-        </HrPanel>
-      </div>
-
-      {/* Recent joins, leave, quick links */}
-      <div className="grid gap-4 xl:grid-cols-3">
-        <HrPanel title="Recent Joins" action={<HrViewAllLink to="/hr/employees" />}>
-          <ul className="space-y-3">
-            {(hub.recent_joins || []).map((person) => (
-              <li key={person.id} className="flex items-center gap-3">
-                <HrAvatar label={person.avatar || person.name?.slice(0, 2)?.toUpperCase()} />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold text-[var(--color-text)]">{person.name}</p>
-                  <p className="truncate text-xs text-[var(--color-text-muted)]">{person.role}</p>
-                </div>
-                <div className="shrink-0 text-right">
-                  <span className="mb-1 inline-block rounded-md bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
-                    Joined
-                  </span>
-                  <p className="text-xs text-[var(--color-text-muted)]">{person.date}</p>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </HrPanel>
-
-        <HrPanel title="Leave Requests" action={<HrViewAllLink to="/hr/leave" />}>
-          <ul className="space-y-3">
-            {(hub.leave_requests_list || []).map((req) => (
-              <li key={req.id} className="flex items-center gap-3">
-                <HrAvatar label={req.avatar || req.name?.slice(0, 2)?.toUpperCase()} />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold text-[var(--color-text)]">{req.name}</p>
-                  <p className="truncate text-xs text-[var(--color-text-muted)]">{req.type}</p>
-                </div>
-                <div className="shrink-0 text-right">
-                  <div className="mb-1 flex justify-end">
-                    <LeaveStatusBadge status={req.status} />
-                  </div>
-                  <p className="text-xs text-[var(--color-text-muted)]">{req.dates}</p>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </HrPanel>
-
-        <HrPanel title="Quick Links">
-          <div className="grid grid-cols-2 gap-3">
-            <QuickLinkTile to="/hr/employees" label="Employees" icon={Users} tone="purple" />
-            <QuickLinkTile to="/hr/attendance" label="Attendance" icon={CalendarDays} tone="blue" />
-            <QuickLinkTile to="/hr/leave" label="Leave" icon={Palmtree} tone="green" />
-            <QuickLinkTile to="/hr/payroll" label="Payroll" icon={Wallet} tone="orange" />
+        ) : (
+          <div className="hr-dash-empty py-10">
+            <EmptyIllustration type="payslips" />
+            <p>No Payslips Found</p>
           </div>
-        </HrPanel>
-      </div>
-
-      {/* HR notice bar */}
-      <div className="flex flex-col gap-3 rounded-2xl border border-emerald-100 bg-emerald-50/80 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex min-w-0 items-start gap-3">
-          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-emerald-100 text-emerald-600">
-            <Megaphone className="h-4 w-4" aria-hidden />
-          </div>
-          <p className="text-sm font-medium leading-relaxed text-[var(--color-text)]">{hub.hr_notice}</p>
-        </div>
-        <Link
-          to="/hr/documents"
-          className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-[var(--color-primary)] hover:underline"
-        >
-          View All Notices
-          <ChevronRight className="h-4 w-4" />
-        </Link>
-      </div>
-    </HrPage>
+        )}
+      </DashCard>
+    </div>
   );
 }

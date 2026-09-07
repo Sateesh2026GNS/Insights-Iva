@@ -381,6 +381,49 @@ def list_leave_requests(
     return list(db.scalars(stmt).all())
 
 
+def _get_or_create_leave_balance(
+    db: Session, tenant_id: int, employee_id: int, leave_type: str, year: int
+):
+    from app.models.hr_module import EmployeeLeaveBalance
+
+    row = db.scalar(
+        select(EmployeeLeaveBalance).where(
+            EmployeeLeaveBalance.tenant_id == tenant_id,
+            EmployeeLeaveBalance.employee_id == employee_id,
+            EmployeeLeaveBalance.leave_type == leave_type,
+            EmployeeLeaveBalance.year == year,
+        )
+    )
+    if row:
+        return row
+    row = EmployeeLeaveBalance(
+        tenant_id=tenant_id,
+        employee_id=employee_id,
+        leave_type=leave_type,
+        year=year,
+        allocated=0,
+        used=0,
+        balance=0,
+    )
+    db.add(row)
+    db.flush()
+    return row
+
+
+def _apply_leave_balance_change(
+    db: Session, tenant_id: int, leave: LeaveRequest, delta_used: float
+) -> None:
+    year = leave.start_date.year
+    bal = _get_or_create_leave_balance(db, tenant_id, leave.employee_id, leave.leave_type, year)
+    bal.used = max(0.0, float(bal.used or 0) + delta_used)
+    bal.balance = float(bal.allocated or 0) - float(bal.used)
+    if bal.balance < 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Insufficient leave balance for {leave.leave_type}.",
+        )
+
+
 def update_leave_request(
     db: Session, tenant_id: int, leave_id: int, payload: LeaveRequestUpdate
 ) -> LeaveRequest | None:
@@ -393,6 +436,7 @@ def update_leave_request(
         return None
 
     update_dict = payload.model_dump(exclude_unset=True)
+    old_status = leave.status
 
     # Pre-validate updated date range before applying attributes
     new_start = update_dict.get("start_date", leave.start_date)
@@ -416,6 +460,13 @@ def update_leave_request(
     if "start_date" in update_dict or "end_date" in update_dict:
         if "days" not in update_dict:
             leave.days = _leave_days(leave.start_date, leave.end_date)
+
+    new_status = leave.status
+    days = float(leave.days or 0)
+    if old_status != "approved" and new_status == "approved":
+        _apply_leave_balance_change(db, tenant_id, leave, days)
+    elif old_status == "approved" and new_status in ("cancelled", "rejected"):
+        _apply_leave_balance_change(db, tenant_id, leave, -days)
 
     try:
         db.commit()

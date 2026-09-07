@@ -1,0 +1,171 @@
+/* Attendance - Adjusted Leave — reference screenshot styling */
+.hr-adj-leave {
+  --al-title: #1e293b;
+  --al-text: #374151;
+  --al-muted: #6b7280;
+  --al-border: #e5e7eb;
+  --al-primary-soft: #e8f2ff;
+  --al-surface: #ffffff;
+  --al-page-bg: #f8f9fb;
+
+  color: var(--al-text);
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.hr-adj-leave__title {
+  margin: 0 0 16px;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--al-title);
+}
+
+.hr-adj-leave__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--al-border);
+  border-radius: 8px;
+  background: var(--al-surface);
+  padding: 12px 16px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.hr-adj-leave__select-trigger {
+  display: flex;
+  width: 100%;
+  min-width: 160px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--al-border);
+  border-radius: 6px;
+  background: var(--al-surface);
+  color: var(--al-text);
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.hr-adj-leave__select-trigger:hover {
+  border-color: #d1d5db;
+}
+
+.hr-adj-leave__select-menu {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  margin-top: 4px;
+  overflow: hidden;
+  border: 1px solid var(--al-border);
+  border-radius: 6px;
+  background: var(--al-surface);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+}
+
+.hr-adj-leave__search-wrap {
+  border-bottom: 1px solid var(--al-border);
+  padding: 8px;
+}
+
+.hr-adj-leave__search-input {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--al-border);
+  border-radius: 6px;
+  background: var(--al-surface);
+  font-size: 14px;
+}
+
+.hr-adj-leave__search-input input {
+  width: 100%;
+  border: 0;
+  outline: none;
+  background: transparent;
+  font: inherit;
+  color: var(--al-text);
+}
+
+.hr-adj-leave__search-input input::placeholder {
+  color: #9ca3af;
+}
+
+.hr-adj-leave__option {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  border: 0;
+  background: transparent;
+  color: var(--al-title);
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.hr-adj-leave__option:hover {
+  background: #f9fafb;
+}
+
+.hr-adj-leave__option--active {
+  margin: 2px 6px;
+  border-radius: 4px;
+  background: var(--al-primary-soft);
+}
+
+.hr-adj-leave__nav-btn {
+  display: grid;
+  height: 32px;
+  width: 32px;
+  place-items: center;
+  border: 0;
+  border-radius: 9999px;
+  background: transparent;
+  color: var(--al-muted);
+  cursor: pointer;
+}
+
+.hr-adj-leave__nav-btn:hover {
+  background: #f3f4f6;
+}
+
+.hr-adj-leave__period-label {
+  min-width: 96px;
+  text-align: center;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--al-title);
+}
+
+.hr-adj-leave__content {
+  display: flex;
+  min-height: 420px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 16px;
+}
+
+.hr-adj-leave__empty-icon {
+  display: grid;
+  height: 88px;
+  width: 88px;
+  place-items: center;
+  border-radius: 9999px;
+  background: #f1f5f9;
+  color: #94a3b8;
+  margin-bottom: 16px;
+}
+
+.hr-adj-leave__empty-text {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--al-muted);
+}

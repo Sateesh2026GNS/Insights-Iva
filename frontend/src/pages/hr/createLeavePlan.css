@@ -1,0 +1,186 @@
+/* Add Leave Plan — reference screenshot styling */
+.hr-create-leave-plan {
+  --clp-title: #1a1c1e;
+  --clp-text: #374151;
+  --clp-muted: #5e6278;
+  --clp-border: #e5e7eb;
+  --clp-primary: #1861d5;
+  --clp-surface: #ffffff;
+  --clp-page-bg: #f8f9fd;
+
+  color: var(--clp-text);
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.hr-create-leave-plan__card {
+  max-width: 720px;
+  border: 1px solid var(--clp-border);
+  border-radius: 10px;
+  background: var(--clp-surface);
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+}
+
+.hr-create-leave-plan__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.hr-create-leave-plan__back {
+  display: grid;
+  height: 32px;
+  width: 32px;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--clp-title);
+  cursor: pointer;
+}
+
+.hr-create-leave-plan__back:hover {
+  background: #f1f5f9;
+}
+
+.hr-create-leave-plan__title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--clp-title);
+}
+
+.hr-create-leave-plan__two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.hr-create-leave-plan__field {
+  margin-bottom: 20px;
+}
+
+.hr-create-leave-plan__field-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--clp-title);
+}
+
+.hr-create-leave-plan__field-label span {
+  color: #ef4444;
+}
+
+.hr-create-leave-plan__input {
+  width: 100%;
+  border: 1px solid var(--clp-border);
+  border-radius: 6px;
+  background: var(--clp-surface);
+  padding: 10px 12px;
+  font-size: 14px;
+  color: var(--clp-text);
+}
+
+.hr-create-leave-plan__input::placeholder {
+  color: #9ca3af;
+}
+
+.hr-create-leave-plan__month-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border: 1px solid var(--clp-border);
+  border-radius: 6px;
+  background: var(--clp-surface);
+  padding: 10px 12px;
+  cursor: pointer;
+}
+
+.hr-create-leave-plan__month-wrap span {
+  font-size: 14px;
+  color: var(--clp-text);
+}
+
+.hr-create-leave-plan__month-wrap span.is-placeholder {
+  color: #9ca3af;
+}
+
+.hr-create-leave-plan__month-wrap input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.hr-create-leave-plan__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.hr-create-leave-plan__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--clp-border);
+  border-radius: 9999px;
+  background: var(--clp-surface);
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--clp-primary);
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.hr-create-leave-plan__chip:hover {
+  border-color: var(--clp-primary);
+  background: #eef5ff;
+}
+
+.hr-create-leave-plan__chip--selected {
+  border-color: var(--clp-primary);
+  background: #eef5ff;
+}
+
+.hr-create-leave-plan__chip-plus {
+  display: grid;
+  height: 18px;
+  width: 18px;
+  place-items: center;
+  font-size: 14px;
+  line-height: 1;
+  color: var(--clp-primary);
+}
+
+.hr-create-leave-plan__footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+.hr-create-leave-plan__create-btn {
+  border: 0;
+  border-radius: 6px;
+  background: var(--clp-primary);
+  padding: 10px 24px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.hr-create-leave-plan__create-btn:hover {
+  background: #1554bc;
+}
+
+.hr-create-leave-plan__create-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

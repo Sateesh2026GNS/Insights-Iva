@@ -1,0 +1,141 @@
+/* My Payslips */
+.hr-my-payslips {
+  --mp-title: #1a1c1e;
+  --mp-text: #374151;
+  --mp-muted: #5e6278;
+  --mp-border: #eff2f5;
+  --mp-primary: #2563eb;
+  --mp-surface: #ffffff;
+
+  color: var(--mp-text);
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.hr-my-payslips__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.hr-my-payslips__title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hr-my-payslips__back {
+  display: grid;
+  height: 36px;
+  width: 36px;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--mp-title);
+  cursor: pointer;
+}
+
+.hr-my-payslips__back:hover {
+  background: #f1f5f9;
+}
+
+.hr-my-payslips__title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--mp-title);
+}
+
+.hr-my-payslips__year {
+  min-width: 88px;
+  border: 1px solid var(--mp-border);
+  border-radius: 6px;
+  background: var(--mp-surface);
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--mp-text);
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  padding-right: 28px;
+  cursor: pointer;
+}
+
+.hr-my-payslips__card {
+  display: flex;
+  min-height: 420px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--mp-border);
+  border-radius: 10px;
+  background: var(--mp-surface);
+  padding: 48px 24px;
+  text-align: center;
+}
+
+.hr-my-payslips__illustration {
+  margin-bottom: 20px;
+}
+
+.hr-my-payslips__doc {
+  position: relative;
+  width: 72px;
+  height: 88px;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%);
+  box-shadow: 0 8px 24px rgba(37, 99, 235, 0.25);
+  padding: 18px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.hr-my-payslips__doc span {
+  display: block;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.85);
+}
+
+.hr-my-payslips__doc span:nth-child(2) {
+  width: 85%;
+}
+
+.hr-my-payslips__doc span:nth-child(3) {
+  width: 70%;
+}
+
+.hr-my-payslips__doc span:nth-child(4) {
+  width: 55%;
+}
+
+.hr-my-payslips__empty-text {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--mp-muted);
+}
+
+.hr-my-payslips__list {
+  width: 100%;
+  max-width: 480px;
+  text-align: left;
+}
+
+.hr-my-payslips__item {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--mp-border);
+  font-size: 14px;
+}
+
+.hr-my-payslips__item:last-child {
+  border-bottom: 0;
+}

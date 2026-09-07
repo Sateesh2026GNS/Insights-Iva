@@ -1,0 +1,343 @@
+/* Create Salary Breakup */
+.hr-create-salary-breakup {
+  --csb-title: #1a1c1e;
+  --csb-text: #374151;
+  --csb-muted: #5e6278;
+  --csb-border: #eff2f5;
+  --csb-primary: #2563eb;
+  --csb-surface: #ffffff;
+  --csb-table-head: #eef5ff;
+  --csb-highlight: #f8fafc;
+
+  color: var(--csb-text);
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.hr-create-salary-breakup__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.hr-create-salary-breakup__back {
+  display: grid;
+  height: 36px;
+  width: 36px;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--csb-title);
+  cursor: pointer;
+}
+
+.hr-create-salary-breakup__back:hover {
+  background: #f1f5f9;
+}
+
+.hr-create-salary-breakup__title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--csb-title);
+}
+
+.hr-create-salary-breakup__layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 16px;
+  align-items: start;
+}
+
+@media (max-width: 1024px) {
+  .hr-create-salary-breakup__layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.hr-create-salary-breakup__main {
+  border: 1px solid var(--csb-border);
+  border-radius: 10px;
+  background: var(--csb-surface);
+  padding: 20px;
+}
+
+.hr-create-salary-breakup__inputs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.hr-create-salary-breakup__field {
+  flex: 1;
+  min-width: 180px;
+}
+
+.hr-create-salary-breakup__label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--csb-title);
+}
+
+.hr-create-salary-breakup__label span {
+  color: #ef4444;
+}
+
+.hr-create-salary-breakup__select,
+.hr-create-salary-breakup__input {
+  width: 100%;
+  border: 1px solid var(--csb-border);
+  border-radius: 6px;
+  background: var(--csb-surface);
+  padding: 10px 12px;
+  font-size: 14px;
+  color: var(--csb-text);
+}
+
+.hr-create-salary-breakup__select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 32px;
+  cursor: pointer;
+}
+
+.hr-create-salary-breakup__amount-wrap {
+  display: flex;
+  align-items: stretch;
+}
+
+.hr-create-salary-breakup__amount-prefix {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--csb-border);
+  border-right: 0;
+  border-radius: 6px 0 0 6px;
+  background: #f9fafb;
+  padding: 0 12px;
+  color: var(--csb-muted);
+}
+
+.hr-create-salary-breakup__amount-wrap .hr-create-salary-breakup__input {
+  border-radius: 0 6px 6px 0;
+}
+
+.hr-create-salary-breakup__input-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.hr-create-salary-breakup__reset-btn {
+  border: 1px solid var(--csb-primary);
+  border-radius: 6px;
+  background: var(--csb-surface);
+  padding: 10px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--csb-primary);
+  cursor: pointer;
+}
+
+.hr-create-salary-breakup__calc-btn,
+.hr-create-salary-breakup__save-btn {
+  border: 0;
+  border-radius: 6px;
+  background: var(--csb-primary);
+  padding: 10px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.hr-create-salary-breakup__table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--csb-border);
+  border-radius: 8px;
+}
+
+.hr-create-salary-breakup__table {
+  width: 100%;
+  min-width: 640px;
+  border-collapse: collapse;
+}
+
+.hr-create-salary-breakup__table thead th {
+  padding: 12px 14px;
+  background: var(--csb-table-head);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--csb-title);
+  text-align: left;
+}
+
+.hr-create-salary-breakup__table tbody td {
+  padding: 12px 14px;
+  border-top: 1px solid var(--csb-border);
+  vertical-align: middle;
+}
+
+.hr-create-salary-breakup__section-row td {
+  font-weight: 600;
+  color: var(--csb-title);
+  background: #fafbfc;
+}
+
+.hr-create-salary-breakup__highlight-row td {
+  background: var(--csb-highlight);
+  font-weight: 600;
+}
+
+.hr-create-salary-breakup__calc-cell {
+  display: flex;
+  align-items: stretch;
+  max-width: 220px;
+}
+
+.hr-create-salary-breakup__calc-select {
+  border: 1px solid var(--csb-border);
+  border-right: 0;
+  border-radius: 6px 0 0 6px;
+  background: #f9fafb;
+  padding: 6px 8px;
+  font-size: 12px;
+  color: var(--csb-text);
+  min-width: 110px;
+}
+
+.hr-create-salary-breakup__calc-input {
+  width: 64px;
+  border: 1px solid var(--csb-border);
+  border-radius: 0 6px 6px 0;
+  padding: 6px 8px;
+  font-size: 13px;
+}
+
+.hr-create-salary-breakup__calc-cell--amount .hr-create-salary-breakup__calc-prefix {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--csb-border);
+  border-right: 0;
+  border-radius: 6px 0 0 6px;
+  background: #f9fafb;
+  padding: 0 10px;
+  color: var(--csb-muted);
+}
+
+.hr-create-salary-breakup__calc-cell--amount .hr-create-salary-breakup__calc-input {
+  border-radius: 0 6px 6px 0;
+  width: 80px;
+}
+
+.hr-create-salary-breakup__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.hr-create-salary-breakup__cancel-btn {
+  border: 1px solid var(--csb-primary);
+  border-radius: 6px;
+  background: var(--csb-surface);
+  padding: 10px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--csb-primary);
+  cursor: pointer;
+}
+
+.hr-create-salary-breakup__summary {
+  border: 1px solid var(--csb-border);
+  border-radius: 10px;
+  background: var(--csb-surface);
+  overflow: hidden;
+}
+
+.hr-create-salary-breakup__summary-head {
+  padding: 14px 16px;
+  background: var(--csb-table-head);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--csb-title);
+}
+
+.hr-create-salary-breakup__summary-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px;
+  border-bottom: 1px solid var(--csb-border);
+  font-weight: 500;
+  color: var(--csb-title);
+}
+
+.hr-create-salary-breakup__avatar {
+  display: grid;
+  height: 36px;
+  width: 36px;
+  place-items: center;
+  border-radius: 9999px;
+  background: #e5e7eb;
+  color: var(--csb-muted);
+}
+
+.hr-create-salary-breakup__summary-metrics {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.hr-create-salary-breakup__metric {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.hr-create-salary-breakup__metric-icon {
+  display: grid;
+  height: 40px;
+  width: 40px;
+  place-items: center;
+  border-radius: 9999px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.hr-create-salary-breakup__metric-icon--blue {
+  background: #3b82f6;
+}
+
+.hr-create-salary-breakup__metric-icon--orange {
+  background: #f97316;
+}
+
+.hr-create-salary-breakup__metric-label {
+  font-size: 12px;
+  color: var(--csb-muted);
+}
+
+.hr-create-salary-breakup__metric-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--csb-title);
+}
+
+.hr-create-salary-breakup__reset-btn:hover,
+.hr-create-salary-breakup__cancel-btn:hover {
+  background: #eff6ff;
+}
+
+.hr-create-salary-breakup__calc-btn:hover,
+.hr-create-salary-breakup__save-btn:hover {
+  background: #1d4ed8;
+}

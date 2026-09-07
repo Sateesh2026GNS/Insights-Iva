@@ -1,0 +1,413 @@
+/* Leave Adjustment — reference screenshot styling */
+.hr-leave-adj {
+  --adj-title: #1a1c1e;
+  --adj-text: #374151;
+  --adj-muted: #5e6278;
+  --adj-border: #e5e7eb;
+  --adj-primary: #1d68d5;
+  --adj-primary-dark: #1976d2;
+  --adj-primary-soft: #ebf4ff;
+  --adj-table-head: #eef2f6;
+  --adj-surface: #ffffff;
+  --adj-header-line: #1d68d5;
+
+  color: var(--adj-text);
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.hr-leave-adj__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.hr-leave-adj__title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--adj-title);
+}
+
+.hr-leave-adj__save-btn {
+  border: 0;
+  border-radius: 6px;
+  background: var(--adj-primary);
+  padding: 9px 20px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.hr-leave-adj__save-btn:hover {
+  background: #1a56c4;
+}
+
+.hr-leave-adj__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--adj-border);
+  border-bottom: 0;
+  border-radius: 10px 10px 0 0;
+  background: var(--adj-surface);
+  padding: 12px 16px;
+}
+
+.hr-leave-adj__select-trigger {
+  display: flex;
+  width: 100%;
+  min-width: 180px;
+  max-width: 220px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border: 1px solid var(--adj-border);
+  border-radius: 6px;
+  background: var(--adj-surface);
+  padding: 8px 12px;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.hr-leave-adj__select-menu {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  margin-top: 4px;
+  overflow: hidden;
+  border: 1px solid var(--adj-border);
+  border-radius: 6px;
+  background: var(--adj-surface);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+}
+
+.hr-leave-adj__search-wrap {
+  border-bottom: 1px solid var(--adj-border);
+  padding: 8px;
+}
+
+.hr-leave-adj__search-input {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--adj-border);
+  border-radius: 6px;
+  background: var(--adj-surface);
+  padding: 8px 10px;
+  font-size: 14px;
+}
+
+.hr-leave-adj__search-input input {
+  width: 100%;
+  border: 0;
+  outline: none;
+  background: transparent;
+  font: inherit;
+  color: var(--adj-text);
+}
+
+.hr-leave-adj__search-input input::placeholder {
+  color: #9ca3af;
+}
+
+.hr-leave-adj__option {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  border: 0;
+  background: transparent;
+  color: var(--adj-title);
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.hr-leave-adj__option:hover {
+  background: #f9fafb;
+}
+
+.hr-leave-adj__option--active {
+  margin: 2px 6px;
+  border-radius: 4px;
+  background: var(--adj-primary-soft);
+}
+
+.hr-leave-adj__filter-wrap {
+  position: relative;
+}
+
+.hr-leave-adj__filter-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--adj-primary);
+  border-radius: 6px;
+  background: var(--adj-surface);
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--adj-primary);
+  cursor: pointer;
+}
+
+.hr-leave-adj__filter-btn:hover {
+  background: var(--adj-primary-soft);
+}
+
+.hr-leave-adj__filter-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 40;
+  width: 280px;
+  border: 1px solid var(--adj-border);
+  border-radius: 8px;
+  background: var(--adj-surface);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+}
+
+.hr-leave-adj__filter-popover-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--adj-border);
+  padding: 12px 14px;
+}
+
+.hr-leave-adj__filter-popover-header h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--adj-title);
+}
+
+.hr-leave-adj__filter-popover-body {
+  padding: 14px;
+}
+
+.hr-leave-adj__filter-popover-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 14px 14px;
+}
+
+.hr-leave-adj__field-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--adj-title);
+}
+
+.hr-leave-adj__field {
+  margin-bottom: 12px;
+}
+
+.hr-leave-adj__form-select {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border: 1px solid var(--adj-border);
+  border-radius: 6px;
+  background: var(--adj-surface);
+  padding: 8px 12px;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.hr-leave-adj__form-select-menu {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  margin-top: 4px;
+  overflow: hidden;
+  border: 1px solid var(--adj-border);
+  border-radius: 6px;
+  background: var(--adj-surface);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+}
+
+.hr-leave-adj__form-option {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.hr-leave-adj__form-option:hover {
+  background: #f9fafb;
+}
+
+.hr-leave-adj__form-option--active {
+  background: var(--adj-primary-dark);
+  color: #ffffff;
+}
+
+.hr-leave-adj__apply-btn {
+  border: 0;
+  border-radius: 6px;
+  background: var(--adj-primary);
+  padding: 8px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.hr-leave-adj__table-wrap {
+  overflow: auto;
+  border: 1px solid var(--adj-border);
+  border-radius: 0 0 10px 10px;
+  background: var(--adj-surface);
+}
+
+.hr-leave-adj__table {
+  width: 100%;
+  min-width: 1400px;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.hr-leave-adj__table thead tr:first-child th {
+  border-bottom: 1px solid var(--adj-border);
+  background: var(--adj-table-head);
+  padding: 10px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--adj-title);
+  text-align: center;
+  white-space: nowrap;
+}
+
+.hr-leave-adj__table thead tr:last-child th {
+  border-bottom: 3px solid var(--adj-header-line);
+  background: var(--adj-table-head);
+  padding: 8px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--adj-muted);
+  text-align: center;
+  white-space: nowrap;
+}
+
+.hr-leave-adj__table td {
+  border-bottom: 1px solid var(--adj-border);
+  padding: 8px 6px;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.hr-leave-adj__employee-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 180px;
+  padding-left: 8px;
+  text-align: left;
+}
+
+.hr-leave-adj__avatar {
+  display: grid;
+  height: 28px;
+  width: 28px;
+  shrink: 0;
+  place-items: center;
+  border-radius: 9999px;
+  background: var(--adj-primary-soft);
+  color: var(--adj-primary);
+}
+
+.hr-leave-adj__employee-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--adj-title);
+  white-space: nowrap;
+}
+
+.hr-leave-adj__num-input {
+  width: 52px;
+  border: 1px solid var(--adj-border);
+  border-radius: 4px;
+  background: var(--adj-surface);
+  padding: 6px 4px;
+  font-size: 12px;
+  text-align: center;
+  color: var(--adj-text);
+}
+
+.hr-leave-adj__num-read {
+  display: inline-block;
+  min-width: 24px;
+  font-size: 12px;
+  color: var(--adj-text);
+}
+
+.hr-leave-adj__action-btn {
+  display: grid;
+  height: 32px;
+  width: 32px;
+  margin: 0 auto;
+  place-items: center;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--adj-primary);
+  cursor: pointer;
+}
+
+.hr-leave-adj__action-btn:hover {
+  background: var(--adj-primary-soft);
+}
+
+.hr-leave-adj__footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-top: 1px solid var(--adj-border);
+  padding: 10px 14px;
+  font-size: 12px;
+  color: var(--adj-muted);
+}
+
+.hr-leave-adj__page-btn {
+  display: inline-grid;
+  height: 28px;
+  min-width: 28px;
+  place-items: center;
+  border: 1px solid var(--adj-border);
+  border-radius: 4px;
+  background: var(--adj-surface);
+  color: var(--adj-muted);
+  cursor: pointer;
+}
+
+.hr-leave-adj__page-btn--active {
+  border-color: var(--adj-primary);
+  background: var(--adj-primary);
+  color: #ffffff;
+}
+
+.hr-leave-adj__modal-close {
+  border: 0;
+  background: transparent;
+  color: var(--adj-muted);
+  cursor: pointer;
+}

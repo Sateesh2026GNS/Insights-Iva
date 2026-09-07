@@ -6,7 +6,9 @@
 
 Security hardening (auth lockout, email verification, refresh tokens, RBAC, tenant isolation, headers) is documented in [SECURITY_REPORT.md](./SECURITY_REPORT.md). **Full security audit + hardening pass (16 Aug 2026)** — summary in [Security Audit & Hardening](#security-audit--hardening-aug-2026) below. **Frontend UI/UX audit + design system migration (18 Aug 2026; button action system 24 Aug 2026)** — [UI_UX_AUDIT_REPORT.md](./UI_UX_AUDIT_REPORT.md). **Wireframe-first UI/UX standard** for new pages — [Wireframe-first UI/UX standard](#wireframe-first-uiux-standard). Architecture and recent analysis: [PROJECT_ANALYSIS_REPORT.md](./PROJECT_ANALYSIS_REPORT.md).
 
-**Latest pass (24 Aug 2026):** **Action-based button system** — centralized `Button` variants (`add`, `primary`, `secondary`, `view`, `edit`, `warning`, `danger`), `AddButton` / `TableActionButtons`, and app-wide migration of list/toolbar Add/Create CTAs to teal-blue `#0F5F78` — see [UI design system](#ui-design-system-colors--buttons) and [UI_UX_AUDIT_REPORT.md](./UI_UX_AUDIT_REPORT.md).
+**Latest pass (Sep 2026):** **Full-stack HR module** — PostgreSQL schema (`k8l9m0n1o2p3`, `k9l0m1n2o3p4`), 60+ `/hr/*` APIs, organization setup, preboarding, expenses, payroll runs, MIS reports, role permissions, leave-balance workflow, API-only frontend (no `localStorage` fallbacks on operational pages) — see [HR Module](#hr-module-full-stack).
+
+**Prior pass (24 Aug 2026):** **Action-based button system** — centralized `Button` variants (`add`, `primary`, `secondary`, `view`, `edit`, `warning`, `danger`), `AddButton` / `TableActionButtons`, and app-wide migration of list/toolbar Add/Create CTAs to teal-blue `#0F5F78` — see [UI design system](#ui-design-system-colors--buttons) and [UI_UX_AUDIT_REPORT.md](./UI_UX_AUDIT_REPORT.md).
 
 **Prior pass (21 Aug 2026):** End-to-end **RBAC** for seven roles (Admin, Sales Manager, Production Manager, Store Manager, HR Manager, Accountant, Operator) — permissions, sidebar, routes, and JWT role preserved on refresh — see [Role-Based Access Control](#role-based-access-control). **Shared date/calendar controls** (`dateControls.jsx`, `dateUtils.js`) and duplicate calendar icon fix — see [UI design system](#ui-design-system-colors--buttons). **Store Manager** dedicated sidebar with full Purchases menu. **Settings** integrated into main ERP shell (dark navy theme in dark mode only). **Manufacturing workflow engine (18 Aug 2026):** role-based Sales → Job Card → Inventory → Production → Quality → Packing → Billing — see [Manufacturing Workflow Engine](#manufacturing-workflow-engine). **Design system rebrand (18 Aug 2026):** forest green brand, `frontend/src/design-system/` — see [UI design system](#ui-design-system-colors--buttons). **HR module dashboards (Aug 2026):** mockup-aligned UI — see [HR & Employee Management](#hr--employee-management). See [Stability Audit & Validation](#stability-audit--validation-aug-2026) and [Security Audit & Hardening](#security-audit--hardening-aug-2026).
 
@@ -49,7 +51,7 @@ To add or replace slides, drop PNG/JPG files into `frontend/public/auth/` using 
 
 ## Tech Stack
 
-- **Backend:** Python, FastAPI, SQLAlchemy, SQLite
+- **Backend:** Python, FastAPI, SQLAlchemy, Alembic, **PostgreSQL** (production); SQLite allowed only for tests (`ALLOW_SQLITE_RUNTIME=1`)
 - **Frontend:** React 18, Vite, React Router, Axios, Tailwind CSS, React i18next
 
 ### Frontend performance
@@ -305,25 +307,28 @@ Inventory settings persist under the `inventory_settings` feature-settings key (
 
 ### HR & Employee Management
 
-The HR sidebar is split into expandable sections (Attendance, Leave Management, Payroll, Performance, Recruitment, Training, Reports, HR Settings). Dashboard-style pages follow a shared layout: KPI cards, filters, Recharts widgets, data tables with `InventoryRowActionsMenu` (⋮), and a right-hand summary column where the mockup specifies it.
+Multi-tenant HR module with live PostgreSQL data, JWT + RBAC (`require_permission("hr")`), and tenant isolation via `tenant_id`. Dashboard pages may still use `hrMasterData.js` merge helpers for empty-state previews; **operational pages** (employees, preboarding, expenses, payroll, organization setup, reports, roles) load and persist **only through the API**.
 
-| Page | Route | Highlights |
-|------|-------|------------|
-| HR Dashboard | `/hr` | KPIs, attendance bar chart, department donut, birthdays, recent joins, leave requests, quick links |
-| Attendance | `/hr/attendance` (+ daily, calendar, leave-summary, reports sub-routes) | KPIs, filters, donut summary, calendar, today’s overview, records table with S.No. |
-| Leave Management | `/hr/leave` | KPIs, tabs, filters, requests table, status donut, leave balance bars, upcoming holidays |
-| Payroll | `/hr/payroll` | KPIs, payroll runs table, recent payslips, summary donut, quick links, create payroll modal |
-| Performance | `/hr/performance` | Trend chart, rating distribution, top performers, recent reviews, insights, upcoming reviews |
-| Recruitment | `/hr/recruitment` | KPIs, funnel, job openings, recent applicants, source analytics donut |
-| Training | `/hr/training` | KPIs, overview donut, completion trend, categories, ongoing/upcoming programs, certifications |
-| HR Settings | `/hr/settings` | General settings form, system/security/privacy toggles, category sidebar |
-| Employees, Shifts, Documents | `/hr/employees`, `/hr/shifts`, `/hr/documents` | Existing CRUD/list flows |
+| Area | Route(s) | Highlights |
+|------|----------|------------|
+| HR Dashboard | `/hr` | Live KPIs from `GET /hr/dashboard` |
+| Employees | `/hr/employees`, `/hr/employees/create`, `/hr/employees/offboarded` | Onboarding, enriched list, offboarding |
+| Attendance | `/hr/attendance` (+ approval, overtime, adjusted-leave, settings) | Clock-in/out, regularization, reports |
+| Leave | `/hr/leave` (+ approvals, holiday, adjustment, plans) | Requests, holidays, leave plans; balance deducted on approve |
+| Payroll | `/hr/payroll` (+ salary/statutory components, breakup, on-hold, payslips, settings, create) | Components, PF/ESIC, payroll run generation |
+| Expenses | `/hr/expenses`, `/hr/expenses/my`, `/hr/expenses/approvals` | Claims, approvals, overview |
+| Site visits | `/hr/site-visits` | Field visit tracking |
+| Assets | `/hr/assets` (+ mapped) | Company assets and allocations |
+| Recruitment | `/hr/recruitment`, `/hr/recruitment/create` | Preboarding pipeline |
+| Shifts | `/hr/shifts` (+ monthly, week-off, create) | Shift definitions and assignments |
+| Reports (MIS) | `/hr/reports/*` | Attendance, leave, expense, site-visit, employee, PF, ESIC, salary, bank-template |
+| Organization setup | `/hr/settings` | Leave types, designations, departments, employment types, expense categories, branches, geo-fencing |
+| Roles & permissions | `/hr/roles` | Per-role permission toggles (`hr_role_permissions` table) |
+| Performance, Training | `/hr/performance`, `/hr/training` | Dashboard-style pages (demo merge when API empty) |
 
-**Preview / merge pattern:** HR dashboard pages call live APIs (`hrApi.js`) when data exists. Empty or partial responses fall back to curated demo payloads in `frontend/src/data/hrMasterData.js` via `merge*Dashboard()` helpers (same approach as Quality Dashboard) — so layouts stay reviewable without seeding the database.
+**API client:** `frontend/src/api/hrApi.js` — mirrors backend routes under `/hr/`.
 
-**Accounts fix (related):** Chart of Accounts (`/accounts/chart-of-accounts`) dedupes duplicate GL rows at the API and UI layer; list fetches retry transient connection resets during backend hot-reload (`chartOfAccountsSync.js`).
-
-Core HR APIs remain under `/hr/` — employees, shifts, attendance (clock-in/out), leave, payroll, performance. Create flows: `/hr/employees/create`, `/hr/leave/create`, `/hr/payroll/create`, `/hr/performance/create`, etc.
+See [HR Module (full stack)](#hr-module-full-stack) for architecture, migrations, database tables, and tests.
 
 ### Sales & Billing Module
 - Tax invoices, quotations, payment receipts, refund vouchers, proforma / export invoices, delivery challans, credit & debit notes
@@ -335,6 +340,7 @@ Core HR APIs remain under `/hr/` — employees, shifts, attendance (clock-in/out
 ### Accounts & Reports
 - Ledger, expense, expense settings, chart of accounts, manual journal entries
 - Journal entries accept `ref`/`desc` or `reference`/`description` in the POST body; create returns **201 Created**
+- Chart of Accounts dedupes duplicate GL rows at the API and UI layer; list fetches retry transient connection resets during backend hot-reload (`chartOfAccountsSync.js`)
 - Balance sheet, profit & loss, accounting reports, restore deleted documents
 - Export to Excel / PDF where supported
 - Legacy finance views (AP/AR/payment tracking/general ledger) remain routed under `/finance/*` where applicable
@@ -419,7 +425,7 @@ Customers (create modal or `/sales/customers/create`) → Create sales order →
 Sales order confirmed → **Sales Job Card** (`/sales/orders/:id/job-card`) → Inventory material check → Production assign/start/complete → Quality approve → Packing dispatch → Billing invoice → **Completed**. Team queues at `/manufacturing/workflow`; admin hub on main dashboard with stage pipeline.
 
 ### 5. HR (Employee)
-HR Dashboard → Attendance / Leave / Payroll / Performance modules → Create employee or leave/payroll/review as needed → Track attendance → Process payroll → View reports under HR Reports. Settings at `/hr/settings`.
+HR Dashboard → Employees / Preboarding → Organization setup (`/hr/settings`) → Attendance & leave (approve deducts balance) → Expenses & site visits → Payroll (components → run) → MIS reports → Roles & permissions (`/hr/roles`).
 
 ### 6. Machine Monitoring
 Add Machine → Track Status → Detect Issue → Create Maintenance Task → Fix Machine → Update Status
@@ -611,7 +617,7 @@ Insights Iva/
 │   ├── app/
 │   │   ├── main.py              # FastAPI app, CORS, router registration, DB init
 │   │   ├── core/                # Config, database, seed_tenant, seed_roles, seed_users, seed_products
-│   │   ├── models/              # SQLAlchemy: user, tenant, role, production, inventory, erp_notification, …
+│   │   ├── models/              # SQLAlchemy: user, tenant, role, hr, hr_module, production, …
 │   │   ├── schemas/             # Pydantic request/response models
 │   │   ├── repositories/        # Data access layer (e.g. notification_repository)
 │   │   ├── services/            # Business logic layer (incl. meeting_service, google_calendar_service)
@@ -654,7 +660,7 @@ Insights Iva/
 | Sales | sales.py | sales_service.py | sales (Customer, SalesOrder, Invoice, Payment) |
 | Manufacturing Workflow | manufacturing_workflow_api.py | workflow_state_service.py, workflow_team_service.py, job_card_service.py | manufacturing_workflow (SalesJobCard, SalesOrderMaterialCheck, ManufacturingWorkflowTransition) |
 | Accounts | accounts.py | accounts_service.py | accounts (Income, Expense) |
-| HR | hr.py | hr_service.py | hr (Employee, Shift, Attendance, Payroll, Performance) |
+| HR | hr.py + hr_module.py | hr_service.py, hr_module_service.py | hr.py (Employee, Shift, Attendance, Leave, Payroll, …); hr_module.py (org setup, expenses, payroll runs, reports, hr_role_permissions) |
 | Analytics | analytics.py | analytics_service.py | aggregates from other modules |
 | Quality | quality.py | quality_service.py | quality (Inspection, Defect, BatchReport, Compliance) |
 | Maintenance | maintenance.py | maintenance_service.py | maintenance (Record, Preventive, Breakdown, Schedule) |
@@ -678,7 +684,7 @@ Insights Iva/
 | Procurement / Purchases | PurchaseOrders, MaterialRequests, GoodsReceipt, SupplierPayments; Purchases, PaymentsMade, DebitNotes (+ create pages) | procurementApi, bizDocumentsApi |
 | Sales | Invoices, Quotations, PaymentReceipts, Customers, SalesOrderDetail, CreateSalesOrder, document forms | salesApi, workflowApi |
 | Accounts | Ledger, Expense, ChartOfAccounts, ManualJournal, BalanceSheet, ProfitLoss, Reports | accountsApi |
-| HR | HRDashboard, Attendance, Leave, Payroll, Performance, Recruitment, Training, HRSettings, Shifts, Employees + create pages | hrApi |
+| HR | HRDashboard, OrganizationSetup (`/hr/settings`), Employees, Preboarding, Attendance, Leave, Payroll, Expenses, Site visits, Assets, Shifts, MIS reports, Roles & Permissions + create pages | hrApi |
 | Quality, Maintenance, Analytics, Alerts | Inspection, Defects, BatchReports, Compliance; MachineMaintenance, Preventive, Breakdowns, Schedule; Production/Machine/Inventory/Profit analytics; AllAlerts, LowStock, etc. | quality/maintenance/analytics/alert APIs |
 | Admin, Documents, Settings | UserManagement, RolesPermissions, AccessLogs; Purchase/Production/Quality/Reports docs; Settings sub-pages | adminApi, document APIs |
 | Meetings | MeetingsList (calendar week view), MeetingDetail; CreateDropdown, GoogleCalendarSetupPanel | meetingsApi |
@@ -802,6 +808,113 @@ python scripts/backfill_workflow_status.py
 ```bash
 cd backend
 python -m pytest tests/test_workflow_state_machine.py -q
+```
+
+## HR Module (full stack)
+
+End-to-end HR for multi-tenant manufacturing ERP: organization master data, employee lifecycle, attendance, leave (with balance tracking), shifts, expenses, site visits, assets, payroll (components + statutory + runs), MIS reports, announcements, and UI-level role permissions. Reuses existing auth, tenants, users, and RBAC — no duplicate auth or company tables.
+
+### Architecture
+
+```
+React (hr pages, hrApi.js)
+  → FastAPI /hr/*
+  → hr_service.py (core: employees, attendance, leave, shifts)
+  → hr_module_service.py (org setup, preboarding, expenses, payroll, reports, role permissions)
+  → PostgreSQL (tenant_id on every HR table)
+```
+
+| Layer | Location |
+|-------|----------|
+| Core models | `backend/app/models/hr.py` — Employee, Shift, AttendanceRecord, LeaveRequest, PayrollRecord, … |
+| Extended models | `backend/app/models/hr_module.py` — org setup, preboarding, expenses, payroll runs, payslips, `HrRolePermission`, … |
+| Core service | `backend/app/services/hr_service.py` — CRUD + leave balance on approve/reject |
+| Module service | `backend/app/services/hr_module_service.py` — business logic for extended APIs |
+| Helpers | `backend/app/services/hr_module_helpers.py` — pagination, audit, date coercion |
+| API routers | `backend/app/api/hr.py` (includes `hr_module` router) |
+| Frontend API | `frontend/src/api/hrApi.js` |
+| Organization setup UI | `frontend/src/pages/hr/OrganizationSetup.jsx` (route `/hr/settings`) |
+| Roles UI | `frontend/src/pages/hr/HRRolesPermissions.jsx` (route `/hr/roles`) |
+| Sidebar nav | `frontend/src/config/hrSidebarNav.js` |
+| Tests | `backend/tests/test_hr_module.py` |
+
+### Database migrations (Alembic)
+
+HR migrations are **idempotent** — they skip tables/columns that already exist, so `alembic upgrade head` is safe on databases that were partially provisioned.
+
+| Revision | File | Purpose |
+|----------|------|---------|
+| `k8l9m0n1o2p3` | `k8l9m0n1o2p3_hr_module_complete.py` | HR org tables, preboarding, expenses, holidays, leave plans, payroll runs, reports; column extensions on `employees`, `shifts`, `attendance_records`, `leave_requests` |
+| `k9l0m1n2o3p4` | `k9l0m1n2o3p4_hr_role_permissions.py` | `hr_role_permissions` (unique per `tenant_id` + `role_key`, FK → `tenants.id`) |
+
+**Apply migrations (PostgreSQL):**
+
+```bash
+cd backend
+# Ensure backend/.env has DATABASE_URL=postgresql+psycopg://...
+alembic current          # check revision
+alembic upgrade head     # apply pending only
+alembic current          # should show k9l0m1n2o3p4 (head)
+```
+
+Re-running `alembic upgrade head` after head is a no-op. Existing rows are never deleted by these migrations.
+
+### Key PostgreSQL tables
+
+| Table | Purpose |
+|-------|---------|
+| `hr_org_leave_types`, `hr_org_designations`, `hr_org_departments`, `hr_org_employment_types` | Organization setup masters |
+| `hr_org_branches`, `hr_org_expense_categories`, `hr_org_geo_fencing` | Branches, expense categories, geo-fences |
+| `preboarding_candidates` | Recruitment / offers pipeline |
+| `expense_claims`, `site_visits` | Employee expenses and field visits |
+| `holidays`, `leave_plans`, `employee_leave_balances` | Leave calendar and balances |
+| `salary_components`, `statutory_component_configs`, `payroll_settings` | Payroll configuration |
+| `payroll_runs`, `payslips`, `salary_holds` | Payroll processing |
+| `announcements`, `hr_report_runs` | Comms and generated MIS reports |
+| `hr_role_permissions` | JSON permission toggles per HR role key (account, admin, employee, manager, top-management) |
+
+Extended columns on core tables include `employees.lifecycle_status`, `employees.first_name` / `last_name`, `attendance_records.status`, `leave_requests.is_half_day`, etc.
+
+### API surface (summary)
+
+All routes require JWT. Mutations use `require_permission("hr")`. Tenant scope is enforced server-side (`tenant_id` from JWT — never trust `company_id` from the client).
+
+| Group | Example endpoints |
+|-------|-------------------|
+| Dashboard | `GET /hr/dashboard` |
+| Organization | `GET/POST/PUT/DELETE /hr/organization/leave-types`, `…/designations`, `…/departments`, `…/employment-types`, `…/expense-categories`, `…/branches`, `…/geo-fencing` |
+| Employees | `GET /hr/employees/enriched`, `POST /hr/employees`, `GET /hr/employees/offboarded` |
+| Preboarding | `GET/POST /hr/preboarding/candidates`, `POST …/archive` |
+| Attendance & leave | `POST /hr/attendance/clock-in`, `GET /hr/leave`, `PATCH /hr/leave/{id}` (balance update on approve) |
+| Holidays & plans | `GET/POST /hr/holidays`, `GET/POST /hr/leave/plans` |
+| Expenses | `GET/POST /hr/expenses/my`, `GET /hr/expenses/approvals`, `POST /hr/expenses/approve` |
+| Payroll | `GET/POST /hr/payroll/salary-components`, `PUT /hr/payroll/statutory/pf`, `POST /hr/payroll/generate` |
+| Reports | `GET /hr/reports/{type}`, `POST /hr/reports/{type}/generate` |
+| Roles | `GET/PUT /hr/roles/{roleId}/permissions`, `GET /hr/roles/{roleId}/users` |
+| Announcements | `GET/POST /hr/announcements` |
+
+Full client mirror: `frontend/src/api/hrApi.js`.
+
+### RBAC & audit
+
+- Module gate: `require_permission("hr")` on write endpoints.
+- Fine-grained toggles (attendance.view, leave.my, payroll.manage, …) stored in `hr_role_permissions` for the HR roles UI; platform RBAC remains in `rbac_constants.py`.
+- HR actions logged via `AuditLogService` (`audit_hr` helper) with `module_name="HR"`.
+
+### Tests
+
+```bash
+cd backend
+ALLOW_SQLITE_RUNTIME=1 python -m pytest tests/test_hr_module.py -q
+```
+
+Covers dashboard, org leave types CRUD, preboarding, expenses, holidays/leave plans, attendance report generation, announcements, and role permissions.
+
+### Frontend build
+
+```bash
+cd frontend
+npm run build
 ```
 
 ## Notification Management System
@@ -1121,7 +1234,7 @@ Never commit real `.env` files or use example placeholder passwords in productio
 8. **Masters:** Customers, Vendors, Products — create/edit via modals; bulk import pages for each.
 9. **Purchases / Procurement:** Purchases, payments made, debit notes, Vendor Master, purchase orders, material requests, GRN, supplier payments.
 10. **Sales:** Sales orders (create → confirm → job card), invoices, quotations, payment receipts, and related sales documents.
-11. **HR:** Dashboard, attendance, leave, payroll, performance, recruitment, training, employees, shifts; HR Settings at `/hr/settings`.
+11. **HR:** Dashboard, employees, preboarding, attendance, leave, payroll, expenses, site visits, assets, shifts, MIS reports, organization setup (`/hr/settings`), roles (`/hr/roles`). See [HR Module](#hr-module-full-stack).
 12. **Accounts:** Ledger, expenses, chart of accounts, journals, P&L, balance sheet, reports.
 13. **Meetings:** Open `/meetings` → connect Google Calendar → create events with optional Google Meet → join from detail page or week grid.
 14. **Settings:** Theme, language, company profile, invoice/format/template/sector/sequence settings where enabled; **Integrations** shows Google Calendar status.
@@ -1135,7 +1248,7 @@ Never commit real `.env` files or use example placeholder passwords in productio
 | `/inventory/` | warehouses, suppliers, items, items/barcode/{barcode}, dashboard, stock-levels, stock-movements |
 | `/biz/feature-settings/{key}` | Per-tenant module settings (`GET`/`PUT`), e.g. `inventory_settings` |
 | `/procurement/` | purchase-orders, **vendors** (CRUD, soft-delete, bulk-status, summary, export, purchase-history, products, bank-lookup), material-requests, goods-receipt, supplier-payments |
-| `/hr/` | dashboard, employees, shifts, attendance (clock-in, clock-out), leave, payroll, performance; UI routes also include `/hr/recruitment`, `/hr/training`, `/hr/settings` |
+| `/hr/` | Full HR module: dashboard, employees, shifts, attendance, leave, payroll, expenses, site visits, organization setup, reports, roles & permissions, announcements — see [HR Module](#hr-module-full-stack) |
 | `/sales/` | customers, sales-orders, invoices, invoices/{id}, payments |
 | `/manufacturing/workflow/` | hub, queue, job-cards, sales-orders/{id}/job-card, confirm, material-check, production/quality/packing/billing actions, backfill |
 | `/accounts/` | ledger/accounting APIs as exposed by accounts router; income/expenses where enabled |
@@ -1178,7 +1291,7 @@ All sidebar entries in `frontend/src/config/sidebarNav.js` resolve to registered
 - **Production** — Planning, MRP, Work Orders, Shop-floor Job Card, Schedule, Machine Allocation, Daily Reports
 - **Manufacturing workflow** — `/manufacturing/workflow` (team board), Sales Order Job Card routes, dashboard hub
 - **Purchases & Sales** — Purchase flows, sales orders + job card, invoices, quotations, e-Invoice, E-Waybill login, digital signature
-- **HR** — Hub, Attendance, Leave, Payroll, Performance, Recruitment, Training, Reports, Settings (`/hr/settings`); candidates/interviews and training sessions remain placeholders on sub-routes
+- **HR** — Hub, Attendance, Leave, Payroll, Expenses, Site visits, Assets, Shifts, Employees, Preboarding, MIS Reports, Organization Setup (`/hr/settings`), Roles (`/hr/roles`); Training/Performance hub pages use demo merge when empty
 - **Meetings** — `/meetings` (Google Calendar week view + list), `/meetings/:id` (details, Join Meet, Open Calendar)
 
 Legacy redirects remain (e.g. `/inventory/items` → `/inventory/raw-materials`, `/settings/expense-settings` → `/accounts/expenses/settings`).
@@ -1191,7 +1304,7 @@ Legacy redirects remain (e.g. `/inventory/items` → `/inventory/raw-materials`,
 | Journal entries | `backend/app/schemas/accounts.py` | Map `reference`/`description` → `ref`/`desc` before persist |
 | RBAC permissions | `backend/app/core/rbac_constants.py`, `auth_service.py` | Active-role-only permissions; JWT role on `/auth/me` |
 | Chart of Accounts | `backend/app/api/accounts.py`, `chartOfAccountsSync.js` | Dedupe GL codes per tenant; transient retry on list fetch |
-| HR RBAC menu | `rbac_constants.py`, `sidebarNav.js`, `AppRoutes.jsx` | HR module + 19 routes |
+| HR RBAC menu | `rbac_constants.py`, `sidebarNav.js`, `hrSidebarNav.js`, `AppRoutes.jsx` | HR module + 50+ routes |
 | Store Manager nav | `storeManagerNavConfig.js`, `permissions.js` | Full Purchases menu; trimmed account/subscription items |
 | Date controls | `dateControls.jsx`, `dateUtils.js`, `index.css` | Shared pickers; duplicate calendar icon fix |
 
@@ -1210,6 +1323,21 @@ npm test
 npm run build
 ```
 
+### HR module pass (Sep 2026)
+
+| Area | Key files |
+|------|-----------|
+| Models | `backend/app/models/hr_module.py`, extensions in `hr.py` |
+| Migrations | `k8l9m0n1o2p3_hr_module_complete.py`, `k9l0m1n2o3p4_hr_role_permissions.py` |
+| Services | `hr_module_service.py`, `hr_module_helpers.py`, `hr_service.py` (leave balance) |
+| API | `backend/app/api/hr_module.py` (included from `hr.py`) |
+| Organization setup | `frontend/src/pages/hr/OrganizationSetup.jsx`, `organizationSetup.css` |
+| Roles & permissions | `frontend/src/pages/hr/HRRolesPermissions.jsx` |
+| API client | `frontend/src/api/hrApi.js` |
+| Tests | `backend/tests/test_hr_module.py` (8 tests) |
+
+Verification: `alembic upgrade head` on PostgreSQL; `ALLOW_SQLITE_RUNTIME=1 pytest tests/test_hr_module.py`; `npm run build` in `frontend/`.
+
 ### HR dashboard pass (15 Aug 2026)
 
 | Page | Key files |
@@ -1221,7 +1349,7 @@ npm run build
 | Performance | `frontend/src/pages/hr/Performance.jsx`, `mergePerformanceDashboard()` |
 | Recruitment | `frontend/src/pages/hr/Recruitment.jsx`, `DEMO_RECRUITMENT_DASHBOARD` |
 | Training | `frontend/src/pages/hr/Training.jsx`, `DEMO_TRAINING_DASHBOARD` |
-| HR Settings | `frontend/src/pages/hr/HRSettings.jsx` (client-side form; no persist API yet) |
+| HR Settings | `frontend/src/pages/hr/OrganizationSetup.jsx` (routed as `/hr/settings`; org setup tabs) |
 
 Shared UX: purple accent (`#6366f1`), KPI cards, Recharts donuts/line/area charts, `SerialNumberCell`, row actions via `InventoryRowActionsMenu`, `usePageRefresh` on all dashboard pages.
 
@@ -1279,9 +1407,9 @@ Action-based button consistency across list pages and modals — **styling only*
 - **E-Invoice / E-Waybill / Digital Signature** — UI routes exist; live submission requires user-configured external portal credentials.
 - **Settings → Alerts feedback link** — placeholder `href="#"` until a feedback URL or form is configured.
 - **Vite bundle size** — `export-libs` chunk may exceed 900 kB; optional future code-splitting only.
-- **HR demo fallbacks** — Dashboard pages show `hrMasterData.js` preview when APIs return empty; live data replaces preview automatically when records exist.
-- **HR Settings** — UI-only; Save/Reset toasts do not persist to backend yet. Two-factor toggle is not enforced by auth.
-- **Recruitment / Training sub-routes** — `/hr/recruitment/candidates`, `/hr/training/sessions`, and some Performance/Leave/Payroll secondary tabs are placeholders.
+- **HR demo fallbacks** — Hub/dashboard pages (Performance, Training, Recruitment) may show `hrMasterData.js` preview when APIs return empty; operational HR pages use API-only data.
+- **Salary breakup API** — `GET /hr/payroll/salary-breakup` may return `[]` until breakup records are implemented; payroll run checks salary components/employees.
+- **Recruitment / Training sub-routes** — Some secondary tabs remain placeholders.
 - **Residual purple accents** — Some payment forms and inline document “+ Add Item” links still use legacy styling; migration tracked in UI_UX_AUDIT_REPORT.
 
 ---
@@ -1346,7 +1474,7 @@ Backend authorization is **authoritative**. Frontend route checks improve UX onl
 | Medium | Encrypt Google OAuth / e-waybill credentials at rest (`field_crypto.py`) |
 | Medium | Redis or edge rate limiting for multi-instance deployments |
 | Medium | Replace or isolate `xlsx` export dependency (known npm advisories, no upstream fix) |
-| Low | Wire HR Settings security toggles (2FA, session policy) to backend |
+| Low | Fine-grained HR permissions in platform RBAC (`rbac_constants.py`) beyond UI toggles |
 | Low | Alembic-only migrations before PostgreSQL cutover |
 
 ### PostgreSQL migration notes

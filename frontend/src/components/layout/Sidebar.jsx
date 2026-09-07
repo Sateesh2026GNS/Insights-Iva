@@ -39,7 +39,7 @@ import {
   ACCOUNTANT_ALLOWED_CHILDREN,
   OPERATOR_BLOCKED_SECTIONS,
 } from "../../config/rbacNavFilters";
-import { SIDEBAR_NAV, sectionHasActiveChild } from "../../config/sidebarNav";
+import { SIDEBAR_NAV, sectionHasActiveChild, filterNavTree, buildNestedExpanded, navNodeIsActive } from "../../config/sidebarNav";
 import { STORE_MANAGER_NAV_ITEMS } from "../../config/storeManagerNavConfig";
 
 export function getRoleJobCardUrl(user) {
@@ -176,20 +176,20 @@ export function filterStaticNav(user) {
       if (storeMgr && !storeManagerPathAllowed(section.to)) return null;
       return section;
     }
-    let children = (section.children || []).filter((c) => {
-      const pathOnly = (c.to || "").split("?")[0];
-      if (isPM && !PRODUCTION_MANAGER_ALLOWED_CHILDREN.has(c.to) && !PRODUCTION_MANAGER_ALLOWED_CHILDREN.has(pathOnly)) return false;
-      if (isAcct && (section.key === "alerts" || section.key === "analytics")) {
-        if (!ACCOUNTANT_ALLOWED_CHILDREN.has(c.to) && !ACCOUNTANT_ALLOWED_CHILDREN.has(pathOnly)) return false;
+    let children = filterNavTree(section.children, (node) => {
+      const pathOnly = (node.to || "").split("?")[0];
+      if (isPM && node.to && !PRODUCTION_MANAGER_ALLOWED_CHILDREN.has(node.to) && !PRODUCTION_MANAGER_ALLOWED_CHILDREN.has(pathOnly)) {
+        return false;
       }
-      return userCanAccess(user, c.module);
+      if (isAcct && (section.key === "alerts" || section.key === "analytics") && node.to) {
+        if (!ACCOUNTANT_ALLOWED_CHILDREN.has(node.to) && !ACCOUNTANT_ALLOWED_CHILDREN.has(pathOnly)) return false;
+      }
+      if (!userCanAccess(user, node.module)) return false;
+      if (storeMgr && node.to) {
+        return storeManagerPathAllowed(node.to) || storeManagerPathAllowed(pathOnly);
+      }
+      return true;
     });
-    if (storeMgr) {
-      children = children.filter((c) => {
-        const pathOnly = (c.to || "").split("?")[0];
-        return storeManagerPathAllowed(c.to) || storeManagerPathAllowed(pathOnly);
-      });
-    }
     if (children.length === 0) return null;
     return { ...section, children };
   }).filter(Boolean);
@@ -220,6 +220,9 @@ function buildInitialExpanded(pathname, nav) {
   nav.forEach((section) => {
     if (section.children && sectionHasActiveChild(pathname, section)) {
       state[section.key] = true;
+    }
+    if (section.nestedNav && section.children?.length) {
+      buildNestedExpanded(pathname, section.children, section.key, state);
     }
   });
   return state;
@@ -338,6 +341,9 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose }
         if (section.children && sectionHasActiveChild(location.pathname, section)) {
           next[section.key] = true;
         }
+        if (section.nestedNav && section.children?.length) {
+          buildNestedExpanded(location.pathname, section.children, section.key, next);
+        }
       });
       return next;
     });
@@ -376,6 +382,42 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose }
         : "text-slate-400 hover:bg-white/10 hover:text-slate-200"
     }`;
 
+  const nestedLinkClass = ({ isActive }, opts = {}) => {
+    const isBullet = opts.bullet;
+    if (isBullet) {
+      return `relative flex w-full items-center gap-2 rounded-md py-1.5 pr-2 text-[12px] leading-snug transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 ${
+        collapsed ? "justify-center px-2" : "pl-2.5"
+      } ${
+        isActive
+          ? "font-semibold text-white"
+          : "text-slate-400 hover:text-slate-200"
+      }`;
+    }
+    return `relative flex w-full items-center gap-2.5 rounded-lg py-2 pr-3 text-[13px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 ${
+      collapsed ? "justify-center px-2" : "pl-3"
+    } ${
+      isActive
+        ? "bg-[var(--color-nav-active)] font-medium text-white"
+        : "text-slate-300 hover:bg-white/10 hover:text-white"
+    }`;
+  };
+
+  const submenuContainerClass = (sectionKey, depth) => {
+    if (sectionKey === "hr") {
+      return "mx-0.5 mb-1 space-y-0.5 rounded-lg border border-white/12 bg-black/15 p-1.5";
+    }
+    return `space-y-0.5 pb-0.5 ${depth === 0 ? "ml-3 border-l border-white/10 pl-2" : "ml-2 pl-2"}`;
+  };
+
+  const nestedGroupClass = (hasActive) =>
+    `relative flex w-full items-center rounded-lg py-2 text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 ${
+      collapsed ? "justify-center px-2" : "justify-between gap-2 px-3"
+    } ${
+      hasActive
+        ? "text-white"
+        : "text-slate-300 hover:bg-white/10 hover:text-white"
+    }`;
+
   const sectionButtonClass = (_isOpen, hasActive) =>
     `relative flex w-full items-center rounded-lg py-2.5 text-sm font-medium transition-colors ${navItemPad} ${
       collapsed ? "justify-center" : "justify-between gap-2"
@@ -391,6 +433,69 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose }
 
   const sectionLabel = (section) => section.label || (section.labelKey ? t(section.labelKey) : section.key);
   const childLabel = (child) => child.label || (child.labelKey ? t(child.labelKey) : child.to);
+
+  const renderNestedNav = (nodes, sectionKey, depth = 0) =>
+    (nodes || []).map((node) => {
+      const itemKey = `${sectionKey}:${node.key || node.label}`;
+      const label = childLabel(node);
+      const Icon = node.icon || LayoutDashboard;
+      const isBulletLeaf = node.leafStyle === "bullet";
+
+      if (node.children?.length) {
+        const isOpen = expanded[itemKey];
+        const hasActive = navNodeIsActive(location.pathname, node);
+        return (
+          <div key={itemKey} className="space-y-0.5">
+            <button
+              type="button"
+              onClick={() => toggleSection(itemKey)}
+              className={nestedGroupClass(hasActive)}
+              aria-expanded={isOpen}
+              title={collapsed ? label : undefined}
+            >
+              <span className={`flex min-w-0 flex-1 items-center ${collapsed ? "justify-center" : "gap-2.5"}`}>
+                <Icon className="h-[18px] w-[18px] shrink-0" strokeWidth={1.75} aria-hidden />
+                {!collapsed && <span className="truncate text-left">{label}</span>}
+              </span>
+              {!collapsed &&
+                (isOpen ? (
+                  <ChevronDown className="h-4 w-4 shrink-0 opacity-70" aria-hidden />
+                ) : (
+                  <ChevronRight className="h-4 w-4 shrink-0 opacity-70" aria-hidden />
+                ))}
+            </button>
+            {!collapsed && isOpen ? (
+              <div className={submenuContainerClass(sectionKey, depth)}>
+                {renderNestedNav(node.children, sectionKey, depth + 1)}
+              </div>
+            ) : null}
+          </div>
+        );
+      }
+
+      if (!node.to) return null;
+
+      return (
+        <NavLink
+          key={itemKey}
+          to={node.to}
+          end={node.end}
+          onClick={() => onClose?.()}
+          title={collapsed ? label : undefined}
+          className={(state) => nestedLinkClass(state, { bullet: isBulletLeaf })}
+        >
+          {isBulletLeaf ? (
+            <span
+              className="h-1.5 w-1.5 shrink-0 rounded-full bg-current opacity-80"
+              aria-hidden
+            />
+          ) : (
+            <Icon className="h-[18px] w-[18px] shrink-0" strokeWidth={1.75} aria-hidden />
+          )}
+          {!collapsed && <span className="min-w-0 truncate">{label}</span>}
+        </NavLink>
+      );
+    });
 
   return (
     <aside className="relative flex h-full w-full shrink-0 flex-col bg-[var(--color-nav-bg)] text-white">
@@ -482,18 +587,20 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose }
                 )}
               </button>
               {!collapsed && isOpen && (
-                <div className="space-y-0.5 pb-1">
-                  {section.children.map((child) => (
-                    <NavLink
-                      key={`${section.key}-${child.to}-${child.label || child.key}`}
-                      to={child.to}
-                      end={child.end}
-                      onClick={() => onClose?.()}
-                      className={childLinkClass}
-                    >
-                      {childLabel(child)}
-                    </NavLink>
-                  ))}
+                <div className={`space-y-0.5 pb-1 ${section.key === "hr" ? "pt-0.5" : ""}`}>
+                  {section.nestedNav
+                    ? renderNestedNav(section.children, section.key)
+                    : section.children.map((child) => (
+                        <NavLink
+                          key={`${section.key}-${child.to}-${child.label || child.key}`}
+                          to={child.to}
+                          end={child.end}
+                          onClick={() => onClose?.()}
+                          className={childLinkClass}
+                        >
+                          {childLabel(child)}
+                        </NavLink>
+                      ))}
                 </div>
               )}
             </div>

@@ -134,8 +134,10 @@ from app.services.hr_training_service import (
     update_enrollment,
     update_training_program,
 )
+from app.api.hr_module import router as hr_module_router
 
 router = APIRouter(prefix="/hr", tags=["hr"])
+router.include_router(hr_module_router)
 
 MODULE = "hr"
 ATT_SCOPE = tenant_scope_any("hr", "attendance")
@@ -144,7 +146,8 @@ ATT_PERM = require_any_permission("hr", "attendance")
 
 @router.get("/dashboard")
 def hr_dashboard(tenant_id: int = Depends(tenant_scope(MODULE)), db: Session = Depends(get_db)):
-    return get_hr_dashboard(db, tenant_id)
+    from app.services.hr_module_service import get_hr_dashboard_extended
+    return get_hr_dashboard_extended(db, tenant_id)
 
 
 @router.post("/employees", response_model=EmployeeRead)

@@ -17,6 +17,8 @@ import {
   Wrench,
 } from "lucide-react";
 
+import { HR_SIDEBAR_ITEMS } from "./hrSidebarNav";
+
 /**
  * Insights Iva sidebar structure. Children are filtered by RBAC per-item `module`.
  * Routes map to existing pages where available; others use /erp/* placeholders.
@@ -166,21 +168,8 @@ export const SIDEBAR_NAV = [
     label: "Human Resources",
     icon: Users,
     module: "hr",
-    children: [
-      { label: "HR Dashboard", to: "/hr", module: "hr", end: true },
-      { label: "Employees", to: "/hr/employees", module: "hr" },
-      { label: "Attendance", to: "/hr/attendance", module: "hr" },
-      { label: "Leave", to: "/hr/leave", module: "hr" },
-      { label: "Payroll", to: "/hr/payroll", module: "hr" },
-      { label: "Performance", to: "/hr/performance", module: "hr" },
-      { label: "Training", to: "/hr/training", module: "hr" },
-      { label: "Recruitment", to: "/hr/recruitment", module: "hr" },
-      { label: "Shifts", to: "/hr/shifts", module: "hr" },
-      { label: "Assets", to: "/hr/assets", module: "hr" },
-      { label: "Incidents", to: "/hr/incidents", module: "hr" },
-      { label: "HR Documents", to: "/hr/documents", module: "hr" },
-      { label: "HR Settings", to: "/hr/settings", module: "hr" },
-    ],
+    nestedNav: true,
+    children: HR_SIDEBAR_ITEMS,
   },
   {
     key: "alerts",
@@ -257,15 +246,68 @@ export function isPathActive(pathname, to, end = false) {
   return pathname === to || pathname.startsWith(`${to}/`);
 }
 
+/** True when a nav node or any descendant matches the current path. */
+export function navNodeIsActive(pathname, node) {
+  if (!node) return false;
+  if (node.to && isPathActive(pathname, node.to, node.end)) return true;
+  if (Array.isArray(node.children)) {
+    return node.children.some((child) => navNodeIsActive(pathname, child));
+  }
+  return false;
+}
+
 export function sectionHasActiveChild(pathname, section) {
   if (!section.children) return false;
-  return section.children.some((c) => c.to && isPathActive(pathname, c.to, c.end));
+  return section.children.some((child) => navNodeIsActive(pathname, child));
+}
+
+/** Filter a nested nav tree by module/RBAC on leaf nodes. */
+export function filterNavTree(nodes, canAccessLeaf) {
+  return (nodes || [])
+    .map((node) => {
+      if (node.children?.length) {
+        const children = filterNavTree(node.children, canAccessLeaf);
+        if (!children.length) return null;
+        return { ...node, children };
+      }
+      if (!canAccessLeaf(node)) return null;
+      return node;
+    })
+    .filter(Boolean);
+}
+
+/** Collect expand keys for nested groups that contain the active route. */
+export function buildNestedExpanded(pathname, nodes, sectionKey, state = {}) {
+  for (const node of nodes || []) {
+    const itemKey = `${sectionKey}:${node.key || node.label}`;
+    if (node.children?.length) {
+      if (navNodeIsActive(pathname, node)) state[itemKey] = true;
+      buildNestedExpanded(pathname, node.children, sectionKey, state);
+    }
+  }
+  return state;
 }
 
 /** Flat list of navigable routes for global search (path, label, module, optional section). */
 export function flattenNavForSearch() {
   const items = [];
+  const walk = (nodes, sectionKey) => {
+    for (const node of nodes || []) {
+      if (node.to) {
+        items.push({
+          path: node.to,
+          label: node.label,
+          labelKey: node.labelKey,
+          module: node.module,
+          sectionKey,
+        });
+      }
+      if (node.children?.length) walk(node.children, sectionKey);
+    }
+  };
+
   for (const section of SIDEBAR_NAV) {
+    const sectionKey = section.labelKey || section.label;
     if (section.to) {
       items.push({
         path: section.to,
@@ -274,17 +316,7 @@ export function flattenNavForSearch() {
         sectionKey: null,
       });
     }
-    if (section.children) {
-      for (const child of section.children) {
-        items.push({
-          path: child.to,
-          label: child.label,
-          labelKey: child.labelKey,
-          module: child.module,
-          sectionKey: section.labelKey || section.label,
-        });
-      }
-    }
+    if (section.children) walk(section.children, sectionKey);
   }
   return items;
 }

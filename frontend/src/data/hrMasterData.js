@@ -605,39 +605,276 @@ export function payrollStatusBadgeClass(status) {
   return PAYROLL_STATUS_BADGES[key] || "bg-slate-100 text-slate-700";
 }
 
-export const EMPTY_HR_HUB = {total_employees: 0, present_today: 0, total_for_present: 0, leave_requests: 0, pending_tasks: 0,
-  kpi_trends: {}, attendance_week: [], departments: [], upcoming_birthdays: [], recent_joins: [],
-  leave_requests_list: [], hr_notice: "", department_strength: [], shift_utilization: [], alerts: [],};
-export const DEMO_HR_HUB = EMPTY_HR_HUB;
-
 const DEPT_CHART_COLORS = ["#3b82f6", "#22c55e", "#8b5cf6", "#f97316", "#94a3b8", "#06b6d4", "#ec4899"];
 
-/** Merge live /hr/hub payload with dashboard preview sections. */
-export function mergeHrHub(api = {}) {
-  const total = Number(api.total_employees) || 0;
-  if (total <= 0) return { ...EMPTY_HR_HUB };
+const EXPENSE_CHART_COLORS = [
+  "#a78bfa", "#f472b6", "#fb923c", "#14b8a6", "#facc15", "#3b82f6", "#38bdf8", "#86efac",
+  "#fdba74", "#60a5fa", "#93c5fd", "#a16207", "#f97316", "#2dd4bf", "#f9a8d4", "#7dd3fc",
+  "#bef264", "#ef4444", "#22c55e", "#7c3aed", "#818cf8", "#ec4899", "#ea580c", "#0d9488", "#eab308",
+];
 
-  const departments = (api.department_strength || []).map((d, i) => ({
+function formatShortDate(iso) {
+  if (!iso) return "—";
+  const [y, m, d] = String(iso).slice(0, 10).split("-");
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  return `${d} ${months[Number(m) - 1]}`;
+}
+
+function formatTime12h(value) {
+  if (!value) return "—";
+  const raw = String(value);
+  const [hPart, mPart = "00"] = raw.split(":");
+  let h = Number(hPart);
+  const m = mPart.slice(0, 2);
+  if (Number.isNaN(h)) return raw;
+  const ampm = h >= 12 ? "PM" : "AM";
+  h = h % 12 || 12;
+  return `${String(h).padStart(2, "0")}:${m} ${ampm}`;
+}
+
+function monthYearLabel(date = new Date()) {
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  return `${months[date.getMonth()]} - ${date.getFullYear()}`;
+}
+
+function buildCelebrationsFromEmployees(employees = []) {
+  const today = new Date();
+  const items = [];
+
+  for (const emp of employees) {
+    const name = emp.full_name || emp.name || "Employee";
+    const join = emp.joining_date || emp.hire_date;
+    if (join) {
+      const [, m, d] = String(join).slice(0, 10).split("-");
+      const thisYearJoin = `${today.getFullYear()}-${m}-${d}`;
+      const joinDate = new Date(thisYearJoin);
+      const diffDays = Math.round((joinDate - today) / 86400000);
+      if (diffDays >= 0 && diffDays <= 30) {
+        const years = today.getFullYear() - Number(String(join).slice(0, 4));
+        if (years > 0) {
+          items.push({
+            id: `ann-${emp.id}`,
+            name,
+            date_label: diffDays === 0 ? "Today" : formatShortDate(thisYearJoin),
+            type: "anniversary",
+            years,
+          });
+        }
+      }
+    }
+  }
+
+  return items.slice(0, 12);
+}
+
+export const EMPTY_HR_DASHBOARD = {
+  pending_requests: 0,
+  analytics_month_label: "",
+  active_employees: 0,
+  hired_month: 0,
+  exits_month: 0,
+  present_today: 0,
+  absent_today: 0,
+  on_leave_today: 0,
+  celebrations: [],
+  overall_employees: 0,
+  hired_total: 0,
+  exits_total: 0,
+  upcoming_holidays: [],
+  shift_schedule: null,
+  expense_total: 0,
+  expense_categories: [],
+  my_leaves: [],
+  approval_counts: { attendance: 0, expenses: 0, overtime: 0 },
+  approval_requests: [],
+  announcements: [],
+  payslips: [],
+  total_employees: 0,
+  leave_requests: 0,
+  departments: [],
+};
+
+export const DEMO_HR_DASHBOARD = {
+  pending_requests: 0,
+    analytics_month_label: monthYearLabel(),
+  active_employees: 1,
+  hired_month: 1,
+  exits_month: 0,
+  present_today: 0,
+  absent_today: 1,
+  on_leave_today: 0,
+  celebrations: [],
+  overall_employees: 1,
+  hired_total: 1,
+  exits_total: 0,
+  upcoming_holidays: [],
+  shift_schedule: {
+    name: "General",
+    initial: "G",
+    date_range: "07 Sep 2026 - 30 Sep 2026",
+    time_range: "10:00 AM to 07:00 PM",
+  },
+  expense_total: 0,
+  expense_categories: [],
+  my_leaves: [
+    { key: "casual", label: "Casual Leave", available: 0, tone: "green", icon: "palmtree" },
+    { key: "comp_off", label: "Compensatory Off", available: 0, tone: "orange", icon: "sparkles" },
+    { key: "earned", label: "Earned Leave", available: 0, tone: "blue", icon: "calendar" },
+    { key: "maternity", label: "Maternity Leave", available: 0, tone: "sky", icon: "baby" },
+    { key: "paternity", label: "Paternity Leave", available: 0, tone: "red", icon: "users" },
+    { key: "sabbatical", label: "Sabbatical Leave", available: 0, tone: "yellow", icon: "plane" },
+  ],
+  approval_counts: { attendance: 0, expenses: 0, overtime: 0 },
+  approval_requests: [],
+  announcements: [],
+  payslips: [],
+  total_employees: 1,
+  leave_requests: 0,
+  departments: [],
+};
+
+/** @deprecated use EMPTY_HR_DASHBOARD */
+export const EMPTY_HR_HUB = EMPTY_HR_DASHBOARD;
+/** @deprecated use DEMO_HR_DASHBOARD */
+export const DEMO_HR_HUB = DEMO_HR_DASHBOARD;
+
+/** Merge live HR APIs with dashboard preview sections when data is partial or empty. */
+export function mergeHrDashboard({
+  hub = {},
+  empSummary = {},
+  attSummary = {},
+  leaveSummary = {},
+  leaves = [],
+  shifts = [],
+  payrollRows = [],
+  employees = [],
+  attendanceRows = [],
+} = {}) {
+  const demo = DEMO_HR_DASHBOARD;
+  const activeEmployees = Number(empSummary.total_employees ?? hub.total_employees) || 0;
+  const hasLive = activeEmployees > 0;
+
+  const presentToday = Number(empSummary.present_today ?? hub.present_today) || 0;
+  const absentToday = Number(empSummary.absent ?? attSummary.absent) || 0;
+  const onLeaveToday = Number(empSummary.on_leave) || 0;
+  const pendingLeave = Number(leaveSummary.pending_leave ?? hub.pending_leave) || 0;
+  const newJoiners = Number(empSummary.new_joiners ?? hub.new_joiners) || 0;
+  const attritionRate = Number(hub.attrition_rate) || 0;
+  const inactiveEstimate = attritionRate > 0 && activeEmployees > 0
+    ? Math.round((activeEmployees * attritionRate) / (100 - attritionRate))
+    : 0;
+  const exitsTotal = inactiveEstimate || demo.exits_total;
+  const overallEmployees = hasLive ? activeEmployees + exitsTotal : demo.overall_employees;
+
+  const pendingAttendance = (attendanceRows || []).filter((r) =>
+    ["pending", "late", "half_day"].includes(String(r.status || "").toLowerCase())
+  ).length;
+  const pendingLeaves = (leaves || []).filter((l) => String(l.status || "").toLowerCase() === "pending");
+
+  const approvalRequests = pendingLeaves.length
+    ? pendingLeaves.slice(0, 12).map((l, i) => ({
+        id: l.id ?? i + 1,
+        name: l.employee_name || "—",
+        date_label: formatShortDate(l.start_date),
+        type: "attendance",
+      }))
+    : pendingAttendance > 0
+      ? (attendanceRows || [])
+          .filter((r) => ["pending", "late", "half_day"].includes(String(r.status || "").toLowerCase()))
+          .slice(0, 12)
+          .map((r, i) => ({
+            id: r.id ?? i + 1,
+            name: r.name || r.employee_name || "—",
+            date_label: formatShortDate(r.record_date),
+            type: "attendance",
+          }))
+      : [];
+
+  const celebrations = buildCelebrationsFromEmployees(employees);
+  const celebrationsFinal = celebrations;
+
+  const firstShift = (shifts || [])[0];
+  const shiftSchedule = firstShift
+    ? {
+        name: firstShift.name || "General",
+        initial: String(firstShift.name || "G").charAt(0).toUpperCase(),
+        date_range: `${formatShortDate(new Date().toISOString().slice(0, 10))} - ${formatShortDate(
+          new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().slice(0, 10)
+        )} ${new Date().getFullYear()}`,
+        time_range: `${formatTime12h(firstShift.start_time)} to ${formatTime12h(firstShift.end_time)}`,
+      }
+    : demo.shift_schedule;
+
+  const myLeaves = demo.my_leaves.map((row) => ({
+    ...row,
+    available: row.key === "casual"
+      ? Math.max(0, 12 - Number(leaveSummary.casual_leave || 0))
+      : row.available,
+  }));
+
+  const payslips = (payrollRows || [])
+    .filter((p) => ["processed", "paid"].includes(String(p.status || "").toLowerCase()))
+    .slice(0, 5)
+    .map((p, i) => ({
+      id: p.id ?? i + 1,
+      period: p.period_start ? String(p.period_start).slice(0, 7) : "—",
+      amount: Number(p.net_salary || p.net_pay) || 0,
+    }));
+
+  const announcements = (hub.alerts || []).length
+    ? hub.alerts.map((a, i) => ({
+        id: i + 1,
+        title: a.message || a.title || "HR Notice",
+        date: formatShortDate(new Date().toISOString().slice(0, 10)),
+      }))
+    : [];
+
+  const departments = (hub.department_strength || []).map((d, i) => ({
     name: d.name,
     count: Number(d.count) || 0,
     color: DEPT_CHART_COLORS[i % DEPT_CHART_COLORS.length],
   }));
 
+  if (!hasLive) {
+    return { ...demo };
+  }
+
   return {
-    ...EMPTY_HR_HUB,
-    ...api,
-    total_employees: total,
-    present_today: Number(api.present_today) || 0,
-    total_for_present: total,
-    leave_requests: Number(api.pending_leave) || 0,
-    pending_tasks: Number(api.pending_tasks) || 0,
-    departments: departments,
-    attendance_week: api.attendance_week || [],
-    upcoming_birthdays: api.upcoming_birthdays || [],
-    recent_joins: api.recent_joins || [],
-    leave_requests_list: api.leave_requests_list || [],
-    hr_notice: api.hr_notice || "",
+    ...demo,
+    pending_requests: pendingLeave + pendingAttendance || demo.pending_requests,
+    analytics_month_label: monthYearLabel(),
+    active_employees: activeEmployees,
+    hired_month: newJoiners,
+    exits_month: 0,
+    present_today: presentToday,
+    absent_today: absentToday || Math.max(0, activeEmployees - presentToday - onLeaveToday),
+    on_leave_today: onLeaveToday,
+    celebrations: celebrationsFinal,
+    overall_employees: overallEmployees,
+    hired_total: activeEmployees,
+    exits_total: exitsTotal,
+    upcoming_holidays: [],
+    shift_schedule: shiftSchedule,
+    expense_total: hasLive ? 0 : demo.expense_total,
+    expense_categories: hasLive ? [] : demo.expense_categories,
+    my_leaves: myLeaves,
+    approval_counts: {
+      attendance: pendingAttendance || pendingLeaves.length || demo.approval_counts.attendance,
+      expenses: demo.approval_counts.expenses,
+      overtime: Number(attSummary.overtime) > 0 ? Math.min(99, Math.ceil(attSummary.overtime)) : demo.approval_counts.overtime,
+    },
+    approval_requests: approvalRequests,
+    announcements,
+    payslips,
+    total_employees: activeEmployees,
+    leave_requests: pendingLeave,
+    departments,
   };
+}
+
+/** Merge live /hr/hub payload with dashboard preview sections. */
+export function mergeHrHub(api = {}) {
+  return mergeHrDashboard({ hub: api });
 }
 
 export function formatInr(v) {

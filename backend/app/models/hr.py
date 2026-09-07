@@ -27,6 +27,16 @@ class Employee(Base, TimestampMixin):
     employment_type: Mapped[str | None] = mapped_column(String(32))
     phone: Mapped[str | None] = mapped_column(String(64))
     salary: Mapped[float | None] = mapped_column(Numeric(12, 2))
+    lifecycle_status: Mapped[str] = mapped_column(String(32), default="active", nullable=False, index=True)
+    first_name: Mapped[str | None] = mapped_column(String(128))
+    last_name: Mapped[str | None] = mapped_column(String(128))
+    reporting_manager_id: Mapped[int | None] = mapped_column(ForeignKey("employees.id"))
+    branch_id: Mapped[int | None] = mapped_column(Integer)
+    work_location: Mapped[str | None] = mapped_column(String(255))
+    emergency_contact_name: Mapped[str | None] = mapped_column(String(255))
+    emergency_contact_phone: Mapped[str | None] = mapped_column(String(64))
+    offboarded_at: Mapped[date | None] = mapped_column(Date)
+    offboard_reason: Mapped[str | None] = mapped_column(Text)
 
 
 class Shift(Base, TimestampMixin):
@@ -42,6 +52,9 @@ class Shift(Base, TimestampMixin):
     end_time: Mapped[time | None] = mapped_column(Time)
     break_minutes: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     capacity_hours: Mapped[float] = mapped_column(Numeric(5, 2), default=8.0, nullable=False)
+    grace_period_minutes: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    status: Mapped[str] = mapped_column(String(32), default="active", nullable=False)
 
 
 class AttendanceRecord(Base, TimestampMixin):
@@ -63,6 +76,10 @@ class AttendanceRecord(Base, TimestampMixin):
     work_hours: Mapped[float | None] = mapped_column(Numeric(5, 2))
     overtime_hours: Mapped[float | None] = mapped_column(Numeric(5, 2))
     capacity_hours: Mapped[float | None] = mapped_column(Numeric(5, 2))
+    status: Mapped[str] = mapped_column(String(32), default="present", nullable=False)
+    late_minutes: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    early_departure_minutes: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    approval_status: Mapped[str] = mapped_column(String(32), default="pending", nullable=False)
 
 
 class PayrollRecord(Base, TimestampMixin):
@@ -111,6 +128,10 @@ class LeaveRequest(Base, TimestampMixin):
     days: Mapped[float] = mapped_column(Numeric(5, 1), default=1.0, nullable=False)
     reason: Mapped[str | None] = mapped_column(Text)
     status: Mapped[str] = mapped_column(String(32), default="pending", nullable=False)
+    is_half_day: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    half_day_period: Mapped[str | None] = mapped_column(String(16))
+    approved_by_name: Mapped[str | None] = mapped_column(String(255))
+    approved_at: Mapped[datetime | None] = mapped_column(DateTime)
 
 
 class HrAsset(Base, TimestampMixin):

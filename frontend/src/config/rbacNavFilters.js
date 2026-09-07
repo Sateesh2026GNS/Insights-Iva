@@ -109,7 +109,7 @@ export const OPERATOR_ALLOWED_PATHS = new Set([
   "/alerts/general",
 ]);
 
-/** HR Manager sidebar — HR module only (no generic masters). */
+/** HR Manager sidebar — HR module plus shared collaboration sections. */
 export const HR_MANAGER_ALLOWED_SECTIONS = new Set([
   "dashboard",
   "hr",

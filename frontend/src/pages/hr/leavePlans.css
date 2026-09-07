@@ -1,0 +1,326 @@
+/* Leave Plans — reference screenshot styling */
+.hr-leave-plans {
+  --lp-title: #1a1c1e;
+  --lp-text: #374151;
+  --lp-muted: #5e6278;
+  --lp-border: #eff2f5;
+  --lp-primary: #1861d5;
+  --lp-primary-dark: #1d68d5;
+  --lp-table-head: #eef5ff;
+  --lp-surface: #ffffff;
+
+  color: var(--lp-text);
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.hr-leave-plans__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.hr-leave-plans__title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--lp-title);
+}
+
+.hr-leave-plans__add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--lp-primary);
+  padding: 9px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #ffffff;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.hr-leave-plans__add-btn:hover {
+  background: #1554bc;
+}
+
+.hr-leave-plans__tabs-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--lp-border);
+  border-bottom: 0;
+  border-radius: 10px 10px 0 0;
+  background: var(--lp-surface);
+  padding: 0 16px;
+}
+
+.hr-leave-plans__tabs {
+  display: flex;
+  align-items: stretch;
+  gap: 24px;
+}
+
+.hr-leave-plans__tab {
+  position: relative;
+  border: 0;
+  background: transparent;
+  padding: 14px 0 12px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--lp-muted);
+  cursor: pointer;
+}
+
+.hr-leave-plans__tab--active {
+  color: var(--lp-primary);
+  font-weight: 600;
+}
+
+.hr-leave-plans__tab--active::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  border-radius: 3px 3px 0 0;
+  background: var(--lp-primary);
+}
+
+.hr-leave-plans__filter-wrap {
+  position: relative;
+  padding: 8px 0;
+}
+
+.hr-leave-plans__filter-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--lp-primary);
+  border-radius: 6px;
+  background: var(--lp-surface);
+  padding: 7px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--lp-primary);
+  cursor: pointer;
+}
+
+.hr-leave-plans__filter-btn:hover {
+  background: #eef5ff;
+}
+
+.hr-leave-plans__filter-popover {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 40;
+  width: 280px;
+  border: 1px solid var(--lp-border);
+  border-radius: 8px;
+  background: var(--lp-surface);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+}
+
+.hr-leave-plans__filter-popover-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--lp-border);
+  padding: 12px 14px;
+}
+
+.hr-leave-plans__filter-popover-header h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--lp-title);
+}
+
+.hr-leave-plans__filter-popover-body {
+  padding: 14px;
+}
+
+.hr-leave-plans__filter-popover-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 14px 14px;
+}
+
+.hr-leave-plans__field {
+  margin-bottom: 12px;
+}
+
+.hr-leave-plans__field-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--lp-title);
+}
+
+.hr-leave-plans__select-trigger {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: var(--lp-surface);
+  padding: 8px 12px;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.hr-leave-plans__select-menu {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  margin-top: 4px;
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: var(--lp-surface);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+}
+
+.hr-leave-plans__select-option {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.hr-leave-plans__select-option:hover {
+  background: #f9fafb;
+}
+
+.hr-leave-plans__select-option--active {
+  background: var(--lp-primary-dark);
+  color: #ffffff;
+}
+
+.hr-leave-plans__apply-btn {
+  border: 0;
+  border-radius: 6px;
+  background: var(--lp-primary);
+  padding: 8px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.hr-leave-plans__modal-close {
+  border: 0;
+  background: transparent;
+  color: var(--lp-muted);
+  cursor: pointer;
+}
+
+.hr-leave-plans__table-wrap {
+  overflow: auto;
+  border: 1px solid var(--lp-border);
+  border-radius: 0 0 10px 10px;
+  background: var(--lp-surface);
+}
+
+.hr-leave-plans__table {
+  width: 100%;
+  min-width: 900px;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.hr-leave-plans__table th {
+  border-bottom: 1px solid var(--lp-border);
+  background: var(--lp-table-head);
+  padding: 10px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--lp-title);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.hr-leave-plans__table td {
+  border-bottom: 1px solid var(--lp-border);
+  padding: 10px 12px;
+  color: var(--lp-text);
+}
+
+.hr-leave-plans__empty {
+  padding: 40px 16px;
+  text-align: center;
+  color: var(--lp-muted);
+}
+
+.hr-leave-plans__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hr-leave-plans__action-btn {
+  display: grid;
+  height: 28px;
+  width: 28px;
+  place-items: center;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--lp-muted);
+  cursor: pointer;
+}
+
+.hr-leave-plans__action-btn:hover {
+  background: #f1f5f9;
+  color: var(--lp-primary);
+}
+
+.hr-leave-plans__action-btn--danger:hover {
+  color: #dc2626;
+}
+
+.hr-leave-plans__footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-top: 1px solid var(--lp-border);
+  padding: 10px 14px;
+  font-size: 12px;
+  color: var(--lp-muted);
+}
+
+.hr-leave-plans__page-btn {
+  display: inline-grid;
+  height: 28px;
+  min-width: 28px;
+  place-items: center;
+  border: 1px solid var(--lp-border);
+  border-radius: 4px;
+  background: var(--lp-surface);
+  color: var(--lp-muted);
+  cursor: pointer;
+}
+
+.hr-leave-plans__page-btn--active {
+  border-color: var(--lp-primary);
+  background: var(--lp-primary);
+  color: #ffffff;
+}

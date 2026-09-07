@@ -72,6 +72,7 @@ from app.models import (  # noqa: F401
     document,
     erp_notification,
     hr,
+    hr_module,
     inventory,
     machine,
     maintenance,

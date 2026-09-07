@@ -1,0 +1,252 @@
+/* Scoped styles for HR Attendance Approvals — matches reference screenshot only. */
+.hr-approvals {
+  --ha-title: #1e293b;
+  --ha-text: #374151;
+  --ha-muted: #6b7280;
+  --ha-border: #e5e7eb;
+  --ha-primary: #2563eb;
+  --ha-primary-dark: #1976d2;
+  --ha-primary-soft: #eff6ff;
+  --ha-table-head: #ebf5ff;
+  --ha-surface: #ffffff;
+  --ha-btn-bg: #f8fafc;
+
+  color: var(--ha-text);
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.hr-approvals__title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ha-title);
+  letter-spacing: 0;
+}
+
+.hr-approvals__approve-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 16px;
+  border: 1px solid var(--ha-primary);
+  border-radius: 6px;
+  background: var(--ha-btn-bg);
+  color: var(--ha-primary);
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.hr-approvals__approve-btn:hover:not(:disabled) {
+  background: var(--ha-primary-soft);
+}
+
+.hr-approvals__approve-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.hr-approvals__select-trigger {
+  display: flex;
+  width: 100%;
+  min-width: 160px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--ha-border);
+  border-radius: 6px;
+  background: var(--ha-surface);
+  color: var(--ha-text);
+  font-size: 14px;
+  font-weight: 400;
+  text-align: left;
+  cursor: pointer;
+}
+
+.hr-approvals__select-trigger:hover {
+  border-color: #d1d5db;
+}
+
+.hr-approvals__select-menu {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  margin-top: 4px;
+  overflow: hidden;
+  border: 1px solid var(--ha-border);
+  border-radius: 6px;
+  background: var(--ha-surface);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+}
+
+.hr-approvals__search-wrap {
+  border-bottom: 1px solid var(--ha-border);
+  padding: 8px;
+}
+
+.hr-approvals__search-input {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--ha-border);
+  border-radius: 6px;
+  background: var(--ha-surface);
+  font-size: 14px;
+  color: var(--ha-text);
+}
+
+.hr-approvals__search-input input {
+  width: 100%;
+  border: 0;
+  outline: none;
+  background: transparent;
+  font: inherit;
+  color: var(--ha-text);
+}
+
+.hr-approvals__search-input input::placeholder {
+  color: #9ca3af;
+}
+
+.hr-approvals__option {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  border: 0;
+  background: transparent;
+  color: var(--ha-title);
+  font-size: 14px;
+  font-weight: 400;
+  text-align: left;
+  cursor: pointer;
+}
+
+.hr-approvals__option:hover {
+  background: #f9fafb;
+}
+
+.hr-approvals__option--employee-active {
+  margin: 2px 6px;
+  border-radius: 4px;
+  background: var(--ha-primary-soft);
+}
+
+.hr-approvals__option--status-active {
+  background: var(--ha-primary-dark);
+  color: #ffffff;
+}
+
+.hr-approvals__option--status-active:hover {
+  background: var(--ha-primary-dark);
+}
+
+.hr-approvals__nav-btn {
+  display: grid;
+  height: 32px;
+  width: 32px;
+  place-items: center;
+  border: 0;
+  border-radius: 9999px;
+  background: transparent;
+  color: var(--ha-muted);
+  cursor: pointer;
+}
+
+.hr-approvals__nav-btn:hover {
+  background: #f3f4f6;
+}
+
+.hr-approvals__period-label {
+  min-width: 96px;
+  text-align: center;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ha-title);
+}
+
+.hr-approvals__view-toggle {
+  display: inline-flex;
+  overflow: hidden;
+  border: 1px solid var(--ha-primary);
+  border-radius: 9999px;
+}
+
+.hr-approvals__view-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border: 0;
+  background: var(--ha-surface);
+  color: var(--ha-primary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.hr-approvals__view-btn + .hr-approvals__view-btn {
+  border-left: 1px solid var(--ha-primary);
+}
+
+.hr-approvals__view-btn--active {
+  background: var(--ha-primary-soft);
+}
+
+.hr-approvals__table-wrap {
+  overflow: auto;
+  border: 1px solid var(--ha-border);
+  border-radius: 6px;
+  background: var(--ha-surface);
+}
+
+.hr-approvals__table {
+  width: 100%;
+  min-width: 1100px;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.hr-approvals__table th {
+  border-bottom: 1px solid var(--ha-border);
+  background: var(--ha-table-head);
+  color: var(--ha-title);
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+  vertical-align: middle;
+  padding: 10px 8px;
+}
+
+.hr-approvals__table th.hr-approvals__th-left {
+  text-align: left;
+}
+
+.hr-approvals__table td {
+  border-bottom: 1px solid var(--ha-border);
+  padding: 10px 8px;
+  color: var(--ha-text);
+  vertical-align: middle;
+}
+
+.hr-approvals__empty {
+  padding: 48px 16px;
+  text-align: center;
+  color: var(--ha-muted);
+  font-size: 14px;
+}
+
+.hr-approvals__checkbox {
+  height: 15px;
+  width: 15px;
+  accent-color: var(--ha-primary);
+  cursor: pointer;
+}
