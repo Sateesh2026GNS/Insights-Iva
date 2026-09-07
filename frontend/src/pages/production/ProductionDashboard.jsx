@@ -17,6 +17,7 @@ import KpiCard from "../../components/common/KpiCard";
 import Loader from "../../components/common/Loader";
 import PageHeader from "../../components/common/PageHeader";
 import SkeletonCard from "../../components/common/SkeletonCard";
+import DashboardWelcomeBanner from "../../components/dashboard/DashboardWelcomeBanner";
 import ProductionManagerNav from "../../components/production/ProductionManagerNav";
 import { useToast } from "../../context/ToastContext";
 import { getProductionHub } from "../../api/productionApi";
@@ -107,6 +108,8 @@ export default function ProductionDashboard() {
 
   return (
     <div className="space-y-5 pb-4">
+      <DashboardWelcomeBanner />
+
       <ProductionManagerNav />
 
       <PageHeader subtitle="Planning, schedule, allocation, batches, and quality in one control center." />

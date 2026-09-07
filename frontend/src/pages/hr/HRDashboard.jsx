@@ -17,6 +17,7 @@ import {
 import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
 
 import Loader from "../../components/common/Loader";
+import DashboardWelcomeBanner from "../../components/dashboard/DashboardWelcomeBanner";
 import useAuth from "../../hooks/useAuth";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import {
@@ -78,23 +79,6 @@ function StatMini({ icon: Icon, label, value, tone = "info" }) {
         <p className="hr-dash-stat__label">{label}</p>
       </div>
     </div>
-  );
-}
-
-function WelcomeIllustration() {
-  return (
-    <svg viewBox="0 0 240 140" className="mx-auto h-32 w-full max-w-[220px] shrink-0 sm:mx-0" aria-hidden>
-      <ellipse cx="120" cy="118" rx="72" ry="8" fill="#e2e8f0" opacity="0.6" />
-      <rect x="72" y="88" width="96" height="22" rx="6" fill="#cbd5e1" />
-      <rect x="88" y="96" width="28" height="10" rx="2" fill="#94a3b8" />
-      <circle cx="98" cy="72" r="14" fill="#fdba74" />
-      <path d="M88 84 Q98 78 108 84 L108 102 Q98 108 88 102 Z" fill="#3b82f6" />
-      <circle cx="142" cy="68" r="14" fill="#fcd34d" />
-      <path d="M132 80 Q142 74 152 80 L152 104 Q142 110 132 104 Z" fill="#0751b2" />
-      <path d="M92 66 L100 56 L108 66" stroke="#fbbf24" strokeWidth="3" fill="none" strokeLinecap="round" />
-      <circle cx="100" cy="48" r="10" fill="#fef9c3" stroke="#fbbf24" strokeWidth="2" />
-      <path d="M84 74 L96 68 M144 68 L156 74" stroke="#3b82f6" strokeWidth="3" strokeLinecap="round" />
-    </svg>
   );
 }
 
@@ -310,7 +294,7 @@ export default function HRDashboard() {
     load();
   }, [load]);
 
-  const userName = user?.full_name || user?.name || "Satish Gogulothu";
+  const userName = user?.full_name || user?.name || "User";
 
   const overallChart = useMemo(() => {
     const hired = data.hired_total || 0;
@@ -331,14 +315,9 @@ export default function HRDashboard() {
 
   return (
     <div className="hr-dashboard ui-page ui-stack min-w-0 space-y-4">
-      <div className="grid gap-4 lg:grid-cols-3">
-        <DashCard className="lg:col-span-2" bodyClassName="py-5">
-          <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <h1 className="hr-dash-welcome-title text-center sm:text-left">Welcome, {userName}</h1>
-            <WelcomeIllustration />
-          </div>
-        </DashCard>
+      <DashboardWelcomeBanner name={userName} />
 
+      <div className="grid gap-4 lg:grid-cols-3">
         <CheckInPanel />
 
         <div className="flex flex-col gap-4">
