@@ -9,6 +9,7 @@ export default function ConfirmationDialog({
   confirmLabel = "Confirm",
   cancelLabel = "Cancel",
   confirmVariant = "danger",
+  loading = false,
   onConfirm,
   onCancel,
 }) {
@@ -17,12 +18,12 @@ export default function ConfirmationDialog({
   useEffect(() => {
     if (!open) return undefined;
     const onKeyDown = (e) => {
-      if (e.key === "Escape") onCancel?.();
+      if (e.key === "Escape" && !loading) onCancel?.();
     };
     document.addEventListener("keydown", onKeyDown);
     confirmRef.current?.focus();
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [open, onCancel]);
+  }, [open, onCancel, loading]);
 
   if (!open || typeof document === "undefined") return null;
 
@@ -33,7 +34,7 @@ export default function ConfirmationDialog({
       className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs"
       role="presentation"
       onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onCancel?.();
+        if (e.target === e.currentTarget && !loading) onCancel?.();
       }}
     >
       <div
@@ -50,11 +51,11 @@ export default function ConfirmationDialog({
           {message}
         </p>
         <div className="mt-6 flex items-center justify-end gap-2.5">
-          <Button type="button" variant="cancel" onClick={onCancel}>
+          <Button type="button" variant="cancel" onClick={onCancel} disabled={loading}>
             {cancelLabel}
           </Button>
-          <Button ref={confirmRef} type="button" variant={variant} onClick={onConfirm}>
-            {confirmLabel}
+          <Button ref={confirmRef} type="button" variant={variant} onClick={onConfirm} disabled={loading}>
+            {loading ? "Deleting…" : confirmLabel}
           </Button>
         </div>
       </div>

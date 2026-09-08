@@ -2,7 +2,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { Link, useNavigate } from "react-router-dom";
 import {
+  Ban,
   Calendar,
+  Check,
+  CheckCircle,
   ChevronLeft,
   ChevronRight,
   Download,
@@ -13,7 +16,9 @@ import {
   ListFilter,
   Pencil,
   Plus,
+  RotateCcw,
   Search,
+  Send,
   Trash2,
   X,
 } from "lucide-react";
@@ -21,6 +26,7 @@ import {
 import Loader from "../../components/common/Loader";
 import PageHeader from "../../components/common/PageHeader";
 import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
+import ConfirmationDialog from "../../components/common/ConfirmationDialog";
 import { ListPageShell } from "../../components/common/ListPageShell";
 import { SearchBar } from "../../components/common/SearchFilter";
 import Button from "../../components/common/Button";
@@ -30,6 +36,7 @@ import { SerialNumberCell, SerialNumberHeader } from "../../components/common/Se
 import QuoteDetailModal from "../../components/sales/QuoteDetailModal";
 import { useToast } from "../../context/ToastContext";
 import {
+  cancelQuotation,
   getQuotationSummary,
   getQuotationsEnriched,
   deleteQuotation,
@@ -269,6 +276,54 @@ export default function Quotations() {
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const pageRows = filteredSorted.slice((page - 1) * pageSize, page * pageSize);
 
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [cancelTarget, setCancelTarget] = useState(null);
+  const [cancelLoading, setCancelLoading] = useState(false);
+
+  const handleStatusChange = async (row, newStatus, labelText) => {
+    const label = row.quote_number || row.id;
+    try {
+      await updateQuotationStatus(row.id, newStatus);
+      addToast(`Quotation ${label} marked as ${labelText || newStatus}.`, "success");
+      await load();
+    } catch (err) {
+      addToast(apiErrorMessage(err, `Failed to update status for Quotation ${label}`), "error");
+    }
+  };
+
+  const handleConfirmCancel = async () => {
+    if (!cancelTarget) return;
+    const label = cancelTarget.quote_number || cancelTarget.id;
+    setCancelLoading(true);
+    try {
+      await cancelQuotation(cancelTarget.id);
+      addToast(`Quotation ${label} cancelled successfully.`, "success");
+      setCancelTarget(null);
+      await load();
+    } catch (err) {
+      addToast(apiErrorMessage(err, `Failed to cancel Quotation ${label}`), "error");
+    } finally {
+      setCancelLoading(false);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    const label = deleteTarget.quote_number || deleteTarget.id;
+    setDeleteLoading(true);
+    try {
+      await deleteQuotation(deleteTarget.id);
+      addToast(`Quotation ${label} deleted successfully.`, "success");
+      setDeleteTarget(null);
+      await load();
+    } catch (err) {
+      addToast(apiErrorMessage(err, `Failed to delete Quotation ${label}`), "error");
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
   const handleStatus = async (quote, status) => {
     if (typeof quote.id === "number") {
       try {
@@ -281,19 +336,6 @@ export default function Quotations() {
       }
     }
     setSelected(null);
-  };
-
-  const handleDelete = async (row) => {
-    if (!row?.id) return;
-    if (!window.confirm(`Cancel quotation ${row.quote_number}?`)) return;
-    try {
-      await deleteQuotation(row.id);
-      addToast("Quotation cancelled", "success");
-      setSelected(null);
-      await load();
-    } catch (err) {
-      addToast(apiErrorMessage(err, "Failed to cancel quotation"), "error");
-    }
   };
 
   const handleExport = (format) => {
@@ -554,14 +596,50 @@ export default function Quotations() {
                               icon: <Edit2 className="h-4 w-4" />,
                               onClick: () => navigate(`/sales/quotations/${r.id}/edit`),
                             },
+                            (r.status || "").toLowerCase() !== "cancelled"
+                              ? {
+                                  label: "Convert to Sales Order",
+                                  icon: <CheckCircle className="h-4 w-4" />,
+                                  onClick: () => setSelected(r),
+                                }
+                              : null,
+                            (r.status || "").toLowerCase() === "draft"
+                              ? {
+                                  label: "Mark as Sent",
+                                  icon: <Send className="h-4 w-4" />,
+                                  onClick: () => handleStatusChange(r, "sent", "Sent"),
+                                }
+                              : null,
+                            ["draft", "sent"].includes((r.status || "").toLowerCase())
+                              ? {
+                                  label: "Mark as Accepted",
+                                  icon: <Check className="h-4 w-4" />,
+                                  onClick: () => handleStatusChange(r, "accepted", "Accepted"),
+                                }
+                              : null,
+                            (r.status || "").toLowerCase() === "cancelled"
+                              ? {
+                                  label: "Reopen as Draft",
+                                  icon: <RotateCcw className="h-4 w-4" />,
+                                  onClick: () => handleStatusChange(r, "draft", "Draft"),
+                                }
+                              : null,
                             { divider: true },
+                            (r.status || "").toLowerCase() !== "cancelled"
+                              ? {
+                                  label: "Cancel",
+                                  icon: <Ban className="h-4 w-4" />,
+                                  danger: true,
+                                  onClick: () => setCancelTarget(r),
+                                }
+                              : null,
                             {
                               label: "Delete",
                               icon: <Trash2 className="h-4 w-4" />,
                               danger: true,
-                              onClick: () => handleDelete(r),
+                              onClick: () => setDeleteTarget(r),
                             },
-                          ]}
+                          ].filter(Boolean)}
                         />
                       </div>
                     </td>
@@ -711,6 +789,32 @@ export default function Quotations() {
           onStatusChange={handleStatus}
         />
       ) : null}
+
+      <ConfirmationDialog
+        open={Boolean(cancelTarget)}
+        title="Cancel Quotation"
+        message={`Are you sure you want to cancel Quotation ${cancelTarget?.quote_number || cancelTarget?.id || ""}?`}
+        confirmLabel="Cancel Quotation"
+        danger
+        loading={cancelLoading}
+        onConfirm={handleConfirmCancel}
+        onCancel={() => {
+          if (!cancelLoading) setCancelTarget(null);
+        }}
+      />
+
+      <ConfirmationDialog
+        open={Boolean(deleteTarget)}
+        title="Delete Quotation"
+        message={`Are you sure you want to delete Quotation ${deleteTarget?.quote_number || deleteTarget?.id || ""}?`}
+        confirmLabel="Delete"
+        danger
+        loading={deleteLoading}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => {
+          if (!deleteLoading) setDeleteTarget(null);
+        }}
+      />
     </ListPageShell>
   );
 }

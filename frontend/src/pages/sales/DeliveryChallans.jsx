@@ -416,13 +416,13 @@ export default function DeliveryChallans() {
                                 icon: <Trash2 className="h-4 w-4" />,
                                 danger: true,
                                 onClick: async () => {
-                                  if (!window.confirm(`Cancel challan ${r.invoice_number}?`)) return;
+                                  if (!window.confirm(`Delete delivery challan ${r.invoice_number}?`)) return;
                                   try {
                                     await cancelInvoice(r.id);
-                                    addToast("Challan cancelled", "success");
+                                    addToast("Delivery challan deleted successfully", "success");
                                     load();
                                   } catch (err) {
-                                    addToast(apiErrorMessage(err, "Failed to cancel"), "error");
+                                    addToast(apiErrorMessage(err, "Failed to delete delivery challan"), "error");
                                   }
                                 },
                               },

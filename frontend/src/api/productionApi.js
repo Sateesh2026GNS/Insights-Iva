@@ -24,6 +24,10 @@ async function apiPut(url, data, config) {
   return unwrap(await api.put(url, data, config));
 }
 
+async function apiDelete(url, config) {
+  return unwrap(await api.delete(url, config));
+}
+
 export const seedProducts = () => apiPost("/api/masters/products/seed").catch(() => ({ data: { status: "ok" } }));
 
 export const getProducts = () => apiGet("/api/masters/products");
@@ -52,6 +56,9 @@ export const pauseProductionOrder = (orderId) =>
 
 export const createProductionOrder = (payload) =>
   apiPost("/api/production/planning", payload);
+
+export const deleteProductionOrder = (orderId) =>
+  apiDelete(`/api/production/planning/${orderId}`);
 
 export const updateProductionOrderStatus = (orderId, status) =>
   apiPatch(`/api/production/planning/${orderId}/status`, null, { params: { status } });
@@ -97,6 +104,9 @@ export const stopWorkOrder = (workOrderId) =>
 
 export const completeWorkOrder = (workOrderId) =>
   apiPost(`/api/production/work-orders/${workOrderId}/complete`);
+
+export const deleteWorkOrder = (workOrderId) =>
+  apiDelete(`/api/production/work-orders/${workOrderId}`);
 
 export const issueWorkOrderMaterials = (workOrderId, warehouseId) =>
   apiPost(`/api/production/work-orders/${workOrderId}/issue-materials`, null, {

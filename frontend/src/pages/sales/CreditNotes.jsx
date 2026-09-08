@@ -460,13 +460,13 @@ export default function CreditNotes() {
                                   icon: <Trash2 className="h-4 w-4" />,
                                   danger: true,
                                   onClick: async () => {
-                                    if (!window.confirm(`Cancel credit note ${r.invoice_number}?`)) return;
+                                    if (!window.confirm(`Delete credit note ${r.invoice_number}?`)) return;
                                     try {
                                       await cancelInvoice(r.id);
-                                      addToast("Credit note cancelled", "success");
+                                      addToast("Credit note deleted successfully", "success");
                                       load();
                                     } catch (err) {
-                                      addToast(apiErrorMessage(err, "Failed to cancel"), "error");
+                                      addToast(apiErrorMessage(err, "Failed to delete credit note"), "error");
                                     }
                                   },
                                 },

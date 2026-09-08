@@ -1369,11 +1369,11 @@ def update_quotation(
 
 
 def delete_quotation(db: Session, tenant_id: int, quote_id: int) -> bool:
-    """Soft-delete by marking cancelled."""
+    """Hard-delete quotation from database."""
     quote = get_quotation(db, tenant_id, quote_id)
     if not quote:
         return False
-    quote.status = "cancelled"
+    db.delete(quote)
     db.commit()
     return True
 
@@ -1391,13 +1391,13 @@ def update_quotation_status(
     new_status = (status or "").lower().strip()
     current = (quote.status or "draft").lower().strip()
     allowed = {
-        "draft": {"pending_approval", "sent", "cancelled"},
-        "pending_approval": {"approved", "rejected", "draft"},
-        "approved": {"sent", "draft"},
-        "sent": {"accepted", "rejected", "expired"},
-        "accepted": set(),
-        "rejected": {"draft"},
-        "expired": {"draft"},
+        "draft": {"pending_approval", "sent", "approved", "accepted", "cancelled"},
+        "pending_approval": {"approved", "rejected", "draft", "cancelled"},
+        "approved": {"sent", "draft", "accepted", "cancelled"},
+        "sent": {"accepted", "rejected", "expired", "cancelled", "draft"},
+        "accepted": {"cancelled", "draft"},
+        "rejected": {"draft", "cancelled"},
+        "expired": {"draft", "cancelled"},
         "cancelled": {"draft"},
     }
     # Allow same-status no-op and admin-style free jumps only within known set

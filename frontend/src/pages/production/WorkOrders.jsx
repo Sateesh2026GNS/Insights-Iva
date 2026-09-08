@@ -19,9 +19,11 @@ import {
   Printer,
   Square,
   Star,
+  Trash2,
 } from "lucide-react";
 
 import Button, { IconButton } from "../../components/common/Button";
+import ConfirmationDialog from "../../components/common/ConfirmationDialog";
 import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
 import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
 import { SearchBar } from "../../components/common/SearchFilter";
@@ -44,6 +46,7 @@ import useAuth from "../../hooks/useAuth";
 import { isOperator } from "../../config/permissions";
 import {
   completeWorkOrder,
+  deleteWorkOrder,
   getWorkOrderDetail,
   getWorkOrders,
   getWorkOrderStartChecks,
@@ -160,6 +163,8 @@ function WoRowActions({
   onStop,
   onPrint,
   onPdf,
+  onDelete,
+  canDelete = true,
   issuing,
 }) {
   const [open, setOpen] = useState(false);
@@ -220,6 +225,14 @@ function WoRowActions({
       icon: <FileText className="h-3.5 w-3.5 text-[var(--color-text-muted)]" />,
       onClick: () => onPdf(row),
     },
+    canDelete
+      ? {
+          label: "Delete",
+          icon: <Trash2 className="h-3.5 w-3.5 text-rose-600" />,
+          onClick: () => onDelete?.(row),
+          isDanger: true,
+        }
+      : null,
   ].filter(Boolean);
 
   const openMenu = (e) => {
@@ -285,7 +298,9 @@ function WoRowActions({
                         key={item.label}
                         type="button"
                         disabled={item.disabled}
-                        className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] disabled:opacity-50 transition-colors"
+                        className={`flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs font-medium hover:bg-[var(--color-surface-muted)] disabled:opacity-50 transition-colors ${
+                          item.isDanger ? "text-rose-600 hover:text-rose-700" : "text-[var(--color-text)]"
+                        }`}
                         onClick={(e) => {
                           e?.stopPropagation?.();
                           setOpen(false);
@@ -374,6 +389,8 @@ export default function WorkOrders() {
   const [issuingId, setIssuingId] = useState(null);
   const [showQuickModal, setShowQuickModal] = useState(false);
   const [issueModalOrder, setIssueModalOrder] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   // State to track which single work order is being printed
   const [printDetailWorkOrder, setPrintDetailWorkOrder] = useState(null);
@@ -384,6 +401,38 @@ export default function WorkOrders() {
     window.addEventListener("afterprint", handleAfterPrint);
     return () => window.removeEventListener("afterprint", handleAfterPrint);
   }, []);
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
+    setDeleteLoading(true);
+    const label = deleteTarget.work_order_number || deleteTarget.id;
+    try {
+      const serverId = isServerWoId(deleteTarget.id);
+      if (serverId) {
+        await deleteWorkOrder(deleteTarget.id);
+        notifyManufacturingSpine(MANUFACTURING_EVENTS.WORK_ORDER_UPDATED, {
+          workOrderId: deleteTarget.id,
+        });
+      }
+      setWorkOrders((prev) => prev.filter((w) => w.id !== deleteTarget.id));
+      if (selected?.id === deleteTarget.id) {
+        setSelected(null);
+      }
+      addToast(`Work Order ${label} deleted successfully.`, "success");
+      setDeleteTarget(null);
+      if (serverId) {
+        load();
+      }
+    } catch (err) {
+      const detail = err?.response?.data?.detail;
+      addToast(
+        typeof detail === "string" ? detail : `Failed to delete Work Order ${label}.`,
+        "error"
+      );
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
 
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
@@ -897,6 +946,8 @@ export default function WorkOrders() {
           onStop={handleStop}
           onPrint={handlePrintRow}
           onPdf={(row) => exportToPdf([row], exportCols, `WO ${row.work_order_number}`, row.work_order_number)}
+          onDelete={(row) => setDeleteTarget(row)}
+          canDelete={!isOperator(user)}
           issuing={issuingId === r.id}
         />
       ),
@@ -1301,6 +1352,20 @@ export default function WorkOrders() {
           addToast={addToast}
         />
       )}
+
+      <ConfirmationDialog
+        open={Boolean(deleteTarget)}
+        title="Delete Work Order?"
+        message={`Are you sure you want to delete Work Order ${deleteTarget?.work_order_number || deleteTarget?.id || ""}?`}
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        confirmVariant="danger"
+        loading={deleteLoading}
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => {
+          if (!deleteLoading) setDeleteTarget(null);
+        }}
+      />
 
       {/* Global CSS for Print Optimization */}
       <style>{`

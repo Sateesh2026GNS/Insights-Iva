@@ -33,6 +33,7 @@ from app.services.batch_tracking_service import get_batch_detail, get_batch_summ
 from app.services.production_hub_service import get_production_hub
 from app.services.production_planning_service import (
     complete_production_order,
+    delete_production_order,
     get_production_order_detail,
     get_production_planning_summary,
     list_production_orders_enriched,
@@ -51,6 +52,7 @@ from app.services.production_service import (
 )
 from app.services.work_order_service import (
     complete_work_order,
+    delete_work_order,
     get_work_order_detail,
     get_work_order_summary,
     list_work_orders_enriched,
@@ -67,6 +69,8 @@ router = APIRouter(prefix="/api/production", tags=["Production API"])
 def _dump(obj):
     if hasattr(obj, "model_dump"):
         return obj.model_dump(mode="json")
+    if hasattr(obj, "__table__"):
+        return {c.name: getattr(obj, c.name) for c in obj.__table__.columns}
     if isinstance(obj, list):
         return [_dump(x) for x in obj]
     return jsonable_encoder(obj)
@@ -113,6 +117,32 @@ def production_plan_detail(
     if not detail:
         raise HTTPException(404, "Production plan not found")
     return success_response("Production plan retrieved", _dump(detail))
+
+
+@router.delete("/planning/{plan_id}")
+def delete_production_plan(
+    plan_id: int,
+    user_tenant: tuple[User, int] = Depends(require_tenant("production")),
+    db: Session = Depends(get_db),
+):
+    user, tenant_id = user_tenant
+    if not user_can_action(user, "production", "delete"):
+        raise HTTPException(403, "You do not have permission to delete production plans")
+    try:
+        ok = delete_production_order(db, tenant_id, plan_id)
+        if not ok:
+            raise HTTPException(404, "Production plan not found")
+        return success_response("Production plan deleted successfully", {"id": plan_id})
+    except HTTPException:
+        raise
+    except SQLAlchemyError as exc:
+        db.rollback()
+        logger.exception("Database error deleting plan_id=%s for tenant_id=%s: %s", plan_id, tenant_id, exc)
+        raise HTTPException(status_code=500, detail="Database error deleting production plan") from exc
+    except Exception as exc:
+        db.rollback()
+        logger.exception("Failed to delete plan_id=%s for tenant_id=%s: %s", plan_id, tenant_id, exc)
+        raise HTTPException(status_code=500, detail="Failed to delete production plan") from exc
 
 
 @router.post("/planning")
@@ -326,6 +356,32 @@ def work_order_detail(
     if not detail:
         raise HTTPException(404, "Work order not found")
     return success_response("Work order retrieved", _dump(detail))
+
+
+@router.delete("/work-orders/{work_order_id}")
+def delete_work_order_endpoint(
+    work_order_id: int,
+    user_tenant: tuple[User, int] = Depends(require_tenant("workorders")),
+    db: Session = Depends(get_db),
+):
+    user, tenant_id = user_tenant
+    if not user_can_action(user, "production", "delete"):
+        raise HTTPException(403, "You do not have permission to delete work orders")
+    try:
+        ok = delete_work_order(db, tenant_id, work_order_id)
+        if not ok:
+            raise HTTPException(404, "Work order not found")
+        return success_response("Work order deleted successfully", {"id": work_order_id})
+    except HTTPException:
+        raise
+    except SQLAlchemyError as exc:
+        db.rollback()
+        logger.exception("Database error deleting work_order_id=%s for tenant_id=%s: %s", work_order_id, tenant_id, exc)
+        raise HTTPException(status_code=500, detail="Database error deleting work order") from exc
+    except Exception as exc:
+        db.rollback()
+        logger.exception("Failed to delete work_order_id=%s for tenant_id=%s: %s", work_order_id, tenant_id, exc)
+        raise HTTPException(status_code=500, detail="Failed to delete work order") from exc
 
 
 @router.post("/work-orders")

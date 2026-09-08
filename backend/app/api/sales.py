@@ -88,6 +88,7 @@ from app.services.sales_extended_service import (
 from app.services.invoice_v2_service import (
     cancel_invoice_v2,
     create_invoice_v2,
+    delete_invoice_v2,
     get_invoice_v2,
     get_invoice_v2_summary,
     list_invoices_v2,
@@ -812,15 +813,15 @@ def patch_invoice_status_endpoint(
 
 
 @router.delete("/invoices/{invoice_id}")
-def cancel_invoice_endpoint(
+def delete_invoice_endpoint(
     invoice_id: int,
     user: User = Depends(require_permission(MODULE)),
     db: Session = Depends(get_db),
 ):
-    inv = cancel_invoice_v2(db, user.tenant_id, invoice_id)
-    if not inv:
+    ok = delete_invoice_v2(db, user.tenant_id, invoice_id)
+    if not ok:
         raise HTTPException(404, "Invoice not found")
-    return {"ok": True, "id": inv.id, "invoice_status": inv.invoice_status}
+    return {"ok": True, "id": invoice_id}
 
 
 @router.post("/payments", response_model=PaymentRead)
