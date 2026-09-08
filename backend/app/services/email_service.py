@@ -92,7 +92,7 @@ def _send_via_smtplib(
         msg.add_attachment(content, maintype=maintype, subtype=subtype or "octet-stream", filename=filename)
 
     try:
-        with smtplib.SMTP(s.smtp_host, s.smtp_port, timeout=30) as server:
+        with smtplib.SMTP(s.smtp_host, s.smtp_port, timeout=10) as server:
             server.ehlo()
             server.starttls()
             server.ehlo()

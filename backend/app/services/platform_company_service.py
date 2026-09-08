@@ -362,34 +362,36 @@ class PlatformCompanyService:
                 email_error = smtp_config_error_message() or "Email server is not configured."
                 logger.warning("Welcome email skipped for company %s: %s", company_id, email_error)
             else:
-                try:
-                    send_company_welcome_email(
-                        to=admin_email,
-                        company_name=display_name,
-                        login_email=admin_email,
-                        temporary_password=temp_password,
-                        company_id=company_id,
-                        subscription_plan=plan,
-                        trial_expires_at=trial_expires.isoformat() if trial_expires else None,
-                        billing_cycle=billing_cycle,
-                    )
-                    email_sent = True
-                except Exception as exc:
-                    email_sent = False
-                    email_error = f"SMTP delivery failed: {exc}"
-                    logger.warning("Could not send welcome email for company %s: %s", company_id, exc)
+                email_sent = True
+                def _dispatch_email():
+                    try:
+                        send_company_welcome_email(
+                            to=admin_email,
+                            company_name=display_name,
+                            login_email=admin_email,
+                            temporary_password=temp_password,
+                            company_id=company_id,
+                            subscription_plan=plan,
+                            trial_expires_at=trial_expires.isoformat() if trial_expires else None,
+                            billing_cycle=billing_cycle,
+                        )
+                    except Exception as exc:
+                        logger.warning("Could not send welcome email for company %s: %s", company_id, exc)
+
+                import threading
+                threading.Thread(target=_dispatch_email, daemon=True).start()
 
             message = (
                 "Company created successfully. Login details were emailed to the company admin."
                 if email_sent
-                else f"Company created successfully, but welcome email delivery failed ({email_error}). Temporary password surfaced for admin handover."
+                else f"Company created successfully, but welcome email delivery was skipped ({email_error})."
             )
 
             return {
                 "company": serialize_company(self.db, tenant),
                 "company_id": company_id,
                 "admin_email": admin_email,
-                "temporary_password": temp_password if not email_sent else None,
+                "temporary_password": temp_password,
                 "subscription_plan": plan,
                 "billing_cycle": billing_cycle,
                 "trial_expires_at": trial_expires,
