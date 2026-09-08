@@ -43,7 +43,8 @@ export const getInvoiceSummary = (params = {}) =>
 export const getInvoiceDetail = (invoiceId) => api.get(`/sales/invoices/${invoiceId}`);
 export const createInvoice = (payload) => api.post("/sales/invoices", payload);
 export const updateInvoice = (invoiceId, payload) => api.put(`/sales/invoices/${invoiceId}`, payload);
-export const cancelInvoice = (invoiceId) => api.delete(`/sales/invoices/${invoiceId}`);
+export const deleteInvoice = (invoiceId) => api.delete(`/sales/invoices/${invoiceId}`);
+export const cancelInvoice = deleteInvoice;
 
 export const getInvoiceDocument = (invoiceId) => api.get(`/sales/invoices/${invoiceId}/document`);
 
@@ -86,6 +87,8 @@ export const createQuotation = (payload) => api.post("/sales/quotations", payloa
 export const updateQuotation = (quoteId, payload) =>
   api.put(`/sales/quotations/${quoteId}`, payload);
 export const deleteQuotation = (quoteId) => api.delete(`/sales/quotations/${quoteId}`);
+export const cancelQuotation = (quoteId) =>
+  api.patch(`/sales/quotations/${quoteId}/status`, null, { params: { status: "cancelled" } });
 export const updateQuotationStatus = (quoteId, status) =>
   api.patch(`/sales/quotations/${quoteId}/status`, null, { params: { status } });
 export const convertQuotationToSalesOrder = (quoteId, payload = {}) =>

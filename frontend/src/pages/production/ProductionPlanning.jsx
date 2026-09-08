@@ -22,11 +22,13 @@ import {
   Printer,
   Send,
   Target,
+  Trash2,
   Upload,
   X,
 } from "lucide-react";
 
 import Button, { IconButton } from "../../components/common/Button";
+import ConfirmationDialog from "../../components/common/ConfirmationDialog";
 import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
 import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
 import { SearchBar } from "../../components/common/SearchFilter";
@@ -50,6 +52,7 @@ import { isOperator } from "../../config/permissions";
 import {
   completeProductionOrder,
   createProductionOrder,
+  deleteProductionOrder,
   getProductionOrderDetail,
   getProductionOrderStartChecks,
   getProductionOrders,
@@ -154,7 +157,9 @@ function OrderActions({
   onStart,
   onPause,
   onWorkOrder,
+  onDelete,
   canEdit,
+  canDelete = true,
 }) {
   const [open, setOpen] = useState(false);
   const menuBtnRef = useRef(null);
@@ -198,6 +203,14 @@ function OrderActions({
           label: "Create Work Order",
           icon: <ClipboardList className="h-3.5 w-3.5 text-indigo-600" />,
           onClick: () => onWorkOrder(row),
+        }
+      : null,
+    canDelete
+      ? {
+          label: "Delete",
+          icon: <Trash2 className="h-3.5 w-3.5 text-rose-600" />,
+          onClick: () => onDelete?.(row),
+          isDanger: true,
         }
       : null,
   ].filter(Boolean);
@@ -250,7 +263,9 @@ function OrderActions({
                     <button
                       key={item.label}
                       type="button"
-                      className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] transition-colors"
+                      className={`flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs font-medium hover:bg-[var(--color-surface-muted)] transition-colors ${
+                        item.isDanger ? "text-rose-600 hover:text-rose-700" : "text-[var(--color-text)]"
+                      }`}
                       onClick={(e) => {
                         e?.stopPropagation?.();
                         setOpen(false);
@@ -396,6 +411,39 @@ export default function ProductionPlanning() {
   const [editModalOrder, setEditModalOrder] = useState(null);
   const [quickWoOrder, setQuickWoOrder] = useState(null);
   const [issueModalOrder, setIssueModalOrder] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
+    setDeleteLoading(true);
+    const label = deleteTarget.order_number || deleteTarget.id;
+    try {
+      const isServerId =
+        typeof deleteTarget.id === "number" ||
+        (typeof deleteTarget.id === "string" && /^\d+$/.test(deleteTarget.id));
+      if (isServerId) {
+        await deleteProductionOrder(deleteTarget.id);
+        notifyManufacturingSpine(MANUFACTURING_EVENTS.PLANNING_UPDATED, {
+          orderId: deleteTarget.id,
+        });
+      }
+      setOrders((prev) => prev.filter((o) => o.id !== deleteTarget.id));
+      addToast(`Production order ${label} deleted successfully.`, "success");
+      setDeleteTarget(null);
+      if (isServerId) {
+        load();
+      }
+    } catch (err) {
+      const detail = err?.response?.data?.detail;
+      addToast(
+        typeof detail === "string" ? detail : `Failed to delete Production Order ${label}.`,
+        "error"
+      );
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
 
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
@@ -1087,6 +1135,7 @@ export default function ProductionPlanning() {
         <OrderActions
           row={r}
           canEdit={!isOperator(user)}
+          canDelete={!isOperator(user)}
           onView={viewJobCard}
           onEdit={(order) => {
             setEditModalOrder(order);
@@ -1096,6 +1145,7 @@ export default function ProductionPlanning() {
           onStart={handleStartClick}
           onPause={handlePause}
           onWorkOrder={(order) => setIssueModalOrder(order)}
+          onDelete={(order) => setDeleteTarget(order)}
         />
       ),
     },
@@ -1586,6 +1636,20 @@ export default function ProductionPlanning() {
         onSaved={(newOrder) => {
           load({ isRefresh: true });
           setCreatedToastOrder(newOrder);
+        }}
+      />
+
+      <ConfirmationDialog
+        open={Boolean(deleteTarget)}
+        title="Delete Production Plan?"
+        message={`Are you sure you want to delete Production Order ${deleteTarget?.order_number || deleteTarget?.id || ""}?`}
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        confirmVariant="danger"
+        loading={deleteLoading}
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => {
+          if (!deleteLoading) setDeleteTarget(null);
         }}
       />
 

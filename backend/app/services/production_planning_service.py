@@ -510,3 +510,35 @@ def pause_production_order(
         db.commit()
         db.refresh(order)
     return _to_list_read(db, tenant_id, order)
+
+
+def delete_production_order(db: Session, tenant_id: int, plan_id: int) -> bool:
+    """Hard-delete a production plan and all child work orders and dependencies."""
+    from app.services.work_order_service import clean_work_order_dependencies
+
+    po = db.scalars(
+        select(ProductionOrder).where(
+            ProductionOrder.id == plan_id,
+            ProductionOrder.tenant_id == tenant_id,
+        )
+    ).first()
+    if not po:
+        return False
+
+    work_orders = list(
+        db.scalars(
+            select(WorkOrder).where(
+                WorkOrder.production_order_id == po.id,
+                WorkOrder.tenant_id == tenant_id,
+            )
+        ).all()
+    )
+
+    for wo in work_orders:
+        clean_work_order_dependencies(db, tenant_id, wo.id)
+        db.delete(wo)
+
+    db.delete(po)
+    db.commit()
+    return True
+

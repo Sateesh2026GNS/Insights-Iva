@@ -57,6 +57,9 @@ export const pauseProductionOrder = (orderId) =>
 export const createProductionOrder = (payload) =>
   apiPost("/api/production/planning", payload);
 
+export const deleteProductionOrder = (orderId) =>
+  apiDelete(`/api/production/planning/${orderId}`);
+
 export const updateProductionOrderStatus = (orderId, status) =>
   apiPatch(`/api/production/planning/${orderId}/status`, null, { params: { status } });
 
@@ -101,6 +104,9 @@ export const stopWorkOrder = (workOrderId) =>
 
 export const completeWorkOrder = (workOrderId) =>
   apiPost(`/api/production/work-orders/${workOrderId}/complete`);
+
+export const deleteWorkOrder = (workOrderId) =>
+  apiDelete(`/api/production/work-orders/${workOrderId}`);
 
 export const issueWorkOrderMaterials = (workOrderId, warehouseId) =>
   apiPost(`/api/production/work-orders/${workOrderId}/issue-materials`, null, {

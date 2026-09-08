@@ -382,3 +382,77 @@ def complete_work_order(db: Session, tenant_id: int, work_order_id: int) -> Work
     from app.services.manufacturing_workflow_service import complete_work_order_integrated
 
     return complete_work_order_integrated(db, tenant_id, work_order_id)
+
+
+def clean_work_order_dependencies(db: Session, tenant_id: int, work_order_id: int) -> None:
+    """Detach or delete foreign references before removing a work order."""
+    from app.models.manufacturing_workflow import (
+        ManufacturingWorkflowTransition,
+        WorkflowStageJobCard,
+    )
+
+    # 1. Unlink workflow stage job cards
+    stage_cards = list(
+        db.scalars(
+            select(WorkflowStageJobCard).where(
+                WorkflowStageJobCard.work_order_id == work_order_id,
+                WorkflowStageJobCard.tenant_id == tenant_id,
+            )
+        ).all()
+    )
+    for card in stage_cards:
+        card.work_order_id = None
+
+    # 2. Unlink workflow transitions
+    transitions = list(
+        db.scalars(
+            select(ManufacturingWorkflowTransition).where(
+                ManufacturingWorkflowTransition.work_order_id == work_order_id,
+                ManufacturingWorkflowTransition.tenant_id == tenant_id,
+            )
+        ).all()
+    )
+    for tr in transitions:
+        tr.work_order_id = None
+
+    # 3. Delete daily production reports tied to this work order
+    reports = list(
+        db.scalars(
+            select(DailyProductionReport).where(
+                DailyProductionReport.work_order_id == work_order_id,
+                DailyProductionReport.tenant_id == tenant_id,
+            )
+        ).all()
+    )
+    for rep in reports:
+        db.delete(rep)
+
+    # 4. Delete batches tied to this work order
+    batches = list(
+        db.scalars(
+            select(Batch).where(
+                Batch.work_order_id == work_order_id,
+                Batch.tenant_id == tenant_id,
+            )
+        ).all()
+    )
+    for batch in batches:
+        db.delete(batch)
+
+
+def delete_work_order(db: Session, tenant_id: int, work_order_id: int) -> bool:
+    """Hard-delete a work order and clean up associated batches, reports, and links."""
+    wo = db.scalars(
+        select(WorkOrder).where(
+            WorkOrder.id == work_order_id,
+            WorkOrder.tenant_id == tenant_id,
+        )
+    ).first()
+    if not wo:
+        return False
+
+    clean_work_order_dependencies(db, tenant_id, work_order_id)
+    db.delete(wo)
+    db.commit()
+    return True
+

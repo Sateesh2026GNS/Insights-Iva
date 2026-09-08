@@ -24,10 +24,11 @@ import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
 import { ListPageShell } from "../../components/common/ListPageShell";
 import { SearchBar } from "../../components/common/SearchFilter";
 import Button from "../../components/common/Button";
+import ConfirmationDialog from "../../components/common/ConfirmationDialog";
 import RowActionMenu from "../../components/common/RowActionMenu";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
 import { useToast } from "../../context/ToastContext";
-import { cancelInvoice, getInvoicesV2 } from "../../api/salesApi";
+import { deleteInvoice, getInvoicesV2 } from "../../api/salesApi";
 import { apiErrorMessage } from "../../utils/apiError";
 import { formatInr, statusColor } from "../../data/salesMasterData";
 import useManufacturingRefresh from "../../hooks/useManufacturingRefresh";
@@ -237,6 +238,25 @@ export default function ExportInvoices() {
     load();
   }, [load]);
   useManufacturingRefresh(load);
+
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    const label = deleteTarget.invoice_number || deleteTarget.id;
+    setDeleteLoading(true);
+    try {
+      await deleteInvoice(deleteTarget.id);
+      addToast(`Invoice ${label} deleted successfully.`, "success");
+      setDeleteTarget(null);
+      await load();
+    } catch (err) {
+      addToast(apiErrorMessage(err, `Failed to delete invoice ${label}`), "error");
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
 
   useEffect(() => {
     setPage(1);
@@ -543,24 +563,13 @@ export default function ExportInvoices() {
                                   onClick: () => navigate(`/sales/payments/create?invoice_id=${r.id}`),
                                 }
                               : null,
-                            (r.invoice_status || r.status) !== "cancelled" ? { divider: true } : null,
-                            (r.invoice_status || r.status) !== "cancelled"
-                              ? {
-                                  label: "Cancel Invoice",
-                                  icon: <Trash2 className="h-4 w-4" />,
-                                  danger: true,
-                                  onClick: async () => {
-                                    if (!window.confirm(`Cancel export invoice ${r.invoice_number}?`)) return;
-                                    try {
-                                      await cancelInvoice(r.id);
-                                      addToast("Export invoice cancelled", "success");
-                                      load();
-                                    } catch (err) {
-                                      addToast(apiErrorMessage(err, "Failed to cancel"), "error");
-                                    }
-                                  },
-                                }
-                              : null,
+                            { divider: true },
+                            {
+                              label: "Delete Invoice",
+                              icon: <Trash2 className="h-4 w-4" />,
+                              danger: true,
+                              onClick: () => setDeleteTarget(r),
+                            },
                           ].filter(Boolean)}
                         />
                       </div>
@@ -821,6 +830,19 @@ export default function ExportInvoices() {
           </aside>
         </div>
       )}
+
+      <ConfirmationDialog
+        open={Boolean(deleteTarget)}
+        title="Delete Invoice"
+        message={`Are you sure you want to delete Invoice ${deleteTarget?.invoice_number || deleteTarget?.id || ""}?`}
+        confirmLabel="Delete"
+        danger
+        loading={deleteLoading}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => {
+          if (!deleteLoading) setDeleteTarget(null);
+        }}
+      />
     </ListPageShell>
   );
 }

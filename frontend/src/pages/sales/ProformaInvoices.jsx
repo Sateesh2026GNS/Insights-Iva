@@ -203,13 +203,13 @@ export default function ProformaInvoices() {
 
   const handleDelete = async (row) => {
     if (!row?.id) return;
-    if (!window.confirm(`Cancel proforma ${row.invoice_number}?`)) return;
+    if (!window.confirm(`Delete proforma ${row.invoice_number}?`)) return;
     try {
       await cancelInvoice(row.id);
-      addToast("Proforma cancelled", "success");
+      addToast("Proforma deleted successfully", "success");
       await load();
     } catch (err) {
-      addToast(apiErrorMessage(err, "Failed to cancel proforma"), "error");
+      addToast(apiErrorMessage(err, "Failed to delete proforma"), "error");
     }
   };
 

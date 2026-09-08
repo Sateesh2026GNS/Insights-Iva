@@ -3,7 +3,7 @@ import json
 from datetime import date, timedelta
 
 from fastapi import HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, joinedload, selectinload
 
@@ -915,6 +915,82 @@ def cancel_invoice_v2(db: Session, tenant_id: int, invoice_id: int) -> Invoice |
             detail="Failed to cancel invoice.",
         ) from exc
     return inv
+
+
+def delete_invoice_v2(db: Session, tenant_id: int, invoice_id: int) -> bool:
+    inv = db.get(Invoice, invoice_id)
+    if not inv or inv.tenant_id != tenant_id:
+        return False
+
+    # 1. Reverse accounting journal entries if active
+    if (inv.invoice_status or "").lower() != "cancelled" and (inv.status or "").lower() != "cancelled":
+        try:
+            reverse_sales_invoice_journal(
+                db,
+                tenant_id=inv.tenant_id,
+                invoice_number=inv.invoice_number,
+                issue_date=inv.issue_date or date.today(),
+                subtotal=float(inv.subtotal or 0),
+                discount=float(inv.discount or 0),
+                cgst=float(inv.cgst_amount or 0),
+                sgst=float(inv.sgst_amount or 0),
+                igst=float(inv.igst_amount or 0),
+                round_off=float(inv.round_off or 0),
+                grand_total=float(inv.grand_total or 0),
+            )
+        except Exception as exc:
+            logger.warning("Journal reversal skipped or failed when deleting invoice %s: %s", invoice_id, exc)
+
+    # 2. Unlink workflow items referencing this invoice
+    try:
+        from app.models.manufacturing_workflow import (
+            ManufacturingWorkflowTransition,
+            WorkflowStageJobCard,
+        )
+
+        db.execute(
+            update(WorkflowStageJobCard)
+            .where(WorkflowStageJobCard.invoice_id == invoice_id)
+            .values(invoice_id=None)
+        )
+        db.execute(
+            update(ManufacturingWorkflowTransition)
+            .where(ManufacturingWorkflowTransition.invoice_id == invoice_id)
+            .values(invoice_id=None)
+        )
+    except Exception as exc:
+        logger.warning("Failed unlinking workflow items for invoice %s: %s", invoice_id, exc)
+
+    # 3. Reset sales order invoiced status if no other invoices exist
+    so_id = inv.sales_order_id
+    if so_id:
+        other_invoices = list(
+            db.scalars(
+                select(Invoice.id).where(
+                    Invoice.sales_order_id == so_id,
+                    Invoice.id != invoice_id,
+                )
+            ).all()
+        )
+        if not other_invoices:
+            so = db.get(SalesOrder, so_id)
+            if so:
+                so.invoiced = False
+
+    try:
+        db.delete(inv)
+        db.commit()
+        return True
+    except Exception as exc:
+        try:
+            db.rollback()
+        except Exception:
+            pass
+        logger.exception("Failed to delete invoice %s: %s", invoice_id, exc)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to delete invoice: {exc}",
+        ) from exc
 
 
 def get_invoice_v2(db: Session, tenant_id: int, invoice_id: int) -> InvoiceV2Read | None:

@@ -4,7 +4,7 @@ import { MoreVertical } from "lucide-react";
 import { AuthContext } from "../../context/AuthContext.jsx";
 import { rowActionMenuItemClass } from "./rowActionTone.js";
 
-const DEFAULT_MENU_WIDTH = 176;
+const DEFAULT_MENU_WIDTH = 192;
 const ITEM_HEIGHT = 36;
 
 export default function RowActionMenu({
@@ -44,12 +44,8 @@ export default function RowActionMenu({
   const openMenuAtButton = () => {
     const rect = btnRef.current?.getBoundingClientRect();
     if (rect) {
-      const menuHeight = menuEntries.length * ITEM_HEIGHT + 8;
-      let top = rect.bottom + 4;
+      const top = rect.bottom + 4;
       let left = Math.max(8, rect.right - menuWidth);
-      if (top + menuHeight > window.innerHeight - 8) {
-        top = Math.max(8, rect.top - menuHeight - 4);
-      }
       if (left + menuWidth > window.innerWidth - 8) {
         left = Math.max(8, window.innerWidth - menuWidth - 8);
       }
@@ -137,8 +133,13 @@ export default function RowActionMenu({
                 onClick={() => setIsOpen(false)}
               />
               <div
-                className="fixed z-[130] overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] py-1 shadow-lg"
-                style={{ top: menuPos.top, left: menuPos.left, width: menuWidth }}
+                className="fixed z-[130] overflow-y-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] py-1 shadow-lg"
+                style={{
+                  top: menuPos.top,
+                  left: menuPos.left,
+                  width: menuWidth,
+                  maxHeight: `calc(100vh - ${menuPos.top + 12}px)`,
+                }}
                 role="menu"
                 aria-label={ariaLabel}
               >

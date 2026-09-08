@@ -22,10 +22,11 @@ import Loader from "../../components/common/Loader";
 import EmptyState from "../../components/common/EmptyState";
 import { SearchBar } from "../../components/common/SearchFilter";
 import Button from "../../components/common/Button";
+import ConfirmationDialog from "../../components/common/ConfirmationDialog";
 import RowActionMenu from "../../components/common/RowActionMenu";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
 import { useToast } from "../../context/ToastContext";
-import { cancelInvoice, getInvoicesV2 } from "../../api/salesApi";
+import { deleteInvoice, getInvoicesV2 } from "../../api/salesApi";
 import { apiErrorMessage } from "../../utils/apiError";
 import { formatInr, statusColor } from "../../data/salesMasterData";
 import useManufacturingRefresh from "../../hooks/useManufacturingRefresh";
@@ -228,19 +229,22 @@ export default function InvoiceDashboard() {
   }, [load]);
   useManufacturingRefresh(load);
 
-  const handleCancelInvoice = async (row) => {
-    if (!row?.id) return;
-    if (!window.confirm(`Cancel invoice ${row.invoice_number}? This cannot be undone.`)) return;
-    setDeletingId(row.id);
-    setMenuId(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    const label = deleteTarget.invoice_number || deleteTarget.id;
+    setDeleteLoading(true);
     try {
-      await cancelInvoice(row.id);
-      addToast("Invoice cancelled", "success");
+      await deleteInvoice(deleteTarget.id);
+      addToast(`Invoice ${label} deleted successfully.`, "success");
+      setDeleteTarget(null);
       await load();
     } catch (err) {
-      addToast(apiErrorMessage(err, "Failed to cancel invoice"), "error");
+      addToast(apiErrorMessage(err, `Failed to delete invoice ${label}`), "error");
     } finally {
-      setDeletingId(null);
+      setDeleteLoading(false);
     }
   };
 
@@ -512,24 +516,13 @@ export default function InvoiceDashboard() {
                                   onClick: () => navigate(`/sales/payments/create?invoice_id=${r.id}`),
                                 }
                               : null,
-                            (r.invoice_status || "active") !== "cancelled" ? { divider: true } : null,
-                            (r.invoice_status || "active") !== "cancelled"
-                              ? {
-                                  label: "Cancel Invoice",
-                                  icon: <Trash2 className="h-4 w-4" />,
-                                  danger: true,
-                                  onClick: async () => {
-                                    if (!window.confirm(`Cancel invoice ${r.invoice_number}?`)) return;
-                                    try {
-                                      await cancelInvoice(r.id);
-                                      addToast("Invoice cancelled", "success");
-                                      load();
-                                    } catch (err) {
-                                      addToast(apiErrorMessage(err, "Failed to cancel"), "error");
-                                    }
-                                  },
-                                }
-                              : null,
+                            { divider: true },
+                            {
+                              label: "Delete Invoice",
+                              icon: <Trash2 className="h-4 w-4" />,
+                              danger: true,
+                              onClick: () => setDeleteTarget(r),
+                            },
                           ].filter(Boolean)}
                         />
                       </div>
@@ -812,6 +805,19 @@ export default function InvoiceDashboard() {
           </aside>
         </div>
       )}
+
+      <ConfirmationDialog
+        open={Boolean(deleteTarget)}
+        title="Delete Invoice"
+        message={`Are you sure you want to delete Invoice ${deleteTarget?.invoice_number || deleteTarget?.id || ""}?`}
+        confirmLabel="Delete"
+        danger
+        loading={deleteLoading}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => {
+          if (!deleteLoading) setDeleteTarget(null);
+        }}
+      />
     </div>
   );
 }

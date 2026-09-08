@@ -282,6 +282,7 @@ export default function QuotationForm() {
     sales_person: "",
     reverse_charge: false,
     payment_terms: "Net 30 Days",
+    status: "draft",
   });
   const [products, setProducts] = useState([]);
   const [itemPickerIdx, setItemPickerIdx] = useState(null);
@@ -378,6 +379,7 @@ export default function QuotationForm() {
             notes: meta.terms || meta.delivery_terms || quote.notes || f.notes,
             terms_of_delivery: meta.delivery_terms || trans.delivery_terms || f.terms_of_delivery,
             sales_person: quote.sales_person || "",
+            status: quote.status || "draft",
             delivery_note: trans.delivery_note || meta.delivery_note || "",
             delivery_note_date: trans.delivery_note_date ? String(trans.delivery_note_date).slice(0, 10) : "",
             reference_no: trans.reference_no || meta.reference_no || "",
@@ -563,7 +565,7 @@ export default function QuotationForm() {
         quote_number: isEdit ? quoteNumber : undefined,
         quote_date: form.issue_date,
         valid_until: form.valid_until || form.due_date || null,
-        status: "draft",
+        status: form.status || "draft",
         total_amount: finalAmount,
         discount: invoiceDiscount,
         notes: notesParts || null,
@@ -771,6 +773,20 @@ export default function QuotationForm() {
                   value={form.valid_until}
                   onChange={(e) => setForm((f) => ({ ...f, valid_until: e.target.value }))}
                 />
+              </label>
+              <label className="block sm:col-span-2">
+                <FieldLabel>Status</FieldLabel>
+                <SoftSelect
+                  value={form.status || "draft"}
+                  onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}
+                >
+                  <option value="draft">Draft</option>
+                  <option value="sent">Sent</option>
+                  <option value="approved">Approved</option>
+                  <option value="accepted">Accepted</option>
+                  <option value="rejected">Rejected</option>
+                  <option value="cancelled">Cancelled</option>
+                </SoftSelect>
               </label>
             </div>
           </section>
