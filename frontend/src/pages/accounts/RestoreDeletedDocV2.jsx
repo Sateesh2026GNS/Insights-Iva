@@ -20,6 +20,7 @@ import {
 } from "../../components/accounts/accountsDesignSystem";
 import { useToast } from "../../context/ToastContext";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
+import EmptyState from "../../components/common/EmptyState";
 import { DateRangePicker } from "../../design-system/dateControls";
 import { buildAccountsDateRangePresets, fyRange } from "../../utils/dateUtils";
 
@@ -336,9 +337,12 @@ export default function RestoreDeletedDocV2() {
               </tbody>
             </table>
             {filtered.length === 0 ? (
-              <div className="px-4 py-20 text-center text-[13px] text-[#64748B]">
-                No data available
-              </div>
+              <EmptyState
+                icon="document"
+                title="No records found."
+                description="There is nothing to show here yet."
+                className="border-none bg-transparent py-12"
+              />
             ) : null}
           </div>
         </AccountsCard>

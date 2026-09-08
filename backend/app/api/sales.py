@@ -2,6 +2,7 @@ from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import Response
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db
@@ -620,7 +621,13 @@ def get_invoice_detail_endpoint(
     inv = get_invoice_v2(db, tenant_id, invoice_id)
     if not inv:
         raise HTTPException(404, "Invoice not found")
-    customer = db.get(Customer, inv.customer_id) if inv.customer_id else None
+    customer = None
+    if inv.customer_id:
+        customer = db.scalars(
+            select(Customer).where(
+                Customer.id == inv.customer_id, Customer.tenant_id == tenant_id
+            )
+        ).first()
     cust_payload = None
     if customer:
         cust_payload = {

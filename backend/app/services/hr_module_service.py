@@ -8,6 +8,7 @@ from typing import Any
 
 from fastapi import HTTPException
 from sqlalchemy import func, select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.models.hr import (
@@ -698,6 +699,24 @@ def generate_payroll_run(db: Session, tenant_id: int, payload: dict, user: User)
     payload = coerce_payload_dates(payload)
     period_start = payload["period_start"]
     period_end = payload["period_end"]
+
+    existing_run = db.scalars(
+        select(PayrollRun).where(
+            PayrollRun.tenant_id == tenant_id,
+            PayrollRun.period_start == period_start,
+            PayrollRun.period_end == period_end,
+            PayrollRun.status.in_(("processed", "draft", "approved")),
+        )
+    ).first()
+    if existing_run:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"Payroll run already exists for period "
+                f"{period_start} to {period_end}."
+            ),
+        )
+
     employees = list(
         db.scalars(
             select(Employee).where(
@@ -762,8 +781,12 @@ def generate_payroll_run(db: Session, tenant_id: int, payload: dict, user: User)
             status="processed",
         )
         db.add(pr)
-    db.commit()
-    db.refresh(run)
+    try:
+        db.commit()
+        db.refresh(run)
+    except SQLAlchemyError as exc:
+        db.rollback()
+        raise HTTPException(500, "Failed to generate payroll run") from exc
     audit_hr(db, user=user, action="payroll_run", entity_type="payroll_run", entity_id=run.id)
     return model_to_dict(run)
 

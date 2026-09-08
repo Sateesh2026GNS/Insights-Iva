@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
 import { Plus, FileText, Upload, Calendar, User, X, Save, Download, CheckCircle, Trash2, ShieldCheck, FolderCheck } from "lucide-react";
 import KpiCard from "../../components/common/KpiCard";
 import PageHeader from "../../components/common/PageHeader";
@@ -269,17 +270,19 @@ Description : ${doc.description || 'N/A'}
         </ListPageCardBody>
       </ListPageCard>
 
-      {showUploadModal && (
-        <div
-          className="ui-modal-backdrop"
-          onMouseDown={(e) => {
-            if (!saving && e.target === e.currentTarget) setShowUploadModal(false);
-          }}
-        >
+      {showUploadModal &&
+        typeof document !== "undefined" &&
+        createPortal(
           <div
-            className="ui-modal max-w-md w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto"
-            onMouseDown={(e) => e.stopPropagation()}
+            className="ui-modal-backdrop"
+            onMouseDown={(e) => {
+              if (!saving && e.target === e.currentTarget) setShowUploadModal(false);
+            }}
           >
+            <div
+              className="ui-modal max-w-md w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto"
+              onMouseDown={(e) => e.stopPropagation()}
+            >
             <div className="flex items-start justify-between">
               <div>
                 <h3 className="text-lg font-bold text-[var(--color-text)]">Upload HR Document</h3>
@@ -396,7 +399,8 @@ Description : ${doc.description || 'N/A'}
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
     </ListPageShell>

@@ -19,6 +19,7 @@ import {
 } from "../../components/accounts/accountsDesignSystem";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
 import Loader from "../../components/common/Loader";
+import EmptyState from "../../components/common/EmptyState";
 import {
   deleteManualJournalOnApi,
   fetchManualJournals,
@@ -212,13 +213,13 @@ export default function ManualJournalEntriesV2() {
               <tbody>
                 {pageRows.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className={`${accountsTdClass} py-16 text-center`}>
-                      <div className="text-[14px] text-[#64748B]">
-                        No Journal Entries available, Create new entry
-                      </div>
-                      <AccountsAddButton onClick={goNew} className="mt-4" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
-                        New Journal Entry
-                      </AccountsAddButton>
+                    <td colSpan={7} className="border-none p-0">
+                      <EmptyState
+                        icon="document"
+                        title="No records found."
+                        description="There is nothing to show here yet."
+                        className="border-none bg-transparent py-12"
+                      />
                     </td>
                   </tr>
                 ) : (

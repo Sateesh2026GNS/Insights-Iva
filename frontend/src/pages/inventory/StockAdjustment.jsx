@@ -890,9 +890,10 @@ export default function StockAdjustment() {
           wrapClassName="inventory-table-scroll--adjustment rounded-lg border border-[var(--color-border-soft)]"
           emptyState={
             <EmptyState
-              icon="clipboard"
-              title="No adjustments yet"
-              description="Create an adjustment to correct stock quantities."
+              icon="document"
+              title="No records found."
+              description="There is nothing to show here yet."
+              className="border-none bg-transparent py-12"
             />
           }
         />

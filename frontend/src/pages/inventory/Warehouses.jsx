@@ -17,6 +17,7 @@ import DataTable from "../../components/common/DataTable";
 import EmptyState from "../../components/common/EmptyState";
 import KpiCard from "../../components/common/KpiCard";
 import Loader from "../../components/common/Loader";
+import { ListPageCard, ListPageCardBody } from "../../components/common/ListPageShell";
 import { SearchBar } from "../../components/common/SearchFilter";
 import PageHeader from "../../components/common/PageHeader";
 import InventoryHeaderControls from "../../components/inventory/InventoryHeaderControls";
@@ -454,82 +455,81 @@ export default function Warehouses() {
         </ClickableKpiCard>
       </div>
 
-      <div className="ui-card p-4 sm:p-5">
-        <div className="mb-4 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-          <SearchBar value={search} onChange={setSearch} placeholder="Search" className="w-full" />
-          <div className="flex flex-wrap items-center gap-2">
-            <Button type="button" variant="secondary" onClick={() => setShowFilters((v) => !v)}>
-              <Filter className="h-4 w-4" /> Filters
-            </Button>
-            {showFilters ? (
-              <>
-                <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="ui-select !w-auto min-w-[8.5rem]">
-                  <option value="">Status</option>
-                  {WAREHOUSE_STATUSES.map((s) => (
-                    <option key={s} value={s}>{s}</option>
-                  ))}
-                </select>
-                <select value={branchFilter} onChange={(e) => setBranchFilter(e.target.value)} className="ui-select !w-auto min-w-[8.5rem]">
-                  <option value="">Location</option>
-                  {BRANCHES.map((b) => (
-                    <option key={b} value={b}>{b}</option>
-                  ))}
-                </select>
-                <select className="ui-select !w-auto min-w-[8.5rem]" defaultValue="">
-                  <option value="">Type</option>
-                  {WAREHOUSE_TYPES.map((t) => (
-                    <option key={t} value={t}>{t}</option>
-                  ))}
-                </select>
-                <select className="ui-select !w-auto min-w-[8.5rem]" defaultValue="">
-                  <option value="">Plant</option>
-                  {PLANTS.map((p) => (
-                    <option key={p} value={p}>{p}</option>
-                  ))}
-                </select>
-              </>
-            ) : null}
-            <Button type="button" variant="ghost" onClick={clearFilters}>
-              <RefreshCw className="h-4 w-4" /> Clear
-            </Button>
-            <Button variant="add" type="button" onClick={() => setFormWarehouse({})} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
-              Add Warehouse
-            </Button>
-          </div>
-        </div>
-
-        <DataTable
-          columns={columns}
-          data={filtered}
-          showSearch={false}
-          pageSize={10}
-          wrapClassName="inventory-table-scroll--warehouses rounded-lg border border-[var(--color-border-soft)]"
-          emptyState={
-            <EmptyState
-              icon="factory"
-              title="No warehouses yet"
-              description="Add a warehouse to organize stock by location."
-            />
-          }
-        />
-        {filtered.length > 0 ? (
-          <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-[12px] text-[var(--color-text-muted)]">
-              Showing 1 to {Math.min(10, filtered.length)} of {filtered.length} warehouses
-            </p>
-            <div className="flex items-center gap-2">
-              <span className="rounded-md border border-[var(--color-border-soft)] px-2.5 py-1 text-[12px] text-[var(--color-text-secondary)]">
-                10 / page
-              </span>
-              <div className="flex items-center gap-1">
-                <span className="flex h-7 w-7 items-center justify-center rounded-md bg-[var(--color-action-teal)] text-[12px] font-semibold text-white">
-                  1
-                </span>
-              </div>
+      <ListPageCard>
+        <ListPageCardBody>
+          <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <SearchBar value={search} onChange={setSearch} placeholder="Search warehouses..." className="w-full max-w-md" />
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setShowFilters((v) => !v)}
+                className={showFilters ? "!border-[var(--color-primary)] !text-[var(--color-primary)] font-semibold" : ""}
+              >
+                <Filter className="h-4 w-4" /> Filters
+                {(statusFilter || branchFilter) ? (
+                  <span className="ml-1 rounded-full bg-[var(--color-primary)] px-1.5 py-0.2 text-[10px] text-white">
+                    {[statusFilter, branchFilter].filter(Boolean).length}
+                  </span>
+                ) : null}
+              </Button>
+              <Button variant="add" type="button" onClick={() => setFormWarehouse({})} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
+                Add Warehouse
+              </Button>
             </div>
           </div>
-        ) : null}
-      </div>
+
+          {showFilters ? (
+            <div className="mb-4 flex flex-wrap items-center gap-3 border-t border-[var(--color-border-soft)] pt-3">
+              <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="ui-select !w-auto min-w-[8.5rem]">
+                <option value="">Status</option>
+                {WAREHOUSE_STATUSES.map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+              <select value={branchFilter} onChange={(e) => setBranchFilter(e.target.value)} className="ui-select !w-auto min-w-[8.5rem]">
+                <option value="">Location</option>
+                {BRANCHES.map((b) => (
+                  <option key={b} value={b}>{b}</option>
+                ))}
+              </select>
+              <select className="ui-select !w-auto min-w-[8.5rem]" defaultValue="">
+                <option value="">Type</option>
+                {WAREHOUSE_TYPES.map((t) => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
+              <select className="ui-select !w-auto min-w-[8.5rem]" defaultValue="">
+                <option value="">Plant</option>
+                {PLANTS.map((p) => (
+                  <option key={p} value={p}>{p}</option>
+                ))}
+              </select>
+              {(statusFilter || branchFilter || search) ? (
+                <Button type="button" variant="ghost" onClick={clearFilters} className="text-xs text-[var(--color-text-muted)] hover:text-red-600">
+                  Clear filters
+                </Button>
+              ) : null}
+            </div>
+          ) : null}
+
+          <DataTable
+            columns={columns}
+            data={filtered}
+            showSearch={false}
+            pageSize={10}
+            wrapClassName="inventory-table-scroll--warehouses rounded-lg border border-[var(--color-border-soft)]"
+            emptyState={
+              <EmptyState
+                icon="document"
+                title="No records found."
+                description="There is nothing to show here yet."
+                className="border-none bg-transparent py-12"
+              />
+            }
+          />
+        </ListPageCardBody>
+      </ListPageCard>
 
       {selected ? (
         <WarehouseDetailModal

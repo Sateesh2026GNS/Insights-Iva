@@ -1,12 +1,15 @@
 /**
  * Post-login dashboard path by role.
- * JWT is issued only after successful login; then redirect to the primary module home.
+ * Admin uses the ERP dashboard at `/`; other roles land on their module home.
  */
 export function getDashboardPathForRole(role) {
   const name = String(role || "").trim().toLowerCase();
 
   if (name.includes("super admin") || name === "gns super admin") {
     return "/gns-admin";
+  }
+  if (name === "admin" || name === "administrator") {
+    return "/";
   }
   if (name.includes("hr")) {
     return "/hr";
@@ -33,6 +36,5 @@ export function getDashboardPathForRole(role) {
     return "/production";
   }
 
-  // Admin and unknown roles — production hub is the default ERP landing.
-  return "/production";
+  return "/";
 }

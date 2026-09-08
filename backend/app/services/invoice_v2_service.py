@@ -35,6 +35,20 @@ def _money(n: float) -> float:
     return round(float(n or 0), 2)
 
 
+def _validate_invoice_references(
+    db: Session,
+    tenant_id: int,
+    customer_id: int | None,
+    sales_order_id: int | None,
+) -> None:
+    from app.utils.tenant_validation import assert_customer_owned, assert_sales_order_owned
+
+    if customer_id:
+        assert_customer_owned(db, tenant_id, customer_id)
+    if sales_order_id:
+        assert_sales_order_owned(db, tenant_id, sales_order_id)
+
+
 def payment_bucket(inv: Invoice) -> str:
     """Map invoice to KPI tab: unpaid | paid | partial."""
     stored = (getattr(inv, "payment_status", None) or "").lower()
@@ -430,6 +444,10 @@ def create_invoice_v2(db: Session, payload: InvoiceV2Create) -> Invoice:
     if not payload.items or len(payload.items) == 0:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invoice must contain at least one line item.")
 
+    _validate_invoice_references(
+        db, payload.tenant_id, payload.customer_id, payload.sales_order_id
+    )
+
     doc = (payload.document_type or "bill_of_supply").lower()
     if doc in ("tax", "sale", "sale_invoice"):
         doc = "tax_invoice"
@@ -659,6 +677,10 @@ def update_invoice_v2(db: Session, tenant_id: int, invoice_id: int, payload: Inv
     if (getattr(inv, "invoice_status", None) or "active") == "cancelled":
         raise ValueError("Cannot update a cancelled invoice")
 
+    _validate_invoice_references(
+        db, tenant_id, payload.customer_id, payload.sales_order_id
+    )
+
     doc = (payload.document_type or inv.document_type or "bill_of_supply").lower()
     if doc in ("tax", "sale", "sale_invoice"):
         doc = "tax_invoice"
@@ -852,23 +874,37 @@ def cancel_invoice_v2(db: Session, tenant_id: int, invoice_id: int) -> Invoice |
     inv.invoice_status = "cancelled"
     inv.status = "cancelled"
 
-    reverse_sales_invoice_journal(
-        db,
-        tenant_id=inv.tenant_id,
-        invoice_number=inv.invoice_number,
-        issue_date=inv.issue_date or date.today(),
-        subtotal=float(inv.subtotal or 0),
-        discount=float(inv.discount or 0),
-        cgst=float(inv.cgst_amount or 0),
-        sgst=float(inv.sgst_amount or 0),
-        igst=float(inv.igst_amount or 0),
-        round_off=float(inv.round_off or 0),
-        grand_total=float(inv.grand_total or 0),
-    )
-
     try:
+        reverse_sales_invoice_journal(
+            db,
+            tenant_id=inv.tenant_id,
+            invoice_number=inv.invoice_number,
+            issue_date=inv.issue_date or date.today(),
+            subtotal=float(inv.subtotal or 0),
+            discount=float(inv.discount or 0),
+            cgst=float(inv.cgst_amount or 0),
+            sgst=float(inv.sgst_amount or 0),
+            igst=float(inv.igst_amount or 0),
+            round_off=float(inv.round_off or 0),
+            grand_total=float(inv.grand_total or 0),
+        )
         db.commit()
         db.refresh(inv)
+    except HTTPException:
+        try:
+            db.rollback()
+        except Exception:
+            pass
+        raise
+    except ValueError as exc:
+        try:
+            db.rollback()
+        except Exception:
+            pass
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot cancel invoice: journal reversal failed ({exc}).",
+        ) from exc
     except Exception as exc:
         try:
             db.rollback()

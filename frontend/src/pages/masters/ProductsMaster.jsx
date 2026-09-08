@@ -24,10 +24,11 @@ import { computeSummary, enrichApiProduct, getCategoryChartData } from "../../da
 import { runListExport } from "../../utils/listExport";
 import { apiErrorMessage } from "../../utils/apiError";
 
-import Button from "../../components/common/Button";
+import EmptyState from "../../components/common/EmptyState";
 import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
 import RowActionMenu from "../../components/common/RowActionMenu";
 import { rowActionClass } from "../../design-system/classes";
+import Button from "../../components/common/Button";
 
 const PAGE_SIZES = [20, 50, 100];
 
@@ -333,7 +334,12 @@ export default function ProductsMaster() {
                 </tbody>
               </table>
             {rows.length === 0 ? (
-              <div className="ui-empty">No data available</div>
+              <EmptyState
+                icon="document"
+                title="No records found."
+                description="There is nothing to show here yet."
+                className="border-none bg-transparent py-12"
+              />
             ) : null}
           </div>
 

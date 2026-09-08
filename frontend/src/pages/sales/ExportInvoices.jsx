@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 
 import Loader from "../../components/common/Loader";
+import EmptyState from "../../components/common/EmptyState";
 import PageHeader from "../../components/common/PageHeader";
 import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
 import { ListPageShell } from "../../components/common/ListPageShell";
@@ -471,11 +472,13 @@ export default function ExportInvoices() {
             <tbody>
               {rows.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-20 text-center">
-                    <Receipt className="mx-auto h-14 w-14 text-[var(--color-text-faint)]" strokeWidth={1.15} />
-                    <p className="mt-3 text-[14px] text-[var(--color-text-muted)]">
-                      No export invoices yet.
-                    </p>
+                  <td colSpan={8} className="border-none p-0">
+                    <EmptyState
+                      icon="document"
+                      title="No records found."
+                      description="There is nothing to show here yet."
+                      className="border-none bg-transparent py-12"
+                    />
                   </td>
                 </tr>
               ) : (
@@ -809,8 +812,8 @@ export default function ExportInvoices() {
                   setFilters(draftFilters);
                   setShowFilters(false);
                 }}
-                className="rounded-xl py-3 text-[14px] font-semibold text-[var(--color-text)]"
-                style={{ background: "#EAE5B3" }}
+                className="rounded-xl py-3 text-[14px] font-semibold text-white"
+                style={{ background: "#036f71" }}
               >
                 Apply Filter
               </button>

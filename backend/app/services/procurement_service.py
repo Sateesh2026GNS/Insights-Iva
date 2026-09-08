@@ -185,7 +185,9 @@ def list_purchase_orders(db: Session, tenant_id: int) -> list[PurchaseOrder]:
     return list(db.scalars(stmt).unique().all())
 
 
-def create_material_request(db: Session, payload: MaterialRequestCreate) -> MaterialRequest:
+def create_material_request(
+    db: Session, payload: MaterialRequestCreate, *, commit: bool = True
+) -> MaterialRequest:
     mr = MaterialRequest(
         tenant_id=payload.tenant_id,
         mr_number=payload.mr_number,
@@ -205,25 +207,29 @@ def create_material_request(db: Session, payload: MaterialRequestCreate) -> Mate
             notes=line.notes,
         )
         db.add(mrl)
-    db.commit()
-    db.refresh(mr)
-    try:
-        from app.services.alert_event_service import emit_alert
+    if commit:
+        db.commit()
+        db.refresh(mr)
+        try:
+            from app.services.alert_event_service import emit_alert
 
-        emit_alert(
-            db,
-            tenant_id=mr.tenant_id,
-            alert_type="material_request",
-            title=f"Purchase request: {mr.mr_number}",
-            message=f"Material request {mr.mr_number} created",
-            severity="medium",
-            link=f"/procurement/material-requests?id={mr.id}",
-            reference_type="material_request",
-            reference_id=mr.id,
-            created_by=mr.requested_by or "Procurement",
-        )
-    except Exception:
-        pass
+            emit_alert(
+                db,
+                tenant_id=mr.tenant_id,
+                alert_type="material_request",
+                title=f"Purchase request: {mr.mr_number}",
+                message=f"Material request {mr.mr_number} created",
+                severity="medium",
+                link=f"/procurement/material-requests?id={mr.id}",
+                reference_type="material_request",
+                reference_id=mr.id,
+                created_by=mr.requested_by or "Procurement",
+            )
+        except Exception:
+            pass
+    else:
+        db.flush()
+        db.refresh(mr)
     return mr
 
 
@@ -425,6 +431,12 @@ def create_goods_receipt(db: Session, payload: GoodsReceiptCreate) -> GoodsRecei
     Create GRN. Stock is posted only when qc_status is pass/passed.
     Pending QC keeps inventory unchanged until QC approval.
     """
+    from app.utils.tenant_validation import assert_inventory_item_owned, assert_warehouse_owned
+
+    assert_warehouse_owned(db, payload.tenant_id, payload.warehouse_id)
+    for line in payload.line_items:
+        assert_inventory_item_owned(db, payload.tenant_id, line.item_id)
+
     qc = (payload.qc_status or "pending").lower()
     post_stock_now = qc in ("pass", "passed", "approved")
     status = payload.status

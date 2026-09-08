@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   Mail, Phone, X, User, Briefcase, Package, Loader2
 } from "lucide-react";
@@ -115,8 +116,8 @@ export default function EmployeeDetailModal({ employee, onClose }) {
     Assets: Package,
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm p-4 sm:items-center" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/40 backdrop-blur-sm p-4 sm:items-center" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="flex max-h-[94vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-200">
 
         <div className="flex items-start gap-4 border-b border-slate-100 px-5 py-4">
@@ -204,6 +205,7 @@ export default function EmployeeDetailModal({ employee, onClose }) {
           </Button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Mail, Phone, X, PhoneCall, Calendar, MessageSquare, Plus } from "lucide-react";
 
 import { formatInr, priorityColor, statusColor } from "../../data/salesMasterData";
@@ -71,9 +72,19 @@ export default function LeadDetailModal({ lead, onClose, onStatusChange, onConve
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/50 backdrop-blur-sm p-4 sm:items-center">
-      <div className="flex max-h-[94vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[100] flex items-end justify-center bg-slate-900/50 backdrop-blur-sm p-4 sm:items-center"
+      role="dialog"
+      aria-modal="true"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose?.();
+      }}
+    >
+      <div
+        className="flex max-h-[94vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl animate-in fade-in zoom-in-95 duration-150"
+        onMouseDown={(e) => e.stopPropagation()}
+      >
         <div className="flex items-start justify-between border-b border-slate-100 px-6 py-4">
           <div>
             <p className="text-xs font-bold text-[var(--color-primary)] tracking-wider uppercase">{lead.lead_id}</p>
@@ -246,7 +257,8 @@ export default function LeadDetailModal({ lead, onClose, onStatusChange, onConve
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 

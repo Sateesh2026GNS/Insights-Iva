@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { AlertTriangle, Bell, CheckCircle2, Eye, Filter, ShieldAlert, Trash2, X, Plus, Calendar, Save, Tag } from "lucide-react";
 import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
@@ -605,30 +606,13 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
             <tbody className="divide-y divide-[var(--color-border-muted)]">
               {pageRows.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-8">
-                    {rows.length === 0 ? (
-                      <EmptyState
-                        icon="clipboard"
-                        title="No alerts yet"
-                        description="Operational alerts from production, inventory, quality, and other modules will appear here."
-                        actionLabel={canCreate ? "Create Alert" : undefined}
-                        onAction={canCreate ? () => setShowCreate(true) : undefined}
-                      />
-                    ) : (
-                      <NoResultsState
-                        query={search}
-                        onClear={() => {
-                          setSearch("");
-                          setSeverity("");
-                          setStatus("");
-                          setModule(initialAlertType || "");
-                          setDateFrom("");
-                          setDateTo("");
-                          setAssignedUser("");
-                          setPage(1);
-                        }}
-                      />
-                    )}
+                  <td colSpan={7} className="border-none p-0">
+                    <EmptyState
+                      icon="document"
+                      title="No records found."
+                      description="There is nothing to show here yet."
+                      className="border-none bg-transparent py-12"
+                    />
                   </td>
                 </tr>
               ) : (
@@ -769,198 +753,221 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
         </ListPageCardBody>
       </ListPageCard>
 
-      {viewRow && (
-        <div className="ui-modal-backdrop print:hidden">
-          <div className="ui-modal max-w-lg w-full max-h-[90vh] overflow-y-auto">
-            <div className="flex items-start justify-between border-b border-[var(--color-border-soft)] px-6 py-4">
-              <div className="min-w-0 pr-4">
-                <h2 className="text-lg font-bold text-[var(--color-text)]">{viewRow.title}</h2>
-                <p className="mt-0.5 text-xs font-mono text-[var(--color-text-muted)]">Alert #{viewRow.id}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setViewRow(null)}
-                className="rounded-lg p-2 text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)]"
-                aria-label="Close"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            <div className="space-y-4 p-6">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">Description</p>
-                <p className="mt-2 rounded-xl border border-[var(--color-border-soft)] bg-[var(--color-surface-muted)]/40 p-3 text-sm leading-relaxed text-[var(--color-text)]">
-                  {viewRow.message || "No description provided."}
-                </p>
-              </div>
-              <dl className="grid grid-cols-2 gap-3 text-sm">
-                {[
-                  ["Module", viewRow.module],
-                  ["Severity", null, viewRow.severity, SEVERITY_STYLES],
-                  ["Status", null, viewRow.status, STATUS_STYLES],
-                  ["Assigned", viewRow.assigned_to],
-                  ["Created by", viewRow.created_by],
-                  ["Created", viewRow.created_date],
-                  ["Acknowledged by", viewRow.acknowledged_by],
-                  ["Acknowledged", viewRow.acknowledged_date],
-                ].map(([label, value, badgeVal, styles]) => (
-                  <div key={label} className="rounded-lg border border-[var(--color-border-soft)] bg-[var(--color-surface-muted)]/30 p-3">
-                    <dt className="text-xs text-[var(--color-text-muted)]">{label}</dt>
-                    <dd className="mt-1 font-semibold text-[var(--color-text)]">
-                      {badgeVal != null ? <Badge value={badgeVal} styles={styles} /> : value || "—"}
-                    </dd>
-                  </div>
-                ))}
-              </dl>
-              <div className="flex flex-wrap justify-end gap-2 border-t pt-4">
-                {canWrite && viewRow.status === "active" && (
-                  <Button type="button" variant="secondary" onClick={() => runAction(viewRow.id, "ack", "Acknowledge")}>
-                    Acknowledge
-                  </Button>
-                )}
-                {canWrite && viewRow.status !== "resolved" && (
-                  <Button type="button" variant="primary" onClick={() => runAction(viewRow.id, "resolve", "Resolve")}>
-                    <CheckCircle2 className="h-4 w-4" /> Resolve
-                  </Button>
-                )}
-                <Button type="button" variant="cancel" onClick={() => setViewRow(null)}>
-                  Close
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showCreate && (
-        <div className="ui-modal-backdrop print:hidden">
-          <form
-            onSubmit={handleCreate}
-            className="ui-modal max-w-lg w-full max-h-[90vh] overflow-y-auto space-y-4"
+      {/* View Alert Detail Modal */}
+      {viewRow &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            className="ui-modal-backdrop print:hidden"
+            onMouseDown={(e) => {
+              if (e.target === e.currentTarget) setViewRow(null);
+            }}
           >
-            <div className="flex items-start justify-between border-b border-[var(--color-border-soft)] pb-3">
-              <div>
-                <h2 className="text-lg font-bold text-[var(--color-text)]">Create New Alert</h2>
-                <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Register a system or operational alert across modules.</p>
-              </div>
-              <button type="button" onClick={() => setShowCreate(false)} className="rounded-lg p-1.5 text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)]">
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="ui-label">Alert Title *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Critical Safety Equipment Check Required"
-                  value={form.title}
-                  onChange={(e) => setForm({ ...form, title: e.target.value })}
-                  className="ui-input w-full"
-                />
-              </div>
-
-              <div>
-                <label className="ui-label">Description / Instructions</label>
-                <textarea
-                  rows={3}
-                  placeholder="Provide detailed description of the alert, location, or recommended action..."
-                  value={form.message}
-                  onChange={(e) => setForm({ ...form, message: e.target.value })}
-                  className="ui-input w-full min-h-[80px] resize-none"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="ui-label">Category / Module</label>
-                  <select
-                    value={form.alert_type}
-                    onChange={(e) => setForm({ ...form, alert_type: e.target.value })}
-                    className="ui-select w-full"
-                  >
-                    {MODULE_OPTIONS.filter((o) => o.value).map((o) => (
-                      <option key={o.value} value={o.value}>
-                        {o.label}
-                      </option>
-                    ))}
-                  </select>
+            <div className="ui-modal max-w-lg w-full max-h-[90vh] overflow-y-auto" onMouseDown={(e) => e.stopPropagation()}>
+              <div className="flex items-start justify-between border-b border-[var(--color-border-soft)] px-6 py-4">
+                <div className="min-w-0 pr-4">
+                  <h2 className="text-lg font-bold text-[var(--color-text)]">{viewRow.title}</h2>
+                  <p className="mt-0.5 text-xs font-mono text-[var(--color-text-muted)]">Alert #{viewRow.id}</p>
                 </div>
-                <div>
-                  <label className="ui-label">Severity Level</label>
-                  <select
-                    value={form.severity}
-                    onChange={(e) => setForm({ ...form, severity: e.target.value })}
-                    className="ui-select w-full"
-                  >
-                    {SEVERITY_OPTIONS.filter((o) => o.value).map((o) => (
-                      <option key={o.value} value={o.value}>
-                        {o.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setViewRow(null)}
+                  className="rounded-lg p-2 text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)]"
+                  aria-label="Close"
+                >
+                  <X className="h-5 w-5" />
+                </button>
               </div>
-
-              <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-4 p-6">
                 <div>
-                  <label className="ui-label">Assigned To</label>
-                  {assignees.length > 0 ? (
-                    <select
-                      value={form.assigned_to}
-                      onChange={(e) => setForm({ ...form, assigned_to: e.target.value })}
-                      className="ui-select w-full"
-                    >
-                      <option value="">-- Select Assigned --</option>
-                      {assignees.map((user) => {
-                        const name = user.full_name || user.name || user.username || `User #${user.id}`;
-                        return (
-                          <option key={user.id} value={name}>
-                            {name} ({user.role || user.role_name || "User"})
-                          </option>
-                        );
-                      })}
-                    </select>
-                  ) : (
-                    <input
-                      type="text"
-                      placeholder="Assigned name..."
-                      value={form.assigned_to}
-                      onChange={(e) => setForm({ ...form, assigned_to: e.target.value })}
-                      className="ui-input w-full"
-                    />
+                  <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">Description</p>
+                  <p className="mt-2 rounded-xl border border-[var(--color-border-soft)] bg-[var(--color-surface-muted)]/40 p-3 text-sm leading-relaxed text-[var(--color-text)]">
+                    {viewRow.message || "No description provided."}
+                  </p>
+                </div>
+                <dl className="grid grid-cols-2 gap-3 text-sm">
+                  {[
+                    ["Module", viewRow.module],
+                    ["Severity", null, viewRow.severity, SEVERITY_STYLES],
+                    ["Status", null, viewRow.status, STATUS_STYLES],
+                    ["Assigned", viewRow.assigned_to],
+                    ["Created by", viewRow.created_by],
+                    ["Created", viewRow.created_date],
+                    ["Acknowledged by", viewRow.acknowledged_by],
+                    ["Acknowledged", viewRow.acknowledged_date],
+                  ].map(([label, value, badgeVal, styles]) => (
+                    <div key={label} className="rounded-lg border border-[var(--color-border-soft)] bg-[var(--color-surface-muted)]/30 p-3">
+                      <dt className="text-xs text-[var(--color-text-muted)]">{label}</dt>
+                      <dd className="mt-1 font-semibold text-[var(--color-text)]">
+                        {badgeVal != null ? <Badge value={badgeVal} styles={styles} /> : value || "—"}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+                <div className="flex flex-wrap justify-end gap-2 border-t border-[var(--color-border-soft)] pt-4">
+                  {canWrite && viewRow.status === "active" && (
+                    <Button type="button" variant="secondary" onClick={() => runAction(viewRow.id, "ack", "Acknowledge")}>
+                      Acknowledge
+                    </Button>
                   )}
+                  {canWrite && viewRow.status !== "resolved" && (
+                    <Button type="button" variant="primary" onClick={() => runAction(viewRow.id, "resolve", "Resolve")}>
+                      <CheckCircle2 className="h-4 w-4" /> Resolve
+                    </Button>
+                  )}
+                  <Button type="button" variant="cancel" onClick={() => setViewRow(null)}>
+                    Close
+                  </Button>
                 </div>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+
+      {/* New Alert Modal Form */}
+      {showCreate &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            className="ui-modal-backdrop print:hidden"
+            onMouseDown={(e) => {
+              if (!saving && e.target === e.currentTarget) setShowCreate(false);
+            }}
+          >
+            <form
+              onSubmit={handleCreate}
+              className="ui-modal max-w-lg w-full max-h-[90vh] overflow-y-auto space-y-4"
+              onMouseDown={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-start justify-between border-b border-[var(--color-border-soft)] pb-3">
                 <div>
-                  <label className="ui-label">Triggered Date & Time *</label>
+                  <h2 className="text-lg font-bold text-[var(--color-text)]">Create New Alert</h2>
+                  <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Register a system or operational alert across modules.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowCreate(false)}
+                  className="rounded-lg p-1.5 text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)]"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="ui-label">Alert Title *</label>
                   <input
-                    type="datetime-local"
+                    type="text"
                     required
-                    value={form.triggered_at}
-                    onChange={(e) => setForm({ ...form, triggered_at: e.target.value })}
+                    placeholder="e.g. Critical Safety Equipment Check Required"
+                    value={form.title}
+                    onChange={(e) => setForm({ ...form, title: e.target.value })}
                     className="ui-input w-full"
                   />
                 </div>
-              </div>
-            </div>
 
-            <div className="flex justify-end gap-2 border-t border-[var(--color-border-soft)] pt-4">
-              <Button
-                variant="cancel"
-                type="button"
-                onClick={() => setShowCreate(false)}
-              >
-                Cancel
-              </Button>
-              <Button variant="primary" type="submit" disabled={saving}>
-                <Save className="h-4 w-4" />
-                {saving ? "Saving..." : "Create Alert"}
-              </Button>
-            </div>
-          </form>
-        </div>
-      )}
+                <div>
+                  <label className="ui-label">Description / Instructions</label>
+                  <textarea
+                    rows={3}
+                    placeholder="Provide detailed description of the alert, location, or recommended action..."
+                    value={form.message}
+                    onChange={(e) => setForm({ ...form, message: e.target.value })}
+                    className="ui-input w-full min-h-[80px] resize-none"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="ui-label">Category / Module</label>
+                    <select
+                      value={form.alert_type}
+                      onChange={(e) => setForm({ ...form, alert_type: e.target.value })}
+                      className="ui-select w-full"
+                    >
+                      {MODULE_OPTIONS.filter((o) => o.value).map((o) => (
+                        <option key={o.value} value={o.value}>
+                          {o.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="ui-label">Severity Level</label>
+                    <select
+                      value={form.severity}
+                      onChange={(e) => setForm({ ...form, severity: e.target.value })}
+                      className="ui-select w-full"
+                    >
+                      {SEVERITY_OPTIONS.filter((o) => o.value).map((o) => (
+                        <option key={o.value} value={o.value}>
+                          {o.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="ui-label">Assigned To</label>
+                    {assignees.length > 0 ? (
+                      <select
+                        value={form.assigned_to}
+                        onChange={(e) => setForm({ ...form, assigned_to: e.target.value })}
+                        className="ui-select w-full"
+                      >
+                        <option value="">-- Select Assigned --</option>
+                        {assignees.map((user) => {
+                          const name = user.full_name || user.name || user.username || `User #${user.id}`;
+                          return (
+                            <option key={user.id} value={name}>
+                              {name} ({user.role || user.role_name || "User"})
+                            </option>
+                          );
+                        })}
+                      </select>
+                    ) : (
+                      <input
+                        type="text"
+                        placeholder="Assigned name..."
+                        value={form.assigned_to}
+                        onChange={(e) => setForm({ ...form, assigned_to: e.target.value })}
+                        className="ui-input w-full"
+                      />
+                    )}
+                  </div>
+                  <div>
+                    <label className="ui-label">Triggered Date & Time *</label>
+                    <input
+                      type="datetime-local"
+                      required
+                      value={form.triggered_at}
+                      onChange={(e) => setForm({ ...form, triggered_at: e.target.value })}
+                      className="ui-input w-full"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 border-t border-[var(--color-border-soft)] pt-4">
+                <Button
+                  variant="cancel"
+                  type="button"
+                  onClick={() => setShowCreate(false)}
+                >
+                  Cancel
+                </Button>
+                <Button variant="primary" type="submit" disabled={saving}>
+                  <Save className="h-4 w-4" />
+                  {saving ? "Saving..." : "Create Alert"}
+                </Button>
+              </div>
+            </form>
+          </div>,
+          document.body
+        )}
     </div>
     </ListPageShell>
   );

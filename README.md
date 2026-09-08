@@ -1496,3 +1496,1191 @@ SQLite-specific items to address before migration: `require_sqlite` in `config.p
 ## License
 
 Private / Internal Use
+
+# Application Performance Optimization Report
+
+**Date:** 2026-08-25  
+**Scope:** Frontend route loading, API deduplication/caching, inventory search debouncing, backend N+1 query fixes  
+**Constraint:** No business logic, API contracts, RBAC, or route changes beyond lazy-loading equivalents.
+
+---
+
+## 1. Major Bottlenecks Found (Before)
+
+| Area | Issue | Impact |
+|------|--------|--------|
+| **Initial bundle** | Login, factory-monitor pages, and `AiChatWidget` (jspdf) loaded eagerly with app shell | Larger first paint / slower auth routes |
+| **Reference data** | `getCustomers`, `getVendors`, `getWarehouses`, `getProducts`, `getCompanySettings` re-fetched on every form/page navigation | Duplicate network on Sales/Purchase/Inventory flows |
+| **Store Stock In/Return** | Search keystroke re-fetched list **and** 4–5 reference APIs per character | Heavy API storm while typing |
+| **Inventory lists (backend)** | `list_materials_enriched` / `list_finished_goods_enriched`: 3 SQL queries **per row** | Raw Materials / Finished Goods pages slow at scale |
+| **Vendor list (backend)** | `list_vendors_enriched`: 3 SQL queries **per vendor** (outstanding + product IDs) | Vendors page slow at scale |
+| **Route splitting** | Already strong (~96% lazy via `lazyPages.jsx`) | Low-hanging fruit was eager imports, not new routes |
+
+---
+
+## 2. Optimizations Implemented
+
+### Frontend — Route navigation
+
+- **Login** → lazy via `P.Login` (removed static import from `AppRoutes.jsx`)
+- **Factory monitor** → `FactoryMonitorMachineStatus`, `FactoryMonitorProductionLines` added to `lazyPages.jsx`
+- **AiChatWidget** → `React.lazy()` + `Suspense` in `App.jsx` (jspdf no longer in main app graph until chatbot opens)
+- Removed unused `PlaceholderPage` import from `AppRoutes.jsx`
+
+### Frontend — Reference data caching
+
+New: `frontend/src/utils/referenceDataCache.js`
+
+- In-memory TTL cache (3 min), tenant-scoped
+- Integrated into:
+  - `fetchCustomersWithFallback()` (`customerOptions.js`)
+  - `fetchProductsWithFallback()` (`productOptions.js`)
+  - `getWarehouses()` (`inventoryApi.js`)
+  - `getVendors()` unfiltered list (`procurementApi.js`)
+  - `getCompanySettings()` (`settingsApi.js`)
+- Invalidated on: login/logout (`AuthContext`), global Refresh (`pageRefresh.js`), company settings update
+
+### Frontend — Search / API debouncing
+
+New: `frontend/src/hooks/useDebouncedValue.js` (350ms)
+
+- **StoreStockIn.jsx** — split `loadReferenceData()` (once) vs `loadList()` (debounced search + filters)
+- **StoreStockReturn.jsx** — same pattern
+
+### Backend — Batch queries
+
+**`inventory_extended_service.py`**
+
+- `_batch_total_stock()` — single `GROUP BY item_id` query
+- `_batch_primary_warehouse()` — batch warehouse lookup
+- `_batch_suppliers()` — batch supplier fetch
+- Applied to `get_materials_summary`, `list_materials_enriched`, `list_finished_goods_enriched`
+
+**`vendor_service.py`**
+
+- `_batch_outstanding_for_suppliers()` — 2 grouped queries for all vendors
+- `_batch_product_ids()` — single query for all vendor product mappings
+- `list_vendors_enriched()` uses batch maps (was N×3 queries)
+
+---
+
+## 3. What Was Preserved
+
+- All API endpoints and response shapes unchanged
+- RBAC / auth checks unchanged
+- Client-side table search (SearchBar/DataTable) unchanged — already in-memory
+- Route paths and permissions unchanged
+- No localStorage as fake server persistence (cache is in-memory only, cleared on logout/refresh)
+
+---
+
+## 4. Verification
+
+- `npm run build` — **passes**
+- Python syntax check on modified backend services — **passes**
+
+---
+
+## 5. Remaining Slow Areas / Follow-up Recommendations
+
+| Priority | Item | Notes |
+|----------|------|-------|
+| **High** | `invoice_v2_service.py` summary loads all invoices before pagination | SQL `GROUP BY` for summary; push `due` filter to SQL |
+| **High** | `sales_extended_service.py` hub + enriched SO warehouse N+1 | Batch warehouse lookup |
+| **Medium** | i18n — load only `en` at boot; lazy-load `hi`/`ta`/`te` | Reduces initial JS |
+| **Medium** | Lazy-load Sidebar/Navbar on shell-less routes (`/login`) | Smaller login bundle |
+| **Medium** | `useCompanySettings` in forms instead of raw `getCompanySettings()` per form | Partially addressed via API cache |
+| **Medium** | Table virtualization for 1000+ row client-side pages | Only if profiling shows scroll jank |
+| **Low** | PostgreSQL indexes on `sales_orders.status`, `invoices.issue_date`, `material_request_lines.material_request_id` | Add via migration after EXPLAIN analysis |
+| **Low** | React Query / SWR | Larger refactor; current TTL cache covers main duplicate fetches |
+
+---
+
+## 6. Expected User Experience
+
+- **Navigation:** Route chunks load on demand; shell (sidebar/nav) stays visible during transitions (`RouteFallback`)
+- **Forms:** Customer/vendor/warehouse/product/company settings reuse cached data within session (3 min TTL)
+- **Store Manager stock pages:** Typing in search no longer fires 6 API calls per keystroke
+- **Inventory/Vendors lists:** Backend list endpoints scale with ~3 batch queries instead of 3×N per row
+
+---
+
+## 7. Manual Test Checklist
+
+Test in browser (Network tab open):
+
+1. Login → Dashboard — smaller initial chunk vs before (no jspdf until chatbot)
+2. Dashboard → Sales → Inventory — no duplicate `/sales/customers` + cached `/procurement/vendors` within TTL
+3. Store Stock In — type in search; verify debounced `/inventory/stock-ins` only (not warehouses/suppliers each key)
+4. Raw Materials / Vendors — list loads; compare backend query count in logs
+5. Global Refresh — reference cache clears; data refetches once
+6. RBAC, dark mode, CRUD — unchanged behavior
+
+# Insights Iva ERP — Project Analysis Report
+
+**Last updated:** 24 August 2026
+
+## 1. Executive Summary
+
+Insights Iva is a multi-tenant manufacturing ERP with a React + Vite frontend and a FastAPI + SQLAlchemy backend. SQLite is typical for local development; PostgreSQL is supported via Alembic for workflow tables and production deployments. The product spans production, inventory, procurement, sales, finance, HR, quality, maintenance, analytics, alerts, documents, meetings, settings, and administration.
+
+The codebase is modular and largely production-oriented: live APIs drive inventory, manufacturing workflow, and most operational modules. August 2026 work prioritized:
+
+1. **Action-based button system (24 Aug)** — Central `Button` component with semantic variants (`add`, `primary`, `view`, `edit`, `danger`, …), `AddButton` / `TableActionButtons`, CSS tokens in `index.css`, and migration of list/toolbar Add/Create CTAs across sales, procurement, inventory, HR, production, accounts, and admin modules. No API, route, or RBAC changes.
+2. **End-to-end RBAC (21 Aug)** — Seven registerable roles with a single permission source in `backend/app/core/rbac_constants.py` and frontend mirror in `frontend/src/config/permissions.js`. Login and `/auth/me` return **active-role-only** permissions; JWT role is preserved on refresh.
+3. **Manufacturing workflow engine (18 Aug)** — Sales → Job Card → Inventory → Production → Quality → Packing → Billing with PostgreSQL persistence, state machine, and team actions.
+4. **Design system & UI/UX (Aug 2026)** — Forest green brand (`#036f71`), `frontend/src/design-system/` barrel, accounts/inventory shells, Settings shell inside main ERP layout.
+5. **Shared date/calendar controls (21 Aug)** — `dateUtils.js`, `dateControls.jsx`, duplicate calendar icon fix.
+6. **HR dashboards** — Mockup-aligned pages with API merge fallbacks in `hrMasterData.js` when live data is empty.
+
+For setup and features, see [README.md](./README.md). For security, see [SECURITY_REPORT.md](./SECURITY_REPORT.md). For UI migration status, see [UI_UX_AUDIT_REPORT.md](./UI_UX_AUDIT_REPORT.md).
+
+---
+
+## 2. Project Structure
+
+### Frontend (`frontend/src`)
+
+| Area | Purpose |
+|------|---------|
+| `routes/` | `AppRoutes.jsx`, lazy-loaded `lazyPages.jsx` |
+| `config/` | `permissions.js`, `sidebarNav.js`, `storeManagerNavConfig.js`, `rbacNavFilters.js`, `manufacturingWorkflow.js` |
+| `design-system/` | Tokens, `classes.js`, `erpFormControls.jsx`, `dateControls.jsx`, domain shells |
+| `components/common/` | `Button.jsx`, `AddButton`, `TableActionButtons`, `EmptyState`, `ResourcePage`, … |
+| `context/` | `AuthContext` (JWT + user + refresh), `SettingsContext`, `ToastContext` |
+| `hooks/` | `useAuth`, `usePermissions` (`hasRole`, `hasPermission`, `can`, `canAction`) |
+| `components/layout/` | `Sidebar`, `ProtectedRoute`, `Navbar` |
+| `pages/` | Domain pages by module (production, inventory, sales, hr, accounts, …) |
+| `api/` | Axios clients per domain (`authApi`, `hrApi`, `procurementApi`, …) |
+
+### Backend (`backend/app`)
+
+| Area | Purpose |
+|------|---------|
+| `api/` | FastAPI routers (auth, rbac, hr, manufacturing_workflow, accounts, …) |
+| `core/` | `rbac_constants.py`, `permissions.py`, `seed_roles.py`, `workflow_constants.py` |
+| `services/` | Business logic (`auth_service`, `workflow_*`, `rbac_service`, …) |
+| `models/` | SQLAlchemy models (tenant-scoped) |
+| `alembic/versions/` | Workflow and meetings migrations |
+
+---
+
+## 3. RBAC Architecture (21 Aug 2026)
+
+### Single source of truth
+
+| Layer | Location |
+|-------|----------|
+| Permission matrix | `backend/app/core/rbac_constants.py` → `PERMISSION_MATRIX`, `MODULE_CATALOG`, `SIDEBAR_MENU_CATALOG` |
+| Runtime enforcement | `backend/app/core/permissions.py` → `get_user_permissions`, `require_permission`, `require_action` |
+| Role seeding | `backend/app/core/seed_roles.py` |
+| Frontend mirror | `frontend/src/config/permissions.js` → `ROLE_PERMISSIONS`, `ROUTE_MODULES`, `userCanAccessPath` |
+| Nav narrowing | `frontend/src/config/rbacNavFilters.js` |
+| Store Manager UI | `frontend/src/config/storeManagerNavConfig.js` |
+
+### Registerable roles
+
+| Role | Primary modules | Notes |
+|------|-----------------|-------|
+| **Admin** | All modules | Full workflow visibility |
+| **Sales Manager** | sales, masters, analytics, meetings | Sales dashboard redirect |
+| **Production Manager** | production, quality, inventory (narrow UI) | Sidebar allowlist |
+| **Store Manager** | inventory, procurement, accounts (ledger/expense) | Custom sidebar; full Purchases menu |
+| **HR Manager** | hr, documents, analytics, settings | HR-only sidebar sections |
+| **Accountant** | accounts, sales (billing docs), analytics | Accounts dashboard redirect |
+| **Operator** | production, factoryMonitor, documents, alerts | Execution paths only |
+
+### Auth → UI data flow
+
+```
+Login (role selected) → JWT carries role / role_id
+  → AuthContext stores user + permissions in localStorage
+  → GET /auth/me reads JWT role → permissions for that role only
+  → usePermissions() → sidebar filterStaticNav / Store Manager nav
+  → ProtectedRoute → userCanAccessPath()
+  → API → require_permission / tenant_scope
+```
+
+---
+
+## 4. UI Component Architecture (24 Aug 2026)
+
+### Button system
+
+| File | Responsibility |
+|------|----------------|
+| `components/common/Button.jsx` | Canonical button; variants, sizes, loading, Link/`to` polymorphism |
+| `components/common/TableActionButtons.jsx` | Row inline View · Edit · Delete |
+| `components/common/rowActionTone.js` | Label → tone mapping for `RowActionMenu` |
+| `index.css` | `.ui-btn--*` classes and `--color-add`, `--color-action-view`, `--color-action-edit` tokens |
+| `design-system/index.js` | Barrel export for `Button`, `AddButton`, shells |
+
+**Convention:** Toolbar/list **create** actions use `variant="add"` (teal-blue). Form **submit/save** uses `variant="primary"` (brand green). Table row actions use `view` / `edit` / `danger`.
+
+### Shared shells
+
+| Shell | Covers |
+|-------|--------|
+| `accountsDesignSystem.jsx` | Ledger, COA, journals, reports |
+| `inventoryDesignSystem.jsx` | Inventory V2, FG, RM, warehouses |
+| `settingsUi.jsx` | Settings module (dark navy in dark mode) |
+| `ResourcePage.jsx` | Generic CRUD list + modal create |
+| `EmptyState.jsx` | Zero-state with `AddButton` CTA |
+
+---
+
+## 5. Key Modules
+
+### Dashboard
+
+- Admin: `ReferenceDashboard` + `ManufacturingWorkflowHub` (live API, 30s refresh).
+- Role redirects via `roleRedirect.js`.
+
+### Manufacturing workflow
+
+| Route | Purpose |
+|-------|---------|
+| `/` | Admin workflow hub |
+| `/manufacturing/workflow` | Team board |
+| `/sales/orders/:id/job-card` | Sales Job Card |
+| `/sales/orders/create` | Create sales order |
+
+Persistence: `sales_job_cards`, material checks, `manufacturing_workflow_transitions`, `sales_orders.workflow_status`.
+
+### Inventory & Store Manager
+
+- Live inventory APIs; Store Manager uses `storeManagerNavConfig.js`.
+- Purchases: Stock In, Requisitions, Purchase, Payments Made, Debit Note, PO, GRN, Supplier Payments.
+
+### HR
+
+Dashboard pages under `/hr/*` with live API + `hrMasterData.js` merge fallbacks. Create CTAs migrated to `AddButton` / `variant="add"`.
+
+### Accounts
+
+- LedgerV2, ChartOfAccountsV2, journal entries — `accountsDesignSystem`; Add Customer/Vendor use action button variants.
+
+---
+
+## 6. Recent Fixes & Improvements
+
+| Date | Area | Change |
+|------|------|--------|
+| 24 Aug | UI buttons | `add` variant (#0F5F78); action colors (view/edit/danger); `AddButton`, `TableActionButtons`; 80+ page migrations |
+| 21 Aug | RBAC | Active-role permissions; JWT role on `/auth/me`; HR routes; Store Manager nav |
+| 21 Aug | Calendar | `dateUtils.js`, `dateControls.jsx`; duplicate icon fix |
+| 18 Aug | Workflow | State machine, job card API, Alembic migrations |
+| 18 Aug | Design system | Forest green tokens, ERP form controls, domain shells |
+| 16 Aug | Security | Full audit pass — see SECURITY_REPORT.md |
+
+---
+
+## 7. Verification
+
+### Frontend
+
+```bash
+cd frontend && npm run build
+cd frontend && npm test -- --run
+cd frontend && npm test -- --run src/components/common/Button.test.jsx
+```
+
+### Backend
+
+```bash
+cd backend && pytest tests/test_rbac.py tests/test_permission_fallback.py tests/test_workflow_state_machine.py
+cd backend && pytest
+```
+
+### Manual checks (recommended)
+
+- Log in as each of the 7 roles: sidebar, dashboard redirect, forbidden URL → Access Denied.
+- Refresh browser: role and menu unchanged.
+- Spot-check Add/Create toolbar buttons: teal-blue `#0F5F78`, white Plus icon, 40px height.
+- Table rows: View (green), Edit (blue), Delete (red).
+- Form Save/Submit buttons remain brand green (`primary`).
+
+---
+
+## 8. Recommendations
+
+- Run full `pytest` + `npm run build` in CI before releases.
+- Extend E2E tests (Playwright) for role login → sidebar → workflow action.
+- Finish migrating inline “+ Add Item” links inside document forms to consistent secondary/link pattern (optional).
+- Migrate remaining raw `type="date"` inputs to shared `DatePicker`.
+- Apply `alembic upgrade head` on all PostgreSQL environments.
+- Extend `log_audit()` to workflow transitions and HR writes.
+
+---
+
+## 9. Related Documents
+
+| Document | Purpose |
+|----------|---------|
+| [README.md](./README.md) | Product overview, setup, API map, RBAC summary |
+| [SECURITY_REPORT.md](./SECURITY_REPORT.md) | Auth, RBAC enforcement, tenant isolation |
+| [UI_UX_AUDIT_REPORT.md](./UI_UX_AUDIT_REPORT.md) | Design system, button migration, UX status |
+| [backend/PRODUCTION_DEPLOYMENT.md](./backend/PRODUCTION_DEPLOYMENT.md) | Production deploy checklist |
+
+---
+
+## 10. Change Log
+
+| Date | Note |
+|------|------|
+| 2026-08-13 | Initial report: live-data inventory, design tokens, search UX |
+| 2026-08-15 | HR dashboards, Chart of Accounts dedupe, HR nav |
+| 2026-08-18 | Manufacturing workflow, design system, ERP form controls |
+| 2026-08-21 | End-to-end RBAC, HR routes, Store Manager nav, shared date controls |
+| 2026-08-24 | Action-based button system; AddButton; TableActionButtons; app-wide Add/Create CTA migration |
+
+
+# Insights Iva Security Implementation Report
+
+Generated after production-ready security hardening across the React + FastAPI Insights Iva application.
+
+**Last reviewed:** 24 August 2026
+
+## Executive Summary
+
+Security features were implemented across authentication, session management, input validation, multi-tenant isolation, API protection, logging, and frontend auth flows. Backend suites covering auth, RBAC, tenant isolation, and CRUD smoke tests are in `backend/tests/`. Development mode preserves auto-verified registration for local testing. Production mode (`ENVIRONMENT=production`) enforces email verification before login.
+
+**RBAC alignment pass (21 Aug 2026):** Seven registerable roles share one permission matrix in `rbac_constants.py`. `/auth/me` and `/auth/profile` read the **JWT role** so token refresh preserves the selected role; permissions returned are for the **active role only** (not a union of all assigned roles). Frontend `permissions.js` mirrors backend modules including `hr`. Store Manager uses a dedicated path allowlist — server-side `require_permission` remains authoritative; sidebar and `ProtectedRoute` are UX layers only.
+
+Recent product UI work (design tokens, HR dashboards, manufacturing workflow, Settings shell, date controls, Store Manager nav) does **not** relax auth, CORS, or tenant isolation.
+
+**Manufacturing workflow note (18 Aug 2026):** All `/manufacturing/workflow/*` endpoints require JWT and enforce team-based actions via `workflow_team_service` and `workflow_constants.ROLE_TO_TEAMS`. Transitions are validated by the state machine; invalid cross-team actions are rejected server-side. Job card and material-check records are tenant-scoped like other business entities. Frontend workflow UI is presentational — authorization is enforced on every API call.
+
+**UI/UX pass note (18 Aug 2026):** Forest green rebrand and `design-system/` migration are styling-only. No new public routes without auth, no relaxation of CORS, and no change to token storage or session handling. See [UI_UX_AUDIT_REPORT.md](./UI_UX_AUDIT_REPORT.md).
+
+**Button consistency pass (24 Aug 2026):** Action-based button variants (`add`, `view`, `edit`, `danger`), `AddButton`, and `TableActionButtons` migrated across 80+ list/toolbar pages. **Styling and component structure only** — no changes to auth flows, JWT handling, RBAC matrices, route guards, API endpoints, or tenant isolation. Delete/Edit buttons remain client-side UX; server-side `require_permission` / `require_action` unchanged.
+
+**HR module note (Aug 2026):** New HR Settings UI includes a “two-factor authentication” checkbox and session/password fields — these are **client-side only** until wired to backend policy. HR dashboard demo data in `hrMasterData.js` is read-only preview when APIs are empty; it does not bypass authentication or tenant isolation. HR write endpoints (leave, payroll, performance create) remain protected by existing JWT + RBAC + `tenant_scope`.
+
+For product setup and module overview, see [README.md](./README.md). For architecture and recent UI/live-data analysis, see [PROJECT_ANALYSIS_REPORT.md](./PROJECT_ANALYSIS_REPORT.md).
+
+## Completed Security Features
+
+### 1. Security Audit (Pre-Implementation)
+- Reviewed auth flow, RBAC, tenant scoping, CORS, error handlers, password hashing, and test coverage.
+- Identified gaps: lockout, email verification, password reset, refresh tokens, generic login errors, file upload validation, security headers.
+
+### 2. Login Lockout
+- Maximum **5 failed attempts** per account (`MAX_LOGIN_ATTEMPTS`).
+- **30-minute lock** after threshold (`LOCKOUT_MINUTES`).
+- Attempts stored in `login_attempts` table with IP, user agent, and failure reason.
+- Locked accounts receive HTTP **429** with a generic lock message (not credential details).
+
+### 3. Email Verification
+- New users in **production** are inactive until verified (`email_verified=False`, `is_active=False`).
+- Secure tokens (256-bit random, SHA-256 hashed in DB) with **24-hour** expiry.
+- Endpoints: `POST /auth/verify-email`, `POST /auth/resend-verification`.
+- Frontend page: `/verify-email`.
+- **Development**: accounts auto-activate for local/demo use.
+
+### 4. Generic Login Errors
+- Failed login always returns **`"Invalid Credentials"`** (HTTP 401).
+- No distinction between wrong email vs wrong password.
+
+### 5. Password Reset
+- One-time reset tokens (hashed, expiring in **30 minutes** by default).
+- Tokens marked `used` after consumption — cannot be reused.
+- `POST /auth/forgot-password` returns the same message whether or not the email exists.
+- Frontend pages: `/forgot-password`, `/reset-password`.
+
+### 6. Session Security
+- Access token TTL: **30 minutes** (`ACCESS_TOKEN_EXPIRE_MINUTES`).
+- Refresh tokens: **7 days**, stored hashed, rotatable, revocable.
+- **Inactivity timeout**: 120 minutes (`SESSION_INACTIVITY_MINUTES`) — enforced on protected routes and refresh.
+- Endpoints: `POST /auth/refresh`, `POST /auth/logout`.
+- Frontend axios interceptor auto-refreshes on 401.
+
+### 7. Backend Validation
+- Pydantic schemas validate auth request bodies (email format, registration/reset password length ≥ 12, field length limits).
+- FastAPI `RequestValidationError` handler returns structured 422 without stack traces.
+- Existing module endpoints retain Pydantic validation.
+
+### 8. Input Sanitization
+- `app/utils/sanitize.py`: strips control characters, script tags, path traversal in filenames.
+- Email normalization and validation in auth schemas.
+- SQLAlchemy ORM uses parameterized queries throughout (SQL injection resistant).
+
+### 9. Role-Based Access Control (RBAC)
+- `require_permission`, `require_admin`, `tenant_scope`, and `require_action` on business APIs.
+- **Registerable roles (7):** Admin, Sales Manager, Production Manager, Store Manager, HR Manager, Accountant, Operator.
+- Permission matrix: `backend/app/core/rbac_constants.py` (`PERMISSION_MATRIX`, `MODULE_CATALOG`).
+- Runtime resolution: `get_user_permissions()` uses active role; explicit role JSON overrides matrix when set.
+- **Active role on refresh:** JWT `role` / `role_id` → `/auth/me` returns permissions for that role only (`auth_service.get_user_with_role`).
+- **HR module:** `hr` in catalog; HR routes require module permission server-side.
+- **Store Manager:** Frontend path whitelist in `permissions.js` / `storeManagerNavConfig.js`; backend still enforces inventory/procurement/accounts scopes.
+- Admin-only routes protected; core tests in `test_rbac.py`, `test_permission_fallback.py`.
+- **Frontend:** `ProtectedRoute` + `userCanAccessPath()` — UX only; never substitute for API checks.
+
+### 10. Multi-Tenant Security
+- **Existing** tenant isolation via `tenant_scope` and service-level filters unchanged.
+- Tests in `test_tenant_isolation.py` pass.
+
+### 11. API Security
+- JWT Bearer required on protected endpoints via `get_current_user`.
+- Checks: valid token, active user, email verified, session not inactive.
+- Proper HTTP status codes: 401 (unauth), 403 (forbidden), 422 (validation), 429 (lockout), 500 (generic).
+
+### 12. CORS Security
+- Explicit origin list from `CORS_ORIGINS` env var — no wildcards.
+- Production should set only trusted frontend URLs.
+
+### 13. Password Security
+- bcrypt via passlib (unchanged).
+- Plain text passwords never stored.
+
+### 14. HTTPS Ready
+- `Strict-Transport-Security` header set when `ENVIRONMENT=production`.
+- Security headers middleware on all responses.
+- Deploy behind reverse proxy (nginx/Caddy) with TLS termination.
+
+### 15. Logging
+- Login attempts logged to `login_attempts` table.
+- Password reset requests logged via `audit_logs` + `AccessLog` (rbac_service).
+- Admin actions continue via existing `AccessLog` in admin module.
+- Structured request logging with request IDs in `main.py`.
+
+### 16. Audit Trail
+- New `audit_logs` table and `audit_service.log_audit()`.
+- Wired for: registration, email verification, password reset request/completion.
+- Existing admin `AccessLog` covers user/role admin actions.
+- **Note**: Full CRUD audit on every module endpoint is a future incremental task (see Remaining Issues).
+
+### 17. File Upload Security
+- `app/utils/file_validation.py`: extension allow/block lists, size limit (10 MB), secure random filenames.
+- Ready for use when binary upload endpoints are added (documents module is currently metadata-only).
+
+### 18. Error Handling
+- Global handlers suppress stack traces from API responses.
+- Generic 500: `"Internal server error."`
+- Database errors: `"A database error occurred."`
+
+### 19. Database Security
+- Parameterized ORM queries.
+- New indexes on security tables (`user_id`, `email`, `tenant_id`).
+- Startup migrations add user security columns to existing SQLite DBs.
+
+### 20. Code Quality
+- Security logic centralized in `security_service.py`, `auth_service.py`, `audit_service.py`.
+- Reusable frontend auth API and axios refresh interceptor.
+- No duplication of token generation (shared `security_tokens.py`).
+
+---
+
+## Verification Results
+
+| Area | Status |
+|------|--------|
+| Backend tests (`backend/tests/`) | Auth, RBAC, tenant isolation, CRUD, admin, notifications, and related suites |
+| Auth: login, register, lockout, refresh | Covered in `test_auth.py` |
+| RBAC | `test_rbac.py` / `test_rbac_roles.py` |
+| Tenant isolation | `test_tenant_isolation.py` |
+| CRUD smoke tests | `test_crud.py` |
+| Generic login error message | Covered in auth tests |
+| Frontend auth pages | `/login`, `/register`, `/forgot-password`, `/reset-password`, `/verify-email` |
+| Demo seed accounts | Registration-based; no production default passwords |
+
+---
+
+## Remaining Issues & Recommendations
+
+| Priority | Item | Recommendation |
+|----------|------|----------------|
+| High | Configure SMTP in production | Set `SMTP_*` env vars; without SMTP, emails log to console only |
+| High | Rotate `JWT_SECRET_KEY` | Use `openssl rand -hex 32` in production `.env` |
+| Medium | Rate limiting at edge | Add nginx/Cloudflare rate limits on `/auth/login` and `/auth/forgot-password` |
+| Medium | Full CRUD audit coverage | Wire `log_audit()` into inventory, sales, HR (leave status, payroll create, performance review), etc. |
+| Medium | HR Settings persistence | Do not treat client-side toggles (2FA, GDPR, export) as enforced until backed by API + policy |
+| Medium | MFA / 2FA | Consider OTP for Admin accounts; HR Settings checkbox is UI-only today |
+| Low | CSP header | Add Content-Security-Policy tuned for Vite build |
+| Low | Migrate to Alembic-only migrations | Replace startup `ALTER TABLE` with formal migration revision |
+| Low | Refresh token cookie option | HttpOnly cookies instead of localStorage for XSS resilience |
+| Low | Account unlock admin API | Allow admins to manually unlock locked accounts |
+| Low | HR demo data clarity | Document that `hrMasterData.js` fallbacks are display-only; never substitute for authz checks |
+
+---
+
+## HR Module — Security Considerations (Aug 2026)
+
+| Topic | Status | Notes |
+|-------|--------|-------|
+| Route protection | Unchanged | All `/hr/*` pages behind `ProtectedRoute` + JWT |
+| RBAC menu | Updated | `rbac_constants.py` mirrors expanded HR sidebar; permissions still module-scoped (`hr`, `attendance`, etc.) |
+| Demo dashboards | Low risk | Recruitment/Training use static demo objects; no extra API surface |
+| HR Settings page | UI only | Save/Reset does not call backend; security toggles are not enforced |
+| Chart of Accounts dedupe | Data integrity | `_dedupe_gl_accounts()` prevents duplicate codes in list responses; does not weaken tenant filters |
+| Row actions | Unchanged | `InventoryRowActionsMenu` is presentational; mutations still go through authenticated API calls |
+
+When HR Settings persistence is implemented, validate: tenant-scoped storage, Admin/HR Manager write permission, audit log on change, and do not expose session timeout/password policy to non-admin roles without explicit RBAC rules.
+
+---
+
+## Manufacturing Workflow — Security Considerations (18 Aug 2026)
+
+| Topic | Status | Notes |
+|-------|--------|-------|
+| Route protection | Enforced | Workflow pages (`/manufacturing/workflow`, `/manufacturing/job-card/:id`, job card from sales) behind `ProtectedRoute` + JWT |
+| API authentication | Enforced | All routes under `/manufacturing/workflow/*` use `get_current_user` |
+| Tenant isolation | Enforced | Job cards, material checks, transitions filtered by `tenant_id` in services |
+| Team authorization | Enforced | Actions (confirm, material check, assign operator, quality, packing, billing) require caller’s ERP role to map to the workflow team for that stage (`workflow_team_service`) |
+| State machine integrity | Enforced | `workflow_state_service.transition_allowed()` rejects invalid status jumps; tested in `test_workflow_state_machine.py` |
+| Admin override | Limited | Admin role maps to all teams; backfill endpoint should remain admin-only |
+| Audit trail | Partial | `manufacturing_workflow_transitions` records action, user, team, timestamps; extend `log_audit()` for compliance if required |
+| Client-side workflow UI | UX only | Stepper, timeline, and team board do not bypass server checks — always call authenticated APIs |
+| PostgreSQL migrations | Operational | Alembic revisions `d1e2f3a4b5c6_*`, `e2f3a4b5c6d7_*` — apply with least-privilege DB user in production |
+
+**Recommendations:** Keep backfill (`POST /manufacturing/workflow/backfill`) admin-only; add IDOR regression tests for cross-tenant order IDs; log failed transition attempts at WARNING level for security monitoring.
+
+---
+
+## Files Modified
+
+### Backend — New Files
+| File | Purpose |
+|------|---------|
+| `backend/app/models/security.py` | RefreshToken, EmailVerificationToken, PasswordResetToken, LoginAttempt, AuditLog |
+| `backend/app/services/security_service.py` | Lockout, tokens, session activity |
+| `backend/app/services/email_service.py` | SMTP / dev email logging |
+| `backend/app/services/audit_service.py` | CRUD audit helper |
+| `backend/app/utils/sanitize.py` | Input sanitization |
+| `backend/app/utils/security_tokens.py` | Token generation & hashing |
+| `backend/app/utils/file_validation.py` | Upload validation helpers |
+
+### Backend — Modified Files
+| File | Changes |
+|------|---------|
+| `backend/app/core/config.py` | Security settings (TTL, lockout, SMTP, frontend URL) |
+| `backend/app/models/user.py` | email_verified, failed_login_attempts, locked_until, last_activity_at |
+| `backend/app/models/__init__.py` | Register security models |
+| `backend/app/services/auth_service.py` | Token pairs, register verification flags |
+| `backend/app/api/auth.py` | Full auth API (verify, reset, refresh, logout) |
+| `backend/app/api/auth_deps.py` | Session inactivity, email verified check |
+| `backend/app/schemas/auth.py` | Validated request/response schemas |
+| `backend/app/main.py` | Security headers, DB migrations, security model import |
+| `backend/app/core/seed_users.py` | No default demo users seeded; user accounts are created via registration |
+| `backend/.env.example` | All security env vars documented |
+| `backend/tests/conftest.py` | email_verified on test users |
+| `backend/tests/test_auth.py` | Lockout, refresh, forgot-password tests |
+
+### Frontend — New Files
+| File | Purpose |
+|------|---------|
+| `frontend/src/pages/auth/ForgotPassword.jsx` | Password reset request |
+| `frontend/src/pages/auth/ResetPassword.jsx` | Password reset form |
+| `frontend/src/pages/auth/VerifyEmail.jsx` | Email verification |
+
+### Frontend — Modified Files
+| File | Changes |
+|------|---------|
+| `frontend/src/api/authApi.js` | All auth endpoints |
+| `frontend/src/api/axiosConfig.js` | Auto refresh on 401 |
+| `frontend/src/context/AuthContext.jsx` | Refresh token storage, logout revokes |
+| `frontend/src/pages/auth/Login.jsx` | Forgot password link, refresh token |
+| `frontend/src/pages/auth/Register.jsx` | Verification pending UX, min 12 chars |
+| `frontend/src/routes/AppRoutes.jsx` | New auth routes |
+| `frontend/src/routes/lazyPages.jsx` | Lazy imports for new pages (incl. `HRSettings`, `Recruitment`, `Training`) |
+| `frontend/src/pages/hr/*.jsx` | HR dashboard UIs (Aug 2026) |
+| `frontend/src/data/hrMasterData.js` | Demo merge helpers for HR dashboards |
+| `frontend/src/config/sidebarNav.js` | Expanded HR sidebar sections |
+| `backend/app/core/rbac_constants.py` | HR menu children incl. `/hr/settings` |
+| `backend/app/api/accounts.py` | GL account dedupe on list/seed |
+| `backend/app/api/manufacturing_workflow_api.py` | Workflow hub, queue, job card, team actions (Aug 2026) |
+| `backend/app/services/workflow_state_service.py` | State machine + transition validation |
+| `backend/app/services/workflow_team_service.py` | Team membership and action authorization |
+| `backend/app/core/workflow_constants.py` | Role-to-team mapping, workflow statuses |
+| `backend/app/core/rbac_constants.py` | Manufacturing workflow menu permissions |
+
+---
+
+## APIs Updated
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/auth/login` | Lockout, generic errors, refresh token in response |
+| POST | `/auth/register` | Email verification in production; AuthResponse in dev |
+| GET | `/auth/me` | Includes email_verified; session activity check |
+| POST | `/auth/verify-email` | **New** — activate account |
+| POST | `/auth/resend-verification` | **New** — resend verification email |
+| POST | `/auth/forgot-password` | **New** — request reset link |
+| POST | `/auth/reset-password` | **New** — consume one-time token |
+| POST | `/auth/refresh` | **New** — rotate refresh token |
+| POST | `/auth/logout` | **New** — revoke refresh token |
+
+All other module APIs unchanged; continue using JWT + RBAC + tenant scope.
+
+---
+
+## Database Changes
+
+### New Tables
+- `refresh_tokens` — hashed refresh tokens with expiry and revocation
+- `email_verification_tokens` — one-time verification tokens
+- `password_reset_tokens` — one-time reset tokens
+- `login_attempts` — login audit / lockout analysis
+- `audit_logs` — CRUD and security event audit trail
+
+### Modified Tables
+- `users`:
+  - `email_verified` (BOOLEAN, default false)
+  - `failed_login_attempts` (INTEGER, default 0)
+  - `locked_until` (DATETIME, nullable)
+  - `last_activity_at` (DATETIME, nullable)
+
+Startup migrations in `main.py` add columns to existing SQLite databases and backfill `email_verified=1` for existing users.
+
+---
+
+## Production Deployment Checklist
+
+1. Set `ENVIRONMENT=production`
+2. Set strong `JWT_SECRET_KEY`
+3. Configure `CORS_ORIGINS` to your production frontend URL only
+4. Configure SMTP for verification and reset emails
+5. Set `FRONTEND_BASE_URL` to production frontend URL
+6. Deploy behind HTTPS reverse proxy
+7. Review `ACCESS_TOKEN_EXPIRE_MINUTES` and `SESSION_INACTIVITY_MINUTES` for your UX
+
+---
+
+## Environment Variables (Security-Related)
+
+```env
+JWT_SECRET_KEY=<strong-random-hex>
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+REFRESH_TOKEN_EXPIRE_DAYS=7
+SESSION_INACTIVITY_MINUTES=120
+MAX_LOGIN_ATTEMPTS=5
+LOCKOUT_MINUTES=30
+EMAIL_VERIFICATION_EXPIRE_HOURS=24
+PASSWORD_RESET_EXPIRE_MINUTES=30
+FRONTEND_BASE_URL=https://your-app.example.com
+ENVIRONMENT=production
+CORS_ORIGINS=https://your-app.example.com
+SMTP_HOST=...
+SMTP_PORT=587
+SMTP_USER=...
+SMTP_PASSWORD=...
+SMTP_FROM_EMAIL=noreply@your-domain.com
+```
+
+---
+
+## Related Documentation
+
+| Document | Purpose |
+|----------|---------|
+| [README.md](./README.md) | Features, setup, API overview, design system notes |
+| [PROJECT_ANALYSIS_REPORT.md](./PROJECT_ANALYSIS_REPORT.md) | Structure review, live-data findings, workflow engine |
+| [UI_UX_AUDIT_REPORT.md](./UI_UX_AUDIT_REPORT.md) | Design system adoption, UI migration status |
+
+## Change Log (Documentation)
+
+| Date | Note |
+|------|------|
+| 2026-08-13 | Confirmed UI/design-system and Job Card read-path work do not alter auth, RBAC, tenant isolation, or CORS. Cross-linked README and Project Analysis Report. |
+| 2026-08-15 | HR dashboard UI pass documented. HR Settings toggles are client-side only. RBAC menu expanded for HR sections. Chart of Accounts dedupe noted as data-integrity fix, not auth change. |
+| 2026-08-16 | Full security audit + hardening pass (this section). |
+| 2026-08-18 | Manufacturing workflow security considerations added. UI/UX rebrand documented as styling-only. Workflow API files listed. Cross-linked UI_UX_AUDIT_REPORT. |
+| 2026-08-21 | RBAC alignment: active-role permissions, JWT role on `/auth/me`, `hr` module, Store Manager path allowlist documented. UI date/settings changes noted as non-security. |
+| 2026-08-24 | Button consistency pass documented as styling-only. No auth, RBAC, route, or API contract changes. Cross-linked updated UI_UX_AUDIT_REPORT. |
+
+---
+
+## RBAC Alignment — 21 August 2026
+
+End-to-end role → permission → sidebar → route → API alignment without changing database schema or API contracts.
+
+| Topic | Status | Notes |
+|-------|--------|-------|
+| Permission source | Single matrix | `rbac_constants.py` + frontend `permissions.js` mirror |
+| Login role selection | Enforced | Selected role embedded in JWT at login |
+| Token refresh | Fixed | `/auth/me` reads JWT role — menu does not revert to default role |
+| Permission union bug | Fixed | No longer unions permissions from all roles assigned to user |
+| HR routes | Protected | `/hr/*` behind JWT + `hr` module; 19 routes registered |
+| Store Manager nav | UX allowlist | Purchases paths added; Subscription/Logout removed from store sidebar only |
+| Manufacturing workflow | Unchanged | Team actions still enforced in `workflow_team_service` |
+| Client-side gates | UX only | `usePermissions`, `PermissionGate` — backend remains authoritative |
+
+**Recommendations:** Add Playwright tests per role for forbidden URLs; extend `require_action` to remaining module DELETE routes; wire HR Settings security toggles to backend policy before treating as enforced.
+
+---
+
+## Security Audit — 16 August 2026
+
+Authorized full-stack security review: audit → fix → test → re-check. No destructive testing, no architecture redesign, no UI changes beyond security-related behavior.
+
+### Executive Summary
+
+| Area | Status |
+|------|--------|
+| **Authentication** | Strong — bcrypt, JWT + refresh rotation, lockout, generic login errors, session inactivity |
+| **Authorization / RBAC** | Good — JWT on business APIs, tenant scoping; action-level RBAC extended on accounts mutations |
+| **API security** | Improved — destructive system routes locked down; OpenAPI disabled in production |
+| **Database** | Good — ORM/parameterized queries; SQLite file gitignored |
+| **Frontend** | Improved — session requires token; platform auth header collision fixed; print XSS mitigated |
+| **CORS / headers** | Good — explicit origins; security headers middleware; localhost regex dev-only |
+| **Dependencies** | Frontend `xlsx` has known advisories (no fix available); backend pip audit not available in env |
+
+### Issues Found & Remediation
+
+| Severity | Issue | Location | Status |
+|----------|-------|----------|--------|
+| **Critical** | Any authenticated user could wipe/seed tenant operational data | `backend/app/api/system_data.py` | **Fixed** — `require_admin` + blocked in production |
+| **Critical** | Client auth bypass via `smrt-user` in localStorage without JWT | `frontend/src/context/AuthContext.jsx` | **Fixed** — `isAuthenticated` requires token + user; 401 clears session |
+| **Critical** | Tenant axios interceptor overwrote platform `Authorization` header | `frontend/src/api/axiosConfig.js` | **Fixed** — skip tenant token on `/platform/*` |
+| **High** | Finance mutations (expenses, journals, GL) used module-only RBAC | `backend/app/api/accounts.py` | **Fixed** — `require_action` / `tenant_scope_action` on writes |
+| **High** | Demo passwords reset on every startup | `backend/app/core/seed_users.py` | **Fixed** — no password overwrite in production |
+| **High** | Super-admin password synced from `.env` every startup | `backend/app/core/seed_super_admin.py` | **Fixed** — dev-only password sync |
+| **High** | Real credentials in `.env.example` | `backend/.env.example` | **Fixed** — placeholders only |
+| **High** | Platform login lacked IP rate limiting | `backend/app/api/platform_api.py` | **Fixed** — `check_rate_limit` on login |
+| **High** | Hardcoded credentials in debug script | `backend/tmp_login_check.py` | **Fixed** — file removed |
+| **Medium** | OpenAPI/Swagger exposed in production | `backend/app/main.py` | **Fixed** — docs/openapi disabled when `ENVIRONMENT=production` |
+| **Medium** | `/health` leaked environment name | `backend/app/main.py` | **Fixed** — minimal response in production |
+| **Medium** | CORS localhost regex with credentials in all envs | `backend/app/main.py` | **Fixed** — regex dev-only |
+| **Medium** | Public `GET /roles` exposed role catalog | `backend/app/api/rbac_api.py` | **Fixed** — requires authentication |
+| **Medium** | Unhandled exception handler could leak `str(exc)` | `backend/app/middleware/exception_handler.py` | **Fixed** — generic message only |
+| **Medium** | 401 handler kept forged user object in storage | `frontend/src/api/axiosConfig.js`, `AuthContext.jsx` | **Fixed** |
+| **Medium** | 5xx API errors forwarded raw backend `detail` to UI | `frontend/src/api/axiosConfig.js`, `utils/apiError.js` | **Fixed** — generic message for 500+ |
+| **Medium** | XSS in print templates (`document.write`) | `Dispatch.jsx`, `printUtils.js` | **Fixed** — `escapeHtml()` on dynamic fields |
+| **Low** | JWT in localStorage (XSS token theft risk) | Frontend auth | **Open** — recommend httpOnly cookies (future) |
+| **Low** | `require_action` not used on all module DELETE routes | Various API routers | **Partial** — accounts done; extend incrementally |
+| **Low** | Google OAuth tokens stored plaintext in SQLite | `google_calendar_service.py` | **Open** — use `field_crypto.py` |
+| **Low** | In-memory rate limiting (single-process) | `middleware/security.py` | **Open** — Redis/edge limits for production |
+| **Info** | `xlsx` package — prototype pollution / ReDoS advisories | `frontend/package.json` | **Open** — no upstream fix; review export usage |
+| **Info** | HR Settings 2FA toggle is UI-only | `SettingsSectionContent.jsx` | **Open** — document; wire to backend when ready |
+
+### Fixes Applied (16 Aug 2026)
+
+**Backend**
+- `system_data.py` — admin-only + production guard on clear/seed
+- `permissions.py` — added `tenant_scope_action(module, action)`
+- `accounts.py` — action-level RBAC on create/update/delete
+- `main.py` — production docs off, minimal health, dev-only CORS regex
+- `platform_api.py` — login rate limit
+- `rbac_api.py` — authenticated `/roles`
+- `seed_users.py`, `seed_super_admin.py` — no production credential resets
+- `.env.example` — placeholder super-admin credentials
+- `exception_handler.py` — no exception text in API responses
+- Removed `tmp_login_check.py`
+
+**Frontend**
+- `AuthContext.jsx` — token required for session; clear on 401
+- `axiosConfig.js` — platform route auth isolation; always clear on 401; generic 5xx toasts
+- `apiError.js` — mask 500+ errors
+- `htmlEscape.js` (new) — shared HTML escaping
+- `printUtils.js`, `Dispatch.jsx` — escaped print output
+
+### Verification Performed
+
+| Check | Result |
+|-------|--------|
+| Frontend production build | **Pass** (`npm run build`) |
+| Core backend security tests | **Pass** — `test_auth.py`, `test_rbac.py`, `test_tenant_isolation.py`, `test_journal_entries_api.py` |
+| Full backend suite | **Pre-existing failures** in repository-layer tests (unrelated to this pass); documented, not bypassed |
+| npm audit (high+) | **10 issues** — includes `xlsx` with no fix; no blind upgrades applied |
+| pip audit | Not available in current Python environment |
+
+### Authentication Status
+
+- Passwords hashed with bcrypt; never returned in API responses
+- JWT access (30 min) + refresh (7 days) with rotation and revocation
+- Session inactivity enforced; email verification required in production
+- Generic `"Invalid Credentials"` on failed login
+- Account lockout after 5 failures (30 min)
+
+### Authorization / RBAC Status
+
+- All business routers require JWT via `get_current_user` / `require_permission` / `tenant_scope`
+- Tenant isolation enforced in services (IDOR mitigated when IDs are scoped by `tenant_id`)
+- Action-level checks now enforced on **accounts** write/delete endpoints
+- **Gap:** Other modules still rely primarily on module-level `tenant_scope`; Operators with module access may mutate unless `require_action` is added per route
+
+### API Security Status
+
+- Pydantic validation on request bodies
+- Global handlers return safe 500/DB error messages (no stack traces)
+- Production: `/docs`, `/openapi.json`, `/redoc` disabled
+- Destructive `/api/system/*` endpoints admin-only and dev-only
+
+### Database Security Status
+
+- SQLAlchemy ORM with parameterized queries (no user-controlled SQL concatenation in request paths)
+- `smrt.db` in `.gitignore`
+- Startup `ALTER TABLE` migrations are SQLite-specific — review before PostgreSQL migration
+
+### Frontend Security Status
+
+- ~200+ routes behind `ProtectedRoute` + path RBAC (UX layer)
+- Session now requires valid JWT presence (not user JSON alone)
+- No hardcoded production API keys in source
+- AI markdown uses escape-first rendering; print flows now HTML-escaped
+- Client RBAC remains **UX only** — backend is authoritative
+
+### CORS & Security Headers Status
+
+- `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`, CSP (strict on API; relaxed on docs in dev)
+- HSTS in production
+- CORS: explicit `CORS_ORIGINS`; localhost regex only in development
+
+### PostgreSQL Migration — Security Risks
+
+| Risk | Notes |
+|------|-------|
+| SQLite-only validator in `config.py` | Must relax `require_sqlite` before PG cutover |
+| Runtime `ALTER TABLE` in `main.py` startup | Replace with Alembic migrations |
+| `check_same_thread=False` | Not applicable to PostgreSQL pool |
+| Boolean / JSON / datetime types | Audit models using SQLite-specific defaults |
+| Case-sensitive string uniqueness | PostgreSQL differs from SQLite for some collations |
+| Concurrent writes | SQLite WAL not configured; PG will improve isolation under load |
+
+### Remaining Security TODOs
+
+1. Extend `require_action` to DELETE/PUT on inventory, sales, HR, procurement, documents
+2. Move JWT to httpOnly Secure SameSite cookies
+3. Encrypt Google OAuth and e-waybill credentials at rest (`field_crypto.py`)
+4. Redis or edge rate limiting for multi-instance deployments
+5. Replace or isolate `xlsx` for exports (known CVEs, no fix)
+6. Wire HR Settings security toggles to backend policy
+7. Full CRUD audit logging on business modules
+8. Migrate to Alembic-only schema management before PostgreSQL
+
+### Recommended Future Improvements
+
+- MFA for Admin and Super Admin accounts
+- CSRF tokens if moving to cookie-based auth
+- Content-Security-Policy meta/header on Vite frontend build
+- Periodic dependency review with `npm audit` / `pip-audit` in CI
+- Security regression tests for IDOR on high-value IDs (invoice, payroll, stock adjustment)
+
+# Insights Iva — Frontend UI/UX Audit Report
+
+**Date:** 25 August 2026 (updated)  
+**Scope:** React frontend (`frontend/src`)  
+**Goal:** Premium, consistent, accessible ERP UI using the Insights Iva design system — without breaking architecture, APIs, routes, or business logic.
+
+---
+
+## Executive Summary
+
+Insights Iva uses a **centralized design system** with CSS tokens in `index.css`, a JavaScript barrel at `design-system/`, and domain shells for accounts, inventory, and settings. Brand primary is **forest green** (`#036f71`) on canvas `#f2f7f5`.
+
+August 2026 work hardened shared components, migrated high-traffic modules, integrated **Settings into the main ERP shell**, added **shared date/calendar controls**, completed an **action-based button consistency pass** (24 Aug), and standardized **list and embedded search bars** (25 Aug) using the Vendors page as the visual reference.
+
+**Build status:** `npm run build` passes. **Button tests:** `Button.test.jsx` covers primary, add, view, and edit variants.
+
+---
+
+## Search Bar System (25 Aug 2026)
+
+### Principle
+
+**One search component, two sizes.** The **Vendors page** search bar is the reference for all main list/table toolbars. Embedded contexts (dropdowns, forms, filters, autocomplete) use the same brand styling at **`size="compact"`** — smaller height and padding, identical pill shape, icon, focus, and theme tokens.
+
+### Reference design (default)
+
+| Property | Value |
+|----------|-------|
+| Component | `SearchBar` in `components/common/SearchFilter.jsx` |
+| Wrap | `relative ui-search-wrap min-w-[10rem] flex-1` |
+| Input | `ui-input w-full !rounded-full !pl-10` |
+| Icon | Lucide `Search`, `left-3.5`, `text-[var(--color-text-icon)]` |
+| Clear | Optional `X` when value present |
+| Theme | `--color-*` tokens only — no hardcoded white/black backgrounds |
+
+### Compact variant (`size="compact"`)
+
+| Property | Value |
+|----------|-------|
+| Use when | Dropdown filter search, form party/item pickers, settings column filters, combobox/autocomplete |
+| **Do not use for** | Main page/table toolbar search (keep default size) |
+| Height | `--control-h-sm` via `.ui-search-input--compact` |
+| CSS | `.ui-search-wrap--compact` in `index.css` |
+
+### Shared components & wrappers
+
+| Component | Path | Role |
+|-----------|------|------|
+| `SearchBar` | `components/common/SearchFilter.jsx` | Canonical search UI |
+| `SearchFilter` / `FilterBar` | Same + `FilterBar.jsx` | Toolbar search + filter rows |
+| `DataTable` | `components/common/DataTable.jsx` | Built-in table search → `SearchBar` |
+| `AccountsSearchInput` | `accountsDesignSystem.jsx` | Delegates to `SearchBar` |
+| `InventorySearchInput` | `inventoryDesignSystem.jsx` | Delegates to `SearchBar` |
+| `SettingsSearchInput` | `pages/settings/settingsUi.jsx` | Delegates to `SearchBar` |
+| `SearchableSelect` | `components/common/SearchableSelect.jsx` | Dropdown list search → compact `SearchBar` |
+| `AccountSearchSelect` | `components/accounts/AccountSearchSelect.jsx` | Journal combobox → compact `SearchBar` + portaled list |
+
+Exported tokens: `SEARCH_BAR_*` and `SEARCH_BAR_COMPACT_*` via `design-system/index.js`.
+
+### Migration coverage (25 Aug)
+
+| Area | Status |
+|------|--------|
+| **Masters** — Vendors (reference), Products, Customers, BOM, Departments, Vendor Management | Default `SearchBar` |
+| **Sales** — quotations, bills, invoices, credit/debit notes, challans, refunds, export/proforma, invoice dashboard, customers | Default `SearchBar` |
+| **Purchases / procurement** — purchases, payments, debit notes, POs, create PO | Default + compact (filters/forms) |
+| **Inventory** — RM, FG, warehouses, transfer, adjustment, stock ledger, stock in/return, InventoryV2 | Default `SearchBar` |
+| **Production** — work orders, planning, schedule, machine allocation/status, task mgmt, daily reports, batch tracking | Default `SearchBar` |
+| **Quality** — in-process/final/incoming QC, defect tracking, batch reports | Default toolbar + compact in `MultiSelectDropdown` |
+| **Maintenance** — schedule, breakdown, machine history, equipment/spares | Default `SearchBar` |
+| **Accounts / finance** — ledger, COA, journals, expense, reports, audit trail, restore deleted | Default + compact (filter dropdowns) |
+| **HR list pages** | Via `DataTable` → `SearchBar` |
+| **Settings** — home search, teams/package type column filters, my permissions, audit logs panel | Default or compact as appropriate |
+| **Documents, alerts, job card filters** | Default `SearchBar` |
+| **ERP forms (10+)** — buyer/vendor pickers, line-item cells | Compact `SearchBar` |
+| **Pickers** — terms & conditions, dispatch address, payment receipt/make payment party search, refund party picker | Compact `SearchBar` |
+| **Meetings** — calendar sidebar “meet with” search | Compact `SearchBar` |
+
+**Intentionally unchanged:**
+
+- **`GlobalSearch`** — navbar global search (separate component)
+- **Login / auth** inputs — not list-search contexts
+
+### Dark theme
+
+All migrated search bars use `ui-input` and CSS variables (`--color-surface`, `--color-border`, `--color-text-placeholder`, `--color-focus-ring`). Legacy page-specific `bg-white` / `slate-*` search overrides were removed from maintenance and settings pages.
+
+### Functional preservation
+
+Search state, filtering logic, API parameters, pagination, combobox keyboard navigation, and portaled dropdown positioning were **not** changed — only component/UI wiring. `npm run build` passes after migration.
+
+---
+
+## Design System
+
+### Token layers
+
+| Layer | Location | Purpose |
+|-------|----------|---------|
+| CSS tokens | `frontend/src/index.css` | Colors, typography, `.ui-*` button utilities |
+| Class tokens | `design-system/classes.js` | `inputClass`, `selectClass`, `tableWrapClass` |
+| Barrel | `design-system/index.js` | Single import for tokens + components |
+| ERP forms | `design-system/erpFormControls.jsx` | `SoftInput`, `SoftSelect`, `FieldLabel`, `Pill` |
+| Date/time | `design-system/dateControls.jsx` | `DatePicker`, `DateRangePicker`, `FloatingDate` |
+| Date helpers | `utils/dateUtils.js` | `todayIso()`, timezone-safe ISO |
+| Status | `design-system/statusTone.js` | `resolveStatusTone()` |
+
+### Brand palette
+
+| Role | Token | Hex | Use |
+|------|-------|-----|-----|
+| Brand primary | `--color-primary` | `#036f71` | Submit/Save, focus, nav active, links |
+| **Add CTA** | `--color-add` | `#0f5f78` | Toolbar/list “+ Add …” / “Create …” |
+| Add hover / active | `--color-add-hover` / `-active` | `#0a4d63` / `#083f52` | Add button states |
+| View / approve | `--color-action-view` | `#2e9b72` | View, Open, Approve, Confirm |
+| Edit / update | `--color-action-edit` | `#3182ce` | Edit, Update |
+| Danger | `--color-danger` | `#e24a4a` | Delete, Remove |
+| Canvas | `--color-bg` | `#f2f7f5` | Page background |
+| Primary soft | `--color-primary-soft` | `#e6f4f4` | Section headers, KPI wells |
+
+---
+
+## Button Action System (24 Aug 2026)
+
+### Principle
+
+**Color communicates intent, not decoration.** One shared `Button` component; no page-level hex for standard actions.
+
+### Variants
+
+| Variant | Visual | When to use |
+|---------|--------|-------------|
+| `add` | Teal-blue `#0F5F78`, white text, Plus icon, 40px × 8px radius | Page header “+ Add New”, “Create Bill”, “Add Vendor”, empty-state CTA |
+| `primary` | Brand green `#036F71` | Form Submit, Save, Confirm workflow step, Issue Material |
+| `secondary` | White + border | Cancel, Back, Close |
+| `view` | Green `#2E9B72` | View, Open, Approve, Acknowledge |
+| `edit` | Blue `#3182CE` | Edit, Save Changes (existing record) |
+| `danger` | Red `#E24A4A` | Delete, Remove, Finalize destructive |
+| `warning` | Amber | Hold, Pending, Review Required |
+| `outline` / `ghost` | Border / minimal | Export, filters, icon chrome |
+
+### Components
+
+| Component | Path | Notes |
+|-----------|------|-------|
+| `Button` | `components/common/Button.jsx` | All variants; `forwardRef`; Link/`to`/`href` support; loading spinner |
+| `AddButton` | Same file | Defaults `variant="add"` + Plus icon |
+| `TableActionButtons` | `components/common/TableActionButtons.jsx` | `[View] [Edit] [Delete]` with Eye/Pencil/Trash |
+| `RowActionMenu` | `components/common/RowActionMenu.jsx` | Portal menu; tones via `rowActionTone.js` |
+| `EmptyState` | `components/common/EmptyState.jsx` | Uses `AddButton` for create CTA |
+| `ResourcePage` | `components/common/ResourcePage.jsx` | Header create uses `AddButton` |
+
+### CSS specification (`add` variant)
+
+| Property | Value |
+|----------|-------|
+| Background | `#0F5F78` |
+| Hover | `#0A4D63` |
+| Active | `#083F52` |
+| Height | 40px (`2.5rem`) |
+| Padding | 0 16px |
+| Border radius | 8px |
+| Font | 14px / weight 600 |
+| Icon gap | ~7px |
+| Shadow | Subtle only — no gradient or glow |
+
+### Migration coverage (24 Aug)
+
+| Module | Status |
+|--------|--------|
+| Sales (customers, bills, orders, invoices, quotations, credit/debit notes, challans, refunds) | Toolbar + empty states → `add` |
+| Procurement (vendors, POs, RFQ, GRN, material requests, vendor bills) | Migrated |
+| Inventory (items, warehouses, RM, FG, transfer, adjustment, stock in/return) | Migrated |
+| Accounts (ledger add customer/vendor, COA, journals, budget, cost allocation, AP) | Migrated |
+| HR (employees, shifts, assets, documents, training, payroll, leave, recruitment, dashboard) | Migrated |
+| Production (machines, work orders, schedules, job cards, daily reports) | Migrated |
+| Maintenance (schedule, preventive, breakdown, equipment) | Migrated |
+| Admin (users, roles) | Migrated |
+| Documents, alerts, settings delivery locations | Migrated |
+| Quality (inspection empty CTAs) | Migrated |
+
+**Intentionally unchanged:**
+
+- Form **Save/Submit** buttons — remain `primary` green
+- **Toggle switches**, KPI card accent colors, tab pill active states
+- Inline **“+ Add Item”** text links inside invoice/document line editors (secondary inline pattern)
+- **Report Incident** (HR) — red safety CTA
+- AI chat FAB launcher — floating action, not standard toolbar button
+
+---
+
+## Components Improved (prior passes)
+
+### Shared
+
+| Component | Notes |
+|-----------|-------|
+| `FormField.jsx` | Input, Select, Textarea; date types get single calendar trigger |
+| `FilterBar.jsx` | Finance, Quality, Maintenance filters; uses `SearchBar` |
+| `SearchFilter.jsx` | `SearchBar` (default + compact), `SearchFilter` wrapper |
+| `LiveIndicator.jsx` | Workflow hub live badge |
+| `PermissionGate.jsx` | Via `usePermissions()` |
+
+### Date & calendar (21 Aug 2026)
+
+| Item | Detail |
+|------|--------|
+| Root cause (fixed) | Global CSS had hidden all `::-webkit-calendar-picker-indicator` |
+| Shared module | `dateControls.jsx` — native `showPicker()` + one custom calendar button |
+| Duplicate icons (fixed) | Native indicator hidden on `.ui-date-input` |
+| Remaining | ~120 files still use raw `type="date"` (functional after CSS fix) |
+
+### Settings UI (Aug 2026)
+
+- Settings routes inside main ERP layout (sidebar + navbar visible).
+- Dark navy hero/background only when dark theme active.
+
+### Manufacturing UX (21 Aug 2026)
+
+- 9-step pipeline; `WorkflowStagePipeline`, `RoleWorkflowBoard`, admin hub KPIs from live data.
+
+### Store Manager sidebar (21 Aug)
+
+- Full Purchases group; Subscription/Logout removed from store sidebar (logout in global header).
+
+---
+
+## Modules Migrated (summary)
+
+| Module | Status |
+|--------|--------|
+| Accounts (Ledger, COA, journals, reports) | Shell + tokens + add buttons |
+| Inventory (V2, FG, RM, transfer, adjustment) | Shell + add buttons |
+| ERP document forms (10) | `erpFormControls.jsx` |
+| Sales/procurement list pages | `add` variant CTAs |
+| HR dashboards | Mockup UI + `AddButton` headers |
+| Table row actions (high-traffic lists) | `TableActionButtons` / semantic variants |
+
+---
+
+## Functional UX Fixes
+
+| Issue | Fix |
+|-------|-----|
+| Inconsistent green Add buttons | Unified `add` variant (#0F5F78) |
+| Mixed View/Edit/Delete colors | `TableActionButtons` + row menu tones |
+| Two calendar icons on date fields | Hide native indicator when custom button present |
+| Settings felt disconnected | Moved into ERP shell |
+| Store Manager missing purchase pages | Full Purchases group in store nav |
+| Row menus clipped in tables | Portal positioning |
+| Inconsistent search bar styles across modules | Unified `SearchBar`; Vendors page as reference |
+| Hardcoded light-only search on settings/maintenance | Theme tokens + `ui-input` |
+
+**No routing, API contract, or database schema changes for UI-only work.**
+
+---
+
+## Responsive & Accessibility
+
+- Tables: horizontal scroll via `ui-table-wrap`
+- Forms: labels via `FormField`; focus rings on inputs and buttons (`:focus-visible`)
+- Buttons: `aria-busy` when loading; icon buttons use `aria-label`
+- Menus: `aria-expanded`, Escape to close
+- Route fallback: `role="status"` spinner
+- Skip link: `App.jsx` uses accessible skip-to-content control
+
+---
+
+## RBAC & Navigation UX (21 Aug)
+
+| Check | Behavior |
+|-------|------------|
+| Sidebar | Module-tagged items filtered by role |
+| Unauthorized URL | `AccessDenied` page |
+| Refresh | JWT role → `/auth/me` restores correct menu |
+| Role login redirect | `roleRedirect.js` per role |
+
+---
+
+## Testing
+
+| Check | Result |
+|-------|--------|
+| `npm run build` | Pass (includes search bar migration, 25 Aug) |
+| `npm test -- --run src/components/common/Button.test.jsx` | Pass (primary, add, view, edit, loading, link) |
+| `pytest test_workflow_state_machine` | Pass |
+| Playwright E2E | Not configured — recommended |
+| Visual regression | No baseline in repo |
+
+### Recommended next steps
+
+1. Playwright: login per role → sidebar snapshot → one forbidden URL.
+2. Migrate high-traffic raw date inputs to `DatePicker`.
+3. HR dashboards → shared `KpiCard` + tokens (reduce inline indigo).
+4. Optional: inline form “+ Add Item” links → shared link-button component.
+
+---
+
+## Remaining Issues
+
+| Priority | Issue |
+|----------|-------|
+| Low | Inline “+ Add Item” / “+ Add Buyer” links in document forms still use legacy link styling |
+| Medium | HR KPI cards use inline indigo instead of shared `KpiCard` |
+| Medium | ~120 files still on raw `type="date"` (functional; not fully standardized) |
+| Medium | `SettingsContext.dateFormat` not wired to pickers/display |
+| Low | 50+ modals duplicate footer button rows (could use shared modal footer) |
+| Low | npm audit advisories on export libs (dependency, not UI) |
+
+---
+
+## Related Documentation
+
+- [README.md](./README.md) — setup, RBAC, design system overview  
+- [SECURITY_REPORT.md](./SECURITY_REPORT.md) — auth/session (separate from visual UX)  
+- [PROJECT_ANALYSIS_REPORT.md](./PROJECT_ANALYSIS_REPORT.md) — architecture, RBAC flow  
+
+---
+
+## Change Log
+
+| Date | Note |
+|------|------|
+| 2026-08-16 | Initial audit: badges, row menu, modal CSS, accounts shell |
+| 2026-08-18 | Forest green rebrand; design-system module; ERP forms; manufacturing UI |
+| 2026-08-21 | Manufacturing IA pass; 9-step pipeline; Store Manager nav; date controls |
+| 2026-08-24 | **Action-based button system:** `add`/`view`/`edit` variants, `AddButton`, `TableActionButtons`, 80+ page Add/Create migration; button unit tests |
+| 2026-08-25 | **Search bar standardization:** `SearchBar` default + `size="compact"`; Vendors reference; 40+ list pages + forms/dropdowns/comboboxes; dark theme tokens |

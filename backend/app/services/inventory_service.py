@@ -271,6 +271,12 @@ def record_stock_movement(
     db: Session, payload: StockMovementCreate, *, commit: bool = True
 ) -> StockMovement:
     """Post a stock movement and update stock_levels. Set commit=False for multi-step workflows."""
+    if payload.tenant_id:
+        from app.utils.tenant_validation import assert_stock_movement_refs
+
+        assert_stock_movement_refs(
+            db, payload.tenant_id, payload.warehouse_id, payload.item_id
+        )
     data = payload.model_dump()
     # Normalize types that increase / decrease stock
     raw_type = (data.get("movement_type") or "in").lower()

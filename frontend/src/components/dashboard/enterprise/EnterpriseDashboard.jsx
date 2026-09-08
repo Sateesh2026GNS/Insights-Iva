@@ -1,5 +1,5 @@
 /**
- * @deprecated Not routed. Use module dashboards (e.g. ProductionDashboard at `/production`).
+ * @deprecated Not routed. Admin uses `reference/ReferenceDashboard.jsx` at `/`.
  * This component still uses dashboardDummyData and must not be wired into AppRoutes.
  */
 import { useEffect, useState } from "react";

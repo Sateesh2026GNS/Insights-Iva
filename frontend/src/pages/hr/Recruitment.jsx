@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useLocation } from "react-router-dom";
 import {
   Briefcase,
@@ -19,6 +20,7 @@ import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import PlaceholderPage from "../../components/common/PlaceholderPage";
 import InventoryRowActionsMenu from "../../components/inventory/InventoryRowActionsMenu";
 import Loader from "../../components/common/Loader";
+import EmptyState from "../../components/common/EmptyState";
 import Button, { AddButton } from "../../components/common/Button";
 import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
 import { ListPageShell } from "../../components/common/ListPageShell";
@@ -489,8 +491,13 @@ function RecruitmentDashboard() {
               <tbody>
                 {data.job_openings.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="border-b border-[var(--color-border-soft)] px-3 py-8 text-center text-sm text-[var(--color-text-muted)]">
-                      No recruitment records found
+                    <td colSpan={6} className="border-none p-0">
+                      <EmptyState
+                        icon="document"
+                        title="No records found."
+                        description="There is nothing to show here yet."
+                        className="border-none bg-transparent py-12"
+                      />
                     </td>
                   </tr>
                 ) : (
@@ -553,8 +560,13 @@ function RecruitmentDashboard() {
                 <tbody>
                   {pageRows.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="border-b border-[var(--color-border-soft)] px-3 py-8 text-center text-sm text-[var(--color-text-muted)]">
-                        No applicants found
+                      <td colSpan={6} className="border-none p-0">
+                        <EmptyState
+                          icon="document"
+                          title="No records found."
+                          description="There is nothing to show here yet."
+                          className="border-none bg-transparent py-12"
+                        />
                       </td>
                     </tr>
                   ) : (
@@ -675,152 +687,161 @@ function RecruitmentDashboard() {
         </Panel>
       </div>
 
-      {showJobModal ? (
-        <div
-          className="ui-modal-backdrop"
-          onMouseDown={(e) => {
-            if (!saving && e.target === e.currentTarget) {
-              setShowJobModal(false);
-              resetJobForm();
-            }
-          }}
-        >
-          <div className="ui-modal max-h-[90vh] w-full max-w-lg overflow-y-auto p-6" onMouseDown={(e) => e.stopPropagation()}>
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-[var(--color-text)]">{editJob ? "Edit Job Opening" : "Create Job Opening"}</h3>
-              <button type="button" onClick={() => { setShowJobModal(false); resetJobForm(); }} className="text-[var(--color-text-muted)] hover:text-[var(--color-text)]">
-                <X className="h-5 w-5" />
-              </button>
+      {showJobModal &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            className="ui-modal-backdrop"
+            onMouseDown={(e) => {
+              if (!saving && e.target === e.currentTarget) {
+                setShowJobModal(false);
+                resetJobForm();
+              }
+            }}
+          >
+            <div className="ui-modal max-h-[90vh] w-full max-w-lg overflow-y-auto p-6" onMouseDown={(e) => e.stopPropagation()}>
+              <div className="mb-4 flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-[var(--color-text)]">{editJob ? "Edit Job Opening" : "Create Job Opening"}</h3>
+                <button type="button" onClick={() => { setShowJobModal(false); resetJobForm(); }} className="text-[var(--color-text-muted)] hover:text-[var(--color-text)]">
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              {formError ? <p className="mb-3 text-sm text-[var(--color-danger)]">{formError}</p> : null}
+              <form onSubmit={handleSaveJob} className="space-y-3">
+                <label className="ui-label block">
+                  Job Title *
+                  <input className={inputClass} value={jobForm.title} onChange={(e) => setJobForm((f) => ({ ...f, title: e.target.value }))} required />
+                </label>
+                <label className="ui-label block">
+                  Department
+                  <input className={inputClass} value={jobForm.department} onChange={(e) => setJobForm((f) => ({ ...f, department: e.target.value }))} />
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <label className="ui-label block">
+                    Openings
+                    <input type="number" min={1} className={inputClass} value={jobForm.openings_count} onChange={(e) => setJobForm((f) => ({ ...f, openings_count: e.target.value }))} />
+                  </label>
+                  <label className="ui-label block">
+                    Status
+                    <select className={selectClass} value={jobForm.status} onChange={(e) => setJobForm((f) => ({ ...f, status: e.target.value }))}>
+                      <option value="open">Open</option>
+                      <option value="closed">Closed</option>
+                      <option value="on_hold">On Hold</option>
+                    </select>
+                  </label>
+                </div>
+                <label className="ui-label block">
+                  Location
+                  <input className={inputClass} value={jobForm.location} onChange={(e) => setJobForm((f) => ({ ...f, location: e.target.value }))} />
+                </label>
+                <label className="ui-label block">
+                  Description
+                  <textarea className={inputClass} rows={3} value={jobForm.description} onChange={(e) => setJobForm((f) => ({ ...f, description: e.target.value }))} />
+                </label>
+                <div className="flex justify-end gap-2 border-t border-[var(--color-border-soft)] pt-2">
+                  <Button type="button" variant="cancel" onClick={() => { setShowJobModal(false); resetJobForm(); }}>Cancel</Button>
+                  <Button type="submit" variant="primary" disabled={saving}>{saving ? "Saving..." : "Save"}</Button>
+                </div>
+              </form>
             </div>
-            {formError ? <p className="mb-3 text-sm text-[var(--color-danger)]">{formError}</p> : null}
-            <form onSubmit={handleSaveJob} className="space-y-3">
-              <label className="ui-label block">
-                Job Title *
-                <input className={inputClass} value={jobForm.title} onChange={(e) => setJobForm((f) => ({ ...f, title: e.target.value }))} required />
-              </label>
-              <label className="ui-label block">
-                Department
-                <input className={inputClass} value={jobForm.department} onChange={(e) => setJobForm((f) => ({ ...f, department: e.target.value }))} />
-              </label>
-              <div className="grid grid-cols-2 gap-3">
-                <label className="ui-label block">
-                  Openings
-                  <input type="number" min={1} className={inputClass} value={jobForm.openings_count} onChange={(e) => setJobForm((f) => ({ ...f, openings_count: e.target.value }))} />
-                </label>
-                <label className="ui-label block">
-                  Status
-                  <select className={selectClass} value={jobForm.status} onChange={(e) => setJobForm((f) => ({ ...f, status: e.target.value }))}>
-                    <option value="open">Open</option>
-                    <option value="closed">Closed</option>
-                    <option value="on_hold">On Hold</option>
-                  </select>
-                </label>
-              </div>
-              <label className="ui-label block">
-                Location
-                <input className={inputClass} value={jobForm.location} onChange={(e) => setJobForm((f) => ({ ...f, location: e.target.value }))} />
-              </label>
-              <label className="ui-label block">
-                Description
-                <textarea className={inputClass} rows={3} value={jobForm.description} onChange={(e) => setJobForm((f) => ({ ...f, description: e.target.value }))} />
-              </label>
-              <div className="flex justify-end gap-2 border-t border-[var(--color-border-soft)] pt-2">
-                <Button type="button" variant="cancel" onClick={() => { setShowJobModal(false); resetJobForm(); }}>Cancel</Button>
-                <Button type="submit" variant="primary" disabled={saving}>{saving ? "Saving..." : "Save"}</Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      ) : null}
+          </div>,
+          document.body
+        )}
 
-      {showApplicantModal ? (
-        <div
-          className="ui-modal-backdrop"
-          onMouseDown={(e) => {
-            if (!saving && e.target === e.currentTarget) {
-              setShowApplicantModal(false);
-              resetApplicantForm();
-            }
-          }}
-        >
-          <div className="ui-modal max-h-[90vh] w-full max-w-lg overflow-y-auto p-6" onMouseDown={(e) => e.stopPropagation()}>
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-[var(--color-text)]">{editApplicant ? "Edit Applicant" : "Add Applicant"}</h3>
-              <button type="button" onClick={() => { setShowApplicantModal(false); resetApplicantForm(); }} className="text-[var(--color-text-muted)] hover:text-[var(--color-text)]">
-                <X className="h-5 w-5" />
-              </button>
+      {showApplicantModal &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            className="ui-modal-backdrop"
+            onMouseDown={(e) => {
+              if (!saving && e.target === e.currentTarget) {
+                setShowApplicantModal(false);
+                resetApplicantForm();
+              }
+            }}
+          >
+            <div className="ui-modal max-h-[90vh] w-full max-w-lg overflow-y-auto p-6" onMouseDown={(e) => e.stopPropagation()}>
+              <div className="mb-4 flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-[var(--color-text)]">{editApplicant ? "Edit Applicant" : "Add Applicant"}</h3>
+                <button type="button" onClick={() => { setShowApplicantModal(false); resetApplicantForm(); }} className="text-[var(--color-text-muted)] hover:text-[var(--color-text)]">
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              {formError ? <p className="mb-3 text-sm text-[var(--color-danger)]">{formError}</p> : null}
+              <form onSubmit={handleSaveApplicant} className="space-y-3">
+                <label className="ui-label block">
+                  Candidate Name *
+                  <input className={inputClass} value={applicantForm.full_name} onChange={(e) => setApplicantForm((f) => ({ ...f, full_name: e.target.value }))} required />
+                </label>
+                <label className="ui-label block">
+                  Job Opening
+                  <select className={selectClass} value={applicantForm.job_opening_id} onChange={(e) => setApplicantForm((f) => ({ ...f, job_opening_id: e.target.value }))}>
+                    <option value="">— Select job —</option>
+                    {data.job_openings.map((j) => (
+                      <option key={j.id} value={j.id}>{j.title}</option>
+                    ))}
+                  </select>
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <label className="ui-label block">
+                    Stage
+                    <select className={selectClass} value={applicantForm.stage} onChange={(e) => setApplicantForm((f) => ({ ...f, stage: e.target.value }))}>
+                      <option value="applied">Applied</option>
+                      <option value="screening">Screening</option>
+                      <option value="interview">Interview</option>
+                      <option value="offer">Offer</option>
+                      <option value="hired">Hired</option>
+                    </select>
+                  </label>
+                  <label className="ui-label block">
+                    Status
+                    <select className={selectClass} value={applicantForm.status} onChange={(e) => setApplicantForm((f) => ({ ...f, status: e.target.value }))}>
+                      <option value="new">New</option>
+                      <option value="in_progress">In Progress</option>
+                      <option value="hired">Hired</option>
+                      <option value="rejected">Rejected</option>
+                    </select>
+                  </label>
+                </div>
+                <label className="ui-label block">
+                  Source
+                  <input className={inputClass} value={applicantForm.source} onChange={(e) => setApplicantForm((f) => ({ ...f, source: e.target.value }))} placeholder="LinkedIn, Referral, etc." />
+                </label>
+                <div className="flex justify-end gap-2 border-t border-[var(--color-border-soft)] pt-2">
+                  <Button type="button" variant="cancel" onClick={() => { setShowApplicantModal(false); resetApplicantForm(); }}>Cancel</Button>
+                  <Button type="submit" variant="primary" disabled={saving}>{saving ? "Saving..." : "Save"}</Button>
+                </div>
+              </form>
             </div>
-            {formError ? <p className="mb-3 text-sm text-[var(--color-danger)]">{formError}</p> : null}
-            <form onSubmit={handleSaveApplicant} className="space-y-3">
-              <label className="ui-label block">
-                Candidate Name *
-                <input className={inputClass} value={applicantForm.full_name} onChange={(e) => setApplicantForm((f) => ({ ...f, full_name: e.target.value }))} required />
-              </label>
-              <label className="ui-label block">
-                Job Opening
-                <select className={selectClass} value={applicantForm.job_opening_id} onChange={(e) => setApplicantForm((f) => ({ ...f, job_opening_id: e.target.value }))}>
-                  <option value="">— Select job —</option>
-                  {data.job_openings.map((j) => (
-                    <option key={j.id} value={j.id}>{j.title}</option>
-                  ))}
-                </select>
-              </label>
-              <div className="grid grid-cols-2 gap-3">
-                <label className="ui-label block">
-                  Stage
-                  <select className={selectClass} value={applicantForm.stage} onChange={(e) => setApplicantForm((f) => ({ ...f, stage: e.target.value }))}>
-                    <option value="applied">Applied</option>
-                    <option value="screening">Screening</option>
-                    <option value="interview">Interview</option>
-                    <option value="offer">Offer</option>
-                    <option value="hired">Hired</option>
-                  </select>
-                </label>
-                <label className="ui-label block">
-                  Status
-                  <select className={selectClass} value={applicantForm.status} onChange={(e) => setApplicantForm((f) => ({ ...f, status: e.target.value }))}>
-                    <option value="new">New</option>
-                    <option value="in_progress">In Progress</option>
-                    <option value="hired">Hired</option>
-                    <option value="rejected">Rejected</option>
-                  </select>
-                </label>
-              </div>
-              <label className="ui-label block">
-                Source
-                <input className={inputClass} value={applicantForm.source} onChange={(e) => setApplicantForm((f) => ({ ...f, source: e.target.value }))} placeholder="LinkedIn, Referral, etc." />
-              </label>
-              <div className="flex justify-end gap-2 border-t border-[var(--color-border-soft)] pt-2">
-                <Button type="button" variant="cancel" onClick={() => { setShowApplicantModal(false); resetApplicantForm(); }}>Cancel</Button>
-                <Button type="submit" variant="primary" disabled={saving}>{saving ? "Saving..." : "Save"}</Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      ) : null}
+          </div>,
+          document.body
+        )}
 
-      {viewJob ? (
-        <div
-          className="ui-modal-backdrop"
-          onMouseDown={(e) => {
-            if (e.target === e.currentTarget) setViewJob(null);
-          }}
-        >
-          <div className="ui-modal w-full max-w-md p-6" onMouseDown={(e) => e.stopPropagation()}>
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-[var(--color-text)]">{viewJob.title}</h3>
-              <button type="button" onClick={() => setViewJob(null)} className="text-[var(--color-text-muted)] hover:text-[var(--color-text)]"><X className="h-5 w-5" /></button>
+      {viewJob &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            className="ui-modal-backdrop"
+            onMouseDown={(e) => {
+              if (e.target === e.currentTarget) setViewJob(null);
+            }}
+          >
+            <div className="ui-modal w-full max-w-md p-6" onMouseDown={(e) => e.stopPropagation()}>
+              <div className="mb-4 flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-[var(--color-text)]">{viewJob.title}</h3>
+                <button type="button" onClick={() => setViewJob(null)} className="text-[var(--color-text-muted)] hover:text-[var(--color-text)]"><X className="h-5 w-5" /></button>
+              </div>
+              <dl className="space-y-2 text-sm text-[var(--color-text-secondary)]">
+                <div><dt className="font-medium text-[var(--color-text)]">Department</dt><dd>{viewJob.department}</dd></div>
+                <div><dt className="font-medium text-[var(--color-text)]">Openings</dt><dd>{viewJob.openings}</dd></div>
+                <div><dt className="font-medium text-[var(--color-text)]">Applicants</dt><dd>{viewJob.applicants}</dd></div>
+                <div><dt className="font-medium text-[var(--color-text)]">Status</dt><dd><JobStatusBadge status={viewJob.status} /></dd></div>
+                {viewJob.description ? <div><dt className="font-medium text-[var(--color-text)]">Description</dt><dd>{viewJob.description}</dd></div> : null}
+              </dl>
             </div>
-            <dl className="space-y-2 text-sm text-[var(--color-text-secondary)]">
-              <div><dt className="font-medium text-[var(--color-text)]">Department</dt><dd>{viewJob.department}</dd></div>
-              <div><dt className="font-medium text-[var(--color-text)]">Openings</dt><dd>{viewJob.openings}</dd></div>
-              <div><dt className="font-medium text-[var(--color-text)]">Applicants</dt><dd>{viewJob.applicants}</dd></div>
-              <div><dt className="font-medium text-[var(--color-text)]">Status</dt><dd><JobStatusBadge status={viewJob.status} /></dd></div>
-              {viewJob.description ? <div><dt className="font-medium text-[var(--color-text)]">Description</dt><dd>{viewJob.description}</dd></div> : null}
-            </dl>
-          </div>
-        </div>
-      ) : null}
+          </div>,
+          document.body
+        )}
     </div>
     </ListPageShell>
   );

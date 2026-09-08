@@ -276,6 +276,8 @@ def issue_material(
     issued_by: str,
     issued_qty: int | None = None,
     notes: str | None = None,
+    *,
+    commit: bool = True,
 ) -> StoreIssueRequestRead:
     row = db.scalars(
         select(StoreIssueRequest).where(
@@ -305,28 +307,38 @@ def issue_material(
         row.status = "approved"
         row.approved_by = issued_by
 
-    record_stock_movement(
-        db,
-        StockMovementCreate(
-            tenant_id=tenant_id,
-            warehouse_id=row.warehouse_id,
-            item_id=row.item_id,
-            quantity=qty,
-            movement_type="out",
-            reference=f"{row.request_number} | OP:{row.operator_name}"
-            + (f" | MACHINE:{row.machine}" if row.machine else ""),
-            created_by=issued_by,
-        ),
-        commit=False,
-    )
-    row.status = "issued"
-    row.issued_by = issued_by
-    row.issued_qty = qty
-    if notes:
-        row.notes = notes
-    db.commit()
-    db.refresh(row)
-    return _to_request_read(db, row)
+    try:
+        record_stock_movement(
+            db,
+            StockMovementCreate(
+                tenant_id=tenant_id,
+                warehouse_id=row.warehouse_id,
+                item_id=row.item_id,
+                quantity=qty,
+                movement_type="out",
+                reference=f"{row.request_number} | OP:{row.operator_name}"
+                + (f" | MACHINE:{row.machine}" if row.machine else ""),
+                created_by=issued_by,
+            ),
+            commit=False,
+        )
+        row.status = "issued"
+        row.issued_by = issued_by
+        row.issued_qty = qty
+        if notes:
+            row.notes = notes
+        if commit:
+            db.commit()
+            db.refresh(row)
+        else:
+            db.flush()
+        return _to_request_read(db, row)
+    except HTTPException:
+        db.rollback()
+        raise
+    except SQLAlchemyError as exc:
+        db.rollback()
+        raise HTTPException(500, "Failed to issue material") from exc
 
 
 def confirm_received(
@@ -351,7 +363,13 @@ def confirm_received(
 
 
 def record_consumption(
-    db: Session, tenant_id: int, request_id: int, payload: StoreConsumeCreate, user_name: str
+    db: Session,
+    tenant_id: int,
+    request_id: int,
+    payload: StoreConsumeCreate,
+    user_name: str,
+    *,
+    commit: bool = True,
 ) -> StoreIssueRequestRead:
     row = db.scalars(
         select(StoreIssueRequest).where(
@@ -380,42 +398,51 @@ def record_consumption(
             f"Total cumulative consumption (used: {new_used}, waste: {new_waste}, returned: {new_returned} = {total}) cannot exceed issued quantity ({issued})",
         )
 
-    if payload.returned_qty > 0:
-        record_stock_movement(
-            db,
-            StockMovementCreate(
+    try:
+        if payload.returned_qty > 0:
+            record_stock_movement(
+                db,
+                StockMovementCreate(
+                    tenant_id=tenant_id,
+                    warehouse_id=row.warehouse_id,
+                    item_id=row.item_id,
+                    quantity=payload.returned_qty,
+                    movement_type="return",
+                    reference=f"{row.request_number} | RETURN",
+                    created_by=user_name,
+                ),
+                commit=False,
+            )
+        if payload.waste_qty > 0:
+            mov = StockMovement(
                 tenant_id=tenant_id,
                 warehouse_id=row.warehouse_id,
                 item_id=row.item_id,
-                quantity=payload.returned_qty,
-                movement_type="return",
-                reference=f"{row.request_number} | RETURN",
+                quantity=payload.waste_qty,
+                movement_type="scrap",
+                reference=f"{row.request_number} | WASTE (already issued)",
                 created_by=user_name,
-            ),
-            commit=False,
-        )
-    if payload.waste_qty > 0:
-        # Waste already issued (OUT); log scrap for history without double-deducting
-        mov = StockMovement(
-            tenant_id=tenant_id,
-            warehouse_id=row.warehouse_id,
-            item_id=row.item_id,
-            quantity=payload.waste_qty,
-            movement_type="scrap",
-            reference=f"{row.request_number} | WASTE (already issued)",
-            created_by=user_name,
-        )
-        db.add(mov)
+            )
+            db.add(mov)
 
-    row.used_qty = new_used
-    row.waste_qty = new_waste
-    row.returned_qty = new_returned
-    row.status = "closed"
-    if payload.notes:
-        row.notes = payload.notes
-    db.commit()
-    db.refresh(row)
-    return _to_request_read(db, row)
+        row.used_qty = new_used
+        row.waste_qty = new_waste
+        row.returned_qty = new_returned
+        row.status = "closed"
+        if payload.notes:
+            row.notes = payload.notes
+        if commit:
+            db.commit()
+            db.refresh(row)
+        else:
+            db.flush()
+        return _to_request_read(db, row)
+    except HTTPException:
+        db.rollback()
+        raise
+    except SQLAlchemyError as exc:
+        db.rollback()
+        raise HTTPException(500, "Failed to record consumption") from exc
 
 
 def create_stock_return(

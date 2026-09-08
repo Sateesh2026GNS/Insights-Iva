@@ -130,7 +130,7 @@ describe("Store Manager settings access", () => {
 describe("getDashboardPathForRole", () => {
   it("routes ERP roles to their module home dashboards", async () => {
     const { getDashboardPathForRole } = await import("../utils/roleRedirect");
-    expect(getDashboardPathForRole("Admin")).toBe("/production");
+    expect(getDashboardPathForRole("Admin")).toBe("/");
     expect(getDashboardPathForRole("Production Manager")).toBe("/production");
     expect(getDashboardPathForRole("Operator")).toBe("/my-job-cards");
     expect(getDashboardPathForRole("operator")).toBe("/my-job-cards");

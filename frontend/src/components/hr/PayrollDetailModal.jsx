@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import { Download, Mail, Printer, X } from "lucide-react";
 import { useToast } from "../../context/ToastContext";
 import { formatInr, statusColor } from "../../data/hrMasterData";
@@ -102,9 +103,9 @@ NET SALARY    : ${formatInr(net)}
     addToast(`Payslip emailed to ${record.employee_name} successfully`, "success");
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center">
-      <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 overflow-y-auto" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
         <div className="flex items-start justify-between">
           <div>
             <h2 className="text-lg font-bold text-slate-900">Salary Slip</h2>
@@ -134,7 +135,8 @@ NET SALARY    : ${formatInr(net)}
           <button type="button" onClick={handleEmail} className="inline-flex items-center gap-1 rounded-lg border px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"><Mail className="h-4 w-4" /> Email</button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 

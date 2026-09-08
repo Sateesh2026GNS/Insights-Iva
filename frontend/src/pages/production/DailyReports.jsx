@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -176,9 +177,19 @@ function NewReportModal({ onClose, onSuccess }) {
     }
   };
 
-  return (
-    <div className="ui-modal-backdrop">
-      <div className="ui-modal w-full max-w-lg">
+  return createPortal(
+    <div
+      className="ui-modal-backdrop"
+      role="dialog"
+      aria-modal="true"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget && !saving) onClose?.();
+      }}
+    >
+      <div
+        className="ui-modal w-full max-w-lg"
+        onMouseDown={(e) => e.stopPropagation()}
+      >
         <div className="mb-4 flex items-start justify-between gap-3">
           <div>
             <h3 className="text-base font-semibold text-[var(--color-text)]">New daily report</h3>
@@ -195,11 +206,10 @@ function NewReportModal({ onClose, onSuccess }) {
           <Loader label="Loading work orders…" />
         ) : workOrders.length === 0 ? (
           <EmptyState
-            icon="clipboard"
-            title="No work orders"
-            description="Create a work order before logging a daily report."
-            actionLabel="Work Orders"
-            actionHref="/production/work-orders"
+            icon="document"
+            title="No records found."
+            description="There is nothing to show here yet."
+            className="border-none bg-transparent py-12"
           />
         ) : (
           <form onSubmit={handleSubmit} className="space-y-3">
@@ -260,7 +270,8 @@ function NewReportModal({ onClose, onSuccess }) {
           </form>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -641,16 +652,9 @@ export default function DailyReports() {
                 emptyState={
                   <EmptyState
                     icon="document"
-                    title="No daily reports"
-                    description={
-                      searchQuery
-                        ? "No reports match your search."
-                        : includeSynced
-                          ? "Nothing in this date range yet."
-                          : "No logged reports in this range. Create one, or include synced work orders."
-                    }
-                    actionLabel="New Report"
-                    onAction={() => setShowNew(true)}
+                    title="No records found."
+                    description="There is nothing to show here yet."
+                    className="border-none bg-transparent py-12"
                   />
                 }
               />

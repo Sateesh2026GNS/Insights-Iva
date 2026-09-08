@@ -298,6 +298,7 @@ export function CustomerFormModal({ customer, onClose, onSave }) {
               alert("Phone number must be exactly 10 digits.");
               return;
             }
+          }
           const trimmedGstin = form.gstin.trim();
           if (trimmedGstin) {
             if (/[a-z]/.test(trimmedGstin)) {

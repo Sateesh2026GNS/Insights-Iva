@@ -116,18 +116,15 @@ function CompanyDetailContent() {
       <div className="ap-content ap-loading" style={{color:"#dc2626"}}>Company not found.</div>
     </div>
   );
+  const addressParts = [company.address, company.city, company.state]
+    .filter(Boolean)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const formattedAddress = addressParts.length > 0 ? addressParts.join(", ") : "—";
 
   return (
     <div className="ap-root">
       <PortalDecorations />
-      <div className="ap-bubble ap-bubble-1" />
-      <div className="ap-bubble ap-bubble-2" />
-      <div className="ap-bubble ap-bubble-3" />
-      <div className="ap-bubble ap-bubble-4" />
-      <div className="ap-bubble ap-bubble-5" />
-      <div className="ap-bubble ap-bubble-6" />
-      <div className="ap-curve ap-curve--white" />
-      <div className="ap-curve ap-curve--gold" />
       <div className="ap-content">
         <header className="ap-header">
           <div className="ap-header__inner">
@@ -146,33 +143,30 @@ function CompanyDetailContent() {
             <ArrowLeft size={14} /> Back to companies
           </Link>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-
+          <div className="ap-card">
             {/* Company Info */}
-            <div className="ap-card">
-              <div className="ap-section-head">
-                <div className="ap-section-head__icon"><Building2 size={16} /></div>
-                <div>
-                  <div className="ap-section-head__title">{company.company_name}</div>
-                  <div className="ap-section-head__sub" style={{fontFamily:"monospace"}}>{company.company_code}</div>
-                </div>
+            <div className="ap-section-head">
+              <div className="ap-section-head__icon"><Building2 size={16} /></div>
+              <div>
+                <div className="ap-section-head__title">{company.company_name}</div>
+                <div className="ap-section-head__sub" style={{fontFamily:"monospace"}}>{company.company_code}</div>
               </div>
-              <div className="ap-section-body">
-                <dl className="ap-detail-grid">
-                  <Item label="Email" value={company.company_email} />
-                  <Item label="Phone" value={company.mobile_number} />
-                  <Item label="Status" value={company.status} />
-                  <Item label="Plan" value={company.subscription_plan} />
-                  <Item label="GST" value={company.gst_number || "—"} />
-                  <Item label="Trial Expires" value={company.trial_expires_at ? new Date(company.trial_expires_at).toLocaleDateString() : "—"} />
-                  <Item label="Address" value={`${company.address || ""}, ${company.city || ""}, ${company.state || ""}`} />
-                </dl>
-              </div>
+            </div>
+            <div className="ap-section-body">
+              <dl className="ap-detail-grid">
+                <Item label="Email" value={company.company_email} />
+                <Item label="Phone" value={company.mobile_number} />
+                <Item label="Status" value={company.status} />
+                <Item label="Plan" value={company.subscription_plan} />
+                <Item label="GST" value={company.gst_number || "—"} />
+                <Item label="Trial Expires" value={company.trial_expires_at ? new Date(company.trial_expires_at).toLocaleDateString() : "—"} />
+                <Item label="Address" value={formattedAddress} />
+              </dl>
             </div>
 
             {/* Subscription */}
             {subscription && (
-              <div className="ap-card">
+              <>
                 <div className="ap-section-head">
                   <div className="ap-section-head__icon"><CreditCard size={16} /></div>
                   <div>
@@ -191,45 +185,49 @@ function CompanyDetailContent() {
                     )}
                   </dl>
                 </div>
-              </div>
+              </>
             )}
 
             {/* Reset Password */}
-            <div className="ap-card">
-              <div className="ap-section-head">
-                <div className="ap-section-head__icon"><Users size={16} /></div>
-                <div><div className="ap-section-head__title">Reset Company Admin Password</div></div>
-              </div>
-              <div className="ap-section-body">
-                {message && <div className="ap-alert ap-alert--success" style={{marginBottom:"0.75rem"}}>{message}</div>}
-                <form onSubmit={handleResetPassword} style={{ display: "flex", flexWrap: "wrap", gap: "0.75rem" }}>
-                  <input
-                    type="password" value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="New password (min 8 chars)"
-                    className="ap-input" style={{ minWidth: "200px", flex: 1 }}
-                    minLength={8} required
-                  />
-                  <button type="submit" className="ap-btn ap-btn--primary">Reset Password</button>
-                </form>
-              </div>
+            <div className="ap-section-head">
+              <div className="ap-section-head__icon"><Users size={16} /></div>
+              <div><div className="ap-section-head__title">Reset Company Admin Password</div></div>
+            </div>
+            <div className="ap-section-body">
+              {message && <div className="ap-alert ap-alert--success" style={{marginBottom:"0.75rem"}}>{message}</div>}
+              <form onSubmit={handleResetPassword} style={{ display: "flex", flexWrap: "wrap", gap: "0.75rem" }}>
+                <input
+                  type="password" value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="New password (min 8 chars)"
+                  className="ap-input" style={{ minWidth: "200px", flex: 1 }}
+                  minLength={8} required
+                />
+                <button type="submit" className="ap-btn ap-btn--primary">Reset Password</button>
+              </form>
             </div>
 
             {/* Users Table */}
-            <div className="ap-card">
-              <div className="ap-section-head">
-                <div className="ap-section-head__icon"><Users size={16} /></div>
-                <div><div className="ap-section-head__title">Company Users ({users.length})</div></div>
-              </div>
-              <div className="ap-table-wrap">
-                <table className="ap-table">
-                  <thead>
+            <div className="ap-section-head">
+              <div className="ap-section-head__icon"><Users size={16} /></div>
+              <div><div className="ap-section-head__title">Company Users ({users.length})</div></div>
+            </div>
+            <div className="ap-table-wrap">
+              <table className="ap-table">
+                <thead>
+                  <tr>
+                    <th>Name</th><th>Email</th><th>Role</th><th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {users.length === 0 ? (
                     <tr>
-                      <th>Name</th><th>Email</th><th>Role</th><th>Status</th>
+                      <td colSpan={4} className="ap-empty" style={{ padding: "2rem" }}>
+                        No users found
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {users.map((u) => (
+                  ) : (
+                    users.map((u) => (
                       <tr key={u.id}>
                         <td>{u.full_name}</td>
                         <td>{u.email}</td>
@@ -240,12 +238,11 @@ function CompanyDetailContent() {
                           </span>
                         </td>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    ))
+                  )}
+                </tbody>
+              </table>
             </div>
-
           </div>
         </main>
       </div>

@@ -296,15 +296,10 @@ export default function Customers() {
               </table>
             {rows.length === 0 ? (
               <EmptyState
-                title={query ? "No customers found" : "No customers yet"}
-                description={
-                  query
-                    ? "Try adjusting your search terms."
-                    : "Create your first customer to start recording sales."
-                }
-                actionLabel={!query ? "Create Customer" : undefined}
-                onAction={!query ? () => setPartyOpen(true) : undefined}
-                className="border-none bg-transparent shadow-none"
+                icon="document"
+                title="No records found."
+                description="There is nothing to show here yet."
+                className="border-none bg-transparent py-12"
               />
             ) : null}
           </div>

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   AlertTriangle,
   Calendar,
@@ -65,10 +66,10 @@ const VIEWS = [
 function ScheduleEmpty({ message }) {
   return (
     <EmptyState
-      icon="clipboard"
-      title="Nothing scheduled"
-      description={message}
-      className="py-10"
+      icon="document"
+      title="No records found."
+      description="There is nothing to show here yet."
+      className="border-none bg-transparent py-12"
     />
   );
 }
@@ -614,9 +615,19 @@ function NewScheduleModal({ onClose, onSuccess }) {
   const inputCls = "ui-input";
   const selectCls = "ui-select";
 
-  return (
-    <div className="ui-modal-backdrop">
-      <div className="ui-modal w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+  return createPortal(
+    <div
+      className="ui-modal-backdrop"
+      role="dialog"
+      aria-modal="true"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget && !saving) onClose?.();
+      }}
+    >
+      <div
+        className="ui-modal w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+        onMouseDown={(e) => e.stopPropagation()}
+      >
         <div className="flex items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-surface-muted)] px-6 py-4">
           <div className="flex items-center gap-2.5">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--color-action-teal)]/15 text-[var(--color-action-teal)]">
@@ -718,7 +729,8 @@ function NewScheduleModal({ onClose, onSuccess }) {
           </form>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 

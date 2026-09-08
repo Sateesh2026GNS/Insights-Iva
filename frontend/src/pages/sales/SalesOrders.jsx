@@ -354,27 +354,12 @@ export default function SalesOrders() {
             searchPlaceholder="Search"
             searchKeys={["order_number", "customer_name", "sales_person"]}
             emptyState={
-              rows.length === 0 ? (
-                <EmptyState
-                  icon="clipboard"
-                  title="No sales orders yet"
-                  description="Sales orders appear here when created or converted from quotations."
-                  actionLabel={canCreate ? "Create Sales Order" : undefined}
-                  onAction={canCreate ? () => setShowCreateModal(true) : undefined}
-                />
-              ) : hasAdvancedFilters ? (
-                <NoResultsState
-                  query={filters.customer || filters.status || filters.sales_person}
-                  onClear={() => setFilters(defaultFilters)}
-                />
-              ) : (
-                <EmptyState
-                  title="No sales orders yet"
-                  description="Sales orders appear here when created or converted from quotations."
-                  actionLabel={canCreate ? "Create Sales Order" : undefined}
-                  onAction={canCreate ? () => setShowCreateModal(true) : undefined}
-                />
-              )
+              <EmptyState
+                icon="document"
+                title="No records found."
+                description="There is nothing to show here yet."
+                className="border-none bg-transparent py-12"
+              />
             }
           />
         )}

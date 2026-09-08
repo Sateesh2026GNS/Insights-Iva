@@ -160,7 +160,7 @@ def get_alert(db: Session, alert_id: int, tenant_id: int) -> Alert | None:
 def acknowledge_alert(db: Session, alert_id: int, tenant_id: int | None = None, acknowledged_by: str | None = None) -> Alert | None:
     try:
         alert = db.get(Alert, alert_id)
-        if not alert:
+        if not alert or (tenant_id is not None and alert.tenant_id != tenant_id):
             return None
         alert.acknowledged_at = datetime.now(timezone.utc)
         alert.status = "acknowledged"
@@ -192,7 +192,7 @@ def acknowledge_alert(db: Session, alert_id: int, tenant_id: int | None = None, 
 def resolve_alert(db: Session, alert_id: int, tenant_id: int | None = None, resolved_by: str | None = None) -> Alert | None:
     try:
         alert = db.get(Alert, alert_id)
-        if not alert:
+        if not alert or (tenant_id is not None and alert.tenant_id != tenant_id):
             return None
         alert.status = "resolved"
         alert.is_read = True

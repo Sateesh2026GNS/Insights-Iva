@@ -29,8 +29,7 @@ def create_task_endpoint(
     db: Session = Depends(get_db),
 ) -> TaskRead:
     user, tenant_id = user_tenant
-    if not payload.tenant_id:
-        payload.tenant_id = tenant_id
+    payload.tenant_id = tenant_id
     return task_service.create_task(db, payload)
 
 

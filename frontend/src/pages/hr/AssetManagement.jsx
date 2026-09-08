@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
+import { createPortal } from "react-dom";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { Plus, Briefcase, Tag, MapPin, User, ShieldCheck, X, Save } from "lucide-react";
 import KpiCard from "../../components/common/KpiCard";
@@ -229,142 +230,150 @@ export default function AssetManagement({ autoOpenCreate }) {
           </ListPageCardBody>
         </ListPageCard>
 
-        {showCreateModal && (
-          <div className="ui-modal-backdrop">
-            <div className="ui-modal max-w-lg w-full max-h-[90vh] overflow-y-auto space-y-4">
-              <div className="flex items-start justify-between">
-                <div>
-                  <h3 className="text-lg font-bold text-[var(--color-text)]">Register Asset</h3>
-                  <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Define a company asset entry for auditing.</p>
+        {showCreateModal &&
+          typeof document !== "undefined" &&
+          createPortal(
+            <div
+              className="ui-modal-backdrop"
+              onMouseDown={(e) => {
+                if (!saving && e.target === e.currentTarget) setShowCreateModal(false);
+              }}
+            >
+              <div className="ui-modal max-w-lg w-full max-h-[90vh] overflow-y-auto space-y-4" onMouseDown={(e) => e.stopPropagation()}>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h3 className="text-lg font-bold text-[var(--color-text)]">Register Asset</h3>
+                    <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Define a company asset entry for auditing.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowCreateModal(false)}
+                    className="rounded-lg p-2 text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)]"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setShowCreateModal(false)}
-                  className="rounded-lg p-2 text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)]"
-                >
-                  <X className="h-5 w-5" />
-                </button>
+
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  {error && (
+                    <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs font-semibold text-rose-700">
+                      {error}
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="ui-label">Asset Code *</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. AST-LPT-05"
+                        value={form.asset_code}
+                        onChange={(e) => handleFormChange("asset_code", e.target.value)}
+                        className="ui-input w-full"
+                      />
+                    </div>
+                    <div>
+                      <label className="ui-label">Asset Name *</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. HP EliteBook G8"
+                        value={form.name}
+                        onChange={(e) => handleFormChange("name", e.target.value)}
+                        className="ui-input w-full"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <label className="ui-label">Category</label>
+                      <select
+                        value={form.category}
+                        onChange={(e) => handleFormChange("category", e.target.value)}
+                        className="ui-select w-full"
+                      >
+                        {["IT Equipment", "Safety Gear", "Tools & Instruments", "Vehicles", "Office Supplies", "Furniture"].map((c) => (
+                          <option key={c} value={c}>{c}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="ui-label">Assigned To</label>
+                      <select
+                        value={form.assigned_to}
+                        onChange={(e) => handleFormChange("assigned_to", e.target.value)}
+                        className="ui-select w-full"
+                      >
+                        <option value="">Keep Unassigned</option>
+                        {employees.map((emp) => (
+                          <option key={emp.id} value={emp.full_name}>
+                            {emp.full_name} ({emp.employee_code})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="ui-label">Status</label>
+                      <select
+                        value={form.status}
+                        onChange={(e) => handleFormChange("status", e.target.value)}
+                        className="ui-select w-full"
+                      >
+                        {["Active", "Assigned", "In Repair", "Retired"].map((s) => (
+                          <option key={s} value={s}>{s}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <label className="ui-label">Location / Floor</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Main Plant - Floor B"
+                        value={form.location}
+                        onChange={(e) => handleFormChange("location", e.target.value)}
+                        className="ui-input w-full"
+                      />
+                    </div>
+                    <div>
+                      <label className="ui-label">Purchase Date</label>
+                      <input
+                        type="date"
+                        value={form.purchase_date}
+                        onChange={(e) => handleFormChange("purchase_date", e.target.value)}
+                        className="ui-input w-full"
+                      />
+                    </div>
+                    <div>
+                      <label className="ui-label">Cost (₹)</label>
+                      <input
+                        type="number"
+                        placeholder="e.g. 45000"
+                        value={form.purchase_cost}
+                        onChange={(e) => handleFormChange("purchase_cost", e.target.value)}
+                        className="ui-input w-full"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-2 border-t border-[var(--color-border-soft)] pt-4">
+                    <Button type="button" variant="cancel" onClick={() => setShowCreateModal(false)}>
+                      Cancel
+                    </Button>
+                    <Button variant="primary" type="submit" disabled={saving}>
+                      <Save className="h-4 w-4" />
+                      {saving ? "Saving..." : "Register Asset"}
+                    </Button>
+                  </div>
+                </form>
               </div>
-
-              <form onSubmit={handleSubmit} className="space-y-4">
-                {error && (
-                  <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs font-semibold text-rose-700">
-                    {error}
-                  </div>
-                )}
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="ui-label">Asset Code *</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. AST-LPT-05"
-                      value={form.asset_code}
-                      onChange={(e) => handleFormChange("asset_code", e.target.value)}
-                      className="ui-input w-full"
-                    />
-                  </div>
-                  <div>
-                    <label className="ui-label">Asset Name *</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. HP EliteBook G8"
-                      value={form.name}
-                      onChange={(e) => handleFormChange("name", e.target.value)}
-                      className="ui-input w-full"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-3 gap-3">
-                  <div>
-                    <label className="ui-label">Category</label>
-                    <select
-                      value={form.category}
-                      onChange={(e) => handleFormChange("category", e.target.value)}
-                      className="ui-select w-full"
-                    >
-                      {["IT Equipment", "Safety Gear", "Tools & Instruments", "Vehicles", "Office Supplies", "Furniture"].map((c) => (
-                        <option key={c} value={c}>{c}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="ui-label">Assigned To</label>
-                    <select
-                      value={form.assigned_to}
-                      onChange={(e) => handleFormChange("assigned_to", e.target.value)}
-                      className="ui-select w-full"
-                    >
-                      <option value="">Keep Unassigned</option>
-                      {employees.map((emp) => (
-                        <option key={emp.id} value={emp.full_name}>
-                          {emp.full_name} ({emp.employee_code})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="ui-label">Status</label>
-                    <select
-                      value={form.status}
-                      onChange={(e) => handleFormChange("status", e.target.value)}
-                      className="ui-select w-full"
-                    >
-                      {["Active", "Assigned", "In Repair", "Retired"].map((s) => (
-                        <option key={s} value={s}>{s}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-3 gap-3">
-                  <div>
-                    <label className="ui-label">Location / Floor</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Main Plant - Floor B"
-                      value={form.location}
-                      onChange={(e) => handleFormChange("location", e.target.value)}
-                      className="ui-input w-full"
-                    />
-                  </div>
-                  <div>
-                    <label className="ui-label">Purchase Date</label>
-                    <input
-                      type="date"
-                      value={form.purchase_date}
-                      onChange={(e) => handleFormChange("purchase_date", e.target.value)}
-                      className="ui-input w-full"
-                    />
-                  </div>
-                  <div>
-                    <label className="ui-label">Cost (₹)</label>
-                    <input
-                      type="number"
-                      placeholder="e.g. 45000"
-                      value={form.purchase_cost}
-                      onChange={(e) => handleFormChange("purchase_cost", e.target.value)}
-                      className="ui-input w-full"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex justify-end gap-2 border-t border-[var(--color-border-soft)] pt-4">
-                  <Button type="button" variant="cancel" onClick={() => setShowCreateModal(false)}>
-                    Cancel
-                  </Button>
-                  <Button variant="primary" type="submit" disabled={saving}>
-                    <Save className="h-4 w-4" />
-                    {saving ? "Saving..." : "Register Asset"}
-                  </Button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
+            </div>,
+            document.body
+          )}
       </div>
     </ListPageShell>
   );

@@ -19,6 +19,7 @@ import {
 import Loader from "../../components/common/Loader";
 import { SearchBar } from "../../components/common/SearchFilter";
 import Button from "../../components/common/Button";
+import EmptyState from "../../components/common/EmptyState";
 import RowActionMenu from "../../components/common/RowActionMenu";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
 import { useToast } from "../../context/ToastContext";
@@ -329,11 +330,13 @@ export default function Purchases() {
               <tbody>
                 {pageRows.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="border-t border-[var(--color-border)] px-4 py-16 text-center">
-                      <ShoppingCart className="mx-auto h-14 w-14 text-[var(--color-text-icon)]" strokeWidth={1.25} />
-                      <p className="mt-3 text-[14px] text-[var(--color-text-faint)]">
-                        No Purchase available, Create new Purchase
-                      </p>
+                    <td colSpan={7} className="border-none p-0">
+                      <EmptyState
+                        icon="document"
+                        title="No records found."
+                        description="There is nothing to show here yet."
+                        className="border-none bg-transparent py-12"
+                      />
                     </td>
                   </tr>
                 ) : (
@@ -496,8 +499,8 @@ export default function Purchases() {
                   setDocUpload(draftDocUpload);
                   setShowFilters(false);
                 }}
-                className="rounded-xl py-3 text-[14px] font-semibold text-[var(--color-text)]"
-                style={{ background: "#EAE5B3" }}
+                className="rounded-xl py-3 text-[14px] font-semibold text-white"
+                style={{ background: "#036f71" }}
               >
                 Apply Filter
               </button>

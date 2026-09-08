@@ -740,9 +740,10 @@ export default function StockLedger() {
           wrapClassName="inventory-table-scroll--ledger rounded-lg border border-[var(--color-border-soft)]"
           emptyState={
             <EmptyState
-              icon="chart"
-              title="No movements found"
-              description="Stock ledger entries appear when stock is received, issued, transferred, or adjusted."
+              icon="document"
+              title="No records found."
+              description="There is nothing to show here yet."
+              className="border-none bg-transparent py-12"
             />
           }
         />

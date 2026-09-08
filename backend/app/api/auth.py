@@ -332,11 +332,12 @@ def get_me(
 
 @router.get("/profile", response_model=UserResponse)
 def get_auth_profile(
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> UserResponse:
     """Alias for /auth/me — JWT profile with company and role claims."""
-    return get_me(current_user=current_user, db=db)
+    return get_me(request=request, current_user=current_user, db=db)
 
 
 class AvatarUpdateRequest(BaseModel):
@@ -486,11 +487,17 @@ def refresh_tokens(req: RefreshRequest, request: Request, db: Session = Depends(
         )
     db.refresh(user, ["roles"])
     touch_user_activity(db, user)
+    role_from_token = None
+    auth_header = request.headers.get("Authorization") or ""
+    if auth_header.startswith("Bearer "):
+        old_payload = decode_access_token(auth_header[7:])
+        if old_payload:
+            role_from_token = old_payload.get("role_name") or old_payload.get("role")
     new_refresh = rotate_refresh_token(
         db, req.refresh_token, user, ip_address=ip_address, user_agent=user_agent
     )
-    access = build_access_token_for_user(user)
-    user_data = get_user_with_role(db, user)
+    access = build_access_token_for_user(user, role_name=role_from_token)
+    user_data = get_user_with_role(db, user, preferred_role=role_from_token)
     user_data["email_verified"] = user.email_verified
     return AuthResponse(
         access_token=access,

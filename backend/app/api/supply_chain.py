@@ -104,7 +104,8 @@ def get_delivery_tracking(
     for po in pos:
         receipts = db.scalar(
             select(func.count(GoodsReceipt.id)).where(
-                GoodsReceipt.purchase_order_id == po.id
+                GoodsReceipt.purchase_order_id == po.id,
+                GoodsReceipt.tenant_id == tenant_id,
             )
         )
         result.append(

@@ -6,6 +6,7 @@ so each user action posts related modules in one transactional flow.
 
 from __future__ import annotations
 
+import logging
 import math
 import re
 from datetime import date, datetime, timezone
@@ -14,6 +15,8 @@ from typing import Any
 from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+
+logger = logging.getLogger(__name__)
 
 from app.models.bom import BillOfMaterial
 from app.models.inventory import InventoryItem, Warehouse
@@ -168,6 +171,7 @@ def create_gst_invoice_from_sales_order(
             cgst_pct=9,
             items=items,
         ),
+        commit=commit,
     )
     return {
         "invoice_id": inv.id,
@@ -432,6 +436,7 @@ def run_mrp(
     create_purchase_request: bool = True,
     requested_by: str | None = None,
     reference: str | None = None,
+    commit: bool = True,
 ) -> dict[str, Any]:
     """Material Requirement Planning: check stock; optionally open a material request."""
     product = db.scalars(
@@ -469,6 +474,7 @@ def run_mrp(
                 + (f" / {reference}" if reference else ""),
                 line_items=lines,
             ),
+            commit=commit,
         )
         material_request_id = mr.id
 
@@ -562,40 +568,55 @@ def issue_materials_for_work_order(
         )
 
     movements = []
-    for req in requirements:
-        qty = _qty_int(req["required_qty"])
-        if qty <= 0:
-            continue
-        mov = record_stock_movement(
-            db,
-            StockMovementCreate(
-                tenant_id=tenant_id,
-                warehouse_id=warehouse.id,
-                item_id=req["item_id"],
-                quantity=qty,
-                movement_type="out",
-            ),
-            commit=False,
-        )
-        movements.append(
-            {
-                "item_id": req["item_id"],
-                "sku": req["sku"],
-                "name": req["component_name"],
-                "quantity": qty,
-                "unit": req["unit"],
-                "movement_id": mov.id,
-            }
-        )
+    try:
+        for req in requirements:
+            qty = _qty_int(req["required_qty"])
+            if qty <= 0:
+                continue
+            mov = record_stock_movement(
+                db,
+                StockMovementCreate(
+                    tenant_id=tenant_id,
+                    warehouse_id=warehouse.id,
+                    item_id=req["item_id"],
+                    quantity=qty,
+                    movement_type="out",
+                ),
+                commit=False,
+            )
+            movements.append(
+                {
+                    "item_id": req["item_id"],
+                    "sku": req["sku"],
+                    "name": req["component_name"],
+                    "quantity": qty,
+                    "unit": req["unit"],
+                    "movement_id": mov.id,
+                }
+            )
 
-    wo.materials_issued = True
-    if wo.status in {"draft", "planned", "pending", "released"}:
-        wo.status = "material_ready"
-    if commit:
-        db.commit()
-        db.refresh(wo)
-    else:
-        db.flush()
+        wo.materials_issued = True
+        if wo.status in {"draft", "planned", "pending", "released"}:
+            wo.status = "material_ready"
+        if commit:
+            db.commit()
+            db.refresh(wo)
+        else:
+            db.flush()
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception as exc:
+        db.rollback()
+        logger.exception(
+            "issue_materials_for_work_order failed for work_order_id=%s: %s",
+            work_order_id,
+            exc,
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to issue materials for work order.",
+        ) from exc
     return {
         "success": True,
         "already_issued": False,
@@ -996,79 +1017,98 @@ def confirm_sales_order_workflow(
     mrp_results = []
     production_orders = []
     work_orders = []
-    for line in lines:
-        if not line.product_id:
-            continue
-        product = db.get(Product, line.product_id)
-        bom_reqs = get_bom_requirements(
-            db, tenant_id, line.product_id, float(line.quantity)
-        )
-        if create_production and not bom_reqs:
-            raise HTTPException(
-                status_code=400,
-                detail=(
-                    f"No active BOM for product "
-                    f"'{product.name if product else line.product_id}'. "
-                    "Load/verify BOM before confirming the sales order for production."
-                ),
+    try:
+        for line in lines:
+            if not line.product_id:
+                continue
+            product = db.get(Product, line.product_id)
+            bom_reqs = get_bom_requirements(
+                db, tenant_id, line.product_id, float(line.quantity)
             )
-        mrp = run_mrp(
-            db,
-            tenant_id,
-            line.product_id,
-            float(line.quantity),
-            create_purchase_request=run_mrp_and_pr,
-            requested_by=requested_by or "Sales Order Confirm",
-            reference=so.order_number,
-        )
-        mrp_results.append(mrp)
-
-        if create_production:
-            # Stable order number per SO line (idempotent re-confirm)
-            order_number = f"PO-{so.order_number}-L{line.id}"
-            po = db.scalars(
-                select(ProductionOrder).where(
-                    ProductionOrder.tenant_id == tenant_id,
-                    ProductionOrder.order_number == order_number,
+            if create_production and not bom_reqs:
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        f"No active BOM for product "
+                        f"'{product.name if product else line.product_id}'. "
+                        "Load/verify BOM before confirming the sales order for production."
+                    ),
                 )
-            ).first()
-            if not po:
-                po = ProductionOrder(
-                    tenant_id=tenant_id,
-                    product_id=line.product_id,
-                    order_number=order_number,
-                    planned_quantity=float(line.quantity),
-                    status="planned",
-                    priority="medium",
-                    sales_order_number=so.order_number,
-                    sales_order_id=so.id,
-                    customer_name=None,
-                )
-                db.add(po)
-                db.flush()
-            wo = ensure_work_order_for_production_order(db, tenant_id, po)
-            production_orders.append(
-                {
-                    "id": po.id,
-                    "order_number": po.order_number,
-                    "product": product.name if product else None,
-                    "quantity": float(line.quantity),
-                    "enough_stock": mrp["enough_stock"],
-                    "work_order_id": wo.id,
-                    "work_order_number": wo.work_order_number,
-                    "bom_components": len(bom_reqs),
-                }
+            mrp = run_mrp(
+                db,
+                tenant_id,
+                line.product_id,
+                float(line.quantity),
+                create_purchase_request=run_mrp_and_pr,
+                requested_by=requested_by or "Sales Order Confirm",
+                reference=so.order_number,
+                commit=False,
             )
-            work_orders.append(
-                {
-                    "id": wo.id,
-                    "work_order_number": wo.work_order_number,
-                    "production_order_id": po.id,
-                    "status": wo.status,
-                }
-            )
+            mrp_results.append(mrp)
 
-    so.status = "confirmed"
+            if create_production:
+                # Stable order number per SO line (idempotent re-confirm)
+                order_number = f"PO-{so.order_number}-L{line.id}"
+                po = db.scalars(
+                    select(ProductionOrder).where(
+                        ProductionOrder.tenant_id == tenant_id,
+                        ProductionOrder.order_number == order_number,
+                    )
+                ).first()
+                if not po:
+                    po = ProductionOrder(
+                        tenant_id=tenant_id,
+                        product_id=line.product_id,
+                        order_number=order_number,
+                        planned_quantity=float(line.quantity),
+                        status="planned",
+                        priority="medium",
+                        sales_order_number=so.order_number,
+                        sales_order_id=so.id,
+                        customer_name=None,
+                    )
+                    db.add(po)
+                    db.flush()
+                wo = ensure_work_order_for_production_order(db, tenant_id, po)
+                production_orders.append(
+                    {
+                        "id": po.id,
+                        "order_number": po.order_number,
+                        "product": product.name if product else None,
+                        "quantity": float(line.quantity),
+                        "enough_stock": mrp["enough_stock"],
+                        "work_order_id": wo.id,
+                        "work_order_number": wo.work_order_number,
+                        "bom_components": len(bom_reqs),
+                    }
+                )
+                work_orders.append(
+                    {
+                        "id": wo.id,
+                        "work_order_number": wo.work_order_number,
+                        "production_order_id": po.id,
+                        "status": wo.status,
+                    }
+                )
+
+        so.status = "confirmed"
+        db.commit()
+        db.refresh(so)
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception as exc:
+        db.rollback()
+        logger.exception(
+            "confirm_sales_order_workflow failed for sales_order_id=%s: %s",
+            sales_order_id,
+            exc,
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to confirm sales order workflow.",
+        ) from exc
+
     try:
         from app.services.alert_event_service import emit_alert
 
@@ -1109,8 +1149,6 @@ def confirm_sales_order_workflow(
     except Exception:
         pass
 
-    db.commit()
-    db.refresh(so)
     return {
         "sales_order_id": so.id,
         "order_number": so.order_number,
@@ -1187,12 +1225,11 @@ def ship_sales_order_stock_out(
         invoice_info = None
         if auto_invoice and so.customer_id:
             try:
-                invoice_info = create_gst_invoice_from_sales_order(db, tenant_id, so.id)
+                invoice_info = create_gst_invoice_from_sales_order(
+                    db, tenant_id, so.id, commit=False
+                )
             except Exception as exc:
-                try:
-                    db.rollback()
-                except Exception:
-                    pass
+                db.rollback()
                 raise HTTPException(
                     status_code=400,
                     detail=f"Dispatch failed during automatic invoice creation: {exc}",
@@ -1249,21 +1286,17 @@ def ship_sales_order_stock_out(
 
         invoice_info = None
         if auto_invoice and so.customer_id:
-            invoice_info = create_gst_invoice_from_sales_order(db, tenant_id, so.id)
+            invoice_info = create_gst_invoice_from_sales_order(
+                db, tenant_id, so.id, commit=False
+            )
 
         db.commit()
     except HTTPException:
-        try:
-            db.rollback()
-        except Exception:
-            pass
+        db.rollback()
         raise
     except Exception as exc:
         logger.exception("Failed dispatch/invoice for sales order id=%s: %s", sales_order_id, exc)
-        try:
-            db.rollback()
-        except Exception:
-            pass
+        db.rollback()
         raise HTTPException(
             status_code=400,
             detail=f"Dispatch failed during automatic invoice creation: {exc}",

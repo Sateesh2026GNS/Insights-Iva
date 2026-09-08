@@ -11,7 +11,7 @@ import LoginSuccessOverlay from "../../components/common/LoginSuccessOverlay";
 import { ROLES } from "../../config/permissions";
 import { getDashboardPathForRole } from "../../utils/roleRedirect";
 
-const LOGIN_SUCCESS_MS = 1800;
+const LOGIN_SUCCESS_MS = 350;
 
 const LOGIN_ROLES = ROLES.map((r) => r.name);
 
@@ -66,6 +66,14 @@ export default function Login() {
     };
   }, []);
 
+  const navigateNow = (targetPath) => {
+    if (redirectTimerRef.current) {
+      clearTimeout(redirectTimerRef.current);
+      redirectTimerRef.current = null;
+    }
+    navigate(targetPath || redirectPath, { replace: true });
+  };
+
   const completeLogin = (data) => {
     login({
       access_token: data.access_token,
@@ -107,7 +115,7 @@ export default function Login() {
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden p-3 sm:p-4">
-      <LoginSuccessOverlay open={showSuccess} />
+      <LoginSuccessOverlay open={showSuccess} onDismiss={() => navigateNow(redirectPath)} />
       <LoginBackdrop />
       <div className="relative z-10 w-full max-w-3xl">
         <div

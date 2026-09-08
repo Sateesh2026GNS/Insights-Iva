@@ -15,6 +15,7 @@ import InventoryRowActionsMenu from "../../components/inventory/InventoryRowActi
 import RecordDetailModal from "../../components/inventory/RecordDetailModal";
 import Loader from "../../components/common/Loader";
 import Button from "../../components/common/Button";
+import EmptyState from "../../components/common/EmptyState";
 import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
 import { useToast } from "../../context/ToastContext";
@@ -599,8 +600,13 @@ export default function InventoryV2() {
                   <tbody>
                     {pageRows.length === 0 ? (
                       <tr>
-                        <td colSpan={8} className="px-4 py-12 text-center text-sm text-[var(--color-text-faint)]">
-                          No items found.
+                        <td colSpan={8} className="p-0 border-none">
+                          <EmptyState
+                            icon="document"
+                            title="No records found."
+                            description="There is nothing to show here yet."
+                            className="border-none bg-transparent py-12"
+                          />
                         </td>
                       </tr>
                     ) : (

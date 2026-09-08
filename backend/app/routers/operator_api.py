@@ -177,9 +177,22 @@ def api_logout(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    from datetime import datetime, timezone
+
     from app.services.audit_log_service import AuditLogService
+    from app.services.security_service import revoke_access_token
 
     try:
+        auth_header = request.headers.get("Authorization") or ""
+        access_token = (
+            auth_header.split(" ", 1)[1].strip()
+            if auth_header.lower().startswith("bearer ")
+            else None
+        )
+        if access_token:
+            revoke_access_token(db, access_token, user_id=current_user.id)
+        current_user.tokens_revoked_at = datetime.now(timezone.utc)
+        db.commit()
         AuditLogService.log_logout(db, request=request, user=current_user)
         return success_response("Logged out successfully. Discard your access token on the client.")
     except SQLAlchemyError:

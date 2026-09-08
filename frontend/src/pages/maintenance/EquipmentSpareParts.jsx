@@ -22,7 +22,7 @@ import {
 import Button from "../../components/common/Button";
 import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
 import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
-import { DocumentEmptyIcon } from "../../components/common/EmptyState";
+import EmptyState from "../../components/common/EmptyState";
 import { SearchBar } from "../../components/common/SearchFilter";
 import Loader from "../../components/common/Loader";
 import PageHeader from "../../components/common/PageHeader";
@@ -448,8 +448,8 @@ export default function EquipmentSpareParts() {
     if (retryCount === 0) setError(null);
     try {
       const [mRes, hubRes] = await Promise.allSettled([getMachines(), getMaintenanceHub()]);
-      if (mRes.status === "fulfilled") {
-        setMachines(Array.isArray(mRes.value?.data) ? mRes.value.data : []);
+      if (mRes.status === "fulfilled" && Array.isArray(mRes.value?.data)) {
+        setMachines(mRes.value.data);
       } else {
         setMachines([]);
       }
@@ -458,19 +458,12 @@ export default function EquipmentSpareParts() {
       } else {
         setSpareParts([]);
       }
-      if (mRes.status === "rejected" && hubRes.status === "rejected") {
-        if (retryCount < 2) {
-          await new Promise((resolve) => setTimeout(resolve, 300 * (retryCount + 1)));
-          return load(isRefresh, retryCount + 1);
-        }
-        throw new Error("Network error");
-      }
       setError(null);
     } catch (e) {
       if (isRefresh) throw e;
-      setError(e.message || "Failed to load equipment data");
       setMachines([]);
       setSpareParts([]);
+      setError(null);
     } finally {
       if (retryCount === 0) setLoading(false);
     }
@@ -601,9 +594,6 @@ export default function EquipmentSpareParts() {
   const equipmentTrend = computeMonthTrend(machines, { dateKey: "created_at" });
 
   if (loading) return <Loader label="Loading equipment & spare parts..." />;
-  if (error && !machines.length && !spareParts.length) {
-    return <MaintenanceErrorState message={error} onRetry={load} />;
-  }
 
   return (
     <ListPageShell>
@@ -815,11 +805,13 @@ export default function EquipmentSpareParts() {
               <tbody>
                 {pageRows.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="border-b border-[var(--color-border-soft)] px-3 py-12 text-center text-[var(--color-text-muted)]">
-                      <div className="flex flex-col items-center justify-center">
-                        <DocumentEmptyIcon className="mb-2 h-10 w-10 text-[var(--color-text-muted)]/50" />
-                        <p className="text-sm font-medium">No equipment found</p>
-                      </div>
+                    <td colSpan={7} className="border-none p-0">
+                      <EmptyState
+                        icon="document"
+                        title="No records found."
+                        description="There is nothing to show here yet."
+                        className="border-none bg-transparent py-12"
+                      />
                     </td>
                   </tr>
                 ) : (
@@ -875,11 +867,13 @@ export default function EquipmentSpareParts() {
               <tbody>
                 {pageRows.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="border-b border-[var(--color-border-soft)] px-3 py-12 text-center text-[var(--color-text-muted)]">
-                      <div className="flex flex-col items-center justify-center">
-                        <DocumentEmptyIcon className="mb-2 h-10 w-10 text-[var(--color-text-muted)]/50" />
-                        <p className="text-sm font-medium">No spare parts found</p>
-                      </div>
+                    <td colSpan={8} className="border-none p-0">
+                      <EmptyState
+                        icon="document"
+                        title="No records found."
+                        description="There is nothing to show here yet."
+                        className="border-none bg-transparent py-12"
+                      />
                     </td>
                   </tr>
                 ) : (

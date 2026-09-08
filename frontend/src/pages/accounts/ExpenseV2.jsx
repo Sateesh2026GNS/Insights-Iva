@@ -28,6 +28,7 @@ import {
   formatAccountsInr,
 } from "../../components/accounts/accountsDesignSystem";
 import Loader from "../../components/common/Loader";
+import EmptyState from "../../components/common/EmptyState";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
 import { fetchExpenseCategories } from "../../data/expenseCategories";
 import { createExpense, deleteExpense, listExpenses, updateExpense } from "../../api/accountsApi";
@@ -498,8 +499,13 @@ export default function ExpenseV2() {
                   <tbody>
                     {pageRows.length === 0 ? (
                       <tr>
-                        <td colSpan={8} className="px-4 py-14 text-center text-sm text-[var(--color-text-muted)]">
-                          No expenses found for the selected range.
+                        <td colSpan={8} className="border-none p-0">
+                          <EmptyState
+                            icon="document"
+                            title="No records found."
+                            description="There is nothing to show here yet."
+                            className="border-none bg-transparent py-12"
+                          />
                         </td>
                       </tr>
                     ) : (
@@ -573,8 +579,13 @@ export default function ExpenseV2() {
                     <tbody>
                       {pageRows.length === 0 ? (
                         <tr>
-                          <td colSpan={5} className="px-4 py-14 text-center text-sm text-[#64748B]">
-                            No data available
+                          <td colSpan={5} className="border-none p-0">
+                            <EmptyState
+                              icon="document"
+                              title="No records found."
+                              description="There is nothing to show here yet."
+                              className="border-none bg-transparent py-12"
+                            />
                           </td>
                         </tr>
                       ) : (

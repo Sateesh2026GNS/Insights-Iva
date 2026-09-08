@@ -25,6 +25,7 @@ import {
 
 import Loader from "../../components/common/Loader";
 import Button from "../../components/common/Button";
+import EmptyState from "../../components/common/EmptyState";
 import RowActionMenu from "../../components/common/RowActionMenu";
 import { SearchBar } from "../../components/common/SearchFilter";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
@@ -1507,14 +1508,13 @@ export default function RefundVouchers() {
             <tbody>
               {pageRows.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-16 text-center">
-                    <RotateCcw className="mx-auto h-12 w-12 text-[#c4c4cc] dark:text-slate-700" />
-                    <p className="mt-3 text-[14px] font-medium text-[#6b6b76] dark:text-slate-400">
-                      No refund vouchers available.
-                    </p>
-                    <p className="mt-1 text-[12px] text-[#9a9aa5]">
-                      Create a refund voucher to issue refunds against customer advance balances.
-                    </p>
+                  <td colSpan={8} className="border-none p-0">
+                    <EmptyState
+                      icon="document"
+                      title="No records found."
+                      description="There is nothing to show here yet."
+                      className="border-none bg-transparent py-12"
+                    />
                   </td>
                 </tr>
               ) : (

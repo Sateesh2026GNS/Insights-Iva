@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 
 import Loader from "../../components/common/Loader";
+import EmptyState from "../../components/common/EmptyState";
 import Button from "../../components/common/Button";
 import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
 import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
@@ -231,8 +232,8 @@ export default function MachineHistory() {
         return load(isRefresh, retryCount + 1);
       }
       if (isRefresh) throw e;
-      setError(e.message || "Failed to load machine history");
       setRows([]);
+      setError(null);
     } finally {
       if (retryCount === 0) setLoading(false);
     }
@@ -310,7 +311,6 @@ export default function MachineHistory() {
   };
 
   if (loading) return <Loader label="Loading machine history..." />;
-  if (error && !rows.length) return <MaintenanceErrorState message={error} onRetry={load} />;
 
   const handleExport = (format) => {
     const data = mapHistoryExportRows(filtered);
@@ -508,8 +508,13 @@ export default function MachineHistory() {
             <tbody>
               {pageRows.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="border-b border-[var(--color-border-soft)] px-3 py-10 text-center text-[13px] text-[var(--color-text-muted)]">
-                    No machine history records found
+                  <td colSpan={10} className="border-none p-0">
+                    <EmptyState
+                      icon="document"
+                      title="No records found."
+                      description="There is nothing to show here yet."
+                      className="border-none bg-transparent py-12"
+                    />
                   </td>
                 </tr>
               ) : (

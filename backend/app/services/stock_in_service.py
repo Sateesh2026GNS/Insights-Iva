@@ -385,18 +385,21 @@ def create_stock_in(
     db.flush()
     _add_lines(db, doc, payload.lines)
 
-    if payload.status == "confirmed":
-        doc.status = "confirmed"
-        doc.confirmed_by = _user_label(user)
-        doc.confirmed_at = date.today()
-        _apply_stock_movements(db, tenant_id, doc, _user_label(user))
-
     try:
+        if payload.status == "confirmed":
+            doc.status = "confirmed"
+            doc.confirmed_by = _user_label(user)
+            doc.confirmed_at = date.today()
+            _apply_stock_movements(db, tenant_id, doc, _user_label(user))
+
         db.commit()
         db.refresh(doc, ["lines"])
         _audit(db, user, "stock_in_created", doc, request=request)
         db.commit()
         return _to_read(db, doc)
+    except HTTPException:
+        db.rollback()
+        raise
     except SQLAlchemyError as exc:
         db.rollback()
         logger.exception("create_stock_in failed: %s", exc)
@@ -502,22 +505,22 @@ def update_stock_in_status(
             f"Cannot transition from '{doc.status}' to '{target}'.",
         )
 
-    if matching_action == "confirm":
-        _assert_can_confirm(user)
-        _validate_lines(db, tenant_id, doc.lines, doc.warehouse_id)
-        _apply_stock_movements(db, tenant_id, doc, _user_label(user))
-        doc.confirmed_by = _user_label(user)
-        doc.confirmed_at = date.today()
-    elif matching_action == "cancel":
-        _assert_can_cancel(user)
-    elif matching_action == "submit":
-        _assert_can_create_or_edit(user)
-        _validate_lines(db, tenant_id, doc.lines, doc.warehouse_id)
-
-    doc.status = target
-    doc.updated_by = _user_label(user)
-
     try:
+        if matching_action == "confirm":
+            _assert_can_confirm(user)
+            _validate_lines(db, tenant_id, doc.lines, doc.warehouse_id)
+            _apply_stock_movements(db, tenant_id, doc, _user_label(user))
+            doc.confirmed_by = _user_label(user)
+            doc.confirmed_at = date.today()
+        elif matching_action == "cancel":
+            _assert_can_cancel(user)
+        elif matching_action == "submit":
+            _assert_can_create_or_edit(user)
+            _validate_lines(db, tenant_id, doc.lines, doc.warehouse_id)
+
+        doc.status = target
+        doc.updated_by = _user_label(user)
+
         db.commit()
         db.refresh(doc, ["lines"])
         _audit(
@@ -531,6 +534,7 @@ def update_stock_in_status(
         db.commit()
         return _to_read(db, doc)
     except HTTPException:
+        db.rollback()
         raise
     except SQLAlchemyError as exc:
         db.rollback()

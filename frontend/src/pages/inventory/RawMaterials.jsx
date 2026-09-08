@@ -126,7 +126,7 @@ export default function RawMaterials() {
   const [statusFilter, setStatusFilter] = useState("");
   const [category, setCategory] = useState("");
   const [warehouse, setWarehouse] = useState("");
-  const [showFilters, setShowFilters] = useState(true);
+  const [showFilters, setShowFilters] = useState(false);
   const [selectedDate, setSelectedDate] = useState(() => todayIso());
   const [headerWarehouse, setHeaderWarehouse] = useState("");
   const [selected, setSelected] = useState(null);
@@ -562,45 +562,70 @@ export default function RawMaterials() {
 
       <ListPageCard>
         <ListPageCardBody>
-        <div className="mb-4 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-          <SearchBar value={search} onChange={setSearch} placeholder="Search" className="w-full" />
+        <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <SearchBar value={search} onChange={setSearch} placeholder="Search raw materials..." className="w-full max-w-md" />
 
           <div className="flex flex-wrap items-center gap-2">
             <ExportDownloadMenu disabled={!exportRows.length} onExport={handleExport} />
-            <Button type="button" variant="secondary" onClick={() => setShowFilters((v) => !v)}>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setShowFilters((v) => !v)}
+              className={showFilters ? "!border-[var(--color-primary)] !text-[var(--color-primary)] font-semibold" : ""}
+            >
               <Filter className="h-4 w-4" /> Filters
+              {(category || statusFilter || warehouse) ? (
+                <span className="ml-1 rounded-full bg-[var(--color-primary)] px-1.5 py-0.2 text-[10px] text-white">
+                  {[category, statusFilter, warehouse].filter(Boolean).length}
+                </span>
+              ) : null}
             </Button>
-            {showFilters ? (
-              <>
-                <select value={category} onChange={(e) => setCategory(e.target.value)} className="ui-select !w-auto min-w-[8.5rem]">
-                  <option value="">Category</option>
-                  {categories.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                </select>
-                <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="ui-select !w-auto min-w-[8.5rem]">
-                  <option value="">Status</option>
-                  <option value="available">In Stock</option>
-                  <option value="low_stock">Low Stock</option>
-                  <option value="out_of_stock">Out of Stock</option>
-                </select>
-                <select value={warehouse} onChange={(e) => setWarehouse(e.target.value)} className="ui-select !w-auto min-w-[9rem]">
-                  <option value="">Warehouse</option>
-                  {warehouseOptions.map((w) => (
-                    <option key={w} value={w}>
-                      {w}
-                    </option>
-                  ))}
-                </select>
-              </>
-            ) : null}
             <Button type="button" variant="add" onClick={handleAdd} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
               Add Raw Material
             </Button>
           </div>
         </div>
+
+        {showFilters ? (
+          <div className="mb-4 flex flex-wrap items-center gap-3 border-t border-[var(--color-border-soft)] pt-3">
+            <select value={category} onChange={(e) => setCategory(e.target.value)} className="ui-select !w-auto min-w-[8.5rem]">
+              <option value="">Category</option>
+              {categories.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="ui-select !w-auto min-w-[8.5rem]">
+              <option value="">Status</option>
+              <option value="available">In Stock</option>
+              <option value="low_stock">Low Stock</option>
+              <option value="out_of_stock">Out of Stock</option>
+            </select>
+            <select value={warehouse} onChange={(e) => setWarehouse(e.target.value)} className="ui-select !w-auto min-w-[9rem]">
+              <option value="">Warehouse</option>
+              {warehouseOptions.map((w) => (
+                <option key={w} value={w}>
+                  {w}
+                </option>
+              ))}
+            </select>
+            {(category || statusFilter || warehouse) ? (
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => {
+                  setCategory("");
+                  setStatusFilter("");
+                  setWarehouse("");
+                }}
+                className="text-xs text-[var(--color-text-muted)] hover:text-red-600"
+              >
+                Clear filters
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
 
         {initialLoading ? (
           <div className="rounded-lg border border-[var(--color-border-soft)] p-8">
@@ -615,9 +640,10 @@ export default function RawMaterials() {
             wrapClassName="inventory-table-scroll--materials rounded-lg border border-[var(--color-border-soft)]"
             emptyState={
               <EmptyState
-                icon="cube"
-                title="No raw materials found"
-                description="Add your first raw material to start tracking stock."
+                icon="document"
+                title="No records found."
+                description="There is nothing to show here yet."
+                className="border-none bg-transparent py-12"
               />
             }
           />

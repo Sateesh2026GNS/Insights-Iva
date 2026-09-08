@@ -14,6 +14,7 @@ import { fetchManualJournals } from "../../api/manualJournalSync";
 import { useToast } from "../../context/ToastContext";
 import { apiErrorMessage } from "../../utils/apiError";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
+import EmptyState from "../../components/common/EmptyState";
 
 const PAGE_BG = "var(--color-bg)";
 const PAGE_SIZES = [10, 20, 50];
@@ -522,19 +523,13 @@ export default function ChartOfAccountDetailV2() {
                 <tbody>
                   {journalRows.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="px-4 py-16 text-center">
-                        <div className="text-[14px] text-[#6b6b76]">
-                          No Journal Entries available, Create new entry
-                        </div>
-                        <button
-                          type="button"
-                          onClick={goNewJournal}
-                          className="mt-4 inline-flex items-center gap-1.5 rounded-lg border border-[#e0b400] px-4 py-2.5 text-[13px] font-bold text-[#1a1a1f]"
-                          style={{ background: "#0f6d84" }}
-                        >
-                          <Plus className="h-4 w-4" />
-                          New Journal Entry
-                        </button>
+                      <td colSpan={8} className="border-none p-0">
+                        <EmptyState
+                          icon="document"
+                          title="No records found."
+                          description="There is nothing to show here yet."
+                          className="border-none bg-transparent py-12"
+                        />
                       </td>
                     </tr>
                   ) : (

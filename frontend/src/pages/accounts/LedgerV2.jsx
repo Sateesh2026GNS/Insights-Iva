@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { Banknote, Building2, ChevronLeft, ChevronRight, Download, Eye, FileText, IndianRupee, Landmark, Layers, List, Mail, MoreVertical, Pencil, Phone, Search, Target, Trash2, TrendingUp, UserPlus, Users, Wallet } from "lucide-react";
 
 import Loader from "../../components/common/Loader";
+import EmptyState from "../../components/common/EmptyState";
 import { SearchBar } from "../../components/common/SearchFilter";
 import Button from "../../components/common/Button";
 import RowActionMenu from "../../components/common/RowActionMenu";
@@ -961,8 +962,13 @@ export default function LedgerV2() {
                   <tbody>
                     {pageRows.length === 0 ? (
                       <tr>
-                        <td colSpan={8} className="px-4 py-14 text-center text-sm text-[var(--color-text-muted)]">
-                          No data available
+                        <td colSpan={8} className="border-none p-0">
+                          <EmptyState
+                            icon="document"
+                            title="No records found."
+                            description="There is nothing to show here yet."
+                            className="border-none bg-transparent py-12"
+                          />
                         </td>
                       </tr>
                     ) : (
@@ -1053,8 +1059,13 @@ export default function LedgerV2() {
                   <tbody>
                     {pageRows.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="px-4 py-14 text-center text-sm text-[var(--color-text-muted)]">
-                          No data available
+                        <td colSpan={6} className="border-none p-0">
+                          <EmptyState
+                            icon="document"
+                            title="No records found."
+                            description="There is nothing to show here yet."
+                            className="border-none bg-transparent py-12"
+                          />
                         </td>
                       </tr>
                     ) : (
@@ -1124,8 +1135,13 @@ export default function LedgerV2() {
                   <tbody>
                     {pageRows.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="px-4 py-14 text-center text-sm text-[var(--color-text-muted)]">
-                          No data available
+                        <td colSpan={7} className="border-none p-0">
+                          <EmptyState
+                            icon="document"
+                            title="No records found."
+                            description="There is nothing to show here yet."
+                            className="border-none bg-transparent py-12"
+                          />
                         </td>
                       </tr>
                     ) : (

@@ -90,17 +90,12 @@ export default function BreakdownReports() {
         getBreakdownsEnriched(),
       ]);
 
-      if (sumRes.status === "rejected" && listRes.status === "rejected") {
-        if (retryCount < 2) {
-          await new Promise((resolve) => setTimeout(resolve, 300 * (retryCount + 1)));
-          return load(isRefresh, retryCount + 1);
-        }
-        throw new Error("Network error");
-      }
       if (sumRes.status === "fulfilled" && sumRes.value?.data) {
         setSummary({ ...DEMO_BREAKDOWN_SUMMARY, ...sumRes.value.data });
+      } else {
+        setSummary(DEMO_BREAKDOWN_SUMMARY);
       }
-      if (listRes.status === "fulfilled" && listRes.value?.data?.length) {
+      if (listRes.status === "fulfilled" && Array.isArray(listRes.value?.data)) {
         setRows(listRes.value.data);
       } else {
         setRows([]);
@@ -108,13 +103,13 @@ export default function BreakdownReports() {
       setError(null);
     } catch (e) {
       if (isRefresh) throw e;
-      setError(e.message || "Failed to load data");
       setSummary(DEMO_BREAKDOWN_SUMMARY);
       setRows([]);
+      setError(null);
     } finally {
       if (retryCount === 0) setLoading(false);
     }
-  }, [addToast]);
+  }, []);
 
   usePageRefresh(() => load(true));
   useEffect(() => { load(); }, [load]);
@@ -284,7 +279,6 @@ export default function BreakdownReports() {
   ];
 
   if (loading) return <Loader label="Loading breakdown maintenance..." />;
-  if (error && !rows.length) return <MaintenanceErrorState message={error} onRetry={load} />;
 
   const exportRows = filtered.map((r) => ({
     breakdown_number: r.breakdown_number,

@@ -15,10 +15,10 @@ body:has(.ap-root) {
   width: 100%;
   overflow-x: hidden;
   background-image: url('/images/super-admin-bg.jpg') !important;
-  background-size: 100% 100% !important;
+  background-size: cover !important;
   background-repeat: no-repeat !important;
-  background-position: top left !important;
-  background-attachment: scroll !important;
+  background-position: center top !important;
+  background-attachment: fixed !important;
   font-family: "Inter", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
   color: #0f172a;
 }
@@ -454,7 +454,17 @@ body:has(.ap-root) {
   color: #64748b;
   margin-top: 0.15rem;
 }
-.ap-section-body { padding: 1.25rem; }
+.ap-card > .ap-section-head:not(:first-child) {
+  border-top: 1px solid rgba(226, 232, 240, 0.70);
+}
+.ap-section-body { padding: 1.5rem 1.5rem; }
+
+/* ── CARD FOOTER ── */
+.ap-card-footer {
+  padding: 1.25rem 1.5rem;
+  border-top: 1px solid rgba(226, 232, 240, 0.70);
+  background: rgba(241, 245, 249, 0.45);
+}
 
 /* ── INPUT ── */
 .ap-input {
@@ -811,6 +821,15 @@ body:has(.ap-root) {
 
 .dark .ap-back:hover {
   color: #bfdbfe;
+}
+
+.dark .ap-card > .ap-section-head:not(:first-child) {
+  border-top-color: rgba(255, 255, 255, 0.10);
+}
+
+.dark .ap-card-footer {
+  border-top-color: rgba(255, 255, 255, 0.10);
+  background: rgba(30, 41, 59, 0.50);
 }
 
 /* ── RESPONSIVE ── */

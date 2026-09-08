@@ -1116,13 +1116,10 @@ export default function WorkOrders() {
               showPagination={false}
               emptyState={
                 <EmptyState
-                  icon="clipboard"
-                  title="No work orders found"
-                  description={
-                    Object.values(appliedFilters).some(Boolean) || poFilter || pendingView
-                      ? "No work orders match your filters. Clear filters or adjust search."
-                      : "Create a work order to start production execution and open its Job Card."
-                  }
+                  icon="document"
+                  title="No records found."
+                  description="There is nothing to show here yet."
+                  className="border-none bg-transparent py-12"
                 />
               }
             />

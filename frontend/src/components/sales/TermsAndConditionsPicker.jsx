@@ -4,6 +4,7 @@ import { MoreVertical, Pencil, Plus, Trash2, User, X } from "lucide-react";
 
 import AddTermsAndConditionsModal from "./AddTermsAndConditionsModal";
 import { SearchBar } from "../common/SearchFilter";
+import Button from "../common/Button";
 
 const PRIMARY = "var(--color-primary)";
 const STORAGE_KEY = "gns_invoice_terms_templates";

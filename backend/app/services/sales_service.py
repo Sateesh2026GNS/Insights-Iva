@@ -98,6 +98,17 @@ def update_customer(
 
 
 def create_sales_order(db: Session, payload: SalesOrderCreate) -> SalesOrder:
+    from fastapi import HTTPException
+    from app.models.product import Product
+    from app.utils.tenant_validation import assert_customer_owned, assert_product_owned
+
+    tenant_id = payload.tenant_id
+    if payload.customer_id:
+        assert_customer_owned(db, tenant_id, payload.customer_id)
+    for line in payload.line_items or []:
+        if line.product_id:
+            assert_product_owned(db, tenant_id, line.product_id)
+
     data = payload.model_dump(exclude={"line_items"})
     so = SalesOrder(**data)
     db.add(so)
@@ -638,7 +649,7 @@ def _calc_gst(subtotal: float, sgst_pct: float, cgst_pct: float, igst_pct: float
     return sgst, cgst, igst
 
 
-def create_invoice(db: Session, payload: InvoiceCreate) -> Invoice:
+def create_invoice(db: Session, payload: InvoiceCreate, *, commit: bool = True) -> Invoice:
     data = payload.model_dump(exclude={"items"})
     inv = Invoice(**data)
     db.add(inv)
@@ -675,25 +686,29 @@ def create_invoice(db: Session, payload: InvoiceCreate) -> Invoice:
             if so.status not in ("shipped", "delivered", "closed"):
                 so.status = so.status or "invoiced"
 
-    db.commit()
-    db.refresh(inv)
-    try:
-        from app.services.alert_event_service import emit_alert
+    if commit:
+        db.commit()
+        db.refresh(inv)
+        try:
+            from app.services.alert_event_service import emit_alert
 
-        emit_alert(
-            db,
-            tenant_id=inv.tenant_id,
-            alert_type="invoice_generated",
-            title=f"Invoice generated: {inv.invoice_number}",
-            message=f"Invoice {inv.invoice_number} — ₹{float(inv.grand_total or 0):,.2f}",
-            severity="medium",
-            link="/sales/invoices",
-            reference_type="invoice",
-            reference_id=inv.id,
-            created_by="Sales",
-        )
-    except Exception:
-        pass
+            emit_alert(
+                db,
+                tenant_id=inv.tenant_id,
+                alert_type="invoice_generated",
+                title=f"Invoice generated: {inv.invoice_number}",
+                message=f"Invoice {inv.invoice_number} — ₹{float(inv.grand_total or 0):,.2f}",
+                severity="medium",
+                link="/sales/invoices",
+                reference_type="invoice",
+                reference_id=inv.id,
+                created_by="Sales",
+            )
+        except Exception:
+            pass
+    else:
+        db.flush()
+        db.refresh(inv)
     return inv
 
 
@@ -724,33 +739,37 @@ def list_invoices(
 
 
 def create_payment(db: Session, payload: PaymentCreate) -> Payment:
-    inv = None
-    if payload.invoice_id:
-        inv = db.scalars(
-            select(Invoice).where(
-                Invoice.id == payload.invoice_id,
-                Invoice.tenant_id == payload.tenant_id,
-            )
-        ).first()
-        if not inv:
-            raise HTTPException(
-                status_code=404,
-                detail="Invoice not found or does not belong to the current tenant.",
-            )
+    from fastapi import HTTPException
+    from sqlalchemy.exc import SQLAlchemyError
 
-    p = Payment(**payload.model_dump())
-    db.add(p)
-    if inv:
-        paid = float(inv.amount_paid or 0) + float(payload.amount or 0)
-        inv.amount_paid = paid
-        inv.status = "paid" if paid >= float(inv.grand_total or 0) else "partial"
-        try:
-            from app.services.invoice_v2_service import sync_payment_status
-
-            sync_payment_status(inv)
-        except Exception:
-            inv.payment_status = inv.status if inv.status in ("paid", "partial") else "unpaid"
     try:
+        inv = None
+        if payload.invoice_id:
+            inv = db.scalars(
+                select(Invoice).where(
+                    Invoice.id == payload.invoice_id,
+                    Invoice.tenant_id == payload.tenant_id,
+                )
+            ).first()
+            if not inv:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Invoice not found or does not belong to the current tenant.",
+                )
+
+        p = Payment(**payload.model_dump())
+        db.add(p)
+        if inv:
+            paid = float(inv.amount_paid or 0) + float(payload.amount or 0)
+            inv.amount_paid = paid
+            inv.status = "paid" if paid >= float(inv.grand_total or 0) else "partial"
+            try:
+                from app.services.invoice_v2_service import sync_payment_status
+
+                sync_payment_status(inv)
+            except Exception:
+                inv.payment_status = inv.status if inv.status in ("paid", "partial") else "unpaid"
+
         from app.models.accounts import Income
 
         income = Income(
@@ -762,26 +781,36 @@ def create_payment(db: Session, payload: PaymentCreate) -> Payment:
             amount=float(payload.amount),
         )
         db.add(income)
-    except Exception as exc:
-        logger.exception("Failed to create Income entry for payment on invoice %s: %s", inv.invoice_number if inv else "Direct", exc)
-    # Close sales order when invoice fully paid (after ship/delivery)
-    if inv and inv.status == "paid" and inv.sales_order_id:
-        so = db.scalars(
-            select(SalesOrder).where(
-                SalesOrder.id == inv.sales_order_id,
-                SalesOrder.tenant_id == payload.tenant_id,
-            )
-        ).first()
-        if so:
-            if (so.status or "").lower() in {
-                "shipped",
-                "delivered",
-                "invoiced",
-                "confirmed",
-            } or so.shipped or so.invoiced:
-                so.status = "closed"
-    db.commit()
-    db.refresh(p)
+
+        if inv and inv.status == "paid" and inv.sales_order_id:
+            so = db.scalars(
+                select(SalesOrder).where(
+                    SalesOrder.id == inv.sales_order_id,
+                    SalesOrder.tenant_id == payload.tenant_id,
+                )
+            ).first()
+            if so:
+                if (so.status or "").lower() in {
+                    "shipped",
+                    "delivered",
+                    "invoiced",
+                    "confirmed",
+                } or so.shipped or so.invoiced:
+                    so.status = "closed"
+
+        db.commit()
+        db.refresh(p)
+    except HTTPException:
+        db.rollback()
+        raise
+    except SQLAlchemyError as exc:
+        db.rollback()
+        logger.exception("Database error recording payment: %s", exc)
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to record payment due to a database error.",
+        ) from exc
+
     try:
         from app.services.alert_event_service import emit_alert
 
@@ -858,71 +887,96 @@ def _resync_invoice_payment(db: Session, inv: Invoice | None) -> None:
 def update_payment(
     db: Session, tenant_id: int, payment_id: int, data: dict
 ) -> Payment | None:
+    from fastapi import HTTPException
+    from sqlalchemy.exc import SQLAlchemyError
+
     payment = get_payment(db, tenant_id, payment_id)
     if not payment:
         return None
 
-    new_invoice_id = data.get("invoice_id")
-    if new_invoice_id is not None:
-        new_inv_check = db.scalars(
+    try:
+        new_invoice_id = data.get("invoice_id")
+        if new_invoice_id is not None:
+            new_inv_check = db.scalars(
+                select(Invoice).where(
+                    Invoice.id == new_invoice_id,
+                    Invoice.tenant_id == tenant_id,
+                )
+            ).first()
+            if not new_inv_check:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Invoice not found or does not belong to the current tenant.",
+                )
+
+        old_inv = db.scalars(
             select(Invoice).where(
-                Invoice.id == new_invoice_id,
+                Invoice.id == payment.invoice_id,
                 Invoice.tenant_id == tenant_id,
             )
         ).first()
-        if not new_inv_check:
-            raise HTTPException(
-                status_code=404,
-                detail="Invoice not found or does not belong to the current tenant.",
+        old_amount = float(payment.amount or 0)
+        if old_inv:
+            old_inv.amount_paid = max(0.0, float(old_inv.amount_paid or 0) - old_amount)
+
+        for key in ("invoice_id", "amount", "payment_date", "method", "notes"):
+            if key in data and data[key] is not None:
+                setattr(payment, key, data[key])
+
+        new_inv = db.scalars(
+            select(Invoice).where(
+                Invoice.id == payment.invoice_id,
+                Invoice.tenant_id == tenant_id,
             )
-
-    old_inv = db.scalars(
-        select(Invoice).where(
-            Invoice.id == payment.invoice_id,
-            Invoice.tenant_id == tenant_id,
-        )
-    ).first()
-    old_amount = float(payment.amount or 0)
-    if old_inv:
-        old_inv.amount_paid = max(0.0, float(old_inv.amount_paid or 0) - old_amount)
-
-    for key in ("invoice_id", "amount", "payment_date", "method", "notes"):
-        if key in data and data[key] is not None:
-            setattr(payment, key, data[key])
-
-    new_inv = db.scalars(
-        select(Invoice).where(
-            Invoice.id == payment.invoice_id,
-            Invoice.tenant_id == tenant_id,
-        )
-    ).first()
-    if new_inv:
-        new_inv.amount_paid = float(new_inv.amount_paid or 0) + float(payment.amount or 0)
-    if old_inv and (not new_inv or old_inv.id != new_inv.id):
-        _resync_invoice_payment(db, old_inv)
-    if new_inv:
-        _resync_invoice_payment(db, new_inv)
-    db.commit()
-    db.refresh(payment)
-    return payment
+        ).first()
+        if new_inv:
+            new_inv.amount_paid = float(new_inv.amount_paid or 0) + float(payment.amount or 0)
+        if old_inv and (not new_inv or old_inv.id != new_inv.id):
+            _resync_invoice_payment(db, old_inv)
+        if new_inv:
+            _resync_invoice_payment(db, new_inv)
+        db.commit()
+        db.refresh(payment)
+        return payment
+    except HTTPException:
+        db.rollback()
+        raise
+    except SQLAlchemyError as exc:
+        db.rollback()
+        logger.exception("update_payment failed for payment_id=%s: %s", payment_id, exc)
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to update payment due to a database error.",
+        ) from exc
 
 
 def delete_payment(db: Session, tenant_id: int, payment_id: int) -> bool:
+    from fastapi import HTTPException
+    from sqlalchemy.exc import SQLAlchemyError
+
     payment = get_payment(db, tenant_id, payment_id)
     if not payment:
         return False
-    inv = db.scalars(
-        select(Invoice).where(
-            Invoice.id == payment.invoice_id,
-            Invoice.tenant_id == tenant_id,
-        )
-    ).first()
-    if inv:
-        inv.amount_paid = max(0.0, float(inv.amount_paid or 0) - float(payment.amount or 0))
-        _resync_invoice_payment(db, inv)
-    db.delete(payment)
-    db.commit()
-    return True
+    try:
+        inv = db.scalars(
+            select(Invoice).where(
+                Invoice.id == payment.invoice_id,
+                Invoice.tenant_id == tenant_id,
+            )
+        ).first()
+        if inv:
+            inv.amount_paid = max(0.0, float(inv.amount_paid or 0) - float(payment.amount or 0))
+            _resync_invoice_payment(db, inv)
+        db.delete(payment)
+        db.commit()
+        return True
+    except SQLAlchemyError as exc:
+        db.rollback()
+        logger.exception("delete_payment failed for payment_id=%s: %s", payment_id, exc)
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to delete payment due to a database error.",
+        ) from exc
 
 
 def ensure_dispatch_shipment(

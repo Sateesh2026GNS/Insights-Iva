@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import date
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models.accounts import JournalEntry, JournalLeg
+
+logger = logging.getLogger(__name__)
 
 
 def post_journal_entry(
@@ -103,10 +106,7 @@ def post_journal_entry(
         for leg in legs:
             acc_name = str(leg.get("account") or "").strip()
             if not acc_name:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Journal leg account name cannot be empty or whitespace-only",
-                )
+                raise ValueError("Journal leg account name cannot be empty or whitespace-only")
             db.add(
                 JournalLeg(
                     entry_id=entry.id,
@@ -387,6 +387,9 @@ def reverse_sales_invoice_journal(
                 legs=legs,
                 commit=False,
             )
-        except ValueError:
-            return None
+        except ValueError as exc:
+            logger.warning(
+                "Journal reversal failed for invoice %s: %s", invoice_number, exc
+            )
+            raise
     return None

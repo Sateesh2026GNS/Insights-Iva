@@ -706,14 +706,10 @@ export default function StoreStockReturn() {
 
       {returns.length === 0 ? (
         <EmptyState
-          icon={RotateCcw}
-          title="No stock returns yet"
-          description="Create a return to send unused or excess material back to the warehouse."
-          action={
-            perms.canAction("inventory", "create") || perms.isAdmin ? (
-              <Button variant="add" onClick={openCreate} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>Create Stock Return</Button>
-            ) : null
-          }
+          icon="document"
+          title="No records found."
+          description="There is nothing to show here yet."
+          className="border-none bg-transparent py-12"
         />
       ) : (
         <DataTable columns={columns} data={returns} rowKey="id" />
