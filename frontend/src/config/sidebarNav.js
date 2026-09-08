@@ -228,7 +228,6 @@ export const SIDEBAR_NAV = [
       { label: "Roles & Permissions", to: "/admin/roles", module: "admin" },
       { label: "Access Logs", to: "/admin/audit-logs", module: "admin" },
       { label: "Pending Approvals", to: "/admin/approvals", module: "admin" },
-      { label: "Integrations", to: "/admin/integrations", module: "admin" },
     ],
   },
   {

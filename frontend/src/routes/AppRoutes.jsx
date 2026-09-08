@@ -691,7 +691,6 @@ export default function AppRoutes() {
       <Route path="/admin/permissions" element={<ProtectedRoute><P.RolesPermissions /></ProtectedRoute>} />
       <Route path="/admin/audit-logs" element={<ProtectedRoute><P.AccessLogs /></ProtectedRoute>} />
       <Route path="/admin/access-logs" element={<Navigate to="/admin/audit-logs" replace />} />
-      <Route path="/admin/integrations" element={<ProtectedRoute><P.IntegrationsDashboard /></ProtectedRoute>} />
       <Route path="/admin/approvals" element={<ProtectedRoute><P.PendingApprovals /></ProtectedRoute>} />
       <Route path="/documents" element={<ProtectedRoute><P.DocumentsDashboard /></ProtectedRoute>} />
       <Route path="/meetings" element={<ProtectedRoute><P.MeetingsList /></ProtectedRoute>} />
