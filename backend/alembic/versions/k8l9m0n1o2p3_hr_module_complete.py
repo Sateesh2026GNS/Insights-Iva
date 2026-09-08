@@ -31,6 +31,14 @@ def _add_col_if_missing(table: str, column: sa.Column) -> None:
         op.add_column(table, column)
 
 
+def _add_index_if_missing(table: str, index_name: str, columns: list[str], unique: bool = False) -> None:
+    bind = op.get_bind()
+    from sqlalchemy import inspect
+    indexes = {idx["name"] for idx in inspect(bind).get_indexes(table)}
+    if index_name not in indexes:
+        op.create_index(index_name, table, columns, unique=unique)
+
+
 def upgrade() -> None:
     tables = _existing_tables()
 
@@ -48,10 +56,7 @@ def upgrade() -> None:
             sa.Column("offboard_reason", sa.Text(), nullable=True),
         ]:
             _add_col_if_missing("employees", col)
-        try:
-            op.create_index("ix_employees_lifecycle_status", "employees", ["lifecycle_status"], unique=False)
-        except Exception:
-            pass
+        _add_index_if_missing("employees", "ix_employees_lifecycle_status", ["lifecycle_status"], unique=False)
 
     if "shifts" in tables:
         for col in [
