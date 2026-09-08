@@ -22,9 +22,9 @@
   flex-direction: column;
   overflow: hidden;
   border: 1px solid var(--hd-border);
-  border-radius: 12px;
+  border-radius: 16px;
   background: var(--hd-card);
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
 }
 
 .hr-dash-card__header {
@@ -56,7 +56,7 @@
   border-radius: 6px;
   background: var(--hd-badge-bg);
   padding: 4px 10px;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--hd-badge-text);
   white-space: nowrap;
@@ -72,9 +72,9 @@
 
 .hr-dash-checkin-title {
   margin: 0;
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--hd-title);
+  font-size: 17px;
+  font-weight: 700;
+  color: #0f172a;
 }
 
 .hr-dash-checkin-date {
@@ -84,35 +84,62 @@
 }
 
 .hr-dash-timer {
-  margin: 12px 0 8px;
+  margin: 16px 0 8px;
   text-align: center;
-  font-size: 1.75rem;
+  font-size: 1.15rem;
   font-weight: 600;
-  letter-spacing: 0.14em;
-  color: var(--hd-title);
+  letter-spacing: 0.1em;
+  color: #1e293b;
   font-variant-numeric: tabular-nums;
 }
 
 .hr-dash-timer-bar {
-  height: 2px;
+  height: 4px;
   border-radius: 9999px;
   background: #e2e8f0;
+  overflow: hidden;
+  position: relative;
+}
+
+.hr-dash-timer-bar__fill {
+  width: 14px;
+  height: 100%;
+  border-radius: 9999px;
+  background: #14b8a6;
 }
 
 .hr-dash-action-btn {
   border: 0;
-  border-radius: 8px;
-  background: var(--hd-teal);
-  padding: 10px 12px;
+  border-radius: 10px;
+  background: #14b8a6;
+  padding: 10px 14px;
   font-size: 13px;
   font-weight: 600;
   color: #ffffff;
   cursor: pointer;
   transition: background-color 0.15s ease;
+  width: 100%;
+  text-align: center;
 }
 
 .hr-dash-action-btn:hover:not(:disabled) {
-  background: var(--hd-teal-hover);
+  background: #0d9488;
+}
+
+.hr-dash-action-btn--checkout {
+  background: #e11d48;
+}
+
+.hr-dash-action-btn--checkout:hover:not(:disabled) {
+  background: #be123c;
+}
+
+.hr-dash-action-btn--active-ot {
+  background: #f59e0b;
+}
+
+.hr-dash-action-btn--active-ot:hover:not(:disabled) {
+  background: #d97706;
 }
 
 .hr-dash-action-btn:disabled {
@@ -124,33 +151,45 @@
   display: flex;
   min-width: 0;
   flex: 1;
+  flex-direction: column;
   align-items: center;
-  gap: 10px;
-  border: 1px solid var(--hd-border);
-  border-radius: 10px;
-  background: var(--hd-card);
-  padding: 10px 12px;
+  justify-content: center;
+  text-align: center;
+  border: 1px solid #eef2f6;
+  border-radius: 12px;
+  background: #ffffff;
+  padding: 16px 10px;
+  transition: all 0.15s ease;
+}
+
+.hr-dash-stat:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
 }
 
 .hr-dash-stat__icon {
   display: grid;
-  height: 36px;
-  width: 36px;
+  height: 40px;
+  width: 40px;
+  margin-bottom: 8px;
   shrink: 0;
   place-items: center;
   border-radius: 9999px;
 }
 
 .hr-dash-stat__value {
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 700;
   line-height: 1.1;
+  color: #1e293b;
   font-variant-numeric: tabular-nums;
 }
 
 .hr-dash-stat__label {
-  font-size: 11px;
+  font-size: 12px;
+  font-weight: 500;
   color: var(--hd-muted);
+  margin-top: 4px;
 }
 
 .hr-dash-empty {

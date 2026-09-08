@@ -117,42 +117,100 @@ export function ToastProvider({ children }) {
           </div>
         ))}
       </div>
-      <div className="fixed bottom-4 right-4 z-[9999] flex max-w-sm flex-col gap-1.5 pointer-events-none">
+      <div className="fixed bottom-5 right-5 z-[9999] flex max-w-sm flex-col gap-2.5 pointer-events-none">
         {toasts.filter((t) => t.type !== "alert").map((t) => {
-          const tone =
-            t.type === "success"
-              ? {
-                  background: "var(--color-success-soft)",
-                  color: "var(--color-success)",
-                  borderColor: "#bbf7d0",
-                }
-              : t.type === "error"
-                ? {
-                    background: "var(--color-danger-soft)",
-                    color: "#b91c1c",
-                    borderColor: "#fecaca",
-                  }
-                : t.type === "warning"
-                  ? {
-                      background: "var(--color-warning-soft)",
-                      color: "var(--color-warning)",
-                      borderColor: "#fde68a",
-                    }
-                  : {
-                      background: "var(--color-surface)",
-                      color: "var(--color-text-secondary)",
-                      borderColor: "var(--color-border)",
-                    };
+          const isError = t.type === "error";
+          const isWarning = t.type === "warning";
+          const isCheckOut = t.type === "checkout";
+          const isInfo = t.type === "info";
+
+          const accentColor = isError
+            ? "#ef4444"
+            : isWarning
+            ? "#f59e0b"
+            : isCheckOut
+            ? "#e11d48"
+            : isInfo
+            ? "#0284c7"
+            : "#00c48c"; // Matches screenshot vibrant green
+
           return (
             <div
               key={t.id}
-              className="pointer-events-auto max-w-xs rounded-[var(--radius-md)] border px-3 py-2 text-[var(--text-xs)] font-medium shadow-md"
-              style={tone}
+              className="pointer-events-auto relative flex items-center gap-3.5 overflow-hidden rounded-xl border border-slate-200/70 bg-white py-3.5 pl-4 pr-3.5 shadow-[0_6px_20px_rgba(0,0,0,0.08)] transition-all animate-in fade-in slide-in-from-bottom-3 duration-200"
+              style={{
+                minWidth: "270px",
+                maxWidth: "380px",
+              }}
+              role="alert"
             >
-              {t.type === "success" && "✓ "}
-              {t.type === "error" && "✕ "}
-              {t.type === "warning" && "! "}
-              {t.message}
+              {/* Left vertical accent bar */}
+              <div
+                className="absolute left-0 top-0 bottom-0 w-2"
+                style={{ backgroundColor: accentColor }}
+              />
+
+              {/* Status circular icon */}
+              <div
+                className="grid h-6 w-6 shrink-0 place-items-center rounded-full border-2 ml-1"
+                style={{
+                  borderColor: accentColor,
+                  color: accentColor,
+                }}
+              >
+                {isError ? (
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="h-3.5 w-3.5 stroke-current"
+                    fill="none"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                ) : isWarning ? (
+                  <span className="text-xs font-bold leading-none">!</span>
+                ) : (
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="h-3.5 w-3.5 stroke-current"
+                    fill="none"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                )}
+              </div>
+
+              {/* Toast message */}
+              <p className="min-w-0 flex-1 text-sm font-medium text-[#1e293b] leading-snug">
+                {t.message}
+              </p>
+
+              {/* Dismiss button */}
+              <button
+                type="button"
+                onClick={() => setToasts((prev) => prev.filter((x) => x.id !== t.id))}
+                className="text-slate-400 hover:text-slate-600 transition-colors p-1 -mr-1"
+                aria-label="Close"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  className="h-4 w-4"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
             </div>
           );
         })}

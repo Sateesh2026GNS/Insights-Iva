@@ -395,6 +395,9 @@ html,
 body,
 #root {
   min-height: 100%;
+  overscroll-behavior: none !important;
+  overscroll-behavior-x: none !important;
+  overscroll-behavior-y: none !important;
 }
 
 body {
@@ -406,11 +409,25 @@ body {
   text-rendering: optimizeLegibility;
   color: var(--color-text);
   background-color: var(--color-bg);
+  overscroll-behavior: none !important;
+  overscroll-behavior-x: none !important;
+  overscroll-behavior-y: none !important;
 }
 
 /* Soft atmosphere behind ERP shell */
 .app-shell {
   background-color: var(--color-bg);
+  overscroll-behavior: none !important;
+  overscroll-behavior-x: none !important;
+  overscroll-behavior-y: none !important;
+}
+
+#main-content {
+  overscroll-behavior: contain !important;
+  overscroll-behavior-x: none !important;
+  overscroll-behavior-y: contain !important;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Selection – primary tint */
@@ -2913,3 +2930,27 @@ table > tbody > tr:first-child:has(th) {
   font-size: 0.9375rem;
   color: #64748b;
 }
+
+/* ========== Smooth Page Transition (Anti-Blink) ========== */
+@keyframes pageTransitionFadeIn {
+  0% {
+    opacity: 0.86;
+    transform: translateY(2px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.page-transition {
+  animation: pageTransitionFadeIn 160ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: opacity, transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-transition {
+    animation: none;
+  }
+}
+

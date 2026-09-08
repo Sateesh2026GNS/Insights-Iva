@@ -8,6 +8,8 @@ class EmployeeBase(BaseModel):
     tenant_id: int = Field(..., ge=1)
     employee_code: str = Field(..., min_length=1)
     full_name: str = Field(..., min_length=1)
+    first_name: str | None = None
+    last_name: str | None = None
     email: str | None = None
     phone: str | None = None
     department: str | None = None
@@ -15,6 +17,9 @@ class EmployeeBase(BaseModel):
     designation: str | None = None
     shift_name: str | None = None
     reporting_manager: str | None = None
+    employment_type: str | None = None
+    work_location: str | None = None
+    emergency_contact_phone: str | None = None
     hire_date: date | None = None
     hourly_rate: float | None = Field(None, ge=0.0)
     is_active: bool = True
@@ -29,9 +34,85 @@ class EmployeeBase(BaseModel):
             return s
         raise ValueError(f"{info.field_name} is required.")
 
+    @field_validator("hire_date", mode="before")
+    @classmethod
+    def validate_hire_date(cls, v: Any) -> Any:
+        if v == "" or v is None:
+            return None
+        return v
+
+    @field_validator(
+        "email",
+        "phone",
+        "department",
+        "address",
+        "designation",
+        "shift_name",
+        "reporting_manager",
+        "employment_type",
+        "first_name",
+        "last_name",
+        "work_location",
+        "emergency_contact_phone",
+        mode="before",
+    )
+    @classmethod
+    def normalize_optional_fields(cls, v: Any) -> Any:
+        if isinstance(v, str) and not v.strip():
+            return None
+        return v
+
 
 class EmployeeCreate(EmployeeBase):
-    pass
+    tenant_id: int | None = Field(None, ge=1)
+
+
+class EmployeeUpdate(BaseModel):
+    employee_code: str | None = None
+    full_name: str | None = None
+    first_name: str | None = None
+    last_name: str | None = None
+    email: str | None = None
+    phone: str | None = None
+    department: str | None = None
+    address: str | None = None
+    designation: str | None = None
+    shift_name: str | None = None
+    reporting_manager: str | None = None
+    employment_type: str | None = None
+    work_location: str | None = None
+    emergency_contact_phone: str | None = None
+    hire_date: date | None = None
+    hourly_rate: float | None = Field(None, ge=0.0)
+    is_active: bool | None = None
+
+    @field_validator("hire_date", mode="before")
+    @classmethod
+    def validate_hire_date(cls, v: Any) -> Any:
+        if v == "" or v is None:
+            return None
+        return v
+
+    @field_validator(
+        "email",
+        "phone",
+        "department",
+        "address",
+        "designation",
+        "shift_name",
+        "reporting_manager",
+        "employment_type",
+        "first_name",
+        "last_name",
+        "work_location",
+        "emergency_contact_phone",
+        mode="before",
+    )
+    @classmethod
+    def normalize_optional_fields(cls, v: Any) -> Any:
+        if isinstance(v, str) and not v.strip():
+            return None
+        return v
 
 
 class EmployeeRead(EmployeeBase):

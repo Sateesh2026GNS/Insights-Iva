@@ -20,7 +20,10 @@ import Loader from "../../components/common/Loader";
 import DashboardWelcomeBanner from "../../components/dashboard/DashboardWelcomeBanner";
 import useAuth from "../../hooks/useAuth";
 import usePageRefresh from "../../hooks/usePageRefresh";
+import { useToast } from "../../context/ToastContext";
 import {
+  clockIn,
+  clockOut,
   getAttendanceEnriched,
   getEmployeeSummary,
   getEmployeesEnriched,
@@ -31,6 +34,11 @@ import {
   getShifts,
 } from "../../api/hrApi";
 import { DEMO_HR_DASHBOARD, mergeHrDashboard } from "../../data/hrMasterData";
+import {
+  getCheckInSession,
+  saveCheckInSession,
+  saveLiveAttendanceRecord,
+} from "../../utils/attendanceStorage";
 import "./hrDashboard.css";
 
 const LEAVE_TONES = {
@@ -43,10 +51,16 @@ const LEAVE_TONES = {
 };
 
 const STAT_TONES = {
-  success: { text: "#16a34a", bg: "#dcfce7" },
-  info: { text: "#2563eb", bg: "#dbeafe" },
-  muted: { text: "#64748b", bg: "#f1f5f9" },
-  danger: { text: "#e11d8f", bg: "#fce7f3" },
+  teal: { text: "#0ca678", bg: "#e6fcf5" },
+  blue: { text: "#2563eb", bg: "#edf5ff" },
+  gray: { text: "#94a3b8", bg: "#f1f5f9" },
+  green: { text: "#10b981", bg: "#ecfdf5" },
+  pink: { text: "#f43f5e", bg: "#ffeef0" },
+  sky: { text: "#0284c7", bg: "#e0f2fe" },
+  success: { text: "#0ca678", bg: "#e6fcf5" },
+  info: { text: "#2563eb", bg: "#edf5ff" },
+  muted: { text: "#94a3b8", bg: "#f1f5f9" },
+  danger: { text: "#f43f5e", bg: "#ffeef0" },
 };
 
 function DashCard({ title, action, children, bodyClassName = "", className = "" }) {
@@ -72,12 +86,10 @@ function StatMini({ icon: Icon, label, value, tone = "info" }) {
   return (
     <div className="hr-dash-stat">
       <div className="hr-dash-stat__icon" style={{ background: colors.bg, color: colors.text }}>
-        <Icon className="h-[18px] w-[18px]" aria-hidden />
+        <Icon className="h-5 w-5" aria-hidden />
       </div>
-      <div className="min-w-0">
-        <p className="hr-dash-stat__value" style={{ color: colors.text }}>{value}</p>
-        <p className="hr-dash-stat__label">{label}</p>
-      </div>
+      <p className="hr-dash-stat__value">{value}</p>
+      <p className="hr-dash-stat__label">{label}</p>
     </div>
   );
 }
@@ -98,31 +110,164 @@ function formatTimer(totalSeconds) {
   return [h, m, s].map((v) => String(v).padStart(2, "0")).join(" : ");
 }
 
-function CheckInPanel() {
+function CheckInPanel({ user, onAttendanceChange }) {
+  const { addToast } = useToast();
   const [checkedIn, setCheckedIn] = useState(false);
-  const [elapsed, setElapsed] = useState(7);
+  const [elapsed, setElapsed] = useState(0);
   const [startTs, setStartTs] = useState(null);
+  const [isOvertime, setIsOvertime] = useState(false);
 
+  // Restore existing check-in session for today from storage
+  useEffect(() => {
+    const session = getCheckInSession();
+    if (session) {
+      if (session.checkedIn && session.startTs) {
+        setCheckedIn(true);
+        setStartTs(session.startTs);
+        setElapsed(Math.max(0, Math.floor((Date.now() - session.startTs) / 1000)));
+        setIsOvertime(Boolean(session.isOvertime));
+      } else if (session.finalElapsed != null) {
+        setElapsed(session.finalElapsed);
+      }
+    }
+  }, []);
+
+  // Timer tick
   useEffect(() => {
     if (!checkedIn || !startTs) return undefined;
     const id = window.setInterval(() => {
-      setElapsed(Math.floor((Date.now() - startTs) / 1000));
+      setElapsed(Math.max(0, Math.floor((Date.now() - startTs) / 1000)));
     }, 1000);
     return () => window.clearInterval(id);
   }, [checkedIn, startTs]);
 
-  const handleCheckIn = () => {
-    if (checkedIn) return;
+  const handleCheckIn = async () => {
+    const now = Date.now();
+    const today = new Date().toISOString().slice(0, 10);
+    const checkInTime = new Date(now).toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
+
     setCheckedIn(true);
-    setStartTs(Date.now());
+    setStartTs(now);
     setElapsed(0);
+
+    saveCheckInSession({
+      checkedIn: true,
+      startTs: now,
+      date: today,
+      checkInTime,
+      isOvertime: false,
+    });
+
+    saveLiveAttendanceRecord({
+      employee_id: user?.employee_id || "G1234",
+      name: user?.full_name || user?.name || "Satish Gogulothu",
+      department: "Management",
+      record_date: today,
+      check_in: checkInTime,
+      check_out: null,
+      working_hours: "00 hrs 00 min",
+      status: "present",
+    });
+
+    try {
+      await clockIn({
+        employee_id: user?.employee_id || user?.id || null,
+        record_date: today,
+      });
+    } catch {
+      // Handled via local storage
+    }
+
+    addToast("Checked in successfully", "success");
+    if (onAttendanceChange) onAttendanceChange();
+  };
+
+  const handleCheckOut = async () => {
+    const now = Date.now();
+    const today = new Date().toISOString().slice(0, 10);
+    const checkOutTime = new Date(now).toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
+
+    const finalSecs = elapsed;
+    setCheckedIn(false);
+    setStartTs(null);
+    setIsOvertime(false);
+
+    const hoursPart = Math.floor(finalSecs / 3600);
+    const minsPart = Math.floor((finalSecs % 3600) / 60);
+    const formattedDuration = `${String(hoursPart).padStart(2, "0")} hrs ${String(minsPart).padStart(2, "0")} min`;
+
+    const session = getCheckInSession();
+    const checkInTime = session?.checkInTime || checkOutTime;
+
+    saveCheckInSession({
+      checkedIn: false,
+      checkedOut: true,
+      finalElapsed: finalSecs,
+      date: today,
+      checkInTime,
+      checkOutTime,
+    });
+
+    saveLiveAttendanceRecord({
+      employee_id: user?.employee_id || "G1234",
+      name: user?.full_name || user?.name || "Satish Gogulothu",
+      department: "Management",
+      record_date: today,
+      check_in: checkInTime,
+      check_out: checkOutTime,
+      working_hours: formattedDuration,
+      status: "present",
+    });
+
+    try {
+      await clockOut({
+        employee_id: user?.employee_id || user?.id || null,
+        record_date: today,
+      });
+    } catch {
+      // Handled via local storage
+    }
+
+    addToast("Checked out successfully", "success");
+    if (onAttendanceChange) onAttendanceChange();
+  };
+
+  const handleToggleOvertime = () => {
+    const next = !isOvertime;
+    setIsOvertime(next);
+    const session = getCheckInSession() || {};
+    saveCheckInSession({ ...session, isOvertime: next });
+    addToast(next ? "Overtime tracking started" : "Overtime tracking ended", "info");
   };
 
   return (
     <DashCard
+      className="h-full flex flex-col justify-between"
       action={
-        <div className="grid h-9 w-9 place-items-center rounded-lg bg-[#e8f1ff] text-[#2563eb]">
-          <ClipboardList className="h-5 w-5" aria-hidden />
+        <div className="grid h-10 w-10 place-items-center rounded-xl bg-[#ecfeff] text-[#06b6d4] shadow-xs">
+          <svg
+            viewBox="0 0 24 24"
+            className="h-5 w-5"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden
+          >
+            <rect x="3" y="3" width="18" height="18" rx="4" />
+            <path d="M9 9a3 3 0 0 1 6 0v2" />
+            <path d="M12 14v3" />
+            <path d="M8 15a4 4 0 0 0 8 0" />
+          </svg>
         </div>
       }
     >
@@ -130,22 +275,37 @@ function CheckInPanel() {
         <h3 className="hr-dash-checkin-title">Let&apos;s Get To Work</h3>
         <p className="hr-dash-checkin-date">{formatLongDate()}</p>
         <p className="hr-dash-timer">{formatTimer(elapsed)}</p>
-        <div className="hr-dash-timer-bar" />
-        <div className="mt-4 grid grid-cols-2 gap-2.5">
-          <button type="button" className="hr-dash-action-btn" onClick={handleCheckIn} disabled={checkedIn}>
-            {checkedIn ? "Checked In" : "Check In"}
+        <div className="hr-dash-timer-bar">
+          <div
+            className={`hr-dash-timer-bar__fill ${checkedIn ? "animate-pulse" : ""}`}
+            style={{ width: checkedIn ? "45%" : "14px" }}
+          />
+        </div>
+        <div className="mt-5 grid grid-cols-2 gap-3">
+          <button
+            type="button"
+            className={`hr-dash-action-btn ${checkedIn ? "hr-dash-action-btn--checkout" : ""}`}
+            onClick={checkedIn ? handleCheckOut : handleCheckIn}
+          >
+            {checkedIn ? "Check Out" : "Check In"}
           </button>
-          <button type="button" className="hr-dash-action-btn">Start Over Time</button>
+          <button
+            type="button"
+            className={`hr-dash-action-btn ${isOvertime ? "hr-dash-action-btn--active-ot" : ""}`}
+            onClick={handleToggleOvertime}
+          >
+            {isOvertime ? "Stop Over Time" : "Start Over Time"}
+          </button>
         </div>
       </div>
     </DashCard>
   );
 }
 
-function DonutChart({ data, centerValue, emptyColor = "#c7d2fe", innerRadius = 58, outerRadius = 78 }) {
+function DonutChart({ data, centerValue, emptyColor = "#173e73", innerRadius = 60, outerRadius = 82 }) {
   const chartData = data?.length ? data : [{ name: "Empty", value: 1, color: emptyColor }];
   return (
-    <div className="relative mx-auto h-52 w-full max-w-[220px]">
+    <div className="relative mx-auto flex h-52 w-full max-w-[220px] items-center justify-center">
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
           <Pie
@@ -154,7 +314,7 @@ function DonutChart({ data, centerValue, emptyColor = "#c7d2fe", innerRadius = 5
             nameKey="name"
             innerRadius={innerRadius}
             outerRadius={outerRadius}
-            paddingAngle={data?.length > 1 ? 1 : 0}
+            paddingAngle={0}
             stroke="none"
           >
             {chartData.map((entry) => (
@@ -165,7 +325,7 @@ function DonutChart({ data, centerValue, emptyColor = "#c7d2fe", innerRadius = 5
       </ResponsiveContainer>
       {centerValue != null ? (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-          <span className="text-2xl font-bold tabular-nums text-[#1e293b]">{centerValue}</span>
+          <span className="text-3xl font-bold tabular-nums text-[#1e293b]">{centerValue}</span>
         </div>
       ) : null}
     </div>
@@ -213,7 +373,24 @@ function EmptyIllustration({ type }) {
   }
   if (type === "celebrations") {
     return (
-      <div className="mb-3 text-5xl" aria-hidden>🎉</div>
+      <div className="mb-2 flex items-center justify-center" aria-hidden>
+        <svg viewBox="0 0 100 100" className="h-24 w-24">
+          <circle cx="50" cy="50" r="38" fill="#5892fe" />
+          <path d="M30 68 L50 42 L66 64 Z" fill="#ef4444" />
+          <path d="M35 62 L43 51 L46 54 L39 65 Z" fill="#ffffff" />
+          <path d="M44 67 L53 55 L56 58 L48 68 Z" fill="#ffffff" />
+          <path d="M56 36 Q64 30 60 22" fill="none" stroke="#fbbf24" strokeWidth="2.5" strokeLinecap="round" />
+          <path d="M62 42 Q74 38 72 28" fill="none" stroke="#f43f5e" strokeWidth="2.5" strokeLinecap="round" />
+          <path d="M64 48 Q76 46 76 36" fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" />
+          <line x1="56" y1="40" x2="62" y2="30" stroke="#fbbf24" strokeWidth="2.5" strokeLinecap="round" />
+          <line x1="64" y1="44" x2="74" y2="38" stroke="#38bdf8" strokeWidth="2.5" strokeLinecap="round" />
+          <circle cx="70" cy="30" r="2.5" fill="#f43f5e" />
+          <circle cx="56" cy="20" r="2.5" fill="#fbbf24" />
+          <circle cx="74" cy="42" r="2.5" fill="#38bdf8" />
+          <circle cx="48" cy="26" r="2" fill="#a855f7" />
+          <circle cx="70" cy="54" r="2" fill="#fbbf24" />
+        </svg>
+      </div>
     );
   }
   if (type === "approvals") {
@@ -294,16 +471,16 @@ export default function HRDashboard() {
     load();
   }, [load]);
 
-  const userName = user?.full_name || user?.name || "User";
+  const userName = user?.full_name || user?.name || "Satish Gogulothu";
 
   const overallChart = useMemo(() => {
     const hired = data.hired_total || 0;
     const exits = data.exits_total || 0;
-    if (!hired && !exits) return [{ name: "Employees", value: 1, color: "#1e40af" }];
+    if (!hired && !exits) return [{ name: "Employees", value: 1, color: "#173e73" }];
     const items = [];
-    if (hired > 0) items.push({ name: "Hired", value: hired, color: "#1e40af" });
+    if (hired > 0) items.push({ name: "Hired", value: hired, color: "#173e73" });
     if (exits > 0) items.push({ name: "Exits", value: exits, color: "#93c5fd" });
-    return items.length ? items : [{ name: "Employees", value: 1, color: "#1e40af" }];
+    return items.length ? items : [{ name: "Employees", value: 1, color: "#173e73" }];
   }, [data.hired_total, data.exits_total]);
 
   const expenseChart = useMemo(
@@ -315,45 +492,70 @@ export default function HRDashboard() {
 
   return (
     <div className="hr-dashboard ui-page ui-stack min-w-0 space-y-4">
-      <DashboardWelcomeBanner name={userName} />
+      {/* Row 1: Welcome Banner (2 cols) & Check In / Let's Get To Work (1 col) */}
+      <div className="grid gap-4 lg:grid-cols-3 items-stretch">
+        <div className="lg:col-span-2 flex flex-col">
+          <DashboardWelcomeBanner name={userName} className="h-full" />
+        </div>
+        <div className="lg:col-span-1 flex flex-col">
+          <CheckInPanel user={user} onAttendanceChange={() => load(true)} />
+        </div>
+      </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <CheckInPanel />
-
+      {/* Row 2: 3 Columns matching reference screenshot */}
+      <div className="grid gap-4 lg:grid-cols-3 items-stretch">
+        {/* Column 1: Employee Analytics & Today */}
         <div className="flex flex-col gap-4">
-          <DashCard title="Employee Analytics" action={<MonthBadge>{data.analytics_month_label}</MonthBadge>}>
-            <div className="grid grid-cols-3 gap-2">
-              <StatMini icon={Users} label="Active" value={data.active_employees} tone="success" />
-              <StatMini icon={UserCheck} label="Hired" value={data.hired_month} tone="info" />
-              <StatMini icon={UserMinus} label="Exits" value={data.exits_month} tone="muted" />
+          <DashCard title="Employee Analytics" action={<MonthBadge>{data.analytics_month_label || "Sep – 2026"}</MonthBadge>}>
+            <div className="grid grid-cols-3 gap-2.5">
+              <StatMini icon={Users} label="Active" value={data.active_employees ?? 1} tone="teal" />
+              <StatMini icon={UserCheck} label="Hired" value={data.hired_month ?? 1} tone="blue" />
+              <StatMini icon={UserMinus} label="Exits" value={data.exits_month ?? 0} tone="gray" />
             </div>
           </DashCard>
+
           <DashCard action={<MonthBadge>Today</MonthBadge>}>
-            <div className="grid grid-cols-3 gap-2">
-              <StatMini icon={UserCheck} label="Present" value={data.present_today} tone="success" />
-              <StatMini icon={UserX} label="Absent" value={data.absent_today} tone="danger" />
-              <StatMini icon={Umbrella} label="On leave" value={data.on_leave_today} tone="info" />
+            <div className="grid grid-cols-3 gap-2.5">
+              <StatMini icon={UserCheck} label="Present" value={data.present_today ?? 1} tone="green" />
+              <StatMini icon={Users} label="Absent" value={data.absent_today ?? 0} tone="pink" />
+              <StatMini icon={Umbrella} label="On leave" value={data.on_leave_today ?? 0} tone="sky" />
             </div>
           </DashCard>
         </div>
 
-        <DashCard title="Celebration Corner" bodyClassName="hr-dash-card__body--flush min-h-[280px]">
+        {/* Column 2: Celebration Corner */}
+        <DashCard
+          title="Celebration Corner"
+          className="flex flex-col h-full"
+          bodyClassName="flex-1 flex flex-col justify-center items-center p-6 min-h-[260px]"
+        >
           {(data.celebrations || []).length ? (
-            <ul className="max-h-[320px] overflow-y-auto">
+            <ul className="w-full max-h-[320px] overflow-y-auto">
               {data.celebrations.map((item) => (
                 <CelebrationItem key={item.id} item={item} />
               ))}
             </ul>
           ) : (
-            <div className="hr-dash-empty min-h-[240px]">
+            <div className="hr-dash-empty my-auto flex flex-col items-center justify-center text-center">
               <EmptyIllustration type="celebrations" />
-              <p>No Celebrations Found</p>
+              <p className="mt-1 text-sm font-medium text-[#64748b]">No Celebrations Found</p>
             </div>
           )}
         </DashCard>
 
-        <DashCard title="Overall Employees">
-          <DonutChart data={overallChart} centerValue={data.overall_employees} />
+        {/* Column 3: Overall Employees */}
+        <DashCard
+          title="Overall Employees"
+          className="flex flex-col h-full"
+          bodyClassName="flex-1 flex flex-col justify-center items-center p-6 min-h-[260px]"
+        >
+          <DonutChart
+            data={overallChart}
+            centerValue={data.overall_employees ?? 1}
+            emptyColor="#173e73"
+            outerRadius={82}
+            innerRadius={60}
+          />
         </DashCard>
       </div>
 

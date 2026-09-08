@@ -1,11 +1,13 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { CalendarDays, Check, Plus, X } from "lucide-react";
+import { CalendarDays, Check, Loader2, LocateFixed, Plus, X } from "lucide-react";
 
 import { ListPageShell } from "../../components/common/ListPageShell";
 import { useToast } from "../../context/ToastContext";
-import { createEmployee, getEmployeesEnriched } from "../../api/hrApi";
+import { createEmployee, getEmployeesEnriched, updateEmployee } from "../../api/hrApi";
+import { fetchCurrentLocationAddress } from "../../api/addressLookupApi";
+import { openNativeDatePicker } from "../../utils/dateUtils";
 import "./createEmployeeOnboarding.css";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -24,21 +26,68 @@ function formatDisplayDate(value) {
   return `${String(d.getDate()).padStart(2, "0")} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
 }
 
-function Field({ label, required, children }) {
+function Field({ label, required, children, action }) {
   return (
     <div className="hr-create-employee__field">
-      <label className="hr-create-employee__label">{label}{required ? <span> *</span> : null}</label>
+      {action ? (
+        <div className="flex items-center justify-between gap-2 mb-1">
+          <label className="hr-create-employee__label">{label}{required ? <span> *</span> : null}</label>
+          {action}
+        </div>
+      ) : (
+        <label className="hr-create-employee__label">{label}{required ? <span> *</span> : null}</label>
+      )}
       {children}
     </div>
   );
 }
 
-function DateField({ value, onChange, placeholder }) {
+function DateField({ value, onChange, placeholder, disabled }) {
+  const inputRef = useRef(null);
+
+  const handleOpenCalendar = (e) => {
+    e?.preventDefault?.();
+    e?.stopPropagation?.();
+    if (disabled) return;
+    openNativeDatePicker(inputRef.current);
+  };
+
   return (
-    <div className="hr-create-employee__date-wrap">
-      <span className={value ? "" : "is-placeholder"}>{value ? formatDisplayDate(value) : placeholder}</span>
-      <CalendarDays className="h-4 w-4 shrink-0 text-[#9ca3af]" />
-      <input type="date" value={value} onChange={(e) => onChange(e.target.value)} />
+    <div
+      className={`hr-create-employee__date-wrap ${disabled ? "is-disabled" : ""}`}
+      onClick={handleOpenCalendar}
+      role="button"
+      tabIndex={disabled ? -1 : 0}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          handleOpenCalendar(e);
+        }
+      }}
+    >
+      <span className={value ? "" : "is-placeholder"}>
+        {value ? formatDisplayDate(value) : placeholder}
+      </span>
+      <button
+        type="button"
+        className="hr-create-employee__calendar-btn"
+        onClick={handleOpenCalendar}
+        disabled={disabled}
+        aria-label="Open calendar"
+        tabIndex={-1}
+      >
+        <CalendarDays className="h-4 w-4 shrink-0 text-[#9ca3af]" />
+      </button>
+      <input
+        ref={inputRef}
+        type="date"
+        value={value || ""}
+        disabled={disabled}
+        onChange={(e) => onChange?.(e.target.value)}
+        className="hr-create-employee__date-native-input"
+        tabIndex={-1}
+        aria-hidden="true"
+      />
     </div>
   );
 }
@@ -172,8 +221,57 @@ export default function CreateEmployee() {
   const [personalEmail, setPersonalEmail] = useState("");
   const [permanentAddress, setPermanentAddress] = useState("");
   const [localAddress, setLocalAddress] = useState("");
+  const [locatingPermanent, setLocatingPermanent] = useState(false);
+  const [sameAsPermanent, setSameAsPermanent] = useState(false);
   const [workExperience, setWorkExperience] = useState([]);
   const [education, setEducation] = useState([emptyEducationRow()]);
+
+  const formatAddress = (addr) => {
+    if (!addr) return "";
+    const parts = [
+      addr.address_line1,
+      addr.address_line2,
+      addr.city,
+      addr.state,
+      addr.pincode ? `PIN - ${addr.pincode}` : "",
+      addr.country || "India",
+    ].filter((p) => p && String(p).trim().length > 0);
+    return parts.length > 0 ? parts.join(", ") : (addr.display_name || "");
+  };
+
+  const handleFetchPermanentLocation = async () => {
+    setLocatingPermanent(true);
+    try {
+      const data = await fetchCurrentLocationAddress();
+      const formatted = formatAddress(data);
+      if (!formatted) {
+        throw new Error("Unable to determine address from current location.");
+      }
+      setPermanentAddress(formatted);
+      if (sameAsPermanent) {
+        setLocalAddress(formatted);
+      }
+      addToast("Permanent address auto-filled from current location.", "success");
+    } catch (err) {
+      addToast(err?.message || "Failed to retrieve current location.", "error");
+    } finally {
+      setLocatingPermanent(false);
+    }
+  };
+
+  const handleToggleSameAsPermanent = (checked) => {
+    setSameAsPermanent(checked);
+    if (checked) {
+      setLocalAddress(permanentAddress);
+    }
+  };
+
+  const handlePermanentAddressChange = (val) => {
+    setPermanentAddress(val);
+    if (sameAsPermanent) {
+      setLocalAddress(val);
+    }
+  };
 
   useEffect(() => {
     if (!editId) return;
@@ -183,13 +281,16 @@ export default function CreateEmployee() {
         const row = rows.find((e) => String(e.id) === String(editId));
         if (!row) return;
         setEmployeeCode(row.employee_code || "");
-        setFirstName(row.first_name || "");
-        setLastName(row.last_name || "");
+        setFirstName(row.first_name || row.full_name?.split(" ")[0] || "");
+        setLastName(row.last_name || row.full_name?.split(" ").slice(1).join(" ") || "");
         setEmail(row.email || "");
         setDepartment(row.department || "");
-        setBranch(row.branch || "");
+        setBranch(row.work_location || row.branch || "");
         setDesignation(row.designation || "");
-        setDateOfJoining(row.date_of_joining || row.hire_date || "");
+        setDateOfJoining(row.hire_date || row.joining_date || row.date_of_joining || "");
+        setPersonalMobile(row.phone || row.mobile || "");
+        setPermanentAddress(row.address || row.permanent_address || "");
+        if (row.employment_type) setEmploymentType(row.employment_type);
       })
       .catch(() => {});
   }, [editId]);
@@ -247,26 +348,48 @@ export default function CreateEmployee() {
 
   const handleSave = async () => {
     if (!employeeCode.trim() || !firstName.trim() || !lastName.trim() || !email.trim()) {
-      addToast("Please fill required basic details", "error");
+      addToast("Please fill required basic details (Code, First Name, Last Name, Email)", "error");
       return;
     }
     const payload = buildPayload();
     setSaving(true);
     try {
-      await createEmployee({
+      const employeeData = {
         employee_code: payload.employee_code,
         full_name: payload.full_name,
-        email: payload.email,
-        department: payload.department,
-        designation: payload.designation,
-        hire_date: payload.date_of_joining,
-        phone: payload.mobile,
-        address: payload.permanent_address,
-      });
-      addToast("Employee saved successfully", "success");
+        first_name: payload.first_name || null,
+        last_name: payload.last_name || null,
+        email: payload.email || null,
+        department: payload.department || null,
+        designation: payload.designation || null,
+        employment_type: payload.employment_type || null,
+        work_location: payload.branch || null,
+        emergency_contact_phone: payload.emergency_contact || null,
+        hire_date: payload.date_of_joining ? payload.date_of_joining : null,
+        phone: payload.mobile || null,
+        address: payload.permanent_address || null,
+      };
+
+      if (editId) {
+        await updateEmployee(editId, employeeData);
+        addToast("Employee updated successfully", "success");
+      } else {
+        await createEmployee(employeeData);
+        addToast("Employee created successfully", "success");
+      }
       navigate("/hr/employees");
-    } catch {
-      addToast("Failed to save employee", "error");
+    } catch (err) {
+      const detail = err?.response?.data?.detail;
+      let msg = "Failed to save employee";
+      if (typeof detail === "string") {
+        msg = detail;
+      } else if (Array.isArray(detail) && detail[0]?.msg) {
+        const fieldName = detail[0].loc ? detail[0].loc.slice(1).join(" ") : "";
+        msg = fieldName ? `${fieldName}: ${detail[0].msg}` : detail[0].msg;
+      } else if (err?.message) {
+        msg = err.message;
+      }
+      addToast(msg, "error");
     } finally {
       setSaving(false);
     }
@@ -448,8 +571,54 @@ export default function CreateEmployee() {
             <Field label="Personal Mobile Number" required><input className="hr-create-employee__input" value={personalMobile} onChange={(e) => setPersonalMobile(e.target.value)} placeholder="Enter Personal Mobile Number" /></Field>
             <Field label="Contact Person - In case of emergency" required><input className="hr-create-employee__input" value={emergencyContact} onChange={(e) => setEmergencyContact(e.target.value)} placeholder="Enter Emergency Number" /></Field>
             <Field label="Personal Email Address"><input className="hr-create-employee__input" type="email" value={personalEmail} onChange={(e) => setPersonalEmail(e.target.value)} placeholder="Enter Personal Email Address" /></Field>
-            <Field label="Permanent Address" required><textarea className="hr-create-employee__textarea" value={permanentAddress} onChange={(e) => setPermanentAddress(e.target.value)} placeholder="Enter Permanent Address" /></Field>
-            <Field label="Local Residential Address"><textarea className="hr-create-employee__textarea" value={localAddress} onChange={(e) => setLocalAddress(e.target.value)} placeholder="Enter Local Residential Address" /></Field>
+            <Field label="Permanent Address" required>
+              <div className="hr-create-employee__textarea-wrap">
+                <textarea
+                  className="hr-create-employee__textarea"
+                  value={permanentAddress}
+                  onChange={(e) => handlePermanentAddressChange(e.target.value)}
+                  placeholder="Enter Permanent Address"
+                />
+                <button
+                  type="button"
+                  className="hr-create-employee__location-btn"
+                  onClick={handleFetchPermanentLocation}
+                  disabled={locatingPermanent}
+                  title="Auto-fill with current location"
+                >
+                  {locatingPermanent ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <LocateFixed className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
+            </Field>
+
+            <Field
+              label="Local Residential Address"
+              action={
+                <label className="flex items-center gap-1.5 text-xs text-[#5e6278] cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={sameAsPermanent}
+                    onChange={(e) => handleToggleSameAsPermanent(e.target.checked)}
+                    className="rounded border-[#e2e8f0] text-[#0f6d84] focus:ring-[#0f6d84]"
+                  />
+                  <span>Same as Permanent</span>
+                </label>
+              }
+            >
+              <textarea
+                className="hr-create-employee__textarea"
+                value={localAddress}
+                onChange={(e) => {
+                  setLocalAddress(e.target.value);
+                  if (sameAsPermanent) setSameAsPermanent(false);
+                }}
+                placeholder="Enter Local Residential Address"
+              />
+            </Field>
           </div>
         </section>
 

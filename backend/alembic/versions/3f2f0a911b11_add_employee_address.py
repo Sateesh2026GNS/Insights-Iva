@@ -19,9 +19,12 @@ depends_on = None
 def upgrade() -> None:
     # Legacy HR table — skip when active schema excludes employees (PostgreSQL cutover).
     bind = op.get_bind()
-    if "employees" not in inspect(bind).get_table_names():
+    inspector = inspect(bind)
+    if "employees" not in inspector.get_table_names():
         return
-    op.add_column("employees", sa.Column("address", sa.Text(), nullable=True))
+    cols = {c["name"] for c in inspector.get_columns("employees")}
+    if "address" not in cols:
+        op.add_column("employees", sa.Column("address", sa.Text(), nullable=True))
 
 
 def downgrade() -> None:

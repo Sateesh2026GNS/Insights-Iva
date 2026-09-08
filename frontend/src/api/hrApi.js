@@ -6,6 +6,7 @@ export const getEmployees = () => api.get("/hr/employees");
 export const getEmployeeSummary = () => api.get("/hr/employees/summary");
 export const getEmployeesEnriched = () => api.get("/hr/employees/enriched");
 export const createEmployee = (payload) => api.post("/hr/employees", payload);
+export const updateEmployee = (employeeId, payload) => api.put(`/hr/employees/${employeeId}`, payload);
 export const getOffboardedEmployees = (params) => api.get("/hr/employees/offboarded", { params });
 
 export const getShifts = () => api.get("/hr/shifts");

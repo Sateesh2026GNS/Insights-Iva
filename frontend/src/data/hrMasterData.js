@@ -71,6 +71,7 @@ function mapApiAttendanceRow(row, index) {
     status: status === "half_day" ? "on_leave" : status,
     remarks: row.remarks || row.reason || "—",
     avatar: row.initials || initials(row.employee_name),
+    record_date: row.record_date || row.date || new Date().toISOString().slice(0, 10),
   };
 }
 

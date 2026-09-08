@@ -16,6 +16,7 @@ from app.schemas.hr import (
     AttendanceRecordRead,
     EmployeeCreate,
     EmployeeRead,
+    EmployeeUpdate,
     HrAssetCreate,
     HrAssetRead,
     HrAssetUpdate,
@@ -64,6 +65,7 @@ from app.services.department_service import (
 from app.services.hr_service import (
     create_attendance_record,
     create_employee,
+    update_employee,
     create_hr_asset,
     create_leave_request,
     create_payroll_record,
@@ -160,6 +162,17 @@ def create_employee_endpoint(
     return create_employee(db, payload)
 
 
+@router.put("/employees/{employee_id}", response_model=EmployeeRead)
+@router.patch("/employees/{employee_id}", response_model=EmployeeRead)
+def update_employee_endpoint(
+    employee_id: int,
+    payload: EmployeeUpdate,
+    user: User = Depends(require_permission(MODULE)),
+    db: Session = Depends(get_db),
+):
+    return update_employee(db, user.tenant_id, employee_id, payload)
+
+
 @router.get("/employees", response_model=list[EmployeeRead])
 def list_employees_endpoint(
     tenant_id: int = Depends(ATT_SCOPE), db: Session = Depends(get_db)
@@ -196,8 +209,8 @@ def create_attendance_endpoint(
 
 @router.post("/attendance/clock-in", response_model=AttendanceRecordRead)
 def clock_in_endpoint(
-    employee_id: int = Query(...),
-    record_date: date = Query(...),
+    employee_id: int | None = Query(None),
+    record_date: date | None = Query(None),
     tenant_id: int = Depends(ATT_SCOPE),
     db: Session = Depends(get_db),
 ):
@@ -206,8 +219,8 @@ def clock_in_endpoint(
 
 @router.post("/attendance/clock-out")
 def clock_out_endpoint(
-    employee_id: int = Query(...),
-    record_date: date = Query(...),
+    employee_id: int | None = Query(None),
+    record_date: date | None = Query(None),
     tenant_id: int = Depends(ATT_SCOPE),
     db: Session = Depends(get_db),
 ):

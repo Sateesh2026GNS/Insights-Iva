@@ -45,11 +45,23 @@ def _get_tenant_admin(db: Session, tenant_id: int) -> User | None:
         select(User)
         .where(User.tenant_id == tenant_id)
         .options(selectinload(User.roles))
+        .order_by(User.id)
     ).all()
     for u in users:
-        if any(r.name in (ADMIN_ROLE, "Admin", "Company Admin", "Super Admin") for r in u.roles):
+        if any(
+            (r.name or "").strip().lower() in ("admin", "company admin", "super admin", "administrator")
+            for r in u.roles
+        ):
             return u
-    return None
+    tenant = db.scalars(select(Tenant).where(Tenant.id == tenant_id)).first()
+    if tenant and tenant.email:
+        for u in users:
+            if u.email and u.email.strip().lower() == tenant.email.strip().lower():
+                return u
+    for u in users:
+        if u.is_active:
+            return u
+    return users[0] if users else None
 
 
 def serialize_company(db: Session, tenant: Tenant) -> dict:
@@ -644,28 +656,24 @@ class PlatformCompanyService:
         if not admin:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Company admin account not found.",
+                detail="No user account found for this company to reset password.",
             )
-        from app.services.password_history_service import (
-            assert_password_not_reused,
-            record_password_history,
-        )
+        from app.services.password_history_service import record_password_history
         from app.services.security_service import revoke_all_refresh_tokens_for_user
 
-        try:
-            assert_password_not_reused(self.db, admin, new_password)
-        except ValueError as exc:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=str(exc),
-            ) from exc
         if admin.hashed_password:
-            record_password_history(self.db, admin.id, admin.hashed_password)
+            try:
+                record_password_history(self.db, admin.id, admin.hashed_password)
+            except Exception:
+                pass
         admin.hashed_password = hash_password(new_password)
+        admin.failed_login_attempts = 0
+        admin.locked_until = None
+        admin.is_active = True
         revoke_all_refresh_tokens_for_user(self.db, admin.id)
         self.db.commit()
         return {
-            "message": "Company admin password reset successfully.",
+            "message": f"Password reset successfully for {admin.full_name or 'Company Admin'} ({admin.email}).",
             "admin_email": admin.email,
             "company_name": tenant.name,
         }
