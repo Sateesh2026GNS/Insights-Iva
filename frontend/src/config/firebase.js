@@ -1,5 +1,6 @@
 import { initializeApp, getApps } from "firebase/app";
 import { getAuth } from "firebase/auth";
+import { getAnalytics, isSupported } from "firebase/analytics";
 
 /** Firebase client config — all values must come from VITE_* env at build time. */
 
@@ -19,11 +20,19 @@ export const isFirebaseConfigured = Boolean(
 
 let app = null;
 let auth = null;
+let analytics = null;
 
 if (isFirebaseConfigured) {
   app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
   auth = getAuth(app);
+  if (typeof window !== "undefined") {
+    isSupported().then((supported) => {
+      if (supported) {
+        analytics = getAnalytics(app);
+      }
+    });
+  }
 }
 
-export { app, auth };
+export { app, auth, analytics };
 export default firebaseConfig;
