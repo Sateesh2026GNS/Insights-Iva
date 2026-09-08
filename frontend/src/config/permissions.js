@@ -135,6 +135,7 @@ export const ROUTE_MODULE_OVERRIDES = {
   "/my-job-cards": "sales",
   "/job-cards": "sales",
   "/sales/job-cards": "sales",
+  "/sales/job-cards/create": "sales",
   "/hr": "hr",
   "/ewaybill/login": "sales",
   "/digital-signature": "sales",
@@ -403,7 +404,7 @@ export function userCanAccessPath(user, pathname) {
   if (!user) return false;
   if (isAdmin(user)) return true;
   const path = (pathname || "").replace(/\/$/, "") || "/";
-  if (path === "/my-job-cards" || path.startsWith("/job-cards/")) {
+  if (path === "/my-job-cards" || path.startsWith("/job-cards/") || path === "/sales/job-cards/create") {
     if (!userCanAccessMyJobCards(user)) return false;
     if (isStoreManager(user) && !storeManagerPathAllowed(pathname)) return false;
     if (isProductionManager(user) && !productionManagerPathAllowed(pathname)) return false;

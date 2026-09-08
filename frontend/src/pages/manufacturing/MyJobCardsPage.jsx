@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import {
   ArrowUpRight,
   CheckCircle2,
@@ -12,7 +12,6 @@ import {
 
 import Button from "../../components/common/Button";
 import KpiCard from "../../components/common/KpiCard";
-import PageHeader from "../../components/common/PageHeader";
 import Pagination from "../../components/common/Pagination";
 import SkeletonTable from "../../components/common/SkeletonTable";
 import { ErrorState } from "../../components/common/states";
@@ -32,6 +31,7 @@ import {
   STORE_STATUS_FILTER_OPTIONS,
   uniqueFilterValues,
 } from "../../utils/storeJobCardQueue";
+import { jobCardCreateUrl } from "../../utils/jobCardRoutes";
 
 const PAGE_SIZES = [10, 20, 50, 100];
 const FETCH_LIMIT = 500;
@@ -307,56 +307,26 @@ export default function MyJobCardsPage() {
     : "Sales & Manufacturing";
 
   const queueSubtitle = effectiveTeam === "inventory"
-    ? "Store Manager queue for Stage 2 (Inventory Check) & Stage 3 (Store Issue)."
+    ? "Store Manager queue for inventory check and material issue."
     : effectiveTeam === "production"
-    ? "Production planning queue for Stage 4 (Machine & Operator Allocation) & Stage 5 (Shop Floor Execution)."
+    ? "Production planning and shop floor execution queue."
     : effectiveTeam === "quality"
-    ? "Quality inspection queue for Stage 6 (QA Approval & Remarks)."
+    ? "Quality inspection and approval queue."
     : effectiveTeam === "billing" || effectiveTeam === "accounts"
-    ? "Invoicing queue for Stage 8 (GST Tax Invoice Generation)."
-    : "Full Sales & Manufacturing status tracking for all orders.";
+    ? "Invoicing and billing queue."
+    : "Track manufacturing workflow status for your assigned orders.";
 
   const emptyTitle = storeMode ? "No Store Manager Job Cards" : "No Job Cards Assigned";
   const emptyDescription = storeMode
-    ? "Confirmed Sales Orders will appear here when they reach the Store Manager stage."
-    : "Job cards assigned to your role will appear here when sales orders enter the manufacturing workflow.";
+    ? "Confirmed sales orders appear here when they reach the Store Manager stage."
+    : "Job cards appear here when sales orders enter the manufacturing workflow.";
 
-  const patchDraft = (key, value) => {
-    setDraftFilters((prev) => ({ ...prev, [key]: value }));
-  };
+  const queueCountLabel = filtered.length === rows.length
+    ? `${filtered.length} job card${filtered.length === 1 ? "" : "s"}`
+    : `${filtered.length} of ${rows.length} job cards`;
 
   return (
     <div className="ui-page ui-stack">
-      <PageHeader
-        eyebrow={eyebrow}
-        subtitle={queueSubtitle}
-        actions={
-          <div className="flex flex-wrap items-center gap-2">
-            {!storeMode && canCreateSales ? (
-              <Button
-                variant="add"
-                to="/sales/orders"
-                leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}
-              >
-                Create Job Card
-              </Button>
-            ) : null}
-            {!storeMode ? (
-              <Button
-                variant="secondary"
-                loading={refreshing}
-                onClick={() => {
-                  load(true);
-                }}
-                leftIcon={<RefreshCw className="h-4 w-4" aria-hidden />}
-              >
-                Refresh
-              </Button>
-            ) : null}
-          </div>
-        }
-      />
-
       {storeMode && !loading && !loadError && kpis ? (
         <div className="ui-kpi-strip ui-kpi-strip--5">
           <KpiCard
@@ -406,19 +376,28 @@ export default function MyJobCardsPage() {
       ) : null}
 
       <div className="ui-card overflow-hidden">
-        {storeMode ? (
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--color-border-soft)] bg-[var(--color-surface)] px-4 py-3">
-            <div className="min-w-0">
-              <h2 className="text-sm font-semibold text-[var(--color-text)]">Job Card Queue</h2>
-              <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">
-                {filtered.length === rows.length
-                  ? `${filtered.length} job card${filtered.length === 1 ? "" : "s"}`
-                  : `${filtered.length} of ${rows.length} job cards`}
-                {activeStatusFilter
-                  ? ` · ${STORE_STATUS_FILTER_OPTIONS.find((o) => o.value === activeStatusFilter)?.label || "Filtered"}`
-                  : ""}
-              </p>
-            </div>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--color-border-soft)] bg-[var(--color-surface)] px-4 py-3">
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">{eyebrow}</p>
+            <h2 className="text-sm font-semibold text-[var(--color-text)]">Job Card Queue</h2>
+            <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">
+              {queueSubtitle}
+              {!loading && !loadError ? ` · ${queueCountLabel}` : ""}
+              {storeMode && activeStatusFilter
+                ? ` · ${STORE_STATUS_FILTER_OPTIONS.find((o) => o.value === activeStatusFilter)?.label || "Filtered"}`
+                : ""}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {!storeMode && canCreateSales ? (
+              <Button
+                variant="add"
+                to={jobCardCreateUrl()}
+                leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}
+              >
+                Create Job Card
+              </Button>
+            ) : null}
             <Button
               variant="secondary"
               loading={refreshing}
@@ -428,38 +407,36 @@ export default function MyJobCardsPage() {
               Refresh
             </Button>
           </div>
-        ) : null}
+        </div>
         <JobCardQueueFilters
           search={draftFilters.search}
-          onSearchChange={(v) => {
-            patchAndApply("search", v);
-          }}
+          onSearchChange={(v) => patchAndApply("search", v)}
           priority={draftFilters.priority}
-          onPriorityChange={(v) => (storeMode ? patchAndApply("priority", v) : patchDraft("priority", v))}
+          onPriorityChange={(v) => patchAndApply("priority", v)}
           status={draftFilters.status}
-          onStatusChange={(v) => (storeMode ? patchAndApply("status", v) : patchDraft("status", v))}
+          onStatusChange={(v) => patchAndApply("status", v)}
           stage={draftFilters.stage}
-          onStageChange={(v) => patchDraft("stage", v)}
+          onStageChange={(v) => patchAndApply("stage", v)}
           deliveryDate={draftFilters.deliveryDate}
-          onDeliveryDateChange={(v) => (storeMode ? patchAndApply("deliveryDate", v) : patchDraft("deliveryDate", v))}
+          onDeliveryDateChange={(v) => patchAndApply("deliveryDate", v)}
           dateFrom={draftFilters.dateFrom}
-          onDateFromChange={(v) => (storeMode ? patchAndApply("dateFrom", v) : patchDraft("dateFrom", v))}
+          onDateFromChange={(v) => patchAndApply("dateFrom", v)}
           dateTo={draftFilters.dateTo}
-          onDateToChange={(v) => (storeMode ? patchAndApply("dateTo", v) : patchDraft("dateTo", v))}
+          onDateToChange={(v) => patchAndApply("dateTo", v)}
           stockStatus={draftFilters.stock}
-          onStockStatusChange={(v) => patchDraft("stock", v)}
+          onStockStatusChange={(v) => patchAndApply("stock", v)}
           customer={draftFilters.customer}
-          onCustomerChange={(v) => (storeMode ? patchAndApply("customer", v) : patchDraft("customer", v))}
+          onCustomerChange={(v) => patchAndApply("customer", v)}
           product={draftFilters.product}
-          onProductChange={(v) => (storeMode ? patchAndApply("product", v) : patchDraft("product", v))}
+          onProductChange={(v) => patchAndApply("product", v)}
           salesOrderNo={draftFilters.salesOrderNo}
-          onSalesOrderNoChange={(v) => (storeMode ? patchAndApply("salesOrderNo", v) : patchDraft("salesOrderNo", v))}
+          onSalesOrderNoChange={(v) => patchAndApply("salesOrderNo", v)}
           customerOptions={customerOptions}
           productOptions={productOptions}
           statusOptions={statusOptions}
           showStockFilter={showStockFilter}
           storeMode={storeMode}
-          autoApply={storeMode}
+          autoApply
           onClear={clearFilters}
           onApply={() => applyFilters()}
         />
@@ -481,7 +458,7 @@ export default function MyJobCardsPage() {
               onViewDetails={(row) => setPreviewRow(row)}
               emptyTitle={emptyTitle}
               emptyDescription={emptyDescription}
-              emptyAction={!storeMode && canCreateSales ? { label: "Create Job Card", to: "/sales/orders" } : undefined}
+              emptyAction={!storeMode && canCreateSales ? { label: "Create Job Card", to: jobCardCreateUrl() } : undefined}
               onRefresh={() => load(true)}
               snoOffset={from}
               storeMode={storeMode}
@@ -510,16 +487,6 @@ export default function MyJobCardsPage() {
           </>
         )}
       </div>
-
-      {!storeMode && !loading && !loadError && rows.length === 0 && canCreateSales ? (
-        <p className="text-center text-sm text-[var(--color-text-muted)]">
-          Confirm a sales order to start the workflow, or open{" "}
-          <Link to="/sales/orders" className="font-semibold text-[var(--color-primary)] hover:underline">
-            Sales Orders
-          </Link>
-          .
-        </p>
-      ) : null}
 
       <JobCardQuickViewModal
         row={previewRow}

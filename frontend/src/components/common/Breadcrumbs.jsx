@@ -159,6 +159,7 @@ const pathLabels = {
 /** Exact pathname → navbar title (inventory and other routes where segment labels are ambiguous). */
 const PAGE_TITLE_OVERRIDES = {
   "/my-job-cards": "My Job Cards",
+  "/sales/job-cards/create": "Create Job Card",
   "/settings": "Settings",
   "/inventory": "Inventory",
   "/inventory/dashboard": "Store Dashboard",

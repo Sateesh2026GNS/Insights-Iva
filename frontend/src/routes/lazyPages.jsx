@@ -221,6 +221,7 @@ export const DepartmentManagement = lazy(() => import("../pages/masters/Departme
 export const StageJobCardPage = lazy(() => import("../pages/manufacturing/StageJobCardPage"));
 export const JobCardDetailsPage = lazy(() => import("../pages/manufacturing/JobCardDetailsPage"));
 export const SalesJobCardPage = lazy(() => import("../pages/manufacturing/SalesJobCardPage"));
+export const CreateJobCard = lazy(() => import("../pages/manufacturing/CreateJobCardPage"));
 export const MyJobCards = lazy(() => import("../pages/sales/MyJobCards"));
 export const HRDashboard = lazy(() => import("../pages/hr/HRDashboard"));
 export const HREmployees = lazy(() => import("../pages/hr/Employees"));

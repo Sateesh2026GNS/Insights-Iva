@@ -2,15 +2,20 @@
  * Unified job card navigation helpers.
  */
 
+/** Dedicated create job card page (My Job Cards → Create Job Card). */
+export function jobCardCreateUrl() {
+  return "/sales/job-cards/create";
+}
+
 /** Read-only job card details page. */
 export function jobCardDetailsUrl(orderId) {
-  if (!orderId) return "/sales/orders";
+  if (!orderId) return jobCardCreateUrl();
   return `/job-cards/${orderId}`;
 }
 
 /** Sales job card edit page (same UI, edit mode). */
 export function jobCardEditUrl(orderId) {
-  if (!orderId) return "/sales/orders";
+  if (!orderId) return jobCardCreateUrl();
   return `/sales/orders/${orderId}/job-card`;
 }
 

@@ -397,6 +397,14 @@ export default function AppRoutes() {
           </ProtectedRoute>
         }
       />
+      <Route
+        path="/sales/job-cards/create"
+        element={
+          <ProtectedRoute>
+            <P.CreateJobCard />
+          </ProtectedRoute>
+        }
+      />
       <Route path="/sales/job-cards" element={<Navigate to="/my-job-cards" replace />} />
       <Route
         path="/job-cards/:orderId"

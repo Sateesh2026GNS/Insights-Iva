@@ -1,32 +1,62 @@
-import { FormField, Input, Select, Textarea } from "../common/FormField";
-import {
-  CardSectionHeader,
-  fmtDeliveryDisplay,
-  NOTES_MAX,
-  PriorityBadge,
-} from "./jobCardUiShared";
+import { Input, Select, Textarea } from "../common/FormField";
+import { fmtDeliveryDisplay, NOTES_MAX } from "./jobCardUiShared";
 import JobCardProductLines from "./JobCardProductLines";
 import { DatePicker } from "../../design-system/dateControls";
-import { formatInr } from "../../data/salesMasterData";
+import { getWorkflowStatusLabel } from "../../config/workflowStages";
 
 const UNITS = ["Nos", "nos", "pcs", "kg", "ltr", "box", "set", "mtr"];
+const PRIORITY_OPTIONS = [
+  { value: "high", label: "High" },
+  { value: "medium", label: "Medium" },
+  { value: "low", label: "Low" },
+];
 
-function DetailField({ label, value, required = false }) {
-  const display = value == null || value === "" ? "—" : value;
+function formatOrderDate(iso) {
+  if (!iso) return "";
+  return fmtDeliveryDisplay(String(iso).slice(0, 10));
+}
+
+function JobCardSection({ title, children }) {
   return (
-    <div className="rounded-lg border border-[var(--color-border-muted)] bg-[var(--color-surface-muted)]/40 px-3 py-2.5">
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
-        {label}
-        {required ? " *" : ""}
-      </p>
-      <p className="mt-0.5 text-sm font-medium text-[var(--color-text)]">{display}</p>
+    <section className="job-card-page__section">
+      <h2 className="ui-section-title !rounded-none">{title}</h2>
+      <div className="job-card-page__section-body">{children}</div>
+    </section>
+  );
+}
+
+function StaticField({ label, value, required = false, className = "" }) {
+  const display = value == null || value === "" ? "—" : String(value);
+  return (
+    <div className={`job-card-page__field ${className}`.trim()}>
+      <Input label={label} required={required} value={display} disabled readOnly className="w-full" />
     </div>
   );
 }
 
-function formatOrderDate(iso) {
-  if (!iso) return "—";
-  return fmtDeliveryDisplay(String(iso).slice(0, 10));
+function PriorityField({ value, onChange, readOnly, error, className = "" }) {
+  if (readOnly) {
+    const label = String(value || "medium").replace(/^./, (c) => c.toUpperCase());
+    return <StaticField label="Priority" value={label} required className={className} />;
+  }
+  return (
+    <div className={`job-card-page__field ${className}`.trim()}>
+      <Select
+        label="Priority"
+        required
+        error={error}
+        value={value || "medium"}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full"
+      >
+        {PRIORITY_OPTIONS.map((opt) => (
+          <option key={opt.value} value={opt.value}>
+            {opt.label}
+          </option>
+        ))}
+      </Select>
+    </div>
+  );
 }
 
 export default function JobCardDetailsForm({
@@ -45,216 +75,213 @@ export default function JobCardDetailsForm({
   onAddLine,
   onRemoveLine,
   onUpdateLine,
-  showHeader = true,
   footer = null,
-  bare = false,
+  jobCardNo,
+  productionOrder = null,
+  workflowStatus,
 }) {
   const uom = form?.unit || "pcs";
   const notesLen = (form?.notes || "").length;
-  const orderTotal =
-    salesOrder?.grand_total ?? salesOrder?.total_amount ?? salesOrder?.amount ?? null;
   const orderNo = form?.sales_order_no || salesOrder?.order_number || "";
+  const workOrderNo =
+    productionOrder?.work_order_number ||
+    productionOrder?.order_number ||
+    form?.production_order_no ||
+    "";
+  const jobCardDate = formatOrderDate(form?.job_card_date || salesOrder?.order_date || form?.created_at);
+  const startDate = formatOrderDate(
+    productionOrder?.start_date ||
+      productionOrder?.planned_start ||
+      productionOrder?.planned_start_date ||
+      form?.start_date
+  );
+  const statusLabel = getWorkflowStatusLabel(workflowStatus || form?.workflow_status || form?.status);
+  const assignedPerson = salesPeople.find((u) => String(u.id) === String(form?.sales_person_id));
+  const department =
+    assignedPerson?.department ||
+    assignedPerson?.designation ||
+    form?.department ||
+    salesOrder?.department ||
+    "";
 
-  const body = (
-    <div className="space-y-6 p-4 sm:p-5">
-      <div className="grid grid-cols-1 gap-x-5 gap-y-4 sm:grid-cols-2">
-        {readOnly ? (
-          <>
-            <DetailField label="Customer" value={form?.customer_name} required />
-            <DetailField label="Sales Person" value={form?.sales_person_name} />
-            <DetailField label="Product" value={form?.product_name || selectedProduct?.name} required />
-            <DetailField label="Product Code" value={productCode} />
-            <DetailField
-              label="Order Quantity"
-              value={form?.quantity != null ? `${Number(form.quantity).toLocaleString("en-IN")} ${uom}` : "—"}
-              required
-            />
-            <DetailField label="Unit" value={uom} />
-            <DetailField
-              label="Required Delivery Date"
-              value={fmtDeliveryDisplay(form?.required_delivery_date)}
-              required
-            />
-            <DetailField
-              label="Priority"
-              value={String(form?.priority || "medium").replace(/^./, (c) => c.toUpperCase())}
-              required
-            />
-            <DetailField label="Order Number" value={orderNo} />
-            <DetailField label="Reference Number" value={salesOrder?.reference_number} />
-            <DetailField label="Order Date" value={formatOrderDate(salesOrder?.order_date)} />
-            <DetailField label="Total" value={orderTotal != null ? formatInr(orderTotal) : "—"} />
-          </>
-        ) : (
-          <>
-            <Select
-              label="Customer"
-              required
-              error={errors.customer_id}
-              value={form?.customer_id ?? ""}
-              onChange={(e) => onPatchField("customer_id", e.target.value)}
-            >
-              <option value="">Select customer</option>
-              {customers.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name || c.company_name}
-                </option>
-              ))}
-            </Select>
+  const showProductLinesTable = readOnly && (productLines?.length ?? 0) > 1;
 
-            <Select
-              label="Sales Person"
-              value={form?.sales_person_id ?? ""}
-              onChange={(e) => {
-                const id = e.target.value;
-                const sp = salesPeople.find((u) => String(u.id) === String(id));
-                onPatchField("sales_person_id", id || null);
-                onPatchField("sales_person_name", sp?.full_name || sp?.name || form?.sales_person_name);
-              }}
-            >
-              <option value="">Select sales person</option>
-              {salesPeople.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.full_name || u.name || u.email}
-                </option>
-              ))}
-            </Select>
+  const section1 = (
+    <div className="job-card-page__grid">
+      <StaticField
+        label="Job Card Number"
+        value={jobCardNo || form?.job_card_no || (readOnly ? "" : "Auto-generated")}
+      />
+      <StaticField label="Job Card Date" value={jobCardDate || "—"} />
+      <StaticField label="Status" value={statusLabel} />
+      <PriorityField
+        value={form?.priority}
+        onChange={(v) => onPatchField("priority", v)}
+        readOnly={readOnly}
+        error={errors.priority}
+      />
+    </div>
+  );
 
-            <Select
-              label="Product"
-              required
-              error={errors.product_id}
-              value={form?.product_id ?? ""}
-              onChange={(e) => onPatchField("product_id", e.target.value)}
-            >
-              <option value="">Select product</option>
-              {products.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </Select>
-
-            <FormField label="Product Code">
-              <Input value={productCode} readOnly className="!bg-[var(--color-surface-muted)]" />
-            </FormField>
-
-            <FormField label="Order Quantity" required error={errors.quantity}>
-              <div className="flex overflow-hidden rounded-lg border border-[var(--color-border)] focus-within:border-[var(--color-primary)] focus-within:ring-1 focus-within:ring-[var(--color-primary)]">
-                <input
-                  type="number"
-                  min="0.001"
-                  step="any"
-                  value={form?.quantity ?? ""}
-                  onChange={(e) => onPatchField("quantity", e.target.value)}
-                  className="min-h-[42px] flex-1 border-0 bg-[var(--color-surface)] px-3 py-2 text-sm outline-none"
-                />
-                <span className="flex min-w-[3.5rem] items-center justify-center border-l border-[var(--color-border)] bg-[var(--color-surface-muted)] px-2 text-xs font-semibold lowercase text-[var(--color-text-muted)]">
-                  {uom}
-                </span>
-              </div>
-            </FormField>
-
-            <Select
-              label="Unit"
-              value={form?.unit || "pcs"}
-              onChange={(e) => onPatchField("unit", e.target.value)}
-            >
-              {UNITS.map((unit) => (
-                <option key={unit} value={unit}>
-                  {unit}
-                </option>
-              ))}
-            </Select>
-
-            <DatePicker
-              label="Required Delivery Date"
-              required
-              error={errors.required_delivery_date}
-              value={form?.required_delivery_date ? String(form.required_delivery_date).slice(0, 10) : ""}
-              onChange={(value) => onPatchField("required_delivery_date", value)}
-              min={new Date().toISOString().slice(0, 10)}
-            />
-
-            <FormField label="Priority" required error={errors.priority}>
-              <div className="flex min-h-[42px] items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 focus-within:border-[var(--color-primary)] focus-within:ring-1 focus-within:ring-[var(--color-primary)]">
-                <select
-                  value={form?.priority || "medium"}
-                  onChange={(e) => onPatchField("priority", e.target.value)}
-                  className="flex-1 border-0 bg-transparent py-2 text-sm capitalize outline-none"
-                >
-                  <option value="high">High</option>
-                  <option value="medium">Medium</option>
-                  <option value="low">Low</option>
-                </select>
-                <PriorityBadge priority={form?.priority} />
-              </div>
-            </FormField>
-
-            <FormField label="Order number">
-              <Input
-                value={orderNo}
-                readOnly
-                placeholder="Auto-generated if empty"
-                className="!bg-[var(--color-surface-muted)]"
-              />
-            </FormField>
-
-            <FormField label="Reference number">
-              <Input
-                value={salesOrder?.reference_number || ""}
-                readOnly
-                className="!bg-[var(--color-surface-muted)]"
-              />
-            </FormField>
-
-            <FormField label="Order date">
-              <Input
-                value={formatOrderDate(salesOrder?.order_date)}
-                readOnly
-                className="!bg-[var(--color-surface-muted)]"
-              />
-            </FormField>
-
-            <FormField label="Total">
-              <Input
-                value={orderTotal != null ? formatInr(orderTotal) : formatInr(0)}
-                readOnly
-                className="!bg-[var(--color-surface-muted)]"
-              />
-            </FormField>
-          </>
-        )}
+  const section2 = readOnly ? (
+    <div className="job-card-page__grid">
+      <StaticField label="Customer" value={form?.customer_name} required />
+      <StaticField label="Sales Order" value={orderNo} />
+      <StaticField label="Product / Item" value={form?.product_name || selectedProduct?.name} required />
+      <StaticField
+        label="Quantity"
+        value={form?.quantity != null ? `${Number(form.quantity).toLocaleString("en-IN")} ${uom}` : ""}
+        required
+      />
+      <StaticField label="Unit" value={uom} />
+      {productCode ? <StaticField label="Product Code" value={productCode} /> : null}
+    </div>
+  ) : (
+    <div className="job-card-page__grid">
+      <div className="job-card-page__field">
+        <Select
+          label="Customer"
+          required
+          error={errors.customer_id}
+          value={form?.customer_id ?? ""}
+          onChange={(e) => onPatchField("customer_id", e.target.value)}
+          className="w-full"
+        >
+          <option value="">Please Select</option>
+          {customers.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name || c.company_name}
+            </option>
+          ))}
+        </Select>
       </div>
 
-      <JobCardProductLines
-        lines={productLines}
-        products={products}
-        readOnly={linesReadOnly}
-        errors={errors}
-        onAddLine={onAddLine}
-        onRemoveLine={onRemoveLine}
-        onUpdateLine={onUpdateLine}
-      />
+      <StaticField label="Sales Order" value={orderNo} />
 
+      <div className="job-card-page__field">
+        <Select
+          label="Product / Item"
+          required
+          error={errors.product_id}
+          value={form?.product_id ?? ""}
+          onChange={(e) => onPatchField("product_id", e.target.value)}
+          className="w-full"
+        >
+          <option value="">Please Select</option>
+          {products.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}
+            </option>
+          ))}
+        </Select>
+      </div>
+
+      <div className="job-card-page__field">
+        <Input
+          label="Quantity"
+          required
+          type="number"
+          min="0.001"
+          step="any"
+          error={errors.quantity}
+          value={form?.quantity ?? ""}
+          onChange={(e) => onPatchField("quantity", e.target.value)}
+          className="w-full"
+        />
+      </div>
+
+      <div className="job-card-page__field">
+        <Select
+          label="Unit"
+          value={form?.unit || "pcs"}
+          onChange={(e) => onPatchField("unit", e.target.value)}
+          className="w-full"
+        >
+          {UNITS.map((unit) => (
+            <option key={unit} value={unit}>
+              {unit}
+            </option>
+          ))}
+        </Select>
+      </div>
+
+      {productCode ? <StaticField label="Product Code" value={productCode} /> : null}
+    </div>
+  );
+
+  const section3 = readOnly ? (
+    <div className="job-card-page__grid">
+      <StaticField label="Work Order / Production Order" value={workOrderNo} />
+      <StaticField label="Department" value={department} />
+      <StaticField label="Assigned Employee / Operator" value={form?.sales_person_name} />
+      <StaticField label="Start Date" value={startDate} />
+      <StaticField
+        label="Expected Completion Date"
+        value={fmtDeliveryDisplay(form?.required_delivery_date)}
+        required
+      />
+    </div>
+  ) : (
+    <div className="job-card-page__grid">
+      <StaticField label="Work Order / Production Order" value={workOrderNo} />
+      <StaticField label="Department" value={department} />
+
+      <div className="job-card-page__field">
+        <Select
+          label="Assigned Employee / Operator"
+          value={form?.sales_person_id ?? ""}
+          onChange={(e) => {
+            const id = e.target.value;
+            const sp = salesPeople.find((u) => String(u.id) === String(id));
+            onPatchField("sales_person_id", id || null);
+            onPatchField("sales_person_name", sp?.full_name || sp?.name || form?.sales_person_name);
+          }}
+          className="w-full"
+        >
+          <option value="">Please Select</option>
+          {salesPeople.map((u) => (
+            <option key={u.id} value={u.id}>
+              {u.full_name || u.name || u.email}
+            </option>
+          ))}
+        </Select>
+      </div>
+
+      <StaticField label="Start Date" value={startDate} />
+
+      <div className="job-card-page__field">
+        <DatePicker
+          label="Expected Completion Date"
+          required
+          error={errors.required_delivery_date}
+          value={form?.required_delivery_date ? String(form.required_delivery_date).slice(0, 10) : ""}
+          onChange={(value) => onPatchField("required_delivery_date", value)}
+          min={new Date().toISOString().slice(0, 10)}
+        />
+      </div>
+    </div>
+  );
+
+  const section4 = (
+    <div className="job-card-page__grid">
       {readOnly ? (
-        <div>
-          <p className="ui-label mb-1.5">Notes / Remarks</p>
-          <p className="whitespace-pre-wrap rounded-lg border border-[var(--color-border-muted)] bg-[var(--color-surface-muted)]/40 px-3 py-2.5 text-sm text-[var(--color-text)]">
-            {form?.notes?.trim() ? form.notes : "—"}
-          </p>
-        </div>
+        <StaticField
+          label="Remarks"
+          value={form?.notes?.trim() ? form.notes : "—"}
+          className="job-card-page__field--span-full"
+        />
       ) : (
-        <div>
+        <div className="job-card-page__field job-card-page__field--span-full">
           <Textarea
-            label="Notes / Remarks"
-            placeholder="Enter notes or special instructions..."
-            rows={4}
+            label="Remarks"
+            placeholder="Enter remarks or special instructions..."
+            rows={3}
             maxLength={NOTES_MAX}
             value={form?.notes || ""}
             onChange={(e) => onPatchField("notes", e.target.value)}
+            className="w-full"
           />
-          <p className="-mt-1 text-right text-[11px] tabular-nums text-[var(--color-text-muted)]">
+          <p className="mt-1 text-right text-[11px] tabular-nums text-[var(--color-text-muted)]">
             {notesLen} / {NOTES_MAX}
           </p>
         </div>
@@ -262,19 +289,32 @@ export default function JobCardDetailsForm({
     </div>
   );
 
-  if (bare) {
-    return body;
-  }
-
   return (
-    <article className="overflow-hidden rounded-2xl border border-[var(--color-border-soft)] bg-[var(--color-surface)] shadow-sm">
-      {showHeader ? <CardSectionHeader title="JOB CARD DETAILS" /> : null}
-      {body}
-      {footer ? (
-        <footer className="flex flex-col gap-3 border-t border-[var(--color-border-muted)] bg-[var(--color-surface-muted)]/20 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-          {footer}
-        </footer>
-      ) : null}
-    </article>
+    <div className="job-card-page__form">
+      <JobCardSection title="Job Card Information">{section1}</JobCardSection>
+
+      <JobCardSection title="Customer & Order Information">
+        {section2}
+        {showProductLinesTable ? (
+          <div className="job-card-page__lines-block">
+            <JobCardProductLines
+              lines={productLines}
+              products={products}
+              readOnly
+              errors={errors}
+              onAddLine={onAddLine}
+              onRemoveLine={onRemoveLine}
+              onUpdateLine={onUpdateLine}
+            />
+          </div>
+        ) : null}
+      </JobCardSection>
+
+      <JobCardSection title="Manufacturing Details">{section3}</JobCardSection>
+
+      <JobCardSection title="Additional Information">{section4}</JobCardSection>
+
+      {footer}
+    </div>
   );
 }

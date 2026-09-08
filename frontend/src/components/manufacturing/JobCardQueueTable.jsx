@@ -219,6 +219,8 @@ export default function JobCardQueueTable({
         actionLabel={emptyAction?.label || (onRefresh ? "Refresh" : undefined)}
         actionHref={emptyAction?.to}
         onAction={emptyAction?.onClick || (emptyAction?.to ? undefined : onRefresh)}
+        compact
+        className="mx-4 my-6 border-0 bg-transparent"
       />
     );
   }

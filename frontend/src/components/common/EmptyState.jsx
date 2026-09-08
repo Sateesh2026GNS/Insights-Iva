@@ -101,6 +101,7 @@ export default function EmptyState({
   actionLabel,
   actionHref,
   onAction,
+  compact = false,
   className = "",
 }) {
   const IconElement =
@@ -116,27 +117,37 @@ export default function EmptyState({
       icon || icons.document
     );
 
+  const shellClass = compact
+    ? "px-6 py-8"
+    : "px-8 py-14";
+  const iconWrapClass = compact ? "mb-2.5" : "mb-3.5";
+  const titleClass = compact ? "text-[var(--text-md)]" : "text-[var(--text-lg)]";
+  const descClass = compact ? "text-[var(--text-sm)]" : "text-[var(--text-md)]";
+  const ctaClass = compact ? "mt-4" : "mt-6";
+
   return (
     <div
-      className={`flex flex-col items-center justify-center rounded-[var(--radius-lg)] border border-dashed border-[var(--color-border)] bg-[var(--color-surface)] px-8 py-14 text-center ${className}`}
+      className={`flex flex-col items-center justify-center rounded-[var(--radius-lg)] border border-dashed border-[var(--color-border)] bg-[var(--color-surface)] text-center ${shellClass} ${className}`}
       role="status"
     >
-      <div className="mb-3.5 flex items-center justify-center text-[var(--color-text-muted)] opacity-40">
-        {IconElement}
+      <div className={`${iconWrapClass} flex items-center justify-center text-[var(--color-text-muted)] opacity-40`}>
+        {compact && typeof icon === "string" && icons[icon]
+          ? <DocumentEmptyIcon className="h-12 w-12 text-[var(--color-text-muted)] opacity-40" />
+          : IconElement}
       </div>
-      <h3 className="text-[var(--text-lg)] font-semibold text-[var(--color-text)]">{title}</h3>
+      <h3 className={`${titleClass} font-semibold text-[var(--color-text)]`}>{title}</h3>
       {description ? (
-        <p className="mt-1.5 max-w-sm text-[var(--text-md)] leading-[var(--leading-relaxed)] text-[var(--color-text-muted)]">
+        <p className={`mt-1 max-w-md ${descClass} leading-[var(--leading-relaxed)] text-[var(--color-text-muted)]`}>
           {description}
         </p>
       ) : null}
       {actionLabel && actionHref ? (
-        <AddButton to={actionHref} className="mt-6">
+        <AddButton to={actionHref} className={ctaClass}>
           {actionLabel}
         </AddButton>
       ) : null}
       {actionLabel && !actionHref && onAction ? (
-        <AddButton type="button" onClick={onAction} className="mt-6">
+        <AddButton type="button" onClick={onAction} className={ctaClass}>
           {actionLabel}
         </AddButton>
       ) : null}
