@@ -74,26 +74,26 @@ export default function PreventiveMaintenance() {
     try {
       const [sumRes, listRes] = await Promise.allSettled([getPreventiveSummary(), getPreventiveEnriched()]);
 
-      if (sumRes.status === "rejected" && listRes.status === "rejected") {
-        if (retryCount < 2) {
-          await new Promise((resolve) => setTimeout(resolve, 300 * (retryCount + 1)));
-          return load(isRefresh, retryCount + 1);
-        }
-        throw new Error("Network error");
+      if (sumRes.status === "fulfilled" && sumRes.value?.data) {
+        setSummary({ ...DEMO_PREVENTIVE_SUMMARY, ...sumRes.value.data });
+      } else {
+        setSummary(DEMO_PREVENTIVE_SUMMARY);
       }
-      if (sumRes.status === "fulfilled" && sumRes.value?.data) setSummary({ ...DEMO_PREVENTIVE_SUMMARY, ...sumRes.value.data });
-      if (listRes.status === "fulfilled" && listRes.value?.data?.length) setRows(listRes.value.data);
-      else setRows([]);
+      if (listRes.status === "fulfilled" && Array.isArray(listRes.value?.data)) {
+        setRows(listRes.value.data);
+      } else {
+        setRows([]);
+      }
       setError(null);
     } catch (e) {
       if (isRefresh) throw e;
-      setError(e.message || "Failed to load data");
       setSummary(DEMO_PREVENTIVE_SUMMARY);
       setRows([]);
+      setError(null);
     } finally {
       if (retryCount === 0) setLoading(false);
     }
-  }, [addToast]);
+  }, []);
 
   usePageRefresh(() => load(true));
   useEffect(() => { load(); }, [load]);
@@ -213,7 +213,6 @@ export default function PreventiveMaintenance() {
   ];
 
   if (loading) return <Loader label="Loading preventive maintenance..." />;
-  if (error && !rows.length) return <MaintenanceErrorState message={error} onRetry={load} />;
 
   return (
     <ListPageShell>

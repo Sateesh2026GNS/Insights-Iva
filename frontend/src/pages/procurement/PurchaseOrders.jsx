@@ -18,6 +18,7 @@ import {
 
 import Loader from "../../components/common/Loader";
 import Button from "../../components/common/Button";
+import EmptyState from "../../components/common/EmptyState";
 import { SearchBar } from "../../components/common/SearchFilter";
 import RowActionMenu from "../../components/common/RowActionMenu";
 import PODetailModal from "../../components/procurement/PODetailModal";
@@ -422,11 +423,13 @@ export default function PurchaseOrders() {
               <tbody>
                 {pageRows.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="border-t border-[var(--color-border)] px-4 py-16 text-center">
-                      <ClipboardList className="mx-auto h-12 w-12 text-[var(--color-text-icon)]" strokeWidth={1.25} />
-                      <p className="mt-3 text-[14px] text-[var(--color-text-faint)]">
-                        No Purchase Orders available, Create new purchase order
-                      </p>
+                    <td colSpan={5} className="border-none p-0">
+                      <EmptyState
+                        icon="document"
+                        title="No records found."
+                        description="There is nothing to show here yet."
+                        className="border-none bg-transparent py-12"
+                      />
                     </td>
                   </tr>
                 ) : (

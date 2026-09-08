@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
+import { createPortal } from "react-dom";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { Plus, AlertTriangle, ShieldCheck, HeartPulse, ShieldAlert, X, Save } from "lucide-react";
 import KpiCard from "../../components/common/KpiCard";
@@ -178,15 +179,14 @@ export default function IncidentReports({ autoOpenCreate }) {
       <PageHeader
         subtitle="Record, investigate, and audit occupational health and safety incidents and near misses."
         action={
-          <>
-            <button
+          <Button
+            variant="add"
             type="button"
             onClick={handleOpenCreateModal}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-700 shadow-sm transition-all animate-none"
+            leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}
           >
-            <Plus className="h-4 w-4" /> Report Incident
-          </button>
-          </>
+            Report Incident
+          </Button>
         }
       />
 
@@ -206,150 +206,153 @@ export default function IncidentReports({ autoOpenCreate }) {
         />
       </div>
 
-      {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl border border-slate-200 max-w-lg w-full p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-start justify-between">
-              <div>
-                <h3 className="text-lg font-bold text-slate-900">Report Safety Incident</h3>
-                <p className="text-xs text-slate-500 mt-0.5">Record a new workplace safety event or hazard.</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowCreateModal(false)}
-                className="rounded-lg p-2 text-slate-400 hover:bg-slate-100"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {error && (
-                <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs font-semibold text-rose-700">
-                  {error}
-                </div>
-              )}
-
-              <div className="grid grid-cols-2 gap-3">
+      {showCreateModal &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 overflow-y-auto">
+            <div className="bg-white rounded-2xl border border-slate-200 max-w-lg w-full p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
+              <div className="flex items-start justify-between">
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Incident Code *</label>
-                  <input
-                    type="text"
-                    required
-                    readOnly
-                    value={form.incident_code}
-                    className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-500 cursor-not-allowed"
-                  />
+                  <h3 className="text-lg font-bold text-slate-900">Report Safety Incident</h3>
+                  <p className="text-xs text-slate-500 mt-0.5">Record a new workplace safety event or hazard.</p>
                 </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Incident Title *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Slippery aisle floor"
-                    value={form.title}
-                    onChange={(e) => setForm({ ...form, title: e.target.value })}
-                    className={inputClass}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Incident Type</label>
-                  <select
-                    value={form.type}
-                    onChange={(e) => setForm({ ...form, type: e.target.value })}
-                    className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-750 focus:border-[#2563EB] focus:outline-none focus:ring-2 focus:ring-blue-100"
-                  >
-                    {["Near Miss", "Injury", "Property Damage", "Environmental Hazard", "Illness"].map((t) => (
-                      <option key={t} value={t}>{t}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Reported By *</label>
-                  <select
-                    value={form.reporter}
-                    onChange={(e) => setForm({ ...form, reporter: e.target.value })}
-                    className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-755 focus:border-[#2563EB] focus:outline-none focus:ring-2 focus:ring-blue-100"
-                    required
-                  >
-                    <option value="">Select Reporter</option>
-                    {employees.map((emp) => (
-                      <option key={emp.id} value={emp.full_name}>
-                        {emp.full_name} ({emp.employee_code})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Date</label>
-                  <input
-                    type="date"
-                    value={form.date}
-                    onChange={(e) => setForm({ ...form, date: e.target.value })}
-                    className={inputClass}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Severity</label>
-                  <select
-                    value={form.severity}
-                    onChange={(e) => setForm({ ...form, severity: e.target.value })}
-                    className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-755 focus:border-[#2563EB] focus:outline-none focus:ring-2 focus:ring-blue-100"
-                  >
-                    {["Low", "Medium", "High", "Critical"].map((s) => (
-                      <option key={s} value={s}>{s} Severity</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Status</label>
-                  <select
-                    value={form.status}
-                    onChange={(e) => setForm({ ...form, status: e.target.value })}
-                    className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-755 focus:border-[#2563EB] focus:outline-none focus:ring-2 focus:ring-blue-100"
-                  >
-                    {["Open", "Investigating", "Resolved"].map((s) => (
-                      <option key={s} value={s}>{s}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Description of Event *</label>
-                <textarea
-                  required
-                  rows="3"
-                  placeholder="Provide details on root cause and immediate corrective actions taken..."
-                  value={form.description}
-                  onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  className={`${inputClass} resize-none`}
-                />
-              </div>
-
-              <div className="flex justify-end gap-2 border-t pt-4">
                 <button
                   type="button"
                   onClick={() => setShowCreateModal(false)}
-                  className="rounded-xl border px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+                  className="rounded-lg p-2 text-slate-400 hover:bg-slate-100"
                 >
-                  Cancel
+                  <X className="h-5 w-5" />
                 </button>
-                <Button variant="primary" type="submit" disabled={saving}>
-                  <Save className="h-4 w-4" />
-                  {saving ? "Saving..." : "Submit Report"}
-                </Button>
               </div>
-            </form>
-          </div>
-        </div>
-      )}
+
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {error && (
+                  <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs font-semibold text-rose-700">
+                    {error}
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Incident Code *</label>
+                    <input
+                      type="text"
+                      required
+                      readOnly
+                      value={form.incident_code}
+                      className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-500 cursor-not-allowed"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Incident Title *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Slippery aisle floor"
+                      value={form.title}
+                      onChange={(e) => setForm({ ...form, title: e.target.value })}
+                      className={inputClass}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Incident Type</label>
+                    <select
+                      value={form.type}
+                      onChange={(e) => setForm({ ...form, type: e.target.value })}
+                      className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-750 focus:border-[#2563EB] focus:outline-none focus:ring-2 focus:ring-blue-100"
+                    >
+                      {["Near Miss", "Injury", "Property Damage", "Environmental Hazard", "Illness"].map((t) => (
+                        <option key={t} value={t}>{t}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Reported By *</label>
+                    <select
+                      value={form.reporter}
+                      onChange={(e) => setForm({ ...form, reporter: e.target.value })}
+                      className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-755 focus:border-[#2563EB] focus:outline-none focus:ring-2 focus:ring-blue-100"
+                      required
+                    >
+                      <option value="">Select Reporter</option>
+                      {employees.map((emp) => (
+                        <option key={emp.id} value={emp.full_name}>
+                          {emp.full_name} ({emp.employee_code})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Date</label>
+                    <input
+                      type="date"
+                      value={form.date}
+                      onChange={(e) => setForm({ ...form, date: e.target.value })}
+                      className={inputClass}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Severity</label>
+                    <select
+                      value={form.severity}
+                      onChange={(e) => setForm({ ...form, severity: e.target.value })}
+                      className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-755 focus:border-[#2563EB] focus:outline-none focus:ring-2 focus:ring-blue-100"
+                    >
+                      {["Low", "Medium", "High", "Critical"].map((s) => (
+                        <option key={s} value={s}>{s} Severity</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Status</label>
+                    <select
+                      value={form.status}
+                      onChange={(e) => setForm({ ...form, status: e.target.value })}
+                      className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-755 focus:border-[#2563EB] focus:outline-none focus:ring-2 focus:ring-blue-100"
+                    >
+                      {["Open", "Investigating", "Resolved"].map((s) => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Description of Event *</label>
+                  <textarea
+                    required
+                    rows="3"
+                    placeholder="Provide details on root cause and immediate corrective actions taken..."
+                    value={form.description}
+                    onChange={(e) => setForm({ ...form, description: e.target.value })}
+                    className={`${inputClass} resize-none`}
+                  />
+                </div>
+
+                <div className="flex justify-end gap-2 border-t pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowCreateModal(false)}
+                    className="rounded-xl border px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <Button variant="primary" type="submit" disabled={saving}>
+                    <Save className="h-4 w-4" />
+                    {saving ? "Saving..." : "Submit Report"}
+                  </Button>
+                </div>
+              </form>
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 }

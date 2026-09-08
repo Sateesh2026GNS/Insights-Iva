@@ -871,9 +871,10 @@ export default function StockTransfer() {
           wrapClassName="inventory-table-scroll--transfer rounded-lg border border-[var(--color-border-soft)]"
           emptyState={
             <EmptyState
-              icon="clipboard"
-              title="No transfers yet"
-              description="Create a transfer to move stock between warehouses."
+              icon="document"
+              title="No records found."
+              description="There is nothing to show here yet."
+              className="border-none bg-transparent py-12"
             />
           }
         />

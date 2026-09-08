@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { X, Save } from "lucide-react";
 import { createLead } from "../../api/salesApi";
 import { useToast } from "../../context/ToastContext";
@@ -92,9 +93,19 @@ export default function CreateLeadModal({ isOpen, onClose, onSuccess }) {
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl border border-slate-200 max-w-lg w-full p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4"
+      role="dialog"
+      aria-modal="true"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget && !saving) onClose?.();
+      }}
+    >
+      <div
+        className="bg-white rounded-2xl border border-slate-200 max-w-lg w-full p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto"
+        onMouseDown={(e) => e.stopPropagation()}
+      >
         <div className="flex items-start justify-between border-b border-slate-100 pb-3">
           <div>
             <h3 className="text-lg font-bold text-slate-900">Create New Lead</h3>
@@ -253,6 +264,7 @@ export default function CreateLeadModal({ isOpen, onClose, onSuccess }) {
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

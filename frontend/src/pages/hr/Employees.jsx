@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { Plus, Briefcase, UserCheck, UserMinus, UserPlus, Users, Filter, X, Save, Clock, Building2, FileText } from "lucide-react";
 import KpiCard from "../../components/common/KpiCard";
 import PageHeader from "../../components/common/PageHeader";
@@ -271,17 +272,19 @@ export default function Employees() {
         />
       )}
 
-      {showCreateModal && (
-        <div
-          className="ui-modal-backdrop"
-          onMouseDown={(e) => {
-            if (e.target === e.currentTarget) setShowCreateModal(false);
-          }}
-        >
+      {showCreateModal &&
+        typeof document !== "undefined" &&
+        createPortal(
           <div
-            className="ui-modal max-w-lg w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto"
-            onMouseDown={(e) => e.stopPropagation()}
+            className="ui-modal-backdrop"
+            onMouseDown={(e) => {
+              if (e.target === e.currentTarget) setShowCreateModal(false);
+            }}
           >
+            <div
+              className="ui-modal max-w-lg w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto"
+              onMouseDown={(e) => e.stopPropagation()}
+            >
             <div className="flex items-start justify-between">
               <div>
                 <h3 className="text-lg font-bold text-[var(--color-text)]">Create Employee</h3>
@@ -482,7 +485,8 @@ export default function Employees() {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

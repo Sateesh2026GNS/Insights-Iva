@@ -6,6 +6,7 @@ import { CalendarDays, ChevronLeft, ChevronRight, Download, Edit2, Eye, FileText
 import Loader from "../../components/common/Loader";
 import { SearchBar } from "../../components/common/SearchFilter";
 import Button from "../../components/common/Button";
+import EmptyState from "../../components/common/EmptyState";
 import RowActionMenu from "../../components/common/RowActionMenu";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
 import { useToast } from "../../context/ToastContext";
@@ -447,11 +448,13 @@ export default function PurchaseDebitNotes() {
               <tbody>
                 {pageRows.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="border-t border-[var(--color-border)] px-4 py-16 text-center">
-                      <FileText className="mx-auto h-12 w-12 text-[var(--color-text-icon)]" />
-                      <p className="mt-3 text-[14px] text-[var(--color-text-faint)]">
-                        No Debit Notes yet. Create your first debit note.
-                      </p>
+                    <td colSpan={8} className="border-none p-0">
+                      <EmptyState
+                        icon="document"
+                        title="No records found."
+                        description="There is nothing to show here yet."
+                        className="border-none bg-transparent py-12"
+                      />
                     </td>
                   </tr>
                 ) : (
@@ -682,8 +685,8 @@ export default function PurchaseDebitNotes() {
                   setFilters(draftFilters);
                   setShowFilters(false);
                 }}
-                className="rounded-xl py-3 text-[14px] font-semibold text-[var(--color-text)]"
-                style={{ background: "#EAE5B3" }}
+                className="rounded-xl py-3 text-[14px] font-semibold text-white"
+                style={{ background: "#036f71" }}
               >
                 Apply Filter
               </button>

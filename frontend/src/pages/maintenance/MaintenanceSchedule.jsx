@@ -44,58 +44,6 @@ const FREQUENCY_OPTIONS = [
   { label: "Annually (365 Days)", value: 365 },
 ];
 
-const DEMO_SCHEDULES = [
-  {
-    id: 1,
-    machine_id: "MCH-01",
-    machine_name: "CNC Milling Machine 01",
-    department: "Machining",
-    task_name: "Monthly Lubrication & Spindle Check",
-    frequency_days: 30,
-    next_due_date: new Date(Date.now() + 86400000 * 4).toISOString().slice(0, 10),
-    assigned_engineer: "R. Kumar",
-    is_active: true,
-    description: "Inspect hydraulic pressure, replace spindle oil, clean coolant tank.",
-  },
-  {
-    id: 2,
-    machine_id: "MCH-02",
-    machine_name: "Hydraulic Press 50T",
-    department: "Press Shop",
-    task_name: "Quarterly Valve & Seal Inspection",
-    frequency_days: 90,
-    next_due_date: new Date(Date.now() + 86400000 * 12).toISOString().slice(0, 10),
-    assigned_engineer: "S. Patil",
-    is_active: true,
-    description: "Check seal wear, test pressure relief valve, replace filter cartridge.",
-  },
-  {
-    id: 3,
-    machine_id: "MCH-03",
-    machine_name: "Laser Cutting 4kW",
-    department: "Fabrication",
-    task_name: "Weekly Optics & Lens Cleaning",
-    frequency_days: 7,
-    next_due_date: new Date(Date.now() - 86400000 * 2).toISOString().slice(0, 10),
-    assigned_engineer: "A. Verma",
-    is_active: true,
-    is_overdue: true,
-    description: "Clean protective glass, inspect beam alignment, check nozzle orifice.",
-  },
-  {
-    id: 4,
-    machine_id: "MCH-04",
-    machine_name: "Automatic Lathe 03",
-    department: "Machining",
-    task_name: "Monthly Chuck & Tailstock Alignment",
-    frequency_days: 30,
-    next_due_date: new Date(Date.now() + 86400000 * 18).toISOString().slice(0, 10),
-    assigned_engineer: "R. Kumar",
-    is_active: true,
-    description: "Check runout with dial indicator, lubricate lead screw.",
-  },
-];
-
 export default function MaintenanceSchedule() {
   const { addToast } = useToast();
   const [loading, setLoading] = useState(true);
@@ -109,8 +57,8 @@ export default function MaintenanceSchedule() {
   const [saving, setSaving] = useState(false);
 
   const [formData, setFormData] = useState({
-    machine_id: "MCH-01",
-    machine_name: "CNC Milling Machine 01",
+    machine_id: "",
+    machine_name: "",
     department: "Machining",
     task_name: "",
     frequency_days: 30,
@@ -126,11 +74,13 @@ export default function MaintenanceSchedule() {
       const [schedRes, machRes] = await Promise.allSettled([getSchedule(), getMachines()]);
       if (machRes.status === "fulfilled" && Array.isArray(machRes.value?.data)) {
         setMachinesList(machRes.value.data);
+      } else {
+        setMachinesList([]);
       }
-      if (schedRes.status === "fulfilled" && Array.isArray(schedRes.value?.data) && schedRes.value.data.length > 0) {
+      if (schedRes.status === "fulfilled" && Array.isArray(schedRes.value?.data)) {
         setRows(schedRes.value.data);
       } else {
-        setRows(DEMO_SCHEDULES);
+        setRows([]);
       }
       setError(null);
     } catch (e) {
@@ -139,8 +89,8 @@ export default function MaintenanceSchedule() {
         return load(isRefresh, retryCount + 1);
       }
       if (isRefresh) throw e;
-      setError(e.message || "Failed to load schedule");
-      setRows(DEMO_SCHEDULES);
+      setRows([]);
+      setError(null);
     } finally {
       if (retryCount === 0) setLoading(false);
     }
@@ -201,8 +151,8 @@ export default function MaintenanceSchedule() {
       addToast("Maintenance schedule created successfully", "success");
       setShowModal(false);
       setFormData({
-        machine_id: "MCH-01",
-        machine_name: "CNC Milling Machine 01",
+        machine_id: "",
+        machine_name: "",
         department: "Machining",
         task_name: "",
         frequency_days: 30,
@@ -334,7 +284,6 @@ export default function MaintenanceSchedule() {
   ];
 
   if (loading) return <Loader label="Loading maintenance schedules..." />;
-  if (error && !rows.length) return <MaintenanceErrorState message={error} onRetry={load} />;
 
   return (
     <ListPageShell>

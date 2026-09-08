@@ -23,6 +23,7 @@ import { SearchBar } from "../../components/common/SearchFilter";
 import InventoryRowActionsMenu from "../../components/inventory/InventoryRowActionsMenu";
 import KpiCard from "../../components/common/KpiCard";
 import Loader from "../../components/common/Loader";
+import EmptyState from "../../components/common/EmptyState";
 import PageHeader from "../../components/common/PageHeader";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
 import { useToast } from "../../context/ToastContext";
@@ -553,8 +554,13 @@ export default function BatchQualityReports() {
             <tbody className="divide-y divide-[var(--color-border-muted)]">
               {pageRows.length === 0 ? (
                 <tr>
-                  <td colSpan={12} className="px-4 py-16 text-center text-sm text-[var(--color-text-muted)]">
-                    No batch quality reports found.
+                  <td colSpan={12} className="border-none p-0">
+                    <EmptyState
+                      icon="document"
+                      title="No records found."
+                      description="There is nothing to show here yet."
+                      className="border-none bg-transparent py-12"
+                    />
                   </td>
                 </tr>
               ) : (

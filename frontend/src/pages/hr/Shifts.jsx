@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { Clock, Coffee, Layers, Plus, X, Save } from "lucide-react";
 
 import Button from "../../components/common/Button";
@@ -168,99 +169,107 @@ export default function Shifts() {
           </ListPageCardBody>
         </ListPageCard>
 
-        {showCreateModal && (
-          <div className="ui-modal-backdrop">
-            <div className="ui-modal max-w-md w-full max-h-[90vh] overflow-y-auto space-y-4">
-              <div className="flex items-start justify-between">
-                <div>
-                  <h3 className="text-lg font-bold text-[var(--color-text)]">Create Shift</h3>
-                  <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Define employee working hours.</p>
+        {showCreateModal &&
+          typeof document !== "undefined" &&
+          createPortal(
+            <div
+              className="ui-modal-backdrop"
+              onMouseDown={(e) => {
+                if (!saving && e.target === e.currentTarget) setShowCreateModal(false);
+              }}
+            >
+              <div className="ui-modal max-w-md w-full max-h-[90vh] overflow-y-auto space-y-4" onMouseDown={(e) => e.stopPropagation()}>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h3 className="text-lg font-bold text-[var(--color-text)]">Create Shift</h3>
+                    <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Define employee working hours.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowCreateModal(false)}
+                    className="rounded-lg p-2 text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)]"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setShowCreateModal(false)}
-                  className="rounded-lg p-2 text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)]"
-                >
-                  <X className="h-5 w-5" />
-                </button>
+
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  {error && (
+                    <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs font-semibold text-rose-700">
+                      {error}
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="ui-label">Name *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Day Shift"
+                      value={form.name}
+                      onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                      className="ui-input w-full"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="ui-label">Start Time</label>
+                      <input
+                        type="time"
+                        value={form.start_time}
+                        onChange={(e) => setForm((f) => ({ ...f, start_time: e.target.value }))}
+                        className="ui-input w-full"
+                      />
+                    </div>
+                    <div>
+                      <label className="ui-label">End Time</label>
+                      <input
+                        type="time"
+                        value={form.end_time}
+                        onChange={(e) => setForm((f) => ({ ...f, end_time: e.target.value }))}
+                        className="ui-input w-full"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="ui-label">Break (minutes)</label>
+                      <input
+                        type="number"
+                        value={form.break_minutes}
+                        onChange={(e) => setForm((f) => ({ ...f, break_minutes: e.target.value }))}
+                        min="0"
+                        className="ui-input w-full"
+                      />
+                    </div>
+                    <div>
+                      <label className="ui-label">Capacity (hours)</label>
+                      <input
+                        type="number"
+                        step="0.5"
+                        value={form.capacity_hours}
+                        onChange={(e) => setForm((f) => ({ ...f, capacity_hours: e.target.value }))}
+                        className="ui-input w-full"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-2 border-t border-[var(--color-border-soft)] pt-4">
+                    <Button type="button" variant="cancel" onClick={() => setShowCreateModal(false)}>
+                      Cancel
+                    </Button>
+                    <Button variant="primary" type="submit" disabled={saving}>
+                      <Save className="h-4 w-4" />
+                      {saving ? "Saving..." : "Create"}
+                    </Button>
+                  </div>
+                </form>
               </div>
-
-              <form onSubmit={handleSubmit} className="space-y-4">
-                {error && (
-                  <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs font-semibold text-rose-700">
-                    {error}
-                  </div>
-                )}
-
-                <div>
-                  <label className="ui-label">Name *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Day Shift"
-                    value={form.name}
-                    onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                    className="ui-input w-full"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="ui-label">Start Time</label>
-                    <input
-                      type="time"
-                      value={form.start_time}
-                      onChange={(e) => setForm((f) => ({ ...f, start_time: e.target.value }))}
-                      className="ui-input w-full"
-                    />
-                  </div>
-                  <div>
-                    <label className="ui-label">End Time</label>
-                    <input
-                      type="time"
-                      value={form.end_time}
-                      onChange={(e) => setForm((f) => ({ ...f, end_time: e.target.value }))}
-                      className="ui-input w-full"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="ui-label">Break (minutes)</label>
-                    <input
-                      type="number"
-                      value={form.break_minutes}
-                      onChange={(e) => setForm((f) => ({ ...f, break_minutes: e.target.value }))}
-                      min="0"
-                      className="ui-input w-full"
-                    />
-                  </div>
-                  <div>
-                    <label className="ui-label">Capacity (hours)</label>
-                    <input
-                      type="number"
-                      step="0.5"
-                      value={form.capacity_hours}
-                      onChange={(e) => setForm((f) => ({ ...f, capacity_hours: e.target.value }))}
-                      className="ui-input w-full"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex justify-end gap-2 border-t border-[var(--color-border-soft)] pt-4">
-                  <Button type="button" variant="cancel" onClick={() => setShowCreateModal(false)}>
-                    Cancel
-                  </Button>
-                  <Button variant="primary" type="submit" disabled={saving}>
-                    <Save className="h-4 w-4" />
-                    {saving ? "Saving..." : "Create"}
-                  </Button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
+            </div>,
+            document.body
+          )}
       </div>
     </ListPageShell>
   );

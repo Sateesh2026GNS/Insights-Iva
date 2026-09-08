@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 
 import Loader from "../../components/common/Loader";
+import EmptyState from "../../components/common/EmptyState";
 import { SearchBar } from "../../components/common/SearchFilter";
 import Button from "../../components/common/Button";
 import RowActionMenu from "../../components/common/RowActionMenu";
@@ -363,14 +364,13 @@ export default function DeliveryChallans() {
               <tbody>
                 {pageRows.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-4 py-16 text-center">
-                      <FileText className="mx-auto h-12 w-12 text-[var(--color-text-icon)]" />
-                      <p className="mt-3 text-[14px] text-[var(--color-text-faint)]">
-                        No Delivery Challans available, Create new Delivery Challan
-                      </p>
-                      <Button variant="add" to="/sales/delivery-challans/create" className="mt-4" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
-                        Create Delivery Challan
-                      </Button>
+                    <td colSpan={7} className="border-none p-0">
+                      <EmptyState
+                        icon="document"
+                        title="No records found."
+                        description="There is nothing to show here yet."
+                        className="border-none bg-transparent py-12"
+                      />
                     </td>
                   </tr>
                 ) : (

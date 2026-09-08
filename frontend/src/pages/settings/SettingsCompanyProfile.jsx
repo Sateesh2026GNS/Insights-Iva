@@ -187,7 +187,7 @@ export default function SettingsCompanyProfile() {
           </button>
           <Button
             type="button"
-            variant="edit"
+            variant="primary"
             onClick={handleSave}
             disabled={saving}
             loading={saving}

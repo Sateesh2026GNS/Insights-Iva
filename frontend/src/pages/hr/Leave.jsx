@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import {
   CalendarDays,
@@ -24,6 +25,7 @@ import Button, { AddButton } from "../../components/common/Button";
 import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
 import { ListPageShell } from "../../components/common/ListPageShell";
 import Loader from "../../components/common/Loader";
+import EmptyState from "../../components/common/EmptyState";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { useToast } from "../../context/ToastContext";
@@ -132,6 +134,7 @@ export default function Leave({ autoOpenCreate = false }) {
   const [department, setDepartment] = useState("");
   const [leaveType, setLeaveType] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [menuId, setMenuId] = useState(null);
@@ -373,39 +376,66 @@ export default function Leave({ autoOpenCreate = false }) {
             </div>
 
             <div className="p-4 sm:p-5">
-              {/* Filters */}
-              <div className="mb-4 flex flex-wrap items-center gap-2">
-                <label className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border-soft)] bg-[var(--color-surface-muted)] px-3 py-2 text-sm text-[var(--color-text-secondary)]">
-                  <CalendarDays className="h-4 w-4 text-[var(--color-text-muted)]" />
-                  <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="border-none bg-transparent outline-none text-[var(--color-text)]" />
-                  <span className="text-[var(--color-text-muted)]">–</span>
-                  <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="border-none bg-transparent outline-none text-[var(--color-text)]" />
-                </label>
-                <select value={department} onChange={(e) => setDepartment(e.target.value)} className={selectClass}>
-                  <option value="">All Departments</option>
-                  {departments.map((d) => (
-                    <option key={d} value={d}>{d}</option>
-                  ))}
-                </select>
-                <select value={leaveType} onChange={(e) => setLeaveType(e.target.value)} className={selectClass}>
-                  <option value="">All Leave Types</option>
-                  {ALL_LEAVE_TYPES.map((t) => (
-                    <option key={t.value} value={t.value}>{t.label}</option>
-                  ))}
-                </select>
-                <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className={selectClass}>
-                  <option value="">All Status</option>
-                  <option value="pending">Pending</option>
-                  <option value="approved">Approved</option>
-                  <option value="rejected">Rejected</option>
-                  <option value="cancelled">Cancelled</option>
-                </select>
-                <Button type="button" variant="secondary" leftIcon={<Filter className="h-4 w-4" aria-hidden />}>
-                  Filter
-                </Button>
-                <Button type="button" variant="secondary" onClick={() => load(true)} aria-label="Refresh">
-                  <RefreshCw className="h-4 w-4" />
-                </Button>
+              {/* Toolbar */}
+              <div className="mb-4 rounded-xl border border-[var(--color-border-soft)] bg-[var(--color-surface)] shadow-sm">
+                <div className="flex flex-wrap items-center gap-2 p-2.5">
+                  <label className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border-soft)] bg-[var(--color-surface-muted)] px-3 py-2 text-sm text-[var(--color-text-secondary)]">
+                    <CalendarDays className="h-4 w-4 text-[var(--color-text-muted)]" />
+                    <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="border-none bg-transparent outline-none text-[var(--color-text)]" />
+                    <span className="text-[var(--color-text-muted)]">–</span>
+                    <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="border-none bg-transparent outline-none text-[var(--color-text)]" />
+                  </label>
+                  <div className="flex-1" />
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    leftIcon={<Filter className="h-4 w-4" aria-hidden />}
+                    onClick={() => setShowFilters((v) => !v)}
+                  >
+                    Filters
+                    {[department, leaveType, statusFilter].filter(Boolean).length > 0 && (
+                      <span className="ml-1 inline-flex h-5 w-5 items-center justify-center rounded-full bg-[#036f71] text-[10px] font-bold text-white">
+                        {[department, leaveType, statusFilter].filter(Boolean).length}
+                      </span>
+                    )}
+                  </Button>
+                  <Button type="button" variant="secondary" onClick={() => load(true)} aria-label="Refresh">
+                    <RefreshCw className="h-4 w-4" />
+                  </Button>
+                </div>
+
+                {showFilters && (
+                  <div className="flex flex-wrap items-center gap-2 border-t border-[var(--color-border-soft)] px-3 py-3">
+                    <select value={department} onChange={(e) => setDepartment(e.target.value)} className={selectClass}>
+                      <option value="">All Departments</option>
+                      {departments.map((d) => (
+                        <option key={d} value={d}>{d}</option>
+                      ))}
+                    </select>
+                    <select value={leaveType} onChange={(e) => setLeaveType(e.target.value)} className={selectClass}>
+                      <option value="">All Leave Types</option>
+                      {ALL_LEAVE_TYPES.map((t) => (
+                        <option key={t.value} value={t.value}>{t.label}</option>
+                      ))}
+                    </select>
+                    <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className={selectClass}>
+                      <option value="">All Status</option>
+                      <option value="pending">Pending</option>
+                      <option value="approved">Approved</option>
+                      <option value="rejected">Rejected</option>
+                      <option value="cancelled">Cancelled</option>
+                    </select>
+                    {[department, leaveType, statusFilter].some(Boolean) && (
+                      <button
+                        type="button"
+                        className="text-xs text-[var(--color-text-muted)] underline hover:text-[var(--color-text)]"
+                        onClick={() => { setDepartment(""); setLeaveType(""); setStatusFilter(""); }}
+                      >
+                        Clear filters
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="ui-table-wrap ui-table-wrap--scroll">
@@ -427,8 +457,13 @@ export default function Leave({ autoOpenCreate = false }) {
                   <tbody>
                     {pageRows.length === 0 ? (
                       <tr>
-                        <td colSpan={10} className="px-4 py-12 text-center text-[var(--color-text-muted)]">
-                          No leave requests match your filters.
+                        <td colSpan={10} className="border-none p-0">
+                          <EmptyState
+                            icon="document"
+                            title="No records found."
+                            description="There is nothing to show here yet."
+                            className="border-none bg-transparent py-12"
+                          />
                         </td>
                       </tr>
                     ) : (
@@ -613,87 +648,95 @@ export default function Leave({ autoOpenCreate = false }) {
         </div>
       </div>
 
-      {showCreateModal && (
-        <div className="ui-modal-backdrop">
-          <div className="ui-modal max-w-md w-full max-h-[90vh] overflow-y-auto space-y-4">
-            <div className="flex items-start justify-between">
-              <div>
-                <h3 className="text-lg font-bold text-[var(--color-text)]">Apply Leave</h3>
-                <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Submit a new employee leave request.</p>
+      {showCreateModal &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            className="ui-modal-backdrop"
+            onMouseDown={(e) => {
+              if (e.target === e.currentTarget && !saving) setShowCreateModal(false);
+            }}
+          >
+            <div className="ui-modal max-w-md w-full max-h-[90vh] overflow-y-auto space-y-4" onMouseDown={(e) => e.stopPropagation()}>
+              <div className="flex items-start justify-between">
+                <div>
+                  <h3 className="text-lg font-bold text-[var(--color-text)]">Apply Leave</h3>
+                  <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Submit a new employee leave request.</p>
+                </div>
+                <button type="button" onClick={() => setShowCreateModal(false)} className="rounded-lg p-2 text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)]">
+                  <X className="h-5 w-5" />
+                </button>
               </div>
-              <button type="button" onClick={() => setShowCreateModal(false)} className="rounded-lg p-2 text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)]">
-                <X className="h-5 w-5" />
-              </button>
+
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {error && (
+                  <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs font-semibold text-rose-700">
+                    {error}
+                  </div>
+                )}
+
+                <div>
+                  <label className="ui-label">Employee *</label>
+                  <select
+                    value={form.employee_id}
+                    onChange={(e) => handleFormChange("employee_id", e.target.value)}
+                    required
+                    className="ui-select w-full"
+                  >
+                    <option value="">Select employee</option>
+                    {employees.map((emp) => (
+                      <option key={emp.id} value={emp.id}>
+                        {emp.full_name} ({emp.employee_code})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="ui-label">Leave Type</label>
+                  <select value={form.leave_type} onChange={(e) => handleFormChange("leave_type", e.target.value)} className="ui-select w-full">
+                    {ALL_LEAVE_TYPES.map((t) => (
+                      <option key={t.value} value={t.value}>{t.label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="ui-label">Start Date *</label>
+                    <input type="date" required value={form.start_date} onChange={(e) => handleFormChange("start_date", e.target.value)} className="ui-input w-full" />
+                  </div>
+                  <div>
+                    <label className="ui-label">End Date *</label>
+                    <input type="date" required value={form.end_date} onChange={(e) => handleFormChange("end_date", e.target.value)} className="ui-input w-full" />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="ui-label">Reason</label>
+                  <textarea
+                    rows={3}
+                    placeholder="Describe reason for leave request..."
+                    value={form.reason}
+                    onChange={(e) => handleFormChange("reason", e.target.value)}
+                    className="ui-input w-full min-h-[5rem]"
+                  />
+                </div>
+
+                <div className="flex justify-end gap-2 border-t border-[var(--color-border-soft)] pt-4">
+                  <Button type="button" variant="cancel" onClick={() => setShowCreateModal(false)}>
+                    Cancel
+                  </Button>
+                  <Button variant="primary" type="submit" disabled={saving}>
+                    <Save className="h-4 w-4" />
+                    {saving ? "Saving..." : "Submit Request"}
+                  </Button>
+                </div>
+              </form>
             </div>
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {error && (
-                <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs font-semibold text-rose-700">
-                  {error}
-                </div>
-              )}
-
-              <div>
-                <label className="ui-label">Employee *</label>
-                <select
-                  value={form.employee_id}
-                  onChange={(e) => handleFormChange("employee_id", e.target.value)}
-                  required
-                  className="ui-select w-full"
-                >
-                  <option value="">Select employee</option>
-                  {employees.map((emp) => (
-                    <option key={emp.id} value={emp.id}>
-                      {emp.full_name} ({emp.employee_code})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="ui-label">Leave Type</label>
-                <select value={form.leave_type} onChange={(e) => handleFormChange("leave_type", e.target.value)} className="ui-select w-full">
-                  {ALL_LEAVE_TYPES.map((t) => (
-                    <option key={t.value} value={t.value}>{t.label}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="ui-label">Start Date *</label>
-                  <input type="date" required value={form.start_date} onChange={(e) => handleFormChange("start_date", e.target.value)} className="ui-input w-full" />
-                </div>
-                <div>
-                  <label className="ui-label">End Date *</label>
-                  <input type="date" required value={form.end_date} onChange={(e) => handleFormChange("end_date", e.target.value)} className="ui-input w-full" />
-                </div>
-              </div>
-
-              <div>
-                <label className="ui-label">Reason</label>
-                <textarea
-                  rows={3}
-                  placeholder="Describe reason for leave request..."
-                  value={form.reason}
-                  onChange={(e) => handleFormChange("reason", e.target.value)}
-                  className="ui-input w-full min-h-[5rem]"
-                />
-              </div>
-
-              <div className="flex justify-end gap-2 border-t border-[var(--color-border-soft)] pt-4">
-                <Button type="button" variant="cancel" onClick={() => setShowCreateModal(false)}>
-                  Cancel
-                </Button>
-                <Button variant="primary" type="submit" disabled={saving}>
-                  <Save className="h-4 w-4" />
-                  {saving ? "Saving..." : "Submit Request"}
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
     </HrPage>
     </ListPageShell>
   );

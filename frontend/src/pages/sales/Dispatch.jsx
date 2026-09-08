@@ -4,6 +4,7 @@ import { MapPin, Package, Truck, X } from "lucide-react";
 import KpiCard from "../../components/common/KpiCard";
 
 import DataTable from "../../components/common/DataTable";
+import EmptyState from "../../components/common/EmptyState";
 import Loader from "../../components/common/Loader";
 import PageHeader from "../../components/common/PageHeader";
 import { useToast } from "../../context/ToastContext";
@@ -283,6 +284,14 @@ export default function Dispatch() {
           data={rows}
           searchPlaceholder="Search"
           searchKeys={["dispatch_number", "challan_number", "so_number", "customer_name", "courier"]}
+          emptyState={
+            <EmptyState
+              icon="document"
+              title="No records found."
+              description="There is nothing to show here yet."
+              className="border-none bg-transparent py-12"
+            />
+          }
         />
       </div>
 

@@ -280,15 +280,10 @@ export default function VendorsMaster() {
               </table>
             {rows.length === 0 ? (
               <EmptyState
-                title={query ? "No vendors found" : "No vendors yet"}
-                description={
-                  query
-                    ? "Try adjusting your search terms."
-                    : "Create your first vendor to start recording purchases."
-                }
-                actionLabel={!query ? "Create Vendor" : undefined}
-                onAction={!query ? () => setPartyOpen(true) : undefined}
-                className="border-none bg-transparent shadow-none"
+                icon="document"
+                title="No records found."
+                description="There is nothing to show here yet."
+                className="border-none bg-transparent py-12"
               />
             ) : null}
           </div>

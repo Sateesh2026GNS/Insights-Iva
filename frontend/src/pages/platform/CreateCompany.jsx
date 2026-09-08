@@ -448,195 +448,198 @@ function CreateCompanyForm() {
               ) : null}
             </div>
 
-            <form id="create-company-form" onSubmit={handleSubmit} className="ap-form-stack" noValidate>
+            <form id="create-company-form" onSubmit={handleSubmit} noValidate>
               <div className="ap-card">
-              <div className="ap-section-head">
-                <div className="ap-section-head__icon">
-                  <Building2 size={16} />
+                {/* Section 1: Company Information */}
+                <div className="ap-section-head">
+                  <div className="ap-section-head__icon">
+                    <Building2 size={16} />
+                  </div>
+                  <div>
+                    <div className="ap-section-head__title">Company Information</div>
+                    <div className="ap-section-head__sub">Identity, tax, and contact information</div>
+                  </div>
                 </div>
-                <div>
-                  <div className="ap-section-head__title">Company Information</div>
-                  <div className="ap-section-head__sub">Identity, tax, and contact information</div>
+                <div className="ap-section-body">
+                  <div className="ap-form-grid">
+                    <ApField
+                      label="Company Name"
+                      required
+                      value={form.company_name}
+                      onChange={set("company_name")}
+                      placeholder="Acme Manufacturing Pvt Ltd"
+                      disabled={loading}
+                      error={fieldErrors.company_name}
+                    />
+                    <ApField
+                      label="Company Email"
+                      type="email"
+                      required
+                      value={form.company_email}
+                      onChange={set("company_email")}
+                      placeholder="ops@company.com"
+                      disabled={loading}
+                      error={fieldErrors.company_email}
+                    />
+                    <ApField
+                      label="Phone Number"
+                      required
+                      value={form.mobile_number}
+                      onChange={set("mobile_number")}
+                      placeholder="9876543210"
+                      disabled={loading}
+                      error={fieldErrors.mobile_number}
+                      maxLength={10}
+                    />
+                    <ApField
+                      label="GST Number"
+                      value={form.gst_number}
+                      onChange={set("gst_number")}
+                      placeholder="22AAAAA0000A1Z5"
+                      disabled={loading}
+                      error={fieldErrors.gst_number}
+                    />
+                  </div>
                 </div>
-              </div>
-              <div className="ap-section-body">
-                <div className="ap-form-grid">
-                  <ApField
-                    label="Company Name"
-                    required
-                    value={form.company_name}
-                    onChange={set("company_name")}
-                    placeholder="Acme Manufacturing Pvt Ltd"
-                    disabled={loading}
-                    error={fieldErrors.company_name}
-                  />
-                  <ApField
-                    label="Company Email"
-                    type="email"
-                    required
-                    value={form.company_email}
-                    onChange={set("company_email")}
-                    placeholder="ops@company.com"
-                    disabled={loading}
-                    error={fieldErrors.company_email}
-                  />
-                  <ApField
-                    label="Phone Number"
-                    required
-                    value={form.mobile_number}
-                    onChange={set("mobile_number")}
-                    placeholder="9876543210"
-                    disabled={loading}
-                    error={fieldErrors.mobile_number}
-                    maxLength={10}
-                  />
-                  <ApField
-                    label="GST Number"
-                    value={form.gst_number}
-                    onChange={set("gst_number")}
-                    placeholder="22AAAAA0000A1Z5"
-                    disabled={loading}
-                    error={fieldErrors.gst_number}
-                  />
-                </div>
-              </div>
-              </div>
 
-              <div className="ap-card">
-              <div className="ap-section-head">
-                <div className="ap-section-head__icon">
-                  <MapPin size={16} />
+                {/* Section 2: Address */}
+                <div className="ap-section-head">
+                  <div className="ap-section-head__icon">
+                    <MapPin size={16} />
+                  </div>
+                  <div>
+                    <div className="ap-section-head__title">Address</div>
+                    <div className="ap-section-head__sub">PIN Code auto-fills State and City for India</div>
+                  </div>
                 </div>
-                <div>
-                  <div className="ap-section-head__title">Address</div>
-                  <div className="ap-section-head__sub">PIN Code auto-fills State and City for India</div>
+                <div className="ap-section-body">
+                  <CompanyAddressFields
+                    value={form}
+                    errors={fieldErrors}
+                    disabled={loading}
+                    pinKey="pin_code"
+                    platform
+                    embedded
+                    onChange={(partial) => {
+                      setForm((f) => ({ ...f, ...partial }));
+                      setFieldErrors((prev) => {
+                        const next = { ...prev };
+                        Object.keys(partial).forEach((k) => delete next[k]);
+                        return next;
+                      });
+                      setError("");
+                    }}
+                  />
                 </div>
-              </div>
-              <div className="ap-section-body">
-                <CompanyAddressFields
-                  value={form}
-                  errors={fieldErrors}
-                  disabled={loading}
-                  pinKey="pin_code"
-                  platform
-                  embedded
-                  onChange={(partial) => {
-                    setForm((f) => ({ ...f, ...partial }));
-                    setFieldErrors((prev) => {
-                      const next = { ...prev };
-                      Object.keys(partial).forEach((k) => delete next[k]);
-                      return next;
-                    });
-                    setError("");
-                  }}
-                />
-              </div>
-              </div>
 
-              <div className="ap-card">
-              <div className="ap-section-head">
-                <div className="ap-section-head__icon">
-                  <UserRound size={16} />
+                {/* Section 3: Company Admin */}
+                <div className="ap-section-head">
+                  <div className="ap-section-head__icon">
+                    <UserRound size={16} />
+                  </div>
+                  <div>
+                    <div className="ap-section-head__title">Company Admin</div>
+                    <div className="ap-section-head__sub">
+                      First administrator for this company. Password is generated automatically.
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <div className="ap-section-head__title">Company Admin</div>
-                  <div className="ap-section-head__sub">
-                    First administrator for this company. Password is generated automatically.
+                <div className="ap-section-body">
+                  <div className="ap-form-grid">
+                    <ApField
+                      label="Admin Name"
+                      required
+                      value={form.admin_name}
+                      onChange={set("admin_name")}
+                      placeholder="Full name"
+                      disabled={loading}
+                      error={fieldErrors.admin_name}
+                    />
+                    <ApField
+                      label="Admin Email"
+                      type="email"
+                      required
+                      value={form.admin_email}
+                      onChange={set("admin_email")}
+                      placeholder="admin@company.com"
+                      disabled={loading}
+                      error={fieldErrors.admin_email}
+                    />
+                  </div>
+                </div>
+
+                {/* Section 4: Subscription */}
+                <div className="ap-section-head">
+                  <div className="ap-section-head__icon">
+                    <CreditCard size={16} />
+                  </div>
+                  <div>
+                    <div className="ap-section-head__title">Subscription</div>
+                    <div className="ap-section-head__sub">Trial days apply only to Trial plans</div>
+                  </div>
+                </div>
+                <div className="ap-section-body">
+                  <div className="ap-form-grid">
+                    <ApSelectField
+                      label="Plan"
+                      required
+                      value={form.subscription_plan}
+                      onChange={set("subscription_plan")}
+                      disabled={loading}
+                      options={PLANS}
+                    />
+
+                    {isTrial ? (
+                      <ApField
+                        label="Trial Days"
+                        type="number"
+                        min={7}
+                        max={30}
+                        required
+                        value={form.trial_days}
+                        onChange={set("trial_days")}
+                        disabled={loading}
+                        error={fieldErrors.trial_days}
+                        hint="Minimum 7, maximum 30 days"
+                      />
+                    ) : (
+                      <ApSelectField
+                        label="Billing Cycle"
+                        required
+                        value={form.billing_cycle}
+                        onChange={set("billing_cycle")}
+                        disabled={loading}
+                        error={fieldErrors.billing_cycle}
+                        options={BILLING_CYCLES}
+                      />
+                    )}
+                  </div>
+                </div>
+
+                {/* Form Actions Footer */}
+                <div className="ap-card-footer">
+                  <div className="ap-form-actions">
+                    <p className="ap-form-actions__note">
+                      Company ID (GNS-#####) and temporary password are generated server-side.
+                    </p>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
+                      <Link to="/gns-admin" className={`ap-btn ${loading ? "pointer-events-none opacity-50" : ""}`}>
+                        Cancel
+                      </Link>
+                      <button type="submit" className="ap-btn ap-btn--primary" disabled={loading}>
+                        {loading ? (
+                          <>
+                            <Loader2 size={14} className="animate-spin" />
+                            Creating…
+                          </>
+                        ) : (
+                          "Create Company"
+                        )}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
-              <div className="ap-section-body">
-                <div className="ap-form-grid">
-                  <ApField
-                    label="Admin Name"
-                    required
-                    value={form.admin_name}
-                    onChange={set("admin_name")}
-                    placeholder="Full name"
-                    disabled={loading}
-                    error={fieldErrors.admin_name}
-                  />
-                  <ApField
-                    label="Admin Email"
-                    type="email"
-                    required
-                    value={form.admin_email}
-                    onChange={set("admin_email")}
-                    placeholder="admin@company.com"
-                    disabled={loading}
-                    error={fieldErrors.admin_email}
-                  />
-                </div>
-              </div>
-              </div>
-
-              <div className="ap-card">
-              <div className="ap-section-head">
-                <div className="ap-section-head__icon">
-                  <CreditCard size={16} />
-                </div>
-                <div>
-                  <div className="ap-section-head__title">Subscription</div>
-                  <div className="ap-section-head__sub">Trial days apply only to Trial plans</div>
-                </div>
-              </div>
-              <div className="ap-section-body">
-                <div className="ap-form-grid">
-                  <ApSelectField
-                    label="Plan"
-                    required
-                    value={form.subscription_plan}
-                    onChange={set("subscription_plan")}
-                    disabled={loading}
-                    options={PLANS}
-                  />
-
-                  {isTrial ? (
-                    <ApField
-                      label="Trial Days"
-                      type="number"
-                      min={7}
-                      max={30}
-                      required
-                      value={form.trial_days}
-                      onChange={set("trial_days")}
-                      disabled={loading}
-                      error={fieldErrors.trial_days}
-                      hint="Minimum 7, maximum 30 days"
-                    />
-                  ) : (
-                    <ApSelectField
-                      label="Billing Cycle"
-                      required
-                      value={form.billing_cycle}
-                      onChange={set("billing_cycle")}
-                      disabled={loading}
-                      error={fieldErrors.billing_cycle}
-                      options={BILLING_CYCLES}
-                    />
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <div className="ap-form-actions">
-              <p className="ap-form-actions__note">
-                Company ID (GNS-#####) and temporary password are generated server-side.
-              </p>
-              <Link to="/gns-admin" className={`ap-btn ${loading ? "pointer-events-none opacity-50" : ""}`}>
-                Cancel
-              </Link>
-              <button type="submit" className="ap-btn ap-btn--primary" disabled={loading}>
-                {loading ? (
-                  <>
-                    <Loader2 size={14} className="animate-spin" />
-                    Creating…
-                  </>
-                ) : (
-                  "Create Company"
-                )}
-              </button>
-            </div>
             </form>
           </div>
         </main>

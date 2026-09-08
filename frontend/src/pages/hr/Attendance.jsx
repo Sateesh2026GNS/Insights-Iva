@@ -20,6 +20,7 @@ import {
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 
 import Loader from "../../components/common/Loader";
+import EmptyState from "../../components/common/EmptyState";
 import Button from "../../components/common/Button";
 import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
 import { ListPageShell } from "../../components/common/ListPageShell";
@@ -165,6 +166,7 @@ export default function Attendance() {
   const [pageSize, setPageSize] = useState(10);
   const [calYear, setCalYear] = useState(2026);
   const [calMonth, setCalMonth] = useState(7);
+  const [showFilters, setShowFilters] = useState(false);
 
   const load = useCallback(async (isRefresh = false) => {
     if (!isRefresh) setLoading(true);
@@ -296,48 +298,75 @@ export default function Attendance() {
         <HrKpiCard label="Absent Today" value={data.absent_today} icon={XCircle} tone="red" trend={trends.absent} />
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm">
-        <label className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-3 py-2 text-sm text-[var(--color-text-secondary)]">
-          <CalendarDays className="h-4 w-4 text-[var(--color-text-muted)]" />
-          <input
-            type="date"
-            value={recordDate}
-            onChange={(e) => setRecordDate(e.target.value)}
-            className="border-none bg-transparent text-sm outline-none"
-          />
-        </label>
-        <select value={department} onChange={(e) => setDepartment(e.target.value)} className={selectClass}>
-          <option value="">All Departments</option>
-          {departments.map((d) => (
-            <option key={d} value={d}>{d}</option>
-          ))}
-        </select>
-        <select value={designation} onChange={(e) => setDesignation(e.target.value)} className={selectClass}>
-          <option value="">All Designations</option>
-          <option value="manager">Manager</option>
-          <option value="engineer">Engineer</option>
-          <option value="executive">Executive</option>
-        </select>
-        <select value={location} onChange={(e) => setLocation(e.target.value)} className={selectClass}>
-          <option value="">All Locations</option>
-          <option value="engineering">Engineering</option>
-          <option value="hr">HR</option>
-          <option value="sales">Sales</option>
-        </select>
-        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className={selectClass}>
-          <option value="">All Status</option>
-          <option value="present">Present</option>
-          <option value="late">Late</option>
-          <option value="absent">Absent</option>
-          <option value="on_leave">On Leave</option>
-        </select>
-        <Button type="button" variant="secondary" leftIcon={<Filter className="h-4 w-4" aria-hidden />}>
-          Filter
-        </Button>
-        <Button type="button" variant="secondary" onClick={() => load(true)} aria-label="Refresh">
-          <RefreshCw className="h-4 w-4" />
-        </Button>
+      {/* Toolbar */}
+      <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="flex flex-wrap items-center gap-2 p-3">
+          <label className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-3 py-2 text-sm text-[var(--color-text-secondary)]">
+            <CalendarDays className="h-4 w-4 text-[var(--color-text-muted)]" />
+            <input
+              type="date"
+              value={recordDate}
+              onChange={(e) => setRecordDate(e.target.value)}
+              className="border-none bg-transparent text-sm outline-none"
+            />
+          </label>
+          <div className="flex-1" />
+          <Button
+            type="button"
+            variant="secondary"
+            leftIcon={<Filter className="h-4 w-4" aria-hidden />}
+            onClick={() => setShowFilters((v) => !v)}
+          >
+            Filters
+            {[department, designation, location, statusFilter].filter(Boolean).length > 0 && (
+              <span className="ml-1 inline-flex h-5 w-5 items-center justify-center rounded-full bg-[#036f71] text-[10px] font-bold text-white">
+                {[department, designation, location, statusFilter].filter(Boolean).length}
+              </span>
+            )}
+          </Button>
+          <Button type="button" variant="secondary" onClick={() => load(true)} aria-label="Refresh">
+            <RefreshCw className="h-4 w-4" />
+          </Button>
+        </div>
+
+        {showFilters && (
+          <div className="flex flex-wrap items-center gap-2 border-t border-[var(--color-border)] px-3 py-3">
+            <select value={department} onChange={(e) => setDepartment(e.target.value)} className={selectClass}>
+              <option value="">All Departments</option>
+              {departments.map((d) => (
+                <option key={d} value={d}>{d}</option>
+              ))}
+            </select>
+            <select value={designation} onChange={(e) => setDesignation(e.target.value)} className={selectClass}>
+              <option value="">All Designations</option>
+              <option value="manager">Manager</option>
+              <option value="engineer">Engineer</option>
+              <option value="executive">Executive</option>
+            </select>
+            <select value={location} onChange={(e) => setLocation(e.target.value)} className={selectClass}>
+              <option value="">All Locations</option>
+              <option value="engineering">Engineering</option>
+              <option value="hr">HR</option>
+              <option value="sales">Sales</option>
+            </select>
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className={selectClass}>
+              <option value="">All Status</option>
+              <option value="present">Present</option>
+              <option value="late">Late</option>
+              <option value="absent">Absent</option>
+              <option value="on_leave">On Leave</option>
+            </select>
+            {[department, designation, location, statusFilter].some(Boolean) && (
+              <button
+                type="button"
+                className="text-xs text-[var(--color-text-muted)] underline hover:text-[var(--color-text)]"
+                onClick={() => { setDepartment(""); setDesignation(""); setLocation(""); setStatusFilter(""); }}
+              >
+                Clear filters
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Middle widgets */}
@@ -466,8 +495,13 @@ export default function Attendance() {
             <tbody>
               {pageRows.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="px-4 py-12 text-center text-[var(--color-text-muted)]">
-                    No attendance records for {formatDisplayDate(recordDate)}.
+                  <td colSpan={10} className="border-none p-0">
+                    <EmptyState
+                      icon="document"
+                      title="No records found."
+                      description="There is nothing to show here yet."
+                      className="border-none bg-transparent py-12"
+                    />
                   </td>
                 </tr>
               ) : (

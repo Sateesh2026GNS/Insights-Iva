@@ -289,27 +289,29 @@ export default function ChartOfAccountsV2() {
         <AccountsTabs tabs={COA_TABS} active={tab} onChange={setTab} />
 
         <div className="p-4 sm:p-5">
-          <div className="mb-4 flex flex-wrap items-center gap-3">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <AccountsSearchInput
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search"
-              className="flex-1"
+              className="w-64 flex-shrink-0"
             />
-            <AccountsAddButton
-              onClick={() => {
-                setEditing(null);
-                setSubParent(null);
-                setModalOpen(true);
-              }}
-            >
-              Create Account
-            </AccountsAddButton>
-            <SortByMenu value={sortBy} onChange={setSortBy} />
-            <AccountsSecondaryButton type="button" onClick={handleExport}>
-              <Download className="h-4 w-4" />
-              Export (csv)
-            </AccountsSecondaryButton>
+            <div className="flex flex-wrap items-center gap-2">
+              <AccountsAddButton
+                onClick={() => {
+                  setEditing(null);
+                  setSubParent(null);
+                  setModalOpen(true);
+                }}
+              >
+                Create Account
+              </AccountsAddButton>
+              <SortByMenu value={sortBy} onChange={setSortBy} />
+              <AccountsSecondaryButton type="button" onClick={handleExport}>
+                <Download className="h-4 w-4" />
+                Export (csv)
+              </AccountsSecondaryButton>
+            </div>
           </div>
 
           <div className={accountsTableWrapClass}>

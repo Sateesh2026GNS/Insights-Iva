@@ -746,10 +746,10 @@ export default function StoreStockIn() {
 
           {stockIns.length === 0 ? (
             <EmptyState
-              icon={PackagePlus}
-              title="No stock in transactions yet"
-              description="Receive materials into a warehouse. Inventory updates only after confirmation."
-              action={canCreate ? <Button variant="primary" onClick={openCreate}>Create Stock In</Button> : null}
+              icon="document"
+              title="No records found."
+              description="There is nothing to show here yet."
+              className="border-none bg-transparent py-12"
             />
           ) : (
             <DataTable columns={columns} data={stockIns} rowKey="id" />

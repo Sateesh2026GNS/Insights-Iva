@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { Link, useLocation } from "react-router-dom";
 import {
   Award,
@@ -31,6 +32,7 @@ import {
 import PlaceholderPage from "../../components/common/PlaceholderPage";
 import InventoryRowActionsMenu from "../../components/inventory/InventoryRowActionsMenu";
 import Loader from "../../components/common/Loader";
+import EmptyState from "../../components/common/EmptyState";
 import Button, { AddButton } from "../../components/common/Button";
 import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
 import { ListPageShell } from "../../components/common/ListPageShell";
@@ -428,8 +430,13 @@ function TrainingDashboard() {
                 <tbody>
                   {pageRows.length === 0 ? (
                     <tr>
-                      <td colSpan={9} className="border-b border-[var(--color-border-soft)] px-3 py-8 text-center text-sm text-[var(--color-text-muted)]">
-                        No training records found
+                      <td colSpan={9} className="border-none p-0">
+                        <EmptyState
+                          icon="document"
+                          title="No records found."
+                          description="There is nothing to show here yet."
+                          className="border-none bg-transparent py-12"
+                        />
                       </td>
                     </tr>
                   ) : (
@@ -623,84 +630,103 @@ function TrainingDashboard() {
         </div>
       </div>
 
-      {showProgramModal ? (
-        <div className="ui-modal-backdrop">
-          <div className="ui-modal max-w-lg w-full max-h-[90vh] overflow-y-auto">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-[var(--color-text)]">{editProgram ? "Edit Training Program" : "Create Training Program"}</h3>
-              <button type="button" onClick={() => { setShowProgramModal(false); resetProgramForm(); }} className="text-[var(--color-text-muted)] hover:text-[var(--color-text)]">
-                <X className="h-5 w-5" />
-              </button>
+      {showProgramModal &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            className="ui-modal-backdrop"
+            onMouseDown={(e) => {
+              if (!saving && e.target === e.currentTarget) {
+                setShowProgramModal(false);
+                resetProgramForm();
+              }
+            }}
+          >
+            <div className="ui-modal max-w-lg w-full max-h-[90vh] overflow-y-auto" onMouseDown={(e) => e.stopPropagation()}>
+              <div className="mb-4 flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-[var(--color-text)]">{editProgram ? "Edit Training Program" : "Create Training Program"}</h3>
+                <button type="button" onClick={() => { setShowProgramModal(false); resetProgramForm(); }} className="text-[var(--color-text-muted)] hover:text-[var(--color-text)]">
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              {formError ? <p className="mb-3 text-sm text-red-600">{formError}</p> : null}
+              <form onSubmit={handleSaveProgram} className="space-y-3">
+                <label className="ui-label">
+                  Program Name *
+                  <input className="ui-input w-full mt-1" value={programForm.name} onChange={(e) => setProgramForm((f) => ({ ...f, name: e.target.value }))} required />
+                </label>
+                <label className="ui-label">
+                  Category
+                  <input className="ui-input w-full mt-1" value={programForm.category} onChange={(e) => setProgramForm((f) => ({ ...f, category: e.target.value }))} />
+                </label>
+                <label className="ui-label">
+                  Trainer
+                  <input className="ui-input w-full mt-1" value={programForm.trainer} onChange={(e) => setProgramForm((f) => ({ ...f, trainer: e.target.value }))} />
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <label className="ui-label">
+                    Start Date
+                    <input type="date" className="ui-input w-full mt-1" value={programForm.start_date} onChange={(e) => setProgramForm((f) => ({ ...f, start_date: e.target.value }))} />
+                  </label>
+                  <label className="ui-label">
+                    End Date
+                    <input type="date" className="ui-input w-full mt-1" value={programForm.end_date} onChange={(e) => setProgramForm((f) => ({ ...f, end_date: e.target.value }))} />
+                  </label>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <label className="ui-label">
+                    Status
+                    <select className="ui-select w-full mt-1" value={programForm.status} onChange={(e) => setProgramForm((f) => ({ ...f, status: e.target.value }))}>
+                      <option value="not_started">Not Started</option>
+                      <option value="in_progress">In Progress</option>
+                      <option value="completed">Completed</option>
+                      <option value="upcoming">Upcoming</option>
+                    </select>
+                  </label>
+                  <label className="ui-label">
+                    Progress %
+                    <input type="number" min={0} max={100} className="ui-input w-full mt-1" value={programForm.progress_pct} onChange={(e) => setProgramForm((f) => ({ ...f, progress_pct: e.target.value }))} />
+                  </label>
+                </div>
+                <label className="ui-label">
+                  Description
+                  <textarea className="ui-input w-full mt-1 min-h-[5rem]" rows={3} value={programForm.description} onChange={(e) => setProgramForm((f) => ({ ...f, description: e.target.value }))} />
+                </label>
+                <div className="flex justify-end gap-2 pt-2 border-t border-[var(--color-border-soft)]">
+                  <Button type="button" variant="cancel" onClick={() => { setShowProgramModal(false); resetProgramForm(); }}>Cancel</Button>
+                  <Button type="submit" variant="primary" disabled={saving}>{saving ? "Saving..." : "Save"}</Button>
+                </div>
+              </form>
             </div>
-            {formError ? <p className="mb-3 text-sm text-red-600">{formError}</p> : null}
-            <form onSubmit={handleSaveProgram} className="space-y-3">
-              <label className="ui-label">
-                Program Name *
-                <input className="ui-input w-full mt-1" value={programForm.name} onChange={(e) => setProgramForm((f) => ({ ...f, name: e.target.value }))} required />
-              </label>
-              <label className="ui-label">
-                Category
-                <input className="ui-input w-full mt-1" value={programForm.category} onChange={(e) => setProgramForm((f) => ({ ...f, category: e.target.value }))} />
-              </label>
-              <label className="ui-label">
-                Trainer
-                <input className="ui-input w-full mt-1" value={programForm.trainer} onChange={(e) => setProgramForm((f) => ({ ...f, trainer: e.target.value }))} />
-              </label>
-              <div className="grid grid-cols-2 gap-3">
-                <label className="ui-label">
-                  Start Date
-                  <input type="date" className="ui-input w-full mt-1" value={programForm.start_date} onChange={(e) => setProgramForm((f) => ({ ...f, start_date: e.target.value }))} />
-                </label>
-                <label className="ui-label">
-                  End Date
-                  <input type="date" className="ui-input w-full mt-1" value={programForm.end_date} onChange={(e) => setProgramForm((f) => ({ ...f, end_date: e.target.value }))} />
-                </label>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <label className="ui-label">
-                  Status
-                  <select className="ui-select w-full mt-1" value={programForm.status} onChange={(e) => setProgramForm((f) => ({ ...f, status: e.target.value }))}>
-                    <option value="not_started">Not Started</option>
-                    <option value="in_progress">In Progress</option>
-                    <option value="completed">Completed</option>
-                    <option value="upcoming">Upcoming</option>
-                  </select>
-                </label>
-                <label className="ui-label">
-                  Progress %
-                  <input type="number" min={0} max={100} className="ui-input w-full mt-1" value={programForm.progress_pct} onChange={(e) => setProgramForm((f) => ({ ...f, progress_pct: e.target.value }))} />
-                </label>
-              </div>
-              <label className="ui-label">
-                Description
-                <textarea className="ui-input w-full mt-1 min-h-[5rem]" rows={3} value={programForm.description} onChange={(e) => setProgramForm((f) => ({ ...f, description: e.target.value }))} />
-              </label>
-              <div className="flex justify-end gap-2 pt-2 border-t border-[var(--color-border-soft)]">
-                <Button type="button" variant="cancel" onClick={() => { setShowProgramModal(false); resetProgramForm(); }}>Cancel</Button>
-                <Button type="submit" variant="primary" disabled={saving}>{saving ? "Saving..." : "Save"}</Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      ) : null}
+          </div>,
+          document.body
+        )}
 
-      {viewProgram ? (
-        <div className="ui-modal-backdrop">
-          <div className="ui-modal max-w-md w-full">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-[var(--color-text)]">{viewProgram.name}</h3>
-              <button type="button" onClick={() => setViewProgram(null)} className="text-[var(--color-text-muted)] hover:text-[var(--color-text)]"><X className="h-5 w-5" /></button>
+      {viewProgram &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            className="ui-modal-backdrop"
+            onMouseDown={(e) => {
+              if (e.target === e.currentTarget) setViewProgram(null);
+            }}
+          >
+            <div className="ui-modal max-w-md w-full" onMouseDown={(e) => e.stopPropagation()}>
+              <div className="mb-4 flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-[var(--color-text)]">{viewProgram.name}</h3>
+                <button type="button" onClick={() => setViewProgram(null)} className="text-[var(--color-text-muted)] hover:text-[var(--color-text)]"><X className="h-5 w-5" /></button>
+              </div>
+              <dl className="space-y-2 text-sm text-[var(--color-text-secondary)]">
+                <div><dt className="font-medium text-[var(--color-text)]">Category</dt><dd>{viewProgram.category}</dd></div>
+                <div><dt className="font-medium text-[var(--color-text)]">Trainer</dt><dd>{viewProgram.trainer}</dd></div>
+                <div><dt className="font-medium text-[var(--color-text)]">Dates</dt><dd>{viewProgram.start_date} — {viewProgram.end_date}</dd></div>
+                <div><dt className="font-medium text-[var(--color-text)]">Participants</dt><dd>{viewProgram.participants}</dd></div>
+                <div><dt className="font-medium text-[var(--color-text)]">Status</dt><dd><TrainingStatusBadge status={viewProgram.status} /></dd></div>
+              </dl>
             </div>
-            <dl className="space-y-2 text-sm text-[var(--color-text-secondary)]">
-              <div><dt className="font-medium text-[var(--color-text)]">Category</dt><dd>{viewProgram.category}</dd></div>
-              <div><dt className="font-medium text-[var(--color-text)]">Trainer</dt><dd>{viewProgram.trainer}</dd></div>
-              <div><dt className="font-medium text-[var(--color-text)]">Dates</dt><dd>{viewProgram.start_date} — {viewProgram.end_date}</dd></div>
-              <div><dt className="font-medium text-[var(--color-text)]">Participants</dt><dd>{viewProgram.participants}</dd></div>
-              <div><dt className="font-medium text-[var(--color-text)]">Status</dt><dd><TrainingStatusBadge status={viewProgram.status} /></dd></div>
-            </dl>
-          </div>
-        </div>
-      ) : null}
+          </div>,
+          document.body
+        )}
     </HrPage>
     </ListPageShell>
   );

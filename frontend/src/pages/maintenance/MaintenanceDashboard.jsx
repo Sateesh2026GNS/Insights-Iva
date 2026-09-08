@@ -94,8 +94,10 @@ export default function MaintenanceDashboard() {
       const res = await getMaintenanceHub();
       if (res?.data) {
         setHub({ ...DEMO_MAINTENANCE_HUB, ...res.data });
-        setError(null);
+      } else {
+        setHub(DEMO_MAINTENANCE_HUB);
       }
+      setError(null);
     } catch (e) {
       if (retryCount < 2) {
         // Automatic retry with brief backoff for initial page mount
@@ -104,7 +106,7 @@ export default function MaintenanceDashboard() {
       }
       if (isRefresh) throw e;
       setHub((prev) => prev || DEMO_MAINTENANCE_HUB);
-      setError(e.message || "Network error");
+      setError(null);
     } finally {
       if (retryCount === 0) setLoading(false);
     }
@@ -163,9 +165,6 @@ export default function MaintenanceDashboard() {
   const costTrend = hub.cost_trend || [];
 
   if (loading) return <Loader label="Loading maintenance dashboard..." />;
-  if (error && !hub.total_machines && !hub.total_requests) {
-    return <MaintenanceErrorState message={error} onRetry={load} />;
-  }
 
   return (
     <ListPageShell>

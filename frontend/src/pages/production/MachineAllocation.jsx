@@ -494,13 +494,10 @@ export default function MachineAllocation() {
             />
             {filtered.length === 0 ? (
               <EmptyState
-                icon="factory"
-                title="Nothing to allocate"
-                description={
-                  allocations.length === 0
-                    ? "Create work orders first, then assign them to machines here."
-                    : "No rows match this filter."
-                }
+                icon="document"
+                title="No records found."
+                description="There is nothing to show here yet."
+                className="border-none bg-transparent py-12"
               />
             ) : (
               <DataTable

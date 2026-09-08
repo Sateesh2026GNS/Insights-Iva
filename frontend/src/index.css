@@ -2802,7 +2802,7 @@ table > tbody > tr:first-child:has(th) {
 }
 
 .login-success-overlay {
-  animation: loginSuccessFadeIn 0.35s ease-out forwards;
+  animation: loginSuccessFadeIn 0.15s ease-out forwards;
 }
 
 .login-success-overlay__backdrop {
@@ -2823,7 +2823,7 @@ table > tbody > tr:first-child:has(th) {
   box-shadow:
     0 24px 48px -12px rgba(15, 23, 42, 0.18),
     0 0 0 1px rgba(22, 163, 74, 0.08);
-  animation: loginSuccessScaleIn 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation: loginSuccessScaleIn 0.18s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 .login-success-overlay__icon-wrap {

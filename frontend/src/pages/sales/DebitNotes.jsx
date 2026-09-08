@@ -4,6 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Calendar, ChevronLeft, ChevronRight, Download, Edit2, Eye, FileText, Filter, ListFilter, Plus, Search, Trash2, X } from "lucide-react";
 
 import Loader from "../../components/common/Loader";
+import EmptyState from "../../components/common/EmptyState";
 import { SearchBar } from "../../components/common/SearchFilter";
 import Button from "../../components/common/Button";
 import RowActionMenu from "../../components/common/RowActionMenu";
@@ -446,14 +447,13 @@ export default function DebitNotes() {
               <tbody>
                 {pageRows.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-4 py-20 text-center">
-                      <FileText className="mx-auto h-14 w-14 text-[var(--color-text-icon)]" strokeWidth={1.25} />
-                      <p className="mt-4 text-[14px] text-[var(--color-text-muted)]">
-                        No Sales Debit Note available, Create new Sales Debit Note
-                      </p>
-                      <Button variant="add" to="/sales/debit-notes/create" className="mt-5" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
-                        Sales Debit Note
-                      </Button>
+                    <td colSpan={7} className="border-none p-0">
+                      <EmptyState
+                        icon="document"
+                        title="No records found."
+                        description="There is nothing to show here yet."
+                        className="border-none bg-transparent py-12"
+                      />
                     </td>
                   </tr>
                 ) : (

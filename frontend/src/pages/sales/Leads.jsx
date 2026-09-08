@@ -4,6 +4,7 @@ import { Filter, LayoutGrid, List, PhoneCall, Plus, Target, TrendingUp, UserPlus
 import KpiCard from "../../components/common/KpiCard";
 
 import DataTable from "../../components/common/DataTable";
+import EmptyState from "../../components/common/EmptyState";
 import Loader from "../../components/common/Loader";
 import PageHeader from "../../components/common/PageHeader";
 import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
@@ -289,7 +290,20 @@ export default function Leads() {
         )}
 
         {view === "table" ? (
-          <DataTable columns={columns} data={filtered} searchPlaceholder="Search" searchKeys={["customer_name", "company", "sales_executive"]} />
+          <DataTable
+            columns={columns}
+            data={filtered}
+            searchPlaceholder="Search"
+            searchKeys={["customer_name", "company", "sales_executive"]}
+            emptyState={
+              <EmptyState
+                icon="document"
+                title="No records found."
+                description="There is nothing to show here yet."
+                className="border-none bg-transparent py-12"
+              />
+            }
+          />
         ) : (
           <div className="grid gap-4 overflow-x-auto lg:grid-cols-5">
             {KANBAN_COLUMNS.map((col) => (

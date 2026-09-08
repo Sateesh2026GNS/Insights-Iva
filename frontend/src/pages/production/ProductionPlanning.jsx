@@ -31,6 +31,7 @@ import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
 import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
 import { SearchBar } from "../../components/common/SearchFilter";
 import DataTable from "../../components/common/DataTable";
+import EmptyState from "../../components/common/EmptyState";
 import KpiCard from "../../components/common/KpiCard";
 import Loader from "../../components/common/Loader";
 import PageHeader from "../../components/common/PageHeader";
@@ -1129,12 +1130,16 @@ export default function ProductionPlanning() {
 
           <PageHeader
             action={
-              <>
+              <div className="flex flex-wrap items-center gap-2">
                 <Button variant="secondary" to="/production/work-orders">
                   <ClipboardList className="h-4 w-4" />
                   Work Orders
                 </Button>
-              </>
+                <Button variant="secondary" to="/procurement/material-requests">
+                  <FileText className="h-4 w-4" />
+                  Material Requests
+                </Button>
+              </div>
             }
           />
 
@@ -1386,45 +1391,12 @@ export default function ProductionPlanning() {
                 showSearch={false}
                 showPagination={false}
                 emptyState={
-                  <div className="px-4 py-16 text-center">
-                    <ClipboardList className="mx-auto h-14 w-14 text-[var(--color-text-icon)]" strokeWidth={1.25} />
-                    <p className="mt-4 text-sm font-semibold text-[var(--color-text)]">
-                      {Object.values(filters).some(Boolean)
-                        ? "No production orders match your filters."
-                        : "No production orders yet"}
-                    </p>
-                    <p className="mt-1 text-sm text-[var(--color-text-muted)]">
-                      {Object.values(filters).some(Boolean)
-                        ? "Clear filters or adjust search to view all orders."
-                        : "Create an order to start planning, or review material requests for shortages."}
-                    </p>
-                    <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
-                      {Object.values(filters).some(Boolean) ? (
-                        <Button variant="secondary" type="button" onClick={handleClearFilters}>
-                          Clear Filters
-                        </Button>
-                      ) : (
-                        <>
-                          {canCreate ? (
-                            <Button
-                              variant="success"
-                              type="button"
-                              onClick={() => {
-                                setEditModalOrder(null);
-                                setCreateOrderModalOpen(true);
-                              }}
-                            >
-                              <Plus className="h-4 w-4" />
-                              New Production Order
-                            </Button>
-                          ) : null}
-                          <Button variant="secondary" to="/procurement/material-requests">
-                            Material Requests
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  </div>
+                  <EmptyState
+                    icon="document"
+                    title="No records found."
+                    description="There is nothing to show here yet."
+                    className="border-none bg-transparent py-12"
+                  />
                 }
               />
             </div>

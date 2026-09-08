@@ -6,6 +6,7 @@ import KpiCard from "../../components/common/KpiCard";
 import PageHeader from "../../components/common/PageHeader";
 
 import Loader from "../../components/common/Loader";
+import EmptyState from "../../components/common/EmptyState";
 import { SearchBar } from "../../components/common/SearchFilter";
 import Button from "../../components/common/Button";
 import { useToast } from "../../context/ToastContext";
@@ -581,9 +582,13 @@ Description:  ${doc.description || "No description provided."}
             <tbody>
               {pageRows.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-4 py-12 text-center text-[var(--color-table-text-secondary)]">
-                    <FolderOpen className="mx-auto mb-2 h-8 w-8 text-[var(--color-text-icon)]" />
-                    No documents found matching your filter.
+                  <td colSpan={9} className="border-none p-0">
+                    <EmptyState
+                      icon="document"
+                      title="No records found."
+                      description="There is nothing to show here yet."
+                      className="border-none bg-transparent py-12"
+                    />
                   </td>
                 </tr>
               ) : (

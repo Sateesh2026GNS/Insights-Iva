@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import {
   CalendarDays,
@@ -30,6 +31,7 @@ import {
 
 import InventoryRowActionsMenu from "../../components/inventory/InventoryRowActionsMenu";
 import Button, { AddButton } from "../../components/common/Button";
+import EmptyState from "../../components/common/EmptyState";
 import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
 import { ListPageShell } from "../../components/common/ListPageShell";
 import Loader from "../../components/common/Loader";
@@ -134,6 +136,7 @@ export default function Performance({ autoOpenCreate = false }) {
   const [department, setDepartment] = useState("");
   const [designation, setDesignation] = useState("");
   const [employeeFilter, setEmployeeFilter] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize] = useState(5);
   const [menuId, setMenuId] = useState(null);
@@ -312,37 +315,65 @@ export default function Performance({ autoOpenCreate = false }) {
         }
       />
 
-      <div className="flex flex-wrap items-center gap-2 ui-card p-4">
-        <label className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border-soft)] bg-[var(--color-surface-muted)] px-3 py-2 text-sm text-[var(--color-text-secondary)]">
-          <CalendarDays className="h-4 w-4 text-[var(--color-text-muted)]" />
-          <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="border-none bg-transparent outline-none text-[var(--color-text)]" />
-          <span className="text-[var(--color-text-muted)]">–</span>
-          <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="border-none bg-transparent outline-none text-[var(--color-text)]" />
-        </label>
-        <select value={department} onChange={(e) => setDepartment(e.target.value)} className={selectClass}>
-          <option value="">All Departments</option>
-          {departments.map((d) => (
-            <option key={d} value={d}>{d}</option>
-          ))}
-        </select>
-        <select value={designation} onChange={(e) => setDesignation(e.target.value)} className={selectClass}>
-          <option value="">All Designations</option>
-          {designations.map((d) => (
-            <option key={d} value={d}>{d}</option>
-          ))}
-        </select>
-        <select value={employeeFilter} onChange={(e) => setEmployeeFilter(e.target.value)} className={selectClass}>
-          <option value="">All Employees</option>
-          {employees.map((e) => (
-            <option key={e.id} value={e.full_name}>{e.full_name}</option>
-          ))}
-        </select>
-        <Button type="button" variant="secondary" leftIcon={<Filter className="h-4 w-4" aria-hidden />}>
-          Filter
-        </Button>
-        <Button type="button" variant="secondary" onClick={() => load(true)} aria-label="Refresh">
-          <RefreshCw className="h-4 w-4" />
-        </Button>
+      {/* Toolbar */}
+      <div className="ui-card shadow-sm">
+        <div className="flex flex-wrap items-center gap-2 p-3">
+          <label className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border-soft)] bg-[var(--color-surface-muted)] px-3 py-2 text-sm text-[var(--color-text-secondary)]">
+            <CalendarDays className="h-4 w-4 text-[var(--color-text-muted)]" />
+            <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="border-none bg-transparent outline-none text-[var(--color-text)]" />
+            <span className="text-[var(--color-text-muted)]">–</span>
+            <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="border-none bg-transparent outline-none text-[var(--color-text)]" />
+          </label>
+          <div className="flex-1" />
+          <Button
+            type="button"
+            variant="secondary"
+            leftIcon={<Filter className="h-4 w-4" aria-hidden />}
+            onClick={() => setShowFilters((v) => !v)}
+          >
+            Filters
+            {[department, designation, employeeFilter].filter(Boolean).length > 0 && (
+              <span className="ml-1 inline-flex h-5 w-5 items-center justify-center rounded-full bg-[#036f71] text-[10px] font-bold text-white">
+                {[department, designation, employeeFilter].filter(Boolean).length}
+              </span>
+            )}
+          </Button>
+          <Button type="button" variant="secondary" onClick={() => load(true)} aria-label="Refresh">
+            <RefreshCw className="h-4 w-4" />
+          </Button>
+        </div>
+
+        {showFilters && (
+          <div className="flex flex-wrap items-center gap-2 border-t border-[var(--color-border-soft)] px-3 py-3">
+            <select value={department} onChange={(e) => setDepartment(e.target.value)} className={selectClass}>
+              <option value="">All Departments</option>
+              {departments.map((d) => (
+                <option key={d} value={d}>{d}</option>
+              ))}
+            </select>
+            <select value={designation} onChange={(e) => setDesignation(e.target.value)} className={selectClass}>
+              <option value="">All Designations</option>
+              {designations.map((d) => (
+                <option key={d} value={d}>{d}</option>
+              ))}
+            </select>
+            <select value={employeeFilter} onChange={(e) => setEmployeeFilter(e.target.value)} className={selectClass}>
+              <option value="">All Employees</option>
+              {employees.map((e) => (
+                <option key={e.id} value={e.full_name}>{e.full_name}</option>
+              ))}
+            </select>
+            {[department, designation, employeeFilter].some(Boolean) && (
+              <button
+                type="button"
+                className="text-xs text-[var(--color-text-muted)] underline hover:text-[var(--color-text)]"
+                onClick={() => { setDepartment(""); setDesignation(""); setEmployeeFilter(""); }}
+              >
+                Clear filters
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Top widgets row */}
@@ -456,8 +487,13 @@ export default function Performance({ autoOpenCreate = false }) {
                 <tbody>
                   {pageRows.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="px-4 py-12 text-center text-[var(--color-text-muted)]">
-                        No performance reviews match your filters.
+                      <td colSpan={8} className="border-none p-0">
+                        <EmptyState
+                          icon="document"
+                          title="No records found."
+                          description="There is nothing to show here yet."
+                          className="border-none bg-transparent py-12"
+                        />
                       </td>
                     </tr>
                   ) : (
@@ -587,81 +623,89 @@ export default function Performance({ autoOpenCreate = false }) {
         </div>
       </div>
 
-      {showCreateModal && (
-        <div className="ui-modal-backdrop">
-          <div className="ui-modal max-w-md w-full max-h-[90vh] overflow-y-auto space-y-4">
-            <div className="flex items-start justify-between">
-              <div>
-                <h3 className="text-lg font-bold text-[var(--color-text)]">Create Performance Review</h3>
-                <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Submit manager evaluation and productivity score.</p>
+      {showCreateModal &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            className="ui-modal-backdrop"
+            onMouseDown={(e) => {
+              if (e.target === e.currentTarget && !saving) setShowCreateModal(false);
+            }}
+          >
+            <div className="ui-modal max-w-md w-full max-h-[90vh] overflow-y-auto space-y-4" onMouseDown={(e) => e.stopPropagation()}>
+              <div className="flex items-start justify-between">
+                <div>
+                  <h3 className="text-lg font-bold text-[var(--color-text)]">Create Performance Review</h3>
+                  <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Submit manager evaluation and productivity score.</p>
+                </div>
+                <button type="button" onClick={() => setShowCreateModal(false)} className="rounded-lg p-2 text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)]">
+                  <X className="h-5 w-5" />
+                </button>
               </div>
-              <button type="button" onClick={() => setShowCreateModal(false)} className="rounded-lg p-2 text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)]">
-                <X className="h-5 w-5" />
-              </button>
+
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {error && (
+                  <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs font-semibold text-rose-700">
+                    {error}
+                  </div>
+                )}
+
+                <div>
+                  <label className="ui-label">Employee *</label>
+                  <select value={form.employee_id} onChange={(e) => handleFormChange("employee_id", e.target.value)} required className="ui-select w-full">
+                    <option value="">Select Employee</option>
+                    {employees.map((e) => (
+                      <option key={e.id} value={e.id}>{e.full_name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="ui-label">Review Period *</label>
+                  <input type="text" required placeholder="e.g. Q3 2026" value={form.review_period} onChange={(e) => handleFormChange("review_period", e.target.value)} className="ui-input w-full" />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="ui-label">Rating (1-5)</label>
+                    <input type="number" min="1" max="5" step="0.1" value={form.rating} onChange={(e) => handleFormChange("rating", e.target.value)} className="ui-input w-full" />
+                  </div>
+                  <div>
+                    <label className="ui-label">Productivity (0-100)</label>
+                    <input type="number" min="0" max="100" value={form.productivity_score} onChange={(e) => handleFormChange("productivity_score", e.target.value)} className="ui-input w-full" />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="ui-label">Goals Achieved</label>
+                    <input type="number" value={form.goals_achieved} onChange={(e) => handleFormChange("goals_achieved", e.target.value)} className="ui-input w-full" />
+                  </div>
+                  <div>
+                    <label className="ui-label">Goals Total</label>
+                    <input type="number" value={form.goals_total} onChange={(e) => handleFormChange("goals_total", e.target.value)} className="ui-input w-full" />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="ui-label">Notes / Feedback</label>
+                  <textarea value={form.notes} onChange={(e) => handleFormChange("notes", e.target.value)} rows={3} placeholder="Review comments..." className="ui-input w-full min-h-[5rem]" />
+                </div>
+
+                <div className="flex justify-end gap-2 border-t border-[var(--color-border-soft)] pt-4">
+                  <Button type="button" variant="cancel" onClick={() => setShowCreateModal(false)}>
+                    Cancel
+                  </Button>
+                  <Button variant="primary" type="submit" disabled={saving}>
+                    <Save className="h-4 w-4" />
+                    {saving ? "Saving..." : "Create"}
+                  </Button>
+                </div>
+              </form>
             </div>
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {error && (
-                <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs font-semibold text-rose-700">
-                  {error}
-                </div>
-              )}
-
-              <div>
-                <label className="ui-label">Employee *</label>
-                <select value={form.employee_id} onChange={(e) => handleFormChange("employee_id", e.target.value)} required className="ui-select w-full">
-                  <option value="">Select Employee</option>
-                  {employees.map((e) => (
-                    <option key={e.id} value={e.id}>{e.full_name}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="ui-label">Review Period *</label>
-                <input type="text" required placeholder="e.g. Q3 2026" value={form.review_period} onChange={(e) => handleFormChange("review_period", e.target.value)} className="ui-input w-full" />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="ui-label">Rating (1-5)</label>
-                  <input type="number" min="1" max="5" step="0.1" value={form.rating} onChange={(e) => handleFormChange("rating", e.target.value)} className="ui-input w-full" />
-                </div>
-                <div>
-                  <label className="ui-label">Productivity (0-100)</label>
-                  <input type="number" min="0" max="100" value={form.productivity_score} onChange={(e) => handleFormChange("productivity_score", e.target.value)} className="ui-input w-full" />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="ui-label">Goals Achieved</label>
-                  <input type="number" value={form.goals_achieved} onChange={(e) => handleFormChange("goals_achieved", e.target.value)} className="ui-input w-full" />
-                </div>
-                <div>
-                  <label className="ui-label">Goals Total</label>
-                  <input type="number" value={form.goals_total} onChange={(e) => handleFormChange("goals_total", e.target.value)} className="ui-input w-full" />
-                </div>
-              </div>
-
-              <div>
-                <label className="ui-label">Notes / Feedback</label>
-                <textarea value={form.notes} onChange={(e) => handleFormChange("notes", e.target.value)} rows={3} placeholder="Review comments..." className="ui-input w-full min-h-[5rem]" />
-              </div>
-
-              <div className="flex justify-end gap-2 border-t border-[var(--color-border-soft)] pt-4">
-                <Button type="button" variant="cancel" onClick={() => setShowCreateModal(false)}>
-                  Cancel
-                </Button>
-                <Button variant="primary" type="submit" disabled={saving}>
-                  <Save className="h-4 w-4" />
-                  {saving ? "Saving..." : "Create"}
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
     </HrPage>
     </ListPageShell>
   );

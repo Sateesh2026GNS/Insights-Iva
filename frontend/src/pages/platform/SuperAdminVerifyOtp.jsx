@@ -9,7 +9,7 @@ import BrandLogo from "../../components/common/BrandLogo";
 import LoginSuccessOverlay from "../../components/common/LoginSuccessOverlay";
 import "./SuperAdminLogin.css";
 
-const LOGIN_SUCCESS_MS = 1800;
+const LOGIN_SUCCESS_MS = 350;
 
 export default function SuperAdminVerifyOtp() {
   const navigate = useNavigate();
@@ -31,6 +31,24 @@ export default function SuperAdminVerifyOtp() {
   const [redirectPath, setRedirectPath] = useState("/gns-admin");
 
   const inputRefs = useRef([]);
+  const redirectTimerRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (redirectTimerRef.current) clearTimeout(redirectTimerRef.current);
+    };
+  }, []);
+
+  const navigateNow = useCallback(
+    (targetPath) => {
+      if (redirectTimerRef.current) {
+        clearTimeout(redirectTimerRef.current);
+        redirectTimerRef.current = null;
+      }
+      navigate(targetPath || redirectPath, { replace: true });
+    },
+    [navigate, redirectPath]
+  );
 
   // Countdown timer for Resend OTP
   useEffect(() => {
@@ -56,7 +74,9 @@ export default function SuperAdminVerifyOtp() {
         const path = data.dashboard_path || "/gns-admin";
         setRedirectPath(path);
         setShowSuccess(true);
-        setTimeout(() => navigate(path, { replace: true }), LOGIN_SUCCESS_MS);
+        redirectTimerRef.current = setTimeout(() => {
+          navigate(path, { replace: true });
+        }, LOGIN_SUCCESS_MS);
       } catch (err) {
         const detail = err.response?.data?.detail || err.response?.data?.message;
         const msg =
@@ -145,7 +165,7 @@ export default function SuperAdminVerifyOtp() {
 
   return (
     <div className="sa-root">
-      <LoginSuccessOverlay open={showSuccess} />
+      <LoginSuccessOverlay open={showSuccess} onDismiss={() => navigateNow(redirectPath)} />
       <div className="sa-bg-base" />
       <div className="sa-orb-tl" />
       <div className="sa-orb-tr" />

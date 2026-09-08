@@ -17,6 +17,7 @@ import {
 import Loader from "../../components/common/Loader";
 import { SearchBar } from "../../components/common/SearchFilter";
 import Button from "../../components/common/Button";
+import EmptyState from "../../components/common/EmptyState";
 import RowActionMenu from "../../components/common/RowActionMenu";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
 import { useToast } from "../../context/ToastContext";
@@ -366,11 +367,13 @@ export default function PaymentsMade() {
               <tbody>
                 {pageRows.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="px-4 py-16 text-center">
-                      <Receipt className="mx-auto h-12 w-12 text-[var(--color-text-icon)]" />
-                      <p className="mt-3 text-[14px] text-[var(--color-text-muted)]">
-                        No Payment available, Make a new payment
-                      </p>
+                    <td colSpan={8} className="border-none p-0">
+                      <EmptyState
+                        icon="document"
+                        title="No records found."
+                        description="There is nothing to show here yet."
+                        className="border-none bg-transparent py-12"
+                      />
                     </td>
                   </tr>
                 ) : (

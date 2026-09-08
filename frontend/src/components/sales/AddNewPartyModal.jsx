@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { Check, MoreVertical, Pencil, Plus, Trash2, X } from "lucide-react";
+import { Check, Loader2, MoreVertical, Pencil, Plus, Trash2, X } from "lucide-react";
 
 import AddBasicDetailsModal from "./AddBasicDetailsModal";
 import AddCustomFieldModal from "./AddCustomFieldModal";
@@ -13,7 +13,7 @@ import {
   listMastersVendors,
   updateMastersVendor,
 } from "../../api/mastersVendorsApi";
-import { lookupIndianPincode } from "../../api/addressLookupApi";
+import { lookupIndianPincode, fetchCurrentLocationAddress } from "../../api/addressLookupApi";
 import { INDIAN_STATES, CITIES_BY_STATE } from "../../data/indiaLocations";
 import { useToast } from "../../context/ToastContext";
 import useTenantId from "../../hooks/useTenantId";
@@ -100,6 +100,8 @@ function toInitial(party, variant = "customer") {
 function AddressModal({ open, onClose, initial, onSave }) {
   const [address, setAddress] = useState(EMPTY_ADDRESS);
   const [cities, setCities] = useState([]);
+  const [locating, setLocating] = useState(false);
+  const [locatingError, setLocatingError] = useState("");
 
   useEffect(() => {
     if (!open) return;
@@ -108,6 +110,8 @@ function AddressModal({ open, onClose, initial, onSave }) {
       ...(initial || {}),
     };
     setAddress(initAddr);
+    setLocating(false);
+    setLocatingError("");
 
     const stateCities = CITIES_BY_STATE[initAddr.state] || [];
     const initialCityList = [...new Set([...(initAddr.city ? [initAddr.city] : []), ...stateCities])];
@@ -119,6 +123,27 @@ function AddressModal({ open, onClose, initial, onSave }) {
     const stateCities = CITIES_BY_STATE[address.state] || [];
     setCities((prev) => [...new Set([...stateCities, ...prev])]);
   }, [address.state]);
+
+  const handleUseCurrentLocation = async () => {
+    setLocating(true);
+    setLocatingError("");
+    try {
+      const data = await fetchCurrentLocationAddress();
+      const addrLine = [data.address_line1, data.address_line2].filter(Boolean).join(", ");
+      setAddress((prev) => ({
+        ...prev,
+        address_line1: addrLine || prev.address_line1,
+        pincode: data.pincode || prev.pincode,
+        city: data.city || prev.city,
+        state: data.state || prev.state,
+        country: data.country || prev.country || "India",
+      }));
+    } catch (err) {
+      setLocatingError(err.message || "Unable to get current location.");
+    } finally {
+      setLocating(false);
+    }
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -171,12 +196,46 @@ function AddressModal({ open, onClose, initial, onSave }) {
         </div>
         <div className="space-y-3 overflow-y-auto px-5 py-4">
           <SoftField label="Address">
-            <input
-              value={address.address_line1}
-              onChange={(e) => setAddress((p) => ({ ...p, address_line1: e.target.value }))}
-              placeholder="Enter Address"
-              className={inputClass}
-            />
+            <div className="relative">
+              <input
+                value={address.address_line1}
+                onChange={(e) => setAddress((p) => ({ ...p, address_line1: e.target.value }))}
+                placeholder="Enter Address"
+                className={`${inputClass} pr-10`}
+              />
+              <button
+                type="button"
+                onClick={handleUseCurrentLocation}
+                disabled={locating}
+                title="Get current location & auto-fill address"
+                aria-label="Get current location & auto-fill address"
+                className="absolute right-2 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-blue-50 hover:text-[#2563EB] focus:outline-none transition-colors disabled:opacity-50"
+              >
+                {locating ? (
+                  <Loader2 className="h-4 w-4 animate-spin text-[#2563EB]" />
+                ) : (
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="h-4 w-4 hover:scale-110 transition-transform"
+                  >
+                    <circle cx="12" cy="12" r="6.5" />
+                    <circle cx="12" cy="12" r="2.5" fill="currentColor" />
+                    <line x1="12" y1="2" x2="12" y2="4.5" />
+                    <line x1="12" y1="19.5" x2="12" y2="22" />
+                    <line x1="2" y1="12" x2="4.5" y2="12" />
+                    <line x1="19.5" y1="12" x2="22" y2="12" />
+                  </svg>
+                )}
+              </button>
+            </div>
+            {locatingError && (
+              <p className="mt-1 text-[11px] text-red-500">{locatingError}</p>
+            )}
           </SoftField>
           <div className="grid grid-cols-2 gap-3">
             <SoftField label="Pincode">
