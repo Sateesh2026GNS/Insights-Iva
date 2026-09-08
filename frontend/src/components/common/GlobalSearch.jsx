@@ -122,7 +122,7 @@ function HighlightText({ text, query }) {
         part.toLowerCase() === q.toLowerCase() ? (
           <mark
             key={`${part}-${i}`}
-            className="rounded bg-[var(--color-primary-soft)] px-0.5 text-inherit dark:bg-[var(--color-primary)]/30"
+            className="global-search-dropdown__highlight"
           >
             {part}
           </mark>
@@ -182,7 +182,6 @@ export default function GlobalSearch({ onSelect, placeholderKey = "common.search
   }, [query, routes]);
 
   const showDropdown = open && (focus || query);
-  const hasQuery = Boolean(query.trim());
 
   useEffect(() => {
     setHighlight(0);
@@ -292,16 +291,10 @@ export default function GlobalSearch({ onSelect, placeholderKey = "common.search
           id="global-search-results"
           ref={listRef}
           role="listbox"
-          className="absolute left-0 right-0 top-full z-50 mt-1.5 max-h-80 overflow-y-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xl sm:min-w-[22rem]"
+          className="global-search-dropdown"
         >
-          {!hasQuery ? (
-            <p className="border-b border-[var(--color-border-soft)] px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
-              Suggested pages
-            </p>
-          ) : null}
-
           {matches.length === 0 ? (
-            <div className="flex flex-col items-center px-4 py-8 text-center" role="status">
+            <div className="global-search-dropdown__empty" role="status">
               <SearchX className="mb-2 h-8 w-8 text-[var(--color-text-icon)]" aria-hidden />
               <p className="text-sm font-medium text-[var(--color-text)]">No matching pages found.</p>
             </div>
@@ -322,22 +315,18 @@ export default function GlobalSearch({ onSelect, placeholderKey = "common.search
                   onMouseEnter={() => setHighlight(i)}
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => handleSelect(r.path)}
-                  className={`flex h-14 w-full items-center gap-3 border-b border-[var(--color-border-soft)] px-4 text-left transition-colors last:border-b-0 ${
-                    selected
-                      ? "bg-[var(--color-primary-soft)] text-[var(--color-primary-dark)]"
-                      : "text-[var(--color-text)] hover:bg-[var(--color-surface-muted)]"
-                  }`}
+                  className={`global-search-dropdown__item${selected ? " is-active" : ""}`}
                 >
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-[var(--color-surface-muted)] text-[var(--color-text-muted)]">
-                    <Icon className="h-4 w-4" aria-hidden />
+                  <span className="global-search-dropdown__icon" aria-hidden>
+                    <Icon className="h-4 w-4" />
                   </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-semibold">
+                  <span className="global-search-dropdown__text">
+                    <span className="global-search-dropdown__label">
                       <HighlightText text={r.label} query={query} />
                     </span>
-                    <span className="block truncate text-xs text-[var(--color-text-muted)]">
+                    <span className="global-search-dropdown__meta">
                       <HighlightText
-                        text={section ? `${r.moduleLabel}  ·  ${section}` : r.moduleLabel}
+                        text={section ? `${r.moduleLabel} · ${section}` : r.moduleLabel}
                         query={query}
                       />
                     </span>

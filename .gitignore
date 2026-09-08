@@ -19,6 +19,7 @@ env/
 *.sqlite
 *.sqlite3
 backend/smrt.db
+smrt.db
 
 # ---- Node / frontend ----
 node_modules/
@@ -30,10 +31,23 @@ dist/
 
 # ---- Environment / secrets ----
 .env
+.env.*
+!.env.example
+!**/.env.example
 *.env
 !*.env.example
 backend/.env
 frontend/.env
+frontend/.env.*
+!frontend/.env.example
+secrets/
+credentials/
+
+# Local dev scratch scripts (may contain test credentials)
+scratch/
+
+# Database backups (local only)
+backend/backups/
 
 # ---- Editor / OS ----
 .vscode/
@@ -47,12 +61,3 @@ coverage/
 htmlcov/
 .coverage
 *.cover
-
-backend/venv/
-venv/
-__pycache__/
-*.pyc
-frontend/dist/
-backend/smrt.db
-smrt.db
-.env

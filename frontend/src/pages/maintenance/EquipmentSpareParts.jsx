@@ -12,26 +12,32 @@ import {
   MoreVertical,
   Package,
   PauseCircle,
+  Pencil,
   PlayCircle,
   Plus,
   RefreshCw,
+  Trash2,
   Wrench,
   X,
 } from "lucide-react";
 
 import Button from "../../components/common/Button";
+import ConfirmDialog from "../../components/admin/ConfirmDialog";
 import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
+import RowActionMenu from "../../components/common/RowActionMenu";
 import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
 import EmptyState from "../../components/common/EmptyState";
 import { SearchBar } from "../../components/common/SearchFilter";
 import Loader from "../../components/common/Loader";
 import PageHeader from "../../components/common/PageHeader";
 import CreateMachineModal from "../../components/production/CreateMachineModal";
+import MachineDetailModal from "../../components/production/MachineDetailModal";
 import MaintenanceErrorState from "../../components/maintenance/MaintenanceErrorState";
 import MaintenanceKpiCard from "../../components/maintenance/MaintenanceKpiCard";
 import { getMaintenanceHub } from "../../api/maintenanceApi";
-import { getMachines } from "../../api/productionApi";
+import { deleteMachine, getMachineDetail, getMachines } from "../../api/productionApi";
 import { useToast } from "../../context/ToastContext";
+import { apiErrorMessage } from "../../utils/apiError";
 import { exportToExcel, exportToPdf } from "../../utils/exportUtils";
 import {
   computeMonthTrend,
@@ -428,6 +434,13 @@ export default function EquipmentSpareParts() {
   const [page, setPage] = useState(1);
   const [showAddEquipmentModal, setShowAddEquipmentModal] = useState(false);
   const [showAddSpareModal, setShowAddSpareModal] = useState(false);
+  const [editMachine, setEditMachine] = useState(null);
+  const [viewMachine, setViewMachine] = useState(null);
+  const [viewDetail, setViewDetail] = useState(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+  const [openMenu, setOpenMenu] = useState(null);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const moreMenuRef = useRef(null);
 
@@ -448,8 +461,9 @@ export default function EquipmentSpareParts() {
     if (retryCount === 0) setError(null);
     try {
       const [mRes, hubRes] = await Promise.allSettled([getMachines(), getMaintenanceHub()]);
-      if (mRes.status === "fulfilled" && Array.isArray(mRes.value?.data)) {
-        setMachines(mRes.value.data);
+      if (mRes.status === "fulfilled") {
+        const rows = Array.isArray(mRes.value?.data) ? mRes.value.data : [];
+        setMachines(rows);
       } else {
         setMachines([]);
       }
@@ -463,7 +477,7 @@ export default function EquipmentSpareParts() {
       if (isRefresh) throw e;
       setMachines([]);
       setSpareParts([]);
-      setError(null);
+      setError(e?.message || "Failed to load equipment and spare parts");
     } finally {
       if (retryCount === 0) setLoading(false);
     }
@@ -471,6 +485,38 @@ export default function EquipmentSpareParts() {
 
   usePageRefresh(() => load(true));
   useEffect(() => { load(); }, [load]);
+
+  const openMachineView = async (row) => {
+    if (!row?.id) {
+      addToast("Invalid machine record", "error");
+      return;
+    }
+    setDetailLoading(true);
+    try {
+      const res = await getMachineDetail(row.id);
+      setViewMachine(row);
+      setViewDetail(res?.data || row);
+    } catch (err) {
+      addToast(apiErrorMessage(err, "Failed to load machine details"), "error");
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget?.id) return;
+    setDeleting(true);
+    try {
+      await deleteMachine(deleteTarget.id);
+      addToast(`Machine "${deleteTarget.name || deleteTarget.code}" deleted`, "success");
+      setDeleteTarget(null);
+      await load(true);
+    } catch (err) {
+      addToast(apiErrorMessage(err, "Failed to delete machine"), "error");
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const handleExport = (format) => {
     if (activeTab === "equipment") {
@@ -594,6 +640,7 @@ export default function EquipmentSpareParts() {
   const equipmentTrend = computeMonthTrend(machines, { dateKey: "created_at" });
 
   if (loading) return <Loader label="Loading equipment & spare parts..." />;
+  if (error) return <MaintenanceErrorState message={error} onRetry={() => load()} />;
 
   return (
     <ListPageShell>
@@ -605,18 +652,17 @@ export default function EquipmentSpareParts() {
             <Button
               type="button"
               variant="add"
-              onClick={() => setShowAddEquipmentModal(true)}
+              onClick={() => {
+                if (activeTab === "equipment") {
+                  setEditMachine(null);
+                  setShowAddEquipmentModal(true);
+                } else {
+                  setShowAddSpareModal(true);
+                }
+              }}
               leftIcon={<Plus className="h-4 w-4" aria-hidden />}
             >
-              Add Equipment
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => setShowAddSpareModal(true)}
-              leftIcon={<Plus className="h-4 w-4 text-[var(--color-primary)]" aria-hidden />}
-            >
-              Add Spare Part
+              {activeTab === "equipment" ? "Add Machine" : "Add Spare Part"}
             </Button>
             <ExportDownloadMenu
               disabled={activeTab === "equipment" ? !filteredEquipment.length : !filteredSpares.length}
@@ -696,7 +742,7 @@ export default function EquipmentSpareParts() {
       <div className="border-b border-[var(--color-border-soft)]">
         <div className="flex flex-wrap gap-1">
           {[
-            { id: "equipment", label: "Equipment" },
+            { id: "equipment", label: "Machines" },
             { id: "spare", label: "Spare Parts" },
           ].map((tab) => (
             <button
@@ -722,7 +768,7 @@ export default function EquipmentSpareParts() {
             <SearchBar
               value={search}
               onChange={(v) => { setSearch(v); setPage(1); }}
-              placeholder={activeTab === "equipment" ? "Search equipment..." : "Search spare parts..."}
+              placeholder={activeTab === "equipment" ? "Search machines..." : "Search spare parts..."}
               className="w-full"
             />
           </div>
@@ -786,7 +832,7 @@ export default function EquipmentSpareParts() {
       <ListPageCard>
         <ListPageCardBody>
         <h2 className="mb-4 text-[15px] font-semibold text-[var(--color-text)]">
-          {activeTab === "equipment" ? "Equipment List" : "Spare Parts Inventory"}
+          {activeTab === "equipment" ? "Machines" : "Spare Parts Inventory"}
         </h2>
         <div className="ui-table-wrap ui-table-wrap--scroll">
           {activeTab === "equipment" ? (
@@ -839,9 +885,29 @@ export default function EquipmentSpareParts() {
                         </td>
                         <td className="border-b border-[var(--color-border-soft)] px-3 py-3">
                           <div className="flex items-center justify-center">
-                            <button type="button" className="grid h-8 w-8 place-items-center rounded-md border border-[var(--color-border-soft)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-muted)]" aria-label="View equipment">
-                              <Eye className="h-4 w-4" />
-                            </button>
+                            <RowActionMenu
+                              rowId={row.id ?? row.code}
+                              openMenu={openMenu}
+                              setOpenMenu={setOpenMenu}
+                              ariaLabel={`Actions for ${row.name || row.code}`}
+                              items={[
+                                {
+                                  label: "View",
+                                  icon: <Eye className="h-4 w-4" />,
+                                  onClick: () => openMachineView(row),
+                                },
+                                {
+                                  label: "Edit",
+                                  icon: <Pencil className="h-4 w-4" />,
+                                  onClick: () => setEditMachine(row),
+                                },
+                                {
+                                  label: "Delete",
+                                  icon: <Trash2 className="h-4 w-4" />,
+                                  onClick: () => setDeleteTarget(row),
+                                },
+                              ]}
+                            />
                           </div>
                         </td>
                       </tr>
@@ -939,9 +1005,47 @@ export default function EquipmentSpareParts() {
       <CreateMachineModal
         open={showAddEquipmentModal}
         onClose={() => setShowAddEquipmentModal(false)}
-        onSaved={(newMachine) => {
-          setMachines((prev) => [newMachine, ...prev]);
+        onSaved={() => load(true)}
+      />
+
+      <CreateMachineModal
+        open={Boolean(editMachine)}
+        machine={editMachine}
+        onClose={() => setEditMachine(null)}
+        onSaved={() => {
+          setEditMachine(null);
           load(true);
+        }}
+      />
+
+      {viewMachine ? (
+        <MachineDetailModal
+          machine={viewMachine}
+          detail={viewDetail}
+          viewOnly
+          onClose={() => {
+            setViewMachine(null);
+            setViewDetail(null);
+          }}
+        />
+      ) : null}
+
+      {detailLoading ? <Loader label="Loading machine details..." /> : null}
+
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        title="Delete machine"
+        message={
+          deleteTarget
+            ? `Are you sure you want to delete "${deleteTarget.name || deleteTarget.code}"? This action cannot be undone.`
+            : ""
+        }
+        confirmLabel="Delete"
+        destructive
+        loading={deleting}
+        onConfirm={handleDeleteConfirm}
+        onClose={() => {
+          if (!deleting) setDeleteTarget(null);
         }}
       />
 

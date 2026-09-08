@@ -83,7 +83,10 @@ class Settings(BaseSettings):
     super_admin_mobile: str = ""
 
     # SMS / WhatsApp OTP (optional — logs OTP in development when unset)
-    sms_api_key: str = ""
+    sms_api_key: str = Field(
+        default="",
+        validation_alias=AliasChoices("SMS_API_KEY", "FAST2SMS_API_KEY", "sms_api_key"),
+    )
     green_api_url: str = "https://7107.api.greenapi.com"
     green_api_id_instance: str = ""
     green_api_token_instance: str = ""

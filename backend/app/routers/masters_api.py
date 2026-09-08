@@ -199,6 +199,19 @@ def update_machine(
     return success_response("Machine updated", data)
 
 
+@router.delete("/machines/{machine_id}")
+def delete_machine(
+    machine_id: int,
+    user_tenant: tuple[User, int] = Depends(require_tenant("machines")),
+    _no_operator: User = Depends(deny_delete_for_operator),
+    db: Session = Depends(get_db),
+):
+    _, tenant_id = user_tenant
+    if not _svc(db, tenant_id).delete_machine(machine_id):
+        raise HTTPException(404, "Machine not found")
+    return success_response("Machine deleted", {"id": machine_id})
+
+
 @router.post("/machines/simple")
 def create_machine_simple(
     payload: MachineCreate,

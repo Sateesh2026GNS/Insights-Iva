@@ -686,7 +686,7 @@ export default function StoreStockIn() {
     <div className="space-y-6 pb-8">
       {storeMode ? <StoreManagerNav /> : null}
 
-      <PageHeader
+      <PageHeader variant="inventory"
         showTitle
         title="Stock In"
         subtitle="Receive materials/products into inventory and update available stock."

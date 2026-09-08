@@ -266,3 +266,51 @@ def update_machine_full(
         except Exception:
             pass
         raise
+
+
+def delete_machine_full(db: Session, tenant_id: int, machine_id: int) -> bool:
+    """Delete a machine when it has no linked work orders."""
+    try:
+        machine = db.scalars(
+            select(Machine).where(Machine.id == machine_id, Machine.tenant_id == tenant_id)
+        ).first()
+        if not machine:
+            return False
+
+        linked_wo = db.scalar(
+            select(func.count())
+            .select_from(WorkOrder)
+            .where(WorkOrder.machine_id == machine_id, WorkOrder.tenant_id == tenant_id)
+        ) or 0
+        if linked_wo:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Cannot delete machine with linked work orders. Reassign or complete them first.",
+            )
+
+        db.delete(machine)
+        db.commit()
+        return True
+    except HTTPException:
+        try:
+            db.rollback()
+        except Exception:
+            pass
+        raise
+    except SQLAlchemyError as exc:
+        logger.exception("Database error deleting machine_id=%s tenant_id=%s: %s", machine_id, tenant_id, exc)
+        try:
+            db.rollback()
+        except Exception:
+            pass
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Database error while deleting machine.",
+        ) from exc
+    except Exception as exc:
+        logger.exception("Unexpected error deleting machine_id=%s tenant_id=%s: %s", machine_id, tenant_id, exc)
+        try:
+            db.rollback()
+        except Exception:
+            pass
+        raise

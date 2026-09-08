@@ -455,7 +455,7 @@ export default function FinishedGoods() {
   return (
     <ListPageShell>
     <div className="min-w-0 space-y-5 pb-4">
-      <PageHeader
+      <PageHeader variant="inventory"
         subtitle="Manage and track your finished goods inventory"
         action={
           <InventoryHeaderControls

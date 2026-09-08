@@ -630,7 +630,7 @@ export default function StoreStockReturn() {
     <div className="space-y-6 pb-8">
       {storeMode ? <StoreManagerNav /> : null}
 
-      <PageHeader
+      <PageHeader variant="inventory"
         showTitle
         title="Stock Return"
         subtitle="Record and manage material returned to inventory"

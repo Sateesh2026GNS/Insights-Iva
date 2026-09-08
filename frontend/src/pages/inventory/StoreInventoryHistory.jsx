@@ -106,7 +106,7 @@ export default function StoreInventoryHistory() {
   return (
     <ListPageShell>
       <StoreManagerNav />
-      <PageHeader
+      <PageHeader variant="inventory"
         subtitle="Complete movement trail for every stock in, issue, return, transfer, and adjustment."
         action={<ExportDownloadMenu disabled={!rows.length} onExport={handleExport} />}
       />

@@ -41,5 +41,7 @@ export const rowActionClass =
 /** Typography shortcuts */
 export const pageTitleClass = "ui-page-title";
 export const sectionTitleClass = "ui-section-title";
+export const erpSectionHeaderClass = "erp-section-header";
+export const erpHeroHeaderClass = "erp-hero-header";
 export const subtitleClass = "ui-subtitle";
 export const captionClass = "ui-hint";

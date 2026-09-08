@@ -4,11 +4,11 @@
 
 **Tagline:** Business Intelligence • Analytics • AI
 
-Security hardening (auth lockout, email verification, refresh tokens, RBAC, tenant isolation, headers) is documented in [SECURITY_REPORT.md](./SECURITY_REPORT.md). **Full security audit + hardening pass (16 Aug 2026)** — summary in [Security Audit & Hardening](#security-audit--hardening-aug-2026) below. **Frontend UI/UX audit + design system migration (18 Aug 2026; button action system 24 Aug 2026)** — [UI_UX_AUDIT_REPORT.md](./UI_UX_AUDIT_REPORT.md). **Wireframe-first UI/UX standard** for new pages — [Wireframe-first UI/UX standard](#wireframe-first-uiux-standard). Architecture and recent analysis: [PROJECT_ANALYSIS_REPORT.md](./PROJECT_ANALYSIS_REPORT.md).
+Security hardening (auth lockout, email verification, refresh tokens, RBAC, tenant isolation, headers) is documented in [Production Deployment](./backend/PRODUCTION_DEPLOYMENT.md). **Full security audit + hardening pass (16 Aug 2026)** — summary in [Security Audit & Hardening](#security-audit--hardening-aug-2026) below. **Frontend UI/UX audit + design system migration (18 Aug 2026; button action system 24 Aug 2026)** — [README — UI design system](#ui-design-system-colors--buttons). **Wireframe-first UI/UX standard** for new pages — [Wireframe-first UI/UX standard](#wireframe-first-uiux-standard). Architecture and recent analysis: [README — Architecture overview](#architecture).
 
 **Latest pass (Sep 2026):** **Full-stack HR module** — PostgreSQL schema (`k8l9m0n1o2p3`, `k9l0m1n2o3p4`), 60+ `/hr/*` APIs, organization setup, preboarding, expenses, payroll runs, MIS reports, role permissions, leave-balance workflow, API-only frontend (no `localStorage` fallbacks on operational pages) — see [HR Module](#hr-module-full-stack).
 
-**Prior pass (24 Aug 2026):** **Action-based button system** — centralized `Button` variants (`add`, `primary`, `secondary`, `view`, `edit`, `warning`, `danger`), `AddButton` / `TableActionButtons`, and app-wide migration of list/toolbar Add/Create CTAs to teal-blue `#0F5F78` — see [UI design system](#ui-design-system-colors--buttons) and [UI_UX_AUDIT_REPORT.md](./UI_UX_AUDIT_REPORT.md).
+**Prior pass (24 Aug 2026):** **Action-based button system** — centralized `Button` variants (`add`, `primary`, `secondary`, `view`, `edit`, `warning`, `danger`), `AddButton` / `TableActionButtons`, and app-wide migration of list/toolbar Add/Create CTAs to teal-blue `#0F5F78` — see [UI design system](#ui-design-system-colors--buttons) and [README — UI design system](#ui-design-system-colors--buttons).
 
 **Prior pass (21 Aug 2026):** End-to-end **RBAC** for seven roles (Admin, Sales Manager, Production Manager, Store Manager, HR Manager, Accountant, Operator) — permissions, sidebar, routes, and JWT role preserved on refresh — see [Role-Based Access Control](#role-based-access-control). **Shared date/calendar controls** (`dateControls.jsx`, `dateUtils.js`) and duplicate calendar icon fix — see [UI design system](#ui-design-system-colors--buttons). **Store Manager** dedicated sidebar with full Purchases menu. **Settings** integrated into main ERP shell (dark navy theme in dark mode only). **Manufacturing workflow engine (18 Aug 2026):** role-based Sales → Job Card → Inventory → Production → Quality → Packing → Billing — see [Manufacturing Workflow Engine](#manufacturing-workflow-engine). **Design system rebrand (18 Aug 2026):** forest green brand, `frontend/src/design-system/` — see [UI design system](#ui-design-system-colors--buttons). **HR module dashboards (Aug 2026):** mockup-aligned UI — see [HR & Employee Management](#hr--employee-management). See [Stability Audit & Validation](#stability-audit--validation-aug-2026) and [Security Audit & Hardening](#security-audit--hardening-aug-2026).
 
@@ -120,7 +120,7 @@ Use **`Button`** from `components/common/Button.jsx` (or `design-system/index.js
 
 JS mirrors: `frontend/src/theme/colors.js`, `frontend/src/styles/theme.js`. Legacy alias: `ActionButton.jsx` re-exports `Button`.
 
-Full migration status: [UI_UX_AUDIT_REPORT.md](./UI_UX_AUDIT_REPORT.md).
+Full migration status: [README — UI design system](#ui-design-system-colors--buttons).
 
 ### Wireframe-first UI/UX standard
 
@@ -222,7 +222,7 @@ Seven registerable roles share one permission matrix. Backend: `backend/app/core
 
 **Manufacturing workflow teams** map from ERP roles in `workflow_constants.py` — see [Manufacturing Workflow Engine](#manufacturing-workflow-engine).
 
-Security details: [SECURITY_REPORT.md](./SECURITY_REPORT.md). Architecture: [PROJECT_ANALYSIS_REPORT.md](./PROJECT_ANALYSIS_REPORT.md).
+Security details: [Production Deployment](./backend/PRODUCTION_DEPLOYMENT.md). Architecture: [README — Architecture overview](#architecture).
 
 ## Features
 
@@ -645,9 +645,7 @@ Insights Iva/
 │   └── .env
 │
 ├── README.md
-├── SECURITY_REPORT.md
-├── PROJECT_ANALYSIS_REPORT.md
-└── UI_UX_AUDIT_REPORT.md
+├── backend/PRODUCTION_DEPLOYMENT.md
 ```
 ### Backend Code Map
 
@@ -1200,7 +1198,7 @@ Base URL: `http://localhost:8000` (or your `VITE_API_BASE_URL`).
 | `email`        | string | Yes      | Valid email  |
 | `password`     | string | Yes      | Min **12** chars |
 
-**Response (200):** Same shape as login in development (auto-verified). In production, email verification may be required before login — see [SECURITY_REPORT.md](./SECURITY_REPORT.md).
+**Response (200):** Same shape as login in development (auto-verified). In production, email verification may be required before login — see [Production Deployment](./backend/PRODUCTION_DEPLOYMENT.md).
 
 **Errors:** `409` — Email already registered.
 
@@ -1210,7 +1208,7 @@ Base URL: `http://localhost:8000` (or your `VITE_API_BASE_URL`).
 - **Register** (`/register`): `POST /auth/register`.
 - **Forgot / reset / verify:** `/forgot-password`, `/reset-password`, `/verify-email`.
 
-Optional `backend/.env` (security-related — copy from `backend/.env.example`; full list in [SECURITY_REPORT.md](./SECURITY_REPORT.md)):
+Optional `backend/.env` (security-related — copy from `backend/.env.example`; full list in [Production Deployment](./backend/PRODUCTION_DEPLOYMENT.md)):
 
 ```env
 JWT_SECRET_KEY=your-long-random-secret-min-32-chars
@@ -1384,7 +1382,7 @@ Forest green rebrand and shared component migration — **styling only**; no API
 | Manufacturing UI | `ManufacturingWorkflowHub`, `SalesJobCardPage`, `JobCard*.jsx`, `CreateSalesOrder.jsx` |
 | Shared filters | `FilterBar.jsx` — Finance, Quality, Maintenance filters |
 
-Verification: `npm run build` passes; `erpFormControls` code-split chunk. Details: [UI_UX_AUDIT_REPORT.md](./UI_UX_AUDIT_REPORT.md).
+Verification: `npm run build` passes; `erpFormControls` code-split chunk. Details: [README — UI design system](#ui-design-system-colors--buttons).
 
 ### Button action system pass (24 Aug 2026)
 
@@ -1400,7 +1398,7 @@ Action-based button consistency across list pages and modals — **styling only*
 | Domain wrappers | `AccountsAddButton`, `InventoryAddButton` |
 | Tests | `frontend/src/components/common/Button.test.jsx` |
 
-**Convention:** toolbar/list **create** → `variant="add"`; form **Save/Submit** → `variant="primary"` (brand green). Details: [UI_UX_AUDIT_REPORT.md](./UI_UX_AUDIT_REPORT.md).
+**Convention:** toolbar/list **create** → `variant="add"`; form **Save/Submit** → `variant="primary"` (brand green). Details: [README — UI design system](#ui-design-system-colors--buttons).
 
 ### Known limitations (not bugs)
 
@@ -1416,7 +1414,7 @@ Action-based button consistency across list pages and modals — **styling only*
 
 ## Security Audit & Hardening (Aug 2026)
 
-Authorized full-stack security review of Insights Iva (React + FastAPI + SQLite). Scope: authentication, RBAC/IDOR, API validation, CORS/headers, secrets, error handling, frontend session handling, print XSS, and PostgreSQL migration readiness. **No destructive testing.** Full findings: [SECURITY_REPORT.md](./SECURITY_REPORT.md).
+Authorized full-stack security review of Insights Iva (React + FastAPI + SQLite). Scope: authentication, RBAC/IDOR, API validation, CORS/headers, secrets, error handling, frontend session handling, print XSS, and PostgreSQL migration readiness. **No destructive testing.** Full findings: [Production Deployment](./backend/PRODUCTION_DEPLOYMENT.md).
 
 ### Security model (baseline)
 
@@ -1479,7 +1477,7 @@ Backend authorization is **authoritative**. Frontend route checks improve UX onl
 
 ### PostgreSQL migration notes
 
-SQLite-specific items to address before migration: `require_sqlite` in `config.py`, startup `ALTER TABLE` in `main.py`, boolean/JSON/datetime column types, and concurrent-write patterns. See [SECURITY_REPORT.md](./SECURITY_REPORT.md) for the full compatibility checklist.
+SQLite-specific items to address before migration: `require_sqlite` in `config.py`, startup `ALTER TABLE` in `main.py`, boolean/JSON/datetime column types, and concurrent-write patterns. See [Production Deployment](./backend/PRODUCTION_DEPLOYMENT.md) for the full compatibility checklist.
 
 ---
 
@@ -1633,7 +1631,7 @@ The codebase is modular and largely production-oriented: live APIs drive invento
 5. **Shared date/calendar controls (21 Aug)** — `dateUtils.js`, `dateControls.jsx`, duplicate calendar icon fix.
 6. **HR dashboards** — Mockup-aligned pages with API merge fallbacks in `hrMasterData.js` when live data is empty.
 
-For setup and features, see [README.md](./README.md). For security, see [SECURITY_REPORT.md](./SECURITY_REPORT.md). For UI migration status, see [UI_UX_AUDIT_REPORT.md](./UI_UX_AUDIT_REPORT.md).
+For setup and features, see [README.md](./README.md). For security, see [Production Deployment](./backend/PRODUCTION_DEPLOYMENT.md). For UI migration status, see [README — UI design system](#ui-design-system-colors--buttons).
 
 ---
 
@@ -1818,8 +1816,8 @@ cd backend && pytest
 | Document | Purpose |
 |----------|---------|
 | [README.md](./README.md) | Product overview, setup, API map, RBAC summary |
-| [SECURITY_REPORT.md](./SECURITY_REPORT.md) | Auth, RBAC enforcement, tenant isolation |
-| [UI_UX_AUDIT_REPORT.md](./UI_UX_AUDIT_REPORT.md) | Design system, button migration, UX status |
+| [Production Deployment](./backend/PRODUCTION_DEPLOYMENT.md) | Auth, RBAC enforcement, tenant isolation |
+| [README — UI design system](#ui-design-system-colors--buttons) | Design system, button migration, UX status |
 | [backend/PRODUCTION_DEPLOYMENT.md](./backend/PRODUCTION_DEPLOYMENT.md) | Production deploy checklist |
 
 ---
@@ -1851,13 +1849,13 @@ Recent product UI work (design tokens, HR dashboards, manufacturing workflow, Se
 
 **Manufacturing workflow note (18 Aug 2026):** All `/manufacturing/workflow/*` endpoints require JWT and enforce team-based actions via `workflow_team_service` and `workflow_constants.ROLE_TO_TEAMS`. Transitions are validated by the state machine; invalid cross-team actions are rejected server-side. Job card and material-check records are tenant-scoped like other business entities. Frontend workflow UI is presentational — authorization is enforced on every API call.
 
-**UI/UX pass note (18 Aug 2026):** Forest green rebrand and `design-system/` migration are styling-only. No new public routes without auth, no relaxation of CORS, and no change to token storage or session handling. See [UI_UX_AUDIT_REPORT.md](./UI_UX_AUDIT_REPORT.md).
+**UI/UX pass note (18 Aug 2026):** Forest green rebrand and `design-system/` migration are styling-only. No new public routes without auth, no relaxation of CORS, and no change to token storage or session handling. See [README — UI design system](#ui-design-system-colors--buttons).
 
 **Button consistency pass (24 Aug 2026):** Action-based button variants (`add`, `view`, `edit`, `danger`), `AddButton`, and `TableActionButtons` migrated across 80+ list/toolbar pages. **Styling and component structure only** — no changes to auth flows, JWT handling, RBAC matrices, route guards, API endpoints, or tenant isolation. Delete/Edit buttons remain client-side UX; server-side `require_permission` / `require_action` unchanged.
 
 **HR module note (Aug 2026):** New HR Settings UI includes a “two-factor authentication” checkbox and session/password fields — these are **client-side only** until wired to backend policy. HR dashboard demo data in `hrMasterData.js` is read-only preview when APIs are empty; it does not bypass authentication or tenant isolation. HR write endpoints (leave, payroll, performance create) remain protected by existing JWT + RBAC + `tenant_scope`.
 
-For product setup and module overview, see [README.md](./README.md). For architecture and recent UI/live-data analysis, see [PROJECT_ANALYSIS_REPORT.md](./PROJECT_ANALYSIS_REPORT.md).
+For product setup and module overview, see [README.md](./README.md). For architecture and recent UI/live-data analysis, see [README — Architecture overview](#architecture).
 
 ## Completed Security Features
 
@@ -2174,8 +2172,8 @@ SMTP_FROM_EMAIL=noreply@your-domain.com
 | Document | Purpose |
 |----------|---------|
 | [README.md](./README.md) | Features, setup, API overview, design system notes |
-| [PROJECT_ANALYSIS_REPORT.md](./PROJECT_ANALYSIS_REPORT.md) | Structure review, live-data findings, workflow engine |
-| [UI_UX_AUDIT_REPORT.md](./UI_UX_AUDIT_REPORT.md) | Design system adoption, UI migration status |
+| [README — Architecture overview](#architecture) | Structure review, live-data findings, workflow engine |
+| [README — UI design system](#ui-design-system-colors--buttons) | Design system adoption, UI migration status |
 
 ## Change Log (Documentation)
 
@@ -2670,8 +2668,8 @@ Search state, filtering logic, API parameters, pagination, combobox keyboard nav
 ## Related Documentation
 
 - [README.md](./README.md) — setup, RBAC, design system overview  
-- [SECURITY_REPORT.md](./SECURITY_REPORT.md) — auth/session (separate from visual UX)  
-- [PROJECT_ANALYSIS_REPORT.md](./PROJECT_ANALYSIS_REPORT.md) — architecture, RBAC flow  
+- [Production Deployment](./backend/PRODUCTION_DEPLOYMENT.md) — auth/session (separate from visual UX)  
+- [README — Architecture overview](#architecture) — architecture, RBAC flow  
 
 ---
 

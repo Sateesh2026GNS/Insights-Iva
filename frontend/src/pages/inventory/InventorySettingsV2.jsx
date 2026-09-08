@@ -203,7 +203,7 @@ export default function InventorySettingsV2() {
 
   return (
     <div className="min-w-0 space-y-5 px-2 pt-2 pb-24 sm:px-4 lg:px-6">
-      <PageHeader
+      <PageHeader variant="inventory"
         backTo="/settings"
         backLabel="Back to Settings"
         action={

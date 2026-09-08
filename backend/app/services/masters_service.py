@@ -12,7 +12,13 @@ from app.repositories.product_repository import ProductRepository
 from app.schemas.machine import MachineCreateExtended, MachineFullUpdate
 from app.schemas.product import BomItemCreate, ProductCreate, ProductUpdate
 from app.schemas.vendor import VendorBulkImportRequest, VendorCreate, VendorUpdate
-from app.services.machine_service import create_machine_extended, get_machine_detail, list_machines_enriched, update_machine_full
+from app.services.machine_service import (
+    create_machine_extended,
+    delete_machine_full,
+    get_machine_detail,
+    list_machines_enriched,
+    update_machine_full,
+)
 from app.services.product_service import (
     add_bom_item,
     create_product,
@@ -126,6 +132,9 @@ class MastersService:
         if not m:
             return None
         return {"id": m.id, "code": m.code, "name": m.name, "status": m.status}
+
+    def delete_machine(self, machine_id: int) -> bool:
+        return delete_machine_full(self.db, self.tenant_id, machine_id)
 
     # ── Vendors (Masters → Vendors page) ───────────────────────────────────
 

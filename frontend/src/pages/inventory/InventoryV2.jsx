@@ -14,6 +14,7 @@ import AddNewItemModal from "../../components/sales/AddNewItemModal";
 import InventoryRowActionsMenu from "../../components/inventory/InventoryRowActionsMenu";
 import RecordDetailModal from "../../components/inventory/RecordDetailModal";
 import Loader from "../../components/common/Loader";
+import PageHeader from "../../components/common/PageHeader";
 import Button from "../../components/common/Button";
 import EmptyState from "../../components/common/EmptyState";
 import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
@@ -486,7 +487,12 @@ export default function InventoryV2() {
   }
 
   return (
-    <InventoryPageShell>
+    <InventoryPageShell className="space-y-5">
+      <PageHeader
+        variant="inventory"
+        title="Inventory"
+        subtitle="Manage items, categories, and stock levels"
+      />
       <InventoryPageCard>
         <InventoryTabs
           active={tab}

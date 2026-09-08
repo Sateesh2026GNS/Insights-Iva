@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 /**
  * In-page toolbar under the global Navbar title.
  * Page name lives in Navbar via getPageTitle — avoid repeating it here unless showTitle.
+ * variant="erp" (default) — green government-style header band.
  */
 export default function PageHeader({
   title,
@@ -15,9 +16,34 @@ export default function PageHeader({
   eyebrow,
   showTitle = false,
   className = "",
+  variant = "erp",
 }) {
   const toolbar = action ?? actions;
   const hasBody = Boolean(backTo || eyebrow || (showTitle && title) || subtitle || toolbar);
+  const isHero = variant === "erp" || variant === "inventory";
+
+  if (isHero) {
+    const heroTitle = (showTitle && title) || title || subtitle;
+    const heroSubtitle = (showTitle && title) || title ? subtitle : null;
+    if (!heroTitle && !toolbar) return null;
+    return (
+      <header className={`erp-hero-header inventory-hero-header ${className}`.trim()}>
+        <div className="min-w-0 flex-1">
+          {backTo ? (
+            <Link to={backTo} className="erp-hero-header__back inventory-hero-header__back">
+              <ArrowLeft className="h-4 w-4" aria-hidden />
+              {backLabel}
+            </Link>
+          ) : null}
+          {eyebrow ? <p className="text-xs font-semibold uppercase tracking-wide text-white/80">{eyebrow}</p> : null}
+          {heroTitle ? <h2 className="erp-hero-header__title inventory-hero-header__title">{heroTitle}</h2> : null}
+          {heroSubtitle ? <p className="erp-hero-header__subtitle inventory-hero-header__subtitle">{heroSubtitle}</p> : null}
+        </div>
+        {toolbar ? <div className="erp-hero-header__actions inventory-hero-header__actions">{toolbar}</div> : null}
+      </header>
+    );
+  }
+
   if (!hasBody) return null;
 
   return (

@@ -24,6 +24,10 @@ async function apiPut(url, data, config) {
   return unwrap(await api.put(url, data, config));
 }
 
+async function apiDelete(url, config) {
+  return unwrap(await api.delete(url, config));
+}
+
 export const seedProducts = () => apiPost("/api/masters/products/seed").catch(() => ({ data: { status: "ok" } }));
 
 export const getProducts = () => apiGet("/api/masters/products");
@@ -144,6 +148,9 @@ export const createMachineFull = (payload) =>
 
 export const updateMachineFull = (machineId, payload) =>
   apiPut(`/api/masters/machines/${machineId}`, payload);
+
+export const deleteMachine = (machineId) =>
+  apiDelete(`/api/masters/machines/${machineId}`);
 
 export const createMachine = (payload) =>
   apiPost("/api/masters/machines/simple", payload);

@@ -15,28 +15,29 @@ export function HrPage({ children, className = "" }) {
 }
 
 export function HrPageHeader({ title, subtitle, action, breadcrumb }) {
+  if (!title && !subtitle && !action && !breadcrumb) return null;
   return (
-    <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-      <div className="min-w-0 space-y-1">
-        {title ? <h1 className="ui-page-title">{title}</h1> : null}
+    <header className="erp-hero-header inventory-hero-header">
+      <div className="min-w-0 flex-1 space-y-1">
+        {title ? <h1 className="erp-hero-header__title inventory-hero-header__title m-0">{title}</h1> : null}
         {breadcrumb || null}
-        {subtitle ? <p className="ui-subtitle mt-0">{subtitle}</p> : null}
+        {subtitle ? <p className="erp-hero-header__subtitle inventory-hero-header__subtitle m-0">{subtitle}</p> : null}
       </div>
-      {action ? <div className="ui-toolbar flex shrink-0 flex-wrap items-center gap-2">{action}</div> : null}
+      {action ? <div className="erp-hero-header__actions inventory-hero-header__actions">{action}</div> : null}
     </header>
   );
 }
 
 export function HrPanel({ title, action, children, className = "" }) {
   return (
-    <section className={`ui-card p-5 ${className}`.trim()}>
+    <section className={`ui-card overflow-hidden ${className}`.trim()}>
       {title || action ? (
-        <div className="mb-4 flex items-center justify-between gap-3">
-          {title ? <h2 className="ui-section-title">{title}</h2> : <span />}
+        <div className="erp-section-header erp-section-header--row">
+          {title ? <h2 className="erp-section-header__title">{title}</h2> : <span />}
           {action}
         </div>
       ) : null}
-      {children}
+      <div className="p-5">{children}</div>
     </section>
   );
 }

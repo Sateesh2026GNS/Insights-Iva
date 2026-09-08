@@ -60,7 +60,7 @@ docker compose -f docker-compose.postgres.yml up -d
 
 # 2. Apply schema via Alembic (required — app does NOT create_all in production)
 alembic upgrade head
-alembic current   # expect: g4h5i6j7k8l9 (head)
+alembic current   # expect: k9l0m1n2o3p4 (head)
 
 # 3. One-time SQLite → PostgreSQL data migration (manual, not automatic)
 # python scripts/migrate_sqlite_to_postgres.py --dry-run

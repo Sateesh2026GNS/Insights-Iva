@@ -488,7 +488,7 @@ export default function StockLedger() {
     <div className="min-w-0 space-y-5 pb-4">
       {storeMode ? <StoreManagerNav /> : null}
 
-      <PageHeader
+      <PageHeader variant="inventory"
         subtitle="Track and analyze stock movement history"
         action={
           <div className="flex flex-wrap items-end gap-3">

@@ -537,7 +537,7 @@ export default function StockTransfer() {
   return (
     <ListPageShell>
     <div className="min-w-0 space-y-5 pb-4">
-      <PageHeader
+      <PageHeader variant="inventory"
         subtitle="Transfer stock between warehouses."
         action={
           <InventoryHeaderControls

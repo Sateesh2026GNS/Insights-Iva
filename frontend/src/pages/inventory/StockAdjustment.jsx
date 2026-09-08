@@ -567,7 +567,7 @@ export default function StockAdjustment() {
     <div className="min-w-0 space-y-5 pb-4">
       {storeMode ? <StoreManagerNav /> : null}
 
-      <PageHeader
+      <PageHeader variant="inventory"
         subtitle="Adjust stock quantity for items"
         action={
           <InventoryHeaderControls

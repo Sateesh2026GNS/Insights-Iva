@@ -325,7 +325,7 @@ export default function CreateItem() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 space-y-6 pb-28 min-w-0 w-full">
-      <PageHeader
+      <PageHeader variant="inventory"
         title={isFinishedGood ? "Add New Finished Good" : "Add New Raw Material"}
         subtitle={
           isFinishedGood

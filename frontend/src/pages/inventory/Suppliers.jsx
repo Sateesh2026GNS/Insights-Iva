@@ -72,7 +72,7 @@ export default function Suppliers() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
+      <PageHeader variant="inventory"
         subtitle="View and manage your suppliers. Link them to materials and purchase orders."
         action={createAction}
       />

@@ -69,10 +69,10 @@ export default function EditInventoryItemModal({ item, onClose, onSaved, addToas
   };
 
   const field = (label, key, props = {}) => (
-    <label className="block text-xs font-semibold text-slate-600">
-      {label}
+    <label className="block">
+      <span className="ui-label">{label}</span>
       <input
-        className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+        className="ui-input mt-1 w-full"
         value={form[key]}
         onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
         {...props}
@@ -81,14 +81,14 @@ export default function EditInventoryItemModal({ item, onClose, onSaved, addToas
   );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+    <div className="inventory-form-modal fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <form
         onSubmit={handleSave}
-        className="w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-xl"
+        className="w-full max-w-lg overflow-hidden rounded-lg border border-[var(--inv-card-border,#d1d5db)] bg-white shadow-xl"
       >
-        <div className="flex items-center justify-between border-b px-5 py-4">
-          <h2 className="text-lg font-bold text-slate-900">Edit Item</h2>
-          <button type="button" onClick={onClose} className="rounded-lg p-2 hover:bg-slate-100">
+        <div className="inventory-hero-header rounded-t-lg border-0 px-5 py-4">
+          <h2 className="inventory-hero-header__title text-lg">Edit Item</h2>
+          <button type="button" onClick={onClose} className="rounded-lg p-2 text-white hover:bg-white/10">
             <X className="h-5 w-5" />
           </button>
         </div>

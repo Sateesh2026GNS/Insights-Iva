@@ -401,7 +401,7 @@ export default function Warehouses() {
 
   return (
     <div className="min-w-0 space-y-5 pb-4">
-      <PageHeader
+      <PageHeader variant="inventory"
         subtitle="Manage and organize all your warehouses"
         action={
           <InventoryHeaderControls

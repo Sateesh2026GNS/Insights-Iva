@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes, useParams } from "react-router-dom";
 
 import ProtectedRoute from "../components/layout/ProtectedRoute";
+import InventoryLayout from "../layouts/InventoryLayout";
 import { HR_PLACEHOLDER_PATHS } from "../config/hrRouteMeta";
 /* Pages are lazy-loaded via lazyPages – see vite.config manualChunks for vendor splits */
 import * as P from "./lazyPages";
@@ -140,52 +141,35 @@ export default function AppRoutes() {
         }
       />
       <Route
-        path="/inventory"
         element={
           <ProtectedRoute>
-            <P.InventoryV2 />
+            <InventoryLayout />
           </ProtectedRoute>
         }
+      >
+      <Route
+        path="/inventory"
+        element={<P.InventoryV2 />}
       />
       <Route
         path="/inventory/dashboard"
-        element={
-          <ProtectedRoute>
-            <P.InventoryDashboard />
-          </ProtectedRoute>
-        }
+        element={<P.InventoryDashboard />}
       />
       <Route
         path="/inventory/settings"
-        element={
-          <ProtectedRoute>
-            <P.InventorySettingsV2 />
-          </ProtectedRoute>
-        }
+        element={<P.InventorySettingsV2 />}
       />
       <Route
         path="/inventory/list"
-        element={
-          <ProtectedRoute>
-            <P.InventoryList />
-          </ProtectedRoute>
-        }
+        element={<P.InventoryList />}
       />
       <Route
         path="/inventory/items/create"
-        element={
-          <ProtectedRoute>
-            <P.CreateItem />
-          </ProtectedRoute>
-        }
+        element={<P.CreateItem />}
       />
       <Route
         path="/inventory/items/:id"
-        element={
-          <ProtectedRoute>
-            <P.InventoryItemDetailV2 />
-          </ProtectedRoute>
-        }
+        element={<P.InventoryItemDetailV2 />}
       />
       <Route
         path="/inventory/items"
@@ -193,124 +177,65 @@ export default function AppRoutes() {
       />
       <Route
         path="/inventory/raw-materials"
-        element={
-          <ProtectedRoute>
-            <P.RawMaterials />
-          </ProtectedRoute>
-        }
+        element={<P.RawMaterials />}
       />
       <Route
         path="/inventory/finished-goods"
-        element={
-          <ProtectedRoute>
-            <P.FinishedGoods />
-          </ProtectedRoute>
-        }
+        element={<P.FinishedGoods />}
       />
       <Route
         path="/inventory/stock-transfer"
-        element={
-          <ProtectedRoute>
-            <P.StockTransfer />
-          </ProtectedRoute>
-        }
+        element={<P.StockTransfer />}
       />
       <Route
         path="/inventory/stock-adjustment"
-        element={
-          <ProtectedRoute>
-            <P.StockAdjustment />
-          </ProtectedRoute>
-        }
+        element={<P.StockAdjustment />}
       />
       <Route
         path="/inventory/stock-ledger"
-        element={
-          <ProtectedRoute>
-            <P.StockLedger />
-          </ProtectedRoute>
-        }
+        element={<P.StockLedger />}
       />
       <Route
         path="/inventory/stock-movement"
-        element={
-          <ProtectedRoute>
-            <P.StockMovement />
-          </ProtectedRoute>
-        }
+        element={<P.StockMovement />}
       />
       <Route
         path="/inventory/stock-in"
-        element={
-          <ProtectedRoute>
-            <P.StoreStockIn />
-          </ProtectedRoute>
-        }
+        element={<P.StoreStockIn />}
       />
       <Route
         path="/inventory/material-requests"
-        element={
-          <ProtectedRoute>
-            <P.StoreMaterialRequests />
-          </ProtectedRoute>
-        }
+        element={<P.StoreMaterialRequests />}
       />
       <Route
         path="/inventory/issue-materials"
-        element={
-          <ProtectedRoute>
-            <P.StoreIssueMaterials />
-          </ProtectedRoute>
-        }
+        element={<P.StoreIssueMaterials />}
       />
       <Route
         path="/inventory/stock-return"
-        element={
-          <ProtectedRoute>
-            <P.StoreStockReturn />
-          </ProtectedRoute>
-        }
+        element={<P.StoreStockReturn />}
       />
       <Route
         path="/inventory/history"
-        element={
-          <ProtectedRoute>
-            <P.StoreInventoryHistory />
-          </ProtectedRoute>
-        }
+        element={<P.StoreInventoryHistory />}
       />
       <Route
         path="/inventory/warehouses"
-        element={
-          <ProtectedRoute>
-            <P.Warehouses />
-          </ProtectedRoute>
-        }
+        element={<P.Warehouses />}
       />
       <Route
         path="/inventory/suppliers"
-        element={
-          <ProtectedRoute>
-            <P.Suppliers />
-          </ProtectedRoute>
-        }
+        element={<P.Suppliers />}
       />
       <Route
         path="/inventory/warehouses/create"
-        element={
-          <ProtectedRoute>
-            <P.CreateWarehouse />
-          </ProtectedRoute>
-        }
+        element={<P.CreateWarehouse />}
       />
       <Route
         path="/inventory/suppliers/create"
-        element={
-          <ProtectedRoute>
-            <P.CreateSupplier />
-          </ProtectedRoute>
-        }
+        element={<P.CreateSupplier />}
       />
+      </Route>
       <Route
         path="/sales"
         element={

@@ -50,7 +50,7 @@ export default function CreateWarehouse() {
         <ArrowLeft className="h-4 w-4" />
         Back to warehouses
       </Link>
-      <PageHeader
+      <PageHeader variant="inventory"
         subtitle="Add a new warehouse to organize and track stock by location."
       />
       <form onSubmit={handleSubmit} className="ui-card space-y-4 p-6">

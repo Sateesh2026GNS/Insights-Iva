@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Cpu, X } from "lucide-react";
 
 import Button from "../common/Button";
-import { createMachine } from "../../api/productionApi";
+import { createMachine, updateMachineFull } from "../../api/productionApi";
 import { DEPARTMENTS, PRODUCTION_LINES, MACHINE_STATUSES } from "../../data/machinesMasterData";
 import { useToast } from "../../context/ToastContext";
 import useTenantId from "../../hooks/useTenantId";
@@ -19,17 +19,37 @@ const EMPTY_FORM = {
   assigned_operator: "",
 };
 
+function seedFormFromMachine(m) {
+  return {
+    name: m?.name || "",
+    code: m?.code || "",
+    department: m?.department || "Machining",
+    production_line: m?.production_line || "Line A",
+    status: m?.status || "idle",
+    location: m?.location || "",
+    assigned_operator: m?.assigned_operator || "",
+  };
+}
+
 export default function CreateMachineModal({
   open,
   onClose,
   onSaved,
   placement = "drawer",
+  machine = null,
 }) {
   const tenantId = useTenantId();
   const { addToast } = useToast();
+  const isEdit = Boolean(machine?.id);
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
+
+  useEffect(() => {
+    if (!open) return;
+    setForm(machine?.id ? seedFormFromMachine(machine) : EMPTY_FORM);
+    setErrors({});
+  }, [open, machine]);
 
   if (!open) return null;
 
@@ -59,7 +79,6 @@ export default function CreateMachineModal({
     const name = form.name.trim();
 
     const payload = {
-      tenant_id: Number(tenantId) || 1,
       code,
       name,
       status: form.status || "idle",
@@ -71,15 +90,24 @@ export default function CreateMachineModal({
     };
 
     try {
-      const res = await createMachine(payload);
-      const createdMachine = res?.data || payload;
-
-      addToast("Machine created successfully", "success");
-      setForm(EMPTY_FORM);
-      onSaved?.(createdMachine);
+      if (isEdit) {
+        const res = await updateMachineFull(machine.id, payload);
+        const updatedMachine = res?.data ? { ...machine, ...res.data, ...payload } : { ...machine, ...payload };
+        addToast("Machine updated successfully", "success");
+        onSaved?.(updatedMachine);
+      } else {
+        const res = await createMachine({
+          ...payload,
+          tenant_id: Number(tenantId) || 1,
+        });
+        const createdMachine = res?.data || payload;
+        addToast("Machine created successfully", "success");
+        setForm(EMPTY_FORM);
+        onSaved?.(createdMachine);
+      }
       onClose?.();
     } catch (err) {
-      addToast(apiErrorMessage(err, "Failed to create machine"), "error");
+      addToast(apiErrorMessage(err, isEdit ? "Failed to update machine" : "Failed to create machine"), "error");
     } finally {
       setSaving(false);
     }
@@ -113,9 +141,11 @@ export default function CreateMachineModal({
             </span>
             <div>
               <h2 id="create-machine-title" className="text-base font-bold text-slate-900">
-                Create Machine
+                {isEdit ? "Edit Machine" : "Create Machine"}
               </h2>
-              <p className="text-xs text-slate-500">Register a new machine to the shop floor</p>
+              <p className="text-xs text-slate-500">
+                {isEdit ? "Update machine details" : "Register a new machine to the shop floor"}
+              </p>
             </div>
           </div>
           <button
@@ -139,7 +169,7 @@ export default function CreateMachineModal({
               onChange={(e) => {
                 const name = e.target.value;
                 handleChange("name", name);
-                if (!form.code && name) {
+                if (!isEdit && !form.code && name) {
                   const autoCode = name.replace(/[^a-zA-Z0-9]/g, "").slice(0, 4).toUpperCase();
                   handleChange("code", autoCode ? `${autoCode}-01` : "MCH-01");
                 }
@@ -250,7 +280,7 @@ export default function CreateMachineModal({
             Cancel
           </Button>
           <Button variant="primary" size="sm" type="submit" loading={saving}>
-            Create Machine
+            {isEdit ? "Save Changes" : "Create Machine"}
           </Button>
         </div>
       </form>

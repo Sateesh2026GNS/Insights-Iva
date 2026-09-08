@@ -59,7 +59,7 @@ export default function CreateSupplier() {
         <ArrowLeft className="h-4 w-4" />
         Back to suppliers
       </Link>
-      <PageHeader
+      <PageHeader variant="inventory"
         subtitle="Add a new supplier to link with materials and purchase orders."
       />
       <form onSubmit={handleSubmit} className="ui-card space-y-4 p-6">

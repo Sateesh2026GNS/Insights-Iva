@@ -143,7 +143,7 @@ function IdleReasonModal({ onConfirm, onCancel }) {
   );
 }
 
-export default function MachineDetailModal({ machine, detail, onClose, onStatusChange, operatorMode = false }) {
+export default function MachineDetailModal({ machine, detail, onClose, onStatusChange, operatorMode = false, viewOnly = false }) {
   const [tab, setTab] = useState("overview");
   const [showIdleModal, setShowIdleModal] = useState(false);
 
@@ -219,6 +219,7 @@ export default function MachineDetailModal({ machine, detail, onClose, onStatusC
           </div>
 
           {/* Action buttons */}
+          {!viewOnly ? (
           <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 px-5 py-2">
             {operatorMode ? (
               /* Operator: only Start / Stop */
@@ -273,6 +274,7 @@ export default function MachineDetailModal({ machine, detail, onClose, onStatusC
               </>
             )}
           </div>
+          ) : null}
 
           {/* Tabs */}
           <div className="flex flex-wrap gap-1 border-b border-slate-100 px-5 py-2">

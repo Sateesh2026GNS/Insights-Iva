@@ -432,7 +432,7 @@ export default function InventoryDashboard() {
     <div className="space-y-5 pb-4">
       <StoreManagerNav />
 
-      <PageHeader
+      <PageHeader variant="inventory"
         subtitle="Overview of inventory and stock activities"
         action={
           <InventoryHeaderControls

@@ -155,14 +155,14 @@ export default function MaterialFormModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4">
-      <div className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
-        <div className="flex items-center justify-between border-b px-6 py-4">
-          <div>
-            <h2 className="text-lg font-bold text-slate-900">{isEdit ? config.editTitle : config.addTitle}</h2>
-            <p className="text-sm text-slate-500">{isEdit ? config.editSubtitle : config.addSubtitle}</p>
+    <div className="inventory-form-modal fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4">
+      <div className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-lg border border-[var(--inv-card-border,#d1d5db)] bg-white shadow-xl">
+        <div className="inventory-hero-header rounded-t-lg border-0 px-6 py-4">
+          <div className="min-w-0">
+            <h2 className="inventory-hero-header__title text-lg">{isEdit ? config.editTitle : config.addTitle}</h2>
+            <p className="inventory-hero-header__subtitle text-sm">{isEdit ? config.editSubtitle : config.addSubtitle}</p>
           </div>
-          <button type="button" onClick={onClose} className="rounded-lg p-2 hover:bg-slate-100" aria-label="Close">
+          <button type="button" onClick={onClose} className="rounded-lg p-2 text-white hover:bg-white/10" aria-label="Close">
             <X className="h-5 w-5" />
           </button>
         </div>
