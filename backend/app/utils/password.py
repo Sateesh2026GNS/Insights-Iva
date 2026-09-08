@@ -2,9 +2,9 @@
 
 import re
 
-PASSWORD_MIN_LENGTH = 12
+PASSWORD_MIN_LENGTH = 8
 
-_MSG_MIN_LENGTH = "Password must be at least 12 characters."
+_MSG_MIN_LENGTH = "Password must be at least 8 characters."
 _MSG_UPPER = "Password must include at least one uppercase letter."
 _MSG_LOWER = "Password must include at least one lowercase letter."
 _MSG_DIGIT = "Password must include at least one number."

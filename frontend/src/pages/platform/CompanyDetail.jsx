@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, Building2, CreditCard, Users } from "lucide-react";
+import { ArrowLeft, Building2, CreditCard, Eye, EyeOff, KeyRound, Loader2, Users } from "lucide-react";
 
 import PlatformProtectedRoute from "../../components/layout/PlatformProtectedRoute";
 import BrandLogo from "../../components/common/BrandLogo";
 import "./AdminPortal.css";
+import { apiErrorMessage } from "../../utils/apiError";
 import {
   getCompany,
   getCompanySubscription,
@@ -74,6 +75,9 @@ function CompanyDetailContent() {
   const [newPassword, setNewPassword] = useState("");
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const [isResetting, setIsResetting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const load = useCallback(async (isRefresh = false) => {
     if (!isRefresh) setLoading(true);
@@ -99,10 +103,24 @@ function CompanyDetailContent() {
 
   const handleResetPassword = async (e) => {
     e.preventDefault();
-    if (!newPassword || newPassword.length < 8) return;
-    const res = await resetCompanyPassword(tenantId, newPassword);
-    setMessage(res.message);
-    setNewPassword("");
+    setError("");
+    setMessage("");
+    const trimmed = newPassword.trim();
+    if (!trimmed || trimmed.length < 8) {
+      setError("Password must be at least 8 characters long.");
+      return;
+    }
+    setIsResetting(true);
+    try {
+      const res = await resetCompanyPassword(tenantId, trimmed);
+      setMessage(res?.message || "Company admin password reset successfully.");
+      setNewPassword("");
+      await load(true);
+    } catch (err) {
+      setError(apiErrorMessage(err, "Failed to reset password. Please verify requirements and try again."));
+    } finally {
+      setIsResetting(false);
+    }
   };
 
   if (loading) return (
@@ -190,20 +208,84 @@ function CompanyDetailContent() {
 
             {/* Reset Password */}
             <div className="ap-section-head">
-              <div className="ap-section-head__icon"><Users size={16} /></div>
-              <div><div className="ap-section-head__title">Reset Company Admin Password</div></div>
+              <div className="ap-section-head__icon"><KeyRound size={16} /></div>
+              <div>
+                <div className="ap-section-head__title">Reset Company Admin Password</div>
+                {company.admin_email && (
+                  <div className="ap-section-head__sub">
+                    Target account: <strong>{company.admin_email}</strong> {company.admin_name ? `(${company.admin_name})` : ""}
+                  </div>
+                )}
+              </div>
             </div>
             <div className="ap-section-body">
-              {message && <div className="ap-alert ap-alert--success" style={{marginBottom:"0.75rem"}}>{message}</div>}
-              <form onSubmit={handleResetPassword} style={{ display: "flex", flexWrap: "wrap", gap: "0.75rem" }}>
-                <input
-                  type="password" value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="New password (min 8 chars)"
-                  className="ap-input" style={{ minWidth: "200px", flex: 1 }}
-                  minLength={8} required
-                />
-                <button type="submit" className="ap-btn ap-btn--primary">Reset Password</button>
+              {message && (
+                <div className="ap-alert ap-alert--success" style={{ marginBottom: "0.875rem" }}>
+                  {message}
+                </div>
+              )}
+              {error && (
+                <div className="ap-alert ap-alert--error" style={{ marginBottom: "0.875rem" }}>
+                  {error}
+                </div>
+              )}
+              <form onSubmit={handleResetPassword} style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "0.75rem", alignItems: "center" }}>
+                  <div style={{ position: "relative", flex: 1, minWidth: "220px" }}>
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      value={newPassword}
+                      onChange={(e) => {
+                        setNewPassword(e.target.value);
+                        if (error) setError("");
+                      }}
+                      placeholder="Enter new password (min 8 characters)"
+                      className={`ap-input ${error ? "ap-input--error" : ""}`}
+                      style={{ paddingRight: "2.75rem" }}
+                      minLength={8}
+                      disabled={isResetting}
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                      style={{
+                        position: "absolute",
+                        right: "0.75rem",
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        background: "none",
+                        border: "none",
+                        cursor: "pointer",
+                        color: "#64748b",
+                        display: "flex",
+                        alignItems: "center",
+                        padding: "0.25rem",
+                      }}
+                    >
+                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={isResetting || !newPassword}
+                    className="ap-btn ap-btn--primary"
+                    style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem" }}
+                  >
+                    {isResetting ? (
+                      <>
+                        <Loader2 size={15} className="animate-spin" />
+                        Resetting…
+                      </>
+                    ) : (
+                      "Reset Password"
+                    )}
+                  </button>
+                </div>
+                <span className="ap-field-hint">
+                  Password must be at least 8 characters. The company admin can log in with this new password immediately.
+                </span>
               </form>
             </div>
 

@@ -1,8 +1,10 @@
-import { lazy, Suspense, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 
 import AppRoutes from "./routes/AppRoutes";
 import RouteFallback from "./components/common/RouteFallback";
+import NavigationProgressBar from "./components/common/NavigationProgressBar";
+import PageTransition from "./components/common/PageTransition";
 import Navbar from "./components/layout/Navbar";
 import Sidebar from "./components/layout/Sidebar";
 import GlobalRefreshButton from "./components/common/GlobalRefreshButton";
@@ -65,6 +67,35 @@ export default function App() {
     if (typeof window === "undefined") return false;
     return window.matchMedia("(max-width: 1023px)").matches;
   });
+
+  // Guard against trackpad/wheel boundary overscroll triggering browser "Next page" / "Previous page" navigation
+  useEffect(() => {
+    const main = document.getElementById("main-content");
+    if (!main) return;
+
+    const handleWheel = (e) => {
+      // Prevent horizontal swipe navigation
+      if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+        const atLeft = main.scrollLeft <= 0;
+        const atRight = main.scrollLeft + main.clientWidth >= main.scrollWidth - 1;
+        if ((e.deltaX < 0 && atLeft) || (e.deltaX > 0 && atRight)) {
+          if (e.cancelable) e.preventDefault();
+        }
+        return;
+      }
+
+      // Prevent vertical overscroll at top or bottom ("last scroll") from chaining to browser navigation
+      const atTop = main.scrollTop <= 0;
+      const atBottom = main.scrollTop + main.clientHeight >= main.scrollHeight - 1;
+      if ((e.deltaY > 0 && atBottom) || (e.deltaY < 0 && atTop)) {
+        if (e.cancelable) e.preventDefault();
+      }
+    };
+
+    main.addEventListener("wheel", handleWheel, { passive: false });
+    return () => main.removeEventListener("wheel", handleWheel);
+  }, [location.pathname]);
+
   const showChatbot = shouldShowChatbot(user, location.pathname);
   const isInvoiceEditor =
     location.pathname === "/sales/invoices/create" ||
@@ -166,9 +197,12 @@ export default function App() {
     const showRefresh = !isAuthShell && (isAdminShell || path === "/settings" || path.startsWith("/settings/"));
     return (
       <div className={`min-h-screen ${isAdminShell ? "" : "bg-[var(--color-bg)]"}`}>
+        <NavigationProgressBar />
         <div data-page-refresh-root>
           <Suspense fallback={<RouteFallback />}>
-            <AppRoutes />
+            <PageTransition>
+              <AppRoutes />
+            </PageTransition>
           </Suspense>
         </div>
         {showRefresh ? <GlobalRefreshButton /> : null}
@@ -181,6 +215,7 @@ export default function App() {
       className="app-shell relative flex h-screen overflow-hidden dark:bg-slate-950"
       data-sidebar-collapsed={sidebarCollapsed ? "true" : "false"}
     >
+      <NavigationProgressBar />
       <Button
         as="a"
         href="#main-content"
@@ -205,29 +240,38 @@ export default function App() {
         <main
           id="main-content"
           tabIndex={-1}
-          className={`min-h-0 min-w-0 w-full flex-1 bg-transparent outline-none ${
+          style={{
+            overscrollBehavior: "contain",
+            overscrollBehaviorX: "none",
+            overscrollBehaviorY: "contain",
+          }}
+          className={`min-h-0 min-w-0 w-full flex-1 bg-transparent outline-none overscroll-contain ${
             isInvoiceEditor || isEInvoiceLogin
               ? "overflow-hidden"
               : "overflow-y-auto"
           }`}
         >
-          {isFullBleedSales || isInvoiceEditor || isEInvoiceLogin || isSettings ? (
-            <div
-              className={`min-h-full ${isSettings ? "settings-page" : ""} ${
-                isInvoiceEditor || isEInvoiceLogin ? "h-full min-h-0" : ""
-              }`}
+          <div
+            className={
+              isFullBleedSales || isInvoiceEditor || isEInvoiceLogin || isSettings
+                ? `min-h-full ${isSettings ? "settings-page" : ""} ${
+                    isInvoiceEditor || isEInvoiceLogin ? "h-full min-h-0" : ""
+                  }`
+                : "ui-page ui-stack min-w-0 w-full"
+            }
+          >
+            <Suspense
+              fallback={
+                <RouteFallback
+                  isFullBleed={isFullBleedSales || isInvoiceEditor || isEInvoiceLogin}
+                />
+              }
             >
-              <Suspense fallback={<RouteFallback />}>
+              <PageTransition>
                 <AppRoutes />
-              </Suspense>
-            </div>
-          ) : (
-            <div className="ui-page ui-stack min-w-0 w-full">
-              <Suspense fallback={<RouteFallback />}>
-                <AppRoutes />
-              </Suspense>
-            </div>
-          )}
+              </PageTransition>
+            </Suspense>
+          </div>
           {showChatbot ? (
             <Suspense fallback={null}>
               <AiChatWidget />

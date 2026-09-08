@@ -126,6 +126,64 @@
   resize: vertical;
 }
 
+.hr-create-employee__textarea-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.hr-create-employee__textarea-wrap .hr-create-employee__textarea {
+  padding-right: 40px;
+  width: 100%;
+}
+
+.hr-create-employee__location-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  color: #0f6d84;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  transition: all 0.15s ease-in-out;
+}
+
+.hr-create-employee__location-btn:hover {
+  background: #f0fdfa;
+  border-color: #0f6d84;
+  color: #0c5a6e;
+}
+
+.hr-create-employee__location-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.hr-create-employee__location-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #0f6d84;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.15s;
+}
+
+.hr-create-employee__location-link:hover {
+  text-decoration: underline;
+  color: #0c5a6e;
+}
+
 .hr-create-employee__input::placeholder,
 .hr-create-employee__textarea::placeholder {
   color: #9ca3af;
@@ -139,22 +197,63 @@
   border-radius: 6px;
   background: var(--ce-surface);
   padding: 10px 12px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.hr-create-employee__date-wrap:hover {
+  border-color: #0f6d84;
+}
+
+.hr-create-employee__date-wrap:focus-visible {
+  border-color: #0f6d84;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(15, 109, 132, 0.15);
+}
+
+.hr-create-employee__date-wrap.is-disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .hr-create-employee__date-wrap span {
   flex: 1;
   font-size: 14px;
+  user-select: none;
 }
 
 .hr-create-employee__date-wrap span.is-placeholder {
   color: #9ca3af;
 }
 
-.hr-create-employee__date-wrap input {
+.hr-create-employee__calendar-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  padding: 4px;
+  margin: -4px;
+  border-radius: 4px;
+  cursor: pointer;
+  color: #9ca3af;
+  z-index: 2;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.hr-create-employee__calendar-btn:hover {
+  color: #0f6d84;
+  background-color: rgba(15, 109, 132, 0.08);
+}
+
+.hr-create-employee__date-wrap input.hr-create-employee__date-native-input,
+.hr-create-employee__date-wrap input[type="date"] {
   position: absolute;
   inset: 0;
+  width: 100%;
+  height: 100%;
   opacity: 0;
-  cursor: pointer;
+  pointer-events: none;
 }
 
 .hr-create-employee__suffix-group {

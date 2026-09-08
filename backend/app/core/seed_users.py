@@ -12,22 +12,10 @@ from app.services.auth_service import hash_password
 
 DEFAULT_USERS = [
     {
-        "email": "operator@gnsinsights.com",
-        "password": "Operator123!",
-        "full_name": "Maya Operator",
-        "role_name": "Operator",
-    },
-    {
-        "email": "admin@gnsinsights.com",
+        "email": "admin@gnssoftwares.com",
         "password": "Admin123!",
         "full_name": "Admin User",
         "role_name": "Admin",
-    },
-    {
-        "email": "hr@gnsinsights.com",
-        "password": "Manager123!",
-        "full_name": "HR Manager",
-        "role_name": "HR Manager",
     },
 ]
 

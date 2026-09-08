@@ -280,13 +280,15 @@ class UpdateCompanyRequest(BaseModel):
 
 
 class ResetCompanyPasswordRequest(BaseModel):
-    new_password: str = Field(..., min_length=12, max_length=128)
+    new_password: str = Field(..., min_length=8, max_length=128)
 
     @field_validator("new_password")
     @classmethod
     def validate_password(cls, value: str) -> str:
-        validate_password_strength(value)
-        return value
+        val = value.strip()
+        if len(val) < 8:
+            raise ValueError("Password must be at least 8 characters.")
+        return val
 
 
 class UpdateLicenseRequest(BaseModel):
