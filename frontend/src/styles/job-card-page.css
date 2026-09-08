@@ -1,0 +1,124 @@
+/**
+ * Job Card form — My Job Cards shell + ERP section bands.
+ */
+
+.job-card-page {
+  min-height: 0;
+  background: transparent;
+  margin: 0;
+}
+
+.job-card-page__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.625rem 1rem;
+  border-bottom: 1px solid var(--color-border-soft);
+  background: var(--color-surface-muted, #f9fafb);
+}
+
+.job-card-page__meta-chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: var(--radius-md, 0.375rem);
+  border: 1px solid var(--color-border-soft);
+  background: var(--color-surface);
+  padding: 0.1875rem 0.5rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.job-card-page__form {
+  display: flex;
+  flex-direction: column;
+}
+
+.job-card-page__section {
+  border-bottom: 1px solid var(--color-border-soft);
+}
+
+.job-card-page__section:last-of-type {
+  border-bottom: none;
+}
+
+.job-card-page__section-body {
+  padding: 1rem;
+}
+
+@media (min-width: 640px) {
+  .job-card-page__section-body {
+    padding: 1rem 1.25rem 1.25rem;
+  }
+}
+
+.job-card-page__grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem 1rem;
+}
+
+@media (min-width: 768px) {
+  .job-card-page__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.875rem 1.125rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .job-card-page__grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem 1.25rem;
+  }
+}
+
+.job-card-page__field--span-full {
+  grid-column: 1 / -1;
+}
+
+.job-card-page__field {
+  min-width: 0;
+}
+
+.job-card-page__lines-block {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px dashed var(--color-border-soft);
+}
+
+.job-card-page__footer {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 0.625rem;
+  padding: 0.875rem 1rem;
+  border-top: 1px solid var(--color-border-soft);
+  background: var(--color-surface-muted, #fafafa);
+}
+
+@media (min-width: 640px) {
+  .job-card-page__footer {
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    padding: 0.875rem 1.25rem;
+  }
+}
+
+.job-card-page__footer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.job-card-page__below {
+  display: flex;
+  flex-direction: column;
+  gap: var(--section-gap, 1rem);
+}
+
+.dark .job-card-page__meta,
+.dark .job-card-page__footer {
+  background: var(--color-surface-muted);
+}

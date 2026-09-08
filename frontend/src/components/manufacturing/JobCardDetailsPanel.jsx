@@ -4,6 +4,7 @@ import { ArrowLeft, Plus, Save } from "lucide-react";
 
 import Button from "../common/Button";
 import JobCardDetailsForm from "./JobCardDetailsForm";
+import "../../styles/job-card-page.css";
 import useAuth from "../../hooks/useAuth";
 import useJobCardDetails from "../../hooks/useJobCardDetails";
 import useTenantId from "../../hooks/useTenantId";
@@ -164,8 +165,8 @@ export default function JobCardDetailsPanel({
   }
 
   return (
-    <JobCardDetailsForm
-      showHeader
+    <div className="job-card-page" style={{ margin: 0 }}>
+      <JobCardDetailsForm
       form={{
         ...displayForm,
         sales_order_no: displayForm?.sales_order_no || displayOrder?.order_number || "",
@@ -208,6 +209,7 @@ export default function JobCardDetailsPanel({
               )
       }
       footer={footer}
-    />
+      />
+    </div>
   );
 }

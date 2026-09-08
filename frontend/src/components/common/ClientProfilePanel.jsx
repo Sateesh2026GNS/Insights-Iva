@@ -211,7 +211,7 @@ export default function ClientProfilePanel({ onClose, onRequestLogout }) {
                     item.iconBrand ? " profile-dropdown__item-icon--brand" : ""
                   }`}
                 >
-                  <Icon className="h-4 w-4" aria-hidden />
+                  <Icon className="h-3.5 w-3.5" aria-hidden />
                 </span>
                 {item.label}
               </button>
@@ -234,7 +234,7 @@ export default function ClientProfilePanel({ onClose, onRequestLogout }) {
             className="profile-dropdown__item profile-dropdown__item--danger"
           >
             <span className="profile-dropdown__item-icon">
-              <LogOut className="h-4 w-4" aria-hidden />
+              <LogOut className="h-3.5 w-3.5" aria-hidden />
             </span>
             Sign Out
           </button>

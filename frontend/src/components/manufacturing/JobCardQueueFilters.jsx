@@ -261,115 +261,195 @@ export default function JobCardQueueFilters({
   }
 
   return (
-    <div className="border-b border-[var(--color-border-soft)] px-4 py-3">
+    <div className="border-b border-[var(--color-border-soft)] bg-[var(--color-surface-muted)]/20 px-4 py-3">
       <div className="flex flex-col gap-3">
-        <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-end">
-          <div className="min-w-[220px] flex-1">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
+          <div className="min-w-0 flex-1">
+            <FilterLabel>Search</FilterLabel>
             <SearchBar
               value={search}
               onChange={(v) => onSearchChange?.(v)}
-              placeholder="Search"
+              placeholder="Search job cards, customers, products…"
               className="w-full"
               aria-label="Search job cards"
-              clearable={false}
+              size="compact"
             />
           </div>
-
-          <div className="w-full sm:w-auto sm:min-w-[140px]">
-            <FilterLabel>Status</FilterLabel>
-            <Select
-              value={status}
-              onChange={(e) => onStatusChange?.(e.target.value)}
-              className="w-full"
-              aria-label="Filter by status"
-            >
-              {statusSelectOptions.map((opt) => (
-                <option key={opt.value || "all"} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </Select>
-          </div>
-
-          <div className="w-full sm:w-auto sm:min-w-[160px]">
-            <FilterLabel>Current Stage</FilterLabel>
-            <Select
-              value={stage}
-              onChange={(e) => onStageChange?.(e.target.value)}
-              className="w-full"
-              aria-label="Filter by current stage"
-            >
-              {STAGE_OPTIONS.map((opt) => (
-                <option key={opt.value || "all"} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </Select>
-          </div>
-
-          <div className="w-full sm:w-auto sm:min-w-[120px]">
-            <FilterLabel>Priority</FilterLabel>
-            <Select
-              value={priority}
-              onChange={(e) => onPriorityChange?.(e.target.value)}
-              className="w-full"
-              aria-label="Filter by priority"
-            >
-              {PRIORITY_OPTIONS.map((opt) => (
-                <option key={opt.value || "all"} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </Select>
-          </div>
-
-          <div className="w-full sm:w-auto">
-            <FilterLabel>Required Delivery Date</FilterLabel>
-            <Input
-              type="date"
-              value={deliveryDate}
-              onChange={(e) => onDeliveryDateChange?.(e.target.value)}
-              className="w-full"
-              aria-label="Filter by delivery date"
-            />
-          </div>
-
-          {showStockFilter ? (
-            <div className="w-full sm:w-auto sm:min-w-[140px]">
-              <FilterLabel>Stock</FilterLabel>
+          <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:items-end">
+            <div className="min-w-[140px] flex-1 sm:flex-none">
+              <FilterLabel>Status</FilterLabel>
               <Select
-                value={stockStatus}
-                onChange={(e) => onStockStatusChange?.(e.target.value)}
+                value={status}
+                onChange={(e) => applyOrPatch(onStatusChange, e.target.value)}
                 className="w-full"
-                aria-label="Filter by stock status"
+                aria-label="Filter by status"
               >
-                {STOCK_OPTIONS.map((opt) => (
+                {statusSelectOptions.map((opt) => (
                   <option key={opt.value || "all"} value={opt.value}>
                     {opt.label}
                   </option>
                 ))}
               </Select>
             </div>
-          ) : null}
+            <div className="min-w-[130px] flex-1 sm:flex-none">
+              <FilterLabel>Stage</FilterLabel>
+              <Select
+                value={stage}
+                onChange={(e) => applyOrPatch(onStageChange, e.target.value)}
+                className="w-full"
+                aria-label="Filter by current stage"
+              >
+                {STAGE_OPTIONS.map((opt) => (
+                  <option key={opt.value || "all"} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <div className="min-w-[120px] flex-1 sm:flex-none">
+              <FilterLabel>Priority</FilterLabel>
+              <Select
+                value={priority}
+                onChange={(e) => applyOrPatch(onPriorityChange, e.target.value)}
+                className="w-full"
+                aria-label="Filter by priority"
+              >
+                {PRIORITY_OPTIONS.map((opt) => (
+                  <option key={opt.value || "all"} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            {showStockFilter ? (
+              <div className="min-w-[130px] flex-1 sm:flex-none">
+                <FilterLabel>Stock</FilterLabel>
+                <Select
+                  value={stockStatus}
+                  onChange={(e) => applyOrPatch(onStockStatusChange, e.target.value)}
+                  className="w-full"
+                  aria-label="Filter by stock status"
+                >
+                  {STOCK_OPTIONS.map((opt) => (
+                    <option key={opt.value || "all"} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+            ) : null}
+            <div className="col-span-2 flex flex-wrap items-center gap-2 sm:col-span-1 sm:pb-0.5">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setAdvancedOpen((v) => !v)}
+                aria-expanded={advancedOpen}
+                leftIcon={<SlidersHorizontal className="h-3.5 w-3.5" />}
+                rightIcon={
+                  <ChevronDown
+                    className={`h-3.5 w-3.5 transition-transform ${advancedOpen ? "rotate-180" : ""}`}
+                    aria-hidden
+                  />
+                }
+              >
+                More filters
+                {advancedCount > 0 ? (
+                  <span className="ml-1.5 rounded-full bg-[var(--color-primary)] px-1.5 py-px text-[10px] font-bold text-white">
+                    {advancedCount}
+                  </span>
+                ) : null}
+              </Button>
+              {hasFilters ? (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={onClear}
+                  leftIcon={<X className="h-3.5 w-3.5" />}
+                >
+                  Clear
+                </Button>
+              ) : null}
+            </div>
+          </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={onClear}
-            leftIcon={hasFilters ? <X className="h-3.5 w-3.5" /> : null}
-          >
-            Clear
-          </Button>
-          <Button
-            type="button"
-            variant="add"
-            onClick={onApply}
-          >
-            Apply Filters
-          </Button>
-        </div>
+        {advancedOpen ? (
+          <div className="grid grid-cols-1 gap-3 rounded-xl border border-[var(--color-border-soft)] bg-[var(--color-surface)] p-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div>
+              <FilterLabel>Customer</FilterLabel>
+              <Select
+                value={customer}
+                onChange={(e) => applyOrPatch(onCustomerChange, e.target.value)}
+                className="w-full"
+                aria-label="Filter by customer"
+              >
+                <option value="">All customers</option>
+                {customerOptions.map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <div>
+              <FilterLabel>Product</FilterLabel>
+              <Select
+                value={product}
+                onChange={(e) => applyOrPatch(onProductChange, e.target.value)}
+                className="w-full"
+                aria-label="Filter by product"
+              >
+                <option value="">All products</option>
+                {productOptions.map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <div>
+              <FilterLabel>Sales Order No.</FilterLabel>
+              <Input
+                value={salesOrderNo}
+                onChange={(e) => onSalesOrderNoChange?.(e.target.value)}
+                onBlur={() => autoApply && onApply?.()}
+                placeholder="e.g. SO-2024-001"
+                className="w-full"
+                aria-label="Filter by sales order number"
+              />
+            </div>
+            <div>
+              <FilterLabel>Required Delivery Date</FilterLabel>
+              <Input
+                type="date"
+                value={deliveryDate}
+                onChange={(e) => applyOrPatch(onDeliveryDateChange, e.target.value)}
+                className="w-full"
+                aria-label="Filter by delivery date"
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <FilterLabel>Order Date Range</FilterLabel>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => applyOrPatch(onDateFromChange, e.target.value)}
+                  className="w-full"
+                  aria-label="Order date from"
+                />
+                <span className="shrink-0 text-xs text-[var(--color-text-muted)]">to</span>
+                <Input
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => applyOrPatch(onDateToChange, e.target.value)}
+                  className="w-full"
+                  aria-label="Order date to"
+                />
+              </div>
+            </div>
+          </div>
+        ) : null}
       </div>
     </div>
   );

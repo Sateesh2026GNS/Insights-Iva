@@ -8,7 +8,7 @@ import JobCardDetailsForm from "./JobCardDetailsForm";
 import JobCardTimeline from "./JobCardTimeline";
 import StoreManagerJobCardPanel from "./StoreManagerJobCardPanel";
 import WorkflowTracker from "./WorkflowTracker";
-import { PriorityBadge, WorkflowStatusBadge } from "./jobCardUiShared";
+import { WorkflowStatusBadge } from "./jobCardUiShared";
 import { getProductionOrderDetail, getProductionOrders } from "../../api/productionApi";
 import { PRIORITY_COLORS, enrichApiOrder } from "../../data/productionPlanningMasterData";
 import { getWorkflowStatusLabel } from "../../config/workflowStages";
@@ -16,9 +16,10 @@ import { isStoreManager } from "../../config/permissions";
 import { downloadJobCardPdf, printProductionOrder } from "../../utils/printUtils";
 import { storeRowMenuItems } from "../../utils/storeJobCardQueue";
 import useAuth from "../../hooks/useAuth";
+import "../../styles/job-card-page.css";
 
 /**
- * Unified Job Card Details shell — two-column ERP form layout (view + edit).
+ * Unified Job Card Details shell — reference government-form layout (view + edit).
  */
 export default function JobCardDetailsShell({
   orderId,
@@ -46,6 +47,7 @@ export default function JobCardDetailsShell({
   isCreated,
   canEditSales,
   backTo,
+  onCancel = null,
   productionOrderId: initialPoId,
   onEdit,
   onOpenWorkflow,
@@ -120,6 +122,16 @@ export default function JobCardDetailsShell({
 
   const isEdit = mode === "edit";
 
+  const headerTitle = isEdit
+    ? isCreated
+      ? "Edit Job Card"
+      : "Create Job Card"
+    : "Job Card Details";
+
+  const headerSubtitle = isEdit
+    ? "Create and manage manufacturing job card details."
+    : "View manufacturing job card and workflow status.";
+
   const storeActionItems = storeMode
     ? storeRowMenuItems({
         ...storeContext,
@@ -128,34 +140,43 @@ export default function JobCardDetailsShell({
       }).filter((item) => item.key !== "view" && item.to)
     : [];
 
+  const handleCancel = () => {
+    if (onCancel) {
+      onCancel();
+      return;
+    }
+    navigate(backTo);
+  };
+
   const footer = isEdit ? (
-    <>
-      <div className="flex flex-wrap gap-3">
-        {canEditSales ? (
-          <>
-            {!isCreated ? (
-              <Button variant="primary" loading={creating} disabled={saving} onClick={onCreate}>
-                <Plus className="mr-2 inline h-4 w-4" />
-                Create Job Card
-              </Button>
-            ) : null}
-            <Button variant="primary" loading={saving} disabled={creating || readOnly} onClick={onSave}>
-              <Save className="mr-2 inline h-4 w-4" />
-              Save Job Card
-            </Button>
-          </>
-        ) : null}
-      </div>
-      <Button variant="outline" onClick={() => navigate(backTo)} to={backTo}>
-        <ArrowLeft className="mr-2 inline h-4 w-4" />
-        Back to Sales Orders
+    <footer className="job-card-page__footer">
+      <Button variant="secondary" onClick={handleCancel} to={onCancel ? undefined : backTo}>
+        Cancel
       </Button>
-    </>
+      {canEditSales ? (
+        !isCreated ? (
+          <Button variant="add" loading={creating} disabled={saving} onClick={onCreate} leftIcon={<Plus className="h-4 w-4" aria-hidden />}>
+            Create Job Card
+          </Button>
+        ) : (
+          <Button variant="add" loading={saving} disabled={creating || readOnly} onClick={onSave} leftIcon={<Save className="h-4 w-4" aria-hidden />}>
+            Save Job Card
+          </Button>
+        )
+      ) : null}
+    </footer>
   ) : (
-    <>
+    <footer className="job-card-page__footer">
+      <Button variant="secondary" onClick={() => navigate(backTo)} to={backTo} leftIcon={<ArrowLeft className="h-4 w-4" aria-hidden />}>
+        Back to Job Cards
+      </Button>
+    </footer>
+  );
+
+  const headerActions = !isEdit ? (
+    <div className="flex flex-wrap items-center gap-2">
       {canEditSales && onEdit ? (
-        <Button variant="primary" size="sm" onClick={onEdit}>
-          <Edit3 className="mr-1.5 inline h-4 w-4" />
+        <Button variant="add" size="sm" onClick={onEdit} leftIcon={<Edit3 className="h-4 w-4" aria-hidden />}>
           Edit
         </Button>
       ) : null}
@@ -163,7 +184,7 @@ export default function JobCardDetailsShell({
         ? storeActionItems.map((item) => (
             <Button
               key={item.key}
-              variant={item.key === "send_to_production" ? "primary" : "secondary"}
+              variant={item.key === "send_to_production" ? "add" : "secondary"}
               size="sm"
               to={item.to}
             >
@@ -172,56 +193,50 @@ export default function JobCardDetailsShell({
           ))
         : null}
       {!storeMode && isCreated && onOpenWorkflow ? (
-        <Button variant="secondary" size="sm" onClick={onOpenWorkflow}>
-          <Play className="mr-1.5 inline h-4 w-4" />
+        <Button variant="secondary" size="sm" onClick={onOpenWorkflow} leftIcon={<Play className="h-4 w-4" aria-hidden />}>
           Open Workflow
         </Button>
       ) : null}
-      <Button variant="outline" size="sm" onClick={handlePrint}>
-        <Printer className="mr-1.5 inline h-4 w-4" />
+      <Button variant="secondary" size="sm" onClick={handlePrint} leftIcon={<Printer className="h-4 w-4" aria-hidden />}>
         Print
       </Button>
-      <Button variant="outline" size="sm" onClick={handleDownloadPdf}>
-        <Download className="mr-1.5 inline h-4 w-4" />
+      <Button variant="secondary" size="sm" onClick={handleDownloadPdf} leftIcon={<Download className="h-4 w-4" aria-hidden />}>
         Download PDF
       </Button>
-      <Button variant="outline" size="sm" to={`/sales/orders/${orderId}`}>
-        Sales Order
-      </Button>
-      <Button variant="ghost" size="sm" onClick={() => navigate(backTo)} to={backTo}>
-        <ArrowLeft className="mr-1.5 inline h-4 w-4" />
-        Back
-      </Button>
-    </>
-  );
+    </div>
+  ) : null;
 
   return (
-    <div className="ui-page pb-8">
-      <div className="mx-auto max-w-4xl space-y-4">
+    <div className="job-card-page ui-page ui-stack">
+      <div className="ui-card overflow-hidden">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--color-border-soft)] bg-[var(--color-surface)] px-4 py-3">
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
+              Sales &amp; Manufacturing
+            </p>
+            <h1 className="mt-0 text-base font-semibold text-[var(--color-text)] sm:text-lg">{headerTitle}</h1>
+            <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">{headerSubtitle}</p>
+          </div>
+          {headerActions}
+        </div>
+
         {!isEdit ? (
-          <div className="flex flex-wrap items-center gap-2">
-            <Button variant="ghost" size="sm" className="-ml-2" onClick={() => navigate(backTo)} to={backTo}>
-              <ArrowLeft className="h-4 w-4" aria-hidden />
-            </Button>
-            <span className="rounded-md bg-[var(--color-primary)] px-2.5 py-1 text-xs font-bold text-white">
-              {jobCardNo}
-            </span>
-            {stageTitle ? (
-              <span className="rounded-full border border-[var(--color-border-soft)] bg-[var(--color-surface-muted)] px-2.5 py-0.5 text-xs font-semibold text-[var(--color-text)]">
-                {stageTitle}
-              </span>
+          <div className="job-card-page__meta">
+            <span className="job-card-page__meta-chip">{jobCardNo}</span>
+            {orderNoLabel(form, salesOrder) ? (
+              <span className="job-card-page__meta-chip">SO {orderNoLabel(form, salesOrder)}</span>
             ) : null}
+            {stageTitle ? <span className="job-card-page__meta-chip">{stageTitle}</span> : null}
             <WorkflowStatusBadge status={ws} label={getWorkflowStatusLabel(ws)} />
             <span
-              className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${priorityStyle.bg} ${priorityStyle.text}`}
+              className={`job-card-page__meta-chip ${priorityStyle.bg} ${priorityStyle.text}`}
             >
-              {priorityStyle.dot} {priorityStyle.label}
+              {priorityStyle.label}
             </span>
           </div>
         ) : null}
 
         <JobCardDetailsForm
-          showHeader
           form={form}
           salesOrder={salesOrder}
           productLines={productLines}
@@ -238,20 +253,27 @@ export default function JobCardDetailsShell({
           onRemoveLine={onRemoveLine}
           onUpdateLine={onUpdateLine}
           footer={footer}
+          jobCardNo={jobCardNo}
+          productionOrder={productionOrder}
+          workflowStatus={ws}
         />
 
-        {stageActions}
+        {stageActions ? <div className="border-t border-[var(--color-border-soft)] p-4 sm:p-5">{stageActions}</div> : null}
+      </div>
 
-        {!isEdit && !stageActions && (String(ws || "").toUpperCase() === "COMPLETED" || card?.workflow_status === "completed" || form?.workflow_status === "completed") ? (
+      {!isEdit && !stageActions && (String(ws || "").toUpperCase() === "COMPLETED" || card?.workflow_status === "completed" || form?.workflow_status === "completed") ? (
+        <div className="job-card-page__below">
           <CompletedJobCardAllStagesReport
             card={card}
             form={form}
             salesOrder={salesOrder}
             orderId={orderId}
           />
-        ) : null}
+        </div>
+      ) : null}
 
-        {storeMode && storeContext?.material_requirements?.length ? (
+      {storeMode && storeContext?.material_requirements?.length ? (
+        <div className="job-card-page__below">
           <StoreManagerJobCardPanel
             orderId={orderId}
             storeContext={storeContext}
@@ -261,25 +283,31 @@ export default function JobCardDetailsShell({
             onRefresh={onRefreshStoreContext}
             refreshing={refreshingStoreContext}
           />
-        ) : null}
+        </div>
+      ) : null}
 
-        {!isEdit && showWorkflowTracker && (card?.workflow_tracker?.length || card?.workflow_steps?.length || card?.workflow?.length) ? (
-          <article className="ui-card overflow-hidden p-4 sm:p-5">
-            <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-[var(--color-text-muted)]">
-              Workflow Timeline
-            </h2>
+      {!isEdit && showWorkflowTracker && (card?.workflow_tracker?.length || card?.workflow_steps?.length || card?.workflow?.length) ? (
+        <article className="ui-card overflow-hidden">
+          <h2 className="ui-section-title !rounded-none">Workflow Timeline</h2>
+          <div className="p-4 sm:p-5">
             <WorkflowTracker
               embedded
               steps={card?.workflow_tracker || card?.workflow_steps || card?.workflow || []}
               currentStage={card?.workflow_current_stage}
             />
-          </article>
-        ) : null}
+          </div>
+        </article>
+      ) : null}
 
-        {!isEdit && card?.timeline?.length ? (
+      {!isEdit && card?.timeline?.length ? (
+        <div className="job-card-page__below">
           <JobCardTimeline embedded events={card.timeline} />
-        ) : null}
-      </div>
+        </div>
+      ) : null}
     </div>
   );
+}
+
+function orderNoLabel(form, salesOrder) {
+  return form?.sales_order_no || salesOrder?.order_number || "";
 }

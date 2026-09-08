@@ -15,9 +15,14 @@ import { stageJobCardUrl } from "../../utils/workflowStageRoutes";
 /**
  * Unified Job Card Details — reference layout with view and edit modes.
  */
-export default function JobCardDetailsPage({ initialMode = null }) {
+export default function JobCardDetailsPage({
+  initialMode = null,
+  orderIdOverride = null,
+  backToOverride = null,
+  onBackFromCreate = null,
+}) {
   const { orderId: paramOrderId, id } = useParams();
-  const orderId = paramOrderId || id;
+  const orderId = orderIdOverride || paramOrderId || id;
   const [searchParams] = useSearchParams();
   const location = useLocation();
   const navigate = useNavigate();
@@ -31,7 +36,10 @@ export default function JobCardDetailsPage({ initialMode = null }) {
   const queryEdit = searchParams.get("edit") === "1";
   const mode = initialMode === "edit" || (queryEdit && canEditSales) ? "edit" : "view";
 
-  const backTo = location.state?.from || (mode === "edit" ? `/sales/orders/${orderId}` : "/my-job-cards");
+  const backTo =
+    backToOverride ||
+    location.state?.from ||
+    (mode === "edit" && !orderIdOverride ? `/sales/orders/${orderId}` : "/my-job-cards");
   const productionOrderId = location.state?.productionOrderId ?? null;
 
   const {
@@ -81,8 +89,10 @@ export default function JobCardDetailsPage({ initialMode = null }) {
 
   if (loading) {
     return (
-      <div className="ui-page flex min-h-[40vh] items-center justify-center">
-        <p className="text-sm text-[var(--color-text-muted)]">Loading job card…</p>
+      <div className="ui-page ui-stack">
+        <div className="ui-card flex min-h-[16rem] items-center justify-center p-8">
+          <p className="text-sm text-[var(--color-text-muted)]">Loading job card…</p>
+        </div>
       </div>
     );
   }
@@ -125,6 +135,7 @@ export default function JobCardDetailsPage({ initialMode = null }) {
       isCreated={isCreated}
       canEditSales={canEditSales}
       backTo={backTo}
+      onCancel={onBackFromCreate}
       productionOrderId={productionOrderId}
       onEdit={() => navigate(jobCardEditUrl(orderId))}
       onOpenWorkflow={isCreated ? openStageWorkflow : null}

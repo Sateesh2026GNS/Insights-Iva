@@ -115,7 +115,6 @@ export function useJobCardDetails(orderId, tenantId) {
     if (!form?.quantity || Number(form.quantity) <= 0) next.quantity = "Quantity must be greater than 0";
     if (!form?.required_delivery_date) next.required_delivery_date = "Required delivery date is required";
     if (!form?.priority) next.priority = "Priority is required";
-    if (!productLines.length) next.product_lines = "At least one product line is required";
     setErrors(next);
     return Object.keys(next).length === 0;
   };

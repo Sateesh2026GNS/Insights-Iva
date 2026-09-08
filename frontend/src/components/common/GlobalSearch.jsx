@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
@@ -11,6 +12,7 @@ import {
   Landmark,
   Layers,
   LayoutDashboard,
+  Loader2,
   Search,
   SearchX,
   Settings,
@@ -21,6 +23,7 @@ import {
 } from "lucide-react";
 
 import useAuth from "../../hooks/useAuth";
+import useDebouncedValue from "../../hooks/useDebouncedValue";
 import { userCanAccessPath } from "../../config/permissions";
 import { flattenNavForSearch } from "../../config/sidebarNav";
 import {
@@ -28,6 +31,9 @@ import {
   NAVBAR_SEARCH_WRAP_CLASS,
   SearchBar,
 } from "./SearchFilter";
+import "../../styles/global-search.css";
+
+const DEBOUNCE_MS = 200;
 
 const EXTRA_ROUTES = [
   { path: "/alerts", labelKey: "nav.allAlerts", module: "alerts", sectionKey: null },
@@ -39,6 +45,7 @@ const EXTRA_ROUTES = [
   },
   { path: "/settings", labelKey: "erpNav.settings", module: "admin", sectionKey: null },
   { path: "/settings/appearance", label: "Appearance", module: "settings", sectionKey: "erpNav.settings" },
+  { path: "/sales/job-cards/create", label: "Create Job Card", module: "sales", sectionKey: null },
 ];
 
 const MODULE_META = {
@@ -120,10 +127,7 @@ function HighlightText({ text, query }) {
     <span className="truncate">
       {parts.map((part, i) =>
         part.toLowerCase() === q.toLowerCase() ? (
-          <mark
-            key={`${part}-${i}`}
-            className="global-search-dropdown__highlight"
-          >
+          <mark key={`${part}-${i}`} className="global-search-dropdown__highlight">
             {part}
           </mark>
         ) : (
@@ -134,17 +138,57 @@ function HighlightText({ text, query }) {
   );
 }
 
+function useDropdownPosition(wrapRef, active) {
+  const [style, setStyle] = useState(null);
+
+  useEffect(() => {
+    if (!active || !wrapRef.current) {
+      setStyle(null);
+      return undefined;
+    }
+
+    const update = () => {
+      const rect = wrapRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      setStyle({
+        position: "fixed",
+        top: `${rect.bottom + 4}px`,
+        left: `${rect.left}px`,
+        width: `${rect.width}px`,
+        zIndex: 200,
+      });
+    };
+
+    update();
+    window.addEventListener("resize", update);
+    window.addEventListener("scroll", update, true);
+    return () => {
+      window.removeEventListener("resize", update);
+      window.removeEventListener("scroll", update, true);
+    };
+  }, [active, wrapRef]);
+
+  return style;
+}
+
 export default function GlobalSearch({ onSelect, placeholderKey = "common.search", className = "" }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { user } = useAuth();
   const [query, setQuery] = useState("");
+  const debouncedQuery = useDebouncedValue(query, DEBOUNCE_MS);
   const [open, setOpen] = useState(false);
   const [focus, setFocus] = useState(false);
   const [highlight, setHighlight] = useState(0);
   const inputRef = useRef(null);
   const listRef = useRef(null);
   const wrapRef = useRef(null);
+
+  const trimmedQuery = query.trim();
+  const trimmedDebounced = debouncedQuery.trim();
+  const hasQuery = trimmedQuery.length > 0;
+  const isSearching = hasQuery && trimmedQuery !== trimmedDebounced;
+  const showDropdown = hasQuery && (open || focus);
 
   const routes = useMemo(() => {
     const all = [...flattenNavForSearch(), ...EXTRA_ROUTES];
@@ -170,8 +214,8 @@ export default function GlobalSearch({ onSelect, placeholderKey = "common.search
   }, [user, t]);
 
   const matches = useMemo(() => {
-    if (!query.trim()) return routes.slice(0, 8);
-    const q = query.toLowerCase();
+    if (!trimmedDebounced) return [];
+    const q = trimmedDebounced.toLowerCase();
     return routes
       .filter((r) => {
         const section = r.parentLabel && r.parentLabel !== r.label ? r.parentLabel : "";
@@ -179,13 +223,13 @@ export default function GlobalSearch({ onSelect, placeholderKey = "common.search
         return haystack.includes(q);
       })
       .slice(0, 12);
-  }, [query, routes]);
+  }, [trimmedDebounced, routes]);
 
-  const showDropdown = open && (focus || query);
+  const dropdownStyle = useDropdownPosition(wrapRef, showDropdown);
 
   useEffect(() => {
     setHighlight(0);
-  }, [query]);
+  }, [trimmedDebounced]);
 
   useEffect(() => {
     if (!showDropdown || !listRef.current) return;
@@ -195,6 +239,7 @@ export default function GlobalSearch({ onSelect, placeholderKey = "common.search
 
   const handleSelect = useCallback(
     (path) => {
+      if (!path) return;
       navigate(path);
       setQuery("");
       setOpen(false);
@@ -204,9 +249,18 @@ export default function GlobalSearch({ onSelect, placeholderKey = "common.search
     [navigate, onSelect]
   );
 
+  const submitSearch = useCallback(() => {
+    if (!trimmedQuery) return;
+    setOpen(true);
+    if (isSearching) return;
+    if (matches.length > 0) {
+      handleSelect(matches[highlight]?.path || matches[0].path);
+    }
+  }, [trimmedQuery, isSearching, matches, highlight, handleSelect]);
+
   useEffect(() => {
     const onPointerDown = (e) => {
-      if (!wrapRef.current?.contains(e.target)) {
+      if (!wrapRef.current?.contains(e.target) && !listRef.current?.contains(e.target)) {
         setOpen(false);
         setFocus(false);
       }
@@ -225,8 +279,9 @@ export default function GlobalSearch({ onSelect, placeholderKey = "common.search
         setFocus(true);
         return;
       }
-      if (e.key === "Escape") {
+      if (e.key === "Escape" && document.activeElement === inputRef.current) {
         if (query) {
+          e.preventDefault();
           setQuery("");
           return;
         }
@@ -235,7 +290,8 @@ export default function GlobalSearch({ onSelect, placeholderKey = "common.search
         inputRef.current?.blur();
         return;
       }
-      if (!showDropdown || matches.length === 0) return;
+      if (document.activeElement !== inputRef.current || !showDropdown || isSearching) return;
+      if (matches.length === 0) return;
       if (e.key === "ArrowDown") {
         e.preventDefault();
         setHighlight((h) => (h + 1) % matches.length);
@@ -244,37 +300,105 @@ export default function GlobalSearch({ onSelect, placeholderKey = "common.search
         e.preventDefault();
         setHighlight((h) => (h - 1 + matches.length) % matches.length);
       }
-      if (e.key === "Enter" && matches[highlight]) {
+      if (e.key === "Enter") {
         e.preventDefault();
-        handleSelect(matches[highlight].path);
+        handleSelect(matches[highlight]?.path || matches[0].path);
       }
     };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [showDropdown, matches, highlight, handleSelect, query]);
+  }, [showDropdown, matches, highlight, handleSelect, query, isSearching]);
+
+  const dropdownPanel = showDropdown && dropdownStyle ? (
+    <div
+      id="global-search-results"
+      ref={listRef}
+      role="listbox"
+      className="global-search-dropdown global-search-dropdown--portal"
+      style={dropdownStyle}
+    >
+      {isSearching ? (
+        <div className="global-search-dropdown__loading" role="status" aria-live="polite">
+          <Loader2 className="global-search-dropdown__loading-icon" aria-hidden />
+          <span>Searching…</span>
+        </div>
+      ) : matches.length === 0 ? (
+        <div className="global-search-dropdown__empty" role="status" aria-live="polite">
+          <SearchX className="global-search-dropdown__empty-icon" aria-hidden />
+          <p className="global-search-dropdown__empty-title">No results found</p>
+          <p className="global-search-dropdown__empty-hint">Try a different search term.</p>
+        </div>
+      ) : (
+        matches.map((r, i) => {
+          const selected = i === highlight;
+          const section = r.parentLabel && r.parentLabel !== r.label ? r.parentLabel : "";
+          const Icon = r.Icon || Search;
+          return (
+            <button
+              key={r.path}
+              id={`global-search-option-${i}`}
+              data-index={i}
+              type="button"
+              role="option"
+              aria-selected={selected}
+              title={r.label}
+              onMouseEnter={() => setHighlight(i)}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => handleSelect(r.path)}
+              className={`global-search-dropdown__item${selected ? " is-active" : ""}`}
+            >
+              <span className="global-search-dropdown__icon" aria-hidden>
+                <Icon />
+              </span>
+              <span className="global-search-dropdown__text">
+                <span className="global-search-dropdown__label">
+                  <HighlightText text={r.label} query={debouncedQuery} />
+                </span>
+                <span className="global-search-dropdown__meta">
+                  <HighlightText
+                    text={section ? `${r.moduleLabel} · ${section}` : r.moduleLabel}
+                    query={debouncedQuery}
+                  />
+                </span>
+              </span>
+            </button>
+          );
+        })
+      )}
+    </div>
+  ) : null;
 
   return (
-    <div ref={wrapRef} className={`relative w-full${className ? ` ${className}` : ""}`}>
+    <div ref={wrapRef} className={`global-search-root${className ? ` ${className}` : ""}`}>
       <SearchBar
         value={query}
         onChange={(value) => {
           setQuery(value);
           setOpen(true);
+          if (!value.trim()) {
+            setOpen(false);
+          }
         }}
         onFocus={() => {
-          setOpen(true);
           setFocus(true);
+          if (trimmedQuery) setOpen(true);
         }}
         onBlur={() => {
-          // Dropdown selection uses mousedown preventDefault; blur handled by outside click.
+          setFocus(false);
         }}
         onClear={() => {
-          setOpen(true);
-          setFocus(true);
+          setQuery("");
+          setOpen(false);
           inputRef.current?.focus();
         }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            submitSearch();
+          }
+        }}
         inputRef={inputRef}
-        placeholder={t(placeholderKey, { defaultValue: "Search" })}
+        placeholder={t(placeholderKey, { defaultValue: "Search pages…" })}
         className={NAVBAR_SEARCH_WRAP_CLASS}
         inputClassName={NAVBAR_SEARCH_INPUT_CLASS}
         role="combobox"
@@ -286,57 +410,9 @@ export default function GlobalSearch({ onSelect, placeholderKey = "common.search
         autoComplete="off"
       />
 
-      {showDropdown ? (
-        <div
-          id="global-search-results"
-          ref={listRef}
-          role="listbox"
-          className="global-search-dropdown"
-        >
-          {matches.length === 0 ? (
-            <div className="global-search-dropdown__empty" role="status">
-              <SearchX className="mb-2 h-8 w-8 text-[var(--color-text-icon)]" aria-hidden />
-              <p className="text-sm font-medium text-[var(--color-text)]">No matching pages found.</p>
-            </div>
-          ) : (
-            matches.map((r, i) => {
-              const selected = i === highlight;
-              const section = r.parentLabel && r.parentLabel !== r.label ? r.parentLabel : "";
-              const Icon = r.Icon || Search;
-              return (
-                <button
-                  key={r.path}
-                  id={`global-search-option-${i}`}
-                  data-index={i}
-                  type="button"
-                  role="option"
-                  aria-selected={selected}
-                  title={r.label}
-                  onMouseEnter={() => setHighlight(i)}
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => handleSelect(r.path)}
-                  className={`global-search-dropdown__item${selected ? " is-active" : ""}`}
-                >
-                  <span className="global-search-dropdown__icon" aria-hidden>
-                    <Icon className="h-4 w-4" />
-                  </span>
-                  <span className="global-search-dropdown__text">
-                    <span className="global-search-dropdown__label">
-                      <HighlightText text={r.label} query={query} />
-                    </span>
-                    <span className="global-search-dropdown__meta">
-                      <HighlightText
-                        text={section ? `${r.moduleLabel} · ${section}` : r.moduleLabel}
-                        query={query}
-                      />
-                    </span>
-                  </span>
-                </button>
-              );
-            })
-          )}
-        </div>
-      ) : null}
+      {typeof document !== "undefined" && dropdownPanel
+        ? createPortal(dropdownPanel, document.body)
+        : null}
     </div>
   );
 }
