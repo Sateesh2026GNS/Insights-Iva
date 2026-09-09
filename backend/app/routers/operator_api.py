@@ -32,7 +32,7 @@ def _svc(db: Session, tenant_id: int) -> OperatorService:
 
 
 @router.post("/auth/register")
-def api_register(payload: dict, db: Session = Depends(get_db)):
+def api_register(payload: dict, request: Request, db: Session = Depends(get_db)):
     """Public registration disabled — companies provisioned by GNS Super Admin."""
     from fastapi import HTTPException
     from fastapi.responses import JSONResponse
@@ -44,7 +44,12 @@ def api_register(payload: dict, db: Session = Depends(get_db)):
     from app.services.security_service import create_email_verification
     from app.utils.api_response import error_response
 
+    from app.middleware.security import check_rate_limit
+
     cfg = get_settings()
+    email = (payload or {}).get("email") if isinstance(payload, dict) else None
+    if email:
+        check_rate_limit(request, email=str(email), scope="register")
     if not cfg.allow_public_registration:
         return JSONResponse(
             status_code=403,
@@ -114,8 +119,12 @@ def api_login(
     from app.services.security_service import is_account_locked
     from app.utils.api_response import error_response
 
+    from app.middleware.security import check_auth_backoff, check_rate_limit, record_auth_failure
+
     try:
         email = payload.email
+        check_rate_limit(request, email=email, scope="login")
+        check_auth_backoff(request, email=email)
         user = find_user_by_email(db, email)
         if user and is_account_locked(user):
             try:
@@ -144,6 +153,8 @@ def api_login(
                 )
             except Exception:
                 logger.exception("Failed to log failed login attempt for email %s", email)
+            if exc.status_code == status.HTTP_401_UNAUTHORIZED:
+                record_auth_failure(request, email=email)
             return JSONResponse(
                 status_code=exc.status_code,
                 content=error_response(detail, errors=[detail]),

@@ -69,10 +69,10 @@ class SalesJobCard(Base, TimestampMixin):
         ForeignKey("tenants.id"), nullable=False, index=True
     )
     job_card_no: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
-    sales_order_id: Mapped[int] = mapped_column(
-        ForeignKey("sales_orders.id"), nullable=False, index=True
+    sales_order_id: Mapped[int | None] = mapped_column(
+        ForeignKey("sales_orders.id"), nullable=True, index=True
     )
-    customer_id: Mapped[int] = mapped_column(ForeignKey("customers.id"), nullable=False)
+    customer_id: Mapped[int | None] = mapped_column(ForeignKey("customers.id"), nullable=True)
     product_id: Mapped[int | None] = mapped_column(ForeignKey("products.id"))
     quantity: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
     unit: Mapped[str] = mapped_column(String(32), nullable=False, default="Nos")
@@ -86,6 +86,7 @@ class SalesJobCard(Base, TimestampMixin):
     )  # draft | created
     workflow_stage: Mapped[str | None] = mapped_column(String(64))
     created_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    details_json: Mapped[str | None] = mapped_column(Text)
 
 
 class WorkflowStageJobCard(Base, TimestampMixin):

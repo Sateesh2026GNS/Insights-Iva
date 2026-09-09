@@ -51,6 +51,11 @@ export function matchesStoreStatusBucket(row, bucketKey) {
 }
 
 export function storeActionUrl(row, action) {
+  if (row?.is_manual && row?.job_card_id) {
+    const base = `/my-job-cards?dept=inventory&jc=${row.job_card_id}`;
+    if (action === "view" || action === "check_stock" || action === "add_remarks") return base;
+    return base;
+  }
   const orderId = row?.sales_order_id ?? row?.id;
   if (!orderId) return "/my-job-cards";
   if (action === "view") return jobCardDetailsUrl(orderId);

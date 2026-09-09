@@ -125,6 +125,16 @@ describe("Store Manager settings access", () => {
   it("falls back to static role map including settings when API permissions are empty", () => {
     expect(userCanAccessPath({ role: "Store Manager", permissions: [] }, "/settings")).toBe(true);
   });
+
+  it("denies sales job card create/edit paths", () => {
+    const storeManager = {
+      role: "Store Manager",
+      permissions: ["dashboard", "inventory", "sales", "procurement"],
+    };
+    expect(userCanAccessPath(storeManager, "/sales/job-cards/create")).toBe(false);
+    expect(userCanAccessPath(storeManager, "/sales/job-cards/42/edit")).toBe(false);
+    expect(userCanAccessPath(storeManager, "/my-job-cards")).toBe(true);
+  });
 });
 
 describe("getDashboardPathForRole", () => {

@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Download, Edit3, Play, Plus, Printer, Save } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronUp, Download, Edit3, Play, Plus, Printer, Save } from "lucide-react";
 
 import Button from "../common/Button";
 import CompletedJobCardAllStagesReport from "./CompletedJobCardAllStagesReport";
-import JobCardDetailsForm from "./JobCardDetailsForm";
+import ProductionJobCardSections from "./ProductionJobCardSections";
+import SalesJobCardDocument from "./SalesJobCardDocument";
 import JobCardTimeline from "./JobCardTimeline";
 import StoreManagerJobCardPanel from "./StoreManagerJobCardPanel";
 import WorkflowTracker from "./WorkflowTracker";
@@ -13,19 +14,26 @@ import { getProductionOrderDetail, getProductionOrders } from "../../api/product
 import { PRIORITY_COLORS, enrichApiOrder } from "../../data/productionPlanningMasterData";
 import { getWorkflowStatusLabel } from "../../config/workflowStages";
 import { isStoreManager } from "../../config/permissions";
-import { downloadJobCardPdf, printProductionOrder } from "../../utils/printUtils";
+import {
+  downloadProductionJobCardPdf,
+  downloadSalesJobCardPdf,
+  printProductionJobCardLandscape,
+  printSalesJobCardLandscape,
+} from "../../utils/printUtils";
+import { getCompanySettings } from "../../api/settingsApi";
 import { storeRowMenuItems } from "../../utils/storeJobCardQueue";
 import useAuth from "../../hooks/useAuth";
 import "../../styles/job-card-page.css";
 
 /**
- * Unified Job Card Details shell — reference government-form layout (view + edit).
+ * Unified Job Card Details shell — Sales Job Card document + optional production sections.
  */
 export default function JobCardDetailsShell({
   orderId,
   card,
   form,
   salesOrder,
+  customer,
   productLines,
   customers,
   products,
@@ -33,13 +41,9 @@ export default function JobCardDetailsShell({
   errors,
   mode,
   readOnly,
-  linesReadOnly,
   selectedProduct,
   productCode,
   onPatchField,
-  onAddLine,
-  onRemoveLine,
-  onUpdateLine,
   onSave,
   onCreate,
   saving,
@@ -56,10 +60,21 @@ export default function JobCardDetailsShell({
   showWorkflowTracker = true,
   onRefreshStoreContext = null,
   refreshingStoreContext = false,
+  details = null,
+  machines = [],
+  editableSections = [],
+  canEditDetails = false,
+  onPatchDetailsSection = null,
+  onPatchRawMaterial = null,
+  onAddRawMaterial = null,
+  onRemoveRawMaterial = null,
+  audit = null,
 }) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [productionOrder, setProductionOrder] = useState(null);
+  const [companyProfile, setCompanyProfile] = useState(null);
+  const [showProduction, setShowProduction] = useState(false);
 
   const summary = card?.summary_panel || {};
   const storeContext = card?.store_context;
@@ -68,6 +83,20 @@ export default function JobCardDetailsShell({
   const priority = form?.priority || summary.priority || card?.priority || "medium";
   const priorityStyle = PRIORITY_COLORS[priority] || PRIORITY_COLORS.medium;
   const jobCardNo = summary.job_card_no || form?.job_card_no || `JC-${form?.sales_order_no || orderId}`;
+
+  useEffect(() => {
+    let cancelled = false;
+    getCompanySettings()
+      .then((res) => {
+        if (!cancelled) setCompanyProfile(res?.data?.data ?? res?.data ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) setCompanyProfile(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -96,13 +125,18 @@ export default function JobCardDetailsShell({
     };
   }, [orderId, initialPoId, card?.header?.production_order_id]);
 
-  const getJobCardPrintPayload = () => ({
+  const salesDocument = card?.sales_document;
+
+  const getJobCardPrintPayload = (profile = companyProfile) => ({
     ...(productionOrder || {}),
     ...(card || {}),
     ...(form || {}),
     card,
     form,
+    salesDocument,
+    details: details || card?.details || form?.details,
     salesOrder,
+    customer,
     productLines,
     selectedProduct,
     product_code: productCode,
@@ -110,27 +144,54 @@ export default function JobCardDetailsShell({
     orderId,
     sales_order_id: orderId,
     id: orderId,
+    companyProfile: profile,
+    audit: audit || card?.audit,
   });
 
-  const handlePrint = () => {
-    printProductionOrder(getJobCardPrintPayload(), user);
+  const fetchCompanyProfile = async () => {
+    try {
+      const res = await getCompanySettings({ force: true });
+      const profile = res?.data?.data ?? res?.data ?? null;
+      setCompanyProfile(profile);
+      return profile;
+    } catch {
+      return companyProfile;
+    }
   };
 
-  const handleDownloadPdf = () => {
-    downloadJobCardPdf(getJobCardPrintPayload(), user);
+  const handlePrintSales = async () => {
+    const profile = await fetchCompanyProfile();
+    printSalesJobCardLandscape(getJobCardPrintPayload(profile), user);
+  };
+
+  const handleDownloadSalesPdf = async () => {
+    const profile = await fetchCompanyProfile();
+    downloadSalesJobCardPdf(getJobCardPrintPayload(profile), user);
+  };
+
+  const handlePrintProduction = async () => {
+    const profile = await fetchCompanyProfile();
+    printProductionJobCardLandscape(getJobCardPrintPayload(profile), user);
+  };
+
+  const handleDownloadProductionPdf = async () => {
+    const profile = await fetchCompanyProfile();
+    downloadProductionJobCardPdf(getJobCardPrintPayload(profile), user);
   };
 
   const isEdit = mode === "edit";
+  const salesEditable = isEdit && !isCreated && canEditSales && !readOnly;
+  const statusLabel = card?.sales_document?.header?.status || (isCreated ? "Created" : "Draft");
 
   const headerTitle = isEdit
     ? isCreated
       ? "Edit Job Card"
-      : "Create Job Card"
-    : "Job Card Details";
+      : "Create Sales Job Card"
+    : "Sales Job Card";
 
   const headerSubtitle = isEdit
-    ? "Create and manage manufacturing job card details."
-    : "View manufacturing job card and workflow status.";
+    ? "Complete sales job card details and confirm to release to store."
+    : "View sales job card document and workflow status.";
 
   const storeActionItems = storeMode
     ? storeRowMenuItems({
@@ -153,16 +214,21 @@ export default function JobCardDetailsShell({
       <Button variant="secondary" onClick={handleCancel} to={onCancel ? undefined : backTo}>
         Cancel
       </Button>
-      {canEditSales ? (
-        !isCreated ? (
-          <Button variant="add" loading={creating} disabled={saving} onClick={onCreate} leftIcon={<Plus className="h-4 w-4" aria-hidden />}>
-            Create Job Card
-          </Button>
-        ) : (
-          <Button variant="add" loading={saving} disabled={creating || readOnly} onClick={onSave} leftIcon={<Save className="h-4 w-4" aria-hidden />}>
-            Save Job Card
-          </Button>
-        )
+      {canEditSales && !isCreated ? (
+        <Button variant="add" loading={creating} disabled={saving} onClick={onCreate} leftIcon={<Plus className="h-4 w-4" aria-hidden />}>
+          Confirm Job Card
+        </Button>
+      ) : null}
+      {isCreated && (canEditSales || canEditDetails) ? (
+        <Button
+          variant="add"
+          loading={saving}
+          disabled={creating || (readOnly && !canEditDetails)}
+          onClick={onSave}
+          leftIcon={<Save className="h-4 w-4" aria-hidden />}
+        >
+          Save
+        </Button>
       ) : null}
     </footer>
   ) : (
@@ -175,7 +241,7 @@ export default function JobCardDetailsShell({
 
   const headerActions = !isEdit ? (
     <div className="flex flex-wrap items-center gap-2">
-      {canEditSales && onEdit ? (
+      {(canEditSales || canEditDetails) && onEdit ? (
         <Button variant="add" size="sm" onClick={onEdit} leftIcon={<Edit3 className="h-4 w-4" aria-hidden />}>
           Edit
         </Button>
@@ -197,19 +263,24 @@ export default function JobCardDetailsShell({
           Open Workflow
         </Button>
       ) : null}
-      <Button variant="secondary" size="sm" onClick={handlePrint} leftIcon={<Printer className="h-4 w-4" aria-hidden />}>
+      <Button variant="secondary" size="sm" onClick={handlePrintSales} leftIcon={<Printer className="h-4 w-4" aria-hidden />}>
         Print
       </Button>
-      <Button variant="secondary" size="sm" onClick={handleDownloadPdf} leftIcon={<Download className="h-4 w-4" aria-hidden />}>
+      <Button variant="secondary" size="sm" onClick={handleDownloadSalesPdf} leftIcon={<Download className="h-4 w-4" aria-hidden />}>
         Download PDF
       </Button>
+      {isCreated ? (
+        <Button variant="secondary" size="sm" onClick={handlePrintProduction} title="Production job card">
+          Production Print
+        </Button>
+      ) : null}
     </div>
   ) : null;
 
   return (
     <div className="job-card-page ui-page ui-stack">
       <div className="ui-card overflow-hidden">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--color-border-soft)] bg-[var(--color-surface)] px-4 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--color-border-soft)] bg-[var(--color-surface)] px-4 py-3 print:hidden">
           <div className="min-w-0">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
               Sales &amp; Manufacturing
@@ -221,48 +292,85 @@ export default function JobCardDetailsShell({
         </div>
 
         {!isEdit ? (
-          <div className="job-card-page__meta">
+          <div className="job-card-page__meta print:hidden">
             <span className="job-card-page__meta-chip">{jobCardNo}</span>
             {orderNoLabel(form, salesOrder) ? (
               <span className="job-card-page__meta-chip">SO {orderNoLabel(form, salesOrder)}</span>
             ) : null}
+            <span className="job-card-page__meta-chip">{statusLabel}</span>
             {stageTitle ? <span className="job-card-page__meta-chip">{stageTitle}</span> : null}
             <WorkflowStatusBadge status={ws} label={getWorkflowStatusLabel(ws)} />
-            <span
-              className={`job-card-page__meta-chip ${priorityStyle.bg} ${priorityStyle.text}`}
-            >
+            <span className={`job-card-page__meta-chip ${priorityStyle.bg} ${priorityStyle.text}`}>
               {priorityStyle.label}
             </span>
           </div>
         ) : null}
 
-        <JobCardDetailsForm
+        <SalesJobCardDocument
+          card={card}
           form={form}
           salesOrder={salesOrder}
+          customer={customer}
           productLines={productLines}
-          customers={customers}
           products={products}
-          salesPeople={salesPeople}
+          customers={customers}
+          details={details || card?.details}
+          companyProfile={companyProfile}
           errors={errors}
-          readOnly={isEdit ? readOnly : true}
-          linesReadOnly={isEdit ? linesReadOnly : true}
-          selectedProduct={selectedProduct}
-          productCode={productCode}
+          editable={salesEditable}
           onPatchField={onPatchField}
-          onAddLine={onAddLine}
-          onRemoveLine={onRemoveLine}
-          onUpdateLine={onUpdateLine}
-          footer={footer}
-          jobCardNo={jobCardNo}
-          productionOrder={productionOrder}
-          workflowStatus={ws}
         />
 
-        {stageActions ? <div className="border-t border-[var(--color-border-soft)] p-4 sm:p-5">{stageActions}</div> : null}
+        {isCreated ? (
+          <div className="sjc-doc__production-toggle px-4 pb-4 print:hidden">
+            <button
+              type="button"
+              className="flex w-full items-center justify-between gap-2 rounded border border-[var(--color-border-soft)] bg-[var(--color-surface-muted)] px-3 py-2 text-left text-sm font-semibold text-[var(--color-primary)]"
+              onClick={() => setShowProduction((v) => !v)}
+            >
+              Production Job Card Details
+              {showProduction ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </button>
+            {showProduction ? (
+              <div className="mt-2 border border-[var(--color-border-soft)]">
+                <ProductionJobCardSections
+                  details={details || card?.details}
+                  errors={errors}
+                  editableSections={editableSections}
+                  readOnly={isEdit ? readOnly && !canEditDetails : true}
+                  machines={machines}
+                  operators={salesPeople}
+                  uom={form?.unit || "Nos"}
+                  audit={audit || card?.audit}
+                  form={form}
+                  jobCardNo={jobCardNo}
+                  onPatchDetails={onPatchDetailsSection}
+                  onPatchRawMaterial={onPatchRawMaterial}
+                  onAddRawMaterial={onAddRawMaterial}
+                  onRemoveRawMaterial={onRemoveRawMaterial}
+                />
+                {isEdit && canEditDetails ? (
+                  <div className="flex flex-wrap gap-2 border-t border-[var(--color-border-soft)] p-3">
+                    <Button variant="secondary" size="sm" onClick={handlePrintProduction}>
+                      Print Production
+                    </Button>
+                    <Button variant="secondary" size="sm" onClick={handleDownloadProductionPdf}>
+                      Production PDF
+                    </Button>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+
+        <div className="print:hidden">{footer}</div>
+
+        {stageActions ? <div className="border-t border-[var(--color-border-soft)] p-4 sm:p-5 print:hidden">{stageActions}</div> : null}
       </div>
 
       {!isEdit && !stageActions && (String(ws || "").toUpperCase() === "COMPLETED" || card?.workflow_status === "completed" || form?.workflow_status === "completed") ? (
-        <div className="job-card-page__below">
+        <div className="job-card-page__below print:hidden">
           <CompletedJobCardAllStagesReport
             card={card}
             form={form}
@@ -273,7 +381,7 @@ export default function JobCardDetailsShell({
       ) : null}
 
       {storeMode && storeContext?.material_requirements?.length ? (
-        <div className="job-card-page__below">
+        <div className="job-card-page__below print:hidden">
           <StoreManagerJobCardPanel
             orderId={orderId}
             storeContext={storeContext}
@@ -287,7 +395,7 @@ export default function JobCardDetailsShell({
       ) : null}
 
       {!isEdit && showWorkflowTracker && (card?.workflow_tracker?.length || card?.workflow_steps?.length || card?.workflow?.length) ? (
-        <article className="ui-card overflow-hidden">
+        <article className="ui-card overflow-hidden print:hidden">
           <h2 className="ui-section-title !rounded-none">Workflow Timeline</h2>
           <div className="p-4 sm:p-5">
             <WorkflowTracker
@@ -300,7 +408,7 @@ export default function JobCardDetailsShell({
       ) : null}
 
       {!isEdit && card?.timeline?.length ? (
-        <div className="job-card-page__below">
+        <div className="job-card-page__below print:hidden">
           <JobCardTimeline embedded events={card.timeline} />
         </div>
       ) : null}

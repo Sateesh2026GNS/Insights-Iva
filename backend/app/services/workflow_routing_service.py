@@ -495,6 +495,8 @@ def _load_product_inventory_map(
 
 
 def _store_kpi_counts(db: Session, tenant_id: int) -> dict[str, int]:
+    from app.services.manual_job_card_service import count_manual_sales_job_cards_pending
+
     rows = db.execute(
         select(SalesOrder.workflow_status, func.count())
         .where(
@@ -508,6 +510,8 @@ def _store_kpi_counts(db: Session, tenant_id: int) -> dict[str, int]:
     ready_to_issue = sum(by_status.get(s, 0) for s in STORE_KPI_BUCKETS["ready_to_issue"])
     partially_issued = sum(by_status.get(s, 0) for s in STORE_KPI_BUCKETS["partially_issued"])
     completed = sum(by_status.get(s, 0) for s in POST_STORE_STATUSES)
+    sales_jc_pending = count_manual_sales_job_cards_pending(db, tenant_id)
+    store_pending += sales_jc_pending
     total = store_pending + ready_to_issue + partially_issued
     return {
         "total_job_cards": total,
@@ -515,6 +519,7 @@ def _store_kpi_counts(db: Session, tenant_id: int) -> dict[str, int]:
         "ready_to_issue": ready_to_issue,
         "partially_issued": partially_issued,
         "completed": completed,
+        "sales_job_cards_pending": sales_jc_pending,
     }
 
 
@@ -581,10 +586,21 @@ def serialize_queue_order(
     if mat.get("shortage_qty") and (available_qty == 0 or product_id is None):
         shortage_qty = float(mat["shortage_qty"])
 
+    queue_prod: dict[str, Any] = {}
+    created_by_name = None
+    if job_card:
+        from app.services.job_card_details import parse_details_json, queue_fields_from_details
+
+        queue_prod = queue_fields_from_details(parse_details_json(job_card.details_json))
+        if job_card.created_by_user_id:
+            creator = db.get(User, job_card.created_by_user_id)
+            created_by_name = creator.full_name if creator else None
+
     return {
         "sales_order_id": so.id,
         "job_card_id": job_card.id if job_card else None,
         "job_card_no": job_card.job_card_no if job_card else None,
+        "job_card_date": job_card.created_at.date().isoformat() if job_card and job_card.created_at else None,
         "order_number": so.order_number,
         "customer_name": so.customer.name if so.customer else None,
         "product_name": product_name,
@@ -604,7 +620,13 @@ def serialize_queue_order(
         "order_date": so.order_date.isoformat() if so.order_date else None,
         "sales_person": so.sales_person,
         "material_stock_status": _material_stock_status(ws, material_check),
-        "assigned_to": assigned_to,
+        "assigned_to": assigned_to or queue_prod.get("operator_name"),
+        "machine_name": queue_prod.get("machine_name"),
+        "operator_name": queue_prod.get("operator_name"),
+        "planned_qty": queue_prod.get("planned_qty") if queue_prod.get("planned_qty") is not None else qty,
+        "output_qty": queue_prod.get("output_qty"),
+        "completed_qty": queue_prod.get("output_qty"),
+        "created_by": created_by_name,
         "received_at": received_at,
         "work_order_id": work_order_id,
         "warehouse": warehouse,
@@ -845,6 +867,31 @@ def get_my_job_card_queue(
         orders = orders[:limit]
 
     items = _enrich_queue_orders(db, tenant_id, orders)
+
+    from app.services.manual_job_card_service import list_manual_job_cards
+
+    if is_admin or TEAM_SALES in teams:
+        manual_items = list_manual_job_cards(db, tenant_id, limit=limit, user=user)
+        seen_jc = {it.get("job_card_id") for it in items if it.get("job_card_id")}
+        for row in manual_items:
+            if row.get("job_card_id") not in seen_jc:
+                items.append(row)
+    elif TEAM_INVENTORY in teams:
+        manual_items = list_manual_job_cards(
+            db, tenant_id, limit=limit, for_store=True, status_filter=status_filter, user=user
+        )
+        seen_jc = {it.get("job_card_id") for it in items if it.get("job_card_id")}
+        for row in manual_items:
+            if row.get("job_card_id") not in seen_jc:
+                items.append(row)
+
+    if is_admin or TEAM_SALES in teams or TEAM_INVENTORY in teams:
+        items.sort(
+            key=lambda r: r.get("received_at") or r.get("created_at") or "",
+            reverse=True,
+        )
+        items = items[:limit]
+
     metadata = dict(metadata)
     if TEAM_INVENTORY in teams or is_admin:
         metadata["counts"] = _store_kpi_counts(db, tenant_id)

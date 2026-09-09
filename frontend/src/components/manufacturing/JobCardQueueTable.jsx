@@ -12,9 +12,20 @@ import { WORKFLOW_STAGES } from "../../config/workflowStages";
 import { jobCardDetailsUrl } from "../../utils/jobCardRoutes";
 import { stageJobCardUrl } from "../../utils/workflowStageRoutes";
 import { storeQueueStatusLabel, storeStatusVariant } from "../../utils/storeJobCardQueue";
-import { downloadJobCardPdf, printProductionOrder } from "../../utils/printUtils";
+import {
+  downloadProductionJobCardPdf,
+  downloadSalesJobCardPdf,
+  printProductionJobCardLandscape,
+  printSalesJobCardLandscape,
+} from "../../utils/printUtils";
 import useAuth from "../../hooks/useAuth";
 import { erpListStatus } from "../../utils/jobCardListStatus";
+import {
+  fmtListProduct,
+  fmtListQuantity,
+  fmtListUom,
+  rowCustomerPo,
+} from "../../utils/jobCardQueueDisplay";
 
 function isOverdue(deliveryDate) {
   if (!deliveryDate) return false;
@@ -74,7 +85,13 @@ function fmtQty(value, unit) {
   return `${n.toLocaleString("en-IN")}${unit ? ` ${unit}` : ""}`;
 }
 
+function resolveRowKey(row) {
+  return row?.job_card_id ?? row?.sales_order_id ?? row?.id;
+}
+
 function buildRowMenuItems({ row, orderId, onViewDetails, onSelect, onEdit, onDelete, canDelete, canEdit, user }) {
+  const printFn = () => printSalesJobCardLandscape(row, user);
+  const pdfFn = () => downloadSalesJobCardPdf(row, user);
   return [
     {
       label: "View",
@@ -94,12 +111,12 @@ function buildRowMenuItems({ row, orderId, onViewDetails, onSelect, onEdit, onDe
     {
       label: "Print",
       icon: <Printer className="h-4 w-4" />,
-      onClick: () => printProductionOrder(row, user),
+      onClick: printFn,
     },
     {
       label: "Download PDF",
       icon: <Download className="h-4 w-4" />,
-      onClick: () => downloadJobCardPdf(row, user),
+      onClick: pdfFn,
     },
     canDelete && onDelete
       ? {
@@ -112,10 +129,11 @@ function buildRowMenuItems({ row, orderId, onViewDetails, onSelect, onEdit, onDe
   ].filter(Boolean);
 }
 
-function TruncateCell({ value, className = "" }) {
+function TruncateCell({ value, className = "", maxWidthClass = "max-w-[160px]", title }) {
   const text = value || "—";
+  const tip = title ?? (value || undefined);
   return (
-    <span className={`block max-w-[160px] truncate ${className}`} title={value || undefined}>
+    <span className={`block ${maxWidthClass} truncate ${className}`} title={tip}>
       {text}
     </span>
   );
@@ -173,12 +191,12 @@ function QueueRowCard({
     {
       label: "Print",
       icon: <Printer className="h-4 w-4" />,
-      onClick: () => printProductionOrder(row, user),
+      onClick: () => printSalesJobCardLandscape(row, user),
     },
     {
       label: "Download PDF",
       icon: <Download className="h-4 w-4" />,
-      onClick: () => downloadJobCardPdf(row, user),
+      onClick: () => downloadSalesJobCardPdf(row, user),
     },
     canDelete && onDelete
       ? {
@@ -217,11 +235,11 @@ function QueueRowCard({
         </div>
         <div>
           <dt className="text-[var(--color-text-muted)]">Product</dt>
-          <dd className="font-medium">{row.product_name || "—"}</dd>
+          <dd className="font-medium">{fmtListProduct(row)}</dd>
         </div>
         <div>
           <dt className="text-[var(--color-text-muted)]">Qty</dt>
-          <dd className="font-medium tabular-nums">{fmtQty(row.quantity, row.unit)}</dd>
+          <dd className="font-medium tabular-nums">{fmtListQuantity(row)}</dd>
         </div>
         <div>
           <dt className="text-[var(--color-text-muted)]">Delivery</dt>
@@ -234,14 +252,24 @@ function QueueRowCard({
       <div className="mt-3 flex items-center justify-between gap-2">
         <PriorityBadge priority={row.priority || "medium"} showDot={false} />
         <div className="inline-flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-          <Button
-            variant={actionVariantForRow(row)}
-            size="sm"
-            to={stageUrl}
-            state={linkState}
-          >
-            {storeMode ? storeActionLabel(row) : "Open Job Card"}
-          </Button>
+          {onViewDetails ? (
+            <Button
+              variant={actionVariantForRow(row)}
+              size="sm"
+              onClick={() => onViewDetails(row)}
+            >
+              View Job Card
+            </Button>
+          ) : (
+            <Button
+              variant={actionVariantForRow(row)}
+              size="sm"
+              to={stageUrl}
+              state={linkState}
+            >
+              {storeMode ? storeActionLabel(row) : "Open Job Card"}
+            </Button>
+          )}
           <RowActionMenu
             rowId={`mobile-${orderId}`}
             openMenu={openMenu}
@@ -270,6 +298,7 @@ export default function JobCardQueueTable({
   onEdit,
   canEdit = false,
   erpLayout = false,
+  jobCardLinkForRow = null,
 }) {
   const { user } = useAuth();
   const [openMenu, setOpenMenu] = useState(null);
@@ -300,21 +329,26 @@ export default function JobCardQueueTable({
               <tr>
                 <SerialNumberHeader label="#" />
                 <th className="whitespace-nowrap px-3 py-2 font-semibold">Job Card No.</th>
-                <th className="whitespace-nowrap px-3 py-2 font-semibold">Sales Order</th>
+                <th className="whitespace-nowrap px-3 py-2 font-semibold">Date</th>
+                <th className="whitespace-nowrap px-3 py-2 font-semibold">Sales Order No.</th>
                 <th className="whitespace-nowrap px-3 py-2 font-semibold">Customer</th>
+                <th className="whitespace-nowrap px-3 py-2 font-semibold">Customer PO No.</th>
                 <th className="whitespace-nowrap px-3 py-2 font-semibold">Product</th>
-                <th className="whitespace-nowrap px-2 py-2 text-right font-semibold">Planned Qty</th>
-                <th className="whitespace-nowrap px-2 py-2 text-right font-semibold">Completed Qty</th>
+                <th className="whitespace-nowrap px-2 py-2 text-right font-semibold">Quantity</th>
+                <th className="whitespace-nowrap px-2 py-2 font-semibold">UOM</th>
+                <th className="whitespace-nowrap px-3 py-2 font-semibold">Delivery Date</th>
                 <th className="whitespace-nowrap px-3 py-2 font-semibold">Status</th>
-                <th className="whitespace-nowrap px-3 py-2 font-semibold">Start Date</th>
-                <th className="whitespace-nowrap px-3 py-2 font-semibold">Due Date</th>
-                <th className="whitespace-nowrap px-3 py-2 text-right font-semibold">Actions</th>
+                <th className="whitespace-nowrap px-2 py-2 font-semibold">Priority</th>
+                <th className="whitespace-nowrap px-3 py-2 font-semibold">Created By</th>
+                <th className="whitespace-nowrap px-3 py-2 font-semibold">Created Date</th>
+                <th className="my-job-cards-table__actions-col whitespace-nowrap px-2 py-2 font-semibold">Actions</th>
               </tr>
             </thead>
             <tbody>
               {rows.map((row, idx) => {
+                const rowKey = resolveRowKey(row);
                 const orderId = row.sales_order_id ?? row.id;
-                const isSelected = selectedOrderId === orderId;
+                const isSelected = Number(selectedOrderId) === Number(rowKey);
                 const erpStatus = erpListStatus(row);
                 const menuItems = buildRowMenuItems({
                   row,
@@ -330,7 +364,7 @@ export default function JobCardQueueTable({
 
                 return (
                   <tr
-                    key={orderId}
+                    key={rowKey}
                     onClick={() => (onViewDetails ? onViewDetails(row) : onSelect?.(orderId))}
                     className={`cursor-pointer transition-colors ${
                       isSelected ? "bg-[var(--color-primary-soft)]/40" : ""
@@ -338,7 +372,20 @@ export default function JobCardQueueTable({
                   >
                     <SerialNumberCell rowIndex={idx} serialOffset={snoOffset} />
                     <td className="whitespace-nowrap px-3 py-2.5 font-semibold text-[var(--color-primary)]">
-                      {row.job_card_no || "—"}
+                      {jobCardLinkForRow && row.job_card_no ? (
+                        <Link
+                          to={jobCardLinkForRow(row)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-[var(--color-primary)] underline-offset-2 hover:underline"
+                        >
+                          {row.job_card_no}
+                        </Link>
+                      ) : (
+                        row.job_card_no || "—"
+                      )}
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-2.5 text-[var(--color-text-secondary)]">
+                      {fmtErpDate(row.job_card_date || row.order_date || row.received_at)}
                     </td>
                     <td className="whitespace-nowrap px-3 py-2.5 text-[var(--color-text-secondary)]">
                       {row.order_number || "—"}
@@ -346,26 +393,44 @@ export default function JobCardQueueTable({
                     <td className="px-3 py-2.5">
                       <TruncateCell value={row.customer_name} className="text-[var(--color-text-secondary)]" />
                     </td>
-                    <td className="px-3 py-2.5">
-                      <TruncateCell value={row.product_name} className="text-[var(--color-text-secondary)]" />
+                    <td className="whitespace-nowrap px-3 py-2.5 text-[var(--color-text-secondary)]">
+                      {rowCustomerPo(row)}
                     </td>
-                    <td className="whitespace-nowrap px-2 py-2.5 text-right tabular-nums">
-                      {fmtPlannedQty(row.quantity)}
+                    <td className="my-job-cards-table__product-cell px-3 py-2.5">
+                      <TruncateCell
+                        value={fmtListProduct(row)}
+                        maxWidthClass="max-w-[220px]"
+                        className="text-[var(--color-text-secondary)]"
+                        title={
+                          Array.isArray(row?.sales_document?.product_lines)
+                            ? row.sales_document.product_lines.map((l) => l.product_name).filter(Boolean).join(", ")
+                            : undefined
+                        }
+                      />
                     </td>
-                    <td className="whitespace-nowrap px-2 py-2.5 text-right tabular-nums">
-                      {fmtCompletedQty(row)}
+                    <td className="whitespace-nowrap px-2 py-2.5 text-right tabular-nums text-[var(--color-text)]">
+                      {fmtListQuantity(row)}
+                    </td>
+                    <td className="whitespace-nowrap px-2 py-2.5 text-[var(--color-text-secondary)]">
+                      {fmtListUom(row)}
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-2.5 text-[var(--color-text-secondary)]">
+                      {fmtDeliveryDisplay(row.delivery_date)}
                     </td>
                     <td className="whitespace-nowrap px-3 py-2.5">
                       <CommonStatusBadge tone={erpStatus.tone}>{erpStatus.label}</CommonStatusBadge>
                     </td>
-                    <td className="whitespace-nowrap px-3 py-2.5 text-[var(--color-text-secondary)]">
-                      {fmtErpDate(row.order_date || row.received_at)}
+                    <td className="whitespace-nowrap px-2 py-2.5">
+                      <PriorityBadge priority={row.priority || "medium"} showDot={false} />
                     </td>
                     <td className="whitespace-nowrap px-3 py-2.5 text-[var(--color-text-secondary)]">
-                      {fmtErpDate(row.delivery_date)}
+                      <TruncateCell value={row.created_by} />
                     </td>
-                    <td className="whitespace-nowrap px-3 py-2.5 text-right" onClick={(e) => e.stopPropagation()}>
-                      <RowActionMenu rowId={orderId} openMenu={openMenu} setOpenMenu={setOpenMenu} items={menuItems} />
+                    <td className="whitespace-nowrap px-3 py-2.5 text-[var(--color-text-secondary)]">
+                      {fmtErpDate(row.received_at || row.job_card_date || row.order_date)}
+                    </td>
+                    <td className="my-job-cards-table__actions-col px-2 py-2.5" onClick={(e) => e.stopPropagation()}>
+                      <RowActionMenu rowId={String(rowKey)} openMenu={openMenu} setOpenMenu={setOpenMenu} items={menuItems} />
                     </td>
                   </tr>
                 );
@@ -376,13 +441,14 @@ export default function JobCardQueueTable({
 
         <div className="space-y-3 p-2 md:hidden">
           {rows.map((row, idx) => {
+            const rowKey = resolveRowKey(row);
             const orderId = row.sales_order_id ?? row.id;
             return (
               <QueueRowCard
-                key={orderId}
+                key={rowKey}
                 row={row}
                 idx={idx}
-                isSelected={selectedOrderId === orderId}
+                isSelected={Number(selectedOrderId) === Number(rowKey)}
                 onSelect={onSelect}
                 onViewDetails={onViewDetails}
                 detailsUrl={jobCardDetailsUrl(orderId)}
@@ -414,6 +480,9 @@ export default function JobCardQueueTable({
               <SerialNumberHeader label="S.No" />
               <th className="whitespace-nowrap px-3 py-2 font-semibold">Job Card / SO</th>
               <th className="whitespace-nowrap px-3 py-2 font-semibold">Customer</th>
+              {storeMode ? (
+                <th className="whitespace-nowrap px-3 py-2 font-semibold">Customer PO No.</th>
+              ) : null}
               <th className="whitespace-nowrap px-3 py-2 font-semibold">Product</th>
               {storeMode ? <th className="whitespace-nowrap px-3 py-2 font-semibold">Code</th> : null}
               <th className="whitespace-nowrap px-2 py-2 text-right font-semibold">Qty</th>
@@ -427,7 +496,9 @@ export default function JobCardQueueTable({
                 <th className="whitespace-nowrap px-3 py-2 font-semibold">Stage</th>
               )}
               <th className="whitespace-nowrap px-3 py-2 font-semibold">Status</th>
-              {storeMode ? null : (
+              {storeMode ? (
+                <th className="whitespace-nowrap px-3 py-2 font-semibold">Created By</th>
+              ) : (
                 <>
                   <th className="whitespace-nowrap px-3 py-2 font-semibold">Assigned To</th>
                   <th className="whitespace-nowrap px-3 py-2 font-semibold">Created / Recd</th>
@@ -439,9 +510,10 @@ export default function JobCardQueueTable({
           <tbody className="divide-y divide-[var(--color-border-muted)]">
             {rows.map((row, idx) => {
               const orderId = row.sales_order_id ?? row.id;
+              const rowKey = resolveRowKey(row);
               const detailsUrl = jobCardDetailsUrl(orderId);
               const stageUrl = stageJobCardUrl(orderId, row.workflow_status);
-              const isSelected = selectedOrderId === orderId;
+              const isSelected = Number(selectedOrderId) === Number(rowKey);
               const workflowStatus = resolveWorkflowStatus(row);
               const high = String(row.priority || "").toLowerCase() === "high";
               const overdue = isOverdue(row.delivery_date);
@@ -449,7 +521,7 @@ export default function JobCardQueueTable({
 
               return (
                 <tr
-                  key={orderId}
+                  key={rowKey}
                   onClick={() => (onViewDetails ? onViewDetails(row) : onSelect?.(orderId))}
                   className={`cursor-pointer transition-colors hover:bg-[var(--color-surface-hover)] ${
                     isSelected ? "bg-[var(--color-primary-soft)]/40" : ""
@@ -469,8 +541,13 @@ export default function JobCardQueueTable({
                   <td className="px-3 py-2.5">
                     <TruncateCell value={row.customer_name} className="text-[var(--color-text-secondary)]" />
                   </td>
+                  {storeMode ? (
+                    <td className="whitespace-nowrap px-3 py-2.5 text-[var(--color-text-secondary)]">
+                      {row.customer_po_no || row.sales_document?.header?.customer_po_no || "—"}
+                    </td>
+                  ) : null}
                   <td className="px-3 py-2.5">
-                    <TruncateCell value={row.product_name} className="text-[var(--color-text-secondary)]" />
+                    <TruncateCell value={fmtListProduct(row)} className="text-[var(--color-text-secondary)]" />
                   </td>
                   {storeMode ? (
                     <td className="whitespace-nowrap px-3 py-2.5 text-[var(--color-text-secondary)]">
@@ -478,7 +555,7 @@ export default function JobCardQueueTable({
                     </td>
                   ) : null}
                   <td className="whitespace-nowrap px-2 py-2.5 text-right tabular-nums text-[var(--color-text)]">
-                    {fmtQty(row.quantity, row.unit)}
+                    {storeMode ? fmtListQuantity(row) : fmtQty(row.quantity, row.unit)}
                   </td>
                   <td className="whitespace-nowrap px-2 py-2.5 text-right tabular-nums text-[var(--color-text-secondary)]">
                     {fmtQty(row.available_qty, row.unit)}
@@ -511,7 +588,12 @@ export default function JobCardQueueTable({
                       variant={storeMode ? storeStatusVariant(row) : undefined}
                     />
                   </td>
-                  {storeMode ? null : (
+                  {storeMode ? (
+                    <td className="whitespace-nowrap px-3 py-2.5 text-[var(--color-text-secondary)]">
+                      {row.created_by || "—"}
+                    </td>
+                  ) : null}
+                  {!storeMode ? (
                     <>
                       <td className="whitespace-nowrap px-3 py-2.5 text-[var(--color-text-secondary)]">
                         {row.assigned_to || "—"}
@@ -520,7 +602,7 @@ export default function JobCardQueueTable({
                         {fmtDeliveryDisplay(row.received_at || row.order_date)}
                       </td>
                     </>
-                  )}
+                  ) : null}
                   <td className="whitespace-nowrap px-3 py-2.5 text-right" onClick={(e) => e.stopPropagation()}>
                     <div className="inline-flex items-center justify-end gap-1.5">
                       <Button variant={actionVariantForRow(row)} size="sm" to={stageUrl} state={linkState}>
@@ -542,12 +624,12 @@ export default function JobCardQueueTable({
                           {
                             label: "Print",
                             icon: <Printer className="h-4 w-4" />,
-                            onClick: () => printProductionOrder(row, user),
+                            onClick: () => printSalesJobCardLandscape(row, user),
                           },
                           {
                             label: "Download PDF",
                             icon: <Download className="h-4 w-4" />,
-                            onClick: () => downloadJobCardPdf(row, user),
+                            onClick: () => downloadSalesJobCardPdf(row, user),
                           },
                           canDelete && onDelete
                             ? {

@@ -972,6 +972,35 @@ def ensure_sales_job_card_from_order(
     db.flush()
 
 
+def _resolve_job_card_details(
+    db: Session,
+    jc: Any | None,
+    *,
+    card: dict[str, Any] | None = None,
+    material_check: Any | None = None,
+) -> dict[str, Any]:
+    from app.services.job_card_details import (
+        build_raw_materials_from_bom,
+        build_raw_materials_from_material_check,
+        empty_details,
+        merge_details,
+        parse_details_json,
+    )
+
+    details = parse_details_json(jc.details_json if jc else None)
+    if not details.get("raw_materials"):
+        if material_check and material_check.lines:
+            details["raw_materials"] = build_raw_materials_from_material_check(material_check.lines)
+        elif card and card.get("materials"):
+            details["raw_materials"] = build_raw_materials_from_bom(card["materials"])
+    if jc and jc.created_at and not details.get("job_info", {}).get("issue_date"):
+        details = merge_details(
+            details,
+            {"job_info": {"issue_date": jc.created_at.date().isoformat()}},
+        )
+    return details or empty_details()
+
+
 def _serialize_job_card_form(
     db: Session,
     so: SalesOrder,
@@ -982,6 +1011,7 @@ def _serialize_job_card_form(
     customer_name: str | None = None,
     product_name: str | None = None,
     workflow_status: str | None = None,
+    details: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     from app.core.workflow_constants import normalize_priority
     from app.models.product import Product
@@ -1016,7 +1046,51 @@ def _serialize_job_card_form(
         "status": jc.status if jc else "draft",
         "is_created": bool(jc and jc.status == "created"),
         "workflow_status": workflow_status,
+        "job_card_date": jc.created_at.date().isoformat() if jc and jc.created_at else None,
+        "details": details or {},
     }
+
+
+def _assert_job_card_save_permission(
+    user: User,
+    payload: dict[str, Any],
+    *,
+    finalize: bool,
+    workflow_status: str | None,
+) -> None:
+    from fastapi import HTTPException
+
+    from app.core.permissions import get_role_names, user_is_admin
+    from app.core.workflow_constants import TEAM_SALES, user_teams
+
+    teams = user_teams(get_role_names(user))
+    is_admin = user_is_admin(user)
+    if finalize:
+        if not is_admin and TEAM_SALES not in teams:
+            raise HTTPException(status_code=403, detail="Sales team permission required")
+        return
+
+    header_keys = {
+        "customer_id",
+        "product_id",
+        "quantity",
+        "unit",
+        "required_delivery_date",
+        "priority",
+        "sales_person_id",
+        "sales_person_name",
+        "notes",
+    }
+    touches_header = any(k in payload for k in header_keys)
+    touches_details = "details" in payload and payload.get("details") is not None
+
+    if touches_header and not is_admin and TEAM_SALES not in teams:
+        raise HTTPException(status_code=403, detail="Sales team permission required")
+
+    if touches_details:
+        sections = _editable_sections_for_user(user, workflow_status)
+        if not is_admin and not sections:
+            raise HTTPException(status_code=403, detail="Not permitted to update job card details")
 
 
 def save_sales_job_card(
@@ -1031,18 +1105,23 @@ def save_sales_job_card(
     """Create or update persisted sales job card; finalize triggers workflow handoff."""
     from fastapi import HTTPException
 
-    from app.core.permissions import get_role_names, user_is_admin
-    from app.core.workflow_constants import TEAM_SALES, normalize_priority, user_teams
+    from app.core.workflow_constants import TEAM_SALES, normalize_priority
     from app.models.manufacturing_workflow import SalesJobCard
     from app.models.product import Product
     from app.models.sales import SalesOrderLine
+    from app.schemas.job_card_details import JobCardDetailsPayload
+    from app.services.job_card_details import (
+        parse_details_json,
+        serialize_details_json,
+        validate_details,
+    )
     from app.services.workflow_state_service import get_sales_order_or_404, transition_workflow_status
     from app.services.workflow_team_service import create_material_check_for_order
 
-    if not user_is_admin(user) and TEAM_SALES not in user_teams(get_role_names(user)):
-        raise HTTPException(status_code=403, detail="Sales team permission required")
-
     so = get_sales_order_or_404(db, tenant_id, sales_order_id)
+    ws_preview = (so.workflow_status or "").upper()
+    _assert_job_card_save_permission(user, payload, finalize=finalize, workflow_status=ws_preview)
+
     if (so.status or "").lower() not in {"confirmed", "approved"} and not so.workflow_status:
         raise HTTPException(
             status_code=400,
@@ -1054,36 +1133,106 @@ def save_sales_job_card(
     )
     line = lines[0] if lines else None
 
-    customer_id = payload.get("customer_id") or so.customer_id
-    product_id = payload.get("product_id") or (line.product_id if line else None)
-    quantity = float(payload.get("quantity") or (line.quantity if line else 0))
-    unit = (payload.get("unit") or (line.unit if line else "Nos") or "Nos").strip()
-    priority = normalize_priority(payload.get("priority") or so.priority)
-    notes = (payload.get("notes") or "")[:500]
-    sales_person_id = payload.get("sales_person_id")
-    sales_person_name = payload.get("sales_person_name") or so.sales_person
+    jc_existing = _get_persisted_job_card(db, tenant_id, sales_order_id)
+    header_keys = {
+        "customer_id",
+        "product_id",
+        "quantity",
+        "unit",
+        "required_delivery_date",
+        "priority",
+        "sales_person_id",
+        "sales_person_name",
+        "notes",
+    }
+    touches_header = any(k in payload for k in header_keys)
+    skip_header_validation = (
+        jc_existing
+        and jc_existing.status == "created"
+        and not touches_header
+        and not finalize
+    )
+
+    customer_id = payload.get("customer_id") or (jc_existing.customer_id if jc_existing else None) or so.customer_id
+    product_id = payload.get("product_id") or (jc_existing.product_id if jc_existing else None) or (line.product_id if line else None)
+    quantity = float(
+        payload.get("quantity")
+        or (jc_existing.quantity if jc_existing else None)
+        or (line.quantity if line else 0)
+    )
+    unit = (
+        payload.get("unit")
+        or (jc_existing.unit if jc_existing else None)
+        or (line.unit if line else "Nos")
+        or "Nos"
+    ).strip()
+    priority = normalize_priority(
+        payload.get("priority") or (jc_existing.priority if jc_existing else None) or so.priority
+    )
+    notes = (payload.get("notes") or (jc_existing.notes if jc_existing else "") or "")[:500]
+    sales_person_id = payload.get("sales_person_id") or (jc_existing.sales_person_id if jc_existing else None)
+    sales_person_name = (
+        payload.get("sales_person_name")
+        or (jc_existing.sales_person_name if jc_existing else None)
+        or so.sales_person
+    )
 
     errors: dict[str, str] = {}
-    if not customer_id:
-        errors["customer_id"] = "Customer is required"
-    if not product_id:
-        errors["product_id"] = "Product is required"
-    if quantity <= 0:
-        errors["quantity"] = "Quantity must be greater than 0"
-    if not payload.get("required_delivery_date") and not so.delivery_date:
-        errors["required_delivery_date"] = "Required delivery date is required"
-    if not priority:
-        errors["priority"] = "Priority is required"
-    if errors:
-        raise HTTPException(status_code=422, detail={"message": "Validation failed", "errors": errors})
+    if not skip_header_validation:
+        if not customer_id:
+            errors["customer_id"] = "Customer is required"
+        if not product_id:
+            errors["product_id"] = "Product is required"
+        if quantity <= 0:
+            errors["quantity"] = "Quantity must be greater than 0"
+        if not payload.get("required_delivery_date") and not so.delivery_date and not (jc_existing and jc_existing.required_delivery_date):
+            errors["required_delivery_date"] = "Required delivery date is required"
+        if not priority:
+            errors["priority"] = "Priority is required"
+        if errors:
+            raise HTTPException(status_code=422, detail={"message": "Validation failed", "errors": errors})
 
     req_date = payload.get("required_delivery_date") or so.delivery_date
     if isinstance(req_date, str):
         req_date = datetime.fromisoformat(req_date.replace("Z", "+00:00")).date()
 
-    jc = _get_persisted_job_card(db, tenant_id, sales_order_id)
+    jc = jc_existing
     if jc and jc.status == "created" and finalize:
         raise HTTPException(status_code=400, detail="Job card already created")
+
+    details_patch = payload.get("details")
+    merged_details = None
+    if details_patch is not None:
+        existing_details = parse_details_json(jc.details_json if jc else None)
+        details_model = JobCardDetailsPayload.model_validate(details_patch)
+        merged_details = details_model.to_merged_dict(existing_details)
+        patch_keys = set(details_patch.keys()) if isinstance(details_patch, dict) else set()
+        section_map = {
+            "job_info": "sales",
+            "raw_materials": "inventory",
+            "production": "production",
+            "output": "quality",
+            "approval": "sales",
+        }
+        active_detail_sections = [
+            section_map[k] for k in patch_keys if k in section_map
+        ]
+        if "output" in patch_keys and "operator" not in active_detail_sections:
+            active_detail_sections.append("operator")
+        if "production" in patch_keys and "operator" not in active_detail_sections:
+            active_detail_sections.append("operator")
+        detail_errors = validate_details(
+            merged_details,
+            editable_sections=_editable_sections_for_user(user, ws_preview),
+            job_card_created=bool(jc and jc.status == "created"),
+            finalize=finalize,
+            active_detail_sections=active_detail_sections if not finalize else None,
+        )
+        if detail_errors:
+            raise HTTPException(
+                status_code=422,
+                detail={"message": "Validation failed", "errors": detail_errors},
+            )
 
     if sales_person_id:
         sp_user = db.get(User, int(sales_person_id))
@@ -1106,6 +1255,7 @@ def save_sales_job_card(
             notes=notes or None,
             status="draft",
             created_by_user_id=user.id,
+            details_json=serialize_details_json(merged_details) if merged_details else None,
         )
         db.add(jc)
     elif jc.status != "created":
@@ -1121,6 +1271,9 @@ def save_sales_job_card(
     else:
         jc.notes = notes or jc.notes
         jc.priority = priority
+
+    if merged_details is not None and jc:
+        jc.details_json = serialize_details_json(merged_details)
 
     so.priority = priority
     so.delivery_date = req_date
@@ -1369,6 +1522,8 @@ def build_sales_job_card(
         else _workflow_stage_label(workflow_status),
         "tone": "success" if not job_card_created or workflow_status in {"SALES_CONFIRMED", "COMPLETED"} else "info",
     }
+    resolved_details = _resolve_job_card_details(db, jc, card=card)
+    card["details"] = resolved_details
     card["form"] = _serialize_job_card_form(
         db,
         so,
@@ -1378,6 +1533,30 @@ def build_sales_job_card(
         customer_name=customer_name,
         product_name=product_name,
         workflow_status=workflow_status,
+        details=resolved_details,
+    )
+    creator_name = None
+    if jc and jc.created_by_user_id:
+        creator = db.get(User, jc.created_by_user_id)
+        creator_name = creator.full_name if creator else None
+        card["audit"] = {
+            "created_by": creator_name,
+            "created_by_id": jc.created_by_user_id,
+            "created_at": jc.created_at.isoformat() if jc.created_at else None,
+            "updated_at": jc.updated_at.isoformat() if jc.updated_at else None,
+        }
+
+    from app.services.sales_job_card_document import build_sales_job_card_document
+
+    card["sales_document"] = build_sales_job_card_document(
+        db,
+        so=so,
+        lines=lines,
+        jc=jc,
+        po=po,
+        resolved_details=resolved_details,
+        workflow_status=workflow_status,
+        creator_name=creator_name,
     )
     wf_for_ui = "SALES_CONFIRMED" if not job_card_created else workflow_status
     card["workflow_steps"] = _build_job_card_workflow_steps(wf_for_ui)

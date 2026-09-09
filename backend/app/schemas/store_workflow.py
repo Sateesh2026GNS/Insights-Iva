@@ -126,6 +126,7 @@ class StoreDashboardRead(BaseModel):
     pending_purchase_requisitions: int = 0
     warehouse_utilization_pct: float = 0
     pending_inventory_checks: int = 0
+    sales_job_cards_pending: int = 0
     pending_inventory_orders: list[PendingInventoryCheckOrder] = Field(default_factory=list)
 
 

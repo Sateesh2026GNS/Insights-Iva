@@ -3,7 +3,7 @@ import uuid
 
 
 from sqlalchemy import text
-from sqlalchemy.exc import OperationalError, SQLAlchemyError
+from sqlalchemy.exc import IntegrityError, OperationalError, SQLAlchemyError
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
@@ -29,9 +29,11 @@ from app.api.login_history import router as login_history_router
 from app.api.platform_api import router as platform_router
 from app.api.rbac_api import router as rbac_api_router
 from app.middleware.audit_middleware import AuditMiddleware
+from app.middleware.security import ApiRateLimitMiddleware
 from app.api.dispatch import router as dispatch_router
 from app.api.dispatch_addresses_api import router as dispatch_addresses_router
 from app.api.documents import router as documents_router
+from app.api.files_api import router as files_router
 from app.api.factory_monitor import router as factory_monitor_router
 from app.api.forecasting import router as forecasting_router
 from app.api.departments import router as departments_router
@@ -70,6 +72,7 @@ from app.models import (  # noqa: F401
     company_settings,
     department,
     document,
+    file_storage,
     erp_notification,
     hr,
     hr_module,
@@ -124,6 +127,7 @@ if settings.is_production:
         allowed_hosts=settings.allowed_host_list,
     )
 
+app.add_middleware(ApiRateLimitMiddleware)
 app.add_middleware(AuditMiddleware)
 _cors_kwargs = {
     "allow_origins": settings.cors_origin_list,
@@ -223,30 +227,40 @@ from fastapi.encoders import jsonable_encoder
 
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+    from app.utils.error_sanitizer import sanitize_client_message
+
     detail = jsonable_encoder(exc.detail)
     if request.url.path.startswith("/api/"):
         from app.utils.api_response import error_response
 
         if isinstance(detail, dict):
-            message = (
+            raw_message = (
                 detail.get("message")
                 or detail.get("detail")
                 or "Request failed"
             )
+            message = sanitize_client_message(str(raw_message), status_code=exc.status_code)
             blockers = detail.get("blockers")
-            errors = blockers if isinstance(blockers, list) and blockers else [str(message)]
+            errors = blockers if isinstance(blockers, list) and blockers else [message]
             return JSONResponse(
                 status_code=exc.status_code,
                 content=error_response(message, errors=errors, data=detail),
             )
-        message = str(detail) if detail is not None else "Request failed"
+        message = sanitize_client_message(
+            str(detail) if detail is not None else "Request failed",
+            status_code=exc.status_code,
+        )
         return JSONResponse(
             status_code=exc.status_code,
             content=error_response(message, errors=[message]),
         )
+    safe_detail = sanitize_client_message(
+        str(detail) if detail is not None else "Request failed",
+        status_code=exc.status_code,
+    )
     return JSONResponse(
         status_code=exc.status_code,
-        content={"detail": detail, "request_id": getattr(request.state, "request_id", None)},
+        content={"detail": safe_detail, "request_id": getattr(request.state, "request_id", None)},
     )
 
 
@@ -276,6 +290,25 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
             "errors": formatted_errors,
             "request_id": getattr(request.state, "request_id", None),
         },
+    )
+
+
+@app.exception_handler(IntegrityError)
+async def integrity_error_handler(request: Request, exc: IntegrityError):
+    logger.warning(
+        "integrity_error id=%s",
+        getattr(request.state, "request_id", None),
+    )
+    from app.utils.error_sanitizer import sanitize_client_message
+
+    message = sanitize_client_message(None, status_code=409)
+    if request.url.path.startswith("/api/"):
+        from app.utils.api_response import error_response
+
+        return JSONResponse(status_code=409, content=error_response(message, errors=[message]))
+    return JSONResponse(
+        status_code=409,
+        content={"detail": message, "request_id": getattr(request.state, "request_id", None)},
     )
 
 
@@ -463,6 +496,8 @@ app.include_router(admin_router)
 app.include_router(company_settings_router)
 app.include_router(documents_router)
 app.include_router(documents_router, prefix="/api")
+app.include_router(files_router)
+app.include_router(files_router, prefix="/api")
 app.include_router(dispatch_router)
 app.include_router(dispatch_addresses_router)
 app.include_router(factory_monitor_router)

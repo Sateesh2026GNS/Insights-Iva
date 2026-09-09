@@ -4,6 +4,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from app.schemas.party_form import PartyBasicDetails, PartyCustomField, PartyOtherDetails
 from app.utils.gst import validate_gstin
 
 _EMAIL_RE = re.compile(
@@ -109,6 +110,20 @@ def _validate_gstin(value: Any) -> str | None:
 
 
 class CustomerCreate(CustomerBase):
+    party_basic_details: PartyBasicDetails | None = None
+    party_other_details: PartyOtherDetails | None = None
+    party_custom_fields: list[PartyCustomField] | None = None
+
+    @field_validator("party_custom_fields")
+    @classmethod
+    def validate_custom_field_uniqueness(cls, value: list[PartyCustomField] | None):
+        if not value:
+            return value
+        labels = [f.label.strip().lower() for f in value]
+        if len(labels) != len(set(labels)):
+            raise ValueError("A custom field with this name already exists")
+        return value
+
     @field_validator("name", mode="before")
     @classmethod
     def validate_name(cls, value: Any) -> str:
@@ -144,6 +159,20 @@ class CustomerCreate(CustomerBase):
 
 
 class CustomerUpdate(BaseModel):
+    party_basic_details: PartyBasicDetails | None = None
+    party_other_details: PartyOtherDetails | None = None
+    party_custom_fields: list[PartyCustomField] | None = None
+
+    @field_validator("party_custom_fields")
+    @classmethod
+    def validate_custom_field_uniqueness(cls, value: list[PartyCustomField] | None):
+        if not value:
+            return value
+        labels = [f.label.strip().lower() for f in value]
+        if len(labels) != len(set(labels)):
+            raise ValueError("A custom field with this name already exists")
+        return value
+
     name: str | None = None
     contact_name: str | None = None
     address_line1: str | None = None

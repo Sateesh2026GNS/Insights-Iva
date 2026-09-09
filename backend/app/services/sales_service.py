@@ -57,7 +57,10 @@ def _assert_no_customer_duplicates(
 
 def create_customer(db: Session, payload: CustomerCreate) -> Customer:
     _assert_no_customer_duplicates(db, payload.tenant_id, gstin=payload.gstin)
-    c = Customer(**payload.model_dump())
+    data = payload.model_dump(
+        exclude={"party_basic_details", "party_other_details", "party_custom_fields"}
+    )
+    c = Customer(**data)
     db.add(c)
     db.commit()
     db.refresh(c)
@@ -87,7 +90,10 @@ def update_customer(
     c = get_customer(db, tenant_id, customer_id)
     if not c:
         return None
-    data = payload.model_dump(exclude_unset=True)
+    data = payload.model_dump(
+        exclude_unset=True,
+        exclude={"party_basic_details", "party_other_details", "party_custom_fields"},
+    )
     if "gstin" in data and data["gstin"]:
         _assert_no_customer_duplicates(db, tenant_id, gstin=data["gstin"], exclude_id=customer_id)
     for key, value in data.items():

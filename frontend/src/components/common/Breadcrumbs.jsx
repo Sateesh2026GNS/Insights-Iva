@@ -339,8 +339,8 @@ export function getPageTitle(pathname, user = null) {
   if (PAGE_TITLE_OVERRIDES[path]) return PAGE_TITLE_OVERRIDES[path];
 
   // Specific dynamic pattern matches
-  if (/^\/job-cards\/\d+$/i.test(path)) {
-    return "Job Card Details";
+  if (/^\/job-cards\/\d+$/i.test(path) || /^\/my-job-cards\/\d+$/i.test(path)) {
+    return "Sales Job Card";
   }
   const stageMatch = path.match(/^\/manufacturing\/workflow\/order\/\d+\/([a-z0-9_-]+)$/i);
   if (stageMatch && stageMatch[1]) {

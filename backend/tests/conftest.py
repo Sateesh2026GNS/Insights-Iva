@@ -19,6 +19,8 @@ os.environ["JWT_SECRET_KEY"] = "test-secret-key-not-for-production"
 os.environ["ENVIRONMENT"] = "development"
 # Allow /auth/register in tests (disabled in SaaS production).
 os.environ["ALLOW_PUBLIC_REGISTRATION"] = "true"
+os.environ["STORAGE_PROVIDER"] = "local"
+os.environ["FILE_STORAGE_LOCAL_PATH"] = _TEST_DB_PATH + "_uploads"
 
 from fastapi.testclient import TestClient  # noqa: E402
 
@@ -34,11 +36,17 @@ from app.services.auth_service import hash_password  # noqa: E402
 @pytest.fixture(autouse=True)
 def _clear_login_rate_limits():
     """Prevent cross-test pollution from in-memory login rate limit buckets."""
-    from app.middleware import security as sec
+    from app.middleware.security import clear_buckets
+    from app.services.file_rate_limiter import clear_rate_limits
+    from app.services.storage.token_store import clear_token_store
 
-    sec._buckets.clear()
+    clear_buckets()
+    clear_rate_limits()
+    clear_token_store()
     yield
-    sec._buckets.clear()
+    clear_buckets()
+    clear_rate_limits()
+    clear_token_store()
 
 
 @pytest.fixture(scope="session", autouse=True)

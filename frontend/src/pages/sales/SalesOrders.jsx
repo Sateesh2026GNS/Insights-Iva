@@ -14,7 +14,6 @@ import RowActionMenu from "../../components/common/RowActionMenu";
 import SkeletonTable from "../../components/common/SkeletonTable";
 import { ErrorState, NoResultsState, OfflineState } from "../../components/common/states";
 import SODetailModal from "../../components/sales/SODetailModal";
-import SalesOrderFormModal from "../../components/sales/SalesOrderFormModal";
 import { useToast } from "../../context/ToastContext";
 import { useNetworkStatus } from "../../context/NetworkStatusContext";
 import { getSOSummary, getSalesOrdersEnriched, deleteSalesOrder } from "../../api/salesApi";
@@ -27,8 +26,8 @@ import {
   salesOrderDeleteErrorMessage,
 } from "../../utils/salesOrderDelete";
 import useAuth from "../../hooks/useAuth";
-import { userCanAction } from "../../config/permissions";
-import { jobCardDetailsUrl } from "../../utils/jobCardRoutes";
+import { userCanAction, userCanCreateSalesJobCard } from "../../config/permissions";
+import { jobCardCreateUrl, jobCardDetailsUrl } from "../../utils/jobCardRoutes";
 
 
 import Button from "../../components/common/Button";
@@ -38,7 +37,7 @@ export default function SalesOrders() {
   const { addToast } = useToast();
   const { user } = useAuth();
   const navigate = useNavigate();
-  const canCreate = userCanAction(user, "sales", "create");
+  const canCreate = userCanCreateSalesJobCard(user);
   const canDelete = userCanAction(user, "sales", "delete");
   const { online, markRequestStart, markRequestEnd } = useNetworkStatus();
   const [loading, setLoading] = useState(true);
@@ -48,7 +47,6 @@ export default function SalesOrders() {
   const [filters, setFilters] = useState(defaultFilters);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [selected, setSelected] = useState(null);
-  const [showCreateModal, setShowCreateModal] = useState(false);
   const [openMenu, setOpenMenu] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteError, setDeleteError] = useState("");
@@ -267,12 +265,8 @@ export default function SalesOrders() {
               onExport={handleExport}
             />
             {canCreate ? (
-              <Button
-                variant="primary"
-                type="button"
-                onClick={() => setShowCreateModal(true)}
-              >
-                <Plus className="mr-1.5 inline h-4 w-4" /> Create Sales Order
+              <Button variant="primary" to={jobCardCreateUrl()}>
+                <Plus className="mr-1.5 inline h-4 w-4" /> Add Job Card
               </Button>
             ) : null}
           </div>
@@ -365,16 +359,6 @@ export default function SalesOrders() {
         )}
         </ListPageCardBody>
       </ListPageCard>
-
-      {showCreateModal && (
-        <SalesOrderFormModal
-          onClose={() => setShowCreateModal(false)}
-          onSave={() => {
-            setShowCreateModal(false);
-            load();
-          }}
-        />
-      )}
 
       {selected && (
         <SODetailModal

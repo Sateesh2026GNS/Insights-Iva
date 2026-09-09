@@ -52,6 +52,14 @@ export default function NotificationBell() {
     setOpen(false);
 
     const actionUrl = notification.action_url || "";
+    const manualJcMatch = actionUrl.match(/[?&]jc=(\d+)/i);
+    const manualJobCardId = manualJcMatch ? manualJcMatch[1] : null;
+
+    if (manualJobCardId) {
+      navigate(actionUrl.startsWith("/") ? actionUrl : `/my-job-cards?dept=inventory&jc=${manualJobCardId}`);
+      return;
+    }
+
     // Check if notification is for job cards / manufacturing workflow
     const jobCardMatch = actionUrl.match(/\/(?:job-cards|manufacturing\/workflow\/order|sales\/orders)\/(\d+)/i);
     const orderId = notification.order_id || notification.sales_order_id || (jobCardMatch ? jobCardMatch[1] : null);

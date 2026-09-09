@@ -17,6 +17,11 @@ import { lookupIndianPincode, fetchCurrentLocationAddress } from "../../api/addr
 import { INDIAN_STATES, CITIES_BY_STATE } from "../../data/indiaLocations";
 import { useToast } from "../../context/ToastContext";
 import useTenantId from "../../hooks/useTenantId";
+import { apiErrorMessage, applyBackendFieldErrors } from "../../utils/apiError";
+import {
+  validateBasicDetails,
+  validateOtherDetails,
+} from "../../utils/partyFormValidation";
 import { inputClass } from "../../design-system/classes";
 
 const PANEL_CLASS =
@@ -44,9 +49,9 @@ const EMPTY_BASIC = {
 };
 
 const EMPTY_OTHER = {
-  party_type: "Buyer",
+  party_type: "",
   gst_treatment: "",
-  tax_preference: "Taxable",
+  tax_preference: "",
   tds: false,
   tcs: false,
 };
@@ -92,9 +97,35 @@ function toInitial(party, variant = "customer") {
     other: {
       ...EMPTY_OTHER,
       party_type: isVendor ? "Seller" : "Buyer",
-      gst_treatment: party.gstin ? "REGISTERED BUSINESS" : "",
+      gst_treatment: party.gstin ? "Registered Business - Regular" : "",
+      tax_preference: "Taxable",
     },
   };
+}
+
+function formatBasicSummary(basic) {
+  if (!basic) return "";
+  const parts = [];
+  if (basic.email) parts.push(basic.email);
+  if (basic.payment_terms_days) parts.push(`${basic.payment_terms_days} days credit`);
+  if (basic.opening_balance) {
+    const dir = basic.balance_type === "to_pay" ? "To Pay" : "To Receive";
+    parts.push(`₹${basic.opening_balance} (${dir})`);
+  }
+  return parts.join(" · ");
+}
+
+function formatOtherSummary(other) {
+  if (!other) return "";
+  const parts = [];
+  if (other.party_type) parts.push(other.party_type);
+  if (other.gst_treatment) parts.push(other.gst_treatment);
+  if (other.tax_preference && other.tax_preference !== "Taxable") {
+    parts.push(other.tax_preference);
+  }
+  if (other.tds) parts.push("TDS");
+  if (other.tcs) parts.push("TCS");
+  return parts.join(" · ");
 }
 
 function AddressModal({ open, onClose, initial, onSave }) {
@@ -176,7 +207,7 @@ function AddressModal({ open, onClose, initial, onSave }) {
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4"
+      className="fixed inset-0 z-[120] flex items-center justify-center bg-black/40 p-4"
       onMouseDown={(e) => e.target === e.currentTarget && onClose?.()}
       role="presentation"
     >
@@ -343,6 +374,7 @@ export default function AddNewPartyModal({
   const [customFields, setCustomFields] = useState([]);
   const [customOpen, setCustomOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({});
   const [existingParties, setExistingParties] = useState([]);
 
   const isEdit = Boolean(party);
@@ -392,11 +424,16 @@ export default function AddNewPartyModal({
       .join(", ");
   }, [address]);
 
+  const basicSummary = useMemo(() => formatBasicSummary(basicDetails), [basicDetails]);
+  const otherSummary = useMemo(() => formatOtherSummary(otherDetails), [otherDetails]);
+
   if (!open) return null;
 
   const onSubmit = async (e) => {
     e.preventDefault();
+    setFieldErrors({});
     if (!form.name.trim()) {
+      setFieldErrors({ name: "Company Name is required" });
       addToast("Company Name is required", "error");
       return;
     }
@@ -454,6 +491,23 @@ export default function AddNewPartyModal({
         return;
       }
     }
+    if (basicDetails) {
+      const basicCheck = validateBasicDetails(basicDetails, { emailRequired: isVendor });
+      if (!basicCheck.ok) {
+        addToast(Object.values(basicCheck.errors)[0], "error");
+        return;
+      }
+    } else if (isVendor) {
+      addToast("Add email in Basic Details for vendors", "error");
+      return;
+    }
+    if (otherDetails) {
+      const otherCheck = validateOtherDetails(otherDetails);
+      if (!otherCheck.ok) {
+        addToast(Object.values(otherCheck.errors)[0], "error");
+        return;
+      }
+    }
     if (isVendor) {
       const email = basicDetails?.email?.trim() || party?.email || "";
       if (!phoneVal) {
@@ -505,6 +559,25 @@ export default function AddNewPartyModal({
           vendor_type: "Raw Material Supplier",
           status: "active",
           credit_limit: Number(party?.credit_limit || 0),
+          ...(basicDetails
+            ? {
+                party_basic_details: {
+                  payment_terms_days: Number(basicDetails.payment_terms_days),
+                  opening_balance: Number(basicDetails.opening_balance),
+                  balance_type: basicDetails.balance_type,
+                  email,
+                },
+              }
+            : {}),
+          ...(otherDetails ? { party_other_details: otherDetails } : {}),
+          ...(customFields.length
+            ? {
+                party_custom_fields: customFields.map((f) => ({
+                  label: f.label,
+                  value: f.value,
+                })),
+              }
+            : {}),
         };
         let response = null;
         if (isEdit && typeof party?.id === "number") {
@@ -535,6 +608,25 @@ export default function AddNewPartyModal({
         credit_limit: Number(party?.credit_limit || 0),
         outstanding: Number.isFinite(opening) ? opening : 0,
         status: "active",
+        ...(basicDetails
+          ? {
+              party_basic_details: {
+                payment_terms_days: Number(basicDetails.payment_terms_days),
+                opening_balance: Number(basicDetails.opening_balance),
+                balance_type: basicDetails.balance_type,
+                email: basicDetails.email?.trim() || null,
+              },
+            }
+          : {}),
+        ...(otherDetails ? { party_other_details: otherDetails } : {}),
+        ...(customFields.length
+          ? {
+              party_custom_fields: customFields.map((f) => ({
+                label: f.label,
+                value: f.value,
+              })),
+            }
+          : {}),
       };
 
       let response = null;
@@ -548,7 +640,19 @@ export default function AddNewPartyModal({
       onSaved?.(response?.data || payload, { isEdit, customer: party });
       onClose?.();
     } catch (err) {
-      addToast(err?.response?.data?.detail || "Failed to save customer", "error");
+      const mapped = applyBackendFieldErrors(err, setFieldErrors, {
+        name: "name",
+        phone: "phone",
+        gstin: "gstin",
+        email: "email",
+      });
+      addToast(
+        apiErrorMessage(err, isVendor ? "Failed to save vendor" : "Failed to save customer"),
+        "error"
+      );
+      if (!mapped) {
+        /* toast carries the message */
+      }
     } finally {
       setSaving(false);
     }
@@ -601,25 +705,37 @@ export default function AddNewPartyModal({
               <SoftField label="Company Name" required>
                 <input
                   value={form.name}
-                  onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                  onChange={(e) => {
+                    setForm((f) => ({ ...f, name: e.target.value }));
+                    if (fieldErrors.name) setFieldErrors((prev) => ({ ...prev, name: "" }));
+                  }}
                   placeholder="Enter Company Name"
                   maxLength={100}
                   required
-                  className={inputClass}
+                  className={`${inputClass}${fieldErrors.name ? " border-[#e11d48]" : ""}`}
+                  aria-invalid={Boolean(fieldErrors.name)}
                 />
+                {fieldErrors.name ? (
+                  <p className="mt-1 text-[11px] font-medium text-[#e11d48]" role="alert">{fieldErrors.name}</p>
+                ) : null}
               </SoftField>
               <SoftField label="Mobile No.">
                 <input
                   value={form.phone}
-                  onChange={(e) =>
+                  onChange={(e) => {
                     setForm((f) => ({
                       ...f,
                       phone: e.target.value.replace(/\D/g, "").slice(0, 10),
-                    }))
-                  }
+                    }));
+                    if (fieldErrors.phone) setFieldErrors((prev) => ({ ...prev, phone: "" }));
+                  }}
                   placeholder="Enter Mobile No."
-                  className={inputClass}
+                  className={`${inputClass}${fieldErrors.phone ? " border-[#e11d48]" : ""}`}
+                  aria-invalid={Boolean(fieldErrors.phone)}
                 />
+                {fieldErrors.phone ? (
+                  <p className="mt-1 text-[11px] font-medium text-[#e11d48]" role="alert">{fieldErrors.phone}</p>
+                ) : null}
               </SoftField>
             </div>
 
@@ -651,39 +767,67 @@ export default function AddNewPartyModal({
           </div>
 
           <div className="mt-3 border-t border-[#ececf0] pt-3">
-            <div className="flex items-center justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-[13px] font-semibold text-[#1a1a1f]">Basic Details</p>
-                <p className="truncate text-[11px] text-[#6b6b76]">
-                  Opening Balance, Payment Terms, Credit Limit
-                </p>
+            {basicDetails ? (
+              <div className="rounded-lg border border-[#ececf0] bg-white px-3 py-2.5">
+                <div className="mb-0.5 text-[12px] font-semibold text-[#1a1a1f]">Basic Details</div>
+                <div className="flex items-start justify-between gap-3">
+                  <p className="text-[13px] text-[#4a4a55]">
+                    {basicSummary || "Payment terms and balance saved"}
+                  </p>
+                  <button type="button" onClick={() => setBasicOpen(true)} aria-label="Edit basic details">
+                    <Pencil className="h-4 w-4 text-[var(--color-action-teal)]" />
+                  </button>
+                </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setBasicOpen(true)}
-                className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[var(--color-action-teal)] bg-white px-3 py-1 text-[12px] font-semibold text-[var(--color-action-teal)] transition-colors hover:bg-[var(--color-action-teal)]/10"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                Add
-              </button>
-            </div>
+            ) : (
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-[13px] font-semibold text-[#1a1a1f]">Basic Details</p>
+                  <p className="truncate text-[11px] text-[#6b6b76]">
+                    Opening Balance, Payment Terms, Email
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setBasicOpen(true)}
+                  className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[var(--color-action-teal)] bg-white px-3 py-1 text-[12px] font-semibold text-[var(--color-action-teal)] transition-colors hover:bg-[var(--color-action-teal)]/10"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Add
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="mt-2 border-t border-[#ececf0] pt-3">
-            <div className="flex items-center justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-[13px] font-semibold text-[#1a1a1f]">Other Details</p>
-                <p className="truncate text-[11px] text-[#6b6b76]">Tax Settings, TDS / TCS , Party type</p>
+            {otherDetails ? (
+              <div className="rounded-lg border border-[#ececf0] bg-white px-3 py-2.5">
+                <div className="mb-0.5 text-[12px] font-semibold text-[#1a1a1f]">Other Details</div>
+                <div className="flex items-start justify-between gap-3">
+                  <p className="text-[13px] text-[#4a4a55]">
+                    {otherSummary || "Tax settings saved"}
+                  </p>
+                  <button type="button" onClick={() => setOtherOpen(true)} aria-label="Edit other details">
+                    <Pencil className="h-4 w-4 text-[var(--color-action-teal)]" />
+                  </button>
+                </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setOtherOpen(true)}
-                className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[var(--color-action-teal)] bg-white px-3 py-1 text-[12px] font-semibold text-[var(--color-action-teal)] transition-colors hover:bg-[var(--color-action-teal)]/10"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                Add
-              </button>
-            </div>
+            ) : (
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-[13px] font-semibold text-[#1a1a1f]">Other Details</p>
+                  <p className="truncate text-[11px] text-[#6b6b76]">Tax Settings, TDS / TCS, Party type</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setOtherOpen(true)}
+                  className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[var(--color-action-teal)] bg-white px-3 py-1 text-[12px] font-semibold text-[var(--color-action-teal)] transition-colors hover:bg-[var(--color-action-teal)]/10"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Add
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="mt-2 border-t border-[#ececf0] pt-3">
@@ -740,6 +884,7 @@ export default function AddNewPartyModal({
         onClose={() => setBasicOpen(false)}
         initial={basicDetails || EMPTY_BASIC}
         onSave={setBasicDetails}
+        emailRequired={isVendor}
       />
       <AddOtherDetailsModal
         open={otherOpen}
@@ -750,6 +895,7 @@ export default function AddNewPartyModal({
       <AddCustomFieldModal
         open={customOpen}
         onClose={() => setCustomOpen(false)}
+        existingFields={customFields}
         onSave={(field) => setCustomFields((rows) => [...rows, field])}
       />
     </div>,

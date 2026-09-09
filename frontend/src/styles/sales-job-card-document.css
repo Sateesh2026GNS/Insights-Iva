@@ -1,0 +1,324 @@
+/**
+ * Sales Job Card — A4 landscape reference layout (STIC-style).
+ */
+
+.sjc-doc {
+  background: #fff;
+  color: #1a1a1a;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.sjc-doc__paper {
+  padding: 0.5rem 0.75rem 0.75rem;
+  max-width: 100%;
+}
+
+@media (min-width: 1024px) {
+  .sjc-doc__paper {
+    padding: 0.625rem 1rem 0.875rem;
+  }
+}
+
+/* Header: company | tagline | meta grid */
+.sjc-doc__header-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.35rem;
+  margin-bottom: 0.15rem;
+  align-items: start;
+}
+
+@media (min-width: 900px) {
+  .sjc-doc__header-row {
+    grid-template-columns: minmax(220px, 1fr) minmax(140px, 1fr) 220px;
+    gap: 0.5rem 0.75rem;
+    align-items: center;
+  }
+}
+
+.sjc-doc__company {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.sjc-doc__logo {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.sjc-doc__logo-placeholder {
+  width: 44px;
+  height: 44px;
+  border: 1px solid #9ca3af;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 8px;
+  font-weight: 700;
+  color: #1b5e20;
+  flex-shrink: 0;
+  background: #f0fdf4;
+}
+
+.sjc-doc__company-name {
+  font-size: 12.5px;
+  font-weight: 800;
+  color: #1b5e20;
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  line-height: 1.2;
+}
+
+.sjc-doc__company-address {
+  font-size: 9px;
+  color: #111827;
+  margin-top: 2px;
+  line-height: 1.35;
+  max-width: 360px;
+}
+
+.sjc-doc__tagline {
+  margin: 0;
+  text-align: center;
+  font-size: 10px;
+  font-style: italic;
+  color: #4b5563;
+  align-self: center;
+  padding: 0 0.25rem;
+}
+
+.sjc-doc__meta {
+  justify-self: end;
+  width: 100%;
+  max-width: 220px;
+}
+
+.sjc-doc__meta-grid {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 9px;
+  border: 1px solid #6b7280;
+}
+
+.sjc-doc__meta-grid td {
+  border: 1px solid #9ca3af;
+  padding: 2px 5px;
+  vertical-align: middle;
+}
+
+.sjc-doc__meta-label {
+  background: #d4edda;
+  font-weight: 700;
+  color: #111827;
+  white-space: nowrap;
+  width: 46%;
+}
+
+.sjc-doc__meta-value {
+  background: #fff;
+  font-weight: 600;
+  color: #111827;
+}
+
+/* Main title band */
+.sjc-doc__title-band {
+  text-align: center;
+  background: #1b5e20;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  padding: 0.28rem 1rem;
+  margin: 0.2rem 0 0.45rem;
+  text-transform: uppercase;
+  border-radius: 0;
+}
+
+/* Customer / Order panels */
+.sjc-doc__columns {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.45rem;
+  margin-bottom: 0.45rem;
+}
+
+@media (min-width: 768px) {
+  .sjc-doc__columns {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+  }
+}
+
+.sjc-doc__panel {
+  border: 1px solid #6b7280;
+}
+
+.sjc-doc__panel-title {
+  background: #d4edda;
+  color: #111827;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.28rem 0.5rem;
+  border-bottom: 1px solid #9ca3af;
+}
+
+.sjc-doc__panel-body {
+  padding: 0;
+}
+
+.sjc-doc__field-row {
+  display: grid;
+  grid-template-columns: 40% 1fr;
+  gap: 0;
+  font-size: 9.5px;
+  border-bottom: 1px solid #d1d5db;
+  min-height: 20px;
+}
+
+.sjc-doc__field-row:last-child {
+  border-bottom: none;
+}
+
+.sjc-doc__field-label {
+  font-weight: 700;
+  color: #111827;
+  background: #ecfdf3;
+  padding: 0.22rem 0.4rem;
+  border-right: 1px solid #d1d5db;
+}
+
+.sjc-doc__field-value {
+  color: #111827;
+  word-break: break-word;
+  padding: 0.22rem 0.4rem;
+  background: #fff;
+}
+
+/* Tables */
+.sjc-doc__table-wrap {
+  overflow-x: auto;
+  margin-bottom: 0.45rem;
+  border: 1px solid #6b7280;
+}
+
+.sjc-doc__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 9.5px;
+  min-width: 640px;
+}
+
+.sjc-doc__table-caption {
+  background: #d4edda;
+  color: #111827;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.28rem 0.5rem;
+  border-bottom: 1px solid #9ca3af;
+  text-align: left;
+}
+
+.sjc-doc__table th {
+  background: #d4edda;
+  color: #111827;
+  font-weight: 700;
+  text-align: left;
+  padding: 0.28rem 0.4rem;
+  border: 1px solid #9ca3af;
+  white-space: nowrap;
+}
+
+.sjc-doc__table td {
+  padding: 0.28rem 0.4rem;
+  border: 1px solid #d1d5db;
+  vertical-align: top;
+  color: #111827;
+  background: #fff;
+}
+
+.sjc-doc__table .num {
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.sjc-doc__empty {
+  padding: 0.65rem;
+  text-align: center;
+  color: #6b7280;
+  font-style: italic;
+  background: #fff;
+  border-top: 1px solid #d1d5db;
+}
+
+/* Approval footer */
+.sjc-doc__approval {
+  margin-top: 0.45rem;
+  border: 1px solid #6b7280;
+}
+
+.sjc-doc__approval .sjc-doc__table {
+  min-width: 0;
+}
+
+.sjc-doc__approval .sjc-doc__table th {
+  background: #d4edda;
+  color: #111827;
+  border-color: #9ca3af;
+  text-align: center;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.sjc-doc__approval .sjc-doc__table td {
+  text-align: center;
+  border-color: #9ca3af;
+}
+
+.sjc-doc__sign-cell {
+  min-height: 56px;
+  vertical-align: bottom;
+  background: #fff;
+}
+
+.sjc-doc__input {
+  width: 100%;
+  border: 1px solid #c5c5c5;
+  border-radius: 0;
+  padding: 0.2rem 0.35rem;
+  font-size: 10px;
+  background: #fff;
+}
+
+.sjc-doc__production-toggle {
+  margin-top: 1rem;
+  border-top: 1px solid var(--color-border-soft);
+  padding-top: 0.75rem;
+}
+
+@media print {
+  .sjc-doc__paper {
+    padding: 0;
+    max-width: none;
+  }
+
+  .sjc-doc__title-band,
+  .sjc-doc__meta-label,
+  .sjc-doc__panel-title,
+  .sjc-doc__table-caption,
+  .sjc-doc__table th,
+  .sjc-doc__field-label,
+  .sjc-doc__approval .sjc-doc__table th {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
