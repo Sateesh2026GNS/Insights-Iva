@@ -135,6 +135,27 @@ class ManualReturnToSalesPayload(BaseModel):
     remarks: str = Field(default="", max_length=1000)
 
 
+class ManualSendRecipient(BaseModel):
+    role: str = Field(..., min_length=1, max_length=64)
+    user_id: int
+
+
+class ManualSendJobCardPayload(BaseModel):
+    recipients: list[ManualSendRecipient] = Field(..., min_length=1)
+
+
+class ManualMaterialCheckLinePayload(BaseModel):
+    line_id: str = Field(..., min_length=1, max_length=64)
+    remarks: str | None = Field(default=None, max_length=500)
+
+
+class ManualMaterialCheckPayload(BaseModel):
+    materials_available: bool | None = None
+    reason: str | None = Field(default=None, max_length=2000)
+    remarks: str | None = Field(default=None, max_length=2000)
+    lines: list[ManualMaterialCheckLinePayload] = Field(default_factory=list)
+
+
 @router.get("/hub")
 def workflow_admin_hub(
     user: User = Depends(require_any_permission(*WORKFLOW_MODULES)),
@@ -302,6 +323,27 @@ def create_manual_job_card_endpoint(
     )
 
 
+@router.get("/job-cards/manual/send-recipient-roles")
+def manual_send_recipient_roles_endpoint(
+    user: User = Depends(require_any_permission("sales", "inventory")),
+):
+    from app.services.manual_job_card_service import SEND_RECIPIENT_ROLES
+
+    return {"roles": list(SEND_RECIPIENT_ROLES)}
+
+
+@router.get("/job-cards/manual/send-recipient-users")
+def manual_send_recipient_users_endpoint(
+    role: str = Query(..., min_length=1, max_length=64),
+    user: User = Depends(require_any_permission("sales", "inventory")),
+    db: Session = Depends(get_db),
+):
+    from app.services.manual_job_card_service import list_send_recipient_users
+
+    users = list_send_recipient_users(db, user.tenant_id, role)
+    return {"role": role, "users": users}
+
+
 @router.get("/job-cards/manual/{job_card_id}")
 def get_manual_job_card_endpoint(
     job_card_id: int,
@@ -345,6 +387,24 @@ def delete_manual_job_card_endpoint(
     return {"ok": True}
 
 
+@router.post("/job-cards/manual/{job_card_id}/send")
+def send_manual_job_card_endpoint(
+    job_card_id: int,
+    payload: ManualSendJobCardPayload,
+    user: User = Depends(require_any_permission("sales", "inventory")),
+    db: Session = Depends(get_db),
+):
+    from app.services.manual_job_card_service import send_manual_job_card
+
+    return send_manual_job_card(
+        db,
+        user.tenant_id,
+        job_card_id,
+        user,
+        [r.model_dump() for r in payload.recipients],
+    )
+
+
 @router.post("/job-cards/manual/{job_card_id}/acknowledge")
 def acknowledge_manual_job_card_endpoint(
     job_card_id: int,
@@ -381,6 +441,35 @@ def add_manual_store_comment_endpoint(
 
     return add_manual_store_comment(
         db, user.tenant_id, job_card_id, user, comment=payload.comment
+    )
+
+
+@router.get("/job-cards/manual/{job_card_id}/material-check")
+def get_manual_material_check_endpoint(
+    job_card_id: int,
+    user: User = Depends(require_any_permission("sales", "inventory", "production")),
+    db: Session = Depends(get_db),
+):
+    from app.services.manual_job_card_service import get_manual_material_check
+
+    return get_manual_material_check(db, user.tenant_id, job_card_id, user)
+
+
+@router.post("/job-cards/manual/{job_card_id}/material-check")
+def submit_manual_material_check_endpoint(
+    job_card_id: int,
+    payload: ManualMaterialCheckPayload,
+    user: User = Depends(require_permission("inventory")),
+    db: Session = Depends(get_db),
+):
+    from app.services.manual_job_card_service import submit_manual_material_check
+
+    return submit_manual_material_check(
+        db,
+        user.tenant_id,
+        job_card_id,
+        user,
+        payload.model_dump(exclude_unset=True),
     )
 
 

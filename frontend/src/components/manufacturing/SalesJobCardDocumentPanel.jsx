@@ -16,6 +16,7 @@ import { jobCardEditUrl } from "../../utils/jobCardRoutes";
 import { apiErrorMessage } from "../../utils/apiError";
 import { printSalesJobCardLandscape, downloadSalesJobCardPdf } from "../../utils/printUtils";
 import StoreManualJobCardActions from "./StoreManualJobCardActions";
+import ManualMaterialStatusPanel from "./ManualMaterialStatusPanel";
 
 /**
  * Sales Job Card document panel — view manual or SO-linked job cards.
@@ -30,6 +31,7 @@ export default function SalesJobCardDocumentPanel({
   storeMode = false,
   showEmptyShell = false,
   emptyMessage = "Select a job card from the list below, or click Add Job Card to create one.",
+  showMaterialStatus = false,
 }) {
   const { user } = useAuth();
   const tenantId = useTenantId();
@@ -268,6 +270,13 @@ export default function SalesJobCardDocumentPanel({
             card={card}
             allowedActions={card?.allowed_actions || []}
             onUpdated={reload}
+          />
+        ) : null}
+
+        {showMaterialStatus && isManual && card?.material_check?.checked_at ? (
+          <ManualMaterialStatusPanel
+            materialCheck={card.material_check}
+            storeComments={card?.store_workflow?.store_comments}
           />
         ) : null}
       </div>

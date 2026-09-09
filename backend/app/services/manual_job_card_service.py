@@ -9,9 +9,10 @@ from typing import Any
 
 from fastapi import HTTPException
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.models.manufacturing_workflow import SalesJobCard
+from app.models.product import Product
 from app.models.user import User
 from app.services.job_card_details import merge_details, parse_details_json, serialize_details_json
 from app.services.job_card_service import _generate_job_card_no
@@ -19,7 +20,30 @@ from app.services.job_card_service import _generate_job_card_no
 logger = logging.getLogger(__name__)
 
 MANUAL_WORKFLOW_DRAFT = "DRAFT"
+MANUAL_WORKFLOW_SAVED = "SAVED"
 MANUAL_WORKFLOW_RETURNED = "RETURNED_TO_SALES"
+
+SEND_RECIPIENT_ROLES = (
+    "Admin",
+    "Sales Manager",
+    "Production Manager",
+    "Store Manager",
+    "Quality Control",
+    "HR Manager",
+    "Accountant",
+    "Operator",
+)
+
+ROLE_SEND_CONFIG: dict[str, dict[str, Any]] = {
+    "Admin": {"workflow_stage": "MATERIAL_CHECK_PENDING", "dept": "inventory"},
+    "Sales Manager": {"workflow_stage": "SAVED", "dept": "sales"},
+    "Production Manager": {"workflow_stage": "READY_FOR_PRODUCTION", "dept": "production"},
+    "Store Manager": {"workflow_stage": "MATERIAL_CHECK_PENDING", "dept": "inventory"},
+    "Quality Control": {"workflow_stage": "QUALITY_CHECK_PENDING", "dept": "quality"},
+    "HR Manager": {"workflow_stage": "SAVED", "dept": "sales"},
+    "Accountant": {"workflow_stage": "BILLING_PENDING", "dept": "billing"},
+    "Operator": {"workflow_stage": "PRODUCTION_ASSIGNED", "dept": "operator"},
+}
 
 STORE_INVENTORY_STATUSES = frozenset({
     "MATERIAL_CHECK_PENDING",
@@ -174,19 +198,222 @@ def get_store_workflow(details: dict[str, Any]) -> dict[str, Any]:
     return _empty_store_workflow()
 
 
-def manual_queue_status_label(jc: SalesJobCard, store_wf: dict[str, Any] | None = None) -> str:
+def _get_send_assignments(details: dict[str, Any]) -> list[dict[str, Any]]:
+    raw = details.get("send_assignments")
+    return list(raw) if isinstance(raw, list) else []
+
+
+def _get_send_history(details: dict[str, Any]) -> list[dict[str, Any]]:
+    raw = details.get("send_history")
+    return list(raw) if isinstance(raw, list) else []
+
+
+def _active_send_assignments(details: dict[str, Any]) -> list[dict[str, Any]]:
+    return [a for a in _get_send_assignments(details) if a.get("status") == "active"]
+
+
+def _manual_is_sent(details: dict[str, Any]) -> bool:
+    return len(_active_send_assignments(details)) > 0
+
+
+def _infer_sender_role(user: User) -> str:
+    from app.core.permissions import get_role_names, user_is_admin
+    from app.core.workflow_constants import TEAM_INVENTORY, TEAM_SALES, user_teams
+
+    if user_is_admin(user):
+        return "Admin"
+    teams = user_teams(get_role_names(user))
+    if TEAM_INVENTORY in teams:
+        return "Store Manager"
+    if TEAM_SALES in teams:
+        return "Sales"
+    names = get_role_names(user)
+    return names[0] if names else "User"
+
+
+def _get_material_check(details: dict[str, Any]) -> dict[str, Any]:
+    mc = details.get("material_check")
+    return mc if isinstance(mc, dict) else {}
+
+
+def _get_workflow_history(details: dict[str, Any]) -> list[dict[str, Any]]:
+    raw = details.get("workflow_history")
+    return list(raw) if isinstance(raw, list) else []
+
+
+def _append_workflow_history(details: dict[str, Any], entry: dict[str, Any]) -> None:
+    history = _get_workflow_history(details)
+    history.append(entry)
+    details["workflow_history"] = history
+
+
+def _material_check_completed(details: dict[str, Any]) -> bool:
+    mc = _get_material_check(details)
+    return bool(mc.get("checked_at")) and mc.get("status") in ("available", "shortage", "partial")
+
+
+def _can_send_manual(
+    jc: SalesJobCard,
+    details: dict[str, Any],
+    user: User | None = None,
+) -> bool:
+    if jc.status != "created":
+        return False
+    ws = (jc.workflow_stage or "").upper()
+
+    if user is not None:
+        from app.core.permissions import get_role_names, user_has_permission, user_is_admin
+        from app.core.workflow_constants import TEAM_INVENTORY, TEAM_SALES, user_teams
+
+        teams = user_teams(get_role_names(user))
+        is_store = (
+            user_is_admin(user)
+            or TEAM_INVENTORY in teams
+            or user_has_permission(user, "inventory")
+        )
+        is_sales = (
+            user_is_admin(user)
+            or TEAM_SALES in teams
+            or user_has_permission(user, "sales")
+        )
+
+        if is_store and ws in STORE_INVENTORY_STATUSES:
+            return _material_check_completed(details)
+
+        if is_sales:
+            if ws in (MANUAL_WORKFLOW_SAVED, MANUAL_WORKFLOW_RETURNED):
+                return True
+            if ws in STORE_INVENTORY_STATUSES:
+                return False
+            if not ws or ws == MANUAL_WORKFLOW_DRAFT:
+                return not _manual_is_sent(details)
+            return not _manual_is_sent(details)
+
+    if _manual_is_sent(details):
+        return False
+    if ws in (MANUAL_WORKFLOW_SAVED, MANUAL_WORKFLOW_RETURNED):
+        return True
+    if ws in STORE_INVENTORY_STATUSES:
+        return False
+    if not ws or ws == MANUAL_WORKFLOW_DRAFT:
+        return True
+    return False
+
+
+def _user_matches_send_role(user: User, role_name: str) -> bool:
+    from app.core.permissions import get_role_names
+
+    target = role_name.strip().lower().replace("_", " ")
+    roles = [str(r or "").strip() for r in get_role_names(user)]
+    normalized = {r.lower().replace("_", " ") for r in roles if r}
+    if target in normalized:
+        return True
+    if role_name == "Quality Control":
+        return bool(
+            normalized
+            & {
+                "quality control",
+                "quality manager",
+                "quality inspector",
+                "qa",
+                "qc",
+            }
+        )
+    if role_name == "Admin":
+        return "admin" in normalized
+    return False
+
+
+def list_send_recipient_users(
+    db: Session,
+    tenant_id: int,
+    role_name: str,
+) -> list[dict[str, Any]]:
+    """Active users in the tenant eligible to receive a manual job card for a role."""
+    from app.core.permissions import get_role_names
+
+    role = _trim(role_name, 64)
+    if role not in SEND_RECIPIENT_ROLES:
+        raise HTTPException(status_code=422, detail=f"Invalid recipient role: {role}")
+
+    users = db.scalars(
+        select(User)
+        .where(User.tenant_id == tenant_id, User.is_active.is_(True))
+        .options(selectinload(User.roles))
+        .order_by(User.full_name)
+    ).all()
+
+    items: list[dict[str, Any]] = []
+    for user in users:
+        if not _user_matches_send_role(user, role):
+            continue
+        names = get_role_names(user)
+        items.append(
+            {
+                "id": user.id,
+                "full_name": user.full_name or "",
+                "email": user.email or "",
+                "roles": names,
+                "primary_role": names[0] if names else role,
+            }
+        )
+    return items
+
+
+def _format_sent_to(details: dict[str, Any]) -> str | None:
+    active = _active_send_assignments(details)
+    if not active:
+        return None
+    return "; ".join(
+        f"{a.get('recipient_role')} - {a.get('recipient_name')}"
+        for a in active
+        if a.get("recipient_name") or a.get("recipient_role")
+    )
+
+
+def _sales_queue_status_label(jc: SalesJobCard, details: dict[str, Any], store_wf: dict[str, Any]) -> str:
+    ws = (jc.workflow_stage or "").upper()
+    if ws == MANUAL_WORKFLOW_RETURNED:
+        return "Returned to Sales"
+    if ws == MANUAL_WORKFLOW_SAVED:
+        return "Saved"
+    if _manual_is_sent(details):
+        return "Sent"
+    if ws == MANUAL_WORKFLOW_DRAFT or jc.status == "draft":
+        return "Draft"
+    return manual_queue_status_label(jc, store_wf, for_recipient=True)
+
+
+def manual_queue_status_label(
+    jc: SalesJobCard,
+    store_wf: dict[str, Any] | None = None,
+    *,
+    for_recipient: bool = False,
+) -> str:
     from app.services.workflow_routing_service import STORE_QUEUE_STATUS_LABELS
 
     sw = store_wf or {}
     ws = (jc.workflow_stage or "").upper()
     if ws == MANUAL_WORKFLOW_RETURNED:
         return "Returned to Sales"
+    if ws == MANUAL_WORKFLOW_SAVED:
+        return "Saved"
     if ws == MANUAL_WORKFLOW_DRAFT or jc.status == "draft":
         return "Draft"
     if ws == "MATERIAL_CHECK_PENDING":
         if sw.get("acknowledged"):
             return "Store Reviewed"
         return "Pending Store Review"
+    if ws == "MATERIAL_AVAILABLE":
+        return "Materials Confirmed"
+    if ws == "MATERIAL_SHORTAGE":
+        return "Material Shortage"
+    if ws == "MATERIAL_PARTIAL":
+        return "Partially Available"
+    if ws == "READY_FOR_PRODUCTION":
+        return "Ready for Production"
+    if not for_recipient and ws not in (MANUAL_WORKFLOW_SAVED, MANUAL_WORKFLOW_DRAFT):
+        return "Sent"
     return STORE_QUEUE_STATUS_LABELS.get(ws, ws.replace("_", " ").title() if ws else "—")
 
 
@@ -205,6 +432,305 @@ def build_material_requirements_preview(doc: dict[str, Any]) -> list[dict[str, A
             "specifications": specs,
         })
     return requirements
+
+
+def _resolve_product_id_from_line(
+    db: Session, tenant_id: int, line: dict[str, Any]
+) -> int | None:
+    raw_pid = line.get("product_id")
+    if raw_pid not in (None, ""):
+        try:
+            pid = int(raw_pid)
+            product = db.get(Product, pid)
+            if product and product.tenant_id == tenant_id:
+                return pid
+        except (TypeError, ValueError):
+            pass
+
+    code = _trim(line.get("product_code"), 120)
+    name = _trim(line.get("product_name"), 200)
+    if code:
+        match = db.scalars(
+            select(Product).where(
+                Product.tenant_id == tenant_id,
+                func.lower(Product.sku) == code.lower(),
+            )
+        ).first()
+        if match:
+            return match.id
+    if name:
+        match = db.scalars(
+            select(Product).where(
+                Product.tenant_id == tenant_id,
+                func.lower(Product.name) == name.lower(),
+            )
+        ).first()
+        if match:
+            return match.id
+    return None
+
+
+def _line_availability_status(required: float, available: float, shortage: float) -> str:
+    if shortage <= 0:
+        return "available"
+    if available <= 0:
+        return "not_available"
+    return "partially_available"
+
+
+def build_manual_bom_material_lines(
+    db: Session, tenant_id: int, doc: dict[str, Any]
+) -> list[dict[str, Any]]:
+    """Explode BOM for manual job card product lines and read live inventory stock."""
+    from app.services.inventory_service import get_total_stock
+    from app.services.manufacturing_workflow_service import get_bom_requirements
+
+    product_lines = doc.get("product_lines") or []
+    merged: dict[str, dict[str, Any]] = {}
+    line_index = 0
+
+    for pl in product_lines:
+        product_id = _resolve_product_id_from_line(db, tenant_id, pl)
+        try:
+            order_qty = float(pl.get("quantity") or 0)
+        except (TypeError, ValueError):
+            order_qty = 0.0
+        if not product_id or order_qty <= 0:
+            continue
+
+        bom_reqs = get_bom_requirements(db, tenant_id, product_id, order_qty)
+        if not bom_reqs:
+            product = db.get(Product, product_id)
+            if product:
+                from app.services.manufacturing_workflow_service import (
+                    find_or_create_inventory_item_for_product,
+                )
+
+                item = find_or_create_inventory_item_for_product(
+                    db, tenant_id, product, item_type="finished_goods"
+                )
+                available = float(get_total_stock(db, item.id, tenant_id))
+                required = order_qty
+                shortage = max(0.0, required - available)
+                key = f"item-{item.id}"
+                merged[key] = {
+                    "line_id": key,
+                    "material_code": product.sku or "",
+                    "material_name": product.name or pl.get("product_name") or "Product",
+                    "inventory_item_id": item.id,
+                    "component_product_id": product.id,
+                    "required_qty": round(required, 4),
+                    "available_qty": round(available, 4),
+                    "shortage_qty": round(shortage, 4),
+                    "uom": pl.get("uom") or product.unit or "Nos",
+                    "availability_status": _line_availability_status(required, available, shortage),
+                    "remarks": "",
+                    "product_line_no": pl.get("sl_no"),
+                }
+            continue
+
+        for req in bom_reqs:
+            line_index += 1
+            item_id = req.get("item_id")
+            comp_id = req.get("component_product_id")
+            key = f"item-{item_id}" if item_id else f"comp-{comp_id}-{line_index}"
+            required = float(req.get("required_qty") or 0)
+            available = float(req.get("available_qty") or 0)
+            if item_id and available == 0:
+                available = float(get_total_stock(db, int(item_id), tenant_id))
+            shortage = max(0.0, required - available)
+            existing = merged.get(key)
+            if existing:
+                existing["required_qty"] = round(float(existing["required_qty"]) + required, 4)
+                existing["shortage_qty"] = round(
+                    max(0.0, float(existing["required_qty"]) - float(existing["available_qty"])), 4
+                )
+                existing["availability_status"] = _line_availability_status(
+                    float(existing["required_qty"]),
+                    float(existing["available_qty"]),
+                    float(existing["shortage_qty"]),
+                )
+            else:
+                merged[key] = {
+                    "line_id": key,
+                    "material_code": req.get("sku") or "",
+                    "material_name": req.get("component_name") or "Material",
+                    "inventory_item_id": item_id,
+                    "component_product_id": comp_id,
+                    "required_qty": round(required, 4),
+                    "available_qty": round(available, 4),
+                    "shortage_qty": round(shortage, 4),
+                    "uom": req.get("unit") or "Nos",
+                    "availability_status": _line_availability_status(required, available, shortage),
+                    "remarks": "",
+                    "product_line_no": pl.get("sl_no"),
+                }
+
+    return list(merged.values())
+
+
+def _derive_material_check_status(lines: list[dict[str, Any]]) -> tuple[str, str]:
+    if not lines:
+        return "available", "MATERIAL_AVAILABLE"
+    all_available = all(float(ln.get("shortage_qty") or 0) <= 0 for ln in lines)
+    any_available = any(float(ln.get("available_qty") or 0) > 0 for ln in lines)
+    any_shortage = any(float(ln.get("shortage_qty") or 0) > 0 for ln in lines)
+    if all_available:
+        return "available", "MATERIAL_AVAILABLE"
+    if any_available and any_shortage:
+        return "partial", "MATERIAL_PARTIAL"
+    return "shortage", "MATERIAL_SHORTAGE"
+
+
+def get_manual_material_check(
+    db: Session,
+    tenant_id: int,
+    job_card_id: int,
+    user: User,
+) -> dict[str, Any]:
+    from app.core.permissions import user_has_permission, user_is_admin
+
+    can_inventory = user_is_admin(user) or user_has_permission(user, "inventory")
+    can_production = user_is_admin(user) or user_has_permission(user, "production")
+    if not can_inventory and not can_production:
+        raise HTTPException(status_code=403, detail="Permission required to view material check.")
+
+    jc = _get_manual_job_card(db, tenant_id, job_card_id)
+    ws = (jc.workflow_stage or "").upper()
+    if ws not in STORE_INVENTORY_STATUSES and ws != "READY_FOR_PRODUCTION":
+        raise HTTPException(
+            status_code=400,
+            detail="Material check is only available after the job card is sent to Store.",
+        )
+
+    details = parse_details_json(jc.details_json)
+    doc = extract_manual_document(details)
+    saved = _get_material_check(details)
+    if saved.get("checked_at") and saved.get("lines"):
+        lines = list(saved.get("lines") or [])
+        status = saved.get("status") or "available"
+        workflow_status = saved.get("workflow_status") or jc.workflow_stage
+    else:
+        lines = build_manual_bom_material_lines(db, tenant_id, doc)
+        status, workflow_status = _derive_material_check_status(lines)
+
+    return {
+        "job_card_id": jc.id,
+        "job_card_no": jc.job_card_no,
+        "workflow_status": jc.workflow_stage,
+        "lines": lines,
+        "saved_check": saved if saved.get("checked_at") else None,
+        "preview_status": status,
+        "preview_workflow_status": workflow_status,
+        "all_available": status == "available",
+        "read_only": not can_inventory,
+    }
+
+
+def submit_manual_material_check(
+    db: Session,
+    tenant_id: int,
+    job_card_id: int,
+    user: User,
+    payload: dict[str, Any],
+) -> dict[str, Any]:
+    from app.core.permissions import user_has_permission, user_is_admin
+
+    if not user_is_admin(user) and not user_has_permission(user, "inventory"):
+        raise HTTPException(status_code=403, detail="Store Manager permission required")
+
+    jc = _get_manual_job_card(db, tenant_id, job_card_id)
+    if not _manual_in_store_workflow(jc):
+        raise HTTPException(
+            status_code=400,
+            detail="Material check is only available after the job card is sent to Store.",
+        )
+
+    details = parse_details_json(jc.details_json)
+    doc = extract_manual_document(details)
+    lines = build_manual_bom_material_lines(db, tenant_id, doc)
+    if not lines:
+        raise HTTPException(
+            status_code=422,
+            detail="No materials could be resolved for this job card. Link products with BOM or inventory.",
+        )
+
+    line_updates = payload.get("lines") if isinstance(payload.get("lines"), list) else []
+    update_map = {
+        str(u.get("line_id")): u for u in line_updates if isinstance(u, dict) and u.get("line_id")
+    }
+    for ln in lines:
+        upd = update_map.get(str(ln.get("line_id")))
+        if upd and upd.get("remarks"):
+            ln["remarks"] = _trim(upd.get("remarks"), 500)
+
+    materials_available = payload.get("materials_available")
+    reason = _trim(payload.get("reason"), 2000)
+    remarks = _trim(payload.get("remarks"), 2000)
+    auto_status, auto_ws = _derive_material_check_status(lines)
+
+    if materials_available is True:
+        if auto_status != "available":
+            raise HTTPException(
+                status_code=422,
+                detail="Cannot confirm all materials available while shortages exist in inventory.",
+            )
+        status, target_ws = "available", "MATERIAL_AVAILABLE"
+    elif materials_available is False:
+        if not reason:
+            raise HTTPException(
+                status_code=422,
+                detail="Please provide the reason for material unavailability.",
+            )
+        status, target_ws = auto_status, auto_ws
+    else:
+        status, target_ws = auto_status, auto_ws
+        if status != "available" and not reason:
+            raise HTTPException(
+                status_code=422,
+                detail="Please provide the reason for material unavailability.",
+            )
+
+    now = datetime.now(timezone.utc).isoformat()
+    material_check = {
+        "status": status,
+        "workflow_status": target_ws,
+        "lines": lines,
+        "overall_available": status == "available",
+        "reason": reason,
+        "remarks": remarks,
+        "checked_by": user.full_name or "",
+        "checked_by_user_id": user.id,
+        "checked_at": now,
+    }
+    details["material_check"] = material_check
+    jc.workflow_stage = target_ws
+
+    status_label = {
+        "available": "Materials Confirmed",
+        "shortage": "Material Shortage",
+        "partial": "Partially Available",
+    }.get(status, status)
+
+    _append_workflow_history(
+        details,
+        {
+            "action": "material_check",
+            "from_user_id": user.id,
+            "from_name": user.full_name or "",
+            "from_role": "Store Manager",
+            "to_role": "Store Manager",
+            "status": status_label,
+            "workflow_status": target_ws,
+            "comments": reason or remarks or "",
+            "at": now,
+        },
+    )
+
+    jc.details_json = serialize_details_json(details)
+    db.commit()
+    db.refresh(jc)
+    return build_manual_job_card_response(db, jc, user=user, store_perspective=True)
 
 
 def _users_for_roles(db: Session, tenant_id: int, role_names: list[str]) -> list[int]:
@@ -283,36 +809,199 @@ def _notify_store_managers_manual(
             )
 
 
-def _route_manual_to_store(
+def _notify_job_card_recipient(
     db: Session,
+    tenant_id: int,
     jc: SalesJobCard,
+    doc: dict[str, Any],
+    actor: User,
+    recipient: User,
+    role: str,
+    dept: str,
+) -> None:
+    from app.core.workflow_constants import normalize_priority
+    from app.services.notification_management_service import NotificationManagementService
+
+    customer = (doc.get("customer") or {}).get("customer_name") or "Customer"
+    lines = doc.get("product_lines") or []
+    first = lines[0] if lines else {}
+    product = first.get("product_name") or "Product"
+    sender = actor.full_name or "Sales"
+    title = "New Sales Job Card Received"
+    message = (
+        f"Job Card: {jc.job_card_no}\n"
+        f"Customer: {customer}\n"
+        f"Product: {product}\n"
+        f"Sent By: {sender}"
+    )
+    action_url = f"/my-job-cards?dept={dept}&jc={jc.id}"
+    priority = normalize_priority(jc.priority)
+
+    try:
+        NotificationManagementService.create_for_user(
+            db,
+            tenant_id=tenant_id,
+            user_id=recipient.id,
+            title=title,
+            message=message,
+            type="production",
+            priority=priority,
+            module="production",
+            action_url=action_url,
+            created_by=sender,
+            created_by_user_id=actor.id,
+            commit=False,
+        )
+    except Exception as exc:
+        logger.exception(
+            "Manual job card send notification failed user_id=%s jc_id=%s role=%s: %s",
+            recipient.id,
+            jc.id,
+            role,
+            exc,
+        )
+
+
+def send_manual_job_card(
+    db: Session,
+    tenant_id: int,
+    job_card_id: int,
     user: User,
-    details: dict[str, Any],
+    recipients: list[dict[str, Any]],
 ) -> dict[str, Any]:
-    """Idempotent handoff to Store Manager queue on submit."""
-    store_wf = get_store_workflow(details)
-    ws = (jc.workflow_stage or "").upper()
+    """Explicitly send a saved manual job card to selected users (never on save)."""
+    from app.core.permissions import user_has_permission, user_is_admin
 
-    if store_wf.get("routed_at") and ws in STORE_INVENTORY_STATUSES:
-        return details
+    can_sales = user_is_admin(user) or user_has_permission(user, "sales")
+    can_store = user_is_admin(user) or user_has_permission(user, "inventory")
+    if not can_sales and not can_store:
+        raise HTTPException(status_code=403, detail="Permission required to send job cards.")
 
-    if jc.status != "created":
-        return details
+    if not recipients:
+        raise HTTPException(status_code=422, detail="Please select at least one recipient.")
+
+    jc = _get_manual_job_card(db, tenant_id, job_card_id)
+    details = parse_details_json(jc.details_json)
+
+    if not _can_send_manual(jc, details, user=user):
+        raise HTTPException(
+            status_code=400,
+            detail="Job card cannot be sent in its current status.",
+        )
 
     doc = extract_manual_document(details)
-    jc.workflow_stage = "MATERIAL_CHECK_PENDING"
-    now = datetime.now(timezone.utc).isoformat()
-    store_wf["routed_at"] = now
-    store_wf["routed_by"] = user.full_name or ""
-    store_wf["routed_by_user_id"] = user.id
-    details["store_workflow"] = store_wf
+    assignments = _get_send_assignments(details)
+    history = _get_send_history(details)
+    active_user_ids = {
+        int(a["recipient_user_id"])
+        for a in assignments
+        if a.get("status") == "active" and a.get("recipient_user_id") is not None
+    }
 
-    if not store_wf.get("notification_sent"):
-        _notify_store_managers_manual(db, jc.tenant_id, jc, doc, user)
+    now = datetime.now(timezone.utc).isoformat()
+    new_assignments: list[dict[str, Any]] = []
+    seen_users: set[int] = set()
+
+    for rec in recipients:
+        role = _trim(rec.get("role"), 64)
+        if role not in ROLE_SEND_CONFIG:
+            raise HTTPException(status_code=422, detail=f"Invalid recipient role: {role}")
+
+        try:
+            uid = int(rec.get("user_id"))
+        except (TypeError, ValueError):
+            raise HTTPException(status_code=422, detail="Invalid recipient user.")
+
+        if uid in seen_users:
+            continue
+        seen_users.add(uid)
+
+        if uid in active_user_ids:
+            continue
+
+        recipient = db.get(User, uid)
+        if not recipient or recipient.tenant_id != tenant_id or not recipient.is_active:
+            raise HTTPException(status_code=400, detail="Recipient user is not available.")
+
+        if not _user_matches_send_role(recipient, role):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Selected user does not have the {role} role.",
+            )
+
+        cfg = ROLE_SEND_CONFIG[role]
+        assignment = {
+            "id": f"{jc.id}-{uid}-{int(datetime.now(timezone.utc).timestamp())}",
+            "recipient_user_id": uid,
+            "recipient_name": recipient.full_name or recipient.email or "",
+            "recipient_role": role,
+            "sent_by_user_id": user.id,
+            "sent_by_name": user.full_name or "",
+            "sent_at": now,
+            "workflow_stage": cfg["workflow_stage"],
+            "dept": cfg["dept"],
+            "status": "active",
+        }
+        new_assignments.append(assignment)
+        _notify_job_card_recipient(
+            db, tenant_id, jc, doc, user, recipient, role, cfg["dept"]
+        )
+
+    if not new_assignments:
+        raise HTTPException(
+            status_code=400,
+            detail="No new recipients to send to. This job card may already be assigned to the selected users.",
+        )
+
+    forwarding_to_production = any(
+        a.get("recipient_role") == "Production Manager" for a in new_assignments
+    )
+    if forwarding_to_production:
+        for assignment in assignments:
+            if assignment.get("status") == "active" and assignment.get("dept") == "inventory":
+                assignment["status"] = "forwarded"
+
+    assignments.extend(new_assignments)
+    history.extend(new_assignments)
+    details["send_assignments"] = assignments
+    details["send_history"] = history
+
+    primary = new_assignments[0]
+    jc.workflow_stage = primary["workflow_stage"]
+
+    for assignment in new_assignments:
+        _append_workflow_history(
+            details,
+            {
+                "action": "sent",
+                "from_user_id": user.id,
+                "from_name": user.full_name or "",
+                "from_role": _infer_sender_role(user),
+                "to_user_id": assignment.get("recipient_user_id"),
+                "to_name": assignment.get("recipient_name"),
+                "to_role": assignment.get("recipient_role"),
+                "status": primary["workflow_stage"],
+                "workflow_status": primary["workflow_stage"],
+                "comments": "",
+                "at": assignment.get("sent_at"),
+            },
+        )
+
+    if primary["workflow_stage"] == "MATERIAL_CHECK_PENDING":
+        store_wf = get_store_workflow(details)
+        store_wf["routed_at"] = now
+        store_wf["routed_by"] = user.full_name or ""
+        store_wf["routed_by_user_id"] = user.id
+        store_wf["target_recipient_user_id"] = primary["recipient_user_id"]
         store_wf["notification_sent"] = True
+        store_wf["returned_to_sales"] = False
+        store_wf["return_remarks"] = None
         details["store_workflow"] = store_wf
 
-    return details
+    jc.details_json = serialize_details_json(details)
+    db.commit()
+    db.refresh(jc)
+    return build_manual_job_card_response(db, jc, user=user)
 
 
 def _manual_in_store_workflow(jc: SalesJobCard) -> bool:
@@ -320,14 +1009,36 @@ def _manual_in_store_workflow(jc: SalesJobCard) -> bool:
     return ws in STORE_INVENTORY_STATUSES
 
 
-def _store_allowed_actions(jc: SalesJobCard, store_wf: dict[str, Any], user: User | None) -> list[str]:
-    from app.core.permissions import get_role_names, user_is_admin
+def _manual_visible_to_recipient(
+    details: dict[str, Any],
+    user_id: int,
+    *,
+    dept: str | None = None,
+) -> bool:
+    for assignment in _active_send_assignments(details):
+        if int(assignment.get("recipient_user_id") or 0) != int(user_id):
+            continue
+        if dept and assignment.get("dept") != dept:
+            continue
+        return True
+    return False
+
+
+def _store_allowed_actions(
+    jc: SalesJobCard,
+    store_wf: dict[str, Any],
+    user: User | None,
+    details: dict[str, Any] | None = None,
+) -> list[str]:
+    from app.core.permissions import get_role_names, user_has_permission, user_is_admin
     from app.core.workflow_constants import TEAM_INVENTORY, TEAM_SALES, user_teams
 
     if not user:
         return ["view"]
+    details = details or {}
     teams = user_teams(get_role_names(user))
     is_admin = user_is_admin(user)
+    can_sales = is_admin or TEAM_SALES in teams or user_has_permission(user, "sales")
     ws = (jc.workflow_stage or "").upper()
     actions: list[str] = ["view"]
 
@@ -336,6 +1047,7 @@ def _store_allowed_actions(jc: SalesJobCard, store_wf: dict[str, Any], user: Use
             if not store_wf.get("acknowledged"):
                 actions.append("acknowledge")
             actions.extend([
+                "material_check",
                 "check_inventory",
                 "view_material_requirement",
                 "add_store_comments",
@@ -343,11 +1055,16 @@ def _store_allowed_actions(jc: SalesJobCard, store_wf: dict[str, Any], user: Use
             ])
             if store_wf.get("acknowledged"):
                 actions.append("mark_reviewed")
+            if _can_send_manual(jc, details, user=user):
+                actions.append("send")
 
-    if (TEAM_SALES in teams or is_admin) and (
-        ws == MANUAL_WORKFLOW_RETURNED or jc.status == "draft"
-    ):
-        actions.extend(["save_job_card", "submit"])
+    if can_sales:
+        if _can_send_manual(jc, details, user=user):
+            actions.append("send")
+        if not _manual_in_store_workflow(jc) or ws == MANUAL_WORKFLOW_RETURNED:
+            actions.append("edit")
+        if not _manual_is_sent(details) and jc.status in ("draft", "created"):
+            actions.append("delete")
 
     return list(dict.fromkeys(actions))
 
@@ -468,7 +1185,13 @@ def _summary_from_doc(jc: SalesJobCard, doc: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def build_manual_job_card_response(db: Session, jc: SalesJobCard, user: User | None = None) -> dict[str, Any]:
+def build_manual_job_card_response(
+    db: Session,
+    jc: SalesJobCard,
+    user: User | None = None,
+    *,
+    store_perspective: bool = False,
+) -> dict[str, Any]:
     details = parse_details_json(jc.details_json)
     doc = extract_manual_document(details)
     store_wf = get_store_workflow(details)
@@ -482,11 +1205,16 @@ def build_manual_job_card_response(db: Session, jc: SalesJobCard, user: User | N
     first = lines[0] if lines else {}
     ws = jc.workflow_stage or MANUAL_WORKFLOW_DRAFT
     in_store = _manual_in_store_workflow(jc)
-    queue_label = manual_queue_status_label(jc, store_wf)
-    allowed = _store_allowed_actions(jc, store_wf, user)
+    if in_store and store_perspective:
+        queue_label = manual_queue_status_label(jc, store_wf)
+    else:
+        queue_label = _sales_queue_status_label(jc, details, store_wf)
+    allowed = _store_allowed_actions(jc, store_wf, user, details)
     editable = ["sales"]
     if in_store:
         editable = []
+    active_assignments = _active_send_assignments(details)
+    primary_assignment = active_assignments[0] if active_assignments else None
 
     return {
         "id": jc.id,
@@ -505,6 +1233,8 @@ def build_manual_job_card_response(db: Session, jc: SalesJobCard, user: User | N
         "details": details,
         "store_workflow": store_wf,
         "material_requirements": build_material_requirements_preview(doc),
+        "material_check": _get_material_check(details),
+        "workflow_history": _get_workflow_history(details),
         "summary_panel": _summary_from_doc(jc, doc),
         "form": {
             "job_card_id": jc.id,
@@ -530,6 +1260,12 @@ def build_manual_job_card_response(db: Session, jc: SalesJobCard, user: User | N
         "editable_sections": editable,
         "read_only_sales": in_store,
         "allowed_actions": allowed,
+        "can_send": _can_send_manual(jc, details, user=user),
+        "sent_to": _format_sent_to(details),
+        "sent_by": primary_assignment.get("sent_by_name") if primary_assignment else None,
+        "sent_at": primary_assignment.get("sent_at") if primary_assignment else None,
+        "send_history": _get_send_history(details),
+        "send_assignments": _get_send_assignments(details),
         "responsible_role": "Store Manager" if in_store else "Sales",
         "header": {
             "product": first.get("product_name"),
@@ -612,7 +1348,7 @@ def create_manual_job_card(
     )
     _apply_manual_to_record(jc, doc)
     if finalize:
-        details = _route_manual_to_store(db, jc, user, details)
+        jc.workflow_stage = MANUAL_WORKFLOW_SAVED
         jc.details_json = serialize_details_json(details)
     db.add(jc)
     db.commit()
@@ -660,7 +1396,7 @@ def update_manual_job_card(
     if finalize and jc.status != "created":
         jc.status = "created"
     if finalize:
-        details = _route_manual_to_store(db, jc, user, details)
+        jc.workflow_stage = MANUAL_WORKFLOW_SAVED
         if store_wf.get("returned_to_sales"):
             store_wf = get_store_workflow(details)
             store_wf["returned_to_sales"] = False
@@ -686,6 +1422,9 @@ def delete_manual_job_card(db: Session, tenant_id: int, job_card_id: int, user: 
         raise HTTPException(status_code=403, detail="Sales team permission required")
 
     jc = _get_manual_job_card(db, tenant_id, job_card_id)
+    details = parse_details_json(jc.details_json)
+    if _manual_is_sent(details):
+        raise HTTPException(status_code=400, detail="Cannot delete a job card that has been sent.")
     db.delete(jc)
     db.commit()
 
@@ -695,6 +1434,7 @@ def serialize_manual_queue_item(
     jc: SalesJobCard,
     *,
     user: User | None = None,
+    store_queue: bool = False,
 ) -> dict[str, Any]:
     details = parse_details_json(jc.details_json)
     doc = extract_manual_document(details)
@@ -711,14 +1451,23 @@ def serialize_manual_queue_item(
         creator = db.get(User, jc.created_by_user_id)
         creator_name = creator.full_name if creator else None
 
-    queue_label = manual_queue_status_label(jc, store_wf)
     in_store = _manual_in_store_workflow(jc)
+    queue_label = (
+        manual_queue_status_label(jc, store_wf)
+        if store_queue and in_store
+        else _sales_queue_status_label(jc, details, store_wf)
+    )
     ws = jc.workflow_stage or MANUAL_WORKFLOW_DRAFT
     needed_action = None
     if in_store and not store_wf.get("acknowledged"):
         needed_action = "Acknowledge"
     elif in_store and ws == "MATERIAL_CHECK_PENDING":
-        needed_action = "Check Stock"
+        needed_action = "Material Check"
+    elif in_store and ws in ("MATERIAL_AVAILABLE", "MATERIAL_PARTIAL", "MATERIAL_SHORTAGE"):
+        needed_action = "Send to Production"
+    active_assignments = _active_send_assignments(details)
+    primary_assignment = active_assignments[0] if active_assignments else None
+    allowed = _store_allowed_actions(jc, store_wf, user, details)
 
     return {
         "job_card_id": jc.id,
@@ -746,15 +1495,22 @@ def serialize_manual_queue_item(
         "order_date": order.get("sales_order_date"),
         "created_by": creator_name,
         "created_at": jc.created_at.isoformat() if jc.created_at else None,
-        "received_at": store_wf.get("routed_at") or (
-            jc.created_at.isoformat() if jc.created_at else None
+        "received_at": (
+            (primary_assignment.get("sent_at") if primary_assignment else None)
+            or store_wf.get("routed_at")
+            or (jc.created_at.isoformat() if jc.created_at else None)
         ),
         "sales_document": sales_doc,
         "manual_document": doc,
         "responsible_role": "Store Manager" if in_store else "Sales",
         "needed_action": needed_action,
-        "allowed_actions": _store_allowed_actions(jc, store_wf, user),
+        "allowed_actions": allowed,
+        "can_send": _can_send_manual(jc, details, user=user),
+        "sent_to": _format_sent_to(details),
+        "sent_by": primary_assignment.get("sent_by_name") if primary_assignment else None,
+        "sent_at": primary_assignment.get("sent_at") if primary_assignment else None,
         "store_acknowledged": bool(store_wf.get("acknowledged")),
+        "material_check": _get_material_check(details),
     }
 
 
@@ -779,10 +1535,67 @@ def list_manual_job_cards(
     if for_store:
         q = q.where(SalesJobCard.workflow_stage.in_(list(STORE_INVENTORY_STATUSES)))
     cards = list(db.scalars(q).all())
-    items = [serialize_manual_queue_item(db, jc, user=user) for jc in cards]
+    if for_store and user:
+        from app.core.permissions import get_role_names, user_is_admin
+
+        if not user_is_admin(user):
+            scoped: list[SalesJobCard] = []
+            for jc in cards:
+                details = parse_details_json(jc.details_json)
+                if _manual_visible_to_recipient(details, user.id, dept="inventory"):
+                    scoped.append(jc)
+            cards = scoped
+    elif user and not for_store:
+        from app.core.permissions import get_role_names, user_is_admin
+        from app.core.workflow_constants import TEAM_SALES, user_teams
+
+        teams = user_teams(get_role_names(user))
+        if TEAM_SALES in teams and not user_is_admin(user):
+            cards = [jc for jc in cards if jc.created_by_user_id == user.id]
+    items = [
+        serialize_manual_queue_item(db, jc, user=user, store_queue=for_store)
+        for jc in cards
+    ]
     if status_filter:
         sf = status_filter.upper()
         items = [i for i in items if str(i.get("workflow_status") or "").upper() == sf]
+    return items
+
+
+def list_manual_job_cards_for_recipient(
+    db: Session,
+    tenant_id: int,
+    user: User,
+    *,
+    dept: str,
+    status_filter: str | None = None,
+    limit: int = 500,
+) -> list[dict[str, Any]]:
+    """Manual job cards explicitly sent to the given user for a department queue."""
+    from app.core.permissions import user_is_admin
+
+    q = (
+        select(SalesJobCard)
+        .where(
+            SalesJobCard.tenant_id == tenant_id,
+            SalesJobCard.sales_order_id.is_(None),
+        )
+        .order_by(SalesJobCard.id.desc())
+        .limit(limit)
+    )
+    cards = list(db.scalars(q).all())
+    items: list[dict[str, Any]] = []
+    for jc in cards:
+        details = parse_details_json(jc.details_json)
+        if user_is_admin(user) or _manual_visible_to_recipient(details, user.id, dept=dept):
+            item = serialize_manual_queue_item(
+                db, jc, user=user, store_queue=dept == "inventory"
+            )
+            if status_filter:
+                sf = status_filter.upper()
+                if str(item.get("workflow_status") or "").upper() != sf:
+                    continue
+            items.append(item)
     return items
 
 
@@ -821,7 +1634,7 @@ def acknowledge_manual_job_card(
     details = parse_details_json(jc.details_json)
     store_wf = get_store_workflow(details)
     if store_wf.get("acknowledged"):
-        return build_manual_job_card_response(db, jc, user=user)
+        return build_manual_job_card_response(db, jc, user=user, store_perspective=True)
 
     now = datetime.now(timezone.utc).isoformat()
     store_wf["acknowledged"] = True
@@ -832,7 +1645,7 @@ def acknowledge_manual_job_card(
     jc.details_json = serialize_details_json(details)
     db.commit()
     db.refresh(jc)
-    return build_manual_job_card_response(db, jc, user=user)
+    return build_manual_job_card_response(db, jc, user=user, store_perspective=True)
 
 
 def return_manual_job_card_to_sales(
@@ -864,6 +1677,12 @@ def return_manual_job_card_to_sales(
     store_wf["returned_by_user_id"] = user.id
     store_wf["return_remarks"] = _trim(remarks, 1000) or None
     details["store_workflow"] = store_wf
+    assignments = _get_send_assignments(details)
+    for assignment in assignments:
+        if assignment.get("status") == "active":
+            assignment["status"] = "returned"
+            assignment["returned_at"] = now
+    details["send_assignments"] = assignments
     jc.workflow_stage = MANUAL_WORKFLOW_RETURNED
     jc.details_json = serialize_details_json(details)
     db.commit()

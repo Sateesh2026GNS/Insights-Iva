@@ -4,6 +4,7 @@ import { rowStatusLabel } from "./jobCardQueueDisplay";
 
 const WORKFLOW_STATUS_TONES = {
   DRAFT: "neutral",
+  SAVED: "neutral",
   RETURNED_TO_SALES: "warning",
   MATERIAL_CHECK_PENDING: "warning",
   STORE_REVIEWED: "info",
@@ -23,6 +24,8 @@ export function erpListStatus(row) {
     if (workflowLabel === "Store Reviewed") return { label: workflowLabel, tone: "success" };
     if (workflowLabel === "Returned to Sales") return { label: workflowLabel, tone: "danger" };
     if (workflowLabel === "Draft") return { label: workflowLabel, tone: "neutral" };
+    if (workflowLabel === "Saved") return { label: workflowLabel, tone: "neutral" };
+    if (workflowLabel === "Sent") return { label: workflowLabel, tone: "info" };
     return { label: workflowLabel, tone };
   }
 

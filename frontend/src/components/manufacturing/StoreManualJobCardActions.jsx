@@ -3,6 +3,7 @@ import { CheckCircle2, MessageSquare, RotateCcw } from "lucide-react";
 
 import Button from "../common/Button";
 import ConfirmDialog from "../admin/ConfirmDialog";
+import ManualMaterialCheckPanel from "./ManualMaterialCheckPanel";
 import {
   acknowledgeManualJobCard,
   addManualStoreComment,
@@ -122,9 +123,13 @@ export default function StoreManualJobCardActions({
         ) : null}
       </div>
 
+      {actions.has("material_check") ? (
+        <ManualMaterialCheckPanel jobCardId={jobCardId} card={card} onUpdated={onUpdated} />
+      ) : null}
+
       {actions.has("view_material_requirement") && materialReqs.length > 0 ? (
         <div className="store-manual-jc-actions__materials">
-          <h3 className="store-manual-jc-actions__subtitle">Material / Production Information</h3>
+          <h3 className="store-manual-jc-actions__subtitle">Product Lines</h3>
           <div className="ui-table-wrap">
             <table className="ui-table ui-table--compact">
               <thead>
@@ -147,9 +152,6 @@ export default function StoreManualJobCardActions({
               </tbody>
             </table>
           </div>
-          <p className="store-manual-jc-actions__hint">
-            Inventory is not deducted automatically. Use Material Issue when stock is confirmed.
-          </p>
         </div>
       ) : null}
 

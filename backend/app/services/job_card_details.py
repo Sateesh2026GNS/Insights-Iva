@@ -100,6 +100,22 @@ def merge_details(existing: dict[str, Any], patch: dict[str, Any]) -> dict[str, 
         result["store_workflow"] = patch["store_workflow"]
     elif isinstance(existing.get("store_workflow"), dict):
         result["store_workflow"] = existing["store_workflow"]
+    if isinstance(patch.get("send_assignments"), list):
+        result["send_assignments"] = list(patch["send_assignments"])
+    elif isinstance(existing.get("send_assignments"), list):
+        result["send_assignments"] = list(existing["send_assignments"])
+    if isinstance(patch.get("send_history"), list):
+        result["send_history"] = list(patch["send_history"])
+    elif isinstance(existing.get("send_history"), list):
+        result["send_history"] = list(existing["send_history"])
+    if isinstance(patch.get("material_check"), dict):
+        result["material_check"] = patch["material_check"]
+    elif isinstance(existing.get("material_check"), dict):
+        result["material_check"] = existing["material_check"]
+    if isinstance(patch.get("workflow_history"), list):
+        result["workflow_history"] = list(patch["workflow_history"])
+    elif isinstance(existing.get("workflow_history"), list):
+        result["workflow_history"] = list(existing["workflow_history"])
     return result
 
 

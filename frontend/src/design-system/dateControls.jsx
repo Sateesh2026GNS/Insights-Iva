@@ -29,17 +29,21 @@ function pad2(n) {
 const WEEKDAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 
 /** Shared calendar button */
-function CalendarTriggerButton({ onClick, disabled, label = "Open calendar" }) {
+function CalendarTriggerButton({ onClick, disabled, label = "Open calendar", compact = false }) {
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="absolute right-2 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-[var(--color-text-icon)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/40 disabled:opacity-50"
+      className={
+        compact
+          ? "relative z-10 mr-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded text-[var(--color-text-icon)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/40 disabled:opacity-50"
+          : "absolute right-2 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-[var(--color-text-icon)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/40 disabled:opacity-50"
+      }
       aria-label={label}
       tabIndex={-1}
     >
-      <Calendar className="h-4 w-4 shrink-0" aria-hidden />
+      <Calendar className={compact ? "h-3.5 w-3.5 shrink-0" : "h-4 w-4 shrink-0"} aria-hidden />
     </button>
   );
 }
@@ -132,6 +136,7 @@ export function DatePicker({
   error,
   hint,
   floatingLabel = false,
+  compact = false,
   placeholder = "Select date",
   onBlur,
   inputClassName = "",
@@ -158,6 +163,49 @@ export function DatePicker({
       inputRef.current?.blur();
     }
   };
+
+  if (compact) {
+    return (
+      <div className={className}>
+        <div
+          className={`ui-date-compact relative flex w-full items-center ${
+            error ? "ui-date-compact--error" : ""
+          } ${disabled ? "ui-date-compact--disabled" : ""} ${inputClassName}`.trim()}
+        >
+          <span
+            className={`min-w-0 flex-1 truncate px-[0.35rem] text-[11px] leading-[1.35] ${
+              value ? "text-[var(--color-text)]" : "text-[var(--color-text-placeholder)]"
+            }`}
+          >
+            {formatDisplayDate(value, "-") || placeholder}
+          </span>
+          <CalendarTriggerButton
+            onClick={openPicker}
+            disabled={disabled}
+            label={label ? `Open calendar for ${label}` : "Open calendar"}
+            compact
+          />
+          <input
+            ref={inputRef}
+            id={id}
+            name={name}
+            type="date"
+            value={value || ""}
+            min={min}
+            max={max}
+            disabled={disabled}
+            required={required}
+            onChange={(e) => onChange?.(e.target.value)}
+            onBlur={onBlur}
+            onKeyDown={handleKeyDown}
+            className="ui-date-input absolute inset-0 cursor-pointer opacity-0"
+            aria-label={label || "Date"}
+          />
+        </div>
+        {error ? <p className="ui-date-compact__error">{error}</p> : null}
+      </div>
+    );
+  }
 
   if (floatingLabel) {
     return (

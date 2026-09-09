@@ -1,12 +1,15 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Plus, Save, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 import Button from "../common/Button";
+import SearchableSelect from "../common/SearchableSelect";
 import { Input, Select, Textarea } from "../common/FormField";
 import { DatePicker } from "../../design-system/dateControls";
 import { LoadingState, ErrorState } from "../common/states";
 import useAuth from "../../hooks/useAuth";
+import usePermissions from "../../hooks/usePermissions";
+import useManualJobCardMasters from "../../hooks/useManualJobCardMasters";
 import { getCompanySettings } from "../../api/settingsApi";
 import {
   createManualJobCard,
@@ -16,17 +19,25 @@ import {
 import { useToast } from "../../context/ToastContext";
 import { apiErrorMessage, extractApiErrorDetail } from "../../utils/apiError";
 import {
+  ADD_CUSTOMER_VALUE,
+  ADD_PRODUCT_VALUE,
   buildManualPayload,
   emptyManualForm,
   emptyProductLine,
   emptySpecLine,
+  getUomOptions,
+  MANUAL_JOB_CARD_SAVED_STATUS,
   manualFormFromApi,
   mapApiErrors,
+  PAYMENT_TERMS_OPTIONS,
   PRIORITY_OPTIONS,
-  UOM_OPTIONS,
+  PRODUCT_CATEGORY_OPTIONS,
+  SPEC_PARAMETER_OPTIONS,
   validateManualForm,
 } from "../../utils/manualSalesJobCard";
 import { formatCompanyAddress, resolveCompanyLogoUrl, resolveCompanyTagline } from "../../utils/salesJobCardDocument";
+import QuickAddCustomerModal from "./QuickAddCustomerModal";
+import QuickAddProductModal from "./QuickAddProductModal";
 import "../../styles/sales-job-card-document.css";
 import "../../styles/manual-sales-job-card-form.css";
 
@@ -50,11 +61,48 @@ function EditableFieldRow({ label, required, error, children }) {
   );
 }
 
+function formatCustomerAddress(customer) {
+  return [customer?.address_line1, customer?.address, customer?.city, customer?.state, customer?.pincode]
+    .filter(Boolean)
+    .join(", ");
+}
+
+function formatSalesOrderDate(order) {
+  const raw = order?.order_date || order?.created_at || "";
+  return raw ? String(raw).slice(0, 10) : "—";
+}
+
+function workflowStatusLabel(status) {
+  const normalized = String(status || "").toUpperCase();
+  if (!normalized || normalized === "SAVED") return MANUAL_JOB_CARD_SAVED_STATUS;
+  if (normalized === "RETURNED_TO_SALES") return "Returned to Sales";
+  if (normalized === "SENT") return "Sent";
+  return status || MANUAL_JOB_CARD_SAVED_STATUS;
+}
+
+const compactSelectClass = "manual-sjc__select";
+
 export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my-job-cards?dept=sales" }) {
   const { user } = useAuth();
+  const { can } = usePermissions();
   const navigate = useNavigate();
   const { addToast } = useToast();
   const isEdit = Boolean(jobCardId);
+
+  const {
+    customers,
+    products,
+    salesOrders,
+    loading: mastersLoading,
+    error: mastersError,
+    reloadCustomers,
+    reloadProducts,
+    reloadAll,
+  } = useManualJobCardMasters();
+
+  const canAddCustomer = can("sales") || can("masters");
+  const canAddProduct = can("sales");
+
   const [form, setForm] = useState(() => emptyManualForm(user?.full_name || user?.name || ""));
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(isEdit);
@@ -62,6 +110,89 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
   const [saving, setSaving] = useState(false);
   const [companyProfile, setCompanyProfile] = useState(null);
   const [dirty, setDirty] = useState(false);
+  const [selectedCustomerId, setSelectedCustomerId] = useState("");
+  const [selectedSalesOrderId, setSelectedSalesOrderId] = useState("");
+  const [workflowStatus, setWorkflowStatus] = useState("SAVED");
+  const [showAddCustomer, setShowAddCustomer] = useState(false);
+  const [showAddProduct, setShowAddProduct] = useState(false);
+  const [addProductRowIndex, setAddProductRowIndex] = useState(null);
+
+  const uomOptions = useMemo(() => getUomOptions().map((u) => ({ value: u, label: u })), []);
+  const paymentTermsOptions = useMemo(
+    () => PAYMENT_TERMS_OPTIONS.map((t) => ({ value: t, label: t })),
+    []
+  );
+  const categoryOptions = useMemo(
+    () => PRODUCT_CATEGORY_OPTIONS.map((c) => ({ value: c, label: c })),
+    []
+  );
+  const specParameterOptions = useMemo(
+    () => SPEC_PARAMETER_OPTIONS.map((p) => ({ value: p, label: p })),
+    []
+  );
+
+  const customerOptions = useMemo(
+    () =>
+      customers.map((c) => ({
+        value: String(c.id),
+        label: c.name || c.company || c.customer_name || `Customer #${c.id}`,
+      })),
+    [customers]
+  );
+
+  const customerFooterOptions = useMemo(
+    () => (canAddCustomer ? [{ value: ADD_CUSTOMER_VALUE, label: "+ Add Customer" }] : []),
+    [canAddCustomer]
+  );
+
+  const productOptions = useMemo(
+    () =>
+      products.map((p) => ({
+        value: String(p.id),
+        label: [p.name, p.sku || p.product_code].filter(Boolean).join(" · ") || `Product #${p.id}`,
+      })),
+    [products]
+  );
+
+  const productFooterOptions = useMemo(
+    () => (canAddProduct ? [{ value: ADD_PRODUCT_VALUE, label: "+ Add Product" }] : []),
+    [canAddProduct]
+  );
+
+  const salesOrderOptions = useMemo(
+    () =>
+      salesOrders.map((o) => {
+        const soNo = o.order_number || `SO-${o.id}`;
+        const customer = o.customer_name || o.buyer_company || "—";
+        const date = formatSalesOrderDate(o);
+        const status = o.status || o.order_status || "—";
+        return {
+          value: String(o.id),
+          label: `${soNo} · ${customer} · ${date} · ${status}`,
+        };
+      }),
+    [salesOrders]
+  );
+
+  const customerSelectValue = useMemo(() => {
+    if (selectedCustomerId) return selectedCustomerId;
+    const name = form.customer.customer_name?.trim();
+    if (!name) return "";
+    const match = customers.find(
+      (c) => String(c.name || c.company || "").toLowerCase() === name.toLowerCase()
+    );
+    return match ? String(match.id) : name;
+  }, [selectedCustomerId, form.customer.customer_name, customers]);
+
+  const salesOrderSelectValue = useMemo(() => {
+    if (selectedSalesOrderId) return selectedSalesOrderId;
+    const soNo = form.header.sales_order_no?.trim();
+    if (!soNo) return "";
+    const match = salesOrders.find(
+      (o) => String(o.order_number || "").toLowerCase() === soNo.toLowerCase()
+    );
+    return match ? String(match.id) : soNo;
+  }, [selectedSalesOrderId, form.header.sales_order_no, salesOrders]);
 
   const patch = useCallback((path, value) => {
     setDirty(true);
@@ -82,6 +213,115 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
     });
   }, []);
 
+  const applyCustomerFromMaster = useCallback((customer) => {
+    if (!customer) return;
+    setDirty(true);
+    setSelectedCustomerId(String(customer.id));
+    setForm((prev) => ({
+      ...prev,
+      customer: {
+        ...prev.customer,
+        customer_name: customer.name || customer.company || customer.customer_name || "",
+        contact_person: customer.contact_name || customer.contact_person || prev.customer.contact_person,
+        phone: customer.phone || prev.customer.phone,
+        email: customer.email || prev.customer.email,
+        billing_address: formatCustomerAddress(customer) || prev.customer.billing_address,
+      },
+    }));
+    setErrors((prev) => {
+      const next = { ...prev };
+      delete next["customer.customer_name"];
+      return next;
+    });
+  }, []);
+
+  const applyProductToRow = useCallback((index, product) => {
+    if (!product) return;
+    setDirty(true);
+    setForm((prev) => {
+      const lines = [...prev.product_lines];
+      lines[index] = {
+        ...lines[index],
+        product_id: String(product.id),
+        product_code: product.sku || product.product_code || lines[index].product_code,
+        product_name: product.name || lines[index].product_name,
+        description: product.description || lines[index].description,
+        uom: product.unit || product.uom || lines[index].uom || "Nos",
+      };
+      return { ...prev, product_lines: lines };
+    });
+    setErrors((prev) => {
+      const next = { ...prev };
+      delete next[`product_lines.${index}.product_name`];
+      delete next[`product_lines.${index}.uom`];
+      return next;
+    });
+  }, []);
+
+  const handleCustomerSelect = useCallback(
+    (val) => {
+      if (val === ADD_CUSTOMER_VALUE) {
+        setShowAddCustomer(true);
+        return;
+      }
+      const customer = customers.find((c) => String(c.id) === String(val));
+      if (customer) {
+        applyCustomerFromMaster(customer);
+      } else {
+        setSelectedCustomerId("");
+        patch("customer.customer_name", val);
+      }
+    },
+    [customers, applyCustomerFromMaster, patch]
+  );
+
+  const handleSalesOrderSelect = useCallback(
+    (val) => {
+      const order = salesOrders.find((o) => String(o.id) === String(val));
+      if (order) {
+        setSelectedSalesOrderId(String(order.id));
+        patch("header.sales_order_no", order.order_number || `SO-${order.id}`);
+      } else {
+        setSelectedSalesOrderId("");
+        patch("header.sales_order_no", val);
+      }
+    },
+    [salesOrders, patch]
+  );
+
+  const handleProductSelect = useCallback(
+    (index, val) => {
+      if (val === ADD_PRODUCT_VALUE) {
+        setAddProductRowIndex(index);
+        setShowAddProduct(true);
+        return;
+      }
+      const product = products.find((p) => String(p.id) === String(val));
+      if (product) {
+        applyProductToRow(index, product);
+      } else {
+        setDirty(true);
+        setForm((prev) => {
+          const lines = [...prev.product_lines];
+          lines[index] = { ...lines[index], product_id: "", product_name: val };
+          return { ...prev, product_lines: lines };
+        });
+      }
+    },
+    [products, applyProductToRow]
+  );
+
+  const getProductSelectValue = useCallback(
+    (row) => {
+      if (row.product_id) return row.product_id;
+      const name = row.product_name?.trim();
+      if (!name) return "";
+      const match = products.find((p) => String(p.name || "").toLowerCase() === name.toLowerCase());
+      return match ? String(match.id) : name;
+    },
+    [products]
+  );
+
   useEffect(() => {
     getCompanySettings()
       .then((res) => setCompanyProfile(res?.data?.data ?? res?.data ?? null))
@@ -96,6 +336,7 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
       .then((res) => {
         const data = res?.data ?? res;
         setForm(manualFormFromApi(data));
+        setWorkflowStatus(data?.workflow_status || data?.workflow_stage || "SAVED");
       })
       .catch((err) => setLoadError(apiErrorMessage(err, "Could not load job card.")))
       .finally(() => setLoading(false));
@@ -165,6 +406,18 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
     });
   };
 
+  const handleCustomerCreated = async (created) => {
+    await reloadCustomers();
+    if (created) applyCustomerFromMaster(created);
+  };
+
+  const handleProductCreated = async (created) => {
+    await reloadProducts();
+    const idx = addProductRowIndex ?? 0;
+    if (created) applyProductToRow(idx, created);
+    setAddProductRowIndex(null);
+  };
+
   const handleCancel = () => {
     if (dirty && !window.confirm("Discard unsaved changes?")) return;
     navigate(backTo);
@@ -212,9 +465,38 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
   const companyAddress = formatCompanyAddress(companyProfile);
   const logoUrl = resolveCompanyLogoUrl(companyProfile);
   const tagline = resolveCompanyTagline(companyProfile);
+  const statusDisplay = isEdit ? workflowStatusLabel(workflowStatus) : MANUAL_JOB_CARD_SAVED_STATUS;
+
+  const customerEmptyLabel =
+    !mastersLoading && customerOptions.length === 0
+      ? canAddCustomer
+        ? "No customers found — use + Add Customer"
+        : "No customers found"
+      : "Select customer…";
+
+  const productEmptyLabel =
+    !mastersLoading && productOptions.length === 0
+      ? canAddProduct
+        ? "No products found — use + Add Product"
+        : "No products found"
+      : "Select product…";
 
   return (
     <div className="ui-page ui-stack manual-sjc-page">
+      <QuickAddCustomerModal
+        open={showAddCustomer}
+        onClose={() => setShowAddCustomer(false)}
+        onSaved={handleCustomerCreated}
+      />
+      <QuickAddProductModal
+        open={showAddProduct}
+        onClose={() => {
+          setShowAddProduct(false);
+          setAddProductRowIndex(null);
+        }}
+        onSaved={handleProductCreated}
+      />
+
       <div className="ui-card manual-sjc-page__card">
         <div className="manual-sjc-page__toolbar">
           <div>
@@ -229,6 +511,15 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
             Cancel
           </Button>
         </div>
+
+        {mastersError ? (
+          <div className="border-b border-[var(--color-border-soft)] bg-red-50 px-4 py-2 text-xs text-red-700">
+            {mastersError}
+            <button type="button" className="ml-2 font-semibold underline" onClick={reloadAll}>
+              Retry
+            </button>
+          </div>
+        ) : null}
 
         <div className="manual-sjc-page__body">
           <div className="sjc-doc manual-sjc-form">
@@ -259,6 +550,7 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
                         <td className="sjc-doc__meta-label">Date</td>
                         <td className="sjc-doc__meta-value">
                           <DatePicker
+                            compact
                             value={form.header.job_card_date}
                             onChange={(v) => patch("header.job_card_date", v)}
                             error={errors["header.job_card_date"]}
@@ -266,14 +558,20 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
                         </td>
                       </tr>
                       <tr>
-                        <td className="sjc-doc__meta-label">Sales Order No.</td>
+                        <td className="sjc-doc__meta-label">Sales Order</td>
                         <td className="sjc-doc__meta-value">
-                          <Input
-                            value={form.header.sales_order_no}
-                            onChange={(e) => patch("header.sales_order_no", e.target.value)}
-                            error={errors["header.sales_order_no"]}
-                            className="sjc-doc__input"
+                          <SearchableSelect
+                            value={salesOrderSelectValue}
+                            onChange={handleSalesOrderSelect}
+                            options={salesOrderOptions}
+                            placeholder={mastersLoading ? "Loading sales orders…" : "Select sales order…"}
+                            searchPlaceholder="Search sales order…"
+                            allowCustom
+                            disabled={mastersLoading}
+                            error={Boolean(errors["header.sales_order_no"])}
+                            className={compactSelectClass}
                           />
+                          <FieldError error={errors["header.sales_order_no"]} />
                         </td>
                       </tr>
                       <tr>
@@ -284,6 +582,12 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
                             onChange={(e) => patch("header.customer_po_no", e.target.value)}
                             className="sjc-doc__input"
                           />
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="sjc-doc__meta-label">Status</td>
+                        <td className="sjc-doc__meta-value">
+                          <span className="manual-sjc__status-pill">{statusDisplay}</span>
                         </td>
                       </tr>
                     </tbody>
@@ -298,10 +602,17 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
                   <div className="sjc-doc__panel-title">Customer Details</div>
                   <div className="sjc-doc__panel-body">
                     <EditableFieldRow label="Customer Name" required error={errors["customer.customer_name"]}>
-                      <Input
-                        value={form.customer.customer_name}
-                        onChange={(e) => patch("customer.customer_name", e.target.value)}
-                        className="sjc-doc__input"
+                      <SearchableSelect
+                        value={customerSelectValue}
+                        onChange={handleCustomerSelect}
+                        options={customerOptions}
+                        footerOptions={customerFooterOptions}
+                        placeholder={mastersLoading ? "Loading customers…" : customerEmptyLabel}
+                        searchPlaceholder="Search customer…"
+                        allowCustom
+                        disabled={mastersLoading}
+                        error={Boolean(errors["customer.customer_name"])}
+                        className={compactSelectClass}
                       />
                     </EditableFieldRow>
                     <EditableFieldRow label="Contact Person" error={errors["customer.contact_person"]}>
@@ -342,21 +653,27 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
                   <div className="sjc-doc__panel-body">
                     <EditableFieldRow label="Sales Order Date" error={errors["order.sales_order_date"]}>
                       <DatePicker
+                        compact
                         value={form.order.sales_order_date}
                         onChange={(v) => patch("order.sales_order_date", v)}
                       />
                     </EditableFieldRow>
                     <EditableFieldRow label="Delivery Date" error={errors["order.delivery_date"]}>
                       <DatePicker
+                        compact
                         value={form.order.delivery_date}
                         onChange={(v) => patch("order.delivery_date", v)}
                       />
                     </EditableFieldRow>
                     <EditableFieldRow label="Product Category">
-                      <Input
+                      <SearchableSelect
                         value={form.order.product_category}
-                        onChange={(e) => patch("order.product_category", e.target.value)}
-                        className="sjc-doc__input"
+                        onChange={(v) => patch("order.product_category", v)}
+                        options={categoryOptions}
+                        placeholder="Select product category…"
+                        searchPlaceholder="Search category…"
+                        allowCustom
+                        className={compactSelectClass}
                       />
                     </EditableFieldRow>
                     <EditableFieldRow label="End Use">
@@ -367,10 +684,14 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
                       />
                     </EditableFieldRow>
                     <EditableFieldRow label="Payment Terms">
-                      <Input
+                      <SearchableSelect
                         value={form.order.payment_terms}
-                        onChange={(e) => patch("order.payment_terms", e.target.value)}
-                        className="sjc-doc__input"
+                        onChange={(v) => patch("order.payment_terms", v)}
+                        options={paymentTermsOptions}
+                        placeholder="Select payment terms…"
+                        searchPlaceholder="Search payment terms…"
+                        allowCustom
+                        className={compactSelectClass}
                       />
                     </EditableFieldRow>
                     <EditableFieldRow label="Priority">
@@ -403,6 +724,7 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
                   <thead>
                     <tr>
                       <th>Sl. No.</th>
+                      <th>Product</th>
                       <th>Product Code</th>
                       <th>Product Name</th>
                       <th>Description</th>
@@ -415,6 +737,19 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
                     {form.product_lines.map((row, index) => (
                       <tr key={index}>
                         <td className="num">{index + 1}</td>
+                        <td>
+                          <SearchableSelect
+                            value={getProductSelectValue(row)}
+                            onChange={(val) => handleProductSelect(index, val)}
+                            options={productOptions}
+                            footerOptions={productFooterOptions}
+                            placeholder={mastersLoading ? "Loading…" : productEmptyLabel}
+                            searchPlaceholder="Search product…"
+                            allowCustom
+                            disabled={mastersLoading}
+                            className={compactSelectClass}
+                          />
+                        </td>
                         <td>
                           <Input
                             value={row.product_code}
@@ -449,16 +784,17 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
                           />
                         </td>
                         <td>
-                          <Select
+                          <SearchableSelect
                             value={row.uom}
-                            onChange={(e) => patchProductLine(index, "uom", e.target.value)}
-                            error={errors[`product_lines.${index}.uom`]}
-                            className="sjc-doc__input"
-                          >
-                            {UOM_OPTIONS.map((u) => (
-                              <option key={u} value={u}>{u}</option>
-                            ))}
-                          </Select>
+                            onChange={(v) => patchProductLine(index, "uom", v)}
+                            options={uomOptions}
+                            placeholder="Select UOM…"
+                            searchPlaceholder="Search UOM…"
+                            allowCustom
+                            error={Boolean(errors[`product_lines.${index}.uom`])}
+                            className={compactSelectClass}
+                          />
+                          <FieldError error={errors[`product_lines.${index}.uom`]} />
                         </td>
                         <td>
                           <button
@@ -504,10 +840,14 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
                         <tr key={index}>
                           <td className="num">{index + 1}</td>
                           <td>
-                            <Input
+                            <SearchableSelect
                               value={row.parameter}
-                              onChange={(e) => patchSpecLine(index, "parameter", e.target.value)}
-                              className="sjc-doc__input"
+                              onChange={(v) => patchSpecLine(index, "parameter", v)}
+                              options={specParameterOptions}
+                              placeholder="Select / enter parameter…"
+                              searchPlaceholder="Search parameter…"
+                              allowCustom
+                              className={compactSelectClass}
                             />
                           </td>
                           <td>
@@ -515,6 +855,7 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
                               value={row.specification}
                               onChange={(e) => patchSpecLine(index, "specification", e.target.value)}
                               className="sjc-doc__input"
+                              placeholder="Enter specification"
                             />
                           </td>
                           <td>
@@ -575,6 +916,7 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
                       </td>
                       <td>
                         <DatePicker
+                          compact
                           value={form.approval.prepared_date}
                           onChange={(v) => patch("approval.prepared_date", v)}
                         />

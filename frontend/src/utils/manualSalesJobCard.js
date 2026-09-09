@@ -1,12 +1,112 @@
-/** Manual Sales Job Card form state — no SO/customer/product auto-fill. */
+/** Manual Sales Job Card form state and helpers. */
+
+import { PRODUCT_CATEGORIES, PRODUCT_UNITS } from "../data/productsMasterData";
+import { PAYMENT_TERMS } from "../data/vendorsMasterData";
+
+const STORE_WORKFLOW_STATUSES = new Set([
+  "MATERIAL_CHECK_PENDING",
+  "MATERIAL_SHORTAGE",
+  "MATERIAL_PARTIAL",
+  "MATERIAL_AVAILABLE",
+  "STORE_ISSUE_PENDING",
+  "STORE_ISSUE_PARTIAL",
+]);
+
+export function isManualSalesJobCardRow(row) {
+  if (!row || typeof row !== "object") return false;
+  return Boolean(row.is_manual || (row.job_card_id && !row.sales_order_id));
+}
+
+export function resolveManualJobCardId(row) {
+  if (!isManualSalesJobCardRow(row)) return null;
+  const id = row.job_card_id ?? row.id;
+  if (id == null || id === "") return null;
+  return id;
+}
+
+export function scrollToJobCardDocumentPanel({ storeMode = false } = {}) {
+  const panelId = storeMode ? "store-manager-job-card-panel" : "sales-job-card-panel";
+  requestAnimationFrame(() => {
+    document.getElementById(panelId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+}
+
+/** Whether the row should offer Actions → Send (manual cards; API can_send is authoritative). */
+export function manualJobCardCanSend(row) {
+  if (!isManualSalesJobCardRow(row)) return false;
+  if (row.can_send === true) return true;
+  if (row.can_send === false) return false;
+  if (Array.isArray(row.allowed_actions) && row.allowed_actions.includes("send")) {
+    return true;
+  }
+  const ws = String(row.workflow_status || "").toUpperCase();
+  if (ws === "MATERIAL_AVAILABLE" || ws === "MATERIAL_PARTIAL" || ws === "MATERIAL_SHORTAGE") {
+    return false;
+  }
+  if (row.sent_to || row.sent_at) return false;
+  if (STORE_WORKFLOW_STATUSES.has(ws)) return false;
+  return ws === "SAVED" || ws === "RETURNED_TO_SALES" || ws === "";
+}
+
+export function scrollToManualMaterialCheck() {
+  requestAnimationFrame(() => {
+    document.getElementById("manual-material-check-panel")?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  });
+}
 
 export const PRIORITY_OPTIONS = [
+  { value: "urgent", label: "Urgent" },
   { value: "high", label: "High" },
-  { value: "medium", label: "Medium" },
+  { value: "medium", label: "Normal" },
   { value: "low", label: "Low" },
 ];
 
-export const UOM_OPTIONS = ["Nos", "nos", "pcs", "kg", "ltr", "box", "set", "mtr", "roll", "sheet"];
+export const PAYMENT_TERMS_OPTIONS = [
+  ...PAYMENT_TERMS,
+  "Immediate",
+  "7 Days",
+  "15 Days",
+  "30 Days",
+  "45 Days",
+  "60 Days",
+  "Net 30 Days",
+].filter((v, i, arr) => arr.indexOf(v) === i);
+
+export const SPEC_PARAMETER_OPTIONS = [
+  "GSM",
+  "Width",
+  "Length",
+  "Thickness",
+  "Color",
+  "Finish",
+  "Adhesion",
+  "Material",
+  "Coating",
+  "Tolerance",
+];
+
+export const ADD_CUSTOMER_VALUE = "__add_customer__";
+export const ADD_PRODUCT_VALUE = "__add_product__";
+
+let _uomOptionsCache = null;
+
+export function getUomOptions() {
+  if (_uomOptionsCache) return _uomOptionsCache;
+  const merged = [...PRODUCT_UNITS, "Nos", "MTR", "KG", "LTR", "PCS"];
+  _uomOptionsCache = [...new Set(merged.map((u) => String(u).trim()).filter(Boolean))].sort((a, b) =>
+    a.localeCompare(b, undefined, { sensitivity: "base" })
+  );
+  return _uomOptionsCache;
+}
+
+export const UOM_OPTIONS = getUomOptions();
+
+export const PRODUCT_CATEGORY_OPTIONS = PRODUCT_CATEGORIES;
+
+export const MANUAL_JOB_CARD_SAVED_STATUS = "Saved";
 
 export function todayIso() {
   const d = new Date();
@@ -19,6 +119,7 @@ export function todayIso() {
 export function emptyProductLine(index = 0) {
   return {
     sl_no: index + 1,
+    product_id: "",
     product_code: "",
     product_name: "",
     description: "",
@@ -108,6 +209,7 @@ export function manualFormFromApi(data) {
     product_lines: lines.length
       ? lines.map((row, i) => ({
           sl_no: i + 1,
+          product_id: row.product_id ? String(row.product_id) : "",
           product_code: row.product_code || "",
           product_name: row.product_name || "",
           description: row.description || "",

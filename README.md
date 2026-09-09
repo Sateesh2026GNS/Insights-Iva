@@ -353,6 +353,171 @@ All screens must handle loading, empty, success, error, network, permission, par
 - Audit: [docs/UI_STATE_AUDIT.md](./docs/UI_STATE_AUDIT.md)
 - Components: `frontend/src/components/common/states/`
 
+# UI State Audit — Insights Iva
+
+**Date:** 9 September 2026  
+**Standard:** [UI_STATE_STANDARD.md](./UI_STATE_STANDARD.md)
+
+Legend: ✓ Implemented · ⚠ Needs improvement · ✗ Missing
+
+| Page / Module | Loading | Empty | Success | Error | No Internet | Permission | Partial Data | Validation | Session Expired |
+|---------------|---------|-------|---------|-------|-------------|------------|--------------|------------|-----------------|
+| **Global infrastructure** | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Dashboard (reference) | ✓ | ⚠ | ✓ | ✓ | ✓ | ✓ | ⚠ | — | ✓ |
+| Sales Dashboard | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — | — | ✓ |
+| Customers | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — | ✓ | ✓ |
+| My Job Cards | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Sales Orders | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — | ⚠ | ✓ |
+| Quotations / Invoices | ✓ | ⚠ | ✓ | ⚠ | ⚠ | ✓ | — | ⚠ | ✓ |
+| ResourcePage modules (7) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ⚠ | ✓ | ✓ |
+| Inventory v2 | ✓ | ✓ | ✓ | ✓ | ⚠ | ✓ | — | ⚠ | ✓ |
+| HR module | ✓ | ⚠ | ✓ | ⚠ | ⚠ | ✓ | — | ⚠ | ✓ |
+| Production / Work Orders | ✓ | ⚠ | ✓ | ⚠ | ⚠ | ✓ | — | ⚠ | ✓ |
+| Maintenance | ✓ | ⚠ | ✓ | ⚠ | ⚠ | ✓ | — | ⚠ | ✓ |
+| Analytics | ✓ | ⚠ | ✓ | ⚠ | ⚠ | ✓ | — | — | ✓ |
+| Settings | ✓ | — | ✓ | ⚠ | ⚠ | ✓ | — | ⚠ | ✓ |
+| Auth (Login/Register) | ✓ | — | ✓ | ✓ | ✓ | — | — | ✓ | ✓ |
+
+## Centralized components added
+
+| Component | Path |
+|-----------|------|
+| `AsyncPageBody` | `frontend/src/components/common/states/AsyncPageBody.jsx` |
+| `LoadingState` | `frontend/src/components/common/states/LoadingState.jsx` |
+| `NetworkErrorState` | `frontend/src/components/common/states/NetworkErrorState.jsx` |
+| `PermissionDeniedState` | `frontend/src/components/common/states/PermissionDeniedState.jsx` |
+| `PartialDataState` | `frontend/src/components/common/states/PartialDataState.jsx` |
+| `SuccessState` | `frontend/src/components/common/states/SuccessState.jsx` |
+| `FieldError` | `frontend/src/components/common/states/FieldError.jsx` |
+
+Barrel export: `frontend/src/components/common/states/index.js`  
+Design system: `frontend/src/design-system/index.js`
+
+## API error utilities extended
+
+`frontend/src/utils/apiError.js`:
+
+- `isNetworkError`, `isPermissionError`, `isAuthError`, `isConflictError`, `isValidationError`
+- `classifyApiError` — routes errors to UI state types
+- `mapValidationErrorsToFields` — FastAPI validation → field map
+- `applyBackendFieldErrors` — merge backend errors into React form state
+
+## High-impact fixes in this pass
+
+1. **Customers** — `AsyncPageBody`, proper empty/no-results, network retry, no toast-only failure
+2. **Sales Dashboard** — removed `localStorage` fake KPI fallback; error + empty states
+3. **My Job Cards** — `AsyncPageBody`, `PartialDataState` for workflow meta failure
+4. **Add Customer form** — field-level validation errors from backend
+5. **ResourcePage** — `classifyApiError` for load failures
+
+## Remaining work (lower priority)
+
+- Migrate ~100 hand-rolled list pages to `AsyncPageBody` or `useAsyncResource`
+- Replace `AnalyticsErrorState` / `MaintenanceErrorState` duplicates with `ErrorState`
+- Wire `markRequestStart/End` on all data fetches for slow-network banner
+- Document forms: adopt `FieldError` + `applyBackendFieldErrors` consistently
+- Dashboard partial-data banners for multi-KPI fetches
+
+## Verification
+
+```bash
+cd frontend
+npm run build
+npm test
+```
+# Insights Iva — UI State Standard (Mandatory)
+
+Every API-driven screen must communicate one of these states clearly:
+
+| # | State | Component | When |
+|---|--------|-----------|------|
+| 1 | Loading | `LoadingState`, `Loader`, `SkeletonTable`, `AsyncPageBody` | Fetching data, saving, processing |
+| 2 | Empty | `EmptyState` | API succeeded, zero records |
+| 3 | Success | `SuccessState` + `useToast` | Create/update/delete/approve succeeded |
+| 4 | Error | `ErrorState` | Server/unexpected failure |
+| 5 | No Internet | `NetworkErrorState`, `OfflineState`, `OfflineBanner` | Network failure / offline |
+| 6 | Permission | `PermissionDeniedState`, `AccessDenied` | HTTP 403 / RBAC block |
+| 7 | Partial Data | `PartialDataState` | Some sections loaded, others failed |
+| 8 | Validation | `FieldError`, `applyBackendFieldErrors()` | Form field / 400 / 422 |
+| 9 | Session Expired | `SessionExpiredModal` | HTTP 401 after refresh fails |
+
+## Import surface
+
+```js
+import {
+  AsyncPageBody,
+  LoadingState,
+  EmptyState,
+  ErrorState,
+  NetworkErrorState,
+  PermissionDeniedState,
+  PartialDataState,
+  SuccessState,
+  FieldError,
+  NoResultsState,
+} from "../components/common/states";
+// or from "../design-system"
+```
+
+## Async list / page pattern
+
+```jsx
+const { online, markRequestStart, markRequestEnd, registerRetry } = useNetworkStatus();
+const [loading, setLoading] = useState(true);
+const [loadError, setLoadError] = useState("");
+const [loadErrorObj, setLoadErrorObj] = useState(null);
+
+// In fetch catch:
+const classified = classifyApiError(err, "Could not load data.");
+setLoadError(classified.message);
+setLoadErrorObj(err);
+
+<AsyncPageBody
+  loading={loading}
+  error={loadError}
+  errorObj={loadErrorObj}
+  online={online}
+  onRetry={reload}
+  loadingVariant="skeleton"
+>
+  {/* table or content */}
+</AsyncPageBody>
+```
+
+## API error helpers (`utils/apiError.js`)
+
+- `classifyApiError(err)` — routes to correct UI state type
+- `apiErrorMessage(err)` — user-facing message (never raw Axios text)
+- `httpStatusMessage(err)` — status-aware message for interceptors
+- `mapValidationErrorsToFields(err)` — FastAPI 422 → `{ field: message }`
+- `applyBackendFieldErrors(err, setFieldErrors, fieldMap)` — merge into form state
+- `isNetworkError(err)` — connectivity detection
+
+## HTTP mapping
+
+| Status | UI |
+|--------|-----|
+| 200/201/204 | Success (toast or `SuccessState`) |
+| 400/422 | Field validation (`FieldError`) |
+| 401 | `SessionExpiredModal` (axios + AuthContext) |
+| 403 | `PermissionDeniedState` / `AccessDenied` |
+| 404 | Friendly not-found message |
+| 409 | Business conflict message from API envelope |
+| 5xx | `ErrorState` — never expose stack traces |
+| Network | `NetworkErrorState` — not generic error |
+
+## Rules
+
+- Never show blank white screens during load
+- Never show raw `Request failed with status code …`
+- Never use mock/sample data to hide empty states
+- Preserve form data on validation/network errors
+- Use `Button` `loading` prop to prevent duplicate submits
+- Session handling stays in existing auth architecture
+
+See [UI_STATE_AUDIT.md](./UI_STATE_AUDIT.md) for module-by-module status.
+
+
 ## License
 
 Private / internal use.

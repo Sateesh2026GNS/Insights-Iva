@@ -99,6 +99,54 @@
   color: var(--color-text-secondary, #475569);
 }
 
+.store-manual-jc-actions__materials {
+  margin-top: 1rem;
+}
+
+.store-manual-jc-actions__materials-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.store-manual-jc-actions__material-form {
+  margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.store-manual-jc-actions__checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-text-secondary, #475569);
+}
+
+.store-manual-jc-actions__confirm-msg {
+  font-size: 0.875rem;
+  color: var(--erp-primary, #1b5e20);
+  font-weight: 600;
+  margin: 0;
+}
+
+.store-manual-jc-actions__saved-meta {
+  margin-top: 0.75rem;
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary, #475569);
+}
+
+.manual-material-status-panel__comment {
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary, #475569);
+  margin: 0.5rem 0;
+}
+
 .my-job-cards-page__filter-btn.ui-btn {
   background: #ffffff;
   color: var(--erp-primary, #1b5e20);
@@ -116,20 +164,6 @@
 .my-job-cards-page__filters-panel {
   overflow: hidden;
   border-top: 1px solid #b8dfc4;
-}
-
-.my-job-cards-page__refresh-btn.ui-btn {
-  background: #ffffff;
-  color: var(--erp-primary, #1b5e20);
-  border: 1px solid #ffffff;
-  font-weight: 600;
-  box-shadow: none;
-}
-
-.my-job-cards-page__refresh-btn.ui-btn:hover:not(:disabled):not(.is-loading) {
-  background: #f3faf4;
-  color: var(--erp-primary, #1b5e20);
-  border-color: #ffffff;
 }
 
 .my-job-cards-filters__reset-btn.ui-btn {

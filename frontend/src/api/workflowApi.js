@@ -21,6 +21,17 @@ export const updateManualJobCard = (jobCardId, payload) =>
 export const deleteManualJobCard = (jobCardId) =>
   api.delete(`/manufacturing/workflow/job-cards/manual/${jobCardId}`);
 
+export const getManualSendRecipientRoles = () =>
+  api.get("/manufacturing/workflow/job-cards/manual/send-recipient-roles");
+
+export const getManualSendRecipientUsers = (role) =>
+  api.get("/manufacturing/workflow/job-cards/manual/send-recipient-users", {
+    params: { role },
+  });
+
+export const sendManualJobCard = (jobCardId, payload) =>
+  api.post(`/manufacturing/workflow/job-cards/manual/${jobCardId}/send`, payload);
+
 export const acknowledgeManualJobCard = (jobCardId) =>
   api.post(`/manufacturing/workflow/job-cards/manual/${jobCardId}/acknowledge`);
 
@@ -29,6 +40,12 @@ export const returnManualJobCardToSales = (jobCardId, payload = {}) =>
 
 export const addManualStoreComment = (jobCardId, payload) =>
   api.post(`/manufacturing/workflow/job-cards/manual/${jobCardId}/store-comments`, payload);
+
+export const getManualMaterialCheck = (jobCardId) =>
+  api.get(`/manufacturing/workflow/job-cards/manual/${jobCardId}/material-check`);
+
+export const submitManualMaterialCheck = (jobCardId, payload) =>
+  api.post(`/manufacturing/workflow/job-cards/manual/${jobCardId}/material-check`, payload);
 
 export const getWorkflowJobCards = (params = {}) =>
   api.get("/manufacturing/workflow/job-cards", { params });

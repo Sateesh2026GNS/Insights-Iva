@@ -868,7 +868,18 @@ def get_my_job_card_queue(
 
     items = _enrich_queue_orders(db, tenant_id, orders)
 
-    from app.services.manual_job_card_service import list_manual_job_cards
+    from app.services.manual_job_card_service import (
+        list_manual_job_cards,
+        list_manual_job_cards_for_recipient,
+    )
+
+    manual_dept_by_team = {
+        TEAM_INVENTORY: "inventory",
+        TEAM_PRODUCTION: "production",
+        TEAM_QUALITY: "quality",
+        TEAM_BILLING: "billing",
+        TEAM_OPERATOR: "operator",
+    }
 
     if is_admin or TEAM_SALES in teams:
         manual_items = list_manual_job_cards(db, tenant_id, limit=limit, user=user)
@@ -876,16 +887,24 @@ def get_my_job_card_queue(
         for row in manual_items:
             if row.get("job_card_id") not in seen_jc:
                 items.append(row)
-    elif TEAM_INVENTORY in teams:
-        manual_items = list_manual_job_cards(
-            db, tenant_id, limit=limit, for_store=True, status_filter=status_filter, user=user
-        )
-        seen_jc = {it.get("job_card_id") for it in items if it.get("job_card_id")}
-        for row in manual_items:
-            if row.get("job_card_id") not in seen_jc:
-                items.append(row)
+    else:
+        for team, dept in manual_dept_by_team.items():
+            if team not in teams:
+                continue
+            if team == TEAM_INVENTORY:
+                manual_items = list_manual_job_cards(
+                    db, tenant_id, limit=limit, for_store=True, status_filter=status_filter, user=user
+                )
+            else:
+                manual_items = list_manual_job_cards_for_recipient(
+                    db, tenant_id, user, dept=dept, status_filter=status_filter, limit=limit
+                )
+            seen_jc = {it.get("job_card_id") for it in items if it.get("job_card_id")}
+            for row in manual_items:
+                if row.get("job_card_id") not in seen_jc:
+                    items.append(row)
 
-    if is_admin or TEAM_SALES in teams or TEAM_INVENTORY in teams:
+    if is_admin or TEAM_SALES in teams or any(t in teams for t in manual_dept_by_team):
         items.sort(
             key=lambda r: r.get("received_at") or r.get("created_at") or "",
             reverse=True,

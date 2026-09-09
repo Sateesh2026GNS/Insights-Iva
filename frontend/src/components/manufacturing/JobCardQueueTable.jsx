@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Download, Eye, Pencil, Printer, Trash2 } from "lucide-react";
+import { ClipboardCheck, Download, Eye, Pencil, Printer, Send, Trash2 } from "lucide-react";
 
 import Button from "../common/Button";
 import RowActionMenu from "../common/RowActionMenu";
@@ -26,6 +26,7 @@ import {
   fmtListUom,
   rowCustomerPo,
 } from "../../utils/jobCardQueueDisplay";
+import { manualJobCardCanSend, scrollToManualMaterialCheck } from "../../utils/manualSalesJobCard";
 
 function isOverdue(deliveryDate) {
   if (!deliveryDate) return false;
@@ -89,9 +90,28 @@ function resolveRowKey(row) {
   return row?.job_card_id ?? row?.sales_order_id ?? row?.id;
 }
 
-function buildRowMenuItems({ row, orderId, onViewDetails, onSelect, onEdit, onDelete, canDelete, canEdit, user }) {
+function buildRowMenuItems({
+  row,
+  orderId,
+  onViewDetails,
+  onSelect,
+  onEdit,
+  onDelete,
+  onSend,
+  canDelete,
+  canEdit,
+  canSend,
+  storeMode = false,
+  user,
+}) {
   const printFn = () => printSalesJobCardLandscape(row, user);
   const pdfFn = () => downloadSalesJobCardPdf(row, user);
+  const rowCanSend = Boolean(onSend) && canSend && manualJobCardCanSend(row);
+  const rowCanMaterialCheck =
+    storeMode &&
+    row.is_manual &&
+    Array.isArray(row.allowed_actions) &&
+    row.allowed_actions.includes("material_check");
   return [
     {
       label: "View",
@@ -101,11 +121,29 @@ function buildRowMenuItems({ row, orderId, onViewDetails, onSelect, onEdit, onDe
         else onSelect?.(orderId);
       },
     },
+    rowCanMaterialCheck
+      ? {
+          label: "Material Check",
+          icon: <ClipboardCheck className="h-4 w-4" />,
+          onClick: () => {
+            if (onViewDetails) onViewDetails(row);
+            else onSelect?.(orderId);
+            scrollToManualMaterialCheck();
+          },
+        }
+      : null,
     canEdit && onEdit
       ? {
           label: "Edit",
           icon: <Pencil className="h-4 w-4" />,
           onClick: () => onEdit(row),
+        }
+      : null,
+    rowCanSend && onSend
+      ? {
+          label: "Send",
+          icon: <Send className="h-4 w-4" />,
+          onClick: () => onSend(row),
         }
       : null,
     {
@@ -118,7 +156,7 @@ function buildRowMenuItems({ row, orderId, onViewDetails, onSelect, onEdit, onDe
       icon: <Download className="h-4 w-4" />,
       onClick: pdfFn,
     },
-    canDelete && onDelete
+    canDelete && onDelete && !(row.is_manual && (row.sent_to || row.sent_at))
       ? {
           label: "Delete",
           icon: <Trash2 className="h-4 w-4" />,
@@ -297,6 +335,8 @@ export default function JobCardQueueTable({
   canDelete = false,
   onEdit,
   canEdit = false,
+  onSend,
+  canSend = false,
   erpLayout = false,
   jobCardLinkForRow = null,
 }) {
@@ -357,8 +397,11 @@ export default function JobCardQueueTable({
                   onSelect,
                   onEdit,
                   onDelete,
+                  onSend,
                   canDelete,
                   canEdit,
+                  canSend,
+                  storeMode,
                   user,
                 });
 

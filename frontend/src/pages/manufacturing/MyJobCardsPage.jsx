@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { ClipboardList, Plus, RefreshCw, SlidersHorizontal } from "lucide-react";
+import { ClipboardList, Plus, SlidersHorizontal } from "lucide-react";
 
 import Button from "../../components/common/Button";
 import Pagination from "../../components/common/Pagination";
@@ -9,6 +9,7 @@ import { useNetworkStatus } from "../../context/NetworkStatusContext";
 import ConfirmDialog from "../../components/admin/ConfirmDialog";
 import JobCardQueueFilters from "../../components/manufacturing/JobCardQueueFilters";
 import JobCardQueueTable from "../../components/manufacturing/JobCardQueueTable";
+import SendJobCardModal from "../../components/manufacturing/SendJobCardModal";
 import { matchesErpListStatusFilter } from "../../utils/jobCardListStatus";
 import AccountantJobCardDocumentPanel from "../../components/manufacturing/AccountantJobCardDocumentPanel";
 import OperatorJobCardDocumentPanel from "../../components/manufacturing/OperatorJobCardDocumentPanel";
@@ -39,6 +40,10 @@ import {
   myJobCardsManualViewUrl,
   myJobCardsViewUrl,
 } from "../../utils/jobCardRoutes";
+import {
+  resolveManualJobCardId,
+  scrollToJobCardDocumentPanel,
+} from "../../utils/manualSalesJobCard";
 import "../../styles/my-job-cards-page.css";
 
 const PAGE_SIZES = [10, 20, 50, 100];
@@ -123,13 +128,12 @@ export default function MyJobCardsPage() {
   const { orderId: legacyPathOrderId } = useParams();
   const { online, markRequestStart, markRequestEnd, registerRetry } = useNetworkStatus();
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [loadError, setLoadError] = useState("");
   const [loadErrorObj, setLoadErrorObj] = useState(null);
   const [partialWarning, setPartialWarning] = useState("");
   const [rows, setRows] = useState([]);
   const [queueMeta, setQueueMeta] = useState(null);
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const deptParam = searchParams.get("dept");
   const activeOrderId = searchParams.get("order") || legacyPathOrderId;
   const activeJobCardId = searchParams.get("jc");
@@ -141,6 +145,7 @@ export default function MyJobCardsPage() {
   const [deleteError, setDeleteError] = useState("");
   const [deleting, setDeleting] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [sendTarget, setSendTarget] = useState(null);
   const deleteInFlight = useRef(false);
 
   const canCreate = userCanCreateSalesJobCard(user);
@@ -168,6 +173,15 @@ export default function MyJobCardsPage() {
   const storeKpiCounts = queueMeta?.counts || {};
   const salesJobCardsPending = Number(storeKpiCounts.sales_job_cards_pending || 0);
   const documentCanEdit = canUpdate && !storeMode && !billingMode && !operatorMode && !qualityMode;
+  const canSendManual =
+    !billingMode &&
+    !operatorMode &&
+    !qualityMode &&
+    (canCreate ||
+      canUpdate ||
+      isAdmin(user) ||
+      (storeMode && (userCanAction(user, "inventory", "update") || isStoreManager(user))));
+  const productionMode = effectiveTeam === "production";
 
   const handleDeleteConfirm = async () => {
     if (!deleteTarget || deleteInFlight.current) return;
@@ -208,7 +222,6 @@ export default function MyJobCardsPage() {
   const load = useCallback(
     async (silent = false) => {
       if (!silent) setLoading(true);
-      else setRefreshing(true);
       setLoadError("");
       setLoadErrorObj(null);
       setPartialWarning("");
@@ -236,7 +249,6 @@ export default function MyJobCardsPage() {
       } finally {
         markRequestEnd();
         setLoading(false);
-        setRefreshing(false);
       }
     },
     [markRequestStart, markRequestEnd]
@@ -312,13 +324,31 @@ export default function MyJobCardsPage() {
   useEffect(() => {
     if (loading || activeOrderId || activeJobCardId || filtered.length === 0) return;
     const first = filtered[0];
-    if (first?.is_manual && first?.job_card_id) {
-      navigate(myJobCardsManualViewUrl(first.job_card_id, searchParams), { replace: true });
+    const manualId = resolveManualJobCardId(first);
+    if (manualId != null) {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.set("jc", String(manualId));
+          next.delete("order");
+          return next;
+        },
+        { replace: true }
+      );
       return;
     }
     const id = first?.sales_order_id ?? first?.id;
-    if (id) navigate(myJobCardsViewUrl(id, searchParams), { replace: true });
-  }, [loading, filtered, activeOrderId, activeJobCardId, navigate, searchParams]);
+    if (!id) return;
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set("order", String(id));
+        next.delete("jc");
+        return next;
+      },
+      { replace: true }
+    );
+  }, [loading, filtered, activeOrderId, activeJobCardId, setSearchParams]);
 
   const statusOptions = useMemo(() => {
     const fromMeta = queueMeta?.actionable_statuses;
@@ -332,7 +362,13 @@ export default function MyJobCardsPage() {
 
   const activeRow = useMemo(() => {
     if (activeJobCardId) {
-      return rows.find((r) => Number(r.job_card_id) === Number(activeJobCardId)) || null;
+      return (
+        rows.find(
+          (r) =>
+            Number(r.job_card_id) === Number(activeJobCardId)
+            || Number(resolveManualJobCardId(r)) === Number(activeJobCardId)
+        ) || null
+      );
     }
     if (activeOrderId) {
       return rows.find((r) => Number(r.sales_order_id) === Number(activeOrderId)) || null;
@@ -340,19 +376,43 @@ export default function MyJobCardsPage() {
     return null;
   }, [rows, activeOrderId, activeJobCardId]);
 
-  const handleViewRow = (row) => {
-    if (row?.is_manual && row?.job_card_id) {
-      navigate(myJobCardsManualViewUrl(row.job_card_id, searchParams));
-      return;
-    }
-    const orderId = row.sales_order_id ?? row.id;
-    if (!orderId) return;
-    navigate(myJobCardsViewUrl(orderId, searchParams));
-  };
+  const handleViewRow = useCallback(
+    (row) => {
+      if (!row) return;
+      const manualId = resolveManualJobCardId(row);
+      if (manualId != null) {
+        setSearchParams(
+          (prev) => {
+            const next = new URLSearchParams(prev);
+            next.set("jc", String(manualId));
+            next.delete("order");
+            return next;
+          },
+          { replace: false }
+        );
+        scrollToJobCardDocumentPanel({ storeMode });
+        return;
+      }
+      const orderId = row.sales_order_id ?? row.id;
+      if (!orderId) return;
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.set("order", String(orderId));
+          next.delete("jc");
+          return next;
+        },
+        { replace: false }
+      );
+      scrollToJobCardDocumentPanel({ storeMode });
+    },
+    [setSearchParams, storeMode]
+  );
 
   const handleEditRow = (row) => {
-    if (row?.is_manual && row?.job_card_id) {
-      navigate(jobCardManualEditUrl(row.job_card_id));
+    const manualId = resolveManualJobCardId(row);
+    if (manualId != null) {
+      navigate(jobCardManualEditUrl(manualId));
       return;
     }
     const orderId = row.sales_order_id ?? row.id;
@@ -362,8 +422,9 @@ export default function MyJobCardsPage() {
 
   const jobCardLinkForRow = useCallback(
     (row) => {
-      if (row?.is_manual && row?.job_card_id) {
-        return myJobCardsManualViewUrl(row.job_card_id, searchParams);
+      const manualId = resolveManualJobCardId(row);
+      if (manualId != null) {
+        return myJobCardsManualViewUrl(manualId, searchParams);
       }
       const orderId = row?.sales_order_id ?? row?.id;
       if (!orderId) return null;
@@ -371,6 +432,8 @@ export default function MyJobCardsPage() {
     },
     [searchParams]
   );
+
+  const manualDocumentView = Boolean(activeJobCardId) && !activeOrderId;
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const safePage = Math.min(page, totalPages);
@@ -421,7 +484,7 @@ export default function MyJobCardsPage() {
           ? "No Quality Control Job Cards"
           : "No Job Cards Found";
   const emptyDescription = storeMode
-    ? "Sales Job Cards from Sales appear here automatically when submitted for store review."
+    ? "Sales Job Cards appear here only after a Sales person explicitly sends them to you."
     : billingMode
       ? "Packed and dispatched orders appear here for GST invoicing and ledger posting."
       : operatorMode
@@ -453,29 +516,51 @@ export default function MyJobCardsPage() {
   return (
     <div className="ui-page ui-stack my-job-cards-page">
       {qualityMode ? (
-        <QualityControlJobCardDocumentPanel
-          key={activeOrderId || "empty-quality"}
-          orderId={activeOrderId || null}
-          row={activeRow}
-          showEmptyShell={!activeOrderId}
-          emptyMessage={
-            filtered.length === 0
-              ? "Production-completed jobs appear here when ready for quality inspection."
-              : "Select a job card from the list below to open the Quality Control Job Card."
-          }
-        />
+        manualDocumentView ? (
+          <SalesJobCardDocumentPanel
+            key={activeJobCardId || "empty-quality-manual"}
+            jobCardId={activeJobCardId}
+            row={activeRow}
+            listPath={myJobCardsListPath}
+            showEmptyShell={!activeJobCardId}
+            emptyMessage="Select a job card from the list below to view the Sales Job Card."
+          />
+        ) : (
+          <QualityControlJobCardDocumentPanel
+            key={activeOrderId || activeJobCardId || "empty-quality"}
+            orderId={activeOrderId || null}
+            row={activeRow}
+            showEmptyShell={!activeOrderId && !activeJobCardId}
+            emptyMessage={
+              filtered.length === 0
+                ? "Production-completed jobs appear here when ready for quality inspection."
+                : "Select a job card from the list below to open the Quality Control Job Card."
+            }
+          />
+        )
       ) : operatorMode ? (
-        <OperatorJobCardDocumentPanel
-          key={activeOrderId || "empty-operator"}
-          orderId={activeOrderId || null}
-          row={activeRow}
-          showEmptyShell={!activeOrderId}
-          emptyMessage={
-            filtered.length === 0
-              ? "Production assignments appear here when work orders are assigned to you."
-              : "Select a job card from the list below to open the Operator Job Card."
-          }
-        />
+        manualDocumentView ? (
+          <SalesJobCardDocumentPanel
+            key={activeJobCardId || "empty-operator-manual"}
+            jobCardId={activeJobCardId}
+            row={activeRow}
+            listPath={myJobCardsListPath}
+            showEmptyShell={!activeJobCardId}
+            emptyMessage="Select a job card from the list below to view the Sales Job Card."
+          />
+        ) : (
+          <OperatorJobCardDocumentPanel
+            key={activeOrderId || activeJobCardId || "empty-operator"}
+            orderId={activeOrderId || null}
+            row={activeRow}
+            showEmptyShell={!activeOrderId && !activeJobCardId}
+            emptyMessage={
+              filtered.length === 0
+                ? "Production assignments appear here when work orders are assigned to you."
+                : "Select a job card from the list below to open the Operator Job Card."
+            }
+          />
+        )
       ) : billingMode ? (
         <AccountantJobCardDocumentPanel
           key={activeJobCardId || activeOrderId || "empty-billing"}
@@ -498,7 +583,7 @@ export default function MyJobCardsPage() {
           showEmptyShell={!activeOrderId && !activeJobCardId}
           emptyMessage={
             filtered.length === 0
-              ? "Sales Job Cards from Sales appear here when submitted for store review."
+              ? "Sales Job Cards appear here only after a Sales person explicitly sends them to you."
               : "Select a job card from the list below to open the Store Manager Job Card."
           }
         />
@@ -512,11 +597,12 @@ export default function MyJobCardsPage() {
           onEdit={documentCanEdit ? handleEditRow : undefined}
           canEdit={documentCanEdit}
           storeMode={storeMode}
+          showMaterialStatus={productionMode}
           showEmptyShell={!activeOrderId && !activeJobCardId}
           emptyMessage={
             filtered.length === 0
               ? canCreate
-                ? "No job cards yet. Click Add Job Card to manually create a Sales Job Card."
+                ? "No job cards yet. Click Create Job Card to manually create a Sales Job Card."
                 : "No job cards in the queue yet."
               : "Select a job card from the list below to view the Sales Job Card document."
           }
@@ -559,19 +645,9 @@ export default function MyJobCardsPage() {
                 onClick={() => navigate(jobCardCreateUrl())}
                 leftIcon={<Plus className="h-4 w-4" aria-hidden />}
               >
-                Add Job Card
+                Create Job Card
               </Button>
             ) : null}
-            <Button
-              variant="outline"
-              size="sm"
-              loading={refreshing}
-              onClick={() => load(true)}
-              className="my-job-cards-page__refresh-btn"
-              leftIcon={<RefreshCw className="h-4 w-4" aria-hidden />}
-            >
-              Refresh
-            </Button>
           </div>
         </div>
 
@@ -653,7 +729,7 @@ export default function MyJobCardsPage() {
             emptyDescription={emptyDescription}
             emptyAction={
               canCreate && !storeMode && !billingMode && !operatorMode && !qualityMode
-                ? { label: "Add Job Card", onClick: () => navigate(jobCardCreateUrl()) }
+                ? { label: "Create Job Card", onClick: () => navigate(jobCardCreateUrl()) }
                 : undefined
             }
             onRefresh={() => load(true)}
@@ -667,6 +743,8 @@ export default function MyJobCardsPage() {
             onEdit={canUpdate ? handleEditRow : undefined}
             canEdit={canUpdate}
             canDelete={canDelete}
+            onSend={(row) => setSendTarget(row)}
+            canSend={canSendManual}
           />
 
           {filtered.length > 0 ? (
@@ -688,6 +766,13 @@ export default function MyJobCardsPage() {
           ) : null}
         </AsyncPageBody>
       </div>
+
+      <SendJobCardModal
+        open={Boolean(sendTarget)}
+        jobCard={sendTarget}
+        onClose={() => setSendTarget(null)}
+        onSent={() => load(true)}
+      />
 
       <ConfirmDialog
         open={Boolean(deleteTarget)}
