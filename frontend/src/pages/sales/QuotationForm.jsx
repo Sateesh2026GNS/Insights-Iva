@@ -717,7 +717,7 @@ export default function QuotationForm() {
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
         <div className="mx-auto w-full max-w-[1200px] space-y-4 p-5 pb-10">
           {/* Top: quotation meta + supplier */}
           <div className="grid gap-4 lg:grid-cols-[1fr_1.35fr]">

@@ -97,6 +97,13 @@ export async function resendVerification(email) {
 export function getLoginErrorMessage(err, fallback = "Login failed. Please try again.") {
   const status = err?.response?.status;
   const detail = getApiErrorMessage(err, "");
+
+  if (err?.code === "ECONNABORTED" || err?.message?.toLowerCase().includes("timeout")) {
+    return "The server is taking longer than expected to wake up (Render cold start). Please wait a few seconds and try again.";
+  }
+  if (err?.code === "ERR_NETWORK" || (!err?.response && err?.message)) {
+    return "Unable to connect to the backend server. Please check your internet connection or verify the API is running.";
+  }
   if (status === 429) {
     if (detail.toLowerCase().includes("failed attempts")) {
       return "Too many failed attempts. Please try again later.";

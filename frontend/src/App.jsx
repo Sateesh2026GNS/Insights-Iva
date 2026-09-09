@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { useLocation } from "react-router-dom";
 
 import AppRoutes from "./routes/AppRoutes";
@@ -67,34 +67,6 @@ export default function App() {
     if (typeof window === "undefined") return false;
     return window.matchMedia("(max-width: 1023px)").matches;
   });
-
-  // Guard against trackpad/wheel boundary overscroll triggering browser "Next page" / "Previous page" navigation
-  useEffect(() => {
-    const main = document.getElementById("main-content");
-    if (!main) return;
-
-    const handleWheel = (e) => {
-      // Prevent horizontal swipe navigation
-      if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
-        const atLeft = main.scrollLeft <= 0;
-        const atRight = main.scrollLeft + main.clientWidth >= main.scrollWidth - 1;
-        if ((e.deltaX < 0 && atLeft) || (e.deltaX > 0 && atRight)) {
-          if (e.cancelable) e.preventDefault();
-        }
-        return;
-      }
-
-      // Prevent vertical overscroll at top or bottom ("last scroll") from chaining to browser navigation
-      const atTop = main.scrollTop <= 0;
-      const atBottom = main.scrollTop + main.clientHeight >= main.scrollHeight - 1;
-      if ((e.deltaY > 0 && atBottom) || (e.deltaY < 0 && atTop)) {
-        if (e.cancelable) e.preventDefault();
-      }
-    };
-
-    main.addEventListener("wheel", handleWheel, { passive: false });
-    return () => main.removeEventListener("wheel", handleWheel);
-  }, [location.pathname]);
 
   const showChatbot = shouldShowChatbot(user, location.pathname);
   const isInvoiceEditor =
