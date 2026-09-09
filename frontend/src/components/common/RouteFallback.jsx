@@ -11,6 +11,7 @@ export default function RouteFallback({ isFullBleed = false }) {
         aria-live="polite"
         aria-label="Loading page content"
       >
+
         <div className="flex items-center justify-between pb-4 border-b border-[var(--color-border-muted)]">
           <div className="flex items-center gap-3">
             <div className="h-7 w-40 rounded-lg bg-[var(--color-border-muted)]" />
@@ -38,6 +39,7 @@ export default function RouteFallback({ isFullBleed = false }) {
       aria-live="polite"
       aria-label="Loading page content"
     >
+
       {/* Top Header skeleton */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 py-1">
         <div className="space-y-2">

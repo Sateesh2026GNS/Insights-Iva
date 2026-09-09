@@ -436,8 +436,8 @@
 }
 
 .hr-my-leaves__select-option--active {
-  background: var(--ml-primary);
-  color: #ffffff;
+  background: #1d68d5 !important;
+  color: #ffffff !important;
 }
 
 .hr-my-leaves__select-trigger {
@@ -454,3 +454,40 @@
   text-align: left;
   cursor: pointer;
 }
+
+.hr-my-leaves__search-wrap {
+  border-bottom: 1px solid #e5e7eb;
+  padding: 8px;
+}
+
+.hr-my-leaves__search-input {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: var(--ml-surface);
+  padding: 8px 10px;
+  font-size: 14px;
+}
+
+.hr-my-leaves__search-input input {
+  width: 100%;
+  border: 0;
+  outline: none;
+  background: transparent;
+  font: inherit;
+  color: var(--ml-text);
+}
+
+.hr-my-leaves__search-input input::placeholder {
+  color: #9ca3af;
+}
+
+.hr-my-leaves__options-list {
+  max-height: 220px;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+

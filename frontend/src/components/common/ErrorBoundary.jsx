@@ -10,8 +10,31 @@ export default class ErrorBoundary extends Component {
     return { hasError: true, error };
   }
 
+  componentDidCatch(error) {
+    const msg = String(error?.message || "");
+    const isDynamicImportError =
+      msg.includes("dynamically imported module") ||
+      msg.includes("Importing a module script failed") ||
+      msg.includes("Failed to fetch dynamically imported module");
+
+    if (isDynamicImportError) {
+      const lastRetry = sessionStorage.getItem("chunk_reload_retry");
+      const now = Date.now();
+      if (!lastRetry || now - Number(lastRetry) > 15000) {
+        sessionStorage.setItem("chunk_reload_retry", String(now));
+        window.location.reload();
+      }
+    }
+  }
+
   render() {
     if (this.state.hasError) {
+      const msg = String(this.state.error?.message || "");
+      const isDynamicImportError =
+        msg.includes("dynamically imported module") ||
+        msg.includes("Importing a module script failed") ||
+        msg.includes("Failed to fetch dynamically imported module");
+
       return (
         <div className="flex min-h-screen items-center justify-center bg-slate-100 p-4 dark:bg-slate-900">
           <div className="max-w-md rounded-2xl border border-red-100 bg-white p-8 shadow-xl dark:border-red-900/30 dark:bg-slate-800">
@@ -19,12 +42,14 @@ export default class ErrorBoundary extends Component {
               <AlertCircle className="h-6 w-6 text-red-500" aria-hidden />
             </div>
             <h1 className="text-center text-lg font-bold text-slate-900 dark:text-slate-100">
-              Something went wrong
+              {isDynamicImportError ? "App Update Available" : "Something went wrong"}
             </h1>
             <p className="ui-hint mt-2 text-center">
-              Don&apos;t worry — your data is safe. Try reloading or return to the dashboard.
+              {isDynamicImportError
+                ? "A new version of the application has been published. Please reload the page to load the latest update."
+                : "Don't worry — your data is safe. Try reloading or return to the dashboard."}
             </p>
-            {this.state.error?.message && (
+            {this.state.error?.message && !isDynamicImportError && (
               <pre className="mt-4 max-h-24 overflow-auto rounded-lg bg-slate-50 p-3 text-left text-xs text-slate-600 dark:bg-slate-900 dark:text-slate-400">
                 {this.state.error.message}
               </pre>

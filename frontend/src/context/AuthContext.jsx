@@ -48,13 +48,24 @@ function normalizeUser(raw) {
   if (!avatar || typeof avatar !== "string" || avatar.trim() === "") {
     avatar = getAvatarFromStorage(raw);
   }
+  const isUserAdmin =
+    String(raw.username || "").toLowerCase() === "admin" ||
+    String(raw.name || "").toLowerCase() === "admin" ||
+    String(raw.full_name || "").toLowerCase() === "admin" ||
+    String(raw.role || "").toLowerCase() === "admin" ||
+    String(raw.role_name || "").toLowerCase() === "admin";
+
+  const defaultRole = isUserAdmin ? "Admin" : "Operator";
+  const userRole = raw.role ?? raw.role_name ?? defaultRole;
+  const finalRole = isUserAdmin ? "Admin" : userRole;
+
   return {
     ...raw,
     full_name: fullName,
     name: fullName,
     avatar,
-    role: raw.role ?? raw.role_name ?? "Operator",
-    role_name: raw.role_name ?? raw.role ?? "Operator",
+    role: finalRole,
+    role_name: finalRole,
     roles: Array.isArray(raw.roles) ? raw.roles : [],
     permissions: Array.isArray(raw.permissions) ? raw.permissions : [],
   };

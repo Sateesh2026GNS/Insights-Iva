@@ -60,17 +60,21 @@ function formatWorkingHours(hours) {
 
 function mapApiAttendanceRow(row, index) {
   const status = String(row.status || "present").toLowerCase().replace(/\s+/g, "_");
+  const employeeName = row.employee_name || row.name || row.full_name || "—";
   return {
     id: row.id ?? index + 1,
     employee_id: row.employee_code || row.employee_id || `EMP${String(index + 1).padStart(3, "0")}`,
-    name: row.employee_name || "—",
+    name: employeeName,
+    email: row.email || row.mail || "",
+    role: row.role || row.role_name || "",
+    company: row.company || "",
     department: row.department || row.shift || "—",
     check_in: row.check_in || null,
     check_out: row.check_out || null,
     working_hours: formatWorkingHours(row.working_hours),
     status: status === "half_day" ? "on_leave" : status,
     remarks: row.remarks || row.reason || "—",
-    avatar: row.initials || initials(row.employee_name),
+    avatar: row.initials || initials(employeeName),
     record_date: row.record_date || row.date || new Date().toISOString().slice(0, 10),
   };
 }

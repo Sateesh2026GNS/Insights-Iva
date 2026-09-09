@@ -321,6 +321,8 @@ export const STORE_MANAGER_ALLOWED_PATHS = new Set([
   "/documents/purchase",
   "/manufacturing/workflow",
   "/my-job-cards",
+  "/hr/attendance",
+  "/attendance",
 ]);
 
 export function isProductionManager(user) {
@@ -404,6 +406,9 @@ export function userCanAccessPath(user, pathname) {
   if (!user) return false;
   if (isAdmin(user)) return true;
   const path = (pathname || "").replace(/\/$/, "") || "/";
+  if (path === "/hr/attendance" || path === "/attendance") {
+    return true;
+  }
   if (path === "/my-job-cards" || path.startsWith("/job-cards/") || path === "/sales/job-cards/create") {
     if (!userCanAccessMyJobCards(user)) return false;
     if (isStoreManager(user) && !storeManagerPathAllowed(pathname)) return false;

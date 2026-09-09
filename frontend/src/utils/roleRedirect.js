@@ -30,7 +30,7 @@ export function getDashboardPathForRole(role) {
     return "/procurement";
   }
   if (name === "operator") {
-    return "/my-job-cards";
+    return "/";
   }
   if (name.includes("production")) {
     return "/production";

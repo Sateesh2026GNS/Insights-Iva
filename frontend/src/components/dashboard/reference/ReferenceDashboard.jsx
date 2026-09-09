@@ -43,6 +43,7 @@ import { getProductionOrders, getWorkOrders } from "../../../api/productionApi";
 import useAuth from "../../../hooks/useAuth";
 import MachineControlCard from "../MachineControlCard";
 import ManufacturingWorkflowHub from "../ManufacturingWorkflowHub";
+import DashboardCheckIn from "../DashboardCheckIn";
 import useManufacturingRefresh from "../../../hooks/useManufacturingRefresh";
 import { userCanAccess, isOperator } from "../../../config/permissions";
 import { CardShell, KpiIconWell, StatusBadge, TrendBadge, getKpiAccent } from "./ReferenceParts";
@@ -1179,6 +1180,8 @@ export default function ReferenceDashboard() {
     <div className="min-h-full bg-[var(--color-bg)]">
       <div className="ui-page mx-auto max-w-[var(--page-max)] ui-stack">
         {sectionVisible(sections, "kpi") ? <KpiStrip cards={kpiCardsLive} /> : null}
+
+        <DashboardCheckIn />
 
         {sectionVisible(sections, "manufacturing_workflow") ? <ManufacturingWorkflowHub /> : null}
 

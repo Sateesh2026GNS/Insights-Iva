@@ -415,6 +415,15 @@ body {
 }
 
 /* Soft atmosphere behind ERP shell */
+html.has-app-shell,
+body.has-app-shell,
+html:has(.app-shell),
+body:has(.app-shell),
+#root:has(.app-shell) {
+  height: 100% !important;
+  overflow: hidden !important;
+}
+
 .app-shell {
   background-color: var(--color-bg);
   overscroll-behavior: none !important;
@@ -2954,4 +2963,25 @@ table > tbody > tr:first-child:has(th) {
     animation: none;
   }
 }
+
+/* ========== Navigation Loading Overlay Animations ========== */
+@keyframes loaderProgress {
+  0% { transform: translateX(-100%); }
+  50% { transform: translateX(20%); }
+  100% { transform: translateX(200%); }
+}
+
+.animate-loader-progress {
+  animation: loaderProgress 1.6s ease-in-out infinite;
+}
+
+@keyframes spinReverse {
+  from { transform: rotate(360deg); }
+  to { transform: rotate(0deg); }
+}
+
+.animate-spin-reverse {
+  animation: spinReverse 2.4s linear infinite;
+}
+
 

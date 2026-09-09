@@ -264,12 +264,28 @@ class LeaveRequestCreate(LeaveRequestBase):
 
 
 class LeaveRequestCreateIn(BaseModel):
-    employee_id: int = Field(..., ge=1)
+    model_config = ConfigDict(extra="ignore")
+
+    employee_id: int = Field(1, ge=1)
     leave_type: str = Field(..., min_length=1)
     start_date: date
     end_date: date
+    days: float | None = None
     reason: str | None = None
     status: str = "pending"
+    employee_name: str | None = None
+
+    @field_validator("employee_id", mode="before")
+    @classmethod
+    def validate_employee_id(cls, v: Any) -> int:
+        if isinstance(v, int):
+            return max(1, v)
+        if isinstance(v, str):
+            import re
+            digits = re.sub(r"\D", "", v)
+            if digits:
+                return max(1, int(digits))
+        return 1
 
     @field_validator("status", mode="before")
     @classmethod

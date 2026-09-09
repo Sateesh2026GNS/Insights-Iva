@@ -694,6 +694,7 @@ export default function AppRoutes() {
       <Route path="/hr/employees/bulk-upload" element={<ProtectedRoute><P.HRBulkUploadEmployees /></ProtectedRoute>} />
       <Route path="/hr/employees/offboarded" element={<ProtectedRoute><P.HROffboarded /></ProtectedRoute>} />
       <Route path="/hr/attendance" element={<ProtectedRoute><P.HRAttendance /></ProtectedRoute>} />
+      <Route path="/attendance" element={<Navigate to="/hr/attendance" replace />} />
       <Route path="/hr/attendance/approval" element={<ProtectedRoute><P.HRAttendanceApproval /></ProtectedRoute>} />
       <Route path="/hr/attendance/overtime" element={<ProtectedRoute><P.HROvertime /></ProtectedRoute>} />
       <Route path="/hr/attendance/adjusted-leave" element={<ProtectedRoute><P.HRAttendanceAdjustedLeave /></ProtectedRoute>} />

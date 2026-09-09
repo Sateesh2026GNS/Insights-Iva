@@ -3,7 +3,7 @@ import { Navigate } from "react-router-dom";
 import ReferenceDashboard from "../../components/dashboard/reference/ReferenceDashboard";
 import useAuth from "../../hooks/useAuth";
 import { getDashboardPathForRole } from "../../utils/roleRedirect";
-import { getActiveRoleName } from "../../config/permissions";
+import { getActiveRoleName, isOperator } from "../../config/permissions";
 
 function isAdminRole(role) {
   const name = String(role || "").trim().toLowerCase();
@@ -14,7 +14,7 @@ export default function Dashboard() {
   const { user } = useAuth();
   const role = getActiveRoleName(user);
 
-  if (isAdminRole(role)) {
+  if (isAdminRole(role) || isOperator(user)) {
     return <ReferenceDashboard />;
   }
 

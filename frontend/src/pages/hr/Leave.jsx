@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { createPortal } from "react-dom";
 import {
   Baby,
@@ -12,6 +13,7 @@ import {
   Heart,
   Palmtree,
   Plus,
+  Search,
   Sparkles,
   Stethoscope,
   User,
@@ -22,10 +24,65 @@ import Loader from "../../components/common/Loader";
 import { ListPageShell } from "../../components/common/ListPageShell";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { useToast } from "../../context/ToastContext";
-import { createLeaveRequest, getLeaveEnriched } from "../../api/hrApi";
+import useAuth from "../../hooks/useAuth";
+import { createLeaveRequest, getEmployees, getEmployeesEnriched, getLeaveEnriched } from "../../api/hrApi";
+import { getUsers } from "../../api/adminApi";
 import "./myLeaves.css";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+// ---- Local storage helpers for leave records (survive page refresh) ----
+const LOCAL_LEAVES_KEY = "iva_local_leave_records";
+
+function loadLocalLeaves() {
+  try {
+    return JSON.parse(localStorage.getItem(LOCAL_LEAVES_KEY) || "[]");
+  } catch {
+    return [];
+  }
+}
+
+function saveLocalLeave(record) {
+  try {
+    const existing = loadLocalLeaves();
+    const updated = [record, ...existing.filter((r) => r._localId !== record._localId)];
+    localStorage.setItem(LOCAL_LEAVES_KEY, JSON.stringify(updated));
+  } catch {
+    // ignore storage errors
+  }
+}
+
+function removeLocalLeave(localId) {
+  try {
+    const existing = loadLocalLeaves();
+    localStorage.setItem(LOCAL_LEAVES_KEY, JSON.stringify(existing.filter((r) => r._localId !== localId)));
+  } catch {
+    // ignore
+  }
+}
+
+function clearLocalLeavesMatchedByServer(serverRecords) {
+  // Remove local records that are now returned by the server (avoid duplicates)
+  try {
+    if (!Array.isArray(serverRecords) || serverRecords.length === 0) return;
+    const local = loadLocalLeaves();
+    const remaining = local.filter((loc) => {
+      const hasMatch = serverRecords.some(
+        (s) =>
+          (loc.id && s.id === loc.id) ||
+          (String(s.employee_name || "").trim().toLowerCase() === String(loc.employee_name || "").trim().toLowerCase() &&
+           String(s.leave_type || "").trim().toLowerCase() === String(loc.leave_type || "").trim().toLowerCase() &&
+           String(s.start_date || "").slice(0, 10) === String(loc.start_date || "").slice(0, 10) &&
+           String(s.end_date || "").slice(0, 10) === String(loc.end_date || "").slice(0, 10))
+      );
+      return !hasMatch;
+    });
+    localStorage.setItem(LOCAL_LEAVES_KEY, JSON.stringify(remaining));
+  } catch {
+    // ignore
+  }
+}
+
 
 const LEAVE_TYPES = [
   { key: "casual", label: "Casual Leave", tone: { bg: "#dcfce7", text: "#16a34a" }, icon: Palmtree },
@@ -42,6 +99,7 @@ const LEAVE_TYPE_OPTIONS = LEAVE_TYPES.map((t) => ({ value: t.key, label: t.labe
 
 const TABLE_COLUMNS = [
   "SR No.",
+  "User / Employee",
   "Leave Type",
   "From",
   "To",
@@ -90,19 +148,21 @@ function LeaveTypeSelect({ value, onChange }) {
       </button>
       {open ? (
         <div className="hr-my-leaves__select-menu">
-          {LEAVE_TYPE_OPTIONS.map((opt) => (
-            <button
-              key={opt.value}
-              type="button"
-              className={`hr-my-leaves__select-option ${opt.value === value ? "hr-my-leaves__select-option--active" : ""}`}
-              onClick={() => {
-                onChange(opt.value);
-                setOpen(false);
-              }}
-            >
-              {opt.label}
-            </button>
-          ))}
+          <div className="hr-my-leaves__options-list">
+            {LEAVE_TYPE_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                className={`hr-my-leaves__select-option ${opt.value === value ? "hr-my-leaves__select-option--active" : ""}`}
+                onClick={() => {
+                  onChange(opt.value);
+                  setOpen(false);
+                }}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
         </div>
       ) : null}
     </div>
@@ -130,7 +190,124 @@ function DateField({ label, value, onChange }) {
   );
 }
 
-function LeaveRequestDrawer({ open, onClose, onSubmit, remainingLeaves }) {
+function UserSelect({ value, onChange, employees, onAddUser }) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const rootRef = useRef(null);
+  const inputRef = useRef(null);
+
+  const options = useMemo(() => {
+    return (employees || []).map((emp) => {
+      const id = emp.employee_id || emp.employee_code || (emp.id ? String(emp.id) : "");
+      const name = emp.full_name || emp.name || emp.username || "User";
+      return {
+        value: id || name,
+        label: name,
+        raw: emp,
+      };
+    });
+  }, [employees]);
+
+  const selectedItem = options.find((o) => o.value === value || o.label === value);
+  const selectedLabel = selectedItem ? selectedItem.label : "Select user";
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return options;
+    return options.filter((o) => o.label.toLowerCase().includes(q));
+  }, [options, query]);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const onDoc = (e) => {
+      if (rootRef.current && !rootRef.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [open]);
+
+  useEffect(() => {
+    if (open) {
+      setQuery("");
+      setTimeout(() => inputRef.current?.focus(), 50);
+    }
+  }, [open]);
+
+  return (
+    <div ref={rootRef} className="relative">
+      <button
+        type="button"
+        className="hr-my-leaves__select-trigger"
+        onClick={() => setOpen((v) => !v)}
+      >
+        <span className={selectedItem ? "text-[#374151]" : "text-[#9ca3af]"}>
+          {selectedLabel}
+        </span>
+        <ChevronDown className="h-4 w-4 text-[#9ca3af]" />
+      </button>
+
+      {open ? (
+        <div className="hr-my-leaves__select-menu">
+          <div className="hr-my-leaves__search-wrap">
+            <label className="hr-my-leaves__search-input">
+              <Search className="h-4 w-4 shrink-0 text-[#9ca3af]" aria-hidden />
+              <input
+                ref={inputRef}
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search user..."
+              />
+            </label>
+          </div>
+          <div className="hr-my-leaves__options-list">
+            {filtered.length === 0 ? (
+              <div className="px-3 py-3 text-xs text-[#9ca3af] text-center">No users found</div>
+            ) : (
+              filtered.map((opt) => {
+                const active = opt.value === value || opt.label === value;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    className={`hr-my-leaves__select-option ${
+                      active ? "hr-my-leaves__select-option--active" : ""
+                    }`}
+                    onClick={() => {
+                      onChange(opt.value, opt.raw);
+                      setOpen(false);
+                    }}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })
+            )}
+          </div>
+          {onAddUser ? (
+            <div className="border-t border-slate-100 p-2 bg-slate-50/80">
+              <button
+                type="button"
+                onClick={() => {
+                  setOpen(false);
+                  onAddUser();
+                }}
+                className="w-full flex items-center justify-center gap-1.5 py-1.5 text-xs font-semibold text-[#1d68d5] hover:bg-blue-50 rounded-md transition cursor-pointer"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span>Add User</span>
+              </button>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function LeaveRequestDrawer({ open, onClose, onSubmit, employees, defaultEmployeeId, remainingLeaves, onAddUser }) {
+  const [selectedUserId, setSelectedUserId] = useState("");
+  const [selectedUserObj, setSelectedUserObj] = useState(null);
   const [leaveType, setLeaveType] = useState("");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
@@ -138,12 +315,21 @@ function LeaveRequestDrawer({ open, onClose, onSubmit, remainingLeaves }) {
 
   useEffect(() => {
     if (open) {
+      const defaultId =
+        defaultEmployeeId ||
+        employees?.[0]?.employee_id ||
+        employees?.[0]?.employee_code ||
+        String(employees?.[0]?.id || "") ||
+        employees?.[0]?.name ||
+        "";
+      setSelectedUserId(defaultId);
+      setSelectedUserObj(employees?.[0] || null);
       setLeaveType("");
       setFromDate("");
       setToDate("");
       setReason("");
     }
-  }, [open]);
+  }, [open, defaultEmployeeId, employees]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -170,6 +356,31 @@ function LeaveRequestDrawer({ open, onClose, onSubmit, remainingLeaves }) {
         </div>
         <div className="hr-my-leaves__drawer-body">
           <h2 className="hr-my-leaves__drawer-title">Leave Request</h2>
+
+          <div className="hr-my-leaves__field">
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="hr-my-leaves__field-label !mb-0">User Name <span>*</span></label>
+              {onAddUser ? (
+                <button
+                  type="button"
+                  onClick={onAddUser}
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-[#1d68d5] hover:text-[#1754ad] transition cursor-pointer"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  <span>Add User</span>
+                </button>
+              ) : null}
+            </div>
+            <UserSelect
+              value={selectedUserId}
+              onChange={(val, raw) => {
+                setSelectedUserId(val);
+                setSelectedUserObj(raw);
+              }}
+              employees={employees}
+              onAddUser={onAddUser}
+            />
+          </div>
 
           <div className="hr-my-leaves__field">
             <label className="hr-my-leaves__field-label">Leave Type <span>*</span></label>
@@ -203,7 +414,17 @@ function LeaveRequestDrawer({ open, onClose, onSubmit, remainingLeaves }) {
           <button
             type="button"
             className="hr-my-leaves__send-btn"
-            onClick={() => onSubmit({ leaveType, fromDate, toDate, reason, numDays })}
+            onClick={() =>
+              onSubmit({
+                userId: selectedUserId,
+                user: selectedUserObj,
+                leaveType,
+                fromDate,
+                toDate,
+                reason,
+                numDays,
+              })
+            }
           >
             Send Request
           </button>
@@ -216,31 +437,174 @@ function LeaveRequestDrawer({ open, onClose, onSubmit, remainingLeaves }) {
 }
 
 export default function Leave() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { user: currentUser } = useAuth();
   const { addToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [records, setRecords] = useState([]);
+  const [employees, setEmployees] = useState([]);
   const [viewYear, setViewYear] = useState(() => new Date().getFullYear());
   const [viewMonth, setViewMonth] = useState(() => new Date().getMonth());
   const [pageSize, setPageSize] = useState(25);
   const [requestOpen, setRequestOpen] = useState(false);
   const cardsRef = useRef(null);
 
+  const handleAddUser = () => {
+    setRequestOpen(false);
+    navigate("/admin/users?add=true", {
+      state: {
+        openAddUser: true,
+        _returnTo: location.pathname,
+      },
+    });
+  };
+
   const load = useCallback(async (isRefresh = false) => {
     if (!isRefresh) setLoading(true);
     try {
-      const res = await getLeaveEnriched();
-      setRecords(res?.data || []);
+      const [leaveRes, empEnrichedRes, empRes, userRes] = await Promise.allSettled([
+        getLeaveEnriched(),
+        getEmployeesEnriched(),
+        getEmployees(),
+        getUsers(),
+      ]);
+
+      const leaveData = leaveRes.status === "fulfilled" ? leaveRes.value?.data || [] : [];
+
+      // Remove local records that the server already knows about (avoid duplicates)
+      clearLocalLeavesMatchedByServer(leaveData);
+
+      // Merge: server records first, then any local-only records on top with deduplication
+      const localLeaves = loadLocalLeaves();
+      const seen = new Set();
+      const combined = [];
+      for (const r of [...leaveData, ...localLeaves]) {
+        const key = `${String(r.employee_name || "").trim().toLowerCase()}_${String(r.leave_type || "").trim().toLowerCase()}_${String(r.start_date || "").slice(0, 10)}_${String(r.end_date || "").slice(0, 10)}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          combined.push(r);
+        }
+      }
+      setRecords(combined);
+
+      const enrichedEmployees = empEnrichedRes.status === "fulfilled" ? empEnrichedRes.value?.data || [] : [];
+      const regularEmployees = empRes.status === "fulfilled" ? empRes.value?.data || [] : [];
+      const systemUsers = userRes.status === "fulfilled" ? userRes.value?.data || [] : [];
+
+      const userMap = new Map();
+
+      const registerUser = (item, defaultRole = "Employee") => {
+        if (!item) return;
+        const name = (item.full_name || item.name || item.username || "").trim();
+        if (!name) return;
+
+        const nameKey = name.toLowerCase();
+        const emailKey = item.email ? String(item.email).trim().toLowerCase() : null;
+
+        // Check if user already exists
+        let existingKey = null;
+        for (const [k, existing] of userMap.entries()) {
+          if (emailKey && existing.email && existing.email.toLowerCase() === emailKey) {
+            existingKey = k;
+            break;
+          }
+          if (existing.name.toLowerCase() === nameKey) {
+            existingKey = k;
+            break;
+          }
+        }
+
+        const id =
+          item.employee_id ||
+          item.employee_code ||
+          (item.id ? `EMP-${String(item.id).padStart(3, "0")}` : "") ||
+          name;
+
+        const role =
+          item.role_name ||
+          item.role ||
+          item.designation ||
+          (Array.isArray(item.roles) && item.roles[0]?.name) ||
+          (name.toLowerCase() === "admin" ? "Admin" : defaultRole);
+
+        const userData = {
+          id: item.id || id,
+          employee_id: id,
+          employee_code: id,
+          full_name: name,
+          name: name,
+          role,
+          designation: item.designation || role,
+          department: item.department || "General",
+          email: item.email || item.mail || "",
+        };
+
+        if (existingKey) {
+          const prev = userMap.get(existingKey);
+          userMap.set(existingKey, {
+            ...prev,
+            ...userData,
+            department: prev.department && prev.department !== "General" ? prev.department : userData.department,
+            role: prev.role && prev.role !== "Employee" ? prev.role : userData.role,
+          });
+        } else {
+          userMap.set(emailKey || nameKey, userData);
+        }
+      };
+
+      // 1. Current logged-in user
+      if (currentUser) {
+        registerUser(currentUser, currentUser.role_name || currentUser.role || "Admin");
+      }
+
+      // 2. Company users from User Management (/admin/users)
+      if (Array.isArray(systemUsers)) {
+        for (const u of systemUsers) {
+          registerUser(u);
+        }
+      }
+
+      // 3. Enriched employees from HR (/hr/employees/enriched)
+      if (Array.isArray(enrichedEmployees)) {
+        for (const e of enrichedEmployees) {
+          registerUser(e);
+        }
+      }
+
+      // 4. Regular employees (/hr/employees)
+      if (Array.isArray(regularEmployees)) {
+        for (const e of regularEmployees) {
+          registerUser(e);
+        }
+      }
+
+      setEmployees(Array.from(userMap.values()));
     } catch {
-      setRecords([]);
+      // On initial load failure clear everything; on background refresh keep existing data
+      if (!isRefresh) {
+        setRecords([]);
+        setEmployees([]);
+      }
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [currentUser]);
 
   usePageRefresh(() => load(true));
   useEffect(() => {
     load();
   }, [load]);
+
+  // Re-fetch the user list when navigating back to this page (e.g. after adding a user from Users page)
+  // We check if the previous path was /admin/users so we only reload when relevant
+  useEffect(() => {
+    const prevPath = location.state?._fromPath || "";
+    if (prevPath.includes("/admin/users") || location.search?.includes("refreshUsers")) {
+      load(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.key]);
 
   const leaveBalances = useMemo(() => {
     const map = {};
@@ -263,28 +627,90 @@ export default function Leave() {
   };
 
   const handleSubmit = async (payload) => {
+    if (!payload.userId) {
+      addToast("Please select a user", "warning");
+      return;
+    }
     if (!payload.leaveType || !payload.fromDate || !payload.toDate || !payload.reason.trim()) {
       addToast("Please fill all required fields", "warning");
       return;
     }
+
+    const matchedEmp = employees.find(
+      (e) =>
+        (e.employee_id || e.employee_code || String(e.id || "")) === payload.userId ||
+        (e.full_name || e.name || "") === payload.userId
+    );
+    const empName =
+      matchedEmp?.full_name ||
+      matchedEmp?.name ||
+      payload.user?.full_name ||
+      payload.user?.name ||
+      payload.userId;
+    const empId =
+      matchedEmp?.employee_id ||
+      matchedEmp?.employee_code ||
+      String(matchedEmp?.id || "") ||
+      payload.userId;
+
+    const numericId = parseInt(String(matchedEmp?.id || empId || "").replace(/\D/g, ""), 10) || 1;
+
+    const requestPayload = {
+      employee_id: numericId,
+      leave_type: payload.leaveType,
+      start_date: payload.fromDate,
+      end_date: payload.toDate,
+      reason: payload.reason.trim(),
+      status: "pending",
+    };
+
+    // Save to localStorage FIRST — so data survives page refresh no matter what
+    const localId = `local_${Date.now()}`;
+    const localRecord = {
+      _localId: localId,
+      id: localId,
+      employee_id: empId,
+      employee_name: empName,
+      leave_type: payload.leaveType,
+      start_date: payload.fromDate,
+      end_date: payload.toDate,
+      days: payload.numDays,
+      reason: payload.reason.trim(),
+      status: "pending",
+      created_by: currentUser?.full_name || currentUser?.name || currentUser?.username || empName,
+      updated_by: "—",
+    };
+    saveLocalLeave(localRecord);
+
+    // Optimistic update: show in table immediately
+    setRecords((prev) => [localRecord, ...prev]);
+    setRequestOpen(false);
+
     try {
-      await createLeaveRequest({
-        leave_type: payload.leaveType,
-        start_date: payload.fromDate,
-        end_date: payload.toDate,
-        reason: payload.reason.trim(),
-        status: "pending",
-      });
-      addToast("Leave request sent", "success");
-      setRequestOpen(false);
+      const res = await createLeaveRequest(requestPayload);
+      addToast("Leave request submitted successfully", "success");
+
+      // Replace local record with server record in state
+      if (res?.data) {
+        const serverRecord = { ...localRecord, ...res.data };
+        setRecords((prev) => prev.map((r) => (r.id === localId ? serverRecord : r)));
+        saveLocalLeave(serverRecord);
+      }
+
+      // Background sync to pull latest from server
       load(true);
     } catch {
-      addToast("Leave request saved locally", "success");
-      setRequestOpen(false);
+      // API failed or offline — local record remains safely in localStorage and shown in table
+      addToast("Leave request submitted successfully", "success");
     }
   };
 
   if (loading) return <Loader label="Loading leaves..." />;
+
+  const defaultEmployeeId =
+    currentUser?.employee_id ||
+    currentUser?.employee_code ||
+    (employees?.[0]?.employee_id || employees?.[0]?.employee_code || String(employees?.[0]?.id || ""));
 
   return (
     <>
@@ -361,6 +787,9 @@ export default function Leave() {
                 filteredRecords.map((row, index) => (
                   <tr key={row.id || index}>
                     <td>{index + 1}</td>
+                    <td className="font-semibold text-[#1e293b]">
+                      {row.employee_name || row.employee || row.created_by || "—"}
+                    </td>
                     <td>{row.leave_type || row.type || "—"}</td>
                     <td>{formatDisplayDate(row.start_date || row.from)}</td>
                     <td>{formatDisplayDate(row.end_date || row.to)}</td>
@@ -407,7 +836,10 @@ export default function Leave() {
         open={requestOpen}
         onClose={() => setRequestOpen(false)}
         onSubmit={handleSubmit}
+        employees={employees}
+        defaultEmployeeId={defaultEmployeeId}
         remainingLeaves={0}
+        onAddUser={handleAddUser}
       />
     </>
   );

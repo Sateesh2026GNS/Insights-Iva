@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useLocation, useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { Plus, Pencil, Trash2, ShieldCheck, UserCog, KeyRound } from "lucide-react";
 
 import PageHeader from "../../components/common/PageHeader";
@@ -48,6 +48,7 @@ function StatusBadge({ active }) {
 export default function UserManagement() {
   const { isAdmin, user: currentUser } = usePermissions();
   const { addToast } = useToast();
+  const navigate = useNavigate();
 
   const [users, setUsers] = useState([]);
   const [roles, setRoles] = useState([]);
@@ -221,13 +222,20 @@ export default function UserManagement() {
         if (form.password) payload.password = form.password;
         await updateUser(editing.id, payload);
         addToast("User updated successfully");
+        setModalOpen(false);
+        load();
       } else {
         payload.password = form.password;
         await createUser(payload);
         addToast("User created successfully");
+        setModalOpen(false);
+        load();
+        // If we were opened from another page (e.g. Leave page), go back with refreshUsers flag
+        const returnTo = location.state?._returnTo;
+        if (returnTo) {
+          navigate(`${returnTo}?refreshUsers=true`, { replace: true, state: { _fromPath: "/admin/users" } });
+        }
       }
-      setModalOpen(false);
-      load();
     } catch (err) {
       const detail = err.response?.data?.detail;
       addToast(typeof detail === "string" ? detail : "Could not save user", "error");

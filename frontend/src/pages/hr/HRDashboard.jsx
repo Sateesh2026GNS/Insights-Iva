@@ -117,20 +117,33 @@ function CheckInPanel({ user, onAttendanceChange }) {
   const [startTs, setStartTs] = useState(null);
   const [isOvertime, setIsOvertime] = useState(false);
 
-  // Restore existing check-in session for today from storage
+  // Restore existing check-in session for today from storage and sync with navbar
   useEffect(() => {
-    const session = getCheckInSession();
-    if (session) {
-      if (session.checkedIn && session.startTs) {
-        setCheckedIn(true);
-        setStartTs(session.startTs);
-        setElapsed(Math.max(0, Math.floor((Date.now() - session.startTs) / 1000)));
-        setIsOvertime(Boolean(session.isOvertime));
-      } else if (session.finalElapsed != null) {
-        setElapsed(session.finalElapsed);
+    const syncSession = () => {
+      const session = getCheckInSession(user);
+      if (session) {
+        if (session.checkedIn && session.startTs) {
+          setCheckedIn(true);
+          setStartTs(session.startTs);
+          setElapsed(Math.max(0, Math.floor((Date.now() - session.startTs) / 1000)));
+          setIsOvertime(Boolean(session.isOvertime));
+        } else {
+          setCheckedIn(false);
+          setStartTs(null);
+          setElapsed(session.finalElapsed ?? 0);
+          setIsOvertime(false);
+        }
+      } else {
+        setCheckedIn(false);
+        setStartTs(null);
+        setElapsed(0);
+        setIsOvertime(false);
       }
-    }
-  }, []);
+    };
+    syncSession();
+    window.addEventListener("attendance-updated", syncSession);
+    return () => window.removeEventListener("attendance-updated", syncSession);
+  }, [user]);
 
   // Timer tick
   useEffect(() => {
@@ -154,18 +167,40 @@ function CheckInPanel({ user, onAttendanceChange }) {
     setStartTs(now);
     setElapsed(0);
 
-    saveCheckInSession({
-      checkedIn: true,
-      startTs: now,
-      date: today,
-      checkInTime,
-      isOvertime: false,
-    });
+    const empId =
+      user?.employee_id ||
+      user?.employee_code ||
+      (user?.id ? `EMP-${String(user.id).padStart(3, "0")}` : user?.username === "admin" ? "EMP-001" : "EMP-001");
+    const empName = user?.full_name || user?.name || (user?.username === "admin" ? "Admin" : "User");
+    const userCompany = user?.company_name || user?.tenant_name || user?.company_id || user?.tenant_id || "";
+
+    saveCheckInSession(
+      {
+        checkedIn: true,
+        startTs: now,
+        date: today,
+        checkInTime,
+        isOvertime: false,
+      },
+      user
+    );
+
+    const empEmail =
+      user?.email ||
+      user?.mail ||
+      (user?.username ? `${user.username.toLowerCase()}@iva.com` : `${empName.toLowerCase().replace(/\s+/g, ".")}@iva.com`);
+    const empRole =
+      user?.username === "admin" || user?.role === "Admin" || user?.role_name === "Admin"
+        ? "Admin"
+        : user?.role_name || user?.role || "HR Manager";
 
     saveLiveAttendanceRecord({
-      employee_id: user?.employee_id || "G1234",
-      name: user?.full_name || user?.name || "Satish Gogulothu",
-      department: "Management",
+      employee_id: empId,
+      name: empName,
+      email: empEmail,
+      role: empRole,
+      department: user?.department || "General",
+      company: userCompany,
       record_date: today,
       check_in: checkInTime,
       check_out: null,
@@ -204,22 +239,42 @@ function CheckInPanel({ user, onAttendanceChange }) {
     const minsPart = Math.floor((finalSecs % 3600) / 60);
     const formattedDuration = `${String(hoursPart).padStart(2, "0")} hrs ${String(minsPart).padStart(2, "0")} min`;
 
-    const session = getCheckInSession();
+    const session = getCheckInSession(user);
     const checkInTime = session?.checkInTime || checkOutTime;
+    const empId =
+      user?.employee_id ||
+      user?.employee_code ||
+      (user?.id ? `EMP-${String(user.id).padStart(3, "0")}` : user?.username === "admin" ? "EMP-001" : "EMP-001");
+    const empName = user?.full_name || user?.name || (user?.username === "admin" ? "Admin" : "User");
+    const empEmail =
+      user?.email ||
+      user?.mail ||
+      (user?.username ? `${user.username.toLowerCase()}@iva.com` : `${empName.toLowerCase().replace(/\s+/g, ".")}@iva.com`);
+    const empRole =
+      user?.username === "admin" || user?.role === "Admin" || user?.role_name === "Admin"
+        ? "Admin"
+        : user?.role_name || user?.role || "HR Manager";
+    const userCompany = user?.company_name || user?.tenant_name || user?.company_id || user?.tenant_id || "";
 
-    saveCheckInSession({
-      checkedIn: false,
-      checkedOut: true,
-      finalElapsed: finalSecs,
-      date: today,
-      checkInTime,
-      checkOutTime,
-    });
+    saveCheckInSession(
+      {
+        checkedIn: false,
+        checkedOut: true,
+        finalElapsed: finalSecs,
+        date: today,
+        checkInTime,
+        checkOutTime,
+      },
+      user
+    );
 
     saveLiveAttendanceRecord({
-      employee_id: user?.employee_id || "G1234",
-      name: user?.full_name || user?.name || "Satish Gogulothu",
-      department: "Management",
+      employee_id: empId,
+      name: empName,
+      email: empEmail,
+      role: empRole,
+      department: user?.department || "General",
+      company: userCompany,
       record_date: today,
       check_in: checkInTime,
       check_out: checkOutTime,

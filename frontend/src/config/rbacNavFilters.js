@@ -19,6 +19,8 @@ export const PRODUCTION_MANAGER_ALLOWED_CHILDREN = new Set([
   "/",
   "/manufacturing/workflow",
   "/my-job-cards",
+  "/hr/attendance",
+  "/attendance",
 
   // Masters — products reference only
   "/masters/products",
@@ -107,6 +109,8 @@ export const OPERATOR_ALLOWED_PATHS = new Set([
   "/alerts/machine-failure",
   "/alerts/production-delay",
   "/alerts/general",
+  "/hr/attendance",
+  "/attendance",
 ]);
 
 /** HR Manager sidebar — HR module plus shared collaboration sections. */
@@ -138,6 +142,8 @@ export const ACCOUNTANT_ALLOWED_CHILDREN = new Set([
   "/alerts/general",
   "/analytics/finance",
   "/analytics/executive",
+  "/hr/attendance",
+  "/attendance",
 ]);
 
 /** Sidebar sections hidden for Operator regardless of module grant. */

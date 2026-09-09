@@ -1,9 +1,10 @@
-import { lazy, Suspense, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 
 import AppRoutes from "./routes/AppRoutes";
 import RouteFallback from "./components/common/RouteFallback";
 import NavigationProgressBar from "./components/common/NavigationProgressBar";
+import NavigationLoadingOverlay from "./components/common/NavigationLoadingOverlay";
 import PageTransition from "./components/common/PageTransition";
 import Navbar from "./components/layout/Navbar";
 import Sidebar from "./components/layout/Sidebar";
@@ -69,6 +70,18 @@ export default function App() {
   });
 
   const showChatbot = shouldShowChatbot(user, location.pathname);
+
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const isShellLess = isShellLessRoute(location.pathname);
+    if (isShellLess) {
+      document.documentElement.classList.remove("has-app-shell");
+      document.body.classList.remove("has-app-shell");
+    } else {
+      document.documentElement.classList.add("has-app-shell");
+      document.body.classList.add("has-app-shell");
+    }
+  }, [location.pathname]);
   const isInvoiceEditor =
     location.pathname === "/sales/invoices/create" ||
     /^\/sales\/invoices\/[^/]+\/edit$/.test(location.pathname) ||
@@ -170,6 +183,7 @@ export default function App() {
     return (
       <div className={`min-h-screen ${isAdminShell ? "" : "bg-[var(--color-bg)]"}`}>
         <NavigationProgressBar />
+        <NavigationLoadingOverlay />
         <div data-page-refresh-root>
           <Suspense fallback={<RouteFallback />}>
             <PageTransition>
@@ -188,6 +202,7 @@ export default function App() {
       data-sidebar-collapsed={sidebarCollapsed ? "true" : "false"}
     >
       <NavigationProgressBar />
+      <NavigationLoadingOverlay />
       <Button
         as="a"
         href="#main-content"

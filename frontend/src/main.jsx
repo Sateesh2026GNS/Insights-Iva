@@ -14,23 +14,22 @@ import { SettingsProvider } from "./context/SettingsContext.jsx";
 import { ToastProvider } from "./context/ToastContext.jsx";
 import useAuth from "./hooks/useAuth";
 
-const LoadingFallback = () => (
-  <div
-    className="flex min-h-screen flex-col items-center justify-center bg-slate-50 px-4 dark:bg-slate-900"
-    role="status"
-    aria-live="polite"
-    aria-label="Loading application"
-  >
-    <div className="mb-6 rounded-2xl bg-white p-2 shadow-sm dark:bg-slate-800">
-      <BrandLogo size="lg" />
-    </div>
-    <div className="mb-4 flex h-10 w-10 items-center justify-center">
-      <div className="h-8 w-8 animate-spin rounded-full border-2 border-teal-600 border-t-transparent dark:border-teal-400" />
-    </div>
-    <p className="text-sm font-medium text-slate-700 dark:text-slate-300">Loading Insights Iva…</p>
-    <p className="ui-hint mt-1 text-center">Preparing your workspace</p>
-  </div>
-);
+// Automatically reload once if a newly deployed build has changed chunk hashes
+if (typeof window !== "undefined") {
+  window.addEventListener("vite:preloadError", (event) => {
+    event.preventDefault();
+    const lastReload = sessionStorage.getItem("vite_preload_retry");
+    const now = Date.now();
+    if (!lastReload || now - Number(lastReload) > 15000) {
+      sessionStorage.setItem("vite_preload_retry", String(now));
+      window.location.reload();
+    }
+  });
+}
+
+import BrandLoadingScreen from "./components/common/BrandLoadingScreen";
+
+const LoadingFallback = () => <BrandLoadingScreen />;
 
 function SessionGate({ children }) {
   const { sessionExpired, clearSessionExpired } = useAuth();
