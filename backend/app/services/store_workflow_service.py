@@ -637,9 +637,11 @@ def get_store_dashboard(db: Session, tenant_id: int) -> StoreDashboardRead:
         if total_cap > 0:
             util = round(100.0 * sum(used) / total_cap, 1)
 
+    from app.services.manual_job_card_service import count_manual_sales_job_cards_pending
     from app.services.workflow_team_service import list_pending_inventory_checks
 
     pending_count, pending_orders = list_pending_inventory_checks(db, tenant_id, limit=8)
+    sales_jc_pending = count_manual_sales_job_cards_pending(db, tenant_id)
 
     return StoreDashboardRead(
         total_products=total_products,
@@ -652,6 +654,7 @@ def get_store_dashboard(db: Session, tenant_id: int) -> StoreDashboardRead:
         pending_purchase_requisitions=pending_pr,
         warehouse_utilization_pct=util,
         pending_inventory_checks=pending_count,
+        sales_job_cards_pending=sales_jc_pending,
         pending_inventory_orders=[
             PendingInventoryCheckOrder(**row) for row in pending_orders
         ],

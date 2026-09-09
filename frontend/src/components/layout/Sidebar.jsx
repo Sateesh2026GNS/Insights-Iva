@@ -45,7 +45,7 @@ import { STORE_MANAGER_NAV_ITEMS } from "../../config/storeManagerNavConfig";
 export function getRoleJobCardUrl(user) {
   if (isStoreManager(user)) return "/my-job-cards?dept=inventory";
   if (isProductionManager(user)) return "/my-job-cards?dept=production";
-  if (isOperator(user)) return "/my-job-cards?dept=production";
+  if (isOperator(user)) return "/my-job-cards?dept=operator";
   if (isQualityTeam(user)) return "/my-job-cards?dept=quality";
   if (isAccountant(user)) return "/my-job-cards?dept=billing";
   if (isSalesManager(user)) return "/my-job-cards?dept=sales";

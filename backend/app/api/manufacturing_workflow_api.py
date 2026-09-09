@@ -119,6 +119,20 @@ class SalesJobCardPayload(BaseModel):
     sales_person_id: int | None = None
     sales_person_name: str | None = None
     notes: str | None = Field(default=None, max_length=500)
+    details: dict | None = None
+
+
+class ManualJobCardPayload(BaseModel):
+    manual_document: dict | None = None
+    finalize: bool = True
+
+
+class ManualStoreCommentPayload(BaseModel):
+    comment: str = Field(..., min_length=1, max_length=2000)
+
+
+class ManualReturnToSalesPayload(BaseModel):
+    remarks: str = Field(default="", max_length=1000)
 
 
 @router.get("/hub")
@@ -240,7 +254,7 @@ def create_sales_job_card_endpoint(
 def save_sales_job_card_endpoint(
     order_id: int,
     payload: SalesJobCardPayload,
-    user: User = Depends(require_permission("sales")),
+    user: User = Depends(require_any_permission(*WORKFLOW_MODULES)),
     db: Session = Depends(get_db),
 ):
     from app.services.job_card_service import save_sales_job_card
@@ -268,6 +282,106 @@ def list_workflow_job_cards(
             db, user.tenant_id, status_filter=status
         )
     }
+
+
+@router.post("/job-cards/manual")
+def create_manual_job_card_endpoint(
+    payload: ManualJobCardPayload,
+    user: User = Depends(require_permission("sales")),
+    db: Session = Depends(get_db),
+):
+    from app.services.manual_job_card_service import create_manual_job_card
+
+    body = payload.model_dump(exclude_unset=True)
+    return create_manual_job_card(
+        db,
+        user.tenant_id,
+        user,
+        body.get("manual_document") or body,
+        finalize=body.get("finalize", True),
+    )
+
+
+@router.get("/job-cards/manual/{job_card_id}")
+def get_manual_job_card_endpoint(
+    job_card_id: int,
+    user: User = Depends(require_any_permission(*WORKFLOW_MODULES)),
+    db: Session = Depends(get_db),
+):
+    from app.services.manual_job_card_service import get_manual_job_card
+
+    return get_manual_job_card(db, user.tenant_id, job_card_id, user=user)
+
+
+@router.patch("/job-cards/manual/{job_card_id}")
+def update_manual_job_card_endpoint(
+    job_card_id: int,
+    payload: ManualJobCardPayload,
+    user: User = Depends(require_any_permission(*WORKFLOW_MODULES)),
+    db: Session = Depends(get_db),
+):
+    from app.services.manual_job_card_service import update_manual_job_card
+
+    body = payload.model_dump(exclude_unset=True)
+    return update_manual_job_card(
+        db,
+        user.tenant_id,
+        job_card_id,
+        user,
+        body.get("manual_document") or body,
+        finalize=body.get("finalize", False),
+    )
+
+
+@router.delete("/job-cards/manual/{job_card_id}")
+def delete_manual_job_card_endpoint(
+    job_card_id: int,
+    user: User = Depends(require_permission("sales")),
+    db: Session = Depends(get_db),
+):
+    from app.services.manual_job_card_service import delete_manual_job_card
+
+    delete_manual_job_card(db, user.tenant_id, job_card_id, user)
+    return {"ok": True}
+
+
+@router.post("/job-cards/manual/{job_card_id}/acknowledge")
+def acknowledge_manual_job_card_endpoint(
+    job_card_id: int,
+    user: User = Depends(require_permission("inventory")),
+    db: Session = Depends(get_db),
+):
+    from app.services.manual_job_card_service import acknowledge_manual_job_card
+
+    return acknowledge_manual_job_card(db, user.tenant_id, job_card_id, user)
+
+
+@router.post("/job-cards/manual/{job_card_id}/return-to-sales")
+def return_manual_job_card_endpoint(
+    job_card_id: int,
+    payload: ManualReturnToSalesPayload,
+    user: User = Depends(require_permission("inventory")),
+    db: Session = Depends(get_db),
+):
+    from app.services.manual_job_card_service import return_manual_job_card_to_sales
+
+    return return_manual_job_card_to_sales(
+        db, user.tenant_id, job_card_id, user, remarks=payload.remarks
+    )
+
+
+@router.post("/job-cards/manual/{job_card_id}/store-comments")
+def add_manual_store_comment_endpoint(
+    job_card_id: int,
+    payload: ManualStoreCommentPayload,
+    user: User = Depends(require_permission("inventory")),
+    db: Session = Depends(get_db),
+):
+    from app.services.manual_job_card_service import add_manual_store_comment
+
+    return add_manual_store_comment(
+        db, user.tenant_id, job_card_id, user, comment=payload.comment
+    )
 
 
 @router.get("/sales-orders/{order_id}/context")

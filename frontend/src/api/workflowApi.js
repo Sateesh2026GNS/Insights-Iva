@@ -9,6 +9,27 @@ export const saveSalesJobCard = (orderId, payload) =>
 export const getSalesJobCard = (orderId) =>
   api.get(`/manufacturing/workflow/sales-orders/${orderId}/job-card`);
 
+export const createManualJobCard = (payload) =>
+  api.post("/manufacturing/workflow/job-cards/manual", payload);
+
+export const getManualJobCard = (jobCardId) =>
+  api.get(`/manufacturing/workflow/job-cards/manual/${jobCardId}`);
+
+export const updateManualJobCard = (jobCardId, payload) =>
+  api.patch(`/manufacturing/workflow/job-cards/manual/${jobCardId}`, payload);
+
+export const deleteManualJobCard = (jobCardId) =>
+  api.delete(`/manufacturing/workflow/job-cards/manual/${jobCardId}`);
+
+export const acknowledgeManualJobCard = (jobCardId) =>
+  api.post(`/manufacturing/workflow/job-cards/manual/${jobCardId}/acknowledge`);
+
+export const returnManualJobCardToSales = (jobCardId, payload = {}) =>
+  api.post(`/manufacturing/workflow/job-cards/manual/${jobCardId}/return-to-sales`, payload);
+
+export const addManualStoreComment = (jobCardId, payload) =>
+  api.post(`/manufacturing/workflow/job-cards/manual/${jobCardId}/store-comments`, payload);
+
 export const getWorkflowJobCards = (params = {}) =>
   api.get("/manufacturing/workflow/job-cards", { params });
 

@@ -137,7 +137,7 @@ def test_login_rate_limit_message(client, register_admin, monkeypatch):
     get_settings.cache_clear()
     from app.middleware import security as sec
 
-    sec._buckets.clear()
+    sec.clear_buckets()
 
     last_status = None
     for _ in range(4):

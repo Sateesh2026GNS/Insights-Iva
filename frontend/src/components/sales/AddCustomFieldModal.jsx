@@ -1,56 +1,86 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
 import Button from "../common/Button";
+import FieldError from "../common/states/FieldError";
 import { inputClass } from "../../design-system/classes";
+import {
+  fieldErrorClass,
+  validateCustomField,
+} from "../../utils/partyFormValidation";
 
-const ERROR = "#f97316";
-
-/**
- * Screenshot-matching modal: Field Name + Field Details, orange "required!" validation.
- */
-export default function AddCustomFieldModal({ open, onClose, onSave }) {
+export default function AddCustomFieldModal({
+  open,
+  onClose,
+  onSave,
+  existingFields = [],
+}) {
   const [label, setLabel] = useState("");
   const [value, setValue] = useState("");
-  const [tried, setTried] = useState(false);
+  const [errors, setErrors] = useState({});
+  const [submitting, setSubmitting] = useState(false);
+  const submitLock = useRef(false);
 
   useEffect(() => {
     if (!open) return;
     setLabel("");
     setValue("");
-    setTried(false);
+    setErrors({});
+    setSubmitting(false);
+    submitLock.current = false;
   }, [open]);
 
   if (!open) return null;
 
-  const nameMissing = tried && !label.trim();
-
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
-    setTried(true);
-    if (!label.trim()) return;
-    onSave?.({
-      id: `cf-${Date.now()}`,
-      label: label.trim(),
-      value: value.trim(),
-    });
-    onClose?.();
+    if (submitLock.current || submitting) return;
+
+    const { ok, errors: nextErrors, data } = validateCustomField(
+      { label, value },
+      existingFields
+    );
+    if (!ok) {
+      setErrors(nextErrors);
+      return;
+    }
+
+    submitLock.current = true;
+    setSubmitting(true);
+    try {
+      await Promise.resolve(
+        onSave?.({
+          id: `cf-${Date.now()}`,
+          label: data.label,
+          value: data.value,
+        })
+      );
+      onClose?.();
+    } finally {
+      setSubmitting(false);
+      submitLock.current = false;
+    }
   };
 
   return createPortal(
     <div
       className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 p-4"
-      role="presentation"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="add-custom-field-title"
       onMouseDown={(e) => e.target === e.currentTarget && onClose?.()}
     >
       <form
         onSubmit={handleSave}
         className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl"
         onMouseDown={(e) => e.stopPropagation()}
+        noValidate
       >
         <div className="flex items-center justify-between border-b border-[#ececf0] bg-white px-5 py-4">
-          <h2 className="text-[17px] font-bold text-[#1a1a1f]">Add Custom Field</h2>
+          <h2 id="add-custom-field-title" className="text-[17px] font-bold text-[#1a1a1f]">
+            Add Custom Field
+          </h2>
           <button
             type="button"
             onClick={onClose}
@@ -69,19 +99,15 @@ export default function AddCustomFieldModal({ open, onClose, onSave }) {
             <input
               autoFocus
               value={label}
-              onChange={(e) => setLabel(e.target.value)}
+              onChange={(e) => {
+                setLabel(e.target.value);
+                if (errors.label) setErrors((prev) => ({ ...prev, label: undefined }));
+              }}
               placeholder="Enter Field Name"
-              className={`${inputClass} ${
-                nameMissing
-                  ? "!border-rose-500 !ring-1 !ring-rose-500"
-                  : ""
-              }`}
+              className={fieldErrorClass(inputClass, Boolean(errors.label))}
+              aria-invalid={Boolean(errors.label)}
             />
-            {nameMissing ? (
-              <p className="mt-1 text-[12px] font-medium text-rose-500">
-                required!
-              </p>
-            ) : null}
+            <FieldError message={errors.label} />
           </div>
 
           <div>
@@ -90,19 +116,24 @@ export default function AddCustomFieldModal({ open, onClose, onSave }) {
             </label>
             <input
               value={value}
-              onChange={(e) => setValue(e.target.value)}
+              onChange={(e) => {
+                setValue(e.target.value);
+                if (errors.value) setErrors((prev) => ({ ...prev, value: undefined }));
+              }}
               placeholder="Enter Field Details"
-              className={inputClass}
+              className={fieldErrorClass(inputClass, Boolean(errors.value))}
+              aria-invalid={Boolean(errors.value)}
             />
+            <FieldError message={errors.value} />
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-3 border-t border-[#ececf0] bg-white px-5 py-4">
-          <Button type="button" variant="cancel" onClick={onClose} fullWidth>
+          <Button type="button" variant="cancel" onClick={onClose} fullWidth disabled={submitting}>
             Cancel
           </Button>
-          <Button type="submit" variant="primary" fullWidth>
-            Save
+          <Button type="submit" variant="primary" fullWidth loading={submitting} disabled={submitting}>
+            {submitting ? "Saving…" : "Save"}
           </Button>
         </div>
       </form>

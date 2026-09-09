@@ -1,8 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
 import Button from "../common/Button";
+import FieldError from "../common/states/FieldError";
+import { inputClass } from "../../design-system/classes";
+import {
+  fieldErrorClass,
+  validateBasicDetails,
+} from "../../utils/partyFormValidation";
 
 const CREDIT_DAYS = ["0", "7", "15", "30", "45", "60", "90"];
 
@@ -13,15 +19,23 @@ const EMPTY = {
   email: "",
 };
 
-import { inputClass } from "../../design-system/classes";
-
-export default function AddBasicDetailsModal({ open, onClose, initial, onSave }) {
+export default function AddBasicDetailsModal({
+  open,
+  onClose,
+  initial,
+  onSave,
+  emailRequired = false,
+}) {
   const [form, setForm] = useState(EMPTY);
-  const [emailError, setEmailError] = useState("");
+  const [errors, setErrors] = useState({});
+  const [submitting, setSubmitting] = useState(false);
+  const submitLock = useRef(false);
 
   useEffect(() => {
     if (!open) return;
-    setEmailError("");
+    setErrors({});
+    setSubmitting(false);
+    submitLock.current = false;
     setForm({
       payment_terms_days: initial?.payment_terms_days ?? "",
       opening_balance: initial?.opening_balance ?? "",
@@ -32,28 +46,44 @@ export default function AddBasicDetailsModal({ open, onClose, initial, onSave })
 
   if (!open) return null;
 
-  const handleSave = (e) => {
+  const clearError = (key) => {
+    if (errors[key]) setErrors((prev) => ({ ...prev, [key]: undefined }));
+  };
+
+  const handleSave = async (e) => {
     e.preventDefault();
-    const trimmedEmail = form.email.trim();
-    if (form.email && !trimmedEmail) {
-      setEmailError("Email cannot contain only spaces.");
+    if (submitLock.current || submitting) return;
+
+    const { ok, errors: nextErrors } = validateBasicDetails(form, { emailRequired });
+    if (!ok) {
+      setErrors(nextErrors);
       return;
     }
-    if (trimmedEmail) {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(trimmedEmail) || trimmedEmail.includes("..")) {
-        setEmailError("Please enter a valid email address.");
-        return;
-      }
+
+    submitLock.current = true;
+    setSubmitting(true);
+    try {
+      const trimmedEmail = form.email.trim();
+      await Promise.resolve(
+        onSave?.({
+          ...form,
+          payment_terms_days: String(form.payment_terms_days).trim(),
+          opening_balance: String(form.opening_balance).trim(),
+          email: trimmedEmail || null,
+        })
+      );
+      onClose?.();
+    } catch {
+      /* Parent handles API errors */
+    } finally {
+      setSubmitting(false);
+      submitLock.current = false;
     }
-    setEmailError("");
-    onSave?.({ ...form, email: trimmedEmail || null });
-    onClose?.();
   };
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4"
+      className="fixed inset-0 z-[120] flex items-center justify-center bg-black/40 p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="add-basic-details-title"
@@ -63,6 +93,7 @@ export default function AddBasicDetailsModal({ open, onClose, initial, onSave })
         onSubmit={handleSave}
         className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl"
         onMouseDown={(e) => e.stopPropagation()}
+        noValidate
       >
         <div className="flex items-center justify-between border-b border-[#ececf0] bg-white px-5 py-4">
           <h2
@@ -87,20 +118,28 @@ export default function AddBasicDetailsModal({ open, onClose, initial, onSave })
               <p className="text-[13px] font-bold text-[#1a1a1f]">Payment Terms</p>
               <p className="mt-0.5 text-[12px] text-[#9a9aa5]">Credit Period (Days)</p>
             </div>
-            <select
-              value={form.payment_terms_days}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, payment_terms_days: e.target.value }))
-              }
-              className={`${inputClass} ${!form.payment_terms_days ? "text-[#a0a0ab]" : ""}`}
-            >
-              <option value="">Select Days</option>
-              {CREDIT_DAYS.map((d) => (
-                <option key={d} value={d}>
-                  {d} Days
-                </option>
-              ))}
-            </select>
+            <div>
+              <select
+                value={form.payment_terms_days}
+                onChange={(e) => {
+                  setForm((f) => ({ ...f, payment_terms_days: e.target.value }));
+                  clearError("payment_terms_days");
+                }}
+                className={fieldErrorClass(
+                  `${inputClass} ${!form.payment_terms_days ? "text-[#a0a0ab]" : ""}`,
+                  Boolean(errors.payment_terms_days)
+                )}
+                aria-invalid={Boolean(errors.payment_terms_days)}
+              >
+                <option value="">Select Days</option>
+                {CREDIT_DAYS.map((d) => (
+                  <option key={d} value={d}>
+                    {d} Days
+                  </option>
+                ))}
+              </select>
+              <FieldError message={errors.payment_terms_days} />
+            </div>
           </div>
 
           <div>
@@ -113,16 +152,19 @@ export default function AddBasicDetailsModal({ open, onClose, initial, onSave })
               </span>
               <input
                 value={form.opening_balance}
-                onChange={(e) =>
+                onChange={(e) => {
                   setForm((f) => ({
                     ...f,
                     opening_balance: e.target.value.replace(/[^\d.]/g, ""),
-                  }))
-                }
+                  }));
+                  clearError("opening_balance");
+                }}
                 placeholder="Enter Opening Balance"
-                className={`${inputClass} !pl-9`}
+                className={fieldErrorClass(`${inputClass} !pl-9`, Boolean(errors.opening_balance))}
+                aria-invalid={Boolean(errors.opening_balance)}
               />
             </div>
+            <FieldError message={errors.opening_balance} />
             <div className="mt-2.5 grid grid-cols-2 gap-2.5">
               {[
                 { id: "to_receive", label: "To Receive" },
@@ -133,12 +175,15 @@ export default function AddBasicDetailsModal({ open, onClose, initial, onSave })
                   <button
                     key={opt.id}
                     type="button"
-                    onClick={() => setForm((f) => ({ ...f, balance_type: opt.id }))}
+                    onClick={() => {
+                      setForm((f) => ({ ...f, balance_type: opt.id }));
+                      clearError("balance_type");
+                    }}
                     className={`inline-flex items-center justify-center gap-2 rounded-full border px-3 py-2 text-[13px] font-medium transition ${
                       active
                         ? "border-[var(--color-action-teal)] bg-white text-[#1a1a1f]"
                         : "border-[#d8d8e0] bg-white text-[#6b6b76]"
-                    }`}
+                    } ${errors.balance_type ? "border-[#e11d48]" : ""}`}
                   >
                     <span
                       className={`flex h-4 w-4 items-center justify-center rounded-full border-2 ${
@@ -146,9 +191,7 @@ export default function AddBasicDetailsModal({ open, onClose, initial, onSave })
                       }`}
                     >
                       {active ? (
-                        <span
-                          className="h-2 w-2 rounded-full bg-[var(--color-action-teal)]"
-                        />
+                        <span className="h-2 w-2 rounded-full bg-[var(--color-action-teal)]" />
                       ) : null}
                     </span>
                     {opt.label}
@@ -156,25 +199,26 @@ export default function AddBasicDetailsModal({ open, onClose, initial, onSave })
                 );
               })}
             </div>
+            <FieldError message={errors.balance_type} />
           </div>
 
           <div>
             <label className="mb-1.5 block text-[13px] font-medium text-[#8a8a95]">
               Email ID
+              {emailRequired ? <span className="text-[#e11d48]"> *</span> : null}
             </label>
             <input
               type="email"
               value={form.email}
               onChange={(e) => {
                 setForm((f) => ({ ...f, email: e.target.value }));
-                if (emailError) setEmailError("");
+                clearError("email");
               }}
               placeholder="Enter Email ID"
-              className={`${inputClass}${emailError ? " border-[#e11d48] focus:border-[#e11d48] focus:ring-[#fecdd3]" : ""}`}
+              className={fieldErrorClass(inputClass, Boolean(errors.email))}
+              aria-invalid={Boolean(errors.email)}
             />
-            {emailError && (
-              <p className="mt-1 text-[11px] font-medium text-[#e11d48]">{emailError}</p>
-            )}
+            <FieldError message={errors.email} />
             <p className="mt-2 text-[11px] leading-relaxed text-[#9a9aa5]">
               This email id will be used to send vouchers and party statements when you
               use the &apos;Send Email&apos; feature in Insights Iva.
@@ -183,11 +227,11 @@ export default function AddBasicDetailsModal({ open, onClose, initial, onSave })
         </div>
 
         <div className="grid grid-cols-2 gap-3 border-t border-[#ececf0] bg-white px-5 py-4">
-          <Button type="button" variant="cancel" onClick={onClose} fullWidth>
+          <Button type="button" variant="cancel" onClick={onClose} fullWidth disabled={submitting}>
             Cancel
           </Button>
-          <Button type="submit" variant="primary" fullWidth>
-            Save
+          <Button type="submit" variant="primary" fullWidth loading={submitting} disabled={submitting}>
+            {submitting ? "Saving…" : "Save"}
           </Button>
         </div>
       </form>

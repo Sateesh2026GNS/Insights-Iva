@@ -417,6 +417,7 @@ export default function InventoryDashboard() {
   ];
 
   const pendingInventoryChecks = Number(dash.pending_inventory_checks || 0);
+  const salesJobCardsPending = Number(dash.sales_job_cards_pending || 0);
   const pendingInventoryOrders = asArray(dash.pending_inventory_orders);
 
   if (loading) {
@@ -479,6 +480,19 @@ export default function InventoryDashboard() {
         </ClickableKpiCard>
         <ClickableKpiCard to="/inventory/transfers" title="View pending transfers" tone="info">
           <KpiCard label="Pending Transfers" value={Number(view.pendingTransfers || 0)} icon={Truck} tone="info" meta="Awaiting approval" />
+        </ClickableKpiCard>
+        <ClickableKpiCard
+          to="/my-job-cards?dept=inventory"
+          title="Sales job cards pending store review"
+          tone="primary"
+        >
+          <KpiCard
+            label="Sales Job Cards"
+            value={salesJobCardsPending}
+            icon={ClipboardList}
+            tone="primary"
+            meta={salesJobCardsPending === 1 ? "Pending: 1" : `Pending: ${salesJobCardsPending}`}
+          />
         </ClickableKpiCard>
       </div>
 

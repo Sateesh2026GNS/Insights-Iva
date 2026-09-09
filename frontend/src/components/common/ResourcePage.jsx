@@ -12,6 +12,7 @@ import useAuth from "../../hooks/useAuth";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { useNetworkStatus } from "../../context/NetworkStatusContext";
 import { useToast } from "../../context/ToastContext";
+import { classifyApiError } from "../../utils/apiError";
 
 /**
  * Generic list + create page for simple CRUD-style modules.
@@ -76,28 +77,13 @@ export default function ResourcePage({
         setRows([]);
       }
     } catch (err) {
+      const classified = classifyApiError(err, "Failed to load data. Please try again.");
       if (soft) {
-        // Keep existing rows on soft refresh failure.
-        const detail = err.response?.data?.detail;
-        setLoadError(
-          typeof detail === "string"
-            ? detail
-            : !navigator.onLine
-              ? "You appear to be offline."
-              : "Failed to load data"
-        );
+        setLoadError(classified.message);
         throw err;
-      } else {
-        const detail = err.response?.data?.detail;
-        setLoadError(
-          typeof detail === "string"
-            ? detail
-            : !navigator.onLine
-              ? "You appear to be offline."
-              : "Failed to load data"
-        );
-        setRows([]);
       }
+      setLoadError(classified.message);
+      setRows([]);
     } finally {
       markRequestEnd();
       setLoading(false);

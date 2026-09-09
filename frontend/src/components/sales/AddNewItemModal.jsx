@@ -1108,6 +1108,7 @@ export default function AddNewItemModal({
       <AddCustomFieldModal
         open={customOpen}
         onClose={() => setCustomOpen(false)}
+        existingFields={customFields}
         onSave={(field) => setCustomFields((rows) => [...rows, field])}
       />
 

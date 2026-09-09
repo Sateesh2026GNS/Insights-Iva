@@ -164,7 +164,14 @@ export const OPERATOR_BLOCKED_SECTIONS = new Set([
 export function productionManagerPathAllowed(pathname) {
   if (!pathname) return false;
   const path = pathname.replace(/\/$/, "") || "/";
-  if (path === "/my-job-cards" || path.startsWith("/job-cards/") || path === "/sales/job-cards/create") return true;
+  if (
+    path === "/my-job-cards" ||
+    path.startsWith("/my-job-cards/") ||
+    path.startsWith("/job-cards/") ||
+    path === "/sales/job-cards/create"
+  ) {
+    return true;
+  }
   if (PRODUCTION_MANAGER_ALLOWED_CHILDREN.has(path)) return true;
   if (path.startsWith("/production/")) return true;
   if (path.startsWith("/inventory/raw-materials")) return true;
@@ -187,7 +194,14 @@ export function operatorPathAllowed(pathname) {
   if (!pathname) return false;
   const path = pathname.replace(/\/$/, "") || "/";
   if (path === "/") return true;
-  if (path === "/my-job-cards" || path.startsWith("/job-cards/") || path === "/sales/job-cards/create") return true;
+  if (
+    path === "/my-job-cards" ||
+    path.startsWith("/my-job-cards/") ||
+    path.startsWith("/job-cards/") ||
+    path === "/sales/job-cards/create"
+  ) {
+    return true;
+  }
   if (OPERATOR_ALLOWED_PATHS.has(path)) return true;
   if (path.startsWith("/production/")) return true;
   if (path.startsWith("/manufacturing/")) return true;

@@ -345,6 +345,14 @@ cd frontend && npm run build   # → frontend/dist/
 
 ---
 
+## UI state standard
+
+All screens must handle loading, empty, success, error, network, permission, partial data, validation, and session-expired states consistently.
+
+- Standard: [docs/UI_STATE_STANDARD.md](./docs/UI_STATE_STANDARD.md)
+- Audit: [docs/UI_STATE_AUDIT.md](./docs/UI_STATE_AUDIT.md)
+- Components: `frontend/src/components/common/states/`
+
 ## License
 
 Private / internal use.

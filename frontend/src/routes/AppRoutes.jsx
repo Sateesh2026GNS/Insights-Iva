@@ -1,14 +1,39 @@
-import { Navigate, Route, Routes, useParams } from "react-router-dom";
+import { Navigate, Route, Routes, useParams, useSearchParams } from "react-router-dom";
 
 import ProtectedRoute from "../components/layout/ProtectedRoute";
+import useAuth from "../hooks/useAuth";
+import { isStoreManager } from "../config/permissions";
 import InventoryLayout from "../layouts/InventoryLayout";
 import { HR_PLACEHOLDER_PATHS } from "../config/hrRouteMeta";
 /* Pages are lazy-loaded via lazyPages – see vite.config manualChunks for vendor splits */
 import * as P from "./lazyPages";
 
+function myJobCardsOrderRedirectTarget(orderId, searchParams) {
+  const params = new URLSearchParams(searchParams);
+  params.set("order", String(orderId));
+  const search = params.toString();
+  return search ? `/my-job-cards?${search}` : `/my-job-cards?order=${orderId}`;
+}
+
 function ManufacturingJobCardRedirect() {
   const { orderId } = useParams();
-  return <Navigate to={`/job-cards/${orderId}`} replace />;
+  return <Navigate to={`/my-job-cards?order=${orderId}`} replace />;
+}
+
+/** Legacy `/my-job-cards/:id` → query form (keeps `?dept=sales` etc.). */
+function MyJobCardOrderRedirect() {
+  const { orderId } = useParams();
+  const [searchParams] = useSearchParams();
+  return <Navigate to={myJobCardsOrderRedirectTarget(orderId, searchParams)} replace />;
+}
+
+/** Store Managers review job cards in the inventory queue — not the sales create form. */
+function SalesJobCardAuthoringRoute({ children }) {
+  const { user } = useAuth();
+  if (isStoreManager(user)) {
+    return <Navigate to="/my-job-cards?dept=inventory" replace />;
+  }
+  return children;
 }
 
 export default function AppRoutes() {
@@ -388,7 +413,15 @@ export default function AppRoutes() {
           </ProtectedRoute>
         }
       />
-      <Route path="/sales/orders/create" element={<Navigate to="/sales/orders" replace />} />
+      <Route path="/sales/orders/create" element={<Navigate to="/sales/job-cards/create" replace />} />
+      <Route
+        path="/my-job-cards/:orderId"
+        element={
+          <ProtectedRoute>
+            <MyJobCardOrderRedirect />
+          </ProtectedRoute>
+        }
+      />
       <Route
         path="/my-job-cards"
         element={
@@ -400,9 +433,21 @@ export default function AppRoutes() {
       <Route
         path="/sales/job-cards/create"
         element={
-          <ProtectedRoute>
-            <P.CreateJobCard />
-          </ProtectedRoute>
+          <SalesJobCardAuthoringRoute>
+            <ProtectedRoute>
+              <P.CreateJobCard />
+            </ProtectedRoute>
+          </SalesJobCardAuthoringRoute>
+        }
+      />
+      <Route
+        path="/sales/job-cards/:id/edit"
+        element={
+          <SalesJobCardAuthoringRoute>
+            <ProtectedRoute>
+              <P.EditManualJobCard />
+            </ProtectedRoute>
+          </SalesJobCardAuthoringRoute>
         }
       />
       <Route path="/sales/job-cards" element={<Navigate to="/my-job-cards" replace />} />

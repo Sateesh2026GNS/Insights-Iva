@@ -15,16 +15,17 @@ import RowActionMenu from "../../components/common/RowActionMenu";
 import { SearchBar } from "../../components/common/SearchFilter";
 import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
 import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
-import Loader from "../../components/common/Loader";
 import EmptyState from "../../components/common/EmptyState";
+import { AsyncPageBody, NoResultsState } from "../../components/common/states";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
 import AddNewPartyModal from "../../components/sales/AddNewPartyModal";
+import { useNetworkStatus } from "../../context/NetworkStatusContext";
 import { useToast } from "../../context/ToastContext";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { deleteCustomer, getCustomers } from "../../api/salesApi";
-import { enrichApiCustomer, REPORT_TYPES, WORKFLOW_STEPS } from "../../data/customersMasterData";
+import { enrichApiCustomer } from "../../data/customersMasterData";
 import { runListExport } from "../../utils/listExport";
-import { apiErrorMessage } from "../../utils/apiError";
+import { apiErrorMessage, classifyApiError } from "../../utils/apiError";
 
 const PAGE_SIZES = [20, 50, 100];
 
@@ -47,9 +48,12 @@ function blankOr(value) {
 
 export default function Customers() {
   const { addToast } = useToast();
+  const { online, markRequestStart, markRequestEnd, registerRetry } = useNetworkStatus();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+  const [loadErrorObj, setLoadErrorObj] = useState(null);
   const [customers, setCustomers] = useState([]);
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
@@ -72,6 +76,9 @@ export default function Customers() {
   const loadCustomers = useCallback(async (isRefresh = false) => {
     if (!isMountedRef.current) return;
     if (!isRefresh) setLoading(true);
+    setLoadError("");
+    setLoadErrorObj(null);
+    markRequestStart();
     try {
       const res = await getCustomers();
       if (!isMountedRef.current) return;
@@ -80,18 +87,23 @@ export default function Customers() {
     } catch (err) {
       if (!isMountedRef.current) return;
       if (isRefresh) throw err;
+      const classified = classifyApiError(err, "Could not load customers.");
       setCustomers([]);
-      addToast(apiErrorMessage(err, "Could not load customers"), "error");
+      setLoadError(classified.message);
+      setLoadErrorObj(err);
     } finally {
+      markRequestEnd();
       if (isMountedRef.current) setLoading(false);
     }
-  }, [addToast]);
+  }, [markRequestStart, markRequestEnd]);
 
   usePageRefresh(() => loadCustomers(true));
 
   useEffect(() => {
     loadCustomers();
   }, [loadCustomers]);
+
+  useEffect(() => registerRetry(() => loadCustomers(true)), [registerRetry, loadCustomers]);
 
   // Deep-link: /masters/customers?create=1 or /masters/customers/create → open create modal
   useEffect(() => {
@@ -168,12 +180,22 @@ export default function Customers() {
     }
   };
 
-  if (loading) return <Loader label="Loading customers..." />;
+  const hasActiveFilters = Boolean(query.trim());
 
   return (
     <ListPageShell>
       <ListPageCard>
         <ListPageCardBody>
+          <AsyncPageBody
+            loading={loading}
+            error={loadError}
+            errorObj={loadErrorObj}
+            online={online}
+            onRetry={() => loadCustomers()}
+            loadingVariant="page"
+            loadingLabel="Loading customers..."
+            errorTitle="Could not load customers"
+          >
           <div className="ui-list-toolbar">
             <div className="ui-list-toolbar__start">
               <SearchBar value={query} onChange={setQuery} placeholder="Search" className="w-full max-w-md" />
@@ -264,12 +286,26 @@ export default function Customers() {
                 </tbody>
               </table>
             {rows.length === 0 ? (
-              <EmptyState
-                icon="document"
-                title="No records found."
-                description="There is nothing to show here yet."
-                className="border-none bg-transparent py-12"
-              />
+              hasActiveFilters ? (
+                <NoResultsState
+                  title="No customers match your search"
+                  description="Try a different search term or clear filters."
+                  onClear={() => setQuery("")}
+                  className="border-none bg-transparent py-12"
+                />
+              ) : (
+                <EmptyState
+                  icon="document"
+                  title="No Customers Found"
+                  description="Customers will appear here once you create them."
+                  actionLabel="Create Customer"
+                  onAction={() => {
+                    setEditing(null);
+                    setPartyOpen(true);
+                  }}
+                  className="border-none bg-transparent py-12"
+                />
+              )
             ) : null}
           </div>
 
@@ -316,6 +352,7 @@ export default function Customers() {
               </button>
             </div>
           </div>
+          </AsyncPageBody>
         </ListPageCardBody>
       </ListPageCard>
 

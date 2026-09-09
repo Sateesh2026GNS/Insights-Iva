@@ -33,36 +33,47 @@ export default function JobCardDetailsPage({
   const isSalesTeam = userHasWorkflowTeam(user, "sales") || userHasWorkflowTeam(user, "admin");
   const canEditSales = userCanAction(user, "sales", "update") || isSalesTeam;
 
-  const queryEdit = searchParams.get("edit") === "1";
-  const mode = initialMode === "edit" || (queryEdit && canEditSales) ? "edit" : "view";
-
-  const backTo =
-    backToOverride ||
-    location.state?.from ||
-    (mode === "edit" && !orderIdOverride ? `/sales/orders/${orderId}` : "/my-job-cards");
-  const productionOrderId = location.state?.productionOrderId ?? null;
-
   const {
     loading,
     saving,
     creating,
     card,
     form,
+    details,
     salesOrder,
+    customer,
     productLines,
     customers,
     products,
     salesPeople,
+    machines,
     errors,
     isCreated,
+    editableSections,
+    canEditDetails,
     load,
     patchField,
+    patchDetailsSection,
+    patchRawMaterial,
+    addRawMaterial,
+    removeRawMaterial,
     handleSave,
     handleCreate,
     addProductLine,
     removeProductLine,
     updateProductLine,
   } = useJobCardDetails(orderId, tenantId);
+
+  const canEditAny = canEditSales || canEditDetails;
+
+  const queryEdit = searchParams.get("edit") === "1";
+  const mode = initialMode === "edit" || (queryEdit && canEditAny) ? "edit" : "view";
+
+  const backTo =
+    backToOverride ||
+    location.state?.from ||
+    (mode === "edit" && !orderIdOverride ? `/sales/orders/${orderId}` : "/my-job-cards");
+  const productionOrderId = location.state?.productionOrderId ?? null;
 
   usePageRefresh(load);
   useEffect(() => {
@@ -71,7 +82,7 @@ export default function JobCardDetailsPage({
 
   const selectedProduct = products.find((p) => String(p.id) === String(form?.product_id));
   const productCode = selectedProduct?.product_code || selectedProduct?.sku || form?.product_code || "";
-  const formReadOnly = mode === "view" || isCreated || !canEditSales;
+  const formReadOnly = mode === "view" || (isCreated && !canEditDetails) || (!isCreated && !canEditSales);
   const linesReadOnly = mode === "view" || isCreated;
 
   const openStageWorkflow = () => {
@@ -114,6 +125,7 @@ export default function JobCardDetailsPage({
       card={card}
       form={form}
       salesOrder={salesOrder}
+      customer={customer}
       productLines={productLines}
       customers={customers}
       products={products}
@@ -133,7 +145,7 @@ export default function JobCardDetailsPage({
       saving={saving}
       creating={creating}
       isCreated={isCreated}
-      canEditSales={canEditSales}
+      canEditSales={canEditSales || (canEditDetails && mode === "edit")}
       backTo={backTo}
       onCancel={onBackFromCreate}
       productionOrderId={productionOrderId}
@@ -141,6 +153,15 @@ export default function JobCardDetailsPage({
       onOpenWorkflow={isCreated ? openStageWorkflow : null}
       onRefreshStoreContext={refreshStoreContext}
       refreshingStoreContext={refreshingStore}
+      details={details}
+      machines={machines}
+      editableSections={editableSections}
+      canEditDetails={canEditDetails && mode === "edit"}
+      onPatchDetailsSection={patchDetailsSection}
+      onPatchRawMaterial={patchRawMaterial}
+      onAddRawMaterial={addRawMaterial}
+      onRemoveRawMaterial={removeRawMaterial}
+      audit={card?.audit}
     />
   );
 }

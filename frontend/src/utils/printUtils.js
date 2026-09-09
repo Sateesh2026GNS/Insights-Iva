@@ -567,3 +567,466 @@ export function printWorkOrder(workOrder, user) {
   win.focus();
   setTimeout(() => { win.print(); }, 400);
 }
+
+function extractProductionJobCardPrintData(order) {
+  const company = order?.companyProfile || {};
+  const details = order?.details || order?.card?.details || order?.form?.details || {};
+  const form = order?.form || order?.card?.form || {};
+  const sp = order?.card?.summary_panel || order?.summary_panel || {};
+  const jobInfo = details.job_info || {};
+  const production = details.production || {};
+  const output = details.output || {};
+  const approval = details.approval || {};
+  const rawMaterials = details.raw_materials || [];
+
+  const companyName = company.company_name || company.name || company.legal_name || "Company Name";
+  const addressParts = [
+    company.address_line1 || company.address,
+    company.address_line2,
+    company.city,
+    company.state,
+    company.pincode || company.postal_code,
+  ].filter(Boolean);
+  const companyAddress = addressParts.join(", ") || company.full_address || "";
+
+  return {
+    companyName,
+    companyAddress,
+    jcNo: sp.job_card_no || form.job_card_no || order.job_card_no || "—",
+    jcDate: form.job_card_date || jobInfo.issue_date || new Date().toLocaleDateString("en-IN"),
+    soNo: form.sales_order_no || sp.sales_order_no || "—",
+    customer: form.customer_name || sp.customer || "—",
+    product: form.product_name || sp.product || "—",
+    productCode: form.product_code || order.product_code || "",
+    location: jobInfo.location || "—",
+    priority: form.priority || sp.priority || "—",
+    status: form.workflow_status || sp.workflow_status || "—",
+    localType: jobInfo.local_type || "—",
+    issueDate: jobInfo.issue_date || "—",
+    issueTime: jobInfo.issue_time || "—",
+    poDate: jobInfo.po_date || "—",
+    poTime: jobInfo.po_time || "—",
+    rawMaterials,
+    production,
+    output,
+    approval,
+    remarks: form.notes || production.remarks || "",
+  };
+}
+
+function buildProductionJobCardHtml(data) {
+  const matRows = (data.rawMaterials || [])
+    .map(
+      (r, i) => `<tr>
+        <td>${i + 1}</td>
+        <td>${escapeHtml(r.material_name || "—")}</td>
+        <td>${escapeHtml(r.material_code || "—")}</td>
+        <td>${escapeHtml(r.paper_type || "—")}</td>
+        <td>${escapeHtml(r.gsm || "—")}</td>
+        <td>${escapeHtml(r.mill_grade || "—")}</td>
+        <td class="num">${escapeHtml(r.quantity ?? "—")}</td>
+        <td>${escapeHtml(r.uom || "—")}</td>
+        <td>${escapeHtml(r.batch_lot_no || "—")}</td>
+        <td>${escapeHtml(r.quality || "—")}</td>
+        <td>${escapeHtml(r.remarks || "—")}</td>
+      </tr>`
+    )
+    .join("");
+
+  const p = data.production || {};
+  const o = data.output || {};
+  const a = data.approval || {};
+
+  return `<!DOCTYPE html>
+<html><head><meta charset="utf-8" />
+<title>Production Job Card ${escapeHtml(data.jcNo)}</title>
+<style>
+  @page { size: A4 landscape; margin: 10mm; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 10px; color: #111; margin: 0; }
+  .page { padding: 12px 16px; }
+  .header { text-align: center; border-bottom: 2px solid #111; padding-bottom: 8px; margin-bottom: 10px; }
+  .company { font-size: 16px; font-weight: 800; text-transform: uppercase; }
+  .address { font-size: 9px; margin-top: 2px; }
+  .title { font-size: 14px; font-weight: 700; margin-top: 6px; letter-spacing: 1px; }
+  .meta { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 10px 0; }
+  .box { border: 1px solid #999; padding: 4px 6px; }
+  .lbl { font-size: 8px; font-weight: 700; text-transform: uppercase; color: #555; }
+  .val { font-size: 10px; font-weight: 600; margin-top: 1px; }
+  h3 { font-size: 11px; margin: 10px 0 4px; text-transform: uppercase; border-bottom: 1px solid #ccc; padding-bottom: 2px; }
+  table { width: 100%; border-collapse: collapse; font-size: 9px; }
+  th, td { border: 1px solid #999; padding: 3px 4px; vertical-align: top; }
+  th { background: #eee; font-weight: 700; }
+  td.num { text-align: right; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .signatures { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 16px; }
+  .sign { border-top: 1px solid #333; padding-top: 4px; text-align: center; font-size: 9px; font-weight: 700; }
+</style></head><body>
+<div class="page">
+  <div class="header">
+    <div class="company">${escapeHtml(data.companyName)}</div>
+    <div class="address">${escapeHtml(data.companyAddress)}</div>
+    <div class="title">PRODUCTION JOB CARD</div>
+  </div>
+  <div class="meta">
+    <div class="box"><div class="lbl">Job Card No.</div><div class="val">${escapeHtml(data.jcNo)}</div></div>
+    <div class="box"><div class="lbl">Date</div><div class="val">${escapeHtml(data.jcDate)}</div></div>
+    <div class="box"><div class="lbl">Sales Order</div><div class="val">${escapeHtml(data.soNo)}</div></div>
+    <div class="box"><div class="lbl">Customer</div><div class="val">${escapeHtml(data.customer)}</div></div>
+    <div class="box"><div class="lbl">Product</div><div class="val">${escapeHtml(data.product)}${data.productCode ? ` (${escapeHtml(data.productCode)})` : ""}</div></div>
+    <div class="box"><div class="lbl">Location</div><div class="val">${escapeHtml(data.location)}</div></div>
+    <div class="box"><div class="lbl">Priority / Status</div><div class="val">${escapeHtml(data.priority)} / ${escapeHtml(data.status)}</div></div>
+    <div class="box"><div class="lbl">Local / Non-Local</div><div class="val">${escapeHtml(data.localType)}</div></div>
+  </div>
+  <h3>Raw Material Details</h3>
+  <table>
+    <thead><tr>
+      <th>Sl.</th><th>Material</th><th>Code</th><th>Paper/Type</th><th>GSM</th><th>Mill Grade</th>
+      <th>Qty</th><th>UOM</th><th>Batch/Lot</th><th>Quality</th><th>Remarks</th>
+    </tr></thead>
+    <tbody>${matRows || '<tr><td colspan="11">—</td></tr>'}</tbody>
+  </table>
+  <div class="grid-2">
+    <div>
+      <h3>Production Details</h3>
+      <table>
+        <tr><td>Process</td><td>${escapeHtml(p.process || "—")}</td></tr>
+        <tr><td>Machine</td><td>${escapeHtml(p.machine_name || "—")}</td></tr>
+        <tr><td>Operator</td><td>${escapeHtml(p.operator_name || "—")}</td></tr>
+        <tr><td>Planned Qty</td><td>${escapeHtml(p.planned_quantity ?? "—")} ${escapeHtml(p.uom || "")}</td></tr>
+        <tr><td>Start</td><td>${escapeHtml(p.start_date || "—")} ${escapeHtml(p.start_time || "")}</td></tr>
+        <tr><td>Due</td><td>${escapeHtml(p.due_date || "—")} ${escapeHtml(p.due_time || "")}</td></tr>
+        ${p.slitting_size ? `<tr><td>Slitting Size</td><td>${escapeHtml(p.slitting_size)}</td></tr>` : ""}
+        <tr><td>Instructions</td><td>${escapeHtml(p.production_instructions || "—")}</td></tr>
+      </table>
+    </div>
+    <div>
+      <h3>Output Details</h3>
+      <table>
+        <tr><td>Output Qty</td><td>${escapeHtml(o.output_quantity ?? "—")} ${escapeHtml(o.output_uom || "")}</td></tr>
+        <tr><td>Width / GSM</td><td>${escapeHtml(o.width || "—")} / ${escapeHtml(o.gsm || "—")}</td></tr>
+        <tr><td>Colour / CRA %</td><td>${escapeHtml(o.colour || "—")} / ${escapeHtml(o.cra_percent ?? "—")}</td></tr>
+        <tr><td>Good / Reject / Wastage</td><td>${escapeHtml(o.good_quantity ?? "—")} / ${escapeHtml(o.rejected_quantity ?? "—")} / ${escapeHtml(o.wastage_quantity ?? "—")}</td></tr>
+        <tr><td>Batch/Lot</td><td>${escapeHtml(o.batch_lot_no || "—")}</td></tr>
+        <tr><td>Remarks</td><td>${escapeHtml(o.remarks || "—")}</td></tr>
+      </table>
+    </div>
+  </div>
+  ${data.remarks ? `<h3>Remarks</h3><p>${escapeHtml(data.remarks)}</p>` : ""}
+  <div class="signatures">
+    <div><div class="sign">Prepared By: ${escapeHtml(a.prepared_by || "—")}<br/>${escapeHtml(a.prepared_date || "")}</div></div>
+    <div><div class="sign">Checked By: ${escapeHtml(a.checked_by || "—")}<br/>${escapeHtml(a.checked_date || "")}</div></div>
+    <div><div class="sign">Approved By: ${escapeHtml(a.approved_by || "—")}<br/>${escapeHtml(a.approved_date || "")}</div></div>
+  </div>
+</div></body></html>`;
+}
+
+export function printProductionJobCardLandscape(order, user) {
+  if (!order) return;
+  const data = extractProductionJobCardPrintData(order);
+  const html = buildProductionJobCardHtml(data);
+  const win = window.open("", "_blank", "width=1100,height=780");
+  win.document.write(html);
+  win.document.close();
+  win.focus();
+  setTimeout(() => win.print(), 400);
+}
+
+export function downloadProductionJobCardPdf(order, user) {
+  if (!order) return;
+  const data = extractProductionJobCardPrintData(order);
+  const doc = new jsPDF({ unit: "pt", format: "a4", orientation: "landscape" });
+  const pageW = doc.internal.pageSize.width;
+  let y = 28;
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(14);
+  doc.text(data.companyName, pageW / 2, y, { align: "center" });
+  y += 14;
+  doc.setFontSize(8);
+  doc.setFont("helvetica", "normal");
+  if (data.companyAddress) {
+    doc.text(data.companyAddress, pageW / 2, y, { align: "center", maxWidth: pageW - 60 });
+    y += 14;
+  }
+  doc.setFontSize(12);
+  doc.setFont("helvetica", "bold");
+  doc.text("PRODUCTION JOB CARD", pageW / 2, y + 6, { align: "center" });
+  y += 22;
+
+  autoTable(doc, {
+    startY: y,
+    head: [["Job Card No.", "Date", "Sales Order", "Customer", "Product", "Priority"]],
+    body: [[data.jcNo, data.jcDate, data.soNo, data.customer, `${data.product}${data.productCode ? ` (${data.productCode})` : ""}`, data.priority]],
+    styles: { fontSize: 8, cellPadding: 4 },
+    theme: "grid",
+  });
+
+  if (data.rawMaterials?.length) {
+    autoTable(doc, {
+      startY: doc.lastAutoTable.finalY + 8,
+      head: [["#", "Material", "Code", "Type", "GSM", "Grade", "Qty", "UOM", "Batch", "Quality"]],
+      body: data.rawMaterials.map((r, i) => [
+        i + 1,
+        r.material_name || "—",
+        r.material_code || "—",
+        r.paper_type || "—",
+        r.gsm || "—",
+        r.mill_grade || "—",
+        r.quantity ?? "—",
+        r.uom || "—",
+        r.batch_lot_no || "—",
+        r.quality || "—",
+      ]),
+      styles: { fontSize: 7, cellPadding: 3 },
+      theme: "striped",
+    });
+  }
+
+  const p = data.production || {};
+  const o = data.output || {};
+  autoTable(doc, {
+    startY: doc.lastAutoTable.finalY + 8,
+    head: [["Production", "Value", "Output", "Value"]],
+    body: [
+      ["Process", p.process || "—", "Output Qty", `${o.output_quantity ?? "—"} ${o.output_uom || ""}`],
+      ["Machine", p.machine_name || "—", "Good / Reject", `${o.good_quantity ?? "—"} / ${o.rejected_quantity ?? "—"}`],
+      ["Operator", p.operator_name || "—", "Wastage", o.wastage_quantity ?? "—"],
+      ["Planned Qty", `${p.planned_quantity ?? "—"} ${p.uom || ""}`, "Batch/Lot", o.batch_lot_no || "—"],
+      ...(p.slitting_size ? [["Slitting Size", p.slitting_size, "CRA %", o.cra_percent ?? "—"]] : []),
+    ],
+    styles: { fontSize: 8, cellPadding: 4 },
+    theme: "grid",
+  });
+
+  const a = data.approval || {};
+  const sigY = Math.min(doc.lastAutoTable.finalY + 30, doc.internal.pageSize.height - 40);
+  doc.setFontSize(8);
+  doc.text(`Prepared: ${a.prepared_by || "—"}`, 40, sigY);
+  doc.text(`Checked: ${a.checked_by || "—"}`, pageW / 2, sigY, { align: "center" });
+  doc.text(`Approved: ${a.approved_by || "—"}`, pageW - 40, sigY, { align: "right" });
+
+  doc.save(`ProductionJobCard_${data.jcNo}.pdf`);
+}
+
+function extractSalesJobCardPrintData(order) {
+  const company = order?.companyProfile || {};
+  const doc = order?.salesDocument || order?.card?.sales_document || {};
+  const companyName = company.company_name || company.name || company.legal_name || "Company Name";
+  const addressParts = [
+    company.address_line1 || company.address,
+    company.address_line2,
+    company.city,
+    company.state,
+    company.pincode || company.postal_code,
+  ].filter(Boolean);
+  let tagline = company.tagline || "";
+  if (!tagline && Array.isArray(company.custom_fields)) {
+    const hit = company.custom_fields.find((f) => {
+      const l = String(f?.label || f?.name || "").toLowerCase();
+      return l.includes("tagline") || l.includes("slogan");
+    });
+    tagline = hit?.value ? String(hit.value) : "";
+  }
+  return {
+    companyName,
+    companyAddress: addressParts.join(", "),
+    logoUrl: company.logo_url,
+    tagline,
+    ...doc,
+    header: doc.header || {},
+    customer_details: doc.customer_details || {},
+    order_details: doc.order_details || {},
+    product_lines: doc.product_lines || [],
+    technical_specifications: doc.technical_specifications || [],
+    approval: doc.approval || {},
+  };
+}
+
+function buildSalesJobCardHtml(data) {
+  const h = data.header || {};
+  const c = data.customer_details || {};
+  const o = data.order_details || {};
+  const lines = data.product_lines || [];
+  const specs = data.technical_specifications || [];
+  const a = data.approval || {};
+  const logo = data.logoUrl
+    ? `<img src="${escapeHtml(data.logoUrl)}" alt="" style="width:52px;height:52px;object-fit:contain" />`
+    : `<div style="width:52px;height:52px;border:1px solid #ccc;display:flex;align-items:center;justify-content:center;font-size:9px">LOGO</div>`;
+
+  const lineRows = lines
+    .map(
+      (r) => `<tr>
+        <td style="text-align:right">${r.sl_no}</td>
+        <td>${escapeHtml(r.product_code || "—")}</td>
+        <td>${escapeHtml(r.product_name || "—")}</td>
+        <td>${escapeHtml(r.description || "—")}</td>
+        <td style="text-align:right">${escapeHtml(r.quantity ?? "—")}</td>
+        <td>${escapeHtml(r.uom || "—")}</td>
+      </tr>`
+    )
+    .join("");
+
+  const specRows = specs.length
+    ? specs
+        .map(
+          (r) => `<tr>
+            <td style="text-align:right">${r.sl_no}</td>
+            <td>${escapeHtml(r.parameter || "—")}</td>
+            <td>${escapeHtml(r.specification || "—")}</td>
+          </tr>`
+        )
+        .join("")
+    : `<tr><td colspan="3" style="text-align:center;font-style:italic;color:#666">No technical specifications available.</td></tr>`;
+
+  return `<!DOCTYPE html><html><head><meta charset="utf-8" />
+<title>Sales Job Card ${escapeHtml(h.job_card_no || "")}</title>
+<style>
+  @page { size: A4 landscape; margin: 10mm; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 10px; color: #111; margin: 0; }
+  .page { padding: 12px 16px; }
+  .hdr { display: flex; justify-content: space-between; gap: 16px; }
+  .co { display: flex; gap: 10px; }
+  .co-name { font-size: 14px; font-weight: 800; color: #00733c; text-transform: uppercase; }
+  .co-addr { font-size: 9px; margin-top: 2px; max-width: 320px; }
+  .meta td { border: 1px solid #bbb; padding: 3px 6px; font-size: 9.5px; }
+  .meta .lbl { background: #e8f5ee; font-weight: 700; width: 42%; }
+  .tagline { text-align: center; font-style: italic; font-size: 10px; color: #666; margin: 4px 0; }
+  .title { text-align: center; background: #00733c; color: #fff; font-size: 17px; font-weight: 800; letter-spacing: 0.12em; padding: 8px; margin: 10px 0; }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 10px; }
+  .panel { border: 1px solid #bbb; }
+  .panel-h { background: #e8f5ee; color: #00733c; font-weight: 800; font-size: 11px; padding: 5px 8px; border-bottom: 1px solid #bbb; text-transform: uppercase; }
+  .panel-b { padding: 6px 8px; }
+  .row { display: grid; grid-template-columns: 38% 1fr; font-size: 10px; border-bottom: 1px solid #d8d8d8; }
+  .row .lbl { font-weight: 700; color: #374151; background: #f3faf6; padding: 3px 5px; border-right: 1px solid #d8d8d8; }
+  .row span:last-child { padding: 3px 5px; }
+  table.data { width: 100%; border-collapse: collapse; font-size: 9.5px; margin-bottom: 10px; }
+  table.data th { background: #f3faf6; color: #1f2937; padding: 4px 6px; border: 1px solid #bbb; text-align: left; }
+  table.data td { padding: 4px 6px; border: 1px solid #ccc; vertical-align: top; }
+  table.data tr:nth-child(even) td { background: #f9fafb; }
+  .cap { background: #e8f5ee; color: #00733c; font-weight: 800; padding: 5px 8px; border: 1px solid #bbb; border-bottom: none; text-transform: uppercase; font-size: 11px; }
+  .sign td { min-height: 40px; vertical-align: bottom; }
+</style></head><body><div class="page">
+  <div class="hdr">
+    <div class="co">${logo}<div><div class="co-name">${escapeHtml(data.companyName)}</div><div class="co-addr">${escapeHtml(data.companyAddress)}</div></div></div>
+    ${data.tagline ? `<p class="tagline">${escapeHtml(data.tagline)}</p>` : ""}
+    <table class="meta"><tr><td class="lbl">Job Card No.</td><td>${escapeHtml(h.job_card_no || "—")}</td></tr>
+    <tr><td class="lbl">Date</td><td>${escapeHtml(h.job_card_date || "—")}</td></tr>
+    <tr><td class="lbl">Sales Order No.</td><td>${escapeHtml(h.sales_order_no || "—")}</td></tr>
+    <tr><td class="lbl">Customer PO No.</td><td>${escapeHtml(h.customer_po_no || "—")}</td></tr></table>
+  </div>
+  <div class="title">SALES JOB CARD</div>
+  <div class="cols">
+    <div class="panel"><div class="panel-h">Customer Details</div><div class="panel-b">
+      <div class="row"><span class="lbl">Customer Name</span><span>${escapeHtml(c.customer_name || "—")}</span></div>
+      <div class="row"><span class="lbl">Contact Person</span><span>${escapeHtml(c.contact_person || "—")}</span></div>
+      <div class="row"><span class="lbl">Phone</span><span>${escapeHtml(c.phone || "—")}</span></div>
+      <div class="row"><span class="lbl">Email</span><span>${escapeHtml(c.email || "—")}</span></div>
+      <div class="row"><span class="lbl">Billing Address</span><span>${escapeHtml(c.billing_address || "—")}</span></div>
+    </div></div>
+    <div class="panel"><div class="panel-h">Order Details</div><div class="panel-b">
+      <div class="row"><span class="lbl">Sales Order Date</span><span>${escapeHtml(o.sales_order_date || "—")}</span></div>
+      <div class="row"><span class="lbl">Delivery Date</span><span>${escapeHtml(o.delivery_date || "—")}</span></div>
+      <div class="row"><span class="lbl">Product Category</span><span>${escapeHtml(o.product_category || "—")}</span></div>
+      <div class="row"><span class="lbl">End Use</span><span>${escapeHtml(o.end_use || "—")}</span></div>
+      <div class="row"><span class="lbl">Payment Terms</span><span>${escapeHtml(o.payment_terms || "—")}</span></div>
+      <div class="row"><span class="lbl">Priority</span><span>${escapeHtml(o.priority || "—")}</span></div>
+      <div class="row"><span class="lbl">Remarks</span><span>${escapeHtml(o.remarks || "—")}</span></div>
+    </div></div>
+  </div>
+  <div class="cap">Product / Job Details</div>
+  <table class="data"><thead><tr><th>Sl.</th><th>Product Code</th><th>Product Name</th><th>Description</th><th>Qty</th><th>UOM</th></tr></thead>
+  <tbody>${lineRows || '<tr><td colspan="6">—</td></tr>'}</tbody></table>
+  <div class="cap">Technical Specifications</div>
+  <table class="data"><thead><tr><th>Sl.</th><th>Parameter</th><th>Specification</th></tr></thead><tbody>${specRows}</tbody></table>
+  <table class="data sign"><thead><tr><th>Prepared By</th><th>Checked By</th><th>Approved By</th><th>Date</th><th>Customer Acknowledgement</th></tr></thead>
+  <tbody><tr><td>${escapeHtml(a.prepared_by || "")}</td><td>${escapeHtml(a.checked_by || "")}</td><td>${escapeHtml(a.approved_by || "")}</td><td>${escapeHtml(a.prepared_date || a.approved_date || "")}</td><td>${escapeHtml(a.customer_acknowledgement || "")}</td></tr></tbody></table>
+</div></body></html>`;
+}
+
+export function printSalesJobCardLandscape(order, user) {
+  if (!order) return;
+  const data = extractSalesJobCardPrintData(order);
+  const html = buildSalesJobCardHtml(data);
+  const win = window.open("", "_blank", "width=1100,height=780");
+  win.document.write(html);
+  win.document.close();
+  win.focus();
+  setTimeout(() => win.print(), 400);
+}
+
+export function downloadSalesJobCardPdf(order, user) {
+  if (!order) return;
+  const data = extractSalesJobCardPrintData(order);
+  const doc = new jsPDF({ unit: "pt", format: "a4", orientation: "landscape" });
+  const pageW = doc.internal.pageSize.width;
+  let y = 28;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(14);
+  doc.setTextColor(0, 115, 60);
+  doc.text(data.companyName, pageW / 2, y, { align: "center" });
+  y += 12;
+  doc.setFontSize(8);
+  doc.setTextColor(55, 65, 81);
+  doc.setFont("helvetica", "normal");
+  if (data.companyAddress) {
+    doc.text(data.companyAddress, pageW / 2, y, { align: "center", maxWidth: pageW - 60 });
+    y += 14;
+  }
+  doc.setFillColor(0, 115, 60);
+  doc.rect(30, y + 4, pageW - 60, 22, "F");
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(13);
+  doc.setFont("helvetica", "bold");
+  doc.text("SALES JOB CARD", pageW / 2, y + 19, { align: "center" });
+  y += 36;
+  const h = data.header || {};
+  autoTable(doc, {
+    startY: y,
+    head: [["Job Card No.", "Date", "Sales Order", "Customer PO"]],
+    body: [[h.job_card_no || "—", h.job_card_date || "—", h.sales_order_no || "—", h.customer_po_no || "—"]],
+    styles: { fontSize: 8, cellPadding: 4 },
+    theme: "grid",
+  });
+  const c = data.customer_details || {};
+  const o = data.order_details || {};
+  autoTable(doc, {
+    startY: doc.lastAutoTable.finalY + 8,
+    head: [["Customer", "Contact", "Phone", "Email"]],
+    body: [[c.customer_name || "—", c.contact_person || "—", c.phone || "—", c.email || "—"]],
+    styles: { fontSize: 8, cellPadding: 4 },
+    theme: "grid",
+  });
+  autoTable(doc, {
+    startY: doc.lastAutoTable.finalY + 6,
+    head: [["SO Date", "Delivery", "Category", "Payment Terms", "Priority"]],
+    body: [[o.sales_order_date || "—", o.delivery_date || "—", o.product_category || "—", o.payment_terms || "—", o.priority || "—"]],
+    styles: { fontSize: 8, cellPadding: 4 },
+    theme: "grid",
+  });
+  if (data.product_lines?.length) {
+    autoTable(doc, {
+      startY: doc.lastAutoTable.finalY + 8,
+      head: [["#", "Code", "Product", "Description", "Qty", "UOM"]],
+      body: data.product_lines.map((r) => [
+        r.sl_no,
+        r.product_code || "—",
+        r.product_name || "—",
+        r.description || "—",
+        r.quantity ?? "—",
+        r.uom || "—",
+      ]),
+      styles: { fontSize: 7.5, cellPadding: 3 },
+      theme: "striped",
+    });
+  }
+  if (data.technical_specifications?.length) {
+    autoTable(doc, {
+      startY: doc.lastAutoTable.finalY + 8,
+      head: [["#", "Parameter", "Specification"]],
+      body: data.technical_specifications.map((r) => [r.sl_no, r.parameter, r.specification]),
+      styles: { fontSize: 7.5, cellPadding: 3 },
+      theme: "striped",
+    });
+  }
+  doc.save(`SalesJobCard_${h.job_card_no || h.sales_order_no || "document"}.pdf`);
+}

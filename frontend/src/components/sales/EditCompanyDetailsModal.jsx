@@ -407,6 +407,7 @@ export default function EditCompanyDetailsModal({ open, onClose, onSaved }) {
       <AddCustomFieldModal
         open={customFieldOpen}
         onClose={() => setCustomFieldOpen(false)}
+        existingFields={form.custom_fields}
         onSave={(field) =>
           setForm((f) => ({
             ...f,

@@ -79,11 +79,12 @@ def _client_ip(request: Request) -> str | None:
 
 @router.post("/login", response_model=AuthResponse)
 def login(req: LoginRequest, request: Request, db: Session = Depends(get_db)):
-    from app.middleware.security import check_rate_limit
+    from app.middleware.security import check_auth_backoff, check_rate_limit, record_auth_failure
 
     try:
         email = req.email
         check_rate_limit(request, email=email, scope="login")
+        check_auth_backoff(request, email=email)
         ip_address = _client_ip(request)
         user_agent = request.headers.get("User-Agent")
         user = find_user_by_email(db, email)
@@ -146,6 +147,7 @@ def login(req: LoginRequest, request: Request, db: Session = Depends(get_db)):
                 AuditLogService.log_login_failed(
                     db, request=request, email=email, user=user
                 )
+                record_auth_failure(request, email=email)
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail=GENERIC_LOGIN_ERROR,
@@ -376,6 +378,9 @@ def remove_profile_avatar(
 @router.post("/register", response_model=RegisterPendingResponse, status_code=status.HTTP_201_CREATED)
 def register(req: RegisterRequest, request: Request, db: Session = Depends(get_db)):
     """Public registration is disabled — companies are provisioned by GNS Super Admin."""
+    from app.middleware.security import check_rate_limit
+
+    check_rate_limit(request, email=req.email, scope="register")
     if not settings.allow_public_registration:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

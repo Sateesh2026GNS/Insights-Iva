@@ -98,3 +98,96 @@ export function asArray(data) {
   }
   return [];
 }
+
+/** True when the request failed due to connectivity (not a server response). */
+export function isNetworkError(err) {
+  if (!err) return false;
+  if (err?.response) return false;
+  const code = String(err?.code || "");
+  const message = String(err?.message || "");
+  return (
+    code === "ERR_NETWORK" ||
+    code === "ECONNABORTED" ||
+    message.includes("Network Error") ||
+    message.includes("ERR_CONNECTION_RESET") ||
+    message.includes("ECONNRESET")
+  );
+}
+
+export function isPermissionError(err) {
+  return err?.response?.status === 403;
+}
+
+export function isAuthError(err) {
+  return err?.response?.status === 401;
+}
+
+export function isConflictError(err) {
+  return err?.response?.status === 409;
+}
+
+export function isValidationError(err) {
+  const status = err?.response?.status;
+  return status === 400 || status === 422;
+}
+
+/** Map FastAPI validation array to { fieldName: message }. */
+export function mapValidationErrorsToFields(err) {
+  const detail = extractApiErrorDetail(err);
+  const fields = {};
+  if (!Array.isArray(detail)) return fields;
+  detail.forEach((item) => {
+    const loc = Array.isArray(item?.loc)
+      ? item.loc.filter((p) => p !== "body" && p !== "query" && p !== "path")
+      : [];
+    const key = loc.length ? loc[loc.length - 1] : "form";
+    const msg = item?.msg || item?.message || "Invalid value";
+    if (!fields[key]) fields[key] = msg;
+  });
+  return fields;
+}
+
+/**
+ * Classify an API error for UI state routing.
+ * Types: session | permission | conflict | validation | network | server | not_found | unknown
+ */
+export function classifyApiError(err, fallback = "Something went wrong.") {
+  const message = httpStatusMessage(err, fallback);
+  const status = err?.response?.status;
+
+  if (status === 401) return { type: "session", message, fields: {} };
+  if (status === 403) return { type: "permission", message, fields: {} };
+  if (status === 409) return { type: "conflict", message, fields: {} };
+  if (status === 400 || status === 422) {
+    return {
+      type: "validation",
+      message,
+      fields: mapValidationErrorsToFields(err),
+    };
+  }
+  if (status === 404) return { type: "not_found", message, fields: {} };
+  if (isNetworkError(err) || (typeof navigator !== "undefined" && !navigator.onLine)) {
+    return {
+      type: "network",
+      message: "Please check your internet connection and try again.",
+      fields: {},
+    };
+  }
+  if (status && status >= 500) {
+    return { type: "server", message: "Unable to load the data. Please try again.", fields: {} };
+  }
+  return { type: "unknown", message, fields: {} };
+}
+
+/** Merge backend field errors into an existing client-side errors object. */
+export function applyBackendFieldErrors(err, setFieldErrors, fieldMap = {}) {
+  const { fields } = classifyApiError(err);
+  if (!fields || !Object.keys(fields).length) return false;
+  const mapped = {};
+  Object.entries(fields).forEach(([key, msg]) => {
+    const target = fieldMap[key] || key;
+    mapped[target] = msg;
+  });
+  setFieldErrors((prev) => ({ ...prev, ...mapped }));
+  return true;
+}

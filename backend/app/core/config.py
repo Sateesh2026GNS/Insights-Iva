@@ -51,6 +51,48 @@ class Settings(BaseSettings):
     lockout_minutes: int = 30
     login_rate_limit: int = 20
     login_rate_window_seconds: int = 300
+    register_rate_limit: int = Field(
+        default=5,
+        validation_alias=AliasChoices("REGISTER_RATE_LIMIT", "register_rate_limit"),
+    )
+    register_rate_window_seconds: int = Field(
+        default=3600,
+        validation_alias=AliasChoices("REGISTER_RATE_WINDOW_SECONDS", "register_rate_window_seconds"),
+    )
+    otp_rate_limit: int = Field(
+        default=10,
+        validation_alias=AliasChoices("OTP_RATE_LIMIT", "otp_rate_limit"),
+    )
+    otp_rate_window_seconds: int = Field(
+        default=3600,
+        validation_alias=AliasChoices("OTP_RATE_WINDOW_SECONDS", "otp_rate_window_seconds"),
+    )
+    api_public_rate_limit: int = Field(
+        default=120,
+        validation_alias=AliasChoices("API_PUBLIC_RATE_LIMIT", "api_public_rate_limit"),
+    )
+    api_public_rate_window_seconds: int = Field(
+        default=60,
+        validation_alias=AliasChoices("API_PUBLIC_RATE_WINDOW_SECONDS", "api_public_rate_window_seconds"),
+    )
+    api_authenticated_rate_limit: int = Field(
+        default=600,
+        validation_alias=AliasChoices("API_AUTHENTICATED_RATE_LIMIT", "api_authenticated_rate_limit"),
+    )
+    api_authenticated_rate_window_seconds: int = Field(
+        default=60,
+        validation_alias=AliasChoices(
+            "API_AUTHENTICATED_RATE_WINDOW_SECONDS", "api_authenticated_rate_window_seconds"
+        ),
+    )
+    auth_backoff_threshold: int = Field(
+        default=3,
+        validation_alias=AliasChoices("AUTH_BACKOFF_THRESHOLD", "auth_backoff_threshold"),
+    )
+    auth_backoff_window_seconds: int = Field(
+        default=900,
+        validation_alias=AliasChoices("AUTH_BACKOFF_WINDOW_SECONDS", "auth_backoff_window_seconds"),
+    )
 
     # Email verification & password reset
     email_verification_expire_hours: int = 24
@@ -111,6 +153,69 @@ class Settings(BaseSettings):
     google_client_secret: str = ""
     google_oauth_redirect_uri: str = ""
     google_calendar_default_timezone: str = "Asia/Kolkata"
+
+    # --- Central file storage (S3 / GCS / local dev) ---
+    storage_provider: str = Field(
+        default="local",
+        validation_alias=AliasChoices("STORAGE_PROVIDER", "storage_provider"),
+    )
+    s3_bucket: str = ""
+    s3_region: str = ""
+    s3_access_key_id: str = ""
+    s3_secret_access_key: str = ""
+    s3_endpoint_url: str = ""
+    gcs_bucket: str = ""
+    gcs_project_id: str = ""
+    file_storage_local_path: str = Field(
+        default="uploads",
+        validation_alias=AliasChoices("FILE_STORAGE_LOCAL_PATH", "file_storage_local_path"),
+    )
+    max_file_size_bytes: int = Field(
+        default=100 * 1024 * 1024,
+        validation_alias=AliasChoices("MAX_FILE_SIZE", "MAX_FILE_SIZE_BYTES", "max_file_size_bytes"),
+    )
+    signed_url_upload_expiry_seconds: int = Field(
+        default=900,
+        validation_alias=AliasChoices("SIGNED_URL_UPLOAD_EXPIRY", "signed_url_upload_expiry_seconds"),
+    )
+    signed_url_download_expiry_seconds: int = Field(
+        default=300,
+        validation_alias=AliasChoices("SIGNED_URL_EXPIRY", "SIGNED_URL_DOWNLOAD_EXPIRY", "signed_url_download_expiry_seconds"),
+    )
+    upload_chunk_size_bytes: int = Field(
+        default=5 * 1024 * 1024,
+        validation_alias=AliasChoices("UPLOAD_CHUNK_SIZE_BYTES", "upload_chunk_size_bytes"),
+    )
+    upload_session_expiry_seconds: int = Field(
+        default=86400,
+        validation_alias=AliasChoices("UPLOAD_SESSION_EXPIRY_SECONDS", "upload_session_expiry_seconds"),
+    )
+    max_uploads_per_hour: int = Field(
+        default=100,
+        validation_alias=AliasChoices("MAX_UPLOADS_PER_HOUR", "max_uploads_per_hour"),
+    )
+    max_upload_gb_per_hour: int = Field(
+        default=10,
+        validation_alias=AliasChoices("MAX_UPLOAD_GB_PER_HOUR", "max_upload_gb_per_hour"),
+    )
+    max_concurrent_uploads: int = Field(
+        default=5,
+        validation_alias=AliasChoices("MAX_CONCURRENT_UPLOADS", "max_concurrent_uploads"),
+    )
+    upload_rate_window_seconds: int = Field(
+        default=3600,
+        validation_alias=AliasChoices("UPLOAD_RATE_LIMIT", "UPLOAD_RATE_WINDOW_SECONDS", "upload_rate_window_seconds"),
+    )
+    antivirus_enabled: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("ANTIVIRUS_ENABLED", "antivirus_enabled"),
+    )
+    antivirus_provider: str = Field(
+        default="clamav",
+        validation_alias=AliasChoices("ANTIVIRUS_PROVIDER", "antivirus_provider"),
+    )
+    clamav_host: str = ""
+    clamav_port: int = 3310
 
     @field_validator("database_url")
     @classmethod
@@ -178,6 +283,10 @@ class Settings(BaseSettings):
         if self.google_calendar_configured and not self.google_oauth_redirect_uri.strip():
             raise ValueError(
                 "GOOGLE_OAUTH_REDIRECT_URI must be set in production when Google Calendar is configured"
+            )
+        if (self.storage_provider or "local").strip().lower() == "local":
+            raise ValueError(
+                "STORAGE_PROVIDER must be s3 (or gcs when implemented) in production — local storage is dev-only"
             )
         return self
 

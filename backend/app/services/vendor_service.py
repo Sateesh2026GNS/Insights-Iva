@@ -592,7 +592,14 @@ def create_vendor(
     _assert_no_duplicates(
         db, payload.tenant_id, gstin=payload.gstin, phone=payload.phone
     )
-    data = payload.model_dump(exclude={"product_ids"})
+    data = payload.model_dump(
+        exclude={
+            "product_ids",
+            "party_basic_details",
+            "party_other_details",
+            "party_custom_fields",
+        }
+    )
     if not data.get("vendor_code"):
         data["vendor_code"] = _next_vendor_code(db, payload.tenant_id)
     data = _sync_billing_address(data)

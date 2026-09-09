@@ -334,6 +334,18 @@ export function isStoreManager(user) {
   return hasRole(user, "Store Manager");
 }
 
+/** Manual Sales Job Card create/edit — sales team only (not Store Manager). */
+export function isSalesJobCardAuthoringPath(pathname) {
+  const path = (pathname || "").replace(/\/$/, "") || "/";
+  if (path === "/sales/job-cards/create") return true;
+  return /^\/sales\/job-cards\/[^/]+\/edit$/.test(path);
+}
+
+export function userCanCreateSalesJobCard(user) {
+  if (!user || isStoreManager(user)) return false;
+  return userCanAction(user, "sales", "create") || isAdmin(user);
+}
+
 export function isHRManager(user) {
   if (!user || isAdmin(user)) return false;
   return hasRole(user, "HR Manager");
@@ -374,6 +386,7 @@ export function storeManagerPathAllowed(pathname) {
   const path = pathname.replace(/\/$/, "") || "/";
   if (path === "/") return true;
   if (path.startsWith("/job-cards/")) return true;
+  if (path.startsWith("/my-job-cards/")) return true;
   if (STORE_MANAGER_ALLOWED_PATHS.has(path)) return true;
   if (path.startsWith("/inventory")) return true;
   if (path.startsWith("/purchases")) return true;
@@ -409,7 +422,13 @@ export function userCanAccessPath(user, pathname) {
   if (path === "/hr/attendance" || path === "/attendance") {
     return true;
   }
-  if (path === "/my-job-cards" || path.startsWith("/job-cards/") || path === "/sales/job-cards/create") {
+  if (isStoreManager(user) && isSalesJobCardAuthoringPath(pathname)) return false;
+  if (
+    path === "/my-job-cards" ||
+    path.startsWith("/my-job-cards/") ||
+    path.startsWith("/job-cards/") ||
+    path === "/sales/job-cards/create"
+  ) {
     if (!userCanAccessMyJobCards(user)) return false;
     if (isStoreManager(user) && !storeManagerPathAllowed(pathname)) return false;
     if (isProductionManager(user) && !productionManagerPathAllowed(pathname)) return false;
