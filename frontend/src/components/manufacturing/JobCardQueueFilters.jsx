@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { ChevronDown, SlidersHorizontal, X } from "lucide-react";
+import { ChevronDown, RefreshCw, SlidersHorizontal, X } from "lucide-react";
 
 import Button from "../common/Button";
 import { Input, Select } from "../common/FormField";
 import { SearchBar } from "../common/SearchFilter";
+import { ERP_LIST_STATUS_FILTER_OPTIONS } from "../../utils/jobCardListStatus";
 import { getWorkflowStatusLabel, WORKFLOW_STAGES } from "../../config/workflowStages";
 import { STORE_STATUS_FILTER_OPTIONS } from "../../utils/storeJobCardQueue";
 
@@ -30,7 +31,10 @@ const STAGE_OPTIONS = [
   ).map(([value]) => ({ value, label: value })),
 ];
 
-function FilterLabel({ children }) {
+function FilterLabel({ children, erp = false }) {
+  if (erp) {
+    return <span className="my-job-cards-filters__label">{children}</span>;
+  }
   return (
     <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
       {children}
@@ -67,6 +71,8 @@ export default function JobCardQueueFilters({
   showStockFilter = false,
   storeMode = false,
   autoApply = false,
+  erpLayout = false,
+  salesOrderOptions = [],
   onClear,
   onApply,
 }) {
@@ -95,6 +101,126 @@ export default function JobCardQueueFilters({
     patchFn?.(value);
     if (autoApply) onApply?.();
   };
+
+  if (erpLayout) {
+    return (
+      <div className="my-job-cards-filters">
+        <div className="my-job-cards-filters__grid">
+          <div>
+            <FilterLabel erp>Job Card No.</FilterLabel>
+            <Input
+              value={search}
+              onChange={(e) => onSearchChange?.(e.target.value)}
+              placeholder="Enter Job Card No."
+              className="w-full"
+              aria-label="Filter by job card number"
+            />
+          </div>
+          <div>
+            <FilterLabel erp>Customer</FilterLabel>
+            <Select
+              value={customer}
+              onChange={(e) => onCustomerChange?.(e.target.value)}
+              className="w-full"
+              aria-label="Filter by customer"
+            >
+              <option value="">Select Customer</option>
+              {customerOptions.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div>
+            <FilterLabel erp>Sales Order</FilterLabel>
+            <Select
+              value={salesOrderNo}
+              onChange={(e) => onSalesOrderNoChange?.(e.target.value)}
+              className="w-full"
+              aria-label="Filter by sales order"
+            >
+              <option value="">Select Sales Order</option>
+              {salesOrderOptions.map((no) => (
+                <option key={no} value={no}>
+                  {no}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div>
+            <FilterLabel erp>Product</FilterLabel>
+            <Select
+              value={product}
+              onChange={(e) => onProductChange?.(e.target.value)}
+              className="w-full"
+              aria-label="Filter by product"
+            >
+              <option value="">Select Product</option>
+              {productOptions.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div>
+            <FilterLabel erp>Status</FilterLabel>
+            <Select
+              value={status}
+              onChange={(e) => onStatusChange?.(e.target.value)}
+              className="w-full"
+              aria-label="Filter by status"
+            >
+              {ERP_LIST_STATUS_FILTER_OPTIONS.map((opt) => (
+                <option key={opt.value || "all"} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div>
+            <FilterLabel erp>From Date</FilterLabel>
+            <Input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => onDateFromChange?.(e.target.value)}
+              className="w-full"
+              aria-label="Filter from date"
+            />
+          </div>
+          <div>
+            <FilterLabel erp>To Date</FilterLabel>
+            <Input
+              type="date"
+              value={dateTo}
+              onChange={(e) => onDateToChange?.(e.target.value)}
+              className="w-full"
+              aria-label="Filter to date"
+            />
+          </div>
+          <div className="my-job-cards-filters__actions">
+            <Button
+              type="button"
+              variant="primary"
+              onClick={() => onApply?.()}
+            >
+              Apply
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="my-job-cards-filters__reset-btn"
+              onClick={onClear}
+              leftIcon={<RefreshCw className="h-4 w-4" aria-hidden />}
+            >
+              Reset
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (storeMode) {
     return (

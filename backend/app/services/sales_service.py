@@ -256,19 +256,17 @@ def _append_delete_blocker(
 def delete_blockers_by_sales_order_ids(
     db: Session, tenant_id: int, order_ids: list[int]
 ) -> dict[int, list[str]]:
-    """Return downstream business-record blockers keyed by sales order id."""
+    """Return downstream business-record blockers keyed by sales order id.
+
+    Only counts records that are NOT cleaned up by ``delete_sales_order`` and
+    represent real business dependencies (billing, dispatch, QC, etc.).
+    Workflow artifacts (job cards, material checks, stage cards) are removed
+    during delete and must not block deletion.
+    """
     if not order_ids:
         return {}
-    from app.models.manufacturing_workflow import (
-        SalesJobCard,
-        SalesOrderMaterialCheck,
-    )
-    from app.models.production import ProductionOrder
 
     blocker_specs = [
-        (SalesOrderMaterialCheck, SalesOrderMaterialCheck.sales_order_id, "material check"),
-        (SalesJobCard, SalesJobCard.sales_order_id, "job card"),
-        (ProductionOrder, ProductionOrder.sales_order_id, "production order"),
         (DispatchShipment, DispatchShipment.sales_order_id, "dispatch"),
         (Invoice, Invoice.sales_order_id, "invoice"),
     ]
@@ -278,9 +276,6 @@ def delete_blockers_by_sales_order_ids(
         counts = _count_records_by_sales_order(db, tenant_id, order_ids, model, fk_column)
         for order_id, count in counts.items():
             _append_delete_blocker(blockers_by_order, order_id, count, label)
-
-    for order_id, count in _count_work_orders_by_sales_order(db, tenant_id, order_ids).items():
-        _append_delete_blocker(blockers_by_order, order_id, count, "work order")
 
     for order_id, count in _count_quality_inspections_by_sales_order(
         db, tenant_id, order_ids
@@ -306,9 +301,11 @@ def build_sales_order_delete_blocked_detail(
 
 def sales_order_can_delete(order: SalesOrder, blockers: list[str] | None = None) -> bool:
     """True when the sales order has no linked downstream business records."""
-    return not (blockers or [])
+    if blockers:
+        return False
     if order.invoiced or order.packed or order.shipped:
         return False
+    return True
 
 def _purge_sales_order_audit_rows(db: Session, tenant_id: int, order_id: int) -> None:
     """Remove workflow audit rows that are not business dependencies but block FK delete."""
@@ -331,6 +328,7 @@ def _purge_sales_order_audit_rows(db: Session, tenant_id: int, order_id: int) ->
 def delete_sales_order(db: Session, tenant_id: int, order_id: int) -> bool:
     """Hard-delete a sales order and clean up associated workflow documents when not invoiced or dispatched."""
     from fastapi import HTTPException
+    from sqlalchemy.exc import IntegrityError
 
     from app.models.manufacturing_workflow import (
         ManufacturingWorkflowTransition,
@@ -371,77 +369,94 @@ def delete_sales_order(db: Session, tenant_id: int, order_id: int) -> bool:
     blockers = delete_blockers_by_sales_order_ids(db, tenant_id, [order_id]).get(order_id, [])
     if blockers:
         raise HTTPException(
-            status_code=400,
+            status_code=409,
             detail=build_sales_order_delete_blocked_detail(order.order_number, blockers),
         )
 
-    # Delete linked stage job cards (and cascaded material issue lines)
-    stage_cards = list(
-        db.scalars(
-            select(WorkflowStageJobCard).where(
-                WorkflowStageJobCard.sales_order_id == order_id,
-                WorkflowStageJobCard.tenant_id == tenant_id,
-            )
-        ).all()
-    )
-    for card in stage_cards:
-        db.delete(card)
+    try:
+        # Delete linked stage job cards (and cascaded material issue lines)
+        stage_cards = list(
+            db.scalars(
+                select(WorkflowStageJobCard).where(
+                    WorkflowStageJobCard.sales_order_id == order_id,
+                    WorkflowStageJobCard.tenant_id == tenant_id,
+                )
+            ).all()
+        )
+        for card in stage_cards:
+            db.delete(card)
 
-    # Delete linked sales job cards
-    sales_cards = list(
-        db.scalars(
-            select(SalesJobCard).where(
-                SalesJobCard.sales_order_id == order_id,
-                SalesJobCard.tenant_id == tenant_id,
-            )
-        ).all()
-    )
-    for sc in sales_cards:
-        db.delete(sc)
+        # Delete linked sales job cards
+        sales_cards = list(
+            db.scalars(
+                select(SalesJobCard).where(
+                    SalesJobCard.sales_order_id == order_id,
+                    SalesJobCard.tenant_id == tenant_id,
+                )
+            ).all()
+        )
+        for sc in sales_cards:
+            db.delete(sc)
 
-    # Delete linked material checks (and cascaded material check lines)
-    mat_checks = list(
-        db.scalars(
-            select(SalesOrderMaterialCheck).where(
-                SalesOrderMaterialCheck.sales_order_id == order_id,
-                SalesOrderMaterialCheck.tenant_id == tenant_id,
-            )
-        ).all()
-    )
-    for mc in mat_checks:
-        db.delete(mc)
+        # Delete linked material checks (and cascaded material check lines)
+        mat_checks = list(
+            db.scalars(
+                select(SalesOrderMaterialCheck).where(
+                    SalesOrderMaterialCheck.sales_order_id == order_id,
+                    SalesOrderMaterialCheck.tenant_id == tenant_id,
+                )
+            ).all()
+        )
+        for mc in mat_checks:
+            db.delete(mc)
 
-    # Delete linked workflow transitions
-    transitions = list(
-        db.scalars(
-            select(ManufacturingWorkflowTransition).where(
-                ManufacturingWorkflowTransition.sales_order_id == order_id,
-                ManufacturingWorkflowTransition.tenant_id == tenant_id,
-            )
-        ).all()
-    )
-    for tr in transitions:
-        db.delete(tr)
+        # Delete linked workflow transitions
+        transitions = list(
+            db.scalars(
+                select(ManufacturingWorkflowTransition).where(
+                    ManufacturingWorkflowTransition.sales_order_id == order_id,
+                    ManufacturingWorkflowTransition.tenant_id == tenant_id,
+                )
+            ).all()
+        )
+        for tr in transitions:
+            db.delete(tr)
 
-    # Unlink or delete production orders
-    prod_orders = list(
-        db.scalars(
-            select(ProductionOrder).where(
-                ProductionOrder.sales_order_id == order_id,
-                ProductionOrder.tenant_id == tenant_id,
-            )
-        ).all()
-    )
-    for po in prod_orders:
-        if po.status in ("completed", "in_progress"):
-            po.sales_order_id = None
-        else:
-            db.delete(po)
+        # Unlink or delete production orders
+        prod_orders = list(
+            db.scalars(
+                select(ProductionOrder).where(
+                    ProductionOrder.sales_order_id == order_id,
+                    ProductionOrder.tenant_id == tenant_id,
+                )
+            ).all()
+        )
+        for po in prod_orders:
+            if po.status in ("completed", "in_progress"):
+                po.sales_order_id = None
+            else:
+                db.delete(po)
 
-
-    _purge_sales_order_audit_rows(db, tenant_id, order_id)
-    db.delete(order)
-    db.commit()
+        _purge_sales_order_audit_rows(db, tenant_id, order_id)
+        db.delete(order)
+        db.commit()
+    except HTTPException:
+        db.rollback()
+        raise
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "delete_conflict",
+                "message": (
+                    "This sales order cannot be deleted because it is referenced by other records."
+                ),
+            },
+        )
+    except Exception:
+        db.rollback()
+        raise
     return True
 
 

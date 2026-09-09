@@ -255,7 +255,7 @@ export default function App() {
             className={
               isFullBleedSales || isInvoiceEditor || isEInvoiceLogin || isSettings
                 ? `min-h-full ${isSettings ? "settings-page" : ""} ${
-                    isInvoiceEditor || isEInvoiceLogin ? "h-full min-h-0" : ""
+                    isInvoiceEditor || isEInvoiceLogin ? "flex h-full min-h-0 flex-col" : ""
                   }`
                 : "ui-page ui-stack min-w-0 w-full"
             }
@@ -267,7 +267,7 @@ export default function App() {
                 />
               }
             >
-              <PageTransition>
+              <PageTransition fillViewport={isInvoiceEditor || isEInvoiceLogin}>
                 <AppRoutes />
               </PageTransition>
             </Suspense>

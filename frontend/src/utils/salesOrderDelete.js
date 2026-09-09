@@ -21,10 +21,13 @@ export function extractSalesOrderDeleteDetail(errOrMessage) {
   if (typeof errOrMessage === "string") {
     return parseSalesOrderDeleteError(errOrMessage);
   }
-  const detail = errOrMessage?.response?.data?.detail ?? errOrMessage?.detail;
+  const detail =
+    errOrMessage?.response?.data?.detail ??
+    errOrMessage?.response?.data?.data ??
+    errOrMessage?.detail;
   if (detail && typeof detail === "object") {
     const blockers = normalizeBlockers(detail.blockers);
-    if (detail.code === "downstream_dependencies" || blockers.length > 0) {
+    if (detail.code === "downstream_dependencies" || detail.code === "delete_conflict" || blockers.length > 0) {
       return {
         type: "downstream",
         summary:

@@ -9,7 +9,6 @@ import {
   Trash2,
   Upload,
 } from "lucide-react";
-import { createPortal } from "react-dom";
 
 import useAuth from "../../hooks/useAuth";
 import { isProductionManager } from "../../config/permissions";
@@ -29,6 +28,7 @@ import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
 import RowActionMenu from "../../components/common/RowActionMenu";
 import { rowActionClass } from "../../design-system/classes";
 import Button from "../../components/common/Button";
+import ConfirmDialog from "../../components/admin/ConfirmDialog";
 
 const PAGE_SIZES = [20, 50, 100];
 
@@ -50,51 +50,6 @@ function blankOr(value) {
   const s = String(value).trim();
   if (!s || s === "—") return "";
   return s;
-}
-
-function DeleteConfirmModal({ open, onClose, onConfirm, busy = false }) {
-  if (!open) return null;
-  return createPortal(
-    <div
-      className="ui-modal-backdrop"
-      onMouseDown={(e) => {
-        if (!busy && e.target === e.currentTarget) onClose?.();
-      }}
-    >
-      <div
-        className="ui-modal w-full max-w-[420px] px-8 py-8 text-center"
-        onMouseDown={(e) => e.stopPropagation()}
-      >
-        <div className="mx-auto mb-5 grid h-[72px] w-[72px] place-items-center rounded-full bg-[var(--color-danger-soft)]">
-          <Trash2 className="h-9 w-9 text-[var(--color-danger)]" strokeWidth={1.75} />
-        </div>
-        <h3 className="text-[28px] font-bold leading-tight text-[var(--color-text)]">Delete Product?</h3>
-        <p className="mt-3 text-[14px] leading-relaxed text-[var(--color-text-secondary)]">
-          Are you sure you want to delete this Product?
-        </p>
-        <div className="mt-7 grid grid-cols-2 gap-4">
-          <button
-            type="button"
-            disabled={busy}
-            onClick={onClose}
-            className="rounded-xl bg-[var(--color-surface-muted)] py-3 text-[15px] font-semibold text-[var(--color-text)] hover:bg-[var(--color-surface-hover)] disabled:opacity-60"
-          >
-            No
-          </button>
-          <Button
-            type="button"
-            variant="danger"
-            disabled={busy}
-            onClick={() => onConfirm?.()}
-            className="w-full !rounded-xl !py-3 !text-[15px]"
-          >
-            {busy ? "Deleting…" : "Delete"}
-          </Button>
-        </div>
-      </div>
-    </div>,
-    document.body
-  );
 }
 
 export default function ProductsMaster() {
@@ -456,9 +411,11 @@ export default function ProductsMaster() {
           loadProducts();
         }}
       />
-      <DeleteConfirmModal
+      <ConfirmDialog
         open={Boolean(deleting)}
-        busy={deleteBusy}
+        title="Delete"
+        message="Are you sure you want to delete this Product?"
+        loading={deleteBusy}
         onClose={() => !deleteBusy && setDeleting(null)}
         onConfirm={confirmDelete}
       />

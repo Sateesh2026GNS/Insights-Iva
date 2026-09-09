@@ -1,66 +1,32 @@
-import { useEffect, useRef } from "react";
-import { createPortal } from "react-dom";
-import Button from "./Button";
+import ConfirmDialog from "../admin/ConfirmDialog";
 
+/**
+ * Centered ERP delete/confirm dialog — shared wrapper for legacy call sites.
+ */
 export default function ConfirmationDialog({
   open,
-  title,
+  title = "Delete",
   message,
-  confirmLabel = "Confirm",
+  confirmLabel = "Delete",
   cancelLabel = "Cancel",
   confirmVariant = "danger",
   loading = false,
   onConfirm,
   onCancel,
 }) {
-  const confirmRef = useRef(null);
+  const headerTitle = title?.includes("?") ? "Delete" : title || "Delete";
 
-  useEffect(() => {
-    if (!open) return undefined;
-    const onKeyDown = (e) => {
-      if (e.key === "Escape" && !loading) onCancel?.();
-    };
-    document.addEventListener("keydown", onKeyDown);
-    confirmRef.current?.focus();
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [open, onCancel, loading]);
-
-  if (!open || typeof document === "undefined") return null;
-
-  const variant = confirmVariant === "danger" ? "danger" : "primary";
-
-  const dialogContent = (
-    <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs"
-      role="presentation"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget && !loading) onCancel?.();
-      }}
-    >
-      <div
-        role="alertdialog"
-        aria-modal="true"
-        aria-labelledby="confirmation-dialog-title"
-        aria-describedby="confirmation-dialog-message"
-        className="w-full max-w-md rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 shadow-2xl"
-      >
-        <h2 id="confirmation-dialog-title" className="text-base font-bold text-[var(--color-text)]">
-          {title}
-        </h2>
-        <p id="confirmation-dialog-message" className="mt-2 whitespace-pre-line text-sm text-[var(--color-text-secondary)]">
-          {message}
-        </p>
-        <div className="mt-6 flex items-center justify-end gap-2.5">
-          <Button type="button" variant="cancel" onClick={onCancel} disabled={loading}>
-            {cancelLabel}
-          </Button>
-          <Button ref={confirmRef} type="button" variant={variant} onClick={onConfirm} disabled={loading}>
-            {loading ? "Deleting…" : confirmLabel}
-          </Button>
-        </div>
-      </div>
-    </div>
+  return (
+    <ConfirmDialog
+      open={open}
+      title={headerTitle}
+      message={message}
+      confirmLabel={confirmLabel}
+      cancelLabel={cancelLabel}
+      destructive={confirmVariant === "danger"}
+      loading={loading}
+      onConfirm={onConfirm}
+      onClose={onCancel}
+    />
   );
-
-  return createPortal(dialogContent, document.body);
 }

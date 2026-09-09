@@ -26,10 +26,28 @@ export function formatApiError(detail, fallback = "Something went wrong.") {
   return fallback;
 }
 
+/** Read error payload from FastAPI detail or standard API envelope. */
+export function extractApiErrorDetail(err) {
+  const data = err?.response?.data;
+  if (!data) return null;
+  if (data.detail != null && data.detail !== "") return data.detail;
+  if (data.data && typeof data.data === "object") {
+    const nested = data.data;
+    if (nested.message || nested.code || nested.blockers) return nested;
+  }
+  if (data.message) return data.message;
+  if (Array.isArray(data.errors) && data.errors.length) return data.errors;
+  return null;
+}
+
 export function apiErrorMessage(err, fallback = "Something went wrong.") {
-  const detail = err?.response?.data?.detail;
+  const detail = extractApiErrorDetail(err);
   if (detail != null && detail !== "") {
     return formatApiError(detail, fallback);
+  }
+  const status = err?.response?.status;
+  if (status === 409) {
+    return "This action conflicts with the current state. Please refresh and try again.";
   }
   return err?.message || fallback;
 }
@@ -37,7 +55,7 @@ export function apiErrorMessage(err, fallback = "Something went wrong.") {
 /** User-friendly message for common HTTP status codes. */
 export function httpStatusMessage(err, fallback = "Something went wrong.") {
   const status = err?.response?.status;
-  const detail = err?.response?.data?.detail;
+  const detail = extractApiErrorDetail(err);
   if (detail != null && detail !== "") {
     return formatApiError(detail, fallback);
   }

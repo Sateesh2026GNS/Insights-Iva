@@ -1,24 +1,17 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import {
-  ArrowUpRight,
-  CheckCircle2,
-  ClipboardList,
-  Hourglass,
-  Package,
-  Plus,
-  RefreshCw,
-} from "lucide-react";
+import { RefreshCw } from "lucide-react";
 
 import Button from "../../components/common/Button";
-import KpiCard from "../../components/common/KpiCard";
 import Pagination from "../../components/common/Pagination";
 import SkeletonTable from "../../components/common/SkeletonTable";
 import { ErrorState } from "../../components/common/states";
 import ConfirmDialog from "../../components/admin/ConfirmDialog";
 import JobCardQueueFilters from "../../components/manufacturing/JobCardQueueFilters";
 import JobCardQueueTable from "../../components/manufacturing/JobCardQueueTable";
+import { matchesErpListStatusFilter } from "../../utils/jobCardListStatus";
 import JobCardQuickViewModal from "../../components/manufacturing/JobCardQuickViewModal";
+import MyJobCardEntryForm from "../../components/manufacturing/MyJobCardEntryForm";
 import useAuth from "../../hooks/useAuth";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { getMyJobCardQueue, getWorkflowRoutingMeta } from "../../api/workflowApi";
@@ -26,12 +19,11 @@ import { deleteSalesOrder } from "../../api/salesApi";
 import { isAdmin, isStoreManager, userCanAction } from "../../config/permissions";
 import { useToast } from "../../context/ToastContext";
 import { apiErrorMessage } from "../../utils/apiError";
+import { salesOrderDeleteErrorMessage } from "../../utils/salesOrderDelete";
 import {
-  matchesStoreStatusBucket,
-  STORE_STATUS_FILTER_OPTIONS,
   uniqueFilterValues,
 } from "../../utils/storeJobCardQueue";
-import { jobCardCreateUrl } from "../../utils/jobCardRoutes";
+import "../../styles/my-job-cards-page.css";
 
 const PAGE_SIZES = [10, 20, 50, 100];
 const FETCH_LIMIT = 500;
@@ -74,8 +66,6 @@ function inDateRange(iso, from, to) {
   if (to && d > to) return false;
   return true;
 }
-
-const STORE_DEFAULT_FILTERS = { ...EMPTY_FILTERS };
 
 const TEAM_STATUS_MAP = {
   inventory: new Set([
@@ -125,10 +115,8 @@ export default function MyJobCardsPage() {
   const [queueMeta, setQueueMeta] = useState(null);
   const [searchParams] = useSearchParams();
   const deptParam = searchParams.get("dept");
-  const isStoreUser = isStoreManager(user) || deptParam === "inventory";
-  const initialFilters = isStoreUser ? STORE_DEFAULT_FILTERS : EMPTY_FILTERS;
-  const [draftFilters, setDraftFilters] = useState(initialFilters);
-  const [appliedFilters, setAppliedFilters] = useState(initialFilters);
+  const [draftFilters, setDraftFilters] = useState(EMPTY_FILTERS);
+  const [appliedFilters, setAppliedFilters] = useState(EMPTY_FILTERS);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [selectedOrderId, setSelectedOrderId] = useState(null);
@@ -136,16 +124,25 @@ export default function MyJobCardsPage() {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteError, setDeleteError] = useState("");
   const [deleting, setDeleting] = useState(false);
+  const [editingOrderId, setEditingOrderId] = useState(null);
+  const deleteInFlight = useRef(false);
+  const entryFormRef = useRef(null);
 
-  const canCreateSales = userCanAction(user, "sales", "create");
+  const canCreate = userCanAction(user, "sales", "create") || isAdmin(user);
+  const canUpdate = userCanAction(user, "sales", "update") || canCreate;
   const canDelete = userCanAction(user, "sales", "delete") || userCanAction(user, "production", "delete") || isAdmin(user);
   const effectiveTeam = deptParam || (isStoreManager(user) ? "inventory" : (queueMeta?.primary_team || "all"));
   const storeMode = effectiveTeam === "inventory";
   const showStockFilter = storeMode;
 
   const handleDeleteConfirm = async () => {
-    if (!deleteTarget) return;
+    if (!deleteTarget || deleteInFlight.current) return;
     const orderId = deleteTarget.sales_order_id ?? deleteTarget.id;
+    if (!orderId) {
+      setDeleteError("Missing sales order reference for this job card.");
+      return;
+    }
+    deleteInFlight.current = true;
     setDeleting(true);
     setDeleteError("");
     try {
@@ -154,8 +151,11 @@ export default function MyJobCardsPage() {
       setDeleteTarget(null);
       await load(true);
     } catch (err) {
-      setDeleteError(apiErrorMessage(err, "Failed to delete job card."));
+      const message = salesOrderDeleteErrorMessage(err, "Failed to delete job card.");
+      setDeleteError(message);
+      addToast(message, "error");
     } finally {
+      deleteInFlight.current = false;
       setDeleting(false);
     }
   };
@@ -196,19 +196,37 @@ export default function MyJobCardsPage() {
 
   const customerOptions = useMemo(() => uniqueFilterValues(rows, "customer_name"), [rows]);
   const productOptions = useMemo(() => uniqueFilterValues(rows, "product_name"), [rows]);
+  const salesOrderOptions = useMemo(() => uniqueFilterValues(rows, "order_number"), [rows]);
+
+  const existingOrderIdsWithCards = useMemo(
+    () =>
+      rows
+        .filter((r) => r.job_card_no || r.job_card_id)
+        .map((r) => r.sales_order_id ?? r.id)
+        .filter(Boolean),
+    [rows]
+  );
+
+  const handleEditRow = (row) => {
+    const orderId = row.sales_order_id ?? row.id;
+    if (!orderId) return;
+    setEditingOrderId(orderId);
+    window.requestAnimationFrame(() => {
+      entryFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  };
+
+  const handleEntrySaved = async () => {
+    setEditingOrderId(null);
+    await load(true);
+  };
 
   const filtered = useMemo(() => {
     let list = rows;
     const f = appliedFilters;
-    const q = f.search.trim().toLowerCase();
-    if (q) {
-      list = list.filter((r) => {
-        const haystack = [r.job_card_no, r.order_number, r.customer_name, r.product_name, r.product_code]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase();
-        return haystack.includes(q);
-      });
+    const jc = f.search.trim().toLowerCase();
+    if (jc) {
+      list = list.filter((r) => String(r.job_card_no || "").toLowerCase().includes(jc));
     }
     if (f.priority) {
       list = list.filter((r) => String(r.priority || "").toLowerCase() === f.priority);
@@ -228,10 +246,8 @@ export default function MyJobCardsPage() {
     if (f.stage) {
       list = list.filter((r) => String(r.responsible_role || "").toLowerCase() === f.stage.toLowerCase());
     }
-    if (storeMode && f.status) {
-      list = list.filter((r) => matchesStoreStatusBucket(r, f.status));
-    } else if (!storeMode && f.status) {
-      list = list.filter((r) => String(r.workflow_status || "").toUpperCase() === f.status.toUpperCase());
+    if (f.status) {
+      list = list.filter((r) => matchesErpListStatusFilter(r, f.status));
     }
     if (f.customer) {
       list = list.filter((r) => String(r.customer_name || "") === f.customer);
@@ -240,8 +256,7 @@ export default function MyJobCardsPage() {
       list = list.filter((r) => String(r.product_name || "") === f.product);
     }
     if (f.salesOrderNo.trim()) {
-      const soq = f.salesOrderNo.trim().toLowerCase();
-      list = list.filter((r) => String(r.order_number || "").toLowerCase().includes(soq));
+      list = list.filter((r) => String(r.order_number || "") === f.salesOrderNo);
     }
     if (f.dateFrom || f.dateTo) {
       list = list.filter((r) => inDateRange(r.order_date || r.received_at, f.dateFrom, f.dateTo));
@@ -264,186 +279,95 @@ export default function MyJobCardsPage() {
   };
 
   const clearFilters = () => {
-    const cleared = storeMode ? STORE_DEFAULT_FILTERS : EMPTY_FILTERS;
+    const cleared = { ...EMPTY_FILTERS };
     setDraftFilters(cleared);
     setAppliedFilters(cleared);
     setPage(1);
   };
 
-  const setKpiFilter = (bucketKey) => {
-    const next = { ...STORE_DEFAULT_FILTERS, status: bucketKey };
-    setDraftFilters(next);
-    applyFilters(next);
+  const patchDraft = (key, value) => {
+    setDraftFilters((prev) => ({ ...prev, [key]: value }));
   };
-
-  const patchAndApply = (key, value) => {
-    const next = { ...draftFilters, [key]: value };
-    setDraftFilters(next);
-    setAppliedFilters(next);
-    setPage(1);
-  };
-
-  const activeStatusFilter = appliedFilters.status || "";
-
-  const counts = queueMeta?.counts;
-  const kpis = storeMode && counts
-    ? {
-        total: counts.total_job_cards ?? 0,
-        storePending: counts.store_pending ?? 0,
-        readyToIssue: counts.ready_to_issue ?? 0,
-        partiallyIssued: counts.partially_issued ?? 0,
-        completed: counts.completed ?? 0,
-      }
-    : null;
-
-  const eyebrow = effectiveTeam === "inventory"
-    ? "Inventory · Store Manager"
-    : effectiveTeam === "production"
-    ? "Production · Production Manager"
-    : effectiveTeam === "quality"
-    ? "Quality · QA / QC Team"
-    : effectiveTeam === "billing" || effectiveTeam === "accounts"
-    ? "Accounting · Billing & Finance"
-    : "Sales & Manufacturing";
-
-  const queueSubtitle = effectiveTeam === "inventory"
-    ? "Store Manager queue for inventory check and material issue."
-    : effectiveTeam === "production"
-    ? "Production planning and shop floor execution queue."
-    : effectiveTeam === "quality"
-    ? "Quality inspection and approval queue."
-    : effectiveTeam === "billing" || effectiveTeam === "accounts"
-    ? "Invoicing and billing queue."
-    : "Track manufacturing workflow status for your assigned orders.";
 
   const emptyTitle = storeMode ? "No Store Manager Job Cards" : "No Job Cards Assigned";
   const emptyDescription = storeMode
     ? "Confirmed sales orders appear here when they reach the Store Manager stage."
     : "Job cards appear here when sales orders enter the manufacturing workflow.";
 
-  const queueCountLabel = filtered.length === rows.length
-    ? `${filtered.length} job card${filtered.length === 1 ? "" : "s"}`
-    : `${filtered.length} of ${rows.length} job cards`;
-
   return (
-    <div className="ui-page ui-stack">
-      {storeMode && !loading && !loadError && kpis ? (
-        <div className="ui-kpi-strip ui-kpi-strip--5">
-          <KpiCard
-            label="Total Job Cards"
-            value={kpis.total}
-            icon={ClipboardList}
-            tone="info"
-            active={activeStatusFilter === ""}
-            onClick={() => setKpiFilter("")}
-            title="Show all store job cards"
-          />
-          <KpiCard
-            label="Store Pending"
-            value={kpis.storePending}
-            icon={Hourglass}
-            tone="warning"
-            active={activeStatusFilter === "store_pending"}
-            onClick={() => setKpiFilter("store_pending")}
-            title="Filter Store Pending"
-          />
-          <KpiCard
-            label="Ready to Issue"
-            value={kpis.readyToIssue}
-            icon={ArrowUpRight}
-            tone="success"
-            active={activeStatusFilter === "ready_to_issue"}
-            onClick={() => setKpiFilter("ready_to_issue")}
-            title="Filter Ready to Issue"
-          />
-          <KpiCard
-            label="Partially Issued"
-            value={kpis.partiallyIssued}
-            icon={Package}
-            tone="violet"
-            active={activeStatusFilter === "partially_issued"}
-            onClick={() => setKpiFilter("partially_issued")}
-            title="Filter Partially Issued"
-          />
-          <KpiCard
-            label="Completed"
-            value={kpis.completed}
-            icon={CheckCircle2}
-            tone="neutral"
-            title="Sent to production or later stages"
+    <div className="ui-page ui-stack my-job-cards-page">
+      {(canCreate || canUpdate) ? (
+        <div ref={entryFormRef} className="ui-card my-job-cards-page__section">
+          <h2 className="ui-section-title">Job Card Details</h2>
+          <MyJobCardEntryForm
+            editingOrderId={editingOrderId}
+            existingOrderIdsWithCards={existingOrderIdsWithCards}
+            onSaved={handleEntrySaved}
+            onCancelEdit={() => setEditingOrderId(null)}
+            canCreate={canCreate}
+            canUpdate={canUpdate}
           />
         </div>
       ) : null}
 
-      <div className="ui-card overflow-hidden">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--color-border-soft)] bg-[var(--color-surface)] px-4 py-3">
-          <div className="min-w-0">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">{eyebrow}</p>
-            <h2 className="text-sm font-semibold text-[var(--color-text)]">Job Card Queue</h2>
-            <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">
-              {queueSubtitle}
-              {!loading && !loadError ? ` · ${queueCountLabel}` : ""}
-              {storeMode && activeStatusFilter
-                ? ` · ${STORE_STATUS_FILTER_OPTIONS.find((o) => o.value === activeStatusFilter)?.label || "Filtered"}`
-                : ""}
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {!storeMode && canCreateSales ? (
-              <Button
-                variant="add"
-                to={jobCardCreateUrl()}
-                leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}
-              >
-                Create Job Card
-              </Button>
-            ) : null}
+      <div className="ui-card my-job-cards-page__section">
+        <h2 className="ui-section-title">Search &amp; Filters</h2>
+        <JobCardQueueFilters
+          search={draftFilters.search}
+          onSearchChange={(v) => patchDraft("search", v)}
+          priority={draftFilters.priority}
+          onPriorityChange={(v) => patchDraft("priority", v)}
+          status={draftFilters.status}
+          onStatusChange={(v) => patchDraft("status", v)}
+          stage={draftFilters.stage}
+          onStageChange={(v) => patchDraft("stage", v)}
+          deliveryDate={draftFilters.deliveryDate}
+          onDeliveryDateChange={(v) => patchDraft("deliveryDate", v)}
+          dateFrom={draftFilters.dateFrom}
+          onDateFromChange={(v) => patchDraft("dateFrom", v)}
+          dateTo={draftFilters.dateTo}
+          onDateToChange={(v) => patchDraft("dateTo", v)}
+          stockStatus={draftFilters.stock}
+          onStockStatusChange={(v) => patchDraft("stock", v)}
+          customer={draftFilters.customer}
+          onCustomerChange={(v) => patchDraft("customer", v)}
+          product={draftFilters.product}
+          onProductChange={(v) => patchDraft("product", v)}
+          salesOrderNo={draftFilters.salesOrderNo}
+          onSalesOrderNoChange={(v) => patchDraft("salesOrderNo", v)}
+          customerOptions={customerOptions}
+          productOptions={productOptions}
+          salesOrderOptions={salesOrderOptions}
+          statusOptions={statusOptions}
+          showStockFilter={showStockFilter}
+          storeMode={storeMode}
+          erpLayout
+          onClear={clearFilters}
+          onApply={() => applyFilters()}
+        />
+      </div>
+
+      <div className="ui-card my-job-cards-page__section">
+        <div className="erp-section-header erp-section-header--row">
+          <h2 className="erp-section-header__title">My Job Cards</h2>
+          <div className="my-job-cards-page__section-actions">
+            <span className="my-job-cards-page__section-total">Total: {filtered.length}</span>
             <Button
-              variant="secondary"
+              variant="outline"
+              size="sm"
               loading={refreshing}
               onClick={() => load(true)}
+              className="my-job-cards-page__refresh-btn"
               leftIcon={<RefreshCw className="h-4 w-4" aria-hidden />}
             >
               Refresh
             </Button>
           </div>
         </div>
-        <JobCardQueueFilters
-          search={draftFilters.search}
-          onSearchChange={(v) => patchAndApply("search", v)}
-          priority={draftFilters.priority}
-          onPriorityChange={(v) => patchAndApply("priority", v)}
-          status={draftFilters.status}
-          onStatusChange={(v) => patchAndApply("status", v)}
-          stage={draftFilters.stage}
-          onStageChange={(v) => patchAndApply("stage", v)}
-          deliveryDate={draftFilters.deliveryDate}
-          onDeliveryDateChange={(v) => patchAndApply("deliveryDate", v)}
-          dateFrom={draftFilters.dateFrom}
-          onDateFromChange={(v) => patchAndApply("dateFrom", v)}
-          dateTo={draftFilters.dateTo}
-          onDateToChange={(v) => patchAndApply("dateTo", v)}
-          stockStatus={draftFilters.stock}
-          onStockStatusChange={(v) => patchAndApply("stock", v)}
-          customer={draftFilters.customer}
-          onCustomerChange={(v) => patchAndApply("customer", v)}
-          product={draftFilters.product}
-          onProductChange={(v) => patchAndApply("product", v)}
-          salesOrderNo={draftFilters.salesOrderNo}
-          onSalesOrderNoChange={(v) => patchAndApply("salesOrderNo", v)}
-          customerOptions={customerOptions}
-          productOptions={productOptions}
-          statusOptions={statusOptions}
-          showStockFilter={showStockFilter}
-          storeMode={storeMode}
-          autoApply
-          onClear={clearFilters}
-          onApply={() => applyFilters()}
-        />
 
         {loading ? (
           <div className="p-4">
-            <SkeletonTable rows={8} cols={storeMode ? 11 : 8} />
+            <SkeletonTable rows={8} cols={11} />
           </div>
         ) : loadError ? (
           <div className="p-6">
@@ -458,19 +382,21 @@ export default function MyJobCardsPage() {
               onViewDetails={(row) => setPreviewRow(row)}
               emptyTitle={emptyTitle}
               emptyDescription={emptyDescription}
-              emptyAction={!storeMode && canCreateSales ? { label: "Create Job Card", to: jobCardCreateUrl() } : undefined}
               onRefresh={() => load(true)}
               snoOffset={from}
               storeMode={storeMode}
+              erpLayout
               onDelete={(row) => {
                 setDeleteError("");
                 setDeleteTarget(row);
               }}
+              onEdit={canUpdate ? handleEditRow : undefined}
+              canEdit={canUpdate}
               canDelete={canDelete}
             />
 
             {filtered.length > 0 ? (
-              <div className="px-4 py-3">
+              <div className="my-job-cards-page__pagination">
                 <Pagination
                   page={safePage}
                   pageSize={pageSize}
@@ -481,6 +407,8 @@ export default function MyJobCardsPage() {
                     setPage(1);
                   }}
                   pageSizes={PAGE_SIZES}
+                  summaryMode="entries"
+                  showPageSize={false}
                 />
               </div>
             ) : null}
@@ -496,10 +424,10 @@ export default function MyJobCardsPage() {
 
       <ConfirmDialog
         open={Boolean(deleteTarget)}
-        title="Delete Job Card / Sales Order?"
+        title="Delete"
         message={`Are you sure you want to delete ${
           deleteTarget?.job_card_no || deleteTarget?.order_number || "this job card"
-        }? This will remove the sales order and its manufacturing workflow records.`}
+        }?`}
         error={deleteError}
         confirmLabel="Delete"
         cancelLabel="Cancel"

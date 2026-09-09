@@ -6,7 +6,7 @@ import { useLocation } from "react-router-dom";
  * 1. Resets scroll position of #main-content and window to top on route navigation.
  * 2. Applies a subtle fade-in animation to eliminate jarring flashes/blinking.
  */
-export default function PageTransition({ children }) {
+export default function PageTransition({ children, fillViewport = false }) {
   const location = useLocation();
   const containerRef = useRef(null);
 
@@ -24,7 +24,9 @@ export default function PageTransition({ children }) {
     <div
       key={location.pathname}
       ref={containerRef}
-      className="page-transition min-h-full min-w-0 w-full"
+      className={`page-transition min-w-0 w-full ${
+        fillViewport ? "flex h-full min-h-0 flex-col" : "min-h-full"
+      }`}
     >
       {children}
     </div>

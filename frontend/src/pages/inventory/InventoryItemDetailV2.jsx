@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { createPortal } from "react-dom";
 import { ArrowLeft, Pencil, Trash2, X } from "lucide-react";
 
 import AddNewItemModal from "../../components/sales/AddNewItemModal";
+import ConfirmDialog from "../../components/admin/ConfirmDialog";
 import Loader from "../../components/common/Loader";
 import Button from "../../components/common/Button";
 import { useToast } from "../../context/ToastContext";
@@ -22,50 +22,6 @@ const PAGE_BG = "var(--color-bg)";
 function todayLabel() {
   const d = new Date();
   return `${String(d.getDate()).padStart(2, "0")}-${String(d.getMonth() + 1).padStart(2, "0")}-${d.getFullYear()}`;
-}
-
-function DeleteConfirmModal({ open, onClose, onConfirm, busy = false }) {
-  if (!open) return null;
-  return createPortal(
-    <div
-      className="fixed inset-0 z-[120] flex items-center justify-center bg-black/45 p-4"
-      onMouseDown={(e) => {
-        if (!busy && e.target === e.currentTarget) onClose?.();
-      }}
-    >
-      <div
-        className="w-full max-w-[420px] rounded-2xl bg-white px-8 py-8 text-center shadow-2xl"
-        onMouseDown={(e) => e.stopPropagation()}
-      >
-        <div className="mx-auto mb-5 grid h-[72px] w-[72px] place-items-center rounded-full bg-[#fee2e2]">
-          <Trash2 className="h-9 w-9 text-[#ef4444]" strokeWidth={1.75} />
-        </div>
-        <h3 className="text-[28px] font-bold leading-tight text-[#1a1a1f]">Delete Product?</h3>
-        <p className="mt-3 text-[14px] leading-relaxed text-[#5a5a66]">
-          Are you sure you want to delete this Product?
-        </p>
-        <div className="mt-7 grid grid-cols-2 gap-4">
-          <button
-            type="button"
-            disabled={busy}
-            onClick={onClose}
-            className="rounded-xl bg-[#eceef4] py-3 text-[15px] font-semibold text-[#1a1a1f] disabled:opacity-60"
-          >
-            No
-          </button>
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => onConfirm?.()}
-            className="rounded-xl bg-[#ef5350] py-3 text-[15px] font-semibold text-white disabled:opacity-60"
-          >
-            {busy ? "Deleting…" : "Delete"}
-          </button>
-        </div>
-      </div>
-    </div>,
-    document.body
-  );
 }
 
 function DetailBlock({ title, children }) {
@@ -435,9 +391,11 @@ export default function InventoryItemDetailV2() {
         }}
       />
 
-      <DeleteConfirmModal
+      <ConfirmDialog
         open={deleteOpen}
-        busy={deleteBusy}
+        title="Delete"
+        message="Are you sure you want to delete this Product?"
+        loading={deleteBusy}
         onClose={() => !deleteBusy && setDeleteOpen(false)}
         onConfirm={confirmDelete}
       />

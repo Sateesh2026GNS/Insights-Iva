@@ -22,14 +22,30 @@ export default function Pagination({
   onPageSizeChange,
   pageSizes = [10, 20, 50, 100],
   className = "",
+  summaryMode = "default",
+  showPageSize = true,
 }) {
   const calculatedTotalPages = totalPages || (total != null ? Math.max(1, Math.ceil(total / pageSize)) : 1);
   const from = total != null ? (total === 0 ? 0 : (page - 1) * pageSize + 1) : null;
   const to = total != null ? Math.min(page * pageSize, total) : null;
 
+  const entriesSummary =
+    total != null
+      ? total === 0
+        ? "Showing 0 to 0 of 0 entries"
+        : `Showing ${from} to ${to} of ${total} entries`
+      : null;
+
   return (
     <div className={`ui-pagination justify-between w-full border-t border-[var(--color-border-soft)] pt-3 ${className}`.trim()}>
       <div className="flex items-center gap-2.5 flex-nowrap whitespace-nowrap text-[13px] text-[var(--color-text-muted)]">
+        {summaryMode === "entries" && entriesSummary ? (
+          <span className="ui-pagination-entries-label font-medium text-[var(--color-text-muted)]">
+            {entriesSummary}
+          </span>
+        ) : null}
+        {showPageSize ? (
+          <>
         <span className="text-[var(--color-text-muted)]">Rows per page:</span>
         {onPageSizeChange ? (
           <select
@@ -49,6 +65,9 @@ export default function Pagination({
             {pageSize}
           </span>
         )}
+          </>
+        ) : null}
+        {summaryMode !== "entries" ? (
         <span className="font-medium text-[var(--color-text-muted)]">
           {total != null
             ? total === 0
@@ -56,6 +75,7 @@ export default function Pagination({
               : `${from}–${to} of ${total}`
             : `Page ${page} of ${calculatedTotalPages}`}
         </span>
+        ) : null}
       </div>
 
       <div className="flex items-center gap-1">

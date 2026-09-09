@@ -1622,11 +1622,12 @@ input.pl-8 {
 .ui-modal-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 70;
+  z-index: 9999;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: var(--space-4);
+  margin: 0;
   background: rgba(15, 17, 23, 0.45);
   backdrop-filter: blur(2px);
 }

@@ -1,53 +1,87 @@
-import { AlertTriangle } from "lucide-react";
+import { useEffect } from "react";
+import { createPortal } from "react-dom";
+import { X } from "lucide-react";
 
 import Button from "../common/Button";
-import AdminModal from "./AdminModal";
 
 export default function ConfirmDialog({
   open,
-  title = "Are you sure?",
+  title = "Delete",
   message,
   error,
-  confirmLabel = "Confirm",
+  confirmLabel = "Delete",
   cancelLabel = "Cancel",
   destructive = true,
   loading = false,
+  confirmDisabled = false,
   onConfirm,
   onClose,
 }) {
-  return (
-    <AdminModal title={title} open={open} onClose={onClose} maxWidth="max-w-md">
-      <div className="flex gap-4">
-        <div
-          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
-            destructive ? "bg-red-100 text-red-600" : "bg-amber-100 text-amber-600"
-          }`}
-        >
-          <AlertTriangle className="h-5 w-5" />
+  useEffect(() => {
+    if (!open) return undefined;
+    const onKey = (e) => {
+      if (e.key === "Escape" && !loading) onClose?.();
+    };
+    document.addEventListener("keydown", onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [open, onClose, loading]);
+
+  if (!open || typeof document === "undefined") return null;
+
+  return createPortal(
+    <div
+      className="erp-confirm-dialog-backdrop"
+      role="presentation"
+      onMouseDown={(e) => {
+        if (!loading && e.target === e.currentTarget) onClose?.();
+      }}
+    >
+      <div
+        className="erp-confirm-dialog"
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="erp-confirm-dialog-title"
+        aria-describedby="erp-confirm-dialog-message"
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+        <div className="erp-confirm-dialog__header">
+          <h2 id="erp-confirm-dialog-title" className="erp-confirm-dialog__title">{title}</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={loading}
+            className="erp-confirm-dialog__close"
+            aria-label="Close"
+          >
+            <X className="h-5 w-5" aria-hidden />
+          </button>
         </div>
-        <div className="space-y-2">
-          <p className="pt-1 text-sm text-slate-600 dark:text-slate-300">{message}</p>
-          {error ? (
-            <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300">
-              {error}
-            </p>
-          ) : null}
+
+        <div className="erp-confirm-dialog__body">
+          <p id="erp-confirm-dialog-message" className="erp-confirm-dialog__message">{message}</p>
+          {error ? <p className="erp-confirm-dialog__error whitespace-pre-line">{error}</p> : null}
+          <div className="erp-confirm-dialog__actions">
+            <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
+              {cancelLabel}
+            </Button>
+            <Button
+              type="button"
+              variant={destructive ? "danger" : "primary"}
+              onClick={onConfirm}
+              disabled={loading || confirmDisabled}
+              loading={loading}
+            >
+              {loading ? "Working…" : confirmLabel}
+            </Button>
+          </div>
         </div>
       </div>
-      <div className="mt-6 flex justify-end gap-3">
-        <Button type="button" variant="cancel" onClick={onClose} disabled={loading}>
-          {cancelLabel}
-        </Button>
-        <Button
-          type="button"
-          variant={destructive ? "danger" : "view"}
-          onClick={onConfirm}
-          disabled={loading}
-          loading={loading}
-        >
-          {loading ? "Working…" : confirmLabel}
-        </Button>
-      </div>
-    </AdminModal>
+    </div>,
+    document.body
   );
 }

@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Download, Eye, Printer, Trash2 } from "lucide-react";
+import { Download, Eye, Pencil, Printer, Trash2 } from "lucide-react";
 
 import Button from "../common/Button";
 import RowActionMenu from "../common/RowActionMenu";
+import CommonStatusBadge from "../common/StatusBadge";
 import { SerialNumberCell, SerialNumberHeader } from "../common/SerialNumberCell";
 import EmptyState from "../common/EmptyState";
 import { PriorityBadge, WorkflowStatusBadge, fmtDeliveryDisplay } from "./jobCardUiShared";
@@ -13,6 +14,7 @@ import { stageJobCardUrl } from "../../utils/workflowStageRoutes";
 import { storeQueueStatusLabel, storeStatusVariant } from "../../utils/storeJobCardQueue";
 import { downloadJobCardPdf, printProductionOrder } from "../../utils/printUtils";
 import useAuth from "../../hooks/useAuth";
+import { erpListStatus } from "../../utils/jobCardListStatus";
 
 function isOverdue(deliveryDate) {
   if (!deliveryDate) return false;
@@ -42,11 +44,72 @@ function getCurrentStageLabel(row) {
   return "—";
 }
 
+function fmtPlannedQty(value) {
+  if (value == null || value === "") return "—";
+  const n = Number(value);
+  if (Number.isNaN(n)) return String(value);
+  return n.toLocaleString("en-IN");
+}
+
+function fmtErpDate(iso) {
+  if (!iso) return "—";
+  const d = new Date(iso.includes("T") ? iso : `${iso}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return iso;
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const yyyy = d.getFullYear();
+  return `${dd}-${mm}-${yyyy}`;
+}
+function fmtCompletedQty(row) {
+  if (row.completed_qty != null && row.completed_qty !== "") {
+    return fmtPlannedQty(row.completed_qty);
+  }
+  return "0";
+}
+
 function fmtQty(value, unit) {
   if (value == null || value === "") return "—";
   const n = Number(value);
   if (Number.isNaN(n)) return String(value);
   return `${n.toLocaleString("en-IN")}${unit ? ` ${unit}` : ""}`;
+}
+
+function buildRowMenuItems({ row, orderId, onViewDetails, onSelect, onEdit, onDelete, canDelete, canEdit, user }) {
+  return [
+    {
+      label: "View",
+      icon: <Eye className="h-4 w-4" />,
+      onClick: () => {
+        if (onViewDetails) onViewDetails(row);
+        else onSelect?.(orderId);
+      },
+    },
+    canEdit && onEdit
+      ? {
+          label: "Edit",
+          icon: <Pencil className="h-4 w-4" />,
+          onClick: () => onEdit(row),
+        }
+      : null,
+    {
+      label: "Print",
+      icon: <Printer className="h-4 w-4" />,
+      onClick: () => printProductionOrder(row, user),
+    },
+    {
+      label: "Download PDF",
+      icon: <Download className="h-4 w-4" />,
+      onClick: () => downloadJobCardPdf(row, user),
+    },
+    canDelete && onDelete
+      ? {
+          label: "Delete",
+          icon: <Trash2 className="h-4 w-4" />,
+          tone: "danger",
+          onClick: () => onDelete(row),
+        }
+      : null,
+  ].filter(Boolean);
 }
 
 function TruncateCell({ value, className = "" }) {
@@ -204,6 +267,9 @@ export default function JobCardQueueTable({
   storeMode = false,
   onDelete,
   canDelete = false,
+  onEdit,
+  canEdit = false,
+  erpLayout = false,
 }) {
   const { user } = useAuth();
   const [openMenu, setOpenMenu] = useState(null);
@@ -225,9 +291,123 @@ export default function JobCardQueueTable({
     );
   }
 
+  if (erpLayout) {
+    return (
+      <>
+        <div className="my-job-cards-table ui-table-wrap ui-table-wrap--scroll hidden md:block">
+          <table className="ui-table min-w-full text-left">
+            <thead className="ui-table-head">
+              <tr>
+                <SerialNumberHeader label="#" />
+                <th className="whitespace-nowrap px-3 py-2 font-semibold">Job Card No.</th>
+                <th className="whitespace-nowrap px-3 py-2 font-semibold">Sales Order</th>
+                <th className="whitespace-nowrap px-3 py-2 font-semibold">Customer</th>
+                <th className="whitespace-nowrap px-3 py-2 font-semibold">Product</th>
+                <th className="whitespace-nowrap px-2 py-2 text-right font-semibold">Planned Qty</th>
+                <th className="whitespace-nowrap px-2 py-2 text-right font-semibold">Completed Qty</th>
+                <th className="whitespace-nowrap px-3 py-2 font-semibold">Status</th>
+                <th className="whitespace-nowrap px-3 py-2 font-semibold">Start Date</th>
+                <th className="whitespace-nowrap px-3 py-2 font-semibold">Due Date</th>
+                <th className="whitespace-nowrap px-3 py-2 text-right font-semibold">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row, idx) => {
+                const orderId = row.sales_order_id ?? row.id;
+                const isSelected = selectedOrderId === orderId;
+                const erpStatus = erpListStatus(row);
+                const menuItems = buildRowMenuItems({
+                  row,
+                  orderId,
+                  onViewDetails,
+                  onSelect,
+                  onEdit,
+                  onDelete,
+                  canDelete,
+                  canEdit,
+                  user,
+                });
+
+                return (
+                  <tr
+                    key={orderId}
+                    onClick={() => (onViewDetails ? onViewDetails(row) : onSelect?.(orderId))}
+                    className={`cursor-pointer transition-colors ${
+                      isSelected ? "bg-[var(--color-primary-soft)]/40" : ""
+                    }`}
+                  >
+                    <SerialNumberCell rowIndex={idx} serialOffset={snoOffset} />
+                    <td className="whitespace-nowrap px-3 py-2.5 font-semibold text-[var(--color-primary)]">
+                      {row.job_card_no || "—"}
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-2.5 text-[var(--color-text-secondary)]">
+                      {row.order_number || "—"}
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <TruncateCell value={row.customer_name} className="text-[var(--color-text-secondary)]" />
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <TruncateCell value={row.product_name} className="text-[var(--color-text-secondary)]" />
+                    </td>
+                    <td className="whitespace-nowrap px-2 py-2.5 text-right tabular-nums">
+                      {fmtPlannedQty(row.quantity)}
+                    </td>
+                    <td className="whitespace-nowrap px-2 py-2.5 text-right tabular-nums">
+                      {fmtCompletedQty(row)}
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-2.5">
+                      <CommonStatusBadge tone={erpStatus.tone}>{erpStatus.label}</CommonStatusBadge>
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-2.5 text-[var(--color-text-secondary)]">
+                      {fmtErpDate(row.order_date || row.received_at)}
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-2.5 text-[var(--color-text-secondary)]">
+                      {fmtErpDate(row.delivery_date)}
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-2.5 text-right" onClick={(e) => e.stopPropagation()}>
+                      <RowActionMenu rowId={orderId} openMenu={openMenu} setOpenMenu={setOpenMenu} items={menuItems} />
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="space-y-3 p-2 md:hidden">
+          {rows.map((row, idx) => {
+            const orderId = row.sales_order_id ?? row.id;
+            return (
+              <QueueRowCard
+                key={orderId}
+                row={row}
+                idx={idx}
+                isSelected={selectedOrderId === orderId}
+                onSelect={onSelect}
+                onViewDetails={onViewDetails}
+                detailsUrl={jobCardDetailsUrl(orderId)}
+                linkState={linkState}
+                storeMode={storeMode}
+                onDelete={onDelete}
+                canDelete={canDelete}
+                user={user}
+                openMenu={openMenu}
+                setOpenMenu={setOpenMenu}
+              />
+            );
+          })}
+        </div>
+      </>
+    );
+  }
+
+  const tableWrapClass = erpLayout
+    ? "my-job-cards-table ui-table-wrap ui-table-wrap--scroll hidden md:block"
+    : "ui-table-wrap ui-table-wrap--scroll hidden md:block";
+
   return (
     <>
-      <div className="ui-table-wrap ui-table-wrap--scroll hidden md:block">
+      <div className={tableWrapClass}>
         <table className="ui-table min-w-full text-left text-[13px]">
           <thead className="ui-table-head">
             <tr>

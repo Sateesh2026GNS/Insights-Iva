@@ -1,6 +1,19 @@
+import { useEffect } from "react";
+import { createPortal } from "react-dom";
+
 export default function Modal({ title, open, onClose, children }) {
-  if (!open) return null;
-  return (
+  useEffect(() => {
+    if (!open) return undefined;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [open]);
+
+  if (!open || typeof document === "undefined") return null;
+
+  return createPortal(
     <div className="ui-modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose?.()}>
       <div className="ui-modal max-w-lg text-left" onMouseDown={(e) => e.stopPropagation()}>
         <div className="mb-4 flex items-start justify-between gap-3">
@@ -15,6 +28,7 @@ export default function Modal({ title, open, onClose, children }) {
         </div>
         <div>{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

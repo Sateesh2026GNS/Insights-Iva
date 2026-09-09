@@ -28,6 +28,11 @@ export default defineConfig({
         changeOrigin: true,
         bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
       },
+      "/manufacturing": {
+        target: "http://127.0.0.1:8000",
+        changeOrigin: true,
+        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+      },
       "/accounts": {
         target: "http://127.0.0.1:8000",
         changeOrigin: true,

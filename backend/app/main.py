@@ -227,9 +227,22 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
     if request.url.path.startswith("/api/"):
         from app.utils.api_response import error_response
 
+        if isinstance(detail, dict):
+            message = (
+                detail.get("message")
+                or detail.get("detail")
+                or "Request failed"
+            )
+            blockers = detail.get("blockers")
+            errors = blockers if isinstance(blockers, list) and blockers else [str(message)]
+            return JSONResponse(
+                status_code=exc.status_code,
+                content=error_response(message, errors=errors, data=detail),
+            )
+        message = str(detail) if detail is not None else "Request failed"
         return JSONResponse(
             status_code=exc.status_code,
-            content=error_response(str(detail), errors=[str(detail)]),
+            content=error_response(message, errors=[message]),
         )
     return JSONResponse(
         status_code=exc.status_code,

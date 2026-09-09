@@ -460,3 +460,112 @@
 }
 
 /* Global search dropdown — see styles/global-search.css (imported by GlobalSearch.jsx) */
+
+/* Centered ERP delete / confirm dialog */
+.erp-confirm-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  margin: 0;
+  background: rgba(15, 17, 23, 0.45);
+  backdrop-filter: blur(2px);
+}
+
+.erp-confirm-dialog {
+  width: 100%;
+  max-width: 420px;
+  overflow: hidden;
+  border-radius: 0.5rem;
+  border: 1px solid var(--erp-card-border);
+  background: #ffffff;
+  box-shadow: 0 12px 40px rgba(26, 26, 31, 0.18);
+}
+
+.erp-confirm-dialog__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.625rem 1rem;
+  background: var(--erp-primary);
+  color: #ffffff;
+}
+
+.erp-confirm-dialog__title {
+  margin: 0;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  line-height: 1.35;
+  color: #ffffff;
+}
+
+.erp-confirm-dialog__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: transparent;
+  color: #ffffff;
+  border-radius: 0.375rem;
+  padding: 0.25rem;
+  cursor: pointer;
+}
+
+.erp-confirm-dialog__close:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.erp-confirm-dialog__close:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.erp-confirm-dialog__body {
+  padding: 1.75rem 1.5rem 1.5rem;
+  text-align: center;
+}
+
+.erp-confirm-dialog__message {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: #111827;
+}
+
+.erp-confirm-dialog__error {
+  margin: 0.875rem 0 0;
+  border-radius: 0.375rem;
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  padding: 0.625rem 0.75rem;
+  font-size: 0.8125rem;
+  color: #b91c1c;
+  text-align: left;
+}
+
+.erp-confirm-dialog__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.erp-confirm-dialog__actions .ui-btn {
+  min-width: 7.5rem;
+}
+
+.dark .erp-confirm-dialog {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+.dark .erp-confirm-dialog__message {
+  color: var(--color-text);
+}
+

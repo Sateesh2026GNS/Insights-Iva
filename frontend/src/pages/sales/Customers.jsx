@@ -8,9 +8,9 @@ import {
   Trash2,
   Upload,
 } from "lucide-react";
-import { createPortal } from "react-dom";
 
-import Button, { CancelButton } from "../../components/common/Button";
+import Button from "../../components/common/Button";
+import ConfirmDialog from "../../components/admin/ConfirmDialog";
 import RowActionMenu from "../../components/common/RowActionMenu";
 import { SearchBar } from "../../components/common/SearchFilter";
 import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
@@ -43,37 +43,6 @@ function blankOr(value) {
   if (value == null) return "";
   const s = String(value).trim();
   return !s || s === "—" ? "" : s;
-}
-
-function DeleteConfirmModal({ open, onClose, onConfirm, busy }) {
-  if (!open) return null;
-  return createPortal(
-    <div
-      className="ui-modal-backdrop"
-      onMouseDown={(e) => e.target === e.currentTarget && !busy && onClose?.()}
-    >
-      <div className="ui-modal w-full max-w-[420px] px-8 py-8 text-center" onMouseDown={(e) => e.stopPropagation()}>
-        <div className="mx-auto mb-5 grid h-[72px] w-[72px] place-items-center rounded-full bg-[var(--color-danger-soft)]">
-          <Trash2 className="h-9 w-9 text-[var(--color-danger)]" strokeWidth={1.75} />
-        </div>
-        <h3 className="text-[28px] font-bold leading-tight text-[var(--color-text)]">Delete Customer?</h3>
-        <p className="mt-3 text-[14px] leading-relaxed text-[var(--color-text-secondary)]">
-          Are you sure you want to delete this Customer?
-          <br />
-          This action is not reversible.
-        </p>
-        <div className="mt-7 grid grid-cols-2 gap-4">
-          <CancelButton type="button" disabled={busy} onClick={onClose} fullWidth>
-            No
-          </CancelButton>
-          <Button type="button" variant="danger" disabled={busy} loading={busy} onClick={onConfirm} fullWidth>
-            {busy ? "Deleting…" : "Delete"}
-          </Button>
-        </div>
-      </div>
-    </div>,
-    document.body
-  );
 }
 
 export default function Customers() {
@@ -363,9 +332,11 @@ export default function Customers() {
           loadCustomers();
         }}
       />
-      <DeleteConfirmModal
+      <ConfirmDialog
         open={Boolean(deleting)}
-        busy={deletingBusy}
+        title="Delete"
+        message="Are you sure you want to delete this Customer? This action is not reversible."
+        loading={deletingBusy}
         onClose={() => !deletingBusy && setDeleting(null)}
         onConfirm={confirmDelete}
       />

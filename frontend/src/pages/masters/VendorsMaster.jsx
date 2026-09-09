@@ -8,9 +8,9 @@ import {
   Trash2,
   Upload,
 } from "lucide-react";
-import { createPortal } from "react-dom";
 
-import Button, { CancelButton } from "../../components/common/Button";
+import Button from "../../components/common/Button";
+import ConfirmDialog from "../../components/admin/ConfirmDialog";
 import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
 import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
 import RowActionMenu from "../../components/common/RowActionMenu";
@@ -47,37 +47,6 @@ function blankOr(value) {
   if (value == null) return "";
   const s = String(value).trim();
   return !s || s === "—" ? "" : s;
-}
-
-function DeleteConfirmModal({ open, onClose, onConfirm, busy }) {
-  if (!open) return null;
-  return createPortal(
-    <div
-      className="ui-modal-backdrop"
-      onMouseDown={(e) => e.target === e.currentTarget && !busy && onClose?.()}
-    >
-      <div className="ui-modal w-full max-w-[400px] px-6 py-6 text-center" onMouseDown={(e) => e.stopPropagation()}>
-        <div className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-full bg-[var(--color-danger-soft)]">
-          <Trash2 className="h-6 w-6 text-[var(--color-danger)]" strokeWidth={1.75} />
-        </div>
-        <h3 className="text-lg font-semibold leading-snug text-[var(--color-text)]">Delete Vendor?</h3>
-        <p className="mt-2 text-sm leading-relaxed text-[var(--color-text-muted)]">
-          Are you sure you want to delete this vendor?
-          <br />
-          This action cannot be undone.
-        </p>
-        <div className="mt-6 grid grid-cols-2 gap-3">
-          <CancelButton type="button" disabled={busy} onClick={onClose} fullWidth>
-            No
-          </CancelButton>
-          <Button type="button" variant="danger" disabled={busy} loading={busy} onClick={onConfirm} fullWidth>
-            {busy ? "Deleting…" : "Delete"}
-          </Button>
-        </div>
-      </div>
-    </div>,
-    document.body
-  );
 }
 
 export default function VendorsMaster() {
@@ -353,9 +322,11 @@ export default function VendorsMaster() {
         }}
       />
 
-      <DeleteConfirmModal
+      <ConfirmDialog
         open={Boolean(deleting)}
-        busy={deletingBusy}
+        title="Delete"
+        message="Are you sure you want to delete this vendor? This action cannot be undone."
+        loading={deletingBusy}
         onClose={() => !deletingBusy && setDeleting(null)}
         onConfirm={confirmDelete}
       />
