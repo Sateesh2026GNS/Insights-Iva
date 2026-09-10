@@ -1,6 +1,6 @@
 import { X } from "lucide-react";
 
-export default function RecordDetailModal({ open, title, subtitle, fields = [], onClose }) {
+export default function RecordDetailModal({ open, title, subtitle, fields = [], onClose, children }) {
   if (!open) return null;
 
   return (
@@ -25,6 +25,7 @@ export default function RecordDetailModal({ open, title, subtitle, fields = [], 
               </div>
             ))}
           </dl>
+          {children ? <div className="mt-4">{children}</div> : null}
         </div>
       </div>
     </div>

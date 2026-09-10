@@ -24,6 +24,9 @@ import {
   notifyManufacturingSpine,
 } from "../../utils/manufacturingEvents";
 import IssueMaterialsModal from "../../components/production/IssueMaterialsModal";
+import WorkflowNextStep from "../../components/manufacturing/WorkflowNextStep";
+import { getMaterialRequestQueueGuidance } from "../../utils/inventoryWorkflowUx";
+import "../../styles/workflow-next-step.css";
 
 import Button from "../../components/common/Button";
 const STATUS_CLS = {
@@ -56,6 +59,7 @@ export default function StoreMaterialRequests({ mode = "requests" }) {
   const [items, setItems] = useState([]);
   const [warehouses, setWarehouses] = useState([]);
   const [busyId, setBusyId] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
   const [showIssueModal, setShowIssueModal] = useState(false);
   const [showForm, setShowForm] = useState(!issueMode);
   const [consumeRow, setConsumeRow] = useState(null);
@@ -108,6 +112,8 @@ export default function StoreMaterialRequests({ mode = "requests" }) {
 
   const handleCreate = async (e) => {
     e.preventDefault();
+    if (submitting) return;
+    setSubmitting(true);
     try {
       await createStoreMaterialRequest({
         warehouse_id: Number(form.warehouse_id),
@@ -119,7 +125,7 @@ export default function StoreMaterialRequests({ mode = "requests" }) {
         shift: form.shift || null,
         reason: form.reason || null,
       });
-      addToast("Material request submitted — Pending");
+      addToast("Material request submitted. Store will approve and issue materials.", "success");
       setForm({
         warehouse_id: "",
         item_id: "",
@@ -134,6 +140,8 @@ export default function StoreMaterialRequests({ mode = "requests" }) {
       load();
     } catch (err) {
       addToast(err?.response?.data?.detail || "Could not create request", "error");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -263,6 +271,11 @@ export default function StoreMaterialRequests({ mode = "requests" }) {
     <div className="space-y-6 pb-8">
       <StoreManagerNav />
 
+      <WorkflowNextStep
+        {...getMaterialRequestQueueGuidance(rows, issueMode)}
+        compact
+      />
+
       <header className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="ui-subtitle">
@@ -341,7 +354,9 @@ export default function StoreMaterialRequests({ mode = "requests" }) {
             <input value={form.reason} onChange={(e) => setForm((f) => ({ ...f, reason: e.target.value }))} placeholder="Today's Production" className="mt-1 w-full rounded-lg border px-3 py-2 text-sm" />
           </label>
           <div className="sm:col-span-2 lg:col-span-3">
-            <Button variant="primary" type="submit" >Submit Request</Button>
+            <Button variant="primary" type="submit" loading={submitting} disabled={submitting}>
+              {submitting ? "Submitting Request…" : "Submit Material Request"}
+            </Button>
           </div>
         </form>
       )}

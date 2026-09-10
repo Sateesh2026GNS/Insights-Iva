@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Download, Edit3, Printer } from "lucide-react";
+import { Download, Edit3, Printer, Send } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 import Button from "../common/Button";
@@ -17,6 +17,10 @@ import { apiErrorMessage } from "../../utils/apiError";
 import { printSalesJobCardLandscape, downloadSalesJobCardPdf } from "../../utils/printUtils";
 import StoreManualJobCardActions from "./StoreManualJobCardActions";
 import ManualMaterialStatusPanel from "./ManualMaterialStatusPanel";
+import WorkflowNextStep from "./WorkflowNextStep";
+import { getJobCardWorkflowGuidance } from "../../utils/jobCardWorkflowUx";
+import { manualJobCardCanSend } from "../../utils/manualSalesJobCard";
+import "../../styles/workflow-next-step.css";
 
 /**
  * Sales Job Card document panel — view manual or SO-linked job cards.
@@ -32,6 +36,7 @@ export default function SalesJobCardDocumentPanel({
   showEmptyShell = false,
   emptyMessage = "Select a job card from the list below, or click Add Job Card to create one.",
   showMaterialStatus = false,
+  onSend,
 }) {
   const { user } = useAuth();
   const tenantId = useTenantId();
@@ -152,6 +157,24 @@ export default function SalesJobCardDocumentPanel({
   const salesReadOnly = storeMode || Boolean(card?.read_only_sales);
   const showStoreActions = storeMode && isManual && resolvedJobCardId && card;
   const workflowStatus = erpListStatus(card || row || {});
+  const guidanceSource = card || row || {};
+  const workflowGuidance = getJobCardWorkflowGuidance({
+    card,
+    row,
+    storeMode,
+    productionMode: showMaterialStatus,
+  });
+  const showSendButton =
+    Boolean(onSend) &&
+    isManual &&
+    hasSelection &&
+    manualJobCardCanSend(guidanceSource);
+
+  const handleGuidanceAction = () => {
+    if (workflowGuidance?.actionType === "send" && onSend) {
+      onSend(row || { ...guidanceSource, job_card_id: resolvedJobCardId });
+    }
+  };
 
   const manualCustomer = card?.sales_document?.customer_details
     ? {
@@ -196,6 +219,16 @@ export default function SalesJobCardDocumentPanel({
           ) : null}
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          {showSendButton ? (
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => onSend(row || { ...guidanceSource, job_card_id: resolvedJobCardId })}
+              leftIcon={<Send className="h-4 w-4" aria-hidden />}
+            >
+              {workflowGuidance?.actionLabel || "Send Job Card"}
+            </Button>
+          ) : null}
           {canEdit && hasSelection && !salesReadOnly ? (
             <Button variant="secondary" size="sm" onClick={handleEdit} leftIcon={<Edit3 className="h-4 w-4" aria-hidden />}>
               Edit
@@ -240,6 +273,14 @@ export default function SalesJobCardDocumentPanel({
             />
             <p className="my-job-cards-page__document-empty-msg" role="status">{emptyMessage}</p>
           </>
+        ) : null}
+
+        {showDocument && workflowGuidance ? (
+          <WorkflowNextStep
+            {...workflowGuidance}
+            onAction={workflowGuidance.actionType ? handleGuidanceAction : undefined}
+            compact
+          />
         ) : null}
 
         {hasSelection && loading ? (

@@ -172,13 +172,15 @@ export default function StoreManualJobCardActions({
 
       <ConfirmDialog
         open={returnOpen}
-        title="Return to Sales"
-        description="Sales-originated information will remain unchanged. Sales can correct and resubmit."
-        confirmLabel="Return to Sales"
-        confirmVariant="danger"
+        title="Return Job Card to Sales?"
+        message="Sales-originated information will remain unchanged. Sales can correct and resubmit this job card."
+        confirmLabel={returnLoading ? "Returning to Sales…" : "Return to Sales"}
+        cancelLabel="Cancel"
+        destructive
         loading={returnLoading}
+        loadingLabel="Returning to Sales…"
         onConfirm={handleReturn}
-        onCancel={() => setReturnOpen(false)}
+        onClose={() => setReturnOpen(false)}
       >
         <label className="ui-field">
           <span className="ui-field__label">Remarks for Sales</span>
@@ -195,11 +197,14 @@ export default function StoreManualJobCardActions({
       <ConfirmDialog
         open={commentOpen}
         title="Add Store Comment"
-        description="Internal note for store / production planning."
-        confirmLabel="Save Comment"
+        message="Internal note for store / production planning."
+        confirmLabel={commentLoading ? "Saving Comment…" : "Save Store Comment"}
+        cancelLabel="Cancel"
+        destructive={false}
         loading={commentLoading}
+        loadingLabel="Saving Comment…"
         onConfirm={handleComment}
-        onCancel={() => setCommentOpen(false)}
+        onClose={() => setCommentOpen(false)}
       >
         <label className="ui-field">
           <span className="ui-field__label">Comment</span>

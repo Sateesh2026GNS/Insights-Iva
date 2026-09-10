@@ -1,0 +1,105 @@
+.workflow-next-step {
+  margin: 1rem 0;
+  padding: 1rem 1.125rem;
+  border: 1px solid;
+  border-radius: var(--radius-lg, 12px);
+}
+
+.workflow-next-step--compact {
+  margin: 0.75rem 0;
+  padding: 0.75rem 1rem;
+}
+
+.workflow-next-step__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.workflow-next-step__icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex-shrink: 0;
+  margin-top: 0.125rem;
+}
+
+.workflow-next-step__titles {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.workflow-next-step__title {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--color-text, #1e293b);
+  line-height: 1.35;
+}
+
+.workflow-next-step__message {
+  margin: 0 0 0.625rem;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary, #475569);
+  line-height: 1.5;
+}
+
+.workflow-next-step__next {
+  margin-top: 0.5rem;
+  padding-top: 0.625rem;
+  border-top: 1px solid color-mix(in srgb, currentColor 8%, transparent);
+}
+
+.workflow-next-step__next-label {
+  display: block;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted, #64748b);
+  margin-bottom: 0.25rem;
+}
+
+.workflow-next-step__next-text {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text, #1e293b);
+  line-height: 1.45;
+}
+
+.workflow-next-step__actions {
+  margin-top: 0.875rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.manual-sjc-page__save-hint {
+  margin: 0 0 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-md, 8px);
+  border: 1px solid var(--color-border-muted, #e2e8f0);
+  background: var(--color-surface-muted, #f8fafc);
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary, #475569);
+  line-height: 1.5;
+}
+
+.manual-sjc-page__save-hint strong {
+  color: var(--color-text, #1e293b);
+}
+
+.send-job-card-modal__hint {
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary, #475569);
+  line-height: 1.5;
+  padding: 0.625rem 0.75rem;
+  border-radius: var(--radius-md, 8px);
+  background: var(--color-primary-soft);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 20%, transparent);
+}

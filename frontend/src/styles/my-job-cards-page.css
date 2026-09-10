@@ -721,6 +721,12 @@
   min-width: 140px;
 }
 
+.my-job-cards-table__actions-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
 .my-job-cards-page .my-job-cards-table th.my-job-cards-table__actions-col,
 .my-job-cards-page .my-job-cards-table td.my-job-cards-table__actions-col {
   position: sticky;

@@ -639,7 +639,9 @@ def submit_manual_material_check(
     if not user_is_admin(user) and not user_has_permission(user, "inventory"):
         raise HTTPException(status_code=403, detail="Store Manager permission required")
 
-    jc = _get_manual_job_card(db, tenant_id, job_card_id)
+    from app.core.concurrency import assert_expected_record_version, bump_record_version, raise_conflict
+
+    jc = _get_manual_job_card_for_update(db, tenant_id, job_card_id)
     if not _manual_in_store_workflow(jc):
         raise HTTPException(
             status_code=400,
@@ -647,6 +649,15 @@ def submit_manual_material_check(
         )
 
     details = parse_details_json(jc.details_json)
+    assert_expected_record_version(
+        details,
+        payload.get("expected_version") if isinstance(payload, dict) else None,
+    )
+    existing_check = details.get("material_check") if isinstance(details.get("material_check"), dict) else {}
+    if existing_check.get("checked_at"):
+        raise_conflict(
+            "Job card material check was already submitted by another user. Please refresh and try again."
+        )
     doc = extract_manual_document(details)
     lines = build_manual_bom_material_lines(db, tenant_id, doc)
     if not lines:
@@ -727,6 +738,7 @@ def submit_manual_material_check(
         },
     )
 
+    bump_record_version(details)
     jc.details_json = serialize_details_json(details)
     db.commit()
     db.refresh(jc)
@@ -880,13 +892,14 @@ def send_manual_job_card(
     if not recipients:
         raise HTTPException(status_code=422, detail="Please select at least one recipient.")
 
-    jc = _get_manual_job_card(db, tenant_id, job_card_id)
+    from app.core.concurrency import bump_record_version, raise_conflict
+
+    jc = _get_manual_job_card_for_update(db, tenant_id, job_card_id)
     details = parse_details_json(jc.details_json)
 
     if not _can_send_manual(jc, details, user=user):
-        raise HTTPException(
-            status_code=400,
-            detail="Job card cannot be sent in its current status.",
+        raise_conflict(
+            "Job card was updated by another user. Please refresh and try again."
         )
 
     doc = extract_manual_document(details)
@@ -948,9 +961,8 @@ def send_manual_job_card(
         )
 
     if not new_assignments:
-        raise HTTPException(
-            status_code=400,
-            detail="No new recipients to send to. This job card may already be assigned to the selected users.",
+        raise_conflict(
+            "No new recipients to send to. This job card may already be assigned to the selected users."
         )
 
     forwarding_to_production = any(
@@ -998,6 +1010,7 @@ def send_manual_job_card(
         store_wf["return_remarks"] = None
         details["store_workflow"] = store_wf
 
+    bump_record_version(details)
     jc.details_json = serialize_details_json(details)
     db.commit()
     db.refresh(jc)
@@ -1282,6 +1295,24 @@ def _get_manual_job_card(db: Session, tenant_id: int, job_card_id: int) -> Sales
             SalesJobCard.tenant_id == tenant_id,
             SalesJobCard.sales_order_id.is_(None),
         )
+    ).first()
+    if not jc:
+        raise HTTPException(status_code=404, detail="Job card not found")
+    return jc
+
+
+def _get_manual_job_card_for_update(
+    db: Session, tenant_id: int, job_card_id: int
+) -> SalesJobCard:
+    """Load manual job card with row lock for concurrency-sensitive mutations."""
+    jc = db.scalars(
+        select(SalesJobCard)
+        .where(
+            SalesJobCard.id == job_card_id,
+            SalesJobCard.tenant_id == tenant_id,
+            SalesJobCard.sales_order_id.is_(None),
+        )
+        .with_for_update()
     ).first()
     if not jc:
         raise HTTPException(status_code=404, detail="Job card not found")

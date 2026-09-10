@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ChevronDown, ChevronUp, Download, Printer } from "lucide-react";
+import { ChevronDown, ChevronUp, Download, Printer, Send } from "lucide-react";
 
 import Button from "../common/Button";
 import CommonStatusBadge from "../common/StatusBadge";
@@ -7,6 +7,10 @@ import { ErrorState, LoadingState } from "../common/states";
 import StoreManagerJobCardDocument from "./StoreManagerJobCardDocument";
 import SalesJobCardDocument from "./SalesJobCardDocument";
 import StoreManualJobCardActions from "./StoreManualJobCardActions";
+import WorkflowNextStep from "./WorkflowNextStep";
+import { getJobCardWorkflowGuidance } from "../../utils/jobCardWorkflowUx";
+import { manualJobCardCanSend } from "../../utils/manualSalesJobCard";
+import "../../styles/workflow-next-step.css";
 import useSalesJobCardDocumentLoader from "../../hooks/useSalesJobCardDocumentLoader";
 import useAuth from "../../hooks/useAuth";
 import useTenantId from "../../hooks/useTenantId";
@@ -22,6 +26,7 @@ export default function StoreManagerJobCardDocumentPanel({
   row = null,
   showEmptyShell = false,
   emptyMessage = "Select a job card from the list below to open the Store Manager Job Card.",
+  onSend,
 }) {
   const { user } = useAuth();
   const tenantId = useTenantId();
@@ -111,6 +116,21 @@ export default function StoreManagerJobCardDocumentPanel({
   const showDocument = Boolean(hasSelection && card && !loading && !error);
   const showEmptyLayout = showEmptyShell && !hasSelection;
   const workflowStatus = erpListStatus(card || row || {});
+  const workflowGuidance = getJobCardWorkflowGuidance({
+    card: manualCard || card,
+    row,
+    storeMode: true,
+  });
+  const canSendJobCard =
+    Boolean(onSend) &&
+    isManual &&
+    hasSelection &&
+    manualJobCardCanSend(manualCard || row || {});
+
+  const handleGuidanceSend = () => {
+    if (!onSend) return;
+    onSend(row || { ...(manualCard || {}), job_card_id: resolvedJobCardId });
+  };
 
   const storeContext = useMemo(() => {
     if (row?.material_requirements || row?.store_context) {
@@ -184,6 +204,16 @@ export default function StoreManagerJobCardDocumentPanel({
             ) : null}
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            {canSendJobCard ? (
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={handleGuidanceSend}
+                leftIcon={<Send className="h-4 w-4" aria-hidden />}
+              >
+                {workflowGuidance?.actionLabel || "Send to Production Manager"}
+              </Button>
+            ) : null}
             <Button
               variant="secondary"
               size="sm"
@@ -219,6 +249,14 @@ export default function StoreManagerJobCardDocumentPanel({
 
           {hasSelection && error ? (
             <ErrorState title="Could not load job card" description={error} onRetry={reload} className="py-10" />
+          ) : null}
+
+          {showDocument && workflowGuidance ? (
+            <WorkflowNextStep
+              {...workflowGuidance}
+              onAction={workflowGuidance.actionType ? handleGuidanceSend : undefined}
+              compact
+            />
           ) : null}
 
           {showDocument ? (

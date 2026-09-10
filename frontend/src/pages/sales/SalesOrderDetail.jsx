@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import usePageRefresh from "../../hooks/usePageRefresh";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, CheckCircle2, ClipboardList, Factory, Trash2 } from "lucide-react";
 
 import DeleteSalesOrderDialog from "../../components/sales/DeleteSalesOrderDialog";
@@ -30,9 +30,13 @@ import {
   notifyManufacturingSpine,
 } from "../../utils/manufacturingEvents";
 import { jobCardDetailsUrl } from "../../utils/jobCardRoutes";
+import WorkflowNextStep from "../../components/manufacturing/WorkflowNextStep";
+import { getSalesOrderWorkflowGuidance } from "../../utils/salesOrderWorkflowUx";
+import "../../styles/workflow-next-step.css";
 
 export default function SalesOrderDetail() {
   const { id } = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
   const { addToast } = useToast();
   const { user } = useAuth();
@@ -61,6 +65,7 @@ export default function SalesOrderDetail() {
     try {
       const res = await getSalesOrderDetail(id);
       setData(res.data || null);
+      await loadWorkflow();
     } catch {
       addToast("Order not found", "error");
       setData(null);
@@ -74,6 +79,14 @@ export default function SalesOrderDetail() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    const flash = location.state?.flashMessage;
+    if (flash) {
+      addToast(flash, "success");
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.state, location.pathname, addToast, navigate]);
 
   const handleDeleteConfirm = async () => {
     if (!data?.order?.id || deleteInFlight.current) return;
@@ -134,8 +147,8 @@ export default function SalesOrderDetail() {
       } else {
         addToast(
           result?.repaired_workflow
-            ? "Sales order linked to inventory check queue"
-            : "Sales order confirmed — awaiting store inventory check",
+            ? "Sales order linked to inventory check queue. Next: Store verifies materials."
+            : "Sales order confirmed. Sent to Store for material check — open Job Card to track progress.",
           "success"
         );
       }
@@ -154,6 +167,31 @@ export default function SalesOrderDetail() {
     { label: "Shipped", value: order.shipped },
   ];
 
+  const workflowGuidance = getSalesOrderWorkflowGuidance(order, {
+    isConfirmed,
+    hasLineItems: lineItems.length > 0,
+  });
+
+  const handleGuidanceAction = () => {
+    if (workflowGuidance?.actionType === "job_card") {
+      navigate(jobCardDetailsUrl(order.id));
+    } else if (workflowGuidance?.actionType === "dispatch") {
+      navigate("/sales/dispatch");
+    }
+  };
+
+  const handleRefreshWorkflow = async () => {
+    setConfirming(true);
+    try {
+      await loadWorkflow();
+      addToast("Workflow status refreshed.", "success");
+    } catch {
+      addToast("Could not refresh workflow status.", "error");
+    } finally {
+      setConfirming(false);
+    }
+  };
+
   const firstLine = lineItems.find((l) => l.product_id);
   const createProductionHref = firstLine
     ? `/production/create?sales_order_id=${order.id}&sales_order_number=${encodeURIComponent(order.order_number)}&product_id=${firstLine.product_id}&quantity=${firstLine.quantity}`
@@ -171,6 +209,13 @@ export default function SalesOrderDetail() {
           </div>
         }
       />
+
+      {workflowGuidance ? (
+        <WorkflowNextStep
+          {...workflowGuidance}
+          onAction={workflowGuidance.actionType ? handleGuidanceAction : undefined}
+        />
+      ) : null}
 
       {orderWorkflow?.stages?.length ? (
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
@@ -221,7 +266,7 @@ export default function SalesOrderDetail() {
           <Button variant="primary" type="button" disabled={confirming}
       onClick={handleConfirm} className="inline-flex items-center gap-2 disabled:opacity-50">
             <CheckCircle2 className="h-4 w-4" />
-            {confirming ? "Confirming…" : "Confirm → MRP & Production"}
+            {confirming ? "Confirming Sales Order…" : "Confirm Sales Order"}
           </Button>
         )}
         {isConfirmed && (
@@ -234,9 +279,14 @@ export default function SalesOrderDetail() {
               <ClipboardList className="h-4 w-4" />
               Open Job Card
             </Button>
-            <Button variant="secondary" type="button" disabled={confirming}
-      onClick={handleConfirm} className="inline-flex items-center gap-2">
-              View manufacturing status
+            <Button
+              variant="secondary"
+              type="button"
+              disabled={confirming}
+              onClick={handleRefreshWorkflow}
+              className="inline-flex items-center gap-2"
+            >
+              {confirming ? "Refreshing…" : "Refresh Workflow Status"}
             </Button>
           </>
         )}
@@ -257,7 +307,7 @@ export default function SalesOrderDetail() {
             }}
           >
             <Trash2 className="h-4 w-4" />
-            Delete
+            Delete Sales Order
           </Button>
         ) : null}
       </div>

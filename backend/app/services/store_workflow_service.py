@@ -280,13 +280,19 @@ def issue_material(
     commit: bool = True,
 ) -> StoreIssueRequestRead:
     row = db.scalars(
-        select(StoreIssueRequest).where(
+        select(StoreIssueRequest)
+        .where(
             StoreIssueRequest.id == request_id,
             StoreIssueRequest.tenant_id == tenant_id,
         )
+        .with_for_update()
     ).first()
     if not row:
         raise HTTPException(404, "Material request not found")
+    if row.status == "issued":
+        from app.core.concurrency import raise_conflict
+
+        raise_conflict("This material request has already been issued.")
     if row.status not in ("approved", "pending"):
         raise HTTPException(400, f"Cannot issue material for status '{row.status}'")
 
@@ -295,13 +301,6 @@ def issue_material(
         raise HTTPException(400, "Issue quantity must be greater than zero")
     if qty > row.quantity:
         raise HTTPException(400, "Issue quantity cannot exceed requested quantity")
-
-    available_stock = _item_stock(db, row.warehouse_id, row.item_id)
-    if qty > available_stock:
-        raise HTTPException(
-            400,
-            f"Insufficient stock available ({available_stock}) for requested issue quantity ({qty}).",
-        )
 
     if row.status == "pending":
         row.status = "approved"

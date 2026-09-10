@@ -45,6 +45,7 @@ import {
   scrollToJobCardDocumentPanel,
 } from "../../utils/manualSalesJobCard";
 import "../../styles/my-job-cards-page.css";
+import "../../styles/workflow-next-step.css";
 
 const PAGE_SIZES = [10, 20, 50, 100];
 const FETCH_LIMIT = 500;
@@ -580,6 +581,7 @@ export default function MyJobCardsPage() {
           orderId={activeOrderId || null}
           jobCardId={activeJobCardId || null}
           row={activeRow}
+          onSend={(row) => setSendTarget(row)}
           showEmptyShell={!activeOrderId && !activeJobCardId}
           emptyMessage={
             filtered.length === 0
@@ -598,6 +600,7 @@ export default function MyJobCardsPage() {
           canEdit={documentCanEdit}
           storeMode={storeMode}
           showMaterialStatus={productionMode}
+          onSend={(row) => setSendTarget(row)}
           showEmptyShell={!activeOrderId && !activeJobCardId}
           emptyMessage={
             filtered.length === 0
@@ -776,15 +779,16 @@ export default function MyJobCardsPage() {
 
       <ConfirmDialog
         open={Boolean(deleteTarget)}
-        title="Delete"
-        message={`Are you sure you want to delete ${
-          deleteTarget?.job_card_no || deleteTarget?.order_number || "this job card"
-        }?`}
+        title="Delete Job Card?"
+        message={`Are you sure you want to delete Job Card ${
+          deleteTarget?.job_card_no || deleteTarget?.order_number || ""
+        }? This action cannot be undone.`}
         error={deleteError}
-        confirmLabel="Delete"
+        confirmLabel={deleting ? "Deleting Job Card…" : "Delete Job Card"}
         cancelLabel="Cancel"
         destructive
         loading={deleting}
+        loadingLabel="Deleting Job Card…"
         onConfirm={handleDeleteConfirm}
         onClose={() => {
           if (!deleting) {

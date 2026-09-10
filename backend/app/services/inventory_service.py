@@ -306,7 +306,20 @@ def record_stock_movement(
         if effective == "in":
             sl.quantity += qty
         elif effective == "out":
-            sl.quantity = max(0, sl.quantity - qty)
+            from app.core.concurrency import raise_insufficient_stock
+
+            current_qty = int(sl.quantity or 0)
+            if current_qty < qty:
+                try:
+                    db.rollback()
+                except Exception:
+                    pass
+                raise_insufficient_stock(
+                    current_qty,
+                    qty,
+                    unit=inv_item.unit if inv_item else None,
+                )
+            sl.quantity = current_qty - qty
         elif effective == "adjustment":
             sl.quantity = max(0, sl.quantity + payload.quantity)
     elif effective == "in":
@@ -317,12 +330,17 @@ def record_stock_movement(
         )
         db.add(sl)
     elif effective == "out":
-        sl = StockLevel(
-            warehouse_id=payload.warehouse_id,
-            item_id=payload.item_id,
-            quantity=0,
+        from app.core.concurrency import raise_insufficient_stock
+
+        try:
+            db.rollback()
+        except Exception:
+            pass
+        raise_insufficient_stock(
+            0,
+            qty,
+            unit=inv_item.unit if inv_item else None,
         )
-        db.add(sl)
     elif effective == "adjustment":
         sl = StockLevel(
             warehouse_id=payload.warehouse_id,

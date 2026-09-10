@@ -21,6 +21,9 @@ import PageHeader from "../../components/common/PageHeader";
 import RecordDetailModal from "../../components/inventory/RecordDetailModal";
 import StatusBadge from "../../components/common/StatusBadge";
 import StoreManagerNav from "../../components/inventory/StoreManagerNav";
+import WorkflowNextStep from "../../components/manufacturing/WorkflowNextStep";
+import { getStockInWorkflowGuidance } from "../../utils/inventoryWorkflowUx";
+import "../../styles/workflow-next-step.css";
 import { FormField, Input, Select, Textarea } from "../../components/common/FormField";
 import { DatePicker } from "../../design-system/dateControls";
 import { useToast } from "../../context/ToastContext";
@@ -650,12 +653,17 @@ export default function StoreStockIn() {
       </Button>
       {!isReadOnly && canCreate ? (
         <Button variant="secondary" onClick={saveDraft} disabled={submitting}>
-          Save Draft
+          {submitting ? "Saving Draft…" : "Save Draft"}
         </Button>
       ) : null}
       {!isReadOnly && canConfirm ? (
-        <Button variant="primary" onClick={() => setConfirm({ mode: "form-confirm" })} disabled={submitting}>
-          {submitting ? "Processing…" : "Confirm Stock In"}
+        <Button
+          id="stock-in-confirm-action"
+          variant="primary"
+          onClick={() => setConfirm({ mode: "form-confirm" })}
+          disabled={submitting}
+        >
+          {submitting ? "Confirming Stock In…" : "Confirm Stock In"}
         </Button>
       ) : null}
     </div>
@@ -759,6 +767,10 @@ export default function StoreStockIn() {
 
       {showForm ? (
         <div ref={formRef} className="space-y-4">
+          <WorkflowNextStep
+            {...getStockInWorkflowGuidance(docStatus, { isReadOnly })}
+            compact
+          />
           <div className="ui-card p-4 sm:p-6">
             <h2 className="mb-4 text-sm font-semibold text-[var(--color-text)]">Stock In Details</h2>
             <div className="grid gap-4 sm:grid-cols-2">
@@ -1113,7 +1125,7 @@ export default function StoreStockIn() {
                 onClick={() => setConfirm({ mode: "form-confirm" })}
                 disabled={submitting}
               >
-                {submitting ? "Processing…" : "Confirm Stock In"}
+                {submitting ? "Confirming Stock In…" : "Confirm Stock In"}
               </Button>
             ) : null}
           </div>
@@ -1170,8 +1182,10 @@ export default function StoreStockIn() {
                 });
             }
           }}
-          onCancel={() => setConfirm(null)}
+          onClose={() => setConfirm(null)}
           loading={submitting}
+          loadingLabel="Confirming Stock In…"
+          destructive={false}
         />
       ) : null}
     </div>

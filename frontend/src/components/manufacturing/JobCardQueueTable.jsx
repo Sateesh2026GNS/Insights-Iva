@@ -204,6 +204,10 @@ function QueueRowCard({
   storeMode,
   onDelete,
   canDelete = false,
+  onEdit,
+  canEdit = false,
+  onSend,
+  canSend = false,
   user,
   openMenu,
   setOpenMenu,
@@ -217,34 +221,21 @@ function QueueRowCard({
 
   const isCompleted = String(workflowStatus || row.status || "").toLowerCase() === "completed";
 
-  const menuItems = [
-    {
-      label: "View",
-      icon: <Eye className="h-4 w-4" />,
-      onClick: () => {
-        if (onViewDetails) onViewDetails(row);
-        else onSelect?.(orderId);
-      },
-    },
-    {
-      label: "Print",
-      icon: <Printer className="h-4 w-4" />,
-      onClick: () => printSalesJobCardLandscape(row, user),
-    },
-    {
-      label: "Download PDF",
-      icon: <Download className="h-4 w-4" />,
-      onClick: () => downloadSalesJobCardPdf(row, user),
-    },
-    canDelete && onDelete
-      ? {
-          label: "Delete",
-          icon: <Trash2 className="h-4 w-4" />,
-          tone: "danger",
-          onClick: () => onDelete(row),
-        }
-      : null,
-  ].filter(Boolean);
+  const menuItems = buildRowMenuItems({
+    row,
+    orderId,
+    onViewDetails,
+    onSelect,
+    onEdit,
+    onDelete,
+    onSend,
+    canDelete,
+    canEdit,
+    canSend,
+    storeMode,
+    user,
+  });
+  const rowCanSend = Boolean(onSend) && canSend && manualJobCardCanSend(row);
 
   return (
     <article
@@ -290,6 +281,11 @@ function QueueRowCard({
       <div className="mt-3 flex items-center justify-between gap-2">
         <PriorityBadge priority={row.priority || "medium"} showDot={false} />
         <div className="inline-flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+          {rowCanSend && onSend ? (
+            <Button variant="primary" size="sm" onClick={() => onSend(row)}>
+              Send
+            </Button>
+          ) : null}
           {onViewDetails ? (
             <Button
               variant={actionVariantForRow(row)}
@@ -404,6 +400,7 @@ export default function JobCardQueueTable({
                   storeMode,
                   user,
                 });
+                const rowCanSend = Boolean(onSend) && canSend && manualJobCardCanSend(row);
 
                 return (
                   <tr
@@ -473,7 +470,14 @@ export default function JobCardQueueTable({
                       {fmtErpDate(row.received_at || row.job_card_date || row.order_date)}
                     </td>
                     <td className="my-job-cards-table__actions-col px-2 py-2.5" onClick={(e) => e.stopPropagation()}>
-                      <RowActionMenu rowId={String(rowKey)} openMenu={openMenu} setOpenMenu={setOpenMenu} items={menuItems} />
+                      <div className="my-job-cards-table__actions-wrap">
+                        {rowCanSend && onSend ? (
+                          <Button variant="primary" size="sm" onClick={() => onSend(row)}>
+                            Send
+                          </Button>
+                        ) : null}
+                        <RowActionMenu rowId={String(rowKey)} openMenu={openMenu} setOpenMenu={setOpenMenu} items={menuItems} />
+                      </div>
                     </td>
                   </tr>
                 );
@@ -499,6 +503,10 @@ export default function JobCardQueueTable({
                 storeMode={storeMode}
                 onDelete={onDelete}
                 canDelete={canDelete}
+                onEdit={onEdit}
+                canEdit={canEdit}
+                onSend={onSend}
+                canSend={canSend}
                 user={user}
                 openMenu={openMenu}
                 setOpenMenu={setOpenMenu}

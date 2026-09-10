@@ -11,7 +11,8 @@ import {
   sendManualJobCard,
 } from "../../api/workflowApi";
 import { useToast } from "../../context/ToastContext";
-import { apiErrorMessage } from "../../utils/apiError";
+import ConcurrencyConflictBanner from "../common/ConcurrencyConflictBanner";
+import { apiErrorMessage, conflictErrorMessage, isConflictError } from "../../utils/apiError";
 
 function displayName(user) {
   return user?.full_name || user?.name || user?.email || `User #${user?.id}`;
@@ -32,6 +33,7 @@ export default function SendJobCardModal({ open, onClose, jobCard, onSent }) {
   const [selectedUsers, setSelectedUsers] = useState({});
   const [validationError, setValidationError] = useState("");
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [conflictMessage, setConflictMessage] = useState("");
   const loadedRolesRef = useRef(new Set());
 
   const loadUsersForRole = useCallback(async (role, { force = false } = {}) => {
@@ -171,6 +173,7 @@ export default function SendJobCardModal({ open, onClose, jobCard, onSent }) {
   const handleConfirmSend = async () => {
     if (!jobCard?.job_card_id || sending) return;
     setSending(true);
+    setConflictMessage("");
     try {
       await sendManualJobCard(jobCard.job_card_id, { recipients });
       const jcNo = jobCard?.job_card_no || "job card";
@@ -180,19 +183,36 @@ export default function SendJobCardModal({ open, onClose, jobCard, onSent }) {
           (u) => Number(u.id) === Number(recipients[0].user_id)
         );
         const name = user ? displayName(user) : "selected user";
-        addToast(`${name} — ${role} received Job Card ${jcNo}.`, "success");
+        addToast(`Job Card ${jcNo} sent to ${name} (${role}).`, "success");
       } else {
-        addToast(`Job Card ${jcNo} sent successfully.`, "success");
+        addToast(`Job Card ${jcNo} sent to ${recipients.length} recipients.`, "success");
       }
       setConfirmOpen(false);
       onSent?.();
       onClose?.();
     } catch (err) {
+      if (isConflictError(err)) {
+        setConflictMessage(
+          conflictErrorMessage(err, "Job card was updated by another user."),
+        );
+        setConfirmOpen(false);
+      }
       addToast(apiErrorMessage(err, "Failed to send job card."), "error");
     } finally {
       setSending(false);
     }
   };
+
+  const primarySendLabel = useMemo(() => {
+    if (sending) return "Sending Job Card…";
+    if (selectedRoles.length === 1) {
+      return `Send Job Card to ${selectedRoles[0]}`;
+    }
+    if (selectedRoles.length > 1) {
+      return `Send Job Card (${selectedRoles.length} recipients)`;
+    }
+    return "Send Job Card";
+  }, [selectedRoles, sending]);
 
   const confirmMessage = useMemo(() => {
     if (!recipients.length) return "";
@@ -265,6 +285,10 @@ export default function SendJobCardModal({ open, onClose, jobCard, onSent }) {
     <>
       <AdminModal open={open} onClose={onClose} title="Send Job Card" maxWidth="max-w-md">
         <div className="flex max-h-[70vh] flex-col gap-4">
+          <p className="send-job-card-modal__hint" role="note">
+            Sending routes this job card to the selected user. This is separate from Save — only click Send
+            when you are ready to forward the job card.
+          </p>
           <div className="shrink-0">
             <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Job Card No.</p>
             <p className="mt-1 text-base font-semibold text-slate-900">{jobCard?.job_card_no || "—"}</p>
@@ -305,6 +329,17 @@ export default function SendJobCardModal({ open, onClose, jobCard, onSent }) {
             ))}
           </div>
 
+          {conflictMessage ? (
+            <ConcurrencyConflictBanner
+              message={conflictMessage}
+              onRefresh={() => {
+                setConflictMessage("");
+                onSent?.();
+              }}
+              className="shrink-0"
+            />
+          ) : null}
+
           {validationError ? (
             <p className="shrink-0 text-sm font-medium text-[var(--color-danger)]">{validationError}</p>
           ) : null}
@@ -318,10 +353,10 @@ export default function SendJobCardModal({ open, onClose, jobCard, onSent }) {
               size="sm"
               onClick={handleSendClick}
               loading={sending}
-              disabled={!canSend}
+              disabled={!canSend && !sending}
               leftIcon={<Send className="h-4 w-4" />}
             >
-              {sending ? "Sending…" : "Send"}
+              {primarySendLabel}
             </Button>
           </div>
         </div>
@@ -329,11 +364,13 @@ export default function SendJobCardModal({ open, onClose, jobCard, onSent }) {
 
       <ConfirmDialog
         open={confirmOpen}
-        title="Confirm Send"
+        title="Confirm Send Job Card"
         message={confirmMessage}
-        confirmLabel="Confirm & Send"
+        confirmLabel={sending ? "Sending Job Card…" : "Send Job Card"}
         cancelLabel="Cancel"
+        destructive={false}
         loading={sending}
+        loadingLabel="Sending Job Card…"
         onConfirm={handleConfirmSend}
         onClose={() => {
           if (!sending) setConfirmOpen(false);

@@ -5,7 +5,8 @@ import Button from "../common/Button";
 import CommonStatusBadge from "../common/StatusBadge";
 import { LoadingState } from "../common/states";
 import { getManualMaterialCheck, submitManualMaterialCheck } from "../../api/workflowApi";
-import { apiErrorMessage } from "../../utils/apiError";
+import ConcurrencyConflictBanner from "../common/ConcurrencyConflictBanner";
+import { apiErrorMessage, conflictErrorMessage, isConflictError } from "../../utils/apiError";
 import { useToast } from "../../context/ToastContext";
 
 function lineStatusTone(status) {
@@ -36,7 +37,12 @@ function overallPreview(lines) {
   return { tone: "danger", label: "Materials not available", icon: XCircle };
 }
 
-export default function ManualMaterialCheckPanel({ jobCardId, card, onUpdated, readOnly = false }) {
+export default function ManualMaterialCheckPanel({
+  jobCardId,
+  card,
+  onUpdated,
+  readOnly = false,
+}) {
   const { addToast } = useToast();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -47,6 +53,7 @@ export default function ManualMaterialCheckPanel({ jobCardId, card, onUpdated, r
   const [remarks, setRemarks] = useState("");
   const [savedCheck, setSavedCheck] = useState(null);
   const [apiReadOnly, setApiReadOnly] = useState(false);
+  const [conflictMessage, setConflictMessage] = useState("");
 
   const savedFromCard = card?.material_check;
   const isCompleted = Boolean(savedFromCard?.checked_at || savedCheck?.checked_at);
@@ -94,6 +101,7 @@ export default function ManualMaterialCheckPanel({ jobCardId, card, onUpdated, r
       return;
     }
     setSaving(true);
+    setConflictMessage("");
     try {
       await submitManualMaterialCheck(jobCardId, {
         materials_available: materialsAvailable,
@@ -104,10 +112,18 @@ export default function ManualMaterialCheckPanel({ jobCardId, card, onUpdated, r
           remarks: ln.remarks || null,
         })),
       });
-      addToast("Material check saved", "success");
+      addToast(
+        "Material check saved. Use Send to Production Manager when ready — saving did not send the job card.",
+        "success"
+      );
       await load();
       onUpdated?.();
     } catch (err) {
+      if (isConflictError(err)) {
+        setConflictMessage(
+          conflictErrorMessage(err, "Job card material check was updated by another user."),
+        );
+      }
       addToast(apiErrorMessage(err, "Could not save material check."), "error");
     } finally {
       setSaving(false);
@@ -116,7 +132,6 @@ export default function ManualMaterialCheckPanel({ jobCardId, card, onUpdated, r
 
   const displayCheck = savedCheck || (isCompleted ? savedFromCard : null);
   const PreviewIcon = preview.icon;
-
   return (
     <section className="store-manual-jc-actions__materials" id="manual-material-check-panel">
       <div className="store-manual-jc-actions__materials-header">
@@ -142,6 +157,9 @@ export default function ManualMaterialCheckPanel({ jobCardId, card, onUpdated, r
 
       {loading ? <LoadingState label="Loading inventory…" compact className="py-6" /> : null}
       {error ? <p className="store-manual-jc-actions__hint text-[var(--color-danger)]">{error}</p> : null}
+      {conflictMessage ? (
+        <ConcurrencyConflictBanner message={conflictMessage} onRefresh={load} className="mb-3" />
+      ) : null}
 
       {!loading && !error && lines.length === 0 ? (
         <p className="store-manual-jc-actions__hint">
@@ -262,11 +280,12 @@ export default function ManualMaterialCheckPanel({ jobCardId, card, onUpdated, r
 
           <div className="store-manual-jc-actions__toolbar">
             <Button variant="primary" size="sm" loading={saving} onClick={handleSave}>
-              Save Material Check
+              {saving ? "Saving Material Check…" : "Save Material Check"}
             </Button>
           </div>
-          <p className="store-manual-jc-actions__hint">
-            Saving does not send the job card forward. Use Actions → Send to route to Production Manager.
+          <p className="store-manual-jc-actions__hint" role="note">
+            <strong>Save</strong> records the material availability result only. It does <strong>not</strong> send
+            the job card to Production Manager.
           </p>
         </div>
       ) : null}

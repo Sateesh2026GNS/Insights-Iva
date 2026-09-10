@@ -13,9 +13,11 @@ export default function ConfirmDialog({
   cancelLabel = "Cancel",
   destructive = true,
   loading = false,
+  loadingLabel,
   confirmDisabled = false,
   onConfirm,
   onClose,
+  children,
 }) {
   useEffect(() => {
     if (!open) return undefined;
@@ -63,7 +65,10 @@ export default function ConfirmDialog({
         </div>
 
         <div className="erp-confirm-dialog__body">
-          <p id="erp-confirm-dialog-message" className="erp-confirm-dialog__message">{message}</p>
+          {message ? (
+            <p id="erp-confirm-dialog-message" className="erp-confirm-dialog__message">{message}</p>
+          ) : null}
+          {children ? <div className="erp-confirm-dialog__extra">{children}</div> : null}
           {error ? <p className="erp-confirm-dialog__error whitespace-pre-line">{error}</p> : null}
           <div className="erp-confirm-dialog__actions">
             <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
@@ -76,7 +81,7 @@ export default function ConfirmDialog({
               disabled={loading || confirmDisabled}
               loading={loading}
             >
-              {loading ? "Working…" : confirmLabel}
+              {loading ? loadingLabel || confirmLabel : confirmLabel}
             </Button>
           </div>
         </div>

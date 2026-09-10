@@ -348,12 +348,27 @@ export default function SalesOrders() {
             searchPlaceholder="Search"
             searchKeys={["order_number", "customer_name", "sales_person"]}
             emptyState={
-              <EmptyState
-                icon="document"
-                title="No records found."
-                description="There is nothing to show here yet."
-                className="border-none bg-transparent py-12"
-              />
+              rows.length === 0 ? (
+                <EmptyState
+                  icon="document"
+                  title="No Sales Orders yet"
+                  description={
+                    canCreate
+                      ? "Create a Job Card or convert a quotation to start the sales workflow."
+                      : "Sales orders appear here when they are created in the workflow."
+                  }
+                  actionLabel={canCreate ? "Create Job Card" : undefined}
+                  onAction={canCreate ? () => navigate(jobCardCreateUrl()) : undefined}
+                  className="border-none bg-transparent py-12"
+                />
+              ) : (
+                <NoResultsState
+                  title="No sales orders match your filters"
+                  description="Try clearing filters or adjusting your search."
+                  onClear={() => setFilters(defaultFilters)}
+                  className="border-none bg-transparent py-12"
+                />
+              )
             }
           />
         )}

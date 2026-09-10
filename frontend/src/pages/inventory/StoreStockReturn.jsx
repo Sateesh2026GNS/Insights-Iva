@@ -21,6 +21,9 @@ import PageHeader from "../../components/common/PageHeader";
 import RecordDetailModal from "../../components/inventory/RecordDetailModal";
 import StatusBadge from "../../components/common/StatusBadge";
 import StoreManagerNav from "../../components/inventory/StoreManagerNav";
+import WorkflowNextStep from "../../components/manufacturing/WorkflowNextStep";
+import { getStockReturnWorkflowGuidance } from "../../utils/inventoryWorkflowUx";
+import "../../styles/workflow-next-step.css";
 import { FormField, Input, Select, Textarea } from "../../components/common/FormField";
 import { DatePicker } from "../../design-system/dateControls";
 import { useToast } from "../../context/ToastContext";
@@ -717,6 +720,10 @@ export default function StoreStockReturn() {
 
       {showForm ? (
         <div ref={formRef} className="space-y-4">
+          <WorkflowNextStep
+            {...getStockReturnWorkflowGuidance(editingId ? form.status || "draft" : "draft")}
+            compact
+          />
           <WorkflowPipeline status={editingId ? form.status || "draft" : "draft"} />
 
           <div className="ui-card p-4 sm:p-6">
@@ -929,11 +936,26 @@ export default function StoreStockReturn() {
                   : "Confirm action"
         }
         message="This action will update the return workflow. Stock quantities are only adjusted when the return is completed."
-        confirmLabel="Confirm"
-        cancelLabel="Go back"
-        variant={confirm?.action === "reject" || confirm?.action === "cancel" ? "danger" : "primary"}
+        confirmLabel={
+          confirm?.action === "reject"
+            ? "Reject Return"
+            : confirm?.action === "cancel" || confirm?.action === "cancel_form"
+              ? "Cancel Return"
+              : confirm?.action === "submit_form"
+                ? "Submit Return"
+                : confirm?.action === "complete"
+                  ? "Complete Return"
+                  : "Confirm"
+        }
+        cancelLabel="Go Back"
+        destructive={
+          confirm?.action === "reject" ||
+          confirm?.action === "cancel" ||
+          confirm?.action === "cancel_form"
+        }
         loading={submitting || Boolean(updatingId)}
-        onCancel={() => setConfirm(null)}
+        loadingLabel="Processing…"
+        onClose={() => setConfirm(null)}
         onConfirm={() => {
           if (confirm?.action === "submit_form") {
             setConfirm(null);

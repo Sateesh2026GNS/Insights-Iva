@@ -130,8 +130,22 @@ export default function QuoteDetailModal({ quote, onClose, onStatusChange, onCon
       const so = res.data;
       onConverted?.(so);
       onClose?.();
-      if (so?.id) navigate(`/sales/orders/${so.id}`);
-      else navigate("/sales/orders");
+      if (so?.order_number) {
+        addToast(
+          `Sales Order ${so.order_number} created. Next: Confirm Sales Order on the detail page.`,
+          "success"
+        );
+      }
+      if (so?.id) {
+        navigate(`/sales/orders/${so.id}`, {
+          state: {
+            flashMessage:
+              "Sales order created from quotation. Next: Confirm Sales Order to send to Store for material check.",
+          },
+        });
+      } else {
+        navigate("/sales/orders");
+      }
     } catch (err) {
       const msg = err.response?.data?.detail || "Convert failed";
       setError(typeof msg === "string" ? msg : "Convert failed");

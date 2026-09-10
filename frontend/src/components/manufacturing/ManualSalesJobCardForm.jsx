@@ -438,7 +438,12 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
         ? await updateManualJobCard(jobCardId, payload)
         : await createManualJobCard(payload);
       const data = res?.data ?? res;
-      addToast(isEdit ? "Job card saved." : "Job card created successfully.", "success");
+      addToast(
+        isEdit
+          ? "Job card saved. Use Actions → Send when ready to route it."
+          : "Job card created. Status: Saved. Use Actions → Send to route to Store Manager.",
+        "success"
+      );
       const id = data?.job_card_id || data?.id || jobCardId;
       navigate(id ? `/my-job-cards?dept=sales&jc=${id}` : backTo, { replace: true });
     } catch (err) {
@@ -937,18 +942,25 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
         </div>
 
         <div className="manual-sjc-page__footer">
-          <Button variant="secondary" onClick={handleCancel} disabled={saving}>
-            Cancel
-          </Button>
-          <Button
-            variant="add"
-            loading={saving}
-            disabled={saving}
-            onClick={handleSave}
-            leftIcon={<Save className="h-4 w-4" aria-hidden />}
-          >
-            Save Job Card
-          </Button>
+          <p className="manual-sjc-page__save-hint" role="note">
+            <strong>Save</strong> stores this job card only — it does <strong>not</strong> send it to Store
+            Manager or Production. After saving, use <strong>Actions → Send</strong> from My Job Cards to
+            route it to the right person.
+          </p>
+          <div className="manual-sjc-page__footer-actions">
+            <Button variant="secondary" onClick={handleCancel} disabled={saving}>
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              loading={saving}
+              disabled={saving}
+              onClick={handleSave}
+              leftIcon={<Save className="h-4 w-4" aria-hidden />}
+            >
+              {saving ? "Saving Job Card…" : "Save Job Card"}
+            </Button>
+          </div>
         </div>
       </div>
     </div>

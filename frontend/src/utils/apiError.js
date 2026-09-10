@@ -126,6 +126,21 @@ export function isConflictError(err) {
   return err?.response?.status === 409;
 }
 
+/** User-facing copy for 409 responses with optional server detail. */
+export function conflictErrorMessage(err, fallback) {
+  const detail = extractApiErrorDetail(err);
+  if (detail != null && detail !== "") {
+    return formatApiError(
+      detail,
+      fallback || "Someone else updated this record. Please refresh and try again.",
+    );
+  }
+  return (
+    fallback ||
+    "Someone else updated this record. Your screen may contain older information."
+  );
+}
+
 export function isValidationError(err) {
   const status = err?.response?.status;
   return status === 400 || status === 422;
