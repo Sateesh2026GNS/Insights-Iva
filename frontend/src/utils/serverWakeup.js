@@ -41,7 +41,7 @@ export function triggerServerWakeup() {
     // If backend doesn't respond in 3 s, show a subtle "connecting" banner
     notifyTimer = setTimeout(() => {
       if (!_wakeupDone && typeof _notifyCallback === "function") {
-        _notifyCallback("Connecting to server… (first load may take up to 60 s)");
+        _notifyCallback("Connecting to server… Please wait a moment.");
       }
     }, 3000);
 

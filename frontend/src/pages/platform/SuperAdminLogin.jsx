@@ -66,7 +66,7 @@ export default function SuperAdminLogin() {
       });
     } catch (err) {
       if (!err.response) {
-        setError("Cannot reach the API server. Make sure the backend is running on http://localhost:8000, then try again.");
+        setError("Cannot reach the API server. Please check your network connection or backend status, then try again.");
       } else {
         const detail = err.response?.data?.detail;
         setError(typeof detail === "string" ? detail : "Login failed.");

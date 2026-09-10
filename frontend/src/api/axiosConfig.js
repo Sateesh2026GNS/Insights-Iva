@@ -9,7 +9,8 @@ import { httpStatusMessage } from "../utils/apiError";
 /** Resolve API base URL. Empty string = same-origin (Docker/nginx proxy). */
 export function getApiBaseURL() {
   if (import.meta.env.VITE_API_BASE_URL !== undefined) {
-    return import.meta.env.VITE_API_BASE_URL;
+    const raw = String(import.meta.env.VITE_API_BASE_URL || "").trim();
+    return raw.replace(/\/+$/, "");
   }
   return "";
 }
