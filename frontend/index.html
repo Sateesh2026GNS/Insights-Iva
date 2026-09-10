@@ -8,9 +8,136 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <title>Insights Iva</title>
+    <style>
+      /* Prevent any flash of light-blue or white before React mounts */
+      html, body {
+        margin: 0;
+        padding: 0;
+        background: #000000;
+      }
+
+      /* Full-screen black branded pre-loader — shows before React hydrates */
+      #app-preloader {
+        position: fixed;
+        inset: 0;
+        z-index: 999999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #000000;
+        transition: opacity 0.1s ease;
+      }
+      #app-preloader.fade-out {
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      /* Spinner container */
+      .iiva-spinner {
+        position: relative;
+        width: 96px;
+        height: 96px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      /* Outer ring SVG spin */
+      .iiva-spinner-svg {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        animation: iiva-spin 1s linear infinite;
+      }
+
+      /* Inner reverse ring */
+      .iiva-inner-ring {
+        position: absolute;
+        width: 64px;
+        height: 64px;
+        border-radius: 50%;
+        border: 2px solid transparent;
+        border-top-color: rgba(45, 212, 191, 0.8);
+        border-bottom-color: rgba(56, 189, 248, 0.6);
+        animation: iiva-spin-reverse 0.8s linear infinite;
+      }
+
+      /* Center logo badge */
+      .iiva-badge {
+        position: relative;
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        background: #ffffff;
+        border: 1px solid #374151;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        animation: iiva-pulse 1.5s ease-in-out infinite;
+      }
+      .iiva-badge img {
+        width: 32px;
+        height: 32px;
+        object-fit: contain;
+      }
+
+      @keyframes iiva-spin {
+        from { transform: rotate(0deg); }
+        to   { transform: rotate(360deg); }
+      }
+      @keyframes iiva-spin-reverse {
+        from { transform: rotate(0deg); }
+        to   { transform: rotate(-360deg); }
+      }
+      @keyframes iiva-pulse {
+        0%, 100% { opacity: 1; }
+        50%       { opacity: 0.75; }
+      }
+    </style>
   </head>
   <body>
+    <!-- Pre-loader: shown instantly before React JS is parsed/mounted -->
+    <div id="app-preloader" aria-label="Loading Insights Iva" role="status">
+      <div class="iiva-spinner">
+        <!-- Multi-color arc ring (Yellow + Blue + Green) -->
+        <svg class="iiva-spinner-svg" viewBox="0 0 80 80" fill="none">
+          <path d="M40 8 A32 32 0 0 1 72 40" stroke="#e6a817" stroke-width="5.5" stroke-linecap="round"/>
+          <path d="M72 40 A32 32 0 0 1 40 72" stroke="#0284c7" stroke-width="5.5" stroke-linecap="round"/>
+          <path d="M22 62 A32 32 0 0 1 8 40"  stroke="#00733c" stroke-width="5.5" stroke-linecap="round"/>
+        </svg>
+        <!-- Inner reverse ring -->
+        <div class="iiva-inner-ring"></div>
+        <!-- Center logo badge -->
+        <div class="iiva-badge">
+          <img src="/logo.png" alt="Insights Iva" />
+        </div>
+      </div>
+    </div>
+
     <div id="root"></div>
+
+    <!-- Remove pre-loader as soon as React has painted its first frame -->
+    <script>
+      (function () {
+        function removePreloader() {
+          var el = document.getElementById('app-preloader');
+          if (!el) return;
+          el.classList.add('fade-out');
+          setTimeout(function () { el && el.parentNode && el.parentNode.removeChild(el); }, 120);
+        }
+        // React signals DOMContentLoaded + first paint via requestAnimationFrame chain
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', function () {
+            requestAnimationFrame(function () { requestAnimationFrame(removePreloader); });
+          });
+        } else {
+          requestAnimationFrame(function () { requestAnimationFrame(removePreloader); });
+        }
+      })();
+    </script>
+
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
