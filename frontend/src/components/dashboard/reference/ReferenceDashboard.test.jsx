@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import ReferenceDashboard from "./ReferenceDashboard";
 
-const mockT = vi.fn((key, fallback) => fallback || key);
+const mockT = vi.fn((key, opts) => (typeof opts === "string" ? opts : opts?.defaultValue) || key);
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: mockT }),
@@ -83,9 +83,11 @@ const fullDashboard = {
     "inventory",
     "alerts",
     "quick_actions",
+    "production_pipeline",
     "recent_work_orders",
     "todays_summary",
   ],
+  production_pipeline: { pending: 0, planned: 1, released: 1, in_production: 0, completed: 0 },
   kpi_cards: [
     { id: "total-orders", title: "Total Orders", value: "0", trend: "0%", trendUp: true, trendLabel: "vs last 7 days" },
     { id: "today-production", title: "Today's Production", value: "0", trend: "0%", trendUp: true, trendLabel: "vs yesterday" },

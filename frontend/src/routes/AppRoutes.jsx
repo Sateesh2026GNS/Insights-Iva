@@ -329,7 +329,15 @@ export default function AppRoutes() {
         path="/sales/dispatch"
         element={
           <ProtectedRoute>
-            <P.Dispatch />
+            <P.Shipping />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/sales/shipping"
+        element={
+          <ProtectedRoute>
+            <P.Shipping />
           </ProtectedRoute>
         }
       />

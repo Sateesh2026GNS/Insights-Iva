@@ -370,7 +370,7 @@ def update_manual_job_card_endpoint(
         user.tenant_id,
         job_card_id,
         user,
-        body.get("manual_document") or body,
+        body,
         finalize=body.get("finalize", False),
     )
 

@@ -174,12 +174,84 @@ export function emptyManualForm(preparedBy = "") {
   };
 }
 
+function normalizeManualDocShape(doc) {
+  if (!doc || typeof doc !== "object") return null;
+  return {
+    header: doc.header || {},
+    customer: doc.customer_details || doc.customer || {},
+    order: doc.order_details || doc.order || {},
+    product_lines: Array.isArray(doc.product_lines) ? doc.product_lines : [],
+    technical_specifications: Array.isArray(doc.technical_specifications)
+      ? doc.technical_specifications
+      : [],
+    approval: doc.approval || {},
+  };
+}
+
+function pickDocValue(manualValue, salesValue) {
+  if (manualValue != null && String(manualValue).trim() !== "") return manualValue;
+  if (salesValue != null && String(salesValue).trim() !== "") return salesValue;
+  return manualValue ?? salesValue ?? "";
+}
+
+/** Merge manual_document with sales_document so edit forms hydrate even when one source is sparse. */
+export function mergeManualApiDocuments(manualDoc, salesDoc) {
+  const manual = normalizeManualDocShape(manualDoc) || normalizeManualDocShape({});
+  const sales = normalizeManualDocShape(salesDoc);
+  if (!sales) return manual;
+
+  const manualHeader = manual.header || {};
+  const salesHeader = sales.header || {};
+  const manualCustomer = manual.customer || {};
+  const salesCustomer = sales.customer || {};
+  const manualOrder = manual.order || {};
+  const salesOrder = sales.order || {};
+
+  return {
+    header: {
+      ...salesHeader,
+      ...manualHeader,
+      job_card_no: pickDocValue(manualHeader.job_card_no, salesHeader.job_card_no),
+      job_card_date: pickDocValue(manualHeader.job_card_date, salesHeader.job_card_date),
+      sales_order_no: pickDocValue(manualHeader.sales_order_no, salesHeader.sales_order_no),
+      customer_po_no: pickDocValue(manualHeader.customer_po_no, salesHeader.customer_po_no),
+    },
+    customer: {
+      ...salesCustomer,
+      ...manualCustomer,
+      customer_name: pickDocValue(manualCustomer.customer_name, salesCustomer.customer_name),
+      contact_person: pickDocValue(manualCustomer.contact_person, salesCustomer.contact_person),
+      phone: pickDocValue(manualCustomer.phone, salesCustomer.phone),
+      email: pickDocValue(manualCustomer.email, salesCustomer.email),
+      billing_address: pickDocValue(manualCustomer.billing_address, salesCustomer.billing_address),
+    },
+    order: {
+      ...salesOrder,
+      ...manualOrder,
+      sales_order_date: pickDocValue(manualOrder.sales_order_date, salesOrder.sales_order_date),
+      delivery_date: pickDocValue(manualOrder.delivery_date, salesOrder.delivery_date),
+      product_category: pickDocValue(manualOrder.product_category, salesOrder.product_category),
+      end_use: pickDocValue(manualOrder.end_use, salesOrder.end_use),
+      payment_terms: pickDocValue(manualOrder.payment_terms, salesOrder.payment_terms),
+      priority: pickDocValue(manualOrder.priority, salesOrder.priority) || "medium",
+      remarks: pickDocValue(manualOrder.remarks, salesOrder.remarks),
+    },
+    product_lines:
+      manual.product_lines.length > 0 ? manual.product_lines : sales.product_lines,
+    technical_specifications:
+      manual.technical_specifications.length > 0
+        ? manual.technical_specifications
+        : sales.technical_specifications,
+    approval: { ...sales.approval, ...manual.approval },
+  };
+}
+
 export function manualFormFromApi(data) {
-  const doc = data?.manual_document || data?.sales_document;
+  const doc = mergeManualApiDocuments(data?.manual_document, data?.sales_document);
   if (!doc) return emptyManualForm(data?.audit?.created_by);
   const header = doc.header || {};
-  const customer = doc.customer_details || doc.customer || {};
-  const order = doc.order_details || doc.order || {};
+  const customer = doc.customer || {};
+  const order = doc.order || {};
   const lines = Array.isArray(doc.product_lines) ? doc.product_lines : [];
   const specs = Array.isArray(doc.technical_specifications) ? doc.technical_specifications : [];
   const approval = doc.approval || {};
@@ -234,18 +306,20 @@ export function manualFormFromApi(data) {
   };
 }
 
-export function buildManualPayload(form) {
-  return {
+export function buildManualPayload(form, { expectedVersion = null } = {}) {
+  const lines = Array.isArray(form?.product_lines) ? form.product_lines : [];
+  const specs = Array.isArray(form?.technical_specifications) ? form.technical_specifications : [];
+  const payload = {
     manual_document: {
       header: form.header,
       customer: form.customer,
       order: form.order,
-      product_lines: form.product_lines.map((row, i) => ({
+      product_lines: lines.map((row, i) => ({
         ...row,
         sl_no: i + 1,
-        quantity: row.quantity === "" ? null : Number(row.quantity),
+        quantity: row.quantity === "" || row.quantity == null ? null : Number(row.quantity),
       })),
-      technical_specifications: form.technical_specifications.map((row, i) => ({
+      technical_specifications: specs.map((row, i) => ({
         ...row,
         sl_no: i + 1,
       })),
@@ -253,6 +327,20 @@ export function buildManualPayload(form) {
     },
     finalize: true,
   };
+  if (expectedVersion != null && expectedVersion !== "") {
+    payload.expected_version = Number(expectedVersion);
+  }
+  return payload;
+}
+
+export function scrollToFirstManualFormError(errors) {
+  const keys = Object.keys(errors || {});
+  if (!keys.length) return;
+  const first = keys[0];
+  requestAnimationFrame(() => {
+    const field = document.querySelector(`[data-manual-field="${first}"]`);
+    field?.scrollIntoView({ behavior: "smooth", block: "center" });
+  });
 }
 
 export function validateManualForm(form) {
@@ -288,7 +376,7 @@ export function validateManualForm(form) {
       errors[`product_lines.${i}.product_name`] = "Product Name is required";
     }
     const qty = Number(row.quantity);
-    if (!row.quantity || Number.isNaN(qty) || qty <= 0) {
+    if (row.quantity === "" || row.quantity == null || Number.isNaN(qty) || qty <= 0) {
       errors[`product_lines.${i}.quantity`] = "Quantity must be greater than 0";
     }
     if (!String(row.uom || "").trim()) {

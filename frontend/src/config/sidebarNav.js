@@ -12,6 +12,7 @@ import {
   LayoutDashboard,
   Settings,
   ShoppingCart,
+  Truck,
   Users,
   Wallet,
   Wrench,
@@ -58,6 +59,12 @@ export const SIDEBAR_NAV = [
     children: [
       { labelKey: "erpNav.productionPlanning", to: "/production/planning", module: "production" },
       { labelKey: "erpNav.workOrders", to: "/production/work-orders", module: "production" },
+      {
+        labelKey: "erpNav.createWorkOrder",
+        to: "/production/work-orders/create-quick",
+        module: "production",
+        navIcon: "create",
+      },
       { labelKey: "erpNav.productionSchedule", to: "/production/schedule", module: "production" },
       { labelKey: "erpNav.machineAllocation", to: "/production/tasks", module: "production" },
       { labelKey: "erpNav.dailyProductionReports", to: "/production/reports", module: "production" },
@@ -105,7 +112,7 @@ export const SIDEBAR_NAV = [
       { label: "Sales Orders", to: "/sales/orders", module: "sales" },
       { label: "Customers", to: "/masters/customers", module: "sales" },
       { labelKey: "erpNav.workOrders", label: "Work Orders", to: "/production/work-orders", module: "sales" },
-      { label: "Dispatch", to: "/sales/dispatch", module: "sales" },
+      { label: "Shipping", labelKey: "erpNav.shipping", to: "/sales/shipping", module: "sales", icon: Truck },
     ],
   },
   {

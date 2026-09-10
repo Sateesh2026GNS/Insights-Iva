@@ -1055,12 +1055,17 @@ def ensure_dispatch_shipment(
     order: SalesOrder,
     *,
     status: str = "packed",
+    dispatch_number: str | None = None,
+    dispatch_date: date | None = None,
     courier: str | None = None,
     vehicle_number: str | None = None,
     driver_name: str | None = None,
     lr_number: str | None = None,
     eta: date | None = None,
     tracking_url: str | None = None,
+    notes: str | None = None,
+    box_count: int | None = None,
+    total_weight: float | None = None,
 ) -> DispatchShipment:
     """Create or update a DispatchShipment / delivery challan for a sales order."""
     existing = db.scalars(
@@ -1069,9 +1074,13 @@ def ensure_dispatch_shipment(
             DispatchShipment.sales_order_id == order.id,
         )
     ).first()
-    challan = f"DC-{order.order_number}"
+    challan = dispatch_number or f"DC-{order.order_number}"
     if existing:
         existing.status = status
+        if dispatch_number is not None:
+            existing.dispatch_number = dispatch_number
+        if dispatch_date is not None:
+            existing.dispatch_date = dispatch_date
         if courier is not None:
             existing.courier = courier
         if vehicle_number is not None:
@@ -1084,6 +1093,12 @@ def ensure_dispatch_shipment(
             existing.eta = eta
         if tracking_url is not None:
             existing.tracking_url = tracking_url
+        if notes is not None:
+            existing.notes = notes
+        if box_count is not None:
+            existing.box_count = box_count
+        if total_weight is not None:
+            existing.total_weight = total_weight
         return existing
 
     shipment = DispatchShipment(
@@ -1095,10 +1110,13 @@ def ensure_dispatch_shipment(
         vehicle_number=vehicle_number,
         driver_name=driver_name,
         lr_number=lr_number,
-        dispatch_date=date.today(),
+        dispatch_date=dispatch_date or date.today(),
         eta=eta or getattr(order, "delivery_date", None),
         status=status,
         tracking_url=tracking_url,
+        notes=notes,
+        box_count=box_count,
+        total_weight=total_weight,
     )
     db.add(shipment)
     db.flush()
@@ -1124,12 +1142,17 @@ def create_or_update_dispatch_shipment(
         tenant_id,
         order,
         status=payload.status or "packed",
+        dispatch_number=payload.dispatch_number,
+        dispatch_date=payload.dispatch_date,
         courier=payload.courier,
         vehicle_number=payload.vehicle_number,
         driver_name=payload.driver_name,
         lr_number=payload.lr_number,
         eta=payload.eta,
         tracking_url=payload.tracking_url,
+        notes=payload.notes,
+        box_count=payload.box_count,
+        total_weight=payload.total_weight,
     )
     db.commit()
     db.refresh(shipment)

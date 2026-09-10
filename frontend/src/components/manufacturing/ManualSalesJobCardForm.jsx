@@ -32,6 +32,7 @@ import {
   PAYMENT_TERMS_OPTIONS,
   PRIORITY_OPTIONS,
   PRODUCT_CATEGORY_OPTIONS,
+  scrollToFirstManualFormError,
   SPEC_PARAMETER_OPTIONS,
   validateManualForm,
 } from "../../utils/manualSalesJobCard";
@@ -113,6 +114,9 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
   const [selectedCustomerId, setSelectedCustomerId] = useState("");
   const [selectedSalesOrderId, setSelectedSalesOrderId] = useState("");
   const [workflowStatus, setWorkflowStatus] = useState("SAVED");
+  const [recordVersion, setRecordVersion] = useState(null);
+  const [readOnlySales, setReadOnlySales] = useState(false);
+  const [canEditCard, setCanEditCard] = useState(true);
   const [showAddCustomer, setShowAddCustomer] = useState(false);
   const [showAddProduct, setShowAddProduct] = useState(false);
   const [addProductRowIndex, setAddProductRowIndex] = useState(null);
@@ -337,6 +341,11 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
         const data = res?.data ?? res;
         setForm(manualFormFromApi(data));
         setWorkflowStatus(data?.workflow_status || data?.workflow_stage || "SAVED");
+        setRecordVersion(data?.version ?? null);
+        const readOnly = Boolean(data?.read_only_sales);
+        setReadOnlySales(readOnly);
+        const actions = Array.isArray(data?.allowed_actions) ? data.allowed_actions : [];
+        setCanEditCard(!readOnly && (actions.length === 0 || actions.includes("edit")));
       })
       .catch((err) => setLoadError(apiErrorMessage(err, "Could not load job card.")))
       .finally(() => setLoading(false));
@@ -425,19 +434,30 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
 
   const handleSave = async () => {
     if (saving) return;
+    if (isEdit && !canEditCard) {
+      addToast(
+        readOnlySales
+          ? "This job card is read-only while it is with Store Manager. Request a correction via Return to Sales."
+          : "This job card cannot be edited in its current status.",
+        "error"
+      );
+      return;
+    }
     const validation = validateManualForm(form);
     if (Object.keys(validation).length) {
       setErrors(validation);
+      scrollToFirstManualFormError(validation);
       addToast("Please fix the highlighted fields.", "error");
       return;
     }
     setSaving(true);
     try {
-      const payload = buildManualPayload(form);
+      const payload = buildManualPayload(form, { expectedVersion: recordVersion });
       const res = isEdit
         ? await updateManualJobCard(jobCardId, payload)
         : await createManualJobCard(payload);
       const data = res?.data ?? res;
+      if (data?.version != null) setRecordVersion(data.version);
       addToast(
         isEdit
           ? "Job card saved. Use Actions → Send when ready to route it."
@@ -449,7 +469,10 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
     } catch (err) {
       const detail = extractApiErrorDetail(err);
       const apiErrors = mapApiErrors(detail);
-      if (Object.keys(apiErrors).length) setErrors(apiErrors);
+      if (Object.keys(apiErrors).length) {
+        setErrors(apiErrors);
+        scrollToFirstManualFormError(apiErrors);
+      }
       addToast(apiErrorMessage(err, "Failed to save job card."), "error");
     } finally {
       setSaving(false);
@@ -487,7 +510,7 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
       : "Select product…";
 
   return (
-    <div className="ui-page ui-stack manual-sjc-page">
+    <div className="manual-sjc-page ui-stack">
       <QuickAddCustomerModal
         open={showAddCustomer}
         onClose={() => setShowAddCustomer(false)}
@@ -524,6 +547,14 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
           </div>
         ) : null}
 
+        {isEdit && !canEditCard ? (
+          <div className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-900" role="status">
+            {readOnlySales
+              ? "This job card is with Store Manager and is read-only here. Ask Store Manager to return it to Sales before editing."
+              : "This job card cannot be edited in its current workflow status."}
+          </div>
+        ) : null}
+
         <div className="manual-sjc-page__body">
           <div className="sjc-doc sjc-doc--screen manual-sjc-form">
             <div className="sjc-doc__paper">
@@ -551,7 +582,7 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
                       </tr>
                       <tr>
                         <td className="sjc-doc__meta-label">Date</td>
-                        <td className="sjc-doc__meta-value">
+                        <td className="sjc-doc__meta-value" data-manual-field="header.job_card_date">
                           <DatePicker
                             compact
                             value={form.header.job_card_date}
@@ -562,7 +593,7 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
                       </tr>
                       <tr>
                         <td className="sjc-doc__meta-label">Sales Order</td>
-                        <td className="sjc-doc__meta-value">
+                        <td className="sjc-doc__meta-value" data-manual-field="header.sales_order_no">
                           <SearchableSelect
                             value={salesOrderSelectValue}
                             onChange={handleSalesOrderSelect}
@@ -570,7 +601,7 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
                             placeholder={mastersLoading ? "Loading sales orders…" : "Select sales order…"}
                             searchPlaceholder="Search sales order…"
                             allowCustom
-                            disabled={mastersLoading}
+                            disabled={mastersLoading || !canEditCard}
                             error={Boolean(errors["header.sales_order_no"])}
                             className={compactSelectClass}
                           />
@@ -605,18 +636,20 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
                   <div className="sjc-doc__panel-title">Customer Details</div>
                   <div className="sjc-doc__panel-body">
                     <EditableFieldRow label="Customer Name" required error={errors["customer.customer_name"]}>
-                      <SearchableSelect
-                        value={customerSelectValue}
-                        onChange={handleCustomerSelect}
-                        options={customerOptions}
-                        footerOptions={customerFooterOptions}
-                        placeholder={mastersLoading ? "Loading customers…" : customerEmptyLabel}
-                        searchPlaceholder="Search customer…"
-                        allowCustom
-                        disabled={mastersLoading}
-                        error={Boolean(errors["customer.customer_name"])}
-                        className={compactSelectClass}
-                      />
+                      <div data-manual-field="customer.customer_name">
+                        <SearchableSelect
+                          value={customerSelectValue}
+                          onChange={handleCustomerSelect}
+                          options={customerOptions}
+                          footerOptions={customerFooterOptions}
+                          placeholder={mastersLoading ? "Loading customers…" : customerEmptyLabel}
+                          searchPlaceholder="Search customer…"
+                          allowCustom
+                          disabled={mastersLoading || !canEditCard}
+                          error={Boolean(errors["customer.customer_name"])}
+                          className={compactSelectClass}
+                        />
+                      </div>
                     </EditableFieldRow>
                     <EditableFieldRow label="Contact Person" error={errors["customer.contact_person"]}>
                       <Input
@@ -720,7 +753,7 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
                 </div>
               </div>
 
-              <div className="sjc-doc__table-wrap">
+              <div className="sjc-doc__table-wrap" data-manual-field="product_lines">
                 <div className="sjc-doc__table-caption">Product / Job Details</div>
                 {errors.product_lines ? <FieldError error={errors.product_lines} /> : null}
                 <table className="sjc-doc__table manual-sjc__editable-table">
@@ -738,7 +771,7 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
                   </thead>
                   <tbody>
                     {form.product_lines.map((row, index) => (
-                      <tr key={index}>
+                      <tr key={index} data-manual-field={`product_lines.${index}.product_name`}>
                         <td className="num">{index + 1}</td>
                         <td>
                           <SearchableSelect
@@ -952,7 +985,7 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
             <Button
               variant="primary"
               loading={saving}
-              disabled={saving}
+              disabled={saving || (isEdit && !canEditCard)}
               onClick={handleSave}
               leftIcon={<Save className="h-4 w-4" aria-hidden />}
             >

@@ -26,7 +26,6 @@ import {
   IndianRupee,
   ListTodo,
   Package,
-  Plus,
   ShoppingCart,
   Target,
   Users,
@@ -34,8 +33,10 @@ import {
   Zap,
 } from "lucide-react";
 
+import EmptyChart from "../../common/EmptyChart";
 import SkeletonCard, { SkeletonChart } from "../../common/SkeletonCard";
-import { getFallbackDashboard, quickActionsRef } from "../../../data/referenceDashboardData";
+import AdminQuickActions from "./AdminQuickActions";
+import ProductionPipeline from "./ProductionPipeline";
 import { getErpDashboard } from "../../../api/dashboardApi";
 import { getMaterialRequests, getPurchaseOrders, getVendors } from "../../../api/procurementApi";
 import { getProductionOrders, getWorkOrders } from "../../../api/productionApi";
@@ -44,7 +45,7 @@ import MachineControlCard from "../MachineControlCard";
 import ManufacturingWorkflowHub from "../ManufacturingWorkflowHub";
 import DashboardCheckIn from "../DashboardCheckIn";
 import useManufacturingRefresh from "../../../hooks/useManufacturingRefresh";
-import { userCanAccess, isOperator } from "../../../config/permissions";
+import { isAdmin, isOperator } from "../../../config/permissions";
 import { CardShell, KpiIconWell, StatusBadge, TrendBadge, getKpiAccent } from "./ReferenceParts";
 
 /** Masters → Products visual tokens (only reference for this dashboard). */
@@ -152,8 +153,6 @@ const SHOP_FLOOR_KEYS = {
 
 const INVENTORY_KEYS = ["rawMaterials", "wipItems", "finishedGoods", "lowStockItems"];
 const WAREHOUSE_KEYS = ["mainStore", "productionStore", "fgStore", "others"];
-const QUICK_ACTION_KEYS = ["newWorkOrder", "productionEntry", "materialIssue", "stockTransfer", "qcEntry", "reports"];
-const QUICK_ACTION_MODULES = ["production", "production", "inventory", "inventory", "quality", "analytics"];
 const SUMMARY_KEYS = ["manPower", "workingHours", "powerConsumption", "productionEfficiency", "targetAchievement"];
 
 const EMPTY_ORDERS = { total: 0, inProgress: 0, completed: 0, onHold: 0, progress: 0 };
@@ -762,38 +761,6 @@ function AlertsNotifications({ alerts = [] }) {
   );
 }
 
-function QuickActions() {
-  const { t } = useTranslation();
-  const { user } = useAuth();
-  if (isOperator(user)) return null;
-  const visible = quickActionsRef.filter((_, i) => userCanAccess(user, QUICK_ACTION_MODULES[i]));
-  if (!visible.length) return null;
-  return (
-    <CardShell title={t("refDashboard.quickActions")}>
-      <div className="grid grid-cols-2 gap-2.5">
-        {quickActionsRef.map((a, i) => {
-          if (!userCanAccess(user, QUICK_ACTION_MODULES[i])) return null;
-          const labelKey = QUICK_ACTION_KEYS[i];
-          return (
-            <Link
-              key={a.label}
-              to={a.to}
-              className="flex flex-col items-center justify-center gap-2 rounded-lg border border-[#e4e4ea] bg-[#f3f3f6] p-3.5 text-center transition hover:bg-[#ececf0] dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-750"
-            >
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg text-white" style={{ backgroundColor: a.bg }}>
-                <Plus className="h-4 w-4" aria-hidden />
-              </span>
-              <span className="text-[11px] font-semibold leading-tight text-[#1a1a1f] dark:text-white">
-                {labelKey ? t(`refDashboard.${labelKey}`) : a.label}
-              </span>
-            </Link>
-          );
-        })}
-      </div>
-    </CardShell>
-  );
-}
-
 function RecentWorkOrders({ workOrders = [] }) {
   const { t } = useTranslation();
   return (
@@ -917,8 +884,8 @@ export default function ReferenceDashboard() {
   const { t } = useTranslation();
   const { user } = useAuth();
   const isOp = isOperator(user);
-  const [apiData, setApiData] = useState(() => getFallbackDashboard());
-  const [loading, setLoading] = useState(false);
+  const [apiData, setApiData] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [liveCounts, setLiveCounts] = useState({
     ordersCount: null,
@@ -928,7 +895,7 @@ export default function ReferenceDashboard() {
   });
 
   const load = useCallback((isRefresh = false) => {
-    if (isRefresh) setLoading(true);
+    if (!isRefresh) setLoading(true);
     setError(null);
 
     Promise.allSettled([
@@ -939,10 +906,17 @@ export default function ReferenceDashboard() {
       getPurchaseOrders(),
       getVendors(),
     ]).then(([dashRes, prodRes, woRes, mrRes, poRes, vndRes]) => {
-      if (dashRes.status === "fulfilled" && dashRes.value?.data && typeof dashRes.value.data === "object" && !Array.isArray(dashRes.value.data)) {
+      if (dashRes.status === "fulfilled" && dashRes.value?.data) {
         setApiData(dashRes.value.data);
       } else {
-        setApiData((prev) => (prev && typeof prev === "object" ? prev : getFallbackDashboard()));
+        const errorDetail =
+          dashRes.reason?.response?.data?.message ||
+          dashRes.reason?.response?.data?.detail ||
+          dashRes.reason?.response?.data?.errors?.[0] ||
+          dashRes.reason?.message ||
+          "Failed to load dashboard data.";
+        setApiData(null);
+        setError(errorDetail);
       }
 
 
@@ -1117,6 +1091,8 @@ export default function ReferenceDashboard() {
   const showTopMachines = !isOpProfile && !isStoreProfile && sectionVisible(sections, "top_machines");
   const showInventory = !isOpProfile && sectionVisible(sections, "inventory");
   const showQuickActions = !isOpProfile && sectionVisible(sections, "quick_actions");
+  const showProductionPipeline =
+    !isOpProfile && !isStoreProfile && sectionVisible(sections, "production_pipeline");
   const showRecentWo = !isStoreProfile && sectionVisible(sections, "recent_work_orders");
   const showFinance = !isOpProfile && showInventory && ["admin", "full"].includes(profile);
   const showPendingTasks = !isOpProfile && sectionVisible(sections, "orders_overview");
@@ -1145,7 +1121,7 @@ export default function ReferenceDashboard() {
 
   if (loading) return <DashboardSkeleton />;
 
-  if (error && !apiData) {
+  if (error) {
     return (
       <div className="min-h-full bg-[var(--color-bg)]">
         <div className="ui-page mx-auto max-w-[var(--page-max)]">
@@ -1193,6 +1169,10 @@ export default function ReferenceDashboard() {
             ) : null}
           </div>
         )}
+
+        {showProductionPipeline ? (
+          <ProductionPipeline data={apiData?.production_pipeline} loading={loading} />
+        ) : null}
 
         {(showProduction || showShopFloor || showTopMachines || (isOpProfile && sectionVisible(sections, "production_overview"))) && (
           <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
@@ -1244,12 +1224,33 @@ export default function ReferenceDashboard() {
         {(showQuickActions || showRecentWo) && (
           <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
             {showQuickActions ? (
-              <div className={showRecentWo ? "xl:col-span-3" : "xl:col-span-12"}>
-                <QuickActions />
+              <div
+                className={
+                  showRecentWo
+                    ? profile === "admin" || isAdmin(user)
+                      ? "xl:col-span-4"
+                      : "xl:col-span-3"
+                    : "xl:col-span-12"
+                }
+              >
+                <AdminQuickActions
+                  summary={apiData?.quick_actions_summary}
+                  loading={loading}
+                  error={error}
+                  onRetry={() => load(true)}
+                />
               </div>
             ) : null}
             {showRecentWo ? (
-              <div className={showQuickActions ? "xl:col-span-9" : "xl:col-span-12"}>
+              <div
+                className={
+                  showQuickActions
+                    ? profile === "admin" || isAdmin(user)
+                      ? "xl:col-span-8"
+                      : "xl:col-span-9"
+                    : "xl:col-span-12"
+                }
+              >
                 <RecentWorkOrders workOrders={workOrdersLive} />
               </div>
             ) : null}

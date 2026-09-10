@@ -289,6 +289,36 @@ def test_manual_job_card_return_to_sales(client, register_admin):
     assert body.get("can_send") is True
 
 
+def test_manual_job_card_update_saved(client, register_admin):
+    admin = register_admin()
+    headers = admin["headers"]
+
+    create = client.post(
+        "/manufacturing/workflow/job-cards/manual",
+        headers=headers,
+        json=_manual_payload(),
+    )
+    assert create.status_code == 200, create.text
+    jc_id = create.json()["job_card_id"]
+
+    patch = client.patch(
+        f"/manufacturing/workflow/job-cards/manual/{jc_id}",
+        headers=headers,
+        json=_manual_payload(
+            manual_document={
+                "customer": {"customer_name": "Updated Customer Name"},
+                "order": {"remarks": "Updated on edit"},
+            }
+        ),
+    )
+    assert patch.status_code == 200, patch.text
+    body = patch.json()
+    assert body["sales_document"]["customer_details"]["customer_name"] == "Updated Customer Name"
+    assert body["sales_document"]["order_details"]["remarks"] == "Updated on edit"
+    assert body["workflow_status"] == "SAVED"
+    assert body.get("read_only_sales") is False
+
+
 def test_manual_job_card_sales_edit_blocked_in_store(client, register_admin):
     admin = register_admin()
     headers = admin["headers"]

@@ -9,7 +9,7 @@
   --erp-primary-dark: #007236;
   --erp-primary-hover: #005f32;
   --erp-primary-soft: #e8f5ee;
-  --erp-page-bg: #c8eeff;
+  --erp-page-bg: #f4f7f6;
   --erp-card-border: #d1d5db;
   --erp-header-text: #ffffff;
   --erp-label-size: 1rem;
@@ -164,6 +164,57 @@
   gap: 0.5rem;
 }
 
+/* Hero-band CTAs must contrast with the green background (not blend in). */
+.erp-hero-header__actions .ui-btn--add,
+.erp-hero-header__actions .ui-btn--primary,
+.inventory-hero-header__actions .ui-btn--add,
+.inventory-hero-header__actions .ui-btn--primary {
+  align-self: flex-start;
+  width: auto;
+  min-width: 8.5rem;
+  background: #ffffff;
+  color: var(--erp-primary-dark);
+  border: 1px solid rgba(255, 255, 255, 0.95);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.12),
+    0 0 0 1px rgba(0, 0, 0, 0.06);
+}
+
+.erp-hero-header__actions .ui-btn--add:hover:not(:disabled):not(.is-loading):not([aria-disabled="true"]),
+.erp-hero-header__actions .ui-btn--primary:hover:not(:disabled):not(.is-loading):not([aria-disabled="true"]),
+.inventory-hero-header__actions .ui-btn--add:hover:not(:disabled):not(.is-loading):not([aria-disabled="true"]),
+.inventory-hero-header__actions .ui-btn--primary:hover:not(:disabled):not(.is-loading):not([aria-disabled="true"]) {
+  background: #f0fdf4;
+  color: var(--erp-primary-dark);
+  border-color: #ffffff;
+  box-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.14),
+    0 0 0 1px rgba(0, 0, 0, 0.08);
+}
+
+.erp-hero-header__actions .ui-btn--add:active:not(:disabled):not(.is-loading):not([aria-disabled="true"]),
+.erp-hero-header__actions .ui-btn--primary:active:not(:disabled):not(.is-loading):not([aria-disabled="true"]),
+.inventory-hero-header__actions .ui-btn--add:active:not(:disabled):not(.is-loading):not([aria-disabled="true"]),
+.inventory-hero-header__actions .ui-btn--primary:active:not(:disabled):not(.is-loading):not([aria-disabled="true"]) {
+  background: #e8f5ee;
+  color: var(--erp-primary-dark);
+}
+
+.erp-hero-header__actions .ui-btn--outline,
+.inventory-hero-header__actions .ui-btn--outline {
+  background: transparent;
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.9);
+  box-shadow: none;
+}
+
+.erp-hero-header__actions .ui-btn--outline:hover:not(:disabled):not(.is-loading):not([aria-disabled="true"]),
+.inventory-hero-header__actions .ui-btn--outline:hover:not(:disabled):not(.is-loading):not([aria-disabled="true"]) {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  border-color: #ffffff;
+}
+
 .erp-hero-header .inventory-header-control__label,
 .inventory-hero-header .inventory-header-control__label {
   color: rgba(255, 255, 255, 0.9);
@@ -212,6 +263,54 @@
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
+}
+
+/* Section-band CTAs must contrast with green header (not blend in). */
+.erp-section-header .ui-btn--add,
+.erp-section-header .ui-btn--primary,
+.ui-section-title .ui-btn--add,
+.ui-section-title .ui-btn--primary {
+  background: #ffffff;
+  color: var(--erp-primary-dark);
+  border: 1px solid rgba(255, 255, 255, 0.95);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.12),
+    0 0 0 1px rgba(0, 0, 0, 0.06);
+}
+
+.erp-section-header .ui-btn--add:hover:not(:disabled):not(.is-loading):not([aria-disabled="true"]),
+.erp-section-header .ui-btn--primary:hover:not(:disabled):not(.is-loading):not([aria-disabled="true"]),
+.ui-section-title .ui-btn--add:hover:not(:disabled):not(.is-loading):not([aria-disabled="true"]),
+.ui-section-title .ui-btn--primary:hover:not(:disabled):not(.is-loading):not([aria-disabled="true"]) {
+  background: #f0fdf4;
+  color: var(--erp-primary-dark);
+  border-color: #ffffff;
+  box-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.14),
+    0 0 0 1px rgba(0, 0, 0, 0.08);
+}
+
+.erp-section-header .ui-btn--add:active:not(:disabled):not(.is-loading):not([aria-disabled="true"]),
+.erp-section-header .ui-btn--primary:active:not(:disabled):not(.is-loading):not([aria-disabled="true"]),
+.ui-section-title .ui-btn--add:active:not(:disabled):not(.is-loading):not([aria-disabled="true"]),
+.ui-section-title .ui-btn--primary:active:not(:disabled):not(.is-loading):not([aria-disabled="true"]) {
+  background: #e8f5ee;
+  color: var(--erp-primary-dark);
+}
+
+.erp-section-header .ui-btn--outline,
+.ui-section-title .ui-btn--outline {
+  background: #ffffff;
+  color: var(--erp-primary-dark);
+  border-color: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.erp-section-header .ui-btn--outline:hover:not(:disabled):not(.is-loading):not([aria-disabled="true"]),
+.ui-section-title .ui-btn--outline:hover:not(:disabled):not(.is-loading):not([aria-disabled="true"]) {
+  background: #f0fdf4;
+  color: var(--erp-primary-dark);
+  border-color: #ffffff;
 }
 
 /* Cards */

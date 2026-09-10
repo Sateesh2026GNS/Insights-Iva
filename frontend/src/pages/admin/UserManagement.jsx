@@ -7,6 +7,7 @@ import DataTable from "../../components/common/DataTable";
 import KpiCard from "../../components/common/KpiCard";
 import { Input } from "../../components/common/FormField";
 import AdminModal from "../../components/admin/AdminModal";
+import InviteUserModal from "../../components/admin/InviteUserModal";
 import ConfirmDialog from "../../components/admin/ConfirmDialog";
 import AccessDenied from "../../components/admin/AccessDenied";
 import usePermissions from "../../hooks/usePermissions";
@@ -16,7 +17,6 @@ import Button from "../../components/common/Button";
 import {
   getUsers,
   getRoles,
-  createUser,
   updateUser,
   deleteUser,
   adminResetUserPassword,
@@ -53,6 +53,7 @@ export default function UserManagement() {
   const [users, setUsers] = useState([]);
   const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [inviteOpen, setInviteOpen] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
@@ -122,7 +123,7 @@ export default function UserManagement() {
           designation: defaultDesignation,
         });
         setErrors({});
-        setModalOpen(true);
+        setInviteOpen(true);
       }
     }
   }, [loading, roles, location.state, searchParams]);
@@ -133,7 +134,7 @@ export default function UserManagement() {
     setEditing(null);
     setForm(EMPTY_FORM);
     setErrors({});
-    setModalOpen(true);
+    setInviteOpen(true);
   };
 
   const openEdit = (u) => {
@@ -194,8 +195,7 @@ export default function UserManagement() {
       }
     }
 
-    if (!editing && form.password.length < 6) e.password = "Password must be at least 6 characters";
-    if (editing && form.password && form.password.length < 6)
+    if (form.password && form.password.length < 6)
       e.password = "Password must be at least 6 characters";
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -218,24 +218,12 @@ export default function UserManagement() {
         is_active: form.is_active,
         role_ids: form.role_ids,
       };
-      if (editing) {
-        if (form.password) payload.password = form.password;
-        await updateUser(editing.id, payload);
-        addToast("User updated successfully");
-        setModalOpen(false);
-        load();
-      } else {
-        payload.password = form.password;
-        await createUser(payload);
-        addToast("User created successfully");
-        setModalOpen(false);
-        load();
-        // If we were opened from another page (e.g. Leave page), go back with refreshUsers flag
-        const returnTo = location.state?._returnTo;
-        if (returnTo) {
-          navigate(`${returnTo}?refreshUsers=true`, { replace: true, state: { _fromPath: "/admin/users" } });
-        }
-      }
+      if (form.password) payload.password = form.password;
+      await updateUser(editing.id, payload);
+      addToast("User updated successfully");
+      setModalOpen(false);
+      setEditing(null);
+      load();
     } catch (err) {
       const detail = err.response?.data?.detail;
       addToast(typeof detail === "string" ? detail : "Could not save user", "error");
@@ -374,7 +362,7 @@ export default function UserManagement() {
         subtitle="Create, view, and manage all user accounts and their assigned roles."
         action={
           <Button variant="add" type="button" onClick={openCreate} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
-            Add User
+            Invite User
           </Button>
         }
       />
@@ -409,11 +397,30 @@ export default function UserManagement() {
         )}
       </div>
 
+      <InviteUserModal
+        open={inviteOpen}
+        onClose={() => setInviteOpen(false)}
+        defaultRole={location.state?.defaultRole || searchParams.get("role") || ""}
+        onSuccess={() => {
+          load();
+          const returnTo = location.state?._returnTo;
+          if (returnTo) {
+            navigate(`${returnTo}?refreshUsers=true`, {
+              replace: true,
+              state: { _fromPath: "/admin/users" },
+            });
+          }
+        }}
+      />
+
       <AdminModal
-        title={editing ? "Edit User" : "Add User"}
-        subtitle={editing ? editing.email : "Create a new user account and assign roles."}
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
+        title="Edit User"
+        subtitle={editing?.email}
+        open={modalOpen && Boolean(editing)}
+        onClose={() => {
+          setModalOpen(false);
+          setEditing(null);
+        }}
       >
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input
@@ -478,12 +485,11 @@ export default function UserManagement() {
             placeholder="e.g. 1"
           />
           <Input
-            label={editing ? "New Password" : "Password"}
+            label="New Password"
             type="password"
-            required={!editing}
             value={form.password}
             error={errors.password}
-            hint={editing ? "Leave blank to keep the current password." : "Minimum 6 characters."}
+            hint="Leave blank to keep the current password."
             onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
             placeholder="••••••"
           />
@@ -534,11 +540,11 @@ export default function UserManagement() {
             </button>
             <Button
               type="submit"
-              variant={editing ? "edit" : "primary"}
+              variant="edit"
               disabled={saving}
               loading={saving}
             >
-              {saving ? "Saving…" : editing ? "Save Changes" : "Create User"}
+              {saving ? "Saving…" : "Save Changes"}
             </Button>
           </div>
         </form>

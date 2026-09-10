@@ -8,8 +8,8 @@
  * Apply these tokens/classes across pages — avoid page-specific one-offs.
  */
 :root {
-  /* Surfaces — light blue page canvas (ERP standard) */
-  --color-bg: #c8eeff;
+  /* Surfaces — soft neutral page canvas */
+  --color-bg: #f4f7f6;
   --color-bg-glow: rgba(0, 115, 60, 0.06);
   --color-bg-glow-2: rgba(0, 114, 54, 0.04);
   --color-surface: #ffffff;

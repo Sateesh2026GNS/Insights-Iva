@@ -184,8 +184,14 @@ export default function App() {
     location.pathname.startsWith("/ledger/");
   const isSettings = isSettingsRoute(location.pathname);
   const isEInvoiceLogin = location.pathname === "/sales/e-invoice";
+  const path = normalizePath(location.pathname);
+  const isJobCardAuthoring =
+    path === "/sales/job-cards/create" || /^\/sales\/job-cards\/[^/]+\/edit$/.test(path);
+  const isJobCardsWorkspace =
+    path === "/my-job-cards" || path.startsWith("/my-job-cards/") || isJobCardAuthoring;
   /** Full-bleed editors keep their own chrome; list/dashboard surfaces use Products page surface. */
-  const isFullBleedSales = isInvoiceEditor || isSalesDocList || isEInvoiceLogin || normalizePath(location.pathname) === "/";
+  const isFullBleedSales =
+    isInvoiceEditor || isSalesDocList || isEInvoiceLogin || path === "/" || isJobCardsWorkspace;
 
   if (isShellLessRoute(location.pathname)) {
     const path = normalizePath(location.pathname);
