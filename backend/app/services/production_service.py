@@ -54,22 +54,22 @@ def create_production_order(db: Session, payload: ProductionOrderCreate) -> Prod
                 detail="Product not found or does not belong to the current tenant.",
             )
     else:
-        # Resolve by product_name or create a default product
-        prod_name = (payload.product_name or "").strip() or "Standard Product"
+        p_name = (getattr(payload, "product_name", None) or "").strip() or "Standard Product"
         product = db.scalars(
             select(Product).where(
+                Product.name.ilike(p_name),
                 Product.tenant_id == payload.tenant_id,
-                func.lower(Product.name) == prod_name.lower(),
             )
         ).first()
         if not product:
-            # Create product on the fly
-            ts = int(datetime.now(timezone.utc).timestamp()) % 10000
+            import time
+            sku_prefix = "".join(c for c in p_name.upper() if c.isalnum())[:3] or "PRD"
+            sku = f"{sku_prefix}-{int(time.time()) % 10000:04d}"
             product = Product(
                 tenant_id=payload.tenant_id,
-                name=prod_name,
-                sku=f"PRD-{prod_name[:3].upper()}-{ts}",
-                category="Finished Goods",
+                name=p_name,
+                sku=sku,
+                type="finished_good",
             )
             db.add(product)
             db.flush()
@@ -87,24 +87,6 @@ def create_production_order(db: Session, payload: ProductionOrderCreate) -> Prod
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Machine not found or does not belong to the current tenant.",
             )
-    elif payload.machine_name and payload.machine_name.strip():
-        m_name = payload.machine_name.strip()
-        machine = db.scalars(
-            select(Machine).where(
-                Machine.tenant_id == payload.tenant_id,
-                func.lower(Machine.name) == m_name.lower(),
-            )
-        ).first()
-        if not machine:
-            machine = Machine(
-                tenant_id=payload.tenant_id,
-                name=m_name,
-                machine_code=f"MCH-{m_name[:3].upper()}",
-                status="idle",
-            )
-            db.add(machine)
-            db.flush()
-        payload.machine_id = machine.id
 
     order_num = payload.order_number.strip() if payload.order_number else ""
     if order_num:
@@ -138,8 +120,6 @@ def create_production_order(db: Session, payload: ProductionOrderCreate) -> Prod
         payload.order_number = order_num
 
     data = payload.model_dump()
-    data.pop("product_name", None)
-    data.pop("machine_name", None)
     actual_qty = data.get("actual_quantity") if data.get("actual_quantity") is not None else data.get("produced_quantity")
     if "produced_quantity" in data:
         data.pop("produced_quantity", None)
@@ -419,6 +399,28 @@ def quick_create_work_order(db: Session, payload: WorkOrderQuickCreate) -> WorkO
                 return existing_wo
 
     if not prod_order:
+        if not payload.product_id:
+            p_name = (getattr(payload, "product_name", None) or "").strip() or "Standard Product"
+            product = db.scalars(
+                select(Product).where(
+                    Product.name.ilike(p_name),
+                    Product.tenant_id == payload.tenant_id,
+                )
+            ).first()
+            if not product:
+                import time
+                sku_prefix = "".join(c for c in p_name.upper() if c.isalnum())[:3] or "PRD"
+                sku = f"{sku_prefix}-{int(time.time()) % 10000:04d}"
+                product = Product(
+                    tenant_id=payload.tenant_id,
+                    name=p_name,
+                    sku=sku,
+                    type="finished_good",
+                )
+                db.add(product)
+                db.flush()
+            payload.product_id = product.id
+
         po_num = f"PO-{wo_num}"
         prod_order = ProductionOrder(
             tenant_id=payload.tenant_id,
