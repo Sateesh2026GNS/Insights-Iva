@@ -10,6 +10,7 @@ from app.api.deps import get_db
 from app.core.permissions import require_permission, tenant_scope
 from app.models.user import User
 from app.services.hr_module_service import (
+    allocate_asset,
     approve_expenses,
     archive_preboarding,
     assign_shift,
@@ -23,6 +24,7 @@ from app.services.hr_module_service import (
     create_salary_component,
     create_site_visit,
     create_week_off,
+    delete_asset_category,
     delete_holiday,
     delete_leave_plan,
     delete_org_item,
@@ -58,6 +60,7 @@ from app.services.hr_module_service import (
     list_salary_components,
     list_salary_holds,
     list_shift_assignments,
+    return_asset,
     list_site_visits,
     list_hr_role_users,
     list_week_offs,
@@ -486,9 +489,36 @@ def assets_categories_create(
     return create_asset_category(db, user.tenant_id, payload)
 
 
+@router.delete("/assets/categories/{category_id}")
+def assets_categories_delete(
+    category_id: int,
+    user: User = Depends(require_permission(MODULE)),
+    db: Session = Depends(get_db),
+):
+    return delete_asset_category(db, user.tenant_id, category_id)
+
+
 @router.get("/assets/allocations")
 def assets_allocations(tenant_id: int = Depends(tenant_scope(MODULE)), db: Session = Depends(get_db)):
     return list_asset_allocations(db, tenant_id)
+
+
+@router.post("/assets/allocate")
+def assets_allocate(
+    payload: dict,
+    user: User = Depends(require_permission(MODULE)),
+    db: Session = Depends(get_db),
+):
+    return allocate_asset(db, user.tenant_id, payload, user=user)
+
+
+@router.post("/assets/return")
+def assets_return(
+    payload: dict,
+    user: User = Depends(require_permission(MODULE)),
+    db: Session = Depends(get_db),
+):
+    return return_asset(db, user.tenant_id, payload, user=user)
 
 
 @router.get("/assets/mapped")

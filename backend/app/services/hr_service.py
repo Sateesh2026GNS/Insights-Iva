@@ -576,6 +576,11 @@ def update_leave_request(
 
 
 def list_hr_assets(db: Session, tenant_id: int) -> list[HrAsset]:
+    try:
+        from app.services.hr_module_service import _ensure_seeded_assets
+        _ensure_seeded_assets(db, tenant_id)
+    except Exception:
+        pass
     return list(
         db.scalars(
             select(HrAsset)

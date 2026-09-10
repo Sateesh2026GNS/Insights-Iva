@@ -126,3 +126,22 @@
   font-weight: 500;
   color: var(--ma-muted);
 }
+
+/* ── Modern Mapped Assets Styling ─────────────────────────────────────────── */
+.hr-mapped-assets__kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.hr-mapped-assets__kpi-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 20px;
+  border-radius: 14px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}

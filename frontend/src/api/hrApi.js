@@ -177,13 +177,16 @@ export const createDepartment = (payload) => api.post("/hr/departments", payload
 export const updateDepartment = (departmentId, payload) => api.put(`/hr/departments/${departmentId}`, payload);
 export const deactivateDepartment = (departmentId) => api.patch(`/hr/departments/${departmentId}/deactivate`);
 
-export const getHrAssets = () => api.get("/hr/assets");
+export const getHrAssets = (params) => api.get("/hr/assets", { params });
 export const createHrAsset = (payload) => api.post("/hr/assets", payload);
 export const updateHrAsset = (assetId, payload) => api.put(`/hr/assets/${assetId}`, payload);
 export const deleteHrAsset = (assetId) => api.delete(`/hr/assets/${assetId}`);
 export const getAssetCategories = () => api.get("/hr/assets/categories");
 export const createAssetCategory = (payload) => api.post("/hr/assets/categories", payload);
+export const deleteAssetCategory = (categoryId) => api.delete(`/hr/assets/categories/${categoryId}`);
 export const getAllocatedAssets = (params) => api.get("/hr/assets/allocations", { params });
+export const allocateAsset = (payload) => api.post("/hr/assets/allocate", payload);
+export const returnAllocatedAsset = (payload) => api.post("/hr/assets/return", payload);
 export const getMappedAssets = (params) => api.get("/hr/assets/mapped", { params });
 
 export const getSafetyIncidents = () => api.get("/hr/incidents");

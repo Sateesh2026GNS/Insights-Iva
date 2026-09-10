@@ -189,3 +189,81 @@ def test_hr_role_permissions(client, register_admin):
     users = client.get(f"/hr/roles/{role_id}/users", headers=auth["headers"])
     assert users.status_code == 200
     assert isinstance(users.json(), list)
+
+
+def test_asset_management_flow(client, register_admin):
+    auth = register_admin()
+
+    # 1. List assets (auto-seeded)
+    resp = client.get("/hr/assets", headers=auth["headers"])
+    assert resp.status_code == 200
+    assets = resp.json()
+    assert len(assets) >= 1
+    sample_asset = assets[0]
+    asset_id = sample_asset["id"]
+
+    # 2. Categories
+    cats = client.get("/hr/assets/categories", headers=auth["headers"])
+    assert cats.status_code == 200
+    assert len(cats.json()) >= 1
+
+    cat_create = client.post(
+        "/hr/assets/categories",
+        headers=auth["headers"],
+        json={"name": "Test Warehouse Gear", "description": "Gear for test"},
+    )
+    assert cat_create.status_code == 200
+    cat_id = cat_create.json()["id"]
+
+    # 3. Create asset
+    new_asset = client.post(
+        "/hr/assets",
+        headers=auth["headers"],
+        json={
+            "asset_code": "AST-TEST-999",
+            "name": "Testing Precision Device",
+            "category": "Test Warehouse Gear",
+            "status": "Active",
+            "purchase_cost": 15000.0,
+            "location": "Testing Room 1",
+        },
+    )
+    assert new_asset.status_code == 201
+    created_ast = new_asset.json()
+    assert created_ast["asset_code"] == "AST-TEST-999"
+
+    # 4. Allocate asset
+    alloc = client.post(
+        "/hr/assets/allocate",
+        headers=auth["headers"],
+        json={
+            "asset_id": created_ast["id"],
+            "employee_name": "Test Employee",
+            "notes": "Allocated for project testing",
+        },
+    )
+    assert alloc.status_code == 200
+    alloc_data = alloc.json()
+    assert alloc_data["employee_name"] == "Test Employee"
+
+    # 5. List mapped assets
+    mapped = client.get("/hr/assets/mapped", headers=auth["headers"])
+    assert mapped.status_code == 200
+    assert any(m["asset_code"] == "AST-TEST-999" for m in mapped.json())
+
+    # 6. Return asset
+    ret = client.post(
+        "/hr/assets/return",
+        headers=auth["headers"],
+        json={"asset_id": created_ast["id"], "notes": "Returned intact"},
+    )
+    assert ret.status_code == 200
+
+    # 7. Check unmapped
+    mapped_after = client.get("/hr/assets/mapped", headers=auth["headers"])
+    assert mapped_after.status_code == 200
+    assert not any(m["asset_code"] == "AST-TEST-999" for m in mapped_after.json())
+
+    # 8. Clean up category
+    del_cat = client.delete(f"/hr/assets/categories/{cat_id}", headers=auth["headers"])
+    assert del_cat.status_code == 200

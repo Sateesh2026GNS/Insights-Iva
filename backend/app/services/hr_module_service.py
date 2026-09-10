@@ -23,6 +23,7 @@ from app.models.hr_module import (
     Announcement,
     AssetAllocation,
     AssetCategory,
+    AssetHistory,
     EmployeeLeaveBalance,
     EmployeeStatusHistory,
     ExpenseClaim,
@@ -836,38 +837,345 @@ def delete_site_visit(db: Session, tenant_id: int, visit_id: int) -> dict:
 
 # ── Assets extended ──────────────────────────────────────────────────────────
 
+_DEFAULT_CATEGORIES = [
+    {"name": "IT Equipment", "description": "Laptops, monitors, keyboards, servers, and network accessories"},
+    {"name": "Office Furniture", "description": "Desks, ergonomic chairs, cabinets, conference tables"},
+    {"name": "Machinery & Tools", "description": "Factory machinery, hand tools, power tools, testing equipment"},
+    {"name": "Safety Gear", "description": "Helmets, safety vests, protective glasses, boots"},
+    {"name": "Vehicles", "description": "Delivery vans, forklifts, company cars"},
+]
+
+_DEFAULT_ASSETS = [
+    {
+        "asset_code": "AST-LPT-001",
+        "name": "Dell Latitude 5420 (i7, 16GB, 512GB SSD)",
+        "category": "IT Equipment",
+        "status": "Active",
+        "location": "Main Office - Floor 2",
+        "purchase_cost": 75000.0,
+    },
+    {
+        "asset_code": "AST-LPT-002",
+        "name": "HP EliteBook 840 G8 (i5, 16GB, 256GB SSD)",
+        "category": "IT Equipment",
+        "status": "Active",
+        "location": "Main Office - Floor 2",
+        "purchase_cost": 68000.0,
+    },
+    {
+        "asset_code": "AST-MON-001",
+        "name": "Dell 27-inch 4K IPS Monitor",
+        "category": "IT Equipment",
+        "status": "Active",
+        "location": "Engineering Lab",
+        "purchase_cost": 28000.0,
+    },
+    {
+        "asset_code": "AST-FUR-001",
+        "name": "Ergonomic High-Back Mesh Chair",
+        "category": "Office Furniture",
+        "status": "Active",
+        "location": "HQ Workstation 14",
+        "purchase_cost": 14500.0,
+    },
+    {
+        "asset_code": "AST-SAF-001",
+        "name": "Industrial Safety Helmet & Harness Kit",
+        "category": "Safety Gear",
+        "status": "Active",
+        "location": "Plant Floor - Storage 3",
+        "purchase_cost": 4500.0,
+    },
+]
+
+
+def _ensure_seeded_assets(db: Session, tenant_id: int) -> None:
+    """Ensure baseline asset categories and demo assets exist for tenant if empty."""
+    has_cat = db.scalar(select(AssetCategory.id).where(AssetCategory.tenant_id == tenant_id).limit(1))
+    if not has_cat:
+        for cat_info in _DEFAULT_CATEGORIES:
+            db.add(AssetCategory(tenant_id=tenant_id, name=cat_info["name"], description=cat_info["description"]))
+        try:
+            db.commit()
+        except Exception:
+            db.rollback()
+
+    has_asset = db.scalar(select(HrAsset.id).where(HrAsset.tenant_id == tenant_id).limit(1))
+    if not has_asset:
+        for ast_info in _DEFAULT_ASSETS:
+            db.add(
+                HrAsset(
+                    tenant_id=tenant_id,
+                    asset_code=ast_info["asset_code"],
+                    name=ast_info["name"],
+                    category=ast_info["category"],
+                    status=ast_info["status"],
+                    location=ast_info["location"],
+                    purchase_cost=ast_info["purchase_cost"],
+                    purchase_date=date.today(),
+                )
+            )
+        try:
+            db.commit()
+        except Exception:
+            db.rollback()
+
 
 def list_asset_categories(db: Session, tenant_id: int) -> list[dict]:
-    rows = db.scalars(select(AssetCategory).where(AssetCategory.tenant_id == tenant_id)).all()
+    _ensure_seeded_assets(db, tenant_id)
+    rows = db.scalars(select(AssetCategory).where(AssetCategory.tenant_id == tenant_id).order_by(AssetCategory.id.asc())).all()
     return [model_to_dict(r) for r in rows]
 
 
 def create_asset_category(db: Session, tenant_id: int, payload: dict) -> dict:
-    row = AssetCategory(tenant_id=tenant_id, **{k: v for k, v in payload.items() if k not in ("id", "tenant_id")})
+    name = (payload.get("name") or "").strip()
+    if not name:
+        raise HTTPException(400, "Category name is required")
+    existing = db.scalar(
+        select(AssetCategory).where(AssetCategory.tenant_id == tenant_id, func.lower(AssetCategory.name) == name.lower())
+    )
+    if existing:
+        return model_to_dict(existing)
+    row = AssetCategory(tenant_id=tenant_id, name=name, description=payload.get("description"))
     db.add(row)
     db.commit()
     db.refresh(row)
     return model_to_dict(row)
 
 
+def delete_asset_category(db: Session, tenant_id: int, category_id: int) -> dict:
+    row = db.scalar(select(AssetCategory).where(AssetCategory.id == category_id, AssetCategory.tenant_id == tenant_id))
+    if not row:
+        raise HTTPException(404, "Asset category not found")
+    db.delete(row)
+    db.commit()
+    return {"message": "Asset category deleted successfully"}
+
+
 def list_asset_allocations(db: Session, tenant_id: int) -> list[dict]:
-    rows = db.scalars(select(AssetAllocation).where(AssetAllocation.tenant_id == tenant_id)).all()
+    _ensure_seeded_assets(db, tenant_id)
+    rows = db.scalars(select(AssetAllocation).where(AssetAllocation.tenant_id == tenant_id).order_by(AssetAllocation.id.desc())).all()
     result = []
     for r in rows:
         asset = db.scalar(select(HrAsset).where(HrAsset.id == r.asset_id))
+        emp = db.scalar(select(Employee).where(Employee.id == r.employee_id)) if r.employee_id else None
         d = model_to_dict(r)
         if asset:
             d["asset_code"] = asset.asset_code
             d["asset_name"] = asset.name
+            d["category"] = asset.category
+            d["location"] = asset.location
+        if emp:
+            d["employee_code"] = emp.employee_code
+            d["department"] = emp.department
+            d["designation"] = emp.designation
+            d["work_location"] = emp.work_location
+            if not d.get("employee_name"):
+                d["employee_name"] = emp.full_name
         result.append(d)
     return result
 
 
+def allocate_asset(db: Session, tenant_id: int, payload: dict, user: User | None = None) -> dict:
+    asset_id = payload.get("asset_id")
+    if not asset_id:
+        raise HTTPException(400, "Asset ID is required for allocation")
+
+    asset = db.scalar(select(HrAsset).where(HrAsset.id == asset_id, HrAsset.tenant_id == tenant_id))
+    if not asset:
+        raise HTTPException(404, "Asset not found")
+
+    employee_id = payload.get("employee_id")
+    employee_name = (payload.get("employee_name") or "").strip()
+
+    if employee_id and not employee_name:
+        emp = db.scalar(select(Employee).where(Employee.id == employee_id, Employee.tenant_id == tenant_id))
+        if emp:
+            employee_name = emp.full_name
+    elif not employee_id and employee_name:
+        emp = db.scalar(
+            select(Employee).where(
+                Employee.tenant_id == tenant_id,
+                func.lower(Employee.full_name) == employee_name.lower(),
+            )
+        )
+        if emp:
+            employee_id = emp.id
+
+    if not employee_name:
+        raise HTTPException(400, "Employee is required for asset allocation")
+
+    alloc_date_raw = payload.get("allocated_date")
+    if isinstance(alloc_date_raw, str) and alloc_date_raw:
+        try:
+            allocated_date = date.fromisoformat(alloc_date_raw[:10])
+        except ValueError:
+            allocated_date = date.today()
+    elif isinstance(alloc_date_raw, date):
+        allocated_date = alloc_date_raw
+    else:
+        allocated_date = date.today()
+
+    prev_status = asset.status
+    asset.status = "Assigned"
+    asset.assigned_to = employee_name
+
+    allocation = AssetAllocation(
+        tenant_id=tenant_id,
+        asset_id=asset.id,
+        employee_id=employee_id,
+        employee_name=employee_name,
+        allocated_date=allocated_date,
+        status="allocated",
+        notes=payload.get("notes"),
+    )
+    db.add(allocation)
+
+    user_name = (user.full_name or user.email) if user else "Admin"
+    history = AssetHistory(
+        tenant_id=tenant_id,
+        asset_id=asset.id,
+        action="allocate",
+        from_status=prev_status,
+        to_status="Assigned",
+        employee_name=employee_name,
+        performed_by_name=user_name,
+        notes=payload.get("notes") or f"Allocated to {employee_name}",
+    )
+    db.add(history)
+
+    db.commit()
+    db.refresh(allocation)
+    d = model_to_dict(allocation)
+    d["asset_code"] = asset.asset_code
+    d["asset_name"] = asset.name
+    d["category"] = asset.category
+    return d
+
+
+def return_asset(db: Session, tenant_id: int, payload: dict, user: User | None = None) -> dict:
+    asset_id = payload.get("asset_id")
+    allocation_id = payload.get("allocation_id")
+
+    allocation = None
+    if allocation_id:
+        allocation = db.scalar(
+            select(AssetAllocation).where(AssetAllocation.id == allocation_id, AssetAllocation.tenant_id == tenant_id)
+        )
+        if allocation and not asset_id:
+            asset_id = allocation.asset_id
+
+    if not asset_id:
+        raise HTTPException(400, "Asset ID or Allocation ID is required to return an asset")
+
+    asset = db.scalar(select(HrAsset).where(HrAsset.id == asset_id, HrAsset.tenant_id == tenant_id))
+    if not asset:
+        raise HTTPException(404, "Asset not found")
+
+    if not allocation:
+        allocation = db.scalar(
+            select(AssetAllocation)
+            .where(
+                AssetAllocation.asset_id == asset.id,
+                AssetAllocation.tenant_id == tenant_id,
+                AssetAllocation.status == "allocated",
+            )
+            .order_by(AssetAllocation.id.desc())
+        )
+
+    ret_date_raw = payload.get("return_date")
+    if isinstance(ret_date_raw, str) and ret_date_raw:
+        try:
+            return_date = date.fromisoformat(ret_date_raw[:10])
+        except ValueError:
+            return_date = date.today()
+    elif isinstance(ret_date_raw, date):
+        return_date = ret_date_raw
+    else:
+        return_date = date.today()
+
+    prev_emp = asset.assigned_to
+    prev_status = asset.status
+    asset.assigned_to = None
+    asset.status = "Active"
+
+    if allocation:
+        allocation.status = "returned"
+        allocation.return_date = return_date
+        if payload.get("notes"):
+            allocation.notes = (allocation.notes or "") + f" | Returned: {payload['notes']}"
+
+    user_name = (user.full_name or user.email) if user else "Admin"
+    history = AssetHistory(
+        tenant_id=tenant_id,
+        asset_id=asset.id,
+        action="return",
+        from_status=prev_status,
+        to_status="Active",
+        employee_name=prev_emp,
+        performed_by_name=user_name,
+        notes=payload.get("notes") or f"Asset returned from {prev_emp or 'employee'}",
+    )
+    db.add(history)
+
+    db.commit()
+    return {"message": "Asset returned successfully", "asset_id": asset.id, "status": asset.status}
+
+
 def list_mapped_assets(db: Session, tenant_id: int) -> list[dict]:
-    rows = db.scalars(
-        select(HrAsset).where(HrAsset.tenant_id == tenant_id, HrAsset.assigned_to.isnot(None))
+    _ensure_seeded_assets(db, tenant_id)
+    assets = db.scalars(
+        select(HrAsset)
+        .where(
+            HrAsset.tenant_id == tenant_id,
+            HrAsset.assigned_to.isnot(None),
+            HrAsset.assigned_to != "",
+        )
+        .order_by(HrAsset.id.desc())
     ).all()
-    return [model_to_dict(r) for r in rows]
+
+    result = []
+    for a in assets:
+        d = model_to_dict(a)
+        # Find active allocation if any
+        alloc = db.scalar(
+            select(AssetAllocation)
+            .where(
+                AssetAllocation.asset_id == a.id,
+                AssetAllocation.tenant_id == tenant_id,
+                AssetAllocation.status == "allocated",
+            )
+            .order_by(AssetAllocation.id.desc())
+        )
+        emp = None
+        if alloc and alloc.employee_id:
+            emp = db.scalar(select(Employee).where(Employee.id == alloc.employee_id))
+        elif a.assigned_to:
+            emp = db.scalar(
+                select(Employee).where(
+                    Employee.tenant_id == tenant_id,
+                    func.lower(Employee.full_name) == a.assigned_to.strip().lower(),
+                )
+            )
+
+        if alloc:
+            d["allocation_id"] = alloc.id
+            d["allocated_date"] = alloc.allocated_date
+            d["allocation_notes"] = alloc.notes
+        if emp:
+            d["employee_id"] = emp.id
+            d["employee_code"] = emp.employee_code
+            d["department"] = emp.department
+            d["designation"] = emp.designation
+            d["work_location"] = emp.work_location
+            d["email"] = emp.email
+            d["phone"] = emp.phone
+        else:
+            d["department"] = "—"
+            d["designation"] = "—"
+
+        result.append(d)
+    return result
 
 
 # ── Payroll extended ─────────────────────────────────────────────────────────
