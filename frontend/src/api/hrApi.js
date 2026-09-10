@@ -9,7 +9,9 @@ export const createEmployee = (payload) => api.post("/hr/employees", payload);
 export const updateEmployee = (employeeId, payload) => api.put(`/hr/employees/${employeeId}`, payload);
 export const deleteEmployee = (employeeId) => api.delete(`/hr/employees/${employeeId}`);
 export const getOffboardedEmployees = (params) => api.get("/hr/employees/offboarded", { params });
+export const offboardEmployee = (payload) => api.post("/hr/employees/offboard", payload);
 export const deleteOffboardedEmployee = (employeeId) => api.delete(`/hr/employees/offboarded/${employeeId}`);
+
 
 export const getShifts = () => api.get("/hr/shifts");
 export const createShift = (payload) => api.post("/hr/shifts", payload);

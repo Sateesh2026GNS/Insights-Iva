@@ -20,7 +20,8 @@ import Loader from "../../components/common/Loader";
 import { ListPageShell } from "../../components/common/ListPageShell";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { useToast } from "../../context/ToastContext";
-import { deleteEmployee, getEmployeesEnriched } from "../../api/hrApi";
+import { deleteEmployee, getEmployeesEnriched, offboardEmployee } from "../../api/hrApi";
+
 import "./employeeOnboarding.css";
 
 const TABLE_COLUMNS = [
@@ -106,7 +107,7 @@ function SimpleSelect({ value, onChange, options, placeholder }) {
   );
 }
 
-function ActionMenu({ onEdit, onDelete }) {
+function ActionMenu({ onEdit, onDelete, onOffboard }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef(null);
 
@@ -127,12 +128,14 @@ function ActionMenu({ onEdit, onDelete }) {
       {open ? (
         <div className="hr-emp-onboard__action-menu">
           {onEdit ? <button type="button" onClick={() => { setOpen(false); onEdit(); }}>Edit</button> : null}
+          {onOffboard ? <button type="button" style={{ color: "#d97706", fontWeight: 500 }} onClick={() => { setOpen(false); onOffboard(); }}>Offboard</button> : null}
           {onDelete ? <button type="button" style={{ color: "#dc2626", fontWeight: 500 }} onClick={() => { setOpen(false); onDelete(); }}>Delete</button> : null}
         </div>
       ) : null}
     </div>
   );
 }
+
 
 export default function Employees() {
   const navigate = useNavigate();
@@ -207,6 +210,28 @@ export default function Employees() {
       addToast("Employee deleted", "success");
     }
   };
+
+  const handleOffboard = async (row) => {
+    const reason = window.prompt(`Reason for offboarding ${employeeName(row)}:`, "Resignation");
+    if (reason === null) return;
+    try {
+      await offboardEmployee({
+        employee_id: row.id,
+        full_name: employeeName(row),
+        designation: row.designation,
+        department: row.department,
+        branch: row.branch || row.work_location,
+        reporting_to: row.reporting_to || row.reporting_manager,
+        exit_date: new Date().toISOString().slice(0, 10),
+        reason,
+      });
+      addToast(`${employeeName(row)} offboarded successfully`, "success");
+      setRecords((prev) => prev.filter((r) => r.id !== row.id));
+    } catch {
+      addToast("Failed to offboard employee", "error");
+    }
+  };
+
 
   const showingFrom = pagedRows.length ? (currentPage - 1) * pageSize + 1 : 0;
   const showingTo = Math.min(currentPage * pageSize, filteredRows.length);
@@ -322,8 +347,13 @@ export default function Employees() {
                     <td>{formatJoinDate(row.date_of_joining || row.hire_date || row.joining_date)}</td>
                     <td>{row.created_by || "—"}</td>
                     <td>
-                      <ActionMenu onEdit={() => navigate(`/hr/employees/create?id=${row.id}`)} onDelete={() => handleDelete(row)} />
+                      <ActionMenu
+                        onEdit={() => navigate(`/hr/employees/create?id=${row.id}`)}
+                        onOffboard={() => handleOffboard(row)}
+                        onDelete={() => handleDelete(row)}
+                      />
                     </td>
+
                   </tr>
                 ))
               )}

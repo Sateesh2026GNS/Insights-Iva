@@ -1,19 +1,29 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
+  CalendarDays,
   ChevronDown,
   FileText,
   Filter,
   MoreVertical,
+  Plus,
   Search,
   User,
+  X,
 } from "lucide-react";
 
 import Loader from "../../components/common/Loader";
 import { ListPageShell } from "../../components/common/ListPageShell";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { useToast } from "../../context/ToastContext";
-import { deleteOffboardedEmployee, getOffboardedEmployees } from "../../api/hrApi";
+import {
+  deleteOffboardedEmployee,
+  getEmployees,
+  getOffboardedEmployees,
+  offboardEmployee,
+} from "../../api/hrApi";
 import "./offboarded.css";
+
 
 const TABLE_COLUMNS = [
   "Employee name",
@@ -149,7 +159,295 @@ const DEFAULT_OFFBOARDED = [
   },
 ];
 
+function OffboardEmployeeDrawer({ open, onClose, onSave }) {
+  const [employeeList, setEmployeeList] = useState([]);
+  const [selectedEmpId, setSelectedEmpId] = useState("");
+  const [employeeName, setEmployeeName] = useState("");
+  const [designation, setDesignation] = useState("");
+  const [department, setDepartment] = useState("hr");
+  const [branch, setBranch] = useState("hq");
+  const [reportingTo, setReportingTo] = useState("Admin");
+  const [exitDate, setExitDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [reason, setReason] = useState("Resignation");
+  const [remarks, setRemarks] = useState("");
+
+  useEffect(() => {
+    if (!open) return;
+    getEmployees()
+      .then((res) => {
+        const rows = Array.isArray(res?.data) ? res.data : [];
+        setEmployeeList(rows);
+      })
+      .catch(() => setEmployeeList([]));
+  }, [open]);
+
+  useEffect(() => {
+    if (!selectedEmpId) return;
+    const emp = employeeList.find((e) => String(e.id) === String(selectedEmpId));
+    if (emp) {
+      setEmployeeName(emp.full_name || `${emp.first_name || ""} ${emp.last_name || ""}`.trim());
+      setDesignation(emp.designation || "");
+      setDepartment(emp.department || "hr");
+      setBranch(emp.work_location || "hq");
+      setReportingTo(emp.reporting_manager || "Admin");
+    }
+  }, [selectedEmpId, employeeList]);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [open]);
+
+  if (!open) return null;
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!employeeName.trim() && !selectedEmpId) return;
+    onSave({
+      employee_id: selectedEmpId ? Number(selectedEmpId) : null,
+      full_name: employeeName.trim(),
+      designation,
+      department,
+      branch,
+      reporting_to: reportingTo,
+      exit_date: exitDate,
+      date_of_exit: exitDate,
+      reason: remarks.trim() ? `${reason} - ${remarks.trim()}` : reason,
+    });
+    onClose();
+  };
+
+  const drawer = (
+    <div className="hr-offboarded__overlay" onClick={onClose} role="dialog" aria-modal="true">
+      <div className="hr-offboarded__drawer" onClick={(e) => e.stopPropagation()}>
+        <div className="hr-offboarded__drawer-header">
+          <svg className="hr-offboarded__drawer-waves" viewBox="0 0 120 48" fill="none" aria-hidden>
+            <path d="M0 32C20 20 40 44 60 28C80 12 100 36 120 24V48H0V32Z" fill="rgba(255,255,255,0.6)" />
+            <path d="M0 24C18 14 36 34 54 22C72 10 96 30 120 18V48H0V24Z" fill="rgba(255,255,255,0.35)" />
+          </svg>
+          <h2>Offboard Employee</h2>
+          <button type="button" className="hr-offboarded__drawer-close" onClick={onClose} aria-label="Close">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0">
+          <div className="hr-offboarded__drawer-body">
+            {employeeList.length > 0 && (
+              <div className="hr-offboarded__form-field">
+                <label className="hr-offboarded__form-label">Select Active Employee</label>
+                <select
+                  className="hr-offboarded__form-select"
+                  value={selectedEmpId}
+                  onChange={(e) => setSelectedEmpId(e.target.value)}
+                >
+                  <option value="">-- Choose Existing Employee or Enter Below --</option>
+                  {employeeList.map((emp) => (
+                    <option key={emp.id} value={emp.id}>
+                      {emp.full_name || `${emp.first_name || ""} ${emp.last_name || ""}`.trim()} ({emp.designation || "Staff"})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <div className="hr-offboarded__form-field">
+              <label className="hr-offboarded__form-label">
+                Employee Name <span>*</span>
+              </label>
+              <input
+                className="hr-offboarded__form-input"
+                value={employeeName}
+                onChange={(e) => setEmployeeName(e.target.value)}
+                placeholder="Enter Employee Name"
+                required
+              />
+            </div>
+
+            <div className="hr-offboarded__form-field">
+              <label className="hr-offboarded__form-label">Designation</label>
+              <input
+                className="hr-offboarded__form-input"
+                value={designation}
+                onChange={(e) => setDesignation(e.target.value)}
+                placeholder="e.g. Quality Auditor"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="hr-offboarded__form-field">
+                <label className="hr-offboarded__form-label">Branch</label>
+                <select
+                  className="hr-offboarded__form-select"
+                  value={branch}
+                  onChange={(e) => setBranch(e.target.value)}
+                >
+                  <option value="hq">Head Office</option>
+                  <option value="plant">Manufacturing Plant</option>
+                </select>
+              </div>
+
+              <div className="hr-offboarded__form-field">
+                <label className="hr-offboarded__form-label">Department</label>
+                <select
+                  className="hr-offboarded__form-select"
+                  value={department}
+                  onChange={(e) => setDepartment(e.target.value)}
+                >
+                  <option value="hr">HR Department</option>
+                  <option value="production">Production</option>
+                  <option value="accounts">Accounts</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="hr-offboarded__form-field">
+              <label className="hr-offboarded__form-label">Reporting To</label>
+              <input
+                className="hr-offboarded__form-input"
+                value={reportingTo}
+                onChange={(e) => setReportingTo(e.target.value)}
+                placeholder="e.g. Admin or Manager"
+              />
+            </div>
+
+            <div className="hr-offboarded__form-field">
+              <label className="hr-offboarded__form-label">
+                Date of Exit <span>*</span>
+              </label>
+              <input
+                type="date"
+                className="hr-offboarded__form-input"
+                value={exitDate}
+                onChange={(e) => setExitDate(e.target.value)}
+                required
+              />
+            </div>
+
+            <div className="hr-offboarded__form-field">
+              <label className="hr-offboarded__form-label">Reason for Exit</label>
+              <select
+                className="hr-offboarded__form-select"
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+              >
+                <option value="Resignation">Resignation</option>
+                <option value="Career Advancement">Career Advancement</option>
+                <option value="Personal Relocation">Personal Relocation</option>
+                <option value="Retirement">Retirement</option>
+                <option value="Contract Completion">Contract Completion</option>
+                <option value="Termination">Termination</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+
+            <div className="hr-offboarded__form-field">
+              <label className="hr-offboarded__form-label">Handover Notes & Remarks</label>
+              <textarea
+                className="hr-offboarded__form-textarea"
+                value={remarks}
+                onChange={(e) => setRemarks(e.target.value)}
+                placeholder="Notes on handover, equipment return, clearances..."
+              />
+            </div>
+          </div>
+
+          <div className="hr-offboarded__drawer-footer">
+            <button
+              type="button"
+              className="hr-offboarded__cancel-btn"
+              onClick={onClose}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="hr-offboarded__submit-btn"
+            >
+              Offboard Employee
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+
+  return createPortal(drawer, document.body);
+}
+
+function ViewExitDetailsModal({ row, onClose }) {
+  if (!row) return null;
+
+  const modal = (
+    <div className="hr-offboarded__modal-overlay" onClick={onClose} role="dialog" aria-modal="true">
+      <div className="hr-offboarded__modal-card" onClick={(e) => e.stopPropagation()}>
+        <div className="hr-offboarded__drawer-header">
+          <h2>Exit & Offboarding Details</h2>
+          <button type="button" className="hr-offboarded__drawer-close" onClick={onClose} aria-label="Close">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="p-5 space-y-4">
+          <div className="hr-offboarded__details-grid">
+            <div className="hr-offboarded__detail-item">
+              <span className="hr-offboarded__detail-key">Employee Name</span>
+              <span className="hr-offboarded__detail-val">{employeeName(row)}</span>
+            </div>
+            <div className="hr-offboarded__detail-item">
+              <span className="hr-offboarded__detail-key">Designation</span>
+              <span className="hr-offboarded__detail-val">{row.designation || "—"}</span>
+            </div>
+            <div className="hr-offboarded__detail-item">
+              <span className="hr-offboarded__detail-key">Department</span>
+              <span className="hr-offboarded__detail-val">{departmentLabel(row.department)}</span>
+            </div>
+            <div className="hr-offboarded__detail-item">
+              <span className="hr-offboarded__detail-key">Branch</span>
+              <span className="hr-offboarded__detail-val">{branchLabel(row.branch)}</span>
+            </div>
+            <div className="hr-offboarded__detail-item">
+              <span className="hr-offboarded__detail-key">Reporting To</span>
+              <span className="hr-offboarded__detail-val">{row.reporting_to || row.reporting_manager || "—"}</span>
+            </div>
+            <div className="hr-offboarded__detail-item">
+              <span className="hr-offboarded__detail-key">Date of Exit</span>
+              <span className="hr-offboarded__detail-val">{formatExitDate(row.date_of_exit || row.exit_date)}</span>
+            </div>
+            <div className="hr-offboarded__detail-item">
+              <span className="hr-offboarded__detail-key">Created By</span>
+              <span className="hr-offboarded__detail-val">{row.created_by || "Admin"}</span>
+            </div>
+            <div className="hr-offboarded__detail-item">
+              <span className="hr-offboarded__detail-key">Lifecycle Status</span>
+              <span className="hr-offboarded__detail-val" style={{ color: "#d97706" }}>Offboarded</span>
+            </div>
+          </div>
+
+          <div className="hr-offboarded__detail-item border-t border-gray-100 pt-3">
+            <span className="hr-offboarded__detail-key">Reason / Remarks</span>
+            <p className="text-sm text-gray-700 mt-1 whitespace-pre-wrap">{row.reason || row.offboard_reason || "Exit clearance completed."}</p>
+          </div>
+        </div>
+
+        <div className="hr-offboarded__drawer-footer">
+          <button type="button" className="hr-offboarded__submit-btn" onClick={onClose}>
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  return createPortal(modal, document.body);
+}
+
 export default function Offboarded() {
+
   const { addToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [records, setRecords] = useState([]);
@@ -159,6 +457,8 @@ export default function Offboarded() {
   const [draftDepartment, setDraftDepartment] = useState("");
   const [branchFilter, setBranchFilter] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState("");
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [viewModalItem, setViewModalItem] = useState(null);
 
   const load = useCallback(async (isRefresh = false) => {
     if (!isRefresh) setLoading(true);
@@ -193,18 +493,33 @@ export default function Offboarded() {
     setShowFilterPanel(true);
   };
 
+  const handleSaveOffboard = async (payload) => {
+    try {
+      const res = await offboardEmployee(payload);
+      addToast("Employee offboarded successfully", "success");
+      const created = res?.data || payload;
+      setRecords((prev) => [created, ...prev]);
+      load(true);
+    } catch {
+      addToast("Failed to offboard employee", "error");
+    }
+  };
+
   const handleDelete = async (row) => {
+    if (!window.confirm(`Are you sure you want to remove offboarding for ${employeeName(row)}?`)) return;
     try {
       if (typeof row.id === "number" || (typeof row.id === "string" && !row.id.startsWith("off-"))) {
         await deleteOffboardedEmployee(row.id);
       }
       setRecords((prev) => prev.filter((item) => item.id !== row.id));
       addToast("Offboarded record deleted", "success");
+      load(true);
     } catch {
       setRecords((prev) => prev.filter((item) => item.id !== row.id));
       addToast("Offboarded record deleted", "success");
     }
   };
+
 
   if (loading) return <Loader label="Loading offboarded employees..." />;
 
@@ -222,6 +537,16 @@ export default function Offboarded() {
             <Filter className="h-4 w-4" />
             Filter
           </button>
+          <div className="hr-offboarded__toolbar-right">
+            <button
+              type="button"
+              className="hr-offboarded__add-btn"
+              onClick={() => setDrawerOpen(true)}
+            >
+              <Plus className="h-4 w-4" />
+              Offboard Employee
+            </button>
+          </div>
         </div>
 
         {showFilterPanel ? (
@@ -296,7 +621,7 @@ export default function Offboarded() {
                     <td>{row.created_by || "—"}</td>
                     <td>
                       <ActionMenu
-                        onView={() => addToast(`Viewing exit details for ${employeeName(row)}`, "info")}
+                        onView={() => setViewModalItem(row)}
                         onDelete={() => handleDelete(row)}
                       />
                     </td>
@@ -307,6 +632,18 @@ export default function Offboarded() {
           </table>
         </div>
       </div>
+
+      <OffboardEmployeeDrawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        onSave={handleSaveOffboard}
+      />
+
+      <ViewExitDetailsModal
+        row={viewModalItem}
+        onClose={() => setViewModalItem(null)}
+      />
     </ListPageShell>
+
   );
 }

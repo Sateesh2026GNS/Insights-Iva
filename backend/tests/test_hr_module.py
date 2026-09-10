@@ -57,7 +57,38 @@ def test_preboarding_candidate(client, register_admin):
     assert len(listed.json()) >= 1
 
 
+def test_offboarded_employees(client, register_admin):
+    auth = register_admin()
+    listed = client.get("/hr/employees/offboarded", headers=auth["headers"])
+    assert listed.status_code == 200
+    assert len(listed.json()) >= 2
+    names = [r.get("full_name") for r in listed.json()]
+    assert "Suresh Menon" in names
+
+    offboard_resp = client.post(
+        "/hr/employees/offboard",
+        headers=auth["headers"],
+        json={
+            "full_name": "Test Exit Employee",
+            "designation": "Analyst",
+            "department": "hr",
+            "branch": "hq",
+            "reporting_to": "Admin",
+            "exit_date": "2026-09-10",
+            "reason": "Relocation",
+        },
+    )
+    assert offboard_resp.status_code == 200
+    created = offboard_resp.json()
+    assert created["full_name"] == "Test Exit Employee"
+    assert created["lifecycle_status"] == "offboarded"
+
+    del_resp = client.delete(f"/hr/employees/offboarded/{created['id']}", headers=auth["headers"])
+    assert del_resp.status_code == 200
+
+
 def test_expense_claim(client, register_admin):
+
     auth = register_admin()
     resp = client.post(
         "/hr/expenses/my",

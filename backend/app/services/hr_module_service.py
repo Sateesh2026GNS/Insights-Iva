@@ -278,14 +278,149 @@ def archive_preboarding(db: Session, tenant_id: int, cid: int, payload: dict, us
 # ── Offboarded employees ─────────────────────────────────────────────────────
 
 
+def _ensure_seeded_offboarded(db: Session, tenant_id: int) -> None:
+    count = db.scalar(
+        select(func.count(Employee.id)).where(
+            Employee.tenant_id == tenant_id,
+            Employee.lifecycle_status == "offboarded",
+        )
+    )
+    if count == 0:
+        demo = [
+            {
+                "employee_code": "EMP-0142",
+                "full_name": "Suresh Menon",
+                "designation": "Quality Auditor",
+                "department": "hr",
+                "work_location": "hq",
+                "reporting_manager": "Admin",
+                "offboarded_at": date(2026, 5, 15),
+                "offboard_reason": "Career Advancement",
+                "lifecycle_status": "offboarded",
+                "is_active": False,
+            },
+            {
+                "employee_code": "EMP-0189",
+                "full_name": "Kavita Rao",
+                "designation": "Production Operator",
+                "department": "production",
+                "work_location": "plant",
+                "reporting_manager": "Production Manager",
+                "offboarded_at": date(2026, 6, 30),
+                "offboard_reason": "Personal relocation",
+                "lifecycle_status": "offboarded",
+                "is_active": False,
+            },
+        ]
+        for d in demo:
+            db.add(Employee(tenant_id=tenant_id, **d))
+        db.commit()
+
+
 def list_offboarded(db: Session, tenant_id: int) -> list[dict]:
+    _ensure_seeded_offboarded(db, tenant_id)
     rows = db.scalars(
         select(Employee).where(
             Employee.tenant_id == tenant_id,
             Employee.lifecycle_status == "offboarded",
-        )
+        ).order_by(Employee.offboarded_at.desc(), Employee.id.desc())
     ).all()
-    return [model_to_dict(r) for r in rows]
+    result = []
+    for r in rows:
+        d = model_to_dict(r)
+        d["date_of_exit"] = str(r.offboarded_at) if r.offboarded_at else None
+        d["exit_date"] = d["date_of_exit"]
+        d["branch"] = r.work_location or "hq"
+        d["reporting_to"] = r.reporting_manager or "Admin"
+        d["created_by"] = "Admin"
+        d["reason"] = r.offboard_reason or "—"
+        result.append(d)
+    return result
+
+
+def offboard_employee(db: Session, tenant_id: int, payload: dict, user: User) -> dict:
+    emp_id = payload.get("employee_id")
+    emp = None
+    if emp_id:
+        try:
+            emp = db.scalar(select(Employee).where(Employee.id == int(emp_id), Employee.tenant_id == tenant_id))
+        except (ValueError, TypeError):
+            pass
+
+    exit_date_val = None
+    exit_date_str = payload.get("date_of_exit") or payload.get("exit_date") or payload.get("offboarded_at")
+    if exit_date_str:
+        try:
+            exit_date_val = date.fromisoformat(str(exit_date_str)[:10])
+        except Exception:
+            exit_date_val = date.today()
+    else:
+        exit_date_val = date.today()
+
+    reason = payload.get("reason") or payload.get("offboard_reason") or "Employee exit"
+
+    if not emp:
+        import random
+        full_name = payload.get("full_name") or payload.get("employee_name") or "Employee"
+        emp = Employee(
+            tenant_id=tenant_id,
+            employee_code=payload.get("employee_code") or f"EMP-{random.randint(1000, 9999)}",
+            full_name=full_name,
+            designation=payload.get("designation"),
+            department=payload.get("department"),
+            work_location=payload.get("branch") or "hq",
+            reporting_manager=payload.get("reporting_to") or payload.get("reporting_manager") or "Admin",
+        )
+        db.add(emp)
+        db.flush()
+
+    emp.lifecycle_status = "offboarded"
+    emp.is_active = False
+    emp.offboarded_at = exit_date_val
+    emp.offboard_reason = reason
+    if payload.get("designation"):
+        emp.designation = payload["designation"]
+    if payload.get("department"):
+        emp.department = payload["department"]
+    if payload.get("branch"):
+        emp.work_location = payload["branch"]
+    if payload.get("reporting_to") or payload.get("reporting_manager"):
+        emp.reporting_manager = payload.get("reporting_to") or payload.get("reporting_manager")
+
+    history = EmployeeStatusHistory(
+        tenant_id=tenant_id,
+        employee_id=emp.id,
+        from_status="active",
+        to_status="offboarded",
+        changed_by_user_id=getattr(user, "id", None),
+        changed_by_name=getattr(user, "full_name", None) or getattr(user, "email", "Admin"),
+        reason=reason,
+    )
+    db.add(history)
+    db.commit()
+    db.refresh(emp)
+
+    d = model_to_dict(emp)
+    d["date_of_exit"] = str(emp.offboarded_at) if emp.offboarded_at else None
+    d["exit_date"] = d["date_of_exit"]
+    d["branch"] = emp.work_location or "hq"
+    d["reporting_to"] = emp.reporting_manager or "Admin"
+    d["created_by"] = getattr(user, "full_name", None) or getattr(user, "email", "Admin")
+    d["reason"] = emp.offboard_reason or "—"
+    return d
+
+
+def delete_offboarded_employee(db: Session, tenant_id: int, employee_id: int) -> dict:
+    emp = db.scalar(select(Employee).where(Employee.id == employee_id, Employee.tenant_id == tenant_id))
+    if not emp:
+        raise HTTPException(404, "Employee not found")
+    emp.lifecycle_status = "active"
+    emp.is_active = True
+    emp.offboarded_at = None
+    emp.offboard_reason = None
+    db.commit()
+    return {"status": "restored", "id": employee_id}
+
 
 
 # ── Holidays / leave plans / adjustments ─────────────────────────────────────

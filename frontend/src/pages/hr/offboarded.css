@@ -273,3 +273,231 @@
 .hr-offboarded__action-menu button:hover {
   background: #f9fafb;
 }
+
+.hr-offboarded__toolbar-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.hr-offboarded__add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--ob-primary);
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #ffffff;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(37, 99, 235, 0.2);
+  transition: background 0.15s ease;
+}
+
+.hr-offboarded__add-btn:hover {
+  background: #1d4ed8;
+}
+
+/* Slide-over Drawer & Modal */
+.hr-offboarded__overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(2px);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.hr-offboarded__modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.hr-offboarded__drawer {
+  width: 100%;
+  max-width: 440px;
+  height: 100%;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.15);
+  animation: hr-ob-slide 0.22s ease-out;
+}
+
+@keyframes hr-ob-slide {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+.hr-offboarded__modal-card {
+  width: 100%;
+  max-width: 520px;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  animation: hr-ob-pop 0.18s ease-out;
+}
+
+@keyframes hr-ob-pop {
+  from { transform: scale(0.96); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.hr-offboarded__drawer-header {
+  position: relative;
+  height: 64px;
+  background: linear-gradient(135deg, #1d4ed8 0%, #3b82f6 100%);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 18px;
+  color: #ffffff;
+}
+
+.hr-offboarded__drawer-waves {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  height: 100%;
+  width: auto;
+  pointer-events: none;
+  opacity: 0.3;
+}
+
+.hr-offboarded__drawer-header h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.hr-offboarded__drawer-close {
+  display: grid;
+  height: 32px;
+  width: 32px;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.hr-offboarded__drawer-close:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.hr-offboarded__drawer-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.hr-offboarded__form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.hr-offboarded__form-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.hr-offboarded__form-label span {
+  color: #dc2626;
+}
+
+.hr-offboarded__form-input,
+.hr-offboarded__form-select,
+.hr-offboarded__form-textarea {
+  width: 100%;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: #111827;
+  outline: none;
+  background: #ffffff;
+  box-sizing: border-box;
+}
+
+.hr-offboarded__form-input:focus,
+.hr-offboarded__form-select:focus,
+.hr-offboarded__form-textarea:focus {
+  border-color: var(--ob-primary);
+  box-shadow: 0 0 0 1px var(--ob-primary);
+}
+
+.hr-offboarded__form-textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.hr-offboarded__drawer-footer {
+  border-top: 1px solid #e5e7eb;
+  padding: 14px 20px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  background: #f9fafb;
+}
+
+.hr-offboarded__submit-btn {
+  border: 0;
+  border-radius: 6px;
+  background: var(--ob-primary);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 18px;
+  cursor: pointer;
+}
+
+.hr-offboarded__submit-btn:hover {
+  background: #1d4ed8;
+}
+
+/* Detail modal fields */
+.hr-offboarded__details-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.hr-offboarded__detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.hr-offboarded__detail-key {
+  font-size: 11px;
+  font-weight: 500;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.hr-offboarded__detail-val {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1f2937;
+}
+

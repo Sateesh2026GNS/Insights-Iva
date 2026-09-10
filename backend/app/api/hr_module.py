@@ -49,7 +49,10 @@ from app.services.hr_module_service import (
     list_mapped_assets,
     list_my_expenses,
     list_offboarded,
+    offboard_employee,
+    delete_offboarded_employee,
     list_org_items,
+
     list_payslips,
     list_preboarding,
     list_salary_components,
@@ -177,6 +180,25 @@ def preboarding_archive(
 @router.get("/employees/offboarded")
 def offboarded_list(tenant_id: int = Depends(tenant_scope(MODULE)), db: Session = Depends(get_db)):
     return list_offboarded(db, tenant_id)
+
+
+@router.post("/employees/offboard")
+def offboard_create(
+    payload: dict,
+    user: User = Depends(require_permission(MODULE)),
+    db: Session = Depends(get_db),
+):
+    return offboard_employee(db, user.tenant_id, payload, user)
+
+
+@router.delete("/employees/offboarded/{employee_id}")
+def offboarded_delete(
+    employee_id: int,
+    user: User = Depends(require_permission(MODULE)),
+    db: Session = Depends(get_db),
+):
+    return delete_offboarded_employee(db, user.tenant_id, employee_id)
+
 
 
 # ── Holidays / leave plans / adjustments ─────────────────────────────────────
