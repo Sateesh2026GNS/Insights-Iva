@@ -391,7 +391,7 @@ export default function Breadcrumbs({ items: customItems, compact = false, class
           ) : (
             <Link
               to={item.path}
-              className="flex items-center gap-1 truncate transition-colors hover:text-[var(--color-primary)]"
+              className="flex items-center gap-1 truncate opacity-90 transition-all hover:opacity-100 hover:underline"
             >
               {i === 0 ? <Home className="h-3.5 w-3.5 shrink-0" aria-hidden /> : item.label}
             </Link>

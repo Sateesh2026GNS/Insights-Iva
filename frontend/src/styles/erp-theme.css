@@ -47,14 +47,26 @@
   -webkit-backdrop-filter: none;
 }
 
-.app-navbar .app-page-title {
-  color: var(--erp-header-text);
-  font-size: 1rem;
-  font-weight: 600;
-  letter-spacing: 0;
-  line-height: 1.25;
-  border: none;
-  outline: none;
+.app-navbar nav[aria-label="Breadcrumb"] {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.app-navbar nav[aria-label="Breadcrumb"] a {
+  color: rgba(255, 255, 255, 0.88) !important;
+}
+
+.app-navbar nav[aria-label="Breadcrumb"] a:hover {
+  color: #ffffff !important;
+  text-decoration: underline;
+  opacity: 1;
+}
+
+.app-navbar nav[aria-label="Breadcrumb"] span {
+  color: #ffffff;
+}
+
+.app-navbar nav[aria-label="Breadcrumb"] svg {
+  color: rgba(255, 255, 255, 0.75);
 }
 
 @media (min-width: 640px) {
