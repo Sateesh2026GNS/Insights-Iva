@@ -18,6 +18,7 @@ import { ListPageShell } from "../../components/common/ListPageShell";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { useToast } from "../../context/ToastContext";
 import { createLeaveRequest, getEmployeesEnriched, getLeaveEnriched, updateLeaveRequest } from "../../api/hrApi";
+import { saveLocalLeave, updateLocalLeaveStatus, mergeLeavesWithLocal } from "../../utils/leaveStorage";
 import "./leaveApprovals.css";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -515,14 +516,15 @@ export default function LeaveApprovals() {
   const load = useCallback(async (isRefresh = false) => {
     if (!isRefresh) setLoading(true);
     try {
-      const [empRes, leaveRes] = await Promise.all([getEmployeesEnriched(), getLeaveEnriched()]);
-      const empList = empRes?.data || [];
+      const [empRes, leaveRes] = await Promise.allSettled([getEmployeesEnriched(), getLeaveEnriched()]);
+      const empList = empRes.status === "fulfilled" ? empRes.value?.data || [] : [];
       setEmployees(empList.length ? empList : DEMO_EMPLOYEES);
-      const leaveData = leaveRes?.data || [];
-      setRecords(leaveData.length ? leaveData : SAMPLE_LEAVE_RECORDS);
+      const leaveData = leaveRes.status === "fulfilled" ? leaveRes.value?.data || [] : [];
+      const baseRecords = leaveData.length ? leaveData : SAMPLE_LEAVE_RECORDS;
+      setRecords(mergeLeavesWithLocal(baseRecords));
     } catch {
       setEmployees(DEMO_EMPLOYEES);
-      setRecords(SAMPLE_LEAVE_RECORDS);
+      setRecords(mergeLeavesWithLocal(SAMPLE_LEAVE_RECORDS));
     } finally {
       setLoading(false);
     }
@@ -532,6 +534,15 @@ export default function LeaveApprovals() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Sync across tabs/pages when leave status is updated anywhere
+  useEffect(() => {
+    const handleLeaveUpdate = () => {
+      setRecords((prev) => mergeLeavesWithLocal(prev));
+    };
+    window.addEventListener("leave-updated", handleLeaveUpdate);
+    return () => window.removeEventListener("leave-updated", handleLeaveUpdate);
+  }, []);
 
   const filteredRecords = useMemo(() => {
     return (records || []).filter((row) => {
@@ -578,12 +589,18 @@ export default function LeaveApprovals() {
 
   const handleApprove = async (row) => {
     const rowId = row.id;
+    // 1. Immediately update local state
     setRecords((prev) =>
       prev.map((r) => (r.id === rowId ? { ...r, status: "approved", updated_by: "Admin" } : r))
     );
+    // 2. Persist to shared localStorage so navigating or refreshing retains approved state
+    updateLocalLeaveStatus(rowId, "approved", "Admin");
+
+    // 3. Sync to backend API if applicable
     try {
-      if (typeof rowId === "number" || (typeof rowId === "string" && !rowId.startsWith("sample-") && !rowId.startsWith("local_"))) {
-        await updateLeaveRequest(rowId, { status: "approved" });
+      const numericId = parseInt(String(rowId).replace(/\D/g, ""), 10);
+      if (numericId && !String(rowId).startsWith("sample-")) {
+        await updateLeaveRequest(numericId, { status: "approved" });
       }
       addToast(`Leave request for ${row.employee_name || row.employee || "employee"} approved`, "success");
     } catch {
@@ -593,12 +610,18 @@ export default function LeaveApprovals() {
 
   const handleReject = async (row) => {
     const rowId = row.id;
+    // 1. Immediately update local state
     setRecords((prev) =>
       prev.map((r) => (r.id === rowId ? { ...r, status: "rejected", updated_by: "Admin" } : r))
     );
+    // 2. Persist to shared localStorage
+    updateLocalLeaveStatus(rowId, "rejected", "Admin");
+
+    // 3. Sync to backend API if applicable
     try {
-      if (typeof rowId === "number" || (typeof rowId === "string" && !rowId.startsWith("sample-") && !rowId.startsWith("local_"))) {
-        await updateLeaveRequest(rowId, { status: "rejected" });
+      const numericId = parseInt(String(rowId).replace(/\D/g, ""), 10);
+      if (numericId && !String(rowId).startsWith("sample-")) {
+        await updateLeaveRequest(numericId, { status: "rejected" });
       }
       addToast(`Leave request for ${row.employee_name || row.employee || "employee"} rejected`, "info");
     } catch {
@@ -628,11 +651,13 @@ export default function LeaveApprovals() {
       updated_by: "—",
       attachment: false,
     };
+    saveLocalLeave(newRecord);
     setRecords((prev) => [newRecord, ...prev]);
     setRequestOpen(false);
     try {
+      const numericId = parseInt(String(payload.employeeId).replace(/\D/g, ""), 10) || 1;
       await createLeaveRequest({
-        employee_id: payload.employeeId,
+        employee_id: numericId,
         leave_type: payload.leaveType,
         start_date: payload.fromDate,
         end_date: payload.toDate,

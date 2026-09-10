@@ -27,61 +27,10 @@ import { useToast } from "../../context/ToastContext";
 import useAuth from "../../hooks/useAuth";
 import { createLeaveRequest, getEmployees, getEmployeesEnriched, getLeaveEnriched } from "../../api/hrApi";
 import { getUsers } from "../../api/adminApi";
+import { getLocalLeaves, saveLocalLeave, mergeLeavesWithLocal } from "../../utils/leaveStorage";
 import "./myLeaves.css";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-
-// ---- Local storage helpers for leave records (survive page refresh) ----
-const LOCAL_LEAVES_KEY = "iva_local_leave_records";
-
-function loadLocalLeaves() {
-  try {
-    return JSON.parse(localStorage.getItem(LOCAL_LEAVES_KEY) || "[]");
-  } catch {
-    return [];
-  }
-}
-
-function saveLocalLeave(record) {
-  try {
-    const existing = loadLocalLeaves();
-    const updated = [record, ...existing.filter((r) => r._localId !== record._localId)];
-    localStorage.setItem(LOCAL_LEAVES_KEY, JSON.stringify(updated));
-  } catch {
-    // ignore storage errors
-  }
-}
-
-function removeLocalLeave(localId) {
-  try {
-    const existing = loadLocalLeaves();
-    localStorage.setItem(LOCAL_LEAVES_KEY, JSON.stringify(existing.filter((r) => r._localId !== localId)));
-  } catch {
-    // ignore
-  }
-}
-
-function clearLocalLeavesMatchedByServer(serverRecords) {
-  // Remove local records that are now returned by the server (avoid duplicates)
-  try {
-    if (!Array.isArray(serverRecords) || serverRecords.length === 0) return;
-    const local = loadLocalLeaves();
-    const remaining = local.filter((loc) => {
-      const hasMatch = serverRecords.some(
-        (s) =>
-          (loc.id && s.id === loc.id) ||
-          (String(s.employee_name || "").trim().toLowerCase() === String(loc.employee_name || "").trim().toLowerCase() &&
-           String(s.leave_type || "").trim().toLowerCase() === String(loc.leave_type || "").trim().toLowerCase() &&
-           String(s.start_date || "").slice(0, 10) === String(loc.start_date || "").slice(0, 10) &&
-           String(s.end_date || "").slice(0, 10) === String(loc.end_date || "").slice(0, 10))
-      );
-      return !hasMatch;
-    });
-    localStorage.setItem(LOCAL_LEAVES_KEY, JSON.stringify(remaining));
-  } catch {
-    // ignore
-  }
-}
 
 
 const LEAVE_TYPES = [
@@ -444,22 +393,7 @@ export default function Leave() {
       ]);
 
       const leaveData = leaveRes.status === "fulfilled" ? leaveRes.value?.data || [] : [];
-
-      // Remove local records that the server already knows about (avoid duplicates)
-      clearLocalLeavesMatchedByServer(leaveData);
-
-      // Merge: server records first, then any local-only records on top with deduplication
-      const localLeaves = loadLocalLeaves();
-      const seen = new Set();
-      const combined = [];
-      for (const r of [...leaveData, ...localLeaves]) {
-        const key = `${String(r.employee_name || "").trim().toLowerCase()}_${String(r.leave_type || "").trim().toLowerCase()}_${String(r.start_date || "").slice(0, 10)}_${String(r.end_date || "").slice(0, 10)}`;
-        if (!seen.has(key)) {
-          seen.add(key);
-          combined.push(r);
-        }
-      }
-      setRecords(combined);
+      setRecords(mergeLeavesWithLocal(leaveData));
 
       const enrichedEmployees = empEnrichedRes.status === "fulfilled" ? empEnrichedRes.value?.data || [] : [];
       const regularEmployees = empRes.status === "fulfilled" ? empRes.value?.data || [] : [];
@@ -568,6 +502,15 @@ export default function Leave() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Sync across tabs/pages when leave status is updated anywhere
+  useEffect(() => {
+    const handleLeaveUpdate = () => {
+      setRecords((prev) => mergeLeavesWithLocal(prev));
+    };
+    window.addEventListener("leave-updated", handleLeaveUpdate);
+    return () => window.removeEventListener("leave-updated", handleLeaveUpdate);
+  }, []);
 
   // Re-fetch the user list when navigating back to this page (e.g. after adding a user from Users page)
   // We check if the previous path was /admin/users so we only reload when relevant
