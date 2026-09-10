@@ -78,7 +78,7 @@ function EmployeeFilterSelect({ value, onChange, employees }) {
   }, [open]);
 
   return (
-    <div ref={rootRef} className="relative w-full min-w-[160px] max-w-[200px]">
+    <div ref={rootRef} className="relative w-[180px] shrink-0">
       <button type="button" className="hr-approvals__select-trigger" onClick={() => setOpen((v) => !v)}>
         <span className="truncate">{selectedLabel}</span>
         <ChevronDown className="h-4 w-4 shrink-0 text-[#9ca3af]" />
@@ -139,7 +139,7 @@ function StatusFilterSelect({ value, onChange }) {
   }, [open]);
 
   return (
-    <div ref={rootRef} className="relative w-full min-w-[120px] max-w-[150px]">
+    <div ref={rootRef} className="relative w-[130px] shrink-0">
       <button type="button" className="hr-approvals__select-trigger" onClick={() => setOpen((v) => !v)}>
         <span className="truncate">{selectedLabel}</span>
         <ChevronDown className="h-4 w-4 shrink-0 text-[#9ca3af]" />
@@ -307,23 +307,23 @@ export default function AttendanceApproval() {
           </button>
         </div>
 
-        <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-          <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 shrink-0">
             <EmployeeFilterSelect value={employeeFilter} onChange={setEmployeeFilter} employees={employees} />
             <StatusFilterSelect value={statusFilter} onChange={setStatusFilter} />
           </div>
 
-          <div className="flex flex-wrap items-center justify-center gap-2 xl:justify-center">
+          <div className="flex items-center justify-center gap-2 shrink-0">
             <button type="button" className="hr-approvals__nav-btn" onClick={() => shiftPeriod(-1)} aria-label="Previous period">
               <ChevronLeft className="h-5 w-5" />
             </button>
-            <span className="hr-approvals__period-label">{periodLabel}</span>
+            <span className="hr-approvals__period-label min-w-[85px] text-center font-bold text-slate-800">{periodLabel}</span>
             <button type="button" className="hr-approvals__nav-btn" onClick={() => shiftPeriod(1)} aria-label="Next period">
               <ChevronRight className="h-5 w-5" />
             </button>
           </div>
 
-          <div className="flex justify-start xl:justify-end">
+          <div className="flex items-center justify-end shrink-0">
             <div className="hr-approvals__view-toggle">
               <button
                 type="button"
