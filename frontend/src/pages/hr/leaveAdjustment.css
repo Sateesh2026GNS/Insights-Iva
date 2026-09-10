@@ -289,21 +289,28 @@
 }
 
 .hr-leave-adj__table-wrap {
-  overflow: auto;
   border: 1px solid var(--adj-border);
   border-radius: 0 0 10px 10px;
   background: var(--adj-surface);
+  overflow: hidden;
+}
+
+.hr-leave-adj__table-scroll {
+  width: 100%;
+  overflow-x: auto;
 }
 
 .hr-leave-adj__table {
   width: 100%;
-  min-width: 1400px;
-  border-collapse: collapse;
+  min-width: 1800px;
+  border-collapse: separate;
+  border-spacing: 0;
   font-size: 12px;
 }
 
 .hr-leave-adj__table thead tr:first-child th {
   border-bottom: 1px solid var(--adj-border);
+  border-right: 1px solid var(--adj-border);
   background: var(--adj-table-head);
   padding: 10px 8px;
   font-size: 12px;
@@ -315,6 +322,7 @@
 
 .hr-leave-adj__table thead tr:last-child th {
   border-bottom: 3px solid var(--adj-header-line);
+  border-right: 1px solid var(--adj-border);
   background: var(--adj-table-head);
   padding: 8px 6px;
   font-size: 11px;
@@ -322,13 +330,61 @@
   color: var(--adj-muted);
   text-align: center;
   white-space: nowrap;
+  min-width: 65px;
 }
 
 .hr-leave-adj__table td {
   border-bottom: 1px solid var(--adj-border);
+  border-right: 1px solid var(--adj-border);
   padding: 8px 6px;
   text-align: center;
   vertical-align: middle;
+  background: var(--adj-surface);
+}
+
+/* Sticky Employee column (left) */
+.hr-leave-adj__table th.hr-leave-adj__col--employee {
+  position: sticky;
+  left: 0;
+  z-index: 20;
+  background: var(--adj-table-head);
+  border-right: 2px solid var(--adj-border);
+  min-width: 180px;
+  text-align: left;
+  padding-left: 12px;
+}
+
+.hr-leave-adj__table td.hr-leave-adj__col--employee {
+  position: sticky;
+  left: 0;
+  z-index: 10;
+  background: var(--adj-surface);
+  border-right: 2px solid var(--adj-border);
+  min-width: 180px;
+}
+
+/* Action column (at the end of the table, not sticky) */
+.hr-leave-adj__table th.hr-leave-adj__col--action {
+  min-width: 70px;
+  width: 70px;
+  background: var(--adj-table-head);
+  text-align: center;
+  border-right: 0;
+}
+
+.hr-leave-adj__table td.hr-leave-adj__col--action {
+  min-width: 70px;
+  width: 70px;
+  text-align: center;
+  border-right: 0;
+}
+
+.hr-leave-adj__table tbody tr:hover td {
+  background: #f9fafb;
+}
+
+.hr-leave-adj__table tbody tr:hover td.hr-leave-adj__col--employee {
+  background: #f9fafb;
 }
 
 .hr-leave-adj__employee-cell {
@@ -409,12 +465,22 @@
   display: inline-grid;
   height: 28px;
   min-width: 28px;
+  padding: 0 6px;
   place-items: center;
   border: 1px solid var(--adj-border);
   border-radius: 4px;
   background: var(--adj-surface);
   color: var(--adj-muted);
+  font-size: 12px;
+  font-weight: 500;
   cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.hr-leave-adj__page-btn:not(:disabled):not(.hr-leave-adj__page-btn--active):hover {
+  background: #f3f4f6;
+  color: var(--adj-title);
+  border-color: #d1d5db;
 }
 
 .hr-leave-adj__page-btn--active {
@@ -423,9 +489,52 @@
   color: #ffffff;
 }
 
+.hr-leave-adj__page-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
 .hr-leave-adj__modal-close {
   border: 0;
   background: transparent;
   color: var(--adj-muted);
   cursor: pointer;
 }
+
+.hr-leave-adj__modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(2px);
+  padding: 16px;
+}
+
+.hr-leave-adj__modal {
+  width: 100%;
+  max-width: 520px;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.hr-leave-adj__modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--adj-border);
+  padding: 14px 18px;
+}
+
+.hr-leave-adj__modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  border-top: 1px solid var(--adj-border);
+  padding: 12px 18px;
+}
+

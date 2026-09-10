@@ -261,9 +261,60 @@ function FilterPopover({ open, onClose, branch, department, onBranchChange, onDe
   );
 }
 
+function AdjustmentSummaryModal({ open, onClose, employee }) {
+  if (!open || !employee) return null;
+
+  return (
+    <div className="hr-leave-adj__modal-overlay" onClick={onClose}>
+      <div className="hr-leave-adj__modal" onClick={(e) => e.stopPropagation()}>
+        <div className="hr-leave-adj__modal-header">
+          <div>
+            <h3 className="text-sm font-semibold text-[#1a1c1e]">Leave Balance Summary</h3>
+            <p className="text-xs text-[#5e6278]">{employee.name} ({employee.employeeId})</p>
+          </div>
+          <button type="button" className="hr-leave-adj__modal-close" onClick={onClose} aria-label="Close modal">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="p-4 overflow-y-auto max-h-[65vh]">
+          <table className="w-full text-left text-xs border border-[#e5e7eb] rounded overflow-hidden">
+            <thead>
+              <tr className="bg-[#f8fafc] border-b border-[#e5e7eb]">
+                <th className="p-2.5 font-semibold text-[#374151]">Leave Type</th>
+                <th className="p-2.5 font-semibold text-center text-[#374151]">Consumed</th>
+                <th className="p-2.5 font-semibold text-center text-[#374151]">Available</th>
+                <th className="p-2.5 font-semibold text-center text-[#374151]">Total Leave</th>
+              </tr>
+            </thead>
+            <tbody>
+              {LEAVE_TYPES.map((t) => {
+                const bal = employee.balances[t.key] || { consumed: 0, available: 0, total: 0 };
+                return (
+                  <tr key={t.key} className="border-b border-[#f1f5f9] hover:bg-[#f8fafc]">
+                    <td className="p-2.5 font-medium text-[#1e293b]">{t.label}</td>
+                    <td className="p-2.5 text-center text-[#64748b]">{bal.consumed}</td>
+                    <td className="p-2.5 text-center font-semibold text-emerald-600">{bal.available}</td>
+                    <td className="p-2.5 text-center text-[#1e293b]">{bal.total}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        <div className="hr-leave-adj__modal-footer">
+          <button type="button" className="hr-leave-adj__save-btn" onClick={onClose}>
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function LeaveAdjustment() {
   const { addToast } = useToast();
   const [loading, setLoading] = useState(true);
+  const [historyModalEmployee, setHistoryModalEmployee] = useState(null);
   const [employees, setEmployees] = useState([DEMO_EMPLOYEE]);
   const [rows, setRows] = useState([]);
   const [employeeFilter, setEmployeeFilter] = useState("all");
@@ -364,7 +415,7 @@ export default function LeaveAdjustment() {
   };
 
   const handleRowAction = (row) => {
-    addToast(`Viewing adjustment history for ${row.name}`, "info");
+    setHistoryModalEmployee(row);
   };
 
   const openFilter = () => {
@@ -389,7 +440,14 @@ export default function LeaveAdjustment() {
         </div>
 
         <div className="hr-leave-adj__toolbar">
-          <EmployeeFilterSelect value={employeeFilter} onChange={setEmployeeFilter} employees={employees} />
+          <EmployeeFilterSelect
+            value={employeeFilter}
+            onChange={(val) => {
+              setEmployeeFilter(val);
+              setPage(1);
+            }}
+            employees={employees}
+          />
           <div className="hr-leave-adj__filter-wrap" ref={filterBtnRef}>
             <button type="button" className="hr-leave-adj__filter-btn" onClick={openFilter}>
               <Filter className="h-4 w-4" />
@@ -421,77 +479,79 @@ export default function LeaveAdjustment() {
         </div>
 
         <div className="hr-leave-adj__table-wrap">
-          <table className="hr-leave-adj__table">
-            <thead>
-              <tr>
-                <th rowSpan={2}>Employee</th>
-                {LEAVE_TYPES.map((t) => (
-                  <th key={t.key} colSpan={3}>{t.label}</th>
-                ))}
-                <th rowSpan={2}>Action</th>
-              </tr>
-              <tr>
-                {LEAVE_TYPES.flatMap((t) => [
-                  <th key={`${t.key}-consumed`}>Consumed</th>,
-                  <th key={`${t.key}-available`}>Available</th>,
-                  <th key={`${t.key}-total`}>Total Leave</th>,
-                ])}
-              </tr>
-            </thead>
-            <tbody>
-              {pagedRows.length === 0 ? (
+          <div className="hr-leave-adj__table-scroll">
+            <table className="hr-leave-adj__table">
+              <thead>
                 <tr>
-                  <td colSpan={1 + LEAVE_TYPES.length * 3 + 1} style={{ padding: "40px 16px", textAlign: "center", color: "#5e6278" }}>
-                    No records found
-                  </td>
+                  <th rowSpan={2} className="hr-leave-adj__col--employee">Employee</th>
+                  {LEAVE_TYPES.map((t) => (
+                    <th key={t.key} colSpan={3}>{t.label}</th>
+                  ))}
+                  <th rowSpan={2} className="hr-leave-adj__col--action">Action</th>
                 </tr>
-              ) : (
-                pagedRows.map((row) => (
-                  <tr key={row.employeeId}>
-                    <td>
-                      <div className="hr-leave-adj__employee-cell">
-                        <span className="hr-leave-adj__avatar">
-                          <User className="h-4 w-4" />
-                        </span>
-                        <span className="hr-leave-adj__employee-name">{row.name}</span>
-                      </div>
-                    </td>
-                    {LEAVE_TYPES.flatMap((t) => {
-                      const bal = row.balances[t.key] || { consumed: 0, available: 0, total: 0 };
-                      return [
-                        <td key={`${row.employeeId}-${t.key}-c`}>
-                          <input
-                            type="number"
-                            min={0}
-                            className="hr-leave-adj__num-input"
-                            value={bal.consumed}
-                            onChange={(e) => updateCell(row.employeeId, t.key, "consumed", e.target.value)}
-                            aria-label={`${t.label} consumed for ${row.name}`}
-                          />
-                        </td>,
-                        <td key={`${row.employeeId}-${t.key}-a`}>
-                          <span className="hr-leave-adj__num-read">{bal.available}</span>
-                        </td>,
-                        <td key={`${row.employeeId}-${t.key}-t`}>
-                          <span className="hr-leave-adj__num-read">{bal.total}</span>
-                        </td>,
-                      ];
-                    })}
-                    <td>
-                      <button
-                        type="button"
-                        className="hr-leave-adj__action-btn"
-                        onClick={() => handleRowAction(row)}
-                        aria-label={`Action for ${row.name}`}
-                      >
-                        <FileCheck className="h-5 w-5" />
-                      </button>
+                <tr>
+                  {LEAVE_TYPES.flatMap((t) => [
+                    <th key={`${t.key}-consumed`}>Consumed</th>,
+                    <th key={`${t.key}-available`}>Available</th>,
+                    <th key={`${t.key}-total`}>Total Leave</th>,
+                  ])}
+                </tr>
+              </thead>
+              <tbody>
+                {pagedRows.length === 0 ? (
+                  <tr>
+                    <td colSpan={1 + LEAVE_TYPES.length * 3 + 1} style={{ padding: "40px 16px", textAlign: "center", color: "#5e6278" }}>
+                      No records found
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  pagedRows.map((row) => (
+                    <tr key={row.employeeId}>
+                      <td className="hr-leave-adj__col--employee">
+                        <div className="hr-leave-adj__employee-cell">
+                          <span className="hr-leave-adj__avatar">
+                            <User className="h-4 w-4" />
+                          </span>
+                          <span className="hr-leave-adj__employee-name">{row.name}</span>
+                        </div>
+                      </td>
+                      {LEAVE_TYPES.flatMap((t) => {
+                        const bal = row.balances[t.key] || { consumed: 0, available: 0, total: 0 };
+                        return [
+                          <td key={`${row.employeeId}-${t.key}-c`}>
+                            <input
+                              type="number"
+                              min={0}
+                              className="hr-leave-adj__num-input"
+                              value={bal.consumed}
+                              onChange={(e) => updateCell(row.employeeId, t.key, "consumed", e.target.value)}
+                              aria-label={`${t.label} consumed for ${row.name}`}
+                            />
+                          </td>,
+                          <td key={`${row.employeeId}-${t.key}-a`}>
+                            <span className="hr-leave-adj__num-read">{bal.available}</span>
+                          </td>,
+                          <td key={`${row.employeeId}-${t.key}-t`}>
+                            <span className="hr-leave-adj__num-read">{bal.total}</span>
+                          </td>,
+                        ];
+                      })}
+                      <td className="hr-leave-adj__col--action">
+                        <button
+                          type="button"
+                          className="hr-leave-adj__action-btn"
+                          onClick={() => handleRowAction(row)}
+                          aria-label={`Action for ${row.name}`}
+                        >
+                          <FileCheck className="h-5 w-5" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
 
           <div className="hr-leave-adj__footer">
             <div className="flex items-center gap-2">
@@ -513,25 +573,75 @@ export default function LeaveAdjustment() {
               Showing {showingFrom} to {showingTo} of {filteredRows.length} entries
             </span>
             <div className="flex items-center gap-1">
-              <button type="button" className="hr-leave-adj__page-btn" onClick={() => setPage(1)} aria-label="First page">
+              <button
+                type="button"
+                className="hr-leave-adj__page-btn"
+                onClick={() => setPage(1)}
+                disabled={currentPage <= 1}
+                aria-label="First page"
+              >
                 <ChevronsLeft className="h-4 w-4" />
               </button>
-              <button type="button" className="hr-leave-adj__page-btn" onClick={() => setPage((p) => Math.max(1, p - 1))} aria-label="Previous page">
+              <button
+                type="button"
+                className="hr-leave-adj__page-btn"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage <= 1}
+                aria-label="Previous page"
+              >
                 <ChevronLeft className="h-4 w-4" />
               </button>
-              <button type="button" className="hr-leave-adj__page-btn hr-leave-adj__page-btn--active" aria-label={`Page ${currentPage}`}>
-                {currentPage}
-              </button>
-              <button type="button" className="hr-leave-adj__page-btn" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} aria-label="Next page">
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                let p = i + 1;
+                if (totalPages > 5) {
+                  if (currentPage <= 3) {
+                    p = i + 1;
+                  } else if (currentPage >= totalPages - 2) {
+                    p = totalPages - 4 + i;
+                  } else {
+                    p = currentPage - 2 + i;
+                  }
+                }
+                return (
+                  <button
+                    key={p}
+                    type="button"
+                    className={`hr-leave-adj__page-btn ${p === currentPage ? "hr-leave-adj__page-btn--active" : ""}`}
+                    onClick={() => setPage(p)}
+                    aria-label={`Page ${p}`}
+                  >
+                    {p}
+                  </button>
+                );
+              })}
+              <button
+                type="button"
+                className="hr-leave-adj__page-btn"
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage >= totalPages}
+                aria-label="Next page"
+              >
                 <ChevronRight className="h-4 w-4" />
               </button>
-              <button type="button" className="hr-leave-adj__page-btn" onClick={() => setPage(totalPages)} aria-label="Last page">
+              <button
+                type="button"
+                className="hr-leave-adj__page-btn"
+                onClick={() => setPage(totalPages)}
+                disabled={currentPage >= totalPages}
+                aria-label="Last page"
+              >
                 <ChevronsRight className="h-4 w-4" />
               </button>
             </div>
           </div>
         </div>
       </div>
+
+      <AdjustmentSummaryModal
+        open={Boolean(historyModalEmployee)}
+        onClose={() => setHistoryModalEmployee(null)}
+        employee={historyModalEmployee}
+      />
     </ListPageShell>
   );
 }
