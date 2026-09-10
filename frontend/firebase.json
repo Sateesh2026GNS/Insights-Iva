@@ -1,5 +1,6 @@
 {
   "hosting": {
+    "site": "insights-734ee",
     "public": "dist",
     "ignore": [
       "firebase.json",
