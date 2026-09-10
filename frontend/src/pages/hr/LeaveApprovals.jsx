@@ -704,82 +704,84 @@ export default function LeaveApprovals() {
           </div>
 
           <div className="hr-leave-approvals__table-wrap">
-            <table className="hr-leave-approvals__table">
-              <thead>
-                <tr>
-                  {TABLE_COLUMNS.map((col) => (
-                    <th key={col}>
-                      {col}
-                      {col === "SR No." ? <ChevronDown className="ml-1 inline h-3 w-3" /> : null}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {filteredRecords.length === 0 ? (
+            <div className="hr-leave-approvals__table-scroll">
+              <table className="hr-leave-approvals__table">
+                <thead>
                   <tr>
-                    <td colSpan={TABLE_COLUMNS.length} className="hr-leave-approvals__empty">No records found</td>
+                    {TABLE_COLUMNS.map((col) => (
+                      <th key={col}>
+                        {col}
+                        {col === "SR No." ? <ChevronDown className="ml-1 inline h-3 w-3" /> : null}
+                      </th>
+                    ))}
                   </tr>
-                ) : (
-                  filteredRecords.map((row, index) => {
-                    const status = String(row.status || "").toLowerCase();
-                    return (
-                      <tr key={row.id || index}>
-                        <td>{index + 1}</td>
-                        <td className="font-semibold text-[#1e293b]">{row.employee_name || row.employee || "—"}</td>
-                        <td>{leaveTypeLabel(row.leave_type || row.type)}</td>
-                        <td>{formatDisplayDate(row.start_date || row.from)}</td>
-                        <td>{formatDisplayDate(row.end_date || row.to)}</td>
-                        <td>{row.days || row.no_of_days || daysBetween(row.start_date, row.end_date)}</td>
-                        <td>{row.reason || "—"}</td>
-                        <td>{row.attachment ? "Yes" : "—"}</td>
-                        <td>{row.created_by || "—"}</td>
-                        <td>{row.updated_by || "—"}</td>
-                        <td>
-                          <span
-                            className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${
-                              status === "approved"
-                                ? "bg-emerald-50 text-emerald-700"
-                                : status === "rejected"
-                                ? "bg-rose-50 text-rose-700"
-                                : "bg-amber-50 text-amber-700"
-                            }`}
-                          >
-                            {status ? status.charAt(0).toUpperCase() + status.slice(1) : "Pending"}
-                          </span>
-                        </td>
-                        <td>
-                          {status === "pending" || !status ? (
-                            <div className="flex items-center gap-1.5">
-                              <button
-                                type="button"
-                                className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-emerald-600 text-white transition hover:bg-emerald-700"
-                                onClick={() => handleApprove(row)}
-                                title="Approve"
-                                aria-label={`Approve leave for ${row.employee_name || "employee"}`}
-                              >
-                                <Check className="h-4 w-4" />
-                              </button>
-                              <button
-                                type="button"
-                                className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-rose-600 text-white transition hover:bg-rose-700"
-                                onClick={() => handleReject(row)}
-                                title="Reject"
-                                aria-label={`Reject leave for ${row.employee_name || "employee"}`}
-                              >
-                                <X className="h-4 w-4" />
-                              </button>
-                            </div>
-                          ) : (
-                            <span className="text-xs text-slate-400">Completed</span>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {filteredRecords.length === 0 ? (
+                    <tr>
+                      <td colSpan={TABLE_COLUMNS.length} className="hr-leave-approvals__empty">No records found</td>
+                    </tr>
+                  ) : (
+                    filteredRecords.map((row, index) => {
+                      const status = String(row.status || "").toLowerCase();
+                      return (
+                        <tr key={row.id || index}>
+                          <td>{index + 1}</td>
+                          <td className="font-semibold text-[#1e293b]">{row.employee_name || row.employee || "—"}</td>
+                          <td>{leaveTypeLabel(row.leave_type || row.type)}</td>
+                          <td>{formatDisplayDate(row.start_date || row.from)}</td>
+                          <td>{formatDisplayDate(row.end_date || row.to)}</td>
+                          <td>{row.days || row.no_of_days || daysBetween(row.start_date, row.end_date)}</td>
+                          <td>{row.reason || "—"}</td>
+                          <td>{row.attachment ? "Yes" : "—"}</td>
+                          <td>{row.created_by || "—"}</td>
+                          <td>{row.updated_by || "—"}</td>
+                          <td>
+                            <span
+                              className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${
+                                status === "approved"
+                                  ? "bg-emerald-50 text-emerald-700"
+                                  : status === "rejected"
+                                  ? "bg-rose-50 text-rose-700"
+                                  : "bg-amber-50 text-amber-700"
+                              }`}
+                            >
+                              {status ? status.charAt(0).toUpperCase() + status.slice(1) : "Pending"}
+                            </span>
+                          </td>
+                          <td>
+                            {status === "pending" || !status ? (
+                              <div className="flex items-center gap-1.5">
+                                <button
+                                  type="button"
+                                  className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-emerald-600 text-white transition hover:bg-emerald-700"
+                                  onClick={() => handleApprove(row)}
+                                  title="Approve"
+                                  aria-label={`Approve leave for ${row.employee_name || "employee"}`}
+                                >
+                                  <Check className="h-4 w-4" />
+                                </button>
+                                <button
+                                  type="button"
+                                  className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-rose-600 text-white transition hover:bg-rose-700"
+                                  onClick={() => handleReject(row)}
+                                  title="Reject"
+                                  aria-label={`Reject leave for ${row.employee_name || "employee"}`}
+                                >
+                                  <X className="h-4 w-4" />
+                                </button>
+                              </div>
+                            ) : (
+                              <span className="text-xs text-slate-400">Completed</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
 
             <div className="hr-leave-approvals__footer">
               <div className="flex items-center gap-2">

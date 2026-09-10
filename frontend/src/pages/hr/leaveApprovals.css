@@ -188,11 +188,16 @@
 }
 
 .hr-leave-approvals__table-wrap {
-  overflow: auto;
   border: 1px solid var(--la-border);
   border-top: 0;
   border-radius: 0 0 10px 10px;
   background: var(--la-surface);
+  overflow: hidden;
+}
+
+.hr-leave-approvals__table-scroll {
+  width: 100%;
+  overflow-x: auto;
 }
 
 .hr-leave-approvals__table {

@@ -683,43 +683,45 @@ export default function Leave() {
         </div>
 
         <div className="hr-my-leaves__table-wrap">
-          <table className="hr-my-leaves__table">
-            <thead>
-              <tr>
-                {TABLE_COLUMNS.map((col) => (
-                  <th key={col}>
-                    {col}
-                    {col === "SR No." ? <ChevronDown className="ml-1 inline h-3 w-3" /> : null}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filteredRecords.length === 0 ? (
+          <div className="hr-my-leaves__table-scroll">
+            <table className="hr-my-leaves__table">
+              <thead>
                 <tr>
-                  <td colSpan={TABLE_COLUMNS.length} className="hr-my-leaves__empty">No records found</td>
+                  {TABLE_COLUMNS.map((col) => (
+                    <th key={col}>
+                      {col}
+                      {col === "SR No." ? <ChevronDown className="ml-1 inline h-3 w-3" /> : null}
+                    </th>
+                  ))}
                 </tr>
-              ) : (
-                filteredRecords.map((row, index) => (
-                  <tr key={row.id || index}>
-                    <td>{index + 1}</td>
-                    <td className="font-semibold text-[#1e293b]">
-                      {row.employee_name || row.employee || row.created_by || "—"}
-                    </td>
-                    <td>{row.leave_type || row.type || "—"}</td>
-                    <td>{formatDisplayDate(row.start_date || row.from)}</td>
-                    <td>{formatDisplayDate(row.end_date || row.to)}</td>
-                    <td>{row.days || row.no_of_days || daysBetween(row.start_date, row.end_date)}</td>
-                    <td>{row.reason || "—"}</td>
-                    <td>{row.attachment ? "Yes" : "—"}</td>
-                    <td>{row.created_by || "—"}</td>
-                    <td>{row.updated_by || "—"}</td>
-                    <td>{row.status || "—"}</td>
+              </thead>
+              <tbody>
+                {filteredRecords.length === 0 ? (
+                  <tr>
+                    <td colSpan={TABLE_COLUMNS.length} className="hr-my-leaves__empty">No records found</td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  filteredRecords.map((row, index) => (
+                    <tr key={row.id || index}>
+                      <td>{index + 1}</td>
+                      <td className="font-semibold text-[#1e293b]">
+                        {row.employee_name || row.employee || row.created_by || "—"}
+                      </td>
+                      <td>{row.leave_type || row.type || "—"}</td>
+                      <td>{formatDisplayDate(row.start_date || row.from)}</td>
+                      <td>{formatDisplayDate(row.end_date || row.to)}</td>
+                      <td>{row.days || row.no_of_days || daysBetween(row.start_date, row.end_date)}</td>
+                      <td>{row.reason || "—"}</td>
+                      <td>{row.attachment ? "Yes" : "—"}</td>
+                      <td>{row.created_by || "—"}</td>
+                      <td>{row.updated_by || "—"}</td>
+                      <td>{row.status || "—"}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
 
           <div className="hr-my-leaves__footer">
             <div className="flex items-center gap-2">

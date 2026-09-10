@@ -166,11 +166,16 @@
 }
 
 .hr-my-leaves__table-wrap {
-  overflow: auto;
   border: 1px solid var(--ml-border);
   border-top: 0;
   border-radius: 0 0 10px 10px;
   background: var(--ml-surface);
+  overflow: hidden;
+}
+
+.hr-my-leaves__table-scroll {
+  width: 100%;
+  overflow-x: auto;
 }
 
 .hr-my-leaves__table {
