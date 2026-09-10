@@ -3,8 +3,7 @@ import { useLocation } from "react-router-dom";
 import { Plus, Pencil, Trash2, ShieldCheck, Lock, Users, KeyRound } from "lucide-react";
 
 import PageHeader from "../../components/common/PageHeader";
-import { Input, Textarea } from "../../components/common/FormField";
-import AdminModal from "../../components/admin/AdminModal";
+import NewRoleModal from "../../components/admin/NewRoleModal";
 import ConfirmDialog from "../../components/admin/ConfirmDialog";
 import AccessDenied from "../../components/admin/AccessDenied";
 import usePermissions from "../../hooks/usePermissions";
@@ -20,8 +19,6 @@ import {
   deleteRole,
 } from "../../api/adminApi";
 
-const EMPTY_FORM = { name: "", description: "", permissions: [] };
-
 export default function RolesPermissions() {
   const { pathname } = useLocation();
   const permissionsOnly = pathname.includes("/permissions");
@@ -33,8 +30,6 @@ export default function RolesPermissions() {
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [form, setForm] = useState(EMPTY_FORM);
-  const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const [toDelete, setToDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
@@ -65,58 +60,26 @@ export default function RolesPermissions() {
 
   const openCreate = () => {
     setEditing(null);
-    setForm(EMPTY_FORM);
-    setErrors({});
     setModalOpen(true);
   };
 
   const openEdit = (role) => {
     setEditing(role);
-    setForm({
-      name: role.name,
-      description: role.description || "",
-      permissions: [...(role.permissions || [])],
-    });
-    setErrors({});
     setModalOpen(true);
   };
 
-  const togglePermission = (code) => {
-    setForm((f) => ({
-      ...f,
-      permissions: f.permissions.includes(code)
-        ? f.permissions.filter((c) => c !== code)
-        : [...f.permissions, code],
-    }));
-  };
-
-  const selectAll = () => setForm((f) => ({ ...f, permissions: modules.map((m) => m.code) }));
-  const clearAll = () => setForm((f) => ({ ...f, permissions: [] }));
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!permissionsOnly && !form.name.trim()) {
-      setErrors({ name: "Role name is required" });
-      return;
-    }
+  const handleRoleSave = async (payload) => {
     setSaving(true);
     try {
       if (editing) {
-        await updateRole(editing.id, {
-          name: form.name.trim(),
-          description: form.description.trim() || null,
-          permissions: form.permissions,
-        });
+        await updateRole(editing.id, payload);
         addToast(permissionsOnly ? "Permissions updated" : "Role updated");
       } else {
-        await createRole({
-          name: form.name.trim(),
-          description: form.description.trim() || null,
-          permissions: form.permissions,
-        });
+        await createRole(payload);
         addToast("Role created");
       }
       setModalOpen(false);
+      setEditing(null);
       load();
     } catch (err) {
       const detail = err.response?.data?.detail;
@@ -157,7 +120,7 @@ export default function RolesPermissions() {
         action={
           permissionsOnly ? null : (
             <Button variant="add" type="button" onClick={openCreate} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
-              Add Role
+              New Role
             </Button>
           )
         }
@@ -257,107 +220,17 @@ export default function RolesPermissions() {
         </div>
       )}
 
-      <AdminModal
-        title={
-          permissionsOnly && editing
-            ? `Edit Permissions — ${editing.name}`
-            : editing
-              ? "Edit Role"
-              : "Add Role"
-        }
-        subtitle={
-          permissionsOnly && editing
-            ? editing.description || "Select the modules this role can access."
-            : "Select the modules this role can access."
-        }
+      <NewRoleModal
         open={modalOpen}
-        onClose={() => setModalOpen(false)}
-        maxWidth="max-w-2xl"
-      >
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {!permissionsOnly && (
-            <>
-              <Input
-                label="Role Name"
-                required
-                value={form.name}
-                error={errors.name}
-                disabled={isAdminRole}
-                hint={isAdminRole ? "The Admin role cannot be renamed." : undefined}
-                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                placeholder="e.g. Quality Inspector"
-              />
-              <Textarea
-                label="Description"
-                rows={2}
-                value={form.description}
-                onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-                placeholder="What can this role do?"
-              />
-            </>
-          )}
-
-          <div>
-            <div className="mb-2 flex items-center justify-between">
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-                Module Permissions
-              </label>
-              {!isAdminRole && (
-                <div className="flex gap-2 text-xs">
-                  <button type="button" onClick={selectAll} className="text-teal-600 hover:underline">
-                    Select all
-                  </button>
-                  <span className="text-slate-300">|</span>
-                  <button type="button" onClick={clearAll} className="text-slate-500 hover:underline">
-                    Clear
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {isAdminRole ? (
-              <div className="rounded-xl border border-teal-200 bg-[var(--color-success-soft)] p-4 text-sm text-[var(--color-success)] dark:border-teal-900/40 dark:bg-teal-900/20 dark:text-teal-300">
-                The Admin role always has full access to every module and cannot be restricted.
-              </div>
-            ) : (
-              <div className="grid max-h-64 grid-cols-1 gap-1.5 overflow-y-auto rounded-xl border border-slate-200 p-2 dark:border-slate-600 sm:grid-cols-2">
-                {modules.map((m) => (
-                  <label
-                    key={m.code}
-                    className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-slate-50 dark:hover:bg-slate-700/50"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={form.permissions.includes(m.code)}
-                      onChange={() => togglePermission(m.code)}
-                      className="rounded border-slate-300 text-teal-600 focus:ring-teal-500"
-                    />
-                    <span className="text-slate-700 dark:text-slate-300">{m.label}</span>
-                  </label>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="flex justify-end gap-3 pt-2">
-            <button
-              type="button"
-              onClick={() => setModalOpen(false)}
-              className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
-            >
-              Cancel
-            </button>
-            <Button
-              type="submit"
-              variant={editing || permissionsOnly ? "edit" : "primary"}
-              disabled={saving}
-              loading={saving}
-            >
-              {saving ? "Saving…" : permissionsOnly ? "Save Permissions" : editing ? "Save Changes" : "Create Role"}
-            </Button>
-          </div>
-        </form>
-      </AdminModal>
+        editing={editing}
+        isSystemRole={isAdminRole}
+        saving={saving}
+        onClose={() => {
+          setModalOpen(false);
+          setEditing(null);
+        }}
+        onSubmit={handleRoleSave}
+      />
 
       <ConfirmDialog
         open={Boolean(toDelete)}

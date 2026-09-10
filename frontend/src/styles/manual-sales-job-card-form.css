@@ -1,9 +1,28 @@
+/**
+ * Manual Sales Job Card create/edit — full-width workspace (not A4 print preview).
+ */
+
 .manual-sjc-page {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 1rem 1.25rem 1.5rem;
+  background: var(--color-bg, #f4f7f6);
   font-family: var(--font-sans);
+  min-height: 100%;
+  gap: 0.875rem;
+}
+
+@media (min-width: 1024px) {
+  .manual-sjc-page {
+    padding: 1.25rem 1.5rem 1.75rem;
+  }
 }
 
 .manual-sjc-page__card {
   overflow: hidden;
+  width: 100%;
+  max-width: none;
   border-radius: var(--radius-lg, 12px);
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
 }
@@ -38,15 +57,71 @@
 }
 
 .manual-sjc-page__body {
-  padding: 1rem 1.25rem 1.25rem;
-  background: #f8fafc;
+  padding: 0;
+  background: #fff;
 }
 
 .manual-sjc-page__body .manual-sjc-form {
   background: #fff;
-  border: 1px solid var(--color-border-soft, #e2e8f0);
-  border-radius: var(--radius-md, 8px);
-  overflow: hidden;
+  border: none;
+  border-radius: 0;
+  overflow: visible;
+}
+
+/* Full-width document — no A4 / print-preview cap */
+.manual-sjc-page .manual-sjc-form .sjc-doc,
+.manual-sjc-page .manual-sjc-form .sjc-doc__paper {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+}
+
+.manual-sjc-page .manual-sjc-form .sjc-doc__paper {
+  padding: 1rem 1.25rem 1.5rem;
+}
+
+@media (min-width: 1024px) {
+  .manual-sjc-page .manual-sjc-form .sjc-doc__paper {
+    padding: 1.25rem 1.5rem 1.75rem;
+  }
+}
+
+.manual-sjc-page .sjc-doc__company-address {
+  max-width: none;
+}
+
+.manual-sjc-page .sjc-doc__meta {
+  max-width: min(100%, 320px);
+}
+
+@media (min-width: 900px) {
+  .manual-sjc-page .sjc-doc__header-row {
+    grid-template-columns: minmax(240px, 1.2fr) minmax(160px, 1fr) minmax(260px, 320px);
+    gap: 0.75rem 1rem;
+  }
+}
+
+/* Screen-readable typography (not tiny print sizes) */
+.manual-sjc-page .sjc-doc__company-name {
+  font-size: var(--text-lg, 1.125rem);
+}
+
+.manual-sjc-page .sjc-doc__field-row,
+.manual-sjc-page .sjc-doc__meta-grid,
+.manual-sjc-page .sjc-doc__table,
+.manual-sjc-page .sjc-doc__panel-title,
+.manual-sjc-page .sjc-doc__table-caption {
+  font-size: var(--text-sm, 0.8125rem);
+}
+
+.manual-sjc-page .sjc-doc__table th,
+.manual-sjc-page .sjc-doc__table td {
+  font-size: var(--text-sm, 0.8125rem);
+  padding: 0.4rem 0.5rem;
+}
+
+.manual-sjc-page .sjc-doc__meta-grid td {
+  padding: 0.35rem 0.5rem;
 }
 
 .manual-sjc-page__footer {
@@ -56,6 +131,15 @@
   padding: 0.75rem 1rem;
   border-top: 1px solid var(--color-border-soft);
   background: var(--color-surface);
+}
+
+@media (min-width: 640px) {
+  .manual-sjc-page__footer {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.25rem;
+  }
 }
 
 .manual-sjc-page__footer-actions {

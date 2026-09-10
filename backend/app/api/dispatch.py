@@ -71,6 +71,9 @@ def create_dispatch_shipment_endpoint(
         "lr_number": shipment.lr_number,
         "dispatch_date": shipment.dispatch_date.isoformat() if shipment.dispatch_date else None,
         "eta": shipment.eta.isoformat() if shipment.eta else None,
+        "notes": shipment.notes,
+        "box_count": shipment.box_count,
+        "total_weight": float(shipment.total_weight) if shipment.total_weight is not None else None,
     }
 
 

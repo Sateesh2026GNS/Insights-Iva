@@ -17,7 +17,7 @@ export const MANUFACTURING_WORKFLOW_STEPS = [
   { id: "production", label: "Production", shortLabel: "Production", path: "/manufacturing/workflow?status=READY_FOR_PRODUCTION" },
   { id: "quality", label: "Quality", shortLabel: "Quality", path: "/quality/final" },
   { id: "finished_goods", label: "Finished Goods", shortLabel: "Finished Goods", path: "/inventory/finished-goods" },
-  { id: "dispatch", label: "Dispatch", shortLabel: "Dispatch", path: "/sales/dispatch" },
+  { id: "dispatch", label: "Shipping", shortLabel: "Shipping", path: "/sales/shipping" },
   { id: "invoice", label: "Invoice", shortLabel: "Invoice", path: "/sales/invoices" },
   { id: "payment", label: "Payment", shortLabel: "Payment", path: "/sales/payments" },
   { id: "dashboard", label: "Dashboard", shortLabel: "Dashboard", path: "/" },
@@ -436,7 +436,7 @@ export const TEAM_WORKFLOW_JOB_CARDS = [
     whenShown: "After quality approval",
     actions: ["Pack goods", "Enter dispatch details", "LR / tracking number"],
     filterStatus: "PACKING_PENDING",
-    path: "/sales/dispatch",
+    path: "/sales/shipping",
   },
   {
     id: "billing",

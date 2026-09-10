@@ -161,10 +161,15 @@ class DispatchListRead(BaseModel):
     packed: bool = False
     shipped: bool = False
     invoiced: bool = False
+    notes: str | None = None
+    box_count: int | None = None
+    total_weight: float | None = None
 
 
 class DispatchShipmentCreate(BaseModel):
     sales_order_id: int
+    dispatch_number: str | None = None
+    dispatch_date: date | None = None
     courier: str | None = None
     vehicle_number: str | None = None
     driver_name: str | None = None
@@ -172,6 +177,9 @@ class DispatchShipmentCreate(BaseModel):
     eta: date | None = None
     tracking_url: str | None = None
     status: str = "packed"
+    notes: str | None = None
+    box_count: int | None = Field(None, ge=0)
+    total_weight: float | None = Field(None, ge=0.0)
 
 
 class DeliveryChallanRead(BaseModel):

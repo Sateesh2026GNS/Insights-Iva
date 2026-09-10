@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { ClipboardList, Plus, SlidersHorizontal } from "lucide-react";
 
 import Button from "../../components/common/Button";
+import { ListPageShell } from "../../components/common/ListPageShell";
 import Pagination from "../../components/common/Pagination";
 import { AsyncPageBody, PartialDataState } from "../../components/common/states";
 import { useNetworkStatus } from "../../context/NetworkStatusContext";
@@ -515,7 +516,7 @@ export default function MyJobCardsPage() {
           : null;
 
   return (
-    <div className="ui-page ui-stack my-job-cards-page">
+    <ListPageShell className="my-job-cards-page" stackClassName="my-job-cards-page__stack">
       {qualityMode ? (
         manualDocumentView ? (
           <SalesJobCardDocumentPanel
@@ -797,6 +798,6 @@ export default function MyJobCardsPage() {
           }
         }}
       />
-    </div>
+    </ListPageShell>
   );
 }

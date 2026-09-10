@@ -3,11 +3,16 @@
  */
 
 .my-job-cards-page {
-  gap: 0.875rem;
+  width: 100%;
+  max-width: none;
   background: var(--color-surface-muted, #f1f5f9);
-  min-height: 100%;
-  padding-bottom: 1rem;
   font-family: var(--font-sans);
+}
+
+.my-job-cards-page__stack {
+  width: 100%;
+  max-width: none;
+  gap: 0.875rem;
 }
 
 .my-job-cards-page__kpi-card {
@@ -205,6 +210,8 @@
 
 .my-job-cards-page__section.ui-card {
   overflow: hidden;
+  width: 100%;
+  max-width: none;
   padding: 0;
 }
 
@@ -237,6 +244,8 @@
 
 .my-job-cards-page__document-panel {
   overflow: hidden;
+  width: 100%;
+  max-width: none;
   padding: 0;
   border: 1px solid var(--color-border, #cbd5e1);
   border-radius: var(--radius-lg, 12px);
@@ -639,14 +648,50 @@
 .my-job-cards-page__document-body {
   padding: 0;
   overflow-x: auto;
-  overflow-y: auto;
-  max-height: min(68vh, 720px);
-  background: #f8fafc;
+  overflow-y: visible;
+  max-height: none;
+  background: #ffffff;
   position: relative;
 }
 
+.my-job-cards-page__document-body .sjc-doc,
 .my-job-cards-page__document-body .sjc-doc__paper {
-  padding: 1rem 1.25rem 1.25rem;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+}
+
+.my-job-cards-page__document-body .sjc-doc__paper {
+  padding: 1rem 1.25rem 1.5rem;
+}
+
+/* Screen workspace typography — avoid tiny print/A4 preview sizing */
+.my-job-cards-page .qc-doc__params-table th,
+.my-job-cards-page .qc-doc__params-table td,
+.my-job-cards-page .op-doc__slitting-table th,
+.my-job-cards-page .op-doc__slitting-table td,
+.my-job-cards-page .op-doc__quality-table th,
+.my-job-cards-page .op-doc__quality-table td,
+.my-job-cards-page .op-doc__report-table th,
+.my-job-cards-page .op-doc__report-table td,
+.my-job-cards-page .smjc-doc__material-table th,
+.my-job-cards-page .smjc-doc__material-table td,
+.my-job-cards-page .acc-doc__checklist-table th,
+.my-job-cards-page .acc-doc__checklist-table td {
+  font-size: var(--text-sm, 0.8125rem);
+  padding: 0.4rem 0.5rem;
+}
+
+.my-job-cards-page .qc-doc__remarks-box,
+.my-job-cards-page .qc-doc__result-item,
+.my-job-cards-page .op-doc__instructions,
+.my-job-cards-page .op-doc__safety-item,
+.my-job-cards-page .smjc-doc__instructions,
+.my-job-cards-page .smjc-doc__comments-box,
+.my-job-cards-page .acc-doc__notes,
+.my-job-cards-page .acc-doc__status-item,
+.my-job-cards-page .acc-doc__comments-box {
+  font-size: var(--text-sm, 0.8125rem);
 }
 
 .my-job-cards-page__document-empty-msg {

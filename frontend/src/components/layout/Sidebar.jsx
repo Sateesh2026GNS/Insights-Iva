@@ -24,6 +24,7 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
+  Plus,
 } from "lucide-react";
 
 import BrandLogo from "../common/BrandLogo";
@@ -375,12 +376,27 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose }
         : "text-slate-300 hover:bg-white/10 hover:text-white"
     }`;
 
-  const childLinkClass = ({ isActive }) =>
-    `relative block rounded-lg py-2 pl-9 pr-3 text-[13px] transition-colors ${
+  const childLinkClass = ({ isActive }, hasIcon = false) =>
+    `relative block rounded-lg py-2 ${hasIcon ? "pl-3" : "pl-9"} pr-3 text-[13px] transition-colors ${
       isActive
         ? "bg-[var(--color-nav-active)] font-medium text-white"
         : "text-slate-400 hover:bg-white/10 hover:text-slate-200"
     }`;
+
+  const renderChildLabel = (child) => {
+    const label = childLabel(child);
+    if (child.navIcon === "create") {
+      return (
+        <span className="flex items-center gap-2.5">
+          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-slate-900 text-white">
+            <Plus className="h-3 w-3" strokeWidth={3} />
+          </span>
+          <span className="truncate">{label}</span>
+        </span>
+      );
+    }
+    return label;
+  };
 
   const nestedLinkClass = ({ isActive }, opts = {}) => {
     const isBullet = opts.bullet;
@@ -596,9 +612,9 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose }
                           to={child.to}
                           end={child.end}
                           onClick={() => onClose?.()}
-                          className={childLinkClass}
+                          className={(state) => childLinkClass(state, Boolean(child.navIcon))}
                         >
-                          {childLabel(child)}
+                          {renderChildLabel(child)}
                         </NavLink>
                       ))}
                 </div>

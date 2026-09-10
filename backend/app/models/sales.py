@@ -295,6 +295,9 @@ class DispatchShipment(Base, TimestampMixin):
     eta: Mapped[date | None] = mapped_column(Date)
     status: Mapped[str] = mapped_column(String(32), default="packed", nullable=False)
     tracking_url: Mapped[str | None] = mapped_column(String(512))
+    notes: Mapped[str | None] = mapped_column(Text)
+    box_count: Mapped[int | None] = mapped_column(Integer)
+    total_weight: Mapped[float | None] = mapped_column(Numeric(12, 2))
 
     sales_order = relationship("SalesOrder", back_populates="dispatches")
     customer = relationship("Customer")

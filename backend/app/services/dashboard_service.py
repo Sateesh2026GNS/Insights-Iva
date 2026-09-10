@@ -7,7 +7,9 @@ from sqlalchemy.orm import Session
 
 from app.models.machine import Machine
 from app.models.production import Batch, DailyProductionReport, ProductionOrder, WorkOrder
-from app.models.inventory import InventoryItem, StockLevel, StockMovement, Warehouse
+from app.models.inventory import InventoryItem, StockLevel, StockMovement, StockTransfer, StoreIssueRequest, Warehouse
+from app.models.procurement import MaterialRequest
+from app.models.quality import QualityInspection
 from app.models.procurement import GoodsReceipt
 from app.models.sales import Invoice, SalesOrder
 from app.models.user import User
@@ -305,6 +307,311 @@ def _yearly_overview(db: Session, tenant_id: int) -> list[dict]:
             "actual": int(actual),
         })
     return rows
+
+
+PIPELINE_EXCLUDED = ("cancelled", "canceled", "rejected")
+PIPELINE_PENDING = ("pending", "on_hold", "hold", "paused", "quality_check")
+PIPELINE_PLANNED = ("draft", "planned")
+PIPELINE_RELEASED = ("released", "material_ready", "machine_ready")
+PIPELINE_IN_PRODUCTION = ("in_progress", "running", "started", "active")
+PIPELINE_COMPLETED = ("completed", "closed", "done")
+
+
+def _get_production_pipeline(db: Session, tenant_id: int) -> dict:
+    """Work-order counts by pipeline stage for the Admin dashboard strip."""
+    base = WorkOrder.tenant_id == tenant_id
+
+    def _stage_count(statuses: tuple[str, ...]) -> int:
+        return int(
+            db.scalar(
+                select(func.count(WorkOrder.id)).where(base, WorkOrder.status.in_(statuses))
+            )
+            or 0
+        )
+
+    return {
+        "pending": _stage_count(PIPELINE_PENDING),
+        "planned": _stage_count(PIPELINE_PLANNED),
+        "released": _stage_count(PIPELINE_RELEASED),
+        "in_production": _stage_count(PIPELINE_IN_PRODUCTION),
+        "completed": _stage_count(PIPELINE_COMPLETED),
+    }
+
+
+def _get_quick_actions_summary(db: Session, tenant_id: int, today: date) -> dict:
+    """Live operational counts for Admin dashboard Quick Actions (tenant-scoped)."""
+    wo_done = ("completed", "closed", "done")
+    wo_pending_statuses = ("planned", "pending", "on_hold", "hold", "paused")
+    wo_in_progress_statuses = ("in_progress", "running", "active")
+    wo_base = WorkOrder.tenant_id == tenant_id
+
+    work_orders = {
+        "total": int(db.scalar(select(func.count(WorkOrder.id)).where(wo_base)) or 0),
+        "today": int(
+            db.scalar(
+                select(func.count(WorkOrder.id)).where(wo_base, func.date(WorkOrder.created_at) == today)
+            )
+            or 0
+        ),
+        "pending": int(
+            db.scalar(
+                select(func.count(WorkOrder.id)).where(wo_base, WorkOrder.status.in_(wo_pending_statuses))
+            )
+            or 0
+        ),
+        "in_progress": int(
+            db.scalar(
+                select(func.count(WorkOrder.id)).where(wo_base, WorkOrder.status.in_(wo_in_progress_statuses))
+            )
+            or 0
+        ),
+        "completed": int(
+            db.scalar(
+                select(func.count(WorkOrder.id)).where(
+                    wo_base,
+                    WorkOrder.status.in_(wo_done),
+                    or_(func.date(WorkOrder.updated_at) == today, func.date(WorkOrder.created_at) == today),
+                )
+            )
+            or 0
+        ),
+    }
+
+    po_base = ProductionOrder.tenant_id == tenant_id
+    po_pending_statuses = ("planned", "pending", "draft")
+    po_in_progress_statuses = ("in_progress", "running", "active")
+    po_done_statuses = ("completed", "closed", "done")
+    production = {
+        "today": int(
+            db.scalar(
+                select(func.count(ProductionOrder.id)).where(
+                    po_base,
+                    ProductionOrder.status != "cancelled",
+                    or_(
+                        func.date(ProductionOrder.start_date) == today,
+                        and_(
+                            ProductionOrder.start_date.is_(None),
+                            func.date(ProductionOrder.created_at) == today,
+                        ),
+                    ),
+                )
+            )
+            or 0
+        ),
+        "in_progress": int(
+            db.scalar(
+                select(func.count(ProductionOrder.id)).where(
+                    po_base, ProductionOrder.status.in_(po_in_progress_statuses)
+                )
+            )
+            or 0
+        ),
+        "completed": int(
+            db.scalar(
+                select(func.count(ProductionOrder.id)).where(
+                    po_base,
+                    ProductionOrder.status.in_(po_done_statuses),
+                    or_(
+                        func.date(ProductionOrder.updated_at) == today,
+                        func.date(ProductionOrder.created_at) == today,
+                    ),
+                )
+            )
+            or 0
+        ),
+        "pending": int(
+            db.scalar(
+                select(func.count(ProductionOrder.id)).where(
+                    po_base, ProductionOrder.status.in_(po_pending_statuses)
+                )
+            )
+            or 0
+        ),
+        "produced_quantity": int(
+            db.scalar(
+                select(func.coalesce(func.sum(DailyProductionReport.produced_quantity), 0)).where(
+                    DailyProductionReport.tenant_id == tenant_id,
+                    DailyProductionReport.report_date == today,
+                )
+            )
+            or 0
+        ),
+    }
+
+    out_types = ("out", "issue", "material_issue")
+    issued_today = int(
+        db.scalar(
+            select(func.count(StockMovement.id)).where(
+                StockMovement.tenant_id == tenant_id,
+                StockMovement.movement_type.in_(out_types),
+                func.date(StockMovement.created_at) == today,
+            )
+        )
+        or 0
+    )
+    pending_issues = int(
+        db.scalar(
+            select(func.count(StoreIssueRequest.id)).where(
+                StoreIssueRequest.tenant_id == tenant_id,
+                StoreIssueRequest.status == "pending",
+            )
+        )
+        or 0
+    ) + int(
+        db.scalar(
+            select(func.count(MaterialRequest.id)).where(
+                MaterialRequest.tenant_id == tenant_id,
+                MaterialRequest.approval_status == "pending",
+            )
+        )
+        or 0
+    )
+    material_issue = {
+        "today": issued_today + pending_issues,
+        "pending": pending_issues,
+        "issued": issued_today,
+    }
+
+    st_pending_statuses = ("draft", "pending", "pending_approval")
+    st_transit_statuses = ("in_transit",)
+    st_done_statuses = ("completed", "received")
+    st_base = StockTransfer.tenant_id == tenant_id
+    stock_transfer = {
+        "pending": int(
+            db.scalar(
+                select(func.count(StockTransfer.id)).where(st_base, StockTransfer.status.in_(st_pending_statuses))
+            )
+            or 0
+        ),
+        "in_transit": int(
+            db.scalar(
+                select(func.count(StockTransfer.id)).where(st_base, StockTransfer.status.in_(st_transit_statuses))
+            )
+            or 0
+        ),
+        "completed": int(
+            db.scalar(
+                select(func.count(StockTransfer.id)).where(st_base, StockTransfer.status.in_(st_done_statuses))
+            )
+            or 0
+        ),
+        "today": int(
+            db.scalar(
+                select(func.count(StockTransfer.id)).where(
+                    st_base,
+                    or_(
+                        func.date(StockTransfer.created_at) == today,
+                        StockTransfer.transfer_date == today,
+                    ),
+                )
+            )
+            or 0
+        ),
+    }
+
+    qc_base = QualityInspection.tenant_id == tenant_id
+    quality_control = {
+        "pending": int(
+            db.scalar(
+                select(func.count(QualityInspection.id)).where(
+                    qc_base, QualityInspection.status.in_(("pending", "open", "in_review"))
+                )
+            )
+            or 0
+        ),
+        "passed": int(
+            db.scalar(
+                select(func.count(QualityInspection.id)).where(
+                    qc_base,
+                    or_(
+                        QualityInspection.result.in_(("pass", "passed")),
+                        QualityInspection.status.in_(("passed", "approved")),
+                    ),
+                )
+            )
+            or 0
+        ),
+        "failed": int(
+            db.scalar(
+                select(func.count(QualityInspection.id)).where(
+                    qc_base,
+                    or_(
+                        QualityInspection.result.in_(("fail", "failed")),
+                        QualityInspection.status.in_(("failed", "rejected")),
+                    ),
+                )
+            )
+            or 0
+        ),
+        "rework": int(
+            db.scalar(
+                select(func.count(QualityInspection.id)).where(
+                    qc_base,
+                    or_(
+                        QualityInspection.result.in_(("rework", "rework_required", "conditional")),
+                        QualityInspection.status == "rework",
+                    ),
+                )
+            )
+            or 0
+        ),
+        "today": int(
+            db.scalar(
+                select(func.count(QualityInspection.id)).where(
+                    qc_base, QualityInspection.inspection_date == today
+                )
+            )
+            or 0
+        ),
+    }
+
+    production_reports_today = int(
+        db.scalar(
+            select(func.count(DailyProductionReport.id)).where(
+                DailyProductionReport.tenant_id == tenant_id,
+                DailyProductionReport.report_date == today,
+            )
+        )
+        or 0
+    )
+    inventory_reports_today = int(
+        db.scalar(
+            select(func.count(StockMovement.id)).where(
+                StockMovement.tenant_id == tenant_id,
+                func.date(StockMovement.created_at) == today,
+            )
+        )
+        or 0
+    )
+    sales_reports_today = int(
+        db.scalar(
+            select(func.count(Invoice.id)).where(
+                Invoice.tenant_id == tenant_id,
+                Invoice.issue_date == today,
+            )
+        )
+        or 0
+    )
+    quality_reports_today = quality_control["today"]
+    reports = {
+        "today_total": production_reports_today + inventory_reports_today + sales_reports_today + quality_reports_today,
+        "categories": [
+            {"key": "production", "label": "Production", "count": production_reports_today},
+            {"key": "inventory", "label": "Inventory", "count": inventory_reports_today},
+            {"key": "sales", "label": "Sales", "count": sales_reports_today},
+            {"key": "quality", "label": "Quality", "count": quality_reports_today},
+        ],
+    }
+
+    return {
+        "work_orders": work_orders,
+        "production": production,
+        "material_issue": material_issue,
+        "stock_transfer": stock_transfer,
+        "quality_control": quality_control,
+        "reports": reports,
+        "as_of": today.isoformat(),
+    }
 
 
 def get_erp_dashboard(
@@ -701,6 +1008,8 @@ def get_erp_dashboard(
         "inventory_blocks": inventory_blocks,
         "warehouse_locations": warehouse_locations,
         "todays_summary": todays_summary,
+        "quick_actions_summary": _get_quick_actions_summary(db, tenant_id, today),
+        "production_pipeline": _get_production_pipeline(db, tenant_id),
         "date": today.isoformat(),
         "dashboard_profile": "admin",
         "visible_sections": [
@@ -712,6 +1021,7 @@ def get_erp_dashboard(
             "inventory",
             "alerts",
             "quick_actions",
+            "production_pipeline",
             "recent_work_orders",
             "todays_summary",
         ],

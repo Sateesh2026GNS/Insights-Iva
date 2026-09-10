@@ -31,7 +31,8 @@ const pathLabels = {
   quotations: "Quotations",
   orders: "Sales Orders",
   "job-cards": "Job Cards",
-  dispatch: "Dispatch",
+  dispatch: "Shipping",
+  shipping: "Shipping",
   invoices: "Invoices",
   customers: "Customers",
   payments: "Payments",
@@ -248,7 +249,7 @@ function getLabel(segment, segments, index) {
 
   if (segment === "dashboard" && prev === "inventory") return "Store Dashboard";
   if (segment === "settings" && prev === "inventory") return "Inventory Settings";
-  if (segment === "create-quick" && prev === "work-orders") return "Quick Work Order";
+  if (segment === "create-quick" && prev === "work-orders") return "Create Work Order";
   if (segment === "create" && prev && ENTITY_SINGULAR[prev]) {
     return `Create ${ENTITY_SINGULAR[prev]}`;
   }
