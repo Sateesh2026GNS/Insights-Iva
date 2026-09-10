@@ -72,6 +72,26 @@ export default function App() {
   const showChatbot = shouldShowChatbot(user, location.pathname);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    const prefetchKeyRoutes = () => {
+      // Warm up most common route chunks in background so clicks feel instantaneous
+      import("./pages/production/ProductionDashboard").catch(() => {});
+      import("./pages/inventory/InventoryV2").catch(() => {});
+      import("./pages/hr/HRDashboard").catch(() => {});
+      import("./pages/hr/Leave").catch(() => {});
+      import("./pages/hr/LeaveAdjustment").catch(() => {});
+      import("./pages/accounts/AccountsDashboard").catch(() => {});
+    };
+
+    if ("requestIdleCallback" in window) {
+      const handle = window.requestIdleCallback(prefetchKeyRoutes, { timeout: 3000 });
+      return () => window.cancelIdleCallback(handle);
+    }
+    const timer = setTimeout(prefetchKeyRoutes, 1500);
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
     if (typeof document === "undefined") return;
     const isShellLess = isShellLessRoute(location.pathname);
     if (isShellLess) {

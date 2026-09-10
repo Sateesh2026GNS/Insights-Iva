@@ -363,27 +363,39 @@
   min-width: 180px;
 }
 
-/* Action column (at the end of the table, not sticky) */
+/* Action column (sticky right so it is always accessible on horizontal scroll) */
 .hr-leave-adj__table th.hr-leave-adj__col--action {
-  min-width: 70px;
-  width: 70px;
+  position: sticky;
+  right: 0;
+  z-index: 20;
+  min-width: 76px;
+  width: 76px;
   background: var(--adj-table-head);
   text-align: center;
   border-right: 0;
+  border-left: 2px solid var(--adj-border);
+  box-shadow: -3px 0 6px rgba(0, 0, 0, 0.05);
 }
 
 .hr-leave-adj__table td.hr-leave-adj__col--action {
-  min-width: 70px;
-  width: 70px;
+  position: sticky;
+  right: 0;
+  z-index: 10;
+  min-width: 76px;
+  width: 76px;
+  background: var(--adj-surface);
   text-align: center;
   border-right: 0;
+  border-left: 2px solid var(--adj-border);
+  box-shadow: -3px 0 6px rgba(0, 0, 0, 0.05);
 }
 
 .hr-leave-adj__table tbody tr:hover td {
   background: #f9fafb;
 }
 
-.hr-leave-adj__table tbody tr:hover td.hr-leave-adj__col--employee {
+.hr-leave-adj__table tbody tr:hover td.hr-leave-adj__col--employee,
+.hr-leave-adj__table tbody tr:hover td.hr-leave-adj__col--action {
   background: #f9fafb;
 }
 

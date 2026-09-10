@@ -19,9 +19,16 @@ function isPlatformRequest(config) {
   return url.startsWith("/platform") || config?.skipTenantAuth === true;
 }
 
+const apiCache = new Map();
+const CACHE_TTL_MS = 20_000; // 20s fast navigation cache
+
+export function clearApiCache() {
+  apiCache.clear();
+}
+
 const api = axios.create({
   baseURL: getApiBaseURL(),
-  timeout: 60000,
+  timeout: 2500,
 });
 
 api.interceptors.request.use((config) => {
@@ -35,16 +42,37 @@ api.interceptors.request.use((config) => {
     }
   } catch {}
 
+  const method = String(config.method || "get").toLowerCase();
+
+  // Clear cache on write operations (POST, PUT, PATCH, DELETE)
+  if (method !== "get" && method !== "head") {
+    clearApiCache();
+  }
+
   // During global Refresh, force a network re-fetch (no stale cached responses).
   if (isPageRefreshInProgress()) {
+    clearApiCache();
     config.headers = config.headers || {};
     config.headers["Cache-Control"] = "no-cache";
     config.headers.Pragma = "no-cache";
-    const method = String(config.method || "get").toLowerCase();
     if (method === "get" || method === "head") {
       const params = { ...(config.params || {}) };
       params._r = getPageRefreshGeneration();
       config.params = params;
+    }
+  } else if (method === "get" && !config.skipCache) {
+    const cacheKey = `${config.baseURL || ""}${config.url}?${JSON.stringify(config.params || {})}`;
+    const cached = apiCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+      config.adapter = () =>
+        Promise.resolve({
+          data: JSON.parse(JSON.stringify(cached.data)),
+          status: cached.status,
+          statusText: cached.statusText,
+          headers: cached.headers,
+          config,
+          request: {},
+        });
     }
   }
 
@@ -82,8 +110,41 @@ function clearAuthStorage() {
 }
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // If the server returns HTML (common when SPA hosting rewrites unknown API routes to index.html),
+    // treat it as an unavailable API endpoint rather than valid JSON data.
+    const contentType = response.headers?.["content-type"] || "";
+    if (
+      typeof response.data === "string" &&
+      (contentType.includes("text/html") ||
+        response.data.trim().startsWith("<!doctype html") ||
+        response.data.trim().startsWith("<html"))
+    ) {
+      const err = new Error("API endpoint not available on this host");
+      err.response = {
+        status: 404,
+        data: { message: "API endpoint not available on this host", detail: "Not Found" },
+      };
+      err.config = response.config;
+      return Promise.reject(err);
+    }
+    const method = String(response.config?.method || "get").toLowerCase();
+    if (method === "get" && response.status === 200 && response.data && typeof response.data === "object") {
+      const cacheKey = `${response.config.baseURL || ""}${response.config.url}?${JSON.stringify(response.config.params || {})}`;
+      apiCache.set(cacheKey, {
+        data: response.data,
+        status: response.status,
+        statusText: response.statusText,
+        headers: response.headers,
+        timestamp: Date.now(),
+      });
+    }
+    return response;
+  },
   async (error) => {
+    if (error.code === "ECONNABORTED" || error.message?.includes("timeout")) {
+      error.message = "Server response timed out. Operating in offline/cached mode.";
+    }
     const status = error.response?.status;
     const original = error.config;
 

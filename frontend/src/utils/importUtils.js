@@ -6,7 +6,6 @@
  * Usage:
  *   const rows = await parseImportFile(file);   // [{col: val, ...}, ...]
  */
-import * as XLSX from "xlsx";
 
 /**
  * Normalise a header string so "Vendor Code" → "vendor_code",
@@ -24,11 +23,13 @@ function normaliseKey(raw) {
  * Read a File object (.xlsx, .xls, or .csv) and return an array of
  * plain row-objects whose keys are the normalised header names from
  * the first row.
+ * Dynamically loads xlsx only when file is selected.
  *
  * @param {File} file
  * @returns {Promise<Array<Record<string,string>>>}
  */
-export function parseImportFile(file) {
+export async function parseImportFile(file) {
+  const XLSX = await import("xlsx");
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
 
@@ -67,7 +68,7 @@ export function parseImportFile(file) {
       }
     };
 
-    reader.onerror = () => reject(new Error("Failed to read file"));
+    reader.onerror = (err) => reject(err);
     reader.readAsArrayBuffer(file);
   });
 }

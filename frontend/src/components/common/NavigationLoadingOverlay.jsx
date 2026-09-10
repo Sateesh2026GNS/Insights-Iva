@@ -38,19 +38,10 @@ export default function NavigationLoadingOverlay() {
     }, 20);
   };
 
-  // Trigger on route changes (skip initial mount so first-load splash handles it)
+  // Standard route changes are handled smoothly by NavigationProgressBar + RouteFallback
+  // without blocking the user with an intrusive full-screen overlay.
   useEffect(() => {
-    const currentPath = location.pathname + location.search;
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
-      prevPathRef.current = currentPath;
-      return;
-    }
-
-    if (prevPathRef.current !== currentPath) {
-      prevPathRef.current = currentPath;
-      triggerLoader(false);
-    }
+    prevPathRef.current = location.pathname + location.search;
   }, [location.pathname, location.search]);
 
   // Trigger on manual / global page refresh events

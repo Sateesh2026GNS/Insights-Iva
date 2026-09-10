@@ -3,8 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import Loader from "../../components/common/Loader";
 import Table from "../../components/common/Table";
 import { listExpenses } from "../../api/accountsApi";
-import * as XLSX from "xlsx";
-import { jsPDF } from "jspdf";
+import { exportToExcel, exportToPdf } from "../../utils/exportUtils";
 import useTenantId from "../../hooks/useTenantId";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import RecordExpense from "./RecordExpense";
@@ -32,26 +31,32 @@ export default function ExpenseTracking() {
   const total = expenses.reduce((s, e) => s + (Number(e.amount) || 0), 0);
 
   const exportExcel = () => {
-    const rows = [["Category", "Vendor", "Date", "Amount", "Description"]];
-    expenses.forEach((e) => rows.push([e.category, e.vendor || "", e.expense_date, e.amount, e.description || ""]));
-    const ws = XLSX.utils.aoa_to_sheet(rows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Expenses");
-    XLSX.writeFile(wb, `Expenses_${year}.xlsx`);
+    exportToExcel(
+      expenses,
+      [
+        { key: "category", label: "Category" },
+        { key: "vendor", label: "Vendor" },
+        { key: "expense_date", label: "Date" },
+        { key: "amount", label: "Amount" },
+        { key: "description", label: "Description" },
+      ],
+      `Expenses_${year}`
+    );
   };
 
   const exportPdf = () => {
-    const doc = new jsPDF();
-    doc.setFontSize(16);
-    doc.text(`Expense Tracking ${year}`, 14, 20);
-    doc.setFontSize(10);
-    let y = 35;
-    expenses.slice(0, 25).forEach((e) => {
-      doc.text(`${e.category} | ${e.vendor || "-"} | ${e.expense_date} | $${Number(e.amount).toFixed(2)}`, 14, y);
-      y += 6;
-    });
-    doc.text(`Total: $${total.toFixed(2)}`, 14, y + 5);
-    doc.save(`Expenses_${year}.pdf`);
+    exportToPdf(
+      expenses.slice(0, 50),
+      [
+        { key: "category", label: "Category" },
+        { key: "vendor", label: "Vendor" },
+        { key: "expense_date", label: "Date" },
+        { key: "amount", label: "Amount" },
+        { key: "description", label: "Description" },
+      ],
+      `Expense Tracking ${year}`,
+      `Expenses_${year}`
+    );
   };
 
   if (loading) return <Loader label="Loading expenses..." />;

@@ -363,9 +363,9 @@ export default function Leave() {
   const location = useLocation();
   const { user: currentUser } = useAuth();
   const { addToast } = useToast();
-  const [loading, setLoading] = useState(true);
-  const [records, setRecords] = useState([]);
-  const [employees, setEmployees] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [records, setRecords] = useState(() => getLocalLeaves());
+  const [employees, setEmployees] = useState(() => (currentUser ? [currentUser] : []));
   const [viewYear, setViewYear] = useState(() => new Date().getFullYear());
   const [viewMonth, setViewMonth] = useState(() => new Date().getMonth());
   const [pageSize, setPageSize] = useState(25);
@@ -620,8 +620,6 @@ export default function Leave() {
       addToast("Leave request submitted successfully", "success");
     }
   };
-
-  if (loading) return <Loader label="Loading leaves..." />;
 
   const defaultEmployeeId =
     currentUser?.employee_id ||

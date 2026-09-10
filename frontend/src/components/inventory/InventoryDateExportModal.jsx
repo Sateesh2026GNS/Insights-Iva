@@ -20,9 +20,7 @@ import {
   Sparkles,
   X,
 } from "lucide-react";
-import * as XLSX from "xlsx";
-import { jsPDF } from "jspdf";
-import autoTable from "jspdf-autotable";
+
 
 import Button from "../common/Button";
 import { useToast } from "../../context/ToastContext";
@@ -351,7 +349,8 @@ export default function InventoryDateExportModal({
   }, [selectedDate, activeWarehouseName, sectionTitle, metrics, movements, itemsCreatedOnDate]);
 
   // Export handlers
-  const handleDownloadExcel = () => {
+  const handleDownloadExcel = async () => {
+    const XLSX = await import("xlsx");
     const formatted = formatReadableDate(selectedDate);
     const filePrefix = sectionTitle.replace(/\s+/g, "_");
 
@@ -510,7 +509,12 @@ export default function InventoryDateExportModal({
   };
 
   // ── Shared PDF builder ────────────────────────────────────────────────────
-  const buildPdfDoc = useCallback(() => {
+  const buildPdfDoc = useCallback(async () => {
+    const [{ jsPDF }, autoTableModule] = await Promise.all([
+      import("jspdf"),
+      import("jspdf-autotable"),
+    ]);
+    const autoTable = autoTableModule.default || autoTableModule;
     const doc = new jsPDF();
     const formatted = formatReadableDate(selectedDate);
 
@@ -584,9 +588,9 @@ export default function InventoryDateExportModal({
     return doc;
   }, [selectedDate, sectionTitle, activeWarehouseName, movements, itemsCreatedOnDate]);
 
-  const handleDownloadPdf = () => {
+  const handleDownloadPdf = async () => {
     const filePrefix = sectionTitle.replace(/\s+/g, "_");
-    const doc = buildPdfDoc();
+    const doc = await buildPdfDoc();
     doc.save(`${filePrefix}_Report_${selectedDate}.pdf`);
     try {
       const pdfBlobUrl = doc.output("bloburl");
@@ -667,7 +671,7 @@ export default function InventoryDateExportModal({
   const handleShareWhatsApp = async () => {
     const filePrefix = sectionTitle.replace(/\s+/g, "_");
     const fileName = `${filePrefix}_Report_${selectedDate}.pdf`;
-    const doc = buildPdfDoc();
+    const doc = await buildPdfDoc();
     const pdfBlob = doc.output("blob");
     const pdfFile = new File([pdfBlob], fileName, { type: "application/pdf" });
 

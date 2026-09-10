@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell } from "recharts";
-import * as XLSX from "xlsx";
-import { jsPDF } from "jspdf";
+import { exportToExcel, exportToPdf } from "../../utils/exportUtils";
 import { FileText, IndianRupee } from "lucide-react";
 import KpiCard from "../../components/common/KpiCard";
 import PageHeader from "../../components/common/PageHeader";
@@ -45,29 +44,40 @@ export default function TaxReports() {
   useEffect(() => { load(); }, [load]);
 
   const exportExcel = () => {
-    const rows = [
-      ["GST Report", year],
-      ["SGST", data.sgst], ["CGST", data.cgst], ["IGST", data.igst],
-      ["Total GST", data.total_gst], ["Taxable Value", data.taxable_value],
-      ["GST Payable", data.gst_payable], ["GST Receivable", data.gst_receivable],
-    ];
-    const ws = XLSX.utils.aoa_to_sheet(rows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "GST Report");
-    XLSX.writeFile(wb, `GST_Report_${year}.xlsx`);
+    exportToExcel(
+      [
+        { metric: "SGST", value: data.sgst },
+        { metric: "CGST", value: data.cgst },
+        { metric: "IGST", value: data.igst },
+        { metric: "Total GST", value: data.total_gst },
+        { metric: "Taxable Value", value: data.taxable_value },
+        { metric: "GST Payable", value: data.gst_payable },
+        { metric: "GST Receivable", value: data.gst_receivable },
+      ],
+      [
+        { key: "metric", label: "Metric" },
+        { key: "value", label: "Amount" },
+      ],
+      `GST_Report_${year}`
+    );
   };
 
   const exportPdf = () => {
-    const doc = new jsPDF();
-    doc.setFontSize(16);
-    doc.text(`GST Report ${year}`, 14, 20);
-    doc.setFontSize(10);
-    let y = 35;
-    [["SGST", data.sgst], ["CGST", data.cgst], ["IGST", data.igst], ["Total GST", data.total_gst], ["Taxable Value", data.taxable_value]].forEach(([k, v]) => {
-      doc.text(`${k}: ${formatInr(v)}`, 14, y);
-      y += 8;
-    });
-    doc.save(`GST_Report_${year}.pdf`);
+    exportToPdf(
+      [
+        { metric: "SGST", value: formatInr(data.sgst) },
+        { metric: "CGST", value: formatInr(data.cgst) },
+        { metric: "IGST", value: formatInr(data.igst) },
+        { metric: "Total GST", value: formatInr(data.total_gst) },
+        { metric: "Taxable Value", value: formatInr(data.taxable_value) },
+      ],
+      [
+        { key: "metric", label: "Metric" },
+        { key: "value", label: "Amount" },
+      ],
+      `GST Report ${year}`,
+      `GST_Report_${year}`
+    );
   };
 
   if (loading) return <Loader label="Loading GST reports..." />;

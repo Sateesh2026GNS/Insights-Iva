@@ -64,15 +64,17 @@ export default function VendorsMaster() {
   const [deletingBusy, setDeletingBusy] = useState(false);
   const [openMenu, setOpenMenu] = useState(null);
 
-  const loadVendors = useCallback(async () => {
+  const loadVendors = useCallback(async (isManualRetry = false) => {
     setLoading(true);
     try {
       const res = await listMastersVendors();
       const rows = Array.isArray(res.data) ? res.data : [];
       setVendors(rows.map((row, i) => enrichApiVendor(row, i)));
-    } catch {
+    } catch (err) {
       setVendors([]);
-      addToast("Could not load vendors", "error");
+      if (isManualRetry) {
+        addToast(apiErrorMessage(err, "Could not load vendors"), "error");
+      }
     } finally {
       setLoading(false);
     }

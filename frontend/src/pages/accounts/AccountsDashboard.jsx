@@ -45,14 +45,14 @@ const alertIcons = { overdue: TrendingDown, gst: Landmark, ap: ArrowDownRight, b
 
 export default function AccountsDashboard() {
   const location = useLocation();
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [hub, setHub] = useState(INITIAL_FINANCE_HUB);
   const [showRecordIncome, setShowRecordIncome] = useState(false);
   const [showRecordExpense, setShowRecordExpense] = useState(false);
   const [error, setError] = useState(null);
 
   const load = useCallback(async (isRefresh = false) => {
-    if (!isRefresh) setLoading(true);
+    if (isRefresh) setLoading(true);
     setError(null);
 
     const MN = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -157,8 +157,7 @@ export default function AccountsDashboard() {
   // reload on every visit (catches navigate-back after record create)
   useEffect(() => { load(); }, [load, location.key]);
 
-  if (loading) return <Loader label="Loading finance dashboard..." />;
-
+  // Display layout immediately; live numbers populate when fetch resolves
   return (
     <div className="space-y-5 pb-4">
       {error && (

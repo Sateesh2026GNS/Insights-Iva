@@ -66,7 +66,7 @@ export default function AsyncPageBody({
   }
 
   if (message) {
-    const isNetwork = classified?.type === "network" || (!online && !errorObj?.response);
+    const isNetwork = !online || classified?.type === "network";
     if (isNetwork) {
       return (
         <div className={className}>

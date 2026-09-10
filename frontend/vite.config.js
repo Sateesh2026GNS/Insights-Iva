@@ -205,8 +205,6 @@ export default defineConfig({
             if (id.includes("react")) return "react-vendor";
             if (id.includes("i18next") || id.includes("i18n")) return "i18n";
             if (id.includes("lucide-react")) return "icons";
-            if (id.includes("xlsx") || id.includes("jspdf") || id.includes("html2canvas"))
-              return "export-libs";
             if (id.includes("axios")) return "axios";
           }
         },

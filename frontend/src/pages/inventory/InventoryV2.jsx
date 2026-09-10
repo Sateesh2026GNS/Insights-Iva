@@ -221,7 +221,7 @@ function StockAdjustModal({ mode, open, stock, unit, onClose, onSubmit }) {
 export default function InventoryV2() {
   const { addToast } = useToast();
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [products, setProducts] = useState([]);
   const [tab, setTab] = useState("items");
   const [search, setSearch] = useState("");
@@ -244,26 +244,24 @@ export default function InventoryV2() {
   const [deleteBusy, setDeleteBusy] = useState(false);
 
   const load = useCallback(async (isRefresh = false) => {
-    if (!isRefresh) setLoading(true);
+    if (isRefresh) setLoading(true);
     try {
       const [itemsRes, catsRes] = await Promise.all([
         listInventoryV2Items(),
         listInventoryV2Categories(),
       ]);
 
-
-      const rows = Array.isArray(itemsRes.data) ? itemsRes.data : [];
+      const rows = Array.isArray(itemsRes?.data) ? itemsRes.data : [];
       setProducts(rows);
-      const cats = Array.isArray(catsRes.data) ? catsRes.data : [];
+      const cats = Array.isArray(catsRes?.data) ? catsRes.data : [];
       setCategories(cats);
     } catch {
       setProducts([]);
       setCategories([]);
-      addToast("Could not load inventory from API.", "error");
     } finally {
       setLoading(false);
     }
-  }, [addToast]);
+  }, []);
 
   usePageRefresh(() => load(true));
 
@@ -431,16 +429,6 @@ export default function InventoryV2() {
         { label: "Description", value: viewTarget.description },
       ]
     : [];
-
-  if (loading) {
-    return (
-      <InventoryPageShell>
-        <div className="flex min-h-[50vh] items-center justify-center">
-          <Loader label="Loading inventory…" />
-        </div>
-      </InventoryPageShell>
-    );
-  }
 
   return (
     <InventoryPageShell className="space-y-5">

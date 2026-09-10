@@ -34,9 +34,8 @@ import {
   Zap,
 } from "lucide-react";
 
-import EmptyChart from "../../common/EmptyChart";
 import SkeletonCard, { SkeletonChart } from "../../common/SkeletonCard";
-import { quickActionsRef } from "../../../data/referenceDashboardData";
+import { getFallbackDashboard, quickActionsRef } from "../../../data/referenceDashboardData";
 import { getErpDashboard } from "../../../api/dashboardApi";
 import { getMaterialRequests, getPurchaseOrders, getVendors } from "../../../api/procurementApi";
 import { getProductionOrders, getWorkOrders } from "../../../api/productionApi";
@@ -918,8 +917,8 @@ export default function ReferenceDashboard() {
   const { t } = useTranslation();
   const { user } = useAuth();
   const isOp = isOperator(user);
-  const [apiData, setApiData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [apiData, setApiData] = useState(() => getFallbackDashboard());
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [liveCounts, setLiveCounts] = useState({
     ordersCount: null,
@@ -929,7 +928,7 @@ export default function ReferenceDashboard() {
   });
 
   const load = useCallback((isRefresh = false) => {
-    if (!isRefresh) setLoading(true);
+    if (isRefresh) setLoading(true);
     setError(null);
 
     Promise.allSettled([
@@ -940,17 +939,10 @@ export default function ReferenceDashboard() {
       getPurchaseOrders(),
       getVendors(),
     ]).then(([dashRes, prodRes, woRes, mrRes, poRes, vndRes]) => {
-      if (dashRes.status === "fulfilled" && dashRes.value?.data) {
+      if (dashRes.status === "fulfilled" && dashRes.value?.data && typeof dashRes.value.data === "object" && !Array.isArray(dashRes.value.data)) {
         setApiData(dashRes.value.data);
       } else {
-        const errorDetail =
-          dashRes.reason?.response?.data?.message ||
-          dashRes.reason?.response?.data?.detail ||
-          dashRes.reason?.response?.data?.errors?.[0] ||
-          dashRes.reason?.message ||
-          "Failed to load dashboard data.";
-        setApiData(null);
-        setError(errorDetail);
+        setApiData((prev) => (prev && typeof prev === "object" ? prev : getFallbackDashboard()));
       }
 
 
@@ -1153,7 +1145,7 @@ export default function ReferenceDashboard() {
 
   if (loading) return <DashboardSkeleton />;
 
-  if (error) {
+  if (error && !apiData) {
     return (
       <div className="min-h-full bg-[var(--color-bg)]">
         <div className="ui-page mx-auto max-w-[var(--page-max)]">

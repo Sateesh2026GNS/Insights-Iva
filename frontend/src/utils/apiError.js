@@ -103,11 +103,14 @@ export function asArray(data) {
 export function isNetworkError(err) {
   if (!err) return false;
   if (err?.response) return false;
+  // If browser reports it is offline, it is definitely a network error
+  if (typeof navigator !== "undefined" && !navigator.onLine) {
+    return true;
+  }
   const code = String(err?.code || "");
   const message = String(err?.message || "");
   return (
     code === "ERR_NETWORK" ||
-    code === "ECONNABORTED" ||
     message.includes("Network Error") ||
     message.includes("ERR_CONNECTION_RESET") ||
     message.includes("ECONNRESET")
@@ -181,10 +184,25 @@ export function classifyApiError(err, fallback = "Something went wrong.") {
     };
   }
   if (status === 404) return { type: "not_found", message, fields: {} };
-  if (isNetworkError(err) || (typeof navigator !== "undefined" && !navigator.onLine)) {
+  const isActuallyOffline = typeof navigator !== "undefined" && !navigator.onLine;
+  if (isActuallyOffline) {
     return {
       type: "network",
       message: "Please check your internet connection and try again.",
+      fields: {},
+    };
+  }
+  if (isNetworkError(err)) {
+    return {
+      type: "server",
+      message: "Unable to connect to server. Please try again.",
+      fields: {},
+    };
+  }
+  if (err?.code === "ECONNABORTED" || String(err?.message || "").includes("timeout")) {
+    return {
+      type: "server",
+      message: "Server response timed out. Please try again.",
       fields: {},
     };
   }

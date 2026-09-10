@@ -481,11 +481,11 @@ function EmptyIllustration({ type }) {
 
 export default function HRDashboard() {
   const { user } = useAuth();
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [data, setData] = useState(DEMO_HR_DASHBOARD);
 
   const load = useCallback(async (isRefresh = false) => {
-    if (!isRefresh) setLoading(true);
+    if (isRefresh) setLoading(true);
     try {
       const results = await Promise.allSettled([
         getHRHub(),
@@ -539,8 +539,6 @@ export default function HRDashboard() {
     () => (data.expense_categories || []).filter((c) => c.value > 0),
     [data.expense_categories]
   );
-
-  if (loading) return <Loader label="Loading HR dashboard..." />;
 
   return (
     <div className="hr-dashboard ui-page ui-stack min-w-0 space-y-4">

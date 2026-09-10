@@ -5,11 +5,14 @@ import Loader from "../../components/common/Loader";
 import { apiErrorMessage } from "../../utils/apiError";
 
 import Button from "../../components/common/Button";
+
+const DEFAULT_FIELDS = [{ name: "value", label: "Value", type: "text" }];
+
 export default function FeatureSettingsPage({
   title,
   settingKey,
   description,
-  fields = [{ name: "value", label: "Value", type: "text" }],
+  fields = DEFAULT_FIELDS,
 }) {
   const { addToast } = useToast();
   const [loading, setLoading] = useState(true);
@@ -17,16 +20,25 @@ export default function FeatureSettingsPage({
   const [form, setForm] = useState({});
 
   useEffect(() => {
+    let cancelled = false;
     getFeatureSetting(settingKey)
       .then((r) => {
+        if (cancelled) return;
         const v = r.data?.value;
         if (v && typeof v === "object") setForm(v);
         else if (fields.length === 1) setForm({ [fields[0].name]: v ?? "" });
         else setForm({});
       })
-      .catch(() => setForm({}))
-      .finally(() => setLoading(false));
-  }, [settingKey, fields]);
+      .catch(() => {
+        if (!cancelled) setForm({});
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [settingKey]);
 
   const onSave = async (e) => {
     e.preventDefault();

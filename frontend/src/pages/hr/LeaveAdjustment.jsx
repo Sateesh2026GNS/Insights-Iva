@@ -313,10 +313,18 @@ function AdjustmentSummaryModal({ open, onClose, employee }) {
 
 export default function LeaveAdjustment() {
   const { addToast } = useToast();
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [historyModalEmployee, setHistoryModalEmployee] = useState(null);
   const [employees, setEmployees] = useState([DEMO_EMPLOYEE]);
-  const [rows, setRows] = useState([]);
+  const [rows, setRows] = useState(() => [
+    {
+      employeeId: DEMO_EMPLOYEE.employee_id,
+      name: DEMO_EMPLOYEE.full_name,
+      department: DEMO_EMPLOYEE.department,
+      branch: DEMO_EMPLOYEE.branch,
+      balances: emptyBalances(),
+    },
+  ]);
   const [employeeFilter, setEmployeeFilter] = useState("all");
   const [branchFilter, setBranchFilter] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState("");
@@ -342,7 +350,7 @@ export default function LeaveAdjustment() {
   }, []);
 
   const load = useCallback(async (isRefresh = false) => {
-    if (!isRefresh) setLoading(true);
+    if (isRefresh) setLoading(true);
     try {
       const [empRes, adjRes] = await Promise.all([getEmployeesEnriched(), getLeaveAdjustments()]);
       const empList = empRes?.data?.length ? empRes.data : [DEMO_EMPLOYEE];
@@ -423,8 +431,6 @@ export default function LeaveAdjustment() {
     setDraftDepartment(departmentFilter);
     setFilterOpen(true);
   };
-
-  if (loading) return <Loader label="Loading leave adjustments..." />;
 
   const showingFrom = filteredRows.length ? (currentPage - 1) * pageSize + 1 : 0;
   const showingTo = Math.min(currentPage * pageSize, filteredRows.length);

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import usePageRefresh from "../../hooks/usePageRefresh";
-import * as XLSX from "xlsx";
+
 
 
 import ExportButtons from "../../components/finance/ExportButtons";
@@ -48,7 +48,8 @@ export default function ProfitLoss() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  const exportExcel = () => {
+  const exportExcel = async () => {
+    const XLSX = await import("xlsx");
     const totalRevenue = (data.revenue_rows || []).reduce((sum, row) => sum + (row.fy || 0), 0);
     const totalExpenses = (data.expense_rows || []).reduce((sum, row) => sum + (row.fy || 0), 0);
     const netProfitLoss = totalRevenue - totalExpenses;

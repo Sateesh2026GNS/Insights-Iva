@@ -4,8 +4,6 @@
  */
 
 import { escapeHtml } from "./htmlEscape";
-import { jsPDF } from "jspdf";
-import autoTable from "jspdf-autotable";
 
 export function extractJobCardData(order, user) {
   if (!order) return {};
@@ -954,8 +952,13 @@ export function printSalesJobCardLandscape(order, user) {
   setTimeout(() => win.print(), 400);
 }
 
-export function downloadSalesJobCardPdf(order, user) {
+export async function downloadSalesJobCardPdf(order, user) {
   if (!order) return;
+  const [{ jsPDF }, autoTableModule] = await Promise.all([
+    import("jspdf"),
+    import("jspdf-autotable"),
+  ]);
+  const autoTable = autoTableModule.default || autoTableModule;
   const data = extractSalesJobCardPrintData(order);
   const doc = new jsPDF({ unit: "pt", format: "a4", orientation: "landscape" });
   const pageW = doc.internal.pageSize.width;

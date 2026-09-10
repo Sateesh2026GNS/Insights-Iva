@@ -68,43 +68,27 @@ function ModuleCard({ label, to }) {
 
 export default function ProductionDashboard() {
   const { addToast } = useToast();
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [hub, setHub] = useState({});
 
   const load = useCallback(async (isRefresh = false) => {
-    if (!isRefresh) setLoading(true);
+    if (isRefresh) setLoading(true);
     try {
       const res = await getProductionHub();
       if (res?.data) setHub(res.data);
       else setHub({});
     } catch (err) {
-      if (!isRefresh) {
-        addToast("Failed to load production hub", "error");
-        setHub({});
-      }
       if (isRefresh) throw err;
+      setHub({});
     } finally {
       setLoading(false);
     }
-  }, [addToast]);
+  }, []);
 
   useEffect(() => {
     load();
   }, [load]);
   useManufacturingRefresh(() => load(true));
-
-  if (loading) {
-    return (
-      <div className="space-y-5" aria-busy="true">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <SkeletonCard key={i} />
-          ))}
-        </div>
-        <Loader label="Loading production hub..." />
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-5 pb-4">

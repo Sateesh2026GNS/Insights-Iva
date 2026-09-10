@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
   Bot, ChevronDown, Download, History, Loader2, Printer, Send, Sparkles, X,
 } from "lucide-react";
-import { jsPDF } from "jspdf";
+
 
 import { useToast } from "../../context/ToastContext";
 import {
@@ -78,7 +78,8 @@ function handlePrint(html) {
  * Automatically download a PDF using jsPDF — no print dialog needed.
  * Parses the plain markdown text and renders each line into the PDF.
  */
-function downloadAsPdf(plainText) {
+async function downloadAsPdf(plainText) {
+  const { jsPDF } = await import("jspdf");
   const doc = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();

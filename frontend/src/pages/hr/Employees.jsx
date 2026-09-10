@@ -137,7 +137,7 @@ function ActionMenu({ onEdit, onDelete }) {
 export default function Employees() {
   const navigate = useNavigate();
   const { addToast } = useToast();
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [records, setRecords] = useState([]);
   const [search, setSearch] = useState("");
   const [showFilterPanel, setShowFilterPanel] = useState(false);
@@ -150,8 +150,7 @@ export default function Employees() {
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async (isRefresh = false) => {
-    if (!isRefresh) setLoading(true);
-    else setRefreshing(true);
+    if (isRefresh) setRefreshing(true);
     try {
       const res = await getEmployeesEnriched();
       const rows = Array.isArray(res?.data) ? res.data : [];
@@ -208,8 +207,6 @@ export default function Employees() {
       addToast("Employee deleted", "success");
     }
   };
-
-  if (loading) return <Loader label="Loading employees..." />;
 
   const showingFrom = pagedRows.length ? (currentPage - 1) * pageSize + 1 : 0;
   const showingTo = Math.min(currentPage * pageSize, filteredRows.length);

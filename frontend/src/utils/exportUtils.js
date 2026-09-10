@@ -1,12 +1,14 @@
-import * as XLSX from "xlsx";
-import { jsPDF } from "jspdf";
-import autoTable from "jspdf-autotable";
+/**
+ * Export utilities with dynamic on-demand imports.
+ * Eliminates ~1MB of XLSX / jsPDF from the initial bundle and page transitions.
+ */
 
 /**
- * Export data to Excel (Select → Apply Filters → View → Export)
+ * Export data to Excel (dynamically loads xlsx only when user clicks export)
  */
-export function exportToExcel(data, columns, filename = "report") {
+export async function exportToExcel(data, columns, filename = "report") {
   if (!data?.length) return;
+  const XLSX = await import("xlsx");
   const headers = columns.map((c) => (typeof c.label === "string" ? c.label : c.key));
   const rows = data.map((row) =>
     columns.map((c) => {
@@ -22,9 +24,15 @@ export function exportToExcel(data, columns, filename = "report") {
 }
 
 /**
- * Export data to PDF
+ * Export data to PDF (dynamically loads jspdf only when user clicks export)
  */
-export function exportToPdf(data, columns, title = "Report", filename = "report") {
+export async function exportToPdf(data, columns, title = "Report", filename = "report") {
+  const [{ jsPDF }, autoTableModule] = await Promise.all([
+    import("jspdf"),
+    import("jspdf-autotable"),
+  ]);
+  const autoTable = autoTableModule.default || autoTableModule;
+
   const rowsData = Array.isArray(data) ? data : [];
   const doc = new jsPDF();
   doc.setFontSize(16);
@@ -53,7 +61,7 @@ export function exportToPdf(data, columns, title = "Report", filename = "report"
 }
 
 /**
- * Export data to CSV
+ * Export data to CSV (pure JS, no heavy dependencies)
  */
 export function exportToCsv(data, columns, filename = "report") {
   const rowsData = Array.isArray(data) ? data : [];
