@@ -136,7 +136,7 @@ function EmployeeFilterSelect({ value, onChange, employees, includeAll = true, f
   return (
     <div
       ref={rootRef}
-      className={`relative w-full ${fullWidth ? "max-w-none" : "min-w-[150px] max-w-[190px]"}`}
+      className={`relative ${fullWidth ? "w-full" : "w-[170px] shrink-0"}`}
     >
       <button type="button" className="hr-overtime__select-trigger" onClick={() => setOpen((v) => !v)}>
         <span className="truncate">{selectedLabel}</span>
@@ -198,7 +198,7 @@ function StatusFilterSelect({ value, onChange }) {
   }, [open]);
 
   return (
-    <div ref={rootRef} className="relative w-full min-w-[110px] max-w-[140px]">
+    <div ref={rootRef} className="relative w-[125px] shrink-0">
       <button type="button" className="hr-overtime__select-trigger" onClick={() => setOpen((v) => !v)}>
         <span className="truncate">{selectedLabel}</span>
         <ChevronDown className="h-4 w-4 shrink-0 text-[#9ca3af]" />
@@ -730,54 +730,56 @@ export default function Overtime() {
           </div>
         </div>
 
-        <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-          <div className="flex flex-wrap items-center gap-3">
-            <EmployeeFilterSelect value={employeeFilter} onChange={setEmployeeFilter} employees={employees} />
-            <StatusFilterSelect value={statusFilter} onChange={setStatusFilter} />
-          </div>
+        <div className="rounded-xl border border-slate-200/90 bg-white px-5 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5 shrink-0">
+              <EmployeeFilterSelect value={employeeFilter} onChange={setEmployeeFilter} employees={employees} />
+              <StatusFilterSelect value={statusFilter} onChange={setStatusFilter} />
+            </div>
 
-          <div className="flex flex-wrap items-center justify-center gap-2">
-            <button type="button" className="hr-overtime__nav-btn" onClick={() => shiftPeriod(-1)} aria-label="Previous period">
-              <ChevronLeft className="h-5 w-5" />
-            </button>
-            <span className="hr-overtime__period-label">{periodLabel}</span>
-            <button type="button" className="hr-overtime__nav-btn" onClick={() => shiftPeriod(1)} aria-label="Next period">
-              <ChevronRight className="h-5 w-5" />
-            </button>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2 xl:justify-end">
-            <button type="button" className="hr-overtime__icon-btn" onClick={() => load(true)} aria-label="Refresh">
-              <History className="h-5 w-5" />
-            </button>
-            <button type="button" className="hr-overtime__outline-btn" onClick={handleApproveReject}>
-              Click To Approve / Reject
-            </button>
-            <button type="button" className="hr-overtime__primary-btn" onClick={() => setRequestOpen(true)}>
-              Overtime Request
-            </button>
-            <div className="relative">
-              <button
-                ref={filterBtnRef}
-                type="button"
-                className={`hr-overtime__filter-btn ${filterOpen ? "hr-overtime__filter-btn--active" : ""}`}
-                onClick={() => setFilterOpen((v) => !v)}
-              >
-                <Filter className="h-4 w-4" />
-                Filter
+            <div className="flex items-center justify-center gap-2 shrink-0">
+              <button type="button" className="hr-overtime__nav-btn" onClick={() => shiftPeriod(-1)} aria-label="Previous period">
+                <ChevronLeft className="h-5 w-5" />
               </button>
-              <FilterPopover
-                open={filterOpen}
-                onClose={() => setFilterOpen(false)}
-                branch={branchFilter}
-                department={departmentFilter}
-                onBranchChange={setBranchFilter}
-                onDepartmentChange={setDepartmentFilter}
-                onApply={() => {
-                  setFilterOpen(false);
-                  addToast("Filters applied", "success");
-                }}
-              />
+              <span className="hr-overtime__period-label min-w-[85px] text-center font-bold text-slate-800 dark:text-slate-100">{periodLabel}</span>
+              <button type="button" className="hr-overtime__nav-btn" onClick={() => shiftPeriod(1)} aria-label="Next period">
+                <ChevronRight className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <button type="button" className="hr-overtime__icon-btn" onClick={() => load(true)} aria-label="Refresh">
+                <History className="h-5 w-5" />
+              </button>
+              <button type="button" className="hr-overtime__outline-btn" onClick={handleApproveReject}>
+                Click To Approve / Reject
+              </button>
+              <button type="button" className="hr-overtime__primary-btn" onClick={() => setRequestOpen(true)}>
+                Overtime Request
+              </button>
+              <div className="relative">
+                <button
+                  ref={filterBtnRef}
+                  type="button"
+                  className={`hr-overtime__filter-btn ${filterOpen ? "hr-overtime__filter-btn--active" : ""}`}
+                  onClick={() => setFilterOpen((v) => !v)}
+                >
+                  <Filter className="h-4 w-4" />
+                  Filter
+                </button>
+                <FilterPopover
+                  open={filterOpen}
+                  onClose={() => setFilterOpen(false)}
+                  branch={branchFilter}
+                  department={departmentFilter}
+                  onBranchChange={setBranchFilter}
+                  onDepartmentChange={setDepartmentFilter}
+                  onApply={() => {
+                    setFilterOpen(false);
+                    addToast("Filters applied", "success");
+                  }}
+                />
+              </div>
             </div>
           </div>
         </div>
