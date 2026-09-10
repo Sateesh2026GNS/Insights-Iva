@@ -14,8 +14,10 @@ class ProductRead(BaseModel):
 
 class ProductionOrderBase(BaseModel):
     tenant_id: int = Field(..., ge=1)
-    product_id: int = Field(..., ge=1)
-    order_number: str
+    product_id: int | None = Field(None, ge=1)
+    product_name: str | None = None
+    machine_name: str | None = None
+    order_number: str = ""
     planned_quantity: float = Field(..., ge=0.0)
     actual_quantity: float | None = Field(None, ge=0.0)
     produced_quantity: float | None = Field(None, ge=0.0)
