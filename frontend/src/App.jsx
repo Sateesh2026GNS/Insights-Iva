@@ -13,6 +13,8 @@ import Button from "./components/common/Button";
 import { isOperator } from "./config/permissions";
 import useAuth from "./hooks/useAuth";
 import { isAiCopilotEnabled, isOperatorAiRoute } from "./utils/aiCopilot";
+import { triggerServerWakeup, registerWakeupCallbacks } from "./utils/serverWakeup";
+
 
 const AiChatWidget = lazy(() => import("./components/ai/AiChatWidget"));
 
@@ -68,6 +70,19 @@ export default function App() {
     if (typeof window === "undefined") return false;
     return window.matchMedia("(max-width: 1023px)").matches;
   });
+  const [connectingMsg, setConnectingMsg] = useState("");
+
+  // Warm up the backend on first app load (Render free tier sleeps after inactivity)
+  useEffect(() => {
+    registerWakeupCallbacks(
+      (msg) => setConnectingMsg(msg),   // show "Connecting…" banner
+      () => setConnectingMsg(""),        // hide it once server responds
+    );
+    triggerServerWakeup();
+    // Auto-hide banner after 90 s regardless (backend may not have /health)
+    const timer = setTimeout(() => setConnectingMsg(""), 90_000);
+    return () => clearTimeout(timer);
+  }, []);
 
   const showChatbot = shouldShowChatbot(user, location.pathname);
 
@@ -229,6 +244,56 @@ export default function App() {
     >
       <NavigationProgressBar />
       <NavigationLoadingOverlay />
+      {connectingMsg && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            zIndex: 9999,
+            background: "#fef3c7",
+            borderBottom: "1px solid #fbbf24",
+            color: "#92400e",
+            fontSize: "13px",
+            fontWeight: 500,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "8px",
+            padding: "6px 16px",
+          }}
+        >
+          <span
+            style={{
+              display: "inline-block",
+              width: 14,
+              height: 14,
+              border: "2px solid #d97706",
+              borderTopColor: "transparent",
+              borderRadius: "50%",
+              animation: "spin 0.75s linear infinite",
+            }}
+          />
+          {connectingMsg}
+          <button
+            onClick={() => setConnectingMsg("")}
+            style={{
+              marginLeft: 12,
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              color: "#92400e",
+              fontWeight: 700,
+              fontSize: 16,
+              lineHeight: 1,
+            }}
+            aria-label="Dismiss"
+          >
+            ×
+          </button>
+        </div>
+      )}
       <Button
         as="a"
         href="#main-content"
