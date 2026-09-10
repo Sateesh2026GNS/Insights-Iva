@@ -307,40 +307,42 @@ export default function AttendanceApproval() {
           </button>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5 shrink-0">
-            <EmployeeFilterSelect value={employeeFilter} onChange={setEmployeeFilter} employees={employees} />
-            <StatusFilterSelect value={statusFilter} onChange={setStatusFilter} />
-          </div>
+        <div className="rounded-xl border border-slate-200/90 bg-white px-5 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5 shrink-0">
+              <EmployeeFilterSelect value={employeeFilter} onChange={setEmployeeFilter} employees={employees} />
+              <StatusFilterSelect value={statusFilter} onChange={setStatusFilter} />
+            </div>
 
-          <div className="flex items-center justify-center gap-2 shrink-0">
-            <button type="button" className="hr-approvals__nav-btn" onClick={() => shiftPeriod(-1)} aria-label="Previous period">
-              <ChevronLeft className="h-5 w-5" />
-            </button>
-            <span className="hr-approvals__period-label min-w-[85px] text-center font-bold text-slate-800">{periodLabel}</span>
-            <button type="button" className="hr-approvals__nav-btn" onClick={() => shiftPeriod(1)} aria-label="Next period">
-              <ChevronRight className="h-5 w-5" />
-            </button>
-          </div>
+            <div className="flex items-center justify-center gap-2 shrink-0">
+              <button type="button" className="hr-approvals__nav-btn" onClick={() => shiftPeriod(-1)} aria-label="Previous period">
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+              <span className="hr-approvals__period-label min-w-[85px] text-center font-bold text-slate-800 dark:text-slate-100">{periodLabel}</span>
+              <button type="button" className="hr-approvals__nav-btn" onClick={() => shiftPeriod(1)} aria-label="Next period">
+                <ChevronRight className="h-5 w-5" />
+              </button>
+            </div>
 
-          <div className="flex items-center justify-end shrink-0">
-            <div className="hr-approvals__view-toggle">
-              <button
-                type="button"
-                className={`hr-approvals__view-btn ${periodView === "week" ? "hr-approvals__view-btn--active" : ""}`}
-                onClick={() => setPeriodView("week")}
-              >
-                <CalendarDays className="h-4 w-4" />
-                Week View
-              </button>
-              <button
-                type="button"
-                className={`hr-approvals__view-btn ${periodView === "month" ? "hr-approvals__view-btn--active" : ""}`}
-                onClick={() => setPeriodView("month")}
-              >
-                <CalendarDays className="h-4 w-4" />
-                Month View
-              </button>
+            <div className="flex items-center justify-end shrink-0">
+              <div className="hr-approvals__view-toggle">
+                <button
+                  type="button"
+                  className={`hr-approvals__view-btn ${periodView === "week" ? "hr-approvals__view-btn--active" : ""}`}
+                  onClick={() => setPeriodView("week")}
+                >
+                  <CalendarDays className="h-4 w-4" />
+                  Week View
+                </button>
+                <button
+                  type="button"
+                  className={`hr-approvals__view-btn ${periodView === "month" ? "hr-approvals__view-btn--active" : ""}`}
+                  onClick={() => setPeriodView("month")}
+                >
+                  <CalendarDays className="h-4 w-4" />
+                  Month View
+                </button>
+              </div>
             </div>
           </div>
         </div>
