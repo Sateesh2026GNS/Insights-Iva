@@ -484,7 +484,16 @@ def balance_sheet_endpoint(
     tenant_id: int = Depends(tenant_scope(MODULE)), db: Session = Depends(get_db)
 ):
     """Return the two-column balance sheet layout with amounts from DB."""
-    return get_balance_sheet(db, tenant_id)
+    try:
+        return get_balance_sheet(db, tenant_id)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail="Database error generating balance sheet",
+        ) from exc
 
 
 @router.get("/journal-entries", response_model=list[JournalEntryRead])

@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db
+from app.core.idempotency import get_idempotency_key_header
 from app.core.permissions import (
     require_any_permission,
     require_permission,
@@ -306,13 +307,19 @@ def delete_sales_order_endpoint(
 def update_sales_order_status_endpoint(
     order_id: int,
     status: str = Query(...),
+    expected_version: int | None = Query(None),
     user: User = Depends(require_permission(MODULE)),
     db: Session = Depends(get_db),
 ):
     from app.services.sales_service import update_sales_order_status
 
     order = update_sales_order_status(
-        db, user.tenant_id, order_id, status, user=user
+        db,
+        user.tenant_id,
+        order_id,
+        status,
+        user=user,
+        expected_version=expected_version,
     )
     if not order:
         raise HTTPException(404, "Sales order not found")
@@ -829,9 +836,10 @@ def create_payment_endpoint(
     payload: PaymentCreate,
     user: User = Depends(require_permission(MODULE)),
     db: Session = Depends(get_db),
+    idempotency_key: str | None = Depends(get_idempotency_key_header),
 ):
     payload.tenant_id = user.tenant_id
-    return create_payment(db, payload)
+    return create_payment(db, payload, idempotency_key=idempotency_key)
 
 
 @router.get("/payments", response_model=list[PaymentRead])

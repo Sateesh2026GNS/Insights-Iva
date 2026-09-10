@@ -149,8 +149,27 @@
 
 .hr-preboarding__filter-popover-footer {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
+  gap: 8px;
   padding: 0 14px 14px;
+}
+
+.hr-preboarding__clear-btn {
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #ffffff;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.hr-preboarding__clear-btn:hover {
+  background: #f9fafb;
+  border-color: #9ca3af;
 }
 
 .hr-preboarding__field {

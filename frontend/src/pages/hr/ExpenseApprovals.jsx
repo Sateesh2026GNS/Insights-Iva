@@ -155,6 +155,7 @@ function FilterPopover({
   onBranchChange,
   onDepartmentChange,
   onApply,
+  onClear,
 }) {
   const rootRef = useRef(null);
 
@@ -204,6 +205,22 @@ function FilterPopover({
         </div>
       </div>
       <div className="hr-exp-approvals__filter-popover-footer">
+        <button
+          type="button"
+          className="hr-exp-approvals__clear-btn"
+          onClick={() => {
+            if (onClear) onClear();
+            else {
+              onCategoryChange("");
+              onStatusChange("");
+              onBranchChange("");
+              onDepartmentChange("");
+              onClose();
+            }
+          }}
+        >
+          Clear
+        </button>
         <button type="button" className="hr-exp-approvals__apply-btn" onClick={onApply}>Apply</button>
       </div>
     </div>
@@ -488,6 +505,18 @@ export default function ExpenseApprovals() {
                   onStatusChange={setDraftStatus}
                   onBranchChange={setDraftBranch}
                   onDepartmentChange={setDraftDepartment}
+                  onClear={() => {
+                    setDraftCategory("");
+                    setDraftStatus("");
+                    setDraftBranch("");
+                    setDraftDepartment("");
+                    setCategoryFilter("");
+                    setStatusFilter("");
+                    setBranchFilter("");
+                    setDepartmentFilter("");
+                    setFilterOpen(false);
+                    setPage(1);
+                  }}
                   onApply={() => {
                     setCategoryFilter(draftCategory);
                     setStatusFilter(draftStatus);

@@ -1232,6 +1232,7 @@ def build_manual_job_card_response(
     return {
         "id": jc.id,
         "job_card_id": jc.id,
+        "version": int(getattr(jc, "version", 1) or 1),
         "is_manual": True,
         "sales_order_id": None,
         "job_card_no": jc.job_card_no,
@@ -1403,10 +1404,15 @@ def update_manual_job_card(
     if not user_is_admin(user) and TEAM_SALES not in teams:
         raise HTTPException(status_code=403, detail="Sales team permission required")
 
-    jc = _get_manual_job_card(db, tenant_id, job_card_id)
+    from app.core.concurrency import assert_entity_version, bump_entity_version, bump_record_version
+
+    jc = _get_manual_job_card_for_update(db, tenant_id, job_card_id)
     details = parse_details_json(jc.details_json)
     store_wf = get_store_workflow(details)
     ws = (jc.workflow_stage or "").upper()
+    expected_version = payload.get("expected_version") if isinstance(payload, dict) else None
+    if expected_version is not None:
+        assert_entity_version(jc, int(expected_version))
 
     if _manual_in_store_workflow(jc) and ws != MANUAL_WORKFLOW_RETURNED:
         raise HTTPException(
@@ -1433,6 +1439,8 @@ def update_manual_job_card(
             store_wf["returned_to_sales"] = False
             store_wf["return_remarks"] = None
             details["store_workflow"] = store_wf
+    bump_entity_version(jc)
+    bump_record_version(details)
     jc.details_json = serialize_details_json(details)
     db.commit()
     db.refresh(jc)

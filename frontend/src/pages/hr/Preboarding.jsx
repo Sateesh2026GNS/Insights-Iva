@@ -137,7 +137,7 @@ function SimpleSelect({ value, onChange, options, placeholder }) {
   );
 }
 
-function FilterPopover({ open, onClose, branch, department, onBranchChange, onDepartmentChange, onApply }) {
+function FilterPopover({ open, onClose, branch, department, onBranchChange, onDepartmentChange, onApply, onClear }) {
   const rootRef = useRef(null);
 
   useEffect(() => {
@@ -170,6 +170,20 @@ function FilterPopover({ open, onClose, branch, department, onBranchChange, onDe
         </div>
       </div>
       <div className="hr-preboarding__filter-popover-footer">
+        <button
+          type="button"
+          className="hr-preboarding__clear-btn"
+          onClick={() => {
+            if (onClear) onClear();
+            else {
+              onBranchChange("");
+              onDepartmentChange("");
+              onClose();
+            }
+          }}
+        >
+          Clear
+        </button>
         <button type="button" className="hr-preboarding__apply-btn" onClick={onApply}>Apply</button>
       </div>
     </div>
@@ -436,6 +450,14 @@ export default function Preboarding() {
               department={draftDepartment}
               onBranchChange={setDraftBranch}
               onDepartmentChange={setDraftDepartment}
+              onClear={() => {
+                setDraftBranch("");
+                setDraftDepartment("");
+                setBranchFilter("");
+                setDepartmentFilter("");
+                setFilterOpen(false);
+                setPage(1);
+              }}
               onApply={() => {
                 setBranchFilter(draftBranch);
                 setDepartmentFilter(draftDepartment);

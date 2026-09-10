@@ -132,7 +132,7 @@ function SimpleSelect({ value, onChange, options, placeholder }) {
   );
 }
 
-function FilterPopover({ open, onClose, leavePlan, branch, department, planOptions, onPlanChange, onBranchChange, onDepartmentChange, onApply }) {
+function FilterPopover({ open, onClose, leavePlan, branch, department, planOptions, onPlanChange, onBranchChange, onDepartmentChange, onApply, onClear }) {
   const rootRef = useRef(null);
 
   useEffect(() => {
@@ -169,6 +169,21 @@ function FilterPopover({ open, onClose, leavePlan, branch, department, planOptio
         </div>
       </div>
       <div className="hr-leave-plans__filter-popover-footer">
+        <button
+          type="button"
+          className="hr-leave-plans__clear-btn"
+          onClick={() => {
+            if (onClear) onClear();
+            else {
+              onPlanChange("");
+              onBranchChange("");
+              onDepartmentChange("");
+              onClose();
+            }
+          }}
+        >
+          Clear
+        </button>
         <button type="button" className="hr-leave-plans__apply-btn" onClick={onApply}>
           Apply
         </button>
@@ -364,6 +379,16 @@ export default function LeavePlans() {
                 onPlanChange={setDraftPlan}
                 onBranchChange={setDraftBranch}
                 onDepartmentChange={setDraftDepartment}
+                onClear={() => {
+                  setDraftPlan("");
+                  setDraftBranch("");
+                  setDraftDepartment("");
+                  setPlanFilter("");
+                  setBranchFilter("");
+                  setDepartmentFilter("");
+                  setFilterOpen(false);
+                  setPage(1);
+                }}
                 onApply={() => {
                   setPlanFilter(draftPlan);
                   setBranchFilter(draftBranch);

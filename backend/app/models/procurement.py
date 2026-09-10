@@ -1,6 +1,6 @@
 from datetime import date, datetime
 
-from sqlalchemy import Date, DateTime, ForeignKey, Integer, Numeric, String, Text
+from sqlalchemy import Date, DateTime, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin
@@ -149,6 +149,11 @@ class GoodsReceiptLine(Base, TimestampMixin):
 
 class SupplierPayment(Base, TimestampMixin):
     __tablename__ = "supplier_payments"
+    __table_args__ = (
+        UniqueConstraint(
+            "tenant_id", "idempotency_key", name="uq_supplier_payments_tenant_idempotency"
+        ),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     tenant_id: Mapped[int] = mapped_column(
@@ -160,6 +165,7 @@ class SupplierPayment(Base, TimestampMixin):
     payment_method: Mapped[str] = mapped_column(String(64), default="bank", nullable=False)
     reference: Mapped[str | None] = mapped_column(String(128))
     notes: Mapped[str | None] = mapped_column(Text)
+    idempotency_key: Mapped[str | None] = mapped_column(String(128), nullable=True)
 
     supplier = relationship("Supplier")
 

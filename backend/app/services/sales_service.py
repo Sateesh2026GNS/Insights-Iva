@@ -473,14 +473,18 @@ def update_sales_order_status(
     status: str,
     *,
     user=None,
+    expected_version: int | None = None,
 ) -> SalesOrder | None:
+    from app.core.concurrency import assert_entity_version, bump_entity_version
+
     order = db.scalars(
-        select(SalesOrder).where(
-            SalesOrder.id == order_id, SalesOrder.tenant_id == tenant_id
-        )
+        select(SalesOrder)
+        .where(SalesOrder.id == order_id, SalesOrder.tenant_id == tenant_id)
+        .with_for_update()
     ).first()
     if not order:
         return None
+    assert_entity_version(order, expected_version)
     previous = (order.status or "").lower()
     new_status = (status or "").lower()
     if new_status in {"confirmed", "approved"} and previous not in {
@@ -501,6 +505,7 @@ def update_sales_order_status(
         return order
 
     order.status = status
+    bump_entity_version(order)
     db.commit()
     db.refresh(order)
     return order
@@ -759,26 +764,56 @@ def list_invoices(
     return list(db.scalars(stmt).all())
 
 
-def create_payment(db: Session, payload: PaymentCreate) -> Payment:
+def create_payment(
+    db: Session,
+    payload: PaymentCreate,
+    *,
+    idempotency_key: str | None = None,
+) -> Payment:
     from fastapi import HTTPException
-    from sqlalchemy.exc import SQLAlchemyError
+    from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+
+    from app.core.concurrency import bump_entity_version
+    from app.core.idempotency import find_idempotent_record, normalize_idempotency_key
+
+    key = normalize_idempotency_key(idempotency_key or payload.idempotency_key)
+    existing = find_idempotent_record(db, Payment, payload.tenant_id, key)
+    if existing:
+        return existing
 
     try:
         inv = None
         if payload.invoice_id:
             inv = db.scalars(
-                select(Invoice).where(
+                select(Invoice)
+                .where(
                     Invoice.id == payload.invoice_id,
                     Invoice.tenant_id == payload.tenant_id,
                 )
+                .with_for_update()
             ).first()
             if not inv:
                 raise HTTPException(
                     status_code=404,
                     detail="Invoice not found or does not belong to the current tenant.",
                 )
+            grand_total = float(inv.grand_total or 0)
+            amount_paid = float(inv.amount_paid or 0)
+            balance = max(0.0, grand_total - amount_paid)
+            pay_amount = float(payload.amount or 0)
+            if pay_amount > balance + 0.009:
+                raise HTTPException(
+                    status_code=422,
+                    detail=(
+                        f"Payment amount exceeds invoice balance. "
+                        f"Outstanding balance is {balance:.2f}."
+                    ),
+                )
 
-        p = Payment(**payload.model_dump())
+        data = payload.model_dump()
+        if key:
+            data["idempotency_key"] = key
+        p = Payment(**data)
         db.add(p)
         if inv:
             paid = float(inv.amount_paid or 0) + float(payload.amount or 0)
@@ -805,10 +840,12 @@ def create_payment(db: Session, payload: PaymentCreate) -> Payment:
 
         if inv and inv.status == "paid" and inv.sales_order_id:
             so = db.scalars(
-                select(SalesOrder).where(
+                select(SalesOrder)
+                .where(
                     SalesOrder.id == inv.sales_order_id,
                     SalesOrder.tenant_id == payload.tenant_id,
                 )
+                .with_for_update()
             ).first()
             if so:
                 if (so.status or "").lower() in {
@@ -818,12 +855,24 @@ def create_payment(db: Session, payload: PaymentCreate) -> Payment:
                     "confirmed",
                 } or so.shipped or so.invoiced:
                     so.status = "closed"
+                    bump_entity_version(so)
 
         db.commit()
         db.refresh(p)
     except HTTPException:
         db.rollback()
         raise
+    except IntegrityError as exc:
+        db.rollback()
+        if key:
+            dup = find_idempotent_record(db, Payment, payload.tenant_id, key)
+            if dup:
+                return dup
+        logger.warning("Payment integrity conflict: %s", exc)
+        raise HTTPException(
+            status_code=409,
+            detail="A payment with this reference or idempotency key already exists.",
+        ) from exc
     except SQLAlchemyError as exc:
         db.rollback()
         logger.exception("Database error recording payment: %s", exc)

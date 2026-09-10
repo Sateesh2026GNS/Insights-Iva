@@ -507,7 +507,7 @@ function OvertimeRequestModal({ open, onClose, employees, onSubmit }) {
   );
 }
 
-function FilterPopover({ open, onClose, branch, department, onBranchChange, onDepartmentChange, onApply }) {
+function FilterPopover({ open, onClose, branch, department, onBranchChange, onDepartmentChange, onApply, onClear }) {
   const rootRef = useRef(null);
 
   useEffect(() => {
@@ -540,6 +540,20 @@ function FilterPopover({ open, onClose, branch, department, onBranchChange, onDe
         </div>
       </div>
       <div className="hr-overtime__filter-popover-footer">
+        <button
+          type="button"
+          className="hr-overtime__outline-btn"
+          onClick={() => {
+            if (onClear) onClear();
+            else {
+              onBranchChange("");
+              onDepartmentChange("");
+              onClose();
+            }
+          }}
+        >
+          Clear
+        </button>
         <button type="button" className="hr-overtime__primary-btn" onClick={onApply}>
           Apply
         </button>
@@ -774,6 +788,12 @@ export default function Overtime() {
                   department={departmentFilter}
                   onBranchChange={setBranchFilter}
                   onDepartmentChange={setDepartmentFilter}
+                  onClear={() => {
+                    setBranchFilter("");
+                    setDepartmentFilter("");
+                    setFilterOpen(false);
+                    addToast("Filters cleared", "info");
+                  }}
                   onApply={() => {
                     setFilterOpen(false);
                     addToast("Filters applied", "success");

@@ -560,7 +560,9 @@
 
 .hr-overtime__filter-popover-footer {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
+  gap: 8px;
   padding: 0 14px 14px;
 }
 

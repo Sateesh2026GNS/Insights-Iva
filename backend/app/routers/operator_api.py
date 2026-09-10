@@ -18,7 +18,9 @@ from app.schemas.operator import (
     WorkOrderActionRequest,
     WorkOrderProgressRequest,
 )
+from app.services import audit_log_service
 from app.services.operator_service import OperatorService
+from app.services.security_service import revoke_access_token
 from app.utils.api_response import success_response
 
 router = APIRouter(prefix="/api", tags=["Operator API"])
@@ -190,11 +192,8 @@ def api_logout(
 ):
     from datetime import datetime, timezone
 
-    from app.services.audit_log_service import AuditLogService
-    from app.services.security_service import revoke_access_token
-
     try:
-        auth_header = request.headers.get("Authorization") or ""
+        auth_header = str(request.headers.get("Authorization") or "")
         access_token = (
             auth_header.split(" ", 1)[1].strip()
             if auth_header.lower().startswith("bearer ")
@@ -204,7 +203,7 @@ def api_logout(
             revoke_access_token(db, access_token, user_id=current_user.id)
         current_user.tokens_revoked_at = datetime.now(timezone.utc)
         db.commit()
-        AuditLogService.log_logout(db, request=request, user=current_user)
+        audit_log_service.AuditLogService.log_logout(db, request=request, user=current_user)
         return success_response("Logged out successfully. Discard your access token on the client.")
     except SQLAlchemyError:
         logger.exception("api_logout database error for user %s", current_user.id)

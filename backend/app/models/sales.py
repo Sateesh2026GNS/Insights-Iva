@@ -1,6 +1,6 @@
 from datetime import date, datetime
 
-from sqlalchemy import Boolean, Date, ForeignKey, Numeric, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, Date, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin
@@ -131,6 +131,7 @@ class SalesOrder(Base, TimestampMixin):
     sales_person: Mapped[str | None] = mapped_column(String(255))
     priority: Mapped[str] = mapped_column(String(16), default="medium", nullable=False)
     workflow_status: Mapped[str | None] = mapped_column(String(64), index=True)
+    version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
 
     customer = relationship("Customer", back_populates="sales_orders")
     invoices = relationship("Invoice", back_populates="sales_order")
@@ -254,6 +255,14 @@ class InvoiceItem(Base, TimestampMixin):
 
 class Payment(Base, TimestampMixin):
     __tablename__ = "payments"
+    __table_args__ = (
+        UniqueConstraint(
+            "tenant_id", "idempotency_key", name="uq_payments_tenant_idempotency"
+        ),
+        UniqueConstraint(
+            "tenant_id", "payment_reference", name="uq_payments_tenant_reference"
+        ),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     tenant_id: Mapped[int] = mapped_column(
@@ -264,6 +273,8 @@ class Payment(Base, TimestampMixin):
     payment_date: Mapped[date] = mapped_column(Date, nullable=False)
     method: Mapped[str] = mapped_column(String(64), default="cash", nullable=False)
     notes: Mapped[str | None] = mapped_column(Text)
+    idempotency_key: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    payment_reference: Mapped[str | None] = mapped_column(String(128), nullable=True)
 
     invoice = relationship("Invoice", back_populates="payments")
 

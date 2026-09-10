@@ -1,13 +1,20 @@
 /**
- * Sales Job Card — A4 landscape reference layout (STIC-style).
+ * Sales Job Card — screen-readable layout; compact sizes apply in @media print.
  */
 
 .sjc-doc {
   background: #fff;
-  color: #1a1a1a;
-  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-  font-size: 11px;
-  line-height: 1.4;
+  color: var(--color-text, #1e293b);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm, 0.8125rem);
+  line-height: var(--leading-normal, 1.5);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* On-screen: larger, clearer type than print layout */
+.sjc-doc--screen {
+  font-size: var(--text-md, 0.875rem);
+  line-height: var(--leading-relaxed, 1.625);
 }
 
 .sjc-doc__paper {
@@ -67,30 +74,42 @@
 }
 
 .sjc-doc__company-name {
-  font-size: 12.5px;
-  font-weight: 800;
-  color: #1b5e20;
+  font-size: var(--text-base, 0.9375rem);
+  font-weight: 700;
+  color: var(--erp-primary, #1b5e20);
   text-transform: uppercase;
-  letter-spacing: 0.01em;
-  line-height: 1.2;
+  letter-spacing: 0.02em;
+  line-height: 1.25;
+}
+
+.sjc-doc--screen .sjc-doc__company-name {
+  font-size: var(--text-lg, 1.125rem);
 }
 
 .sjc-doc__company-address {
-  font-size: 9px;
-  color: #111827;
-  margin-top: 2px;
-  line-height: 1.35;
+  font-size: var(--text-xs, 0.75rem);
+  color: var(--color-text-secondary, #475569);
+  margin-top: 0.25rem;
+  line-height: 1.45;
   max-width: 360px;
+}
+
+.sjc-doc--screen .sjc-doc__company-address {
+  font-size: var(--text-sm, 0.8125rem);
 }
 
 .sjc-doc__tagline {
   margin: 0;
   text-align: center;
-  font-size: 10px;
+  font-size: var(--text-xs, 0.75rem);
   font-style: italic;
-  color: #4b5563;
+  color: var(--color-text-muted, #64748b);
   align-self: center;
   padding: 0 0.25rem;
+}
+
+.sjc-doc--screen .sjc-doc__tagline {
+  font-size: var(--text-sm, 0.8125rem);
 }
 
 .sjc-doc__meta {
@@ -102,8 +121,12 @@
 .sjc-doc__meta-grid {
   width: 100%;
   border-collapse: collapse;
-  font-size: 9px;
-  border: 1px solid #6b7280;
+  font-size: var(--text-xs, 0.75rem);
+  border: 1px solid var(--color-border, #cbd5e1);
+}
+
+.sjc-doc--screen .sjc-doc__meta-grid {
+  font-size: var(--text-sm, 0.8125rem);
 }
 
 .sjc-doc__meta-grid td {
@@ -113,9 +136,9 @@
 }
 
 .sjc-doc__meta-label {
-  background: #d4edda;
-  font-weight: 700;
-  color: #111827;
+  background: #ecfdf3;
+  font-weight: 600;
+  color: var(--color-text, #1e293b);
   white-space: nowrap;
   width: 46%;
 }
@@ -129,15 +152,21 @@
 /* Main title band */
 .sjc-doc__title-band {
   text-align: center;
-  background: #1b5e20;
+  background: var(--erp-primary, #1b5e20);
   color: #fff;
-  font-size: 15px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  padding: 0.28rem 1rem;
-  margin: 0.2rem 0 0.45rem;
+  font-size: var(--text-base, 0.9375rem);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 0.5rem 1rem;
+  margin: 0.35rem 0 0.75rem;
   text-transform: uppercase;
-  border-radius: 0;
+  border-radius: var(--radius-sm, 4px);
+}
+
+.sjc-doc--screen .sjc-doc__title-band {
+  font-size: var(--text-lg, 1.125rem);
+  letter-spacing: 0.05em;
+  padding: 0.625rem 1rem;
 }
 
 /* Customer / Order panels */
@@ -160,14 +189,19 @@
 }
 
 .sjc-doc__panel-title {
-  background: #d4edda;
-  color: #111827;
-  font-size: 10px;
-  font-weight: 800;
+  background: #ecfdf3;
+  color: var(--color-text, #1e293b);
+  font-size: var(--text-xs, 0.75rem);
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  padding: 0.28rem 0.5rem;
-  border-bottom: 1px solid #9ca3af;
+  padding: 0.4rem 0.625rem;
+  border-bottom: 1px solid var(--color-border, #cbd5e1);
+}
+
+.sjc-doc--screen .sjc-doc__panel-title {
+  font-size: var(--text-sm, 0.8125rem);
+  padding: 0.5rem 0.75rem;
 }
 
 .sjc-doc__panel-body {
@@ -178,9 +212,14 @@
   display: grid;
   grid-template-columns: 40% 1fr;
   gap: 0;
-  font-size: 9.5px;
-  border-bottom: 1px solid #d1d5db;
-  min-height: 20px;
+  font-size: var(--text-xs, 0.75rem);
+  border-bottom: 1px solid var(--color-border-soft, #e2e8f0);
+  min-height: 2rem;
+}
+
+.sjc-doc--screen .sjc-doc__field-row {
+  font-size: var(--text-sm, 0.8125rem);
+  min-height: 2.25rem;
 }
 
 .sjc-doc__field-row:last-child {
@@ -188,18 +227,27 @@
 }
 
 .sjc-doc__field-label {
-  font-weight: 700;
-  color: #111827;
-  background: #ecfdf3;
-  padding: 0.22rem 0.4rem;
-  border-right: 1px solid #d1d5db;
+  font-weight: 600;
+  color: var(--color-text-secondary, #475569);
+  background: #f8fafc;
+  padding: 0.375rem 0.5rem;
+  border-right: 1px solid var(--color-border-soft, #e2e8f0);
+}
+
+.sjc-doc--screen .sjc-doc__field-label {
+  padding: 0.5rem 0.625rem;
 }
 
 .sjc-doc__field-value {
-  color: #111827;
+  color: var(--color-text, #1e293b);
   word-break: break-word;
-  padding: 0.22rem 0.4rem;
+  padding: 0.375rem 0.5rem;
   background: #fff;
+  font-weight: 500;
+}
+
+.sjc-doc--screen .sjc-doc__field-value {
+  padding: 0.5rem 0.625rem;
 }
 
 /* Tables */
@@ -212,38 +260,55 @@
 .sjc-doc__table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 9.5px;
+  font-size: var(--text-xs, 0.75rem);
   min-width: 640px;
 }
 
+.sjc-doc--screen .sjc-doc__table {
+  font-size: var(--text-sm, 0.8125rem);
+}
+
 .sjc-doc__table-caption {
-  background: #d4edda;
-  color: #111827;
-  font-size: 10px;
-  font-weight: 800;
+  background: #ecfdf3;
+  color: var(--color-text, #1e293b);
+  font-size: var(--text-xs, 0.75rem);
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  padding: 0.28rem 0.5rem;
-  border-bottom: 1px solid #9ca3af;
+  padding: 0.4rem 0.625rem;
+  border-bottom: 1px solid var(--color-border, #cbd5e1);
   text-align: left;
+}
+
+.sjc-doc--screen .sjc-doc__table-caption {
+  font-size: var(--text-sm, 0.8125rem);
+  padding: 0.5rem 0.75rem;
 }
 
 .sjc-doc__table th {
-  background: #d4edda;
-  color: #111827;
-  font-weight: 700;
+  background: #ecfdf3;
+  color: var(--color-text, #1e293b);
+  font-weight: 600;
   text-align: left;
-  padding: 0.28rem 0.4rem;
-  border: 1px solid #9ca3af;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--color-border, #cbd5e1);
   white-space: nowrap;
 }
 
+.sjc-doc--screen .sjc-doc__table th {
+  padding: 0.5rem 0.625rem;
+}
+
 .sjc-doc__table td {
-  padding: 0.28rem 0.4rem;
-  border: 1px solid #d1d5db;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--color-border-soft, #e2e8f0);
   vertical-align: top;
-  color: #111827;
+  color: var(--color-text, #1e293b);
   background: #fff;
+}
+
+.sjc-doc--screen .sjc-doc__table td {
+  padding: 0.5rem 0.625rem;
 }
 
 .sjc-doc__table .num {
@@ -292,11 +357,19 @@
 
 .sjc-doc__input {
   width: 100%;
-  border: 1px solid #c5c5c5;
-  border-radius: 0;
-  padding: 0.2rem 0.35rem;
-  font-size: 10px;
+  border: 1px solid var(--color-border, #cbd5e1);
+  border-radius: var(--radius-sm, 4px);
+  padding: 0.375rem 0.5rem;
+  font-size: var(--text-sm, 0.8125rem);
+  font-family: inherit;
   background: #fff;
+  color: var(--color-text, #1e293b);
+}
+
+.sjc-doc--screen .sjc-doc__input {
+  font-size: var(--text-md, 0.875rem);
+  padding: 0.4375rem 0.625rem;
+  min-height: 2.25rem;
 }
 
 .sjc-doc__production-toggle {
@@ -306,9 +379,36 @@
 }
 
 @media print {
+  .sjc-doc,
+  .sjc-doc--screen {
+    font-size: 11px;
+    line-height: 1.4;
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  }
+
   .sjc-doc__paper {
     padding: 0;
     max-width: none;
+  }
+
+  .sjc-doc__company-name {
+    font-size: 12.5px;
+  }
+
+  .sjc-doc__company-address,
+  .sjc-doc__tagline,
+  .sjc-doc__meta-grid,
+  .sjc-doc__field-row,
+  .sjc-doc__table,
+  .sjc-doc__panel-title,
+  .sjc-doc__table-caption {
+    font-size: 9px;
+  }
+
+  .sjc-doc__title-band {
+    font-size: 15px;
+    letter-spacing: 0.12em;
+    border-radius: 0;
   }
 
   .sjc-doc__title-band,

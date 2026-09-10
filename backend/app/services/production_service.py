@@ -119,8 +119,8 @@ def create_production_order(db: Session, payload: ProductionOrderCreate) -> Prod
             order_num = f"PO-{str(counter).zfill(4)}"
         payload.order_number = order_num
 
-    data = payload.model_dump()
-    actual_qty = data.get("actual_quantity") if data.get("actual_quantity") is not None else data.get("produced_quantity")
+    data = payload.model_dump(exclude={"product_name", "produced_quantity"})
+    actual_qty = data.get("actual_quantity") if data.get("actual_quantity") is not None else payload.produced_quantity
     if "produced_quantity" in data:
         data.pop("produced_quantity", None)
     if actual_qty is not None:

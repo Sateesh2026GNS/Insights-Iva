@@ -2,7 +2,7 @@
 
 from datetime import date, datetime
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Numeric, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin
@@ -87,6 +87,7 @@ class SalesJobCard(Base, TimestampMixin):
     workflow_stage: Mapped[str | None] = mapped_column(String(64))
     created_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
     details_json: Mapped[str | None] = mapped_column(Text)
+    version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
 
 
 class WorkflowStageJobCard(Base, TimestampMixin):

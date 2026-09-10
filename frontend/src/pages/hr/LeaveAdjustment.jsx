@@ -206,7 +206,7 @@ function SimpleSelect({ value, onChange, options, placeholder }) {
   );
 }
 
-function FilterPopover({ open, onClose, branch, department, onBranchChange, onDepartmentChange, onApply }) {
+function FilterPopover({ open, onClose, branch, department, onBranchChange, onDepartmentChange, onApply, onClear }) {
   const rootRef = useRef(null);
 
   useEffect(() => {
@@ -239,6 +239,20 @@ function FilterPopover({ open, onClose, branch, department, onBranchChange, onDe
         </div>
       </div>
       <div className="hr-leave-adj__filter-popover-footer">
+        <button
+          type="button"
+          className="hr-leave-adj__clear-btn"
+          onClick={() => {
+            if (onClear) onClear();
+            else {
+              onBranchChange("");
+              onDepartmentChange("");
+              onClose();
+            }
+          }}
+        >
+          Clear
+        </button>
         <button type="button" className="hr-leave-adj__apply-btn" onClick={onApply}>
           Apply
         </button>
@@ -388,6 +402,14 @@ export default function LeaveAdjustment() {
               department={draftDepartment}
               onBranchChange={setDraftBranch}
               onDepartmentChange={setDraftDepartment}
+              onClear={() => {
+                setDraftBranch("");
+                setDraftDepartment("");
+                setBranchFilter("");
+                setDepartmentFilter("");
+                setFilterOpen(false);
+                setPage(1);
+              }}
               onApply={() => {
                 setBranchFilter(draftBranch);
                 setDepartmentFilter(draftDepartment);

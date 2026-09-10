@@ -286,6 +286,7 @@ class SalesOrderBase(BaseModel):
     sales_person: str | None = None
     priority: str = "medium"
     workflow_status: str | None = None
+    version: int | None = None
 
 
 class SalesOrderLineBase(BaseModel):
@@ -401,6 +402,8 @@ class PaymentBase(BaseModel):
     payment_date: date
     method: str = "cash"
     notes: str | None = None
+    payment_reference: str | None = Field(None, max_length=128)
+    idempotency_key: str | None = Field(None, max_length=128)
 
     @field_validator("amount", mode="before")
     @classmethod

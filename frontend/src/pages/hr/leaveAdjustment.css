@@ -195,8 +195,26 @@
 
 .hr-leave-adj__filter-popover-footer {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
+  gap: 8px;
   padding: 0 14px 14px;
+}
+
+.hr-leave-adj__clear-btn {
+  padding: 8px 16px;
+  border: 1px solid var(--adj-border);
+  border-radius: 6px;
+  background: var(--adj-surface);
+  color: var(--adj-text);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.hr-leave-adj__clear-btn:hover {
+  background: #f1f5f9;
 }
 
 .hr-leave-adj__field-label {

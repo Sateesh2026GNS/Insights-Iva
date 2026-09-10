@@ -1,7 +1,12 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Query
+
+logger = logging.getLogger(__name__)
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db
+from app.core.idempotency import get_idempotency_key_header
 from app.core.permissions import (
     get_role_names,
     require_permission,
@@ -232,11 +237,10 @@ def export_vendors_endpoint(
     }
 
 
-@router.get("/vendors/bank-lookup")
-def vendor_bank_lookup_endpoint(
-    ifsc: str = Query(..., min_length=11, max_length=11),
-    account_number: str = Query(..., min_length=9, max_length=18),
-    user: User = Depends(require_permission(MODULE)),
+def _vendor_bank_lookup_handler(
+    ifsc: str,
+    account_number: str,
+    user: User,
 ):
     """Validate account + IFSC and return bank name / branch."""
     from fastapi import HTTPException, status
@@ -256,6 +260,25 @@ def vendor_bank_lookup_endpoint(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="Unable to verify bank details right now. Please try again.",
         ) from exc
+
+
+@router.get("/vendors/bank-lookup")
+def vendor_bank_lookup_endpoint(
+    ifsc: str = Query(..., min_length=11, max_length=11),
+    account_number: str = Query(..., min_length=9, max_length=18),
+    user: User = Depends(require_permission(MODULE)),
+):
+    return _vendor_bank_lookup_handler(ifsc=ifsc, account_number=account_number, user=user)
+
+
+@router.get("/vendors/verify-bank-details")
+def vendor_verify_bank_details_endpoint(
+    ifsc: str = Query(..., min_length=11, max_length=11),
+    account_number: str = Query(..., min_length=9, max_length=18),
+    user: User = Depends(require_permission(MODULE)),
+):
+    """Compatibility alias for bank verification."""
+    return _vendor_bank_lookup_handler(ifsc=ifsc, account_number=account_number, user=user)
 
 
 @router.get("/vendors", response_model=list[VendorListRead])
@@ -603,9 +626,10 @@ def create_supplier_payment_endpoint(
     payload: SupplierPaymentCreate,
     user: User = Depends(require_permission(MODULE)),
     db: Session = Depends(get_db),
+    idempotency_key: str | None = Depends(get_idempotency_key_header),
 ) -> SupplierPaymentRead:
     payload.tenant_id = user.tenant_id
-    return create_supplier_payment(db, payload)
+    return create_supplier_payment(db, payload, idempotency_key=idempotency_key)
 
 
 @router.get("/supplier-payments", response_model=list[SupplierPaymentRead])

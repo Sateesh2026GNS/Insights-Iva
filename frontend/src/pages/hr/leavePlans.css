@@ -149,8 +149,26 @@
 
 .hr-leave-plans__filter-popover-footer {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
+  gap: 8px;
   padding: 0 14px 14px;
+}
+
+.hr-leave-plans__clear-btn {
+  padding: 8px 16px;
+  border: 1px solid var(--lp-border);
+  border-radius: 6px;
+  background: var(--lp-surface);
+  color: var(--lp-text);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.hr-leave-plans__clear-btn:hover {
+  background: #f1f5f9;
 }
 
 .hr-leave-plans__field {

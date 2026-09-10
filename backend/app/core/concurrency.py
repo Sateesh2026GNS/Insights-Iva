@@ -48,3 +48,23 @@ def assert_expected_record_version(
     current = int(details.get("record_version") or 0)
     if int(expected_version) != current:
         raise_conflict()
+
+
+def assert_entity_version(entity, expected_version: int | None) -> None:
+    """Reject stale updates when client supplies expected ORM version."""
+    if expected_version is None:
+        return
+    current = int(getattr(entity, "version", 1) or 1)
+    if int(expected_version) != current:
+        raise_conflict(
+            "This record was updated by another user. Please refresh and review "
+            "the latest data before saving."
+        )
+
+
+def bump_entity_version(entity) -> int:
+    """Increment optimistic-lock version on a mapped entity."""
+    current = int(getattr(entity, "version", 1) or 1)
+    if hasattr(entity, "version"):
+        entity.version = current + 1
+    return current + 1

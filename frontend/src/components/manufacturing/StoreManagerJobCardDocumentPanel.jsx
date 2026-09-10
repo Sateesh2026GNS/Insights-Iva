@@ -235,6 +235,16 @@ export default function StoreManagerJobCardDocumentPanel({
           </div>
         </div>
 
+        {showDocument && workflowGuidance ? (
+          <div className="my-job-cards-page__document-guidance">
+            <WorkflowNextStep
+              {...workflowGuidance}
+              onAction={workflowGuidance.actionType ? handleGuidanceSend : undefined}
+              compact
+            />
+          </div>
+        ) : null}
+
         <div className="my-job-cards-page__document-body">
           {showEmptyLayout ? (
             <>
@@ -249,14 +259,6 @@ export default function StoreManagerJobCardDocumentPanel({
 
           {hasSelection && error ? (
             <ErrorState title="Could not load job card" description={error} onRetry={reload} className="py-10" />
-          ) : null}
-
-          {showDocument && workflowGuidance ? (
-            <WorkflowNextStep
-              {...workflowGuidance}
-              onAction={workflowGuidance.actionType ? handleGuidanceSend : undefined}
-              compact
-            />
           ) : null}
 
           {showDocument ? (
