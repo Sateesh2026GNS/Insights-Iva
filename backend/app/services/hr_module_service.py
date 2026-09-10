@@ -521,9 +521,95 @@ def approve_expenses(db: Session, tenant_id: int, payload: dict, user: User) -> 
 # ── Site visits ──────────────────────────────────────────────────────────────
 
 
-def list_site_visits(db: Session, tenant_id: int) -> list[dict]:
-    rows = db.scalars(select(SiteVisit).where(SiteVisit.tenant_id == tenant_id).order_by(SiteVisit.id.desc())).all()
+def list_site_visits(
+    db: Session,
+    tenant_id: int,
+    employee_id: int | None = None,
+    month: str | None = None,
+    date_str: str | None = None,
+) -> list[dict]:
+    q = select(SiteVisit).where(SiteVisit.tenant_id == tenant_id)
+    if employee_id:
+        q = q.where(SiteVisit.employee_id == employee_id)
+    if date_str:
+        try:
+            d = date.fromisoformat(str(date_str)[:10])
+            q = q.where(SiteVisit.visit_date == d)
+        except Exception:
+            pass
+    elif month:
+        try:
+            parts = str(month).split("-")
+            y = int(parts[0])
+            m = int(parts[1])
+            start_d = date(y, m, 1)
+            end_d = date(y + 1, 1, 1) if m == 12 else date(y, m + 1, 1)
+            q = q.where(SiteVisit.visit_date >= start_d, SiteVisit.visit_date < end_d)
+        except Exception:
+            pass
+    rows = db.scalars(q.order_by(SiteVisit.visit_date.desc(), SiteVisit.id.desc())).all()
     return [model_to_dict(r) for r in rows]
+
+
+def create_site_visit(db: Session, tenant_id: int, payload: dict, user: Any = None) -> dict:
+    data = {k: v for k, v in payload.items() if k not in ("id", "tenant_id")}
+    if isinstance(data.get("visit_date"), str) and data["visit_date"]:
+        try:
+            data["visit_date"] = date.fromisoformat(data["visit_date"][:10])
+        except Exception:
+            pass
+    for t_field in ("start_time", "end_time"):
+        if isinstance(data.get(t_field), str) and data[t_field]:
+            try:
+                from datetime import time as d_time
+                parts = str(data[t_field]).split(":")
+                data[t_field] = d_time(int(parts[0]), int(parts[1]))
+            except Exception:
+                pass
+    if user and not data.get("employee_name"):
+        data["employee_name"] = getattr(user, "full_name", None) or getattr(user, "email", "Admin")
+    if not data.get("status"):
+        data["status"] = "completed"
+    row = SiteVisit(tenant_id=tenant_id, **data)
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return model_to_dict(row)
+
+
+def update_site_visit(db: Session, tenant_id: int, visit_id: int, payload: dict) -> dict:
+    row = db.scalar(select(SiteVisit).where(SiteVisit.tenant_id == tenant_id, SiteVisit.id == visit_id))
+    if not row:
+        raise HTTPException(status_code=404, detail="Site visit not found")
+    data = {k: v for k, v in payload.items() if k not in ("id", "tenant_id")}
+    if isinstance(data.get("visit_date"), str) and data["visit_date"]:
+        try:
+            data["visit_date"] = date.fromisoformat(data["visit_date"][:10])
+        except Exception:
+            pass
+    for t_field in ("start_time", "end_time"):
+        if isinstance(data.get(t_field), str) and data[t_field]:
+            try:
+                from datetime import time as d_time
+                parts = str(data[t_field]).split(":")
+                data[t_field] = d_time(int(parts[0]), int(parts[1]))
+            except Exception:
+                pass
+    for k, v in data.items():
+        if hasattr(row, k):
+            setattr(row, k, v)
+    db.commit()
+    db.refresh(row)
+    return model_to_dict(row)
+
+
+def delete_site_visit(db: Session, tenant_id: int, visit_id: int) -> dict:
+    row = db.scalar(select(SiteVisit).where(SiteVisit.tenant_id == tenant_id, SiteVisit.id == visit_id))
+    if not row:
+        raise HTTPException(status_code=404, detail="Site visit not found")
+    db.delete(row)
+    db.commit()
+    return {"status": "deleted", "id": visit_id}
 
 
 # ── Assets extended ──────────────────────────────────────────────────────────

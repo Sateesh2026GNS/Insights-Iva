@@ -73,24 +73,37 @@ function mapApiEmployee(row, index, visitCounts = {}) {
   };
 }
 
-/** Merge API employees with site-visit preview counts when no visit API exists yet. */
-export function mergeSiteVisitEmployees(apiRows = [], { period = "daily" } = {}) {
+/** Merge API employees with site-visit preview or live API visit counts. */
+export function mergeSiteVisitEmployees(apiRows = [], { period = "daily", visits = [] } = {}) {
+  const liveCounts = {};
+  if (Array.isArray(visits) && visits.length > 0) {
+    visits.forEach((v) => {
+      if (v.employee_id) {
+        liveCounts[v.employee_id] = (liveCounts[v.employee_id] || 0) + 1;
+      }
+    });
+  }
+
   if (!apiRows?.length) {
     return DEMO_SITE_VISIT_EMPLOYEES.map((e) => ({
       ...e,
       initials: e.name.split(/\s+/).map((p) => p[0]).join("").slice(0, 2).toUpperCase(),
-      places_visited: period === "weekly" || period === "monthly"
-        ? (e.id === 1 ? 2 : 0)
-        : e.places_visited,
+      places_visited: liveCounts[e.id] ?? (
+        period === "weekly" || period === "monthly"
+          ? (e.id === 1 ? 2 : 0)
+          : e.places_visited
+      ),
     }));
   }
 
   const demoCounts = Object.fromEntries(
     DEMO_SITE_VISIT_EMPLOYEES.map((e) => [e.id, e.places_visited])
   );
+  const effectiveCounts = { ...demoCounts, ...liveCounts };
 
-  return apiRows.map((row, i) => mapApiEmployee(row, i, demoCounts));
+  return apiRows.map((row, i) => mapApiEmployee(row, i, effectiveCounts));
 }
+
 
 export function totalVisitsForPeriod(employees, period) {
   if (period === "weekly" || period === "monthly") {

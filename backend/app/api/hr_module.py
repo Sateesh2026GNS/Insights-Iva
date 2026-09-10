@@ -21,11 +21,14 @@ from app.services.hr_module_service import (
     create_org_item,
     create_preboarding,
     create_salary_component,
+    create_site_visit,
     create_week_off,
     delete_holiday,
     delete_leave_plan,
     delete_org_item,
+    delete_site_visit,
     delete_week_off,
+    update_site_visit,
     expense_overview,
     generate_payroll_run,
     get_hr_dashboard_extended,
@@ -355,8 +358,42 @@ def expenses_approvals_approve(
 
 
 @router.get("/site-visits")
-def site_visits_list(tenant_id: int = Depends(tenant_scope(MODULE)), db: Session = Depends(get_db)):
-    return list_site_visits(db, tenant_id)
+def site_visits_list(
+    employee_id: int | None = None,
+    month: str | None = None,
+    date: str | None = None,
+    tenant_id: int = Depends(tenant_scope(MODULE)),
+    db: Session = Depends(get_db),
+):
+    return list_site_visits(db, tenant_id, employee_id=employee_id, month=month, date_str=date)
+
+
+@router.post("/site-visits")
+def site_visits_create(
+    payload: dict,
+    user: User = Depends(require_permission(MODULE)),
+    db: Session = Depends(get_db),
+):
+    return create_site_visit(db, user.tenant_id, payload, user)
+
+
+@router.put("/site-visits/{visit_id}")
+def site_visits_update(
+    visit_id: int,
+    payload: dict,
+    user: User = Depends(require_permission(MODULE)),
+    db: Session = Depends(get_db),
+):
+    return update_site_visit(db, user.tenant_id, visit_id, payload)
+
+
+@router.delete("/site-visits/{visit_id}")
+def site_visits_delete(
+    visit_id: int,
+    user: User = Depends(require_permission(MODULE)),
+    db: Session = Depends(get_db),
+):
+    return delete_site_visit(db, user.tenant_id, visit_id)
 
 
 # ── Assets extended ──────────────────────────────────────────────────────────

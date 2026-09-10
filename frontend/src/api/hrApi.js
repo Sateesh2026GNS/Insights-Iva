@@ -108,6 +108,11 @@ export const generateLeaveReport = (payload) => api.post("/hr/reports/leave/gene
 export const getExpenseReports = (params) => api.get("/hr/reports/expense", { params });
 export const generateExpenseReport = (payload) => api.post("/hr/reports/expense/generate", payload);
 
+export const getSiteVisits = (params) => api.get("/hr/site-visits", { params });
+export const createSiteVisit = (payload) => api.post("/hr/site-visits", payload);
+export const updateSiteVisit = (id, payload) => api.put(`/hr/site-visits/${id}`, payload);
+export const deleteSiteVisit = (id) => api.delete(`/hr/site-visits/${id}`);
+
 export const getSiteVisitReports = (params) => api.get("/hr/reports/site-visit", { params });
 export const generateSiteVisitReport = (payload) => api.post("/hr/reports/site-visit/generate", payload);
 
