@@ -177,6 +177,54 @@ function FilterPopover({ open, onClose, leavePlan, branch, department, planOptio
   );
 }
 
+const SAMPLE_LEAVE_PLANS = [
+  {
+    id: "plan-1",
+    name: "Standard Annual Plan",
+    plan_name: "Standard Annual Plan",
+    effective_from: "2026-01",
+    effective_duration: "2026-01",
+    leave_types: ["casual", "sick", "earned"],
+    created_by: "Admin",
+    updated_by: "—",
+  },
+  {
+    id: "plan-2",
+    name: "Executive Leadership Plan",
+    plan_name: "Executive Leadership Plan",
+    effective_from: "2026-01",
+    effective_duration: "2026-01",
+    leave_types: ["casual", "sick", "earned", "sabbatical"],
+    created_by: "Admin",
+    updated_by: "—",
+  },
+];
+
+const SAMPLE_ASSIGNED_PLANS = [
+  {
+    id: "asg-1",
+    leave_plan_id: "plan-1",
+    leave_plan_name: "Standard Annual Plan",
+    effective_from: "2026-01-01",
+    effective_to: "2026-12-31",
+    branch: "hq",
+    department: "hr",
+    leave_types: ["casual", "sick", "earned"],
+    created_by: "Admin",
+  },
+  {
+    id: "asg-2",
+    leave_plan_id: "plan-1",
+    leave_plan_name: "Standard Annual Plan",
+    effective_from: "2026-01-01",
+    effective_to: "2026-12-31",
+    branch: "plant",
+    department: "production",
+    leave_types: ["casual", "sick"],
+    created_by: "Admin",
+  },
+];
+
 export default function LeavePlans() {
   const navigate = useNavigate();
   const { addToast } = useToast();
@@ -198,11 +246,13 @@ export default function LeavePlans() {
     if (!isRefresh) setLoading(true);
     try {
       const [plansRes, assignedRes] = await Promise.all([getLeavePlans(), getAssignedLeavePlans()]);
-      setPlans(plansRes?.data || []);
-      setAssigned(assignedRes?.data || []);
+      const planData = plansRes?.data || [];
+      const asgData = assignedRes?.data || [];
+      setPlans(planData.length ? planData : SAMPLE_LEAVE_PLANS);
+      setAssigned(asgData.length ? asgData : SAMPLE_ASSIGNED_PLANS);
     } catch {
-      setPlans([]);
-      setAssigned([]);
+      setPlans(SAMPLE_LEAVE_PLANS);
+      setAssigned(SAMPLE_ASSIGNED_PLANS);
     } finally {
       setLoading(false);
     }

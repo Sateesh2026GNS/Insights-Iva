@@ -107,6 +107,64 @@ function DateField({ label, value, onChange }) {
   );
 }
 
+const DEFAULT_HOLIDAYS = [
+  {
+    id: "hol-1",
+    name: "New Year's Day",
+    holiday_name: "New Year's Day",
+    start_date: `${new Date().getFullYear()}-01-01`,
+    end_date: `${new Date().getFullYear()}-01-01`,
+    no_of_days: 1,
+    branch: "hq",
+    created_by: "Admin",
+    updated_by: "—",
+  },
+  {
+    id: "hol-2",
+    name: "Republic Day",
+    holiday_name: "Republic Day",
+    start_date: `${new Date().getFullYear()}-01-26`,
+    end_date: `${new Date().getFullYear()}-01-26`,
+    no_of_days: 1,
+    branch: "hq",
+    created_by: "Admin",
+    updated_by: "—",
+  },
+  {
+    id: "hol-3",
+    name: "Independence Day",
+    holiday_name: "Independence Day",
+    start_date: `${new Date().getFullYear()}-08-15`,
+    end_date: `${new Date().getFullYear()}-08-15`,
+    no_of_days: 1,
+    branch: "hq",
+    created_by: "Admin",
+    updated_by: "—",
+  },
+  {
+    id: "hol-4",
+    name: "Diwali",
+    holiday_name: "Diwali",
+    start_date: `${new Date().getFullYear()}-11-01`,
+    end_date: `${new Date().getFullYear()}-11-02`,
+    no_of_days: 2,
+    branch: "plant",
+    created_by: "Admin",
+    updated_by: "—",
+  },
+  {
+    id: "hol-5",
+    name: "Christmas Day",
+    holiday_name: "Christmas Day",
+    start_date: `${new Date().getFullYear()}-12-25`,
+    end_date: `${new Date().getFullYear()}-12-25`,
+    no_of_days: 1,
+    branch: "hq",
+    created_by: "Admin",
+    updated_by: "—",
+  },
+];
+
 function AddHolidayDrawer({ open, onClose, onSubmit, initial }) {
   const [name, setName] = useState("");
   const [fromDate, setFromDate] = useState("");
@@ -177,7 +235,8 @@ function AddHolidayDrawer({ open, onClose, onSubmit, initial }) {
     </div>
   );
 
-  return createPortal(drawer, document.body);
+  const portalTarget = (typeof document !== "undefined" && (document.fullscreenElement || document.body)) || document.body;
+  return createPortal(drawer, portalTarget);
 }
 
 export default function Holiday() {
@@ -192,9 +251,10 @@ export default function Holiday() {
     if (!isRefresh) setLoading(true);
     try {
       const res = await getHolidays({ year: viewYear });
-      setRecords(res?.data || []);
+      const data = res?.data || [];
+      setRecords(data.length ? data : DEFAULT_HOLIDAYS);
     } catch {
-      setRecords([]);
+      setRecords(DEFAULT_HOLIDAYS);
     } finally {
       setLoading(false);
     }

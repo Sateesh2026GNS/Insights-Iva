@@ -1,7 +1,7 @@
 from datetime import date, datetime, time
 
 from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, Numeric, String, Text, Time
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin
 
@@ -132,6 +132,8 @@ class LeaveRequest(Base, TimestampMixin):
     half_day_period: Mapped[str | None] = mapped_column(String(16))
     approved_by_name: Mapped[str | None] = mapped_column(String(255))
     approved_at: Mapped[datetime | None] = mapped_column(DateTime)
+
+    employee: Mapped["Employee"] = relationship("Employee", foreign_keys=[employee_id])
 
 
 class HrAsset(Base, TimestampMixin):

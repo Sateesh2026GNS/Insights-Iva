@@ -256,7 +256,8 @@ function AddWeekOffModal({ open, onClose, onSave, initial }) {
     </div>
   );
 
-  return createPortal(modal, document.body);
+  const portalTarget = (typeof document !== "undefined" && (document.fullscreenElement || document.body)) || document.body;
+  return createPortal(modal, portalTarget);
 }
 
 export default function WeekOff() {

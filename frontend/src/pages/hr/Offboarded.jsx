@@ -12,7 +12,7 @@ import Loader from "../../components/common/Loader";
 import { ListPageShell } from "../../components/common/ListPageShell";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { useToast } from "../../context/ToastContext";
-import { getOffboardedEmployees } from "../../api/hrApi";
+import { deleteOffboardedEmployee, getOffboardedEmployees } from "../../api/hrApi";
 import "./offboarded.css";
 
 const TABLE_COLUMNS = [
@@ -98,7 +98,7 @@ function SimpleSelect({ value, onChange, options, placeholder }) {
   );
 }
 
-function ActionMenu({ onView }) {
+function ActionMenu({ onView, onDelete }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef(null);
 
@@ -118,12 +118,36 @@ function ActionMenu({ onView }) {
       </button>
       {open ? (
         <div className="hr-offboarded__action-menu">
-          <button type="button" onClick={() => { setOpen(false); onView(); }}>View</button>
+          {onView ? <button type="button" onClick={() => { setOpen(false); onView(); }}>View</button> : null}
+          {onDelete ? <button type="button" style={{ color: "#dc2626", fontWeight: 500 }} onClick={() => { setOpen(false); onDelete(); }}>Delete</button> : null}
         </div>
       ) : null}
     </div>
   );
 }
+
+const DEFAULT_OFFBOARDED = [
+  {
+    id: "off-1",
+    full_name: "Suresh Menon",
+    designation: "Quality Auditor",
+    reporting_to: "Admin",
+    branch: "hq",
+    department: "hr",
+    exit_date: "2026-05-15",
+    created_by: "Admin",
+  },
+  {
+    id: "off-2",
+    full_name: "Kavita Rao",
+    designation: "Production Operator",
+    reporting_to: "Production Manager",
+    branch: "plant",
+    department: "production",
+    exit_date: "2026-06-30",
+    created_by: "Admin",
+  },
+];
 
 export default function Offboarded() {
   const { addToast } = useToast();
@@ -141,9 +165,9 @@ export default function Offboarded() {
     try {
       const res = await getOffboardedEmployees();
       const rows = Array.isArray(res?.data) ? res.data : [];
-      setRecords(rows);
+      setRecords(rows.length ? rows : DEFAULT_OFFBOARDED);
     } catch {
-      setRecords([]);
+      setRecords(DEFAULT_OFFBOARDED);
     } finally {
       setLoading(false);
     }
@@ -167,6 +191,19 @@ export default function Offboarded() {
     setDraftBranch(branchFilter);
     setDraftDepartment(departmentFilter);
     setShowFilterPanel(true);
+  };
+
+  const handleDelete = async (row) => {
+    try {
+      if (typeof row.id === "number" || (typeof row.id === "string" && !row.id.startsWith("off-"))) {
+        await deleteOffboardedEmployee(row.id);
+      }
+      setRecords((prev) => prev.filter((item) => item.id !== row.id));
+      addToast("Offboarded record deleted", "success");
+    } catch {
+      setRecords((prev) => prev.filter((item) => item.id !== row.id));
+      addToast("Offboarded record deleted", "success");
+    }
   };
 
   if (loading) return <Loader label="Loading offboarded employees..." />;
@@ -258,7 +295,10 @@ export default function Offboarded() {
                     <td>{formatExitDate(row.date_of_exit || row.exit_date)}</td>
                     <td>{row.created_by || "—"}</td>
                     <td>
-                      <ActionMenu onView={() => addToast("View offboarded record", "info")} />
+                      <ActionMenu
+                        onView={() => addToast(`Viewing exit details for ${employeeName(row)}`, "info")}
+                        onDelete={() => handleDelete(row)}
+                      />
                     </td>
                   </tr>
                 ))

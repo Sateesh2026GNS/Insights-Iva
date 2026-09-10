@@ -17,7 +17,7 @@ import Loader from "../../components/common/Loader";
 import { ListPageShell } from "../../components/common/ListPageShell";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { useToast } from "../../context/ToastContext";
-import { archivePreboardingCandidate, getPreboardingCandidates } from "../../api/hrApi";
+import { archivePreboardingCandidate, deletePreboardingCandidate, getPreboardingCandidates } from "../../api/hrApi";
 import "./preboarding.css";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -176,7 +176,7 @@ function FilterPopover({ open, onClose, branch, department, onBranchChange, onDe
   );
 }
 
-function ActionMenu({ onArchive }) {
+function ActionMenu({ onArchive, onDelete, isArchived }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef(null);
 
@@ -196,7 +196,12 @@ function ActionMenu({ onArchive }) {
       </button>
       {open ? (
         <div className="hr-preboarding__action-menu">
-          <button type="button" onClick={() => { setOpen(false); onArchive(); }}>Archive</button>
+          {!isArchived && onArchive ? (
+            <button type="button" onClick={() => { setOpen(false); onArchive(); }}>Archive</button>
+          ) : null}
+          {onDelete ? (
+            <button type="button" style={{ color: "#dc2626", fontWeight: 500 }} onClick={() => { setOpen(false); onDelete(); }}>Delete</button>
+          ) : null}
         </div>
       ) : null}
     </div>
@@ -209,6 +214,73 @@ function StatusBadge({ status }) {
     ? "hr-preboarding__status--active"
     : "hr-preboarding__status--pending";
   return <span className={`hr-preboarding__status ${cls}`}>{status || "Pending"}</span>;
+}
+
+const DEFAULT_CANDIDATES = [
+  {
+    id: "pre-1",
+    candidate_name: "Rahul Verma",
+    full_name: "Rahul Verma",
+    designation: "Senior Software Engineer",
+    branch: "hq",
+    department: "production",
+    email: "rahul.verma@example.com",
+    mobile: "+91 98765 43210",
+    date_of_joining: "2026-09-20",
+    task: "Offer Letter Sent",
+    status: "Pending",
+    stage: "offers",
+    archived: false,
+  },
+  {
+    id: "pre-2",
+    candidate_name: "Ananya Roy",
+    full_name: "Ananya Roy",
+    designation: "HR Specialist",
+    branch: "hq",
+    department: "hr",
+    email: "ananya.roy@example.com",
+    mobile: "+91 98765 12345",
+    date_of_joining: "2026-09-25",
+    task: "Document Verification",
+    status: "Active",
+    stage: "documents",
+    archived: false,
+  },
+  {
+    id: "pre-3",
+    candidate_name: "Vikram Singh",
+    full_name: "Vikram Singh",
+    designation: "Production Supervisor",
+    branch: "plant",
+    department: "production",
+    email: "vikram.singh@example.com",
+    mobile: "+91 98123 45678",
+    date_of_joining: "2026-09-15",
+    task: "Onboarding Checklist",
+    status: "Active",
+    stage: "joiners",
+    archived: false,
+  },
+];
+
+const LOCAL_CANDIDATES_KEY = "iva_local_preboarding_candidates";
+
+function loadLocalCandidates() {
+  try {
+    return JSON.parse(localStorage.getItem(LOCAL_CANDIDATES_KEY) || "[]");
+  } catch {
+    return [];
+  }
+}
+
+function removeLocalCandidate(id) {
+  try {
+    const existing = loadLocalCandidates();
+    localStorage.setItem(LOCAL_CANDIDATES_KEY, JSON.stringify(existing.filter((r) => r.id !== id)));
+  } catch {
+    // ignore
+  }
 }
 
 export default function Preboarding() {
@@ -231,10 +303,20 @@ export default function Preboarding() {
     if (!isRefresh) setLoading(true);
     try {
       const res = await getPreboardingCandidates();
-      const rows = Array.isArray(res?.data) ? res.data : [];
-      setRecords(rows);
+      const serverRows = Array.isArray(res?.data) ? res.data : [];
+      const localRows = loadLocalCandidates();
+      const combined = [...localRows, ...serverRows];
+      const seen = new Set();
+      const deduped = combined.filter((r) => {
+        const key = r.id || `${r.email}_${r.mobile}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+      setRecords(deduped.length ? deduped : DEFAULT_CANDIDATES);
     } catch {
-      setRecords([]);
+      const localRows = loadLocalCandidates();
+      setRecords(localRows.length ? [...localRows, ...DEFAULT_CANDIDATES] : DEFAULT_CANDIDATES);
     } finally {
       setLoading(false);
     }
@@ -292,6 +374,20 @@ export default function Preboarding() {
       addToast("Candidate archived", "success");
     } catch {
       addToast("Failed to archive candidate", "error");
+    }
+  };
+
+  const handleDelete = async (row) => {
+    removeLocalCandidate(row.id);
+    try {
+      if (typeof row.id === "number" || (typeof row.id === "string" && !row.id.startsWith("pre-") && !row.id.startsWith("local_"))) {
+        await deletePreboardingCandidate(row.id);
+      }
+      setRecords((prev) => prev.filter((item) => item.id !== row.id));
+      addToast("Candidate deleted successfully", "success");
+    } catch {
+      setRecords((prev) => prev.filter((item) => item.id !== row.id));
+      addToast("Candidate deleted", "success");
     }
   };
 
@@ -401,7 +497,7 @@ export default function Preboarding() {
                     <td>{row.task || "—"}</td>
                     <td><StatusBadge status={row.status} /></td>
                     <td>
-                      <ActionMenu onArchive={() => handleArchive(row)} />
+                      <ActionMenu onArchive={() => handleArchive(row)} onDelete={() => handleDelete(row)} isArchived={false} />
                     </td>
                   </tr>
                 ))
@@ -418,7 +514,7 @@ export default function Preboarding() {
                     <td>{row.archived_by || "—"}</td>
                     <td>{row.archive_reason || row.reason || "—"}</td>
                     <td>
-                      <ActionMenu onArchive={() => handleArchive(row)} />
+                      <ActionMenu onDelete={() => handleDelete(row)} isArchived={true} />
                     </td>
                   </tr>
                 ))

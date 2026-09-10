@@ -284,28 +284,13 @@ function UserSelect({ value, onChange, employees, onAddUser }) {
               })
             )}
           </div>
-          {onAddUser ? (
-            <div className="border-t border-slate-100 p-2 bg-slate-50/80">
-              <button
-                type="button"
-                onClick={() => {
-                  setOpen(false);
-                  onAddUser();
-                }}
-                className="w-full flex items-center justify-center gap-1.5 py-1.5 text-xs font-semibold text-[#1d68d5] hover:bg-blue-50 rounded-md transition cursor-pointer"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                <span>Add User</span>
-              </button>
-            </div>
-          ) : null}
         </div>
       ) : null}
     </div>
   );
 }
 
-function LeaveRequestDrawer({ open, onClose, onSubmit, employees, defaultEmployeeId, remainingLeaves, onAddUser }) {
+function LeaveRequestDrawer({ open, onClose, onSubmit, employees, defaultEmployeeId, remainingLeaves }) {
   const [selectedUserId, setSelectedUserId] = useState("");
   const [selectedUserObj, setSelectedUserObj] = useState(null);
   const [leaveType, setLeaveType] = useState("");
@@ -358,19 +343,7 @@ function LeaveRequestDrawer({ open, onClose, onSubmit, employees, defaultEmploye
           <h2 className="hr-my-leaves__drawer-title">Leave Request</h2>
 
           <div className="hr-my-leaves__field">
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="hr-my-leaves__field-label !mb-0">User Name <span>*</span></label>
-              {onAddUser ? (
-                <button
-                  type="button"
-                  onClick={onAddUser}
-                  className="inline-flex items-center gap-1 text-xs font-semibold text-[#1d68d5] hover:text-[#1754ad] transition cursor-pointer"
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                  <span>Add User</span>
-                </button>
-              ) : null}
-            </div>
+            <label className="hr-my-leaves__field-label">User Name <span>*</span></label>
             <UserSelect
               value={selectedUserId}
               onChange={(val, raw) => {
@@ -378,7 +351,6 @@ function LeaveRequestDrawer({ open, onClose, onSubmit, employees, defaultEmploye
                 setSelectedUserObj(raw);
               }}
               employees={employees}
-              onAddUser={onAddUser}
             />
           </div>
 
@@ -433,7 +405,8 @@ function LeaveRequestDrawer({ open, onClose, onSubmit, employees, defaultEmploye
     </div>
   );
 
-  return createPortal(drawer, document.body);
+  const portalTarget = (typeof document !== "undefined" && (document.fullscreenElement || document.body)) || document.body;
+  return createPortal(drawer, portalTarget);
 }
 
 export default function Leave() {
@@ -839,7 +812,6 @@ export default function Leave() {
         employees={employees}
         defaultEmployeeId={defaultEmployeeId}
         remainingLeaves={0}
-        onAddUser={handleAddUser}
       />
     </>
   );

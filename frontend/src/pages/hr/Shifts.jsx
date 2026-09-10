@@ -278,7 +278,8 @@ function EditShiftDrawer({ open, onClose, onSave, initial, isCreate }) {
     </div>
   );
 
-  return createPortal(drawer, document.body);
+  const portalTarget = (typeof document !== "undefined" && (document.fullscreenElement || document.body)) || document.body;
+  return createPortal(drawer, portalTarget);
 }
 
 function AssignShiftDrawer({ open, onClose, onSave, shifts, employees }) {
@@ -446,7 +447,8 @@ function AssignShiftDrawer({ open, onClose, onSave, shifts, employees }) {
     </div>
   );
 
-  return createPortal(drawer, document.body);
+  const portalTarget = (typeof document !== "undefined" && (document.fullscreenElement || document.body)) || document.body;
+  return createPortal(drawer, portalTarget);
 }
 
 export default function Shifts() {

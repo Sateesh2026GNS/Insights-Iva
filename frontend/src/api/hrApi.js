@@ -7,7 +7,9 @@ export const getEmployeeSummary = () => api.get("/hr/employees/summary");
 export const getEmployeesEnriched = () => api.get("/hr/employees/enriched");
 export const createEmployee = (payload) => api.post("/hr/employees", payload);
 export const updateEmployee = (employeeId, payload) => api.put(`/hr/employees/${employeeId}`, payload);
+export const deleteEmployee = (employeeId) => api.delete(`/hr/employees/${employeeId}`);
 export const getOffboardedEmployees = (params) => api.get("/hr/employees/offboarded", { params });
+export const deleteOffboardedEmployee = (employeeId) => api.delete(`/hr/employees/offboarded/${employeeId}`);
 
 export const getShifts = () => api.get("/hr/shifts");
 export const createShift = (payload) => api.post("/hr/shifts", payload);
@@ -202,6 +204,8 @@ export const updatePreboardingCandidate = (candidateId, payload) =>
   api.patch(`/hr/preboarding/candidates/${candidateId}`, payload);
 export const archivePreboardingCandidate = (candidateId, payload) =>
   api.post(`/hr/preboarding/candidates/${candidateId}/archive`, payload);
+export const deletePreboardingCandidate = (candidateId) =>
+  api.delete(`/hr/preboarding/candidates/${candidateId}`);
 
 export const getExpenseOverview = (params) => api.get("/hr/expenses/overview", { params });
 

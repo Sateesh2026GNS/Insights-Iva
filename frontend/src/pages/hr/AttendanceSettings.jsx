@@ -170,7 +170,26 @@ function ConfigureAttendanceTab({ onSave }) {
         )}
 
         <div className="hr-att-settings__actions">
-          <button type="button" className="hr-att-settings__btn-outline">Cancel</button>
+          <button
+            type="button"
+            className="hr-att-settings__btn-outline"
+            onClick={() => {
+              setShift("");
+              setEmploymentType("");
+              setMaxLateH("00");
+              setMaxLateM("00");
+              setMaxEarlyH("00");
+              setMaxEarlyM("00");
+              setFullDayH("00");
+              setFullDayM("00");
+              setHalfDayH("00");
+              setHalfDayM("00");
+              setConsiderShiftHours(false);
+              onSave("Form reset to defaults");
+            }}
+          >
+            Cancel
+          </button>
           <button type="button" className="hr-att-settings__btn-primary" onClick={handleSave}>Save</button>
         </div>
       </div>
@@ -277,8 +296,17 @@ function ExemptionTab({ employees, onSave }) {
       </div>
 
       <div className="hr-att-settings__footer-actions" style={{ paddingLeft: 0, paddingRight: 0, borderTop: 0 }}>
-        <button type="button" className="hr-att-settings__btn-outline">Cancel</button>
-        <button type="button" className="hr-att-settings__btn-muted" onClick={() => onSave("Exemption settings saved")}>Save</button>
+        <button
+          type="button"
+          className="hr-att-settings__btn-outline"
+          onClick={() => {
+            setSelected({});
+            onSave("Exemption selections cleared");
+          }}
+        >
+          Cancel
+        </button>
+        <button type="button" className="hr-att-settings__btn-primary" onClick={() => onSave("Exemption settings saved")}>Save</button>
       </div>
     </div>
   );
@@ -346,7 +374,21 @@ function ConfigureOvertimeTab({ onSave }) {
 
         <div className="hr-att-settings__actions">
           <button type="button" className="hr-att-settings__btn-primary" onClick={handleSave}>Save</button>
-          <button type="button" className="hr-att-settings__btn-outline">Cancel</button>
+          <button
+            type="button"
+            className="hr-att-settings__btn-outline"
+            onClick={() => {
+              setOtHours("00");
+              setOtMinutes("00");
+              setWeekOff(false);
+              setHolidays(false);
+              setWorkingDays(false);
+              setAutoApprove(false);
+              onSave("Overtime settings reset to defaults");
+            }}
+          >
+            Cancel
+          </button>
         </div>
       </div>
 

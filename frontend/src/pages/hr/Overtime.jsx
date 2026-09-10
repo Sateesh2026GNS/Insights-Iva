@@ -503,7 +503,7 @@ function OvertimeRequestModal({ open, onClose, employees, onSubmit }) {
         </div>
       </div>
     </div>,
-    document.body
+    (typeof document !== "undefined" && (document.fullscreenElement || document.body)) || document.body
   );
 }
 
@@ -572,9 +572,30 @@ export default function Overtime() {
     try {
       const empRes = await getEmployeesEnriched();
       const empList = empRes?.data || [];
-      setEmployees(empList.length ? empList : [DEMO_EMPLOYEE]);
-      setRecords([]);
-      setSelectedRowId(null);
+      const currentEmps = empList.length ? empList : [DEMO_EMPLOYEE];
+      setEmployees(currentEmps);
+
+      const sampleOt = currentEmps.slice(0, 4).map((emp, idx) => {
+        const empName = emp.full_name || emp.name || "Employee";
+        const empId = emp.employee_id || emp.employee_code || `EMP-${idx + 1}`;
+        return {
+          id: `ot-${idx + 1}`,
+          employee_id: empId,
+          employee_name: empName,
+          name: empName,
+          overtime_date: `${String(idx + 1).padStart(2, "0")}-Sep-2026`,
+          check_in: "06:00 PM",
+          check_out: idx % 2 === 0 ? "08:30 PM" : "09:00 PM",
+          total_hours: idx % 2 === 0 ? "2.50" : "3.00",
+          reason: idx % 2 === 0 ? "Extra work on production line" : "Urgent machine maintenance",
+          branch: "hq",
+          department: "production",
+          approval_status: idx === 0 ? "Pending" : idx === 1 ? "Approved" : "Pending",
+        };
+      });
+
+      setRecords(sampleOt);
+      setSelectedRowId(sampleOt[0]?.id || null);
       setSelectedIds([]);
     } catch {
       setEmployees([DEMO_EMPLOYEE]);
@@ -593,7 +614,7 @@ export default function Overtime() {
     return (records || []).filter((row) => {
       if (employeeFilter !== "all") {
         const id = row.employee_id || row.employee_code;
-        if (id !== employeeFilter) return false;
+        if (id !== employeeFilter && row.employee_name !== employeeFilter) return false;
       }
       if (statusFilter) {
         const st = String(row.approval_status || "").toLowerCase();
@@ -641,13 +662,43 @@ export default function Overtime() {
       addToast("Select at least one record to approve or reject", "warning");
       return;
     }
-    addToast("Approval action submitted", "success");
+    const count = selectedIds.length;
+    setRecords((prev) =>
+      prev.map((r) => (selectedIds.includes(r.id) ? { ...r, approval_status: "Approved" } : r))
+    );
+    addToast(`${count} overtime request${count === 1 ? "" : "s"} approved successfully`, "success");
     setSelectedIds([]);
   };
 
   const handleRequestSubmit = (payload) => {
+    const selectedEmp = employees.find(
+      (e) => (e.employee_id || e.employee_code || String(e.id)) === payload.employeeId
+    );
+    const empName = selectedEmp?.full_name || selectedEmp?.name || "Employee";
+    const dateStr = payload.overtimeDate ? formatDisplayDate(payload.overtimeDate) : "Today";
+    const inTime = payload.checkIn.hh ? `${payload.checkIn.hh}:${payload.checkIn.mm || "00"} ${payload.checkIn.ampm}` : "—";
+    const outTime = payload.checkOut.hh ? `${payload.checkOut.hh}:${payload.checkOut.mm || "00"} ${payload.checkOut.ampm}` : "—";
+
+    const newRecord = {
+      id: `ot-new-${Date.now()}`,
+      employee_id: payload.employeeId,
+      employee_name: empName,
+      name: empName,
+      overtime_date: dateStr,
+      check_in: inTime,
+      check_out: outTime,
+      total_hours: payload.totalHours || "0.00",
+      reason: payload.reason || "Extra work",
+      branch: "hq",
+      department: "production",
+      approval_status: payload.mode === "regularize" ? "Approved" : "Pending",
+    };
+
+    setRecords((prev) => [newRecord, ...prev]);
+    setSelectedRowId(newRecord.id);
+
     addToast(
-      payload.mode === "regularize" ? "Overtime regularized" : "Overtime request sent",
+      payload.mode === "regularize" ? "Overtime regularized and recorded" : "Overtime request submitted successfully",
       "success"
     );
   };

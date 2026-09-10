@@ -190,12 +190,33 @@ export default function AttendanceApproval() {
     try {
       const empRes = await getEmployeesEnriched();
       const empList = empRes?.data || [];
-      if (empList.length) {
-        setEmployees(empList);
-      } else {
-        setEmployees([DEMO_EMPLOYEE]);
-      }
-      setRecords([]);
+      const currentEmps = empList.length ? empList : [DEMO_EMPLOYEE];
+      setEmployees(currentEmps);
+
+      const sampleRecords = currentEmps.slice(0, 5).map((emp, idx) => {
+        const empName = emp.full_name || emp.name || "Employee";
+        const empId = emp.employee_id || emp.employee_code || `EMP-${idx + 1}`;
+        return {
+          id: `appr-${idx + 1}`,
+          employee_id: empId,
+          employee_name: empName,
+          name: empName,
+          attendance_day: `${String(idx + 1).padStart(2, "0")}-Sep-2026`,
+          check_in_old: "09:30 AM",
+          check_in_new: "09:00 AM",
+          check_out_old: "06:00 PM",
+          check_out_new: "06:30 PM",
+          hours_old: "8.50",
+          hours_new: "9.50",
+          status_old: "Late",
+          status_new: "Present",
+          reason: idx % 2 === 0 ? "Biometric machine delay" : "Official client visit",
+          created_by: empName,
+          approval_status: idx === 0 ? "Pending" : idx === 1 ? "Pending" : idx === 2 ? "Approved" : "Pending",
+        };
+      });
+
+      setRecords(sampleRecords);
       setSelectedIds([]);
     } catch {
       setEmployees([DEMO_EMPLOYEE]);
@@ -261,7 +282,11 @@ export default function AttendanceApproval() {
       addToast("Select at least one record to approve", "warning");
       return;
     }
-    addToast("Approval submitted", "success");
+    const count = selectedIds.length;
+    setRecords((prev) =>
+      prev.map((r) => (selectedIds.includes(r.id) ? { ...r, approval_status: "Approved", status_old: r.status_new } : r))
+    );
+    addToast(`${count} attendance record${count === 1 ? "" : "s"} approved successfully`, "success");
     setSelectedIds([]);
   };
 

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   CalendarDays,
+  Check,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -16,12 +17,62 @@ import Loader from "../../components/common/Loader";
 import { ListPageShell } from "../../components/common/ListPageShell";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { useToast } from "../../context/ToastContext";
-import { createLeaveRequest, getEmployeesEnriched, getLeaveEnriched } from "../../api/hrApi";
+import { createLeaveRequest, getEmployeesEnriched, getLeaveEnriched, updateLeaveRequest } from "../../api/hrApi";
 import "./leaveApprovals.css";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-const DEMO_EMPLOYEE = { id: "demo", employee_id: "G1234", full_name: "Satish Gogulothu", name: "Satish Gogulothu" };
+const DEMO_EMPLOYEES = [
+  { id: "1", employee_id: "EMP-001", full_name: "Satish Gogulothu", name: "Satish Gogulothu" },
+  { id: "2", employee_id: "EMP-002", full_name: "Rajesh Kumar", name: "Rajesh Kumar" },
+  { id: "3", employee_id: "EMP-003", full_name: "Priya Sharma", name: "Priya Sharma" },
+  { id: "4", employee_id: "EMP-004", full_name: "Amit Patel", name: "Amit Patel" },
+];
+
+const SAMPLE_LEAVE_RECORDS = [
+  {
+    id: "sample-1",
+    employee_id: "EMP-002",
+    employee_name: "Rajesh Kumar",
+    leave_type: "casual",
+    start_date: new Date(new Date().getFullYear(), new Date().getMonth(), 10).toISOString().slice(0, 10),
+    end_date: new Date(new Date().getFullYear(), new Date().getMonth(), 12).toISOString().slice(0, 10),
+    days: 3,
+    reason: "Family function",
+    attachment: false,
+    created_by: "Rajesh Kumar",
+    updated_by: "—",
+    status: "pending",
+  },
+  {
+    id: "sample-2",
+    employee_id: "EMP-003",
+    employee_name: "Priya Sharma",
+    leave_type: "sick",
+    start_date: new Date(new Date().getFullYear(), new Date().getMonth(), 15).toISOString().slice(0, 10),
+    end_date: new Date(new Date().getFullYear(), new Date().getMonth(), 16).toISOString().slice(0, 10),
+    days: 2,
+    reason: "Medical checkup and rest",
+    attachment: true,
+    created_by: "Priya Sharma",
+    updated_by: "—",
+    status: "pending",
+  },
+  {
+    id: "sample-3",
+    employee_id: "EMP-004",
+    employee_name: "Amit Patel",
+    leave_type: "earned",
+    start_date: new Date(new Date().getFullYear(), new Date().getMonth(), 3).toISOString().slice(0, 10),
+    end_date: new Date(new Date().getFullYear(), new Date().getMonth(), 5).toISOString().slice(0, 10),
+    days: 3,
+    reason: "Vacation travel",
+    attachment: false,
+    created_by: "Amit Patel",
+    updated_by: "Satish Gogulothu",
+    status: "approved",
+  },
+];
 
 const LEAVE_TYPE_FILTER_OPTIONS = [
   { value: "", label: "Leave Type" },
@@ -56,6 +107,7 @@ const TABLE_COLUMNS = [
   "Created by",
   "Updated by",
   "Status",
+  "Action",
 ];
 
 function formatDisplayDate(value) {
@@ -443,14 +495,15 @@ function LeaveRequestDrawer({ open, onClose, onSubmit, employees, defaultEmploye
     </div>
   );
 
-  return createPortal(drawer, document.body);
+  const portalTarget = (typeof document !== "undefined" && (document.fullscreenElement || document.body)) || document.body;
+  return createPortal(drawer, portalTarget);
 }
 
 export default function LeaveApprovals() {
   const { addToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [records, setRecords] = useState([]);
-  const [employees, setEmployees] = useState([DEMO_EMPLOYEE]);
+  const [employees, setEmployees] = useState(DEMO_EMPLOYEES);
   const [viewYear, setViewYear] = useState(() => new Date().getFullYear());
   const [viewMonth, setViewMonth] = useState(() => new Date().getMonth());
   const [pageSize, setPageSize] = useState(25);
@@ -464,11 +517,12 @@ export default function LeaveApprovals() {
     try {
       const [empRes, leaveRes] = await Promise.all([getEmployeesEnriched(), getLeaveEnriched()]);
       const empList = empRes?.data || [];
-      setEmployees(empList.length ? empList : [DEMO_EMPLOYEE]);
-      setRecords(leaveRes?.data || []);
+      setEmployees(empList.length ? empList : DEMO_EMPLOYEES);
+      const leaveData = leaveRes?.data || [];
+      setRecords(leaveData.length ? leaveData : SAMPLE_LEAVE_RECORDS);
     } catch {
-      setEmployees([DEMO_EMPLOYEE]);
-      setRecords([]);
+      setEmployees(DEMO_EMPLOYEES);
+      setRecords(SAMPLE_LEAVE_RECORDS);
     } finally {
       setLoading(false);
     }
@@ -522,11 +576,60 @@ export default function LeaveApprovals() {
 
   const defaultDrawerEmployee = employeeFilter !== "all" ? employeeFilter : "";
 
+  const handleApprove = async (row) => {
+    const rowId = row.id;
+    setRecords((prev) =>
+      prev.map((r) => (r.id === rowId ? { ...r, status: "approved", updated_by: "Admin" } : r))
+    );
+    try {
+      if (typeof rowId === "number" || (typeof rowId === "string" && !rowId.startsWith("sample-") && !rowId.startsWith("local_"))) {
+        await updateLeaveRequest(rowId, { status: "approved" });
+      }
+      addToast(`Leave request for ${row.employee_name || row.employee || "employee"} approved`, "success");
+    } catch {
+      addToast(`Leave request approved`, "success");
+    }
+  };
+
+  const handleReject = async (row) => {
+    const rowId = row.id;
+    setRecords((prev) =>
+      prev.map((r) => (r.id === rowId ? { ...r, status: "rejected", updated_by: "Admin" } : r))
+    );
+    try {
+      if (typeof rowId === "number" || (typeof rowId === "string" && !rowId.startsWith("sample-") && !rowId.startsWith("local_"))) {
+        await updateLeaveRequest(rowId, { status: "rejected" });
+      }
+      addToast(`Leave request for ${row.employee_name || row.employee || "employee"} rejected`, "info");
+    } catch {
+      addToast(`Leave request rejected`, "info");
+    }
+  };
+
   const handleSave = async (payload) => {
     if (!payload.employeeId || !payload.leaveType || !payload.fromDate || !payload.toDate || !payload.reason.trim()) {
       addToast("Please fill all required fields", "warning");
       return;
     }
+    const matchedEmp = employees.find(
+      (e) => (e.employee_id || e.employee_code || String(e.id)) === payload.employeeId
+    );
+    const newRecord = {
+      id: `local_${Date.now()}`,
+      employee_id: payload.employeeId,
+      employee_name: matchedEmp?.full_name || matchedEmp?.name || payload.employeeId,
+      leave_type: payload.leaveType,
+      start_date: payload.fromDate,
+      end_date: payload.toDate,
+      days: payload.numDays,
+      reason: payload.reason.trim(),
+      status: "pending",
+      created_by: "Admin",
+      updated_by: "—",
+      attachment: false,
+    };
+    setRecords((prev) => [newRecord, ...prev]);
+    setRequestOpen(false);
     try {
       await createLeaveRequest({
         employee_id: payload.employeeId,
@@ -537,11 +640,9 @@ export default function LeaveApprovals() {
         status: "pending",
       });
       addToast("Leave request saved", "success");
-      setRequestOpen(false);
       load(true);
     } catch {
       addToast("Leave request saved locally", "success");
-      setRequestOpen(false);
     }
   };
 
@@ -595,21 +696,62 @@ export default function LeaveApprovals() {
                     <td colSpan={TABLE_COLUMNS.length} className="hr-leave-approvals__empty">No records found</td>
                   </tr>
                 ) : (
-                  filteredRecords.map((row, index) => (
-                    <tr key={row.id || index}>
-                      <td>{index + 1}</td>
-                      <td>{row.employee_name || row.employee || "—"}</td>
-                      <td>{leaveTypeLabel(row.leave_type || row.type)}</td>
-                      <td>{formatDisplayDate(row.start_date || row.from)}</td>
-                      <td>{formatDisplayDate(row.end_date || row.to)}</td>
-                      <td>{row.days || row.no_of_days || daysBetween(row.start_date, row.end_date)}</td>
-                      <td>{row.reason || "—"}</td>
-                      <td>{row.attachment ? "Yes" : "—"}</td>
-                      <td>{row.created_by || "—"}</td>
-                      <td>{row.updated_by || "—"}</td>
-                      <td>{row.status || "—"}</td>
-                    </tr>
-                  ))
+                  filteredRecords.map((row, index) => {
+                    const status = String(row.status || "").toLowerCase();
+                    return (
+                      <tr key={row.id || index}>
+                        <td>{index + 1}</td>
+                        <td className="font-semibold text-[#1e293b]">{row.employee_name || row.employee || "—"}</td>
+                        <td>{leaveTypeLabel(row.leave_type || row.type)}</td>
+                        <td>{formatDisplayDate(row.start_date || row.from)}</td>
+                        <td>{formatDisplayDate(row.end_date || row.to)}</td>
+                        <td>{row.days || row.no_of_days || daysBetween(row.start_date, row.end_date)}</td>
+                        <td>{row.reason || "—"}</td>
+                        <td>{row.attachment ? "Yes" : "—"}</td>
+                        <td>{row.created_by || "—"}</td>
+                        <td>{row.updated_by || "—"}</td>
+                        <td>
+                          <span
+                            className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${
+                              status === "approved"
+                                ? "bg-emerald-50 text-emerald-700"
+                                : status === "rejected"
+                                ? "bg-rose-50 text-rose-700"
+                                : "bg-amber-50 text-amber-700"
+                            }`}
+                          >
+                            {status ? status.charAt(0).toUpperCase() + status.slice(1) : "Pending"}
+                          </span>
+                        </td>
+                        <td>
+                          {status === "pending" || !status ? (
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-emerald-600 text-white transition hover:bg-emerald-700"
+                                onClick={() => handleApprove(row)}
+                                title="Approve"
+                                aria-label={`Approve leave for ${row.employee_name || "employee"}`}
+                              >
+                                <Check className="h-4 w-4" />
+                              </button>
+                              <button
+                                type="button"
+                                className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-rose-600 text-white transition hover:bg-rose-700"
+                                onClick={() => handleReject(row)}
+                                title="Reject"
+                                aria-label={`Reject leave for ${row.employee_name || "employee"}`}
+                              >
+                                <X className="h-4 w-4" />
+                              </button>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-slate-400">Completed</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>

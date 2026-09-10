@@ -734,7 +734,7 @@ function MockGeoFenceMap({ mapType }) {
         <span className={`hr-org-setup__map-type--active`}>Map</span>
         <span className={mapType === "satellite" ? "hr-org-setup__map-type--active" : ""}>Satellite</span>
       </div>
-      <button type="button" className="hr-org-setup__map-fs" aria-label="Fullscreen">
+      <button type="button" className="hr-org-setup__map-fs" aria-label="Fullscreen" disabled>
         <Maximize2 className="h-4 w-4" />
       </button>
       <svg className="hr-org-setup__map" preserveAspectRatio="xMidYMid slice" aria-hidden>

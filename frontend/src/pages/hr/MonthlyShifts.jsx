@@ -259,7 +259,8 @@ function VersionHistoryPanel({ open, onClose, history }) {
     </div>
   );
 
-  return createPortal(panel, document.body);
+  const portalTarget = (typeof document !== "undefined" && (document.fullscreenElement || document.body)) || document.body;
+  return createPortal(panel, portalTarget);
 }
 
 function ShiftCell({ shiftKey, onChange, readOnly }) {
@@ -277,6 +278,7 @@ function ShiftCell({ shiftKey, onChange, readOnly }) {
   }, [menuOpen]);
 
   const rect = menuOpen && btnRef.current ? btnRef.current.getBoundingClientRect() : null;
+  const portalTarget = (typeof document !== "undefined" && (document.fullscreenElement || document.body)) || document.body;
 
   return (
     <>
@@ -298,7 +300,7 @@ function ShiftCell({ shiftKey, onChange, readOnly }) {
             </button>
           ))}
         </div>,
-        document.body
+        portalTarget
       ) : null}
     </>
   );

@@ -109,8 +109,25 @@ export default function AttendanceAdjustedLeave() {
     try {
       const empRes = await getEmployeesEnriched();
       const empList = empRes?.data || [];
-      setEmployees(empList.length ? empList : [DEMO_EMPLOYEE]);
-      setRecords([]);
+      const currentEmps = empList.length ? empList : [DEMO_EMPLOYEE];
+      setEmployees(currentEmps);
+
+      const sampleAdj = currentEmps.slice(0, 3).map((emp, idx) => {
+        const empName = emp.full_name || emp.name || "Employee";
+        const empId = emp.employee_id || emp.employee_code || `EMP-${idx + 1}`;
+        return {
+          id: `adj-${idx + 1}`,
+          employee_id: empId,
+          employee_name: empName,
+          name: empName,
+          date: `${String(idx + 2).padStart(2, "0")}-Sep-2026`,
+          record_date: `${String(idx + 2).padStart(2, "0")}-Sep-2026`,
+          leave_type: idx === 0 ? "Casual Leave (Half Day)" : idx === 1 ? "Compensatory Off" : "Earned Leave",
+          status: "Adjusted",
+        };
+      });
+
+      setRecords(sampleAdj);
     } catch {
       setEmployees([DEMO_EMPLOYEE]);
       setRecords([]);

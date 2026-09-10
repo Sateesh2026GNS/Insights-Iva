@@ -94,7 +94,7 @@
 }
 
 .hr-dash-timer-bar {
-  height: 4px;
+  height: 5px;
   border-radius: 9999px;
   background: #e2e8f0;
   overflow: hidden;
@@ -102,44 +102,53 @@
 }
 
 .hr-dash-timer-bar__fill {
-  width: 14px;
+  width: 100%;
   height: 100%;
   border-radius: 9999px;
-  background: #14b8a6;
+  background: #22c55e;
 }
 
 .hr-dash-action-btn {
   border: 0;
-  border-radius: 10px;
-  background: #14b8a6;
-  padding: 10px 14px;
+  border-radius: 12px;
+  background: #0d9488;
+  padding: 12px 14px;
   font-size: 13px;
   font-weight: 600;
   color: #ffffff;
   cursor: pointer;
-  transition: background-color 0.15s ease;
+  transition: all 0.15s ease;
   width: 100%;
   text-align: center;
 }
 
 .hr-dash-action-btn:hover:not(:disabled) {
+  opacity: 0.92;
+}
+
+.hr-dash-action-btn--checkin {
   background: #0d9488;
+  color: #ffffff;
 }
 
 .hr-dash-action-btn--checkout {
-  background: #e11d48;
+  background: #fdf2f2;
+  color: #f43f5e;
+  border: 1px solid #ffe4e6;
 }
 
 .hr-dash-action-btn--checkout:hover:not(:disabled) {
-  background: #be123c;
+  background: #ffe4e6;
+}
+
+.hr-dash-action-btn--overtime {
+  background: #14b8a6;
+  color: #ffffff;
 }
 
 .hr-dash-action-btn--active-ot {
   background: #f59e0b;
-}
-
-.hr-dash-action-btn--active-ot:hover:not(:disabled) {
-  background: #d97706;
+  color: #ffffff;
 }
 
 .hr-dash-action-btn:disabled {

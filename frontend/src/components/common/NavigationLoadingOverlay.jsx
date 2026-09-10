@@ -4,8 +4,8 @@ import { PAGE_REFRESH_EVENT } from "../../utils/pageRefresh";
 
 /**
  * Centered branded loading overlay with semi-transparent dark backdrop.
- * Displays on page navigation or page refresh for ~1.5 - 2s so users
- * clearly see the page is loading/reloading.
+ * Displays on page navigation or page refresh for ~0.1s so users
+ * see a brief branded flash before the new page renders.
  */
 import BrandLoadingScreen from "./BrandLoadingScreen";
 
@@ -27,7 +27,7 @@ export default function NavigationLoadingOverlay() {
     setFadingOut(false);
     setVisible(true);
 
-    // Keep visible for exactly 0.30 seconds (220ms visible + 80ms quick fade)
+    // Keep visible for exactly 0.1 seconds (20ms visible + 80ms quick fade)
     timerRef.current = setTimeout(() => {
       setFadingOut(true);
       fadeTimerRef.current = setTimeout(() => {
@@ -35,7 +35,7 @@ export default function NavigationLoadingOverlay() {
         setFadingOut(false);
         setIsRefreshing(false);
       }, 80);
-    }, 220);
+    }, 20);
   };
 
   // Trigger on route changes (skip initial mount so first-load splash handles it)

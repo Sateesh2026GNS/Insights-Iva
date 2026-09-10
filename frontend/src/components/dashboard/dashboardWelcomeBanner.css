@@ -2,31 +2,76 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1.5rem;
-  min-height: 120px;
+  gap: 2rem;
+  min-height: 170px;
+  height: 100%;
   border: 1px solid #eef2f6;
   border-radius: 16px;
-  background: #ffffff;
-  padding: 1.75rem 2rem;
+  background: linear-gradient(135deg, #ffffff 60%, #f4f8ff 100%);
+  padding: 1.25rem 2.25rem;
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  position: relative;
+  overflow: hidden;
+}
+
+.dashboard-welcome-banner__content {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.375rem;
+  min-width: 0;
+  z-index: 1;
 }
 
 .dashboard-welcome-banner__title {
   margin: 0;
-  font-size: 1.625rem;
+  font-size: 1.75rem;
   font-weight: 700;
   line-height: 1.3;
   color: #1e67c1;
   letter-spacing: -0.01em;
 }
 
+.dashboard-welcome-banner__subtitle {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+.dashboard-welcome-banner__art-wrap {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  height: 100%;
+  max-height: 100%;
+}
+
 .dashboard-welcome-banner__art {
   flex-shrink: 0;
   width: auto;
-  max-width: min(42%, 240px);
-  height: 120px;
+  height: 100%;
+  max-height: 195px;
+  max-width: 360px;
   object-fit: contain;
   object-position: right center;
+  filter: drop-shadow(0 2px 6px rgba(30, 103, 193, 0.06));
+  transition: transform 0.2s ease;
+}
+
+@media (max-width: 1280px) {
+  .dashboard-welcome-banner__art {
+    max-height: 175px;
+    max-width: 310px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .dashboard-welcome-banner__art {
+    max-height: 155px;
+    max-width: 270px;
+  }
 }
 
 @media (max-width: 640px) {
@@ -34,15 +79,21 @@
     flex-direction: column;
     align-items: flex-start;
     padding: 1.25rem 1.5rem;
+    gap: 1rem;
   }
 
   .dashboard-welcome-banner__title {
     font-size: 1.35rem;
   }
 
+  .dashboard-welcome-banner__art-wrap {
+    width: 100%;
+    justify-content: center;
+  }
+
   .dashboard-welcome-banner__art {
     align-self: center;
-    max-width: 220px;
-    height: 100px;
+    max-width: 280px;
+    max-height: 150px;
   }
 }

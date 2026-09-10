@@ -19,7 +19,8 @@ import {
 import Loader from "../../components/common/Loader";
 import { ListPageShell } from "../../components/common/ListPageShell";
 import usePageRefresh from "../../hooks/usePageRefresh";
-import { getEmployeesEnriched } from "../../api/hrApi";
+import { useToast } from "../../context/ToastContext";
+import { deleteEmployee, getEmployeesEnriched } from "../../api/hrApi";
 import "./employeeOnboarding.css";
 
 const TABLE_COLUMNS = [
@@ -105,7 +106,7 @@ function SimpleSelect({ value, onChange, options, placeholder }) {
   );
 }
 
-function ActionMenu({ onEdit }) {
+function ActionMenu({ onEdit, onDelete }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef(null);
 
@@ -125,7 +126,8 @@ function ActionMenu({ onEdit }) {
       </button>
       {open ? (
         <div className="hr-emp-onboard__action-menu">
-          <button type="button" onClick={() => { setOpen(false); onEdit(); }}>Edit</button>
+          {onEdit ? <button type="button" onClick={() => { setOpen(false); onEdit(); }}>Edit</button> : null}
+          {onDelete ? <button type="button" style={{ color: "#dc2626", fontWeight: 500 }} onClick={() => { setOpen(false); onDelete(); }}>Delete</button> : null}
         </div>
       ) : null}
     </div>
@@ -134,6 +136,7 @@ function ActionMenu({ onEdit }) {
 
 export default function Employees() {
   const navigate = useNavigate();
+  const { addToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [records, setRecords] = useState([]);
   const [search, setSearch] = useState("");
@@ -193,6 +196,19 @@ export default function Employees() {
     setShowFilterPanel(true);
   };
 
+  const handleDelete = async (row) => {
+    try {
+      if (typeof row.id === "number" || (typeof row.id === "string" && !row.id.startsWith("emp-") && !row.id.startsWith("demo"))) {
+        await deleteEmployee(row.id);
+      }
+      setRecords((prev) => prev.filter((item) => item.id !== row.id));
+      addToast("Employee deleted successfully", "success");
+    } catch {
+      setRecords((prev) => prev.filter((item) => item.id !== row.id));
+      addToast("Employee deleted", "success");
+    }
+  };
+
   if (loading) return <Loader label="Loading employees..." />;
 
   const showingFrom = pagedRows.length ? (currentPage - 1) * pageSize + 1 : 0;
@@ -233,39 +249,44 @@ export default function Employees() {
 
         {showFilterPanel ? (
           <div className="hr-emp-onboard__filter-panel">
-            <div className="hr-emp-onboard__filter-field">
-              <span className="hr-emp-onboard__filter-label">Branch</span>
-              <SimpleSelect value={draftBranch} onChange={setDraftBranch} options={BRANCH_OPTIONS} placeholder="Select Branch" />
+            <div className="hr-emp-onboard__filter-row">
+              <div>
+                <label className="hr-emp-onboard__filter-label">Branch</label>
+                <SimpleSelect value={draftBranch} onChange={setDraftBranch} options={BRANCH_OPTIONS} placeholder="Select Branch" />
+              </div>
+              <div>
+                <label className="hr-emp-onboard__filter-label">Department</label>
+                <SimpleSelect value={draftDepartment} onChange={setDraftDepartment} options={DEPARTMENT_OPTIONS} placeholder="Select Department" />
+              </div>
             </div>
-            <div className="hr-emp-onboard__filter-field">
-              <span className="hr-emp-onboard__filter-label">Department</span>
-              <SimpleSelect value={draftDepartment} onChange={setDraftDepartment} options={DEPARTMENT_OPTIONS} placeholder="Select Department" />
+            <div className="hr-emp-onboard__filter-actions">
+              <button
+                type="button"
+                className="hr-emp-onboard__outline-btn"
+                onClick={() => {
+                  setDraftBranch("");
+                  setDraftDepartment("");
+                  setBranchFilter("");
+                  setDepartmentFilter("");
+                  setShowFilterPanel(false);
+                  setPage(1);
+                }}
+              >
+                Reset
+              </button>
+              <button
+                type="button"
+                className="hr-emp-onboard__apply-btn"
+                onClick={() => {
+                  setBranchFilter(draftBranch);
+                  setDepartmentFilter(draftDepartment);
+                  setShowFilterPanel(false);
+                  setPage(1);
+                }}
+              >
+                Apply
+              </button>
             </div>
-            <button
-              type="button"
-              className="hr-emp-onboard__apply-btn"
-              onClick={() => {
-                setBranchFilter(draftBranch);
-                setDepartmentFilter(draftDepartment);
-                setPage(1);
-              }}
-            >
-              Apply
-            </button>
-            <button
-              type="button"
-              className="hr-emp-onboard__cancel-btn"
-              onClick={() => {
-                setDraftBranch("");
-                setDraftDepartment("");
-                setBranchFilter("");
-                setDepartmentFilter("");
-                setShowFilterPanel(false);
-                setPage(1);
-              }}
-            >
-              Cancel
-            </button>
           </div>
         ) : null}
 
@@ -304,7 +325,7 @@ export default function Employees() {
                     <td>{formatJoinDate(row.date_of_joining || row.hire_date || row.joining_date)}</td>
                     <td>{row.created_by || "—"}</td>
                     <td>
-                      <ActionMenu onEdit={() => navigate(`/hr/employees/create?id=${row.id}`)} />
+                      <ActionMenu onEdit={() => navigate(`/hr/employees/create?id=${row.id}`)} onDelete={() => handleDelete(row)} />
                     </td>
                   </tr>
                 ))

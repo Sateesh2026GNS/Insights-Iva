@@ -331,22 +331,19 @@ function CheckInPanel({ user, onAttendanceChange }) {
         <p className="hr-dash-checkin-date">{formatLongDate()}</p>
         <p className="hr-dash-timer">{formatTimer(elapsed)}</p>
         <div className="hr-dash-timer-bar">
-          <div
-            className={`hr-dash-timer-bar__fill ${checkedIn ? "animate-pulse" : ""}`}
-            style={{ width: checkedIn ? "45%" : "14px" }}
-          />
+          <div className={`hr-dash-timer-bar__fill ${checkedIn ? "animate-pulse" : ""}`} />
         </div>
         <div className="mt-5 grid grid-cols-2 gap-3">
           <button
             type="button"
-            className={`hr-dash-action-btn ${checkedIn ? "hr-dash-action-btn--checkout" : ""}`}
+            className={`hr-dash-action-btn ${checkedIn ? "hr-dash-action-btn--checkout" : "hr-dash-action-btn--checkin"}`}
             onClick={checkedIn ? handleCheckOut : handleCheckIn}
           >
             {checkedIn ? "Check Out" : "Check In"}
           </button>
           <button
             type="button"
-            className={`hr-dash-action-btn ${isOvertime ? "hr-dash-action-btn--active-ot" : ""}`}
+            className={`hr-dash-action-btn hr-dash-action-btn--overtime ${isOvertime ? "hr-dash-action-btn--active-ot" : ""}`}
             onClick={handleToggleOvertime}
           >
             {isOvertime ? "Stop Over Time" : "Start Over Time"}
@@ -531,11 +528,11 @@ export default function HRDashboard() {
   const overallChart = useMemo(() => {
     const hired = data.hired_total || 0;
     const exits = data.exits_total || 0;
-    if (!hired && !exits) return [{ name: "Employees", value: 1, color: "#173e73" }];
+    if (!hired && !exits) return [{ name: "Employees", value: 1, color: "#164e96" }];
     const items = [];
-    if (hired > 0) items.push({ name: "Hired", value: hired, color: "#173e73" });
+    if (hired > 0) items.push({ name: "Hired", value: hired, color: "#164e96" });
     if (exits > 0) items.push({ name: "Exits", value: exits, color: "#93c5fd" });
-    return items.length ? items : [{ name: "Employees", value: 1, color: "#173e73" }];
+    return items.length ? items : [{ name: "Employees", value: 1, color: "#164e96" }];
   }, [data.hired_total, data.exits_total]);
 
   const expenseChart = useMemo(

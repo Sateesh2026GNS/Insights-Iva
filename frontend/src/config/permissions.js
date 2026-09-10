@@ -322,7 +322,19 @@ export const STORE_MANAGER_ALLOWED_PATHS = new Set([
   "/manufacturing/workflow",
   "/my-job-cards",
   "/hr/attendance",
+  "/hr/attendance/approval",
+  "/hr/attendance/overtime",
+  "/hr/attendance/adjusted-leave",
+  "/hr/attendance/settings",
   "/attendance",
+  "/hr/leave",
+  "/hr/leave/approvals",
+  "/hr/leave/holiday",
+  "/hr/leave/adjustment",
+  "/hr/leave/plans",
+  "/hr/leave/plans/create",
+  "/hr/leave/create",
+  "/leave",
 ]);
 
 export function isProductionManager(user) {
@@ -419,7 +431,14 @@ export function userCanAccessPath(user, pathname) {
   if (!user) return false;
   if (isAdmin(user)) return true;
   const path = (pathname || "").replace(/\/$/, "") || "/";
-  if (path === "/hr/attendance" || path === "/attendance") {
+  if (
+    path === "/hr/attendance" ||
+    path === "/attendance" ||
+    path.startsWith("/hr/attendance/") ||
+    path === "/hr/leave" ||
+    path === "/leave" ||
+    path.startsWith("/hr/leave/")
+  ) {
     return true;
   }
   if (isStoreManager(user) && isSalesJobCardAuthoringPath(pathname)) return false;
