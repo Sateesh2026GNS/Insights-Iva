@@ -16,9 +16,13 @@ const NetworkStatusContext = createContext({
   slow: false,
   markRequestStart: () => {},
   markRequestEnd: () => {},
+  dismissSlow: () => {},
 });
 
-const SLOW_MS = 4000;
+// Only trigger if an operation takes longer than 12 seconds
+const SLOW_MS = 12000;
+// Auto-dismiss the slow banner after 6 seconds so it never gets stuck
+const AUTO_DISMISS_MS = 6000;
 
 /**
  * Tracks browser online/offline and slow in-flight requests.
@@ -31,20 +35,38 @@ export function NetworkStatusProvider({ children }) {
   const [slow, setSlow] = useState(false);
   const pendingRef = useRef(0);
   const slowTimerRef = useRef(null);
+  const autoDismissTimerRef = useRef(null);
   const retryFnsRef = useRef(new Set());
 
-  const clearSlowTimer = () => {
+  const clearSlowTimers = () => {
     if (slowTimerRef.current) {
       clearTimeout(slowTimerRef.current);
       slowTimerRef.current = null;
     }
+    if (autoDismissTimerRef.current) {
+      clearTimeout(autoDismissTimerRef.current);
+      autoDismissTimerRef.current = null;
+    }
   };
+
+  const dismissSlow = useCallback(() => {
+    clearSlowTimers();
+    setSlow(false);
+    pendingRef.current = 0;
+  }, []);
 
   const markRequestStart = useCallback(() => {
     pendingRef.current += 1;
     if (!slowTimerRef.current) {
       slowTimerRef.current = setTimeout(() => {
-        if (pendingRef.current > 0) setSlow(true);
+        if (pendingRef.current > 0) {
+          setSlow(true);
+          // Safety: Auto-dismiss so the banner never gets permanently stuck
+          autoDismissTimerRef.current = setTimeout(() => {
+            setSlow(false);
+            pendingRef.current = 0;
+          }, AUTO_DISMISS_MS);
+        }
       }, SLOW_MS);
     }
   }, []);
@@ -52,7 +74,7 @@ export function NetworkStatusProvider({ children }) {
   const markRequestEnd = useCallback(() => {
     pendingRef.current = Math.max(0, pendingRef.current - 1);
     if (pendingRef.current === 0) {
-      clearSlowTimer();
+      clearSlowTimers();
       setSlow(false);
     }
   }, []);
@@ -84,7 +106,7 @@ export function NetworkStatusProvider({ children }) {
     return () => {
       window.removeEventListener("online", onOnline);
       window.removeEventListener("offline", onOffline);
-      clearSlowTimer();
+      clearSlowTimers();
     };
   }, [runRetries]);
 
@@ -94,10 +116,11 @@ export function NetworkStatusProvider({ children }) {
       slow,
       markRequestStart,
       markRequestEnd,
+      dismissSlow,
       registerRetry,
       retryNow: runRetries,
     }),
-    [online, slow, markRequestStart, markRequestEnd, registerRetry, runRetries]
+    [online, slow, markRequestStart, markRequestEnd, dismissSlow, registerRetry, runRetries]
   );
 
   return (
@@ -105,7 +128,7 @@ export function NetworkStatusProvider({ children }) {
       {!online ? <OfflineBanner onRetry={runRetries} /> : null}
       {online && slow ? (
         <div className="sticky top-0 z-[79] px-4 pt-2">
-          <SlowNetworkBanner />
+          <SlowNetworkBanner onClose={dismissSlow} />
         </div>
       ) : null}
       {children}
