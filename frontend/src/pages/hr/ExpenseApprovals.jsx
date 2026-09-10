@@ -23,8 +23,11 @@ import { useToast } from "../../context/ToastContext";
 import {
   approveExpenseClaims,
   createExpenseApproval,
+  deleteExpenseApproval,
   getExpenseApprovals,
+  rejectExpenseClaims,
 } from "../../api/hrApi";
+
 import "./expenseApprovals.css";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -94,7 +97,76 @@ function StatusBadge({ status }) {
   return <span className={`hr-exp-approvals__status hr-exp-approvals__status--${key}`}>{status || "Pending"}</span>;
 }
 
+function ApprovalRowActionMenu({ row, onApprove, onReject, onDelete }) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const onDoc = (e) => {
+      if (rootRef.current && !rootRef.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [open]);
+
+  const isPending = String(row.status || "").toLowerCase() === "pending";
+
+  return (
+    <div ref={rootRef} className="hr-exp-approvals__action-wrap">
+      <button
+        type="button"
+        className="hr-exp-approvals__action-btn"
+        aria-label="Actions"
+        onClick={() => setOpen((v) => !v)}
+      >
+        <MoreVertical className="h-4 w-4" />
+      </button>
+      {open && (
+        <div className="hr-exp-approvals__action-menu">
+          {isPending && (
+            <>
+              <button
+                type="button"
+                className="hr-exp-approvals__action-item hr-exp-approvals__action-item--success"
+                onClick={() => {
+                  setOpen(false);
+                  onApprove(row);
+                }}
+              >
+                Approve
+              </button>
+              <button
+                type="button"
+                className="hr-exp-approvals__action-item"
+                style={{ color: "#d97706", fontWeight: 500 }}
+                onClick={() => {
+                  setOpen(false);
+                  onReject(row);
+                }}
+              >
+                Reject
+              </button>
+            </>
+          )}
+          <button
+            type="button"
+            className="hr-exp-approvals__action-item hr-exp-approvals__action-item--danger"
+            onClick={() => {
+              setOpen(false);
+              onDelete(row);
+            }}
+          >
+            Delete
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function EmployeeSelect({ value, onChange, employees }) {
+
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const rootRef = useRef(null);
@@ -418,7 +490,7 @@ export default function ExpenseApprovals() {
   const handleApprove = async () => {
     if (!selected.length) return;
     try {
-      await approveExpenseClaims({ ids: selected });
+      await approveExpenseClaims({ ids: selected, status: "approved" });
       addToast("Expenses approved", "success");
       setRecords((prev) => prev.map((row) => (selected.includes(row.id) ? { ...row, status: "Approved" } : row)));
       setSelected([]);
@@ -427,22 +499,55 @@ export default function ExpenseApprovals() {
     }
   };
 
-  const handleSave = async (payload) => {
-    const row = {
-      ...payload,
-      id: `exp-appr-${Date.now()}`,
-      created_by: "—",
-      updated_by: "—",
-      waiting_on: "—",
-    };
+  const handleApproveRow = async (row) => {
     try {
-      await createExpenseApproval(row);
-      addToast("Expense added", "success");
-      setRecords((prev) => [...prev, row]);
+      if (row.id && !String(row.id).startsWith("exp-")) {
+        await approveExpenseClaims({ ids: [row.id], status: "approved" });
+      }
+      setRecords((prev) => prev.map((r) => (r.id === row.id ? { ...r, status: "Approved" } : r)));
+      addToast("Expense approved successfully", "success");
+    } catch {
+      addToast("Failed to approve expense", "error");
+    }
+  };
+
+  const handleRejectRow = async (row) => {
+    try {
+      if (row.id && !String(row.id).startsWith("exp-")) {
+        await rejectExpenseClaims({ ids: [row.id] });
+      }
+      setRecords((prev) => prev.map((r) => (r.id === row.id ? { ...r, status: "Rejected" } : r)));
+      addToast("Expense rejected", "info");
+    } catch {
+      addToast("Failed to reject expense", "error");
+    }
+  };
+
+  const handleDeleteRow = async (row) => {
+    if (!window.confirm(`Are you sure you want to delete "${row.name || "this expense"}"?`)) return;
+    try {
+      if (row.id && !String(row.id).startsWith("exp-")) {
+        await deleteExpenseApproval(row.id);
+      }
+      setRecords((prev) => prev.filter((r) => r.id !== row.id));
+      setSelected((prev) => prev.filter((id) => id !== row.id));
+      addToast("Expense deleted successfully", "success");
+    } catch {
+      addToast("Failed to delete expense", "error");
+    }
+  };
+
+  const handleSave = async (payload) => {
+    try {
+      const res = await createExpenseApproval(payload);
+      addToast("Expense added successfully", "success");
+      const created = res?.data || { ...payload, id: `exp-appr-${Date.now()}` };
+      setRecords((prev) => [created, ...prev]);
     } catch {
       addToast("Failed to add expense", "error");
     }
   };
+
 
   const shiftMonth = (delta) => {
     setViewDate((prev) => new Date(prev.getFullYear(), prev.getMonth() + delta, 1));
@@ -590,8 +695,14 @@ export default function ExpenseApprovals() {
                         <td><StatusBadge status={row.status} /></td>
                         <td>{row.waiting_on || "—"}</td>
                         <td>
-                          <button type="button" className="hr-exp-approvals__action-btn" aria-label="Actions"><MoreVertical className="h-4 w-4" /></button>
+                          <ApprovalRowActionMenu
+                            row={row}
+                            onApprove={handleApproveRow}
+                            onReject={handleRejectRow}
+                            onDelete={handleDeleteRow}
+                          />
                         </td>
+
                       </tr>
                     );
                   })

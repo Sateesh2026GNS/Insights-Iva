@@ -448,6 +448,12 @@ def _expense_row_dict(row: ExpenseClaim) -> dict:
     d = model_to_dict(row)
     d["amount"] = to_float(row.amount)
     d["approved_amount"] = to_float(row.approved_amount) if row.approved_amount else None
+    d["category"] = row.expense_category or "other"
+    d["name"] = row.expense_name or "Expense"
+    d["expense_type"] = row.expense_category or "other"
+    d["created_by"] = row.created_by_name or "—"
+    d["updated_by"] = row.updated_by_name or "—"
+    d["waiting_on"] = row.waiting_on or ("Finance Manager" if (row.status or "").lower() in ("pending", "submitted", "pending_approval") else "—")
     return d
 
 
@@ -460,11 +466,36 @@ def list_my_expenses(db: Session, tenant_id: int, employee_id: int | None = None
 
 
 def create_expense(db: Session, tenant_id: int, payload: dict, user: User) -> dict:
-    data = coerce_payload_dates({k: v for k, v in payload.items() if k not in ("id", "tenant_id")})
+    raw = {k: v for k, v in payload.items() if k not in ("id", "tenant_id")}
+    if "category" in raw and "expense_category" not in raw:
+        raw["expense_category"] = raw.pop("category")
+    if "name" in raw and "expense_name" not in raw:
+        raw["expense_name"] = raw.pop("name")
+    if "employee_id" in raw:
+        try:
+            raw["employee_id"] = int(raw["employee_id"])
+        except (ValueError, TypeError):
+            raw["employee_id"] = None
+    if "amount" in raw:
+        try:
+            raw["amount"] = float(raw["amount"])
+        except (ValueError, TypeError):
+            raw["amount"] = 0.0
+    data = coerce_payload_dates(raw)
     data["tenant_id"] = tenant_id
-    data["created_by_name"] = user.full_name or user.email
-    data["status"] = data.get("status") or "pending"
-    row = ExpenseClaim(**data)
+    if not data.get("created_by_name"):
+        data["created_by_name"] = getattr(user, "full_name", None) or getattr(user, "email", "Admin")
+    if not data.get("employee_name"):
+        data["employee_name"] = getattr(user, "full_name", None) or getattr(user, "email", "Admin")
+    data["status"] = (data.get("status") or "pending").lower()
+    if not data.get("waiting_on"):
+        data["waiting_on"] = "Finance Manager"
+    if not data.get("claim_number"):
+        import random
+        data["claim_number"] = f"EXP-{random.randint(10000, 99999)}"
+    valid_cols = {c.name for c in ExpenseClaim.__table__.columns}
+    claim_data = {k: v for k, v in data.items() if k in valid_cols}
+    row = ExpenseClaim(**claim_data)
     db.add(row)
     db.commit()
     db.refresh(row)
@@ -472,30 +503,85 @@ def create_expense(db: Session, tenant_id: int, payload: dict, user: User) -> di
     return _expense_row_dict(row)
 
 
-def expense_overview(db: Session, tenant_id: int) -> dict:
-    total = db.scalar(
-        select(func.coalesce(func.sum(ExpenseClaim.amount), 0)).where(ExpenseClaim.tenant_id == tenant_id)
-    ) or 0
-    pending = db.scalar(
-        select(func.count(ExpenseClaim.id)).where(
-            ExpenseClaim.tenant_id == tenant_id,
-            ExpenseClaim.status.in_(["pending", "submitted", "pending_approval"]),
-        )
-    ) or 0
-    approved = db.scalar(
-        select(func.count(ExpenseClaim.id)).where(
-            ExpenseClaim.tenant_id == tenant_id, ExpenseClaim.status == "approved"
-        )
-    ) or 0
-    return {"total_amount": to_float(total), "pending_count": pending, "approved_count": approved}
+def update_expense(db: Session, tenant_id: int, claim_id: int, payload: dict, user: User) -> dict:
+    row = db.scalar(select(ExpenseClaim).where(ExpenseClaim.id == claim_id, ExpenseClaim.tenant_id == tenant_id))
+    if not row:
+        raise HTTPException(status_code=404, detail="Expense claim not found")
+    raw = {k: v for k, v in payload.items() if k not in ("id", "tenant_id")}
+    if "category" in raw:
+        raw["expense_category"] = raw.pop("category")
+    if "name" in raw:
+        raw["expense_name"] = raw.pop("name")
+    data = coerce_payload_dates(raw)
+    for k, v in data.items():
+        if hasattr(row, k):
+            setattr(row, k, v)
+    row.updated_by_name = getattr(user, "full_name", None) or getattr(user, "email", "Admin")
+    db.commit()
+    db.refresh(row)
+    return _expense_row_dict(row)
+
+
+def delete_expense(db: Session, tenant_id: int, claim_id: int) -> dict:
+    row = db.scalar(select(ExpenseClaim).where(ExpenseClaim.id == claim_id, ExpenseClaim.tenant_id == tenant_id))
+    if not row:
+        raise HTTPException(status_code=404, detail="Expense claim not found")
+    db.delete(row)
+    db.commit()
+    return {"status": "deleted", "id": claim_id}
+
+
+def expense_overview(db: Session, tenant_id: int, year: int | None = None, month: int | None = None) -> dict:
+    all_rows = db.scalars(
+        select(ExpenseClaim).where(ExpenseClaim.tenant_id == tenant_id).order_by(ExpenseClaim.expense_date.desc(), ExpenseClaim.id.desc())
+    ).all()
+    
+    total = sum(to_float(r.amount) for r in all_rows)
+    pending_rows = [r for r in all_rows if (r.status or "").lower() in ("pending", "submitted", "pending_approval")]
+    approved_rows = [r for r in all_rows if (r.status or "").lower() == "approved"]
+    rejected_rows = [r for r in all_rows if (r.status or "").lower() in ("rejected", "cancelled")]
+    
+    pending_amount = sum(to_float(r.amount) for r in pending_rows)
+    approved_amount = sum(to_float(r.approved_amount or r.amount) for r in approved_rows)
+    
+    month_names = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+    target_year = year or datetime.now().year
+    
+    monthly_map = {m: 0.0 for m in month_names}
+    for r in all_rows:
+        if r.expense_date and hasattr(r.expense_date, "year") and r.expense_date.year == target_year:
+            m_idx = r.expense_date.month - 1
+            if 0 <= m_idx < 12:
+                monthly_map[month_names[m_idx]] += to_float(r.amount)
+    
+    yearly = [{"month": m, "amount": monthly_map[m]} for m in month_names]
+    
+    cat_map: dict[str, float] = {}
+    for r in all_rows:
+        cat = r.expense_category or "Other"
+        cat_title = cat.replace("-", " ").title()
+        cat_map[cat_title] = cat_map.get(cat_title, 0.0) + to_float(r.amount)
+    
+    categories = [{"name": k, "value": v} for k, v in cat_map.items()]
+    items = [_expense_row_dict(r) for r in all_rows]
+    
+    return {
+        "total_amount": to_float(total),
+        "pending_count": len(pending_rows),
+        "pending_amount": to_float(pending_amount),
+        "approved_count": len(approved_rows),
+        "approved_amount": to_float(approved_amount),
+        "rejected_count": len(rejected_rows),
+        "yearly": yearly,
+        "categories": categories,
+        "items": items,
+        "recent_claims": items[:10],
+    }
 
 
 def list_expense_approvals(db: Session, tenant_id: int) -> list[dict]:
     rows = db.scalars(
-        select(ExpenseClaim).where(
-            ExpenseClaim.tenant_id == tenant_id,
-            ExpenseClaim.status.in_(["pending", "submitted", "pending_approval"]),
-        )
+        select(ExpenseClaim).where(ExpenseClaim.tenant_id == tenant_id).order_by(ExpenseClaim.id.desc())
     ).all()
     return [_expense_row_dict(r) for r in rows]
 
@@ -509,13 +595,14 @@ def approve_expenses(db: Session, tenant_id: int, payload: dict, user: User) -> 
         if not row:
             continue
         row.status = status
-        row.updated_by_name = user.full_name or user.email
+        row.updated_by_name = getattr(user, "full_name", None) or getattr(user, "email", "Admin")
         if status == "approved":
             row.approved_amount = row.amount
         updated.append(row)
     db.commit()
     audit_hr(db, user=user, action="approve", entity_type="expense_claim", details={"ids": ids, "status": status})
     return [_expense_row_dict(r) for r in updated]
+
 
 
 # ── Site visits ──────────────────────────────────────────────────────────────

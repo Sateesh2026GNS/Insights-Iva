@@ -382,6 +382,11 @@
   color: #dc2626;
 }
 
+.hr-exp-approvals__action-wrap {
+  position: relative;
+  display: inline-block;
+}
+
 .hr-exp-approvals__action-btn {
   display: grid;
   height: 28px;
@@ -393,6 +398,48 @@
   color: var(--ea-primary);
   cursor: pointer;
 }
+
+.hr-exp-approvals__action-menu {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  z-index: 25;
+  min-width: 130px;
+  background: #ffffff;
+  border: 1px solid var(--ea-border);
+  border-radius: 6px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
+  padding: 4px 0;
+}
+
+.hr-exp-approvals__action-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  font-size: 12px;
+  color: #374151;
+  cursor: pointer;
+}
+
+.hr-exp-approvals__action-item:hover {
+  background: #f9fafb;
+}
+
+.hr-exp-approvals__action-item--success {
+  color: #15803d;
+  font-weight: 500;
+}
+
+.hr-exp-approvals__action-item--danger {
+  color: #dc2626;
+  font-weight: 500;
+}
+
 
 .hr-exp-approvals__footer {
   display: flex;

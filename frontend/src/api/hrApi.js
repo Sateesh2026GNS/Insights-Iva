@@ -217,10 +217,16 @@ export const getExpenseOverview = (params) => api.get("/hr/expenses/overview", {
 export const getMyExpenses = (params) => api.get("/hr/expenses/my", { params });
 export const getMyExpensesSummary = (params) => api.get("/hr/expenses/my/summary", { params });
 export const createMyExpense = (payload) => api.post("/hr/expenses/my", payload);
+export const updateMyExpense = (claimId, payload) => api.put(`/hr/expenses/my/${claimId}`, payload);
+export const deleteMyExpense = (claimId) => api.delete(`/hr/expenses/my/${claimId}`);
 
 export const getExpenseApprovals = (params) => api.get("/hr/expenses/approvals", { params });
 export const createExpenseApproval = (payload) => api.post("/hr/expenses/approvals", payload);
 export const approveExpenseClaims = (payload) => api.post("/hr/expenses/approvals/approve", payload);
+export const rejectExpenseClaims = (payload) =>
+  api.post("/hr/expenses/approvals/approve", { ...payload, status: "rejected" });
+export const deleteExpenseApproval = (claimId) => api.delete(`/hr/expenses/approvals/${claimId}`);
+
 
 export const getTrainingDashboard = (params) =>
   api.get("/hr/training/dashboard", { params });

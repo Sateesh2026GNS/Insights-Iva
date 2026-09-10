@@ -70,10 +70,30 @@ def test_expense_claim(client, register_admin):
         },
     )
     assert resp.status_code == 200
-    assert float(resp.json()["amount"]) == 1500.0
+    created = resp.json()
+    assert float(created["amount"]) == 1500.0
+    claim_id = created["id"]
 
     overview = client.get("/hr/expenses/overview", headers=auth["headers"])
     assert overview.status_code == 200
+    ov_data = overview.json()
+    assert "total_amount" in ov_data
+    assert "pending_count" in ov_data
+
+    approvals = client.get("/hr/expenses/approvals", headers=auth["headers"])
+    assert approvals.status_code == 200
+    assert any(a["id"] == claim_id for a in approvals.json())
+
+    approve_resp = client.post(
+        "/hr/expenses/approvals/approve",
+        headers=auth["headers"],
+        json={"ids": [claim_id], "status": "approved"},
+    )
+    assert approve_resp.status_code == 200
+
+    del_resp = client.delete(f"/hr/expenses/my/{claim_id}", headers=auth["headers"])
+    assert del_resp.status_code == 200
+
 
 
 def test_holiday_and_leave_plan(client, register_admin):

@@ -26,8 +26,10 @@ from app.services.hr_module_service import (
     delete_holiday,
     delete_leave_plan,
     delete_org_item,
+    delete_expense,
     delete_site_visit,
     delete_week_off,
+    update_expense,
     update_site_visit,
     expense_overview,
     generate_payroll_run,
@@ -313,8 +315,13 @@ def week_off_delete(
 
 
 @router.get("/expenses/overview")
-def expenses_overview(tenant_id: int = Depends(tenant_scope(MODULE)), db: Session = Depends(get_db)):
-    return expense_overview(db, tenant_id)
+def expenses_overview(
+    year: int | None = Query(None),
+    month: int | None = Query(None),
+    tenant_id: int = Depends(tenant_scope(MODULE)),
+    db: Session = Depends(get_db),
+):
+    return expense_overview(db, tenant_id, year=year, month=month)
 
 
 @router.get("/expenses/my")
@@ -327,8 +334,13 @@ def expenses_my(
 
 
 @router.get("/expenses/my/summary")
-def expenses_my_summary(tenant_id: int = Depends(tenant_scope(MODULE)), db: Session = Depends(get_db)):
-    return expense_overview(db, tenant_id)
+def expenses_my_summary(
+    year: int | None = Query(None),
+    month: int | None = Query(None),
+    tenant_id: int = Depends(tenant_scope(MODULE)),
+    db: Session = Depends(get_db),
+):
+    return expense_overview(db, tenant_id, year=year, month=month)
 
 
 @router.post("/expenses/my")
@@ -340,9 +352,37 @@ def expenses_my_create(
     return create_expense(db, user.tenant_id, payload, user)
 
 
+@router.put("/expenses/my/{claim_id}")
+def expenses_my_update(
+    claim_id: int,
+    payload: dict,
+    user: User = Depends(require_permission(MODULE)),
+    db: Session = Depends(get_db),
+):
+    return update_expense(db, user.tenant_id, claim_id, payload, user)
+
+
+@router.delete("/expenses/my/{claim_id}")
+def expenses_my_delete(
+    claim_id: int,
+    user: User = Depends(require_permission(MODULE)),
+    db: Session = Depends(get_db),
+):
+    return delete_expense(db, user.tenant_id, claim_id)
+
+
 @router.get("/expenses/approvals")
 def expenses_approvals_list(tenant_id: int = Depends(tenant_scope(MODULE)), db: Session = Depends(get_db)):
     return list_expense_approvals(db, tenant_id)
+
+
+@router.post("/expenses/approvals")
+def expenses_approvals_create(
+    payload: dict,
+    user: User = Depends(require_permission(MODULE)),
+    db: Session = Depends(get_db),
+):
+    return create_expense(db, user.tenant_id, payload, user)
 
 
 @router.post("/expenses/approvals/approve")
@@ -352,6 +392,17 @@ def expenses_approvals_approve(
     db: Session = Depends(get_db),
 ):
     return approve_expenses(db, user.tenant_id, payload, user)
+
+
+@router.delete("/expenses/approvals/{claim_id}")
+def expenses_approvals_delete(
+    claim_id: int,
+    user: User = Depends(require_permission(MODULE)),
+    db: Session = Depends(get_db),
+):
+    return delete_expense(db, user.tenant_id, claim_id)
+
+
 
 
 # ── Site visits ──────────────────────────────────────────────────────────────

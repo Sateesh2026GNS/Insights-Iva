@@ -27,7 +27,8 @@ import Loader from "../../components/common/Loader";
 import { ListPageShell } from "../../components/common/ListPageShell";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { useToast } from "../../context/ToastContext";
-import { createMyExpense, getMyExpenses, getMyExpensesSummary } from "../../api/hrApi";
+import { createMyExpense, deleteMyExpense, getMyExpenses, getMyExpensesSummary } from "../../api/hrApi";
+
 import "./myExpenses.css";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -135,7 +136,49 @@ function StatusBadge({ status }) {
   return <span className={`hr-my-expenses__status hr-my-expenses__status--${key}`}>{status || "Pending"}</span>;
 }
 
+function ExpenseRowActionMenu({ row, onDelete }) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const onDoc = (e) => {
+      if (rootRef.current && !rootRef.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [open]);
+
+  return (
+    <div ref={rootRef} className="hr-my-expenses__action-wrap">
+      <button
+        type="button"
+        className="hr-my-expenses__action-btn"
+        aria-label="Actions"
+        onClick={() => setOpen((v) => !v)}
+      >
+        <MoreVertical className="h-4 w-4" />
+      </button>
+      {open && (
+        <div className="hr-my-expenses__action-menu">
+          <button
+            type="button"
+            className="hr-my-expenses__action-item hr-my-expenses__action-item--danger"
+            onClick={() => {
+              setOpen(false);
+              onDelete(row);
+            }}
+          >
+            Delete
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function AddExpenseDrawer({ open, onClose, onSave }) {
+
   const [category, setCategory] = useState("");
   const [name, setName] = useState("");
   const [expenseDate, setExpenseDate] = useState("");
@@ -319,15 +362,31 @@ export default function MyExpenses() {
   const pagedRows = filteredRows.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   const handleSave = async (payload) => {
-    const row = { ...payload, id: `exp-${Date.now()}`, created_by: "—", updated_by: "—", waiting_on: "—" };
     try {
-      await createMyExpense(row);
-      addToast("Expense added", "success");
-      setRecords((prev) => [...prev, row]);
+      const res = await createMyExpense(payload);
+      addToast("Expense added successfully", "success");
+      const created = res?.data || { ...payload, id: `exp-${Date.now()}` };
+      setRecords((prev) => [created, ...prev]);
+      load(true);
     } catch {
       addToast("Failed to add expense", "error");
     }
   };
+
+  const handleDelete = async (row) => {
+    if (!window.confirm(`Are you sure you want to delete "${row.name || "this expense"}"?`)) return;
+    try {
+      if (row.id && !String(row.id).startsWith("exp-")) {
+        await deleteMyExpense(row.id);
+      }
+      setRecords((prev) => prev.filter((r) => r.id !== row.id));
+      addToast("Expense deleted successfully", "success");
+      load(true);
+    } catch {
+      addToast("Failed to delete expense", "error");
+    }
+  };
+
 
   const shiftMonth = (delta) => {
     setViewDate((prev) => new Date(prev.getFullYear(), prev.getMonth() + delta, 1));
@@ -424,8 +483,9 @@ export default function MyExpenses() {
                         <td><StatusBadge status={row.status} /></td>
                         <td>{row.waiting_on || "—"}</td>
                         <td>
-                          <button type="button" className="hr-my-expenses__action-btn" aria-label="Actions"><MoreVertical className="h-4 w-4" /></button>
+                          <ExpenseRowActionMenu row={row} onDelete={handleDelete} />
                         </td>
+
                       </tr>
                     ))
                   )}
