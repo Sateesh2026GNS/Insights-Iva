@@ -198,7 +198,7 @@ class BatchRead(BatchBase):
     model_config = ConfigDict(from_attributes=True)
 
 
-VALID_MACHINE_STATUSES = {"idle", "running", "maintenance", "breakdown", "offline"}
+VALID_MACHINE_STATUSES = {"idle", "running", "maintenance", "breakdown", "offline", "stopped"}
 
 
 class MachineBase(BaseModel):

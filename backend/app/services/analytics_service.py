@@ -188,13 +188,26 @@ def get_inventory_turnover_rate(db: Session, tenant_id: int) -> dict:
 
 
 def get_worker_performance_score(db: Session, tenant_id: int) -> dict:
-    """Worker performance metrics (employee module removed)."""
-    return {
-        "average_score": 0.0,
-        "reviews_count": 0,
-        "top_performer_ids": [],
-        "active_employees": 0,
-    }
+    """Worker performance metrics derived from production reporting data."""
+    from sqlalchemy import func, select
+
+    from app.models.production import DailyProductionReport
+
+    try:
+        stmt = select(func.count(func.distinct(DailyProductionReport.created_by_user_id))).where(
+            DailyProductionReport.tenant_id == tenant_id,
+            DailyProductionReport.created_by_user_id.is_not(None),
+        )
+        active_employees = int(db.execute(stmt).scalar() or 0)
+        return {
+            "average_score": 0.0,
+            "reviews_count": 0,
+            "top_performer_ids": [],
+            "active_employees": active_employees,
+        }
+    except SQLAlchemyError:
+        db.rollback()
+        raise
 
 
 def get_profit_analysis(db: Session, tenant_id: int, year: int) -> dict:

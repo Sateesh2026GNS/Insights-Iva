@@ -90,7 +90,7 @@ export default function SalesJobCardDocument({
   const selectedCustomer = customers?.find((c) => String(c.id) === String(form?.customer_id));
 
   return (
-    <div className="sjc-doc" id="sales-job-card-document">
+    <div className="sjc-doc sjc-doc--screen" id="sales-job-card-document">
       <div className="sjc-doc__paper">
         <div className="sjc-doc__header-row">
           <div className="sjc-doc__company">

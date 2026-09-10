@@ -258,6 +258,16 @@ export default function SalesJobCardDocumentPanel({
         </div>
       </div>
 
+      {showDocument && workflowGuidance ? (
+        <div className="my-job-cards-page__document-guidance">
+          <WorkflowNextStep
+            {...workflowGuidance}
+            onAction={workflowGuidance.actionType ? handleGuidanceAction : undefined}
+            compact
+          />
+        </div>
+      ) : null}
+
       <div className="my-job-cards-page__document-body">
         {showEmptyLayout ? (
           <>
@@ -273,14 +283,6 @@ export default function SalesJobCardDocumentPanel({
             />
             <p className="my-job-cards-page__document-empty-msg" role="status">{emptyMessage}</p>
           </>
-        ) : null}
-
-        {showDocument && workflowGuidance ? (
-          <WorkflowNextStep
-            {...workflowGuidance}
-            onAction={workflowGuidance.actionType ? handleGuidanceAction : undefined}
-            compact
-          />
         ) : null}
 
         {hasSelection && loading ? (

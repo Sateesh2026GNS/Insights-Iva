@@ -57,7 +57,10 @@ export const emailInvoice = (invoiceId, payload = {}) =>
 export const getPayments = (_tenantId, invoiceId = null) =>
   api.get("/sales/payments", { params: { invoice_id: invoiceId } });
 export const getPayment = (paymentId) => api.get(`/sales/payments/${paymentId}`);
-export const createPayment = (payload) => api.post("/sales/payments", payload);
+export const createPayment = (payload, idempotencyKey = null) =>
+  api.post("/sales/payments", payload, {
+    headers: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined,
+  });
 export const updatePayment = (paymentId, payload) =>
   api.put(`/sales/payments/${paymentId}`, payload);
 export const deletePayment = (paymentId) => api.delete(`/sales/payments/${paymentId}`);

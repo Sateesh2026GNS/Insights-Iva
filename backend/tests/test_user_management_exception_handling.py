@@ -13,7 +13,7 @@ def test_create_user_handles_database_error(client, register_admin):
             json={
                 "email": "newuser@example.com",
                 "full_name": "New User",
-                "password": "Password123!",
+                "password": "Passw0rd!123",
                 "role_ids": [1],
             },
             headers=admin_auth["headers"],
@@ -65,7 +65,7 @@ def test_create_user_handles_generic_exception(client, register_admin):
             json={
                 "email": "newuser2@example.com",
                 "full_name": "New User 2",
-                "password": "Password123!",
+                "password": "Passw0rd!123",
                 "role_ids": [1],
             },
             headers=admin_auth["headers"],

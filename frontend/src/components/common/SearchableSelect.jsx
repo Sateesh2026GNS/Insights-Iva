@@ -118,7 +118,7 @@ export default function SearchableSelect({
 
       {open ? (
         <div
-          className={`absolute left-0 right-0 z-40 mt-1 overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-lg ${menuClassName}`.trim()}
+          className={`absolute left-0 right-0 top-full z-40 mt-1 overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-lg ${menuClassName}`.trim()}
         >
           <div className="border-b border-[var(--color-border-muted)] p-2">
             <SearchBar

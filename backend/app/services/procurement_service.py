@@ -586,11 +586,59 @@ def list_goods_receipts(db: Session, tenant_id: int) -> list[GoodsReceipt]:
     return list(db.scalars(stmt).unique().all())
 
 
-def create_supplier_payment(db: Session, payload: SupplierPaymentCreate) -> SupplierPayment:
-    sp = SupplierPayment(**payload.model_dump())
+def create_supplier_payment(
+    db: Session,
+    payload: SupplierPaymentCreate,
+    *,
+    idempotency_key: str | None = None,
+) -> SupplierPayment:
+    from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+
+    from app.core.idempotency import find_idempotent_record, normalize_idempotency_key
+
+    key = normalize_idempotency_key(idempotency_key or payload.idempotency_key)
+    existing = find_idempotent_record(db, SupplierPayment, payload.tenant_id, key)
+    if existing:
+        return existing
+
+    supplier = db.scalars(
+        select(Supplier)
+        .where(
+            Supplier.id == payload.supplier_id,
+            Supplier.tenant_id == payload.tenant_id,
+        )
+        .with_for_update()
+    ).first()
+    if not supplier:
+        raise HTTPException(
+            status_code=404,
+            detail="Supplier not found or does not belong to the current tenant.",
+        )
+
+    data = payload.model_dump()
+    if key:
+        data["idempotency_key"] = key
+    sp = SupplierPayment(**data)
     db.add(sp)
-    db.commit()
-    db.refresh(sp)
+    try:
+        db.commit()
+        db.refresh(sp)
+    except IntegrityError as exc:
+        db.rollback()
+        if key:
+            dup = find_idempotent_record(db, SupplierPayment, payload.tenant_id, key)
+            if dup:
+                return dup
+        raise HTTPException(
+            status_code=409,
+            detail="A supplier payment with this idempotency key already exists.",
+        ) from exc
+    except SQLAlchemyError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to record supplier payment due to a database error.",
+        ) from exc
     return sp
 
 

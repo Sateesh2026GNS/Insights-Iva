@@ -15,11 +15,14 @@ class BaseRepository:
         self.db = db
         self.tenant_id = tenant_id
 
-    def save(self, entity):
+    def save(self, entity, *, commit: bool = True):
         try:
             self.db.add(entity)
-            self.db.commit()
-            self.db.refresh(entity)
+            if commit:
+                self.db.commit()
+                self.db.refresh(entity)
+            else:
+                self.db.flush()
             return entity
         except HTTPException:
             raise

@@ -69,12 +69,12 @@ class ProductRepository(BaseRepository):
         if not isinstance(query, str) or not query.strip():
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid search query",
+                detail="Search query must be a non-empty string",
             )
         if not isinstance(limit, int) or isinstance(limit, bool) or limit <= 0:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid search limit",
+                detail="Limit must be a positive integer",
             )
         try:
             pattern = f"%{query.strip()}%"

@@ -502,6 +502,14 @@ class StatutoryComponentConfig(Base, TimestampMixin):
 
 class PayrollRun(Base, TimestampMixin):
     __tablename__ = "payroll_runs"
+    __table_args__ = (
+        UniqueConstraint(
+            "tenant_id",
+            "period_start",
+            "period_end",
+            name="uq_payroll_runs_tenant_period",
+        ),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id"), nullable=False, index=True)

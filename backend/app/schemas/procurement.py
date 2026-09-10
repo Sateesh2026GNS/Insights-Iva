@@ -180,6 +180,7 @@ class SupplierPaymentBase(BaseModel):
     payment_method: str = "bank"
     reference: str | None = None
     notes: str | None = None
+    idempotency_key: str | None = Field(None, max_length=128)
 
 
 class SupplierPaymentCreate(SupplierPaymentBase):

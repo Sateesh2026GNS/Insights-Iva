@@ -505,10 +505,8 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
       <div className="ui-card manual-sjc-page__card">
         <div className="manual-sjc-page__toolbar">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
-              Sales &amp; Manufacturing
-            </p>
-            <h1 className="text-base font-semibold sm:text-lg">
+            <p className="manual-sjc-page__toolbar-eyebrow">Sales &amp; Manufacturing</p>
+            <h1 className="manual-sjc-page__toolbar-title">
               {isEdit ? "Edit Sales Job Card" : "Add Sales Job Card"}
             </h1>
           </div>
@@ -527,7 +525,7 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
         ) : null}
 
         <div className="manual-sjc-page__body">
-          <div className="sjc-doc manual-sjc-form">
+          <div className="sjc-doc sjc-doc--screen manual-sjc-form">
             <div className="sjc-doc__paper">
               <div className="sjc-doc__header-row">
                 <div className="sjc-doc__company">

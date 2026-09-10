@@ -1,6 +1,6 @@
 from datetime import date
 
-from sqlalchemy import Boolean, Date, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, CheckConstraint, Date, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin
@@ -177,6 +177,7 @@ class StockLevel(Base, TimestampMixin):
         UniqueConstraint(
             "warehouse_id", "item_id", name="uq_stock_levels_warehouse_item"
         ),
+        CheckConstraint("quantity >= 0", name="ck_stock_levels_quantity_non_negative"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)

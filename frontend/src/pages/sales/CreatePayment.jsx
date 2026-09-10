@@ -12,7 +12,8 @@ import useTenantId from "../../hooks/useTenantId";
 import { useToast } from "../../context/ToastContext";
 import { formatInr } from "../../data/salesMasterData";
 import { todayIso } from "../../utils/dateUtils";
-import { apiErrorMessage } from "../../utils/apiError";
+import { apiErrorMessage, isConflictError } from "../../utils/apiError";
+import { newIdempotencyKey } from "../../utils/idempotency";
 import {
   MANUFACTURING_EVENTS,
   notifyManufacturingSpine,
@@ -101,14 +102,19 @@ export default function CreatePayment() {
     e.preventDefault();
     if (!form.invoice_id || !form.amount || !form.payment_date) return;
     setSaving(true);
+    const idempotencyKey = newIdempotencyKey("payment");
     try {
-      const res = await createPayment({
-        ...form,
-        tenant_id: tenantId,
-        invoice_id: Number(form.invoice_id),
-        amount: Number(form.amount),
-        notes: form.notes.trim() || null,
-      });
+      const res = await createPayment(
+        {
+          ...form,
+          tenant_id: tenantId,
+          invoice_id: Number(form.invoice_id),
+          amount: Number(form.amount),
+          notes: form.notes.trim() || null,
+          idempotency_key: idempotencyKey,
+        },
+        idempotencyKey,
+      );
       notifyManufacturingSpine(MANUFACTURING_EVENTS.PAYMENT_RECORDED, {
         payment_id: res.data?.id,
         invoice_id: Number(form.invoice_id),
@@ -116,7 +122,10 @@ export default function CreatePayment() {
       addToast("Payment recorded — AR journal posted");
       navigate("/sales/payments");
     } catch (err) {
-      addToast(apiErrorMessage(err, "Payment failed"), "error");
+      const msg = isConflictError(err)
+        ? "This payment was already recorded or conflicts with current invoice balance. Please refresh."
+        : apiErrorMessage(err, "Payment failed");
+      addToast(msg, "error");
     } finally {
       setSaving(false);
     }

@@ -42,7 +42,7 @@ class ProductionPlanRepository(BaseRepository):
         if not isinstance(plan_id, int) or isinstance(plan_id, bool) or plan_id <= 0:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid production plan ID",
+                detail="Invalid plan ID",
             )
         try:
             return self.db.scalars(

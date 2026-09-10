@@ -54,6 +54,12 @@ class AuthRepository:
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="Database connection unavailable",
             ) from exc
+        except Exception as exc:
+            logger.exception("Unexpected error getting user by id: %s", exc)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Database operation failed.",
+            ) from exc
 
     def invalidate_active_reset_tokens(self, user_id: int) -> None:
         try:
@@ -72,18 +78,35 @@ class AuthRepository:
         self, user_id: int, *, expires_at: datetime
     ) -> str:
         """Create a one-time reset token. Returns raw token for email link."""
-        self.invalidate_active_reset_tokens(user_id)
-        raw = generate_token()
-        self.db.add(
-            PasswordResetToken(
-                user_id=user_id,
-                token_hash=hash_token(raw),
-                expires_at=expires_at,
-                used=False,
+        try:
+            self.invalidate_active_reset_tokens(user_id)
+            raw = generate_token()
+            self.db.add(
+                PasswordResetToken(
+                    user_id=user_id,
+                    token_hash=hash_token(raw),
+                    expires_at=expires_at,
+                    used=False,
+                )
             )
-        )
-        self.db.flush()
-        return raw
+            self.db.flush()
+            return raw
+        except HTTPException:
+            raise
+        except SQLAlchemyError as exc:
+            self.db.rollback()
+            logger.exception("Database error creating password reset token: %s", exc)
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Database error creating reset token. Transaction has been rolled back.",
+            ) from exc
+        except Exception as exc:
+            self.db.rollback()
+            logger.exception("Unexpected error creating password reset token: %s", exc)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to create reset token. Transaction has been rolled back.",
+            ) from exc
 
     def get_reset_token_row(self, raw_token: str, for_update: bool = False) -> PasswordResetToken | None:
         token_hash = hash_token(raw_token)
@@ -127,10 +150,22 @@ class AuthRepository:
     def commit(self) -> None:
         try:
             self.db.commit()
+        except HTTPException:
+            raise
+        except SQLAlchemyError as exc:
+            self.db.rollback()
+            logger.exception("Database commit error: %s", exc)
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Database error saving record. Transaction has been rolled back.",
+            ) from exc
         except Exception as exc:
             self.db.rollback()
             logger.exception("Database commit error: %s", exc)
-            raise
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to save record. Transaction has been rolled back.",
+            ) from exc
 
     def refresh(self, obj, attribute_names=None) -> None:
         try:
@@ -140,15 +175,21 @@ class AuthRepository:
                 self.db.refresh(obj)
         except HTTPException:
             raise
-        except (InvalidRequestError, UnmappedInstanceError, SQLAlchemyError) as exc:
+        except (InvalidRequestError, UnmappedInstanceError) as exc:
             logger.exception("Failed to refresh entity: %s", exc)
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Failed to refresh invalid or detached object",
             ) from exc
+        except SQLAlchemyError as exc:
+            logger.exception("Failed to refresh entity: %s", exc)
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Database connection unavailable",
+            ) from exc
         except Exception as exc:
             logger.exception("Unexpected error refreshing entity: %s", exc)
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to refresh invalid or detached object",
+                detail="Failed to refresh object.",
             ) from exc
