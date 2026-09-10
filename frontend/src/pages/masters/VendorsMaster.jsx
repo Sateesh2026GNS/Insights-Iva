@@ -156,7 +156,17 @@ export default function VendorsMaster() {
     }
   };
 
-  if (loading) return <Loader label="Loading vendors..." />;
+  if (loading) {
+    return (
+      <ListPageShell>
+        <ListPageCard>
+          <ListPageCardBody>
+            <Loader label="Loading vendors..." />
+          </ListPageCardBody>
+        </ListPageCard>
+      </ListPageShell>
+    );
+  }
 
   return (
     <ListPageShell>
