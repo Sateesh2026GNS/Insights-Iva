@@ -1,6 +1,8 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import axios from "axios";
 import { login as loginApi, getLoginErrorMessage } from "../../api/authApi";
+import { getApiBaseURL } from "../../api/axiosConfig";
 import useAuth from "../../hooks/useAuth";
 import AuthSlider from "../../components/auth/AuthSlider";
 import LoginBackdrop from "../../components/auth/LoginBackdrop";
@@ -12,41 +14,67 @@ import { ROLES } from "../../config/permissions";
 import { getDashboardPathForRole } from "../../utils/roleRedirect";
 
 const LOGIN_SUCCESS_MS = 350;
-
 const LOGIN_ROLES = ROLES.map((r) => r.name);
+
+// How long to show the "waking server" animation before giving up (ms)
+const WAKEUP_TIMEOUT_MS = 90_000;
 
 const EnvelopeIcon = () => (
   <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={2}
-      d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-    />
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+      d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
   </svg>
 );
 
 const LockIcon = () => (
   <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={2}
-      d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-    />
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+      d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
   </svg>
 );
 
 const RoleIcon = () => (
   <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={2}
-      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-    />
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
   </svg>
 );
+
+/** Waking-up progress bar shown while waiting for Render cold start */
+function WakeupBanner({ elapsed }) {
+  const pct = Math.min(95, Math.round((elapsed / WAKEUP_TIMEOUT_MS) * 100));
+  const seconds = Math.round(elapsed / 1000);
+  return (
+    <div className="mb-3 w-full rounded-lg border border-amber-300 bg-amber-50 p-3">
+      <div className="flex items-center gap-2 mb-2">
+        <span
+          style={{
+            display: "inline-block",
+            width: 14,
+            height: 14,
+            border: "2px solid #d97706",
+            borderTopColor: "transparent",
+            borderRadius: "50%",
+            animation: "spin 0.75s linear infinite",
+            flexShrink: 0,
+          }}
+        />
+        <p className="text-sm font-medium text-amber-800">
+          Server is starting up… please wait ({seconds}s)
+        </p>
+      </div>
+      <div className="w-full bg-amber-200 rounded-full h-1.5">
+        <div
+          className="bg-amber-500 h-1.5 rounded-full transition-all duration-1000"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <p className="mt-1.5 text-xs text-amber-700">
+        The server may take up to 90 seconds to wake up on first load. Your login will complete automatically.
+      </p>
+    </div>
+  );
+}
 
 export default function Login() {
   const navigate = useNavigate();
@@ -58,12 +86,36 @@ export default function Login() {
   const [error, setError] = useState("");
   const [showSuccess, setShowSuccess] = useState(false);
   const [redirectPath, setRedirectPath] = useState("/");
+  const [wakingUp, setWakingUp] = useState(false);
+  const [wakeupElapsed, setWakeupElapsed] = useState(0);
   const redirectTimerRef = useRef(null);
+  const wakeupIntervalRef = useRef(null);
+  const wakeupStartRef = useRef(null);
 
   useEffect(() => {
     return () => {
       if (redirectTimerRef.current) clearTimeout(redirectTimerRef.current);
+      if (wakeupIntervalRef.current) clearInterval(wakeupIntervalRef.current);
     };
+  }, []);
+
+  const stopWakeupTimer = useCallback(() => {
+    if (wakeupIntervalRef.current) {
+      clearInterval(wakeupIntervalRef.current);
+      wakeupIntervalRef.current = null;
+    }
+    setWakingUp(false);
+    setWakeupElapsed(0);
+  }, []);
+
+  const startWakeupTimer = useCallback(() => {
+    wakeupStartRef.current = Date.now();
+    setWakingUp(true);
+    setWakeupElapsed(0);
+    wakeupIntervalRef.current = setInterval(() => {
+      const elapsed = Date.now() - wakeupStartRef.current;
+      setWakeupElapsed(elapsed);
+    }, 500);
   }, []);
 
   const navigateNow = (targetPath) => {
@@ -80,13 +132,12 @@ export default function Login() {
       refresh_token: data.refresh_token,
       user: data.user,
     });
-
     const resolvedRole = data.user?.role_name || data.user?.role || role;
     const path = getDashboardPathForRole(resolvedRole);
     setRedirectPath(path);
     setShowSuccess(true);
     setLoading(false);
-
+    stopWakeupTimer();
     redirectTimerRef.current = setTimeout(() => {
       navigate(path, { replace: true });
     }, LOGIN_SUCCESS_MS);
@@ -100,12 +151,34 @@ export default function Login() {
       return;
     }
     setLoading(true);
+
+    // Step 1: Pre-warm health endpoint — if it responds quickly we skip the banner.
+    // If it doesn't respond within 3 s, show the wakeup animation while we wait.
+    const baseURL = getApiBaseURL();
+    let healthResolved = false;
+    const healthCheck = baseURL
+      ? axios.get(`${baseURL}/health`, { timeout: 90_000 }).then(() => {
+          healthResolved = true;
+        }).catch(() => {
+          healthResolved = true; // ignore error, proceed to login attempt
+        })
+      : Promise.resolve();
+
+    const bannerDelay = setTimeout(() => {
+      if (!healthResolved) startWakeupTimer();
+    }, 3000);
+
+    await healthCheck;
+    clearTimeout(bannerDelay);
+    stopWakeupTimer();
+
+    // Step 2: Attempt login
     try {
       const data = await loginApi(email.trim(), password, role);
       completeLogin(data);
     } catch (err) {
-      setError(getLoginErrorMessage(err, "Login failed. Is the API running?"));
-    } finally {
+      stopWakeupTimer();
+      setError(getLoginErrorMessage(err, "Login failed. Please try again."));
       setLoading(false);
     }
   };
@@ -132,7 +205,11 @@ export default function Login() {
                 <p className="text-sm text-gray-600">Business Intelligence • Analytics • AI</p>
               </div>
 
-              {error && (
+              {/* Waking up progress banner */}
+              {wakingUp && <WakeupBanner elapsed={wakeupElapsed} />}
+
+              {/* Error message (only when not waking up) */}
+              {error && !wakingUp && (
                 <div className="mb-3 w-full rounded-lg border border-red-400 bg-red-100 p-2.5 text-sm text-red-700">
                   {error}
                 </div>
@@ -147,26 +224,18 @@ export default function Login() {
                     value={role}
                     onChange={(e) => setRole(e.target.value)}
                     required
+                    disabled={loading}
                     aria-label="Role"
                     className={`${fieldClass} appearance-none cursor-pointer pr-10`}
                   >
-                    <option value="" disabled>
-                      Select Role *
-                    </option>
+                    <option value="" disabled>Select Role *</option>
                     {LOGIN_ROLES.map((name) => (
-                      <option key={name} value={name}>
-                        {name}
-                      </option>
+                      <option key={name} value={name}>{name}</option>
                     ))}
                   </select>
                   <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">
                     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 9l-7 7-7-7"
-                      />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                     </svg>
                   </div>
                 </div>
@@ -181,6 +250,7 @@ export default function Login() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     autoComplete="username"
+                    disabled={loading}
                     className={fieldClass}
                     required
                   />
@@ -193,6 +263,7 @@ export default function Login() {
                   leftIcon={<LockIcon />}
                   autoComplete="current-password"
                   inputClassName="!h-11 !py-2.5 !pl-11"
+                  disabled={loading}
                   required
                 />
 
@@ -216,7 +287,11 @@ export default function Login() {
                   loading={loading}
                   className="uppercase tracking-wider"
                 >
-                  {loading ? "Signing in..." : "SIGN IN"}
+                  {loading
+                    ? wakingUp
+                      ? "Waking up server…"
+                      : "Signing in…"
+                    : "SIGN IN"}
                 </Button>
               </form>
             </div>

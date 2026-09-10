@@ -29,8 +29,8 @@ export function clearApiCache() {
 
 const api = axios.create({
   baseURL: getApiBaseURL(),
-  // 60 s — generous enough for Render/Railway free-tier cold starts (~30–60 s)
-  timeout: 60_000,
+  // 90 s — covers Render/Railway free-tier cold starts which can take up to 90 s
+  timeout: 90_000,
 });
 
 api.interceptors.request.use((config) => {
