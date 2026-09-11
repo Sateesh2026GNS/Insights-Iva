@@ -76,10 +76,13 @@ function dash(value) {
   return value;
 }
 
-function ComponentMultiSelect({ value, onChange, options }) {
+function ComponentMultiSelect({ value = [], onChange, options = [] }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const rootRef = useRef(null);
+
+  const safeValue = Array.isArray(value) ? value : [];
+  const safeOptions = Array.isArray(options) ? options : [];
 
   useEffect(() => {
     if (!open) return undefined;
@@ -90,18 +93,18 @@ function ComponentMultiSelect({ value, onChange, options }) {
     return () => document.removeEventListener("mousedown", onDoc);
   }, [open]);
 
-  const filtered = options.filter((o) => o.toLowerCase().includes(search.toLowerCase()));
-  const label = value.length ? value.join(", ") : "Select Component";
+  const filtered = safeOptions.filter((o) => o.toLowerCase().includes(search.toLowerCase()));
+  const label = safeValue.length ? safeValue.join(", ") : "Select Component";
 
   const toggle = (item) => {
-    if (value.includes(item)) onChange(value.filter((v) => v !== item));
-    else onChange([...value, item]);
+    if (safeValue.includes(item)) onChange(safeValue.filter((v) => v !== item));
+    else onChange([...safeValue, item]);
   };
 
   return (
     <div ref={rootRef} className="hr-statutory__multi-select">
       <button type="button" className="hr-statutory__multi-trigger" onClick={() => setOpen((v) => !v)}>
-        <span className={value.length ? "" : "is-placeholder"}>{label}</span>
+        <span className={safeValue.length ? "" : "is-placeholder"}>{label}</span>
         {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
       </button>
       {open ? (
@@ -114,7 +117,7 @@ function ComponentMultiSelect({ value, onChange, options }) {
           />
           {filtered.map((opt) => (
             <label key={opt} className="hr-statutory__multi-option">
-              <input type="checkbox" checked={value.includes(opt)} onChange={() => toggle(opt)} />
+              <input type="checkbox" checked={safeValue.includes(opt)} onChange={() => toggle(opt)} />
               <span>{opt}</span>
             </label>
           ))}
@@ -139,10 +142,18 @@ function StatusToggle({ checked, onChange, disabled }) {
 }
 
 function PfTab({ data, editing, onEdit, onCancel, onSave }) {
-  const [form, setForm] = useState(data);
+  const [form, setForm] = useState(() => ({
+    ...DEFAULT_PF,
+    ...(data || {}),
+    components: Array.isArray(data?.components) ? data.components : DEFAULT_PF.components,
+  }));
 
   useEffect(() => {
-    setForm(data);
+    setForm({
+      ...DEFAULT_PF,
+      ...(data || {}),
+      components: Array.isArray(data?.components) ? data.components : DEFAULT_PF.components,
+    });
   }, [data, editing]);
 
   const set = (patch) => setForm((p) => ({ ...p, ...patch }));
@@ -286,22 +297,33 @@ function PfTab({ data, editing, onEdit, onCancel, onSave }) {
 }
 
 function PtTab({ data, onSave }) {
-  const [form, setForm] = useState(data);
-  useEffect(() => { setForm(data); }, [data]);
+  const [form, setForm] = useState(() => ({
+    ...DEFAULT_PT,
+    ...(data || {}),
+    slabs: Array.isArray(data?.slabs) && data.slabs.length > 0 ? data.slabs : DEFAULT_PT.slabs,
+  }));
+
+  useEffect(() => {
+    setForm({
+      ...DEFAULT_PT,
+      ...(data || {}),
+      slabs: Array.isArray(data?.slabs) && data.slabs.length > 0 ? data.slabs : DEFAULT_PT.slabs,
+    });
+  }, [data]);
 
   const set = (patch) => setForm((p) => ({ ...p, ...patch }));
 
   const updateSlab = (id, patch) => {
     setForm((p) => ({
       ...p,
-      slabs: p.slabs.map((s) => (s.id === id ? { ...s, ...patch } : s)),
+      slabs: (p.slabs || []).map((s) => (s.id === id ? { ...s, ...patch } : s)),
     }));
   };
 
   const addSlab = () => {
     setForm((p) => ({
       ...p,
-      slabs: [...p.slabs, { id: `slab-${Date.now()}`, start_range: "", end_range: "", tax_amount: "" }],
+      slabs: [...(p.slabs || []), { id: `slab-${Date.now()}`, start_range: "", end_range: "", tax_amount: "" }],
     }));
   };
 
@@ -338,16 +360,16 @@ function PtTab({ data, onSave }) {
             </tr>
           </thead>
           <tbody>
-            {form.slabs.map((slab) => (
+            {(form.slabs || []).map((slab) => (
               <tr key={slab.id}>
                 <td>
-                  <input className="hr-statutory__input" placeholder="Enter Start Range" value={slab.start_range} onChange={(e) => updateSlab(slab.id, { start_range: e.target.value })} />
+                  <input className="hr-statutory__input" placeholder="Enter Start Range" value={slab.start_range || ""} onChange={(e) => updateSlab(slab.id, { start_range: e.target.value })} />
                 </td>
                 <td>
-                  <input className="hr-statutory__input" placeholder="Enter End Range" value={slab.end_range} onChange={(e) => updateSlab(slab.id, { end_range: e.target.value })} />
+                  <input className="hr-statutory__input" placeholder="Enter End Range" value={slab.end_range || ""} onChange={(e) => updateSlab(slab.id, { end_range: e.target.value })} />
                 </td>
                 <td>
-                  <input className="hr-statutory__input" placeholder="Enter Tax Amount" value={slab.tax_amount} onChange={(e) => updateSlab(slab.id, { tax_amount: e.target.value })} />
+                  <input className="hr-statutory__input" placeholder="Enter Tax Amount" value={slab.tax_amount || ""} onChange={(e) => updateSlab(slab.id, { tax_amount: e.target.value })} />
                 </td>
               </tr>
             ))}
@@ -376,7 +398,19 @@ function PtTab({ data, onSave }) {
           <span>Mark this as Active</span>
         </label>
         <div className="hr-statutory__footer-actions">
-          <button type="button" className="hr-statutory__cancel-btn" onClick={() => setForm(data)}>Cancel</button>
+          <button
+            type="button"
+            className="hr-statutory__cancel-btn"
+            onClick={() =>
+              setForm({
+                ...DEFAULT_PT,
+                ...(data || {}),
+                slabs: Array.isArray(data?.slabs) && data.slabs.length > 0 ? data.slabs : DEFAULT_PT.slabs,
+              })
+            }
+          >
+            Cancel
+          </button>
           <button type="button" className="hr-statutory__save-btn" onClick={() => onSave({ ...form, configured: true })}>Save</button>
         </div>
       </div>
@@ -385,10 +419,18 @@ function PtTab({ data, onSave }) {
 }
 
 function EsicTab({ data, editing, onEdit, onCancel, onSave }) {
-  const [form, setForm] = useState(data);
+  const [form, setForm] = useState(() => ({
+    ...DEFAULT_ESIC,
+    ...(data || {}),
+    components: Array.isArray(data?.components) ? data.components : DEFAULT_ESIC.components,
+  }));
 
   useEffect(() => {
-    setForm(data);
+    setForm({
+      ...DEFAULT_ESIC,
+      ...(data || {}),
+      components: Array.isArray(data?.components) ? data.components : DEFAULT_ESIC.components,
+    });
   }, [data, editing]);
 
   const set = (patch) => setForm((p) => ({ ...p, ...patch }));
@@ -554,9 +596,26 @@ export default function StatutoryComponents() {
         getStatutoryPt(),
         getStatutoryEsic(),
       ]);
-      setPf(pfRes?.data || DEFAULT_PF);
-      setPt(ptRes?.data || DEFAULT_PT);
-      setEsic(esicRes?.data || DEFAULT_ESIC);
+
+      const rawPf = pfRes?.data || {};
+      const rawPt = ptRes?.data || {};
+      const rawEsic = esicRes?.data || {};
+
+      setPf({
+        ...DEFAULT_PF,
+        ...rawPf,
+        components: Array.isArray(rawPf.components) ? rawPf.components : DEFAULT_PF.components,
+      });
+      setPt({
+        ...DEFAULT_PT,
+        ...rawPt,
+        slabs: Array.isArray(rawPt.slabs) && rawPt.slabs.length > 0 ? rawPt.slabs : DEFAULT_PT.slabs,
+      });
+      setEsic({
+        ...DEFAULT_ESIC,
+        ...rawEsic,
+        components: Array.isArray(rawEsic.components) ? rawEsic.components : DEFAULT_ESIC.components,
+      });
     } catch {
       setPf(DEFAULT_PF);
       setPt(DEFAULT_PT);
@@ -578,8 +637,13 @@ export default function StatutoryComponents() {
 
   const savePf = async (payload, closeEdit = true) => {
     try {
-      await saveStatutoryPf(payload);
-      setPf(payload);
+      const res = await saveStatutoryPf(payload);
+      const data = res?.data || payload;
+      setPf({
+        ...DEFAULT_PF,
+        ...data,
+        components: Array.isArray(data.components) ? data.components : DEFAULT_PF.components,
+      });
       addToast("Provident Fund settings saved", "success");
       if (closeEdit) setPfEditing(false);
     } catch {
@@ -589,8 +653,13 @@ export default function StatutoryComponents() {
 
   const savePt = async (payload) => {
     try {
-      await saveStatutoryPt(payload);
-      setPt(payload);
+      const res = await saveStatutoryPt(payload);
+      const data = res?.data || payload;
+      setPt({
+        ...DEFAULT_PT,
+        ...data,
+        slabs: Array.isArray(data.slabs) && data.slabs.length > 0 ? data.slabs : DEFAULT_PT.slabs,
+      });
       addToast("Professional Tax settings saved", "success");
     } catch {
       addToast("Failed to save Professional Tax settings", "error");
@@ -599,8 +668,13 @@ export default function StatutoryComponents() {
 
   const saveEsic = async (payload, closeEdit = true) => {
     try {
-      await saveStatutoryEsic(payload);
-      setEsic(payload);
+      const res = await saveStatutoryEsic(payload);
+      const data = res?.data || payload;
+      setEsic({
+        ...DEFAULT_ESIC,
+        ...data,
+        components: Array.isArray(data.components) ? data.components : DEFAULT_ESIC.components,
+      });
       addToast("ESIC settings saved", "success");
       if (closeEdit) setEsicEditing(false);
     } catch {

@@ -267,3 +267,158 @@ def test_asset_management_flow(client, register_admin):
     # 8. Clean up category
     del_cat = client.delete(f"/hr/assets/categories/{cat_id}", headers=auth["headers"])
     assert del_cat.status_code == 200
+
+
+def test_hr_payroll_complete(client, register_admin):
+    """Test full lifecycle of payroll: components, breakups, run, hold, settings."""
+    auth = register_admin()
+    # 1. Salary components: list defaults
+    comps = client.get("/hr/payroll/salary-components", headers=auth["headers"])
+    assert comps.status_code == 200
+    comp_list = comps.json()
+    assert len(comp_list) >= 4  # defaults seeded
+
+    # 2. Add salary component (matches UI payload format)
+    new_comp = client.post(
+        "/hr/payroll/salary-components",
+        headers=auth["headers"],
+        json={
+            "name": "Project Performance Bonus",
+            "calculation_type": "flat_amount",
+            "calculation_value": 7500,
+            "is_active": True,
+            "is_fixed": False,
+            "type": "earnings",
+        },
+    )
+    assert new_comp.status_code == 200
+    created_c = new_comp.json()
+    assert created_c["name"] == "Project Performance Bonus"
+    assert created_c["calculation_value"] == 7500.0
+    c_id = created_c["id"]
+
+    # 3. Update salary component
+    up_c = client.patch(
+        f"/hr/payroll/salary-components/{c_id}",
+        headers=auth["headers"],
+        json={"calculation_value": 8000, "is_active": False},
+    )
+    assert up_c.status_code == 200
+    assert up_c.json()["calculation_value"] == 8000.0
+    assert up_c.json()["is_active"] is False
+
+    # 3b. Delete salary component (numeric ID and string ID)
+    del_str = client.delete(
+        "/hr/payroll/salary-components/earn-other",
+        headers=auth["headers"],
+    )
+    assert del_str.status_code == 200
+
+    del_num = client.delete(
+        f"/hr/payroll/salary-components/{c_id}",
+        headers=auth["headers"],
+    )
+    assert del_num.status_code == 200
+
+    # 4. Salary Breakup: list & create
+    breakups_init = client.get("/hr/payroll/salary-breakup", headers=auth["headers"])
+    assert breakups_init.status_code == 200
+
+    u_id = auth["user"]["id"] if isinstance(auth["user"], dict) else auth["user"].id
+    u_name = auth["user"].get("full_name") if isinstance(auth["user"], dict) else getattr(auth["user"], "full_name", "Test User")
+
+    new_breakup = client.post(
+        "/hr/payroll/salary-breakup",
+        headers=auth["headers"],
+        json={
+            "id": "breakup-test-1",
+            "employee_id": u_id,
+            "employee_name": u_name or "Test User",
+            "department": "Engineering",
+            "gross_amount": 50000,
+            "gross_monthly": 50000,
+            "net_monthly": 44000,
+        },
+    )
+    assert new_breakup.status_code == 200
+
+    breakups = client.get("/hr/payroll/salary-breakup", headers=auth["headers"])
+    assert breakups.status_code == 200
+    assert any(b["id"] == "breakup-test-1" for b in breakups.json())
+
+    # 5. Run Payroll with month and year
+    gen_res = client.post(
+        "/hr/payroll/generate",
+        headers=auth["headers"],
+        json={"month": 9, "year": 2026},
+    )
+    assert gen_res.status_code == 200
+    gen_data = gen_res.json()
+    assert gen_data["status"] == "processed"
+
+    status_res = client.get(
+        "/hr/payroll/run",
+        headers=auth["headers"],
+        params={"month": 9, "year": 2026},
+    )
+    assert status_res.status_code == 200
+    assert status_res.json()["generated"] is True
+
+    # 6. Payslips
+    payslips = client.get("/hr/payroll/my-payslips", headers=auth["headers"])
+    assert payslips.status_code == 200
+
+    # 7. Salary on Hold
+    hold_res = client.post(
+        "/hr/payroll/on-hold",
+        headers=auth["headers"],
+        json={
+            "employee_id": u_id,
+            "reason": "Pending compliance verification",
+            "paid_days": 20,
+            "deductions": 2000,
+        },
+    )
+    assert hold_res.status_code == 200
+    hold_data = hold_res.json()
+    h_id = hold_data["id"]
+
+    holds = client.get("/hr/payroll/on-hold", headers=auth["headers"])
+    assert holds.status_code == 200
+    assert any(h["id"] == h_id for h in holds.json())
+
+    rel_res = client.post(f"/hr/payroll/on-hold/{h_id}/release", headers=auth["headers"])
+    assert rel_res.status_code == 200
+
+    # 8. Payroll Settings: Schedules & Tally
+    sched_save = client.post(
+        "/hr/payroll/settings/schedules",
+        headers=auth["headers"],
+        json={
+            "id": "sched-test-1",
+            "schedule_mode": "last_working_day",
+            "employment_type": "all",
+            "from_date": 25,
+            "to_date": 24,
+        },
+    )
+    assert sched_save.status_code == 200
+
+    scheds = client.get("/hr/payroll/settings/schedules", headers=auth["headers"])
+    assert scheds.status_code == 200
+    assert any(s["id"] == "sched-test-1" for s in scheds.json())
+
+    sched_del = client.delete("/hr/payroll/settings/schedules/sched-test-1", headers=auth["headers"])
+    assert sched_del.status_code == 200
+
+    tally_key = client.post("/hr/payroll/settings/tally/generate-key", headers=auth["headers"])
+    assert tally_key.status_code == 200
+    assert "api_key" in tally_key.json()
+
+    # 9. Clean up salary component & breakup
+    del_c = client.delete(f"/hr/payroll/salary-components/{c_id}", headers=auth["headers"])
+    assert del_c.status_code == 200
+
+    del_b = client.delete("/hr/payroll/salary-breakup/breakup-test-1", headers=auth["headers"])
+    assert del_b.status_code == 200
+

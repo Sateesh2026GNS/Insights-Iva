@@ -7,7 +7,7 @@ from datetime import date, datetime
 from typing import Any
 
 from fastapi import HTTPException
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, or_, select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -25,6 +25,7 @@ from app.models.hr_module import (
     AssetCategory,
     AssetHistory,
     EmployeeLeaveBalance,
+    EmployeeSalaryComponent,
     EmployeeStatusHistory,
     ExpenseClaim,
     Holiday,
@@ -1181,17 +1182,223 @@ def list_mapped_assets(db: Session, tenant_id: int) -> list[dict]:
 # ── Payroll extended ─────────────────────────────────────────────────────────
 
 
-def list_salary_components(db: Session, tenant_id: int) -> list[dict]:
-    rows = db.scalars(select(SalaryComponent).where(SalaryComponent.tenant_id == tenant_id)).all()
-    return [model_to_dict(r) for r in rows]
+def _format_salary_component(r: SalaryComponent) -> dict:
+    d = model_to_dict(r)
+    val = float(r.default_amount or 0)
+    d["calculation_value"] = val
+    d["default_amount"] = val
+    d["type"] = "earnings" if r.component_type == "earning" else "deductions"
+    return d
+
+
+def _ensure_default_salary_components(db: Session, tenant_id: int) -> None:
+    earnings_count = db.scalar(
+        select(func.count(SalaryComponent.id)).where(
+            SalaryComponent.tenant_id == tenant_id,
+            SalaryComponent.component_type == "earning",
+        )
+    ) or 0
+    deductions_count = db.scalar(
+        select(func.count(SalaryComponent.id)).where(
+            SalaryComponent.tenant_id == tenant_id,
+            SalaryComponent.component_type == "deduction",
+        )
+    ) or 0
+
+    if earnings_count == 0:
+        earnings_defaults = [
+            ("BASIC", "Basic", "earning", "percentage_of_gross", 50.0),
+            ("DA", "DA", "earning", "flat_amount", 0.0),
+            ("HRA", "HRA", "earning", "percentage_of_basic", 40.0),
+            ("OTHER_ALLOWANCE", "Other Allowance", "earning", "flat_amount", 0.0),
+        ]
+        for code, name, comp_type, calc_type, amt in earnings_defaults:
+            exists = db.scalar(
+                select(SalaryComponent.id).where(
+                    SalaryComponent.tenant_id == tenant_id,
+                    SalaryComponent.code == code,
+                )
+            )
+            if not exists:
+                db.add(
+                    SalaryComponent(
+                        tenant_id=tenant_id,
+                        code=code,
+                        name=name,
+                        component_type=comp_type,
+                        calculation_type=calc_type,
+                        default_amount=amt,
+                        is_taxable=True,
+                        is_active=True,
+                    )
+                )
+
+    if deductions_count == 0:
+        deductions_defaults = [
+            ("PF", "Provident Fund (PF)", "deduction", "percentage_of_basic", 12.0),
+            ("ESIC", "Employee State Insurance (ESIC)", "deduction", "percentage_of_gross", 0.75),
+            ("PT", "Professional Tax (PT)", "deduction", "flat_amount", 200.0),
+            ("TDS", "TDS / Income Tax", "deduction", "flat_amount", 0.0),
+        ]
+        for code, name, comp_type, calc_type, amt in deductions_defaults:
+            exists = db.scalar(
+                select(SalaryComponent.id).where(
+                    SalaryComponent.tenant_id == tenant_id,
+                    SalaryComponent.code == code,
+                )
+            )
+            if not exists:
+                db.add(
+                    SalaryComponent(
+                        tenant_id=tenant_id,
+                        code=code,
+                        name=name,
+                        component_type=comp_type,
+                        calculation_type=calc_type,
+                        default_amount=amt,
+                        is_taxable=False,
+                        is_active=True,
+                    )
+                )
+
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+
+
+def list_salary_components(db: Session, tenant_id: int, component_type: str | None = None) -> list[dict]:
+    _ensure_default_salary_components(db, tenant_id)
+    stmt = select(SalaryComponent).where(SalaryComponent.tenant_id == tenant_id)
+    if component_type:
+        norm_type = "earning" if component_type in ("earning", "earnings") else "deduction"
+        stmt = stmt.where(SalaryComponent.component_type == norm_type)
+    rows = db.scalars(stmt.order_by(SalaryComponent.id.asc())).all()
+    return [_format_salary_component(r) for r in rows]
 
 
 def create_salary_component(db: Session, tenant_id: int, payload: dict) -> dict:
-    row = SalaryComponent(tenant_id=tenant_id, **{k: v for k, v in payload.items() if k not in ("id", "tenant_id")})
+    name = (payload.get("name") or "").strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Component name is required")
+
+    raw_type = payload.get("component_type") or payload.get("type") or "earning"
+    comp_type = "earning" if raw_type in ("earning", "earnings") else "deduction"
+
+    code = payload.get("code")
+    if not code:
+        import re
+        slug = re.sub(r"[^a-zA-Z0-9]+", "_", name).upper().strip("_")
+        base_code = slug[:50] or "COMP"
+        code = base_code
+        idx = 1
+        while db.scalar(select(SalaryComponent.id).where(SalaryComponent.tenant_id == tenant_id, SalaryComponent.code == code)):
+            code = f"{base_code}_{idx}"
+            idx += 1
+
+    calc_type = payload.get("calculation_type") or "flat_amount"
+    val = payload.get("default_amount")
+    if val is None:
+        val = payload.get("calculation_value", 0)
+    amt = to_float(val)
+
+    is_active = bool(payload.get("is_active", True))
+    is_taxable = bool(payload.get("is_taxable", True))
+
+    row = SalaryComponent(
+        tenant_id=tenant_id,
+        code=code,
+        name=name,
+        component_type=comp_type,
+        calculation_type=calc_type,
+        default_amount=amt,
+        is_taxable=is_taxable,
+        is_active=is_active,
+    )
     db.add(row)
     db.commit()
     db.refresh(row)
-    return model_to_dict(row)
+    return _format_salary_component(row)
+
+
+def update_salary_component(db: Session, tenant_id: int, component_id: str | int, payload: dict) -> dict:
+    row = None
+    if str(component_id).isdigit():
+        row = db.scalar(
+            select(SalaryComponent).where(
+                SalaryComponent.id == int(component_id),
+                SalaryComponent.tenant_id == tenant_id,
+            )
+        )
+    if not row:
+        clean_code = str(component_id).replace("earn-", "").replace("ded-", "").upper()
+        clean_name = str(component_id).replace("earn-", "").replace("ded-", "").lower()
+        row = db.scalar(
+            select(SalaryComponent).where(
+                SalaryComponent.tenant_id == tenant_id,
+                or_(
+                    func.upper(SalaryComponent.code) == clean_code,
+                    func.lower(SalaryComponent.name) == clean_name,
+                ),
+            )
+        )
+    if not row:
+        return create_salary_component(db, tenant_id, payload)
+
+    if "name" in payload and payload["name"]:
+        row.name = str(payload["name"]).strip()
+    if "calculation_type" in payload:
+        row.calculation_type = str(payload["calculation_type"])
+    if "calculation_value" in payload:
+        row.default_amount = to_float(payload["calculation_value"])
+    elif "default_amount" in payload:
+        row.default_amount = to_float(payload["default_amount"])
+    if "is_active" in payload:
+        row.is_active = bool(payload["is_active"])
+    if "is_taxable" in payload:
+        row.is_taxable = bool(payload["is_taxable"])
+    if "component_type" in payload or "type" in payload:
+        raw_type = payload.get("component_type") or payload.get("type")
+        row.component_type = "earning" if raw_type in ("earning", "earnings") else "deduction"
+
+    db.commit()
+    db.refresh(row)
+    return _format_salary_component(row)
+
+
+def delete_salary_component(db: Session, tenant_id: int, component_id: str | int) -> dict:
+    row = None
+    if str(component_id).isdigit():
+        row = db.scalar(
+            select(SalaryComponent).where(
+                SalaryComponent.id == int(component_id),
+                SalaryComponent.tenant_id == tenant_id,
+            )
+        )
+    if not row:
+        clean_code = str(component_id).replace("earn-", "").replace("ded-", "").upper()
+        clean_name = str(component_id).replace("earn-", "").replace("ded-", "").lower()
+        row = db.scalar(
+            select(SalaryComponent).where(
+                SalaryComponent.tenant_id == tenant_id,
+                or_(
+                    func.upper(SalaryComponent.code) == clean_code,
+                    func.lower(SalaryComponent.name) == clean_name,
+                ),
+            )
+        )
+    if not row:
+        return {"message": "Salary component removed", "id": component_id}
+
+    db.execute(
+        delete(EmployeeSalaryComponent).where(
+            EmployeeSalaryComponent.component_id == row.id,
+            EmployeeSalaryComponent.tenant_id == tenant_id,
+        )
+    )
+    db.delete(row)
+    db.commit()
+    return {"message": "Salary component deleted successfully", "id": component_id}
 
 
 def get_statutory_config(db: Session, tenant_id: int, key: str) -> dict:
@@ -1205,6 +1412,7 @@ def get_statutory_config(db: Session, tenant_id: int, key: str) -> dict:
         return {"configured": False, "component_key": key}
     data = json.loads(row.config_json or "{}")
     data["configured"] = row.is_active
+    data["is_active"] = row.is_active
     data["component_key"] = key
     return data
 
@@ -1256,20 +1464,260 @@ def save_payroll_setting(db: Session, tenant_id: int, key: str, payload: dict) -
     return payload
 
 
+def list_salary_breakups(db: Session, tenant_id: int) -> list[dict]:
+    setting = db.scalar(
+        select(PayrollSetting).where(
+            PayrollSetting.tenant_id == tenant_id,
+            PayrollSetting.setting_key == "salary_breakups",
+        )
+    )
+    if not setting or not setting.setting_json:
+        return []
+    try:
+        items = json.loads(setting.setting_json)
+        return items if isinstance(items, list) else []
+    except Exception:
+        return []
+
+
+def create_or_update_salary_breakup(db: Session, tenant_id: int, payload: dict, user: User | None = None) -> dict:
+    items = list_salary_breakups(db, tenant_id)
+    item_id = str(payload.get("id") or f"breakup-{int(datetime.utcnow().timestamp())}")
+    payload["id"] = item_id
+    if user:
+        user_name = user.full_name or user.email
+        payload["updated_by"] = user_name
+        if not payload.get("created_by"):
+            payload["created_by"] = user_name
+    if not payload.get("effective_from"):
+        payload["effective_from"] = date.today().isoformat()
+
+    emp_id = payload.get("employee_id")
+    if emp_id:
+        try:
+            int_id = int(emp_id) if str(emp_id).isdigit() else None
+            emp = None
+            if int_id:
+                emp = db.scalar(select(Employee).where(Employee.id == int_id, Employee.tenant_id == tenant_id))
+            if not emp and payload.get("employee_name"):
+                emp = db.scalar(
+                    select(Employee).where(
+                        Employee.tenant_id == tenant_id,
+                        func.lower(Employee.full_name) == str(payload["employee_name"]).strip().lower(),
+                    )
+                )
+            if emp and payload.get("gross_amount"):
+                emp.salary = to_float(payload["gross_amount"])
+        except Exception:
+            pass
+
+    idx = next((i for i, b in enumerate(items) if str(b.get("id")) == item_id or (emp_id and str(b.get("employee_id")) == str(emp_id))), -1)
+    if idx >= 0:
+        items[idx] = {**items[idx], **payload}
+    else:
+        items.insert(0, payload)
+
+    save_payroll_setting(db, tenant_id, "salary_breakups", items)
+    return payload
+
+
+def delete_salary_breakup(db: Session, tenant_id: int, breakup_id: str) -> dict:
+    items = list_salary_breakups(db, tenant_id)
+    items = [b for b in items if str(b.get("id")) != str(breakup_id)]
+    save_payroll_setting(db, tenant_id, "salary_breakups", items)
+    return {"message": "Salary breakup deleted", "id": breakup_id}
+
+
 def list_salary_holds(db: Session, tenant_id: int) -> list[dict]:
-    rows = db.scalars(select(SalaryHold).where(SalaryHold.tenant_id == tenant_id)).all()
-    return [model_to_dict(r) for r in rows]
+    rows = db.scalars(select(SalaryHold).where(SalaryHold.tenant_id == tenant_id).order_by(SalaryHold.id.desc())).all()
+    results = []
+    for r in rows:
+        d = model_to_dict(r)
+        emp = db.scalar(select(Employee).where(Employee.id == r.employee_id))
+        if emp:
+            d["employee_name"] = emp.full_name
+            d["employee_code"] = emp.employee_code
+            d["department"] = emp.department
+            d["employment_type"] = getattr(emp, "employment_type", "permanent") or "permanent"
+            d["gross_pay"] = float(emp.salary or 0)
+            d["deductions"] = 0.0
+            d["net_pay"] = float(emp.salary or 0)
+        d["paid_days"] = 0
+        d["updated_by"] = r.created_by_name or "Admin"
+        results.append(d)
+    return results
 
 
-def list_payslips(db: Session, tenant_id: int, employee_id: int | None = None) -> list[dict]:
+def create_salary_hold(db: Session, tenant_id: int, payload: dict, user: User) -> dict:
+    emp_id = payload.get("employee_id")
+    emp = None
+    if emp_id:
+        try:
+            int_id = int(emp_id) if str(emp_id).isdigit() else None
+            if int_id:
+                emp = db.scalar(select(Employee).where(Employee.id == int_id, Employee.tenant_id == tenant_id))
+        except Exception:
+            pass
+    if not emp and payload.get("employee_name"):
+        emp = db.scalar(
+            select(Employee).where(
+                Employee.tenant_id == tenant_id,
+                func.lower(Employee.full_name) == str(payload["employee_name"]).strip().lower(),
+            )
+        )
+    if not emp:
+        emp = db.scalar(select(Employee).where(Employee.tenant_id == tenant_id))
+    if not emp:
+        emp = Employee(
+            tenant_id=tenant_id,
+            employee_code="EMP-001",
+            full_name=payload.get("employee_name") or user.full_name or "Staff Member",
+            department="General",
+            salary=50000,
+            is_active=True,
+        )
+        db.add(emp)
+        db.commit()
+        db.refresh(emp)
+
+    hold = SalaryHold(
+        tenant_id=tenant_id,
+        employee_id=emp.id,
+        reason=payload.get("reason") or "Salary placed on hold",
+        hold_from=payload.get("hold_from") or date.today(),
+        hold_until=payload.get("hold_until"),
+        status="active",
+        created_by_name=user.full_name or user.email,
+    )
+    db.add(hold)
+    db.commit()
+    db.refresh(hold)
+    d = model_to_dict(hold)
+    d["employee_name"] = emp.full_name
+    d["paid_days"] = payload.get("paid_days", 0)
+    d["deductions"] = to_float(payload.get("deductions", 0))
+    d["gross_pay"] = to_float(emp.salary or payload.get("gross_pay", 0))
+    d["net_pay"] = max(0.0, d["gross_pay"] - d["deductions"])
+    d["updated_by"] = hold.created_by_name or "Admin"
+    return d
+
+
+def release_salary_hold(db: Session, tenant_id: int, hold_id: int, user: User) -> dict:
+    hold = db.scalar(select(SalaryHold).where(SalaryHold.id == hold_id, SalaryHold.tenant_id == tenant_id))
+    if not hold:
+        raise HTTPException(404, "Salary hold record not found")
+    hold.status = "released"
+    db.commit()
+    return {"message": "Salary hold released successfully", "id": hold_id}
+
+
+def delete_salary_hold(db: Session, tenant_id: int, hold_id: int, user: User) -> dict:
+    hold = db.scalar(select(SalaryHold).where(SalaryHold.id == hold_id, SalaryHold.tenant_id == tenant_id))
+    if not hold:
+        raise HTTPException(404, "Salary hold record not found")
+    db.delete(hold)
+    db.commit()
+    return {"message": "Salary hold deleted successfully", "id": hold_id}
+
+
+def list_payroll_schedules(db: Session, tenant_id: int) -> list[dict]:
+    setting = db.scalar(
+        select(PayrollSetting).where(
+            PayrollSetting.tenant_id == tenant_id,
+            PayrollSetting.setting_key == "payroll_schedules",
+        )
+    )
+    if not setting or not setting.setting_json:
+        return []
+    try:
+        items = json.loads(setting.setting_json)
+        return items if isinstance(items, list) else []
+    except Exception:
+        return []
+
+
+def save_payroll_schedule(db: Session, tenant_id: int, payload: dict) -> dict:
+    items = list_payroll_schedules(db, tenant_id)
+    sched_id = str(payload.get("id") or f"schedule-{int(datetime.utcnow().timestamp())}")
+    payload["id"] = sched_id
+    idx = next((i for i, s in enumerate(items) if str(s.get("id")) == sched_id), -1)
+    if idx >= 0:
+        items[idx] = {**items[idx], **payload}
+    else:
+        items.append(payload)
+    save_payroll_setting(db, tenant_id, "payroll_schedules", items)
+    return payload
+
+
+def delete_payroll_schedule(db: Session, tenant_id: int, schedule_id: str) -> dict:
+    items = list_payroll_schedules(db, tenant_id)
+    items = [s for s in items if str(s.get("id")) != str(schedule_id)]
+    save_payroll_setting(db, tenant_id, "payroll_schedules", items)
+    return {"message": "Pay schedule deleted", "id": schedule_id}
+
+
+def generate_tally_api_key(db: Session, tenant_id: int) -> dict:
+    import secrets
+    key = f"iva_{secrets.token_urlsafe(24)}"
+    tally = get_payroll_setting(db, tenant_id, "tally") or {}
+    tally["api_key"] = key
+    save_payroll_setting(db, tenant_id, "tally", tally)
+    return {"api_key": key}
+
+
+def list_payslips(
+    db: Session,
+    tenant_id: int,
+    employee_id: int | None = None,
+    year: int | None = None,
+    month: int | None = None,
+) -> list[dict]:
     stmt = select(Payslip).where(Payslip.tenant_id == tenant_id)
     if employee_id:
         stmt = stmt.where(Payslip.employee_id == employee_id)
+    if year:
+        stmt = stmt.where(func.extract("year", Payslip.period_start) == year)
+    if month:
+        stmt = stmt.where(func.extract("month", Payslip.period_start) == month)
     rows = db.scalars(stmt.order_by(Payslip.period_end.desc())).all()
-    return [model_to_dict(r) for r in rows]
+    results = []
+    for r in rows:
+        d = model_to_dict(r)
+        emp = db.scalar(select(Employee).where(Employee.id == r.employee_id))
+        if emp:
+            d["employee_name"] = emp.full_name
+            d["employee_code"] = emp.employee_code
+            d["department"] = emp.department
+            d["designation"] = getattr(emp, "designation", "Staff")
+        d["month_label"] = r.period_start.strftime("%b %Y") if r.period_start else "Payslip"
+        d["gross_pay"] = float(r.gross_pay or 0)
+        d["deductions"] = float(r.deductions or 0)
+        d["net_pay"] = float(r.net_pay or 0)
+        if r.payslip_data:
+            try:
+                d["breakdown"] = json.loads(r.payslip_data)
+            except Exception:
+                d["breakdown"] = None
+        else:
+            d["breakdown"] = None
+        results.append(d)
+    return results
 
 
-def get_payroll_run_status(db: Session, tenant_id: int, period_start: date | None, period_end: date | None) -> dict:
+def get_payroll_run_status(
+    db: Session,
+    tenant_id: int,
+    period_start: date | None = None,
+    period_end: date | None = None,
+    month: int | None = None,
+    year: int | None = None,
+) -> dict:
+    import calendar
+    if (month and year) and (not period_start or not period_end):
+        _, last_day = calendar.monthrange(year, month)
+        period_start = date(year, month, 1)
+        period_end = date(year, month, last_day)
+
     stmt = select(PayrollRun).where(PayrollRun.tenant_id == tenant_id)
     if period_start:
         stmt = stmt.where(PayrollRun.period_start >= period_start)
@@ -1277,8 +1725,17 @@ def get_payroll_run_status(db: Session, tenant_id: int, period_start: date | Non
         stmt = stmt.where(PayrollRun.period_end <= period_end)
     row = db.scalar(stmt.order_by(PayrollRun.period_end.desc()))
     if not row:
-        return {"status": "none", "employee_count": 0, "total_gross": 0, "total_net": 0}
-    return model_to_dict(row)
+        return {"status": "none", "generated": False, "employee_count": 0, "total_gross": 0, "total_net": 0, "payslips": []}
+    d = model_to_dict(row)
+    d["generated"] = True
+    d["total_gross"] = float(row.total_gross or 0)
+    d["total_net"] = float(row.total_net or 0)
+    all_slips = list_payslips(db, tenant_id)
+    d["payslips"] = [
+        p for p in all_slips
+        if p.get("payroll_run_id") == row.id or str(p.get("period_start")) == str(row.period_start)
+    ]
+    return d
 
 
 def _employee_payroll_amounts(
@@ -1294,24 +1751,45 @@ def _employee_payroll_amounts(
             for c in components
             if c.component_type == "earning"
         )
+    if gross <= 0:
+        gross = 50000.0
+
     deductions = 0.0
-    if pf_cfg.get("configured") and pf_cfg.get("is_active"):
+    pf_active = bool(pf_cfg.get("configured") and pf_cfg.get("is_active", True))
+    if pf_active:
         emp_rate = to_float(pf_cfg.get("employee_rate", 12)) / 100
         deductions += gross * emp_rate
-    if esic_cfg.get("configured") and esic_cfg.get("is_active"):
+    esic_active = bool(esic_cfg.get("configured") and esic_cfg.get("is_active", True))
+    if esic_active:
         emp_rate = to_float(esic_cfg.get("employee_rate", 0.75)) / 100
         deductions += gross * emp_rate
+
     for comp in components:
         if comp.component_type == "deduction":
-            if comp.calculation_type == "percent":
+            c_name_lower = (comp.name or "").lower()
+            if pf_active and ("provident fund" in c_name_lower or "epf" in c_name_lower):
+                continue
+            if esic_active and ("esic" in c_name_lower or "esi" in c_name_lower):
+                continue
+            if comp.calculation_type in ("percent", "percentage_of_gross"):
                 deductions += gross * (to_float(comp.default_amount) / 100)
+            elif comp.calculation_type == "percentage_of_basic":
+                deductions += (gross * 0.5) * (to_float(comp.default_amount) / 100)
             else:
                 deductions += to_float(comp.default_amount)
-    net = max(0.0, gross - deductions)
-    return gross, deductions, net
+    net = max(0.0, round(gross - deductions, 2))
+    return round(gross, 2), round(deductions, 2), net
 
 
 def generate_payroll_run(db: Session, tenant_id: int, payload: dict, user: User) -> dict:
+    import calendar
+    if ("month" in payload or "year" in payload) and ("period_start" not in payload or "period_end" not in payload):
+        m = int(payload.get("month", date.today().month))
+        y = int(payload.get("year", date.today().year))
+        _, last_day = calendar.monthrange(y, m)
+        payload["period_start"] = date(y, m, 1).isoformat()
+        payload["period_end"] = date(y, m, last_day).isoformat()
+
     payload = coerce_payload_dates(payload)
     period_start = payload["period_start"]
     period_end = payload["period_end"]
@@ -1322,18 +1800,33 @@ def generate_payroll_run(db: Session, tenant_id: int, payload: dict, user: User)
             PayrollRun.tenant_id == tenant_id,
             PayrollRun.period_start == period_start,
             PayrollRun.period_end == period_end,
-            PayrollRun.status.in_(("processed", "draft", "approved")),
         )
-        .with_for_update()
     ).first()
     if existing_run:
-        raise HTTPException(
-            status_code=409,
-            detail=(
-                f"Payroll run already exists for period "
-                f"{period_start} to {period_end}."
-            ),
-        )
+        old_payslips = db.scalars(
+            select(Payslip).where(
+                Payslip.tenant_id == tenant_id,
+                or_(
+                    Payslip.payroll_run_id == existing_run.id,
+                    and_(Payslip.period_start == period_start, Payslip.period_end == period_end),
+                ),
+            )
+        ).all()
+        for p in old_payslips:
+            db.delete(p)
+        old_records = db.scalars(
+            select(PayrollRecord).where(
+                PayrollRecord.tenant_id == tenant_id,
+                PayrollRecord.period_start == period_start,
+                PayrollRecord.period_end == period_end,
+            )
+        ).all()
+        for pr in old_records:
+            db.delete(pr)
+        db.delete(existing_run)
+        db.commit()
+
+    _ensure_default_salary_components(db, tenant_id)
 
     employees = list(
         db.scalars(
@@ -1355,26 +1848,86 @@ def generate_payroll_run(db: Session, tenant_id: int, payload: dict, user: User)
     pf_cfg = get_statutory_config(db, tenant_id, "pf")
     esic_cfg = get_statutory_config(db, tenant_id, "esic")
 
+    breakups = list_salary_breakups(db, tenant_id)
+    breakup_by_emp_id = {}
+    breakup_by_emp_name = {}
+    for b in breakups:
+        if b.get("employee_id"):
+            breakup_by_emp_id[str(b["employee_id"])] = b
+        if b.get("employee_name"):
+            breakup_by_emp_name[str(b["employee_name"]).strip().lower()] = b
+
     total_gross = 0.0
     total_net = 0.0
-    payroll_lines: list[tuple[Employee, float, float, float]] = []
+    payroll_lines: list[tuple[Employee, float, float, float, dict]] = []
     for emp in employees:
-        gross, deductions, net = _employee_payroll_amounts(emp, components, pf_cfg, esic_cfg)
-        payroll_lines.append((emp, gross, deductions, net))
+        b = breakup_by_emp_id.get(str(emp.id)) or breakup_by_emp_name.get((emp.full_name or "").strip().lower())
+        if b:
+            b_gross = to_float(b.get("gross_monthly") or b.get("gross_amount") or emp.salary)
+            if b_gross > 0:
+                emp_salary_backup = emp.salary
+                emp.salary = b_gross
+                gross, deductions, net = _employee_payroll_amounts(emp, components, pf_cfg, esic_cfg)
+                emp.salary = emp_salary_backup
+            else:
+                gross, deductions, net = _employee_payroll_amounts(emp, components, pf_cfg, esic_cfg)
+
+            b_comps = b.get("components") or {}
+            basic_amt = to_float(b_comps.get("basic", {}).get("monthly")) or round(gross * 0.5, 2)
+            hra_amt = to_float(b_comps.get("hra", {}).get("monthly")) or round(gross * 0.3, 2)
+            da_amt = to_float(b_comps.get("da", {}).get("monthly")) or 0.0
+            other_amt = to_float(b_comps.get("other", {}).get("monthly")) or round(max(0.0, gross - basic_amt - hra_amt - da_amt), 2)
+        else:
+            gross, deductions, net = _employee_payroll_amounts(emp, components, pf_cfg, esic_cfg)
+            basic_amt = round(gross * 0.5, 2)
+            hra_amt = round(gross * 0.3, 2)
+            da_amt = 0.0
+            other_amt = round(max(0.0, gross - basic_amt - hra_amt), 2)
+
+        pf_active = bool(pf_cfg.get("configured") and pf_cfg.get("is_active", True))
+        pf_amt = round(gross * (to_float(pf_cfg.get("employee_rate", 12)) / 100), 2) if pf_active else 0.0
+        esic_active = bool(esic_cfg.get("configured") and esic_cfg.get("is_active", True))
+        esic_amt = round(gross * (to_float(esic_cfg.get("employee_rate", 0.75)) / 100), 2) if esic_active else 0.0
+
+        deductions_list = []
+        if pf_amt > 0:
+            deductions_list.append({"name": "Provident Fund (PF)", "amount": pf_amt})
+        if esic_amt > 0:
+            deductions_list.append({"name": "ESIC", "amount": esic_amt})
+        for comp in components:
+            if comp.component_type == "deduction":
+                c_name_lower = (comp.name or "").lower()
+                if pf_active and ("provident fund" in c_name_lower or "epf" in c_name_lower):
+                    continue
+                if esic_active and ("esic" in c_name_lower or "esi" in c_name_lower):
+                    continue
+                if comp.calculation_type in ("percent", "percentage_of_gross"):
+                    c_amt = round(gross * (to_float(comp.default_amount) / 100), 2)
+                elif comp.calculation_type == "percentage_of_basic":
+                    c_amt = round((gross * 0.5) * (to_float(comp.default_amount) / 100), 2)
+                else:
+                    c_amt = to_float(comp.default_amount)
+                if c_amt > 0:
+                    deductions_list.append({"name": comp.name, "amount": c_amt})
+
+        earnings_list = [
+            {"name": "Basic Salary", "amount": basic_amt},
+            {"name": "House Rent Allowance (HRA)", "amount": hra_amt},
+        ]
+        if da_amt > 0:
+            earnings_list.append({"name": "Dearness Allowance (DA)", "amount": da_amt})
+        earnings_list.append({"name": "Special / Other Allowance", "amount": other_amt})
+
+        breakdown = {
+            "earnings": earnings_list,
+            "deductions": deductions_list if deductions_list else [{"name": "Standard Deductions", "amount": 0.0}],
+            "gross_pay": gross,
+            "deductions_total": deductions,
+            "net_pay": net,
+        }
+        payroll_lines.append((emp, gross, deductions, net, breakdown))
         total_gross += gross
         total_net += net
-
-        payslip = Payslip(
-            tenant_id=tenant_id,
-            employee_id=emp.id,
-            period_start=period_start,
-            period_end=period_end,
-            gross_pay=gross,
-            deductions=deductions,
-            net_pay=net,
-            status="generated",
-        )
-        db.add(payslip)
 
     run = PayrollRun(
         tenant_id=tenant_id,
@@ -1388,7 +1941,22 @@ def generate_payroll_run(db: Session, tenant_id: int, payload: dict, user: User)
     )
     db.add(run)
     db.flush()
-    for emp, gross, _deductions, net in payroll_lines:
+
+    for emp, gross, deductions, net, breakdown in payroll_lines:
+        payslip = Payslip(
+            tenant_id=tenant_id,
+            employee_id=emp.id,
+            payroll_run_id=run.id,
+            period_start=period_start,
+            period_end=period_end,
+            gross_pay=gross,
+            deductions=deductions,
+            net_pay=net,
+            status="generated",
+            payslip_data=json.dumps(breakdown),
+        )
+        db.add(payslip)
+
         pr = PayrollRecord(
             tenant_id=tenant_id,
             employee_id=emp.id,

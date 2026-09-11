@@ -87,11 +87,16 @@ export const getSalaryBreakups = (params) => api.get("/hr/payroll/salary-breakup
 export const createSalaryBreakup = (payload) => api.post("/hr/payroll/salary-breakup", payload);
 export const updateSalaryBreakup = (breakupId, payload) =>
   api.patch(`/hr/payroll/salary-breakup/${breakupId}`, payload);
+export const deleteSalaryBreakup = (breakupId) =>
+  api.delete(`/hr/payroll/salary-breakup/${breakupId}`);
 
 export const getPayrollRunStatus = (params) => api.get("/hr/payroll/run", { params });
 export const generatePayroll = (payload) => api.post("/hr/payroll/generate", payload);
 
 export const getSalaryOnHold = (params) => api.get("/hr/payroll/on-hold", { params });
+export const createSalaryHold = (payload) => api.post("/hr/payroll/on-hold", payload);
+export const releaseSalaryHold = (holdId) => api.post(`/hr/payroll/on-hold/${holdId}/release`);
+export const deleteSalaryHold = (holdId) => api.delete(`/hr/payroll/on-hold/${holdId}`);
 export const getMyPayslips = (params) => api.get("/hr/payroll/my-payslips", { params });
 
 export const getPayrollSettings = () => api.get("/hr/payroll/settings");

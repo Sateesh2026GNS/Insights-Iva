@@ -22,6 +22,8 @@ from app.services.hr_module_service import (
     create_org_item,
     create_preboarding,
     create_salary_component,
+    update_salary_component,
+    delete_salary_component,
     create_site_visit,
     create_week_off,
     delete_asset_category,
@@ -54,11 +56,20 @@ from app.services.hr_module_service import (
     offboard_employee,
     delete_offboarded_employee,
     list_org_items,
-
     list_payslips,
     list_preboarding,
     list_salary_components,
+    list_salary_breakups,
+    create_or_update_salary_breakup,
+    delete_salary_breakup,
     list_salary_holds,
+    create_salary_hold,
+    release_salary_hold,
+    delete_salary_hold,
+    list_payroll_schedules,
+    save_payroll_schedule,
+    delete_payroll_schedule,
+    generate_tally_api_key,
     list_shift_assignments,
     return_asset,
     list_site_visits,
@@ -530,8 +541,12 @@ def assets_mapped(tenant_id: int = Depends(tenant_scope(MODULE)), db: Session = 
 
 
 @router.get("/payroll/salary-components")
-def payroll_salary_components(tenant_id: int = Depends(tenant_scope(MODULE)), db: Session = Depends(get_db)):
-    return list_salary_components(db, tenant_id)
+def payroll_salary_components(
+    type: str | None = Query(None),
+    tenant_id: int = Depends(tenant_scope(MODULE)),
+    db: Session = Depends(get_db),
+):
+    return list_salary_components(db, tenant_id, component_type=type)
 
 
 @router.post("/payroll/salary-components")
@@ -541,6 +556,25 @@ def payroll_salary_components_create(
     db: Session = Depends(get_db),
 ):
     return create_salary_component(db, user.tenant_id, payload)
+
+
+@router.patch("/payroll/salary-components/{component_id}")
+def payroll_salary_components_update(
+    component_id: str,
+    payload: dict,
+    user: User = Depends(require_permission(MODULE)),
+    db: Session = Depends(get_db),
+):
+    return update_salary_component(db, user.tenant_id, component_id, payload)
+
+
+@router.delete("/payroll/salary-components/{component_id}")
+def payroll_salary_components_delete(
+    component_id: str,
+    user: User = Depends(require_permission(MODULE)),
+    db: Session = Depends(get_db),
+):
+    return delete_salary_component(db, user.tenant_id, component_id)
 
 
 @router.get("/payroll/statutory/pf")
@@ -587,17 +621,48 @@ def statutory_esic_save(
 
 @router.get("/payroll/salary-breakup")
 def salary_breakup_list(tenant_id: int = Depends(tenant_scope(MODULE)), db: Session = Depends(get_db)):
-    return []
+    return list_salary_breakups(db, tenant_id)
+
+
+@router.post("/payroll/salary-breakup")
+def salary_breakup_create(
+    payload: dict,
+    user: User = Depends(require_permission(MODULE)),
+    db: Session = Depends(get_db),
+):
+    return create_or_update_salary_breakup(db, user.tenant_id, payload, user=user)
+
+
+@router.patch("/payroll/salary-breakup/{breakup_id}")
+def salary_breakup_update(
+    breakup_id: str,
+    payload: dict,
+    user: User = Depends(require_permission(MODULE)),
+    db: Session = Depends(get_db),
+):
+    payload["id"] = breakup_id
+    return create_or_update_salary_breakup(db, user.tenant_id, payload, user=user)
+
+
+@router.delete("/payroll/salary-breakup/{breakup_id}")
+def salary_breakup_delete(
+    breakup_id: str,
+    user: User = Depends(require_permission(MODULE)),
+    db: Session = Depends(get_db),
+):
+    return delete_salary_breakup(db, user.tenant_id, breakup_id)
 
 
 @router.get("/payroll/run")
 def payroll_run_status(
     period_start: date | None = Query(None),
     period_end: date | None = Query(None),
+    month: int | None = Query(None),
+    year: int | None = Query(None),
     tenant_id: int = Depends(tenant_scope(MODULE)),
     db: Session = Depends(get_db),
 ):
-    return get_payroll_run_status(db, tenant_id, period_start, period_end)
+    return get_payroll_run_status(db, tenant_id, period_start, period_end, month, year)
 
 
 @router.post("/payroll/generate")
@@ -614,18 +679,74 @@ def payroll_on_hold(tenant_id: int = Depends(tenant_scope(MODULE)), db: Session 
     return list_salary_holds(db, tenant_id)
 
 
+@router.post("/payroll/on-hold")
+def payroll_on_hold_create(
+    payload: dict,
+    user: User = Depends(require_permission(MODULE)),
+    db: Session = Depends(get_db),
+):
+    return create_salary_hold(db, user.tenant_id, payload, user)
+
+
+@router.delete("/payroll/on-hold/{hold_id}")
+def payroll_on_hold_delete(
+    hold_id: int,
+    user: User = Depends(require_permission(MODULE)),
+    db: Session = Depends(get_db),
+):
+    return delete_salary_hold(db, user.tenant_id, hold_id, user)
+
+
+@router.post("/payroll/on-hold/{hold_id}/release")
+def payroll_on_hold_release(
+    hold_id: int,
+    user: User = Depends(require_permission(MODULE)),
+    db: Session = Depends(get_db),
+):
+    return release_salary_hold(db, user.tenant_id, hold_id, user)
+
+
 @router.get("/payroll/my-payslips")
 def payroll_my_payslips(
     employee_id: int | None = Query(None),
+    year: int | None = Query(None),
+    month: int | None = Query(None),
     tenant_id: int = Depends(tenant_scope(MODULE)),
     db: Session = Depends(get_db),
 ):
-    return list_payslips(db, tenant_id, employee_id)
+    return list_payslips(db, tenant_id, employee_id, year=year, month=month)
 
 
 @router.get("/payroll/settings")
 def payroll_settings_get(tenant_id: int = Depends(tenant_scope(MODULE)), db: Session = Depends(get_db)):
-    return get_payroll_setting(db, tenant_id, "general")
+    cfg = get_payroll_setting(db, tenant_id, "general")
+    if not isinstance(cfg, dict):
+        cfg = {}
+    cfg["schedules"] = list_payroll_schedules(db, tenant_id)
+    return cfg
+
+
+@router.get("/payroll/settings/schedules")
+def payroll_schedules_get(tenant_id: int = Depends(tenant_scope(MODULE)), db: Session = Depends(get_db)):
+    return list_payroll_schedules(db, tenant_id)
+
+
+@router.post("/payroll/settings/schedules")
+def payroll_schedule_save(
+    payload: dict,
+    user: User = Depends(require_permission(MODULE)),
+    db: Session = Depends(get_db),
+):
+    return save_payroll_schedule(db, user.tenant_id, payload)
+
+
+@router.delete("/payroll/settings/schedules/{schedule_id}")
+def payroll_schedule_delete(
+    schedule_id: str,
+    user: User = Depends(require_permission(MODULE)),
+    db: Session = Depends(get_db),
+):
+    return delete_payroll_schedule(db, user.tenant_id, schedule_id)
 
 
 @router.get("/payroll/overtime-settings")
@@ -654,6 +775,14 @@ def tally_config_save(
     db: Session = Depends(get_db),
 ):
     return save_payroll_setting(db, user.tenant_id, "tally", payload)
+
+
+@router.post("/payroll/settings/tally/generate-key")
+def tally_generate_key(
+    user: User = Depends(require_permission(MODULE)),
+    db: Session = Depends(get_db),
+):
+    return generate_tally_api_key(db, user.tenant_id)
 
 
 # ── MIS Reports ──────────────────────────────────────────────────────────────

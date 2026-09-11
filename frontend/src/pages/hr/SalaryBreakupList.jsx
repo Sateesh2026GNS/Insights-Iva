@@ -1,32 +1,21 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
-  MoreVertical,
+  Pencil,
   Plus,
+  Trash2,
 } from "lucide-react";
 
 import Loader from "../../components/common/Loader";
 import { ListPageShell } from "../../components/common/ListPageShell";
 import usePageRefresh from "../../hooks/usePageRefresh";
-import { getSalaryBreakups } from "../../api/hrApi";
+import { useToast } from "../../context/ToastContext";
+import { deleteSalaryBreakup, getEmployees, getSalaryBreakups } from "../../api/hrApi";
 import "./salaryBreakupList.css";
-
-const DEPARTMENT_OPTIONS = [
-  { value: "", label: "Department Name" },
-  { value: "hr", label: "HR Department" },
-  { value: "production", label: "Production" },
-  { value: "accounts", label: "Accounts" },
-];
-
-const EMPLOYEE_OPTIONS = [
-  { value: "", label: "Employee Name" },
-  { value: "demo-satish", label: "Satish Gogulothu" },
-];
 
 function formatDate(value) {
   if (!value) return "—";
@@ -38,8 +27,10 @@ function formatDate(value) {
 
 export default function SalaryBreakupList() {
   const navigate = useNavigate();
+  const { addToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [records, setRecords] = useState([]);
+  const [employees, setEmployees] = useState([]);
   const [departmentFilter, setDepartmentFilter] = useState("");
   const [employeeFilter, setEmployeeFilter] = useState("");
   const [pageSize, setPageSize] = useState(25);
@@ -48,9 +39,18 @@ export default function SalaryBreakupList() {
   const load = useCallback(async (isRefresh = false) => {
     if (!isRefresh) setLoading(true);
     try {
-      const res = await getSalaryBreakups();
-      const rows = res?.data?.items || res?.data || [];
-      setRecords(Array.isArray(rows) ? rows : []);
+      const [breakupRes, empRes] = await Promise.allSettled([
+        getSalaryBreakups(),
+        getEmployees(),
+      ]);
+      if (breakupRes.status === "fulfilled") {
+        const rows = breakupRes.value?.data?.items || breakupRes.value?.data || [];
+        setRecords(Array.isArray(rows) ? rows : []);
+      }
+      if (empRes.status === "fulfilled") {
+        const rows = empRes.value?.data?.items || empRes.value?.data || [];
+        setEmployees(Array.isArray(rows) ? rows : []);
+      }
     } catch {
       setRecords([]);
     } finally {
@@ -61,9 +61,29 @@ export default function SalaryBreakupList() {
   usePageRefresh(() => load(true));
   useEffect(() => { load(); }, [load]);
 
+  const departmentOptions = useMemo(() => {
+    const depts = new Set();
+    records.forEach((r) => { if (r.department) depts.add(r.department); });
+    employees.forEach((e) => { if (e.department) depts.add(e.department); });
+    return [{ value: "", label: "All Departments" }, ...Array.from(depts).map((d) => ({ value: d, label: d }))];
+  }, [records, employees]);
+
+  const employeeOptions = useMemo(() => {
+    const map = new Map();
+    records.forEach((r) => {
+      const id = String(r.employee_id || r.id);
+      const name = r.employee_name || r.name;
+      if (name) map.set(id, name);
+    });
+    employees.forEach((e) => {
+      map.set(String(e.id), e.full_name);
+    });
+    return [{ value: "", label: "All Employees" }, ...Array.from(map.entries()).map(([value, label]) => ({ value, label }))];
+  }, [records, employees]);
+
   const filteredRows = useMemo(() => records.filter((row) => {
     if (departmentFilter && row.department !== departmentFilter) return false;
-    if (employeeFilter && row.employee_id !== employeeFilter) return false;
+    if (employeeFilter && String(row.employee_id) !== String(employeeFilter)) return false;
     return true;
   }), [records, departmentFilter, employeeFilter]);
 
@@ -77,6 +97,18 @@ export default function SalaryBreakupList() {
     setDepartmentFilter("");
     setEmployeeFilter("");
     setPage(1);
+  };
+
+  const handleDelete = async (row) => {
+    const label = row.employee_name || row.name || "breakup";
+    if (!window.confirm(`Delete salary breakup for ${label}?`)) return;
+    try {
+      await deleteSalaryBreakup(row.id);
+      setRecords((prev) => prev.filter((r) => r.id !== row.id));
+      addToast("Salary breakup deleted", "success");
+    } catch {
+      addToast("Failed to delete salary breakup", "error");
+    }
   };
 
   if (loading) return <Loader label="Loading salary breakup list..." />;
@@ -102,7 +134,7 @@ export default function SalaryBreakupList() {
             value={departmentFilter}
             onChange={(e) => { setDepartmentFilter(e.target.value); setPage(1); }}
           >
-            {DEPARTMENT_OPTIONS.map((o) => (
+            {departmentOptions.map((o) => (
               <option key={o.value || o.label} value={o.value}>{o.label}</option>
             ))}
           </select>
@@ -111,7 +143,7 @@ export default function SalaryBreakupList() {
             value={employeeFilter}
             onChange={(e) => { setEmployeeFilter(e.target.value); setPage(1); }}
           >
-            {EMPLOYEE_OPTIONS.map((o) => (
+            {employeeOptions.map((o) => (
               <option key={o.value || o.label} value={o.value}>{o.label}</option>
             ))}
           </select>
@@ -141,19 +173,29 @@ export default function SalaryBreakupList() {
                 pagedRows.map((row, index) => (
                   <tr key={row.id}>
                     <td>{(currentPage - 1) * pageSize + index + 1}</td>
-                    <td>{row.name || row.employee_name || "—"}</td>
+                    <td className="font-semibold text-slate-800">{row.name || row.employee_name || "—"}</td>
                     <td>{row.created_by || "—"}</td>
                     <td>{row.updated_by || "—"}</td>
                     <td>{formatDate(row.effective_from)}</td>
                     <td>
-                      <button
-                        type="button"
-                        className="hr-salary-breakup-list__action-btn"
-                        aria-label="Row actions"
-                        onClick={() => navigate(`/hr/payroll/salary-breakup/create?id=${row.id}`)}
-                      >
-                        <MoreVertical className="h-4 w-4" />
-                      </button>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 transition-colors"
+                          title="Edit Breakup"
+                          onClick={() => navigate(`/hr/payroll/salary-breakup/create?id=${row.id}`)}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-rose-500 hover:bg-rose-50 transition-colors"
+                          title="Delete Breakup"
+                          onClick={() => handleDelete(row)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))

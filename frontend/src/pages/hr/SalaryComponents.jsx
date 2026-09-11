@@ -63,6 +63,41 @@ const DEFAULT_EARNINGS = [
   },
 ];
 
+const DEFAULT_DEDUCTIONS = [
+  {
+    id: "ded-pf",
+    name: "Provident Fund (PF)",
+    calculation_type: "percentage_of_basic",
+    calculation_value: 12,
+    is_active: true,
+    is_fixed: false,
+  },
+  {
+    id: "ded-esic",
+    name: "Employee State Insurance (ESIC)",
+    calculation_type: "percentage_of_gross",
+    calculation_value: 0.75,
+    is_active: true,
+    is_fixed: false,
+  },
+  {
+    id: "ded-pt",
+    name: "Professional Tax (PT)",
+    calculation_type: "flat_amount",
+    calculation_value: 200,
+    is_active: true,
+    is_fixed: false,
+  },
+  {
+    id: "ded-tds",
+    name: "TDS / Income Tax",
+    calculation_type: "flat_amount",
+    calculation_value: 0,
+    is_active: true,
+    is_fixed: false,
+  },
+];
+
 const DEFAULT_OVERTIME = {
   mode: "fixed_amount",
   fixed_amount: "",
@@ -287,12 +322,12 @@ export default function SalaryComponents() {
       ]);
       const earnRows = earnRes?.data?.items || earnRes?.data;
       const dedRows = dedRes?.data?.items || dedRes?.data;
-      setEarnings(Array.isArray(earnRows) ? earnRows : DEFAULT_EARNINGS);
-      setDeductions(Array.isArray(dedRows) ? dedRows : []);
+      setEarnings(Array.isArray(earnRows) && earnRows.length ? earnRows : DEFAULT_EARNINGS);
+      setDeductions(Array.isArray(dedRows) && dedRows.length ? dedRows : DEFAULT_DEDUCTIONS);
       setOvertime(otRes?.data || DEFAULT_OVERTIME);
     } catch {
       setEarnings(DEFAULT_EARNINGS);
-      setDeductions([]);
+      setDeductions(DEFAULT_DEDUCTIONS);
       setOvertime(DEFAULT_OVERTIME);
     } finally {
       setLoading(false);
@@ -309,27 +344,25 @@ export default function SalaryComponents() {
     const current = isEarning ? earnings : deductions;
 
     if (drawerMode === "edit" && editingRow) {
-      const next = current.map((row) => (row.id === editingRow.id ? { ...row, ...payload } : row));
       try {
-        await updateSalaryComponent(editingRow.id, { ...payload, type: tab });
+        const res = await updateSalaryComponent(editingRow.id, { ...payload, type: tab });
+        const updated = res?.data || { ...editingRow, ...payload };
+        const next = current.map((row) => (row.id === editingRow.id ? updated : row));
         if (isEarning) setEarnings(next);
         else setDeductions(next);
         addToast("Component updated", "success");
-      } catch {
-        addToast("Failed to update component", "error");
+      } catch (err) {
+        addToast(err?.response?.data?.detail || "Failed to update component", "error");
       }
       return;
     }
 
-    const created = { id: `${tab}-${Date.now()}`, ...payload };
-    const next = [...current, created];
     try {
       await createSalaryComponent({ ...payload, type: tab });
-      if (isEarning) setEarnings(next);
-      else setDeductions(next);
       addToast("Component added", "success");
-    } catch {
-      addToast("Failed to add component", "error");
+      await load(true);
+    } catch (err) {
+      addToast(err?.response?.data?.detail || "Failed to add component", "error");
     }
   };
 
@@ -342,8 +375,9 @@ export default function SalaryComponents() {
       if (isEarning) setEarnings(next);
       else setDeductions(next);
       addToast("Component deleted", "success");
-    } catch {
-      addToast("Failed to delete component", "error");
+    } catch (err) {
+      const msg = err?.response?.data?.detail || "Failed to delete component";
+      addToast(msg, "error");
     }
   };
 
@@ -524,7 +558,23 @@ export default function SalaryComponents() {
               <tbody>
                 {rows.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="hr-salary-components__empty">No records found</td>
+                    <td colSpan={5} className="hr-salary-components__empty">
+                      <div className="flex flex-col items-center justify-center py-6 gap-2">
+                        <span className="text-slate-500">No {tab === "earnings" ? "earning" : "deduction"} components found</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDrawerMode("create");
+                            setEditingRow(null);
+                            setDrawerOpen(true);
+                          }}
+                          className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 transition-colors shadow-xs"
+                        >
+                          <Plus className="h-4 w-4" />
+                          Add {tab === "earnings" ? "Earning" : "Deduction"} Component
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 ) : (
                   rows.map((row) => (

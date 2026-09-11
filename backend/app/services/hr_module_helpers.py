@@ -77,6 +77,8 @@ def model_to_dict(obj, extra: dict | None = None) -> dict:
         val = getattr(obj, col.name)
         if hasattr(val, "isoformat"):
             data[col.name] = val.isoformat()
+        elif isinstance(val, bool):
+            data[col.name] = val
         elif hasattr(val, "__float__") and col.name not in ("id", "tenant_id"):
             try:
                 data[col.name] = float(val) if val is not None else None

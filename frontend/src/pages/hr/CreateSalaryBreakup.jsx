@@ -5,11 +5,11 @@ import { ArrowLeft, User } from "lucide-react";
 import Loader from "../../components/common/Loader";
 import { ListPageShell } from "../../components/common/ListPageShell";
 import { useToast } from "../../context/ToastContext";
-import { createSalaryBreakup, getSalaryBreakups, updateSalaryBreakup } from "../../api/hrApi";
+import { createSalaryBreakup, getEmployees, getSalaryBreakups, updateSalaryBreakup } from "../../api/hrApi";
 import "./createSalaryBreakup.css";
 
-const EMPLOYEE_OPTIONS = [
-  { value: "demo-satish", label: "Satish Gogulothu", department: "hr" },
+const DEFAULT_EMPLOYEE_OPTIONS = [
+  { value: "demo-satish", label: "Satish Gogulothu", department: "HR" },
 ];
 
 const DEFAULT_COMPONENTS = {
@@ -63,8 +63,9 @@ export default function CreateSalaryBreakup() {
   const editId = searchParams.get("id");
   const { addToast } = useToast();
 
-  const [loading, setLoading] = useState(Boolean(editId));
-  const [employeeId, setEmployeeId] = useState("demo-satish");
+  const [loading, setLoading] = useState(true);
+  const [employeeOptions, setEmployeeOptions] = useState(DEFAULT_EMPLOYEE_OPTIONS);
+  const [employeeId, setEmployeeId] = useState("");
   const [grossAmount, setGrossAmount] = useState("0");
   const [components, setComponents] = useState(DEFAULT_COMPONENTS);
   const [totals, setTotals] = useState({
@@ -76,36 +77,75 @@ export default function CreateSalaryBreakup() {
     netAnnual: 0,
   });
 
-  const employee = EMPLOYEE_OPTIONS.find((e) => e.value === employeeId) || EMPLOYEE_OPTIONS[0];
+  const employee = useMemo(() => {
+    return employeeOptions.find((e) => String(e.value) === String(employeeId)) || employeeOptions[0] || {};
+  }, [employeeOptions, employeeId]);
 
-  const loadRecord = useCallback(async () => {
-    if (!editId) return;
+  const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await getSalaryBreakups();
-      const rows = res?.data?.items || res?.data || [];
-      const found = (Array.isArray(rows) ? rows : []).find((r) => r.id === editId);
-      if (found) {
-        setEmployeeId(found.employee_id || "demo-satish");
-        setGrossAmount(String(found.gross_amount ?? 0));
-        setComponents(found.components || DEFAULT_COMPONENTS);
+      const [empRes, breakupRes] = await Promise.allSettled([
+        getEmployees(),
+        getSalaryBreakups(),
+      ]);
+
+      let empOpts = DEFAULT_EMPLOYEE_OPTIONS;
+      if (empRes.status === "fulfilled") {
+        const rows = empRes.value?.data?.items || empRes.value?.data || [];
+        if (Array.isArray(rows) && rows.length > 0) {
+          empOpts = rows.map((e) => ({
+            value: String(e.id),
+            label: e.full_name,
+            department: e.department || "Staff",
+            salary: e.salary,
+          }));
+        }
+      }
+      setEmployeeOptions(empOpts);
+
+      if (editId && breakupRes.status === "fulfilled") {
+        const rows = breakupRes.value?.data?.items || breakupRes.value?.data || [];
+        const found = (Array.isArray(rows) ? rows : []).find((r) => String(r.id) === String(editId));
+        if (found) {
+          setEmployeeId(String(found.employee_id || empOpts[0]?.value || ""));
+          setGrossAmount(String(found.gross_amount ?? 0));
+          setComponents(found.components || DEFAULT_COMPONENTS);
+          setTotals({
+            grossMonthly: found.gross_monthly ?? 0,
+            grossAnnual: found.gross_annual ?? 0,
+            totalDeduction: found.total_deduction ?? 0,
+            totalDeductionAnnual: found.total_deduction_annual ?? 0,
+            netMonthly: found.net_monthly ?? 0,
+            netAnnual: found.net_annual ?? 0,
+          });
+          return;
+        }
+      }
+
+      if (!editId && empOpts.length > 0) {
+        const first = empOpts[0];
+        setEmployeeId(String(first.value));
+        const initialGross = String(first.salary || 35000);
+        setGrossAmount(initialGross);
+        const calculated = computeBreakup(initialGross, DEFAULT_COMPONENTS);
+        setComponents(calculated.components);
         setTotals({
-          grossMonthly: found.gross_monthly ?? 0,
-          grossAnnual: found.gross_annual ?? 0,
-          totalDeduction: found.total_deduction ?? 0,
-          totalDeductionAnnual: found.total_deduction_annual ?? 0,
-          netMonthly: found.net_monthly ?? 0,
-          netAnnual: found.net_annual ?? 0,
+          grossMonthly: calculated.grossMonthly,
+          grossAnnual: calculated.grossAnnual,
+          totalDeduction: calculated.totalDeduction,
+          totalDeductionAnnual: calculated.totalDeductionAnnual,
+          netMonthly: calculated.netMonthly,
+          netAnnual: calculated.netAnnual,
         });
       }
     } catch {
-      addToast("Failed to load salary breakup", "error");
+      addToast("Failed to load initial data", "error");
     } finally {
       setLoading(false);
     }
   }, [editId, addToast]);
 
-  useEffect(() => { loadRecord(); }, [loadRecord]);
+  useEffect(() => { loadData(); }, [loadData]);
 
   const handleCalculate = () => {
     const result = computeBreakup(grossAmount, components);
@@ -192,10 +232,27 @@ export default function CreateSalaryBreakup() {
                 <select
                   className="hr-create-salary-breakup__select"
                   value={employeeId}
-                  onChange={(e) => setEmployeeId(e.target.value)}
+                  onChange={(e) => {
+                    const newId = e.target.value;
+                    setEmployeeId(newId);
+                    const found = employeeOptions.find((o) => String(o.value) === String(newId));
+                    if (found && found.salary) {
+                      setGrossAmount(String(found.salary));
+                      const calc = computeBreakup(found.salary, components);
+                      setComponents(calc.components);
+                      setTotals({
+                        grossMonthly: calc.grossMonthly,
+                        grossAnnual: calc.grossAnnual,
+                        totalDeduction: calc.totalDeduction,
+                        totalDeductionAnnual: calc.totalDeductionAnnual,
+                        netMonthly: calc.netMonthly,
+                        netAnnual: calc.netAnnual,
+                      });
+                    }
+                  }}
                 >
-                  {EMPLOYEE_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
+                  {employeeOptions.map((o) => (
+                    <option key={o.value} value={o.value}>{o.label} ({o.department})</option>
                   ))}
                 </select>
               </div>

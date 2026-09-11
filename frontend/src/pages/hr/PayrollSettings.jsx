@@ -177,8 +177,12 @@ export default function PayrollSettings() {
         getTallyConfig(),
       ]);
       const rows = settingsRes?.data?.schedules || settingsRes?.data || [];
-      setSchedules(Array.isArray(rows) ? rows : DEFAULT_SCHEDULES);
-      setTallyForm(tallyRes?.data || DEFAULT_TALLY);
+      setSchedules(Array.isArray(rows) && rows.length ? rows : DEFAULT_SCHEDULES);
+      setTallyForm(
+        tallyRes?.data && typeof tallyRes.data === "object" && Object.keys(tallyRes.data).length
+          ? { ...DEFAULT_TALLY, ...tallyRes.data }
+          : DEFAULT_TALLY
+      );
     } catch {
       setSchedules(DEFAULT_SCHEDULES);
       setTallyForm(DEFAULT_TALLY);
@@ -217,27 +221,22 @@ export default function PayrollSettings() {
       employees: DEMO_EMPLOYEES,
     };
 
-    const next = editingId
-      ? schedules.map((s) => (s.id === editingId ? { ...s, ...payload } : s))
-      : [...schedules, payload];
-
     try {
       await savePayrollSchedule(payload);
-      setSchedules(next);
       addToast(editingId ? "Pay schedule updated" : "Pay schedule saved", "success");
       resetForm();
+      await load(true);
     } catch {
       addToast("Failed to save pay schedule", "error");
     }
   };
 
   const handleDeleteSchedule = async (id) => {
-    const next = schedules.filter((s) => s.id !== id);
     try {
       await deletePayrollSchedule(id);
-      setSchedules(next);
       addToast("Pay schedule deleted", "success");
       if (editingId === id) resetForm();
+      await load(true);
     } catch {
       addToast("Failed to delete pay schedule", "error");
     }
@@ -247,21 +246,22 @@ export default function PayrollSettings() {
     const payload = { ...tallyForm };
     try {
       await saveTallyConfig(payload);
-      setTallyForm(payload);
       addToast("Tally configuration saved", "success");
+      await load(true);
     } catch {
       addToast("Failed to save Tally configuration", "error");
     }
   };
 
   const handleGenerateKey = async () => {
-    const key = `iva-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
     try {
       const res = await generateTallyApiKey();
-      const apiKey = res?.data?.api_key || key;
-      const next = { ...tallyForm, api_key: apiKey };
-      setTallyForm(next);
+      const apiKey = res?.data?.api_key;
+      if (apiKey) {
+        setTallyForm((p) => ({ ...p, api_key: apiKey }));
+      }
       addToast("API key generated", "success");
+      await load(true);
     } catch {
       addToast("Failed to generate API key", "error");
     }
