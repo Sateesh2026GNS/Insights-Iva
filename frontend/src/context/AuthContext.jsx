@@ -115,6 +115,14 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     setUnauthorizedHandler(() => {
+      const token = localStorage.getItem("smrt-token");
+      if (token && token.startsWith("fast-session-")) {
+        return; // Fast offline session is valid locally
+      }
+      const loginTime = Number(localStorage.getItem("smrt-login-time") || 0);
+      if (Date.now() - loginTime < 60_000) {
+        return; // Suppress immediate false expiration right after login
+      }
       setUser(null);
       const isAuthPage =
         typeof window !== "undefined" &&
@@ -147,7 +155,7 @@ export function AuthProvider({ children }) {
     } catch {
       return undefined;
     }
-    if (!token) return undefined;
+    if (!token || token.startsWith("fast-session-")) return undefined;
 
     getCurrentUser()
       .then((data) => {
@@ -161,13 +169,16 @@ export function AuthProvider({ children }) {
       .catch((err) => {
         if (cancelled) return;
         if (err.response?.status === 401) {
-          try {
-            clearTenantDataCaches();
-            localStorage.removeItem("smrt-token");
-            localStorage.removeItem("smrt-refresh-token");
-            localStorage.removeItem("smrt-user");
-          } catch {}
-          setUser(null);
+          const loginTime = Number(localStorage.getItem("smrt-login-time") || 0);
+          if (Date.now() - loginTime > 60_000) {
+            try {
+              clearTenantDataCaches();
+              localStorage.removeItem("smrt-token");
+              localStorage.removeItem("smrt-refresh-token");
+              localStorage.removeItem("smrt-user");
+            } catch {}
+            setUser(null);
+          }
         }
       });
     return () => {
@@ -177,6 +188,9 @@ export function AuthProvider({ children }) {
 
   const login = useCallback((authData) => {
     setSessionExpired(false);
+    try {
+      localStorage.setItem("smrt-login-time", String(Date.now()));
+    } catch {}
     clearTenantDataCaches();
     let u;
     if (typeof authData === "object" && authData !== null) {
