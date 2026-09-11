@@ -303,12 +303,17 @@ class Settings(BaseSettings):
 
     @property
     def google_oauth_redirect(self) -> str:
-        if self.google_oauth_redirect_uri.strip():
-            return self.google_oauth_redirect_uri.strip()
+        uri = self.google_oauth_redirect_uri.strip()
+        if self.is_production:
+            if uri and uri.startswith("https://") and "localhost" not in uri and not uri.startswith("https/"):
+                return uri
+            return "https://insights-iva-api.onrender.com/integrations/google/calendar/callback"
+        if uri and "://" in uri and not uri.startswith("https/"):
+            return uri
         base = self.frontend_base_url.rstrip("/")
-        if ":5173" in base or ":5174" in base:
+        if ":5173" in base or ":5174" in base or "localhost" in base or "127.0.0.1" in base:
             return "http://localhost:8000/integrations/google/calendar/callback"
-        return f"{base.rsplit(':', 1)[0] if '://' in base else base}/integrations/google/calendar/callback"
+        return "https://insights-iva-api.onrender.com/integrations/google/calendar/callback"
 
     @property
     def google_calendar_configured(self) -> bool:

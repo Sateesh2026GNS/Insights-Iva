@@ -36,6 +36,34 @@ function SalesJobCardAuthoringRoute({ children }) {
   return children;
 }
 
+import { getApiBaseURL } from "../api/axiosConfig";
+
+function GoogleCalendarOAuthRedirect() {
+  const [searchParams] = useSearchParams();
+  const search = searchParams.toString();
+  const isLocal =
+    typeof window !== "undefined" &&
+    (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+  const fallbackBase = isLocal
+    ? "http://localhost:8000"
+    : "https://insights-iva-api.onrender.com";
+  const apiBase = (getApiBaseURL() || fallbackBase).replace(/\/$/, "");
+  const targetUrl = `${apiBase}/integrations/google/calendar/callback${search ? `?${search}` : ""}`;
+
+  if (typeof window !== "undefined") {
+    window.location.replace(targetUrl);
+  }
+
+  return (
+    <div className="flex h-screen w-full items-center justify-center p-6 text-center">
+      <div className="space-y-2">
+        <p className="text-base font-medium text-[var(--color-text)]">Connecting Google Calendar…</p>
+        <p className="text-sm text-[var(--color-text-secondary)]">Please wait while we complete authorization.</p>
+      </div>
+    </div>
+  );
+}
+
 export default function AppRoutes() {
   return (
     <Routes>
@@ -681,6 +709,8 @@ export default function AppRoutes() {
       <Route path="/documents" element={<ProtectedRoute><P.DocumentsDashboard /></ProtectedRoute>} />
       <Route path="/meetings" element={<ProtectedRoute><P.MeetingsList /></ProtectedRoute>} />
       <Route path="/meetings/:id" element={<ProtectedRoute><P.MeetingDetail /></ProtectedRoute>} />
+      <Route path="/integrations/google/calendar/callback" element={<GoogleCalendarOAuthRedirect />} />
+      <Route path="/api/integrations/google/calendar/callback" element={<GoogleCalendarOAuthRedirect />} />
       <Route path="/documents/purchase" element={<ProtectedRoute><P.PurchaseDocuments /></ProtectedRoute>} />
       <Route path="/documents/production" element={<ProtectedRoute><P.ProductionFiles /></ProtectedRoute>} />
       <Route path="/documents/quality" element={<ProtectedRoute><P.QualityCertificates /></ProtectedRoute>} />

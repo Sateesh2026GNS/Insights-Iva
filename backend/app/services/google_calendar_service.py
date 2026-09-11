@@ -307,8 +307,13 @@ def get_valid_credentials(
     except TypeError:
         needs_refresh = bool(creds.refresh_token)  # assume expired, just refresh
     if needs_refresh:
-        creds.refresh(GoogleAuthRequest())
-        _persist_refreshed_token(db, row, creds)
+        try:
+            creds.refresh(GoogleAuthRequest())
+            _persist_refreshed_token(db, row, creds)
+        except Exception as exc:
+            raise GoogleCalendarNotConnectedError(
+                "Google Calendar authorization expired or was revoked. Please reconnect."
+            ) from exc
     return row, creds
 
 
