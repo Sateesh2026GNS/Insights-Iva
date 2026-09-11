@@ -310,8 +310,12 @@ export default function MeetingsCalendarView({
             disabled={connecting}
             className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-md bg-blue-600 hover:bg-blue-700 text-white shadow-xs transition-colors shrink-0 cursor-pointer disabled:opacity-60"
           >
-            <Link2 className="h-3.5 w-3.5" />
-            {connecting ? "Connecting…" : "Connect Google Calendar"}
+            {connecting ? (
+              <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent" />
+            ) : (
+              <Link2 className="h-3.5 w-3.5" />
+            )}
+            <span>{connecting ? "Opening Google Sign-In…" : "Connect Google Calendar"}</span>
           </button>
         </div>
       ) : null}
@@ -409,12 +413,16 @@ export default function MeetingsCalendarView({
                 </p>
                 <button
                   type="button"
-                  className="meetings-cal__connect-btn w-full justify-center"
+                  className="meetings-cal__connect-btn w-full justify-center text-center cursor-pointer select-none"
                   onClick={onConnectGoogle}
                   disabled={connecting}
                 >
-                  <Link2 className="h-4 w-4" />
-                  {connecting ? "Connecting to Google…" : "Connect Google Calendar"}
+                  {connecting ? (
+                    <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  ) : (
+                    <Link2 className="h-4 w-4 shrink-0" />
+                  )}
+                  <span>{connecting ? "Opening Google Sign-In…" : "Connect Google Calendar"}</span>
                 </button>
                 <a
                   href="https://calendar.google.com"
