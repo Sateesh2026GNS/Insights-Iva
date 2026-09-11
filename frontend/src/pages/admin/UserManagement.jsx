@@ -71,7 +71,17 @@ export default function UserManagement() {
     try {
       const [u, r] = await Promise.all([getUsers(), getRoles()]);
       setUsers(u.data || []);
-      setRoles(r.data || []);
+      const rawRoles = r.data || [];
+      const seenNames = new Set();
+      const uniqueRoles = [];
+      for (const role of rawRoles) {
+        const k = String(role.name || "").trim().toLowerCase();
+        if (k && !seenNames.has(k)) {
+          seenNames.add(k);
+          uniqueRoles.push(role);
+        }
+      }
+      setRoles(uniqueRoles);
     } catch (err) {
       if (!isRefresh) addToast("Failed to load users", "error");
       if (isRefresh) throw err;

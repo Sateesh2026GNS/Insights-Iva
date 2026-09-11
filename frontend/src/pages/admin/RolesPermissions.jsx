@@ -38,7 +38,17 @@ export default function RolesPermissions() {
     if (!isRefresh) setLoading(true);
     try {
       const [r, m] = await Promise.all([getRoles(), getModules()]);
-      setRoles(r.data || []);
+      const rawRoles = r.data || [];
+      const seenNames = new Set();
+      const uniqueRoles = [];
+      for (const role of rawRoles) {
+        const k = String(role.name || "").trim().toLowerCase();
+        if (k && !seenNames.has(k)) {
+          seenNames.add(k);
+          uniqueRoles.push(role);
+        }
+      }
+      setRoles(uniqueRoles);
       setModules(m.data || []);
     } catch (err) {
       if (!isRefresh) addToast("Failed to load roles", "error");

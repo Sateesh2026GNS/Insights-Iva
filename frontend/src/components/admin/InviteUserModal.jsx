@@ -48,7 +48,16 @@ export default function InviteUserModal({
       try {
         const [rolesRes, usersRes] = await Promise.all([getRoles(), getUsers()]);
         if (cancelled) return;
-        const roleList = rolesRes.data || [];
+        const rawRoles = rolesRes.data || [];
+        const seenNames = new Set();
+        const roleList = [];
+        for (const r of rawRoles) {
+          const k = String(r.name || "").trim().toLowerCase();
+          if (k && !seenNames.has(k)) {
+            seenNames.add(k);
+            roleList.push(r);
+          }
+        }
         setRoles(roleList);
         setExistingUsers(usersRes.data || []);
 

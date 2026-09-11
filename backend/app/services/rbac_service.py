@@ -378,9 +378,18 @@ def list_roles(db: Session, tenant_id: int) -> list[dict]:
             select(Role)
             .where(Role.tenant_id == tenant_id)
             .options(selectinload(Role.users))
-            .order_by(Role.name)
+            .order_by(Role.id.asc())
         )
-        return [serialize_role(r) for r in db.scalars(stmt).all()]
+        raw_roles = db.scalars(stmt).all()
+        seen_names = set()
+        unique_roles = []
+        for r in raw_roles:
+            name_key = (r.name or "").strip().lower()
+            if name_key and name_key not in seen_names:
+                seen_names.add(name_key)
+                unique_roles.append(r)
+        unique_roles.sort(key=lambda x: (x.name or "").lower())
+        return [serialize_role(r) for r in unique_roles]
     except Exception as exc:
         try:
             db.rollback()
