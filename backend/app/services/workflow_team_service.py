@@ -585,6 +585,9 @@ def submit_material_check(
     """Inventory team verifies material availability."""
     _assert_team(user, TEAM_INVENTORY)
     so = get_sales_order_or_404(db, tenant_id, sales_order_id)
+    from app.services.sales_order_cancellation_service import assert_order_not_cancelled
+
+    assert_order_not_cancelled(so)
     ws = (so.workflow_status or "").upper()
 
     mc = db.scalars(
@@ -921,6 +924,9 @@ def submit_store_material_issue(
 
     _assert_team(user, TEAM_INVENTORY)
     so = get_sales_order_or_404(db, tenant_id, sales_order_id)
+    from app.services.sales_order_cancellation_service import assert_order_not_cancelled
+
+    assert_order_not_cancelled(so)
     ws = (so.workflow_status or "").upper()
     if ws not in {"STORE_ISSUE_PENDING", "STORE_ISSUE_PARTIAL", "MATERIAL_AVAILABLE"}:
         raise HTTPException(status_code=409, detail=f"Store issue not allowed at {ws}")

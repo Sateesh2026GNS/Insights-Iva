@@ -17,12 +17,15 @@ export function getSalesOrderWorkflowGuidance(order, options = {}) {
   const invoiced = Boolean(order.invoiced);
 
   if (status === "cancelled") {
+    const reason = order.cancellation_reason
+      ? `Customer cancellation reason: ${order.cancellation_reason}`
+      : "This order is no longer active in the workflow.";
     return {
       tone: "warning",
       title: "Sales order cancelled",
       statusLabel: "Cancelled",
       message: "This order is no longer active in the workflow.",
-      nextStep: "Create a new sales order or job card if production should continue.",
+      nextStep: reason,
     };
   }
 

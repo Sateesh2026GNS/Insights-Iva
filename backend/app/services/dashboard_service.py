@@ -1,11 +1,14 @@
 """Main ERP dashboard — live KPIs from production data."""
 
+from calendar import monthrange
 from datetime import date, timedelta
 
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.models.machine import Machine
+from app.models.manufacturing_workflow import SalesJobCard
+from app.models.product import Product
 from app.models.production import Batch, DailyProductionReport, ProductionOrder, WorkOrder
 from app.models.inventory import InventoryItem, StockLevel, StockMovement, StockTransfer, StoreIssueRequest, Warehouse
 from app.models.procurement import MaterialRequest
@@ -315,6 +318,202 @@ PIPELINE_PLANNED = ("draft", "planned")
 PIPELINE_RELEASED = ("released", "material_ready", "machine_ready")
 PIPELINE_IN_PRODUCTION = ("in_progress", "running", "started", "active")
 PIPELINE_COMPLETED = ("completed", "closed", "done")
+
+
+def _fiscal_year_bounds(today: date) -> tuple[date, date]:
+    """Indian fiscal year: Apr 1 – Mar 31."""
+    if today.month >= 4:
+        return date(today.year, 4, 1), date(today.year + 1, 3, 31)
+    return date(today.year - 1, 4, 1), date(today.year, 3, 31)
+
+
+def _fiscal_month_starts(fy_start: date) -> list[date]:
+    months: list[date] = []
+    y, m = fy_start.year, fy_start.month
+    for _ in range(12):
+        months.append(date(y, m, 1))
+        if m == 12:
+            y, m = y + 1, 1
+        else:
+            m += 1
+    return months
+
+
+def _monthly_completion_series(
+    db: Session,
+    tenant_id: int,
+    model,
+    *,
+    done_statuses: tuple[str, ...],
+    status_attr,
+    date_attr,
+    fy_start: date,
+    fy_end: date,
+) -> list[dict]:
+    rows: list[dict] = []
+    for month_start in _fiscal_month_starts(fy_start):
+        last_day = monthrange(month_start.year, month_start.month)[1]
+        month_end = date(month_start.year, month_start.month, last_day)
+        if month_end < fy_start or month_start > fy_end:
+            continue
+        count = int(
+            db.scalar(
+                select(func.count(model.id)).where(
+                    model.tenant_id == tenant_id,
+                    status_attr.in_(done_statuses),
+                    func.date(date_attr) >= month_start,
+                    func.date(date_attr) <= month_end,
+                )
+            )
+            or 0
+        )
+        rows.append(
+            {
+                "month": month_start.strftime("%b"),
+                "year": month_start.year,
+                "label": month_start.strftime("%b %Y"),
+                "count": count,
+            }
+        )
+    return rows
+
+
+def _get_admin_production_widgets(db: Session, tenant_id: int, today: date) -> dict:
+    """Production summary, charts, and lists for the Admin dashboard."""
+    po_base = ProductionOrder.tenant_id == tenant_id
+    po_pending_statuses = ("planned", "pending", "draft")
+    po_in_progress_statuses = ("in_progress", "running", "active")
+    po_done_statuses = ("completed", "closed", "done")
+
+    mo_in_progress = int(
+        db.scalar(
+            select(func.count(ProductionOrder.id)).where(
+                po_base, ProductionOrder.status.in_(po_in_progress_statuses)
+            )
+        )
+        or 0
+    )
+    mo_pending = int(
+        db.scalar(
+            select(func.count(ProductionOrder.id)).where(
+                po_base, ProductionOrder.status.in_(po_pending_statuses)
+            )
+        )
+        or 0
+    )
+
+    jc_base = SalesJobCard.tenant_id == tenant_id
+    jc_pending_stages = ("SAVED", "RETURNED_TO_SALES")
+    job_cards_pending = int(
+        db.scalar(
+            select(func.count(SalesJobCard.id)).where(
+                jc_base,
+                or_(
+                    SalesJobCard.workflow_stage.in_(jc_pending_stages),
+                    SalesJobCard.workflow_stage.is_(None),
+                    SalesJobCard.workflow_stage == "",
+                ),
+            )
+        )
+        or 0
+    )
+    job_cards_in_progress = int(
+        db.scalar(
+            select(func.count(SalesJobCard.id)).where(
+                jc_base,
+                SalesJobCard.workflow_stage.isnot(None),
+                SalesJobCard.workflow_stage != "",
+                SalesJobCard.workflow_stage.notin_(("COMPLETED", "SAVED", "RETURNED_TO_SALES")),
+            )
+        )
+        or 0
+    )
+
+    fy_start, fy_end = _fiscal_year_bounds(today)
+    completed_mo_chart = _monthly_completion_series(
+        db,
+        tenant_id,
+        ProductionOrder,
+        done_statuses=po_done_statuses,
+        status_attr=ProductionOrder.status,
+        date_attr=ProductionOrder.updated_at,
+        fy_start=fy_start,
+        fy_end=fy_end,
+    )
+    completed_jc_chart = _monthly_completion_series(
+        db,
+        tenant_id,
+        SalesJobCard,
+        done_statuses=("COMPLETED",),
+        status_attr=SalesJobCard.workflow_stage,
+        date_attr=SalesJobCard.updated_at,
+        fy_start=fy_start,
+        fy_end=fy_end,
+    )
+
+    item_rows = db.execute(
+        select(
+            ProductionOrder.id,
+            ProductionOrder.order_number,
+            ProductionOrder.planned_quantity,
+            ProductionOrder.status,
+            ProductionOrder.due_date,
+            Product.name,
+            Product.sku,
+        )
+        .join(Product, Product.id == ProductionOrder.product_id)
+        .where(
+            po_base,
+            ProductionOrder.status.in_(po_pending_statuses),
+        )
+        .order_by(ProductionOrder.due_date.asc().nullslast(), ProductionOrder.created_at.desc())
+        .limit(12)
+    ).all()
+    items_to_manufacture = [
+        {
+            "id": row.id,
+            "order_number": row.order_number,
+            "product": row.name or row.sku or "—",
+            "quantity": float(row.planned_quantity or 0),
+            "status": row.status,
+            "due_date": row.due_date.date().isoformat() if row.due_date else None,
+        }
+        for row in item_rows
+    ]
+
+    wc_rows = db.execute(
+        select(Machine.work_center, func.count(WorkOrder.id))
+        .join(WorkOrder, WorkOrder.machine_id == Machine.id)
+        .where(
+            Machine.tenant_id == tenant_id,
+            WorkOrder.tenant_id == tenant_id,
+            Machine.work_center.isnot(None),
+            Machine.work_center != "",
+            ~WorkOrder.status.in_(("completed", "closed", "done", "cancelled")),
+        )
+        .group_by(Machine.work_center)
+        .order_by(func.count(WorkOrder.id).desc())
+        .limit(12)
+    ).all()
+    work_center_order_status = [
+        {"work_center": row[0], "pending_orders": int(row[1] or 0)} for row in wc_rows
+    ]
+
+    return {
+        "production_summary": {
+            "mo_in_progress": mo_in_progress,
+            "mo_pending": mo_pending,
+            "job_cards_in_progress": job_cards_in_progress,
+            "job_cards_pending": job_cards_pending,
+        },
+        "completed_mo_chart": completed_mo_chart,
+        "completed_mo_total": sum(p["count"] for p in completed_mo_chart),
+        "completed_job_cards_chart": completed_jc_chart,
+        "completed_job_cards_total": sum(p["count"] for p in completed_jc_chart),
+        "items_to_manufacture": items_to_manufacture,
+        "work_center_order_status": work_center_order_status,
+        "fiscal_year_label": f"{fy_start.year} – {fy_end.year}",
+    }
 
 
 def _get_production_pipeline(db: Session, tenant_id: int) -> dict:
@@ -1010,6 +1209,7 @@ def get_erp_dashboard(
         "todays_summary": todays_summary,
         "quick_actions_summary": _get_quick_actions_summary(db, tenant_id, today),
         "production_pipeline": _get_production_pipeline(db, tenant_id),
+        "admin_production_widgets": _get_admin_production_widgets(db, tenant_id, today),
         "date": today.isoformat(),
         "dashboard_profile": "admin",
         "visible_sections": [

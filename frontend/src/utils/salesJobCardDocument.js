@@ -32,7 +32,10 @@ function mapProductLines(productLines, products) {
       product_name: line.product_name || prod?.name || line.item_description || "",
       description: line.description || prod?.description || line.product_name || "",
       quantity: line.quantity,
-      uom: line.unit || prod?.unit || "Nos",
+      uom: line.uom || line.unit || prod?.unit || "Nos",
+      unit_price: line.unit_price ?? line.price,
+      line_amount: line.line_amount ?? line.total_amount ?? line.amount,
+      total_amount: line.total_amount ?? line.line_amount ?? line.amount,
     };
   });
 }

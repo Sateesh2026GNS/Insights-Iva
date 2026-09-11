@@ -1,5 +1,5 @@
 import re
-from datetime import date
+from datetime import date, datetime
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -287,6 +287,24 @@ class SalesOrderBase(BaseModel):
     priority: str = "medium"
     workflow_status: str | None = None
     version: int | None = None
+    cancellation_reason: str | None = None
+    cancellation_type: str | None = None
+    cancelled_by_user_id: int | None = None
+    cancelled_at: datetime | None = None
+
+
+class SalesOrderCancelRequest(BaseModel):
+    cancellation_reason: str = Field(..., min_length=1, max_length=2000)
+    cancellation_type: str = Field(default="customer_request", max_length=32)
+    expected_version: int | None = Field(None, ge=1)
+
+    @field_validator("cancellation_reason", mode="before")
+    @classmethod
+    def strip_reason(cls, value: Any) -> str:
+        text = str(value or "").strip()
+        if not text:
+            raise ValueError("Cancellation reason is required")
+        return text
 
 
 class SalesOrderLineBase(BaseModel):

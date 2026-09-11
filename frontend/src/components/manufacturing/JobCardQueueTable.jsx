@@ -26,7 +26,11 @@ import {
   fmtListUom,
   rowCustomerPo,
 } from "../../utils/jobCardQueueDisplay";
-import { manualJobCardCanSend, scrollToManualMaterialCheck } from "../../utils/manualSalesJobCard";
+import {
+  manualJobCardCanDelete,
+  manualJobCardCanSend,
+  scrollToManualMaterialCheck,
+} from "../../utils/manualSalesJobCard";
 
 function isOverdue(deliveryDate) {
   if (!deliveryDate) return false;
@@ -107,6 +111,9 @@ function buildRowMenuItems({
   const printFn = () => printSalesJobCardLandscape(row, user);
   const pdfFn = () => downloadSalesJobCardPdf(row, user);
   const rowCanSend = Boolean(onSend) && canSend && manualJobCardCanSend(row);
+  const rowCanDelete =
+    Boolean(onDelete) &&
+    (row.is_manual ? manualJobCardCanDelete(row, { canDelete }) : Boolean(canDelete));
   const rowCanMaterialCheck =
     storeMode &&
     row.is_manual &&
@@ -156,11 +163,11 @@ function buildRowMenuItems({
       icon: <Download className="h-4 w-4" />,
       onClick: pdfFn,
     },
-    canDelete && onDelete && !(row.is_manual && (row.sent_to || row.sent_at))
+    rowCanDelete
       ? {
           label: "Delete",
           icon: <Trash2 className="h-4 w-4" />,
-          tone: "danger",
+          danger: true,
           onClick: () => onDelete(row),
         }
       : null,
@@ -682,11 +689,13 @@ export default function JobCardQueueTable({
                             icon: <Download className="h-4 w-4" />,
                             onClick: () => downloadSalesJobCardPdf(row, user),
                           },
-                          canDelete && onDelete
+                          (row.is_manual
+                            ? manualJobCardCanDelete(row, { canDelete })
+                            : canDelete && onDelete)
                             ? {
                                 label: "Delete",
                                 icon: <Trash2 className="h-4 w-4" />,
-                                tone: "danger",
+                                danger: true,
                                 onClick: () => onDelete(row),
                               }
                             : null,

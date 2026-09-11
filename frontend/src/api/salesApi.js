@@ -18,6 +18,8 @@ export const updateSalesOrderStatus = (orderId, status) =>
   api.patch(`/sales/sales-orders/${orderId}/status`, null, { params: { status } });
 export const confirmSalesOrder = (orderId) =>
   api.post(`/sales/sales-orders/${orderId}/confirm`);
+export const cancelSalesOrder = (orderId, payload) =>
+  api.post(`/sales/sales-orders/${orderId}/cancel`, payload, { skipGlobalError: true });
 export const updateSalesOrderDispatch = (orderId, flags) =>
   api.patch(`/sales/sales-orders/${orderId}/dispatch`, null, { params: flags });
 export const confirmSalesOrderDelivery = (orderId) =>

@@ -1,6 +1,6 @@
 from datetime import date, datetime
 
-from sqlalchemy import Boolean, Date, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin
@@ -132,6 +132,10 @@ class SalesOrder(Base, TimestampMixin):
     priority: Mapped[str] = mapped_column(String(16), default="medium", nullable=False)
     workflow_status: Mapped[str | None] = mapped_column(String(64), index=True)
     version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    cancellation_reason: Mapped[str | None] = mapped_column(Text)
+    cancellation_type: Mapped[str | None] = mapped_column(String(32))
+    cancelled_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     customer = relationship("Customer", back_populates="sales_orders")
     invoices = relationship("Invoice", back_populates="sales_order")

@@ -39,6 +39,20 @@ from app.services.accounts_service import (
     list_incomes,
     update_expense,
 )
+from app.schemas.gst_report import (
+    GstGstr3bRead,
+    GstReturnViewRead,
+    GstSummaryRead,
+    GstUncertainTransactionsRead,
+    GstVoucherRegisterRead,
+)
+from app.services.gst_report_service import (
+    get_gst_gstr3b,
+    get_gst_return_view,
+    get_gst_summary,
+    get_gst_uncertain_transactions,
+    get_gst_voucher_register,
+)
 from app.services.finance_extended_service import (
     get_ap_summary,
     get_ar_summary,
@@ -432,6 +446,99 @@ def gst_extended_endpoint(
     # Extra query params kept for SMRT API compatibility; service uses year.
     _ = (financial_year, month, branch)
     return get_gst_extended(db, tenant_id, year)
+
+
+def _parse_gst_period(
+    date_from: str | None,
+    date_to: str | None,
+) -> tuple[date | None, date | None]:
+    parsed_from = None
+    parsed_to = None
+    if date_from:
+        try:
+            parsed_from = date.fromisoformat(date_from[:10])
+        except ValueError:
+            raise HTTPException(status_code=422, detail="Invalid date_from")
+    if date_to:
+        try:
+            parsed_to = date.fromisoformat(date_to[:10])
+        except ValueError:
+            raise HTTPException(status_code=422, detail="Invalid date_to")
+    if parsed_from and parsed_to and parsed_to < parsed_from:
+        raise HTTPException(status_code=422, detail="date_to must be on or after date_from")
+    return parsed_from, parsed_to
+
+
+@router.get("/gst/summary", response_model=GstSummaryRead)
+def gst_summary_endpoint(
+    tenant_id: int = Depends(tenant_scope(MODULE)),
+    date_from: str | None = Query(None),
+    date_to: str | None = Query(None),
+    db: Session = Depends(get_db),
+):
+    parsed_from, parsed_to = _parse_gst_period(date_from, date_to)
+    return get_gst_summary(db, tenant_id, parsed_from, parsed_to)
+
+
+@router.get("/gst/return-view", response_model=GstReturnViewRead)
+def gst_return_view_endpoint(
+    tenant_id: int = Depends(tenant_scope(MODULE)),
+    date_from: str | None = Query(None),
+    date_to: str | None = Query(None),
+    db: Session = Depends(get_db),
+):
+    parsed_from, parsed_to = _parse_gst_period(date_from, date_to)
+    return get_gst_return_view(db, tenant_id, parsed_from, parsed_to)
+
+
+@router.get("/gst/gstr3b", response_model=GstGstr3bRead)
+def gst_gstr3b_endpoint(
+    tenant_id: int = Depends(tenant_scope(MODULE)),
+    date_from: str | None = Query(None),
+    date_to: str | None = Query(None),
+    db: Session = Depends(get_db),
+):
+    parsed_from, parsed_to = _parse_gst_period(date_from, date_to)
+    return get_gst_gstr3b(db, tenant_id, parsed_from, parsed_to)
+
+
+@router.get("/gst/voucher-register", response_model=GstVoucherRegisterRead)
+def gst_voucher_register_endpoint(
+    tenant_id: int = Depends(tenant_scope(MODULE)),
+    date_from: str | None = Query(None),
+    date_to: str | None = Query(None),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=200),
+    voucher_type: str | None = Query(None),
+    party_gstin: str | None = Query(None),
+    return_status: str | None = Query(None),
+    search: str | None = Query(None),
+    db: Session = Depends(get_db),
+):
+    parsed_from, parsed_to = _parse_gst_period(date_from, date_to)
+    return get_gst_voucher_register(
+        db,
+        tenant_id,
+        parsed_from,
+        parsed_to,
+        page=page,
+        page_size=page_size,
+        voucher_type=voucher_type,
+        party_gstin=party_gstin,
+        return_status=return_status,
+        search=search,
+    )
+
+
+@router.get("/gst/uncertain", response_model=GstUncertainTransactionsRead)
+def gst_uncertain_endpoint(
+    tenant_id: int = Depends(tenant_scope(MODULE)),
+    date_from: str | None = Query(None),
+    date_to: str | None = Query(None),
+    db: Session = Depends(get_db),
+):
+    parsed_from, parsed_to = _parse_gst_period(date_from, date_to)
+    return get_gst_uncertain_transactions(db, tenant_id, parsed_from, parsed_to)
 
 
 @router.get("/profit-loss/extended")

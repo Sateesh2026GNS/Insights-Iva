@@ -2,6 +2,11 @@
 
 import { PRODUCT_CATEGORIES, PRODUCT_UNITS } from "../data/productsMasterData";
 import { PAYMENT_TERMS } from "../data/vendorsMasterData";
+import {
+  computeLineTotals,
+  findDuplicateProductLineIndex,
+  recalcProductLine,
+} from "./jobCardLineTotals";
 
 const STORE_WORKFLOW_STATUSES = new Set([
   "MATERIAL_CHECK_PENDING",
@@ -29,6 +34,16 @@ export function scrollToJobCardDocumentPanel({ storeMode = false } = {}) {
   requestAnimationFrame(() => {
     document.getElementById(panelId)?.scrollIntoView({ behavior: "smooth", block: "start" });
   });
+}
+
+/** Whether Actions → Delete should appear (manual cards; API allowed_actions is authoritative). */
+export function manualJobCardCanDelete(row, { canDelete = false } = {}) {
+  if (!isManualSalesJobCardRow(row)) return Boolean(canDelete);
+  if (Array.isArray(row.allowed_actions) && row.allowed_actions.includes("delete")) {
+    return true;
+  }
+  if (!canDelete) return false;
+  return !(row.sent_to || row.sent_at);
 }
 
 /** Whether the row should offer Actions → Send (manual cards; API can_send is authoritative). */
@@ -117,15 +132,17 @@ export function todayIso() {
 }
 
 export function emptyProductLine(index = 0) {
-  return {
+  return recalcProductLine({
     sl_no: index + 1,
     product_id: "",
     product_code: "",
     product_name: "",
-    description: "",
     quantity: "",
     uom: "Nos",
-  };
+    unit_price: "",
+    line_amount: 0,
+    total_amount: 0,
+  });
 }
 
 export function emptySpecLine(index = 0) {
@@ -279,15 +296,19 @@ export function manualFormFromApi(data) {
       remarks: order.remarks || "",
     },
     product_lines: lines.length
-      ? lines.map((row, i) => ({
-          sl_no: i + 1,
-          product_id: row.product_id ? String(row.product_id) : "",
-          product_code: row.product_code || "",
-          product_name: row.product_name || "",
-          description: row.description || "",
-          quantity: row.quantity ?? "",
-          uom: row.uom || row.unit || "Nos",
-        }))
+      ? lines.map((row, i) =>
+          recalcProductLine({
+            sl_no: i + 1,
+            product_id: row.product_id ? String(row.product_id) : "",
+            product_code: row.product_code || "",
+            product_name: row.product_name || "",
+            quantity: row.quantity ?? "",
+            uom: row.uom || row.unit || "Nos",
+            unit_price: row.unit_price ?? row.price ?? "",
+            line_amount: row.line_amount ?? row.total_amount ?? row.amount ?? 0,
+            total_amount: row.total_amount ?? row.line_amount ?? row.amount ?? 0,
+          })
+        )
       : [emptyProductLine(0)],
     technical_specifications: specs.map((row, i) => ({
       sl_no: i + 1,
@@ -314,11 +335,17 @@ export function buildManualPayload(form, { expectedVersion = null } = {}) {
       header: form.header,
       customer: form.customer,
       order: form.order,
-      product_lines: lines.map((row, i) => ({
-        ...row,
-        sl_no: i + 1,
-        quantity: row.quantity === "" || row.quantity == null ? null : Number(row.quantity),
-      })),
+      product_lines: lines.map((row, i) => {
+        const qty = row.quantity === "" || row.quantity == null ? null : Number(row.quantity);
+        const calculated = recalcProductLine({
+          ...row,
+          sl_no: i + 1,
+          quantity: qty,
+          unit_price: row.unit_price === "" || row.unit_price == null ? 0 : Number(row.unit_price),
+        });
+        const { description: _omit, ...line } = calculated;
+        return line;
+      }),
       technical_specifications: specs.map((row, i) => ({
         ...row,
         sl_no: i + 1,
@@ -373,7 +400,7 @@ export function validateManualForm(form) {
   }
   lines.forEach((row, i) => {
     if (!String(row.product_name || "").trim()) {
-      errors[`product_lines.${i}.product_name`] = "Product Name is required";
+      errors[`product_lines.${i}.product_name`] = "Product is required";
     }
     const qty = Number(row.quantity);
     if (row.quantity === "" || row.quantity == null || Number.isNaN(qty) || qty <= 0) {
@@ -382,8 +409,22 @@ export function validateManualForm(form) {
     if (!String(row.uom || "").trim()) {
       errors[`product_lines.${i}.uom`] = "UOM is required";
     }
+    const price = Number(row.unit_price);
+    if (row.unit_price === "" || row.unit_price == null || Number.isNaN(price) || price < 0) {
+      errors[`product_lines.${i}.unit_price`] = "Enter a valid price";
+    }
+    if (row.product_id) {
+      const dupIdx = findDuplicateProductLineIndex(lines, row.product_id, i);
+      if (dupIdx >= 0) {
+        errors[`product_lines.${i}.product_name`] = "Product already added. Update the quantity instead.";
+      }
+    }
   });
   return errors;
+}
+
+export function manualFormLineTotals(form) {
+  return computeLineTotals(form?.product_lines || []);
 }
 
 export function mapApiErrors(detail) {

@@ -34,8 +34,15 @@ import {
   PRODUCT_CATEGORY_OPTIONS,
   scrollToFirstManualFormError,
   SPEC_PARAMETER_OPTIONS,
+  manualFormLineTotals,
   validateManualForm,
 } from "../../utils/manualSalesJobCard";
+import {
+  applyProductMasterToLine,
+  findDuplicateProductLineIndex,
+  recalcProductLine,
+} from "../../utils/jobCardLineTotals";
+import { formatInr } from "../../data/salesMasterData";
 import { formatCompanyAddress, resolveCompanyLogoUrl, resolveCompanyTagline } from "../../utils/salesJobCardDocument";
 import QuickAddCustomerModal from "./QuickAddCustomerModal";
 import QuickAddProductModal from "./QuickAddProductModal";
@@ -198,6 +205,8 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
     return match ? String(match.id) : soNo;
   }, [selectedSalesOrderId, form.header.sales_order_no, salesOrders]);
 
+  const lineTotals = useMemo(() => manualFormLineTotals(form), [form.product_lines]);
+
   const patch = useCallback((path, value) => {
     setDirty(true);
     setForm((prev) => {
@@ -244,20 +253,14 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
     setDirty(true);
     setForm((prev) => {
       const lines = [...prev.product_lines];
-      lines[index] = {
-        ...lines[index],
-        product_id: String(product.id),
-        product_code: product.sku || product.product_code || lines[index].product_code,
-        product_name: product.name || lines[index].product_name,
-        description: product.description || lines[index].description,
-        uom: product.unit || product.uom || lines[index].uom || "Nos",
-      };
+      lines[index] = applyProductMasterToLine(lines[index], product);
       return { ...prev, product_lines: lines };
     });
     setErrors((prev) => {
       const next = { ...prev };
       delete next[`product_lines.${index}.product_name`];
       delete next[`product_lines.${index}.uom`];
+      delete next[`product_lines.${index}.unit_price`];
       return next;
     });
   }, []);
@@ -302,6 +305,20 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
       }
       const product = products.find((p) => String(p.id) === String(val));
       if (product) {
+        const dupIdx = findDuplicateProductLineIndex(
+          form.product_lines,
+          product.id,
+          index
+        );
+        if (dupIdx >= 0) {
+          setErrors((prev) => ({
+            ...prev,
+            [`product_lines.${index}.product_name`]:
+              "Product already added. Update the quantity instead.",
+          }));
+          addToast("Product already added. Update the quantity instead.", "warning");
+          return;
+        }
         applyProductToRow(index, product);
       } else {
         setDirty(true);
@@ -312,7 +329,7 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
         });
       }
     },
-    [products, applyProductToRow]
+    [products, applyProductToRow, form.product_lines, addToast]
   );
 
   const getProductSelectValue = useCallback(
@@ -374,7 +391,9 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
     setDirty(true);
     setForm((prev) => {
       const lines = [...prev.product_lines];
-      lines[index] = { ...lines[index], [key]: value };
+      const nextRow = { ...lines[index], [key]: value };
+      lines[index] =
+        key === "quantity" || key === "unit_price" ? recalcProductLine(nextRow) : nextRow;
       return { ...prev, product_lines: lines };
     });
     setErrors((prev) => {
@@ -465,7 +484,7 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
         "success"
       );
       const id = data?.job_card_id || data?.id || jobCardId;
-      navigate(id ? `/my-job-cards?dept=sales&jc=${id}` : backTo, { replace: true });
+      navigate(backTo, { replace: true });
     } catch (err) {
       const detail = extractApiErrorDetail(err);
       const apiErrors = mapApiErrors(detail);
@@ -532,6 +551,12 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
             <h1 className="manual-sjc-page__toolbar-title">
               {isEdit ? "Edit Sales Job Card" : "Add Sales Job Card"}
             </h1>
+            {isEdit && form.job_card_no ? (
+              <p className="manual-sjc-page__toolbar-meta">
+                {form.job_card_no}
+                <span className="manual-sjc__status-pill">{statusDisplay}</span>
+              </p>
+            ) : null}
           </div>
           <Button variant="secondary" onClick={handleCancel} leftIcon={<ArrowLeft className="h-4 w-4" aria-hidden />}>
             Cancel
@@ -571,62 +596,6 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
                   </div>
                 </div>
                 {tagline ? <p className="sjc-doc__tagline">{tagline}</p> : null}
-                <div className="sjc-doc__meta">
-                  <table className="sjc-doc__meta-grid">
-                    <tbody>
-                      <tr>
-                        <td className="sjc-doc__meta-label">Job Card No.</td>
-                        <td className="sjc-doc__meta-value">
-                          {form.job_card_no || "Auto-generated on save"}
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="sjc-doc__meta-label">Date</td>
-                        <td className="sjc-doc__meta-value" data-manual-field="header.job_card_date">
-                          <DatePicker
-                            compact
-                            value={form.header.job_card_date}
-                            onChange={(v) => patch("header.job_card_date", v)}
-                            error={errors["header.job_card_date"]}
-                          />
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="sjc-doc__meta-label">Sales Order</td>
-                        <td className="sjc-doc__meta-value" data-manual-field="header.sales_order_no">
-                          <SearchableSelect
-                            value={salesOrderSelectValue}
-                            onChange={handleSalesOrderSelect}
-                            options={salesOrderOptions}
-                            placeholder={mastersLoading ? "Loading sales orders…" : "Select sales order…"}
-                            searchPlaceholder="Search sales order…"
-                            allowCustom
-                            disabled={mastersLoading || !canEditCard}
-                            error={Boolean(errors["header.sales_order_no"])}
-                            className={compactSelectClass}
-                          />
-                          <FieldError error={errors["header.sales_order_no"]} />
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="sjc-doc__meta-label">Customer PO No.</td>
-                        <td className="sjc-doc__meta-value">
-                          <Input
-                            value={form.header.customer_po_no}
-                            onChange={(e) => patch("header.customer_po_no", e.target.value)}
-                            className="sjc-doc__input"
-                          />
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="sjc-doc__meta-label">Status</td>
-                        <td className="sjc-doc__meta-value">
-                          <span className="manual-sjc__status-pill">{statusDisplay}</span>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
               </div>
 
               <div className="sjc-doc__title-band">SALES JOB CARD</div>
@@ -687,6 +656,49 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
                 <div className="sjc-doc__panel">
                   <div className="sjc-doc__panel-title">Order Details</div>
                   <div className="sjc-doc__panel-body">
+                    {!isEdit ? (
+                      <EditableFieldRow label="Job Card No.">
+                        <Input
+                          value={form.job_card_no || "Auto-generated on save"}
+                          readOnly
+                          disabled
+                          className="sjc-doc__input"
+                        />
+                      </EditableFieldRow>
+                    ) : null}
+                    <EditableFieldRow label="Job Card Date" required error={errors["header.job_card_date"]}>
+                      <div data-manual-field="header.job_card_date">
+                        <DatePicker
+                          compact
+                          value={form.header.job_card_date}
+                          onChange={(v) => patch("header.job_card_date", v)}
+                          error={errors["header.job_card_date"]}
+                        />
+                      </div>
+                    </EditableFieldRow>
+                    <EditableFieldRow label="Sales Order No." required error={errors["header.sales_order_no"]}>
+                      <div data-manual-field="header.sales_order_no">
+                        <SearchableSelect
+                          value={salesOrderSelectValue}
+                          onChange={handleSalesOrderSelect}
+                          options={salesOrderOptions}
+                          placeholder={mastersLoading ? "Loading sales orders…" : "Select sales order…"}
+                          searchPlaceholder="Search sales order…"
+                          allowCustom
+                          disabled={mastersLoading || !canEditCard}
+                          error={Boolean(errors["header.sales_order_no"])}
+                          className={compactSelectClass}
+                        />
+                        <FieldError error={errors["header.sales_order_no"]} />
+                      </div>
+                    </EditableFieldRow>
+                    <EditableFieldRow label="Customer PO No.">
+                      <Input
+                        value={form.header.customer_po_no}
+                        onChange={(e) => patch("header.customer_po_no", e.target.value)}
+                        className="sjc-doc__input"
+                      />
+                    </EditableFieldRow>
                     <EditableFieldRow label="Sales Order Date" error={errors["order.sales_order_date"]}>
                       <DatePicker
                         compact
@@ -753,102 +765,118 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
                 </div>
               </div>
 
-              <div className="sjc-doc__table-wrap" data-manual-field="product_lines">
+              <div className="sjc-doc__table-wrap manual-sjc__pricing-table-wrap" data-manual-field="product_lines">
                 <div className="sjc-doc__table-caption">Product / Job Details</div>
                 {errors.product_lines ? <FieldError error={errors.product_lines} /> : null}
-                <table className="sjc-doc__table manual-sjc__editable-table">
+                <table className="sjc-doc__table manual-sjc__editable-table manual-sjc__pricing-table">
                   <thead>
                     <tr>
                       <th>Sl. No.</th>
                       <th>Product</th>
-                      <th>Product Code</th>
-                      <th>Product Name</th>
-                      <th>Description</th>
                       <th className="num">Quantity</th>
                       <th>UOM</th>
+                      <th className="num">Price</th>
+                      <th className="num">Amount</th>
                       <th />
                     </tr>
                   </thead>
                   <tbody>
-                    {form.product_lines.map((row, index) => (
-                      <tr key={index} data-manual-field={`product_lines.${index}.product_name`}>
-                        <td className="num">{index + 1}</td>
-                        <td>
-                          <SearchableSelect
-                            value={getProductSelectValue(row)}
-                            onChange={(val) => handleProductSelect(index, val)}
-                            options={productOptions}
-                            footerOptions={productFooterOptions}
-                            placeholder={mastersLoading ? "Loading…" : productEmptyLabel}
-                            searchPlaceholder="Search product…"
-                            allowCustom
-                            disabled={mastersLoading}
-                            className={compactSelectClass}
-                          />
-                        </td>
-                        <td>
-                          <Input
-                            value={row.product_code}
-                            onChange={(e) => patchProductLine(index, "product_code", e.target.value)}
-                            className="sjc-doc__input"
-                          />
-                        </td>
-                        <td>
-                          <Input
-                            value={row.product_name}
-                            onChange={(e) => patchProductLine(index, "product_name", e.target.value)}
-                            error={errors[`product_lines.${index}.product_name`]}
-                            className="sjc-doc__input"
-                          />
-                        </td>
-                        <td>
-                          <Input
-                            value={row.description}
-                            onChange={(e) => patchProductLine(index, "description", e.target.value)}
-                            className="sjc-doc__input"
-                          />
-                        </td>
-                        <td className="num">
-                          <Input
-                            type="number"
-                            min="0.001"
-                            step="any"
-                            value={row.quantity}
-                            onChange={(e) => patchProductLine(index, "quantity", e.target.value)}
-                            error={errors[`product_lines.${index}.quantity`]}
-                            className="sjc-doc__input"
-                          />
-                        </td>
-                        <td>
-                          <SearchableSelect
-                            value={row.uom}
-                            onChange={(v) => patchProductLine(index, "uom", v)}
-                            options={uomOptions}
-                            placeholder="Select UOM…"
-                            searchPlaceholder="Search UOM…"
-                            allowCustom
-                            error={Boolean(errors[`product_lines.${index}.uom`])}
-                            className={compactSelectClass}
-                          />
-                          <FieldError error={errors[`product_lines.${index}.uom`]} />
-                        </td>
-                        <td>
-                          <button
-                            type="button"
-                            className="manual-sjc__remove-btn"
-                            onClick={() => removeProductLine(index)}
-                            aria-label="Remove product row"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                    {form.product_lines.map((row, index) => {
+                      const calc = lineTotals.rows[index] || recalcProductLine(row);
+                      return (
+                        <tr key={index}>
+                          <td className="num">{index + 1}</td>
+                          <td data-manual-field={`product_lines.${index}.product_name`}>
+                            <SearchableSelect
+                              value={getProductSelectValue(row)}
+                              onChange={(val) => handleProductSelect(index, val)}
+                              options={productOptions}
+                              footerOptions={productFooterOptions}
+                              placeholder={mastersLoading ? "Loading…" : productEmptyLabel}
+                              searchPlaceholder="Search product…"
+                              allowCustom
+                              disabled={mastersLoading || !canEditCard}
+                              error={Boolean(errors[`product_lines.${index}.product_name`])}
+                              className={compactSelectClass}
+                            />
+                            <FieldError error={errors[`product_lines.${index}.product_name`]} />
+                          </td>
+                          <td className="num">
+                            <Input
+                              type="number"
+                              min="0.001"
+                              step="any"
+                              value={row.quantity}
+                              onChange={(e) => patchProductLine(index, "quantity", e.target.value)}
+                              error={errors[`product_lines.${index}.quantity`]}
+                              className="sjc-doc__input"
+                              disabled={!canEditCard}
+                            />
+                          </td>
+                          <td>
+                            <SearchableSelect
+                              value={row.uom}
+                              onChange={(v) => patchProductLine(index, "uom", v)}
+                              options={uomOptions}
+                              placeholder="Select UOM…"
+                              searchPlaceholder="Search UOM…"
+                              allowCustom
+                              disabled={!canEditCard}
+                              error={Boolean(errors[`product_lines.${index}.uom`])}
+                              className={compactSelectClass}
+                            />
+                            <FieldError error={errors[`product_lines.${index}.uom`]} />
+                          </td>
+                          <td className="num" data-manual-field={`product_lines.${index}.unit_price`}>
+                            <Input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={row.unit_price}
+                              onChange={(e) => patchProductLine(index, "unit_price", e.target.value)}
+                              error={errors[`product_lines.${index}.unit_price`]}
+                              className="sjc-doc__input"
+                              disabled={!canEditCard}
+                            />
+                          </td>
+                          <td className="num manual-sjc__amount-cell manual-sjc__amount-cell--total">
+                            {formatInr(calc.line_amount)}
+                          </td>
+                          <td>
+                            <button
+                              type="button"
+                              className="manual-sjc__remove-btn"
+                              onClick={() => removeProductLine(index)}
+                              aria-label="Remove product row"
+                              disabled={!canEditCard}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
+                <div className="manual-sjc__line-summary">
+                  <div className="manual-sjc__line-summary-row">
+                    <span>Total Quantity</span>
+                    <span>{lineTotals.totalQuantity}</span>
+                  </div>
+                  <div className="manual-sjc__line-summary-row manual-sjc__line-summary-row--total">
+                    <span>Total Amount</span>
+                    <span>{formatInr(lineTotals.totalAmount)}</span>
+                  </div>
+                </div>
                 <div className="manual-sjc__add-row">
-                  <Button variant="outline" size="sm" onClick={addProductLine} leftIcon={<Plus className="h-4 w-4" />}>
-                    Add Product
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={addProductLine}
+                    leftIcon={<Plus className="h-4 w-4" />}
+                    disabled={!canEditCard}
+                  >
+                    Add New Row
                   </Button>
                 </div>
               </div>

@@ -116,12 +116,28 @@ export default function StoreManagerJobCardDocumentPanel({
   const showDocument = Boolean(hasSelection && card && !loading && !error);
   const showEmptyLayout = showEmptyShell && !hasSelection;
   const workflowStatus = erpListStatus(card || row || {});
-  const workflowGuidance = getJobCardWorkflowGuidance({
-    card: manualCard || card,
-    row,
-    storeMode: true,
-  });
+  const orderCancelled =
+    String(salesOrder?.status || "").toLowerCase() === "cancelled" ||
+    String(salesOrder?.workflow_status || row?.workflow_status || "").toUpperCase() === "CANCELLED" ||
+    String(card?.workflow_stage || row?.workflow_stage || "").toUpperCase() === "CANCELLED";
+  const workflowGuidance = orderCancelled
+    ? {
+        tone: "warning",
+        title: "Order cancelled",
+        statusLabel: "Cancelled",
+        message:
+          "This Job Card is cancelled because the customer cancelled the Sales Order.",
+        nextStep: salesOrder?.cancellation_reason
+          ? `Customer cancellation reason: ${salesOrder.cancellation_reason}`
+          : "View the Sales Order for cancellation details.",
+      }
+    : getJobCardWorkflowGuidance({
+        card: manualCard || card,
+        row,
+        storeMode: true,
+      });
   const canSendJobCard =
+    !orderCancelled &&
     Boolean(onSend) &&
     isManual &&
     hasSelection &&
@@ -166,7 +182,10 @@ export default function StoreManagerJobCardDocumentPanel({
     product_code: l.product_code,
     quantity: l.quantity,
     unit: l.uom,
-    description: l.description,
+    uom: l.uom,
+    unit_price: l.unit_price,
+    line_amount: l.line_amount,
+    total_amount: l.total_amount,
   }));
 
   const handlePrintStore = () => {

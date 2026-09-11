@@ -458,6 +458,14 @@ export default function AppRoutes() {
           </SalesJobCardAuthoringRoute>
         }
       />
+      <Route
+        path="/sales/job-cards/:id"
+        element={
+          <ProtectedRoute>
+            <P.ViewManualJobCard />
+          </ProtectedRoute>
+        }
+      />
       <Route path="/sales/job-cards" element={<Navigate to="/my-job-cards" replace />} />
       <Route
         path="/job-cards/:orderId"
@@ -503,7 +511,7 @@ export default function AppRoutes() {
       <Route path="/masters" element={<Navigate to="/masters/products" replace />} />
       <Route path="/procurement" element={<Navigate to="/procurement/purchase-orders" replace />} />
       <Route
-        path="/masters/customers"
+        path="/sales/customers"
         element={
           <ProtectedRoute>
             <P.Customers />
@@ -511,7 +519,7 @@ export default function AppRoutes() {
         }
       />
       <Route
-        path="/masters/customers/bulk-import"
+        path="/sales/customers/bulk-import"
         element={
           <ProtectedRoute>
             <P.BulkImportBuyer />
@@ -519,16 +527,24 @@ export default function AppRoutes() {
         }
       />
       <Route
-        path="/masters/customers/create"
+        path="/sales/customers/create"
         element={
           <ProtectedRoute>
-            <P.CreateCustomer />
+            <P.CustomerFormPage />
           </ProtectedRoute>
         }
       />
-      <Route path="/sales/customers" element={<Navigate to="/masters/customers" replace />} />
-      <Route path="/sales/customers/bulk-import" element={<Navigate to="/masters/customers/bulk-import" replace />} />
-      <Route path="/sales/customers/create" element={<Navigate to="/masters/customers/create" replace />} />
+      <Route
+        path="/sales/customers/:id/edit"
+        element={
+          <ProtectedRoute>
+            <P.CustomerFormPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route path="/masters/customers" element={<Navigate to="/sales/customers" replace />} />
+      <Route path="/masters/customers/bulk-import" element={<Navigate to="/sales/customers/bulk-import" replace />} />
+      <Route path="/masters/customers/create" element={<Navigate to="/sales/customers/create" replace />} />
       <Route
         path="/sales/payments"
         element={
@@ -604,6 +620,7 @@ export default function AppRoutes() {
       <Route path="/accounts/expenses/settings" element={<ProtectedRoute><P.ExpenseSettingsV2 /></ProtectedRoute>} />
       <Route path="/accounts/expenses/record" element={<ProtectedRoute><P.RecordExpense /></ProtectedRoute>} />
       <Route path="/accounts/tax-reports" element={<ProtectedRoute><P.TaxReports /></ProtectedRoute>} />
+      <Route path="/accounts/gst" element={<ProtectedRoute><P.GstPage /></ProtectedRoute>} />
       <Route path="/accounts/income/record" element={<ProtectedRoute><P.RecordIncome /></ProtectedRoute>} />
       <Route path="/accounts/balance-sheet" element={<ProtectedRoute><P.BalanceSheet /></ProtectedRoute>} />
       <Route path="/accounts/restore-deleted" element={<ProtectedRoute><P.RestoreDeletedDoc /></ProtectedRoute>} />

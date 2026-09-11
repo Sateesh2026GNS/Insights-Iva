@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, CheckCircle2, ClipboardList, Factory, Trash2 } from "lucide-react";
+import { ArrowLeft, Ban, CheckCircle2, ClipboardList, Factory, Trash2 } from "lucide-react";
 
+import CancelSalesOrderModal from "../../components/sales/CancelSalesOrderModal";
 import DeleteSalesOrderDialog from "../../components/sales/DeleteSalesOrderDialog";
+import RowActionMenu from "../../components/common/RowActionMenu";
 import Loader from "../../components/common/Loader";
 import PageHeader from "../../components/common/PageHeader";
 import EmptyState from "../../components/common/EmptyState";
@@ -18,6 +20,7 @@ import {
   salesOrderDeleteErrorMessage,
 } from "../../utils/salesOrderDelete";
 import {
+  cancelSalesOrder,
   confirmSalesOrder,
   confirmSalesOrderDelivery,
   deleteSalesOrder,
@@ -32,6 +35,12 @@ import {
 import { jobCardDetailsUrl } from "../../utils/jobCardRoutes";
 import WorkflowNextStep from "../../components/manufacturing/WorkflowNextStep";
 import { getSalesOrderWorkflowGuidance } from "../../utils/salesOrderWorkflowUx";
+import {
+  canShowCancelSalesOrderAction,
+  formatCancellationType,
+  isSalesOrderCancelled,
+  salesOrderCancellationErrorMessage,
+} from "../../utils/salesOrderCancellation";
 import "../../styles/workflow-next-step.css";
 
 export default function SalesOrderDetail() {
@@ -49,7 +58,13 @@ export default function SalesOrderDetail() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteError, setDeleteError] = useState("");
   const [deleting, setDeleting] = useState(false);
+  const [cancellationMeta, setCancellationMeta] = useState(null);
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [cancelError, setCancelError] = useState("");
+  const [cancelling, setCancelling] = useState(false);
+  const [actionsMenuOpen, setActionsMenuOpen] = useState(null);
   const deleteInFlight = useRef(false);
+  const cancelInFlight = useRef(false);
 
   const loadWorkflow = useCallback(async () => {
     try {
@@ -65,6 +80,7 @@ export default function SalesOrderDetail() {
     try {
       const res = await getSalesOrderDetail(id);
       setData(res.data || null);
+      setCancellationMeta(res.data?.cancellation || null);
       await loadWorkflow();
     } catch {
       addToast("Order not found", "error");
@@ -87,6 +103,33 @@ export default function SalesOrderDetail() {
       navigate(location.pathname, { replace: true, state: {} });
     }
   }, [location.state, location.pathname, addToast, navigate]);
+
+  const handleCancelConfirm = async (reason) => {
+    if (!data?.order?.id || cancelInFlight.current) return;
+    cancelInFlight.current = true;
+    setCancelError("");
+    setCancelling(true);
+    try {
+      const res = await cancelSalesOrder(data.order.id, {
+        cancellation_reason: reason,
+        cancellation_type: "customer_request",
+        expected_version: data.order.version,
+      });
+      const body = res?.data ?? res;
+      addToast(
+        `Sales Order ${body.order_number || data.order.order_number} has been cancelled successfully.`,
+        "success"
+      );
+      addToast(`Reason: ${reason}`, "info");
+      setCancelOpen(false);
+      await load();
+    } catch (err) {
+      setCancelError(salesOrderCancellationErrorMessage(err));
+    } finally {
+      cancelInFlight.current = false;
+      setCancelling(false);
+    }
+  };
 
   const handleDeleteConfirm = async () => {
     if (!data?.order?.id || deleteInFlight.current) return;
@@ -131,6 +174,9 @@ export default function SalesOrderDetail() {
   const productionOrders = data.production_orders || [];
   const status = (order.status || "").toLowerCase();
   const isConfirmed = ["confirmed", "approved"].includes(status);
+  const isCancelled = isSalesOrderCancelled(order);
+  const showCancelAction = canShowCancelSalesOrderAction(order, user, cancellationMeta);
+  const workflowStarted = Boolean(order.workflow_status) && !isCancelled;
 
   const handleConfirm = async () => {
     setConfirming(true);
@@ -206,9 +252,69 @@ export default function SalesOrderDetail() {
         action={
           <div className="flex flex-wrap items-center gap-2">
             <StatusBadge status={order.status} />
+            {showCancelAction || canDelete ? (
+              <RowActionMenu
+                rowId="sales-order-detail"
+                openMenu={actionsMenuOpen}
+                setOpenMenu={setActionsMenuOpen}
+                items={[
+                  showCancelAction
+                    ? {
+                        label: "Cancel Order",
+                        icon: <Ban className="h-4 w-4" aria-hidden />,
+                        onClick: () => {
+                          setCancelError("");
+                          setCancelOpen(true);
+                        },
+                      }
+                    : null,
+                  canDelete
+                    ? {
+                        label: "Delete Sales Order",
+                        icon: <Trash2 className="h-4 w-4" aria-hidden />,
+                        onClick: () => {
+                          setDeleteError("");
+                          setDeleteOpen(true);
+                        },
+                      }
+                    : null,
+                ]}
+              />
+            ) : null}
           </div>
         }
       />
+
+      {isCancelled ? (
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-950 dark:border-rose-900/40 dark:bg-rose-950/20 dark:text-rose-100">
+          <p className="font-semibold">Order Cancelled</p>
+          <dl className="mt-3 grid gap-2 sm:grid-cols-2">
+            <div>
+              <dt className="text-xs uppercase tracking-wide text-rose-700/80">Cancellation Type</dt>
+              <dd>{formatCancellationType(order.cancellation_type)}</dd>
+            </div>
+            <div>
+              <dt className="text-xs uppercase tracking-wide text-rose-700/80">Cancelled By</dt>
+              <dd>{order.cancelled_by_name || "—"}</dd>
+            </div>
+            <div className="sm:col-span-2">
+              <dt className="text-xs uppercase tracking-wide text-rose-700/80">Customer Cancellation Reason</dt>
+              <dd>{order.cancellation_reason || "—"}</dd>
+            </div>
+            {order.cancelled_at ? (
+              <div>
+                <dt className="text-xs uppercase tracking-wide text-rose-700/80">Cancelled At</dt>
+                <dd>{String(order.cancelled_at).replace("T", " ").slice(0, 16)}</dd>
+              </div>
+            ) : null}
+          </dl>
+          {cancellationMeta?.material_return_required ? (
+            <p className="mt-3 text-xs text-rose-800">
+              Material was already issued for this order. Use the existing Stock Return workflow to process returned material.
+            </p>
+          ) : null}
+        </div>
+      ) : null}
 
       {workflowGuidance ? (
         <WorkflowNextStep
@@ -262,14 +368,14 @@ export default function SalesOrderDetail() {
       ) : null}
 
       <div className="flex flex-wrap gap-2">
-        {!isConfirmed && (
+        {!isConfirmed && !isCancelled && (
           <Button variant="primary" type="button" disabled={confirming}
       onClick={handleConfirm} className="inline-flex items-center gap-2 disabled:opacity-50">
             <CheckCircle2 className="h-4 w-4" />
             {confirming ? "Confirming Sales Order…" : "Confirm Sales Order"}
           </Button>
         )}
-        {isConfirmed && (
+        {isConfirmed && !isCancelled && (
           <>
             <Button
               variant="primary"
@@ -296,20 +402,6 @@ export default function SalesOrderDetail() {
         <Button variant="secondary" to="/production/planning">
           Production Planning
         </Button>
-        {canDelete ? (
-          <Button
-            variant="danger"
-            type="button"
-            className="inline-flex items-center gap-2"
-            onClick={() => {
-              setDeleteError("");
-              setDeleteOpen(true);
-            }}
-          >
-            <Trash2 className="h-4 w-4" />
-            Delete Sales Order
-          </Button>
-        ) : null}
       </div>
 
       {!lineItems.length && (
@@ -551,6 +643,21 @@ export default function SalesOrderDetail() {
           </div>
         </div>
       )}
+      <CancelSalesOrderModal
+        open={cancelOpen}
+        orderNumber={order.order_number}
+        customerName={customer?.name}
+        workflowStarted={workflowStarted}
+        loading={cancelling}
+        error={cancelError}
+        onConfirm={handleCancelConfirm}
+        onClose={() => {
+          if (!cancelling) {
+            setCancelOpen(false);
+            setCancelError("");
+          }
+        }}
+      />
       <DeleteSalesOrderDialog
         open={deleteOpen}
         orderNumber={order.order_number}

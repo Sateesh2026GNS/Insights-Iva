@@ -13,6 +13,12 @@ export function jobCardManualEditUrl(jobCardId) {
   return `/sales/job-cards/${jobCardId}/edit`;
 }
 
+/** Read-only manual Sales Job Card view. */
+export function jobCardManualViewUrl(jobCardId) {
+  if (!jobCardId) return "/my-job-cards?dept=sales";
+  return `/sales/job-cards/${jobCardId}`;
+}
+
 /** Full-page sales job card (JobCardDetailsShell + Sales Job Card document). */
 export function jobCardDetailsUrl(orderId) {
   if (!orderId) return jobCardCreateUrl();
@@ -34,16 +40,9 @@ export function myJobCardsViewUrl(orderId, searchParams) {
   return search ? `/my-job-cards?${search}` : `/my-job-cards?order=${orderId}`;
 }
 
-/** View manual job card on My Job Cards (by job card id). */
+/** View manual job card — dedicated view page (sales list no longer uses inline ?jc=). */
 export function myJobCardsManualViewUrl(jobCardId, searchParams) {
-  if (!jobCardId) return "/my-job-cards";
-  const params = new URLSearchParams(
-    searchParams instanceof URLSearchParams ? searchParams : searchParams || undefined
-  );
-  params.set("jc", String(jobCardId));
-  params.delete("order");
-  const search = params.toString();
-  return search ? `/my-job-cards?${search}` : `/my-job-cards?jc=${jobCardId}`;
+  return jobCardManualViewUrl(jobCardId);
 }
 
 /** Sales job card edit page (same UI, edit mode). */

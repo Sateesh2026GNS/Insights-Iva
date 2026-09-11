@@ -202,11 +202,13 @@ export default function App() {
   const path = normalizePath(location.pathname);
   const isJobCardAuthoring =
     path === "/sales/job-cards/create" || /^\/sales\/job-cards\/[^/]+\/edit$/.test(path);
+  const isCustomerForm =
+    path === "/sales/customers/create" || /^\/sales\/customers\/[^/]+\/edit$/.test(path);
   const isJobCardsWorkspace =
     path === "/my-job-cards" || path.startsWith("/my-job-cards/") || isJobCardAuthoring;
   /** Full-bleed editors keep their own chrome; list/dashboard surfaces use Products page surface. */
   const isFullBleedSales =
-    isInvoiceEditor || isSalesDocList || isEInvoiceLogin || path === "/" || isJobCardsWorkspace;
+    isInvoiceEditor || isSalesDocList || isEInvoiceLogin || path === "/" || isJobCardsWorkspace || isCustomerForm;
 
   if (isShellLessRoute(location.pathname)) {
     const path = normalizePath(location.pathname);

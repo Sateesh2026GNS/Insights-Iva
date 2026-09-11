@@ -137,9 +137,13 @@ export default function SalesJobCardDocumentPanel({
       },
       productLines: lines.map((l) => ({
         product_name: l.product_name,
+        product_code: l.product_code,
         quantity: l.quantity,
         unit: l.uom,
-        description: l.description,
+        uom: l.uom,
+        unit_price: l.unit_price,
+        line_amount: l.line_amount,
+        total_amount: l.total_amount,
       })),
       products: [],
       details: { approval: sd?.approval || doc?.approval },
@@ -191,7 +195,10 @@ export default function SalesJobCardDocumentPanel({
     product_code: l.product_code,
     quantity: l.quantity,
     unit: l.uom,
-    description: l.description,
+    uom: l.uom,
+    unit_price: l.unit_price,
+    line_amount: l.line_amount,
+    total_amount: l.total_amount,
   }));
 
   return (

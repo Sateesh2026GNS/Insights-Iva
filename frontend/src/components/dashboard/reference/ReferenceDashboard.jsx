@@ -35,6 +35,7 @@ import {
 
 import EmptyChart from "../../common/EmptyChart";
 import SkeletonCard, { SkeletonChart } from "../../common/SkeletonCard";
+import AdminProductionWidgets from "./AdminProductionWidgets";
 import AdminQuickActions from "./AdminQuickActions";
 import ProductionPipeline from "./ProductionPipeline";
 import { getErpDashboard } from "../../../api/dashboardApi";
@@ -1093,6 +1094,8 @@ export default function ReferenceDashboard() {
   const showQuickActions = !isOpProfile && sectionVisible(sections, "quick_actions");
   const showProductionPipeline =
     !isOpProfile && !isStoreProfile && sectionVisible(sections, "production_pipeline");
+  const showAdminProductionWidgets =
+    profile === "admin" && sectionVisible(sections, "admin_production_widgets");
   const showRecentWo = !isStoreProfile && sectionVisible(sections, "recent_work_orders");
   const showFinance = !isOpProfile && showInventory && ["admin", "full"].includes(profile);
   const showPendingTasks = !isOpProfile && sectionVisible(sections, "orders_overview");
@@ -1172,6 +1175,10 @@ export default function ReferenceDashboard() {
 
         {showProductionPipeline ? (
           <ProductionPipeline data={apiData?.production_pipeline} loading={loading} />
+        ) : null}
+
+        {showAdminProductionWidgets ? (
+          <AdminProductionWidgets data={apiData?.admin_production_widgets} loading={loading} />
         ) : null}
 
         {(showProduction || showShopFloor || showTopMachines || (isOpProfile && sectionVisible(sections, "production_overview"))) && (

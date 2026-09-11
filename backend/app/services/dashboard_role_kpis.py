@@ -612,6 +612,7 @@ VISIBLE_BY_PROFILE: dict[str, list[str]] = {
         "alerts",
         "quick_actions",
         "production_pipeline",
+        "admin_production_widgets",
         "recent_work_orders",
         "todays_summary",
     ],

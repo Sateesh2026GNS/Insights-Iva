@@ -39,9 +39,9 @@ def _manual_payload(**overrides):
             {
                 "product_code": "P-001",
                 "product_name": "White Label Roll",
-                "description": "30 GSM white",
                 "quantity": 1000,
                 "uom": "Nos",
+                "unit_price": 0,
             }
         ],
         "technical_specifications": [
@@ -66,6 +66,37 @@ def _send_manual(client, headers, jc_id, user_id, role="Admin"):
         headers=headers,
         json={"recipients": [{"role": role, "user_id": user_id}]},
     )
+
+
+def test_manual_job_card_line_pricing_persisted(client, register_admin):
+    admin = register_admin()
+    headers = admin["headers"]
+
+    create = client.post(
+        "/manufacturing/workflow/job-cards/manual",
+        headers=headers,
+        json=_manual_payload(
+            manual_document={
+                "product_lines": [
+                    {
+                        "product_code": "P-001",
+                        "product_name": "White Label Roll",
+                        "quantity": 10,
+                        "uom": "Nos",
+                        "unit_price": 100,
+                    }
+                ]
+            }
+        ),
+    )
+    assert create.status_code == 200, create.text
+    jc_id = create.json()["job_card_id"]
+
+    get_res = client.get(f"/manufacturing/workflow/job-cards/manual/{jc_id}", headers=headers)
+    assert get_res.status_code == 200
+    line = get_res.json()["sales_document"]["product_lines"][0]
+    assert float(line["line_amount"]) == 1000.0
+    assert float(line["total_amount"]) == 1000.0
 
 
 def test_create_and_get_manual_job_card(client, register_admin):
