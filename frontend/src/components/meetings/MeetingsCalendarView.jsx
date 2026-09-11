@@ -296,6 +296,26 @@ export default function MeetingsCalendarView({
         </div>
       </div>
 
+      {!googleStatus?.connected ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-2.5 bg-blue-50/90 dark:bg-blue-950/40 border-b border-blue-100 dark:border-blue-900/40 text-xs text-blue-900 dark:text-blue-100">
+          <div className="flex items-center gap-2">
+            <span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
+            <span className="font-medium">
+              Google Calendar is not connected. Connect your Google account to auto-sync meetings and generate Google Meet links.
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={onConnectGoogle}
+            disabled={connecting}
+            className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-md bg-blue-600 hover:bg-blue-700 text-white shadow-xs transition-colors shrink-0 cursor-pointer disabled:opacity-60"
+          >
+            <Link2 className="h-3.5 w-3.5" />
+            {connecting ? "Connecting…" : "Connect Google Calendar"}
+          </button>
+        </div>
+      ) : null}
+
       <div className="meetings-cal__body">
         <aside className="meetings-cal__sidebar">
           <CreateDropdown
@@ -346,35 +366,26 @@ export default function MeetingsCalendarView({
           </div>
 
           <div className="meetings-cal__connect">
-            <GoogleCalendarSetupPanel googleStatus={googleStatus} />
-            <p className="mb-2 font-medium text-[var(--gcal-text)]">Google Calendar</p>
-            {googleStatus.connected ? (
-              <>
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <span className="font-semibold text-xs text-[var(--gcal-text)]">Google Calendar</span>
+              {googleStatus?.connected ? (
                 <StatusBadge tone="success">Connected</StatusBadge>
+              ) : (
+                <StatusBadge tone="neutral">Not Connected</StatusBadge>
+              )}
+            </div>
+
+            {googleStatus?.connected ? (
+              <>
                 <a
                   href="https://calendar.google.com"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="mt-1 text-xs text-[var(--color-primary)] hover:underline truncate block"
+                  className="mt-0.5 text-xs text-[var(--color-primary)] font-medium hover:underline truncate block"
                   title="Open Google Calendar"
                 >
-                  {googleStatus.account_email}
+                  {googleStatus.account_email || "Google Account"}
                 </a>
-                <a
-                  href="https://calendar.google.com"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="meetings-cal__btn mt-2 w-full justify-center text-xs inline-flex items-center gap-1.5"
-                >
-                  <ExternalLink className="h-3.5 w-3.5" /> Open Google Calendar
-                </a>
-                <button type="button" className="meetings-cal__btn mt-1.5 w-full justify-center text-xs text-red-600 hover:text-red-700" onClick={onDisconnectGoogle}>
-                  <Unlink className="h-3.5 w-3.5" /> Disconnect
-                </button>
-              </>
-            ) : (
-              <>
-                <StatusBadge tone="neutral">Not Connected</StatusBadge>
                 <a
                   href="https://calendar.google.com"
                   target="_blank"
@@ -385,15 +396,38 @@ export default function MeetingsCalendarView({
                 </a>
                 <button
                   type="button"
-                  className="meetings-cal__btn mt-1.5 w-full justify-center text-xs"
-                  onClick={onConnectGoogle}
-                  disabled={connecting || !googleStatus.configured}
+                  className="meetings-cal__btn mt-1.5 w-full justify-center text-xs text-red-600 hover:text-red-700"
+                  onClick={onDisconnectGoogle}
                 >
-                  <Link2 className="h-3.5 w-3.5" />
-                  {connecting ? "Redirecting…" : "Connect"}
+                  <Unlink className="h-3.5 w-3.5" /> Disconnect
                 </button>
               </>
+            ) : (
+              <>
+                <p className="text-[11px] text-[var(--gcal-muted)] mb-2.5 leading-snug">
+                  Sync meetings and generate Google Meet links with 1 click.
+                </p>
+                <button
+                  type="button"
+                  className="meetings-cal__connect-btn w-full justify-center"
+                  onClick={onConnectGoogle}
+                  disabled={connecting}
+                >
+                  <Link2 className="h-4 w-4" />
+                  {connecting ? "Connecting to Google…" : "Connect Google Calendar"}
+                </button>
+                <a
+                  href="https://calendar.google.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="meetings-cal__btn mt-2 w-full justify-center text-xs inline-flex items-center gap-1.5"
+                >
+                  <ExternalLink className="h-3.5 w-3.5" /> Open Google Calendar
+                </a>
+              </>
             )}
+
+            <GoogleCalendarSetupPanel googleStatus={googleStatus} defaultOpen={false} />
           </div>
         </aside>
 

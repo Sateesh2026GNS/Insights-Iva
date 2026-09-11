@@ -320,6 +320,32 @@
   color: var(--gcal-muted);
 }
 
+.meetings-cal__connect-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #1a73e8;
+  color: #ffffff;
+  border: 1px solid #1765cc;
+  border-radius: 6px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
+}
+
+.meetings-cal__connect-btn:hover:not(:disabled) {
+  background: #1557b0;
+  border-color: #124894;
+  box-shadow: 0 1px 3px rgba(60, 64, 67, 0.3), 0 4px 8px 3px rgba(60, 64, 67, 0.15);
+}
+
+.meetings-cal__connect-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .meetings-cal__setup {
   margin-bottom: 16px;
   padding: 12px;
