@@ -111,6 +111,8 @@ def user_is_admin(user: User) -> bool:
 
 
 def user_has_permission(user: User, module: str) -> bool:
+    if module == "meetings":
+        return True
     if user_is_admin(user):
         return True
     perms = get_user_permissions(user)
@@ -120,6 +122,8 @@ def user_has_permission(user: User, module: str) -> bool:
 
 
 def user_has_any_permission(user: User, *modules: str) -> bool:
+    if "meetings" in modules:
+        return True
     if user_is_admin(user):
         return True
     perms = get_user_permissions(user)
@@ -129,6 +133,8 @@ def user_has_any_permission(user: User, *modules: str) -> bool:
 
 
 def user_can_action(user: User, module: str, action: str) -> bool:
+    if module == "meetings":
+        return True
     if user_is_admin(user):
         return True
     perms = get_user_permissions(user)

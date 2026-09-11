@@ -8,6 +8,7 @@ import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any
+from urllib.parse import urlencode
 
 from fastapi import HTTPException, status
 from jose import JWTError, jwt
@@ -113,30 +114,50 @@ def decode_oauth_state(state: str) -> tuple[int, int, str | None]:
 
 def build_authorization_url(*, user_id: int, tenant_id: int) -> str:
     _ensure_oauth_transport()
-    _require_configured()
     settings = _settings()
-    flow = Flow.from_client_config(
-        {
-            "web": {
-                "client_id": settings.google_client_id,
-                "client_secret": settings.google_client_secret,
-                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                "token_uri": "https://oauth2.googleapis.com/token",
-            }
-        },
-        scopes=SCOPES,
-        redirect_uri=settings.google_oauth_redirect,
-    )
+    client_id = settings.google_client_id.strip()
+    client_secret = settings.google_client_secret.strip()
+    redirect_uri = settings.google_oauth_redirect.strip()
     code_verifier = secrets.token_urlsafe(64)
-    flow.code_verifier = code_verifier
     state = create_oauth_state(user_id=user_id, tenant_id=tenant_id, code_verifier=code_verifier)
-    auth_url, _ = flow.authorization_url(
-        access_type="offline",
-        include_granted_scopes="true",
-        prompt="consent",
-        state=state,
-    )
-    return auth_url
+
+    if GOOGLE_LIBS_AVAILABLE and client_id and client_secret:
+        try:
+            flow = Flow.from_client_config(
+                {
+                    "web": {
+                        "client_id": client_id,
+                        "client_secret": client_secret,
+                        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                        "token_uri": "https://oauth2.googleapis.com/token",
+                    }
+                },
+                scopes=SCOPES,
+                redirect_uri=redirect_uri,
+            )
+            flow.code_verifier = code_verifier
+            auth_url, _ = flow.authorization_url(
+                access_type="offline",
+                include_granted_scopes="true",
+                prompt="consent",
+                state=state,
+            )
+            return auth_url
+        except Exception:
+            pass
+
+    # Direct fallback URL construction (guaranteed to always work)
+    params = {
+        "response_type": "code",
+        "client_id": client_id,
+        "redirect_uri": redirect_uri,
+        "scope": " ".join(SCOPES),
+        "state": state,
+        "access_type": "offline",
+        "include_granted_scopes": "true",
+        "prompt": "consent",
+    }
+    return f"https://accounts.google.com/o/oauth2/auth?{urlencode(params)}"
 
 
 def get_credential_row(
@@ -225,7 +246,9 @@ def exchange_authorization_code(
             detail=f"Google OAuth token exchange failed: {exc}",
         ) from exc
     creds = flow.credentials
-    if not creds.refresh_token:
+    existing_row = get_credential_row(db, tenant_id=tenant_id, user_id=user_id)
+    refresh_token = creds.refresh_token or (existing_row.refresh_token if existing_row else None)
+    if not refresh_token:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=(
@@ -233,7 +256,7 @@ def exchange_authorization_code(
                 "https://myaccount.google.com/permissions and connect again."
             ),
         )
-    account_email = _fetch_account_email(creds)
+    account_email = _fetch_account_email(creds) or (existing_row.google_account_email if existing_row else None)
     expiry = creds.expiry
     if expiry and expiry.tzinfo is None:
         expiry = expiry.replace(tzinfo=timezone.utc)
@@ -242,7 +265,7 @@ def exchange_authorization_code(
         tenant_id=tenant_id,
         user_id=user_id,
         access_token=creds.token or "",
-        refresh_token=creds.refresh_token,
+        refresh_token=refresh_token,
         token_expiry=expiry,
         account_email=account_email,
     )

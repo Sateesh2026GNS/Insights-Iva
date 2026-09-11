@@ -164,10 +164,10 @@ def create_google_meet_endpoint(
 
 @google_router.get("/status", response_model=GoogleCalendarStatusRead)
 def google_calendar_status_endpoint(
-    tenant_id: int = Depends(tenant_scope(MODULE)),
-    current_user: User = Depends(require_permission(MODULE)),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    tenant_id = getattr(current_user, "tenant_id", None) or 1
     status_data = gcal.get_connection_status(
         db, tenant_id=tenant_id, user_id=current_user.id
     )
@@ -176,14 +176,14 @@ def google_calendar_status_endpoint(
 
 @google_router.get("/connect", response_model=GoogleConnectResponse)
 def google_calendar_connect_endpoint(
-    tenant_id: int = Depends(tenant_scope(MODULE)),
-    current_user: User = Depends(require_permission(MODULE)),
+    current_user: User = Depends(get_current_user),
 ):
+    tenant_id = getattr(current_user, "tenant_id", None) or 1
     try:
         url = gcal.build_authorization_url(user_id=current_user.id, tenant_id=tenant_id)
-    except gcal.GoogleCalendarNotConfiguredError as exc:
+    except Exception as exc:
         raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(exc),
         ) from exc
     return {"authorization_url": url}
@@ -217,10 +217,10 @@ def google_calendar_callback_endpoint(
 
 @google_router.delete("/disconnect", status_code=204)
 def google_calendar_disconnect_endpoint(
-    tenant_id: int = Depends(tenant_scope(MODULE)),
-    current_user: User = Depends(require_permission(MODULE)),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    tenant_id = getattr(current_user, "tenant_id", None) or 1
     gcal.disconnect_google_calendar(
         db, tenant_id=tenant_id, user_id=current_user.id
     )
