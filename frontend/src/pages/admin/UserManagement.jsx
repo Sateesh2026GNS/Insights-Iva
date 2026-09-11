@@ -372,7 +372,7 @@ export default function UserManagement() {
         subtitle="Create, view, and manage all user accounts and their assigned roles."
         action={
           <Button variant="add" type="button" onClick={openCreate} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
-            Invite User
+            New User
           </Button>
         }
       />
@@ -410,6 +410,7 @@ export default function UserManagement() {
       <InviteUserModal
         open={inviteOpen}
         onClose={() => setInviteOpen(false)}
+        title="New User"
         defaultRole={location.state?.defaultRole || searchParams.get("role") || ""}
         onSuccess={() => {
           load();

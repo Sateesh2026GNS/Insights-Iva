@@ -169,6 +169,7 @@ function WoRowActions({
 }) {
   const [open, setOpen] = useState(false);
   const menuBtnRef = useRef(null);
+  const menuRef = useRef(null);
   const [menuPos, setMenuPos] = useState({ top: 0, left: 0 });
   const serverId = isServerWoId(row.id);
   const canIssue = (r) => canWoIssueMaterials(r.status, r.materials_issued);
@@ -235,20 +236,39 @@ function WoRowActions({
       : null,
   ].filter(Boolean);
 
+  const updateMenuPosition = () => {
+    const rect = menuBtnRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const menuHeight = menuRef.current?.offsetHeight || menuItems.length * 36 + 16;
+    const menuWidth = menuRef.current?.offsetWidth || 192;
+    const gap = 6;
+    const spaceBelow = window.innerHeight - rect.bottom - gap;
+    const spaceAbove = rect.top - gap;
+    const openAbove = spaceBelow < menuHeight && spaceAbove > spaceBelow;
+    const top = openAbove
+      ? Math.max(8, rect.top - menuHeight - gap)
+      : Math.min(window.innerHeight - menuHeight - 8, rect.bottom + gap);
+    setMenuPos({ top, left: Math.max(8, rect.right - menuWidth) });
+  };
+
   const openMenu = (e) => {
     e?.stopPropagation?.();
-    const rect = menuBtnRef.current?.getBoundingClientRect();
-    if (rect) {
-      const menuHeight = menuItems.length * 36 + 16;
-      const spaceBelow = window.innerHeight - rect.bottom;
-      const top = spaceBelow < menuHeight ? Math.max(8, rect.top - menuHeight - 4) : rect.bottom + 4;
-      setMenuPos({
-        top,
-        left: Math.max(8, rect.right - 192),
-      });
-    }
     setOpen(true);
+    requestAnimationFrame(updateMenuPosition);
   };
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const reposition = () => updateMenuPosition();
+    window.addEventListener("resize", reposition);
+    window.addEventListener("scroll", reposition, true);
+    const frame = requestAnimationFrame(reposition);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("resize", reposition);
+      window.removeEventListener("scroll", reposition, true);
+    };
+  }, [open]);
 
   return (
     <div className="flex items-center justify-end whitespace-nowrap print:hidden">
@@ -275,6 +295,7 @@ function WoRowActions({
                   }}
                 />
                 <div
+                  ref={menuRef}
                   className="fixed z-[90] w-48 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] py-1 shadow-lg"
                   style={{ top: menuPos.top, left: menuPos.left }}
                   onClick={(e) => e?.stopPropagation?.()}

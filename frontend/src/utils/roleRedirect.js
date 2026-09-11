@@ -15,7 +15,7 @@ export function getDashboardPathForRole(role) {
     return "/hr";
   }
   if (name.includes("sales")) {
-    return "/sales";
+    return "/";
   }
   if (name.includes("store")) {
     return "/inventory";

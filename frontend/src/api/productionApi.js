@@ -69,8 +69,26 @@ export const updateProductionOrderPriority = (orderId, priority) =>
 export const updateProductionOrderMachine = (orderId, machineId) =>
   apiPatch(`/api/production/planning/${orderId}/machine`, null, { params: { machine_id: machineId } });
 
-export const getMachines = () =>
-  apiGet("/api/masters/machines").catch(() => apiGet("/api/production/allocation/machines"));
+export const getMachines = async () => {
+  try {
+    return await apiGet("/api/masters/machines");
+  } catch (primaryError) {
+    try {
+      const fallback = await apiGet("/api/production/allocation/machines");
+      const rows = Array.isArray(fallback?.data) ? fallback.data : [];
+      return {
+        ...fallback,
+        data: rows.map((machine) => ({
+          ...machine,
+          id: machine.id ?? machine.machine_id,
+          name: machine.name ?? machine.machine_name,
+        })),
+      };
+    } catch {
+      throw primaryError;
+    }
+  }
+};
 
 export const getWorkOrders = (productionOrderId) =>
   apiGet("/api/production/work-orders", {

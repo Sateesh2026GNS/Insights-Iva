@@ -5,7 +5,7 @@ export default function AddUserModal({
   onClose,
   onSuccess,
   defaultRole = "Operator",
-  title = "Invite User",
+  title = "New User",
 }) {
   return (
     <InviteUserModal

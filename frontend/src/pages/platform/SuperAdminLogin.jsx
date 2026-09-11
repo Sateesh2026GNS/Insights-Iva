@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ArrowRight, Eye, EyeOff, Lock, Mail } from "lucide-react";
 import { superAdminLogin } from "../../api/platformApi";
+import CompanyLogin from "../auth/Login";
 import "./SuperAdminLogin.css";
 
 /* ── inline SVG icons ── */
@@ -41,11 +42,16 @@ const ArrowIcon = () => (
 
 export default function SuperAdminLogin() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [email, setEmail]       = useState("");
   const [password, setPassword] = useState("");
   const [showPwd, setShowPwd]   = useState(false);
   const [loading, setLoading]   = useState(false);
   const [error, setError]       = useState("");
+
+  if (location.pathname === "/login") {
+    return <CompanyLogin />;
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault();

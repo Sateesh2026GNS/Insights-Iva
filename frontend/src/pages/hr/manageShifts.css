@@ -18,15 +18,18 @@
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 14px;
+  gap: 24px;
+  min-height: 52px;
+  margin-bottom: 18px;
 }
 
 .hr-manage-shifts__top--two-col {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 24px;
+  min-height: 52px;
+  margin-bottom: 18px;
 }
 
 .hr-manage-shifts__title {
@@ -61,22 +64,46 @@
 
 .hr-manage-shifts__primary-btn {
   display: inline-flex;
-  margin-left: auto;
+  justify-self: end;
   align-items: center;
   gap: 6px;
   border: 0;
-  border-radius: 6px;
+  border-radius: 8px;
   background: var(--ms-primary);
-  padding: 9px 16px;
-  font-size: 13px;
+  padding: 12px 18px;
+  font-size: 14px;
   font-weight: 600;
   color: #ffffff;
   cursor: pointer;
   white-space: nowrap;
+  box-shadow: 0 2px 4px rgba(37, 99, 235, 0.18);
+  transition: background-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 
 .hr-manage-shifts__primary-btn:hover {
   background: #1d4ed8;
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.22);
+  transform: translateY(-1px);
+}
+
+@media (max-width: 640px) {
+  .hr-manage-shifts__top,
+  .hr-manage-shifts__top--two-col {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    min-height: 0;
+    margin-bottom: 14px;
+  }
+
+  .hr-manage-shifts__top .hr-manage-shifts__period {
+    order: 3;
+    width: 100%;
+  }
+
+  .hr-manage-shifts__primary-btn {
+    margin-left: auto;
+  }
 }
 
 .hr-manage-shifts__tabs-bar {

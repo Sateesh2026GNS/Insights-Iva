@@ -108,6 +108,7 @@ function QuickAddExpenseDrawer({ open, onClose, onSave }) {
   const [expenseDate, setExpenseDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [amount, setAmount] = useState("");
   const [details, setDetails] = useState("");
+  const [receipt, setReceipt] = useState(null);
   const [saving, setSaving] = useState(false);
   const fileRef = useRef(null);
   const { addToast } = useToast();
@@ -119,6 +120,7 @@ function QuickAddExpenseDrawer({ open, onClose, onSave }) {
     setExpenseDate(new Date().toISOString().slice(0, 10));
     setAmount("");
     setDetails("");
+    setReceipt(null);
   }, [open]);
 
   useEffect(() => {
@@ -152,6 +154,7 @@ function QuickAddExpenseDrawer({ open, onClose, onSave }) {
         amount: Number(amount),
         details: details.trim(),
         status: "pending",
+        attachment_name: receipt?.name || null,
       });
       onClose();
     } catch (err) {
@@ -163,13 +166,13 @@ function QuickAddExpenseDrawer({ open, onClose, onSave }) {
 
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-end bg-black/60 backdrop-blur-xs"
+      className="fixed inset-0 z-[100] flex items-center justify-end bg-black/60 p-0 backdrop-blur-xs sm:p-4"
       role="dialog"
       aria-modal="true"
       onClick={onClose}
     >
       <div
-        className="h-full w-full max-w-md overflow-y-auto bg-white p-6 shadow-2xl dark:bg-slate-900 border-l border-[var(--color-border-soft)]"
+        className="flex h-full max-h-[100dvh] w-full max-w-md flex-col overflow-hidden bg-white p-5 shadow-2xl dark:bg-slate-900 sm:h-[min(760px,calc(100dvh-2rem))] sm:rounded-2xl sm:border sm:border-[var(--color-border-soft)] sm:p-6"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-[var(--color-border-soft)] pb-4 mb-5">
@@ -186,7 +189,7 @@ function QuickAddExpenseDrawer({ open, onClose, onSave }) {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="min-h-0 flex-1 space-y-4 overflow-y-auto pr-1 pb-1">
           <div>
             <label className="block text-xs font-semibold text-[var(--color-text)] mb-1">
               Expense Category <span className="text-red-500">*</span>
@@ -274,14 +277,31 @@ function QuickAddExpenseDrawer({ open, onClose, onSave }) {
                 className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--color-primary)] hover:underline"
               >
                 <Plus className="h-4 w-4" />
-                Upload Receipt
+                {receipt ? "Change Receipt" : "Upload Receipt"}
               </button>
-              <input ref={fileRef} type="file" className="hidden" />
-              <p className="mt-1 text-[11px] text-[var(--color-text-muted)]">PDF, PNG, JPG up to 10MB</p>
+              <input
+                ref={fileRef}
+                type="file"
+                accept="application/pdf,image/png,image/jpeg"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  if (file.size > 10 * 1024 * 1024) {
+                    addToast("Receipt must be smaller than 10MB", "error");
+                    e.target.value = "";
+                    return;
+                  }
+                  setReceipt(file);
+                }}
+              />
+              <p className="mt-1 truncate text-[11px] text-[var(--color-text-muted)]" title={receipt?.name}>
+                {receipt ? receipt.name : "PDF, PNG, JPG up to 10MB"}
+              </p>
             </div>
           </div>
 
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-[var(--color-border-soft)]">
+          <div className="sticky bottom-0 flex items-center justify-end gap-3 border-t border-[var(--color-border-soft)] bg-white pt-4 pb-[env(safe-area-inset-bottom)] dark:bg-slate-900">
             <Button variant="outline" type="button" onClick={onClose} disabled={saving}>
               Cancel
             </Button>

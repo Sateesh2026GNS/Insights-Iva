@@ -146,7 +146,7 @@ describe("getDashboardPathForRole", () => {
     expect(getDashboardPathForRole("operator")).toBe("/");
     expect(getDashboardPathForRole("Store Manager")).toBe("/inventory");
     expect(getDashboardPathForRole("HR Manager")).toBe("/hr");
-    expect(getDashboardPathForRole("Sales Manager")).toBe("/sales");
+    expect(getDashboardPathForRole("Sales Manager")).toBe("/");
     expect(getDashboardPathForRole("Accountant")).toBe("/accounts");
     expect(getDashboardPathForRole("Quality Control")).toBe("/quality");
   });

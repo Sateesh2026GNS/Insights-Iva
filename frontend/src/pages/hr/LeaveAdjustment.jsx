@@ -65,11 +65,10 @@ function normalizeBalances(raw) {
   if (!raw || typeof raw !== "object") return base;
   for (const t of LEAVE_TYPES) {
     const entry = raw[t.key] || raw[t.label] || {};
-    base[t.key] = {
-      consumed: Number(entry.consumed ?? entry.balance_consumed ?? 0) || 0,
-      available: Number(entry.available ?? entry.balance ?? 0) || 0,
-      total: Number(entry.total ?? entry.total_leave ?? 0) || 0,
-    };
+    const consumed = Number(entry.consumed ?? entry.used ?? entry.balance_consumed ?? 0) || 0;
+    const available = Number(entry.available ?? entry.balance ?? 0) || 0;
+    const totalValue = Number(entry.total ?? entry.total_leave ?? 0) || 0;
+    base[t.key] = { consumed, available, total: totalValue || consumed + available };
   }
   return base;
 }
@@ -341,6 +340,7 @@ export default function LeaveAdjustment() {
       const saved = adjustmentMap[id] || adjustmentMap[emp.id];
       return {
         employeeId: id,
+        employeeDbId: emp.id,
         name: emp.full_name || emp.name || "Employee",
         department: emp.department || "",
         branch: emp.branch || "",
@@ -352,14 +352,31 @@ export default function LeaveAdjustment() {
   const load = useCallback(async (isRefresh = false) => {
     if (isRefresh) setLoading(true);
     try {
-      const [empRes, adjRes] = await Promise.all([getEmployeesEnriched(), getLeaveAdjustments()]);
-      const empList = empRes?.data?.length ? empRes.data : [DEMO_EMPLOYEE];
+      const [empResult, adjResult] = await Promise.allSettled([
+        getEmployeesEnriched(),
+        getLeaveAdjustments(),
+      ]);
+      if (empResult.status !== "fulfilled") throw empResult.reason;
+
+      const empList = Array.isArray(empResult.value?.data) && empResult.value.data.length
+        ? empResult.value.data
+        : [DEMO_EMPLOYEE];
       setEmployees(empList);
 
       const adjustmentMap = {};
-      for (const row of adjRes?.data || []) {
-        const id = row.employee_id || row.employee_code || row.id;
-        if (id) adjustmentMap[id] = row;
+      const adjustments = adjResult.status === "fulfilled" && Array.isArray(adjResult.value?.data)
+        ? adjResult.value.data
+        : [];
+      for (const adjustment of adjustments) {
+        const id = adjustment.employee_id;
+        if (!id) continue;
+        const row = adjustmentMap[id] || { balances: {} };
+        const leaveType = adjustment.leave_type;
+        if (leaveType) {
+          const consumed = Number(adjustment.adjustment_days) || 0;
+          row.balances[leaveType] = { consumed, available: 0, total: consumed };
+        }
+        adjustmentMap[id] = row;
       }
       setRows(buildRowsFromEmployees(empList, adjustmentMap));
     } catch {
@@ -398,11 +415,15 @@ export default function LeaveAdjustment() {
     setRows((prev) =>
       prev.map((row) => {
         if (row.employeeId !== employeeId) return row;
+        const current = row.balances[leaveKey] || { consumed: 0, available: 0, total: 0 };
+        const total = Math.max(Number(current.total) || 0, field === "consumed" ? num : 0);
+        const consumed = field === "consumed" ? num : current.consumed;
+        const available = Math.max(0, total - consumed);
         return {
           ...row,
           balances: {
             ...row.balances,
-            [leaveKey]: { ...row.balances[leaveKey], [field]: num },
+            [leaveKey]: { ...current, consumed, available, total },
           },
         };
       })
@@ -410,12 +431,15 @@ export default function LeaveAdjustment() {
   };
 
   const handleSave = async () => {
-    const payload = rows.map((row) => ({
-      employee_id: row.employeeId,
-      leave_balances: row.balances,
-    }));
+    const items = rows.flatMap((row) =>
+      LEAVE_TYPES.map((type) => ({
+        employee_id: row.employeeDbId,
+        leave_type: type.key,
+        adjustment_days: Number(row.balances[type.key]?.consumed) || 0,
+      })).filter((item) => Number.isInteger(Number(item.employee_id)) && Number(item.employee_id) > 0)
+    );
     try {
-      await saveLeaveAdjustments(payload);
+      await saveLeaveAdjustments({ items });
       addToast("Leave adjustments saved", "success");
     } catch {
       addToast("Leave adjustments saved locally", "success");
@@ -528,8 +552,9 @@ export default function LeaveAdjustment() {
                             <input
                               type="number"
                               min={0}
+                              placeholder="0"
                               className="hr-leave-adj__num-input"
-                              value={bal.consumed}
+                              value={bal.consumed === 0 ? "" : bal.consumed}
                               onChange={(e) => updateCell(row.employeeId, t.key, "consumed", e.target.value)}
                               aria-label={`${t.label} consumed for ${row.name}`}
                             />

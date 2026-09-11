@@ -110,27 +110,66 @@ function SimpleSelect({ value, onChange, options, placeholder }) {
 
 function ActionMenu({ onView, onDelete }) {
   const [open, setOpen] = useState(false);
+  const [menuPosition, setMenuPosition] = useState(null);
   const rootRef = useRef(null);
+  const buttonRef = useRef(null);
+  const menuRef = useRef(null);
+
+  const updateMenuPosition = useCallback(() => {
+    const button = buttonRef.current;
+    if (!button) return;
+    const rect = button.getBoundingClientRect();
+    const menuHeight = 82;
+    const openAbove = rect.bottom + menuHeight > window.innerHeight - 8;
+    setMenuPosition({
+      top: openAbove ? rect.top - menuHeight - 4 : rect.bottom + 4,
+      left: Math.max(8, rect.right - 120),
+    });
+  }, []);
 
   useEffect(() => {
     if (!open) return undefined;
     const onDoc = (e) => {
-      if (rootRef.current && !rootRef.current.contains(e.target)) setOpen(false);
+      if (
+        rootRef.current &&
+        !rootRef.current.contains(e.target) &&
+        !menuRef.current?.contains(e.target)
+      ) {
+        setOpen(false);
+      }
     };
     document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
-  }, [open]);
+    window.addEventListener("resize", updateMenuPosition);
+    window.addEventListener("scroll", updateMenuPosition, true);
+    updateMenuPosition();
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      window.removeEventListener("resize", updateMenuPosition);
+      window.removeEventListener("scroll", updateMenuPosition, true);
+    };
+  }, [open, updateMenuPosition]);
 
   return (
     <div ref={rootRef} className="hr-offboarded__action-wrap">
-      <button type="button" className="hr-offboarded__action-btn" onClick={() => setOpen((v) => !v)} aria-label="Row actions">
+      <button
+        ref={buttonRef}
+        type="button"
+        className="hr-offboarded__action-btn"
+        onClick={() => {
+          updateMenuPosition();
+          setOpen((v) => !v);
+        }}
+        aria-label="Row actions"
+        aria-expanded={open}
+      >
         <MoreVertical className="h-4 w-4" />
       </button>
-      {open ? (
-        <div className="hr-offboarded__action-menu">
+      {open && menuPosition && typeof document !== "undefined" ? createPortal(
+        <div ref={menuRef} className="hr-offboarded__action-menu" style={{ position: "fixed", top: menuPosition.top, left: menuPosition.left }}>
           {onView ? <button type="button" onClick={() => { setOpen(false); onView(); }}>View</button> : null}
           {onDelete ? <button type="button" style={{ color: "#dc2626", fontWeight: 500 }} onClick={() => { setOpen(false); onDelete(); }}>Delete</button> : null}
-        </div>
+        </div>,
+        document.body
       ) : null}
     </div>
   );

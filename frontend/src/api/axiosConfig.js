@@ -196,12 +196,7 @@ api.interceptors.response.use(
       original?.url?.includes("/platform/auth/verify-otp") ||
       original?.url?.includes("/auth/refresh");
 
-    const token = localStorage.getItem("smrt-token");
-    const isFastSession = token && token.startsWith("fast-session-");
-    const loginTime = Number(localStorage.getItem("smrt-login-time") || 0);
-    const isRecentlyLoggedIn = Date.now() - loginTime < 60_000;
-
-    if (status === 401 && !isAuthUrl && !isFastSession && !isRecentlyLoggedIn) {
+    if (status === 401 && !isAuthUrl) {
       clearAuthStorage();
       if (typeof onUnauthorized === "function") {
         onUnauthorized();

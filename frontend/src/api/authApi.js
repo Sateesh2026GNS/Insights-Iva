@@ -23,23 +23,12 @@ export function buildFastAuthPayload(email, role) {
 }
 
 export async function login(email, password, role) {
-  // Fire background server login to sync backend session asynchronously if reachable
-  api
-    .post("/auth/login", { email, password, role }, { timeout: 10_000 })
-    .then((res) => {
-      if (res?.data?.access_token) {
-        try {
-          localStorage.setItem("smrt-token", res.data.access_token);
-          if (res.data.refresh_token) {
-            localStorage.setItem("smrt-refresh-token", res.data.refresh_token);
-          }
-        } catch {}
-      }
-    })
-    .catch(() => {});
-
-  // Instant login return in < 0.05 seconds
-  return buildFastAuthPayload(email, role);
+  const { data } = await api.post(
+    "/auth/login",
+    { email, password, role },
+    { timeout: 15_000 }
+  );
+  return data;
 }
 
 export async function phoneLogin(phone, role, idToken = null) {
