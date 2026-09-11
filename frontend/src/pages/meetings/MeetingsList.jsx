@@ -136,15 +136,11 @@ export default function MeetingsList() {
     if (connected === "1") {
       setSearchParams({}, { replace: true });
       load();
-      // Open Google Calendar in a new tab — done via a link click to bypass popup blockers
-      const a = document.createElement("a");
-      a.href = "https://calendar.google.com";
-      a.target = "_blank";
-      a.rel = "noopener noreferrer";
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      addToast("Google Calendar connected! Your meetings will now sync automatically.", "success");
+      // Silently auto-import events from Google Calendar immediately
+      importFromGoogleCalendar()
+        .then(() => load())
+        .catch(() => {});
+      addToast("Google Calendar connected! Your meetings are now syncing automatically.", "success");
     } else if (error) {
       const decoded = decodeURIComponent(error);
       const isRefreshTokenError = decoded.toLowerCase().includes("refresh token") || decoded.toLowerCase().includes("revoke");
