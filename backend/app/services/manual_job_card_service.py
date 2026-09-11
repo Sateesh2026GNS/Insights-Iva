@@ -112,22 +112,91 @@ def _parse_date(value: Any) -> date | None:
         return None
 
 
+def _money(value: Any) -> float:
+    try:
+        return round(float(value or 0), 2)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _optional_float(value: Any) -> float | None:
+    if value in (None, ""):
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _optional_int(value: Any) -> int | None:
+    if value in (None, ""):
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _recalculate_product_line(row: dict[str, Any]) -> dict[str, Any]:
+    qty = _optional_float(row.get("quantity")) or 0.0
+    unit_price = _optional_float(row.get("unit_price")) or 0.0
+    line_amount = _money(qty * unit_price)
+    row["line_amount"] = line_amount
+    row["total_amount"] = line_amount
+    return row
+
+
 def _normalize_product_line(row: Any, index: int) -> dict[str, Any]:
     if not isinstance(row, dict):
         return {}
-    qty = row.get("quantity")
-    try:
-        qty_val = float(qty) if qty not in (None, "") else None
-    except (TypeError, ValueError):
-        qty_val = None
-    return {
+    qty_val = _optional_float(row.get("quantity"))
+    normalized = {
         "sl_no": index + 1,
+        "product_id": _optional_int(row.get("product_id")),
         "product_code": _trim(row.get("product_code"), 64),
         "product_name": _trim(row.get("product_name"), 255),
-        "description": _trim(row.get("description"), 500),
         "quantity": qty_val,
         "uom": _trim(row.get("uom") or row.get("unit"), 32) or "Nos",
+        "unit_price": (
+            _optional_float(row["unit_price"])
+            if "unit_price" in row
+            else _optional_float(row.get("price"))
+        ),
     }
+    return _recalculate_product_line(normalized)
+
+
+def _validate_manual_product_lines(
+    db: Session, tenant_id: int, lines: list[dict[str, Any]]
+) -> dict[str, str]:
+    errors: dict[str, str] = {}
+    seen_product_ids: set[int] = set()
+    for i, row in enumerate(lines):
+        if not isinstance(row, dict):
+            continue
+        raw_pid = row.get("product_id")
+        resolved_pid = _resolve_product_id_from_line(db, tenant_id, row)
+        if raw_pid not in (None, ""):
+            try:
+                requested_pid = int(raw_pid)
+            except (TypeError, ValueError):
+                requested_pid = None
+            if requested_pid is not None and resolved_pid != requested_pid:
+                errors[f"product_lines.{i}.product_id"] = "Product not found or not accessible"
+        if resolved_pid:
+            if resolved_pid in seen_product_ids:
+                errors[f"product_lines.{i}.product_name"] = (
+                    "Product already added. Update the quantity instead."
+                )
+            seen_product_ids.add(resolved_pid)
+        unit_price = row.get("unit_price")
+        try:
+            price_val = float(unit_price) if unit_price not in (None, "") else None
+            if price_val is None or price_val < 0:
+                errors[f"product_lines.{i}.unit_price"] = "Enter a valid price"
+        except (TypeError, ValueError):
+            errors[f"product_lines.{i}.unit_price"] = "Enter a valid price"
+    return errors
 
 
 def _normalize_spec_row(row: Any, index: int) -> dict[str, Any]:
@@ -1127,6 +1196,13 @@ def validate_manual_document(doc: dict[str, Any], *, finalize: bool = True) -> d
                 errors[f"product_lines.{i}.quantity"] = "Quantity must be greater than 0"
             if not _trim(row.get("uom")):
                 errors[f"product_lines.{i}.uom"] = "UOM is required"
+            unit_price = row.get("unit_price")
+            try:
+                price_val = float(unit_price) if unit_price not in (None, "") else None
+                if price_val is None or price_val < 0:
+                    errors[f"product_lines.{i}.unit_price"] = "Enter a valid price"
+            except (TypeError, ValueError):
+                errors[f"product_lines.{i}.unit_price"] = "Enter a valid price"
 
     return errors
 
@@ -1352,6 +1428,10 @@ def create_manual_job_card(
     manual_patch = payload.get("manual_document") or payload
     doc = merge_manual_document({}, manual_patch)
     errors = validate_manual_document(doc, finalize=finalize)
+    if finalize:
+        errors.update(
+            _validate_manual_product_lines(db, tenant_id, doc.get("product_lines") or [])
+        )
     if errors:
         raise HTTPException(status_code=422, detail={"message": "Validation failed", "errors": errors})
 
@@ -1424,7 +1504,12 @@ def update_manual_job_card(
     existing_doc = extract_manual_document(details)
     manual_patch = payload.get("manual_document") or payload
     doc = merge_manual_document(existing_doc, manual_patch)
-    errors = validate_manual_document(doc, finalize=finalize or jc.status == "created")
+    should_finalize = finalize or jc.status == "created"
+    errors = validate_manual_document(doc, finalize=should_finalize)
+    if should_finalize:
+        errors.update(
+            _validate_manual_product_lines(db, tenant_id, doc.get("product_lines") or [])
+        )
     if errors:
         raise HTTPException(status_code=422, detail={"message": "Validation failed", "errors": errors})
 

@@ -341,7 +341,7 @@ SIDEBAR_MENU_CATALOG = [
             {"label": "Quotations", "path": "/sales/quotations", "module": "sales"},
             {"label": "Sales Orders", "path": "/sales/orders", "module": "sales"},
             {"label": "My Job Cards", "path": "/my-job-cards", "module": "sales"},
-            {"label": "Customers", "path": "/masters/customers", "module": "sales"},
+            {"label": "Customers", "path": "/sales/customers", "module": "sales"},
             {"label": "Work Orders", "path": "/production/work-orders", "module": "sales"},
             {"label": "Dispatch", "path": "/sales/dispatch", "module": "sales"},
         ],

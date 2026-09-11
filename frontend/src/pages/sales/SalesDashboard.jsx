@@ -96,7 +96,7 @@ export default function SalesDashboard() {
             <KpiCard label="Pending Orders" value={hub.pending_orders} icon={ShoppingCart} tone="warning" to="/sales/orders" />
             <KpiCard label="Dispatch Pending" value={hub.dispatch_pending} icon={Truck} tone="info" to="/sales/dispatch" />
             <KpiCard label="Outstanding Payments" value={formatInr(hub.outstanding_payments)} icon={IndianRupee} tone="danger" to="/sales/payments" />
-            <KpiCard label="New Customers" value={hub.new_customers} icon={Users} tone="teal" to="/masters/customers" />
+            <KpiCard label="New Customers" value={hub.new_customers} icon={Users} tone="teal" to="/sales/customers" />
           </div>
         )}
 
@@ -115,7 +115,7 @@ export default function SalesDashboard() {
                 ))}
               </ul>
             )}
-            <Link to="/masters/customers" className="mt-3 inline-block text-[var(--text-sm)] font-semibold text-[var(--color-primary)] hover:underline">
+            <Link to="/sales/customers" className="mt-3 inline-block text-[var(--text-sm)] font-semibold text-[var(--color-primary)] hover:underline">
               View all customers →
             </Link>
           </div>

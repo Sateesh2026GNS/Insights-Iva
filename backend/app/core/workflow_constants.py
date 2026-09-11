@@ -32,6 +32,7 @@ WORKFLOW_STATUSES = frozenset({
     "INVOICED",
     "BILLING_HOLD",
     "COMPLETED",
+    "CANCELLED",
 })
 
 ORDER_PRIORITIES = frozenset({"high", "medium", "low"})
@@ -63,6 +64,7 @@ WORKFLOW_STATUS_LABELS: dict[str, str] = {
     "INVOICED": "Invoiced",
     "BILLING_HOLD": "Billing Hold",
     "COMPLETED": "Completed",
+    "CANCELLED": "Order Cancelled",
 }
 
 
@@ -207,6 +209,23 @@ WORKFLOW_TRANSITIONS: dict[str, dict[str, str]] = {
     },
 }
 
+# Sales Manager customer-request cancellation — allowed only before production starts.
+_CANCELLATION_FROM_STATUSES = (
+    "SALES_CONFIRMED",
+    "MATERIAL_CHECK_PENDING",
+    "MATERIAL_AVAILABLE",
+    "MATERIAL_SHORTAGE",
+    "MATERIAL_PARTIAL",
+    "WORKFLOW_ON_HOLD",
+    "STORE_ISSUE_PENDING",
+    "STORE_ISSUE_PARTIAL",
+    "READY_FOR_PRODUCTION",
+    "PRODUCTION_ASSIGNED",
+)
+
+for _cancel_src in _CANCELLATION_FROM_STATUSES:
+    WORKFLOW_TRANSITIONS.setdefault(_cancel_src, {})["CANCELLED"] = TEAM_SALES
+
 # Admin dashboard count buckets → filter path
 WORKFLOW_COUNT_BUCKETS: list[dict[str, str]] = [
     {"key": "sales_confirmed", "statuses": "SALES_CONFIRMED", "label": "Sales Orders", "path": "/manufacturing/workflow?status=SALES_CONFIRMED"},
@@ -234,7 +253,28 @@ STATUS_NOTIFY_ROLES: dict[str, list[str]] = {
     "COMPLETED": ["Sales Manager", "Admin"],
     "QUALITY_REJECTED": ["Production Manager", "Operator", "Admin"],
     "WORKFLOW_ON_HOLD": ["Store Manager", "Production Manager", "Admin"],
+    "CANCELLED": ["Store Manager", "Production Manager", "Admin"],
 }
+
+# Workflow stages where customer cancellation is blocked (production already started).
+CANCELLATION_BLOCKED_WORKFLOW_STATUSES = frozenset({
+    "PRODUCTION_IN_PROGRESS",
+    "PRODUCTION_COMPLETED",
+    "PRODUCTION_REWORK",
+    "QUALITY_CHECK_PENDING",
+    "QUALITY_ON_HOLD",
+    "QUALITY_APPROVED",
+    "QUALITY_REJECTED",
+    "PACKING_PENDING",
+    "PACKING_IN_PROGRESS",
+    "PACKED",
+    "PACKING_ISSUE",
+    "BILLING_PENDING",
+    "INVOICED",
+    "BILLING_HOLD",
+    "COMPLETED",
+    "CANCELLED",
+})
 
 
 def normalize_priority(value: str | None) -> str:

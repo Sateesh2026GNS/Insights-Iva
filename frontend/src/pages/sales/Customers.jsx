@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   ChevronLeft,
   ChevronRight,
+  MoreHorizontal,
   Pencil,
   Plus,
   Trash2,
@@ -18,14 +19,17 @@ import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/
 import EmptyState from "../../components/common/EmptyState";
 import { AsyncPageBody, NoResultsState } from "../../components/common/states";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
-import AddNewPartyModal from "../../components/sales/AddNewPartyModal";
+import CustomersEmptyState from "../../components/sales/CustomersEmptyState";
+import CustomersViewSelector from "../../components/sales/CustomersViewSelector";
 import { useNetworkStatus } from "../../context/NetworkStatusContext";
 import { useToast } from "../../context/ToastContext";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { deleteCustomer, getCustomers } from "../../api/salesApi";
 import { enrichApiCustomer } from "../../data/customersMasterData";
+import { filterCustomersByView, viewLabel } from "../../utils/customerListViews";
 import { runListExport } from "../../utils/listExport";
 import { apiErrorMessage, classifyApiError } from "../../utils/apiError";
+import "../../styles/customers-page.css";
 
 const PAGE_SIZES = [20, 50, 100];
 
@@ -56,13 +60,14 @@ export default function Customers() {
   const [loadErrorObj, setLoadErrorObj] = useState(null);
   const [customers, setCustomers] = useState([]);
   const [query, setQuery] = useState("");
+  const [activeView, setActiveView] = useState("all");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
-  const [partyOpen, setPartyOpen] = useState(false);
-  const [editing, setEditing] = useState(null);
   const [deleting, setDeleting] = useState(null);
   const [deletingBusy, setDeletingBusy] = useState(false);
   const [openMenu, setOpenMenu] = useState(null);
+  const [overflowOpen, setOverflowOpen] = useState(false);
+  const overflowRef = useRef(null);
 
   const isMountedRef = useRef(true);
 
@@ -72,6 +77,15 @@ export default function Customers() {
       isMountedRef.current = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!overflowOpen) return undefined;
+    const onDoc = (e) => {
+      if (!overflowRef.current?.contains(e.target)) setOverflowOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [overflowOpen]);
 
   const loadCustomers = useCallback(async (isRefresh = false) => {
     if (!isMountedRef.current) return;
@@ -83,7 +97,7 @@ export default function Customers() {
       const res = await getCustomers();
       if (!isMountedRef.current) return;
       const rows = Array.isArray(res.data) ? res.data : [];
-      setCustomers(rows.map((row) => enrichApiCustomer(row)));
+      setCustomers(rows.map((row, index) => enrichApiCustomer(row, index)));
     } catch (err) {
       if (!isMountedRef.current) return;
       if (isRefresh) throw err;
@@ -105,18 +119,31 @@ export default function Customers() {
 
   useEffect(() => registerRetry(() => loadCustomers(true)), [registerRetry, loadCustomers]);
 
-  // Deep-link: /masters/customers?create=1 or /masters/customers/create → open create modal
   useEffect(() => {
     if (searchParams.get("create") !== "1") return;
-    setEditing(null);
-    setPartyOpen(true);
-    navigate("/masters/customers", { replace: true });
+    navigate("/sales/customers/create", { replace: true });
   }, [searchParams, navigate]);
+
+  const openCreate = useCallback(() => {
+    navigate("/sales/customers/create");
+  }, [navigate]);
+
+  const openEdit = useCallback(
+    (customer) => {
+      if (customer?.id) navigate(`/sales/customers/${customer.id}/edit`);
+    },
+    [navigate]
+  );
+
+  const viewFiltered = useMemo(
+    () => filterCustomersByView(customers, activeView),
+    [customers, activeView]
+  );
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return customers;
-    return customers.filter((c) =>
+    if (!q) return viewFiltered;
+    return viewFiltered.filter((c) =>
       [
         c.company,
         c.name,
@@ -133,11 +160,11 @@ export default function Customers() {
         .toLowerCase()
         .includes(q)
     );
-  }, [customers, query]);
+  }, [viewFiltered, query]);
 
   useEffect(() => {
     setPage(1);
-  }, [query, pageSize]);
+  }, [query, pageSize, activeView]);
 
   const total = filtered.length;
   const totalPages = Math.max(1, Math.ceil(total / pageSize) || 1);
@@ -160,7 +187,7 @@ export default function Customers() {
       data: exportRows,
       columns: CUSTOMER_EXPORT_COLUMNS,
       filename: "customers",
-      title: "Customers",
+      title: viewLabel(activeView),
     });
     addToast(format === "pdf" ? "Exported to PDF" : "Exported to Excel", "success");
   };
@@ -180,12 +207,66 @@ export default function Customers() {
     }
   };
 
-  const hasActiveFilters = Boolean(query.trim());
+  const hasActiveFilters = Boolean(query.trim()) || activeView !== "all";
+  const showFirstUseEmpty = !loading && !loadError && customers.length === 0;
 
   return (
     <ListPageShell>
-      <ListPageCard>
-        <ListPageCardBody>
+      <ListPageCard className="customers-page">
+        <div className="customers-page__header">
+          <CustomersViewSelector
+            value={activeView}
+            onChange={setActiveView}
+            onNewView={() => addToast("Custom views will be available in a future update.", "info")}
+          />
+          <div className="customers-page__header-actions">
+            <Button
+              variant="add"
+              type="button"
+              onClick={openCreate}
+              leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}
+            >
+              New
+            </Button>
+            <div className="relative" ref={overflowRef}>
+              <button
+                type="button"
+                className="customers-page__overflow-btn"
+                aria-label="More actions"
+                aria-expanded={overflowOpen}
+                onClick={() => setOverflowOpen((v) => !v)}
+              >
+                <MoreHorizontal className="h-4 w-4" />
+              </button>
+              {overflowOpen ? (
+                <div className="customers-page__overflow-menu">
+                  <button
+                    type="button"
+                    className="customers-page__overflow-item"
+                    onClick={() => {
+                      setOverflowOpen(false);
+                      navigate("/sales/customers/bulk-import");
+                    }}
+                  >
+                    Import File
+                  </button>
+                  <button
+                    type="button"
+                    className="customers-page__overflow-item"
+                    onClick={() => {
+                      setOverflowOpen(false);
+                      loadCustomers();
+                    }}
+                  >
+                    Refresh
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </div>
+
+        <ListPageCardBody className={showFirstUseEmpty ? "customers-page__body--empty p-0" : ""}>
           <AsyncPageBody
             loading={loading}
             error={loadError}
@@ -196,179 +277,172 @@ export default function Customers() {
             loadingLabel="Loading customers..."
             errorTitle="Could not load customers"
           >
-          <div className="ui-list-toolbar">
-            <div className="ui-list-toolbar__start">
-              <SearchBar value={query} onChange={setQuery} placeholder="Search" className="w-full max-w-md" />
-            </div>
-            <div className="ui-list-toolbar__end">
-              <Button
-                variant="outline"
-                to="/masters/customers/bulk-import"
-                leftIcon={<Upload className="h-4 w-4" />}
-              >
-                Bulk Import
-              </Button>
-              <ExportDownloadMenu disabled={!exportRows.length} onExport={handleExport} />
-              <Button
-                variant="add"
-                type="button"
-                onClick={() => {
-                  setEditing(null);
-                  setPartyOpen(true);
-                }}
-                leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}
-              >
-                Create Customer
-              </Button>
-            </div>
-          </div>
+            {showFirstUseEmpty ? (
+              <CustomersEmptyState
+                onCreate={openCreate}
+                onImport={() => navigate("/sales/customers/bulk-import")}
+              />
+            ) : (
+              <>
+                <div className="ui-list-toolbar">
+                  <div className="ui-list-toolbar__start">
+                    <SearchBar value={query} onChange={setQuery} placeholder="Search" className="w-full max-w-md" />
+                  </div>
+                  <div className="ui-list-toolbar__end">
+                    <Button
+                      variant="outline"
+                      to="/sales/customers/bulk-import"
+                      leftIcon={<Upload className="h-4 w-4" />}
+                    >
+                      Bulk Import
+                    </Button>
+                    <ExportDownloadMenu disabled={!exportRows.length} onExport={handleExport} />
+                    <Button variant="add" type="button" to="/sales/customers/create" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
+                      Create Customer
+                    </Button>
+                  </div>
+                </div>
 
-          <div className="ui-table-wrap ui-table-wrap--scroll">
-              <table className="ui-table w-full min-w-[980px] border-collapse text-left text-[13px]">
-                <thead className="ui-table-head">
-                  <tr>
-                    <SerialNumberHeader />
-                    <th className="px-4 py-3 font-medium">Customer Name</th>
-                    <th className="px-4 py-3 font-medium">GSTIN</th>
-                    <th className="px-4 py-3 font-medium">Email</th>
-                    <th className="px-4 py-3 font-medium">Mobile No.</th>
-                    <th className="px-4 py-3 font-medium">Address</th>
-                    <th className="px-4 py-3 font-medium">City</th>
-                    <th className="px-4 py-3 font-medium">State</th>
-                    <th className="px-4 py-3 font-medium">Pincode</th>
-                    <th className="px-4 py-3 text-right font-medium">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((c, rowIndex) => (
-                    <tr key={c.id}>
-                      <SerialNumberCell rowIndex={rowIndex} page={page} pageSize={pageSize} />
-                      <td className="max-w-[220px] truncate px-4 py-3.5 font-medium text-[var(--color-text)]" title={c.company || c.name || ""}>
-                        {c.company || c.name || ""}
-                      </td>
-                      <td className="px-4 py-3.5 text-[var(--color-text-secondary)]">{blankOr(c.gstin)}</td>
-                      <td className="max-w-[180px] truncate px-4 py-3.5 text-[var(--color-text-secondary)]" title={c.email || ""}>{blankOr(c.email)}</td>
-                      <td className="px-4 py-3.5 text-[var(--color-text-secondary)]">{blankOr(c.phone)}</td>
-                      <td className="max-w-[220px] truncate px-4 py-3.5 text-[var(--color-text-secondary)]" title={c.address_line1 || c.billing_address || ""}>
-                        {blankOr(c.address_line1 || c.billing_address)}
-                      </td>
-                      <td className="px-4 py-3.5 text-[var(--color-text-secondary)]">{blankOr(c.city)}</td>
-                      <td className="px-4 py-3.5 text-[var(--color-text-secondary)]">{blankOr(c.state)}</td>
-                      <td className="px-4 py-3.5 text-[var(--color-text-secondary)]">{blankOr(c.pincode)}</td>
-                      <td className="px-4 py-2" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex items-center justify-end">
-                          <RowActionMenu
-                            rowId={c.id}
-                            openMenu={openMenu}
-                            setOpenMenu={setOpenMenu}
-                            items={[
-                              {
-                                label: "Edit",
-                                icon: <Pencil className="h-4 w-4" />,
-                                onClick: () => {
-                                  setEditing(c);
-                                  setPartyOpen(true);
-                                },
-                              },
-                              { divider: true },
-                              {
-                                label: "Delete",
-                                icon: <Trash2 className="h-4 w-4" />,
-                                danger: true,
-                                onClick: () => setDeleting(c),
-                              },
-                            ]}
-                          />
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            {rows.length === 0 ? (
-              hasActiveFilters ? (
-                <NoResultsState
-                  title="No customers match your search"
-                  description="Try a different search term or clear filters."
-                  onClear={() => setQuery("")}
-                  className="border-none bg-transparent py-12"
-                />
-              ) : (
-                <EmptyState
-                  icon="document"
-                  title="No Customers Found"
-                  description="Customers will appear here once you create them."
-                  actionLabel="Create Customer"
-                  onAction={() => {
-                    setEditing(null);
-                    setPartyOpen(true);
-                  }}
-                  className="border-none bg-transparent py-12"
-                />
-              )
-            ) : null}
-          </div>
+                <div className="ui-table-wrap ui-table-wrap--scroll">
+                  <table className="ui-table w-full min-w-[980px] border-collapse text-left text-[13px]">
+                    <thead className="ui-table-head">
+                      <tr>
+                        <SerialNumberHeader />
+                        <th className="px-4 py-3 font-medium">Customer Name</th>
+                        <th className="px-4 py-3 font-medium">GSTIN</th>
+                        <th className="px-4 py-3 font-medium">Email</th>
+                        <th className="px-4 py-3 font-medium">Mobile No.</th>
+                        <th className="px-4 py-3 font-medium">Address</th>
+                        <th className="px-4 py-3 font-medium">City</th>
+                        <th className="px-4 py-3 font-medium">State</th>
+                        <th className="px-4 py-3 font-medium">Pincode</th>
+                        <th className="px-4 py-3 text-right font-medium">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rows.map((c, rowIndex) => (
+                        <tr key={c.id}>
+                          <SerialNumberCell rowIndex={rowIndex} page={page} pageSize={pageSize} />
+                          <td
+                            className="max-w-[220px] truncate px-4 py-3.5 font-medium text-[var(--color-text)]"
+                            title={c.company || c.name || ""}
+                          >
+                            {c.company || c.name || ""}
+                          </td>
+                          <td className="px-4 py-3.5 text-[var(--color-text-secondary)]">{blankOr(c.gstin)}</td>
+                          <td
+                            className="max-w-[180px] truncate px-4 py-3.5 text-[var(--color-text-secondary)]"
+                            title={c.email || ""}
+                          >
+                            {blankOr(c.email)}
+                          </td>
+                          <td className="px-4 py-3.5 text-[var(--color-text-secondary)]">{blankOr(c.phone)}</td>
+                          <td
+                            className="max-w-[220px] truncate px-4 py-3.5 text-[var(--color-text-secondary)]"
+                            title={c.address_line1 || c.billing_address || ""}
+                          >
+                            {blankOr(c.address_line1 || c.billing_address)}
+                          </td>
+                          <td className="px-4 py-3.5 text-[var(--color-text-secondary)]">{blankOr(c.city)}</td>
+                          <td className="px-4 py-3.5 text-[var(--color-text-secondary)]">{blankOr(c.state)}</td>
+                          <td className="px-4 py-3.5 text-[var(--color-text-secondary)]">{blankOr(c.pincode)}</td>
+                          <td className="px-4 py-2" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center justify-end">
+                              <RowActionMenu
+                                rowId={c.id}
+                                openMenu={openMenu}
+                                setOpenMenu={setOpenMenu}
+                                items={[
+                                  {
+                                    label: "Edit",
+                                    icon: <Pencil className="h-4 w-4" />,
+                                onClick: () => openEdit(c),
+                                  },
+                                  { divider: true },
+                                  {
+                                    label: "Delete",
+                                    icon: <Trash2 className="h-4 w-4" />,
+                                    danger: true,
+                                    onClick: () => setDeleting(c),
+                                  },
+                                ]}
+                              />
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {rows.length === 0 ? (
+                    hasActiveFilters ? (
+                      <NoResultsState
+                        title="No customers match your filters"
+                        description="Try a different search term, view, or clear filters."
+                        onClear={() => {
+                          setQuery("");
+                          setActiveView("all");
+                        }}
+                        className="border-none bg-transparent py-12"
+                      />
+                    ) : (
+                      <EmptyState
+                        icon="document"
+                        title="No Customers Found"
+                        description="Customers will appear here once you create them."
+                        actionLabel="Create Customer"
+                        onAction={openCreate}
+                        className="border-none bg-transparent py-12"
+                      />
+                    )
+                  ) : null}
+                </div>
 
-          <div className="mt-4 ui-pagination justify-between">
-            <div className="flex items-center gap-2.5 flex-nowrap whitespace-nowrap">
-              <span>Rows per page:</span>
-              <select
-                value={pageSize}
-                onChange={(e) => setPageSize(Number(e.target.value))}
-                className="ui-pagination-select"
-              >
-                {PAGE_SIZES.map((n) => (
-                  <option key={n} value={n}>
-                    {n}
-                  </option>
-                ))}
-              </select>
-              <span>{total === 0 ? "0–0 of 0" : `${from}–${to} of ${total}`}</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                disabled={page <= 1}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="ui-page-btn"
-                aria-label="Previous page"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-              <button
-                type="button"
-                className="ui-page-btn ui-page-btn--active"
-              >
-                {page}
-              </button>
-              <button
-                type="button"
-                disabled={page >= totalPages}
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                className="ui-page-btn"
-                aria-label="Next page"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
+                <div className="mt-4 ui-pagination justify-between">
+                  <div className="flex items-center gap-2.5 flex-nowrap whitespace-nowrap">
+                    <span>Rows per page:</span>
+                    <select
+                      value={pageSize}
+                      onChange={(e) => setPageSize(Number(e.target.value))}
+                      className="ui-pagination-select"
+                    >
+                      {PAGE_SIZES.map((n) => (
+                        <option key={n} value={n}>
+                          {n}
+                        </option>
+                      ))}
+                    </select>
+                    <span>{total === 0 ? "0–0 of 0" : `${from}–${to} of ${total}`}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      disabled={page <= 1}
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      className="ui-page-btn"
+                      aria-label="Previous page"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </button>
+                    <button type="button" className="ui-page-btn ui-page-btn--active">
+                      {page}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={page >= totalPages}
+                      onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                      className="ui-page-btn"
+                      aria-label="Next page"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
           </AsyncPageBody>
         </ListPageCardBody>
       </ListPageCard>
 
-      <AddNewPartyModal
-        open={partyOpen}
-        customer={editing}
-        onClose={() => {
-          setPartyOpen(false);
-          setEditing(null);
-        }}
-        onSaved={() => {
-          setPartyOpen(false);
-          setEditing(null);
-          loadCustomers();
-        }}
-      />
       <ConfirmDialog
         open={Boolean(deleting)}
         title="Delete"

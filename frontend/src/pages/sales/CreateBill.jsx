@@ -174,7 +174,7 @@ export default function CreateBill() {
               </select>
               {customers.length === 0 && (
                 <p className="mt-1 text-xs text-amber-600">
-                  No customers found. <Link to="/masters/customers?create=1" className="underline">Add one</Link> first.
+                  No customers found. <Link to="/sales/customers/create" className="underline">Add one</Link> first.
                 </p>
               )}
             </div>

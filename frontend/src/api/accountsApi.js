@@ -34,6 +34,29 @@ export const getGSTExtended = (year, month, branch) =>
     params: { year, month: month || undefined, branch: branch || undefined },
   });
 
+export const getGstSummary = (dateFrom, dateTo) =>
+  api.get("/accounts/gst/summary", {
+    params: { date_from: dateFrom, date_to: dateTo },
+  });
+
+export const getGstReturnView = (dateFrom, dateTo) =>
+  api.get("/accounts/gst/return-view", {
+    params: { date_from: dateFrom, date_to: dateTo },
+  });
+
+export const getGstGstr3b = (dateFrom, dateTo) =>
+  api.get("/accounts/gst/gstr3b", {
+    params: { date_from: dateFrom, date_to: dateTo },
+  });
+
+export const getGstVoucherRegister = (params = {}) =>
+  api.get("/accounts/gst/voucher-register", { params });
+
+export const getGstUncertain = (dateFrom, dateTo) =>
+  api.get("/accounts/gst/uncertain", {
+    params: { date_from: dateFrom, date_to: dateTo },
+  });
+
 export const listIncome = (_tenantId, year = null) =>
   api.get("/accounts/income", {
     params: { year },

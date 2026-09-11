@@ -87,6 +87,7 @@ export const CreateBill = lazy(() => import("../pages/sales/CreateBill"));
 export const SalesOrders = lazy(() => import("../pages/sales/SalesOrders"));
 export const SalesOrderDetail = lazy(() => import("../pages/sales/SalesOrderDetail"));
 export const Customers = lazy(() => import("../pages/sales/Customers"));
+export const CustomerFormPage = lazy(() => import("../pages/sales/CustomerFormPage"));
 export const CreateCustomer = lazy(() => import("../pages/sales/CreateCustomer"));
 export const BulkImportBuyer = lazy(() => import("../pages/sales/BulkImportBuyer"));
 export const PaymentTracking = lazy(() => import("../pages/finance/PaymentTracking"));
@@ -112,6 +113,7 @@ export const AccountsDashboard = lazy(() => import("../pages/accounts/AccountsDa
 export const ProfitLoss = lazy(() => import("../pages/accounts/ProfitLossV2"));
 export const ExpenseTracking = lazy(() => import("../pages/accounts/ExpenseTracking"));
 export const TaxReports = lazy(() => import("../pages/accounts/TaxReports"));
+export const GstPage = lazy(() => import("../pages/accounts/GstPage"));
 export const RecordIncome = lazy(() => import("../pages/accounts/RecordIncome"));
 export const RecordExpense = lazy(() => import("../pages/accounts/RecordExpense"));
 export const BalanceSheet = lazy(() => import("../pages/accounts/BalanceSheetV2"));
@@ -224,6 +226,7 @@ export const JobCardDetailsPage = lazy(() => import("../pages/manufacturing/JobC
 export const SalesJobCardPage = lazy(() => import("../pages/manufacturing/SalesJobCardPage"));
 export const CreateJobCard = lazy(() => import("../pages/manufacturing/CreateJobCardPage"));
 export const EditManualJobCard = lazy(() => import("../pages/manufacturing/EditManualJobCardPage"));
+export const ViewManualJobCard = lazy(() => import("../pages/manufacturing/ViewManualJobCardPage"));
 export const MyJobCards = lazy(() => import("../pages/manufacturing/MyJobCardsPage"));
 export const HRDashboard = lazy(() => import("../pages/hr/HRDashboard"));
 export const HREmployees = lazy(() => import("../pages/hr/Employees"));

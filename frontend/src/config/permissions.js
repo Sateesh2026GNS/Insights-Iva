@@ -446,7 +446,8 @@ export function userCanAccessPath(user, pathname) {
     path === "/my-job-cards" ||
     path.startsWith("/my-job-cards/") ||
     path.startsWith("/job-cards/") ||
-    path === "/sales/job-cards/create"
+    path === "/sales/job-cards/create" ||
+    /^\/sales\/job-cards\/[^/]+$/.test(path)
   ) {
     if (!userCanAccessMyJobCards(user)) return false;
     if (isStoreManager(user) && !storeManagerPathAllowed(pathname)) return false;

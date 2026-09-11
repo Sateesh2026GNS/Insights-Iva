@@ -3,6 +3,8 @@ import { useMemo } from "react";
 import { Input, Select, Textarea } from "../common/FormField";
 import { DatePicker } from "../../design-system/dateControls";
 import { fmtDeliveryDisplay, NOTES_MAX } from "./jobCardUiShared";
+import { formatInr } from "../../data/salesMasterData";
+import { computeLineTotals } from "../../utils/jobCardLineTotals";
 import {
   buildSalesJobCardDocument,
   formatCompanyAddress,
@@ -86,6 +88,13 @@ export default function SalesJobCardDocument({
   const lines = doc.product_lines || [];
   const specs = doc.technical_specifications || [];
   const approval = doc.approval || {};
+  const showPricing = lines.some(
+    (row) => row?.unit_price != null || row?.line_amount != null || row?.total_amount != null
+  );
+  const lineTotals = useMemo(
+    () => (showPricing ? computeLineTotals(lines) : null),
+    [lines, showPricing]
+  );
 
   const selectedCustomer = customers?.find((c) => String(c.id) === String(form?.customer_id));
 
@@ -240,17 +249,23 @@ export default function SalesJobCardDocument({
             <thead>
               <tr>
                 <th>Sl. No.</th>
-                <th>Product Code</th>
-                <th>Product Name</th>
-                <th>Description</th>
+                {showPricing ? <th>Product</th> : <th>Product Code</th>}
+                {!showPricing ? <th>Product Name</th> : null}
+                {!showPricing ? <th>Description</th> : null}
                 <th className="num">Quantity</th>
                 <th>UOM</th>
+                {showPricing ? (
+                  <>
+                    <th className="num">Price</th>
+                    <th className="num">Amount</th>
+                  </>
+                ) : null}
               </tr>
             </thead>
             <tbody>
               {lines.length === 0 ? (
                 <tr>
-                  <td colSpan={6} style={{ textAlign: "center", color: "#6b7280" }}>
+                  <td colSpan={showPricing ? 7 : 6} style={{ textAlign: "center", color: "#6b7280" }}>
                     No products on this sales order.
                   </td>
                 </tr>
@@ -258,9 +273,13 @@ export default function SalesJobCardDocument({
                 lines.map((row) => (
                   <tr key={row.sl_no}>
                     <td className="num">{row.sl_no}</td>
-                    <td>{display(row.product_code)}</td>
-                    <td>{display(row.product_name)}</td>
-                    <td>{display(row.description)}</td>
+                    {showPricing ? (
+                      <td>{display(row.product_name)}</td>
+                    ) : (
+                      <td>{display(row.product_code)}</td>
+                    )}
+                    {!showPricing ? <td>{display(row.product_name)}</td> : null}
+                    {!showPricing ? <td>{display(row.description)}</td> : null}
                     <td className="num">
                       {editable && lines.length === 1 ? (
                         <Input
@@ -287,11 +306,29 @@ export default function SalesJobCardDocument({
                         display(row.uom)
                       )}
                     </td>
+                    {showPricing ? (
+                      <>
+                        <td className="num">{formatInr(row.unit_price)}</td>
+                        <td className="num">{formatInr(row.line_amount ?? row.total_amount)}</td>
+                      </>
+                    ) : null}
                   </tr>
                 ))
               )}
             </tbody>
           </table>
+          {showPricing && lineTotals ? (
+            <div className="manual-sjc__line-summary">
+              <div className="manual-sjc__line-summary-row">
+                <span>Total Quantity</span>
+                <span>{lineTotals.totalQuantity}</span>
+              </div>
+              <div className="manual-sjc__line-summary-row manual-sjc__line-summary-row--total">
+                <span>Total Amount</span>
+                <span>{formatInr(lineTotals.totalAmount)}</span>
+              </div>
+            </div>
+          ) : null}
           {editable && lines.length === 1 ? (
             <div className="px-2 py-2 border-t border-[#d1d5db]">
               <div className="sjc-doc__field-row">

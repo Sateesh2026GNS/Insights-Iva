@@ -36,15 +36,14 @@ import { salesOrderDeleteErrorMessage } from "../../utils/salesOrderDelete";
 import { uniqueFilterValues } from "../../utils/storeJobCardQueue";
 import {
   jobCardCreateUrl,
+  jobCardDetailsUrl,
   jobCardEditUrl,
   jobCardManualEditUrl,
+  jobCardManualViewUrl,
   myJobCardsManualViewUrl,
   myJobCardsViewUrl,
 } from "../../utils/jobCardRoutes";
-import {
-  resolveManualJobCardId,
-  scrollToJobCardDocumentPanel,
-} from "../../utils/manualSalesJobCard";
+import { resolveManualJobCardId, scrollToJobCardDocumentPanel } from "../../utils/manualSalesJobCard";
 import "../../styles/my-job-cards-page.css";
 import "../../styles/workflow-next-step.css";
 
@@ -155,6 +154,7 @@ export default function MyJobCardsPage() {
   const canDelete =
     userCanAction(user, "sales", "delete") ||
     userCanAction(user, "production", "delete") ||
+    userCanCreateSalesJobCard(user) ||
     isAdmin(user);
   const effectiveTeam =
     deptParam ||
@@ -174,7 +174,6 @@ export default function MyJobCardsPage() {
   const showStockFilter = storeMode;
   const storeKpiCounts = queueMeta?.counts || {};
   const salesJobCardsPending = Number(storeKpiCounts.sales_job_cards_pending || 0);
-  const documentCanEdit = canUpdate && !storeMode && !billingMode && !operatorMode && !qualityMode;
   const canSendManual =
     !billingMode &&
     !operatorMode &&
@@ -183,7 +182,7 @@ export default function MyJobCardsPage() {
       canUpdate ||
       isAdmin(user) ||
       (storeMode && (userCanAction(user, "inventory", "update") || isStoreManager(user))));
-  const productionMode = effectiveTeam === "production";
+  const isSalesListMode = !storeMode && !billingMode && !operatorMode && !qualityMode;
 
   const handleDeleteConfirm = async () => {
     if (!deleteTarget || deleteInFlight.current) return;
@@ -324,6 +323,21 @@ export default function MyJobCardsPage() {
   }, [rows, appliedFilters, showStockFilter, effectiveTeam]);
 
   useEffect(() => {
+    if (!isSalesListMode) return;
+    if (!activeOrderId && !activeJobCardId) return;
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete("order");
+        next.delete("jc");
+        return next;
+      },
+      { replace: true }
+    );
+  }, [isSalesListMode, activeOrderId, activeJobCardId, setSearchParams]);
+
+  useEffect(() => {
+    if (isSalesListMode) return;
     if (loading || activeOrderId || activeJobCardId || filtered.length === 0) return;
     const first = filtered[0];
     const manualId = resolveManualJobCardId(first);
@@ -350,7 +364,7 @@ export default function MyJobCardsPage() {
       },
       { replace: true }
     );
-  }, [loading, filtered, activeOrderId, activeJobCardId, setSearchParams]);
+  }, [isSalesListMode, loading, filtered, activeOrderId, activeJobCardId, setSearchParams]);
 
   const statusOptions = useMemo(() => {
     const fromMeta = queueMeta?.actionable_statuses;
@@ -382,6 +396,15 @@ export default function MyJobCardsPage() {
     (row) => {
       if (!row) return;
       const manualId = resolveManualJobCardId(row);
+      if (isSalesListMode) {
+        if (manualId != null) {
+          navigate(jobCardManualViewUrl(manualId));
+          return;
+        }
+        const orderId = row.sales_order_id ?? row.id;
+        if (orderId) navigate(jobCardDetailsUrl(orderId));
+        return;
+      }
       if (manualId != null) {
         setSearchParams(
           (prev) => {
@@ -408,7 +431,7 @@ export default function MyJobCardsPage() {
       );
       scrollToJobCardDocumentPanel({ storeMode });
     },
-    [setSearchParams, storeMode]
+    [isSalesListMode, navigate, setSearchParams, storeMode]
   );
 
   const handleEditRow = (row) => {
@@ -426,13 +449,15 @@ export default function MyJobCardsPage() {
     (row) => {
       const manualId = resolveManualJobCardId(row);
       if (manualId != null) {
-        return myJobCardsManualViewUrl(manualId, searchParams);
+        return isSalesListMode
+          ? jobCardManualViewUrl(manualId)
+          : myJobCardsManualViewUrl(manualId, searchParams);
       }
       const orderId = row?.sales_order_id ?? row?.id;
       if (!orderId) return null;
-      return myJobCardsViewUrl(orderId, searchParams);
+      return isSalesListMode ? jobCardDetailsUrl(orderId) : myJobCardsViewUrl(orderId, searchParams);
     },
-    [searchParams]
+    [isSalesListMode, searchParams]
   );
 
   const manualDocumentView = Boolean(activeJobCardId) && !activeOrderId;
@@ -590,28 +615,7 @@ export default function MyJobCardsPage() {
               : "Select a job card from the list below to open the Store Manager Job Card."
           }
         />
-      ) : (
-        <SalesJobCardDocumentPanel
-          key={activeJobCardId || activeOrderId || "empty"}
-          orderId={activeOrderId || null}
-          jobCardId={activeJobCardId || null}
-          row={activeRow}
-          listPath={myJobCardsListPath}
-          onEdit={documentCanEdit ? handleEditRow : undefined}
-          canEdit={documentCanEdit}
-          storeMode={storeMode}
-          showMaterialStatus={productionMode}
-          onSend={(row) => setSendTarget(row)}
-          showEmptyShell={!activeOrderId && !activeJobCardId}
-          emptyMessage={
-            filtered.length === 0
-              ? canCreate
-                ? "No job cards yet. Click Create Job Card to manually create a Sales Job Card."
-                : "No job cards in the queue yet."
-              : "Select a job card from the list below to view the Sales Job Card document."
-          }
-        />
-      )}
+      ) : null}
 
       {storeMode && salesJobCardsPending > 0 ? (
         <Link to="/my-job-cards?dept=inventory" className="my-job-cards-page__kpi-card">
@@ -726,7 +730,7 @@ export default function MyJobCardsPage() {
         >
           <JobCardQueueTable
             rows={pageRows.map((row, idx) => ({ ...row, __sno: from + idx + 1 }))}
-            selectedOrderId={selectedJobCardId || selectedOrderId}
+            selectedOrderId={isSalesListMode ? null : selectedJobCardId || selectedOrderId}
             onViewDetails={handleViewRow}
             jobCardLinkForRow={jobCardLinkForRow}
             emptyTitle={emptyTitle}

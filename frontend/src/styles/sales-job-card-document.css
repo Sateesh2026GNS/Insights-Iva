@@ -422,3 +422,31 @@
     print-color-adjust: exact;
   }
 }
+
+.sjc-doc .manual-sjc__line-summary {
+  margin-top: 0.85rem;
+  margin-left: auto;
+  width: min(100%, 320px);
+  border: 1px solid var(--color-border-soft, #e2e8f0);
+  border-radius: var(--radius-md, 8px);
+  background: #fff;
+  padding: 0.65rem 0.85rem;
+}
+
+.sjc-doc .manual-sjc__line-summary-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.3rem 0;
+  font-size: var(--text-sm, 0.8125rem);
+  color: var(--color-text-secondary, #475569);
+}
+
+.sjc-doc .manual-sjc__line-summary-row--total {
+  margin-top: 0.25rem;
+  padding-top: 0.45rem;
+  border-top: 1px solid var(--color-border-soft, #e2e8f0);
+  font-weight: 700;
+  color: var(--color-text, #1e293b);
+}

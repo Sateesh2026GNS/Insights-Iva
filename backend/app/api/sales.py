@@ -30,6 +30,7 @@ from app.schemas.sales import (
     QuotationCreate,
     QuotationRead,
     QuotationUpdate,
+    SalesOrderCancelRequest,
     SalesOrderCreate,
     SalesOrderListRead,
     SalesOrderRead,
@@ -343,6 +344,27 @@ def confirm_sales_order_endpoint(
         raise HTTPException(400, str(exc)) from exc
 
 
+@router.post("/sales-orders/{order_id}/cancel")
+def cancel_sales_order_endpoint(
+    order_id: int,
+    payload: SalesOrderCancelRequest,
+    user: User = Depends(require_permission(MODULE)),
+    db: Session = Depends(get_db),
+):
+    """Customer-requested cancellation — Sales Manager / Admin only."""
+    from app.services.sales_order_cancellation_service import cancel_sales_order_with_workflow
+
+    return cancel_sales_order_with_workflow(
+        db,
+        user.tenant_id,
+        order_id,
+        user,
+        cancellation_reason=payload.cancellation_reason,
+        cancellation_type=payload.cancellation_type,
+        expected_version=payload.expected_version,
+    )
+
+
 @router.post("/quotations/{quote_id}/convert-to-so", response_model=SalesOrderRead)
 def convert_quotation_to_so_endpoint(
     quote_id: int,
@@ -457,6 +479,7 @@ def get_sales_order_traceability_endpoint(
 def get_sales_order_detail_endpoint(
     order_id: int,
     tenant_id: int = Depends(tenant_scope(MODULE)),
+    user: User = Depends(require_permission(MODULE)),
     db: Session = Depends(get_db),
 ):
     from app.services.sales_service import get_sales_order_with_items
@@ -492,11 +515,30 @@ def get_sales_order_detail_endpoint(
             db, tenant_id, order.id, order.order_number
         )
     ]
+    cancelled_by_name = None
+    if order.cancelled_by_user_id:
+        cancelled_user = db.get(User, order.cancelled_by_user_id)
+        cancelled_by_name = cancelled_user.full_name if cancelled_user else None
+
+    from app.services.sales_order_cancellation_service import (
+        evaluate_sales_order_cancellation,
+        user_can_cancel_sales_order,
+    )
+
+    cancellation_eval = evaluate_sales_order_cancellation(db, tenant_id, order)
+    order_payload = data.model_dump()
+    order_payload["cancelled_by_name"] = cancelled_by_name
+
     return {
-        "order": data,
+        "order": order_payload,
         "customer": cust,
         "line_items": lines,
         "production_orders": production_orders,
+        "cancellation": {
+            "can_cancel": user_can_cancel_sales_order(user) and cancellation_eval.get("allowed"),
+            "blockers": cancellation_eval.get("blockers") or [],
+            "material_return_required": cancellation_eval.get("material_return_required", False),
+        },
     }
 
 

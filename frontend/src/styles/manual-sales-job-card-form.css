@@ -56,6 +56,17 @@
   letter-spacing: -0.01em;
 }
 
+.manual-sjc-page__toolbar-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.35rem 0 0;
+  font-size: var(--text-sm, 0.8125rem);
+  font-weight: 600;
+  color: var(--color-text-muted, #64748b);
+}
+
 .manual-sjc-page__body {
   padding: 0;
   background: #fff;
@@ -247,4 +258,51 @@
 .manual-sjc__approval-edit td {
   vertical-align: top;
   padding: 0.35rem;
+}
+
+.manual-sjc__pricing-table-wrap {
+  overflow-x: auto;
+}
+
+.manual-sjc__pricing-table th,
+.manual-sjc__pricing-table td {
+  white-space: nowrap;
+}
+
+.manual-sjc__amount-cell {
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-secondary, #475569);
+}
+
+.manual-sjc__amount-cell--total {
+  font-weight: 600;
+  color: var(--color-text, #1e293b);
+}
+
+.manual-sjc__line-summary {
+  margin-top: 0.85rem;
+  margin-left: auto;
+  width: min(100%, 320px);
+  border: 1px solid var(--color-border-soft, #e2e8f0);
+  border-radius: var(--radius-md, 8px);
+  background: #fff;
+  padding: 0.65rem 0.85rem;
+}
+
+.manual-sjc__line-summary-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.3rem 0;
+  font-size: var(--text-sm, 0.8125rem);
+  color: var(--color-text-secondary, #475569);
+}
+
+.manual-sjc__line-summary-row--total {
+  margin-top: 0.25rem;
+  padding-top: 0.45rem;
+  border-top: 1px solid var(--color-border-soft, #e2e8f0);
+  font-weight: 700;
+  color: var(--color-text, #1e293b);
 }

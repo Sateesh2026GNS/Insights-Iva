@@ -148,7 +148,10 @@ export default function AccountantJobCardDocumentPanel({
     product_code: l.product_code,
     quantity: l.quantity,
     unit: l.uom,
-    description: l.description,
+    uom: l.uom,
+    unit_price: l.unit_price,
+    line_amount: l.line_amount,
+    total_amount: l.total_amount,
   }));
 
   const handlePrint = () => {
