@@ -29,8 +29,7 @@ export function clearApiCache() {
 
 const api = axios.create({
   baseURL: getApiBaseURL(),
-  // 90 s — covers Render/Railway free-tier cold starts which can take up to 90 s
-  timeout: 90_000,
+  timeout: 15_000,
 });
 
 api.interceptors.request.use((config) => {
@@ -145,22 +144,14 @@ api.interceptors.response.use(
   },
   async (error) => {
     const original = error.config;
+    const method = String(original?.method || "get").toLowerCase();
     const isTimeout = error.code === "ECONNABORTED" || error.message?.includes("timeout");
     const isNetworkErr = error.code === "ERR_NETWORK";
 
-    // Auto-retry on timeout / network error (up to 2 extra attempts with backoff)
-    if ((isTimeout || isNetworkErr) && original && original._retryCount === undefined) {
-      original._retryCount = 0;
-    }
-    if (
-      (isTimeout || isNetworkErr) &&
-      original &&
-      typeof original._retryCount === "number" &&
-      original._retryCount < 2
-    ) {
-      original._retryCount += 1;
-      const delay = original._retryCount * 2000; // 2 s, 4 s
-      await new Promise((resolve) => setTimeout(resolve, delay));
+    // Auto-retry once only for GET requests on timeout / network error
+    if (method === "get" && (isTimeout || isNetworkErr) && original && !original._retryCount) {
+      original._retryCount = 1;
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       return api(original);
     }
 

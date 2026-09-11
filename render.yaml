@@ -1,0 +1,22 @@
+﻿services:
+  - type: web
+    name: insights-iva-api
+    runtime: python
+    rootDir: backend
+    buildCommand: "pip install --upgrade pip && pip install -r requirements.txt && alembic upgrade head"
+    startCommand: "gunicorn app.main:app -k uvicorn.workers.UvicornWorker -w 2 -b 0.0.0.0:$PORT"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.0
+      - key: ENVIRONMENT
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: CORS_ORIGINS
+        value: "https://insights-734ee.web.app,https://insights-734ee.firebaseapp.com,https://www.insightsiva.com,https://insightsiva.com,http://localhost:5173"
+      - key: ALLOWED_HOSTS
+        value: "insights-iva-api.onrender.com,insights-734ee.web.app,www.insightsiva.com,localhost,127.0.0.1"
+      - key: FRONTEND_BASE_URL
+        value: "https://insights-734ee.web.app"

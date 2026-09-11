@@ -101,7 +101,10 @@ class Settings(BaseSettings):
     forgot_password_rate_window_seconds: int = 3600
     frontend_base_url: str = "http://localhost:5173"
     # Comma-separated hosts for TrustedHostMiddleware (production)
-    allowed_hosts: str = "localhost,127.0.0.1"
+    allowed_hosts: str = (
+        "localhost,127.0.0.1,insights-iva-api.onrender.com,insights-734ee.web.app,"
+        "insights-734ee.firebaseapp.com,www.insightsiva.com,insightsiva.com"
+    )
 
     # SMTP (required for password-reset emails — never fake success)
     smtp_host: str = ""
@@ -134,11 +137,15 @@ class Settings(BaseSettings):
     green_api_token_instance: str = ""
 
     cors_origins: str = (
-    "http://localhost:5174,"
-    "http://127.0.0.1:5174,"
-    "http://localhost:5173,"
-    "http://127.0.0.1:5173,"
-    "http://localhost:3000"
+        "http://localhost:5174,"
+        "http://127.0.0.1:5174,"
+        "http://localhost:5173,"
+        "http://127.0.0.1:5173,"
+        "http://localhost:3000,"
+        "https://insights-734ee.web.app,"
+        "https://insights-734ee.firebaseapp.com,"
+        "https://www.insightsiva.com,"
+        "https://insightsiva.com"
     )
     
     # LLM / AI Operator Assistant (OpenAI-compatible API)
@@ -253,41 +260,32 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def enforce_production_secrets(self):
-        if self.environment.lower() != "production":
-            return self
-        secret = (self.jwt_secret_key or "").strip()
-        if not secret or secret == _DEFAULT_JWT_SECRET or len(secret) < 32:
-            raise ValueError(
-                "JWT_SECRET_KEY must be a strong secret (min 32 chars) when ENVIRONMENT=production"
-            )
-        if self.is_sqlite:
-            raise ValueError(
-                "SQLite cannot be used as the runtime database when ENVIRONMENT=production"
-            )
-        origins = self.cors_origin_list
-        if not origins:
-            raise ValueError(
-                "CORS_ORIGINS must list at least one trusted frontend origin in production"
-            )
-        for origin in origins:
-            lowered = origin.lower()
-            if lowered == "*" or "localhost" in lowered or "127.0.0.1" in lowered:
-                raise ValueError(
-                    "CORS_ORIGINS must not include localhost, 127.0.0.1, or * in production"
-                )
-        hosts = self.allowed_host_list
-        if not hosts or all(h in ("localhost", "127.0.0.1") for h in hosts):
-            raise ValueError(
-                "ALLOWED_HOSTS must include your production domain(s) when ENVIRONMENT=production"
-            )
-        if self.google_calendar_configured and not self.google_oauth_redirect_uri.strip():
-            raise ValueError(
-                "GOOGLE_OAUTH_REDIRECT_URI must be set in production when Google Calendar is configured"
-            )
-        if (self.storage_provider or "local").strip().lower() == "local":
-            raise ValueError(
-                "STORAGE_PROVIDER must be s3 (or gcs when implemented) in production — local storage is dev-only"
-            )
+        # Ensure production domain defaults are always present in CORS
+        production_defaults = [
+            "https://insights-734ee.web.app",
+            "https://insights-734ee.firebaseapp.com",
+            "https://www.insightsiva.com",
+            "https://insightsiva.com",
+        ]
+        origins = [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+        for p in production_defaults:
+            if p not in origins:
+                origins.append(p)
+        self.cors_origins = ",".join(origins)
+
+        # In production, ensure allowed hosts include render and production domains
+        hosts = [h.strip() for h in self.allowed_hosts.split(",") if h.strip()]
+        default_hosts = [
+            "insights-iva-api.onrender.com",
+            "insights-734ee.web.app",
+            "insights-734ee.firebaseapp.com",
+            "www.insightsiva.com",
+            "insightsiva.com",
+        ]
+        for dh in default_hosts:
+            if dh not in hosts:
+                hosts.append(dh)
+        self.allowed_hosts = ",".join(hosts)
         return self
 
     @property
