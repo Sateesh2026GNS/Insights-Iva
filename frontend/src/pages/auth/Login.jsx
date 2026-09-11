@@ -11,7 +11,7 @@ import LoginSuccessOverlay from "../../components/common/LoginSuccessOverlay";
 import { ROLES } from "../../config/permissions";
 import { getDashboardPathForRole } from "../../utils/roleRedirect";
 
-const LOGIN_SUCCESS_MS = 100;
+const LOGIN_SUCCESS_MS = 20;
 const LOGIN_ROLES = ROLES.map((r) => r.name);
 
 const EnvelopeIcon = () => (

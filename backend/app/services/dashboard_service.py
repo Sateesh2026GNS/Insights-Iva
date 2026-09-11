@@ -124,99 +124,130 @@ def _top_machines(db: Session, tenant_id: int, machines: list[Machine], limit: i
     return result
 
 
-def _get_production_for_date_range(
+def _fetch_production_daily_buckets(
     db: Session, tenant_id: int, start_date: date, end_date: date
+) -> dict[date, dict[str, float]]:
+    """Fetch and aggregate reports/work orders/batches/production orders ONCE for the
+    whole outer range, grouped by day at the database level (GROUP BY + SUM), instead
+    of re-querying full tables once per day/week/month/year bucket.
+
+    Returns: {date: {r_planned, r_actual, wo_planned, wo_actual, batch_actual, po_planned, po_actual}}
+    """
+    from collections import defaultdict
+
+    buckets: dict[date, dict[str, float]] = defaultdict(
+        lambda: {
+            "r_planned": 0.0,
+            "r_actual": 0.0,
+            "wo_planned": 0.0,
+            "wo_actual": 0.0,
+            "batch_actual": 0.0,
+            "po_planned": 0.0,
+            "po_actual": 0.0,
+        }
+    )
+
+    # 1. Daily production reports — aggregated per day in SQL.
+    report_rows = db.execute(
+        select(
+            DailyProductionReport.report_date,
+            func.coalesce(func.sum(DailyProductionReport.produced_quantity), 0),
+            func.coalesce(func.sum(DailyProductionReport.planned_quantity), 0),
+        )
+        .where(
+            DailyProductionReport.tenant_id == tenant_id,
+            DailyProductionReport.report_date >= start_date,
+            DailyProductionReport.report_date <= end_date,
+        )
+        .group_by(DailyProductionReport.report_date)
+    ).all()
+    for d, actual, planned in report_rows:
+        buckets[d]["r_actual"] += float(actual or 0)
+        buckets[d]["r_planned"] += float(planned or 0)
+
+    # 2. Work orders — effective date = planned_start if set, else created_at.
+    wo_eff_date = func.coalesce(func.date(WorkOrder.planned_start), func.date(WorkOrder.created_at))
+    wo_rows = db.execute(
+        select(
+            wo_eff_date,
+            func.coalesce(func.sum(WorkOrder.planned_quantity), 0),
+            func.coalesce(func.sum(WorkOrder.actual_quantity), 0),
+        )
+        .where(
+            WorkOrder.tenant_id == tenant_id,
+            wo_eff_date >= start_date,
+            wo_eff_date <= end_date,
+        )
+        .group_by(wo_eff_date)
+    ).all()
+    for d, planned, actual in wo_rows:
+        buckets[d]["wo_planned"] += float(planned or 0)
+        buckets[d]["wo_actual"] += float(actual or 0)
+
+    # 3. Batches — effective date = produced_at if set, else created_at.
+    batch_eff_date = func.coalesce(func.date(Batch.produced_at), func.date(Batch.created_at))
+    batch_rows = db.execute(
+        select(
+            batch_eff_date,
+            func.coalesce(func.sum(Batch.quantity), 0),
+        )
+        .where(
+            Batch.tenant_id == tenant_id,
+            batch_eff_date >= start_date,
+            batch_eff_date <= end_date,
+        )
+        .group_by(batch_eff_date)
+    ).all()
+    for d, qty in batch_rows:
+        buckets[d]["batch_actual"] += float(qty or 0)
+
+    # 4. Production orders — need status per-row (not summable), so pull raw rows
+    #    but only ONCE for the whole outer range instead of once per bucket.
+    po_eff_date = func.coalesce(func.date(ProductionOrder.start_date), func.date(ProductionOrder.created_at))
+    po_rows = db.execute(
+        select(
+            po_eff_date,
+            ProductionOrder.planned_quantity,
+            ProductionOrder.actual_quantity,
+            ProductionOrder.status,
+        ).where(
+            ProductionOrder.tenant_id == tenant_id,
+            po_eff_date >= start_date,
+            po_eff_date <= end_date,
+        )
+    ).all()
+    for d, planned, actual, status in po_rows:
+        if d is None:
+            continue
+        buckets[d]["po_planned"] += float(planned or 0)
+        st = (status or "").lower()
+        buckets[d]["po_actual"] += float(
+            actual or (planned if st in ("completed", "closed", "done") else 0) or 0
+        )
+
+    return buckets
+
+
+def _combine_bucket_range(
+    buckets: dict[date, dict[str, float]], start_date: date, end_date: date
 ) -> tuple[float, float]:
-    """Aggregate planned and actual production for a date range across reports, work orders, batches, and production orders."""
-    # 1. Daily production reports
-    reports = list(
-        db.scalars(
-            select(DailyProductionReport).where(
-                DailyProductionReport.tenant_id == tenant_id,
-                DailyProductionReport.report_date >= start_date,
-                DailyProductionReport.report_date <= end_date,
-            )
-        ).all()
-    )
-    r_actual = sum(float(r.produced_quantity or 0) for r in reports)
-    r_planned = sum(float(r.planned_quantity or 0) for r in reports)
+    """Combine pre-fetched daily buckets over [start_date, end_date] — no DB access."""
+    r_planned = r_actual = wo_planned = wo_actual = 0.0
+    batch_actual = po_planned = po_actual = 0.0
 
-    # 2. Work orders in this date range
-    wos = list(
-        db.scalars(
-            select(WorkOrder).where(
-                WorkOrder.tenant_id == tenant_id,
-                or_(
-                    and_(
-                        WorkOrder.planned_start.isnot(None),
-                        func.date(WorkOrder.planned_start) >= start_date,
-                        func.date(WorkOrder.planned_start) <= end_date,
-                    ),
-                    and_(
-                        WorkOrder.planned_start.is_(None),
-                        func.date(WorkOrder.created_at) >= start_date,
-                        func.date(WorkOrder.created_at) <= end_date,
-                    ),
-                ),
-            )
-        ).all()
-    )
-    wo_planned = sum(float(w.planned_quantity or 0) for w in wos)
-    wo_actual = sum(float(w.actual_quantity or 0) for w in wos)
+    d = start_date
+    while d <= end_date:
+        b = buckets.get(d)
+        if b:
+            r_planned += b["r_planned"]
+            r_actual += b["r_actual"]
+            wo_planned += b["wo_planned"]
+            wo_actual += b["wo_actual"]
+            batch_actual += b["batch_actual"]
+            po_planned += b["po_planned"]
+            po_actual += b["po_actual"]
+        d += timedelta(days=1)
 
-    # Batches produced in this date range
-    batch_actual = float(
-        db.scalar(
-            select(func.coalesce(func.sum(Batch.quantity), 0)).where(
-                Batch.tenant_id == tenant_id,
-                or_(
-                    and_(
-                        Batch.produced_at.isnot(None),
-                        func.date(Batch.produced_at) >= start_date,
-                        func.date(Batch.produced_at) <= end_date,
-                    ),
-                    and_(
-                        Batch.produced_at.is_(None),
-                        func.date(Batch.created_at) >= start_date,
-                        func.date(Batch.created_at) <= end_date,
-                    ),
-                ),
-            )
-        )
-        or 0
-    )
-
-    # 3. Production orders in this date range
-    pos = list(
-        db.scalars(
-            select(ProductionOrder).where(
-                ProductionOrder.tenant_id == tenant_id,
-                or_(
-                    and_(
-                        ProductionOrder.start_date.isnot(None),
-                        func.date(ProductionOrder.start_date) >= start_date,
-                        func.date(ProductionOrder.start_date) <= end_date,
-                    ),
-                    and_(
-                        ProductionOrder.start_date.is_(None),
-                        func.date(ProductionOrder.created_at) >= start_date,
-                        func.date(ProductionOrder.created_at) <= end_date,
-                    ),
-                ),
-            )
-        ).all()
-    )
-    po_planned = sum(float(p.planned_quantity or 0) for p in pos)
-    po_actual = sum(
-        float(
-            p.actual_quantity
-            or (p.planned_quantity if (p.status or "").lower() in ("completed", "closed", "done") else 0)
-            or 0
-        )
-        for p in pos
-    )
-
-    # Combine planned
     if r_planned > 0:
         planned = r_planned
     elif wo_planned > 0:
@@ -226,7 +257,6 @@ def _get_production_for_date_range(
     else:
         planned = 0.0
 
-    # Combine actual
     if r_actual > 0:
         actual = r_actual
     elif wo_actual > 0:
@@ -241,12 +271,13 @@ def _get_production_for_date_range(
     return planned, actual
 
 
-def _production_overview(db: Session, tenant_id: int, days: int = 7) -> list[dict]:
-    today = date.today()
+def _production_overview(
+    buckets: dict[date, dict[str, float]], today: date, days: int = 7
+) -> list[dict]:
     overview = []
     for i in range(days - 1, -1, -1):
         d = today - timedelta(days=i)
-        planned, actual = _get_production_for_date_range(db, tenant_id, d, d)
+        planned, actual = _combine_bucket_range(buckets, d, d)
         overview.append({
             "date": d.strftime("%d %b"),
             "planned": int(planned),
@@ -255,13 +286,12 @@ def _production_overview(db: Session, tenant_id: int, days: int = 7) -> list[dic
     return overview
 
 
-def _weekly_overview(db: Session, tenant_id: int) -> list[dict]:
-    today = date.today()
+def _weekly_overview(buckets: dict[date, dict[str, float]], today: date) -> list[dict]:
     rows = []
     for week in range(4, -1, -1):
         start = today - timedelta(days=week * 7)
         end = start + timedelta(days=6)
-        planned, actual = _get_production_for_date_range(db, tenant_id, start, end)
+        planned, actual = _combine_bucket_range(buckets, start, end)
         rows.append({
             "date": f"Week {5 - week}",
             "planned": int(planned),
@@ -270,8 +300,7 @@ def _weekly_overview(db: Session, tenant_id: int) -> list[dict]:
     return rows
 
 
-def _monthly_overview(db: Session, tenant_id: int) -> list[dict]:
-    today = date.today()
+def _monthly_overview(buckets: dict[date, dict[str, float]], today: date) -> list[dict]:
     rows = []
     for month_offset in range(5, -1, -1):
         y = today.year
@@ -284,7 +313,7 @@ def _monthly_overview(db: Session, tenant_id: int) -> list[dict]:
             month_end = date(y, 12, 31)
         else:
             month_end = date(y, m + 1, 1) - timedelta(days=1)
-        planned, actual = _get_production_for_date_range(db, tenant_id, month_start, month_end)
+        planned, actual = _combine_bucket_range(buckets, month_start, month_end)
         rows.append({
             "date": month_start.strftime("%b"),
             "planned": int(planned),
@@ -293,14 +322,13 @@ def _monthly_overview(db: Session, tenant_id: int) -> list[dict]:
     return rows
 
 
-def _yearly_overview(db: Session, tenant_id: int) -> list[dict]:
-    today = date.today()
+def _yearly_overview(buckets: dict[date, dict[str, float]], today: date) -> list[dict]:
     rows = []
     for year_offset in range(4, -1, -1):
         year_val = today.year - year_offset
         year_start = date(year_val, 1, 1)
         year_end = date(year_val, 12, 31)
-        planned, actual = _get_production_for_date_range(db, tenant_id, year_start, year_end)
+        planned, actual = _combine_bucket_range(buckets, year_start, year_end)
         rows.append({
             "date": str(year_val),
             "planned": int(planned),
@@ -729,7 +757,11 @@ def get_erp_dashboard(
     yesterday_reject = int(sum(float(r.get("scrap_quantity", 0) or 0) for r in yesterday_reports))
     reject_trend, reject_up = _trend_pct(reject_qty, yesterday_reject)
 
-    overview = _production_overview(db, tenant_id, 7)
+    # Fetch every day/week/month/year overview from ONE pre-aggregated query set
+    # instead of re-hitting the DB for each of the 23 individual buckets.
+    _overview_start = date(today.year - 4, 1, 1)
+    _daily_buckets = _fetch_production_daily_buckets(db, tenant_id, _overview_start, today)
+    overview = _production_overview(_daily_buckets, today, 7)
 
     # Inventory blocks for dashboard (real stock only)
     items = list(db.scalars(select(InventoryItem).where(InventoryItem.tenant_id == tenant_id)).all())
@@ -989,9 +1021,9 @@ def get_erp_dashboard(
     payload = {
         "kpi_cards": [],
         "production_overview": overview,
-        "production_overview_weekly": _weekly_overview(db, tenant_id),
-        "production_overview_monthly": _monthly_overview(db, tenant_id),
-        "production_overview_yearly": _yearly_overview(db, tenant_id),
+        "production_overview_weekly": _weekly_overview(_daily_buckets, today),
+        "production_overview_monthly": _monthly_overview(_daily_buckets, today),
+        "production_overview_yearly": _yearly_overview(_daily_buckets, today),
         "shop_floor_status": _machine_status_breakdown(machines),
         "top_machines": _top_machines(db, tenant_id, machines),
         "orders_overview": {
