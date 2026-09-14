@@ -21,7 +21,7 @@ function isPlatformRequest(config) {
 }
 
 const apiCache = new Map();
-const CACHE_TTL_MS = 20_000; // 20s fast navigation cache
+const CACHE_TTL_MS = 120_000; // Keep recently visited pages instant during normal navigation.
 
 export function clearApiCache() {
   apiCache.clear();

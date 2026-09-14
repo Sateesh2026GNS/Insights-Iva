@@ -2807,16 +2807,16 @@ table > tbody > tr:first-child:has(th) {
     overflow: visible !important;
   }
 
-  /* Clean full-width table formatting with borders (non-invoice pages). */
-  table:not(.erp-doc *):not(.erp-doc):not(.gst-invoice *) {
+  /* Clean full-width table formatting with borders (non-invoice / non-payslip pages). */
+  table:not(.erp-doc *):not(.erp-doc):not(.gst-invoice *):not(.payslip-card *):not(.payslip-card) {
     width: 100% !important;
     border-collapse: collapse !important;
     margin-top: 0.5rem !important;
     margin-bottom: 0.5rem !important;
   }
 
-  table:not(.erp-doc *):not(.erp-doc):not(.gst-invoice *) th,
-  table:not(.erp-doc *):not(.erp-doc):not(.gst-invoice *) td {
+  table:not(.erp-doc *):not(.erp-doc):not(.gst-invoice *):not(.payslip-card *):not(.payslip-card) th,
+  table:not(.erp-doc *):not(.erp-doc):not(.gst-invoice *):not(.payslip-card *):not(.payslip-card) td {
     border: 1px solid #cbd5e1 !important;
     padding: 6px 10px !important;
     text-align: left !important;
@@ -2825,7 +2825,7 @@ table > tbody > tr:first-child:has(th) {
     font-size: 10pt !important;
   }
 
-  table:not(.erp-doc *):not(.erp-doc):not(.gst-invoice *) th {
+  table:not(.erp-doc *):not(.erp-doc):not(.gst-invoice *):not(.payslip-card *):not(.payslip-card) th {
     background-color: #f1f5f9 !important;
     font-weight: 700 !important;
     -webkit-print-color-adjust: exact !important;
@@ -2833,12 +2833,12 @@ table > tbody > tr:first-child:has(th) {
   }
 
   /* Hide Action column and action buttons in tables */
-  th:last-child:has(button),
-  td:last-child:has(button) {
+  th:last-child:has(button):not(.payslip-card *),
+  td:last-child:has(button):not(.payslip-card *) {
     display: none !important;
   }
 
-  table:not(.erp-doc *):not(.erp-doc):not(.gst-invoice *) tr {
+  table:not(.erp-doc *):not(.erp-doc):not(.gst-invoice *):not(.payslip-card *):not(.payslip-card) tr {
     page-break-inside: avoid !important;
   }
 
@@ -2855,6 +2855,27 @@ table > tbody > tr:first-child:has(th) {
   .erp-doc th,
   .erp-doc td {
     page-break-inside: avoid;
+  }
+
+  /* ── Payslip-specific print overrides (must override generic rules above) ── */
+  .payslip-card,
+  .payslip-card * {
+    font-size: 10.5px !important;
+  }
+  .payslip-card table td,
+  .payslip-card table th {
+    font-size: 10px !important;
+    padding: 2px 6px !important;
+    border-color: #000000 !important;
+  }
+  .payslip-card {
+    padding: 20px 24px 16px 24px !important;
+    position: relative !important;
+  }
+  .payslip-tds-bar {
+    background-color: #d3dce6 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 }
 

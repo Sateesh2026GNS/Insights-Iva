@@ -24,18 +24,15 @@ import {
   approveExpenseClaims,
   createExpenseApproval,
   deleteExpenseApproval,
+  getEmployeesEnriched,
   getExpenseApprovals,
+  getTeamDirectory,
   rejectExpenseClaims,
 } from "../../api/hrApi";
 
 import "./expenseApprovals.css";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-
-const DEMO_EMPLOYEES = [
-  { value: "all", label: "All Employees" },
-  { value: "demo-satish", label: "Satish Gogulothu", branch: "hq", department: "hr" },
-];
 
 const BRANCH_OPTIONS = [
   { value: "", label: "Select Branch" },
@@ -300,7 +297,7 @@ function FilterPopover({
 }
 
 function AddExpenseDrawer({ open, onClose, onSave, employees }) {
-  const [employeeId, setEmployeeId] = useState("demo-satish");
+  const [employeeId, setEmployeeId] = useState("");
   const [category, setCategory] = useState("");
   const [name, setName] = useState("");
   const [expenseDate, setExpenseDate] = useState("");
@@ -310,13 +307,17 @@ function AddExpenseDrawer({ open, onClose, onSave, employees }) {
 
   useEffect(() => {
     if (!open) return;
-    setEmployeeId("demo-satish");
+    setEmployeeId(employees[0]?.value || "");
     setCategory("");
     setName("");
     setExpenseDate("");
     setAmount("");
     setDetails("");
   }, [open]);
+
+  useEffect(() => {
+    if (open && !employeeId && employees[0]?.value) setEmployeeId(employees[0].value);
+  }, [open, employeeId, employees]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -405,7 +406,7 @@ function AddExpenseDrawer({ open, onClose, onSave, employees }) {
               if (!category || !name.trim() || !expenseDate || !amount || !details.trim()) return;
               const emp = empOptions.find((e) => e.value === employeeId);
               onSave({
-                employee_id: employeeId,
+                employee_id: emp?.employeeId || null,
                 employee_name: emp?.label || "—",
                 branch: emp?.branch || "",
                 department: emp?.department || "",
@@ -434,6 +435,7 @@ export default function ExpenseApprovals() {
   const { addToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [records, setRecords] = useState([]);
+  const [employees, setEmployees] = useState([]);
   const [viewDate, setViewDate] = useState(() => new Date());
   const [employeeFilter, setEmployeeFilter] = useState("all");
   const [filterOpen, setFilterOpen] = useState(false);
@@ -468,12 +470,64 @@ export default function ExpenseApprovals() {
     }
   }, [viewDate]);
 
+  const loadEmployees = useCallback(async () => {
+    try {
+      const [employeeRes, userRes] = await Promise.all([getEmployeesEnriched(), getTeamDirectory()]);
+      const employeeRows = Array.isArray(employeeRes?.data) ? employeeRes.data : [];
+      const userRows = Array.isArray(userRes?.data) ? userRes.data : [];
+      const options = employeeRows
+        .filter((employee) => employee?.is_active !== false)
+        .map((employee) => ({
+          value: String(employee.id ?? employee.employee_id ?? ""),
+          employeeId: employee.id ?? null,
+          label: employee.full_name || employee.name || employee.email || "Employee",
+          employeeCode: employee.employee_code || employee.employee_id || "",
+          branch: employee.branch || employee.branch_name || "",
+          department: employee.department || employee.department_name || "",
+        }))
+        .filter((employee) => employee.value);
+      const knownKeys = new Set(
+        options.flatMap((employee) => [employee.employeeCode, employee.label, employee.value]
+          .filter(Boolean)
+          .map((value) => String(value).trim().toLowerCase()))
+      );
+      const userOptions = userRows
+        .filter((user) => user?.is_active !== false)
+        .filter((user) => {
+          const keys = [user.employee_id, user.full_name, user.name, user.email]
+            .filter(Boolean)
+            .map((value) => String(value).trim().toLowerCase());
+          return !keys.some((key) => knownKeys.has(key));
+        })
+        .map((user) => ({
+          value: `user-${user.id}`,
+          employeeId: null,
+          label: user.full_name || user.name || user.email || "User",
+          branch: "",
+          department: user.department || "",
+        }));
+      const uniqueOptions = [...options, ...userOptions].filter((employee, index, all) => {
+        const key = employee.label.trim().toLowerCase();
+        return all.findIndex((candidate) => candidate.label.trim().toLowerCase() === key) === index;
+      });
+      setEmployees(uniqueOptions);
+    } catch {
+      setEmployees([]);
+    }
+  }, []);
+
   usePageRefresh(() => load(true));
   useEffect(() => { load(); }, [load]);
+  useEffect(() => { loadEmployees(); }, [loadEmployees]);
+
+  const employeeOptions = useMemo(
+    () => [{ value: "all", label: "All Employees" }, ...employees],
+    [employees]
+  );
 
   const filteredRows = useMemo(() => {
     return records.filter((row) => {
-      if (employeeFilter !== "all" && row.employee_id !== employeeFilter) return false;
+      if (employeeFilter !== "all" && String(row.employee_id ?? "") !== employeeFilter) return false;
       if (categoryFilter && row.category !== categoryFilter) return false;
       if (statusFilter && String(row.status || "").toLowerCase() !== statusFilter) return false;
       if (branchFilter && row.branch !== branchFilter) return false;
@@ -582,7 +636,7 @@ export default function ExpenseApprovals() {
           </div>
 
           <div className="hr-exp-approvals__toolbar">
-            <EmployeeSelect value={employeeFilter} onChange={setEmployeeFilter} employees={DEMO_EMPLOYEES} />
+            <EmployeeSelect value={employeeFilter} onChange={setEmployeeFilter} employees={employeeOptions} />
             <div className="hr-exp-approvals__toolbar-right">
               <div className="hr-exp-approvals__filter-wrap">
                 <button
@@ -732,7 +786,7 @@ export default function ExpenseApprovals() {
         </div>
       </ListPageShell>
 
-      <AddExpenseDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} onSave={handleSave} employees={DEMO_EMPLOYEES} />
+      <AddExpenseDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} onSave={handleSave} employees={employees} />
     </>
   );
 }

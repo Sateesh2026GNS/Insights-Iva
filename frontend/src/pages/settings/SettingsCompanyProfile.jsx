@@ -147,6 +147,11 @@ export default function SettingsCompanyProfile() {
       });
       const res = await updateCompanySettings(payload);
       const data = { country: "India", ...(res.data || {}) };
+      try {
+        if (data.company_name) localStorage.setItem("smrt-company-name", data.company_name);
+        if (data.logo_url) localStorage.setItem("smrt-company-logo", data.logo_url);
+        localStorage.setItem("smrt-company-profile", JSON.stringify(data));
+      } catch {}
       setForm(data);
       setBaseline(data);
       addToast("Company profile saved successfully.", "success");

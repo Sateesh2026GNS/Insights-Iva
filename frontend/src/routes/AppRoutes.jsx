@@ -835,6 +835,8 @@ export default function AppRoutes() {
       <Route path="/hr/payroll/salary-breakup/create" element={<ProtectedRoute><P.HRCreateSalaryBreakup /></ProtectedRoute>} />
       <Route path="/hr/payroll/on-hold" element={<ProtectedRoute><P.HRSalaryOnHold /></ProtectedRoute>} />
       <Route path="/hr/payroll/my-payslips" element={<ProtectedRoute><P.HRMyPayslips /></ProtectedRoute>} />
+      <Route path="/hr/payroll/payslip-view" element={<ProtectedRoute><P.HRPayslipViewPage /></ProtectedRoute>} />
+      <Route path="/hr/payroll/payslip-view/:id" element={<ProtectedRoute><P.HRPayslipViewPage /></ProtectedRoute>} />
       <Route path="/hr/payroll/settings" element={<ProtectedRoute><P.HRPayrollSettings /></ProtectedRoute>} />
       <Route path="/hr/reports/attendance" element={<ProtectedRoute><P.HRAttendanceReport /></ProtectedRoute>} />
       <Route path="/hr/reports/leave" element={<ProtectedRoute><P.HRLeaveReport /></ProtectedRoute>} />

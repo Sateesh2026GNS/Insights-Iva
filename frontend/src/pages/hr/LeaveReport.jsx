@@ -16,6 +16,7 @@ import { ListPageShell } from "../../components/common/ListPageShell";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { useToast } from "../../context/ToastContext";
 import { generateLeaveReport, getLeaveReports } from "../../api/hrApi";
+import { exportToExcel } from "../../utils/exportUtils";
 import "./leaveReport.css";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -247,8 +248,31 @@ export default function LeaveReport() {
     }
   };
 
-  const handleDownload = (row) => {
-    addToast(`Downloading ${row.file_name}`, "info");
+  const handleDownload = async (row) => {
+    try {
+      const exportData = [
+        {
+          "File Name": row.file_name,
+          Duration: row.duration,
+          Branch: row.branch,
+          Department: row.department,
+          "Employment Type": row.employment_type,
+          "Generated On": formatGeneratedOn(row.generated_on),
+        },
+      ];
+      const cols = [
+        { key: "File Name", label: "File Name" },
+        { key: "Duration", label: "Duration" },
+        { key: "Branch", label: "Branch" },
+        { key: "Department", label: "Department" },
+        { key: "Employment Type", label: "Employment Type" },
+        { key: "Generated On", label: "Generated On" },
+      ];
+      await exportToExcel(exportData, cols, row.file_name?.replace(/\.[^/.]+$/, "") || "Leave_Report");
+      addToast(`Downloaded ${row.file_name}`, "success");
+    } catch {
+      addToast(`Downloading ${row.file_name}`, "info");
+    }
   };
 
   if (loading) return <Loader label="Loading leave reports..." />;

@@ -169,13 +169,11 @@ export default function QuickCreateWorkOrder() {
   const load = useCallback(async (isRefresh = false) => {
     if (!isRefresh) setLoading(true);
     try {
-      const [productList, mRes, soRes, userRes, woRes, rmRes] = await Promise.all([
+      const [productList, mRes, soRes, userRes] = await Promise.all([
         fetchProductsWithFallback().catch(() => []),
         getMachines(tenantId).catch(() => ({ data: [] })),
         getSalesOrdersEnriched().catch(() => ({ data: [] })),
         getUsers().catch(() => ({ data: [] })),
-        getWorkOrders().catch(() => ({ data: [] })),
-        getRawMaterials().catch(() => ({ data: [] })),
       ]);
 
       const sortedProducts = [...(Array.isArray(productList) ? productList : productList?.data || [])].sort(
@@ -185,16 +183,7 @@ export default function QuickCreateWorkOrder() {
       setMachines(mRes?.data || []);
       setSalesOrders(soRes?.data || []);
       setUsers(userRes?.data || []);
-      setRawMaterials(rmRes?.data || []);
-
-      const woRows = woRes?.data?.items || woRes?.data || [];
-      const suggested = suggestWoNumber(Array.isArray(woRows) ? woRows : []);
-
-      setForm((prev) => ({
-        ...prev,
-        work_order_number: prev.work_order_number || suggested,
-        production_order_id: poId ? Number(poId) : null,
-      }));
+      setForm((prev) => ({ ...prev, production_order_id: poId ? Number(poId) : null }));
 
       if (prefilledProductId || prefilledQty) {
         setLines([
@@ -206,6 +195,17 @@ export default function QuickCreateWorkOrder() {
           },
         ]);
       }
+
+      setLoading(false);
+
+      const [woRes, rmRes] = await Promise.all([
+        getWorkOrders().catch(() => ({ data: [] })),
+        getRawMaterials().catch(() => ({ data: [] })),
+      ]);
+      setRawMaterials(rmRes?.data || []);
+      const woRows = woRes?.data?.items || woRes?.data || [];
+      const suggested = suggestWoNumber(Array.isArray(woRows) ? woRows : []);
+      setForm((prev) => ({ ...prev, work_order_number: prev.work_order_number || suggested }));
     } catch (e) {
       console.error(e);
       if (isRefresh) throw e;

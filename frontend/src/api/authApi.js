@@ -1,4 +1,14 @@
 import api from "./axiosConfig";
+import { triggerServerWakeup } from "../utils/serverWakeup";
+
+const LOGIN_WARMUP_WAIT_MS = 2_000;
+
+function waitForLoginWarmup() {
+  return Promise.race([
+    triggerServerWakeup(),
+    new Promise((resolve) => setTimeout(resolve, LOGIN_WARMUP_WAIT_MS)),
+  ]);
+}
 
 export function buildFastAuthPayload(email, role) {
   const username = String(email || "admin").split("@")[0] || "admin";
@@ -23,6 +33,7 @@ export function buildFastAuthPayload(email, role) {
 }
 
 export async function login(email, password, role) {
+  await waitForLoginWarmup();
   const { data } = await api.post(
     "/auth/login",
     { email, password, role },

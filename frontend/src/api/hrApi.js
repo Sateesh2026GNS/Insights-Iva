@@ -5,6 +5,7 @@ export const getHRHub = () => api.get("/hr/hub");
 export const getEmployees = () => api.get("/hr/employees");
 export const getEmployeeSummary = () => api.get("/hr/employees/summary");
 export const getEmployeesEnriched = () => api.get("/hr/employees/enriched");
+export const getTeamDirectory = () => api.get("/team-directory");
 export const createEmployee = (payload) => api.post("/hr/employees", payload);
 export const updateEmployee = (employeeId, payload) => api.put(`/hr/employees/${employeeId}`, payload);
 export const deleteEmployee = (employeeId) => api.delete(`/hr/employees/${employeeId}`);

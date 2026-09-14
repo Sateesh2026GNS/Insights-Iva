@@ -15,6 +15,7 @@ import { ListPageShell } from "../../components/common/ListPageShell";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { useToast } from "../../context/ToastContext";
 import { generateEmployeeReport, getEmployeeReports } from "../../api/hrApi";
+import { exportToExcel } from "../../utils/exportUtils";
 import "./employeeReport.css";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -230,8 +231,31 @@ export default function EmployeeReport() {
     }
   };
 
-  const handleDownload = (row) => {
-    addToast(`Downloading ${row.file_name}`, "info");
+  const handleDownload = async (row) => {
+    try {
+      const exportData = [
+        {
+          "File Name": row.file_name,
+          Branch: row.branch,
+          Department: row.department,
+          "Employment Type": row.employment_type,
+          Status: row.status,
+          "Generated On": formatGeneratedOn(row.generated_on),
+        },
+      ];
+      const cols = [
+        { key: "File Name", label: "File Name" },
+        { key: "Branch", label: "Branch" },
+        { key: "Department", label: "Department" },
+        { key: "Employment Type", label: "Employment Type" },
+        { key: "Status", label: "Status" },
+        { key: "Generated On", label: "Generated On" },
+      ];
+      await exportToExcel(exportData, cols, row.file_name?.replace(/\.[^/.]+$/, "") || "Employee_Report");
+      addToast(`Downloaded ${row.file_name}`, "success");
+    } catch {
+      addToast(`Downloading ${row.file_name}`, "info");
+    }
   };
 
   if (loading) return <Loader label="Loading employee reports..." />;

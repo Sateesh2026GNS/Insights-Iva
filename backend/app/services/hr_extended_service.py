@@ -342,10 +342,27 @@ def list_payroll_enriched(db: Session, tenant_id: int) -> list[PayrollListRead]:
         gross = float(r.gross_pay if r.gross_pay is not None else (basic + float(r.overtime_pay or 0)))
         deductions = float(r.deductions if r.deductions is not None else (pf + esi + tax))
         net = float(r.net_pay if r.net_pay is not None else max(0.0, gross - deductions))
+        emp = r.employee
+        doj_str = emp.hire_date.strftime("%d/%m/%Y") if (emp and emp.hire_date) else None
         result.append(
             PayrollListRead(
                 id=r.id,
-                employee_name=r.employee.full_name if r.employee else "—",
+                employee_id=r.employee_id,
+                employee_name=emp.full_name if emp else "—",
+                employee_code=getattr(emp, "employee_code", None) if emp else None,
+                designation=getattr(emp, "designation", "Staff") if emp else None,
+                department=getattr(emp, "department", None) if emp else None,
+                pan=getattr(emp, "pan", None) if emp else None,
+                uan=getattr(emp, "uan", None) if emp else None,
+                pf_no=getattr(emp, "pf_no", None) if emp else None,
+                esi_no=getattr(emp, "esi_no", None) if emp else None,
+                bank_account=getattr(emp, "bank_account", None) if emp else None,
+                bank_name=getattr(emp, "bank_name", None) if emp else None,
+                bank_ifsc=getattr(emp, "bank_ifsc", None) if emp else None,
+                mode_of_pay=getattr(emp, "mode_of_pay", None) or "Bank Transfer",
+                doj=doj_str,
+                paid_days=30,
+                lop=0,
                 basic=basic,
                 allowance=allowance,
                 overtime=float(r.overtime_pay or 0),
@@ -356,6 +373,7 @@ def list_payroll_enriched(db: Session, tenant_id: int) -> list[PayrollListRead]:
                 gross_pay=gross,
                 deductions=deductions,
                 net_salary=net,
+                net_pay=net,
                 status=r.status,
                 period_start=r.period_start.isoformat() if r.period_start else None,
                 period_end=r.period_end.isoformat() if r.period_end else None,

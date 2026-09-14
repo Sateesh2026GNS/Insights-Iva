@@ -37,6 +37,14 @@ class Employee(Base, TimestampMixin):
     emergency_contact_phone: Mapped[str | None] = mapped_column(String(64))
     offboarded_at: Mapped[date | None] = mapped_column(Date)
     offboard_reason: Mapped[str | None] = mapped_column(Text)
+    pan: Mapped[str | None] = mapped_column(String(128))
+    uan: Mapped[str | None] = mapped_column(String(128))
+    pf_no: Mapped[str | None] = mapped_column(String(128))
+    esi_no: Mapped[str | None] = mapped_column(String(128))
+    bank_account: Mapped[str | None] = mapped_column(String(128))
+    bank_name: Mapped[str | None] = mapped_column(String(128))
+    bank_ifsc: Mapped[str | None] = mapped_column(String(128))
+    mode_of_pay: Mapped[str | None] = mapped_column(String(128))
 
 
 class Shift(Base, TimestampMixin):

@@ -22,7 +22,16 @@ class EmployeeBase(BaseModel):
     emergency_contact_phone: str | None = None
     hire_date: date | None = None
     hourly_rate: float | None = Field(None, ge=0.0)
+    salary: float | None = Field(None, ge=0.0)
     is_active: bool = True
+    pan: str | None = None
+    uan: str | None = None
+    pf_no: str | None = None
+    esi_no: str | None = None
+    bank_account: str | None = None
+    bank_name: str | None = None
+    bank_ifsc: str | None = None
+    mode_of_pay: str | None = None
 
     @field_validator("employee_code", "full_name", mode="before")
     @classmethod
@@ -84,7 +93,16 @@ class EmployeeUpdate(BaseModel):
     emergency_contact_phone: str | None = None
     hire_date: date | None = None
     hourly_rate: float | None = Field(None, ge=0.0)
+    salary: float | None = Field(None, ge=0.0)
     is_active: bool | None = None
+    pan: str | None = None
+    uan: str | None = None
+    pf_no: str | None = None
+    esi_no: str | None = None
+    bank_account: str | None = None
+    bank_name: str | None = None
+    bank_ifsc: str | None = None
+    mode_of_pay: str | None = None
 
     @field_validator("hire_date", mode="before")
     @classmethod

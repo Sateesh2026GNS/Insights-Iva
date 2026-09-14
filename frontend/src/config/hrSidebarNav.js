@@ -117,6 +117,7 @@ export const HR_SIDEBAR_ITEMS = [
       { key: "payroll-salary-components", label: "Salary Components", to: "/hr/payroll/salary-components", module: hr, ...bullet },
       { key: "payroll-statutory", label: "Statutory Components", to: "/hr/payroll/statutory-components", module: hr, ...bullet },
       { key: "payroll-breakup", label: "Salary Breakup", to: "/hr/payroll/salary-breakup", module: hr, ...bullet },
+      { key: "payroll-overview", label: "Payroll", to: "/hr/payroll", module: hr, end: true, ...bullet },
       { key: "payroll-run", label: "Run Payroll", to: "/hr/payroll/create", module: hr, ...bullet },
       { key: "payroll-on-hold", label: "Salary On Hold", to: "/hr/payroll/on-hold", module: hr, ...bullet },
       { key: "payroll-my-payslips", label: "My payslips", to: "/hr/payroll/my-payslips", module: hr, ...bullet },

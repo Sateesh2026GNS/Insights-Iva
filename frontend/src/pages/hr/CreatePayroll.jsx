@@ -300,8 +300,14 @@ export default function CreatePayroll() {
                           <td className="px-4 py-3 text-right">
                             <button
                               type="button"
-                              onClick={() => setSelectedSlip(slip)}
-                              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors shadow-sm"
+                              onClick={() => {
+                                try {
+                                  sessionStorage.setItem("view_payslip_data", JSON.stringify(slip));
+                                  localStorage.setItem("view_payslip_data", JSON.stringify(slip));
+                                } catch {}
+                                window.open(`/hr/payroll/payslip-view?id=${slip.id || "current"}`, "_blank");
+                              }}
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors shadow-sm cursor-pointer"
                             >
                               <Eye className="h-3.5 w-3.5 text-slate-500" />
                               View Payslip

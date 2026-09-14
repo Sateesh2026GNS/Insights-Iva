@@ -274,6 +274,7 @@ export const HRSalaryBreakupList = lazy(() => import("../pages/hr/SalaryBreakupL
 export const HRCreateSalaryBreakup = lazy(() => import("../pages/hr/CreateSalaryBreakup"));
 export const HRSalaryOnHold = lazy(() => import("../pages/hr/SalaryOnHold"));
 export const HRMyPayslips = lazy(() => import("../pages/hr/MyPayslips"));
+export const HRPayslipViewPage = lazy(() => import("../pages/hr/PayslipViewPage"));
 export const HRPayrollSettings = lazy(() => import("../pages/hr/PayrollSettings"));
 export const HRAttendanceReport = lazy(() => import("../pages/hr/AttendanceReport"));
 export const HRLeaveReport = lazy(() => import("../pages/hr/LeaveReport"));

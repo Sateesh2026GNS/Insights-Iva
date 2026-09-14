@@ -7,7 +7,7 @@ from datetime import date, datetime
 from typing import Any
 
 from fastapi import HTTPException
-from sqlalchemy import delete, func, or_, select
+from sqlalchemy import and_, delete, func, or_, select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -24,6 +24,7 @@ from app.models.hr_module import (
     AssetAllocation,
     AssetCategory,
     AssetHistory,
+    EmployeeBankAccount,
     EmployeeLeaveBalance,
     EmployeeSalaryComponent,
     EmployeeStatusHistory,
@@ -1681,6 +1682,17 @@ def list_payslips(
         stmt = stmt.where(func.extract("month", Payslip.period_start) == month)
     rows = db.scalars(stmt.order_by(Payslip.period_end.desc())).all()
     results = []
+    from app.models.company_settings import CompanySettings
+    cs = db.scalar(select(CompanySettings).where(CompanySettings.tenant_id == tenant_id))
+    company_name = None
+    company_address = None
+    company_logo = None
+    if cs:
+        company_name = cs.company_name or cs.legal_name
+        parts = [p for p in [cs.address_line1, cs.address_line2, cs.city, f"{cs.state or ''} {cs.pincode or ''}".strip()] if p]
+        company_address = ", ".join(parts) if parts else None
+        company_logo = cs.logo_url
+
     for r in rows:
         d = model_to_dict(r)
         emp = db.scalar(select(Employee).where(Employee.id == r.employee_id))
@@ -1689,13 +1701,36 @@ def list_payslips(
             d["employee_code"] = emp.employee_code
             d["department"] = emp.department
             d["designation"] = getattr(emp, "designation", "Staff")
+            if getattr(emp, "hire_date", None):
+                d["doj"] = emp.hire_date.strftime("%d/%m/%Y")
+            d["pan"] = getattr(emp, "pan", None)
+            d["uan"] = getattr(emp, "uan", None)
+            d["pf_no"] = getattr(emp, "pf_no", None)
+            d["esi_no"] = getattr(emp, "esi_no", None)
+            d["bank_account"] = getattr(emp, "bank_account", None)
+            d["bank_name"] = getattr(emp, "bank_name", None)
+            d["bank_ifsc"] = getattr(emp, "bank_ifsc", None)
+            d["mode_of_pay"] = getattr(emp, "mode_of_pay", None) or "Bank Transfer"
+            bank = db.scalar(select(EmployeeBankAccount).where(EmployeeBankAccount.employee_id == emp.id, EmployeeBankAccount.is_primary.is_(True)))
+            if bank:
+                d["bank_account"] = bank.account_number or d["bank_account"]
+                d["bank_name"] = bank.bank_name or d["bank_name"]
+                d["bank_ifsc"] = bank.ifsc_code or d["bank_ifsc"]
+        d["company_name"] = company_name
+        d["company_address"] = company_address
+        d["company_logo"] = company_logo
         d["month_label"] = r.period_start.strftime("%b %Y") if r.period_start else "Payslip"
         d["gross_pay"] = float(r.gross_pay or 0)
         d["deductions"] = float(r.deductions or 0)
         d["net_pay"] = float(r.net_pay or 0)
         if r.payslip_data:
             try:
-                d["breakdown"] = json.loads(r.payslip_data)
+                b_data = json.loads(r.payslip_data)
+                d["breakdown"] = b_data
+                if isinstance(b_data, dict):
+                    for k in ("pan", "uan", "mode_of_pay", "bank_account", "paid_days", "lop", "doj", "gross_ytd", "deductions_ytd"):
+                        if b_data.get(k) and not d.get(k):
+                            d[k] = b_data[k]
             except Exception:
                 d["breakdown"] = None
         else:
@@ -1755,14 +1790,15 @@ def _employee_payroll_amounts(
         gross = 50000.0
 
     deductions = 0.0
+    basic_val = round(gross * 0.5, 2)
     pf_active = bool(pf_cfg.get("configured") and pf_cfg.get("is_active", True))
     if pf_active:
         emp_rate = to_float(pf_cfg.get("employee_rate", 12)) / 100
-        deductions += gross * emp_rate
+        deductions += round(basic_val * emp_rate, 2)
     esic_active = bool(esic_cfg.get("configured") and esic_cfg.get("is_active", True))
     if esic_active:
         emp_rate = to_float(esic_cfg.get("employee_rate", 0.75)) / 100
-        deductions += gross * emp_rate
+        deductions += round(gross * emp_rate, 2)
 
     for comp in components:
         if comp.component_type == "deduction":
@@ -1803,27 +1839,28 @@ def generate_payroll_run(db: Session, tenant_id: int, payload: dict, user: User)
         )
     ).first()
     if existing_run:
-        old_payslips = db.scalars(
-            select(Payslip).where(
-                Payslip.tenant_id == tenant_id,
+        db.execute(
+            delete(Payslip).where(
                 or_(
                     Payslip.payroll_run_id == existing_run.id,
-                    and_(Payslip.period_start == period_start, Payslip.period_end == period_end),
-                ),
+                    and_(
+                        Payslip.tenant_id == tenant_id,
+                        Payslip.period_start == period_start,
+                        Payslip.period_end == period_end,
+                    ),
+                )
             )
-        ).all()
-        for p in old_payslips:
-            db.delete(p)
-        old_records = db.scalars(
-            select(PayrollRecord).where(
+        )
+        db.execute(
+            delete(PayrollRecord).where(
                 PayrollRecord.tenant_id == tenant_id,
                 PayrollRecord.period_start == period_start,
                 PayrollRecord.period_end == period_end,
             )
-        ).all()
-        for pr in old_records:
-            db.delete(pr)
+        )
+        db.flush()
         db.delete(existing_run)
+        db.flush()
         db.commit()
 
     _ensure_default_salary_components(db, tenant_id)
@@ -1885,7 +1922,7 @@ def generate_payroll_run(db: Session, tenant_id: int, payload: dict, user: User)
             other_amt = round(max(0.0, gross - basic_amt - hra_amt), 2)
 
         pf_active = bool(pf_cfg.get("configured") and pf_cfg.get("is_active", True))
-        pf_amt = round(gross * (to_float(pf_cfg.get("employee_rate", 12)) / 100), 2) if pf_active else 0.0
+        pf_amt = round(basic_amt * (to_float(pf_cfg.get("employee_rate", 12)) / 100), 2) if pf_active else 0.0
         esic_active = bool(esic_cfg.get("configured") and esic_cfg.get("is_active", True))
         esic_amt = round(gross * (to_float(esic_cfg.get("employee_rate", 0.75)) / 100), 2) if esic_active else 0.0
 

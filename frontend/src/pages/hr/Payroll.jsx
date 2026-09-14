@@ -244,9 +244,12 @@ export default function Payroll() {
   };
 
   const openPayslip = (payslip) => {
-    const match = apiRows.find((r) => String(r.employee_name) === payslip.name);
-    if (match) setSelected(match);
-    else addToast(`Payslip preview for ${payslip.name}`, "info");
+    const match = apiRows.find((r) => String(r.employee_name) === payslip.name) || payslip;
+    try {
+      sessionStorage.setItem("view_payslip_data", JSON.stringify(match));
+      localStorage.setItem("view_payslip_data", JSON.stringify(match));
+    } catch {}
+    window.open(`/hr/payroll/payslip-view?id=${match.id || "current"}`, "_blank");
   };
 
   if (loading) return <Loader label="Loading payroll..." />;

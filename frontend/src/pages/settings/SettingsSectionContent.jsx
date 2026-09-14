@@ -277,6 +277,9 @@ function CompanyProfileSection() {
       if (form.currency) updateCurrency(form.currency);
       if (form.language) updateLanguage(form.language);
       try {
+        if (payload.company_name) localStorage.setItem("smrt-company-name", payload.company_name);
+        if (payload.logo_url) localStorage.setItem("smrt-company-logo", payload.logo_url);
+        localStorage.setItem("smrt-company-profile", JSON.stringify(payload));
         localStorage.setItem(
           "gns-company-regional",
           JSON.stringify({

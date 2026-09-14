@@ -371,7 +371,7 @@ export default function CompanyAddressFields({
           />
         </Field>
 
-        <Field label="Area / Street / Sector / Village" required error={errors.address_line2} labelClass={labelClass} className="sm:col-span-2">
+        <Field label="Area / Street / Sector / Village" error={errors.address_line2} labelClass={labelClass} className="sm:col-span-2">
           <input
             className={`${fieldInputClass} ${errors.address_line2 ? "ap-input--error" : ""}`}
             value={value.address_line2 || ""}
@@ -418,25 +418,54 @@ function Field({ label, required, error, hint, className = "", labelClass, child
   );
 }
 
-export function validateCompanyAddress(form, { pinKey = "pincode" } = {}) {
+export function validateCompanyAddress(
+  form = {},
+  {
+    pinKey = "pincode",
+    requireStreet = false,
+    requireArea = false,
+    requireCityState = false,
+    optional = true,
+  } = {}
+) {
   const errors = {};
-  if (!String(form.country || "").trim()) errors.country = "Country is required.";
-  if (!String(form.state || "").trim()) errors.state = "State is required.";
-  if (!String(form.city || "").trim()) errors.city = "City is required.";
+  if (!form) return errors;
+
   const pin = form[pinKey] ?? form.pincode ?? form.pin_code ?? "";
   const isIndia = String(form.country || "India").trim().toLowerCase() === "india";
-  if (isIndia) {
+
+  const hasAnyAddress = Boolean(
+    String(form.address_line1 || "").trim() ||
+    String(form.address_line2 || "").trim() ||
+    String(form.city || "").trim() ||
+    String(form.state || "").trim() ||
+    String(pin || "").trim()
+  );
+
+  // If validation is optional and user has not typed any address field, return clean
+  if (optional && !hasAnyAddress) {
+    return errors;
+  }
+
+  // Validate PIN if provided
+  if (pin && isIndia) {
     const pinMsg = validateIndianPin(pin);
     if (pinMsg) errors[pinKey] = pinMsg;
-  } else if (!String(pin).trim()) {
-    errors[pinKey] = "PIN / Postal code is required.";
   }
-  if (!String(form.address_line1 || "").trim()) {
+
+  if (requireStreet && !String(form.address_line1 || "").trim()) {
     errors.address_line1 = "Address Line 1 is required.";
   }
-  if (!String(form.address_line2 || "").trim()) {
+  if (requireArea && !String(form.address_line2 || "").trim()) {
     errors.address_line2 = "Address Line 2 is required.";
   }
+  if (requireCityState && !String(form.city || "").trim()) {
+    errors.city = "City is required.";
+  }
+  if (requireCityState && !String(form.state || "").trim()) {
+    errors.state = "State is required.";
+  }
+
   return errors;
 }
 

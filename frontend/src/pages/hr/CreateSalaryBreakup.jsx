@@ -5,12 +5,14 @@ import { ArrowLeft, User } from "lucide-react";
 import Loader from "../../components/common/Loader";
 import { ListPageShell } from "../../components/common/ListPageShell";
 import { useToast } from "../../context/ToastContext";
-import { createSalaryBreakup, getEmployees, getSalaryBreakups, updateSalaryBreakup } from "../../api/hrApi";
+import {
+  createSalaryBreakup,
+  getEmployees,
+  getSalaryBreakups,
+  getTeamDirectory,
+  updateSalaryBreakup,
+} from "../../api/hrApi";
 import "./createSalaryBreakup.css";
-
-const DEFAULT_EMPLOYEE_OPTIONS = [
-  { value: "demo-satish", label: "Satish Gogulothu", department: "HR" },
-];
 
 const DEFAULT_COMPONENTS = {
   basic: { calc_type: "percentage_of_gross", value: 50, monthly: 0, annual: 0 },
@@ -64,7 +66,7 @@ export default function CreateSalaryBreakup() {
   const { addToast } = useToast();
 
   const [loading, setLoading] = useState(true);
-  const [employeeOptions, setEmployeeOptions] = useState(DEFAULT_EMPLOYEE_OPTIONS);
+  const [employeeOptions, setEmployeeOptions] = useState([]);
   const [employeeId, setEmployeeId] = useState("");
   const [grossAmount, setGrossAmount] = useState("0");
   const [components, setComponents] = useState(DEFAULT_COMPONENTS);
@@ -84,23 +86,47 @@ export default function CreateSalaryBreakup() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [empRes, breakupRes] = await Promise.allSettled([
+      const [empRes, userRes, breakupRes] = await Promise.allSettled([
         getEmployees(),
+        getTeamDirectory(),
         getSalaryBreakups(),
       ]);
 
-      let empOpts = DEFAULT_EMPLOYEE_OPTIONS;
+      let employeeRows = [];
       if (empRes.status === "fulfilled") {
         const rows = empRes.value?.data?.items || empRes.value?.data || [];
         if (Array.isArray(rows) && rows.length > 0) {
-          empOpts = rows.map((e) => ({
+          employeeRows = rows.filter((e) => e?.is_active !== false).map((e) => ({
             value: String(e.id),
-            label: e.full_name,
-            department: e.department || "Staff",
+            label: e.full_name || e.name || e.email || "Employee",
+            department: e.department || e.department_name || "Staff",
             salary: e.salary,
+            employeeCode: e.employee_code || e.employee_id || "",
           }));
         }
       }
+      const knownUsers = new Set(
+        employeeRows.flatMap((employee) => [employee.value, employee.employeeCode, employee.label]
+          .filter(Boolean)
+          .map((value) => String(value).trim().toLowerCase()))
+      );
+      const userOptions = userRes.status === "fulfilled" && Array.isArray(userRes.value?.data)
+        ? userRes.value.data
+            .filter((user) => user?.is_active !== false)
+            .filter((user) => ![user.id, user.employee_id, user.full_name, user.name, user.email]
+              .filter(Boolean)
+              .some((value) => knownUsers.has(String(value).trim().toLowerCase())))
+            .map((user) => ({
+              value: `user-${user.id}`,
+              label: user.full_name || user.name || user.email || "User",
+              department: user.department || "Staff",
+              salary: 0,
+            }))
+        : [];
+      const empOpts = [...employeeRows, ...userOptions].filter((employee, index, all) => {
+        const key = employee.label.trim().toLowerCase();
+        return all.findIndex((candidate) => candidate.label.trim().toLowerCase() === key) === index;
+      });
       setEmployeeOptions(empOpts);
 
       if (editId && breakupRes.status === "fulfilled") {

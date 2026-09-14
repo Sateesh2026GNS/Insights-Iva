@@ -124,7 +124,22 @@ class PayrollSummaryRead(BaseModel):
 
 class PayrollListRead(BaseModel):
     id: int
+    employee_id: int | None = None
     employee_name: str
+    employee_code: str | None = None
+    designation: str | None = None
+    department: str | None = None
+    pan: str | None = None
+    uan: str | None = None
+    pf_no: str | None = None
+    esi_no: str | None = None
+    bank_account: str | None = None
+    bank_name: str | None = None
+    bank_ifsc: str | None = None
+    mode_of_pay: str | None = None
+    doj: str | None = None
+    paid_days: int | None = 30
+    lop: int | None = 0
     basic: float = Field(0.0, ge=0.0)
     allowance: float = Field(0.0, ge=0.0)
     overtime: float = Field(0.0, ge=0.0)
@@ -135,6 +150,7 @@ class PayrollListRead(BaseModel):
     gross_pay: float = Field(0.0, ge=0.0)
     deductions: float = Field(0.0, ge=0.0)
     net_salary: float = Field(0.0, ge=0.0)
+    net_pay: float = Field(0.0, ge=0.0)
     status: str = "draft"
     period_start: str | None = None
     period_end: str | None = None

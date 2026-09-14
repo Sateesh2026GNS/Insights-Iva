@@ -165,8 +165,13 @@ export default function MyPayslips() {
                   <div className="mt-4 pt-2 border-t border-slate-100 flex items-center justify-end">
                     <button
                       type="button"
-                      onClick={() => setSelectedSlip(row)}
-                      className="inline-flex items-center gap-1.5 rounded-xl bg-blue-50 px-3.5 py-1.5 text-xs font-semibold text-blue-600 hover:bg-blue-100 transition-colors"
+                      onClick={() => {
+                        try {
+                          sessionStorage.setItem("view_payslip_data", JSON.stringify(row));
+                        } catch {}
+                        window.open(`/hr/payroll/payslip-view?id=${row.id || "current"}`, "_blank");
+                      }}
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-blue-50 px-3.5 py-1.5 text-xs font-semibold text-blue-600 hover:bg-blue-100 transition-colors cursor-pointer"
                     >
                       <Eye className="h-3.5 w-3.5" />
                       View Payslip

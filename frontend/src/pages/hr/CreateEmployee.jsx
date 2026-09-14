@@ -208,6 +208,7 @@ export default function CreateEmployee() {
   const [pan, setPan] = useState("");
   const [aadhaar, setAadhaar] = useState("");
   const [ipNumber, setIpNumber] = useState("");
+  const [salary, setSalary] = useState("");
   const [paymentMode, setPaymentMode] = useState("cash");
   const [accountNumber, setAccountNumber] = useState("");
   const [ifsc, setIfsc] = useState("");
@@ -291,6 +292,14 @@ export default function CreateEmployee() {
         setPersonalMobile(row.phone || row.mobile || "");
         setPermanentAddress(row.address || row.permanent_address || "");
         if (row.employment_type) setEmploymentType(row.employment_type);
+        if (row.pan) setPan(row.pan);
+        if (row.uan) setUan(row.uan);
+        if (row.esi_no) setIpNumber(row.esi_no);
+        if (row.bank_account) setAccountNumber(row.bank_account);
+        if (row.bank_name) setBankName(row.bank_name);
+        if (row.bank_ifsc) setIfsc(row.bank_ifsc);
+        if (row.mode_of_pay) setPaymentMode(row.mode_of_pay);
+        if (row.salary !== undefined && row.salary !== null) setSalary(String(row.salary));
       })
       .catch(() => {});
   }, [editId]);
@@ -335,6 +344,7 @@ export default function CreateEmployee() {
     bank_branch: bankBranch,
     beneficiary_code: beneficiaryCode,
     crn_number: crnNumber,
+    salary: salary ? Number(salary) : null,
     work_phone: workPhone,
     mobile: personalMobile,
     emergency_contact: emergencyContact,
@@ -368,6 +378,14 @@ export default function CreateEmployee() {
         hire_date: payload.date_of_joining ? payload.date_of_joining : null,
         phone: payload.mobile || null,
         address: payload.permanent_address || null,
+        pan: payload.pan || null,
+        uan: payload.uan || null,
+        esi_no: payload.ip_number || null,
+        salary: payload.salary ? Number(payload.salary) : null,
+        bank_account: payload.account_number || null,
+        bank_name: payload.bank_name || null,
+        bank_ifsc: payload.ifsc || null,
+        mode_of_pay: payload.payment_mode || null,
       };
 
       if (editId) {
@@ -544,6 +562,23 @@ export default function CreateEmployee() {
             <Field label="PAN"><input className="hr-create-employee__input" value={pan} onChange={(e) => setPan(e.target.value)} placeholder="Enter PAN" /></Field>
             <Field label="Aadhaar"><input className="hr-create-employee__input" value={aadhaar} onChange={(e) => setAadhaar(e.target.value)} placeholder="Enter Aadhaar Number" /></Field>
             <Field label="IP Number"><input className="hr-create-employee__input" value={ipNumber} onChange={(e) => setIpNumber(e.target.value)} placeholder="Enter IP Number" /></Field>
+          </div>
+        </section>
+
+        <section className="hr-create-employee__section">
+          <h2 className="hr-create-employee__section-title">Salary & Compensation</h2>
+          <div className="hr-create-employee__grid-3">
+            <Field label="Monthly Gross Salary (₹)">
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                className="hr-create-employee__input"
+                value={salary}
+                onChange={(e) => setSalary(e.target.value)}
+                placeholder="e.g. 50000 or 63583"
+              />
+            </Field>
           </div>
         </section>
 
