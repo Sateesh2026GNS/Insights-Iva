@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Download, Printer, Loader2 } from "lucide-react";
 import { getCompanySettings } from "../../api/settingsApi";
+import { generatePayslipPdf } from "../../utils/payslipPdfGenerator";
 
 /** Convert Indian Rupee amount to words */
 function numberToWordsInr(amount) {
@@ -390,87 +391,12 @@ export default function PayslipViewPage() {
     const docEl = printRef.current;
     if (!docEl) return;
     setDownloadingPdf(true);
-
-    // Keep a ref to the sticky header so we can restore it
-    const header = document.querySelector("header.no-print");
-
     try {
-      const { default: html2canvas } = await import("html2canvas");
-      const { jsPDF } = await import("jspdf");
-
-      // Hide the sticky header so the card rises to the top of the page.
-      // html2canvas crops based on getBoundingClientRect(); with the header
-      // showing, the card starts ~60–80px below y=0, cutting the top off.
-      if (header) header.style.display = "none";
-      window.scrollTo(0, 0);
-      await new Promise((r) => setTimeout(r, 120));
-
-      const canvas = await html2canvas(docEl, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        logging: false,
-        backgroundColor: "#ffffff",
-        scrollX: 0,
-        scrollY: 0,
-        windowWidth: 1200,
-        // Large enough so html2canvas never clips the tall card
-        windowHeight: Math.max(document.body.scrollHeight, 3000),
-        onclone: (_, clonedEl) => {
-          clonedEl.style.boxShadow = "none";
-          clonedEl.style.border = "none";
-          clonedEl.style.width = "760px";
-          clonedEl.style.maxWidth = "760px";
-          clonedEl.style.minWidth = "760px";
-          const tdsBar = clonedEl.querySelector(".payslip-tds-bar");
-          if (tdsBar) tdsBar.style.backgroundColor = "#d3dce6";
-        },
-      });
-
-      // Restore header immediately after capture
-      if (header) header.style.display = "";
-
-      const imgData = canvas.toDataURL("image/png");
-
-      // Fit to A4 (210 × 297 mm)
-      const a4W = 210;
-      const a4H = 297;
-      const imgHeightMm = (canvas.height * a4W) / canvas.width;
-
-      let finalW = a4W;
-      let finalH = imgHeightMm;
-      let offsetX = 0;
-      let offsetY = 0;
-
-      if (imgHeightMm > a4H) {
-        // Scale down so entire payslip fits on one A4 page
-        finalH = a4H;
-        finalW = (canvas.width * finalH) / canvas.height;
-        offsetX = (a4W - finalW) / 2;
-        offsetY = 0;
-      } else {
-        // Center vertically on the page
-        offsetY = (a4H - imgHeightMm) / 2;
-      }
-
-      const pdf = new jsPDF({
-        orientation: "portrait",
-        unit: "mm",
-        format: "a4",
-        compress: true,
-      });
-
-      pdf.addImage(imgData, "PNG", offsetX, offsetY, finalW, finalH, undefined, "FAST");
-
-      const safeName = (empName || "Employee").replace(/[^a-zA-Z0-9_-]/g, "_");
-      const safeMonth = (monthNameUpper || "MONTH").toUpperCase();
-      pdf.save(`Payslip_${safeName}_${safeMonth}_${yearNum}.pdf`);
+      await generatePayslipPdf(docEl, { empName, monthNameUpper, yearNum });
     } catch (err) {
       console.error("PDF generation failed, falling back to print:", err);
       window.print();
     } finally {
-      // Always restore the header
-      if (header) header.style.display = "";
       setDownloadingPdf(false);
     }
   };
@@ -701,13 +627,13 @@ export default function PayslipViewPage() {
           <div className="mt-1 border border-black">
             <table className="w-full text-[10.5px] border-collapse">
               <thead>
-                <tr className="border-b border-black font-bold">
-                  <th className="py-1 px-2.5 text-left border-r border-black w-[24%]">Earnings</th>
-                  <th className="py-1 px-2.5 text-right border-r border-black w-[13%]">YTD</th>
-                  <th className="py-1 px-2.5 text-right border-r border-black w-[13%]">Amount</th>
-                  <th className="py-1 px-2.5 text-left border-r border-black w-[24%]">Deductions</th>
-                  <th className="py-1 px-2.5 text-right border-r border-black w-[13%]">YTD</th>
-                  <th className="py-1 px-2.5 text-right w-[13%]">Amount</th>
+                <tr className="font-bold">
+                  <th className="py-1 px-2.5 text-left border-r border-b border-black w-[24%]">Earnings</th>
+                  <th className="py-1 px-2.5 text-right border-r border-b border-black w-[13%]">YTD</th>
+                  <th className="py-1 px-2.5 text-right border-r border-b border-black w-[13%]">Amount</th>
+                  <th className="py-1 px-2.5 text-left border-r border-b border-black w-[24%]">Deductions</th>
+                  <th className="py-1 px-2.5 text-right border-r border-b border-black w-[13%]">YTD</th>
+                  <th className="py-1 px-2.5 text-right border-b border-black w-[13%]">Amount</th>
                 </tr>
               </thead>
               <tbody>
@@ -763,13 +689,13 @@ export default function PayslipViewPage() {
                   </tr>
                 ))}
                 {/* Total Row */}
-                <tr className="border-t border-b border-black font-bold">
-                  <td className="py-1 px-2.5 text-left border-r border-black">Total</td>
-                  <td className="py-1 px-2.5 text-right border-r border-black">{formatInrZero(totalEarningsYtd)}</td>
-                  <td className="py-1 px-2.5 text-right border-r border-black">{formatInrZero(totalEarningsMonthly)}</td>
-                  <td className="py-1 px-2.5 text-left border-r border-black">Total</td>
-                  <td className="py-1 px-2.5 text-right border-r border-black">{formatInrZero(totalDeductionsYtd)}</td>
-                  <td className="py-1 px-2.5 text-right">{formatInrZero(totalDeductionsMonthly)}</td>
+                <tr className="font-bold">
+                  <td className="py-1 px-2.5 text-left border-r border-t border-b border-black">Total</td>
+                  <td className="py-1 px-2.5 text-right border-r border-t border-b border-black">{formatInrZero(totalEarningsYtd)}</td>
+                  <td className="py-1 px-2.5 text-right border-r border-t border-b border-black">{formatInrZero(totalEarningsMonthly)}</td>
+                  <td className="py-1 px-2.5 text-left border-r border-t border-b border-black">Total</td>
+                  <td className="py-1 px-2.5 text-right border-r border-t border-b border-black">{formatInrZero(totalDeductionsYtd)}</td>
+                  <td className="py-1 px-2.5 text-right border-t border-b border-black">{formatInrZero(totalDeductionsMonthly)}</td>
                 </tr>
               </tbody>
             </table>
@@ -800,16 +726,16 @@ export default function PayslipViewPage() {
             </div>
 
             {/* TDS 2-Column Split Details Table */}
-            <div className="grid grid-cols-2">
-              {/* Left Table: Description / Gross / Exempt / Taxable */}
-              <div className="border-r border-black flex flex-col">
+            <div className="flex w-full">
+              {/* Left Column: Description / Gross / Exempt / Taxable */}
+              <div className="w-1/2 border-r border-black flex flex-col">
                 <table className="w-full text-[10px] border-collapse">
                   <thead>
-                    <tr className="border-b border-black font-bold">
-                      <th className="py-0.5 px-2 text-left border-r border-black w-[40%]">Description</th>
-                      <th className="py-0.5 px-2 text-right border-r border-black w-[25%]">Gross</th>
-                      <th className="py-0.5 px-2 text-right border-r border-black w-[15%]">Exempt</th>
-                      <th className="py-0.5 px-2 text-right w-[20%]">Taxable</th>
+                    <tr className="font-bold">
+                      <th className="py-0.5 px-2 text-left border-r border-b border-black w-[40%]">Description</th>
+                      <th className="py-0.5 px-2 text-right border-r border-b border-black w-[25%]">Gross</th>
+                      <th className="py-0.5 px-2 text-right border-r border-b border-black w-[15%]">Exempt</th>
+                      <th className="py-0.5 px-2 text-right border-b border-black w-[20%]">Taxable</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -865,24 +791,24 @@ export default function PayslipViewPage() {
                 </table>
 
                 {/* Deduction Under Chapter VI-A */}
-                <div className="border-t border-black flex-1 flex flex-col">
+                <div className="border-t border-black flex-1 flex flex-col min-h-[90px]">
                   <div className="py-0.5 px-2 font-bold text-center border-b border-black text-[10px]">
                     Deduction Under Chapter VI-A
                   </div>
-                  <div className="flex-1 grid grid-cols-2">
-                    <div className="border-r border-black h-full"></div>
-                    <div className="h-full"></div>
+                  <div className="flex-1 flex w-full">
+                    <div className="w-1/2 border-r border-black h-full min-h-[65px]"></div>
+                    <div className="w-1/2 h-full min-h-[65px]"></div>
                   </div>
                 </div>
               </div>
 
-              {/* Right Table: Income Tax Deduction */}
-              <div>
+              {/* Right Column: Income Tax Deduction */}
+              <div className="w-1/2 flex flex-col">
                 <table className="w-full text-[10px] border-collapse">
                   <thead>
-                    <tr className="border-b border-black font-bold">
-                      <th className="py-0.5 px-2 text-left border-r border-black w-[65%]">Income Tax Deduction</th>
-                      <th className="py-0.5 px-2 text-right w-[35%]">&nbsp;</th>
+                    <tr className="font-bold">
+                      <th className="py-0.5 px-2 text-left border-r border-b border-black w-[65%]">Income Tax Deduction</th>
+                      <th className="py-0.5 px-2 text-right border-b border-black w-[35%]">&nbsp;</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -935,52 +861,52 @@ export default function PayslipViewPage() {
                       <td className="py-0.5 px-2 text-right"></td>
                     </tr>
                     <tr>
-                      <td className="py-0.5 px-2 border-r border-black">Monthly Projected Tax</td>
-                      <td className="py-0.5 px-2 text-right"></td>
+                      <td className="py-0.5 px-2 border-r border-b border-black">Monthly Projected Tax</td>
+                      <td className="py-0.5 px-2 border-b border-black text-right"></td>
                     </tr>
                   </tbody>
                 </table>
 
                 {/* Tax Paid Details Grid */}
-                <div className="border-t border-black">
+                <div>
                   <div className="py-0.5 px-2 font-bold text-center border-b border-black text-[10px]">
                     Tax Paid Details
                   </div>
                   <table className="w-full text-[9.5px] border-collapse text-center">
                     <thead>
-                      <tr className="border-b border-black font-bold">
-                        <th className="py-0.5 border-r border-black w-[16.66%]">APR</th>
-                        <th className="py-0.5 border-r border-black w-[16.66%]">MAY</th>
-                        <th className="py-0.5 border-r border-black w-[16.66%]">JUN</th>
-                        <th className="py-0.5 border-r border-black w-[16.66%]">JUL</th>
-                        <th className="py-0.5 border-r border-black w-[16.66%]">AUG</th>
-                        <th className="py-0.5 w-[16.66%]">SEP</th>
+                      <tr className="font-bold">
+                        <th className="py-0.5 border-r border-b border-black w-[16.66%]">APR</th>
+                        <th className="py-0.5 border-r border-b border-black w-[16.66%]">MAY</th>
+                        <th className="py-0.5 border-r border-b border-black w-[16.66%]">JUN</th>
+                        <th className="py-0.5 border-r border-b border-black w-[16.66%]">JUL</th>
+                        <th className="py-0.5 border-r border-b border-black w-[16.66%]">AUG</th>
+                        <th className="py-0.5 border-b border-black w-[16.66%]">SEP</th>
                       </tr>
                     </thead>
                     <tbody>
-                      <tr className="h-4 border-b border-black">
-                        <td className="border-r border-black"></td>
-                        <td className="border-r border-black"></td>
-                        <td className="border-r border-black"></td>
-                        <td className="border-r border-black"></td>
-                        <td className="border-r border-black"></td>
-                        <td></td>
+                      <tr className="h-4">
+                        <td className="border-r border-b border-black">&nbsp;</td>
+                        <td className="border-r border-b border-black">&nbsp;</td>
+                        <td className="border-r border-b border-black">&nbsp;</td>
+                        <td className="border-r border-b border-black">&nbsp;</td>
+                        <td className="border-r border-b border-black">&nbsp;</td>
+                        <td className="border-b border-black">&nbsp;</td>
                       </tr>
-                      <tr className="border-b border-black font-bold">
-                        <th className="py-0.5 border-r border-black font-bold">OCT</th>
-                        <th className="py-0.5 border-r border-black font-bold">NOV</th>
-                        <th className="py-0.5 border-r border-black font-bold">DEC</th>
-                        <th className="py-0.5 border-r border-black font-bold">JAN</th>
-                        <th className="py-0.5 border-r border-black font-bold">FEB</th>
-                        <th className="py-0.5 font-bold">MAR</th>
+                      <tr className="font-bold">
+                        <th className="py-0.5 border-r border-b border-black font-bold">OCT</th>
+                        <th className="py-0.5 border-r border-b border-black font-bold">NOV</th>
+                        <th className="py-0.5 border-r border-b border-black font-bold">DEC</th>
+                        <th className="py-0.5 border-r border-b border-black font-bold">JAN</th>
+                        <th className="py-0.5 border-r border-b border-black font-bold">FEB</th>
+                        <th className="py-0.5 border-b border-black font-bold">MAR</th>
                       </tr>
                       <tr className="h-4">
-                        <td className="border-r border-black"></td>
-                        <td className="border-r border-black"></td>
-                        <td className="border-r border-black"></td>
-                        <td className="border-r border-black"></td>
-                        <td className="border-r border-black"></td>
-                        <td></td>
+                        <td className="border-r border-black">&nbsp;</td>
+                        <td className="border-r border-black">&nbsp;</td>
+                        <td className="border-r border-black">&nbsp;</td>
+                        <td className="border-r border-black">&nbsp;</td>
+                        <td className="border-r border-black">&nbsp;</td>
+                        <td>&nbsp;</td>
                       </tr>
                     </tbody>
                   </table>

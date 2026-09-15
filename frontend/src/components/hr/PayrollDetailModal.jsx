@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-import { Download, ExternalLink, Printer, X } from "lucide-react";
+import { Download, ExternalLink, Loader2, Printer, X } from "lucide-react";
 import { useToast } from "../../context/ToastContext";
 import { getCompanySettings } from "../../api/settingsApi";
+import { generatePayslipPdf } from "../../utils/payslipPdfGenerator";
 
 /** Convert Indian Rupee amount to words */
 function numberToWordsInr(amount) {
@@ -193,6 +194,7 @@ export default function PayrollDetailModal({ record, onClose }) {
   const { addToast } = useToast();
   const printRef = useRef(null);
   const [companyProfile, setCompanyProfile] = useState(null);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
 
   useEffect(() => {
     getCompanySettings({ force: true })
@@ -436,6 +438,21 @@ export default function PayrollDetailModal({ record, onClose }) {
     window.open(`/hr/payroll/payslip-view?id=${record.id || "current"}`, "_blank");
   };
 
+  const handleDownloadPdf = async () => {
+    const docEl = printRef.current;
+    if (!docEl) return;
+    setDownloadingPdf(true);
+    try {
+      await generatePayslipPdf(docEl, { empName, monthNameUpper, yearNum });
+    } catch (err) {
+      console.error("PDF generation failed, falling back to print:", err);
+      addToast("Direct PDF download failed, opening print view", "info");
+      handlePrint();
+    } finally {
+      setDownloadingPdf(false);
+    }
+  };
+
   return createPortal(
     <div
       className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-2 sm:p-4 overflow-y-auto"
@@ -472,11 +489,16 @@ export default function PayrollDetailModal({ record, onClose }) {
             </button>
             <button
               type="button"
-              onClick={handlePrint}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 transition-colors shadow-xs cursor-pointer"
+              onClick={handleDownloadPdf}
+              disabled={downloadingPdf}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-60 transition-colors shadow-xs cursor-pointer"
             >
-              <Download className="h-3.5 w-3.5" />
-              Download PDF
+              {downloadingPdf ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Download className="h-3.5 w-3.5" />
+              )}
+              {downloadingPdf ? "Generating PDF..." : "Download PDF"}
             </button>
             <button
               type="button"
@@ -649,13 +671,13 @@ export default function PayrollDetailModal({ record, onClose }) {
                     </tr>
                   ))}
                   {/* Total Row */}
-                  <tr className="border-t border-b border-black font-bold">
-                    <td className="py-1 px-2.5 text-left border-r border-black">Total</td>
-                    <td className="py-1 px-2.5 text-right border-r border-black">{formatInrZero(totalEarningsYtd)}</td>
-                    <td className="py-1 px-2.5 text-right border-r border-black">{formatInrZero(totalEarningsMonthly)}</td>
-                    <td className="py-1 px-2.5 text-left border-r border-black">Total</td>
-                    <td className="py-1 px-2.5 text-right border-r border-black">{formatInrZero(totalDeductionsYtd)}</td>
-                    <td className="py-1 px-2.5 text-right">{formatInrZero(totalDeductionsMonthly)}</td>
+                  <tr className="font-bold">
+                    <td className="py-1 px-2.5 text-left border-r border-t border-b border-black">Total</td>
+                    <td className="py-1 px-2.5 text-right border-r border-t border-b border-black">{formatInrZero(totalEarningsYtd)}</td>
+                    <td className="py-1 px-2.5 text-right border-r border-t border-b border-black">{formatInrZero(totalEarningsMonthly)}</td>
+                    <td className="py-1 px-2.5 text-left border-r border-t border-b border-black">Total</td>
+                    <td className="py-1 px-2.5 text-right border-r border-t border-b border-black">{formatInrZero(totalDeductionsYtd)}</td>
+                    <td className="py-1 px-2.5 text-right border-t border-b border-black">{formatInrZero(totalDeductionsMonthly)}</td>
                   </tr>
                 </tbody>
               </table>
@@ -676,23 +698,26 @@ export default function PayrollDetailModal({ record, onClose }) {
               </div>
 
               {/* TDS Header Bar */}
-              <div className="flex items-center justify-between bg-slate-300 px-2 py-1 font-bold text-[10px] border-b border-black">
+              <div
+                className="payslip-tds-bar flex items-center justify-between px-2 py-1 font-bold text-[10px] border-b border-black"
+                style={{ backgroundColor: "#d3dce6" }}
+              >
                 <span>New Tax Regime Opted</span>
                 <span>TDS Details</span>
                 <span>PAN : {pan}</span>
               </div>
 
               {/* TDS 2-Column Split Details Table */}
-              <div className="grid grid-cols-2">
-                {/* Left Table: Description / Gross / Exempt / Taxable */}
-                <div className="border-r border-black">
+              <div className="flex w-full">
+                {/* Left Column: Description / Gross / Exempt / Taxable */}
+                <div className="w-1/2 border-r border-black flex flex-col">
                   <table className="w-full text-[10px] border-collapse">
                     <thead>
-                      <tr className="border-b border-black font-bold">
-                        <th className="py-0.5 px-2 text-left border-r border-black w-[40%]">Description</th>
-                        <th className="py-0.5 px-2 text-right border-r border-black w-[25%]">Gross</th>
-                        <th className="py-0.5 px-2 text-right border-r border-black w-[15%]">Exempt</th>
-                        <th className="py-0.5 px-2 text-right w-[20%]">Taxable</th>
+                      <tr className="font-bold">
+                        <th className="py-0.5 px-2 text-left border-r border-b border-black w-[40%]">Description</th>
+                        <th className="py-0.5 px-2 text-right border-r border-b border-black w-[25%]">Gross</th>
+                        <th className="py-0.5 px-2 text-right border-r border-b border-black w-[15%]">Exempt</th>
+                        <th className="py-0.5 px-2 text-right border-b border-black w-[20%]">Taxable</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -748,26 +773,24 @@ export default function PayrollDetailModal({ record, onClose }) {
                   </table>
 
                   {/* Deduction Under Chapter VI-A */}
-                  <div className="border-t border-black">
+                  <div className="border-t border-black flex-1 flex flex-col min-h-[90px]">
                     <div className="py-0.5 px-2 font-bold text-center border-b border-black text-[10px]">
                       Deduction Under Chapter VI-A
                     </div>
-                    <div className="h-20 border-b border-black">
-                      <div className="grid grid-cols-2 h-full">
-                        <div className="border-r border-black h-full"></div>
-                        <div className="h-full"></div>
-                      </div>
+                    <div className="flex-1 flex w-full">
+                      <div className="w-1/2 border-r border-black h-full min-h-[65px]"></div>
+                      <div className="w-1/2 h-full min-h-[65px]"></div>
                     </div>
                   </div>
                 </div>
 
-                {/* Right Table: Income Tax Deduction */}
-                <div>
+                {/* Right Column: Income Tax Deduction */}
+                <div className="w-1/2 flex flex-col">
                   <table className="w-full text-[10px] border-collapse">
                     <thead>
-                      <tr className="border-b border-black font-bold">
-                        <th className="py-0.5 px-2 text-left border-r border-black w-[65%]">Income Tax Deduction</th>
-                        <th className="py-0.5 px-2 text-right w-[35%]">&nbsp;</th>
+                      <tr className="font-bold">
+                        <th className="py-0.5 px-2 text-left border-r border-b border-black w-[65%]">Income Tax Deduction</th>
+                        <th className="py-0.5 px-2 text-right border-b border-black w-[35%]">&nbsp;</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -820,52 +843,52 @@ export default function PayrollDetailModal({ record, onClose }) {
                         <td className="py-0.5 px-2 text-right"></td>
                       </tr>
                       <tr>
-                        <td className="py-0.5 px-2 border-r border-black">Monthly Projected Tax</td>
-                        <td className="py-0.5 px-2 text-right"></td>
+                        <td className="py-0.5 px-2 border-r border-b border-black">Monthly Projected Tax</td>
+                        <td className="py-0.5 px-2 border-b border-black text-right"></td>
                       </tr>
                     </tbody>
                   </table>
 
                   {/* Tax Paid Details Grid */}
-                  <div className="border-t border-black">
+                  <div>
                     <div className="py-0.5 px-2 font-bold text-center border-b border-black text-[10px]">
                       Tax Paid Details
                     </div>
                     <table className="w-full text-[9.5px] border-collapse text-center">
                       <thead>
-                        <tr className="border-b border-black font-bold">
-                          <th className="py-0.5 border-r border-black w-[16.66%]">APR</th>
-                          <th className="py-0.5 border-r border-black w-[16.66%]">MAY</th>
-                          <th className="py-0.5 border-r border-black w-[16.66%]">JUN</th>
-                          <th className="py-0.5 border-r border-black w-[16.66%]">JUL</th>
-                          <th className="py-0.5 border-r border-black w-[16.66%]">AUG</th>
-                          <th className="py-0.5 w-[16.66%]">SEP</th>
+                        <tr className="font-bold">
+                          <th className="py-0.5 border-r border-b border-black w-[16.66%]">APR</th>
+                          <th className="py-0.5 border-r border-b border-black w-[16.66%]">MAY</th>
+                          <th className="py-0.5 border-r border-b border-black w-[16.66%]">JUN</th>
+                          <th className="py-0.5 border-r border-b border-black w-[16.66%]">JUL</th>
+                          <th className="py-0.5 border-r border-b border-black w-[16.66%]">AUG</th>
+                          <th className="py-0.5 border-b border-black w-[16.66%]">SEP</th>
                         </tr>
                       </thead>
                       <tbody>
-                        <tr className="h-4 border-b border-black">
-                          <td className="border-r border-black"></td>
-                          <td className="border-r border-black"></td>
-                          <td className="border-r border-black"></td>
-                          <td className="border-r border-black"></td>
-                          <td className="border-r border-black"></td>
-                          <td></td>
+                        <tr className="h-4">
+                          <td className="border-r border-b border-black">&nbsp;</td>
+                          <td className="border-r border-b border-black">&nbsp;</td>
+                          <td className="border-r border-b border-black">&nbsp;</td>
+                          <td className="border-r border-b border-black">&nbsp;</td>
+                          <td className="border-r border-b border-black">&nbsp;</td>
+                          <td className="border-b border-black">&nbsp;</td>
                         </tr>
-                        <tr className="border-b border-black font-bold">
-                          <td className="py-0.5 border-r border-black">OCT</td>
-                          <td className="py-0.5 border-r border-black">NOV</td>
-                          <td className="py-0.5 border-r border-black">DEC</td>
-                          <td className="py-0.5 border-r border-black">JAN</td>
-                          <td className="py-0.5 border-r border-black">FEB</td>
-                          <td className="py-0.5">MAR</td>
+                        <tr className="font-bold">
+                          <th className="py-0.5 border-r border-b border-black font-bold">OCT</th>
+                          <th className="py-0.5 border-r border-b border-black font-bold">NOV</th>
+                          <th className="py-0.5 border-r border-b border-black font-bold">DEC</th>
+                          <th className="py-0.5 border-r border-b border-black font-bold">JAN</th>
+                          <th className="py-0.5 border-r border-b border-black font-bold">FEB</th>
+                          <th className="py-0.5 border-b border-black font-bold">MAR</th>
                         </tr>
                         <tr className="h-4">
-                          <td className="border-r border-black"></td>
-                          <td className="border-r border-black"></td>
-                          <td className="border-r border-black"></td>
-                          <td className="border-r border-black"></td>
-                          <td className="border-r border-black"></td>
-                          <td></td>
+                          <td className="border-r border-black">&nbsp;</td>
+                          <td className="border-r border-black">&nbsp;</td>
+                          <td className="border-r border-black">&nbsp;</td>
+                          <td className="border-r border-black">&nbsp;</td>
+                          <td className="border-r border-black">&nbsp;</td>
+                          <td>&nbsp;</td>
                         </tr>
                       </tbody>
                     </table>
