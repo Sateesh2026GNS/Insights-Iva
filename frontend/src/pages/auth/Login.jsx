@@ -109,34 +109,31 @@ export default function Login() {
   };
 
   const fieldClass =
-    "box-border h-11 w-full min-w-0 rounded-lg border-none bg-gray-100 py-2.5 pl-11 pr-4 text-sm text-gray-700 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-teal-500";
+    "box-border h-12 md:h-11 w-full min-w-0 rounded-xl md:rounded-lg border border-transparent bg-gray-100 py-3 md:py-2.5 pl-11 pr-4 text-base md:text-sm text-gray-800 placeholder-gray-400 focus:border-teal-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/25 transition-all";
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden p-3 sm:p-4">
+    <div className="relative flex min-h-screen min-h-[100dvh] items-center justify-center overflow-x-hidden overflow-y-auto p-4 sm:p-6">
       <LoginSuccessOverlay open={showSuccess} onDismiss={() => navigateNow(redirectPath)} />
       <LoginBackdrop />
-      <div className="relative z-10 w-full max-w-3xl">
-        <div
-          className="relative overflow-hidden rounded-3xl bg-white shadow-2xl"
-          style={{ minHeight: "420px" }}
-        >
-          <div className="flex min-h-[420px] flex-col md:flex-row">
-            <div className="flex w-full flex-col items-center justify-center bg-white px-6 py-8 sm:px-8 md:w-1/2 md:py-9 lg:px-10">
+      <div className="relative z-10 w-full max-w-md md:max-w-3xl my-auto">
+        <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-white shadow-xl sm:shadow-2xl">
+          <div className="flex min-h-0 md:min-h-[420px] flex-col md:flex-row">
+            <div className="flex w-full flex-col items-center justify-center bg-white px-5 py-7 sm:px-8 sm:py-9 md:w-1/2 lg:px-10">
               <div className="mb-5 w-full text-center">
                 <div className="mb-3 flex justify-center">
-                  <BrandLogo size="xl" imageClassName="h-[4.5rem]" />
+                  <BrandLogo size="xl" imageClassName="h-14 sm:h-[4.5rem]" />
                 </div>
-                <h1 className="mb-1.5 text-3xl font-bold text-gray-900">Insights Iva</h1>
-                <p className="text-sm text-gray-600">Business Intelligence • Analytics • AI</p>
+                <h1 className="mb-1 text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">Insights Iva</h1>
+                <p className="text-xs sm:text-sm text-gray-600">Business Intelligence • Analytics • AI</p>
               </div>
 
               {error && (
-                <div className="mb-3 w-full rounded-lg border border-red-400 bg-red-100 p-2.5 text-sm text-red-700">
+                <div className="mb-3 w-full rounded-lg border border-red-300 bg-red-50 p-3 text-xs sm:text-sm text-red-700">
                   {error}
                 </div>
               )}
 
-              <form onSubmit={handleSubmit} className="w-full space-y-3">
+              <form onSubmit={handleSubmit} className="w-full space-y-3 sm:space-y-3.5">
                 <div className="relative">
                   <div className="pointer-events-none absolute left-3.5 top-1/2 z-10 -translate-y-1/2 text-gray-400">
                     <RoleIcon />
@@ -192,18 +189,18 @@ export default function Login() {
                   onChange={(e) => setPassword(e.target.value)}
                   leftIcon={<LockIcon />}
                   autoComplete="current-password"
-                  inputClassName="!h-11 !py-2.5 !pl-11"
+                  inputClassName="!h-12 md:!h-11 !py-3 md:!py-2.5 !pl-11 text-base md:text-sm rounded-xl md:rounded-lg focus:border-teal-500 focus:bg-white focus:ring-2 focus:ring-teal-500/25 transition-all"
                   disabled={loading}
                   required
                 />
 
-                <div className="flex items-center justify-between text-xs">
-                  <Link to="/forgot-password" className="text-gray-600 hover:text-teal-600 transition-colors">
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-xs">
+                  <Link to="/forgot-password" className="text-gray-600 hover:text-teal-600 transition-colors py-1">
                     Forgot Your Password?
                   </Link>
                   <Link
                     to="/gns-admin/login"
-                    className="font-semibold text-teal-600 hover:text-teal-700 hover:underline transition-colors"
+                    className="font-semibold text-teal-600 hover:text-teal-700 hover:underline transition-colors py-1"
                   >
                     Super Admin
                   </Link>
@@ -215,7 +212,7 @@ export default function Login() {
                   fullWidth
                   disabled={loading}
                   loading={loading}
-                  className="uppercase tracking-wider"
+                  className="min-h-[46px] uppercase tracking-wider font-semibold shadow-md active:scale-[0.99] transition-transform"
                 >
                   {loading ? "Signing in..." : "SIGN IN"}
                 </Button>
@@ -223,7 +220,7 @@ export default function Login() {
             </div>
 
             <AuthSlider
-              className="min-h-[220px] w-full md:min-h-0 md:w-1/2"
+              className="hidden md:flex md:w-1/2 md:min-h-0"
               contentClassName="p-8 lg:p-10"
             >
               <h2 className="mb-3 text-3xl font-bold">Welcome</h2>
