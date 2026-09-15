@@ -5,6 +5,7 @@ import {
   isPageRefreshInProgress,
 } from "../utils/pageRefresh";
 import { httpStatusMessage } from "../utils/apiError";
+import { checkSessionStatus, isPrimaryTabAlive } from "../utils/sessionManager";
 
 /** Resolve API base URL. Empty string = same-origin (Docker/nginx proxy). */
 export function getApiBaseURL() {
@@ -35,6 +36,19 @@ const api = axios.create({
 api.interceptors.request.use((config) => {
   try {
     if (!isPlatformRequest(config)) {
+      const sessionStatus = checkSessionStatus();
+      if (sessionStatus.expired) {
+        if (sessionStatus.reason === "primary_9hr_timeout" || !isPrimaryTabAlive()) {
+          clearAuthStorage();
+        }
+        if (typeof onUnauthorized === "function") {
+          onUnauthorized();
+        }
+        const err = new Error("Session expired");
+        err.response = { status: 401, data: { message: "Session expired", reason: sessionStatus.reason } };
+        return Promise.reject(err);
+      }
+
       const token = localStorage.getItem("smrt-token");
       if (token) {
         config.headers = config.headers || {};
@@ -167,6 +181,17 @@ api.interceptors.response.use(
       !original.url?.includes("/auth/login") &&
       !original.url?.includes("/auth/refresh")
     ) {
+      const sessionStatus = checkSessionStatus();
+      if (sessionStatus.expired) {
+        if (sessionStatus.reason === "primary_9hr_timeout" || !isPrimaryTabAlive()) {
+          clearAuthStorage();
+        }
+        if (typeof onUnauthorized === "function") {
+          onUnauthorized();
+        }
+        return Promise.reject(error);
+      }
+
       const refreshToken = localStorage.getItem("smrt-refresh-token");
       if (refreshToken) {
         original._retry = true;

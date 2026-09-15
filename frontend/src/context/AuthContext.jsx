@@ -3,6 +3,17 @@ import { createContext, useCallback, useEffect, useMemo, useState } from "react"
 import { getCurrentUser, logout as logoutApi, removeProfileAvatar, updateProfileAvatar } from "../api/authApi";
 import { setUnauthorizedHandler } from "../api/axiosConfig";
 import { invalidateReferenceCache } from "../utils/referenceDataCache";
+import {
+  checkSessionStatus,
+  clearTabSession,
+  getSessionExpiryReason,
+  getTabType,
+  initTabSession,
+  isPrimaryTabAlive,
+  markAsPrimaryTab,
+  markTabExpired,
+  sendPrimaryHeartbeat,
+} from "../utils/sessionManager";
 
 export const AuthContext = createContext(null);
 
@@ -73,6 +84,16 @@ function normalizeUser(raw) {
 
 function readStoredUser() {
   try {
+    const status = checkSessionStatus();
+    if (status.expired) {
+      if (status.reason === "primary_9hr_timeout" || !isPrimaryTabAlive()) {
+        clearTenantDataCaches();
+        localStorage.removeItem("smrt-token");
+        localStorage.removeItem("smrt-refresh-token");
+        localStorage.removeItem("smrt-user");
+      }
+      return null;
+    }
     const token = localStorage.getItem("smrt-token");
     if (!token) return null;
     const stored = localStorage.getItem("smrt-user");
@@ -112,6 +133,7 @@ function clearTenantDataCaches() {
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(readStoredUser);
   const [sessionExpired, setSessionExpired] = useState(false);
+  const [sessionExpiryReason, setSessionExpiryReason] = useState(() => getSessionExpiryReason());
 
   useEffect(() => {
     setUnauthorizedHandler(() => {
@@ -146,6 +168,59 @@ export function AuthProvider({ children }) {
       }
     } catch {}
   }, [user]);
+
+  // Session lifecycle manager: 9 hours for login session, 10 minutes for new tab
+  useEffect(() => {
+    initTabSession();
+
+    const checkAndEnforceSession = () => {
+      if (getTabType() === "primary") {
+        sendPrimaryHeartbeat();
+      }
+
+      const token = localStorage.getItem("smrt-token");
+      if (!token || token.startsWith("fast-session-")) return;
+
+      const status = checkSessionStatus();
+      if (status.expired) {
+        setSessionExpiryReason(status.reason);
+        if (status.reason === "primary_9hr_timeout" || !isPrimaryTabAlive()) {
+          logout();
+          setSessionExpired(true);
+        } else {
+          // Tab-specific expiration for new tab: keep primary 9hr tab active
+          markTabExpired(status.reason);
+          setUser(null);
+          setSessionExpired(true);
+        }
+      }
+    };
+
+    checkAndEnforceSession();
+    const interval = setInterval(checkAndEnforceSession, 2000);
+
+    const onStorageChange = (e) => {
+      if (e.key === "smrt-token" && !e.newValue) {
+        setUser(null);
+      }
+    };
+    window.addEventListener("storage", onStorageChange);
+
+    const onUnload = () => {
+      if (getTabType() === "primary") {
+        try {
+          localStorage.removeItem("smrt-primary-heartbeat");
+        } catch {}
+      }
+    };
+    window.addEventListener("beforeunload", onUnload);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("storage", onStorageChange);
+      window.removeEventListener("beforeunload", onUnload);
+    };
+  }, [logout]);
 
   useEffect(() => {
     let cancelled = false;
@@ -188,9 +263,8 @@ export function AuthProvider({ children }) {
 
   const login = useCallback((authData) => {
     setSessionExpired(false);
-    try {
-      localStorage.setItem("smrt-login-time", String(Date.now()));
-    } catch {}
+    setSessionExpiryReason(null);
+    markAsPrimaryTab();
     clearTenantDataCaches();
     let u;
     if (typeof authData === "object" && authData !== null) {
@@ -234,6 +308,8 @@ export function AuthProvider({ children }) {
     } finally {
       setUser(null);
       setSessionExpired(false);
+      setSessionExpiryReason(null);
+      clearTabSession();
       try {
         clearTenantDataCaches();
         localStorage.removeItem("smrt-user");
@@ -258,7 +334,10 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
-  const clearSessionExpired = useCallback(() => setSessionExpired(false), []);
+  const clearSessionExpired = useCallback(() => {
+    setSessionExpired(false);
+    setSessionExpiryReason(null);
+  }, []);
 
   const updateUserAvatar = useCallback((avatarData) => {
     setUser((prev) => {
@@ -304,13 +383,14 @@ export function AuthProvider({ children }) {
       user,
       isAuthenticated: Boolean(user && hasToken),
       sessionExpired,
+      sessionExpiryReason,
       clearSessionExpired,
       login,
       logout,
       refreshUser,
       updateUserAvatar,
     };
-  }, [user, sessionExpired, clearSessionExpired, login, logout, refreshUser, updateUserAvatar]);
+  }, [user, sessionExpired, sessionExpiryReason, clearSessionExpired, login, logout, refreshUser, updateUserAvatar]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

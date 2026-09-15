@@ -1,6 +1,8 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { LogIn } from "lucide-react";
 import Button from "../Button";
+import useAuth from "../../../hooks/useAuth";
+import { getSessionExpiryReason } from "../../../utils/sessionManager";
 
 /**
  * Session expired overlay — prompts re-login without exposing sensitive data.
@@ -8,6 +10,8 @@ import Button from "../Button";
 export default function SessionExpiredModal({ open, onLogin }) {
   const navigate = useNavigate();
   const location = useLocation();
+  const { sessionExpiryReason } = useAuth();
+  const reason = sessionExpiryReason || getSessionExpiryReason();
 
   const isAuthPage =
     location.pathname === "/login" ||
@@ -21,6 +25,16 @@ export default function SessionExpiredModal({ open, onLogin }) {
     if (typeof onLogin === "function") onLogin();
     navigate("/login", { replace: true, state: { reason: "session_expired" } });
   };
+
+  let description =
+    "Your session has ended for security. Sign in again to continue. Unsaved work in open forms may be lost if it was not saved.";
+  if (reason === "new_tab_10min_timeout") {
+    description =
+      "Your session in this new tab has expired after 10 minutes. Please sign in again to continue.";
+  } else if (reason === "primary_9hr_timeout") {
+    description =
+      "Your 9-hour shift session has expired. Please sign in again to continue.";
+  }
 
   return (
     <div
@@ -40,8 +54,7 @@ export default function SessionExpiredModal({ open, onLogin }) {
           Session expired
         </h2>
         <p className="mt-2 text-center text-sm text-slate-600 dark:text-slate-400">
-          Your session has ended for security. Sign in again to continue.
-          Unsaved work in open forms may be lost if it was not saved.
+          {description}
         </p>
         <Button
           type="button"

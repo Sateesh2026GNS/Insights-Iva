@@ -13,6 +13,7 @@ const FALLBACK_AUTH_CONTEXT = {
   user: null,
   isAuthenticated: false,
   sessionExpired: false,
+  sessionExpiryReason: null,
   clearSessionExpired: () => {},
   login: () => {},
   logout: async () => {},
