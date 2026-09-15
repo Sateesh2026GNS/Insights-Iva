@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { CheckCircle2, Clock, Info, PlayCircle } from "lucide-react";
+import { Info } from "lucide-react";
 import {
   CartesianGrid,
   Line,
@@ -26,32 +26,6 @@ function formatYAxis(value) {
   if (Number.isNaN(n)) return value;
   if (n >= 1000) return `${Math.round(n / 1000)}K`;
   return String(n);
-}
-
-function SummaryCard({ label, value, tone = "blue", loading = false }) {
-  const toneCls =
-    tone === "amber"
-      ? "bg-[#fef3c7] text-[#d97706]"
-      : "bg-[#dbeafe] text-[#2563eb]";
-  const Icon = tone === "amber" ? Clock : tone === "green" ? CheckCircle2 : PlayCircle;
-
-  return (
-    <div className="flex min-w-0 flex-1 items-center gap-3 rounded-lg border border-[var(--color-border-soft)] bg-white px-4 py-3.5">
-      <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${toneCls}`}>
-        <Icon className="h-5 w-5" aria-hidden />
-      </div>
-      <div className="min-w-0">
-        <p className="text-xs font-medium text-[var(--color-text-muted)]">{label}</p>
-        {loading ? (
-          <div className="mt-1.5 h-7 w-12 animate-pulse rounded bg-[var(--color-surface-muted)]" />
-        ) : (
-          <p className="mt-0.5 text-2xl font-bold tabular-nums leading-none text-[var(--color-text)]">
-            {value ?? 0}
-          </p>
-        )}
-      </div>
-    </div>
-  );
 }
 
 function FiscalChartCard({ title, totalLabel, chartData, total, emptyMessage, loading }) {
@@ -118,12 +92,12 @@ function PanelEmpty({ message }) {
 }
 
 /**
- * Admin dashboard production widgets — summary KPIs, completed MO/JC charts, pending items, work centers.
+ * Admin dashboard production widgets — completed MO/JC charts, pending items, work centers.
+ * Operational Production Summary KPIs live on the Production Manager dashboard only.
  */
 export default function AdminProductionWidgets({ data = null, loading = false }) {
   const { t } = useTranslation();
 
-  const summary = data?.production_summary || {};
   const moChart = useMemo(() => data?.completed_mo_chart || [], [data]);
   const jcChart = useMemo(() => data?.completed_job_cards_chart || [], [data]);
   const items = data?.items_to_manufacture || [];
@@ -131,40 +105,6 @@ export default function AdminProductionWidgets({ data = null, loading = false })
 
   return (
     <div className="flex flex-col gap-5">
-      <section className="ui-card overflow-hidden p-0">
-        <div className="border-b border-[var(--color-border-soft)] px-4 py-3 sm:px-5">
-          <h3 className="text-sm font-bold text-[#1e3a5f] sm:text-[15px]">
-            {t("refDashboard.productionSummary", "Production Summary")}
-          </h3>
-        </div>
-        <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 sm:p-5 xl:grid-cols-4">
-          <SummaryCard
-            label={t("refDashboard.moInProgress", "MO In Progress")}
-            value={summary.mo_in_progress}
-            tone="blue"
-            loading={loading}
-          />
-          <SummaryCard
-            label={t("refDashboard.moPending", "MO Pending")}
-            value={summary.mo_pending}
-            tone="amber"
-            loading={loading}
-          />
-          <SummaryCard
-            label={t("refDashboard.jobCardsInProgress", "Job Cards In Progress")}
-            value={summary.job_cards_in_progress}
-            tone="blue"
-            loading={loading}
-          />
-          <SummaryCard
-            label={t("refDashboard.jobCardsPending", "Job Cards Pending")}
-            value={summary.job_cards_pending}
-            tone="amber"
-            loading={loading}
-          />
-        </div>
-      </section>
-
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
         <div className="xl:col-span-7">
           <FiscalChartCard

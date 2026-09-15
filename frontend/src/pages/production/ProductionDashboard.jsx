@@ -4,7 +4,7 @@ import {
   BadgeCheck,
   CheckCircle2,
   ClipboardList,
-  Cog,
+  Clock,
   Cpu,
   Factory,
   Package,
@@ -16,7 +16,6 @@ import KpiCard from "../../components/common/KpiCard";
 
 import Loader from "../../components/common/Loader";
 import PageHeader from "../../components/common/PageHeader";
-import SkeletonCard from "../../components/common/SkeletonCard";
 import DashboardWelcomeBanner from "../../components/dashboard/DashboardWelcomeBanner";
 import ProductionManagerNav from "../../components/production/ProductionManagerNav";
 import { useToast } from "../../context/ToastContext";
@@ -66,29 +65,50 @@ function ModuleCard({ label, to }) {
   );
 }
 
+function formatProducedToday(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return "0";
+  return n % 1 === 0 ? String(n) : n.toLocaleString("en-IN", { maximumFractionDigits: 2 });
+}
+
 export default function ProductionDashboard() {
   const { addToast } = useToast();
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [hub, setHub] = useState({});
 
+  const summary = hub.production_summary || {};
+  const actions = hub.action_required || {};
+
   const load = useCallback(async (isRefresh = false) => {
-    if (isRefresh) setLoading(true);
+    if (!isRefresh) setLoading(true);
+    setError(null);
     try {
       const res = await getProductionHub();
       if (res?.data) setHub(res.data);
       else setHub({});
     } catch (err) {
-      if (isRefresh) throw err;
       setHub({});
+      const message = err?.response?.data?.message || "Unable to load production dashboard.";
+      setError(message);
+      if (isRefresh) addToast(message, "error");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [addToast]);
 
   useEffect(() => {
     load();
   }, [load]);
   useManufacturingRefresh(() => load(true));
+
+  if (loading && !hub.production_summary) {
+    return (
+      <div className="flex min-h-[40vh] items-center justify-center">
+        <Loader label="Loading production dashboard…" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5 pb-4">
@@ -98,12 +118,68 @@ export default function ProductionDashboard() {
 
       <PageHeader subtitle="Planning, schedule, allocation, batches, and quality in one control center." />
 
-      <div className="ui-grid-kpi">
-        <KpiCard label="Running Jobs" value={hub.running_jobs} accent icon={Cog} iconWrap="bg-violet-50 text-violet-700" />
-        <KpiCard label="Production In Progress" value={hub.production_in_progress} icon={PlayCircle} iconWrap="bg-sky-50 text-sky-700" />
-        <KpiCard label="Completed Today" value={hub.production_completed_today} tone="success" icon={CheckCircle2} iconWrap="bg-emerald-50 text-emerald-700" />
-        <KpiCard label="Quality Passed" value={hub.quality_passed} tone="success" icon={BadgeCheck} iconWrap="bg-[var(--color-success-soft)] text-[var(--color-success)]" />
-      </div>
+      {error ? (
+        <div className="ui-card flex flex-wrap items-center justify-between gap-3 border-[var(--color-danger)]/30 bg-[var(--color-danger-soft)] px-4 py-3">
+          <p className="text-sm text-[var(--color-danger)]">{error}</p>
+          <button type="button" className="ui-btn ui-btn--secondary text-sm" onClick={() => load()}>
+            Retry
+          </button>
+        </div>
+      ) : null}
+
+      <section className="ui-card overflow-hidden p-0">
+        <div className="border-b border-[var(--color-border-soft)] px-4 py-3 sm:px-5">
+          <h3 className="text-sm font-bold text-[#1e3a5f] sm:text-[15px]">Production Summary</h3>
+        </div>
+        <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 sm:p-5 xl:grid-cols-4">
+          <KpiCard
+            label="Job Cards Pending"
+            value={summary.job_cards_pending ?? 0}
+            icon={ClipboardList}
+            tone="warning"
+          />
+          <KpiCard
+            label="Job Cards In Progress"
+            value={summary.job_cards_in_progress ?? 0}
+            icon={PlayCircle}
+            tone="info"
+          />
+          <KpiCard
+            label="Produced Today"
+            value={formatProducedToday(summary.produced_today)}
+            icon={CheckCircle2}
+            tone="success"
+          />
+          <KpiCard
+            label="Pending QC"
+            value={summary.pending_qc ?? 0}
+            icon={BadgeCheck}
+            tone="violet"
+          />
+        </div>
+      </section>
+
+      <section className="ui-card overflow-hidden p-0">
+        <div className="border-b border-[var(--color-border-soft)] px-4 py-3 sm:px-5">
+          <h3 className="text-sm font-bold text-[#1e3a5f] sm:text-[15px]">Action Required</h3>
+        </div>
+        <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 sm:p-5">
+          <KpiCard
+            label="Material Waiting"
+            value={actions.material_waiting ?? 0}
+            icon={Package}
+            tone="warning"
+            to="/inventory/material-requests"
+          />
+          <KpiCard
+            label="Overdue Production"
+            value={actions.overdue_production ?? 0}
+            icon={Clock}
+            tone="danger"
+            to="/my-job-cards"
+          />
+        </div>
+      </section>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <StatusPanel
@@ -119,9 +195,9 @@ export default function ProductionDashboard() {
           title="Production Status"
           icon={Factory}
           items={[
-            ["In Progress", hub.production_in_progress, "running"],
-            ["Completed Today", hub.production_completed_today, "ok"],
             ["Running Jobs", hub.running_jobs, "running"],
+            ["Machines Running", hub.machines_running, "running"],
+            ["Completed Today (WO)", hub.production_completed_today, "ok"],
           ]}
         />
         <StatusPanel

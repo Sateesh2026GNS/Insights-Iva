@@ -18,18 +18,18 @@ const STAGES = [
     to: "/production/work-orders",
   },
   {
-    key: "released",
-    labelKey: "pipelineReleased",
-    defaultLabel: "Released",
-    dotClass: "bg-[#3b82f6]",
-    to: "/production/work-orders",
-  },
-  {
     key: "in_production",
     labelKey: "pipelineInProduction",
     defaultLabel: "In Production",
     dotClass: "bg-[#f59e0b]",
     to: "/production/work-orders",
+  },
+  {
+    key: "qc",
+    labelKey: "pipelineQc",
+    defaultLabel: "QC",
+    dotClass: "bg-[#8b5cf6]",
+    to: "/production/quality",
   },
   {
     key: "completed",

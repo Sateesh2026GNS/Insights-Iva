@@ -15,7 +15,7 @@ describe("ProductionPipeline", () => {
     render(
       <MemoryRouter>
         <ProductionPipeline
-          data={{ pending: 0, planned: 1, released: 1, in_production: 0, completed: 0 }}
+          data={{ pending: 0, planned: 1, in_production: 2, qc: 1, completed: 0 }}
           loading={false}
         />
       </MemoryRouter>
@@ -24,10 +24,11 @@ describe("ProductionPipeline", () => {
     expect(screen.getByText("Production Pipeline")).toBeInTheDocument();
     expect(screen.getByText("Pending")).toBeInTheDocument();
     expect(screen.getByText("Planned")).toBeInTheDocument();
-    expect(screen.getByText("Released")).toBeInTheDocument();
     expect(screen.getByText("In Production")).toBeInTheDocument();
+    expect(screen.getByText("QC")).toBeInTheDocument();
     expect(screen.getByText("Completed")).toBeInTheDocument();
-    expect(screen.getAllByText("1").length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText("1").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText("2")).toBeInTheDocument();
   });
 
   it("shows loading skeletons when loading", () => {

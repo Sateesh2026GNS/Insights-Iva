@@ -341,11 +341,6 @@ def _yearly_overview(buckets: dict[date, dict[str, float]], today: date) -> list
 
 
 PIPELINE_EXCLUDED = ("cancelled", "canceled", "rejected")
-PIPELINE_PENDING = ("pending", "on_hold", "hold", "paused", "quality_check")
-PIPELINE_PLANNED = ("draft", "planned")
-PIPELINE_RELEASED = ("released", "material_ready", "machine_ready")
-PIPELINE_IN_PRODUCTION = ("in_progress", "running", "started", "active")
-PIPELINE_COMPLETED = ("completed", "closed", "done")
 
 
 def _fiscal_year_bounds(today: date) -> tuple[date, date]:
@@ -412,50 +407,6 @@ def _get_admin_production_widgets(db: Session, tenant_id: int, today: date) -> d
     po_pending_statuses = ("planned", "pending", "draft")
     po_in_progress_statuses = ("in_progress", "running", "active")
     po_done_statuses = ("completed", "closed", "done")
-
-    mo_in_progress = int(
-        db.scalar(
-            select(func.count(ProductionOrder.id)).where(
-                po_base, ProductionOrder.status.in_(po_in_progress_statuses)
-            )
-        )
-        or 0
-    )
-    mo_pending = int(
-        db.scalar(
-            select(func.count(ProductionOrder.id)).where(
-                po_base, ProductionOrder.status.in_(po_pending_statuses)
-            )
-        )
-        or 0
-    )
-
-    jc_base = SalesJobCard.tenant_id == tenant_id
-    jc_pending_stages = ("SAVED", "RETURNED_TO_SALES")
-    job_cards_pending = int(
-        db.scalar(
-            select(func.count(SalesJobCard.id)).where(
-                jc_base,
-                or_(
-                    SalesJobCard.workflow_stage.in_(jc_pending_stages),
-                    SalesJobCard.workflow_stage.is_(None),
-                    SalesJobCard.workflow_stage == "",
-                ),
-            )
-        )
-        or 0
-    )
-    job_cards_in_progress = int(
-        db.scalar(
-            select(func.count(SalesJobCard.id)).where(
-                jc_base,
-                SalesJobCard.workflow_stage.isnot(None),
-                SalesJobCard.workflow_stage != "",
-                SalesJobCard.workflow_stage.notin_(("COMPLETED", "SAVED", "RETURNED_TO_SALES")),
-            )
-        )
-        or 0
-    )
 
     fy_start, fy_end = _fiscal_year_bounds(today)
     completed_mo_chart = _monthly_completion_series(
@@ -528,12 +479,6 @@ def _get_admin_production_widgets(db: Session, tenant_id: int, today: date) -> d
     ]
 
     return {
-        "production_summary": {
-            "mo_in_progress": mo_in_progress,
-            "mo_pending": mo_pending,
-            "job_cards_in_progress": job_cards_in_progress,
-            "job_cards_pending": job_cards_pending,
-        },
         "completed_mo_chart": completed_mo_chart,
         "completed_mo_total": sum(p["count"] for p in completed_mo_chart),
         "completed_job_cards_chart": completed_jc_chart,
@@ -546,23 +491,9 @@ def _get_admin_production_widgets(db: Session, tenant_id: int, today: date) -> d
 
 def _get_production_pipeline(db: Session, tenant_id: int) -> dict:
     """Work-order counts by pipeline stage for the Admin dashboard strip."""
-    base = WorkOrder.tenant_id == tenant_id
+    from app.services.dashboard_production_kpis import get_production_pipeline_counts
 
-    def _stage_count(statuses: tuple[str, ...]) -> int:
-        return int(
-            db.scalar(
-                select(func.count(WorkOrder.id)).where(base, WorkOrder.status.in_(statuses))
-            )
-            or 0
-        )
-
-    return {
-        "pending": _stage_count(PIPELINE_PENDING),
-        "planned": _stage_count(PIPELINE_PLANNED),
-        "released": _stage_count(PIPELINE_RELEASED),
-        "in_production": _stage_count(PIPELINE_IN_PRODUCTION),
-        "completed": _stage_count(PIPELINE_COMPLETED),
-    }
+    return get_production_pipeline_counts(db, tenant_id)
 
 
 def _get_quick_actions_summary(db: Session, tenant_id: int, today: date) -> dict:

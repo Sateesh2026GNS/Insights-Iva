@@ -449,7 +449,7 @@ export default function AppRoutes() {
           </ProtectedRoute>
         }
       />
-      <Route path="/sales/orders/create" element={<Navigate to="/sales/job-cards/create" replace />} />
+      <Route path="/sales/orders/create" element={<Navigate to="/sales/orders" replace />} />
       <Route
         path="/my-job-cards/:orderId"
         element={
