@@ -38,14 +38,14 @@ import { exportToExcel, exportToPdf } from "../../utils/exportUtils";
 function SummaryCard({ label, value, icon: Icon, color, format }) {
   const display = format === "currency" ? `₹${Number(value || 0).toLocaleString("en-IN")}` : value;
   return (
-    <div className="ui-card p-4">
-      <div className="flex items-center justify-between">
+    <div className="ui-card p-3 sm:p-4">
+      <div className="flex items-center justify-between gap-2">
         <div className="min-w-0">
-          <p className="text-xs font-medium text-slate-500">{label}</p>
-          <p className="mt-1 truncate text-xl font-bold tabular-nums text-[var(--color-text)] sm:text-2xl">{display}</p>
+          <p className="text-[11px] sm:text-xs font-medium text-slate-500 truncate">{label}</p>
+          <p className="mt-1 truncate text-lg font-bold tabular-nums text-[var(--color-text)] sm:text-2xl">{display}</p>
         </div>
-        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${color}`}>
-          <Icon className="h-5 w-5 text-white" />
+        <div className={`flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl ${color}`}>
+          <Icon className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
         </div>
       </div>
     </div>
@@ -339,27 +339,27 @@ export default function VendorManagement() {
       <PageHeader
         subtitle="Manage vendors, purchase history, outstanding payables, and performance ratings."
         action={
-          <>
+          <div className="flex flex-wrap items-center gap-2">
             <Button variant="add" type="button" onClick={() => setFormVendor({})} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
               Add Vendor
             </Button>
-          <Button variant="secondary" type="button" onClick={handleDownloadTemplate}>
-            <Upload className="h-4 w-4" /> Import
-          </Button>
-          <Button variant="secondary" type="button" onClick={handleExportExcel}>
-            <Download className="h-4 w-4" /> Export Excel
-          </Button>
-          <Button variant="secondary" type="button" onClick={handleExportPdf}>
-            <FileText className="h-4 w-4" /> Export PDF
-          </Button>
-          <Button variant="secondary" type="button" onClick={handlePrint}>
-            <Printer className="h-4 w-4" /> Print
-          </Button>
-          </>
+            <Button variant="secondary" type="button" onClick={handleDownloadTemplate}>
+              <Upload className="h-4 w-4" /> Import
+            </Button>
+            <Button variant="secondary" type="button" onClick={handleExportExcel} className="hidden sm:inline-flex">
+              <Download className="h-4 w-4" /> Export Excel
+            </Button>
+            <Button variant="secondary" type="button" onClick={handleExportPdf} className="hidden sm:inline-flex">
+              <FileText className="h-4 w-4" /> Export PDF
+            </Button>
+            <Button variant="secondary" type="button" onClick={handlePrint} className="hidden sm:inline-flex">
+              <Printer className="h-4 w-4" /> Print
+            </Button>
+          </div>
         }
       />
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-6">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-3 xl:grid-cols-6">
         <SummaryCard label="Total Vendors" value={summary.total} icon={Building2} color="bg-[var(--color-primary)]" />
         <SummaryCard label="Active Vendors" value={summary.active} icon={UserCheck} color="bg-green-500" />
         <SummaryCard label="Inactive Vendors" value={summary.inactive} icon={UserX} color="bg-slate-500" />
@@ -368,25 +368,27 @@ export default function VendorManagement() {
         <SummaryCard label="New Vendors (This Month)" value={summary.newThisMonth} icon={Star} color="bg-purple-500" />
       </div>
 
-      <div className="ui-card p-5">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap gap-2">
+      <div className="ui-card p-4 sm:p-5">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
             <SearchBar
               value={filters.name}
               onChange={(v) => setFilters((f) => ({ ...f, name: v }))}
-              placeholder="Search"
-              className="min-w-[200px]"
+              placeholder="Search vendors..."
+              className="w-full sm:w-auto min-w-0 sm:min-w-[220px] flex-1"
             />
             <button
               type="button"
               onClick={() => setShowAdvanced(!showAdvanced)}
-              className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
+              className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 whitespace-nowrap"
             >
               {showAdvanced ? "Hide Filters" : "Advanced Filters"}
             </button>
           </div>
-          <div className="flex flex-wrap gap-2 text-xs text-slate-500">
-            <button type="button" onClick={handleExportExcel} className="hover:text-[var(--color-primary)]">Export</button>
+          <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+            <button type="button" onClick={handleExportExcel} className="hover:text-[var(--color-primary)]">Export Excel</button>
+            <span>·</span>
+            <button type="button" onClick={handleExportPdf} className="hover:text-[var(--color-primary)]">PDF</button>
             <span>·</span>
             <button type="button" onClick={handleDownloadTemplate} className="hover:text-[var(--color-primary)]">Import</button>
             <span>·</span>
@@ -395,7 +397,7 @@ export default function VendorManagement() {
         </div>
 
         {showAdvanced && (
-          <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
+          <div className="mb-4 grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
             <input placeholder="Vendor Code" value={filters.vendor_code} onChange={(e) => setFilters((f) => ({ ...f, vendor_code: e.target.value }))} className="rounded-lg border border-slate-200 px-3 py-2 text-sm" />
             <input placeholder="GSTIN" value={filters.gstin} onChange={(e) => setFilters((f) => ({ ...f, gstin: e.target.value }))} className="rounded-lg border border-slate-200 px-3 py-2 text-sm" />
             <select value={filters.category} onChange={(e) => setFilters((f) => ({ ...f, category: e.target.value }))} className="rounded-lg border border-slate-200 px-3 py-2 text-sm">
@@ -434,13 +436,94 @@ export default function VendorManagement() {
           </div>
         )}
 
-        <DataTable
-          columns={columns}
-          data={filteredVendors}
-          searchPlaceholder="Search"
-          searchKeys={["vendor_code", "name", "contact", "gstin", "city"]}
-          emptyState={emptyState}
-        />
+        {/* Mobile Vendor Cards */}
+        <div className="space-y-3 md:hidden">
+          {filteredVendors.map((v) => (
+            <div
+              key={v.id}
+              className="ui-card p-3.5 space-y-2.5 transition-all hover:border-[var(--color-primary-soft)]"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-xs font-semibold text-[var(--color-primary)]">
+                      {v.vendor_code || "—"}
+                    </span>
+                    <StatusPill status={v.status} approval={v.approval_status} />
+                  </div>
+                  <h3 className="font-semibold text-sm text-[var(--color-text)] truncate mt-1">
+                    {v.name || "—"}
+                  </h3>
+                  {v.contact && (
+                    <p className="text-xs text-[var(--color-text-muted)] truncate">{v.contact}</p>
+                  )}
+                </div>
+                <div className="flex flex-col items-end gap-1" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      type="button"
+                      onClick={() => openVendor(v)}
+                    >
+                      View
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      type="button"
+                      onClick={() => setFormVendor(v)}
+                    >
+                      Edit
+                    </Button>
+                  </div>
+                  {isAdmin && v.approval_status === "pending" ? (
+                    <Button
+                      variant="view"
+                      size="sm"
+                      type="button"
+                      onClick={() => handleApprove(v, "approved")}
+                    >
+                      Approve
+                    </Button>
+                  ) : null}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 text-xs text-[var(--color-text-secondary)] border-t border-[var(--color-border-soft)] pt-2">
+                <div>
+                  <span className="text-[var(--color-text-muted)] block text-[10px] uppercase font-semibold">City</span>
+                  <span className="font-medium">{v.city || "—"}</span>
+                </div>
+                <div>
+                  <span className="text-[var(--color-text-muted)] block text-[10px] uppercase font-semibold">Outstanding</span>
+                  <span className="font-bold tabular-nums text-slate-800 dark:text-slate-200">
+                    ₹{Number(v.outstanding || 0).toLocaleString("en-IN")}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[var(--color-text-muted)] block text-[10px] uppercase font-semibold">GSTIN</span>
+                  <span className="font-mono text-[11px]">{v.gstin || "—"}</span>
+                </div>
+                <div>
+                  <span className="text-[var(--color-text-muted)] block text-[10px] uppercase font-semibold">Rating</span>
+                  <span className="text-amber-500 font-semibold">{starRating(v.rating)}</span>
+                </div>
+              </div>
+            </div>
+          ))}
+          {!filteredVendors.length && emptyState}
+        </div>
+
+        <div className="hidden md:block">
+          <DataTable
+            columns={columns}
+            data={filteredVendors}
+            searchPlaceholder="Search"
+            searchKeys={["vendor_code", "name", "contact", "gstin", "city"]}
+            emptyState={emptyState}
+          />
+        </div>
       </div>
 
       <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">

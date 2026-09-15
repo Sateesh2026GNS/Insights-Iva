@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Bell } from "lucide-react";
 
@@ -13,6 +13,7 @@ import { getSalesJobCard } from "../../api/workflowApi";
 export default function NotificationBell() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
   const { addToast } = useToast();
   const containerRef = useRef(null);
   const [open, setOpen] = useState(false);
@@ -31,7 +32,18 @@ export default function NotificationBell() {
     markAllRead,
     deleteNotification,
     clearAll,
+    refresh,
   } = useNotifications();
+
+  useEffect(() => {
+    if (open) {
+      refresh?.();
+    }
+  }, [open, refresh]);
+
+  useEffect(() => {
+    setOpen(false);
+  }, [location.pathname, location.search]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -41,15 +53,19 @@ export default function NotificationBell() {
       }
     };
     document.addEventListener("mousedown", onPointerDown);
-    return () => document.removeEventListener("mousedown", onPointerDown);
+    document.addEventListener("touchstart", onPointerDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("touchstart", onPointerDown);
+    };
   }, [open]);
 
   const handleOpen = async (notification) => {
+    setOpen(false);
     const isRead = notification.is_read ?? notification.read;
     if (!isRead) {
       await markRead(notification.id);
     }
-    setOpen(false);
 
     const actionUrl = notification.action_url || "";
     const manualJcMatch = actionUrl.match(/[?&]jc=(\d+)/i);
@@ -144,6 +160,7 @@ export default function NotificationBell() {
         loadingMore={loadingMore}
         onLoadMore={loadMore}
         onOpen={handleOpen}
+        onClose={() => setOpen(false)}
         onMarkRead={handleMarkRead}
         onMarkAllRead={handleMarkAllRead}
         onDelete={handleDelete}

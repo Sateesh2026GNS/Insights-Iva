@@ -5,6 +5,7 @@ import {
   ChevronDown,
   Maximize2,
   Minimize2,
+  Menu,
 } from "lucide-react";
 
 import useAuth from "../../hooks/useAuth";
@@ -20,7 +21,7 @@ function formatRoleLabel(role) {
   return role.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-export default function Navbar() {
+export default function Navbar({ onOpenSidebar }) {
   const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
@@ -92,6 +93,17 @@ export default function Navbar() {
       <div className="app-navbar__row">
         {/* Left: page title */}
         <div className="app-navbar__left">
+          {typeof onOpenSidebar === "function" ? (
+            <button
+              type="button"
+              onClick={onOpenSidebar}
+              className="app-navbar__icon-btn -ml-1 mr-0.5 lg:hidden"
+              aria-label={t("common.openMenu", { defaultValue: "Open navigation menu" })}
+              title={t("common.openMenu", { defaultValue: "Open navigation menu" })}
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+          ) : null}
           <div className="app-navbar__title-block">
             <AppPageTitle title={pageTitle} />
             <div className="mt-0.5 hidden lg:block">

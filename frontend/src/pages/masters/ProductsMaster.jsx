@@ -154,29 +154,29 @@ export default function ProductsMaster() {
       <div className="ui-page mx-auto max-w-[1400px]">
 
         {/* Summary Cards */}
-        <div className="mb-5 grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <div className="ui-card p-4">
-            <p className="text-[12px] font-semibold text-[var(--color-text-muted)]">Total Products</p>
-            <p className="mt-1 text-2xl font-bold text-[var(--color-text)]">{summary.total}</p>
+        <div className="mb-5 grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-4">
+          <div className="ui-card p-3.5 sm:p-4">
+            <p className="text-[11px] sm:text-[12px] font-semibold text-[var(--color-text-muted)] truncate">Total Products</p>
+            <p className="mt-1 text-xl sm:text-2xl font-bold text-[var(--color-text)]">{summary.total}</p>
           </div>
-          <div className="ui-card p-4">
-            <p className="text-[12px] font-semibold text-[var(--color-text-muted)]">Categories</p>
-            <p className="mt-1 text-2xl font-bold text-[var(--color-text)]">{summary.categories}</p>
+          <div className="ui-card p-3.5 sm:p-4">
+            <p className="text-[11px] sm:text-[12px] font-semibold text-[var(--color-text-muted)] truncate">Categories</p>
+            <p className="mt-1 text-xl sm:text-2xl font-bold text-[var(--color-text)]">{summary.categories}</p>
           </div>
-          <div className="ui-card p-4">
-            <p className="text-[12px] font-semibold text-[var(--color-text-muted)]">Active Products</p>
-            <p className="mt-1 text-2xl font-bold ui-value-positive ui-num">{summary.active}</p>
+          <div className="ui-card p-3.5 sm:p-4">
+            <p className="text-[11px] sm:text-[12px] font-semibold text-[var(--color-text-muted)] truncate">Active Products</p>
+            <p className="mt-1 text-xl sm:text-2xl font-bold ui-value-positive ui-num">{summary.active}</p>
           </div>
-          <div className="ui-card p-4">
-            <p className="text-[12px] font-semibold text-[var(--color-text-muted)]">Low Stock</p>
-            <p className="mt-1 text-2xl font-bold text-[var(--color-warning)] ui-num">{summary.lowStock}</p>
+          <div className="ui-card p-3.5 sm:p-4">
+            <p className="text-[11px] sm:text-[12px] font-semibold text-[var(--color-text-muted)] truncate">Low Stock</p>
+            <p className="mt-1 text-xl sm:text-2xl font-bold text-[var(--color-warning)] ui-num">{summary.lowStock}</p>
           </div>
         </div>
 
         <div className="ui-card p-4 sm:p-5">
           <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <SearchBar value={query} onChange={setQuery} placeholder="Search" className="w-full" />
-            <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+            <SearchBar value={query} onChange={setQuery} placeholder="Search products..." className="w-full sm:max-w-md" />
+            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto sm:justify-end">
               {!isPM && (
                 <Button
                   variant="secondary"
@@ -207,7 +207,113 @@ export default function ProductsMaster() {
             </div>
           </div>
 
-          <div className="ui-table-wrap ui-table-wrap--scroll">
+          {/* Mobile Products Cards */}
+          <div className="space-y-3 md:hidden">
+            {rows.map((p) => {
+              const category = p.category || "Finished Goods";
+              const desc = blankOr(p.description);
+              const hsn = blankOr(p.hsn_code);
+              const unit = blankOr(p.unit);
+              const gst =
+                p.gst_percent === null ||
+                p.gst_percent === undefined ||
+                p.gst_percent === "" ||
+                Number(p.gst_percent) === 0
+                  ? "-"
+                  : `${p.gst_percent}%`;
+
+              return (
+                <div
+                  key={p.id}
+                  className="ui-card p-3.5 space-y-2.5 transition-all hover:border-[var(--color-primary-soft)]"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="inline-flex items-center rounded-full bg-[var(--color-surface-muted)] px-2 py-0.5 text-[11px] font-semibold text-[var(--color-table-text-secondary)]">
+                          {category}
+                        </span>
+                        {hsn && (
+                          <span className="text-[11px] font-mono text-[var(--color-text-muted)]">
+                            HSN: {hsn}
+                          </span>
+                        )}
+                      </div>
+                      <h3 className="font-semibold text-sm text-[var(--color-text)] truncate mt-1">
+                        {p.name || "—"}
+                      </h3>
+                      {desc && (
+                        <p className="text-xs text-[var(--color-text-muted)] line-clamp-1 mt-0.5">{desc}</p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        type="button"
+                        onClick={() => {
+                          setEditing(p);
+                          setAddOpen(true);
+                        }}
+                        leftIcon={<Pencil className="h-3.5 w-3.5" />}
+                      >
+                        Edit
+                      </Button>
+                      <RowActionMenu
+                        rowId={p.id}
+                        openMenu={openMenu}
+                        setOpenMenu={setOpenMenu}
+                        items={[
+                          {
+                            label: "Edit",
+                            icon: <Pencil className="h-4 w-4" />,
+                            onClick: () => {
+                              setEditing(p);
+                              setAddOpen(true);
+                            },
+                          },
+                          { divider: true },
+                          {
+                            label: "Delete",
+                            icon: <Trash2 className="h-4 w-4" />,
+                            danger: true,
+                            onClick: () => setDeleting(p),
+                          },
+                        ]}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2 text-xs text-[var(--color-text-secondary)] border-t border-[var(--color-border-soft)] pt-2">
+                    <div>
+                      <span className="text-[var(--color-text-muted)] block text-[10px] uppercase font-semibold">Price</span>
+                      <span className="font-bold tabular-nums text-[var(--color-text)]">
+                        ₹ {Number(p.selling_price ?? p.unit_price ?? 0).toLocaleString("en-IN")}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[var(--color-text-muted)] block text-[10px] uppercase font-semibold">Unit</span>
+                      <span className="font-medium">{unit || "Nos"}</span>
+                    </div>
+                    <div>
+                      <span className="text-[var(--color-text-muted)] block text-[10px] uppercase font-semibold">GST</span>
+                      <span className="font-medium">{gst}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+            {rows.length === 0 ? (
+              <EmptyState
+                icon="document"
+                title="No records found."
+                description="There is nothing to show here yet."
+                className="border-none bg-transparent py-12"
+              />
+            ) : null}
+          </div>
+
+          <div className="ui-table-wrap ui-table-wrap--scroll hidden md:block">
               <table className="ui-table w-full min-w-[880px] border-collapse text-left text-[13px]">
                 <thead className="ui-table-head">
                   <tr>
@@ -298,7 +404,7 @@ export default function ProductsMaster() {
             ) : null}
           </div>
 
-          <div className="mt-4 ui-pagination justify-between">
+          <div className="mt-4 ui-pagination justify-between flex-wrap gap-2">
             <div className="flex items-center gap-2.5 flex-nowrap whitespace-nowrap">
               <span>Rows per page:</span>
               <select

@@ -285,10 +285,10 @@ export default function Customers() {
             ) : (
               <>
                 <div className="ui-list-toolbar">
-                  <div className="ui-list-toolbar__start">
+                  <div className="ui-list-toolbar__start w-full sm:w-auto">
                     <SearchBar value={query} onChange={setQuery} placeholder="Search" className="w-full max-w-md" />
                   </div>
-                  <div className="ui-list-toolbar__end">
+                  <div className="ui-list-toolbar__end w-full sm:w-auto">
                     <Button
                       variant="outline"
                       to="/sales/customers/bulk-import"
@@ -303,7 +303,78 @@ export default function Customers() {
                   </div>
                 </div>
 
-                <div className="ui-table-wrap ui-table-wrap--scroll">
+                {/* Mobile Cards View */}
+                <div className="space-y-3 p-1 md:hidden">
+                  {rows.map((c) => (
+                    <div
+                      key={c.id}
+                      className="ui-card p-3.5 space-y-2.5 transition-all hover:border-[var(--color-primary-soft)]"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <h3 className="font-semibold text-sm text-[var(--color-text)] truncate">
+                            {c.company || c.name || "—"}
+                          </h3>
+                          {c.email && (
+                            <p className="text-xs text-[var(--color-text-muted)] truncate">{c.email}</p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            type="button"
+                            onClick={() => openEdit(c)}
+                            leftIcon={<Pencil className="h-3.5 w-3.5" />}
+                          >
+                            Edit
+                          </Button>
+                          <RowActionMenu
+                            rowId={c.id}
+                            openMenu={openMenu}
+                            setOpenMenu={setOpenMenu}
+                            items={[
+                              {
+                                label: "Edit",
+                                icon: <Pencil className="h-4 w-4" />,
+                                onClick: () => openEdit(c),
+                              },
+                              { divider: true },
+                              {
+                                label: "Delete",
+                                icon: <Trash2 className="h-4 w-4" />,
+                                danger: true,
+                                onClick: () => setDeleting(c),
+                              },
+                            ]}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 text-xs text-[var(--color-text-secondary)] border-t border-[var(--color-border-soft)] pt-2">
+                        <div>
+                          <span className="text-[var(--color-text-muted)] block text-[10px] uppercase font-semibold">Phone</span>
+                          <span className="font-medium">{blankOr(c.phone) || "—"}</span>
+                        </div>
+                        <div>
+                          <span className="text-[var(--color-text-muted)] block text-[10px] uppercase font-semibold">GSTIN</span>
+                          <span className="font-medium font-mono text-[11px]">{blankOr(c.gstin) || "—"}</span>
+                        </div>
+                        <div>
+                          <span className="text-[var(--color-text-muted)] block text-[10px] uppercase font-semibold">City</span>
+                          <span className="font-medium">{blankOr(c.city) || "—"}</span>
+                        </div>
+                        <div>
+                          <span className="text-[var(--color-text-muted)] block text-[10px] uppercase font-semibold">State</span>
+                          <span className="font-medium">{blankOr(c.state) || "—"}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Desktop Table View */}
+                <div className="ui-table-wrap ui-table-wrap--scroll hidden md:block">
                   <table className="ui-table w-full min-w-[980px] border-collapse text-left text-[13px]">
                     <thead className="ui-table-head">
                       <tr>
@@ -356,7 +427,7 @@ export default function Customers() {
                                   {
                                     label: "Edit",
                                     icon: <Pencil className="h-4 w-4" />,
-                                onClick: () => openEdit(c),
+                                    onClick: () => openEdit(c),
                                   },
                                   { divider: true },
                                   {
@@ -373,10 +444,10 @@ export default function Customers() {
                       ))}
                     </tbody>
                   </table>
-                  {rows.length === 0 ? (
+                  {!rows.length ? (
                     hasActiveFilters ? (
                       <NoResultsState
-                        title="No customers match your filters"
+                        title="No Customers Match Filters"
                         description="Try a different search term, view, or clear filters."
                         onClear={() => {
                           setQuery("");
@@ -397,7 +468,7 @@ export default function Customers() {
                   ) : null}
                 </div>
 
-                <div className="mt-4 ui-pagination justify-between">
+                <div className="mt-4 ui-pagination justify-between flex-wrap gap-2">
                   <div className="flex items-center gap-2.5 flex-nowrap whitespace-nowrap">
                     <span>Rows per page:</span>
                     <select

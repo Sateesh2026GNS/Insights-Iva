@@ -357,7 +357,7 @@ function OrderCreatedToast({ order, onClose }) {
   if (!order) return null;
 
   return (
-    <div className="fixed bottom-6 right-6 z-[9999] w-full max-w-sm animate-in slide-in-from-bottom-5 duration-300 print:hidden">
+    <div className="fixed top-[calc(var(--navbar-height,3.5rem)+0.75rem)] right-4 sm:right-6 z-[9999] w-full max-w-sm animate-in slide-in-from-top-4 duration-300 print:hidden">
       <div className="relative overflow-hidden rounded-2xl bg-[var(--color-surface)] p-5 shadow-2xl ring-1 ring-yellow-400/40 border-l-6 border-[var(--color-cta)]">
         {/* close */}
         <button

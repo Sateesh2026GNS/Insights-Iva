@@ -100,25 +100,27 @@ export function ToastProvider({ children }) {
   return (
     <ToastContext.Provider value={{ addToast }}>
       {children}
-      <div className="fixed inset-x-0 top-4 z-[9999] flex flex-col items-center gap-1.5 pointer-events-none px-4">
-        {toasts.filter((t) => t.type === "alert").map((t) => (
-          <div
-            key={t.id}
-            className="pointer-events-auto flex min-w-[280px] max-w-md items-center justify-between gap-6 rounded-full bg-[#FF4500] px-5 py-2.5 text-[13px] font-medium text-white shadow-lg"
-          >
-            <span>{t.message}</span>
-            <button
-              type="button"
-              className="shrink-0 font-bold"
-              onClick={() => setToasts((prev) => prev.filter((x) => x.id !== t.id))}
-            >
-              Close
-            </button>
-          </div>
-        ))}
-      </div>
-      <div className="fixed bottom-5 right-5 z-[9999] flex max-w-sm flex-col gap-2.5 pointer-events-none">
-        {toasts.filter((t) => t.type !== "alert").map((t) => {
+      {/* Top Notification / Toast Container (positioned cleanly below the header bar) */}
+      <div className="fixed top-[calc(var(--navbar-height,3.5rem)+0.75rem)] right-4 sm:right-6 z-[9999] flex flex-col items-center sm:items-end gap-2.5 pointer-events-none max-w-[calc(100vw-2rem)] sm:max-w-md w-full sm:w-auto">
+        {toasts.map((t) => {
+          if (t.type === "alert") {
+            return (
+              <div
+                key={t.id}
+                className="pointer-events-auto flex min-w-[280px] max-w-md items-center justify-between gap-6 rounded-full bg-[#FF4500] px-5 py-2.5 text-[13px] font-medium text-white shadow-lg animate-in fade-in slide-in-from-top-3 duration-200"
+              >
+                <span>{t.message}</span>
+                <button
+                  type="button"
+                  className="shrink-0 font-bold hover:opacity-80 transition-opacity"
+                  onClick={() => setToasts((prev) => prev.filter((x) => x.id !== t.id))}
+                >
+                  Close
+                </button>
+              </div>
+            );
+          }
+
           const isError = t.type === "error";
           const isWarning = t.type === "warning";
           const isCheckOut = t.type === "checkout";
@@ -132,29 +134,29 @@ export function ToastProvider({ children }) {
             ? "#e11d48"
             : isInfo
             ? "#0284c7"
-            : "#00c48c"; // Matches screenshot vibrant green
+            : "#00c48c"; // Vibrant success green
 
           return (
             <div
               key={t.id}
-              className="pointer-events-auto relative flex items-center gap-3.5 overflow-hidden rounded-xl border border-slate-200/70 bg-white py-3.5 pl-4 pr-3.5 shadow-[0_6px_20px_rgba(0,0,0,0.08)] transition-all animate-in fade-in slide-in-from-bottom-3 duration-200"
+              className="pointer-events-auto relative flex items-center gap-3 overflow-hidden rounded-xl border border-slate-200/90 bg-white/95 backdrop-blur-md py-3 pl-3.5 pr-3 shadow-[0_10px_25px_-5px_rgba(0,0,0,0.12),0_8px_10px_-6px_rgba(0,0,0,0.06),0_1px_3px_rgba(0,0,0,0.08)] transition-all animate-in fade-in slide-in-from-top-3 duration-200 w-full sm:w-auto"
               style={{
-                minWidth: "270px",
-                maxWidth: "380px",
+                minWidth: "280px",
+                maxWidth: "420px",
               }}
               role="alert"
             >
               {/* Left vertical accent bar */}
               <div
-                className="absolute left-0 top-0 bottom-0 w-2"
+                className="absolute left-0 top-0 bottom-0 w-1.5"
                 style={{ backgroundColor: accentColor }}
               />
 
-              {/* Status circular icon */}
+              {/* Status circular icon badge with soft tint */}
               <div
-                className="grid h-6 w-6 shrink-0 place-items-center rounded-full border-2 ml-1"
+                className="grid h-7 w-7 shrink-0 place-items-center rounded-full ml-0.5"
                 style={{
-                  borderColor: accentColor,
+                  backgroundColor: `${accentColor}18`,
                   color: accentColor,
                 }}
               >
@@ -171,7 +173,31 @@ export function ToastProvider({ children }) {
                     <line x1="6" y1="6" x2="18" y2="18" />
                   </svg>
                 ) : isWarning ? (
-                  <span className="text-xs font-bold leading-none">!</span>
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="h-3.5 w-3.5 stroke-current"
+                    fill="none"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="8" x2="12" y2="12" />
+                    <line x1="12" y1="16" x2="12.01" y2="16" />
+                  </svg>
+                ) : isInfo ? (
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="h-3.5 w-3.5 stroke-current"
+                    fill="none"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="16" x2="12" y2="12" />
+                    <line x1="12" y1="8" x2="12.01" y2="8" />
+                  </svg>
                 ) : (
                   <svg
                     viewBox="0 0 24 24"
@@ -187,7 +213,7 @@ export function ToastProvider({ children }) {
               </div>
 
               {/* Toast message */}
-              <p className="min-w-0 flex-1 text-sm font-medium text-[#1e293b] leading-snug">
+              <p className="min-w-0 flex-1 text-sm font-semibold text-slate-800 leading-snug break-words">
                 {t.message}
               </p>
 
@@ -195,8 +221,8 @@ export function ToastProvider({ children }) {
               <button
                 type="button"
                 onClick={() => setToasts((prev) => prev.filter((x) => x.id !== t.id))}
-                className="text-slate-400 hover:text-slate-600 transition-colors p-1 -mr-1"
-                aria-label="Close"
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors p-1"
+                aria-label="Close notification"
               >
                 <svg
                   viewBox="0 0 24 24"

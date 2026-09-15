@@ -25,6 +25,7 @@ import {
   ChevronsLeft,
   ChevronsRight,
   Plus,
+  X,
 } from "lucide-react";
 
 import BrandLogo from "../common/BrandLogo";
@@ -229,7 +230,7 @@ function buildInitialExpanded(pathname, nav) {
   return state;
 }
 
-export default function Sidebar({ collapsed = false, onToggleCollapse, onClose }) {
+export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, isMobile = false }) {
   const { t } = useTranslation();
   const { user, isAuthenticated, logout } = useAuth();
   const location = useLocation();
@@ -515,11 +516,11 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose }
 
   return (
     <aside className="relative flex h-full w-full shrink-0 flex-col bg-[var(--color-nav-bg)] text-white">
-      {typeof onToggleCollapse === "function" ? (
+      {typeof onToggleCollapse === "function" && !isMobile ? (
         <button
           type="button"
           onClick={onToggleCollapse}
-          className="absolute -right-3 top-[48%] z-20 flex h-11 w-6 -translate-y-1/2 items-center justify-center rounded-l-md border border-r-0 border-[#c8c8d0] bg-[var(--color-nav-bg)] text-white shadow-sm hover:bg-[var(--color-nav-bg-hover)]"
+          className="absolute -right-3 top-[48%] z-20 hidden lg:flex h-11 w-6 -translate-y-1/2 items-center justify-center rounded-l-md border border-r-0 border-[#c8c8d0] bg-[var(--color-nav-bg)] text-white shadow-sm hover:bg-[var(--color-nav-bg-hover)]"
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
@@ -530,8 +531,8 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose }
           )}
         </button>
       ) : null}
-      <div className={`shrink-0 border-b border-white/10 ${collapsed ? "p-3" : "px-4 py-5"}`}>
-        <Link to={storeMode ? "/inventory" : "/"} className={`flex items-center ${collapsed ? "justify-center" : "gap-3"}`} onClick={() => onClose?.()}>
+      <div className={`shrink-0 border-b border-white/10 ${collapsed ? "p-3" : "px-4 py-4 sm:py-5"} flex items-center justify-between`}>
+        <Link to={storeMode ? "/inventory" : "/"} className={`flex items-center ${collapsed ? "justify-center" : "gap-3"} min-w-0`} onClick={() => onClose?.()}>
           <BrandLogo size="md" imageClassName="rounded-lg bg-white/95 p-0.5" />
           {!collapsed && (
             <div className="min-w-0">
@@ -542,6 +543,16 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose }
             </div>
           )}
         </Link>
+        {isMobile ? (
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-300 hover:bg-white/10 hover:text-white transition-colors"
+            aria-label="Close navigation menu"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        ) : null}
       </div>
 
       <nav className={`sidebar-scroll flex-1 space-y-0.5 overflow-y-auto py-4 ${collapsed ? "px-2" : "px-3"}`}>

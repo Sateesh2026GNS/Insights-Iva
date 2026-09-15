@@ -66,10 +66,23 @@ export function shouldShowChatbot(user, pathname) {
 export default function App() {
   const location = useLocation();
   const { user } = useAuth();
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
-    if (typeof window === "undefined") return false;
-    return window.matchMedia("(max-width: 1023px)").matches;
-  });
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+
+  // Close mobile sidebar on route change
+  useEffect(() => {
+    setMobileSidebarOpen(false);
+  }, [location.pathname]);
+
+  // Close on Escape key
+  useEffect(() => {
+    if (!mobileSidebarOpen) return undefined;
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") setMobileSidebarOpen(false);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [mobileSidebarOpen]);
 
   // Silently warm up the backend in background on app load
   useEffect(() => {
@@ -246,9 +259,35 @@ export default function App() {
       >
         Skip to main content
       </Button>
+      {/* Mobile Drawer Backdrop */}
+      {mobileSidebarOpen && (
+        <div
+          className="fixed inset-0 z-[70] bg-slate-900/60 backdrop-blur-xs transition-opacity lg:hidden"
+          onClick={() => setMobileSidebarOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Mobile Off-Canvas Navigation Drawer */}
+      <div
+        className={`fixed inset-y-0 left-0 z-[75] flex w-[280px] max-w-[85vw] flex-col shadow-2xl transition-transform duration-300 ease-in-out lg:hidden ${
+          mobileSidebarOpen ? "translate-x-0" : "-translate-x-full pointer-events-none"
+        }`}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Navigation Menu"
+      >
+        <Sidebar
+          collapsed={false}
+          onClose={() => setMobileSidebarOpen(false)}
+          isMobile={true}
+        />
+      </div>
+
+      {/* Desktop In-Flow Sidebar */}
       <aside
         id="app-sidebar"
-        className={`relative z-50 h-full shrink-0 transition-[width] duration-300 ease-in-out ${
+        className={`relative z-40 hidden lg:block h-full shrink-0 transition-[width] duration-300 ease-in-out ${
           sidebarCollapsed ? "w-[72px] overflow-visible" : "w-60 overflow-visible"
         }`}
       >
@@ -258,7 +297,7 @@ export default function App() {
         />
       </aside>
       <div className="flex min-h-0 min-w-0 w-full flex-1 flex-col overflow-hidden">
-        <Navbar />
+        <Navbar onOpenSidebar={() => setMobileSidebarOpen(true)} />
         <main
           id="main-content"
           tabIndex={-1}

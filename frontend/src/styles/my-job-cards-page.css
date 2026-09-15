@@ -861,3 +861,31 @@
   margin-top: 1rem;
   padding-top: 0.25rem;
 }
+
+@media (max-width: 640px) {
+  .my-job-cards-page__section-actions {
+    width: 100%;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+  .my-job-cards-page__section-actions .ui-btn {
+    flex: 1 1 auto;
+  }
+  .my-job-cards-page__document-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 0.75rem 1rem;
+    gap: 0.75rem;
+  }
+  .my-job-cards-page__document-toolbar-main {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .my-job-cards-page__kpi-card {
+    padding: 0.75rem;
+  }
+  .my-job-cards-page__pagination {
+    padding: 0.5rem 0.75rem 0.75rem;
+  }
+}
+

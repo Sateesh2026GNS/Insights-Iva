@@ -355,8 +355,8 @@ export function TrendBadge({ up, value, label, mode = "change", onSolid = false 
 /** Card shell matching Masters → Products tokens. */
 export function CardShell({ title, children, action, className = "", subtitle }) {
   return (
-    <section className={`ui-card p-4 sm:p-5 ${className}`}>
-      <div className="mb-4 flex items-start justify-between gap-3">
+    <section className={`ui-card p-3.5 sm:p-5 ${className}`}>
+      <div className="mb-3.5 sm:mb-4 flex flex-wrap items-center justify-between gap-2.5">
         <div className="min-w-0">
           <h3 className="text-[13px] font-semibold tracking-tight text-[var(--color-text)] sm:text-sm">{title}</h3>
           {subtitle ? <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">{subtitle}</p> : null}
