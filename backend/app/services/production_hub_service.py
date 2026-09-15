@@ -7,7 +7,15 @@ from app.models.machine import Machine
 from app.models.product import Product
 from app.models.production import ProductionOrder, WorkOrder
 from app.models.user import User
-from app.schemas.production_hub import ProductionHubRead
+from app.schemas.production_hub import (
+    ProductionHubRead,
+    ProductionManagerActionRequiredRead,
+    ProductionManagerSummaryRead,
+)
+from app.services.dashboard_production_kpis import (
+    get_production_manager_action_required,
+    get_production_manager_summary,
+)
 
 RUNNING = ("running", "in_progress")
 ACTIVE_WO = ("planned", "running", "in_progress", "material_ready", "machine_ready")
@@ -149,6 +157,10 @@ def get_production_hub(db: Session, tenant_id: int) -> ProductionHubRead:
         ).all()
     )
 
+    today = date.today()
+    pm_summary = get_production_manager_summary(db, tenant_id, today)
+    pm_actions = get_production_manager_action_required(db, tenant_id, today)
+
     return ProductionHubRead(
         running_jobs=running_jobs,
         machines_running=running_m,
@@ -162,6 +174,8 @@ def get_production_hub(db: Session, tenant_id: int) -> ProductionHubRead:
         operators_absent=max(total_users - present, 0),
         quality_passed=sum(1 for i in insp if i.result == "pass"),
         quality_failed=sum(1 for i in insp if i.result in ("fail", "failed")),
+        production_summary=ProductionManagerSummaryRead(**pm_summary),
+        action_required=ProductionManagerActionRequiredRead(**pm_actions),
         recent_jobs=recent,
         machine_status=machine_status,
     )

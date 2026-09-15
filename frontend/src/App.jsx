@@ -181,6 +181,7 @@ export default function App() {
     location.pathname.startsWith("/accounts/journal-entries/") ||
     location.pathname === "/accounts/balance-sheet" ||
     location.pathname === "/accounts/profit-loss" ||
+    location.pathname === "/accounts/gst" ||
     location.pathname === "/accounts/restore-deleted" ||
     location.pathname === "/accounts/restore-deleted-docs" ||
     location.pathname === "/accounts/reports" ||

@@ -8,6 +8,18 @@ class HubStatusBlockRead(BaseModel):
     detail: str | None = None
 
 
+class ProductionManagerSummaryRead(BaseModel):
+    job_cards_pending: int = 0
+    job_cards_in_progress: int = 0
+    produced_today: float = 0
+    pending_qc: int = 0
+
+
+class ProductionManagerActionRequiredRead(BaseModel):
+    material_waiting: int = 0
+    overdue_production: int = 0
+
+
 class ProductionHubRead(BaseModel):
     running_jobs: int = 0
     machines_running: int = 0
@@ -21,5 +33,11 @@ class ProductionHubRead(BaseModel):
     operators_absent: int = 0
     quality_passed: int = 0
     quality_failed: int = 0
+    production_summary: ProductionManagerSummaryRead = Field(
+        default_factory=ProductionManagerSummaryRead
+    )
+    action_required: ProductionManagerActionRequiredRead = Field(
+        default_factory=ProductionManagerActionRequiredRead
+    )
     recent_jobs: list[dict] = Field(default_factory=list)
     machine_status: list[dict] = Field(default_factory=list)

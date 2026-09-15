@@ -88,14 +88,8 @@ const fullDashboard = {
     "recent_work_orders",
     "todays_summary",
   ],
-  production_pipeline: { pending: 0, planned: 1, released: 1, in_production: 0, completed: 0 },
+  production_pipeline: { pending: 0, planned: 1, in_production: 0, qc: 1, completed: 0 },
   admin_production_widgets: {
-    production_summary: {
-      mo_in_progress: 0,
-      mo_pending: 0,
-      job_cards_in_progress: 0,
-      job_cards_pending: 0,
-    },
     completed_mo_chart: [],
     completed_mo_total: 0,
     completed_job_cards_chart: [],

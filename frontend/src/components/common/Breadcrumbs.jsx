@@ -161,6 +161,7 @@ const pathLabels = {
 const PAGE_TITLE_OVERRIDES = {
   "/my-job-cards": "My Job Cards",
   "/sales/job-cards/create": "Create Job Card",
+  "/accounts/gst": "GST",
   "/settings": "Settings",
   "/inventory": "Inventory",
   "/inventory/dashboard": "Store Dashboard",
@@ -342,6 +343,12 @@ export function getPageTitle(pathname, user = null) {
   // Specific dynamic pattern matches
   if (/^\/job-cards\/\d+$/i.test(path) || /^\/my-job-cards\/\d+$/i.test(path)) {
     return "Sales Job Card";
+  }
+  if (/^\/sales\/job-cards\/\d+$/i.test(path)) {
+    return "Job Card Details";
+  }
+  if (/^\/sales\/job-cards\/\d+\/edit$/i.test(path)) {
+    return "Edit Job Card";
   }
   const stageMatch = path.match(/^\/manufacturing\/workflow\/order\/\d+\/([a-z0-9_-]+)$/i);
   if (stageMatch && stageMatch[1]) {
