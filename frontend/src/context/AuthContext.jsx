@@ -135,6 +135,30 @@ export function AuthProvider({ children }) {
   const [sessionExpired, setSessionExpired] = useState(false);
   const [sessionExpiryReason, setSessionExpiryReason] = useState(() => getSessionExpiryReason());
 
+  const logout = useCallback(async ({ allDevices = false } = {}) => {
+    try {
+      const refreshToken = localStorage.getItem("smrt-refresh-token");
+      if (refreshToken) {
+        await logoutApi(refreshToken, { allDevices }).catch(() => {});
+      }
+    } catch {
+      /* ignore network errors — still clear local session */
+    } finally {
+      setUser(null);
+      setSessionExpired(false);
+      setSessionExpiryReason(null);
+      clearTabSession();
+      try {
+        clearTenantDataCaches();
+        localStorage.removeItem("smrt-user");
+        localStorage.removeItem("smrt-token");
+        localStorage.removeItem("smrt-refresh-token");
+      } catch {
+        /* ignore */
+      }
+    }
+  }, []);
+
   useEffect(() => {
     setUnauthorizedHandler(() => {
       const token = localStorage.getItem("smrt-token");
@@ -295,30 +319,6 @@ export function AuthProvider({ children }) {
         localStorage.setItem("smrt-company-name", u.tenant_name);
       }
     } catch {}
-  }, []);
-
-  const logout = useCallback(async ({ allDevices = false } = {}) => {
-    try {
-      const refreshToken = localStorage.getItem("smrt-refresh-token");
-      if (refreshToken) {
-        await logoutApi(refreshToken, { allDevices }).catch(() => {});
-      }
-    } catch {
-      /* ignore network errors — still clear local session */
-    } finally {
-      setUser(null);
-      setSessionExpired(false);
-      setSessionExpiryReason(null);
-      clearTabSession();
-      try {
-        clearTenantDataCaches();
-        localStorage.removeItem("smrt-user");
-        localStorage.removeItem("smrt-token");
-        localStorage.removeItem("smrt-refresh-token");
-      } catch {
-        /* ignore */
-      }
-    }
   }, []);
 
   const refreshUser = useCallback(async () => {
