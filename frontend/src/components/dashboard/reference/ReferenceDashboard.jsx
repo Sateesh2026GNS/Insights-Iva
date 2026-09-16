@@ -244,8 +244,8 @@ function DashboardSkeleton() {
   return (
     <div className="min-h-full bg-[var(--color-bg)]" aria-busy="true" aria-label="Loading dashboard">
       <div className="ui-page mx-auto max-w-[var(--page-max)] ui-stack">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-          {Array.from({ length: 5 }).map((_, i) => (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+          {Array.from({ length: 6 }).map((_, i) => (
             <SkeletonCard key={i} />
           ))}
         </div>
@@ -339,8 +339,14 @@ function KpiStrip({ cards = [] }) {
       </div>
     );
   }
+  const stripModifier =
+    cards.length === 6 || cards.length % 6 === 0
+      ? "ui-kpi-strip--6"
+      : cards.length === 5 || cards.length % 5 === 0
+        ? "ui-kpi-strip--5"
+        : "";
   return (
-    <div className="ui-kpi-strip">
+    <div className={`ui-kpi-strip ${stripModifier}`.trim()}>
       {cards.map((card) => {
         const titleKey = KPI_TITLE_KEYS[card.id];
         const trendKey = TREND_LABEL_KEYS[card.trendLabel];

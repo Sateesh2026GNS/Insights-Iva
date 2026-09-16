@@ -267,7 +267,10 @@ export default function AddNewItemModal({
   categories,
   onAddCategory,
   item = null,
+  entityName = "Item",
+  title,
 }) {
+  const isProduct = entityName === "Product";
   const tenantId = useTenantId();
   const { addToast } = useToast();
   const fileRef = useRef(null);
@@ -310,19 +313,37 @@ export default function AddNewItemModal({
         (item?.barcode && item.barcode !== "—" ? item.barcode : "") ||
         item?.sku ||
         "";
+      const cleanHsn = (item?.hsn_code && item.hsn_code !== "—") ? item.hsn_code : "";
+      const isService =
+        item?.product_type === "Service" ||
+        item?.category === "Services" ||
+        item?.category === "Service" ||
+        item?.description?.toLowerCase().includes("type: service");
+
+      let cleanDesc = item?.description || "";
+      if (cleanDesc) {
+        cleanDesc = cleanDesc
+          .replace(/\s*\|\s*(Type:\s*[^|]+|HSN:\s*[^|]+|SAC:\s*[^|]+|Category:\s*[^|]+|CESS:\s*[^|]+)/gi, "")
+          .trim();
+      }
+
+      const gstPctStr = item?.gst_percent != null && item.gst_percent !== "" ? String(item.gst_percent) : "";
+      const halfGst = gstPctStr && !isNaN(Number(gstPctStr)) ? String(Number(gstPctStr) / 2) : "";
+
       setForm({
         ...EMPTY,
-        item_type: item?.description?.toLowerCase().includes("type: service") ? "services" : "goods",
-        name: item?.name || "",
-        description: item?.description || "",
+        item_type: isService ? "services" : "goods",
+        name: item?.name && item.name !== "—" ? item.name : "",
+        description: cleanDesc,
         sale_price: String(item?.selling_price ?? item?.unit_price ?? ""),
-        unit: item?.unit || "",
-        gst_pct: String(item?.gst_percent ?? ""),
-        cgst_pct: item?.cgst_pct ?? "",
-        sgst_pct: item?.sgst_pct ?? "",
-        igst_pct: item?.igst_pct ?? "",
-        hsn_sac: item?.hsn_code || "",
-        category: item?.category || "",
+        unit: item?.unit && item.unit !== "—" ? item.unit : "",
+        gst_pct: gstPctStr,
+        cgst_pct: item?.cgst_pct != null && item.cgst_pct !== "" ? String(item.cgst_pct) : halfGst,
+        sgst_pct: item?.sgst_pct != null && item.sgst_pct !== "" ? String(item.sgst_pct) : halfGst,
+        igst_pct: item?.igst_pct != null && item.igst_pct !== "" ? String(item.igst_pct) : gstPctStr,
+        hsn_sac: cleanHsn,
+        cess: item?.cess_percent != null && item.cess_percent !== "" ? String(item.cess_percent) : (item?.cess ?? "0"),
+        category: item?.category && item.category !== "—" ? item.category : "",
         purchase_price: String(item?.purchase_price ?? item?.unit_cost ?? "0"),
         opening_stock: String(item?.current_stock ?? ""),
         min_stock: String(item?.min_stock ?? ""),
@@ -330,7 +351,7 @@ export default function AddNewItemModal({
         low_stock_alert: Number(item?.min_stock || 0) > 0,
         image_url: item?.image_url || "",
       });
-      setShowDesc(Boolean(item?.description));
+      setShowDesc(Boolean(cleanDesc));
     } else {
       setForm(EMPTY);
       setShowDesc(false);
@@ -370,11 +391,11 @@ export default function AddNewItemModal({
     e.preventDefault();
     e.stopPropagation();
     if (!form.name.trim()) {
-      addToast("Item Name is required", "error");
+      addToast(`${isProduct ? "Product Name" : "Item Name"} is required`, "error");
       return;
     }
     if (!/[a-zA-Z0-9]/.test(form.name.trim())) {
-      addToast("Product Name must contain at least one letter or number and cannot consist only of special characters", "error");
+      addToast(`${isProduct ? "Product Name" : "Item Name"} must contain at least one letter or number and cannot consist only of special characters`, "error");
       return;
     }
     const cleanName = form.name.trim().toLowerCase();
@@ -385,7 +406,7 @@ export default function AddNewItemModal({
         p.name.trim().toLowerCase() === cleanName
     );
     if (dup) {
-      addToast(`Product Name "${form.name.trim()}" already exists.`, "error");
+      addToast(`${isProduct ? "Product" : "Item"} Name "${form.name.trim()}" already exists.`, "error");
       return;
     }
     if (!form.sale_price && form.sale_price !== "0") {
@@ -439,26 +460,30 @@ export default function AddNewItemModal({
         `SKU-${Date.now().toString().slice(-8)}`;
       const stockQty = Number(form.opening_stock);
       const minStockVal = Number(form.min_stock);
+      const cleanHsn = form.hsn_sac.trim();
+      const gstVal = form.gst_pct !== "" && form.gst_pct !== null && !isNaN(Number(form.gst_pct)) ? Number(form.gst_pct) : 0;
+      const cessVal = form.cess !== "" && form.cess !== null && !isNaN(Number(form.cess)) ? Number(form.cess) : 0;
+      const salePrice = Number(form.sale_price) || 0;
+      const purchasePrice = Number(form.purchase_price) || 0;
+
+      const customFieldDesc = customFields.length
+        ? customFields.map((f) => `${f.label}: ${f.value}`).join(" | ")
+        : "";
+      const baseDesc = form.description.trim();
+      const fullDesc = [baseDesc, customFieldDesc].filter(Boolean).join(" | ") || null;
+
       const payload = {
         tenant_id: tenantId,
         sku,
         name: form.name.trim(),
         category: form.category || "Finished Goods",
-        product_type: form.category || "Finished Goods",
-        description: [
-          form.description.trim(),
-          form.item_type === "services" ? "Type: Service" : "Type: Goods",
-          form.hsn_sac
-            ? `${isGoods ? "HSN" : "SAC"}: ${form.hsn_sac}`
-            : "",
-          form.category ? `Category: ${form.category}` : "",
-          form.cess && Number(form.cess) ? `CESS: ${form.cess} (${form.cess_mode})` : "",
-          ...customFields.map((f) => `${f.label}: ${f.value}`),
-        ]
-          .filter(Boolean)
-          .join(" | ") || null,
-        unit_price: Number(form.sale_price) || 0,
-        unit_cost: Number(form.purchase_price) || 0,
+        product_type: form.item_type === "services" ? "Service" : (form.category || "Finished Goods"),
+        description: fullDesc,
+        hsn_code: cleanHsn || null,
+        gst_percent: gstVal,
+        cess_percent: cessVal,
+        unit_price: salePrice,
+        unit_cost: purchasePrice,
         unit: form.unit || form.primary_unit || "Pcs",
         current_stock:
           isGoods && Number.isFinite(stockQty)
@@ -482,7 +507,7 @@ export default function AddNewItemModal({
 
       const line = {
         item_description: form.name.trim(),
-        hsn: form.hsn_sac.trim(),
+        hsn: cleanHsn,
         qty: "1",
         unit: form.unit || "pcs",
         rate: String(form.sale_price || ""),
@@ -497,11 +522,19 @@ export default function AddNewItemModal({
         product_id: product?.id || null,
       };
 
-      addToast(item?.id ? "Item updated" : "Item added");
+      addToast(
+        item?.id
+          ? isProduct
+            ? "Product updated"
+            : "Item updated"
+          : isProduct
+            ? "Product added"
+            : "Item added"
+      );
       onSaved?.(line, product, { isEdit: Boolean(item?.id), item });
       onClose?.();
     } catch (err) {
-      addToast(apiErrorMessage(err, "Failed to save item"), "error");
+      addToast(apiErrorMessage(err, `Failed to save ${isProduct ? "product" : "item"}`), "error");
     } finally {
       setSaving(false);
     }
@@ -533,7 +566,7 @@ export default function AddNewItemModal({
       >
         <div className="flex shrink-0 items-center justify-between border-b border-[#ececf0] bg-white px-5 py-4">
           <h2 id="add-new-item-title" className="text-[17px] font-bold text-[#1a1a1f]">
-            {item?.id ? "Edit Item" : "Add New Item"}
+            {title || (item?.id ? (isProduct ? "Edit Product" : "Edit Item") : (isProduct ? "Add Product" : "Add New Item"))}
           </h2>
           <button
             type="button"
@@ -576,7 +609,7 @@ export default function AddNewItemModal({
             </div>
 
             <label className="block">
-              <SoftLabel required>Item Name</SoftLabel>
+              <SoftLabel required>{isProduct ? "Product Name" : "Item Name"}</SoftLabel>
               <input
                 value={form.name}
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
@@ -612,7 +645,7 @@ export default function AddNewItemModal({
               <label className="block">
                 <SoftLabel required>Sale Price</SoftLabel>
                 <div className="flex overflow-hidden rounded-lg border border-[var(--color-border-soft)] bg-[var(--color-surface-muted)] focus-within:border-[var(--color-primary)] focus-within:ring-1 focus-within:ring-[var(--color-primary)]">
-                  <span className="flex items-center pl-3 text-[13px] text-[#6b6b76]">₹</span>
+                  <span className="flex items-center pl-3 text-[13px] text-[#6b6b76] select-none pointer-events-none">₹</span>
                   <input
                     value={form.sale_price}
                     onChange={(e) =>
@@ -623,12 +656,12 @@ export default function AddNewItemModal({
                     }
                     placeholder="Enter Price"
                     required
-                    className="min-w-0 flex-1 bg-transparent px-2 py-2.5 text-[13px] text-[#1a1a1f] placeholder:text-[#a0a0ab] outline-none"
+                    className="min-w-0 flex-1 border-0 bg-transparent px-2 py-2.5 text-[13px] text-[#1a1a1f] placeholder:text-[#a0a0ab] !outline-none focus:border-0 focus:!outline-none focus:ring-0 focus-visible:!outline-none focus-visible:ring-0 shadow-none"
                   />
                   <select
                     value={form.tax_type}
                     onChange={(e) => setForm((f) => ({ ...f, tax_type: e.target.value }))}
-                    className="border-l border-[var(--color-border-soft)] bg-[var(--color-surface-muted)] px-2 text-[12px] text-[#1a1a1f] outline-none"
+                    className="border-0 border-l border-[var(--color-border-soft)] bg-[var(--color-surface-muted)] px-2 text-[12px] text-[#1a1a1f] !outline-none focus:border-0 focus:!outline-none focus:ring-0 focus-visible:!outline-none focus-visible:ring-0 shadow-none"
                   >
                     {TAX_TYPES.map((t) => (
                       <option key={t} value={t}>
@@ -716,7 +749,7 @@ export default function AddNewItemModal({
               <label className="block">
                 <SoftLabel>CESS (Applied on Tax Value)</SoftLabel>
                 <div className="flex overflow-hidden rounded-lg border border-[var(--color-border-soft)] bg-[var(--color-surface-muted)] focus-within:border-[var(--color-primary)] focus-within:ring-1 focus-within:ring-[var(--color-primary)]">
-                  <span className="flex items-center pl-3 text-[13px] text-[#6b6b76]">%</span>
+                  <span className="flex items-center pl-3 text-[13px] text-[#6b6b76] select-none pointer-events-none">%</span>
                   <input
                     value={form.cess}
                     onChange={(e) =>
@@ -725,12 +758,12 @@ export default function AddNewItemModal({
                         cess: e.target.value.replace(/[^\d.]/g, ""),
                       }))
                     }
-                    className="min-w-0 flex-1 bg-transparent px-2 py-2.5 text-[13px] text-[#1a1a1f] placeholder:text-[#a0a0ab] outline-none"
+                    className="min-w-0 flex-1 border-0 bg-transparent px-2 py-2.5 text-[13px] text-[#1a1a1f] placeholder:text-[#a0a0ab] !outline-none focus:border-0 focus:!outline-none focus:ring-0 focus-visible:!outline-none focus-visible:ring-0 shadow-none"
                   />
                   <select
                     value={form.cess_mode}
                     onChange={(e) => setForm((f) => ({ ...f, cess_mode: e.target.value }))}
-                    className="border-l border-[var(--color-border-soft)] bg-[var(--color-surface-muted)] px-2 text-[12px] text-[#1a1a1f] outline-none"
+                    className="border-0 border-l border-[var(--color-border-soft)] bg-[var(--color-surface-muted)] px-2 text-[12px] text-[#1a1a1f] !outline-none focus:border-0 focus:!outline-none focus:ring-0 focus-visible:!outline-none focus-visible:ring-0 shadow-none"
                   >
                     {CESS_MODES.map((m) => (
                       <option key={m} value={m}>
@@ -813,7 +846,7 @@ export default function AddNewItemModal({
                 <label className="block">
                   <SoftLabel>Purchase Price</SoftLabel>
                   <div className="flex overflow-hidden rounded-lg border border-[var(--color-border-soft)] bg-[var(--color-surface-muted)] focus-within:border-[var(--color-primary)] focus-within:ring-1 focus-within:ring-[var(--color-primary)]">
-                    <span className="flex items-center pl-3 text-[13px] text-[#6b6b76]">₹</span>
+                    <span className="flex items-center pl-3 text-[13px] text-[#6b6b76] select-none pointer-events-none">₹</span>
                     <input
                       value={form.purchase_price}
                       onFocus={(e) => { const t = e.target; setTimeout(() => t?.select?.(), 0); }}
@@ -824,14 +857,14 @@ export default function AddNewItemModal({
                           return { ...f, purchase_price: val };
                         })
                       }
-                      className="min-w-0 flex-1 bg-transparent px-2 py-2.5 text-[13px] text-[#1a1a1f] placeholder:text-[#a0a0ab] outline-none"
+                      className="min-w-0 flex-1 border-0 bg-transparent px-2 py-2.5 text-[13px] text-[#1a1a1f] placeholder:text-[#a0a0ab] !outline-none focus:border-0 focus:!outline-none focus:ring-0 focus-visible:!outline-none focus-visible:ring-0 shadow-none"
                     />
                     <select
                       value={form.purchase_tax_type}
                       onChange={(e) =>
                         setForm((f) => ({ ...f, purchase_tax_type: e.target.value }))
                       }
-                      className="border-l border-[var(--color-border-soft)] bg-[var(--color-surface-muted)] px-2 text-[12px] text-[#1a1a1f] outline-none"
+                      className="border-0 border-l border-[var(--color-border-soft)] bg-[var(--color-surface-muted)] px-2 text-[12px] text-[#1a1a1f] !outline-none focus:border-0 focus:!outline-none focus:ring-0 focus-visible:!outline-none focus-visible:ring-0 shadow-none"
                     >
                       {TAX_TYPES.map((t) => (
                         <option key={t} value={t}>
@@ -886,7 +919,7 @@ export default function AddNewItemModal({
                 {/* Barcode — full width card */}
                 <div className="rounded-xl border border-[#e8e8ee] bg-[#fafafa] p-3">
                   <div className="mb-2 flex items-center justify-between">
-                    <SoftLabel>Barcode / Item Code</SoftLabel>
+                    <SoftLabel>{isProduct ? "Barcode / Product Code" : "Barcode / Item Code"}</SoftLabel>
                     {form.barcode.trim() ? (
                       <div className="flex items-center gap-2">
                         <button
@@ -1068,7 +1101,7 @@ export default function AddNewItemModal({
             ) : null}
 
             <div>
-              <SoftLabel>Item Photo (Image format PNG, JPG)</SoftLabel>
+              <SoftLabel>{isProduct ? "Product Photo (Image format PNG, JPG)" : "Item Photo (Image format PNG, JPG)"}</SoftLabel>
               <button
                 type="button"
                 onClick={() => fileRef.current?.click()}

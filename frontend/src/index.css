@@ -454,6 +454,20 @@ body:has(.app-shell),
   outline-offset: 2px;
 }
 
+/* Form controls manage focus styling via borders and box-shadow; suppress rogue offset outline */
+input:focus,
+input:focus-visible,
+select:focus,
+select:focus-visible,
+textarea:focus,
+textarea:focus-visible,
+.outline-none,
+.outline-none:focus,
+.outline-none:focus-visible {
+  outline: none !important;
+  outline-offset: 0 !important;
+}
+
 /* Form controls – consistent min touch target ~44px where possible */
 input[type="text"],
 input[type="email"],
@@ -1095,12 +1109,15 @@ input.pl-8 {
   padding-left: 2.25rem !important;
 }
 .ui-input:focus,
+.ui-input:focus-visible,
 .ui-select:focus,
-.ui-textarea:focus {
+.ui-select:focus-visible,
+.ui-textarea:focus,
+.ui-textarea:focus-visible {
   border-color: var(--color-primary);
   background: var(--color-surface);
   box-shadow: 0 0 0 3px var(--color-focus-ring);
-  outline: none;
+  outline: none !important;
 }
 .ui-input.is-error,
 .ui-select.is-error,
@@ -1367,6 +1384,24 @@ input.pl-8 {
 @media (min-width: 1280px) {
   .ui-kpi-strip--5 {
     grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+.ui-kpi-strip--6 {
+  grid-template-columns: minmax(0, 1fr);
+}
+@media (min-width: 480px) {
+  .ui-kpi-strip--6 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (min-width: 768px) {
+  .ui-kpi-strip--6 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (min-width: 1200px) {
+  .ui-kpi-strip--6 {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
   }
 }
 

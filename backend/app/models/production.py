@@ -30,6 +30,9 @@ class ProductionOrder(Base, TimestampMixin):
     department: Mapped[str | None] = mapped_column(String(128))
     shift: Mapped[str | None] = mapped_column(String(64))
     machine_id: Mapped[int | None] = mapped_column(ForeignKey("machines.id"), nullable=True)
+    operator_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    operator_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    operator_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     # ── Face Paper Details ───────────────────────────────────────────
     face_paper_mill_grade: Mapped[str | None] = mapped_column(String(128))
     face_paper_paper: Mapped[str | None] = mapped_column(String(128))

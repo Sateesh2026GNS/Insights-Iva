@@ -48,6 +48,9 @@ export const getProductionOrderStartChecks = (orderId) =>
 export const startProductionOrder = (orderId) =>
   apiPost(`/api/production/planning/${orderId}/start`);
 
+export const requestProductionOrderMaterials = (orderId) =>
+  apiPost(`/api/production/planning/${orderId}/request-materials`);
+
 export const completeProductionOrder = (orderId) =>
   apiPost(`/api/production/planning/${orderId}/complete`);
 
@@ -56,6 +59,9 @@ export const pauseProductionOrder = (orderId) =>
 
 export const createProductionOrder = (payload) =>
   apiPost("/api/production/planning", payload);
+
+export const updateProductionOrder = (orderId, payload) =>
+  apiPut(`/api/production/planning/${orderId}`, payload);
 
 export const deleteProductionOrder = (orderId) =>
   apiDelete(`/api/production/planning/${orderId}`);
@@ -84,6 +90,34 @@ export const getMachines = async () => {
           name: machine.name ?? machine.machine_name,
         })),
       };
+    } catch {
+      throw primaryError;
+    }
+  }
+};
+
+export const getOperators = async () => {
+  try {
+    return await apiGet("/api/production/operators");
+  } catch (primaryError) {
+    try {
+      const fallback = await api.get("/admin/users");
+      const users = Array.isArray(fallback?.data)
+        ? fallback.data
+        : Array.isArray(fallback?.data?.data)
+          ? fallback.data.data
+          : [];
+      const ops = users.filter((u) => {
+        const roles = Array.isArray(u.roles)
+          ? u.roles.map((r) => (typeof r === "string" ? r : r.name || "")).join(" ").toLowerCase()
+          : String(u.role || "").toLowerCase();
+        return (
+          roles.includes("operator") ||
+          roles.includes("machinist") ||
+          String(u.designation || "").toLowerCase().includes("operator")
+        );
+      });
+      return { data: ops };
     } catch {
       throw primaryError;
     }

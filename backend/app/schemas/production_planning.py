@@ -25,8 +25,11 @@ class ProductionOrderListRead(BaseModel):
     product_name: str | None = None
     product_code: str | None = None
     work_order_number: str | None = None
+    machine_id: int | None = None
     machine_name: str | None = None
     machine_code: str | None = None
+    operator_name: str | None = None
+    operator_id: str | None = None
     progress_pct: float = Field(0.0, ge=0.0, le=100.0)
     is_delayed: bool = False
     model_config = ConfigDict(from_attributes=True)

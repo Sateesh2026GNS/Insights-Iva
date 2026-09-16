@@ -1,14 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { CalendarDays, CheckCircle, ClipboardList, Cpu, X } from "lucide-react";
+import { CalendarDays, CheckCircle, ClipboardList, Cpu, User as UserIcon, X } from "lucide-react";
 
-import { createProductionOrder, getMachines } from "../../api/productionApi";
+import { createProductionOrder, getMachines, getOperators, updateProductionOrder } from "../../api/productionApi";
 import useTenantId from "../../hooks/useTenantId";
 import { useToast } from "../../context/ToastContext";
 import { apiErrorMessage } from "../../utils/apiError";
 import { fetchFinishedGoodsWithFallback } from "../../utils/productOptions";
 import AddNewItemModal from "../sales/AddNewItemModal";
 import CreateMachineModal from "./CreateMachineModal";
+import AddUserModal from "../admin/AddUserModal";
 import Button, { IconButton } from "../common/Button";
 
 const SHIFT_OPTIONS = [
@@ -102,10 +103,13 @@ export default function CreateProductionOrderModal({
 
   const [machines, setMachines] = useState([]);
   const [products, setProducts] = useState([]);
+  const [operators, setOperators] = useState([]);
   const [customProductMode, setCustomProductMode] = useState(false);
   const [showAddProductModal, setShowAddProductModal] = useState(false);
   const [showAddMachineModal, setShowAddMachineModal] = useState(false);
   const [customMachineMode, setCustomMachineMode] = useState(false);
+  const [showAddUserModal, setShowAddUserModal] = useState(false);
+  const [customOperatorMode, setCustomOperatorMode] = useState(false);
   const [loadingOptions, setLoadingOptions] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
@@ -130,11 +134,16 @@ export default function CreateProductionOrderModal({
       ? Promise.resolve(productsList)
       : fetchFinishedGoodsWithFallback().catch(() => []);
 
-    Promise.all([loadMachines, loadProducts])
-      .then(([m, p]) => {
+    const loadOperators = getOperators()
+      .then((res) => (Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : []))
+      .catch(() => []);
+
+    Promise.all([loadMachines, loadProducts, loadOperators])
+      .then(([m, p, ops]) => {
         if (cancelled) return;
         setMachines(Array.isArray(m) ? m : []);
         setProducts(Array.isArray(p) ? p : []);
+        setOperators(Array.isArray(ops) ? ops : []);
       })
       .finally(() => {
         if (!cancelled) setLoadingOptions(false);
@@ -149,6 +158,15 @@ export default function CreateProductionOrderModal({
   useEffect(() => {
     if (!open) return;
     if (initialOrder) {
+      const hasProductId = Boolean(initialOrder.product_id);
+      const isCustomProduct = !hasProductId && Boolean(initialOrder.product_name);
+      setCustomProductMode(isCustomProduct);
+
+      const hasMachineId = Boolean(initialOrder.machine_id);
+      const isCustomMachine =
+        !hasMachineId && Boolean(initialOrder.machine_name && initialOrder.machine_name !== "—");
+      setCustomMachineMode(isCustomMachine);
+
       setForm({
         product_id: initialOrder.product_id ? String(initialOrder.product_id) : "",
         product_name: initialOrder.product_name || "",
@@ -160,7 +178,7 @@ export default function CreateProductionOrderModal({
           initialOrder.planned_quantity != null && initialOrder.planned_quantity !== ""
             ? String(initialOrder.planned_quantity)
             : "",
-        size: initialOrder.size || initialOrder.output_quantity_size || "",
+        size: initialOrder.size || initialOrder.output_quantity_size || initialOrder.release_size_nos || "",
         priority: (initialOrder.priority || "medium").toLowerCase(),
         shift: initialOrder.shift || "General Shift (9:00 AM – 6:00 PM)",
         status: (initialOrder.status || "planned").toLowerCase(),
@@ -169,9 +187,10 @@ export default function CreateProductionOrderModal({
       });
     } else {
       setForm(EMPTY_FORM);
+      setCustomProductMode(false);
+      setCustomMachineMode(false);
+      setCustomOperatorMode(false);
     }
-    setCustomProductMode(false);
-    setCustomMachineMode(false);
     setErrors({});
   }, [initialOrder, open]);
 
@@ -186,7 +205,7 @@ export default function CreateProductionOrderModal({
 
   const validate = () => {
     const errs = {};
-    if (!customProductMode && !form.product_id) {
+    if (!customProductMode && !form.product_id && !form.product_name) {
       errs.product_id = "Select a product";
     }
     if (customProductMode && !form.product_name?.trim()) {
@@ -210,15 +229,22 @@ export default function CreateProductionOrderModal({
       productName = form.product_name?.trim() || "";
     } else {
       const selectedProduct = products.find((p) => String(p.id) === String(form.product_id));
-      if (!selectedProduct?.id) {
+      if (selectedProduct?.id) {
+        productId = Number(selectedProduct.id);
+        productName = selectedProduct.name || selectedProduct.sku;
+      } else if (form.product_id) {
+        productId = Number(form.product_id);
+        productName = form.product_name || initialOrder?.product_name || `Product #${form.product_id}`;
+      } else if (form.product_name || initialOrder?.product_name) {
+        productName = form.product_name || initialOrder?.product_name || "";
+      } else {
         setErrors((prev) => ({ ...prev, product_id: "Select a valid product" }));
         return;
       }
-      productId = Number(selectedProduct.id);
-      productName = selectedProduct.name || selectedProduct.sku;
     }
 
     setSubmitting(true);
+    const isEdit = Boolean(initialOrder?.id);
     try {
       const toIsoOrNull = (local) => {
         if (!local) return null;
@@ -229,10 +255,12 @@ export default function CreateProductionOrderModal({
       const payload = {
         tenant_id: Number(tenantId),
         ...(productId ? { product_id: productId } : { product_name: productName }),
-        order_number: "",
+        order_number: initialOrder?.order_number || "",
         planned_quantity: Number(form.planned_quantity),
         machine_id: !customMachineMode && form.machine_id ? Number(form.machine_id) : null,
         machine_name: customMachineMode ? (form.machine_name?.trim() || null) : null,
+        operator_name: form.operator_name?.trim() || null,
+        operator_id: form.operator_id?.trim() || null,
         priority: form.priority || "medium",
         shift: form.shift || null,
         status: form.status || "planned",
@@ -241,8 +269,15 @@ export default function CreateProductionOrderModal({
         release_size_nos: form.size?.trim() || null,
       };
 
-      const res = await createProductionOrder(payload);
-      const newOrder = {
+      let res;
+      if (isEdit) {
+        res = await updateProductionOrder(initialOrder.id, payload);
+      } else {
+        res = await createProductionOrder(payload);
+      }
+
+      const savedOrder = {
+        ...(initialOrder || {}),
         ...(res?.data || {}),
         product_name: productName,
         operator_name: form.operator_name || null,
@@ -250,13 +285,18 @@ export default function CreateProductionOrderModal({
       };
 
       addToast(
-        initialOrder ? "Production Order saved successfully" : "Production Order created successfully",
+        isEdit
+          ? `Production Order ${savedOrder.order_number || initialOrder?.order_number || ""} updated successfully`
+          : `Production Order ${savedOrder.order_number || ""} created successfully`,
         "success"
       );
-      onSaved?.(newOrder);
+      onSaved?.(savedOrder, { isEdit });
       onClose();
     } catch (err) {
-      addToast(apiErrorMessage(err, "Failed to create production order"), "error");
+      addToast(
+        apiErrorMessage(err, isEdit ? "Failed to update production order" : "Failed to create production order"),
+        "error"
+      );
     } finally {
       setSubmitting(false);
     }
@@ -350,6 +390,11 @@ export default function CreateProductionOrderModal({
                   >
                     + Add new Product
                   </option>
+                  {form.product_id && !products.some((p) => String(p.id) === String(form.product_id)) && (
+                    <option value={form.product_id}>
+                      {form.product_name || initialOrder?.product_name || `Product #${form.product_id}`}
+                    </option>
+                  )}
                   {products
                     .filter((p) => p?.id != null && p.id !== "")
                     .map((p) => (
@@ -423,6 +468,11 @@ export default function CreateProductionOrderModal({
                     >
                       + Add new Machine
                     </option>
+                    {form.machine_id && !machines.some((m) => String(m.id) === String(form.machine_id)) && (
+                      <option value={form.machine_id}>
+                        {form.machine_name || initialOrder?.machine_name || `Machine #${form.machine_id}`}
+                      </option>
+                    )}
                     {machines.map((m) => (
                       <option key={m.id} value={m.id}>
                         {m.name || m.code} ({m.status || "Available"})
@@ -433,19 +483,109 @@ export default function CreateProductionOrderModal({
               )}
             </label>
 
-            <label className="block space-y-1.5">
-              <span className="ui-label">Operator Name</span>
-              <input
-                type="text"
-                value={form.operator_name}
-                onChange={(e) => handleChange("operator_name", e.target.value)}
-                placeholder="e.g. Rahul Sharma"
-                className="ui-input w-full"
-              />
-            </label>
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="ui-label">
+                  Operator Name <span className="font-normal text-[var(--color-text-faint)]">(optional)</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowAddUserModal(true)}
+                  className="text-xs font-semibold text-[var(--color-primary)] hover:underline flex items-center gap-1"
+                >
+                  + Add User
+                </button>
+              </div>
+              {customOperatorMode ? (
+                <div className="flex gap-1.5">
+                  <input
+                    type="text"
+                    value={form.operator_name || ""}
+                    onChange={(e) => handleChange("operator_name", e.target.value)}
+                    placeholder="Enter operator name…"
+                    autoFocus
+                    className="ui-input flex-1"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCustomOperatorMode(false);
+                      handleChange("operator_name", "");
+                      handleChange("operator_id", "");
+                    }}
+                    className="rounded-lg border border-[var(--color-border)] px-2.5 py-1.5 text-xs font-medium text-[var(--color-primary)] hover:bg-[var(--color-surface-muted)]"
+                  >
+                    Select
+                  </button>
+                </div>
+              ) : (
+                <div className="relative">
+                  <UserIcon className="pointer-events-none absolute left-3 top-1/2 z-[1] h-4 w-4 -translate-y-1/2 text-[var(--color-text-icon)]" />
+                  <select
+                    value={form.operator_name || ""}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === "__custom__") {
+                        setCustomOperatorMode(true);
+                      } else if (val === "__add_operator__" || val === "__add_user__") {
+                        setShowAddUserModal(true);
+                      } else {
+                        handleChange("operator_name", val);
+                        const selOp = operators.find(
+                          (op) => (op.full_name || op.name || op.email) === val
+                        );
+                        if (selOp) {
+                          handleChange(
+                            "operator_id",
+                            selOp.employee_id
+                              ? String(selOp.employee_id)
+                              : selOp.id
+                                ? String(selOp.id)
+                                : ""
+                          );
+                        } else if (!val) {
+                          handleChange("operator_id", "");
+                        }
+                      }
+                    }}
+                    disabled={loadingOptions}
+                    className="ui-select pl-10 w-full"
+                  >
+                    <option value="">Select operator (optional)</option>
+                    <option
+                      value="__add_operator__"
+                      className="add-new-option text-[#036f71] font-semibold bg-[#e6f4f4] dark:text-[#2dd4bf] dark:bg-[#0d3d38]"
+                      style={{ color: "#036f71", fontWeight: "600" }}
+                    >
+                      + Add new User
+                    </option>
+                    {form.operator_name &&
+                      !operators.some(
+                        (op) => (op.full_name || op.name || op.email) === form.operator_name
+                      ) && (
+                        <option value={form.operator_name}>
+                          {form.operator_name}
+                          {form.operator_id ? ` (${form.operator_id})` : ""}
+                        </option>
+                      )}
+                    {operators.map((op) => {
+                      const opName = op.full_name || op.name || op.email || `User #${op.id}`;
+                      return (
+                        <option key={op.id} value={opName}>
+                          {opName}
+                          {op.employee_id ? ` (${op.employee_id})` : op.designation ? ` (${op.designation})` : ""}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+              )}
+            </div>
 
             <label className="block space-y-1.5">
-              <span className="ui-label">Operator ID</span>
+              <span className="ui-label">
+                Operator ID <span className="font-normal text-[var(--color-text-faint)]">(optional)</span>
+              </span>
               <input
                 type="text"
                 value={form.operator_id}
@@ -606,6 +746,37 @@ export default function CreateProductionOrderModal({
               handleChange("machine_name", createdMachine?.name || createdMachine?.code || "");
               if (createdMachine?.assigned_operator && !form.operator_name) {
                 handleChange("operator_name", createdMachine.assigned_operator);
+              }
+            }
+          } catch {
+            // fallback
+          }
+        }}
+      />
+      <AddUserModal
+        open={showAddUserModal}
+        onClose={() => setShowAddUserModal(false)}
+        defaultRole="Operator"
+        title="New User"
+        onSuccess={async (createdUser) => {
+          setShowAddUserModal(false);
+          try {
+            const opRes = await getOperators().catch(() => ({ data: [] }));
+            const refreshed = Array.isArray(opRes?.data)
+              ? opRes.data
+              : Array.isArray(opRes)
+                ? opRes
+                : [];
+            const list = refreshed.length > 0 ? refreshed : (createdUser ? [createdUser] : []);
+            setOperators(list);
+            if (createdUser?.full_name || createdUser?.name) {
+              const opName = createdUser.full_name || createdUser.name;
+              handleChange("operator_name", opName);
+              if (createdUser.employee_id || createdUser.id) {
+                handleChange(
+                  "operator_id",
+                  createdUser.employee_id ? String(createdUser.employee_id) : String(createdUser.id)
+                );
               }
             }
           } catch {

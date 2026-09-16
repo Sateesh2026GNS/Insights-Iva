@@ -1,46 +1,21 @@
-import { useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, AlertTriangle } from "lucide-react";
-
-import PageHeader from "../../components/common/PageHeader";
-import { FormRow, Input, Select, Textarea } from "../../components/common/FormField";
-import { useToast } from "../../context/ToastContext";
-import useTenantId from "../../hooks/useTenantId";
-import { createProduct, getProductDetail, getProducts, updateProduct } from "../../api/productsApi";
-import { PRODUCT_UNITS, WAREHOUSES } from "../../data/productsMasterData";
-
-import Button from "../../components/common/Button";
-const CATEGORY_OPTIONS = [
-  "Raw Material",
-  "WIP",
-  "Finished Goods",
-  "Consumables",
-  "Spare Parts",
-  "Packaging Material",
-  "Utility / Raw Material",
-].map((c) => ({ value: c, label: c }));
-
-const UNIT_OPTIONS = PRODUCT_UNITS.map((u) => ({ value: u, label: u }));
-const WAREHOUSE_OPTIONS = WAREHOUSES.map((w) => ({ value: w, label: w }));
-const STATUS_OPTIONS = [
-  { value: "active", label: "Active" },
-  { value: "inactive", label: "Inactive" },
-];
-
-const EMPTY = {
-  product_code: "",
-  name: "",
-  category: "Finished Goods",
-  unit: "Pcs",
-  warehouse: "Main Store",
-  min_stock: "1",
-  max_stock: "100",
-  current_stock: "0",
-  description: "",
-  status: "active",
-};
+import { useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 
 export default function CreateProduct() {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    const target = location.pathname.startsWith("/products")
+      ? "/products?add=1"
+      : "/masters/products?add=1";
+    navigate(target, { replace: true });
+  }, [navigate, location.pathname]);
+
+  return null;
+}
+/* legacy form below preserved for reference if needed */
+function LegacyCreateProduct() {
   const { id } = useParams();
   const isEdit = Boolean(id);
   const tenantId = useTenantId();

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   ChevronLeft,
   ChevronRight,
@@ -19,7 +19,7 @@ import { SerialNumberCell, SerialNumberHeader } from "../../components/common/Se
 import { useToast } from "../../context/ToastContext";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { deleteProduct, getProducts } from "../../api/productsApi";
-import { computeSummary, enrichApiProduct, getCategoryChartData } from "../../data/productsMasterData";
+import { PRODUCT_CATEGORIES, computeSummary, enrichApiProduct, getCategoryChartData } from "../../data/productsMasterData";
 import { runListExport } from "../../utils/listExport";
 import { apiErrorMessage } from "../../utils/apiError";
 
@@ -56,7 +56,9 @@ export default function ProductsMaster() {
   const { user } = useAuth();
   const isPM = isProductionManager(user);
   const { addToast } = useToast();
-  const { pathname } = useLocation();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const pathname = location.pathname;
   const pageTitle = pathname.startsWith("/inventory") ? "Inventory" : "Products";
 
   const [loading, setLoading] = useState(true);
@@ -69,6 +71,28 @@ export default function ProductsMaster() {
   const [deleting, setDeleting] = useState(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [openMenu, setOpenMenu] = useState(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get("add") === "1" || params.get("create") === "1") {
+      setEditing(null);
+      setAddOpen(true);
+    }
+  }, [location.search]);
+
+  const handleCloseModal = () => {
+    setAddOpen(false);
+    setEditing(null);
+    const params = new URLSearchParams(location.search);
+    if (params.get("add") === "1" || params.get("create") === "1") {
+      navigate(location.pathname, { replace: true });
+    }
+  };
+
+  const handleSavedModal = () => {
+    handleCloseModal();
+    loadProducts();
+  };
 
   const loadProducts = useCallback(async () => {
     setLoading(true);
@@ -111,6 +135,16 @@ export default function ProductsMaster() {
 
   const summary = useMemo(() => computeSummary(products), [products]);
   const categoryChart = useMemo(() => getCategoryChartData(products), [products]);
+
+  const existingCategories = useMemo(() => {
+    const cats = new Set(PRODUCT_CATEGORIES);
+    products.forEach((p) => {
+      if (p.category && p.category !== "—" && p.category !== "No Category") {
+        cats.add(p.category);
+      }
+    });
+    return Array.from(cats);
+  }, [products]);
 
   const handleExport = (format) => {
     runListExport(format, {
@@ -201,7 +235,7 @@ export default function ProductsMaster() {
                   }}
                   leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}
                 >
-                  Create Product
+                  Add Product
                 </Button>
               )}
             </div>
@@ -506,16 +540,11 @@ export default function ProductsMaster() {
       <AddNewItemModal
         open={addOpen}
         placement="drawer"
+        entityName="Product"
         item={editing}
-        onClose={() => {
-          setAddOpen(false);
-          setEditing(null);
-        }}
-        onSaved={() => {
-          setAddOpen(false);
-          setEditing(null);
-          loadProducts();
-        }}
+        categories={existingCategories}
+        onClose={handleCloseModal}
+        onSaved={handleSavedModal}
       />
       <ConfirmDialog
         open={Boolean(deleting)}

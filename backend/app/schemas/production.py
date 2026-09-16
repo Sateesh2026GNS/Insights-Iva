@@ -47,6 +47,9 @@ class ProductionOrderBase(BaseModel):
     release_size_nos: str | None = None
     release_stocks_nos: str | None = None
     release_gsm_sqmtrs: str | None = None
+    # ── Operator Details ───────────────────────────────────────────
+    operator_name: str | None = None
+    operator_id: str | None = None
 
     @field_validator("actual_quantity", "produced_quantity", mode="before")
     @classmethod
@@ -60,6 +63,32 @@ class ProductionOrderBase(BaseModel):
 
 
 class ProductionOrderCreate(ProductionOrderBase):
+    @field_validator("planned_quantity")
+    @classmethod
+    def planned_quantity_positive(cls, v):
+        if v is not None and v <= 0:
+            raise ValueError("Planned quantity must be greater than 0")
+        return v
+
+
+class ProductionOrderUpdate(BaseModel):
+    product_id: int | None = Field(None, ge=1)
+    product_name: str | None = None
+    planned_quantity: float | None = None
+    actual_quantity: float | None = None
+    start_date: datetime | None = None
+    due_date: datetime | None = None
+    status: str | None = None
+    priority: str | None = None
+    shift: str | None = None
+    department: str | None = None
+    machine_id: int | None = None
+    machine_name: str | None = None
+    customer_name: str | None = None
+    release_size_nos: str | None = None
+    operator_name: str | None = None
+    operator_id: str | None = None
+
     @field_validator("planned_quantity")
     @classmethod
     def planned_quantity_positive(cls, v):

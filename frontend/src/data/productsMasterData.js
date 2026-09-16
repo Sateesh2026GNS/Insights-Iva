@@ -121,6 +121,7 @@ export function enrichApiProduct(apiRow) {
     unit,
     hsn_code: apiRow.hsn_code || "—",
     gst_percent: apiRow.gst_percent ?? 0,
+    cess_percent: apiRow.cess_percent != null ? Number(apiRow.cess_percent) : 0,
     quantity,
     unit_price: apiRow.unit_price != null ? Number(apiRow.unit_price) : totalCost,
     price_per_unit: pricePerUnit,

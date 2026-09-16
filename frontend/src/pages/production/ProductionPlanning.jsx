@@ -848,12 +848,14 @@ export default function ProductionPlanning() {
     if (typeof order.id === "number") {
       try {
         const res = await getProductionOrderStartChecks(order.id);
-        setStartChecks(res.data || []);
-        setStartModal(order);
-        return;
-      } catch {
-        addToast("Could not load start checks", "error");
-        return;
+        const checks = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
+        if (checks.length > 0) {
+          setStartChecks(checks);
+          setStartModal(order);
+          return;
+        }
+      } catch (err) {
+        console.warn("Could not load remote start checks, falling back to order details:", err);
       }
     }
     const hasMachine = Boolean(order.machine_name && order.machine_name !== "—");
@@ -1610,6 +1612,7 @@ export default function ProductionPlanning() {
           onClose={() => setStartModal(null)}
           onConfirm={confirmStart}
           loading={startLoading}
+          onChecksUpdated={(updated) => setStartChecks(updated)}
         />
       )}
 
@@ -1654,9 +1657,11 @@ export default function ProductionPlanning() {
         }}
         initialOrder={editModalOrder}
         machinesList={machines}
-        onSaved={(newOrder) => {
+        onSaved={(savedOrder, meta) => {
           load({ isRefresh: true });
-          setCreatedToastOrder(newOrder);
+          if (!meta?.isEdit) {
+            setCreatedToastOrder(savedOrder);
+          }
         }}
       />
 

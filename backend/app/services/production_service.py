@@ -30,6 +30,7 @@ from app.schemas.production import (
     MachineCreate,
     MachineStatusEventCreate,
     ProductionOrderCreate,
+    ProductionOrderUpdate,
     WorkOrderCreate,
     WorkOrderQuickCreate,
 )
@@ -123,22 +124,43 @@ def create_production_order(db: Session, payload: ProductionOrderCreate) -> Prod
     actual_qty = data.get("actual_quantity") if data.get("actual_quantity") is not None else payload.produced_quantity
     if "produced_quantity" in data:
         data.pop("produced_quantity", None)
+    operator_name = data.pop("operator_name", None)
+    operator_id = data.pop("operator_id", None)
     if actual_qty is not None:
         data["actual_quantity"] = actual_qty
     order = ProductionOrder(**data)
+    if operator_name:
+        order.operator_name = operator_name
+    if operator_id:
+        order.operator_id = str(operator_id)
+        try:
+            order.operator_user_id = int(operator_id)
+        except (ValueError, TypeError):
+            pass
+    if not order.operator_user_id and operator_name:
+        u = db.scalars(
+            select(User).where(User.tenant_id == order.tenant_id, User.full_name.ilike(operator_name.strip()))
+        ).first()
+        if u:
+            order.operator_user_id = u.id
+            if not order.operator_id:
+                order.operator_id = str(u.id)
+
     db.add(order)
     db.flush()
-    if payload.machine_id:
-        wo = WorkOrder(
-            tenant_id=order.tenant_id,
-            production_order_id=order.id,
-            work_order_number=f"WO-{order.order_number}",
-            planned_quantity=order.planned_quantity,
-            actual_quantity=actual_qty,
-            machine_id=payload.machine_id,
-            status="in_progress" if (actual_qty and actual_qty > 0) else "planned"
-        )
-        db.add(wo)
+
+    wo = WorkOrder(
+        tenant_id=order.tenant_id,
+        production_order_id=order.id,
+        work_order_number=f"WO-{order.order_number}",
+        planned_quantity=order.planned_quantity,
+        actual_quantity=actual_qty,
+        machine_id=order.machine_id,
+        status="in_progress" if (actual_qty and actual_qty > 0) else "planned",
+        operator_name=order.operator_name,
+        assigned_user_id=order.operator_user_id,
+    )
+    db.add(wo)
     db.commit()
     db.refresh(order)
     return order
@@ -222,6 +244,155 @@ def update_production_order_status(
     order.status = norm_status
     if norm_status == "completed" and previous_status != "completed":
         _receive_finished_goods_on_completion(db, order)
+    db.commit()
+    db.refresh(order)
+    return order
+
+
+def update_production_order(
+    db: Session, tenant_id: int, order_id: int, payload: ProductionOrderUpdate | dict
+) -> ProductionOrder | None:
+    order = db.scalars(
+        select(ProductionOrder).where(
+            ProductionOrder.id == order_id,
+            ProductionOrder.tenant_id == tenant_id,
+        )
+    ).first()
+    if not order:
+        return None
+
+    data = payload.model_dump(exclude_unset=True) if hasattr(payload, "model_dump") else dict(payload)
+
+    if "product_id" in data and data["product_id"]:
+        product = db.scalars(
+            select(Product).where(
+                Product.id == data["product_id"],
+                Product.tenant_id == tenant_id,
+            )
+        ).first()
+        if not product:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Product not found or does not belong to the current tenant.",
+            )
+        order.product_id = product.id
+    elif "product_name" in data and data["product_name"]:
+        p_name = data["product_name"].strip()
+        product = db.scalars(
+            select(Product).where(
+                Product.name.ilike(p_name),
+                Product.tenant_id == tenant_id,
+            )
+        ).first()
+        if not product:
+            import time
+            sku_prefix = "".join(c for c in p_name.upper() if c.isalnum())[:3] or "PRD"
+            sku = f"{sku_prefix}-{int(time.time()) % 10000:04d}"
+            product = Product(
+                tenant_id=tenant_id,
+                name=p_name,
+                sku=sku,
+                type="finished_good",
+            )
+            db.add(product)
+            db.flush()
+        order.product_id = product.id
+
+    if "machine_id" in data:
+        if data["machine_id"]:
+            machine = db.scalars(
+                select(Machine).where(
+                    Machine.id == data["machine_id"],
+                    Machine.tenant_id == tenant_id,
+                )
+            ).first()
+            if not machine:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Machine not found or does not belong to the current tenant.",
+                )
+            order.machine_id = machine.id
+        else:
+            order.machine_id = None
+    elif "machine_name" in data and data["machine_name"]:
+        m_name = data["machine_name"].strip()
+        machine = db.scalars(
+            select(Machine).where(
+                Machine.name.ilike(m_name),
+                Machine.tenant_id == tenant_id,
+            )
+        ).first()
+        if machine:
+            order.machine_id = machine.id
+
+    if "planned_quantity" in data and data["planned_quantity"] is not None:
+        order.planned_quantity = data["planned_quantity"]
+    if "actual_quantity" in data and data["actual_quantity"] is not None:
+        order.actual_quantity = data["actual_quantity"]
+    if "start_date" in data:
+        order.start_date = data["start_date"]
+    if "due_date" in data:
+        order.due_date = data["due_date"]
+    if "priority" in data and data["priority"]:
+        order.priority = (data["priority"] or "").lower()
+    if "shift" in data:
+        order.shift = data["shift"]
+    if "department" in data:
+        order.department = data["department"]
+    if "customer_name" in data:
+        order.customer_name = data["customer_name"]
+    if "release_size_nos" in data:
+        order.release_size_nos = data["release_size_nos"]
+    if "status" in data and data["status"]:
+        norm_status = data["status"].strip().lower()
+        if norm_status in VALID_PRODUCTION_ORDER_STATUSES:
+            prev = order.status
+            order.status = norm_status
+            if norm_status == "completed" and prev != "completed":
+                _receive_finished_goods_on_completion(db, order)
+
+    if "operator_name" in data:
+        order.operator_name = data["operator_name"]
+    if "operator_id" in data:
+        order.operator_id = str(data["operator_id"]) if data["operator_id"] else None
+        try:
+            order.operator_user_id = int(data["operator_id"]) if data["operator_id"] else None
+        except (ValueError, TypeError):
+            order.operator_user_id = None
+    if not order.operator_user_id and order.operator_name:
+        u = db.scalars(
+            select(User).where(User.tenant_id == tenant_id, User.full_name.ilike(order.operator_name.strip()))
+        ).first()
+        if u:
+            order.operator_user_id = u.id
+            if not order.operator_id:
+                order.operator_id = str(u.id)
+
+    # Sync linked work orders or create primary work order if none exists
+    if order.work_orders:
+        for wo in order.work_orders:
+            if "planned_quantity" in data and data["planned_quantity"] is not None:
+                wo.planned_quantity = order.planned_quantity
+            if "machine_id" in data:
+                wo.machine_id = order.machine_id
+            if "operator_name" in data:
+                wo.operator_name = order.operator_name
+            if order.operator_user_id:
+                wo.assigned_user_id = order.operator_user_id
+    else:
+        wo = WorkOrder(
+            tenant_id=order.tenant_id,
+            production_order_id=order.id,
+            work_order_number=f"WO-{order.order_number}",
+            planned_quantity=order.planned_quantity,
+            actual_quantity=order.actual_quantity,
+            machine_id=order.machine_id,
+            status="in_progress" if (order.actual_quantity and order.actual_quantity > 0) else "planned",
+            operator_name=order.operator_name,
+            assigned_user_id=order.operator_user_id,
+        )
+        db.add(wo)
+
     db.commit()
     db.refresh(order)
     return order

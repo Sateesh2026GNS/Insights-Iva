@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   CheckCircle2,
@@ -17,6 +17,7 @@ import {
 } from "../../data/productionPlanningMasterData";
 import useAuth from "../../hooks/useAuth";
 import { printProductionOrder } from "../../utils/printUtils";
+import { getProductionOrderStartChecks, requestProductionOrderMaterials } from "../../api/productionApi";
 
 import Button from "../common/Button";
 const TABS = [
@@ -73,29 +74,96 @@ function ProgressBar({ produced, planned, pct }) {
   );
 }
 
-export function StartCheckModal({ order, checks, onClose, onConfirm, loading }) {
+export function StartCheckModal({
+  order,
+  checks,
+  onClose,
+  onConfirm,
+  loading,
+  onChecksUpdated,
+}) {
+  const [requestingMaterials, setRequestingMaterials] = useState(false);
+  const [localChecks, setLocalChecks] = useState(checks || []);
+
+  useEffect(() => {
+    setLocalChecks(checks || []);
+  }, [checks]);
+
   if (!order) return null;
-  const allReady = checks?.every((c) => c.ready);
+  const allReady = localChecks?.every((c) => c.ready);
+
+  const handleRequestMaterials = async () => {
+    if (!order?.id) return;
+    setRequestingMaterials(true);
+    try {
+      const res = await requestProductionOrderMaterials(order.id);
+      const updatedChecks = res?.data?.checks || res?.checks;
+      if (Array.isArray(updatedChecks) && updatedChecks.length > 0) {
+        setLocalChecks(updatedChecks);
+        onChecksUpdated?.(updatedChecks);
+      } else {
+        const refreshed = await getProductionOrderStartChecks(order.id);
+        const refList = Array.isArray(refreshed?.data) ? refreshed.data : Array.isArray(refreshed) ? refreshed : [];
+        if (refList.length > 0) {
+          setLocalChecks(refList);
+          onChecksUpdated?.(refList);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to request materials:", err);
+    } finally {
+      setRequestingMaterials(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
       <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
         <h3 className="text-lg font-bold text-slate-900">Pre-Start Checks</h3>
         <p className="ui-subtitle">{order.order_number} — {order.product_name}</p>
-        <ul className="mt-4 space-y-2">
-          {(checks || []).map((c) => (
-            <li key={c.check_type} className={`flex items-start gap-2 rounded-lg px-3 py-2 text-sm ${c.ready ? "bg-green-50 text-green-800" : "bg-red-50 text-red-800"}`}>
-              {c.ready ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" /> : <X className="mt-0.5 h-4 w-4 shrink-0" />}
-              <div>
-                <p className="font-semibold">{c.label}</p>
-                <p className="text-xs opacity-80">{c.message}</p>
+        <ul className="mt-4 space-y-2.5">
+          {(localChecks || []).map((c) => (
+            <li
+              key={c.check_type}
+              className={`flex items-start justify-between gap-2 rounded-lg px-3.5 py-2.5 text-sm ${
+                c.ready ? "bg-green-50 text-green-800" : "bg-red-50 text-red-800"
+              }`}
+            >
+              <div className="flex items-start gap-2.5">
+                {c.ready ? (
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-green-600" />
+                ) : (
+                  <X className="mt-0.5 h-4 w-4 shrink-0 text-red-600" />
+                )}
+                <div>
+                  <p className="font-semibold">{c.label}</p>
+                  <p className="text-xs opacity-85 mt-0.5">{c.message}</p>
+                </div>
               </div>
+              {c.check_type === "material" && !c.ready && (
+                <button
+                  type="button"
+                  disabled={requestingMaterials}
+                  onClick={handleRequestMaterials}
+                  className="shrink-0 self-center rounded-md bg-[#036f71] px-2.5 py-1 text-xs font-semibold text-white shadow-sm hover:bg-[#025658] disabled:opacity-50 transition-colors"
+                >
+                  {requestingMaterials ? "Requesting…" : "Request Material"}
+                </button>
+              )}
             </li>
           ))}
         </ul>
-        <div className="mt-4 flex justify-end gap-2">
-          <button type="button" onClick={onClose} className="rounded-lg border px-4 py-2 text-sm font-semibold text-slate-600">Cancel</button>
-          <Button variant="primary" type="button" disabled={!allReady || loading}
-      onClick={onConfirm} className="disabled:opacity-50">
+        <div className="mt-5 flex justify-end gap-2">
+          <button type="button" onClick={onClose} className="rounded-lg border px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50">
+            Cancel
+          </button>
+          <Button
+            variant="primary"
+            type="button"
+            disabled={!allReady || loading}
+            onClick={onConfirm}
+            className="disabled:opacity-50"
+          >
             {loading ? "Starting..." : "Start Production"}
           </Button>
         </div>

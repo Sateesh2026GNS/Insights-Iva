@@ -230,8 +230,11 @@ export default function ManufacturingWorkflowHub() {
   }, [expanded, mounted]);
 
   return (
-    <div className="space-y-0">
-      <div className="flex justify-end">
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <span className="text-[12px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">
+          Live Manufacturing Workflow
+        </span>
         <LiveToggleButton expanded={expanded} onClick={toggleExpanded} />
       </div>
 

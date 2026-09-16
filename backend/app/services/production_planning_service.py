@@ -152,6 +152,21 @@ def _to_list_read(db: Session, tenant_id: int, order: ProductionOrder) -> Produc
     product = ctx["product"]
     wo = ctx["active_wo"]
     machine = ctx["machine"]
+
+    op_name = getattr(order, "operator_name", None) or (wo.operator_name if wo else None)
+    if not op_name and wo and wo.assigned_user_id:
+        user = db.get(User, wo.assigned_user_id)
+        if user:
+            op_name = getattr(user, "full_name", None) or getattr(user, "name", None) or user.email
+    if not op_name and getattr(order, "operator_user_id", None):
+        user = db.get(User, order.operator_user_id)
+        if user:
+            op_name = getattr(user, "full_name", None) or getattr(user, "name", None) or user.email
+    if not op_name and machine and getattr(machine, "assigned_operator", None):
+        op_name = machine.assigned_operator
+
+    op_id = getattr(order, "operator_id", None) or (str(wo.assigned_user_id) if (wo and wo.assigned_user_id) else None)
+
     return ProductionOrderListRead(
         id=order.id,
         tenant_id=order.tenant_id,
@@ -174,8 +189,11 @@ def _to_list_read(db: Session, tenant_id: int, order: ProductionOrder) -> Produc
         product_name=product.name if product else None,
         product_code=product.sku or (f"PRD{str(product.id).zfill(3)}" if product and product.id else None) if product else None,
         work_order_number=wo.work_order_number if wo else None,
+        machine_id=order.machine_id or (machine.id if machine else None),
         machine_name=machine.name if machine else None,
         machine_code=machine.code if machine else None,
+        operator_name=op_name,
+        operator_id=op_id,
         progress_pct=ctx["progress"],
         is_delayed=_is_delayed(order),
     )
@@ -293,12 +311,19 @@ def get_production_order_detail(
     machine = ctx["machine"]
     batch = ctx["batch"]
 
-    operator_name = None
-    if wo and wo.assigned_user_id:
+    operator_name = getattr(order, "operator_name", None) or (wo.operator_name if wo else None)
+    if not operator_name and wo and wo.assigned_user_id:
         user = db.get(User, wo.assigned_user_id)
         operator_name = user.full_name if user and hasattr(user, "full_name") else (
             user.email if user else None
         )
+    if not operator_name and getattr(order, "operator_user_id", None):
+        user = db.get(User, order.operator_user_id)
+        operator_name = user.full_name if user and hasattr(user, "full_name") else (
+            user.email if user else None
+        )
+    if not operator_name and machine and getattr(machine, "assigned_operator", None):
+        operator_name = machine.assigned_operator
 
     planned = float(order.planned_quantity or 0)
     produced = ctx["produced"]
@@ -357,18 +382,59 @@ def _run_start_checks(
 ) -> list[ProductionStartCheckRead]:
     ctx = _order_context(db, tenant_id, order)
     materials = _materials_for_order(db, tenant_id, order)
-    material_ok = all(m.available_qty >= m.required_qty for m in materials) if materials else True
+    has_sufficient_stock = all(m.available_qty >= m.required_qty for m in materials) if materials else True
+
+    mr = None
+    if not has_sufficient_stock:
+        from app.models.procurement import MaterialRequest
+        mr = db.scalars(
+            select(MaterialRequest).where(
+                MaterialRequest.tenant_id == tenant_id,
+                MaterialRequest.notes.ilike(f"%{order.order_number}%"),
+            ).order_by(MaterialRequest.id.desc())
+        ).first()
+
+    material_ok = has_sufficient_stock or (mr is not None)
+    if has_sufficient_stock:
+        mat_message = "All required materials available"
+    elif mr:
+        mat_message = f"Material request raised ({mr.mr_number}) — store will issue"
+    else:
+        mat_message = "Insufficient material stock — material request required"
+
     machine = ctx["machine"]
-    machine_ok = machine is not None and machine.is_active
+    machine_ok = machine is not None and getattr(machine, "is_active", True)
     wo = ctx["active_wo"]
-    operator_ok = wo is not None and (wo.assigned_user_id is not None or machine is not None)
+
+    op_name = getattr(order, "operator_name", None) or (wo.operator_name if wo else None)
+    if not op_name and wo and wo.assigned_user_id:
+        user = db.get(User, wo.assigned_user_id)
+        if user:
+            op_name = getattr(user, "full_name", None) or getattr(user, "name", None) or user.email
+    if not op_name and getattr(order, "operator_user_id", None):
+        user = db.get(User, order.operator_user_id)
+        if user:
+            op_name = getattr(user, "full_name", None) or getattr(user, "name", None) or user.email
+    if not op_name and machine and getattr(machine, "assigned_operator", None):
+        op_name = machine.assigned_operator
+
+    operator_ok = bool(
+        (op_name and op_name.strip() and op_name.strip() != "—")
+        or getattr(order, "operator_id", None)
+        or (wo and (wo.assigned_user_id or wo.operator_name))
+    )
+    op_message = (
+        f"Operator ready ({op_name})"
+        if op_name
+        else ("Operator assigned" if operator_ok else "No operator assigned")
+    )
 
     return [
         ProductionStartCheckRead(
             check_type="material",
             label="Material Availability",
             ready=material_ok,
-            message="All required materials available" if material_ok else "Insufficient material stock",
+            message=mat_message,
         ),
         ProductionStartCheckRead(
             check_type="machine",
@@ -380,7 +446,7 @@ def _run_start_checks(
             check_type="operator",
             label="Operator Availability",
             ready=operator_ok,
-            message="Operator assigned" if operator_ok else "No operator assigned",
+            message=op_message,
         ),
     ]
 
@@ -413,10 +479,11 @@ def start_production_order(
 
     checks = _run_start_checks(db, tenant_id, order)
     if not all(c.ready for c in checks):
+        failed_reasons = [c.message for c in checks if not c.ready]
         return ProductionStartResponse(
             success=False,
             checks=checks,
-            message="Pre-start checks failed. Resolve issues before starting production.",
+            message="Pre-start checks failed. " + "; ".join(failed_reasons),
         )
 
     if order.status in PLANNED_STATUSES:

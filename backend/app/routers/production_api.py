@@ -5,13 +5,15 @@ from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.encoders import jsonable_encoder
+from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 logger = logging.getLogger(__name__)
 
 from app.api.deps import get_db
 from app.core.permissions import require_action, user_can_action
+from app.models.production import ProductionOrder
 from app.models.user import User
 from app.routers.operator_deps import require_tenant
 from app.schemas.allocation import AllocationAssignRequest
@@ -19,6 +21,7 @@ from app.schemas.production import (
     BatchCreate,
     DailyProductionReportCreate,
     ProductionOrderCreate,
+    ProductionOrderUpdate,
     WorkOrderCreate,
     WorkOrderQuickCreate,
     WorkOrderUpdate,
@@ -47,6 +50,7 @@ from app.services.production_service import (
     list_batches,
     list_daily_production_reports,
     quick_create_work_order,
+    update_production_order,
     update_production_order_status,
     update_work_order,
 )
@@ -83,6 +87,47 @@ def _dump(obj):
 def production_hub(user_tenant: tuple[User, int] = Depends(require_tenant("production")), db: Session = Depends(get_db)):
     _, tenant_id = user_tenant
     return success_response("Production hub retrieved", _dump(get_production_hub(db, tenant_id)))
+
+
+@router.get("/operators")
+def list_operators(
+    user_tenant: tuple[User, int] = Depends(require_tenant("production")),
+    db: Session = Depends(get_db),
+):
+    _, tenant_id = user_tenant
+    users = (
+        db.scalars(
+            select(User)
+            .where(User.tenant_id == tenant_id, User.is_active == True)
+            .options(selectinload(User.roles))
+            .order_by(User.full_name)
+        )
+        .all()
+    )
+
+    operators = []
+    for u in users:
+        role_names = [r.name.lower() for r in (u.roles or [])]
+        is_op = any("operator" in r or "machinist" in r for r in role_names)
+        if not is_op and (
+            (u.designation and ("operator" in u.designation.lower() or "machinist" in u.designation.lower()))
+            or (u.department and ("operator" in u.department.lower() or "machinist" in u.department.lower()))
+        ):
+            is_op = True
+        if is_op:
+            operators.append({
+                "id": u.id,
+                "full_name": u.full_name or u.email,
+                "name": u.full_name or u.email,
+                "email": u.email,
+                "employee_id": getattr(u, "employee_id", None),
+                "designation": getattr(u, "designation", None),
+                "department": getattr(u, "department", None),
+                "plant_code": getattr(u, "plant_code", None),
+                "assigned_machine_id": getattr(u, "assigned_machine_id", None),
+                "roles": [r.name for r in (u.roles or [])],
+            })
+    return success_response("Operators retrieved", operators)
 
 
 # ── Production Planning ──────────────────────────────────────────────────
@@ -157,6 +202,23 @@ def create_plan(
     return success_response("Production plan created", _dump(order))
 
 
+@router.put("/planning/{plan_id}")
+@router.patch("/planning/{plan_id}")
+def update_plan(
+    plan_id: int,
+    payload: ProductionOrderUpdate,
+    user_tenant: tuple[User, int] = Depends(require_tenant("production")),
+    db: Session = Depends(get_db),
+):
+    user, tenant_id = user_tenant
+    if not user_can_action(user, "production", "edit"):
+        raise HTTPException(403, "You do not have permission to edit production plans")
+    order = update_production_order(db, tenant_id, plan_id, payload)
+    if not order:
+        raise HTTPException(404, "Production plan not found")
+    return success_response("Production plan updated", _dump(order))
+
+
 @router.get("/planning/{plan_id}/start-checks")
 def production_plan_start_checks(
     plan_id: int,
@@ -165,6 +227,38 @@ def production_plan_start_checks(
 ):
     _, tenant_id = user_tenant
     return success_response("Start checks retrieved", _dump(preview_start_checks(db, tenant_id, plan_id)))
+
+
+@router.post("/planning/{plan_id}/request-materials")
+def production_plan_request_materials(
+    plan_id: int,
+    user_tenant: tuple[User, int] = Depends(require_tenant("production")),
+    db: Session = Depends(get_db),
+):
+    from app.services.manufacturing_workflow_service import run_mrp
+    user, tenant_id = user_tenant
+    order = db.scalars(
+        select(ProductionOrder).where(ProductionOrder.id == plan_id, ProductionOrder.tenant_id == tenant_id)
+    ).first()
+    if not order:
+        raise HTTPException(404, "Production plan not found")
+
+    qty = float(order.planned_quantity or 1)
+    result = run_mrp(
+        db,
+        tenant_id,
+        order.product_id,
+        qty,
+        create_purchase_request=True,
+        requested_by=user.full_name or user.email,
+        reference=order.order_number,
+    )
+    checks = preview_start_checks(db, tenant_id, plan_id)
+    mr_no = result.get("material_request_number") or ""
+    return success_response(
+        f"Material request {mr_no} raised successfully" if mr_no else "Material request created",
+        {"mrp": result, "checks": _dump(checks)},
+    )
 
 
 @router.post("/planning/{plan_id}/start")

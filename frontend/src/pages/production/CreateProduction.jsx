@@ -28,8 +28,10 @@ export default function CreateProduction() {
       open={true}
       onClose={() => navigate("/production/planning")}
       initialOrder={initialOrder}
-      onSaved={(newOrder) => {
-        navigate("/production/planning", { state: { createdOrder: newOrder } });
+      onSaved={(newOrder, meta) => {
+        navigate("/production/planning", {
+          state: meta?.isEdit ? {} : { createdOrder: newOrder },
+        });
       }}
     />
   );

@@ -755,11 +755,11 @@ export default function AppRoutes() {
       </Route>
       <Route path="/masters/products" element={<ProtectedRoute><P.ProductsMaster /></ProtectedRoute>} />
       <Route path="/masters/products/bulk-import" element={<ProtectedRoute><P.BulkImportProduct /></ProtectedRoute>} />
-      <Route path="/masters/products/create" element={<ProtectedRoute><P.CreateProduct /></ProtectedRoute>} />
+      <Route path="/masters/products/create" element={<Navigate to="/masters/products?add=1" replace />} />
       <Route path="/masters/products/:id/edit" element={<ProtectedRoute><P.CreateProduct /></ProtectedRoute>} />
       <Route path="/products" element={<ProtectedRoute><P.ProductsMaster /></ProtectedRoute>} />
       <Route path="/products/bulk-import" element={<ProtectedRoute><P.BulkImportProduct /></ProtectedRoute>} />
-      <Route path="/products/create" element={<ProtectedRoute><P.CreateProduct /></ProtectedRoute>} />
+      <Route path="/products/create" element={<Navigate to="/products?add=1" replace />} />
       <Route path="/products/:id/edit" element={<ProtectedRoute><P.CreateProduct /></ProtectedRoute>} />
       <Route path="/master/products" element={<ProtectedRoute><P.ProductsMaster /></ProtectedRoute>} />
       <Route path="/master/products/bulk-import" element={<ProtectedRoute><P.BulkImportProduct /></ProtectedRoute>} />
