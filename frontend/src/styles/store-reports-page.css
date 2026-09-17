@@ -1,0 +1,26 @@
+/**
+ * Store Manager Reports hub — full-width ERP list layout (not a print/document sheet).
+ * Print/A4 rules remain in global @media print only.
+ */
+.store-reports-page.ui-list-page {
+  width: 100%;
+  max-width: none;
+}
+
+.store-reports-page .ui-list-page__stack {
+  width: 100%;
+  max-width: none;
+  gap: var(--section-gap, 1.25rem);
+}
+
+.store-reports-page .ui-list-card {
+  width: 100%;
+  max-width: none;
+  box-shadow: var(--shadow-sm);
+}
+
+@media print {
+  .store-reports-page .ui-list-page__stack {
+    padding: 0;
+  }
+}

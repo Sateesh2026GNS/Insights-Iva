@@ -26,6 +26,7 @@ import {
 import IssueMaterialsModal from "../../components/production/IssueMaterialsModal";
 import WorkflowNextStep from "../../components/manufacturing/WorkflowNextStep";
 import { getMaterialRequestQueueGuidance } from "../../utils/inventoryWorkflowUx";
+import { apiErrorMessage } from "../../utils/apiError";
 import "../../styles/workflow-next-step.css";
 
 import Button from "../../components/common/Button";
@@ -139,7 +140,7 @@ export default function StoreMaterialRequests({ mode = "requests" }) {
       setShowForm(false);
       load();
     } catch (err) {
-      addToast(err?.response?.data?.detail || "Could not create request", "error");
+      addToast(apiErrorMessage(err, "Could not create request"), "error");
     } finally {
       setSubmitting(false);
     }
@@ -159,7 +160,7 @@ export default function StoreMaterialRequests({ mode = "requests" }) {
       addToast("Updated successfully");
       load();
     } catch (err) {
-      addToast(err?.response?.data?.detail || "Action failed", "error");
+      addToast(apiErrorMessage(err, "Action failed"), "error");
     } finally {
       setBusyId(null);
     }
@@ -182,7 +183,7 @@ export default function StoreMaterialRequests({ mode = "requests" }) {
       setConsumeRow(null);
       load();
     } catch (err) {
-      addToast(err?.response?.data?.detail || "Consumption failed", "error");
+      addToast(apiErrorMessage(err, "Consumption failed"), "error");
     } finally {
       setBusyId(null);
     }

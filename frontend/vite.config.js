@@ -23,6 +23,11 @@ export default defineConfig({
         target: "http://127.0.0.1:8000",
         changeOrigin: true,
       },
+      "/ai": {
+        target: "http://127.0.0.1:8000",
+        changeOrigin: true,
+        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+      },
       "/sales": {
         target: "http://127.0.0.1:8000",
         changeOrigin: true,

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   ArrowDownToLine,
   ArrowLeftRight,
@@ -33,6 +33,7 @@ import { exportToExcel, exportToPdf } from "../../utils/exportUtils";
 import useAuth from "../../hooks/useAuth";
 import { isStoreManager } from "../../config/permissions";
 import { asArray } from "../../utils/apiError";
+import { todayIso } from "../../utils/dateUtils";
 
 const EMPTY_SUMMARY = {
   stock_in: 0,
@@ -132,11 +133,15 @@ function ClickableKpiCard({ onClick, title, children }) {
   );
 }
 
-export default function StockLedger() {
+export default function StockLedger({ variant = "" }) {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const todaysStockOutMode = variant === "todays_stock_out";
   const { addToast } = useToast();
   const { user } = useAuth();
   const storeMode = isStoreManager(user);
+  const kpiDate = searchParams.get("date");
+  const kpiDirection = String(searchParams.get("direction") || "").toLowerCase();
   const dateFromRef = useRef(null);
   const dateToRef = useRef(null);
   const [loading, setLoading] = useState(true);
@@ -182,6 +187,32 @@ export default function StockLedger() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    if (todaysStockOutMode) {
+      const day = todayIso();
+      setFilters((f) => ({
+        ...f,
+        dateFrom: day,
+        dateTo: day,
+        type: "out",
+      }));
+      setShowFilters(true);
+      return;
+    }
+    if (!kpiDate && !kpiDirection) return;
+    setFilters((f) => {
+      const next = { ...f };
+      if (kpiDate) {
+        next.dateFrom = kpiDate;
+        next.dateTo = kpiDate;
+      }
+      if (kpiDirection === "in") next.type = "in";
+      if (kpiDirection === "out") next.type = "out";
+      return next;
+    });
+    setShowFilters(true);
+  }, [kpiDate, kpiDirection, todaysStockOutMode]);
   useManufacturingRefresh(load);
 
   useEffect(() => {
@@ -488,8 +519,25 @@ export default function StockLedger() {
     <div className="min-w-0 space-y-5 pb-4">
       {storeMode ? <StoreManagerNav /> : null}
 
-      <PageHeader variant="inventory"
-        subtitle="Track and analyze stock movement history"
+      {todaysStockOutMode ? (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-rose-200 bg-rose-50 px-4 py-2 text-sm text-rose-900">
+          <span>
+            Showing stock-out movements only for today. Total matching: {filtered.length.toLocaleString("en-IN")}
+          </span>
+          <Link to="/inventory/stock-ledger" className="font-semibold text-[var(--color-primary)] hover:underline">
+            Open full stock ledger
+          </Link>
+        </div>
+      ) : null}
+
+      <PageHeader
+        variant="inventory"
+        title={todaysStockOutMode ? "Today's Stock Out" : "Stock Ledger"}
+        subtitle={
+          todaysStockOutMode
+            ? `Stock-out transactions for ${displayDate(todayIso())} (local business date).`
+            : "Track and analyze stock movement history"
+        }
         action={
           <div className="flex flex-wrap items-end gap-3">
             <div className="inventory-header-control">

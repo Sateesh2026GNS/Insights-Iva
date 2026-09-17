@@ -319,6 +319,11 @@ export default function StoreStockIn() {
     if (idParam && !editingId) {
       loadDocToForm({ id: Number(idParam) });
     }
+    const dateParam = searchParams.get("date");
+    if (dateParam) {
+      setDateFrom(dateParam);
+      setDateTo(dateParam);
+    }
   }, [searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const resetForm = () => {

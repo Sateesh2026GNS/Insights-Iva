@@ -37,9 +37,15 @@ import {
 } from "../../api/inventoryApi";
 import { stockStatusLabel, stockStatusTone } from "../../data/inventoryMasterData";
 import useManufacturingRefresh from "../../hooks/useManufacturingRefresh";
-import { asArray } from "../../utils/apiError";
+import { asArray, apiErrorMessage } from "../../utils/apiError";
+import { removeLocalProducts } from "../../utils/localProductCache";
+import { invalidateReferenceCache } from "../../utils/referenceDataCache";
 import { todayIso } from "../../utils/dateUtils";
 import { exportToExcel, exportToPdf } from "../../utils/exportUtils";
+import {
+  MANUFACTURING_EVENTS,
+  notifyManufacturingSpine,
+} from "../../utils/manufacturingEvents";
 
 const RAW_MATERIALS_EXPORT_COLUMNS = [
   { key: "name", label: "Item Name" },
@@ -330,17 +336,29 @@ export default function RawMaterials() {
   };
 
   const handleDeleteConfirm = async () => {
-    if (!deleteTarget?.id) return;
+    if (!deleteTarget?.id || deleting) return;
     const itemId = deleteTarget.id;
+    const numericId = typeof itemId === "number" ? itemId : Number(itemId);
+    if (!Number.isFinite(numericId) || numericId <= 0) {
+      addToast("This material cannot be deleted on the server. Refresh the list and try again.", "error");
+      return;
+    }
     setDeleting(true);
     try {
-      await deleteInventoryItem(itemId);
+      await deleteInventoryItem(numericId);
+      removeLocalProducts({
+        id: itemId,
+        sku: deleteTarget.sku,
+        name: deleteTarget.name,
+      });
+      invalidateReferenceCache("products");
+      invalidateReferenceCache("raw_materials_options");
       addToast("Material deleted successfully");
       setDeleteTarget(null);
       notifyManufacturingSpine(MANUFACTURING_EVENTS.INVENTORY_CHANGED, { item_id: itemId });
       await load({ background: true });
-    } catch {
-      addToast("Could not delete material", "error");
+    } catch (err) {
+      addToast(apiErrorMessage(err, "Could not delete material"), "error");
     } finally {
       setDeleting(false);
     }

@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import { HR_PLACEHOLDER_PATHS } from "../config/hrRouteMeta";
 import { HR_SIDEBAR_ITEMS } from "../config/hrSidebarNav";
 import { SIDEBAR_NAV } from "../config/sidebarNav";
+import { STORE_MANAGER_NAV_ITEMS } from "../config/storeManagerNavConfig";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const routesDir = __dirname;
@@ -106,6 +107,14 @@ describe("route health", () => {
   it("sidebar navigation targets resolve to registered routes", () => {
     const navPaths = [...new Set(flattenNav(SIDEBAR_NAV).concat(flattenNav(HR_SIDEBAR_ITEMS)))];
     const uncovered = navPaths.filter((p) => !pathIsCovered(p, routePaths));
+    expect(uncovered).toEqual([]);
+  });
+
+  it("store manager sidebar navigation targets resolve to registered routes", () => {
+    const navPaths = [...new Set(flattenNav(STORE_MANAGER_NAV_ITEMS))];
+    const uncovered = navPaths
+      .map((p) => p.split("?")[0])
+      .filter((p) => !pathIsCovered(p, routePaths));
     expect(uncovered).toEqual([]);
   });
 

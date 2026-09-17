@@ -1699,9 +1699,17 @@ class OperatorService:
             select(WO).where(WO.tenant_id == self.tenant_id)
         ).all())
 
-        PLANNED = {"planned", "draft", "pending", "material_ready", "machine_assigned", "machine_ready"}
+        PLANNED = {
+            "planned",
+            "draft",
+            "pending",
+            "material_ready",
+            "machine_assigned",
+            "machine_ready",
+            "assigned",
+        }
         IN_PROG = {"in_progress", "running"}
-        DONE    = {"completed", "closed", "done"}
+        DONE = {"completed", "closed", "done"}
         now = datetime.now(timezone.utc)
         query_text = (query or "").lower()
         status_filter = None

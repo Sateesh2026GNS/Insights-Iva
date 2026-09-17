@@ -54,9 +54,11 @@ export function manualJobCardCanSend(row) {
   if (Array.isArray(row.allowed_actions) && row.allowed_actions.includes("send")) {
     return true;
   }
-  const ws = String(row.workflow_status || "").toUpperCase();
+  const ws = String(row.workflow_status || row.workflow_stage || "").toUpperCase();
   if (ws === "MATERIAL_AVAILABLE" || ws === "MATERIAL_PARTIAL" || ws === "MATERIAL_SHORTAGE") {
-    return false;
+    if (row.sent_to || row.sent_at) return false;
+    const mc = row.material_check || row.store_workflow?.material_check;
+    return Boolean(mc?.checked_at);
   }
   if (row.sent_to || row.sent_at) return false;
   if (STORE_WORKFLOW_STATUSES.has(ws)) return false;

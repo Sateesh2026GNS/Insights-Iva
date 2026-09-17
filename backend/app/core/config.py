@@ -108,6 +108,16 @@ class Settings(BaseSettings):
             "API_AUTHENTICATED_RATE_WINDOW_SECONDS", "api_authenticated_rate_window_seconds"
         ),
     )
+    api_reports_rate_limit: int = Field(
+        default=45,
+        validation_alias=AliasChoices("API_REPORTS_RATE_LIMIT", "api_reports_rate_limit"),
+    )
+    api_reports_rate_window_seconds: int = Field(
+        default=60,
+        validation_alias=AliasChoices(
+            "API_REPORTS_RATE_WINDOW_SECONDS", "api_reports_rate_window_seconds"
+        ),
+    )
     auth_backoff_threshold: int = Field(
         default=3,
         validation_alias=AliasChoices("AUTH_BACKOFF_THRESHOLD", "auth_backoff_threshold"),
@@ -171,12 +181,53 @@ class Settings(BaseSettings):
         "https://insightsiva.com"
     )
     
-    # LLM / AI Operator Assistant (OpenAI-compatible API)
-    llm_api_key: str = ""
-    llm_base_url: str = "https://api.openai.com/v1"
-    llm_model: str = "gpt-4.1"
-    llm_timeout_seconds: int = 30
+    # OpenAI — Store Operator Agent + legacy OpenAI-compatible assistant client
+    openai_api_key: str = Field(
+        default="",
+        validation_alias=AliasChoices(
+            "OPENAI_API_KEY",
+            "LLM_API_KEY",
+            "openai_api_key",
+            "llm_api_key",
+        ),
+    )
+    openai_model: str = Field(
+        default="gpt-4o",
+        validation_alias=AliasChoices("OPENAI_MODEL", "LLM_MODEL", "openai_model", "llm_model"),
+    )
+    openai_base_url: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "OPENAI_BASE_URL",
+            "LLM_BASE_URL",
+            "openai_base_url",
+            "llm_base_url",
+        ),
+    )
+    openai_timeout_seconds: int = Field(
+        default=30,
+        validation_alias=AliasChoices(
+            "OPENAI_TIMEOUT_SECONDS",
+            "LLM_TIMEOUT_SECONDS",
+            "openai_timeout_seconds",
+            "llm_timeout_seconds",
+        ),
+    )
     ai_assistant_enabled: bool = True
+    agent_write_tools_enabled: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("AGENT_WRITE_TOOLS_ENABLED", "agent_write_tools_enabled"),
+    )
+    api_agent_rate_limit: int = Field(
+        default=30,
+        validation_alias=AliasChoices("API_AGENT_RATE_LIMIT", "api_agent_rate_limit"),
+    )
+    api_agent_rate_window_seconds: int = Field(
+        default=3600,
+        validation_alias=AliasChoices(
+            "API_AGENT_RATE_WINDOW_SECONDS", "api_agent_rate_window_seconds"
+        ),
+    )
 
     # Google Calendar / Meet OAuth (server-side only — never expose secrets to frontend)
     google_client_id: str = Field(

@@ -201,6 +201,17 @@ def test_confirmed_sales_order_appears_in_store_manager_queue(client):
     assert dash["pending_inventory_checks"] >= 1
     assert any(row["sales_order_id"] == order_id for row in dash["pending_inventory_orders"])
 
+    pending_list = client.get(
+        "/inventory/store/pending-inventory-checks",
+        headers=store_headers,
+        params={"limit": 50, "offset": 0},
+    )
+    assert pending_list.status_code == 200, pending_list.text
+    pending_body = pending_list.json()
+    assert pending_body["total"] >= 1
+    assert any(row["sales_order_id"] == order_id for row in pending_body["items"])
+    assert pending_body["total"] == dash["pending_inventory_checks"]
+
 
 def test_status_patch_confirm_uses_workflow_engine(client):
     tenant_id = 1

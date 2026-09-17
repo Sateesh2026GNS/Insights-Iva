@@ -179,11 +179,7 @@ export default function AppRoutes() {
       />
       <Route
         path="/production/work-orders/create-quick"
-        element={
-          <ProtectedRoute>
-            <P.QuickCreateWorkOrder />
-          </ProtectedRoute>
-        }
+        element={<Navigate to="/production/work-orders" replace />}
       />
       <Route
         path="/production/tasks"
@@ -204,6 +200,13 @@ export default function AppRoutes() {
         path="/inventory"
         element={<P.InventoryV2 />}
       />
+      <Route path="/inventory/low-stock" element={<P.InventoryV2 />} />
+      <Route path="/inventory/out-of-stock" element={<P.InventoryV2 />} />
+      <Route
+        path="/inventory/pending-inventory-checks"
+        element={<P.PendingInventoryChecks />}
+      />
+      <Route path="/inventory/todays-stock-out" element={<P.TodaysStockOut />} />
       <Route
         path="/inventory/dashboard"
         element={<P.InventoryDashboard />}
@@ -289,6 +292,22 @@ export default function AppRoutes() {
         element={<P.CreateSupplier />}
       />
       </Route>
+      <Route
+        path="/inventory/reports"
+        element={
+          <ProtectedRoute>
+            <P.StoreReportsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/store/reports"
+        element={
+          <ProtectedRoute>
+            <Navigate to="/inventory/reports" replace />
+          </ProtectedRoute>
+        }
+      />
       <Route
         path="/sales"
         element={

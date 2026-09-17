@@ -636,14 +636,32 @@ def get_store_dashboard(db: Session, tenant_id: int) -> StoreDashboardRead:
         if total_cap > 0:
             util = round(100.0 * sum(used) / total_cap, 1)
 
+    from app.models.product import Product
     from app.services.manual_job_card_service import count_manual_sales_job_cards_pending
+    from app.services.workflow_routing_service import _store_kpi_counts
     from app.services.workflow_team_service import list_pending_inventory_checks
+
+    catalog_total = 0
+    catalog_low = 0
+    catalog_out = 0
+    for p in db.scalars(select(Product).where(Product.tenant_id == tenant_id)).all():
+        catalog_total += 1
+        stock = float(p.current_stock or 0)
+        min_stk = float(p.min_stock or 0) if p.min_stock is not None else 0.0
+        if stock <= 0:
+            catalog_out += 1
+        elif min_stk > 0 and stock <= min_stk:
+            catalog_low += 1
 
     pending_count, pending_orders = list_pending_inventory_checks(db, tenant_id, limit=8)
     sales_jc_pending = count_manual_sales_job_cards_pending(db, tenant_id)
+    store_kpi = _store_kpi_counts(db, tenant_id)
 
     return StoreDashboardRead(
         total_products=total_products,
+        catalog_product_count=catalog_total,
+        catalog_low_stock_count=catalog_low,
+        catalog_out_of_stock_count=catalog_out,
         current_inventory_qty=current_qty,
         low_stock_items=low,
         out_of_stock_items=out,
@@ -654,6 +672,8 @@ def get_store_dashboard(db: Session, tenant_id: int) -> StoreDashboardRead:
         warehouse_utilization_pct=util,
         pending_inventory_checks=pending_count,
         sales_job_cards_pending=sales_jc_pending,
+        store_pending=int(store_kpi.get("store_pending") or 0),
+        store_actionable_total=int(store_kpi.get("total_job_cards") or 0),
         pending_inventory_orders=[
             PendingInventoryCheckOrder(**row) for row in pending_orders
         ],

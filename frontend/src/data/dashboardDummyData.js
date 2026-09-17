@@ -21,7 +21,7 @@ export const employeeAttendance = { present: 0, absent: 0, onLeave: 0, total: 0,
 export const maintenanceSchedule = [];
 export const liveProduction = { linesActive: 0, linesTotal: 0, currentOutput: 0, hourlyRate: 0, efficiency: 0 };
 export const quickActions = [
-  { label: "New Work Order", to: "/production/work-orders/create-quick", bg: "#3B82F6" },
+  { label: "New Work Order", to: "/production/work-orders", bg: "#3B82F6" },
   { label: "Production Entry", to: "/production/create", bg: "#22C55E" },
   { label: "Material Issue", to: "/inventory/stock-movement", bg: "#F97316" },
   { label: "Stock Transfer", to: "/inventory/stock-transfer", bg: "#A855F7" },

@@ -188,7 +188,7 @@ def workflow_team_queue(
 @router.get("/job-cards/my-queue")
 def my_job_card_queue(
     status: str | None = Query(None),
-    limit: int = Query(50, ge=1, le=500),
+    limit: int = Query(50, ge=1, le=2000),
     include_completed: bool = Query(True),
     user: User = Depends(require_any_permission(*WORKFLOW_MODULES)),
     db: Session = Depends(get_db),
@@ -517,7 +517,11 @@ def get_material_check(
         mc = create_material_check_for_order(db, user.tenant_id, so, commit=True)
     refresh_pending_material_check_stock(db, user.tenant_id, mc)
     db.commit()
-    return {"sales_order_id": so.id, "workflow_status": so.workflow_status, "material_check": _serialize_material_check(mc)}
+    return {
+        "sales_order_id": so.id,
+        "workflow_status": so.workflow_status,
+        "material_check": _serialize_material_check(mc, db),
+    }
 
 
 @router.post("/sales-orders/{order_id}/material-check")

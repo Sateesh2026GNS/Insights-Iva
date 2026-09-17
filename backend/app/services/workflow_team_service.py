@@ -70,7 +70,49 @@ def _assert_team(user: User, team: str) -> None:
     raise HTTPException(status_code=403, detail=f"Requires {team} team permission")
 
 
-def _serialize_material_check(mc: SalesOrderMaterialCheck) -> dict[str, Any]:
+def _material_check_line_availability_status(ln: SalesOrderMaterialCheckLine) -> str:
+    shortage = float(ln.shortage_qty or 0)
+    available = float(ln.available_qty or 0)
+    if shortage <= 0:
+        return "available"
+    if available > 0:
+        return "partially_available"
+    return "not_available"
+
+
+def _serialize_material_check_line(
+    ln: SalesOrderMaterialCheckLine, db: Session | None = None
+) -> dict[str, Any]:
+    material_code = None
+    uom = None
+    if db and ln.inventory_item_id:
+        from app.models.inventory import InventoryItem
+
+        item = db.get(InventoryItem, int(ln.inventory_item_id))
+        if item:
+            material_code = item.sku
+            uom = item.unit
+    reserved = float(getattr(ln, "_reserved_qty", 0) or 0)
+    return {
+        "id": ln.id,
+        "material_code": material_code,
+        "material_name": ln.material_name,
+        "product_id": ln.product_id,
+        "inventory_item_id": ln.inventory_item_id,
+        "required_qty": float(ln.required_qty or 0),
+        "available_qty": float(ln.available_qty or 0),
+        "reserved_qty": reserved,
+        "shortage_qty": float(ln.shortage_qty or 0),
+        "uom": uom,
+        "stock_location": ln.stock_location,
+        "is_available": bool(ln.is_available),
+        "availability_status": _material_check_line_availability_status(ln),
+    }
+
+
+def _serialize_material_check(
+    mc: SalesOrderMaterialCheck, db: Session | None = None
+) -> dict[str, Any]:
     return {
         "id": mc.id,
         "check_number": mc.check_number,
@@ -79,21 +121,7 @@ def _serialize_material_check(mc: SalesOrderMaterialCheck) -> dict[str, Any]:
         "verified_by_name": mc.verified_by_name,
         "verified_at": mc.verified_at.isoformat() if mc.verified_at else None,
         "notes": mc.notes,
-        "lines": [
-            {
-                "id": ln.id,
-                "material_name": ln.material_name,
-                "product_id": ln.product_id,
-                "inventory_item_id": ln.inventory_item_id,
-                "required_qty": float(ln.required_qty or 0),
-                "available_qty": float(ln.available_qty or 0),
-                "reserved_qty": float(getattr(ln, "_reserved_qty", 0) or 0),
-                "shortage_qty": float(ln.shortage_qty or 0),
-                "stock_location": ln.stock_location,
-                "is_available": bool(ln.is_available),
-            }
-            for ln in (mc.lines or [])
-        ],
+        "lines": [_serialize_material_check_line(ln, db) for ln in (mc.lines or [])],
     }
 
 
@@ -393,7 +421,7 @@ def _serialize_queue_order(
 
 
 def list_pending_inventory_checks(
-    db: Session, tenant_id: int, *, limit: int = 10
+    db: Session, tenant_id: int, *, limit: int = 10, offset: int = 0
 ) -> tuple[int, list[dict[str, Any]]]:
     """Count and list sales orders awaiting store inventory verification."""
     repair_confirmed_orders_missing_workflow(db, tenant_id)
@@ -416,7 +444,8 @@ def list_pending_inventory_checks(
                 SalesOrder.tenant_id == tenant_id,
                 SalesOrder.workflow_status == "MATERIAL_CHECK_PENDING",
             )
-            .order_by(SalesOrder.id.desc())
+            .order_by(SalesOrder.id.asc())
+            .offset(max(0, offset))
             .limit(limit)
         ).all()
     )
@@ -481,7 +510,7 @@ def confirm_sales_order_with_workflow(
                 "order_number": so.order_number,
                 "workflow_status": so.workflow_status,
                 "already_confirmed": True,
-                "material_check": _serialize_material_check(mc) if mc else None,
+                "material_check": _serialize_material_check(mc, db) if mc else None,
             }
         lines = list(
             db.scalars(
@@ -503,7 +532,7 @@ def confirm_sales_order_with_workflow(
             "workflow_status": so.workflow_status,
             "priority": normalize_priority(so.priority),
             "mrp_results": [],
-            "material_check": _serialize_material_check(mc),
+            "material_check": _serialize_material_check(mc, db),
             "repaired_workflow": True,
         }
 
@@ -569,7 +598,7 @@ def confirm_sales_order_with_workflow(
         "workflow_status": so.workflow_status,
         "priority": normalize_priority(so.priority),
         "mrp_results": mrp_results,
-        "material_check": _serialize_material_check(mc),
+        "material_check": _serialize_material_check(mc, db),
     }
 
 
@@ -611,12 +640,14 @@ def submit_material_check(
             return {
                 "sales_order_id": so.id,
                 "workflow_status": so.workflow_status,
-                "material_check": _serialize_material_check(mc),
+                "material_check": _serialize_material_check(mc, db),
             }
         raise HTTPException(
             status_code=409,
             detail=f"Order not awaiting material check (status={so.workflow_status})",
         )
+
+    refresh_pending_material_check_stock(db, tenant_id, mc)
 
     if line_updates:
         line_map = {ln.id: ln for ln in mc.lines}
@@ -624,11 +655,13 @@ def submit_material_check(
             ln = line_map.get(upd.get("id"))
             if not ln:
                 continue
-            if "available_qty" in upd:
+            if upd.get("available_qty") is not None:
                 ln.available_qty = float(upd["available_qty"])
-            if "stock_location" in upd:
+            if "stock_location" in upd and upd.get("stock_location") is not None:
                 ln.stock_location = upd["stock_location"]
-            ln.shortage_qty = max(0.0, float(ln.required_qty) - float(ln.available_qty))
+            reserved = float(getattr(ln, "_reserved_qty", 0) or 0)
+            net = max(0.0, float(ln.available_qty or 0) - reserved)
+            ln.shortage_qty = max(0.0, float(ln.required_qty or 0) - net)
             ln.is_available = ln.shortage_qty <= 0
 
     all_available = all(ln.is_available for ln in mc.lines) if mc.lines else True
@@ -702,7 +735,7 @@ def submit_material_check(
     return {
         "sales_order_id": so.id,
         "workflow_status": so.workflow_status,
-        "material_check": _serialize_material_check(mc),
+        "material_check": _serialize_material_check(mc, db),
         "production_orders": production_orders,
     }
 
@@ -2205,7 +2238,7 @@ def get_order_workflow_context(
         "workflow_status": ws,
         "delivery_date": so.delivery_date.isoformat() if so.delivery_date else None,
         "sales_person": so.sales_person,
-        "material_check": _serialize_material_check(mc) if mc else None,
+        "material_check": _serialize_material_check(mc, db) if mc else None,
         "work_orders": work_orders,
         "quality_inspections": quality_inspections,
         "dispatch": dispatch_data,

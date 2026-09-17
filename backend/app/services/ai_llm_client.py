@@ -16,10 +16,10 @@ logger = logging.getLogger(__name__)
 class LlmClient:
     def __init__(self) -> None:
         s = get_settings()
-        self.api_key = s.llm_api_key
-        self.base_url = s.llm_base_url.rstrip("/")
-        self.model = s.llm_model
-        self.timeout = s.llm_timeout_seconds
+        self.api_key = s.openai_api_key
+        self.base_url = (s.openai_base_url or "https://api.openai.com/v1").rstrip("/")
+        self.model = s.openai_model
+        self.timeout = s.openai_timeout_seconds
 
     @property
     def enabled(self) -> bool:

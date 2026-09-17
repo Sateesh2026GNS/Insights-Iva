@@ -23,6 +23,22 @@ function isPlatformRequest(config) {
 const apiCache = new Map();
 const CACHE_TTL_MS = 120_000; // Keep recently visited pages instant during normal navigation.
 
+function getApiCacheScope() {
+  try {
+    const raw = localStorage.getItem("smrt-user");
+    if (!raw) return "anon";
+    const user = JSON.parse(raw);
+    return String(user.tenant_id ?? user.company_id ?? user.id ?? "anon");
+  } catch {
+    return "anon";
+  }
+}
+
+function buildApiCacheKey(config) {
+  const scope = getApiCacheScope();
+  return `${scope}|${config.baseURL || ""}${config.url}?${JSON.stringify(config.params || {})}`;
+}
+
 export function clearApiCache() {
   apiCache.clear();
 }
@@ -62,7 +78,7 @@ api.interceptors.request.use((config) => {
       config.params = params;
     }
   } else if (method === "get" && !config.skipCache) {
-    const cacheKey = `${config.baseURL || ""}${config.url}?${JSON.stringify(config.params || {})}`;
+    const cacheKey = buildApiCacheKey(config);
     const cached = apiCache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
       config.adapter = () =>
@@ -131,7 +147,7 @@ api.interceptors.response.use(
     }
     const method = String(response.config?.method || "get").toLowerCase();
     if (method === "get" && response.status === 200 && response.data && typeof response.data === "object") {
-      const cacheKey = `${response.config.baseURL || ""}${response.config.url}?${JSON.stringify(response.config.params || {})}`;
+      const cacheKey = buildApiCacheKey(response.config);
       apiCache.set(cacheKey, {
         data: response.data,
         status: response.status,
@@ -212,6 +228,8 @@ api.interceptors.response.use(
         onApiError(httpStatusMessage(error));
       } else if (status === 403) {
         onApiError(httpStatusMessage(error, "You don't have permission to perform this action."));
+      } else if (status === 429) {
+        onApiError(httpStatusMessage(error, "Too many requests. Please wait and try again."));
       }
     }
     return Promise.reject(error);

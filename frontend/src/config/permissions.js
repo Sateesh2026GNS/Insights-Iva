@@ -130,6 +130,8 @@ export const ROUTE_MODULE_OVERRIDES = {
   "/maintenance/machine-history": "maintenance",
   "/analytics/sales": "analytics",
   "/analytics/finance": "analytics",
+  "/inventory/reports": "inventory",
+  "/store/reports": "inventory",
   "/manufacturing/workflow": "dashboard",
   "/manufacturing/job-card": "sales",
   "/my-job-cards": "sales",
@@ -285,6 +287,8 @@ export function userCanAccess(user, module) {
 export const STORE_MANAGER_ALLOWED_PATHS = new Set([
   "/",
   "/inventory",
+  "/inventory/reports",
+  "/store/reports",
   "/inventory/dashboard",
   "/inventory/settings",
   "/inventory/raw-materials",
@@ -401,6 +405,7 @@ export function storeManagerPathAllowed(pathname) {
   if (path.startsWith("/my-job-cards/")) return true;
   if (STORE_MANAGER_ALLOWED_PATHS.has(path)) return true;
   if (path.startsWith("/inventory")) return true;
+  if (path.startsWith("/store")) return true;
   if (path.startsWith("/purchases")) return true;
   if (path.startsWith("/procurement")) return true;
   if (path.startsWith("/accounts/ledger")) return true;

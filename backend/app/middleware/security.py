@@ -49,6 +49,21 @@ def _client_key(request: Request, email: str | None = None) -> str:
     return f"{ip}:{email_part}"
 
 
+def _retry_after_seconds(hits: list[float], window_seconds: int, now: float) -> int:
+    if not hits:
+        return max(1, window_seconds)
+    oldest = min(hits)
+    return max(1, int(math.ceil(window_seconds - (now - oldest))))
+
+
+def _raise_rate_limited(detail: str, retry_after: int) -> None:
+    raise HTTPException(
+        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+        detail=detail,
+        headers={"Retry-After": str(retry_after)},
+    )
+
+
 def _enforce_bucket(
     key: str,
     *,
@@ -60,10 +75,7 @@ def _enforce_bucket(
     with _lock:
         hits = [t for t in _buckets[key] if now - t < window_seconds]
         if len(hits) >= max_requests:
-            raise HTTPException(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail=detail,
-            )
+            _raise_rate_limited(detail, _retry_after_seconds(hits, window_seconds, now))
         hits.append(now)
         _buckets[key] = hits
 
@@ -126,6 +138,8 @@ def check_rate_limit(
         "otp": MSG_OTP,
         "api_public": MSG_API_PUBLIC,
         "api_authenticated": MSG_API_AUTH,
+        "api_reports": MSG_API_AUTH,
+        "api_agent": MSG_API_AUTH,
         "upload": MSG_UPLOAD,
     }
     detail = scope_messages.get(scope, MSG_API_PUBLIC)
@@ -146,6 +160,12 @@ def check_rate_limit(
         elif scope == "api_authenticated":
             max_requests = settings.api_authenticated_rate_limit
             window_seconds = settings.api_authenticated_rate_window_seconds
+        elif scope == "api_reports":
+            max_requests = settings.api_reports_rate_limit
+            window_seconds = settings.api_reports_rate_window_seconds
+        elif scope == "api_agent":
+            max_requests = settings.api_agent_rate_limit
+            window_seconds = settings.api_agent_rate_window_seconds
         else:
             max_requests = settings.forgot_password_rate_limit
             window_seconds = settings.forgot_password_rate_window_seconds
@@ -179,7 +199,7 @@ def check_rate_limit(
             )
         return
 
-    if scope in ("api_public", "api_authenticated"):
+    if scope in ("api_public", "api_authenticated", "api_reports"):
         ip = _client_ip(request)
         _enforce_bucket(
             f"{scope}:ip:{ip}",
@@ -210,13 +230,30 @@ _AUTH_PATH_FRAGMENTS = (
     "/auth/forgot-password",
     "/auth/reset-password",
     "/auth/verify",
+    "/auth/resend-verification",
     "/auth/refresh",
     "/platform/auth/",
 )
 
+_REPORTS_PATH_PREFIX = "/api/v1/reports"
+
+
+def rate_limit_json_response(exc: HTTPException) -> JSONResponse:
+    headers = dict(exc.headers or {})
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail},
+        headers=headers,
+    )
+
 
 class ApiRateLimitMiddleware(BaseHTTPMiddleware):
-    """Global per-IP rate limiting for public and authenticated API traffic."""
+    """Global per-IP rate limiting for public and authenticated API traffic.
+
+    Uses in-memory buckets (per process). Safe for single-worker Render/gunicorn -w 1;
+    with multiple workers each process enforces its own cap. Use a shared store (e.g. Redis)
+    only if you scale workers and need a global limit.
+    """
 
     async def dispatch(self, request: Request, call_next) -> Response:
         path = request.url.path or ""
@@ -232,7 +269,14 @@ class ApiRateLimitMiddleware(BaseHTTPMiddleware):
             try:
                 check_rate_limit(request, scope="upload")
             except HTTPException as exc:
-                return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
+                return rate_limit_json_response(exc)
+            return await call_next(request)
+
+        if path.startswith(_REPORTS_PATH_PREFIX):
+            try:
+                check_rate_limit(request, scope="api_reports")
+            except HTTPException as exc:
+                return rate_limit_json_response(exc)
             return await call_next(request)
 
         has_bearer = bool(request.headers.get("Authorization", "").startswith("Bearer "))
@@ -242,6 +286,6 @@ class ApiRateLimitMiddleware(BaseHTTPMiddleware):
             elif path.startswith("/api/") or path.startswith("/sales/") or path.startswith("/auth/"):
                 check_rate_limit(request, scope="api_public")
         except HTTPException as exc:
-            return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
+            return rate_limit_json_response(exc)
 
         return await call_next(request)

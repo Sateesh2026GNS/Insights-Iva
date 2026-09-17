@@ -370,7 +370,7 @@ export default function JobCardQueueTable({
           <table className="ui-table min-w-full text-left">
             <thead className="ui-table-head">
               <tr>
-                <SerialNumberHeader label="#" />
+                <SerialNumberHeader label="S.No." />
                 <th className="whitespace-nowrap px-3 py-2 font-semibold">Job Card No.</th>
                 <th className="whitespace-nowrap px-3 py-2 font-semibold">Date</th>
                 <th className="whitespace-nowrap px-3 py-2 font-semibold">Sales Order No.</th>

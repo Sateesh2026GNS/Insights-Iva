@@ -33,7 +33,12 @@ import {
 import { useToast } from "../../context/ToastContext";
 import { classifyApiError } from "../../utils/apiError";
 import { salesOrderDeleteErrorMessage } from "../../utils/salesOrderDelete";
-import { uniqueFilterValues } from "../../utils/storeJobCardQueue";
+import {
+  compareStoreQueueRows,
+  matchesStoreStatusBucket,
+  STORE_ACTIONABLE_STATUSES,
+  uniqueFilterValues,
+} from "../../utils/storeJobCardQueue";
 import {
   jobCardCreateUrl,
   jobCardDetailsUrl,
@@ -48,7 +53,7 @@ import "../../styles/my-job-cards-page.css";
 import "../../styles/workflow-next-step.css";
 
 const PAGE_SIZES = [10, 20, 50, 100];
-const FETCH_LIMIT = 500;
+const FETCH_LIMIT = 2000;
 
 const EMPTY_FILTERS = {
   search: "",
@@ -93,17 +98,7 @@ function inDateRange(iso, from, to) {
 }
 
 const TEAM_STATUS_MAP = {
-  inventory: new Set([
-    "MATERIAL_CHECK_PENDING",
-    "MATERIAL_SHORTAGE",
-    "MATERIAL_PARTIAL",
-    "MATERIAL_AVAILABLE",
-    "STORE_ISSUE_PENDING",
-    "STORE_ISSUE_PARTIAL",
-    "PACKING_PENDING",
-    "PACKING_IN_PROGRESS",
-    "PACKED",
-  ]),
+  inventory: STORE_ACTIONABLE_STATUSES,
   production: new Set([
     "READY_FOR_PRODUCTION",
     "PRODUCTION_ASSIGNED",
@@ -173,7 +168,8 @@ export default function MyJobCardsPage() {
   const qualityMode = effectiveTeam === "quality";
   const showStockFilter = storeMode;
   const storeKpiCounts = queueMeta?.counts || {};
-  const salesJobCardsPending = Number(storeKpiCounts.sales_job_cards_pending || 0);
+  const storePendingCount = Number(storeKpiCounts.store_pending || 0);
+  const bucketFromUrl = searchParams.get("bucket");
   const canSendManual =
     !billingMode &&
     !operatorMode &&
@@ -261,6 +257,20 @@ export default function MyJobCardsPage() {
   }, [load]);
   useEffect(() => registerRetry(() => load(true)), [registerRetry, load]);
 
+  const statusFromUrl = searchParams.get("status");
+  useEffect(() => {
+    if (!statusFromUrl) return;
+    const status = String(statusFromUrl).trim();
+    if (!status) return;
+    setDraftFilters((f) => ({ ...f, status }));
+    setAppliedFilters((f) => ({ ...f, status }));
+  }, [statusFromUrl]);
+
+  useEffect(() => {
+    if (!storeMode || !bucketFromUrl) return;
+    setPage(1);
+  }, [storeMode, bucketFromUrl]);
+
   const selectedOrderId = useMemo(() => {
     const id = Number(activeOrderId);
     return Number.isFinite(id) ? id : null;
@@ -319,8 +329,14 @@ export default function MyJobCardsPage() {
     if (f.dateFrom || f.dateTo) {
       list = list.filter((r) => inDateRange(r.order_date || r.received_at, f.dateFrom, f.dateTo));
     }
+    if (storeMode && bucketFromUrl) {
+      list = list.filter((r) => matchesStoreStatusBucket(r, bucketFromUrl));
+    }
+    if (storeMode) {
+      list = [...list].sort(compareStoreQueueRows);
+    }
     return list;
-  }, [rows, appliedFilters, showStockFilter, effectiveTeam]);
+  }, [rows, appliedFilters, showStockFilter, effectiveTeam, storeMode, bucketFromUrl]);
 
   useEffect(() => {
     if (!isSalesListMode) return;
@@ -608,6 +624,7 @@ export default function MyJobCardsPage() {
           jobCardId={activeJobCardId || null}
           row={activeRow}
           onSend={(row) => setSendTarget(row)}
+          onQueueUpdated={() => load(true)}
           showEmptyShell={!activeOrderId && !activeJobCardId}
           emptyMessage={
             filtered.length === 0
@@ -617,12 +634,15 @@ export default function MyJobCardsPage() {
         />
       ) : null}
 
-      {storeMode && salesJobCardsPending > 0 ? (
-        <Link to="/my-job-cards?dept=inventory" className="my-job-cards-page__kpi-card">
+      {storeMode && storePendingCount > 0 ? (
+        <Link
+          to="/my-job-cards?dept=inventory&bucket=store_pending"
+          className="my-job-cards-page__kpi-card"
+        >
           <ClipboardList className="h-5 w-5" aria-hidden />
           <div>
-            <span className="my-job-cards-page__kpi-label">Sales Job Cards</span>
-            <span className="my-job-cards-page__kpi-value">Pending: {salesJobCardsPending}</span>
+            <span className="my-job-cards-page__kpi-label">Pending Job Cards</span>
+            <span className="my-job-cards-page__kpi-value">Pending: {storePendingCount}</span>
           </div>
         </Link>
       ) : null}

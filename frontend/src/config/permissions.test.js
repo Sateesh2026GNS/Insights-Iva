@@ -126,6 +126,15 @@ describe("Store Manager settings access", () => {
     expect(userCanAccessPath({ role: "Store Manager", permissions: [] }, "/settings")).toBe(true);
   });
 
+  it("allows Store Manager to open inventory reports and stock ledger", () => {
+    expect(userCanAccessPath({ role: "Store Manager", permissions: [] }, "/inventory/reports")).toBe(true);
+    expect(userCanAccessPath({ role: "Store Manager", permissions: [] }, "/store/reports")).toBe(true);
+    expect(userCanAccessPath({ role: "Store Manager", permissions: [] }, "/inventory/stock-ledger")).toBe(
+      true
+    );
+    expect(userCanAccessPath({ role: "Store Manager", permissions: [] }, "/reports")).toBe(false);
+  });
+
   it("denies sales job card create/edit paths", () => {
     const storeManager = {
       role: "Store Manager",
@@ -144,7 +153,7 @@ describe("getDashboardPathForRole", () => {
     expect(getDashboardPathForRole("Production Manager")).toBe("/production");
     expect(getDashboardPathForRole("Operator")).toBe("/");
     expect(getDashboardPathForRole("operator")).toBe("/");
-    expect(getDashboardPathForRole("Store Manager")).toBe("/inventory");
+    expect(getDashboardPathForRole("Store Manager")).toBe("/inventory/dashboard");
     expect(getDashboardPathForRole("HR Manager")).toBe("/hr");
     expect(getDashboardPathForRole("Sales Manager")).toBe("/");
     expect(getDashboardPathForRole("Accountant")).toBe("/accounts");

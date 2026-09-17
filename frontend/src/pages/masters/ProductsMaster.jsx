@@ -22,6 +22,8 @@ import { deleteProduct, getProducts } from "../../api/productsApi";
 import { computeSummary, enrichApiProduct, getCategoryChartData } from "../../data/productsMasterData";
 import { runListExport } from "../../utils/listExport";
 import { apiErrorMessage } from "../../utils/apiError";
+import { removeLocalProducts } from "../../utils/localProductCache";
+import { invalidateReferenceCache } from "../../utils/referenceDataCache";
 
 import EmptyState from "../../components/common/EmptyState";
 import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
@@ -126,19 +128,27 @@ export default function ProductsMaster() {
     if (!deleting || deleteBusy) return;
     const rawId = deleting.id;
     const numericId = typeof rawId === "number" ? rawId : Number(rawId);
-    const canCallApi = Number.isFinite(numericId) && String(rawId) !== "demo-product";
+    const canCallApi = Number.isFinite(numericId) && numericId > 0;
     setDeleteBusy(true);
     try {
-      if (canCallApi) {
-        if (pathname.startsWith("/inventory")) {
-          const { deleteInventoryV2Item } = await import("../../api/inventoryV2Api");
-          await deleteInventoryV2Item(numericId);
-        } else {
-          await deleteProduct(numericId);
-        }
+      if (!canCallApi) {
+        addToast("This product cannot be deleted on the server. Refresh the list and try again.", "error");
+        return;
       }
-      setProducts((prev) => prev.filter((p) => String(p.id) !== String(rawId)));
+      if (pathname.startsWith("/inventory")) {
+        const { deleteInventoryV2Item } = await import("../../api/inventoryV2Api");
+        await deleteInventoryV2Item(numericId);
+      } else {
+        await deleteProduct(numericId);
+      }
+      removeLocalProducts({
+        id: numericId,
+        sku: deleting.sku || deleting.product_code,
+        name: deleting.name,
+      });
+      invalidateReferenceCache("products");
       setDeleting(null);
+      await loadProducts();
       addToast("Product deleted", "success");
     } catch (err) {
       addToast(apiErrorMessage(err, "Could not delete product. It may be linked to other records."), "error");

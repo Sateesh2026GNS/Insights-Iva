@@ -10,6 +10,12 @@ export default class ErrorBoundary extends Component {
     return { hasError: true, error };
   }
 
+  componentDidUpdate(prevProps) {
+    if (this.state.hasError && prevProps.resetKey !== this.props.resetKey) {
+      this.setState({ hasError: false, error: null });
+    }
+  }
+
   componentDidCatch(error) {
     const msg = String(error?.message || "");
     const isDynamicImportError =
@@ -49,14 +55,17 @@ export default class ErrorBoundary extends Component {
                 ? "A new version of the application has been published. Please reload the page to load the latest update."
                 : "Don't worry — your data is safe. Try reloading or return to the dashboard."}
             </p>
-            {this.state.error?.message && !isDynamicImportError && (
-              <pre className="mt-4 max-h-24 overflow-auto rounded-lg bg-slate-50 p-3 text-left text-xs text-slate-600 dark:bg-slate-900 dark:text-slate-400">
-                {this.state.error.message}
-              </pre>
-            )}
             <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-center">
               <Button
                 variant="primary"
+                type="button"
+                onClick={() => this.setState({ hasError: false, error: null })}
+                className="w-full sm:w-auto"
+              >
+                Try again
+              </Button>
+              <Button
+                variant="outline"
                 type="button"
                 onClick={() => window.location.reload()}
                 className="w-full sm:w-auto"

@@ -26,7 +26,6 @@ export const FactoryMonitorProductionLines = lazy(() => import("../pages/factory
 export const CreateMachine = lazy(() => import("../pages/production/CreateMachine"));
 export const DailyReports = lazy(() => import("../pages/production/DailyReports"));
 export const CreateProduction = lazy(() => import("../pages/production/CreateProduction"));
-export const QuickCreateWorkOrder = lazy(() => import("../pages/production/QuickCreateWorkOrder"));
 export const TaskManagement = lazy(() => import("../pages/production/TaskManagement"));
 export const InventoryDashboard = lazy(() => import("../pages/inventory/InventoryDashboard"));
 export const InventoryV2 = lazy(() => import("../pages/inventory/InventoryV2"));
@@ -44,6 +43,10 @@ export const StoreInventoryHistory = lazy(() => import("../pages/inventory/Store
 export const StockTransfer = lazy(() => import("../pages/inventory/StockTransfer"));
 export const StockAdjustment = lazy(() => import("../pages/inventory/StockAdjustment"));
 export const StockLedger = lazy(() => import("../pages/inventory/StockLedger"));
+export const PendingInventoryChecks = lazy(() => import("../pages/inventory/PendingInventoryChecks"));
+export const TodaysStockOut = lazy(() => import("../pages/inventory/TodaysStockOut"));
+export const StoreInventoryReports = lazy(() => import("../pages/inventory/StoreInventoryReports"));
+export const StoreReportsPage = lazy(() => import("../pages/store/StoreReportsPage"));
 export const Warehouses = lazy(() => import("../pages/inventory/Warehouses"));
 export const Suppliers = lazy(() => import("../pages/inventory/Suppliers"));
 export const CreateItem = lazy(() => import("../pages/inventory/CreateItem"));

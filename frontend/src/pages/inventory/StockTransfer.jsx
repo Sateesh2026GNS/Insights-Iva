@@ -144,7 +144,10 @@ export default function StockTransfer() {
   const [updatingId, setUpdatingId] = useState(null);
   const [showForm, setShowForm] = useState(() => searchParams.get("new") === "1");
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState(() => {
+    const s = String(searchParams.get("status") || "").toLowerCase();
+    return s === "pending" ? "pending" : "";
+  });
   const [showFilters, setShowFilters] = useState(false);
   const [headerDate, setHeaderDate] = useState(() => todayIso());
   const [headerWarehouse, setHeaderWarehouse] = useState("");
@@ -188,6 +191,8 @@ export default function StockTransfer() {
     if (searchParams.get("new") === "1") {
       openForm();
     }
+    const s = String(searchParams.get("status") || "").toLowerCase();
+    if (s === "pending") setStatusFilter("pending");
   }, [searchParams, openForm]);
 
   useEffect(() => {

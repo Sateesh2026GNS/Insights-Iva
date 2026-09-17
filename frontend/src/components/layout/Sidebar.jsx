@@ -532,7 +532,7 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
         </button>
       ) : null}
       <div className={`shrink-0 border-b border-white/10 ${collapsed ? "p-3" : "px-4 py-4 sm:py-5"} flex items-center justify-between`}>
-        <Link to={storeMode ? "/inventory" : "/"} className={`flex items-center ${collapsed ? "justify-center" : "gap-3"} min-w-0`} onClick={() => onClose?.()}>
+        <Link to={storeMode ? "/inventory/dashboard" : "/"} className={`flex items-center ${collapsed ? "justify-center" : "gap-3"} min-w-0`} onClick={() => onClose?.()}>
           <BrandLogo size="md" imageClassName="rounded-lg bg-white/95 p-0.5" />
           {!collapsed && (
             <div className="min-w-0">
