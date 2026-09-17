@@ -115,8 +115,17 @@ class PendingInventoryCheckOrder(BaseModel):
     workflow_status: str = "MATERIAL_CHECK_PENDING"
 
 
+class PendingInventoryChecksListRead(BaseModel):
+    total: int = 0
+    items: list[PendingInventoryCheckOrder] = Field(default_factory=list)
+
+
 class StoreDashboardRead(BaseModel):
     total_products: int = 0
+    """Product catalog (All Items / Inventory V2) counts — align KPI clicks with /inventory."""
+    catalog_product_count: int = 0
+    catalog_low_stock_count: int = 0
+    catalog_out_of_stock_count: int = 0
     current_inventory_qty: int = 0
     low_stock_items: int = 0
     out_of_stock_items: int = 0
@@ -127,6 +136,8 @@ class StoreDashboardRead(BaseModel):
     warehouse_utilization_pct: float = 0
     pending_inventory_checks: int = 0
     sales_job_cards_pending: int = 0
+    store_pending: int = 0
+    store_actionable_total: int = 0
     pending_inventory_orders: list[PendingInventoryCheckOrder] = Field(default_factory=list)
 
 

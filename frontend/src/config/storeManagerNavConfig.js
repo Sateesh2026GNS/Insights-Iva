@@ -1,5 +1,7 @@
 import {
+  AlertTriangle,
   ArrowLeftRight,
+  ArrowUpFromLine,
   Boxes,
   Building2,
   ClipboardList,
@@ -11,6 +13,7 @@ import {
   Package,
   PackageMinus,
   PackagePlus,
+  PackageX,
   Receipt,
   RotateCcw,
   Settings,
@@ -94,7 +97,7 @@ export const STORE_MANAGER_NAV_ITEMS = [
       {
         key: "inventoryCheck",
         label: "Inventory Check",
-        to: "/inventory/material-requests",
+        to: "/my-job-cards?dept=inventory",
         icon: ClipboardList,
       },
       {
@@ -105,6 +108,26 @@ export const STORE_MANAGER_NAV_ITEMS = [
       },
       { key: "warehouses", label: "Warehouses", to: "/inventory/warehouses", icon: Warehouse },
       { key: "inventorySettings", label: "Inventory Settings", to: "/inventory/settings", icon: Settings },
+      { key: "lowStock", label: "Low Stock Items", to: "/inventory/low-stock", icon: AlertTriangle },
+      { key: "outOfStock", label: "Out of Stock Items", to: "/inventory/out-of-stock", icon: PackageX },
+      {
+        key: "pendingInventoryChecks",
+        label: "Pending Inventory Checks",
+        to: "/inventory/pending-inventory-checks",
+        icon: ClipboardList,
+      },
+      {
+        key: "todaysStockOut",
+        label: "Today's Stock Out",
+        to: "/inventory/todays-stock-out",
+        icon: ArrowUpFromLine,
+      },
+      {
+        key: "stockLedger",
+        label: "Stock Ledger",
+        to: "/inventory/stock-ledger",
+        icon: History,
+      },
     ],
   },
   {
@@ -137,8 +160,9 @@ export const STORE_MANAGER_NAV_ITEMS = [
   {
     key: "reports",
     label: "Reports",
-    to: "/inventory/stock-ledger",
+    to: "/inventory/reports",
     icon: FileBarChart2,
+    end: true,
   },
   {
     key: "settings",

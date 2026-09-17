@@ -213,6 +213,35 @@ def test_my_queue_endpoint_alias(client):
     assert "meta" in r2.json()
 
 
+def test_store_manager_queue_ascending_order_and_total(client):
+    tenant_id = 1
+    customer_id, product_id = _ensure_customer_and_product(tenant_id)
+    sales_headers = _create_role_user(client, tenant_id, "Sales Manager")
+    store_headers = _create_role_user(client, tenant_id, "Store Manager")
+
+    first_id = _create_and_confirm_order(client, sales_headers, customer_id, product_id)
+    second_id = _create_and_confirm_order(client, sales_headers, customer_id, product_id)
+
+    res = client.get(
+        "/manufacturing/workflow/my-queue",
+        headers=store_headers,
+        params={"limit": 2000},
+    )
+    assert res.status_code == 200, res.text
+    body = res.json()
+    assert "total" in body
+    ids = [
+        r.get("sales_order_id")
+        for r in body["items"]
+        if r.get("sales_order_id") in {first_id, second_id}
+    ]
+    assert ids == sorted(ids)
+    assert body["total"] >= len(body["items"])
+    counts = body.get("meta", {}).get("counts") or {}
+    assert "store_pending" in counts
+    assert counts.get("actionable_queue_total", 0) >= len(body["items"])
+
+
 def test_unauthorized_status_filter_returns_403(client):
     tenant_id = 1
     store_headers = _create_role_user(client, tenant_id, "Store Manager")

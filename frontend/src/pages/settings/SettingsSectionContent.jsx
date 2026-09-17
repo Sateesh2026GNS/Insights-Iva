@@ -931,7 +931,7 @@ function AiSection() {
           </Field>
         </div>
         <p className="mt-3 text-xs text-slate-500">
-          Production keys should be set as <code className="rounded bg-slate-100 px-1">LLM_API_KEY</code> in{" "}
+          Production keys should be set as <code className="rounded bg-slate-100 px-1">OPENAI_API_KEY</code> in{" "}
           <code className="rounded bg-slate-100 px-1">backend/.env</code>.
         </p>
       </SectionCard>

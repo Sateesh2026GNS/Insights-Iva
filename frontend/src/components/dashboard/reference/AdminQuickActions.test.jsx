@@ -48,7 +48,7 @@ describe("AdminQuickActions", () => {
     expect(screen.getByText("refDashboard.quickActions")).toBeInTheDocument();
     expect(screen.getByLabelText("refDashboard.newWorkOrderAria")).toHaveAttribute(
       "href",
-      "/production/work-orders/create-quick"
+      "/production/work-orders"
     );
     expect(screen.getByLabelText("refDashboard.productionEntryAria")).toHaveAttribute(
       "href",

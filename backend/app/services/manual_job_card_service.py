@@ -1653,11 +1653,12 @@ def list_manual_job_cards(
             SalesJobCard.tenant_id == tenant_id,
             SalesJobCard.sales_order_id.is_(None),
         )
-        .order_by(SalesJobCard.id.desc())
-        .limit(limit)
+        .order_by(SalesJobCard.id.asc() if for_store else SalesJobCard.id.desc())
     )
     if for_store:
         q = q.where(SalesJobCard.workflow_stage.in_(list(STORE_INVENTORY_STATUSES)))
+    else:
+        q = q.limit(limit)
     cards = list(db.scalars(q).all())
     if for_store and user:
         from app.core.permissions import get_role_names, user_is_admin
@@ -1669,6 +1670,8 @@ def list_manual_job_cards(
                 if _manual_visible_to_recipient(details, user.id, dept="inventory"):
                     scoped.append(jc)
             cards = scoped
+    if for_store and limit and len(cards) > limit:
+        cards = cards[:limit]
     elif user and not for_store:
         from app.core.permissions import get_role_names, user_is_admin
         from app.core.workflow_constants import TEAM_SALES, user_teams
@@ -1698,15 +1701,17 @@ def list_manual_job_cards_for_recipient(
     """Manual job cards explicitly sent to the given user for a department queue."""
     from app.core.permissions import user_is_admin
 
+    store_dept = dept == "inventory"
     q = (
         select(SalesJobCard)
         .where(
             SalesJobCard.tenant_id == tenant_id,
             SalesJobCard.sales_order_id.is_(None),
         )
-        .order_by(SalesJobCard.id.desc())
-        .limit(limit)
+        .order_by(SalesJobCard.id.asc() if store_dept else SalesJobCard.id.desc())
     )
+    if not store_dept:
+        q = q.limit(limit)
     cards = list(db.scalars(q).all())
     items: list[dict[str, Any]] = []
     for jc in cards:
@@ -1720,6 +1725,8 @@ def list_manual_job_cards_for_recipient(
                 if str(item.get("workflow_status") or "").upper() != sf:
                     continue
             items.append(item)
+    if store_dept and limit and len(items) > limit:
+        items = items[:limit]
     return items
 
 

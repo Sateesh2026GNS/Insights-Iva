@@ -1,6 +1,16 @@
 import { jobCardDetailsUrl } from "./jobCardRoutes";
 import { stageJobCardUrl } from "./workflowStageRoutes";
 
+/** Matches backend ACTIONABLE_STATUSES_BY_TEAM for inventory (strict my-queue). */
+export const STORE_ACTIONABLE_STATUSES = new Set([
+  "MATERIAL_CHECK_PENDING",
+  "MATERIAL_SHORTAGE",
+  "MATERIAL_PARTIAL",
+  "MATERIAL_AVAILABLE",
+  "STORE_ISSUE_PENDING",
+  "STORE_ISSUE_PARTIAL",
+]);
+
 export const STORE_STATUS_BUCKETS = {
   store_pending: ["MATERIAL_CHECK_PENDING", "MATERIAL_SHORTAGE"],
   ready_to_issue: ["MATERIAL_AVAILABLE", "STORE_ISSUE_PENDING"],
@@ -40,6 +50,28 @@ export function storeQueueStatusLabel(row) {
   if (STORE_STATUS_BUCKETS.ready_to_issue.includes(ws)) return "Ready to Issue";
   if (STORE_STATUS_BUCKETS.partially_issued.includes(ws)) return "Partially Issued";
   return row?.status_label || row?.status || "—";
+}
+
+function jobCardSortNumber(row) {
+  const jno = String(row?.job_card_no || row?.order_number || "").trim();
+  const match = jno.match(/(\d+)\s*$/);
+  return match ? Number(match[1]) : 0;
+}
+
+/** Stable ascending order for store serial numbers (aligned with backend queue). */
+export function compareStoreQueueRows(a, b) {
+  const na = jobCardSortNumber(a);
+  const nb = jobCardSortNumber(b);
+  if (na !== nb) return na - nb;
+  const ja = String(a?.job_card_no || a?.order_number || "").toLowerCase();
+  const jb = String(b?.job_card_no || b?.order_number || "").toLowerCase();
+  if (ja !== jb) return ja.localeCompare(jb);
+  const ta = String(a?.received_at || a?.created_at || a?.order_date || "");
+  const tb = String(b?.received_at || b?.created_at || b?.order_date || "");
+  if (ta !== tb) return ta.localeCompare(tb);
+  const ia = Number(a?.job_card_id || a?.sales_order_id || 0);
+  const ib = Number(b?.job_card_id || b?.sales_order_id || 0);
+  return ia - ib;
 }
 
 export function matchesStoreStatusBucket(row, bucketKey) {

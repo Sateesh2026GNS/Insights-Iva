@@ -6,17 +6,19 @@ import RouteFallback from "./components/common/RouteFallback";
 import NavigationProgressBar from "./components/common/NavigationProgressBar";
 import NavigationLoadingOverlay from "./components/common/NavigationLoadingOverlay";
 import PageTransition from "./components/common/PageTransition";
+import RouteErrorBoundary from "./components/common/RouteErrorBoundary";
 import Navbar from "./components/layout/Navbar";
 import Sidebar from "./components/layout/Sidebar";
 import GlobalRefreshButton from "./components/common/GlobalRefreshButton";
 import Button from "./components/common/Button";
-import { isOperator } from "./config/permissions";
+import { isOperator, isStoreManager, storeManagerPathAllowed } from "./config/permissions";
 import useAuth from "./hooks/useAuth";
 import { isAiCopilotEnabled, isOperatorAiRoute } from "./utils/aiCopilot";
 import { triggerServerWakeup } from "./utils/serverWakeup";
 
 
 const AiChatWidget = lazy(() => import("./components/ai/AiChatWidget"));
+const StoreAgentChatPanel = lazy(() => import("./components/ai/StoreAgentChatPanel"));
 
 function normalizePath(pathname) {
   return (pathname || "/").replace(/\/+$/, "") || "/";
@@ -63,6 +65,21 @@ export function shouldShowChatbot(user, pathname) {
   return isOperatorAiRoute(pathname);
 }
 
+export function shouldShowStoreAgent(user, pathname) {
+  if (!user || !isStoreManager(user)) return false;
+  if (!isAiCopilotEnabled()) return false;
+  const path = normalizePath(pathname);
+  if (
+    path === "/login" ||
+    path === "/register" ||
+    path.startsWith("/gns-admin") ||
+    path.startsWith("/settings")
+  ) {
+    return false;
+  }
+  return storeManagerPathAllowed(pathname);
+}
+
 export default function App() {
   const location = useLocation();
   const { user } = useAuth();
@@ -90,6 +107,7 @@ export default function App() {
   }, []);
 
   const showChatbot = shouldShowChatbot(user, location.pathname);
+  const showStoreAgent = shouldShowStoreAgent(user, location.pathname);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -329,9 +347,11 @@ export default function App() {
                 />
               }
             >
-              <PageTransition fillViewport={isInvoiceEditor || isEInvoiceLogin}>
-                <AppRoutes />
-              </PageTransition>
+              <RouteErrorBoundary>
+                <PageTransition fillViewport={isInvoiceEditor || isEInvoiceLogin}>
+                  <AppRoutes />
+                </PageTransition>
+              </RouteErrorBoundary>
             </Suspense>
           </div>
           {showChatbot ? (
@@ -339,8 +359,15 @@ export default function App() {
               <AiChatWidget />
             </Suspense>
           ) : null}
+          {showStoreAgent ? (
+            <Suspense fallback={null}>
+              <StoreAgentChatPanel />
+            </Suspense>
+          ) : null}
         </main>
-        {!isInvoiceEditor ? <GlobalRefreshButton offsetForChat={showChatbot} /> : null}
+        {!isInvoiceEditor ? (
+          <GlobalRefreshButton offsetForChat={showChatbot || showStoreAgent} />
+        ) : null}
       </div>
     </div>
   );

@@ -44,7 +44,8 @@ export async function getCachedReference(namespace, fetchFn, options = {}) {
   const promise = Promise.resolve()
     .then(() => fetchFn())
     .then((data) => {
-      stores.set(key, { data, expires: Date.now() + ttlMs, promise: null });
+      const jitter = Math.floor(Math.random() * 0.1 * ttlMs);
+      stores.set(key, { data, expires: Date.now() + ttlMs + jitter, promise: null });
       return data;
     })
     .catch((err) => {

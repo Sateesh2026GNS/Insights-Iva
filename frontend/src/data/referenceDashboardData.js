@@ -17,7 +17,7 @@ export const ADMIN_QUICK_ACTIONS = [
     id: "new-work-order",
     labelKey: "newWorkOrder",
     ariaKey: "newWorkOrderAria",
-    to: "/production/work-orders/create-quick",
+    to: "/production/work-orders",
     icon: "clipboard",
     iconBg: "#3B82F6",
     module: "production",

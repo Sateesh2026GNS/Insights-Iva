@@ -43,7 +43,6 @@ export const PRODUCTION_MANAGER_ALLOWED_CHILDREN = new Set([
   "/production/dashboard",
   "/production/planning",
   "/production/work-orders",
-  "/production/work-orders/create-quick",
   "/production/schedule",
   "/production/tasks",
   "/production/reports",

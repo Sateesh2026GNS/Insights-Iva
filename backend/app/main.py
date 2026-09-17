@@ -53,6 +53,7 @@ from app.api.settings import router as company_settings_router
 from app.api.supply_chain import router as supply_chain_router
 from app.api.task_management import router as task_management_router
 from app.api.warehouse import router as warehouse_router
+from app.api.v1 import v1_router
 from app.routers import (
     dashboard_api_router,
     masters_api_router,
@@ -67,6 +68,7 @@ from app.core.database import engine
 from app.models import (  # noqa: F401
     accounts,
     ai_conversation,
+    ai_agent,
     alert,
     bom,
     company_settings,
@@ -87,6 +89,7 @@ from app.models import (  # noqa: F401
     production,
     product,
     quality,
+    reporting,
     role,
     sales,
     security,
@@ -457,6 +460,15 @@ def on_startup():
     finally:
         db.close()
 
+    if not settings.is_production:
+        key = (settings.openai_api_key or "").strip()
+        prefix = f"{key[:6]}..." if len(key) >= 6 else ("NOT SET" if not key else "(short)")
+        logger.info(
+            "OpenAI config: OPENAI_API_KEY=%s OPENAI_MODEL=%s",
+            prefix,
+            settings.openai_model,
+        )
+
 
 app.include_router(settings_api_router)
 app.include_router(notifications_api_router)
@@ -518,3 +530,4 @@ from app.api.system_data import router as system_data_router
 from app.api.manufacturing_workflow_api import router as manufacturing_workflow_router
 app.include_router(system_data_router, prefix="/api")
 app.include_router(manufacturing_workflow_router)
+app.include_router(v1_router, prefix="/api")

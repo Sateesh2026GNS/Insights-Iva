@@ -66,6 +66,17 @@ export default function AsyncPageBody({
   }
 
   if (message) {
+    if (classified?.type === "rate_limit") {
+      return (
+        <div className={className}>
+          <ErrorState
+            title={errorTitle || "Too many requests"}
+            description={message}
+            onRetry={onRetry}
+          />
+        </div>
+      );
+    }
     const isNetwork = !online || classified?.type === "network";
     if (isNetwork) {
       return (

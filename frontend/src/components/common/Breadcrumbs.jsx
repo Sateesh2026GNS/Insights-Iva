@@ -162,6 +162,8 @@ const PAGE_TITLE_OVERRIDES = {
   "/my-job-cards": "My Job Cards",
   "/sales/job-cards/create": "Create Job Card",
   "/accounts/gst": "GST",
+  "/reports": "Reports",
+  "/accounts/reports": "Reports",
   "/settings": "Settings",
   "/inventory": "Inventory",
   "/inventory/dashboard": "Store Dashboard",
@@ -172,6 +174,12 @@ const PAGE_TITLE_OVERRIDES = {
   "/inventory/stock-transfer": "Stock Transfer",
   "/inventory/stock-adjustment": "Stock Adjustment",
   "/inventory/stock-ledger": "Stock Ledger",
+  "/inventory/low-stock": "Low Stock Items",
+  "/inventory/out-of-stock": "Out of Stock Items",
+  "/inventory/pending-inventory-checks": "Pending Inventory Checks",
+  "/inventory/todays-stock-out": "Today's Stock Out",
+  "/inventory/reports": "Reports",
+  "/store/reports": "Reports",
   "/inventory/stock-movement": "Stock Movement",
   "/inventory/stock-in": "Stock In",
   "/inventory/stock-return": "Stock Return",
@@ -250,7 +258,6 @@ function getLabel(segment, segments, index) {
 
   if (segment === "dashboard" && prev === "inventory") return "Store Dashboard";
   if (segment === "settings" && prev === "inventory") return "Inventory Settings";
-  if (segment === "create-quick" && prev === "work-orders") return "Create Work Order";
   if (segment === "create" && prev && ENTITY_SINGULAR[prev]) {
     return `Create ${ENTITY_SINGULAR[prev]}`;
   }

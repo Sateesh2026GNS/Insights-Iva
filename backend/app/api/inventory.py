@@ -700,6 +700,7 @@ from app.schemas.store_workflow import (
     PurchaseRequisitionCreated,
     PurchaseRequisitionFromLowStock,
     StoreConsumeCreate,
+    PendingInventoryChecksListRead,
     StoreDashboardRead,
     StoreIssueRequestAction,
     StoreIssueRequestCreate,
@@ -726,6 +727,23 @@ def store_dashboard(
     tenant_id: int = Depends(tenant_scope(MODULE)), db: Session = Depends(get_db)
 ):
     return store_wf.get_store_dashboard(db, tenant_id)
+
+
+@router.get("/store/pending-inventory-checks", response_model=PendingInventoryChecksListRead)
+def store_pending_inventory_checks(
+    limit: int = Query(50, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    tenant_id: int = Depends(tenant_scope(MODULE)),
+    db: Session = Depends(get_db),
+):
+    from app.schemas.store_workflow import PendingInventoryCheckOrder
+    from app.services.workflow_team_service import list_pending_inventory_checks
+
+    total, rows = list_pending_inventory_checks(db, tenant_id, limit=limit, offset=offset)
+    return PendingInventoryChecksListRead(
+        total=total,
+        items=[PendingInventoryCheckOrder(**row) for row in rows],
+    )
 
 
 @router.post("/store/stock-in", response_model=StoreStockInRead)

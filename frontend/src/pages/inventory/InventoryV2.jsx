@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import usePageRefresh from "../../hooks/usePageRefresh";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import {
   ChevronDown,
   ListFilter,
@@ -31,6 +31,9 @@ import {
 } from "../../api/inventoryV2Api";
 import { exportToExcel, exportToPdf } from "../../utils/exportUtils";
 import { apiErrorMessage } from "../../utils/apiError";
+import { removeLocalProducts } from "../../utils/localProductCache";
+import { catalogStockReportMeta } from "../../utils/storeReportPageMeta";
+import { invalidateReferenceCache } from "../../utils/referenceDataCache";
 import {
   InventoryOutlineButton,
   InventoryPageCard,
@@ -59,6 +62,7 @@ const SORT_OPTIONS = [
 const STOCK_FILTERS = [
   { id: "all", label: "All" },
   { id: "in", label: "In Stock" },
+  { id: "low", label: "Low Stock" },
   { id: "out", label: "Out Of Stock" },
 ];
 
@@ -218,15 +222,36 @@ function StockAdjustModal({ mode, open, stock, unit, onClose, onSubmit }) {
   );
 }
 
+function stockFilterFromSearchParams(searchParams) {
+  const stock = String(searchParams.get("stock") || "").toLowerCase();
+  const legacy = String(searchParams.get("filter") || "").toLowerCase();
+  if (stock === "low" || legacy === "low_stock") return "low";
+  if (stock === "out" || legacy === "out_of_stock") return "out";
+  if (stock === "in") return "in";
+  return "all";
+}
+
+function stockFilterFromPath(pathname) {
+  const path = String(pathname || "").replace(/\/$/, "");
+  if (path.endsWith("/low-stock")) return "low";
+  if (path.endsWith("/out-of-stock")) return "out";
+  return null;
+}
+
 export default function InventoryV2() {
   const { addToast } = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const pathStockFilter = stockFilterFromPath(location.pathname);
+  const kpiStockFilter = pathStockFilter || stockFilterFromSearchParams(searchParams);
+  const lockedStockFilter = pathStockFilter != null;
   const [loading, setLoading] = useState(false);
   const [products, setProducts] = useState([]);
   const [tab, setTab] = useState("items");
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState("name-asc");
-  const [stockFilter, setStockFilter] = useState("all");
+  const [stockFilter, setStockFilter] = useState(() => kpiStockFilter);
   const [sortOpen, setSortOpen] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
   const [page, setPage] = useState(1);
@@ -270,6 +295,10 @@ export default function InventoryV2() {
   }, [load]);
 
   useEffect(() => {
+    setStockFilter(kpiStockFilter);
+  }, [kpiStockFilter, location.pathname]);
+
+  useEffect(() => {
     setPage(1);
   }, [search, sort, stockFilter, pageSize, tab]);
 
@@ -281,8 +310,14 @@ export default function InventoryV2() {
         if (!hay.includes(q)) return false;
       }
       const qty = Number(p.current_stock) || 0;
+      const minStk = Number(p.min_stock) || 0;
       if (stockFilter === "in" && qty <= 0) return false;
       if (stockFilter === "out" && qty > 0) return false;
+      if (stockFilter === "low") {
+        if (qty <= 0) return false;
+        if (minStk > 0 && qty <= minStk) return true;
+        return false;
+      }
       return true;
     });
     rows = [...rows].sort((a, b) => {
@@ -336,15 +371,23 @@ export default function InventoryV2() {
   const confirmDelete = async () => {
     if (!deleting || deleteBusy) return;
     const rawId = deleting.id;
-    const isDemo = String(rawId) === "demo-product";
+    const numericId = typeof rawId === "number" ? rawId : Number(rawId);
+    if (!Number.isFinite(numericId) || numericId <= 0) {
+      addToast("This item cannot be deleted on the server. Refresh the list and try again.", "error");
+      return;
+    }
     setDeleteBusy(true);
     try {
-      if (!isDemo) {
-        await deleteInventoryV2Item(rawId);
-      }
+      await deleteInventoryV2Item(numericId);
+      removeLocalProducts({
+        id: numericId,
+        sku: deleting.sku || deleting.product_code,
+        name: deleting.name,
+      });
+      invalidateReferenceCache("products");
       setDeleting(null);
-      addToast("Item deleted.");
-      load();
+      addToast("Item deleted.", "success");
+      await load();
     } catch (err) {
       addToast(apiErrorMessage(err, "Could not delete item."), "error");
     } finally {
@@ -430,13 +473,34 @@ export default function InventoryV2() {
       ]
     : [];
 
+  const stockReportMeta = catalogStockReportMeta(stockFilter === "low" ? "low" : stockFilter === "out" ? "out" : null);
+  const pageTitle = stockReportMeta?.title || "Stock Summary";
+  const pageSubtitle =
+    stockReportMeta?.subtitle || "See how much stock is available for each item.";
+  const emptyReportTitle = stockReportMeta?.emptyTitle;
+  const emptyReportDescription = stockReportMeta?.emptyDescription;
+
+  const itemTableHeaders = useMemo(() => {
+    if (stockFilter === "low") {
+      return ["HSN Code", "Item Name", "Available Quantity", "Minimum Stock Level", "Stock Value", "Action"];
+    }
+    if (stockFilter === "out") {
+      return ["HSN Code", "Item Name", "Available Quantity", "Stock Value", "Action"];
+    }
+    return ["HSN Code", "Item Name", "Stock Value", "Purchase Price", "Sales Price", "Stock In Hand", "Action"];
+  }, [stockFilter]);
+
   return (
     <InventoryPageShell className="space-y-5">
-      <PageHeader
-        variant="inventory"
-        title="Inventory"
-        subtitle="Manage items, categories, and stock levels"
-      />
+      <PageHeader variant="inventory" title={pageTitle} subtitle={pageSubtitle} />
+      {lockedStockFilter ? (
+        <div className="flex items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900">
+          <span>KPI filter active — showing {stockFilter === "low" ? "low stock" : "out of stock"} items only.</span>
+          <Link to="/inventory" className="font-semibold text-[var(--color-primary)] hover:underline">
+            View all items
+          </Link>
+        </div>
+      ) : null}
       <InventoryPageCard>
         <InventoryTabs
           active={tab}
@@ -455,7 +519,14 @@ export default function InventoryV2() {
 
         <div className="space-y-4 p-4 sm:p-5">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <InventorySearchInput value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search" />
+            <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-center">
+              <InventorySearchInput value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search" />
+              {tab === "items" ? (
+                <span className="text-sm font-medium text-[var(--color-text-muted)] whitespace-nowrap">
+                  Total matching: {total.toLocaleString("en-IN")}
+                </span>
+              ) : null}
+            </div>
 
             {tab === "items" ? (
               <div className="flex flex-wrap items-center gap-2">
@@ -538,23 +609,21 @@ export default function InventoryV2() {
                   <thead className={inventoryTableHeadClass}>
                     <tr>
                       <SerialNumberHeader className={`${inventoryThClass} border-r`} />
-                      {["HSN Code", "Item Name", "Stock Value", "Purchase Price", "Sales Price", "Stock In Hand", "Action"].map(
-                        (h) => (
+                      {itemTableHeaders.map((h) => (
                           <th key={h} className={`${inventoryThClass} last:border-r-0`}>
                             {h}
                           </th>
-                        )
-                      )}
+                        ))}
                     </tr>
                   </thead>
                   <tbody>
                     {pageRows.length === 0 ? (
                       <tr>
-                        <td colSpan={8} className="p-0 border-none">
+                        <td colSpan={itemTableHeaders.length + 1} className="p-0 border-none">
                           <EmptyState
                             icon="document"
-                            title="No records found."
-                            description="There is nothing to show here yet."
+                            title={emptyReportTitle || "No records found."}
+                            description={emptyReportDescription || "There is nothing to show here yet."}
                             className="border-none bg-transparent py-12"
                           />
                         </td>
@@ -573,10 +642,25 @@ export default function InventoryV2() {
                               {row.name}
                             </button>
                           </td>
-                          <td className={`${inventoryTdClass} tabular-nums`}>{Number(row.stock_value || 0).toFixed(1)}</td>
-                          <td className={`${inventoryTdClass} tabular-nums`}>{Number(row.purchase_price || 0).toFixed(1)}</td>
-                          <td className={`${inventoryTdClass} tabular-nums`}>{Number(row.selling_price || 0).toFixed(1)}</td>
-                          <td className={`${inventoryTdClass} tabular-nums`}>{Number(row.current_stock || 0)}</td>
+                          {stockFilter === "low" ? (
+                            <>
+                              <td className={`${inventoryTdClass} tabular-nums`}>{Number(row.current_stock || 0)}</td>
+                              <td className={`${inventoryTdClass} tabular-nums`}>{Number(row.min_stock || 0)}</td>
+                              <td className={`${inventoryTdClass} tabular-nums`}>{Number(row.stock_value || 0).toFixed(1)}</td>
+                            </>
+                          ) : stockFilter === "out" ? (
+                            <>
+                              <td className={`${inventoryTdClass} tabular-nums`}>{Number(row.current_stock || 0)}</td>
+                              <td className={`${inventoryTdClass} tabular-nums`}>{Number(row.stock_value || 0).toFixed(1)}</td>
+                            </>
+                          ) : (
+                            <>
+                              <td className={`${inventoryTdClass} tabular-nums`}>{Number(row.stock_value || 0).toFixed(1)}</td>
+                              <td className={`${inventoryTdClass} tabular-nums`}>{Number(row.purchase_price || 0).toFixed(1)}</td>
+                              <td className={`${inventoryTdClass} tabular-nums`}>{Number(row.selling_price || 0).toFixed(1)}</td>
+                              <td className={`${inventoryTdClass} tabular-nums`}>{Number(row.current_stock || 0)}</td>
+                            </>
+                          )}
                           <td className={inventoryTdClass}>
                             <div className="flex items-center justify-end whitespace-nowrap">
                               <InventoryRowActionsMenu

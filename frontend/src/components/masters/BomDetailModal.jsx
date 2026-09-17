@@ -560,7 +560,7 @@ export default function BomDetailModal({ bom, onClose, onEdit, onCopy, onDelete,
           <button type="button" onClick={() => onPrint(bom)} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">
             <FileText className="h-3.5 w-3.5" /> Print PDF
           </button>
-          <Link to="/production/work-orders/create-quick" className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 no-underline">
+          <Link to="/production/work-orders" className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 no-underline">
             <Package className="h-3.5 w-3.5" /> Create Production Order
           </Link>
           <button type="button" className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">

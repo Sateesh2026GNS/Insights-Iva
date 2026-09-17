@@ -827,8 +827,6 @@ def format_tool_result(tool_name: str, result: dict) -> str:
                     lines.append("  - **Raw Materials:** No BOM materials configured")
         if delayed > 0:
             lines += ["", f"⚠️ **Alert:** {delayed} work order(s) are delayed — immediate attention required!"]
-        else:
-            lines += ["", "💡 **Insight:** All work orders are on track today. ✅"]
         return "\n".join(lines)
     if tool_name == "get_todays_production":
         target    = result.get("todays_target", 0)
@@ -845,7 +843,6 @@ def format_tool_result(tool_name: str, result: dict) -> str:
             f"- ⏳ **Remaining:** **{remaining:,} units**\n"
             f"- 📊 **Progress:**  **{prog}%** {bar}\n"
             f"- 📍 **Status:**    {status}\n"
-            f"\n💡 **Insight:** {'Great progress! Keep up the pace.' if prog >= 80 else 'Production is behind — consider overtime or additional resources.'}"
         )
     if tool_name == "get_machine_status":
         machines = result.get("machines") or []
@@ -886,8 +883,6 @@ def format_tool_result(tool_name: str, result: dict) -> str:
             lines += ["", f"🔴 **Alert:** {breakdown} machine(s) in breakdown — raise maintenance request immediately!"]
         elif maint > 0:
             lines += ["", f"🔧 **Note:** {maint} machine(s) under scheduled maintenance."]
-        else:
-            lines += ["", f"💡 **Insight:** All machines operational. Utilization: **{round(running/total*100,1) if total else 0}%**"]
         return "\n".join(lines)
     if tool_name == "get_running_machines":
         machines = result.get("machines") or []

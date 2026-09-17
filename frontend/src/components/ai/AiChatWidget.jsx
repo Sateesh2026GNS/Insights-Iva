@@ -232,10 +232,15 @@ export default function AiChatWidget() {
     } catch (err) {
       const status = err.response?.status;
       const detail = err.response?.data?.detail;
-      let message =
-        typeof detail === "string"
-          ? detail
-          : "I couldn't retrieve the requested data. Please try again later.";
+      let message;
+      if (!err.response) {
+        message =
+          "Could not reach the AI service. Ensure the backend is running and restart the dev server after pulling updates.";
+      } else if (typeof detail === "string") {
+        message = detail;
+      } else {
+        message = "I couldn't retrieve the requested data. Please try again later.";
+      }
       if (status === 403) {
         message =
           typeof detail === "string" && detail

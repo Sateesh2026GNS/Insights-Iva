@@ -7,6 +7,7 @@ import { ErrorState, LoadingState } from "../common/states";
 import StoreManagerJobCardDocument from "./StoreManagerJobCardDocument";
 import SalesJobCardDocument from "./SalesJobCardDocument";
 import StoreManualJobCardActions from "./StoreManualJobCardActions";
+import SalesOrderMaterialCheckPanel from "./SalesOrderMaterialCheckPanel";
 import WorkflowNextStep from "./WorkflowNextStep";
 import { getJobCardWorkflowGuidance } from "../../utils/jobCardWorkflowUx";
 import { manualJobCardCanSend } from "../../utils/manualSalesJobCard";
@@ -27,6 +28,7 @@ export default function StoreManagerJobCardDocumentPanel({
   showEmptyShell = false,
   emptyMessage = "Select a job card from the list below to open the Store Manager Job Card.",
   onSend,
+  onQueueUpdated,
 }) {
   const { user } = useAuth();
   const tenantId = useTenantId();
@@ -75,23 +77,22 @@ export default function StoreManagerJobCardDocumentPanel({
     else setManualCard(null);
   }, [resolvedJobCardId, loadManual]);
 
-  useEffect(() => {
+  const reloadMaterialCheck = useCallback(async () => {
     if (!resolvedOrderId) {
       setMaterialCheck(null);
       return;
     }
-    let cancelled = false;
-    getMaterialCheck(resolvedOrderId)
-      .then((res) => {
-        if (!cancelled) setMaterialCheck(res?.data ?? res);
-      })
-      .catch(() => {
-        if (!cancelled) setMaterialCheck(null);
-      });
-    return () => {
-      cancelled = true;
-    };
+    try {
+      const res = await getMaterialCheck(resolvedOrderId);
+      setMaterialCheck(res?.data ?? res);
+    } catch {
+      setMaterialCheck(null);
+    }
   }, [resolvedOrderId]);
+
+  useEffect(() => {
+    reloadMaterialCheck();
+  }, [reloadMaterialCheck]);
 
   useEffect(() => {
     let cancelled = false;
@@ -156,9 +157,10 @@ export default function StoreManagerJobCardDocumentPanel({
         notes: row.notes,
       };
     }
+    const mc = materialCheck?.material_check || materialCheck;
     return {
-      material_requirements: materialCheck?.lines || materialCheck?.materials,
-      notes: materialCheck?.notes,
+      material_requirements: mc?.lines || row?.material_requirements,
+      notes: mc?.notes ?? materialCheck?.notes,
     };
   }, [row, materialCheck]);
 
@@ -295,8 +297,26 @@ export default function StoreManagerJobCardDocumentPanel({
             <StoreManualJobCardActions
               jobCardId={resolvedJobCardId}
               card={card}
-              allowedActions={card?.allowed_actions || []}
-              onUpdated={reload}
+              allowedActions={card?.allowed_actions || row?.allowed_actions || []}
+              onUpdated={() => {
+                reload();
+                onQueueUpdated?.();
+              }}
+            />
+          ) : null}
+
+          {showDocument && !isManual && resolvedOrderId ? (
+            <SalesOrderMaterialCheckPanel
+              orderId={resolvedOrderId}
+              workflowStatus={
+                salesOrder?.workflow_status || row?.workflow_status || materialCheck?.workflow_status
+              }
+              allowedActions={row?.allowed_actions || row?.store_context?.allowed_actions || []}
+              onUpdated={() => {
+                reload();
+                reloadMaterialCheck();
+                onQueueUpdated?.();
+              }}
             />
           ) : null}
         </div>

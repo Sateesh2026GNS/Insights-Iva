@@ -4,6 +4,7 @@ import {
   buildManualPayload,
   manualFormFromApi,
   manualJobCardCanDelete,
+  manualJobCardCanSend,
   mergeManualApiDocuments,
   validateManualForm,
 } from "./manualSalesJobCard";
@@ -113,6 +114,40 @@ describe("manualSalesJobCard", () => {
       ],
     });
     expect(errors["product_lines.1.product_name"]).toMatch(/already added/i);
+  });
+});
+
+describe("manualJobCardCanSend", () => {
+  it("honours API can_send true after material check", () => {
+    expect(
+      manualJobCardCanSend({
+        is_manual: true,
+        job_card_id: 1,
+        can_send: true,
+        workflow_status: "MATERIAL_AVAILABLE",
+      })
+    ).toBe(true);
+  });
+
+  it("allows send when material check completed and can_send omitted", () => {
+    expect(
+      manualJobCardCanSend({
+        is_manual: true,
+        job_card_id: 1,
+        workflow_status: "MATERIAL_AVAILABLE",
+        material_check: { checked_at: "2026-09-01T12:00:00Z", status: "available" },
+      })
+    ).toBe(true);
+  });
+
+  it("blocks send during material check pending without API flag", () => {
+    expect(
+      manualJobCardCanSend({
+        is_manual: true,
+        job_card_id: 1,
+        workflow_status: "MATERIAL_CHECK_PENDING",
+      })
+    ).toBe(false);
   });
 });
 

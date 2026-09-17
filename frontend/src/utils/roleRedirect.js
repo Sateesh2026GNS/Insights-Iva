@@ -18,7 +18,7 @@ export function getDashboardPathForRole(role) {
     return "/";
   }
   if (name.includes("store")) {
-    return "/inventory";
+    return "/inventory/dashboard";
   }
   if (name.includes("accountant") || name === "account") {
     return "/accounts";

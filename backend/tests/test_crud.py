@@ -62,6 +62,35 @@ def test_delete_missing_product_returns_404(client, register_admin):
     assert resp.status_code == 404
 
 
+def test_store_manager_delete_product_persists_in_list(client, register_admin):
+    """Store Manager can delete a product; list APIs must not return it afterward."""
+    from tests.test_rbac_roles import _create_role_user
+
+    admin = register_admin()
+    tenant_id = admin["user"]["tenant_id"]
+    store = _create_role_user(client, tenant_id, "Store Manager")
+    store_headers = {"Authorization": f"Bearer {store['access_token']}"}
+
+    created = _create_product(client, admin["headers"], sku="STORE-DEL-1", name="Store Delete Me")
+    assert created.status_code == 200, created.text
+    pid = _unwrap(created.json())["id"]
+
+    deleted = client.delete(f"/inventory/v2/items/{pid}", headers=store_headers)
+    assert deleted.status_code == 200, deleted.text
+
+    v2_list = client.get("/inventory/v2/items", headers=store_headers)
+    assert v2_list.status_code == 200, v2_list.text
+    v2_body = v2_list.json()
+    v2_items = v2_body.get("data") if isinstance(v2_body, dict) else v2_body
+    assert not any(row.get("id") == pid for row in (v2_items or []))
+
+    masters_list = client.get("/api/masters/products", headers=store_headers)
+    assert masters_list.status_code == 200, masters_list.text
+    masters_body = masters_list.json()
+    masters_items = masters_body.get("data") if isinstance(masters_body, dict) else masters_body
+    assert not any(row.get("id") == pid for row in (masters_items or []))
+
+
 def test_create_product_negative_purchase_price_rejected(client, register_admin):
     admin = register_admin()
     resp = client.post(

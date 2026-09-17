@@ -11,6 +11,7 @@ from app.models.base import Base  # noqa: F401
 
 import app.models.accounts  # noqa: F401
 import app.models.ai_conversation  # noqa: F401
+import app.models.ai_agent  # noqa: F401
 import app.models.alert  # noqa: F401
 import app.models.bom  # noqa: F401
 import app.models.business_documents  # noqa: F401
@@ -34,6 +35,7 @@ import app.models.procurement  # noqa: F401
 import app.models.product  # noqa: F401
 import app.models.production  # noqa: F401
 import app.models.quality  # noqa: F401
+import app.models.reporting  # noqa: F401
 import app.models.role  # noqa: F401
 import app.models.sales  # noqa: F401
 import app.models.security  # noqa: F401

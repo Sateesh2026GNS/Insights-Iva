@@ -206,9 +206,21 @@ def delete_product(db: Session, tenant_id: int, product_id: int) -> bool:
     product = get_product(db, tenant_id, product_id)
     if not product:
         return False
+    sku = (product.sku or "").strip()
     try:
         _delete_related_for_product(db, tenant_id, product_id)
         db.delete(product)
+        if sku:
+            from app.models.inventory import InventoryItem
+
+            for inv in db.scalars(
+                select(InventoryItem).where(
+                    InventoryItem.tenant_id == tenant_id,
+                    InventoryItem.sku == sku,
+                    InventoryItem.is_active.is_(True),
+                )
+            ).all():
+                inv.is_active = False
         db.commit()
     except IntegrityError as exc:
         db.rollback()

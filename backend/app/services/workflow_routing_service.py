@@ -6,6 +6,7 @@ Canonical backend status names are used throughout; STAGE_ALIASES documents user
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from fastapi import HTTPException
@@ -164,6 +165,19 @@ STORE_KPI_BUCKETS: dict[str, frozenset[str]] = {
     "ready_to_issue": frozenset({"MATERIAL_AVAILABLE", "STORE_ISSUE_PENDING"}),
     "partially_issued": frozenset({"STORE_ISSUE_PARTIAL", "MATERIAL_PARTIAL"}),
 }
+
+# Store Manager my-queue: fetch/sort cap (pagination is client-side on the full set).
+STORE_QUEUE_MAX_FETCH = 2000
+
+
+def _store_queue_sort_key(row: dict[str, Any]) -> tuple[int, str, str, int]:
+    """Stable ascending order for serial numbers (job card no, then time, then id)."""
+    jno = str(row.get("job_card_no") or row.get("order_number") or "").strip()
+    match = re.search(r"(\d+)\s*$", jno)
+    num = int(match.group(1)) if match else 0
+    recv = str(row.get("received_at") or row.get("created_at") or row.get("order_date") or "")
+    rid = int(row.get("job_card_id") or row.get("sales_order_id") or 0)
+    return (num, jno.lower(), recv, rid)
 
 POST_STORE_STATUSES: frozenset[str] = frozenset({
     "READY_FOR_PRODUCTION",
@@ -779,6 +793,12 @@ def get_my_job_card_queue(
 
     teams = user_teams(get_role_names(user))
     is_admin = user_is_admin(user)
+    is_store_queue = (
+        not is_admin
+        and TEAM_INVENTORY in teams
+        and TEAM_SALES not in teams
+    )
+    effective_limit = STORE_QUEUE_MAX_FETCH if is_store_queue else limit
 
     # Always ensure confirmed sales orders are linked to workflow
     repair_confirmed_orders_missing_workflow(db, tenant_id, user=user)
@@ -816,7 +836,7 @@ def get_my_job_card_queue(
                     SalesOrder.status.in_(["draft", "pending"]),
                 )
             )
-        orders = list(db.scalars(q.order_by(SalesOrder.id.desc()).limit(limit)).all())
+        orders = list(db.scalars(q.order_by(SalesOrder.id.desc()).limit(effective_limit)).all())
     else:
         if TEAM_SALES in teams and not status_filter:
             draft_q = (
@@ -828,7 +848,7 @@ def get_my_job_card_queue(
                     SalesOrder.workflow_status.is_(None),
                 )
                 .order_by(SalesOrder.id.desc())
-                .limit(limit)
+                .limit(effective_limit)
             )
             draft_orders = list(db.scalars(draft_q).all())
             if strict and TEAM_SALES in teams:
@@ -843,8 +863,10 @@ def get_my_job_card_queue(
                     SalesOrder.tenant_id == tenant_id,
                     SalesOrder.workflow_status.in_(list(allowed)),
                 )
-                .order_by(SalesOrder.id.desc())
-                .limit(limit)
+                .order_by(
+                    SalesOrder.id.asc() if is_store_queue else SalesOrder.id.desc()
+                )
+                .limit(effective_limit)
             )
             if TEAM_SALES in teams and strict and "SALES_CONFIRMED" in allowed:
                 # Sales sees own confirmed orders when strict
@@ -863,8 +885,11 @@ def get_my_job_card_queue(
                     orders.append(o)
                     seen.add(o.id)
 
-        orders.sort(key=lambda o: o.id, reverse=True)
-        orders = orders[:limit]
+        if is_store_queue:
+            orders.sort(key=lambda o: o.id)
+        else:
+            orders.sort(key=lambda o: o.id, reverse=True)
+        orders = orders[:effective_limit]
 
     items = _enrich_queue_orders(db, tenant_id, orders)
 
@@ -882,7 +907,7 @@ def get_my_job_card_queue(
     }
 
     if is_admin or TEAM_SALES in teams:
-        manual_items = list_manual_job_cards(db, tenant_id, limit=limit, user=user)
+        manual_items = list_manual_job_cards(db, tenant_id, limit=effective_limit, user=user)
         seen_jc = {it.get("job_card_id") for it in items if it.get("job_card_id")}
         for row in manual_items:
             if row.get("job_card_id") not in seen_jc:
@@ -893,11 +918,21 @@ def get_my_job_card_queue(
                 continue
             if team == TEAM_INVENTORY:
                 manual_items = list_manual_job_cards(
-                    db, tenant_id, limit=limit, for_store=True, status_filter=status_filter, user=user
+                    db,
+                    tenant_id,
+                    limit=effective_limit,
+                    for_store=True,
+                    status_filter=status_filter,
+                    user=user,
                 )
             else:
                 manual_items = list_manual_job_cards_for_recipient(
-                    db, tenant_id, user, dept=dept, status_filter=status_filter, limit=limit
+                    db,
+                    tenant_id,
+                    user,
+                    dept=dept,
+                    status_filter=status_filter,
+                    limit=effective_limit,
                 )
             seen_jc = {it.get("job_card_id") for it in items if it.get("job_card_id")}
             for row in manual_items:
@@ -905,16 +940,31 @@ def get_my_job_card_queue(
                     items.append(row)
 
     if is_admin or TEAM_SALES in teams or any(t in teams for t in manual_dept_by_team):
-        items.sort(
-            key=lambda r: r.get("received_at") or r.get("created_at") or "",
-            reverse=True,
-        )
-        items = items[:limit]
+        if is_store_queue:
+            items.sort(key=_store_queue_sort_key)
+        else:
+            items.sort(
+                key=lambda r: r.get("received_at") or r.get("created_at") or "",
+                reverse=True,
+            )
+
+    total = len(items)
+    if total > effective_limit:
+        items = items[:effective_limit]
 
     metadata = dict(metadata)
     if TEAM_INVENTORY in teams or is_admin:
         metadata["counts"] = _store_kpi_counts(db, tenant_id)
-    return {"items": items, "meta": metadata, "total": len(items)}
+    if is_store_queue:
+        counts = dict(metadata.get("counts") or {})
+        counts["actionable_queue_total"] = total
+        metadata["counts"] = counts
+    return {
+        "items": items,
+        "meta": metadata,
+        "total": total,
+        "truncated": total > len(items),
+    }
 
 
 def _operator_my_queue(

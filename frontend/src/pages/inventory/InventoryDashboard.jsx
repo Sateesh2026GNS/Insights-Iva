@@ -181,7 +181,7 @@ export default function InventoryDashboard() {
   const [ledger, setLedger] = useState([]);
   const [transfers, setTransfers] = useState([]);
   const [warehouses, setWarehouses] = useState([]);
-  const [selectedDate, setSelectedDate] = useState("2026-08-13");
+  const [selectedDate, setSelectedDate] = useState(() => todayISO());
   const [warehouseId, setWarehouseId] = useState("");
   const [prBusy, setPrBusy] = useState(null);
   const dateInputRef = useRef(null);
@@ -221,8 +221,13 @@ export default function InventoryDashboard() {
   }, [warehouses, warehouseId]);
 
   const hasLiveData = useMemo(() => {
-    return (asArray(invItems).length > 2 || asArray(ledger).length > 0 || asArray(transfers).length > 0) && Number(dash.total_products) > 2;
-  }, [invItems, ledger, transfers, dash]);
+    return Boolean(
+      dash &&
+        (Number(dash.catalog_product_count ?? dash.total_products ?? 0) > 0 ||
+          asArray(invItems).length > 0 ||
+          asArray(ledger).length > 0)
+    );
+  }, [invItems, ledger, dash]);
 
   const liveStockValue = useMemo(() => {
     if (whSummary?.total_inventory_value != null) return Number(whSummary.total_inventory_value) || 0;
@@ -253,9 +258,9 @@ export default function InventoryDashboard() {
       const items = asArray(invItems);
       const led = asArray(ledger);
       const xfers = asArray(transfers);
-      const low = dash.low_stock_items ?? liveStatus.lowStock;
-      const out = dash.out_of_stock_items ?? liveStatus.outOfStock;
-      const total = Number(dash.total_products ?? items.length) || 0;
+      const low = Number(dash.catalog_low_stock_count ?? dash.low_stock_items ?? liveStatus.lowStock) || 0;
+      const out = Number(dash.catalog_out_of_stock_count ?? dash.out_of_stock_items ?? liveStatus.outOfStock) || 0;
+      const total = Number(dash.catalog_product_count ?? dash.total_products ?? items.length) || 0;
       const status = {
         inStock: Math.max(0, total - low - out),
         lowStock: low,
@@ -417,8 +422,13 @@ export default function InventoryDashboard() {
   ];
 
   const pendingInventoryChecks = Number(dash.pending_inventory_checks || 0);
-  const salesJobCardsPending = Number(dash.sales_job_cards_pending || 0);
+  const storePendingJobCards = Number(dash.store_pending ?? dash.sales_job_cards_pending ?? 0);
   const pendingInventoryOrders = asArray(dash.pending_inventory_orders);
+  const todayParam = todayISO();
+  const stockInKpiTo = `/inventory/stock-in?date=${encodeURIComponent(todayParam)}`;
+  const stockOutKpiTo = `/inventory/history?type=out&from=${encodeURIComponent(todayParam)}&to=${encodeURIComponent(
+    isToday(selectedDate) ? todayParam : selectedDate
+  )}`;
 
   if (loading) {
     return (
@@ -453,20 +463,20 @@ export default function InventoryDashboard() {
         <ClickableKpiCard to="/inventory/stock-ledger" title="View stock ledger" tone="info">
           <KpiCard label="Total Stock Value" value={formatInrAmount(view.stockValue)} icon={Coins} tone="info" meta="Across all warehouses" />
         </ClickableKpiCard>
-        <ClickableKpiCard to="/inventory?filter=low_stock" title="View low stock items" tone="warning">
+        <ClickableKpiCard to="/inventory/low-stock" title="View low stock items" tone="warning">
           <KpiCard label="Low Stock Items" value={Number(view.lowStock || 0)} icon={AlertTriangle} tone="warning" meta="Reorder level reached" />
         </ClickableKpiCard>
-        <ClickableKpiCard to="/inventory?filter=out_of_stock" title="View out of stock items" tone="danger">
+        <ClickableKpiCard to="/inventory/out-of-stock" title="View out of stock items" tone="danger">
           <KpiCard label="Out of Stock" value={Number(view.outOfStock || 0)} icon={PackageX} tone="danger" meta="Stock not available" />
         </ClickableKpiCard>
-        <ClickableKpiCard to="/inventory/stock-in" title="View stock in transactions" tone="success">
+        <ClickableKpiCard to={stockInKpiTo} title="View today's stock in transactions" tone="success">
           <KpiCard label="Today's Stock In" value={formatInrAmount(view.stockInValue)} icon={ArrowDownToLine} tone="success" meta={`${Number(view.stockInTxns || 0)} Transactions`} />
         </ClickableKpiCard>
-        <ClickableKpiCard to="/inventory/issue" title="View stock out transactions" tone="danger">
+        <ClickableKpiCard to={stockOutKpiTo} title="View today's stock out transactions" tone="danger">
           <KpiCard label="Today's Stock Out" value={formatInrAmount(view.stockOutValue)} icon={ArrowUpFromLine} tone="danger" meta={`${Number(view.stockOutTxns || 0)} Transactions`} />
         </ClickableKpiCard>
         <ClickableKpiCard
-          to="/inventory/material-requests"
+          to="/inventory/pending-inventory-checks"
           title="Sales orders awaiting inventory check"
           tone="warning"
         >
@@ -478,20 +488,22 @@ export default function InventoryDashboard() {
             meta="Confirmed sales orders"
           />
         </ClickableKpiCard>
-        <ClickableKpiCard to="/inventory/transfers" title="View pending transfers" tone="info">
+        <ClickableKpiCard to="/inventory/stock-transfer?status=pending" title="View pending transfers" tone="info">
           <KpiCard label="Pending Transfers" value={Number(view.pendingTransfers || 0)} icon={Truck} tone="info" meta="Awaiting approval" />
         </ClickableKpiCard>
         <ClickableKpiCard
-          to="/my-job-cards?dept=inventory"
-          title="Sales job cards pending store review"
+          to="/my-job-cards?dept=inventory&bucket=store_pending"
+          title="Job cards pending store review (material check / shortage)"
           tone="primary"
         >
           <KpiCard
-            label="Sales Job Cards"
-            value={salesJobCardsPending}
+            label="Pending Job Cards"
+            value={storePendingJobCards}
             icon={ClipboardList}
             tone="primary"
-            meta={salesJobCardsPending === 1 ? "Pending: 1" : `Pending: ${salesJobCardsPending}`}
+            meta={
+              storePendingJobCards === 1 ? "Awaiting store action" : `${storePendingJobCards} awaiting store action`
+            }
           />
         </ClickableKpiCard>
       </div>
@@ -499,7 +511,7 @@ export default function InventoryDashboard() {
       {pendingInventoryOrders.length > 0 ? (
         <SectionCard
           title="Sales Orders Awaiting Inventory Check"
-          viewAllTo="/inventory/material-requests"
+          viewAllTo="/inventory/pending-inventory-checks"
         >
           <div className="overflow-x-auto">
             <table className="min-w-full text-left text-[13px]">
@@ -635,7 +647,7 @@ export default function InventoryDashboard() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
-        <SectionCard title="Top Low Stock Items" viewAllTo="/alerts/low-stock">
+        <SectionCard title="Top Low Stock Items" viewAllTo="/inventory/low-stock">
           <div className="overflow-x-auto">
             <table className="min-w-full text-left text-[13px]">
               <thead className="ui-table-head">

@@ -75,6 +75,11 @@ export function httpStatusMessage(err, fallback = "Something went wrong.") {
     return "Please check your input and try again.";
   }
   if (status === 429) {
+    const retryAfter = err?.response?.headers?.["retry-after"];
+    const seconds = retryAfter ? parseInt(String(retryAfter), 10) : NaN;
+    if (Number.isFinite(seconds) && seconds > 0) {
+      return `Too many requests. Please wait ${seconds} second${seconds === 1 ? "" : "s"} and try again.`;
+    }
     return "Too many requests. Please wait a moment and try again.";
   }
   if (status && status >= 500) {
@@ -184,6 +189,7 @@ export function classifyApiError(err, fallback = "Something went wrong.") {
     };
   }
   if (status === 404) return { type: "not_found", message, fields: {} };
+  if (status === 429) return { type: "rate_limit", message, fields: {} };
   const isActuallyOffline = typeof navigator !== "undefined" && !navigator.onLine;
   if (isActuallyOffline) {
     return {

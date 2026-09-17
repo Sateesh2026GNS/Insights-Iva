@@ -450,7 +450,12 @@ def verify_email_endpoint(req: VerifyEmailRequest, request: Request, db: Session
 
 
 @router.post("/resend-verification", response_model=MessageResponse)
-def resend_verification(req: ForgotPasswordRequest, db: Session = Depends(get_db)):
+def resend_verification(
+    req: ForgotPasswordRequest, request: Request, db: Session = Depends(get_db)
+):
+    from app.middleware.security import check_rate_limit
+
+    check_rate_limit(request, email=req.email, scope="otp")
     user = find_user_by_email(db, req.email)
     if user and not user.email_verified:
         raw_token = create_email_verification(db, user)
