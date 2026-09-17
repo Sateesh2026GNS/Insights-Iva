@@ -51,8 +51,23 @@ export function SettingsProvider({ children }) {
   }, []);
 
   useEffect(() => {
-    document.documentElement.dataset.theme = theme;
-    document.documentElement.classList.toggle("dark", theme === "dark");
+    const isLogin =
+      typeof window !== "undefined" &&
+      (window.location.pathname === "/login" ||
+        window.location.pathname === "/gns-admin/login" ||
+        window.location.pathname === "/super-admin/login" ||
+        window.location.pathname === "/forgot-password" ||
+        window.location.pathname === "/reset-password" ||
+        window.location.pathname === "/verify-email" ||
+        window.location.pathname === "/landing");
+
+    if (isLogin) {
+      document.documentElement.dataset.theme = "light";
+      document.documentElement.classList.remove("dark");
+    } else {
+      document.documentElement.dataset.theme = theme;
+      document.documentElement.classList.toggle("dark", theme === "dark");
+    }
   }, [theme]);
 
   useEffect(() => {

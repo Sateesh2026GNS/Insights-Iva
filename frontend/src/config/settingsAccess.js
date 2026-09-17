@@ -11,6 +11,7 @@ export const SETTINGS_SECTION_MODULES = {
   subscription: "settings",
   help: "settings",
   about: "settings",
+  logout: "settings",
   company: "admin",
   users: "admin",
   security: "admin",

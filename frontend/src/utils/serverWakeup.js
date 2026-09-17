@@ -1,31 +1,109 @@
 /**
  * serverWakeup.js
- * Silently pings the backend /health endpoint on app start in the background.
- * Retries up to 3 times to wake a sleeping Render/Railway free-tier instance.
+ * Proactively wakes sleeping backend instances (e.g. Render / Railway free tier)
+ * and keeps them alive with a periodic background heartbeat ping.
  */
 import axios from "axios";
 import { getApiBaseURL } from "../api/axiosConfig";
 
 let wakeupPromise = null;
+let keepAliveTimer = null;
+let serverIsAwake = false;
 
-export function triggerServerWakeup() {
-  if (wakeupPromise) return wakeupPromise;
+export function isServerWakeupOrTransientError(err) {
+  if (!err) return false;
+  const status = err?.response?.status;
+  if (status === 502 || status === 503 || status === 504) return true;
+  const code = String(err?.code || "");
+  const message = String(err?.message || "").toLowerCase();
+  return (
+    code === "ECONNABORTED" ||
+    code === "ERR_NETWORK" ||
+    message.includes("timeout") ||
+    message.includes("network error") ||
+    message.includes("econnreset") ||
+    message.includes("err_connection_reset") ||
+    message.includes("failed to fetch")
+  );
+}
+
+export function isServerAwake() {
+  return serverIsAwake;
+}
+
+/**
+ * Actively ping /health until the server answers with 200 OK.
+ * Uses rapid 10s timeouts with 2.5s intervals so cold start is caught immediately.
+ */
+export function triggerServerWakeup({ force = false } = {}) {
+  if (serverIsAwake && !force) return Promise.resolve(true);
+  if (wakeupPromise && !force) return wakeupPromise;
 
   const baseURL = getApiBaseURL();
-  if (!baseURL) return Promise.resolve();
+  if (!baseURL) {
+    serverIsAwake = true;
+    return Promise.resolve(true);
+  }
 
   wakeupPromise = (async () => {
-    for (let attempt = 1; attempt <= 3; attempt++) {
+    const maxAttempts = 12; // 12 attempts * ~3-10s = up to ~90s total window
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
-        await axios.get(`${baseURL}/health`, { timeout: 30_000 });
-        return; // server is up
+        const res = await axios.get(`${baseURL}/health`, {
+          timeout: 12_000,
+          headers: { "Cache-Control": "no-cache" },
+        });
+        if (res.status === 200) {
+          serverIsAwake = true;
+          wakeupPromise = null;
+          return true;
+        }
       } catch {
-        if (attempt < 3) {
-          await new Promise((r) => setTimeout(r, 5000)); // wait 5 s between pings
+        if (attempt < maxAttempts) {
+          await new Promise((r) => setTimeout(r, 2500));
         }
       }
     }
+    wakeupPromise = null;
+    return false;
   })();
 
   return wakeupPromise;
+}
+
+/**
+ * Periodically pings /health every 8 minutes while the tab is open to prevent
+ * Render instances from spinning down after 15 minutes of inactivity.
+ */
+export function startServerKeepAlive(intervalMinutes = 8) {
+  if (typeof window === "undefined") return;
+  if (keepAliveTimer) return;
+
+  // Initial trigger immediately
+  triggerServerWakeup();
+
+  const intervalMs = intervalMinutes * 60 * 1000;
+  keepAliveTimer = setInterval(() => {
+    const baseURL = getApiBaseURL();
+    if (!baseURL) return;
+    axios
+      .get(`${baseURL}/health`, {
+        timeout: 15_000,
+        headers: { "Cache-Control": "no-cache" },
+      })
+      .then(() => {
+        serverIsAwake = true;
+      })
+      .catch(() => {
+        serverIsAwake = false;
+        triggerServerWakeup({ force: true });
+      });
+  }, intervalMs);
+}
+
+export function stopServerKeepAlive() {
+  if (keepAliveTimer) {
+    clearInterval(keepAliveTimer);
+    keepAliveTimer = null;
+  }
 }

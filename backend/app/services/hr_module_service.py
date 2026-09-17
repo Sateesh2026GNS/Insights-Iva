@@ -1839,6 +1839,11 @@ def generate_payroll_run(db: Session, tenant_id: int, payload: dict, user: User)
         )
     ).first()
     if existing_run:
+        if not payload.get("force") and not payload.get("regenerate"):
+            raise HTTPException(
+                status_code=409,
+                detail=f"Payroll run already exists for period {period_start} to {period_end}.",
+            )
         db.execute(
             delete(Payslip).where(
                 or_(

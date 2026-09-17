@@ -16,7 +16,8 @@ from app.services.security_service import (
 from scripts.migration_utils import is_bcrypt_hash, normalize_user_password_for_migration
 
 
-def test_login_invalid_email_generic(client):
+def test_login_invalid_email_generic(client, register_admin):
+    register_admin()
     resp = client.post(
         "/auth/login",
         json={"email": "nobody@unknown-corp.example", "password": "Passw0rd!123", "role": "Admin"},

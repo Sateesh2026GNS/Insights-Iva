@@ -13,8 +13,9 @@ import GlobalRefreshButton from "./components/common/GlobalRefreshButton";
 import Button from "./components/common/Button";
 import { isOperator, isStoreManager, storeManagerPathAllowed } from "./config/permissions";
 import useAuth from "./hooks/useAuth";
+import useSettings from "./context/SettingsContext";
 import { isAiCopilotEnabled, isOperatorAiRoute } from "./utils/aiCopilot";
-import { triggerServerWakeup } from "./utils/serverWakeup";
+import { triggerServerWakeup, startServerKeepAlive, stopServerKeepAlive } from "./utils/serverWakeup";
 
 
 const AiChatWidget = lazy(() => import("./components/ai/AiChatWidget"));
@@ -101,9 +102,11 @@ export default function App() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [mobileSidebarOpen]);
 
-  // Silently warm up the backend in background on app load
+  // Silently warm up the backend and keep it alive in background
   useEffect(() => {
     triggerServerWakeup();
+    startServerKeepAlive(8);
+    return () => stopServerKeepAlive();
   }, []);
 
   const showChatbot = shouldShowChatbot(user, location.pathname);
@@ -129,6 +132,8 @@ export default function App() {
     return () => clearTimeout(timer);
   }, []);
 
+  const { theme } = useSettings();
+
   useEffect(() => {
     if (typeof document === "undefined") return;
     const isShellLess = isShellLessRoute(location.pathname);
@@ -139,7 +144,26 @@ export default function App() {
       document.documentElement.classList.add("has-app-shell");
       document.body.classList.add("has-app-shell");
     }
-  }, [location.pathname]);
+
+    const path = (location.pathname || "/").replace(/\/+$/, "") || "/";
+    const isLogin =
+      path === "/login" ||
+      path === "/signin" ||
+      path === "/gns-admin/login" ||
+      path === "/super-admin/login" ||
+      path === "/forgot-password" ||
+      path === "/reset-password" ||
+      path === "/verify-email" ||
+      path === "/landing";
+
+    if (isLogin) {
+      document.documentElement.dataset.theme = "light";
+      document.documentElement.classList.remove("dark");
+    } else {
+      document.documentElement.dataset.theme = theme;
+      document.documentElement.classList.toggle("dark", theme === "dark");
+    }
+  }, [location.pathname, theme]);
   const isInvoiceEditor =
     location.pathname === "/sales/invoices/create" ||
     /^\/sales\/invoices\/[^/]+\/edit$/.test(location.pathname) ||
@@ -316,7 +340,11 @@ export default function App() {
         />
       </aside>
       <div className="flex min-h-0 min-w-0 w-full flex-1 flex-col overflow-hidden">
-        <Navbar onOpenSidebar={() => setMobileSidebarOpen(true)} />
+        <Navbar
+          onOpenSidebar={() => setMobileSidebarOpen(true)}
+          onToggleSidebar={() => setSidebarCollapsed((value) => !value)}
+          sidebarCollapsed={sidebarCollapsed}
+        />
         <main
           id="main-content"
           tabIndex={-1}

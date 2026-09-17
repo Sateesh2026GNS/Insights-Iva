@@ -32,8 +32,8 @@ export function InventoryPageCard({ children, className = "" }) {
 
 export function InventoryTabs({ tabs, active, onChange, action = null }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--inv-card-border,var(--color-border))] bg-white px-2 pt-2 sm:px-3">
-      <div className="relative flex min-w-0 flex-1 gap-1">
+    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--inv-card-border,var(--color-border))] bg-white px-2 pt-1 sm:pt-2 sm:px-3">
+      <div className="relative flex min-w-0 flex-1 gap-1 overflow-x-auto scrollbar-none">
         {tabs.map((t) => {
           const isActive = active === t.id;
           return (
@@ -41,7 +41,7 @@ export function InventoryTabs({ tabs, active, onChange, action = null }) {
               key={t.id}
               type="button"
               onClick={() => onChange(t.id)}
-              className={`relative px-4 py-3 text-[16px] font-bold transition-colors ${
+              className={`relative whitespace-nowrap px-3 sm:px-4 py-2.5 sm:py-3 text-[14px] sm:text-[16px] font-bold transition-colors ${
                 isActive
                   ? "inventory-tabs__active text-[var(--inv-primary,var(--color-primary))]"
                   : "text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
@@ -55,7 +55,7 @@ export function InventoryTabs({ tabs, active, onChange, action = null }) {
           );
         })}
       </div>
-      {action ? <div className="mb-2 mr-1 shrink-0">{action}</div> : null}
+      {action ? <div className="mb-1 sm:mb-2 mr-1 shrink-0">{action}</div> : null}
     </div>
   );
 }

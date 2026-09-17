@@ -548,7 +548,7 @@ export default function AddNewItemModal({
   return createPortal(
     <div
       className={`fixed inset-0 z-[110] flex bg-black/40 ${
-        isDrawer ? "items-stretch justify-end" : "items-center justify-center p-4"
+        isDrawer ? "items-stretch justify-end" : "items-center justify-center p-2 sm:p-4"
       }`}
       role="dialog"
       aria-modal="true"
@@ -560,12 +560,12 @@ export default function AddNewItemModal({
         className={`flex max-h-[100vh] flex-col overflow-hidden bg-[#f3f3f6] shadow-2xl ${
           isDrawer
             ? "h-full w-full max-w-lg animate-[slideInRight_0.28s_ease-out]"
-            : "max-h-[92vh] w-full max-w-lg rounded-2xl"
+            : "max-h-[96vh] sm:max-h-[92vh] w-full max-w-lg rounded-xl sm:rounded-2xl"
         }`}
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <div className="flex shrink-0 items-center justify-between border-b border-[#ececf0] bg-white px-5 py-4">
-          <h2 id="add-new-item-title" className="text-[17px] font-bold text-[#1a1a1f]">
+        <div className="flex shrink-0 items-center justify-between border-b border-[#ececf0] bg-white px-4 py-3 sm:px-5 sm:py-4">
+          <h2 id="add-new-item-title" className="text-[16px] sm:text-[17px] font-bold text-[#1a1a1f]">
             {title || (item?.id ? (isProduct ? "Edit Product" : "Edit Item") : (isProduct ? "Add Product" : "Add New Item"))}
           </h2>
           <button

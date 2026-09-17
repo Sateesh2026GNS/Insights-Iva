@@ -105,18 +105,18 @@ function SummaryTab({ label, count, amount, active, onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className={`min-w-0 flex-1 border-b-[3px] px-5 py-3.5 text-left transition duration-150 cursor-pointer ${
+      className={`min-w-[130px] flex-1 shrink-0 border-b-[3px] px-3.5 py-2.5 sm:px-5 sm:py-3.5 text-left transition duration-150 cursor-pointer ${
         active
           ? "border-[var(--color-primary)] bg-[var(--color-surface)] text-[var(--color-primary)]"
           : "border-transparent bg-transparent text-[var(--color-text-muted)] hover:bg-[var(--color-surface)]/80 hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
       }`}
     >
-      <p className={`text-[13px] font-medium transition-colors ${active ? "" : "text-[var(--color-text-muted)]"}`}>
+      <p className={`text-xs sm:text-[13px] font-medium transition-colors ${active ? "" : "text-[var(--color-text-muted)]"}`}>
         {label}{" "}
         <span className={active ? "opacity-70" : "text-[var(--color-text-faint)]"}>({count})</span>
       </p>
       <p
-        className={`mt-1 text-[18px] font-bold tabular-nums transition-colors ${
+        className={`mt-0.5 sm:mt-1 text-base sm:text-[18px] font-bold tabular-nums transition-colors ${
           active ? "text-[var(--color-primary)]" : "text-[var(--color-text)]"
         }`}
       >
@@ -381,7 +381,7 @@ export default function Quotations() {
       />
 
       <div className="overflow-hidden rounded-xl border border-[var(--color-table-border)] bg-[var(--color-surface-muted)]">
-        <div className="flex overflow-x-auto">
+        <div className="flex overflow-x-auto scrollbar-none">
           <SummaryTab
             label="All Quotations"
             count={tabStats.all.count}
@@ -413,15 +413,15 @@ export default function Quotations() {
         </div>
       </div>
 
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div className="inline-flex items-center gap-3 rounded-full bg-[var(--color-surface)] px-4 py-2.5 text-[13px] text-[var(--color-text-secondary)] shadow-sm shadow-[#00000010] border border-[var(--color-border-soft)]">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-2 rounded-xl sm:rounded-full bg-[var(--color-surface)] px-3.5 py-2 text-xs sm:text-[13px] text-[var(--color-text-secondary)] shadow-sm border border-[var(--color-border-soft)] w-fit flex-wrap">
           <button
             type="button"
             onClick={openDateFrom}
             className="flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-primary)] transition-colors cursor-pointer"
             aria-label="Open start date picker"
           >
-            <Calendar className="h-5 w-5" />
+            <Calendar className="h-4 w-4 sm:h-5 sm:w-5" />
           </button>
           <input
             ref={dateFromRef}
@@ -436,7 +436,7 @@ export default function Quotations() {
           <button
             type="button"
             onClick={openDateFrom}
-            className="text-[14px] font-medium text-[var(--color-text)] hover:text-[var(--color-primary)] transition-colors cursor-pointer"
+            className="font-medium text-[var(--color-text)] hover:text-[var(--color-primary)] transition-colors cursor-pointer text-xs sm:text-[13px]"
             title="Click to select start date"
           >
             {fmtDisplayDate(dateFrom) || "Start Date"}
@@ -445,7 +445,7 @@ export default function Quotations() {
           <button
             type="button"
             onClick={openDateTo}
-            className="text-[14px] font-medium text-[var(--color-text)] hover:text-[var(--color-primary)] transition-colors cursor-pointer"
+            className="font-medium text-[var(--color-text)] hover:text-[var(--color-primary)] transition-colors cursor-pointer text-xs sm:text-[13px]"
             title="Click to select end date"
           >
             {fmtDisplayDate(dateTo) || "End Date"}
@@ -466,30 +466,30 @@ export default function Quotations() {
             className="flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-primary)] transition-colors cursor-pointer"
             aria-label="Open end date picker"
           >
-            <Calendar className="h-5 w-5" />
+            <Calendar className="h-4 w-4 sm:h-5 sm:w-5" />
           </button>
         </div>
       </div>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <SearchBar value={search} onChange={setSearch} placeholder="Search" className="w-full" />
-        <div className="relative flex gap-2">
+      <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
+        <SearchBar value={search} onChange={setSearch} placeholder="Search quotations..." className="w-full" />
+        <div className="flex items-center gap-2 shrink-0">
           <button
             type="button"
             onClick={() => {
               setDraftFilters(filters);
               setShowFilters(true);
             }}
-            className="inline-flex items-center gap-2 rounded-lg bg-[var(--color-surface-muted)] px-3.5 py-2 text-[13px] font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"
+            className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 rounded-lg bg-[var(--color-surface-muted)] px-3.5 py-2 text-xs sm:text-[13px] font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] border border-[var(--color-border-soft)]"
           >
             <Filter className="h-4 w-4" />
             Filters
           </button>
-          <div className="relative">
+          <div className="relative flex-1 sm:flex-initial">
             <button
               type="button"
               onClick={() => setShowSort((v) => !v)}
-              className={`inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-[13px] font-medium ${
+              className={`w-full inline-flex items-center justify-center gap-1.5 rounded-lg px-3.5 py-2 text-xs sm:text-[13px] font-medium border border-[var(--color-border-soft)] ${
                 showSort
                   ? "bg-[#dcdce3] text-[var(--color-text)]"
                   : "bg-[var(--color-surface-muted)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"
@@ -529,7 +529,137 @@ export default function Quotations() {
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-[var(--color-table-border)] bg-[var(--color-surface)]">
+      {/* Mobile Cards View */}
+      <div className="space-y-3 md:hidden">
+        {pageRows.length === 0 ? (
+          <EmptyState
+            icon="document"
+            title="No records found."
+            description="There is nothing to show here yet."
+            className="border-none bg-transparent py-12"
+          />
+        ) : (
+          pageRows.map((r) => (
+            <div
+              key={r.id}
+              className="ui-card p-3.5 space-y-2.5 transition hover:border-[var(--color-primary-soft)]"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-bold text-sm text-[var(--color-primary)]">
+                      {r.quote_number}
+                    </span>
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[10px] font-bold capitalize ${statusColor(r.status)}`}
+                    >
+                      {r.status}
+                    </span>
+                  </div>
+                  <h3 className="mt-1 font-semibold text-xs sm:text-sm text-[var(--color-text)] truncate">
+                    {r.customer_name || "—"}
+                  </h3>
+                </div>
+                <div onClick={(e) => e.stopPropagation()}>
+                  <RowActionMenu
+                    rowId={r.id}
+                    openMenu={openMenu}
+                    setOpenMenu={setOpenMenu}
+                    items={[
+                      {
+                        label: "View / Print",
+                        icon: <Eye className="h-4 w-4" />,
+                        onClick: () => navigate(`/sales/quotations/${r.id}`),
+                      },
+                      {
+                        label: "Edit",
+                        icon: <Edit2 className="h-4 w-4" />,
+                        onClick: () => navigate(`/sales/quotations/${r.id}/edit`),
+                      },
+                      (r.status || "").toLowerCase() !== "cancelled"
+                        ? {
+                            label: "Convert to Sales Order",
+                            icon: <CheckCircle className="h-4 w-4" />,
+                            onClick: () => setSelected(r),
+                          }
+                        : null,
+                      (r.status || "").toLowerCase() === "draft"
+                        ? {
+                            label: "Mark as Sent",
+                            icon: <Send className="h-4 w-4" />,
+                            onClick: () => handleStatusChange(r, "sent", "Sent"),
+                          }
+                        : null,
+                      ["draft", "sent"].includes((r.status || "").toLowerCase())
+                        ? {
+                            label: "Mark as Accepted",
+                            icon: <Check className="h-4 w-4" />,
+                            onClick: () => handleStatusChange(r, "accepted", "Accepted"),
+                          }
+                        : null,
+                      (r.status || "").toLowerCase() === "cancelled"
+                        ? {
+                            label: "Reopen as Draft",
+                            icon: <RotateCcw className="h-4 w-4" />,
+                            onClick: () => handleStatusChange(r, "draft", "Draft"),
+                          }
+                        : null,
+                      { divider: true },
+                      (r.status || "").toLowerCase() !== "cancelled"
+                        ? {
+                            label: "Cancel",
+                            icon: <Ban className="h-4 w-4" />,
+                            danger: true,
+                            onClick: () => setCancelTarget(r),
+                          }
+                        : null,
+                      {
+                        label: "Delete",
+                        icon: <Trash2 className="h-4 w-4" />,
+                        danger: true,
+                        onClick: () => setDeleteTarget(r),
+                      },
+                    ].filter(Boolean)}
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between border-t border-[var(--color-border-soft)] pt-2 text-xs">
+                <div>
+                  <span className="text-[var(--color-text-muted)] text-[10px] block uppercase font-semibold">Date</span>
+                  <span className="text-[var(--color-text-secondary)] font-medium">{fmtDate(r.quote_date)}</span>
+                </div>
+                <div className="text-right">
+                  <span className="text-[var(--color-text-muted)] text-[10px] block uppercase font-semibold">Amount</span>
+                  <span className="text-sm font-bold text-[var(--color-text)] tabular-nums">{formatInr(r.amount)}</span>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 border-t border-[var(--color-border-soft)] pt-2">
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => navigate(`/sales/quotations/${r.id}`)}
+                  leftIcon={<Eye className="h-3.5 w-3.5" />}
+                >
+                  View
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => navigate(`/sales/quotations/${r.id}/edit`)}
+                  leftIcon={<Edit2 className="h-3.5 w-3.5" />}
+                >
+                  Edit
+                </Button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Desktop Table View */}
+      <div className="hidden md:block overflow-hidden rounded-xl border border-[var(--color-table-border)] bg-[var(--color-surface)]">
         <div className="overflow-x-auto">
           <table className="min-w-full border-collapse text-left text-[13px]">
               <thead className="ui-table-head">
@@ -649,15 +779,16 @@ export default function Quotations() {
             </tbody>
           </table>
         </div>
+      </div>
 
-        <div className="ui-pagination justify-between border-t border-[var(--color-border-soft)] px-4 py-3">
-          <div className="flex items-center gap-2.5 flex-nowrap whitespace-nowrap text-[13px] text-[var(--color-text-muted)]">
-            <span>Rows per page:</span>
-            <select
-              value={pageSize}
-              onChange={(e) => setPageSize(Number(e.target.value))}
-              className="ui-pagination-select"
-            >
+      <div className="ui-pagination justify-between flex-wrap gap-2 border-t border-[var(--color-border-soft)] pt-3">
+        <div className="flex items-center gap-2.5 flex-nowrap whitespace-nowrap text-xs sm:text-[13px] text-[var(--color-text-muted)]">
+          <span>Rows:</span>
+          <select
+            value={pageSize}
+            onChange={(e) => setPageSize(Number(e.target.value))}
+            className="ui-pagination-select"
+          >
               {PAGE_SIZES.map((n) => (
                 <option key={n} value={n}>
                   {n}
@@ -696,7 +827,6 @@ export default function Quotations() {
               <ChevronRight className="h-4 w-4" />
             </button>
           </div>
-        </div>
       </div>
 
       {showFilters ? (

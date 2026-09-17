@@ -744,12 +744,12 @@ export default function InventoryDashboard() {
         </section>
       </div>
 
-      <div className="flex flex-col gap-3 rounded-xl border border-[#f59e0b]/30 bg-[#fff7ed] px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+      <div className="flex flex-col gap-3 rounded-xl border border-[#f59e0b]/30 bg-[#fff7ed] px-4 py-3.5 text-amber-950 sm:flex-row sm:items-center sm:justify-between sm:px-5 dark:border-amber-800/60 dark:bg-amber-950/30 dark:text-amber-100">
         <div className="flex items-start gap-3">
-          <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-[#f59e0b] shadow-sm">
+          <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-[#f59e0b] shadow-sm dark:bg-amber-900/50 dark:text-amber-300">
             <Lightbulb className="h-4 w-4" aria-hidden />
           </div>
-          <p className="text-sm leading-relaxed text-[var(--color-text)]">
+          <p className="text-sm leading-relaxed text-amber-950 dark:text-amber-100">
             <span className="font-semibold">Important Reminder:</span> {view.outOfStock} items are out of stock and{" "}
             {view.lowStock} items are below reorder level. Please review and take necessary action.
           </p>

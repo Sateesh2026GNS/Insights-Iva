@@ -6,6 +6,8 @@ import {
   Maximize2,
   Minimize2,
   Menu,
+  Search,
+  X,
 } from "lucide-react";
 
 import useAuth from "../../hooks/useAuth";
@@ -21,12 +23,13 @@ function formatRoleLabel(role) {
   return role.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-export default function Navbar({ onOpenSidebar }) {
+export default function Navbar({ onOpenSidebar, onToggleSidebar, sidebarCollapsed = false }) {
   const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const [showProfile, setShowProfile] = useState(false);
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [logoutOpen, setLogoutOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -55,6 +58,11 @@ export default function Navbar({ onOpenSidebar }) {
     document.addEventListener("mousedown", onPointerDown);
     return () => document.removeEventListener("mousedown", onPointerDown);
   }, [showProfile, logoutOpen]);
+
+  useEffect(() => {
+    setShowProfile(false);
+    setMobileSearchOpen(false);
+  }, [location.pathname]);
 
   const toggleFullscreen = async () => {
     try {
@@ -87,19 +95,31 @@ export default function Navbar({ onOpenSidebar }) {
   const fullscreenLabel = isFullscreen
     ? t("common.exitFullscreen", { defaultValue: "Exit fullscreen" })
     : t("common.fullscreen", { defaultValue: "Enter fullscreen" });
+  const menuLabel = sidebarCollapsed
+    ? t("common.expandNavigation", { defaultValue: "Expand navigation menu" })
+    : t("common.openMenu", { defaultValue: "Open navigation menu" });
+
+  const handleMenuClick = () => {
+    if (typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches) {
+      onToggleSidebar?.();
+      return;
+    }
+    onOpenSidebar?.();
+  };
 
   return (
     <header className="app-navbar print:hidden">
       <div className="app-navbar__row">
         {/* Left: page title */}
         <div className="app-navbar__left">
-          {typeof onOpenSidebar === "function" ? (
+          {typeof onOpenSidebar === "function" || typeof onToggleSidebar === "function" ? (
             <button
               type="button"
-              onClick={onOpenSidebar}
-              className="app-navbar__icon-btn -ml-1 mr-0.5 lg:hidden"
-              aria-label={t("common.openMenu", { defaultValue: "Open navigation menu" })}
-              title={t("common.openMenu", { defaultValue: "Open navigation menu" })}
+              onClick={handleMenuClick}
+              className="app-navbar__icon-btn -ml-1 mr-0.5"
+              aria-label={menuLabel}
+              title={menuLabel}
+              aria-expanded={!sidebarCollapsed}
             >
               <Menu className="h-5 w-5" />
             </button>
@@ -117,8 +137,19 @@ export default function Navbar({ onOpenSidebar }) {
           <GlobalSearch />
         </div>
 
-        {/* Right: notifications, fullscreen, profile */}
+        {/* Right: notifications, fullscreen, search toggle, profile */}
         <div className="app-navbar__actions">
+          <button
+            type="button"
+            onClick={() => setMobileSearchOpen((prev) => !prev)}
+            className="app-navbar__icon-btn md:hidden"
+            title={mobileSearchOpen ? "Close search" : "Search"}
+            aria-label={mobileSearchOpen ? "Close search" : "Search"}
+            aria-expanded={mobileSearchOpen}
+          >
+            {mobileSearchOpen ? <X className="h-4 w-4" /> : <Search className="h-4 w-4" />}
+          </button>
+
           <NotificationBell />
 
           <button
@@ -178,9 +209,15 @@ export default function Navbar({ onOpenSidebar }) {
         </div>
       </div>
 
-      {/* Mobile: search + breadcrumbs */}
-      <div className="app-navbar__mobile-search space-y-2 md:hidden">
-        <GlobalSearch />
+      {/* Mobile expandable search */}
+      {mobileSearchOpen ? (
+        <div className="app-navbar__mobile-search md:hidden">
+          <GlobalSearch onSelect={() => setMobileSearchOpen(false)} autoFocus />
+        </div>
+      ) : null}
+
+      {/* Mobile single-line breadcrumb strip */}
+      <div className="overflow-x-auto whitespace-nowrap scrollbar-none px-3.5 py-1 bg-black/10 border-t border-white/10 lg:hidden text-xs">
         <Breadcrumbs compact />
       </div>
 

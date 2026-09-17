@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { login as loginApi, getLoginErrorMessage } from "../../api/authApi";
+import { triggerServerWakeup } from "../../utils/serverWakeup";
 import useAuth from "../../hooks/useAuth";
 import AuthSlider from "../../components/auth/AuthSlider";
 import LoginBackdrop from "../../components/auth/LoginBackdrop";
@@ -54,14 +55,21 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [role, setRole] = useState("");
   const [loading, setLoading] = useState(false);
+  const [isWakingServer, setIsWakingServer] = useState(false);
   const [error, setError] = useState("");
   const [showSuccess, setShowSuccess] = useState(false);
   const [redirectPath, setRedirectPath] = useState("/");
   const redirectTimerRef = useRef(null);
+  const wakingTimerRef = useRef(null);
 
   useEffect(() => {
+    document.documentElement.dataset.theme = "light";
+    document.documentElement.classList.remove("dark");
+    // Immediately warm up server when user opens the login screen
+    triggerServerWakeup();
     return () => {
       if (redirectTimerRef.current) clearTimeout(redirectTimerRef.current);
+      if (wakingTimerRef.current) clearTimeout(wakingTimerRef.current);
     };
   }, []);
 
@@ -84,6 +92,7 @@ export default function Login() {
     setRedirectPath(path);
     setShowSuccess(true);
     setLoading(false);
+    setIsWakingServer(false);
     redirectTimerRef.current = setTimeout(() => {
       navigate(path, { replace: true });
     }, LOGIN_SUCCESS_MS);
@@ -97,14 +106,25 @@ export default function Login() {
       return;
     }
     setLoading(true);
+    setIsWakingServer(false);
+
+    if (wakingTimerRef.current) clearTimeout(wakingTimerRef.current);
+    wakingTimerRef.current = setTimeout(() => {
+      setIsWakingServer(true);
+    }, 3000);
 
     try {
       const data = await loginApi(email.trim(), password, role);
+      if (wakingTimerRef.current) clearTimeout(wakingTimerRef.current);
       completeLogin(data);
     } catch (err) {
+      if (wakingTimerRef.current) clearTimeout(wakingTimerRef.current);
+      setIsWakingServer(false);
       setError(getLoginErrorMessage(err, "Login failed. Please verify your credentials and network connection."));
     } finally {
+      if (wakingTimerRef.current) clearTimeout(wakingTimerRef.current);
       setLoading(false);
+      setIsWakingServer(false);
     }
   };
 
@@ -112,7 +132,10 @@ export default function Login() {
     "box-border h-12 md:h-11 w-full min-w-0 rounded-xl md:rounded-lg border border-transparent bg-gray-100 py-3 md:py-2.5 pl-11 pr-4 text-base md:text-sm text-gray-800 placeholder-gray-400 focus:border-teal-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/25 transition-all";
 
   return (
-    <div className="relative flex min-h-screen min-h-[100dvh] items-center justify-center overflow-x-hidden overflow-y-auto p-4 sm:p-6">
+    <div
+      className="relative flex min-h-screen min-h-[100dvh] items-center justify-center overflow-x-hidden overflow-y-auto p-4 sm:p-6 text-gray-900"
+      style={{ colorScheme: "light" }}
+    >
       <LoginSuccessOverlay open={showSuccess} onDismiss={() => navigateNow(redirectPath)} />
       <LoginBackdrop />
       <div className="relative z-10 w-full max-w-md md:max-w-3xl my-auto">
@@ -214,7 +237,7 @@ export default function Login() {
                   loading={loading}
                   className="min-h-[46px] uppercase tracking-wider font-semibold shadow-md active:scale-[0.99] transition-transform"
                 >
-                  {loading ? "Signing in..." : "SIGN IN"}
+                  {loading ? (isWakingServer ? "WAKING UP SERVER..." : "SIGNING IN...") : "SIGN IN"}
                 </Button>
               </form>
             </div>

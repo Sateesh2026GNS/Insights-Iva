@@ -286,9 +286,9 @@ export default function Customers() {
               <>
                 <div className="ui-list-toolbar">
                   <div className="ui-list-toolbar__start w-full sm:w-auto">
-                    <SearchBar value={query} onChange={setQuery} placeholder="Search" className="w-full max-w-md" />
+                    <SearchBar value={query} onChange={setQuery} placeholder="Search customers by name, phone, GSTIN..." className="w-full max-w-md" />
                   </div>
-                  <div className="ui-list-toolbar__end w-full sm:w-auto">
+                  <div className="ui-list-toolbar__end w-full sm:w-auto flex flex-wrap gap-2">
                     <Button
                       variant="outline"
                       to="/sales/customers/bulk-import"
@@ -304,7 +304,7 @@ export default function Customers() {
                 </div>
 
                 {/* Mobile Cards View */}
-                <div className="space-y-3 p-1 md:hidden">
+                <div className="space-y-3 md:hidden">
                   {rows.map((c) => (
                     <div
                       key={c.id}
@@ -312,7 +312,7 @@ export default function Customers() {
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
-                          <h3 className="font-semibold text-sm text-[var(--color-text)] truncate">
+                          <h3 className="font-bold text-sm text-[var(--color-text)] truncate">
                             {c.company || c.name || "—"}
                           </h3>
                           {c.email && (
@@ -354,19 +354,19 @@ export default function Customers() {
                       <div className="grid grid-cols-2 gap-2 text-xs text-[var(--color-text-secondary)] border-t border-[var(--color-border-soft)] pt-2">
                         <div>
                           <span className="text-[var(--color-text-muted)] block text-[10px] uppercase font-semibold">Phone</span>
-                          <span className="font-medium">{blankOr(c.phone) || "—"}</span>
+                          <span className="font-medium truncate block">{blankOr(c.phone) || "—"}</span>
                         </div>
                         <div>
                           <span className="text-[var(--color-text-muted)] block text-[10px] uppercase font-semibold">GSTIN</span>
-                          <span className="font-medium font-mono text-[11px]">{blankOr(c.gstin) || "—"}</span>
+                          <span className="font-medium font-mono text-[11px] truncate block">{blankOr(c.gstin) || "—"}</span>
                         </div>
                         <div>
                           <span className="text-[var(--color-text-muted)] block text-[10px] uppercase font-semibold">City</span>
-                          <span className="font-medium">{blankOr(c.city) || "—"}</span>
+                          <span className="font-medium truncate block">{blankOr(c.city) || "—"}</span>
                         </div>
                         <div>
                           <span className="text-[var(--color-text-muted)] block text-[10px] uppercase font-semibold">State</span>
-                          <span className="font-medium">{blankOr(c.state) || "—"}</span>
+                          <span className="font-medium truncate block">{blankOr(c.state) || "—"}</span>
                         </div>
                       </div>
                     </div>

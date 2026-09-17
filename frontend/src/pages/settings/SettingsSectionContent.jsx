@@ -27,8 +27,9 @@ import CompanyAddressFields, {
   validateCompanyAddress,
 } from "../../components/common/CompanyAddressFields";
 import AuditLogsPanel from "../../components/settings/AuditLogsPanel";
-import LoginHistoryPanel from "../../components/settings/LoginHistoryPanel";
 import AccountOverviewCard from "../../components/settings/AccountOverviewCard";
+import LoginHistoryPanel from "../../components/settings/LoginHistoryPanel";
+import LogoutConfirmModal from "../../components/common/LogoutConfirmModal";
 import AdjustProfilePhotoModal from "../../components/settings/AdjustProfilePhotoModal";
 import SettingsDeliveryLocation from "./SettingsDeliveryLocation";
 import SettingsDocumentNumberFormat from "./SettingsDocumentNumberFormat";
@@ -1339,6 +1340,48 @@ function SubscriptionSection() {
   );
 }
 
+function LogoutSection() {
+  const { logout } = useAuth();
+  const navigate = useNavigate();
+  const [showModal, setShowModal] = useState(true);
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  const handleConfirm = async ({ allDevices } = {}) => {
+    setLoggingOut(true);
+    try {
+      await logout({ allDevices });
+    } finally {
+      setLoggingOut(false);
+      setShowModal(false);
+      navigate("/login", { replace: true });
+    }
+  };
+
+  return (
+    <>
+      <LogoutConfirmModal
+        open={showModal}
+        onCancel={() => {
+          setShowModal(false);
+          navigate("/settings", { replace: true });
+        }}
+        onConfirm={handleConfirm}
+        busy={loggingOut}
+      />
+      <PanelShell title="Logout" description="Sign out of your account securely.">
+        <SectionCard>
+          <p className="text-sm text-slate-600 dark:text-slate-300 mb-4">
+            Sign out of your account securely from this device.
+          </p>
+          <Button variant="danger" disabled={loggingOut} onClick={() => setShowModal(true)}>
+            Sign out
+          </Button>
+        </SectionCard>
+      </PanelShell>
+    </>
+  );
+}
+
 export default function SettingsSectionContent({ sectionId, category }) {
   const map = useMemo(
     () => ({
@@ -1361,6 +1404,7 @@ export default function SettingsSectionContent({ sectionId, category }) {
       audit: AuditSection,
       help: HelpSection,
       about: AboutSection,
+      logout: LogoutSection,
     }),
     []
   );

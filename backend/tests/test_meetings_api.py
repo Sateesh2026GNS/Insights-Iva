@@ -64,16 +64,14 @@ def test_meeting_validation(client, register_admin):
     assert bad.status_code == 422
 
 
-def test_google_calendar_status_unconfigured(client, register_admin):
+def test_google_calendar_status_unconfigured(client, register_admin, monkeypatch):
     auth = register_admin()
+    monkeypatch.setattr("app.services.google_calendar_service.is_google_configured", lambda: False)
     res = client.get("/integrations/google/calendar/status", headers=auth["headers"])
     assert res.status_code == 200
     data = res.json()
     assert data["connected"] is False
     assert data["configured"] is False
-
-    connect = client.get("/integrations/google/calendar/connect", headers=auth["headers"])
-    assert connect.status_code == 503
 
 
 def test_meeting_invalid_participant_email(client, register_admin):

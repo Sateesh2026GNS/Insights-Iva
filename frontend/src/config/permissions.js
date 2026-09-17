@@ -222,11 +222,8 @@ export function hasPermission(user, module) {
 
 export function isAdmin(user) {
   if (!user) return false;
-  if (Array.isArray(user.permissions) && user.permissions.includes("*")) return true;
-  const roles = Array.isArray(user.roles) && user.roles.length
-    ? user.roles
-    : [user.role, user.role_name].filter(Boolean);
-  return roles.includes("Admin");
+  if (Array.isArray(user.permissions) && (user.permissions.includes("*") || user.permissions.includes("admin"))) return true;
+  return hasRole(user, "Admin") || hasRole(user, "admin") || hasRole(user, "SuperAdmin") || hasRole(user, "superadmin");
 }
 
 export function getEffectivePermissions(user) {
@@ -244,7 +241,9 @@ export function getEffectivePermissions(user) {
   if (fromRole.length) return fromRole;
   const set = new Set();
   for (const role of getUserRoleNames(user)) {
-    (ROLE_PERMISSIONS[role] || ROLE_PERMISSIONS[role.toLowerCase().replace(/\s+/g, "_")] || []).forEach(
+    const rName = typeof role === "string" ? role : "";
+    const rSlug = rName.toLowerCase().replace(/\s+/g, "_");
+    (ROLE_PERMISSIONS[rName] || ROLE_PERMISSIONS[rSlug] || []).forEach(
       (p) => set.add(p)
     );
   }

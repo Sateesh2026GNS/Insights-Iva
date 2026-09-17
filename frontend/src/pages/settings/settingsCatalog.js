@@ -219,6 +219,14 @@ export const SETTINGS_CATEGORIES = [
     soft: SETTINGS_ICON.neutral,
     keywords: ["about", "version", "build", "license", "database", "update"],
   },
+  {
+    id: "logout",
+    title: "Logout",
+    description: "Sign out of your account securely from this device.",
+    icon: "LogOut",
+    soft: SETTINGS_ICON.danger,
+    keywords: ["logout", "sign out", "exit", "disconnect", "session", "log out"],
+  },
 ];
 
 /** Visual groups for settings navigation (home + sidebar). */
@@ -250,7 +258,7 @@ export const SETTINGS_NAV_GROUPS = [
   {
     id: "system",
     title: "System & support",
-    ids: ["integrations", "api", "backup", "audit", "help", "about"],
+    ids: ["integrations", "api", "backup", "audit", "help", "about", "logout"],
   },
 ];
 

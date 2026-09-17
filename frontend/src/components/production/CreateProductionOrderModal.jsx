@@ -304,7 +304,7 @@ export default function CreateProductionOrderModal({
 
   const modalPortal = createPortal(
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 p-2 sm:p-4 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
       aria-labelledby="create-po-title"
@@ -313,16 +313,16 @@ export default function CreateProductionOrderModal({
       }}
     >
       <div
-        className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
+        className="flex max-h-[96vh] sm:max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl sm:rounded-2xl bg-white shadow-2xl"
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <div className="flex shrink-0 items-center justify-between border-b border-[var(--color-border-soft)] px-6 py-4">
+        <div className="flex shrink-0 items-center justify-between border-b border-[var(--color-border-soft)] px-4 py-3 sm:px-6 sm:py-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--color-success-soft)] text-[var(--color-success)]">
+            <div className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-xl bg-[var(--color-success-soft)] text-[var(--color-success)]">
               <ClipboardList className="h-5 w-5" />
             </div>
             <div>
-              <h2 id="create-po-title" className="text-lg font-bold tracking-tight text-[var(--color-text)]">
+              <h2 id="create-po-title" className="text-base sm:text-lg font-bold tracking-tight text-[var(--color-text)]">
                 {initialOrder ? "Edit Production Order" : "New Production Order"}
               </h2>
               <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">
@@ -341,7 +341,7 @@ export default function CreateProductionOrderModal({
           </IconButton>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5 overflow-y-auto px-6 py-5">
+        <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <label className="block space-y-1.5">
               <span className="ui-label">

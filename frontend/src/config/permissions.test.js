@@ -151,11 +151,11 @@ describe("getDashboardPathForRole", () => {
     const { getDashboardPathForRole } = await import("../utils/roleRedirect");
     expect(getDashboardPathForRole("Admin")).toBe("/");
     expect(getDashboardPathForRole("Production Manager")).toBe("/production");
-    expect(getDashboardPathForRole("Operator")).toBe("/");
-    expect(getDashboardPathForRole("operator")).toBe("/");
+    expect(getDashboardPathForRole("Operator")).toBe("/my-job-cards");
+    expect(getDashboardPathForRole("operator")).toBe("/my-job-cards");
     expect(getDashboardPathForRole("Store Manager")).toBe("/inventory/dashboard");
     expect(getDashboardPathForRole("HR Manager")).toBe("/hr");
-    expect(getDashboardPathForRole("Sales Manager")).toBe("/");
+    expect(getDashboardPathForRole("Sales Manager")).toBe("/sales");
     expect(getDashboardPathForRole("Accountant")).toBe("/accounts");
     expect(getDashboardPathForRole("Quality Control")).toBe("/quality");
   });

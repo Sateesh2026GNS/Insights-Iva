@@ -101,17 +101,17 @@ function SummaryTab({ label, count, amount, active, onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className={`min-w-0 flex-1 border-b-[3px] px-5 py-3.5 text-left transition duration-150 cursor-pointer ${
+      className={`min-w-0 flex-1 border-b-[3px] px-2.5 sm:px-5 py-2 sm:py-3.5 text-left transition duration-150 cursor-pointer ${
         active
           ? "border-[var(--color-primary)] bg-[var(--color-surface)] text-[var(--color-primary)]"
           : "border-transparent bg-transparent text-[var(--color-text-muted)] hover:bg-[var(--color-surface)]/80 hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
       }`}
     >
-      <p className={`text-[13px] font-medium transition-colors ${active ? "text-[var(--color-primary)]" : "text-[var(--color-text-muted)]"}`}>
+      <p className={`text-[11px] sm:text-[13px] font-medium truncate transition-colors ${active ? "text-[var(--color-primary)]" : "text-[var(--color-text-muted)]"}`}>
         {label}{" "}
         <span className={active ? "opacity-70" : "text-[var(--color-text-muted)]"}>({count})</span>
       </p>
-      <p className={`mt-1 text-[18px] font-bold tabular-nums transition-colors ${active ? "text-[var(--color-primary)]" : "text-[var(--color-text)]"}`}>
+      <p className={`mt-0.5 sm:mt-1 text-[13px] sm:text-[18px] font-bold tabular-nums truncate transition-colors ${active ? "text-[var(--color-primary)]" : "text-[var(--color-text)]"}`}>
         {amount}
       </p>
     </button>
@@ -271,7 +271,7 @@ export default function PurchaseOrders() {
     <ListPageShell className="space-y-4">
       <div className="overflow-hidden rounded-xl border border-[var(--color-table-border)] bg-[var(--color-primary-soft)]">
         <div className="flex flex-col lg:flex-row lg:items-stretch">
-          <div className="flex min-w-0 flex-1 flex-wrap">
+          <div className="grid grid-cols-3 min-w-0 flex-1 divide-x divide-[var(--color-table-border)]">
             <SummaryTab
               label="All"
               count={tabStats.all.count}
@@ -280,7 +280,7 @@ export default function PurchaseOrders() {
               onClick={() => setKpiFilter("all")}
             />
             <SummaryTab
-              label="Pending Purchase"
+              label="Pending"
               count={tabStats.pending.count}
               amount={formatInr(tabStats.pending.amount)}
               active={kpiFilter === "pending"}
@@ -294,8 +294,8 @@ export default function PurchaseOrders() {
               onClick={() => setKpiFilter("purchased")}
             />
           </div>
-          <div className="flex flex-wrap items-center gap-2.5 border-t border-[var(--color-border)] px-4 py-3 lg:border-l lg:border-t-0">
-            <div className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-[13px] text-[var(--color-text-secondary)]">
+          <div className="flex flex-wrap items-center gap-2 border-t border-[var(--color-border)] px-3 sm:px-4 py-2.5 sm:py-3 lg:border-l lg:border-t-0">
+            <div className="inline-flex items-center gap-1.5 sm:gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-[13px] text-[var(--color-text-secondary)]">
               <button
                 type="button"
                 onClick={() => dateFromRef.current?.showPicker?.() || dateFromRef.current?.click()}

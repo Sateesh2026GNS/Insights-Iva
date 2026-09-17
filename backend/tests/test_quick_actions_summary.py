@@ -109,9 +109,9 @@ def test_production_pipeline_stage_counts(register_admin):
         WorkOrder(
             tenant_id=tenant_id,
             production_order_id=po.id,
-            work_order_number="WO-RELEASED",
+            work_order_number="WO-IN-PROGRESS",
             planned_quantity=10,
-            status="released",
+            status="in_progress",
         )
     )
     db.commit()
@@ -120,9 +120,9 @@ def test_production_pipeline_stage_counts(register_admin):
     finally:
         db.close()
     assert pipeline["planned"] == 1
-    assert pipeline["released"] == 1
+    assert pipeline["in_production"] == 1
     assert pipeline["pending"] == 0
-    assert pipeline["in_production"] == 0
+    assert pipeline["qc"] == 0
     assert pipeline["completed"] == 0
 
 

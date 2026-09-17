@@ -342,35 +342,198 @@ export default function SalesOrders() {
         ) : loadError ? (
           <ErrorState description={loadError} onRetry={load} />
         ) : (
-          <DataTable
-            columns={columns}
-            data={filtered}
-            searchPlaceholder="Search"
-            searchKeys={["order_number", "customer_name", "sales_person"]}
-            emptyState={
-              rows.length === 0 ? (
-                <EmptyState
-                  icon="document"
-                  title="No Sales Orders yet"
-                  description={
-                    canCreate
-                      ? "Create a Job Card or convert a quotation to start the sales workflow."
-                      : "Sales orders appear here when they are created in the workflow."
-                  }
-                  actionLabel={canCreate ? "Create Job Card" : undefined}
-                  onAction={canCreate ? () => navigate(jobCardCreateUrl()) : undefined}
-                  className="border-none bg-transparent py-12"
-                />
+          <>
+            {/* Mobile Cards View */}
+            <div className="space-y-3 md:hidden">
+              {filtered.length === 0 ? (
+                rows.length === 0 ? (
+                  <EmptyState
+                    icon="document"
+                    title="No Sales Orders yet"
+                    description={
+                      canCreate
+                        ? "Create a Job Card or convert a quotation to start the sales workflow."
+                        : "Sales orders appear here when they are created in the workflow."
+                    }
+                    actionLabel={canCreate ? "Create Job Card" : undefined}
+                    onAction={canCreate ? () => navigate(jobCardCreateUrl()) : undefined}
+                    className="border-none bg-transparent py-12"
+                  />
+                ) : (
+                  <NoResultsState
+                    title="No sales orders match your filters"
+                    description="Try clearing filters or adjusting your search."
+                    onClear={() => setFilters(defaultFilters)}
+                    className="border-none bg-transparent py-12"
+                  />
+                )
               ) : (
-                <NoResultsState
-                  title="No sales orders match your filters"
-                  description="Try clearing filters or adjusting your search."
-                  onClear={() => setFilters(defaultFilters)}
-                  className="border-none bg-transparent py-12"
-                />
-              )
-            }
-          />
+                filtered.map((r) => (
+                  <div
+                    key={r.id || r.order_number}
+                    className="ui-card p-3.5 space-y-2.5 transition hover:border-[var(--color-primary-soft)]"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-bold text-sm text-[var(--color-primary)]">
+                            {r.order_number || `SO-${r.id}`}
+                          </span>
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-[10px] font-bold capitalize ${statusColor(
+                              r.status
+                            )}`}
+                          >
+                            {r.status || "draft"}
+                          </span>
+                        </div>
+                        <h3 className="mt-1 font-semibold text-xs sm:text-sm text-[var(--color-text)] truncate">
+                          {r.customer_name || "—"}
+                        </h3>
+                      </div>
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <RowActionMenu
+                          rowId={r.id}
+                          openMenu={openMenu}
+                          setOpenMenu={setOpenMenu}
+                          ariaLabel={`Actions for ${r.order_number || "sales order"}`}
+                          items={[
+                            {
+                              label: "View",
+                              icon: <Eye className="h-4 w-4" />,
+                              onClick: () => setSelected(r),
+                            },
+                            ...(typeof r.id === "number"
+                              ? [
+                                  {
+                                    label: "Full Details",
+                                    icon: <ExternalLink className="h-4 w-4" />,
+                                    onClick: () => navigate(`/sales/orders/${r.id}`),
+                                  },
+                                  {
+                                    label: "Job Card",
+                                    icon: <ClipboardList className="h-4 w-4" />,
+                                    onClick: () =>
+                                      navigate(jobCardDetailsUrl(r.id), { state: { from: "/sales/orders" } }),
+                                  },
+                                ]
+                              : []),
+                            {
+                              label: "Dispatch",
+                              icon: <Truck className="h-4 w-4" />,
+                              onClick: () => navigate("/sales/dispatch"),
+                            },
+                            ...(typeof r.id === "number" && canDelete
+                              ? [
+                                  {
+                                    label: "Delete",
+                                    icon: <Trash2 className="h-4 w-4" />,
+                                    danger: true,
+                                    onClick: () => {
+                                      setDeleteError("");
+                                      setDeleteTarget(r);
+                                    },
+                                  },
+                                ]
+                              : []),
+                          ]}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-xs border-t border-[var(--color-border-soft)] pt-2 text-[var(--color-text-secondary)]">
+                      <div>
+                        <span className="text-[var(--color-text-muted)] text-[10px] block uppercase font-semibold">
+                          Date
+                        </span>
+                        <span className="font-medium">
+                          {r.order_date ? String(r.order_date).slice(0, 10) : "—"}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-[var(--color-text-muted)] text-[10px] block uppercase font-semibold">
+                          Sales Person
+                        </span>
+                        <span className="font-medium truncate block">{r.sales_person || "—"}</span>
+                      </div>
+                      <div>
+                        <span className="text-[var(--color-text-muted)] text-[10px] block uppercase font-semibold">
+                          Items
+                        </span>
+                        <span className="font-medium">
+                          {Array.isArray(r.items) ? `${r.items.length} items` : "—"}
+                        </span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-[var(--color-text-muted)] text-[10px] block uppercase font-semibold">
+                          Total Amount
+                        </span>
+                        <span className="text-sm font-bold text-[var(--color-text)] tabular-nums">
+                          {formatInr(r.amount || r.total_amount || 0)}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-2 border-t border-[var(--color-border-soft)] pt-2">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => setSelected(r)}
+                        leftIcon={<Eye className="h-3.5 w-3.5" />}
+                      >
+                        View
+                      </Button>
+                      {typeof r.id === "number" && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() =>
+                            navigate(jobCardDetailsUrl(r.id), { state: { from: "/sales/orders" } })
+                          }
+                          leftIcon={<ClipboardList className="h-3.5 w-3.5" />}
+                        >
+                          Job Card
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Desktop Table View */}
+            <div className="hidden md:block">
+              <DataTable
+                columns={columns}
+                data={filtered}
+                searchPlaceholder="Search"
+                searchKeys={["order_number", "customer_name", "sales_person"]}
+                emptyState={
+                  rows.length === 0 ? (
+                    <EmptyState
+                      icon="document"
+                      title="No Sales Orders yet"
+                      description={
+                        canCreate
+                          ? "Create a Job Card or convert a quotation to start the sales workflow."
+                          : "Sales orders appear here when they are created in the workflow."
+                      }
+                      actionLabel={canCreate ? "Create Job Card" : undefined}
+                      onAction={canCreate ? () => navigate(jobCardCreateUrl()) : undefined}
+                      className="border-none bg-transparent py-12"
+                    />
+                  ) : (
+                    <NoResultsState
+                      title="No sales orders match your filters"
+                      description="Try clearing filters or adjusting your search."
+                      onClear={() => setFilters(defaultFilters)}
+                      className="border-none bg-transparent py-12"
+                    />
+                  )
+                }
+              />
+            </div>
+          </>
         )}
         </ListPageCardBody>
       </ListPageCard>

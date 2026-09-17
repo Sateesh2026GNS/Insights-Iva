@@ -1,7 +1,26 @@
 import api from "./axiosConfig";
+import { triggerServerWakeup, isServerWakeupOrTransientError } from "../utils/serverWakeup";
 
 const PLATFORM_TOKEN_KEY = "gns-platform-token";
 const PLATFORM_ADMIN_KEY = "gns-platform-admin";
+
+async function withPlatformAuthRetry(requestFn, { maxRetries = 2, baseDelayMs = 2000 } = {}) {
+  let lastError;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await requestFn();
+    } catch (err) {
+      lastError = err;
+      const shouldRetry = isServerWakeupOrTransientError(err);
+      if (!shouldRetry || attempt === maxRetries) {
+        throw err;
+      }
+      triggerServerWakeup({ force: true });
+      await new Promise((resolve) => setTimeout(resolve, baseDelayMs * (attempt + 1)));
+    }
+  }
+  throw lastError;
+}
 
 export function getPlatformToken() {
   return localStorage.getItem(PLATFORM_TOKEN_KEY);
@@ -32,36 +51,43 @@ function platformHeaders() {
 }
 
 export async function superAdminLogin(email, password) {
-  const { data } = await api.post(
-    "/platform/auth/login",
-    { email, password },
-    { skipGlobalError: true }
-  );
-  return data;
+  triggerServerWakeup();
+  return withPlatformAuthRetry(async () => {
+    const { data } = await api.post(
+      "/platform/auth/login",
+      { email, password },
+      { skipGlobalError: true, timeout: 90_000 }
+    );
+    return data;
+  });
 }
 
 export async function superAdminVerifyOtp(challengeToken, otp, firebaseToken = null) {
-  const { data } = await api.post(
-    "/platform/auth/verify-otp",
-    {
-      challenge_token: challengeToken,
-      otp,
-      firebase_token: firebaseToken || undefined,
-    },
-    { skipGlobalError: true }
-  );
-  return data;
+  return withPlatformAuthRetry(async () => {
+    const { data } = await api.post(
+      "/platform/auth/verify-otp",
+      {
+        challenge_token: challengeToken,
+        otp,
+        firebase_token: firebaseToken || undefined,
+      },
+      { skipGlobalError: true, timeout: 90_000 }
+    );
+    return data;
+  });
 }
 
 export async function superAdminResendOtp(challengeToken) {
-  const { data } = await api.post(
-    "/platform/auth/resend-otp",
-    {
-      challenge_token: challengeToken,
-    },
-    { skipGlobalError: true }
-  );
-  return data;
+  return withPlatformAuthRetry(async () => {
+    const { data } = await api.post(
+      "/platform/auth/resend-otp",
+      {
+        challenge_token: challengeToken,
+      },
+      { skipGlobalError: true, timeout: 90_000 }
+    );
+    return data;
+  });
 }
 
 export async function getSuperAdminProfile() {

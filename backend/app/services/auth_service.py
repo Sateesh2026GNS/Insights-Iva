@@ -70,7 +70,9 @@ def build_access_token_for_user(user: User, *, role_name: str | None = None) -> 
     roles = list(getattr(user, "roles", None) or [])
     role = None
     if role_name:
-        role = next((r for r in roles if r.name == role_name), None)
+        def norm(s: str) -> str:
+            return re.sub(r"[_\s\-]+", "", s.lower())
+        role = next((r for r in roles if norm(r.name) == norm(role_name)), None)
     if role is None:
         role = roles[0] if roles else None
     resolved_role = role.name if role else (role_name or "Operator")
@@ -103,22 +105,35 @@ def build_access_token_for_user(user: User, *, role_name: str | None = None) -> 
 def assert_user_has_role(user: User, selected_role: str | None = None) -> str:
     """Ensure the selected login role matches a role assigned to the user, or pick primary role if omitted."""
     user_roles = [r.name for r in (getattr(user, "roles", None) or [])]
+    if not user_roles:
+        return (selected_role or "").strip() or "Operator"
     if not selected_role or not selected_role.strip():
-        return user_roles[0] if user_roles else "Operator"
+        return user_roles[0]
     selected = selected_role.strip()
-    if selected not in set(user_roles):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=ROLE_MISMATCH_MESSAGE,
-        )
-    return selected
+    if selected in set(user_roles):
+        return selected
+
+    def norm(s: str) -> str:
+        return re.sub(r"[_\s\-]+", "", s.lower())
+
+    for r_name in user_roles:
+        if norm(r_name) == norm(selected):
+            return r_name
+
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail=ROLE_MISMATCH_MESSAGE,
+    )
 
 
 def authenticate_user(db: Session, email: str, password: str) -> User | None:
     """Legacy helper — returns user only when email+password match."""
+    if not email:
+        return None
+    normalized = email.strip().lower()
     stmt = (
         select(User)
-        .where(User.email == email)
+        .where(func.lower(func.trim(User.email)) == normalized)
         .options(selectinload(User.roles), selectinload(User.tenant))
     )
     user = db.scalars(stmt).first()
@@ -130,9 +145,12 @@ def authenticate_user(db: Session, email: str, password: str) -> User | None:
 
 
 def find_user_by_email(db: Session, email: str) -> User | None:
+    if not email:
+        return None
+    normalized = email.strip().lower()
     return db.scalars(
         select(User)
-        .where(User.email == email)
+        .where(func.lower(func.trim(User.email)) == normalized)
         .options(selectinload(User.roles), selectinload(User.tenant))
     ).first()
 

@@ -71,9 +71,12 @@ class Settings(BaseSettings):
 
     # Login lockout + IP rate limits
     max_login_attempts: int = 5
-    lockout_minutes: int = 30
+    lockout_minutes: int = Field(
+        default=1,
+        validation_alias=AliasChoices("LOCKOUT_MINUTES", "lockout_minutes"),
+    )
     login_rate_limit: int = 20
-    login_rate_window_seconds: int = 300
+    login_rate_window_seconds: int = 60
     register_rate_limit: int = Field(
         default=5,
         validation_alias=AliasChoices("REGISTER_RATE_LIMIT", "register_rate_limit"),
@@ -123,7 +126,7 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("AUTH_BACKOFF_THRESHOLD", "auth_backoff_threshold"),
     )
     auth_backoff_window_seconds: int = Field(
-        default=900,
+        default=60,
         validation_alias=AliasChoices("AUTH_BACKOFF_WINDOW_SECONDS", "auth_backoff_window_seconds"),
     )
 
@@ -340,6 +343,12 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def enforce_production_secrets(self):
+        if self.is_production:
+            if self.jwt_secret_key == _DEFAULT_JWT_SECRET:
+                raise ValueError("JWT_SECRET_KEY must be changed from default in production")
+            if (self.storage_provider or "").strip().lower() == "local":
+                raise ValueError("STORAGE_PROVIDER cannot be 'local' in production. Use s3 or gcs.")
+
         # Ensure production domain defaults are always present in CORS
         production_defaults = [
             "https://insights-734ee.web.app",

@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ArrowRight, Eye, EyeOff, Lock, Mail } from "lucide-react";
 import { superAdminLogin } from "../../api/platformApi";
+import { triggerServerWakeup } from "../../utils/serverWakeup";
 import CompanyLogin from "../auth/Login";
 import "./SuperAdminLogin.css";
 
@@ -47,7 +48,18 @@ export default function SuperAdminLogin() {
   const [password, setPassword] = useState("");
   const [showPwd, setShowPwd]   = useState(false);
   const [loading, setLoading]   = useState(false);
+  const [isWakingServer, setIsWakingServer] = useState(false);
   const [error, setError]       = useState("");
+  const wakingTimerRef = useRef(null);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = "light";
+    document.documentElement.classList.remove("dark");
+    triggerServerWakeup();
+    return () => {
+      if (wakingTimerRef.current) clearTimeout(wakingTimerRef.current);
+    };
+  }, []);
 
   if (location.pathname === "/login") {
     return <CompanyLogin />;
@@ -57,8 +69,16 @@ export default function SuperAdminLogin() {
     e.preventDefault();
     setError("");
     setLoading(true);
+    setIsWakingServer(false);
+
+    if (wakingTimerRef.current) clearTimeout(wakingTimerRef.current);
+    wakingTimerRef.current = setTimeout(() => {
+      setIsWakingServer(true);
+    }, 3000);
+
     try {
       const data = await superAdminLogin(email.trim(), password);
+      if (wakingTimerRef.current) clearTimeout(wakingTimerRef.current);
       navigate("/gns-admin/verify-otp", {
         replace: true,
         state: {
@@ -71,14 +91,18 @@ export default function SuperAdminLogin() {
         },
       });
     } catch (err) {
+      if (wakingTimerRef.current) clearTimeout(wakingTimerRef.current);
+      setIsWakingServer(false);
       if (!err.response) {
-        setError("Cannot reach the API server. Please check your network connection or backend status, then try again.");
+        setError("The server is taking longer than expected to wake up. Please wait a few seconds and try again.");
       } else {
         const detail = err.response?.data?.detail;
         setError(typeof detail === "string" ? detail : "Login failed.");
       }
     } finally {
+      if (wakingTimerRef.current) clearTimeout(wakingTimerRef.current);
       setLoading(false);
+      setIsWakingServer(false);
     }
   };
 
@@ -192,7 +216,7 @@ export default function SuperAdminLogin() {
               disabled={loading}
               className="sa-btn"
             >
-              <span>{loading ? "Verifying…" : "Continue"}</span>
+              <span>{loading ? (isWakingServer ? "Connecting to server…" : "Verifying…") : "Continue"}</span>
               <ArrowIcon />
             </button>
           </form>

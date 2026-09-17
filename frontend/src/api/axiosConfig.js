@@ -9,9 +9,21 @@ import { checkSessionStatus, isPrimaryTabAlive } from "../utils/sessionManager";
 
 /** Resolve API base URL. Empty string = same-origin (Docker/nginx proxy). */
 export function getApiBaseURL() {
-  if (import.meta.env.VITE_API_BASE_URL !== undefined) {
+  if (import.meta.env.VITE_API_BASE_URL !== undefined && String(import.meta.env.VITE_API_BASE_URL || "").trim()) {
     const raw = String(import.meta.env.VITE_API_BASE_URL || "").trim();
     return raw.replace(/\/+$/, "");
+  }
+  if (typeof window !== "undefined") {
+    const hostname = window.location.hostname || "";
+    if (
+      hostname.includes("web.app") ||
+      hostname.includes("firebaseapp.com") ||
+      hostname.includes("insightsiva.com") ||
+      hostname.includes("vercel.app") ||
+      hostname.includes("netlify.app")
+    ) {
+      return "https://insights-iva-api.onrender.com";
+    }
   }
   return "";
 }
@@ -46,7 +58,7 @@ export function clearApiCache() {
 
 const api = axios.create({
   baseURL: getApiBaseURL(),
-  timeout: 15_000,
+  timeout: 90_000,
 });
 
 api.interceptors.request.use((config) => {
@@ -177,18 +189,19 @@ api.interceptors.response.use(
     const method = String(original?.method || "get").toLowerCase();
     const isTimeout = error.code === "ECONNABORTED" || error.message?.includes("timeout");
     const isNetworkErr = error.code === "ERR_NETWORK";
+    const status = error.response?.status;
+    const isGatewayError = status === 502 || status === 503 || status === 504;
 
-    // Auto-retry once only for GET requests on timeout / network error
-    if (method === "get" && (isTimeout || isNetworkErr) && original && !original._retryCount) {
-      original._retryCount = 1;
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+    // Auto-retry up to 2 times for GET requests on timeout / network error / gateway spin-up errors
+    if (method === "get" && (isTimeout || isNetworkErr || isGatewayError) && original && (original._retryCount || 0) < 2) {
+      original._retryCount = (original._retryCount || 0) + 1;
+      await new Promise((resolve) => setTimeout(resolve, 1500 * original._retryCount));
       return api(original);
     }
 
-    if (isTimeout || isNetworkErr) {
+    if (isTimeout || isNetworkErr || isGatewayError) {
       error.message = "Server response timed out. Operating in offline/cached mode.";
     }
-    const status = error.response?.status;
 
     if (
       status === 401 &&

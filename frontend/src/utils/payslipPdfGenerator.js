@@ -14,7 +14,7 @@ export async function generatePayslipPdf(docEl, { empName, monthNameUpper, yearN
   if (header) header.style.display = "none";
 
   window.scrollTo(0, 0);
-  await new Promise((r) => setTimeout(r, 80));
+  await new Promise((r) => setTimeout(r, 100));
 
   try {
     const canvas = await html2canvas(docEl, {
@@ -26,39 +26,109 @@ export async function generatePayslipPdf(docEl, { empName, monthNameUpper, yearN
       scrollX: 0,
       scrollY: 0,
       windowWidth: 760,
-      onclone: (_, clonedEl) => {
+      onclone: (clonedDoc, clonedEl) => {
+        // Inject explicit CSS overrides into cloned document head to ensure pristine rendering
+        const style = clonedDoc.createElement("style");
+        style.innerHTML = `
+          * {
+            box-sizing: border-box !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          body {
+            background-color: #ffffff !important;
+            color: #000000 !important;
+            font-family: Arial, Helvetica, sans-serif !important;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+          .payslip-page, .payslip-card {
+            font-family: Arial, Helvetica, sans-serif !important;
+            color: #000000 !important;
+            background-color: #ffffff !important;
+            width: 760px !important;
+            max-width: 760px !important;
+            min-width: 760px !important;
+            margin: 0 auto !important;
+            padding: 24px 30px !important;
+            box-shadow: none !important;
+            border: none !important;
+          }
+          table {
+            border-collapse: collapse !important;
+            width: 100% !important;
+            table-layout: fixed !important;
+          }
+          th, td {
+            box-sizing: border-box !important;
+            line-height: 1.45 !important;
+            vertical-align: middle !important;
+            color: #000000 !important;
+          }
+          th {
+            font-weight: bold !important;
+            padding-top: 5px !important;
+            padding-bottom: 5px !important;
+            padding-left: 8px !important;
+            padding-right: 8px !important;
+          }
+          td {
+            padding-top: 3.5px !important;
+            padding-bottom: 3.5px !important;
+            padding-left: 8px !important;
+            padding-right: 8px !important;
+          }
+          .payslip-tds-bar {
+            background-color: #d3dce6 !important;
+            background: #d3dce6 !important;
+            color: #000000 !important;
+            font-weight: bold !important;
+            padding: 5px 10px !important;
+            border-bottom: 1px solid #000000 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+        `;
+        if (clonedDoc.head) {
+          clonedDoc.head.appendChild(style);
+        }
+
         clonedEl.style.boxShadow = "none";
         clonedEl.style.border = "none";
         clonedEl.style.width = "760px";
         clonedEl.style.maxWidth = "760px";
         clonedEl.style.minWidth = "760px";
         clonedEl.style.margin = "0 auto";
+        clonedEl.style.backgroundColor = "#ffffff";
 
-        const tdsBar = clonedEl.querySelector(".payslip-tds-bar");
-        if (tdsBar) tdsBar.style.backgroundColor = "#d3dce6";
+        const tdsBars = clonedEl.querySelectorAll(".payslip-tds-bar");
+        tdsBars.forEach((bar) => {
+          bar.style.backgroundColor = "#d3dce6";
+          bar.style.background = "#d3dce6";
+          bar.style.setProperty("background-color", "#d3dce6", "important");
+        });
       },
     });
 
     const imgData = canvas.toDataURL("image/png");
 
-    // Fit to A4 (210 × 297 mm)
+    // Fit to A4 (210 × 297 mm) with balanced margins
     const a4W = 210;
     const a4H = 297;
-    const imgHeightMm = (canvas.height * a4W) / canvas.width;
+    const margin = 5;
+    const printableW = a4W - margin * 2;
+    const printableH = a4H - margin * 2;
 
-    let finalW = a4W;
-    let finalH = imgHeightMm;
-    let offsetX = 0;
-    let offsetY = 0;
+    let finalW = printableW;
+    let finalH = (canvas.height * printableW) / canvas.width;
 
-    if (imgHeightMm > a4H) {
-      finalH = a4H;
-      finalW = (canvas.width * finalH) / canvas.height;
-      offsetX = (a4W - finalW) / 2;
-      offsetY = 0;
-    } else {
-      offsetY = (a4H - imgHeightMm) / 2;
+    if (finalH > printableH) {
+      finalH = printableH;
+      finalW = (canvas.width * printableH) / canvas.height;
     }
+
+    const offsetX = (a4W - finalW) / 2;
+    const offsetY = (a4H - finalH) / 2;
 
     const pdf = new jsPDF({
       orientation: "portrait",

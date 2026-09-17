@@ -14,12 +14,12 @@ export default function Dashboard() {
   const { user } = useAuth();
   const role = getActiveRoleName(user);
 
-  if (isAdminRole(role) || isOperator(user)) {
+  if (isAdminRole(role)) {
     return <ReferenceDashboard />;
   }
 
-  const target = getDashboardPathForRole(role);
-  if (target !== "/") {
+  const target = getDashboardPathForRole(user || role);
+  if (target && target !== "/") {
     return <Navigate to={target} replace />;
   }
 

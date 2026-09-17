@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+import LogoutConfirmModal from "../../components/common/LogoutConfirmModal";
 import { filterAccessibleSettingsCategories } from "../../config/permissions";
 import useAuth from "../../hooks/useAuth";
 import { SETTINGS_NAV_GROUPS, searchSettingsCategories } from "./settingsCatalog";
@@ -16,8 +17,10 @@ import {
 
 export default function SettingsHome() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [query, setQuery] = useState("");
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   const results = useMemo(
     () => filterAccessibleSettingsCategories(searchSettingsCategories(query), user),
@@ -39,11 +42,32 @@ export default function SettingsHome() {
   }, [byId, isSearching, results]);
 
   const goTo = (cat) => {
+    if (cat.id === "logout") {
+      setShowLogoutModal(true);
+      return;
+    }
     navigate(cat.href || `/settings/${cat.id}`);
+  };
+
+  const handleConfirmLogout = async ({ allDevices } = {}) => {
+    setLoggingOut(true);
+    try {
+      await logout({ allDevices });
+    } finally {
+      setLoggingOut(false);
+      setShowLogoutModal(false);
+      navigate("/login", { replace: true });
+    }
   };
 
   return (
     <div className="space-y-6">
+      <LogoutConfirmModal
+        open={showLogoutModal}
+        onCancel={() => setShowLogoutModal(false)}
+        onConfirm={handleConfirmLogout}
+        busy={loggingOut}
+      />
       <SettingsHero
         subtitle="Manage company profile, users, security, workspace preferences, and operational defaults."
         actions={<SettingsThemeToggle className="self-start" />}

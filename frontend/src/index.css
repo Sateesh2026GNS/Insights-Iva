@@ -1152,6 +1152,21 @@ input.pl-8 {
 .inventory-header-control {
   min-width: 0;
 }
+@media (max-width: 639px) {
+  .inventory-header-control {
+    width: 100%;
+    flex: 1 1 100%;
+  }
+  .inventory-header-control__surface {
+    width: 100%;
+    display: flex;
+  }
+  .inventory-header-control__input,
+  .inventory-header-control__select {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+}
 .inventory-header-control__label {
   display: block;
   margin-bottom: 0.25rem;
@@ -1297,6 +1312,35 @@ input.pl-8 {
   gap: var(--space-3);
   margin-bottom: var(--space-4);
 }
+@media (max-width: 639px) {
+  .ui-list-page__stack {
+    padding: var(--space-3) var(--space-3) var(--space-8);
+    gap: var(--space-3);
+  }
+  .ui-list-card__body {
+    padding: var(--space-3);
+  }
+  .ui-list-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-2);
+  }
+  .ui-list-toolbar__start {
+    width: 100%;
+    flex: none;
+  }
+  .ui-list-toolbar__start .ui-search-wrap,
+  .ui-list-toolbar__start input {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  .ui-list-toolbar__end {
+    width: 100%;
+    margin-left: 0;
+    justify-content: flex-start;
+    gap: 0.375rem;
+  }
+}
 .ui-list-toolbar__start,
 .ui-list-toolbar__main {
   display: flex;
@@ -1345,6 +1389,17 @@ input.pl-8 {
   display: grid;
   gap: var(--space-3);
   grid-template-columns: repeat(auto-fit, minmax(var(--kpi-grid-min), 1fr));
+}
+@media (max-width: 639px) {
+  .ui-grid-kpi {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-2);
+  }
+}
+@media (max-width: 360px) {
+  .ui-grid-kpi {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 /* Dashboard solid KPI row — full-width equal columns */
@@ -2217,12 +2272,20 @@ table > tbody > tr:first-child:has(th) {
   border-bottom-color: #144a2e;
 }
 .app-navbar__row {
-  display: grid;
-  grid-template-columns: minmax(0, auto) minmax(0, 1fr) minmax(0, auto);
+  display: flex;
   align-items: center;
-  gap: 0.75rem;
+  justify-content: space-between;
+  gap: 0.5rem;
   min-height: var(--navbar-height);
-  padding: 0 1rem;
+  padding: 0 0.75rem;
+}
+@media (min-width: 768px) {
+  .app-navbar__row {
+    display: grid;
+    grid-template-columns: minmax(0, auto) minmax(0, 1fr) minmax(0, auto);
+    gap: 0.75rem;
+    padding: 0 1rem;
+  }
 }
 @media (min-width: 1024px) {
   .app-navbar__row {
@@ -2233,11 +2296,24 @@ table > tbody > tr:first-child:has(th) {
 .app-navbar__left {
   display: flex;
   min-width: 0;
+  flex: 1;
   align-items: center;
-  gap: 0.625rem;
+  gap: 0.5rem;
+}
+@media (min-width: 768px) {
+  .app-navbar__left {
+    flex: none;
+    gap: 0.625rem;
+  }
 }
 .app-navbar__title-block {
   min-width: 0;
+  flex: 1;
+}
+@media (min-width: 768px) {
+  .app-navbar__title-block {
+    flex: none;
+  }
 }
 .app-navbar__center {
   display: none;
@@ -2299,6 +2375,17 @@ table > tbody > tr:first-child:has(th) {
     background-color var(--transition-fast),
     border-color var(--transition-fast);
 }
+@media (max-width: 639px) {
+  .app-navbar__user-btn {
+    padding: 0.125rem;
+    border-radius: 9999px;
+    border-color: transparent;
+    background: transparent;
+  }
+  .app-navbar__user-btn:hover {
+    background: rgba(255, 255, 255, 0.12);
+  }
+}
 .app-navbar__user-btn:hover {
   background: rgba(255, 255, 255, 0.16);
 }
@@ -2325,7 +2412,7 @@ table > tbody > tr:first-child:has(th) {
 .app-navbar__mobile-search {
   border-top: 1px solid rgba(255, 255, 255, 0.22);
   background: var(--erp-primary, #00733c);
-  padding: 0.625rem 1rem 0.75rem;
+  padding: 0.5rem 0.875rem 0.625rem;
 }
 @media (min-width: 768px) {
   .app-navbar__mobile-search {

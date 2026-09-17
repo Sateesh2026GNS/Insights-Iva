@@ -609,58 +609,58 @@ export default function PayrollDetailModal({ record, onClose }) {
             <div className="mt-1 border border-black">
               <table className="w-full text-[10.5px] border-collapse">
                 <thead>
-                  <tr className="border-b border-black font-bold">
-                    <th className="py-1 px-2.5 text-left border-r border-black w-[24%]">Earnings</th>
-                    <th className="py-1 px-2.5 text-right border-r border-black w-[13%]">YTD</th>
-                    <th className="py-1 px-2.5 text-right border-r border-black w-[13%]">Amount</th>
-                    <th className="py-1 px-2.5 text-left border-r border-black w-[24%]">Deductions</th>
-                    <th className="py-1 px-2.5 text-right border-r border-black w-[13%]">YTD</th>
-                    <th className="py-1 px-2.5 text-right w-[13%]">Amount</th>
+                  <tr className="font-bold">
+                    <th className="py-2 px-2.5 text-left border-r border-b border-black w-[24%] leading-normal">Earnings</th>
+                    <th className="py-2 px-2.5 text-right border-r border-b border-black w-[13%] leading-normal">YTD</th>
+                    <th className="py-2 px-2.5 text-right border-r border-b border-black w-[13%] leading-normal">Amount</th>
+                    <th className="py-2 px-2.5 text-left border-r border-b border-black w-[24%] leading-normal">Deductions</th>
+                    <th className="py-2 px-2.5 text-right border-r border-b border-black w-[13%] leading-normal">YTD</th>
+                    <th className="py-2 px-2.5 text-right border-b border-black w-[13%] leading-normal">Amount</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr>
-                    <td className="py-0.5 px-2.5 text-left border-r border-black">BASIC</td>
-                    <td className="py-0.5 px-2.5 text-right border-r border-black">{formatInrZero(basicYtd)}</td>
-                    <td className="py-0.5 px-2.5 text-right border-r border-black">{formatInrZero(basic)}</td>
-                    <td className="py-0.5 px-2.5 text-left border-r border-black">PF</td>
-                    <td className="py-0.5 px-2.5 text-right border-r border-black">{formatInrZero(pfYtd)}</td>
-                    <td className="py-0.5 px-2.5 text-right">{formatInrZero(pf)}</td>
+                    <td className="py-1.5 px-2.5 text-left border-r border-black leading-normal">BASIC</td>
+                    <td className="py-1.5 px-2.5 text-right border-r border-black leading-normal">{formatInrZero(basicYtd)}</td>
+                    <td className="py-1.5 px-2.5 text-right border-r border-black leading-normal">{formatInrZero(basic)}</td>
+                    <td className="py-1.5 px-2.5 text-left border-r border-black leading-normal">PF</td>
+                    <td className="py-1.5 px-2.5 text-right border-r border-black leading-normal">{formatInrZero(pfYtd)}</td>
+                    <td className="py-1.5 px-2.5 text-right leading-normal">{formatInrZero(pf)}</td>
                   </tr>
                   <tr>
-                    <td className="py-0.5 px-2.5 text-left border-r border-black">HRA</td>
-                    <td className="py-0.5 px-2.5 text-right border-r border-black">{formatInrZero(hraYtd)}</td>
-                    <td className="py-0.5 px-2.5 text-right border-r border-black">{formatInrZero(hra)}</td>
-                    <td className="py-0.5 px-2.5 text-left border-r border-black">PT</td>
-                    <td className="py-0.5 px-2.5 text-right border-r border-black">{formatInrZero(ptYtd)}</td>
-                    <td className="py-0.5 px-2.5 text-right">{formatInrZero(pt)}</td>
+                    <td className="py-1.5 px-2.5 text-left border-r border-black leading-normal">HRA</td>
+                    <td className="py-1.5 px-2.5 text-right border-r border-black leading-normal">{formatInrZero(hraYtd)}</td>
+                    <td className="py-1.5 px-2.5 text-right border-r border-black leading-normal">{formatInrZero(hra)}</td>
+                    <td className="py-1.5 px-2.5 text-left border-r border-black leading-normal">PT</td>
+                    <td className="py-1.5 px-2.5 text-right border-r border-black leading-normal">{formatInrZero(ptYtd)}</td>
+                    <td className="py-1.5 px-2.5 text-right leading-normal">{formatInrZero(pt)}</td>
                   </tr>
                   <tr>
-                    <td className="py-0.5 px-2.5 text-left border-r border-black">Conveyance</td>
-                    <td className="py-0.5 px-2.5 text-right border-r border-black">{formatInrZero(conveyanceYtd)}</td>
-                    <td className="py-0.5 px-2.5 text-right border-r border-black">{formatInrZero(conveyance)}</td>
-                    <td className="py-0.5 px-2.5 text-left border-r border-black">&nbsp;</td>
-                    <td className="py-0.5 px-2.5 text-right border-r border-black"></td>
-                    <td className="py-0.5 px-2.5 text-right"></td>
+                    <td className="py-1.5 px-2.5 text-left border-r border-black leading-normal">Conveyance</td>
+                    <td className="py-1.5 px-2.5 text-right border-r border-black leading-normal">{formatInrZero(conveyanceYtd)}</td>
+                    <td className="py-1.5 px-2.5 text-right border-r border-black leading-normal">{formatInrZero(conveyance)}</td>
+                    <td className="py-1.5 px-2.5 text-left border-r border-black leading-normal">&nbsp;</td>
+                    <td className="py-1.5 px-2.5 text-right border-r border-black leading-normal"></td>
+                    <td className="py-1.5 px-2.5 text-right leading-normal"></td>
                   </tr>
                   <tr>
-                    <td className="py-0.5 px-2.5 text-left border-r border-black">Medical Re</td>
-                    <td className="py-0.5 px-2.5 text-right border-r border-black">{formatInrZero(medicalYtd)}</td>
-                    <td className="py-0.5 px-2.5 text-right border-r border-black">{formatInrZero(medical)}</td>
-                    <td className="py-0.5 px-2.5 text-left border-r border-black">&nbsp;</td>
-                    <td className="py-0.5 px-2.5 text-right border-r border-black"></td>
-                    <td className="py-0.5 px-2.5 text-right"></td>
+                    <td className="py-1.5 px-2.5 text-left border-r border-black leading-normal">Medical Re</td>
+                    <td className="py-1.5 px-2.5 text-right border-r border-black leading-normal">{formatInrZero(medicalYtd)}</td>
+                    <td className="py-1.5 px-2.5 text-right border-r border-black leading-normal">{formatInrZero(medical)}</td>
+                    <td className="py-1.5 px-2.5 text-left border-r border-black leading-normal">&nbsp;</td>
+                    <td className="py-1.5 px-2.5 text-right border-r border-black leading-normal"></td>
+                    <td className="py-1.5 px-2.5 text-right leading-normal"></td>
                   </tr>
                   <tr>
-                    <td className="py-0.5 px-2.5 text-left border-r border-black">Other Allo</td>
-                    <td className="py-0.5 px-2.5 text-right border-r border-black">{formatInrZero(otherYtd)}</td>
-                    <td className="py-0.5 px-2.5 text-right border-r border-black">{formatInrZero(other)}</td>
-                    <td className="py-0.5 px-2.5 text-left border-r border-black">&nbsp;</td>
-                    <td className="py-0.5 px-2.5 text-right border-r border-black"></td>
-                    <td className="py-0.5 px-2.5 text-right"></td>
+                    <td className="py-1.5 px-2.5 text-left border-r border-black leading-normal">Other Allo</td>
+                    <td className="py-1.5 px-2.5 text-right border-r border-black leading-normal">{formatInrZero(otherYtd)}</td>
+                    <td className="py-1.5 px-2.5 text-right border-r border-black leading-normal">{formatInrZero(other)}</td>
+                    <td className="py-1.5 px-2.5 text-left border-r border-black leading-normal">&nbsp;</td>
+                    <td className="py-1.5 px-2.5 text-right border-r border-black leading-normal"></td>
+                    <td className="py-1.5 px-2.5 text-right leading-normal"></td>
                   </tr>
                   {/* Visual spacing rows matching Image 1 */}
-                  {[...Array(6)].map((_, i) => (
+                  {[...Array(4)].map((_, i) => (
                     <tr key={i} className="h-3.5">
                       <td className="border-r border-black"></td>
                       <td className="border-r border-black"></td>
@@ -672,23 +672,23 @@ export default function PayrollDetailModal({ record, onClose }) {
                   ))}
                   {/* Total Row */}
                   <tr className="font-bold">
-                    <td className="py-1 px-2.5 text-left border-r border-t border-b border-black">Total</td>
-                    <td className="py-1 px-2.5 text-right border-r border-t border-b border-black">{formatInrZero(totalEarningsYtd)}</td>
-                    <td className="py-1 px-2.5 text-right border-r border-t border-b border-black">{formatInrZero(totalEarningsMonthly)}</td>
-                    <td className="py-1 px-2.5 text-left border-r border-t border-b border-black">Total</td>
-                    <td className="py-1 px-2.5 text-right border-r border-t border-b border-black">{formatInrZero(totalDeductionsYtd)}</td>
-                    <td className="py-1 px-2.5 text-right border-t border-b border-black">{formatInrZero(totalDeductionsMonthly)}</td>
+                    <td className="py-2 px-2.5 text-left border-r border-t border-b border-black leading-normal">Total</td>
+                    <td className="py-2 px-2.5 text-right border-r border-t border-b border-black leading-normal">{formatInrZero(totalEarningsYtd)}</td>
+                    <td className="py-2 px-2.5 text-right border-r border-t border-b border-black leading-normal">{formatInrZero(totalEarningsMonthly)}</td>
+                    <td className="py-2 px-2.5 text-left border-r border-t border-b border-black leading-normal">Total</td>
+                    <td className="py-2 px-2.5 text-right border-r border-t border-b border-black leading-normal">{formatInrZero(totalDeductionsYtd)}</td>
+                    <td className="py-2 px-2.5 text-right border-t border-b border-black leading-normal">{formatInrZero(totalDeductionsMonthly)}</td>
                   </tr>
                 </tbody>
               </table>
 
               {/* Net Pay & In Words Bar */}
-              <div className="p-2 border-b border-black text-[10.5px]">
-                <div className="flex items-center">
+              <div className="p-2.5 border-b border-black text-[10.5px]">
+                <div className="flex items-center leading-normal">
                   <span className="font-bold w-20">Net Pay</span>
                   <span className="font-bold">{formatInrZero(netPay)}</span>
                 </div>
-                <div className="flex items-center justify-between mt-0.5">
+                <div className="flex items-center justify-between mt-1 leading-normal">
                   <div className="flex items-start">
                     <span className="font-bold w-20 shrink-0">In Words</span>
                     <span className="font-bold">{inWords}</span>
@@ -699,8 +699,8 @@ export default function PayrollDetailModal({ record, onClose }) {
 
               {/* TDS Header Bar */}
               <div
-                className="payslip-tds-bar flex items-center justify-between px-2 py-1 font-bold text-[10px] border-b border-black"
-                style={{ backgroundColor: "#d3dce6" }}
+                className="payslip-tds-bar flex items-center justify-between px-3 py-2 font-bold text-[10.5px] border-b border-black"
+                style={{ backgroundColor: "#d3dce6", WebkitPrintColorAdjust: "exact", printColorAdjust: "exact" }}
               >
                 <span>New Tax Regime Opted</span>
                 <span>TDS Details</span>
@@ -714,56 +714,56 @@ export default function PayrollDetailModal({ record, onClose }) {
                   <table className="w-full text-[10px] border-collapse">
                     <thead>
                       <tr className="font-bold">
-                        <th className="py-0.5 px-2 text-left border-r border-b border-black w-[40%]">Description</th>
-                        <th className="py-0.5 px-2 text-right border-r border-b border-black w-[25%]">Gross</th>
-                        <th className="py-0.5 px-2 text-right border-r border-b border-black w-[15%]">Exempt</th>
-                        <th className="py-0.5 px-2 text-right border-b border-black w-[20%]">Taxable</th>
+                        <th className="py-1.5 px-2 text-left border-r border-b border-black w-[40%] leading-normal">Description</th>
+                        <th className="py-1.5 px-2 text-right border-r border-b border-black w-[25%] leading-normal">Gross</th>
+                        <th className="py-1.5 px-2 text-right border-r border-b border-black w-[15%] leading-normal">Exempt</th>
+                        <th className="py-1.5 px-2 text-right border-b border-black w-[20%] leading-normal">Taxable</th>
                       </tr>
                     </thead>
                     <tbody>
                       <tr>
-                        <td className="py-0.5 px-2 border-r border-black">Basic Salary</td>
-                        <td className="py-0.5 px-2 text-right border-r border-black">{formatInrStr(annualBasic)}</td>
-                        <td className="py-0.5 px-2 text-right border-r border-black"></td>
-                        <td className="py-0.5 px-2 text-right">{formatInrStr(annualBasic)}</td>
+                        <td className="py-1 px-2 border-r border-black leading-normal">Basic Salary</td>
+                        <td className="py-1 px-2 text-right border-r border-black leading-normal">{formatInrStr(annualBasic)}</td>
+                        <td className="py-1 px-2 text-right border-r border-black leading-normal"></td>
+                        <td className="py-1 px-2 text-right leading-normal">{formatInrStr(annualBasic)}</td>
                       </tr>
                       <tr>
-                        <td className="py-0.5 px-2 border-r border-black">DA</td>
-                        <td className="py-0.5 px-2 text-right border-r border-black"></td>
-                        <td className="py-0.5 px-2 text-right border-r border-black"></td>
-                        <td className="py-0.5 px-2 text-right"></td>
+                        <td className="py-1 px-2 border-r border-black leading-normal">DA</td>
+                        <td className="py-1 px-2 text-right border-r border-black leading-normal"></td>
+                        <td className="py-1 px-2 text-right border-r border-black leading-normal"></td>
+                        <td className="py-1 px-2 text-right leading-normal"></td>
                       </tr>
                       <tr>
-                        <td className="py-0.5 px-2 border-r border-black">HRA</td>
-                        <td className="py-0.5 px-2 text-right border-r border-black">{formatInrStr(annualHra)}</td>
-                        <td className="py-0.5 px-2 text-right border-r border-black"></td>
-                        <td className="py-0.5 px-2 text-right">{formatInrStr(annualHra)}</td>
+                        <td className="py-1 px-2 border-r border-black leading-normal">HRA</td>
+                        <td className="py-1 px-2 text-right border-r border-black leading-normal">{formatInrStr(annualHra)}</td>
+                        <td className="py-1 px-2 text-right border-r border-black leading-normal"></td>
+                        <td className="py-1 px-2 text-right leading-normal">{formatInrStr(annualHra)}</td>
                       </tr>
                       <tr>
-                        <td className="py-0.5 px-2 border-r border-black">Conveyance</td>
-                        <td className="py-0.5 px-2 text-right border-r border-black">{formatInrStr(annualConveyance)}</td>
-                        <td className="py-0.5 px-2 text-right border-r border-black"></td>
-                        <td className="py-0.5 px-2 text-right">{formatInrStr(annualConveyance)}</td>
+                        <td className="py-1 px-2 border-r border-black leading-normal">Conveyance</td>
+                        <td className="py-1 px-2 text-right border-r border-black leading-normal">{formatInrStr(annualConveyance)}</td>
+                        <td className="py-1 px-2 text-right border-r border-black leading-normal"></td>
+                        <td className="py-1 px-2 text-right leading-normal">{formatInrStr(annualConveyance)}</td>
                       </tr>
                       <tr>
-                        <td className="py-0.5 px-2 border-r border-black">Any Other Allowance</td>
-                        <td className="py-0.5 px-2 text-right border-r border-black">{formatInrStr(annualOther)}</td>
-                        <td className="py-0.5 px-2 text-right border-r border-black"></td>
-                        <td className="py-0.5 px-2 text-right">{formatInrStr(annualOther)}</td>
+                        <td className="py-1 px-2 border-r border-black leading-normal">Any Other Allowance</td>
+                        <td className="py-1 px-2 text-right border-r border-black leading-normal">{formatInrStr(annualOther)}</td>
+                        <td className="py-1 px-2 text-right border-r border-black leading-normal"></td>
+                        <td className="py-1 px-2 text-right leading-normal">{formatInrStr(annualOther)}</td>
                       </tr>
                       <tr>
-                        <td className="py-0.5 px-2 border-r border-black">Perquisites</td>
-                        <td className="py-0.5 px-2 text-right border-r border-black">{formatInrStr(annualPerquisites)}</td>
-                        <td className="py-0.5 px-2 text-right border-r border-black"></td>
-                        <td className="py-0.5 px-2 text-right">{formatInrStr(annualPerquisites)}</td>
+                        <td className="py-1 px-2 border-r border-black leading-normal">Perquisites</td>
+                        <td className="py-1 px-2 text-right border-r border-black leading-normal">{formatInrStr(annualPerquisites)}</td>
+                        <td className="py-1 px-2 text-right border-r border-black leading-normal"></td>
+                        <td className="py-1 px-2 text-right leading-normal">{formatInrStr(annualPerquisites)}</td>
                       </tr>
                       <tr>
-                        <td className="py-0.5 px-2 border-r border-black">Other Components</td>
-                        <td className="py-0.5 px-2 text-right border-r border-black"></td>
-                        <td className="py-0.5 px-2 text-right border-r border-black"></td>
-                        <td className="py-0.5 px-2 text-right"></td>
+                        <td className="py-1 px-2 border-r border-black leading-normal">Other Components</td>
+                        <td className="py-1 px-2 text-right border-r border-black leading-normal"></td>
+                        <td className="py-1 px-2 text-right border-r border-black leading-normal"></td>
+                        <td className="py-1 px-2 text-right leading-normal"></td>
                       </tr>
-                      <tr className="h-3.5">
+                      <tr className="h-3">
                         <td className="border-r border-black"></td>
                         <td className="border-r border-black"></td>
                         <td className="border-r border-black"></td>
@@ -773,13 +773,13 @@ export default function PayrollDetailModal({ record, onClose }) {
                   </table>
 
                   {/* Deduction Under Chapter VI-A */}
-                  <div className="border-t border-black flex-1 flex flex-col min-h-[90px]">
-                    <div className="py-0.5 px-2 font-bold text-center border-b border-black text-[10px]">
+                  <div className="border-t border-black flex-1 flex flex-col min-h-[84px]">
+                    <div className="py-1.5 px-2 font-bold text-center border-b border-black text-[10px] leading-normal">
                       Deduction Under Chapter VI-A
                     </div>
                     <div className="flex-1 flex w-full">
-                      <div className="w-1/2 border-r border-black h-full min-h-[65px]"></div>
-                      <div className="w-1/2 h-full min-h-[65px]"></div>
+                      <div className="w-1/2 border-r border-black h-full min-h-[60px]"></div>
+                      <div className="w-1/2 h-full min-h-[60px]"></div>
                     </div>
                   </div>
                 </div>
@@ -789,106 +789,106 @@ export default function PayrollDetailModal({ record, onClose }) {
                   <table className="w-full text-[10px] border-collapse">
                     <thead>
                       <tr className="font-bold">
-                        <th className="py-0.5 px-2 text-left border-r border-b border-black w-[65%]">Income Tax Deduction</th>
-                        <th className="py-0.5 px-2 text-right border-b border-black w-[35%]">&nbsp;</th>
+                        <th className="py-1.5 px-2 text-left border-r border-b border-black w-[65%] leading-normal">Income Tax Deduction</th>
+                        <th className="py-1.5 px-2 text-right border-b border-black w-[35%] leading-normal">&nbsp;</th>
                       </tr>
                     </thead>
                     <tbody>
                       <tr>
-                        <td className="py-0.5 px-2 border-r border-black">Gross Salary</td>
-                        <td className="py-0.5 px-2 text-right">{formatInrStr(annualGross)}</td>
+                        <td className="py-1 px-2 border-r border-black leading-normal">Gross Salary</td>
+                        <td className="py-1 px-2 text-right leading-normal">{formatInrStr(annualGross)}</td>
                       </tr>
                       <tr>
-                        <td className="py-0.5 px-2 border-r border-black">Profession Tax</td>
-                        <td className="py-0.5 px-2 text-right"></td>
+                        <td className="py-1 px-2 border-r border-black leading-normal">Profession Tax</td>
+                        <td className="py-1 px-2 text-right leading-normal"></td>
                       </tr>
                       <tr>
-                        <td className="py-0.5 px-2 border-r border-black">Other Ded. & Standard Ded.</td>
-                        <td className="py-0.5 px-2 text-right">{formatInrStr(standardDeduction)}</td>
+                        <td className="py-1 px-2 border-r border-black leading-normal">Other Ded. & Standard Ded.</td>
+                        <td className="py-1 px-2 text-right leading-normal">{formatInrStr(standardDeduction)}</td>
                       </tr>
                       <tr>
-                        <td className="py-0.5 px-2 border-r border-black">House Property</td>
-                        <td className="py-0.5 px-2 text-right"></td>
+                        <td className="py-1 px-2 border-r border-black leading-normal">House Property</td>
+                        <td className="py-1 px-2 text-right leading-normal"></td>
                       </tr>
                       <tr>
-                        <td className="py-0.5 px-2 border-r border-black">Income from Other Source</td>
-                        <td className="py-0.5 px-2 text-right"></td>
+                        <td className="py-1 px-2 border-r border-black leading-normal">Income from Other Source</td>
+                        <td className="py-1 px-2 text-right leading-normal"></td>
                       </tr>
                       <tr>
-                        <td className="py-0.5 px-2 border-r border-black">Total VI-A deduction</td>
-                        <td className="py-0.5 px-2 text-right"></td>
+                        <td className="py-1 px-2 border-r border-black leading-normal">Total VI-A deduction</td>
+                        <td className="py-1 px-2 text-right leading-normal"></td>
                       </tr>
                       <tr>
-                        <td className="py-0.5 px-2 border-r border-black">Taxable Income</td>
-                        <td className="py-0.5 px-2 text-right">{formatInrStr(taxableIncome)}</td>
+                        <td className="py-1 px-2 border-r border-black leading-normal">Taxable Income</td>
+                        <td className="py-1 px-2 text-right leading-normal">{formatInrStr(taxableIncome)}</td>
                       </tr>
                       <tr>
-                        <td className="py-0.5 px-2 border-r border-black">Total Tax</td>
-                        <td className="py-0.5 px-2 text-right"></td>
+                        <td className="py-1 px-2 border-r border-black leading-normal">Total Tax</td>
+                        <td className="py-1 px-2 text-right leading-normal"></td>
                       </tr>
                       <tr>
-                        <td className="py-0.5 px-2 border-r border-black">Surcharge + Education Cess</td>
-                        <td className="py-0.5 px-2 text-right"></td>
+                        <td className="py-1 px-2 border-r border-black leading-normal">Surcharge + Education Cess</td>
+                        <td className="py-1 px-2 text-right leading-normal"></td>
                       </tr>
                       <tr>
-                        <td className="py-0.5 px-2 border-r border-black">Tax Deducted(Prev.Emplr+Other)</td>
-                        <td className="py-0.5 px-2 text-right"></td>
+                        <td className="py-1 px-2 border-r border-black leading-normal">Tax Deducted(Prev.Emplr+Other)</td>
+                        <td className="py-1 px-2 text-right leading-normal"></td>
                       </tr>
                       <tr>
-                        <td className="py-0.5 px-2 border-r border-black">Tax Deducted Till date</td>
-                        <td className="py-0.5 px-2 text-right"></td>
+                        <td className="py-1 px-2 border-r border-black leading-normal">Tax Deducted Till date</td>
+                        <td className="py-1 px-2 text-right leading-normal"></td>
                       </tr>
                       <tr>
-                        <td className="py-0.5 px-2 border-r border-black">Tax to be Deducted</td>
-                        <td className="py-0.5 px-2 text-right"></td>
+                        <td className="py-1 px-2 border-r border-black leading-normal">Tax to be Deducted</td>
+                        <td className="py-1 px-2 text-right leading-normal"></td>
                       </tr>
                       <tr>
-                        <td className="py-0.5 px-2 border-r border-b border-black">Monthly Projected Tax</td>
-                        <td className="py-0.5 px-2 border-b border-black text-right"></td>
+                        <td className="py-1.5 px-2 border-r border-b border-black leading-normal">Monthly Projected Tax</td>
+                        <td className="py-1.5 px-2 border-b border-black text-right leading-normal"></td>
                       </tr>
                     </tbody>
                   </table>
 
                   {/* Tax Paid Details Grid */}
                   <div>
-                    <div className="py-0.5 px-2 font-bold text-center border-b border-black text-[10px]">
+                    <div className="py-1.5 px-2 font-bold text-center border-b border-black text-[10px] leading-normal">
                       Tax Paid Details
                     </div>
                     <table className="w-full text-[9.5px] border-collapse text-center">
                       <thead>
                         <tr className="font-bold">
-                          <th className="py-0.5 border-r border-b border-black w-[16.66%]">APR</th>
-                          <th className="py-0.5 border-r border-b border-black w-[16.66%]">MAY</th>
-                          <th className="py-0.5 border-r border-b border-black w-[16.66%]">JUN</th>
-                          <th className="py-0.5 border-r border-b border-black w-[16.66%]">JUL</th>
-                          <th className="py-0.5 border-r border-b border-black w-[16.66%]">AUG</th>
-                          <th className="py-0.5 border-b border-black w-[16.66%]">SEP</th>
+                          <th className="py-1.5 border-r border-b border-black w-[16.66%] leading-normal">APR</th>
+                          <th className="py-1.5 border-r border-b border-black w-[16.66%] leading-normal">MAY</th>
+                          <th className="py-1.5 border-r border-b border-black w-[16.66%] leading-normal">JUN</th>
+                          <th className="py-1.5 border-r border-b border-black w-[16.66%] leading-normal">JUL</th>
+                          <th className="py-1.5 border-r border-b border-black w-[16.66%] leading-normal">AUG</th>
+                          <th className="py-1.5 border-b border-black w-[16.66%] leading-normal">SEP</th>
                         </tr>
                       </thead>
                       <tbody>
                         <tr className="h-4">
-                          <td className="border-r border-b border-black">&nbsp;</td>
-                          <td className="border-r border-b border-black">&nbsp;</td>
-                          <td className="border-r border-b border-black">&nbsp;</td>
-                          <td className="border-r border-b border-black">&nbsp;</td>
-                          <td className="border-r border-b border-black">&nbsp;</td>
-                          <td className="border-b border-black">&nbsp;</td>
+                          <td className="border-r border-b border-black py-1 leading-normal">&nbsp;</td>
+                          <td className="border-r border-b border-black py-1 leading-normal">&nbsp;</td>
+                          <td className="border-r border-b border-black py-1 leading-normal">&nbsp;</td>
+                          <td className="border-r border-b border-black py-1 leading-normal">&nbsp;</td>
+                          <td className="border-r border-b border-black py-1 leading-normal">&nbsp;</td>
+                          <td className="border-b border-black py-1 leading-normal">&nbsp;</td>
                         </tr>
                         <tr className="font-bold">
-                          <th className="py-0.5 border-r border-b border-black font-bold">OCT</th>
-                          <th className="py-0.5 border-r border-b border-black font-bold">NOV</th>
-                          <th className="py-0.5 border-r border-b border-black font-bold">DEC</th>
-                          <th className="py-0.5 border-r border-b border-black font-bold">JAN</th>
-                          <th className="py-0.5 border-r border-b border-black font-bold">FEB</th>
-                          <th className="py-0.5 border-b border-black font-bold">MAR</th>
+                          <th className="py-1.5 border-r border-b border-black font-bold leading-normal">OCT</th>
+                          <th className="py-1.5 border-r border-b border-black font-bold leading-normal">NOV</th>
+                          <th className="py-1.5 border-r border-b border-black font-bold leading-normal">DEC</th>
+                          <th className="py-1.5 border-r border-b border-black font-bold leading-normal">JAN</th>
+                          <th className="py-1.5 border-r border-b border-black font-bold leading-normal">FEB</th>
+                          <th className="py-1.5 border-b border-black font-bold leading-normal">MAR</th>
                         </tr>
                         <tr className="h-4">
-                          <td className="border-r border-black">&nbsp;</td>
-                          <td className="border-r border-black">&nbsp;</td>
-                          <td className="border-r border-black">&nbsp;</td>
-                          <td className="border-r border-black">&nbsp;</td>
-                          <td className="border-r border-black">&nbsp;</td>
-                          <td>&nbsp;</td>
+                          <td className="border-r border-black py-1 leading-normal">&nbsp;</td>
+                          <td className="border-r border-black py-1 leading-normal">&nbsp;</td>
+                          <td className="border-r border-black py-1 leading-normal">&nbsp;</td>
+                          <td className="border-r border-black py-1 leading-normal">&nbsp;</td>
+                          <td className="border-r border-black py-1 leading-normal">&nbsp;</td>
+                          <td className="py-1 leading-normal">&nbsp;</td>
                         </tr>
                       </tbody>
                     </table>

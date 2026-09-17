@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 
 import Button from "../../components/common/Button";
+import PageHeader from "../../components/common/PageHeader";
 import ShipmentFormDrawer from "../../components/sales/ShipmentFormDrawer";
 import EmptyState from "../../components/common/EmptyState";
 import KpiCard from "../../components/common/KpiCard";
@@ -285,27 +286,25 @@ export default function Shipping() {
 
   return (
     <ListPageShell>
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-[var(--color-text)] sm:text-2xl">Shipping</h1>
-          <p className="mt-0.5 text-sm text-[var(--color-text-muted)]">
-            {rows.length} total shipment{rows.length === 1 ? "" : "s"}
-          </p>
-        </div>
-        <Button
-          type="button"
-          variant="primary"
-          leftIcon={<Package className="h-4 w-4" strokeWidth={2.25} aria-hidden />}
-          onClick={() => {
-            setFormRow(null);
-            setFormOpen(true);
-          }}
-        >
-          New Shipment
-        </Button>
-      </header>
+      <PageHeader
+        title="Shipping"
+        subtitle={`${rows.length} total shipment${rows.length === 1 ? "" : "s"}`}
+        actions={
+          <Button
+            type="button"
+            variant="primary"
+            leftIcon={<Package className="h-4 w-4" strokeWidth={2.25} aria-hidden />}
+            onClick={() => {
+              setFormRow(null);
+              setFormOpen(true);
+            }}
+          >
+            New Shipment
+          </Button>
+        }
+      />
 
-      <div className="ui-grid-kpi mt-5 grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="ui-grid-kpi mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
         <KpiCard
           label="Ready to Ship"
           value={summary.ready_to_dispatch}
@@ -324,29 +323,31 @@ export default function Shipping() {
             placeholder="Search Shipment #, Sales Order, Customer…"
           />
         </div>
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="ui-select w-full sm:w-52"
-          aria-label="Shipment status filter"
-        >
-          {STATUS_OPTIONS.map((opt) => (
-            <option key={opt.value || "all"} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
-        <Button
-          type="button"
-          variant="secondary"
-          onClick={() => {
-            setSearch("");
-            setStatusFilter("");
-          }}
-          leftIcon={<X className="h-4 w-4" aria-hidden />}
-        >
-          Clear
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="ui-select w-full sm:w-52"
+            aria-label="Shipment status filter"
+          >
+            {STATUS_OPTIONS.map((opt) => (
+              <option key={opt.value || "all"} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => {
+              setSearch("");
+              setStatusFilter("");
+            }}
+            leftIcon={<X className="h-4 w-4" aria-hidden />}
+          >
+            Clear
+          </Button>
+        </div>
       </div>
 
       <ListPageCard className="mt-5">
@@ -363,31 +364,34 @@ export default function Shipping() {
               className="border-none bg-transparent py-12"
             />
           ) : (
-            <div className="overflow-x-auto">
-              <table className="ui-table w-full min-w-[880px] text-left">
-                <thead className="ui-table-head">
-                  <tr>
-                    <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wide">Shipment #</th>
-                    <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wide">Sales Order</th>
-                    <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wide">Customer</th>
-                    <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wide">Carrier</th>
-                    <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wide">Tracking #</th>
-                    <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wide">Ship Date</th>
-                    <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wide">Status</th>
-                    <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wide">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {pageRows.map((row) => {
-                    const soId = row.sales_order_id || row.id;
-                    const st = displayStatus(row);
-                    const stKey = String(row.status || "").toLowerCase();
-                    return (
-                      <tr key={row.id} className="border-t border-[var(--color-table-border)]">
-                        <td className="px-4 py-3 text-sm font-semibold text-[var(--color-text)]">
-                          {shipmentLabel(row)}
-                        </td>
-                        <td className="px-4 py-3 text-sm">
+            <>
+              {/* Mobile Shipment Cards */}
+              <div className="divide-y divide-[var(--color-border-soft)] md:hidden">
+                {pageRows.map((row) => {
+                  const soId = row.sales_order_id || row.id;
+                  const st = displayStatus(row);
+                  const stKey = String(row.status || "").toLowerCase();
+                  return (
+                    <div key={row.id} className="p-4 space-y-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <div className="font-semibold text-sm text-[var(--color-text)]">
+                            {shipmentLabel(row)}
+                          </div>
+                          <div className="text-xs text-[var(--color-text-muted)] mt-0.5">
+                            {row.customer_name || "—"}
+                          </div>
+                        </div>
+                        <span
+                          className={`inline-flex shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wide ${statusColor(stKey)}`}
+                        >
+                          {st}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 text-xs text-[var(--color-text-muted)] bg-[var(--color-surface-subtle)] p-2.5 rounded-lg border border-[var(--color-border-soft)]">
+                        <div>
+                          <span className="block text-[10px] uppercase font-semibold text-[var(--color-text-subtle)]">Sales Order</span>
                           {row.so_number ? (
                             <Link
                               to={`/sales/orders/${soId}`}
@@ -398,49 +402,137 @@ export default function Shipping() {
                           ) : (
                             "—"
                           )}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-[var(--color-text)]">{row.customer_name || "—"}</td>
-                        <td className="px-4 py-3 text-sm text-[var(--color-text)]">{row.courier || "—"}</td>
-                        <td className="px-4 py-3 text-sm text-[var(--color-text-muted)]">{row.lr_number || "—"}</td>
-                        <td className="px-4 py-3 text-sm text-[var(--color-text)]">{fmtShipDate(row.dispatch_date)}</td>
-                        <td className="px-4 py-3">
-                          <span
-                            className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-bold tracking-wide ${statusColor(stKey)}`}
-                          >
-                            {st}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex flex-wrap gap-2">
-                            <Button
-                              type="button"
-                              variant="view"
-                              size="sm"
-                              onClick={() => handlePrintChallan(soId)}
-                              leftIcon={<Printer className="h-3.5 w-3.5" aria-hidden />}
+                        </div>
+                        <div>
+                          <span className="block text-[10px] uppercase font-semibold text-[var(--color-text-subtle)]">Carrier</span>
+                          <span className="font-medium text-[var(--color-text)]">{row.courier || "—"}</span>
+                        </div>
+                        <div>
+                          <span className="block text-[10px] uppercase font-semibold text-[var(--color-text-subtle)]">Tracking #</span>
+                          <span className="font-medium text-[var(--color-text)] truncate block">{row.lr_number || "—"}</span>
+                        </div>
+                        <div>
+                          <span className="block text-[10px] uppercase font-semibold text-[var(--color-text-subtle)]">Ship Date</span>
+                          <span className="font-medium text-[var(--color-text)]">{fmtShipDate(row.dispatch_date)}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2 pt-1">
+                        <Button
+                          type="button"
+                          variant="view"
+                          size="sm"
+                          onClick={() => handlePrintChallan(soId)}
+                          leftIcon={<Printer className="h-3.5 w-3.5" aria-hidden />}
+                        >
+                          Print
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => {
+                            setFormRow(row);
+                            setFormOpen(true);
+                          }}
+                          leftIcon={<Edit2 className="h-3.5 w-3.5" aria-hidden />}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => setSelected(row)}
+                        >
+                          Details
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Desktop Shipment Table */}
+              <div className="hidden overflow-x-auto md:block">
+                <table className="ui-table w-full min-w-[880px] text-left">
+                  <thead className="ui-table-head">
+                    <tr>
+                      <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wide">Shipment #</th>
+                      <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wide">Sales Order</th>
+                      <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wide">Customer</th>
+                      <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wide">Carrier</th>
+                      <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wide">Tracking #</th>
+                      <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wide">Ship Date</th>
+                      <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wide">Status</th>
+                      <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wide">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pageRows.map((row) => {
+                      const soId = row.sales_order_id || row.id;
+                      const st = displayStatus(row);
+                      const stKey = String(row.status || "").toLowerCase();
+                      return (
+                        <tr key={row.id} className="border-t border-[var(--color-table-border)]">
+                          <td className="px-4 py-3 text-sm font-semibold text-[var(--color-text)]">
+                            {shipmentLabel(row)}
+                          </td>
+                          <td className="px-4 py-3 text-sm">
+                            {row.so_number ? (
+                              <Link
+                                to={`/sales/orders/${soId}`}
+                                className="font-medium text-[var(--color-primary)] hover:underline"
+                              >
+                                {row.so_number}
+                              </Link>
+                            ) : (
+                              "—"
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-[var(--color-text)]">{row.customer_name || "—"}</td>
+                          <td className="px-4 py-3 text-sm text-[var(--color-text)]">{row.courier || "—"}</td>
+                          <td className="px-4 py-3 text-sm text-[var(--color-text-muted)]">{row.lr_number || "—"}</td>
+                          <td className="px-4 py-3 text-sm text-[var(--color-text)]">{fmtShipDate(row.dispatch_date)}</td>
+                          <td className="px-4 py-3">
+                            <span
+                              className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-bold tracking-wide ${statusColor(stKey)}`}
                             >
-                              Print
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="secondary"
-                              size="sm"
-                              onClick={() => {
-                                setFormRow(row);
-                                setFormOpen(true);
-                              }}
-                              leftIcon={<Edit2 className="h-3.5 w-3.5" aria-hidden />}
-                            >
-                              Edit
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                              {st}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex flex-wrap gap-2">
+                              <Button
+                                type="button"
+                                variant="view"
+                                size="sm"
+                                onClick={() => handlePrintChallan(soId)}
+                                leftIcon={<Printer className="h-3.5 w-3.5" aria-hidden />}
+                              >
+                                Print
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => {
+                                  setFormRow(row);
+                                  setFormOpen(true);
+                                }}
+                                leftIcon={<Edit2 className="h-3.5 w-3.5" aria-hidden />}
+                              >
+                                Edit
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
 
           <div className="flex flex-col items-center justify-between gap-3 border-t border-[var(--color-border-soft)] px-4 py-3 text-sm text-[var(--color-text-muted)] sm:flex-row sm:px-5">

@@ -1,5 +1,5 @@
 import api from "./axiosConfig";
-import { triggerServerWakeup } from "../utils/serverWakeup";
+import { triggerServerWakeup, isServerWakeupOrTransientError } from "../utils/serverWakeup";
 
 const LOGIN_WARMUP_WAIT_MS = 2_000;
 
@@ -8,6 +8,29 @@ function waitForLoginWarmup() {
     triggerServerWakeup(),
     new Promise((resolve) => setTimeout(resolve, LOGIN_WARMUP_WAIT_MS)),
   ]);
+}
+
+/**
+ * Executes an auth request with automatic retry if the server is waking up
+ * from a cold sleep (Render / Cloudflare 502/503/504, ECONNABORTED, ERR_NETWORK).
+ */
+async function withAuthRetry(requestFn, { maxRetries = 2, baseDelayMs = 2000 } = {}) {
+  let lastError;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await requestFn();
+    } catch (err) {
+      lastError = err;
+      const shouldRetry = isServerWakeupOrTransientError(err);
+      if (!shouldRetry || attempt === maxRetries) {
+        throw err;
+      }
+      // Actively trigger wakeup in background
+      triggerServerWakeup({ force: true });
+      await new Promise((resolve) => setTimeout(resolve, baseDelayMs * (attempt + 1)));
+    }
+  }
+  throw lastError;
 }
 
 export function buildFastAuthPayload(email, role) {
@@ -33,22 +56,31 @@ export function buildFastAuthPayload(email, role) {
 }
 
 export async function login(email, password, role) {
-  await waitForLoginWarmup();
-  const { data } = await api.post(
-    "/auth/login",
-    { email, password, role },
-    { timeout: 15_000 }
-  );
-  return data;
+  triggerServerWakeup();
+  return withAuthRetry(async () => {
+    const { data } = await api.post(
+      "/auth/login",
+      { email, password, role },
+      { timeout: 90_000 }
+    );
+    return data;
+  });
 }
 
 export async function phoneLogin(phone, role, idToken = null) {
-  const { data } = await api.post("/auth/phone-login", {
-    phone,
-    role,
-    id_token: idToken || undefined,
+  triggerServerWakeup();
+  return withAuthRetry(async () => {
+    const { data } = await api.post(
+      "/auth/phone-login",
+      {
+        phone,
+        role,
+        id_token: idToken || undefined,
+      },
+      { timeout: 90_000 }
+    );
+    return data;
   });
-  return data;
 }
 
 export async function getCurrentUser() {
@@ -72,14 +104,21 @@ export async function removeProfileAvatar() {
 }
 
 export async function register(companyName, fullName, email, password, role = "Admin") {
-  const { data } = await api.post("/auth/register", {
-    company_name: companyName,
-    full_name: fullName,
-    email,
-    password,
-    role,
+  triggerServerWakeup();
+  return withAuthRetry(async () => {
+    const { data } = await api.post(
+      "/auth/register",
+      {
+        company_name: companyName,
+        full_name: fullName,
+        email,
+        password,
+        role,
+      },
+      { timeout: 90_000 }
+    );
+    return data;
   });
-  return data;
 }
 
 export async function getRegisterRoles() {
@@ -108,7 +147,7 @@ export async function getTenantRoles() {
 }
 
 export async function refreshTokens(refreshToken) {
-  const { data } = await api.post("/auth/refresh", { refresh_token: refreshToken });
+  const { data } = await api.post("/auth/refresh", { refresh_token: refreshToken }, { timeout: 45_000 });
   return data;
 }
 
@@ -137,6 +176,9 @@ export function getLoginErrorMessage(err, fallback = "Login failed. Please try a
 
   if (err?.code === "ECONNABORTED" || err?.message?.toLowerCase().includes("timeout")) {
     return "The server is taking longer than expected to wake up. Please wait a few seconds and try again.";
+  }
+  if (status === 502 || status === 503 || status === 504) {
+    return "The server is currently waking up. Please wait a few seconds and try again.";
   }
   if (err?.code === "ERR_NETWORK" || (!err?.response && err?.message)) {
     return "Unable to connect to the backend server. Please check your internet connection or verify the API is running.";
@@ -180,8 +222,11 @@ export function getApiErrorMessage(err, fallback = "Something went wrong.") {
 }
 
 export async function forgotPassword(email) {
-  const { data } = await api.post("/api/auth/forgot-password", { email });
-  return data;
+  triggerServerWakeup();
+  return withAuthRetry(async () => {
+    const { data } = await api.post("/api/auth/forgot-password", { email }, { timeout: 90_000 });
+    return data;
+  });
 }
 
 export async function validateResetToken(token) {
@@ -192,6 +237,8 @@ export async function validateResetToken(token) {
 }
 
 export async function resetPassword(token, password) {
-  const { data } = await api.post("/api/auth/reset-password", { token, password });
-  return data;
+  return withAuthRetry(async () => {
+    const { data } = await api.post("/api/auth/reset-password", { token, password }, { timeout: 90_000 });
+    return data;
+  });
 }
