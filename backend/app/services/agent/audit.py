@@ -6,6 +6,7 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from app.models.ai_agent import AiAgentLog
+from app.services.agent.tool_registry import extract_sensitive_targets, get_tool_definition
 
 
 def log_agent_event(
@@ -21,7 +22,14 @@ def log_agent_event(
     result_truncated: bool | None,
     response_text: str | None,
     latency_ms: int | None,
+    tool_sensitivity: str | None = None,
+    sensitive_targets: dict[str, Any] | None = None,
 ) -> None:
+    if tool_name and tool_params is not None:
+        defn = get_tool_definition(tool_name)
+        if defn and defn.sensitivity == "elevated":
+            tool_sensitivity = defn.sensitivity
+            sensitive_targets = sensitive_targets or extract_sensitive_targets(tool_name, tool_params)
     row = AiAgentLog(
         tenant_id=tenant_id,
         user_id=user_id,
@@ -33,6 +41,8 @@ def log_agent_event(
         result_truncated=result_truncated,
         response_text=response_text,
         latency_ms=latency_ms,
+        tool_sensitivity=tool_sensitivity,
+        sensitive_targets=sensitive_targets,
     )
     db.add(row)
     db.commit()

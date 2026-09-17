@@ -9,6 +9,8 @@ from app.api.deps import get_db
 from app.core.permissions import get_role_names, require_admin, user_has_permission, user_is_admin
 from app.core.rbac_constants import (
     MODULE_CATALOG,
+    OPERATOR_SETTINGS_SIDEBAR_PATHS,
+    OPERATOR_SIDEBAR_CHILDREN,
     PERMISSION_MATRIX,
     REGISTERABLE_ROLES,
     SIDEBAR_MENU_CATALOG,
@@ -183,12 +185,11 @@ def get_sidebar_menus(
     is_prod_manager = not is_admin and any(
         "production manager" in r or "production_manager" in r for r in user_roles_list
     )
+    is_operator = not is_admin and any(r == "operator" for r in user_roles_list)
 
     menus: list[SidebarItemResponse] = []
     for section in SIDEBAR_MENU_CATALOG:
         if is_prod_manager and section["key"] not in PRODUCTION_MANAGER_ALLOWED_SECTIONS:
-            continue
-        if section["key"] == "alerts" and "Operator" in [r.name for r in current_user.roles]:
             continue
         children_src = section.get("children") or []
         # Parent module must be granted (prevents Operator seeing Masters via Machines).
@@ -199,6 +200,11 @@ def get_sidebar_menus(
             allowed_children = []
             for c in children_src:
                 if is_prod_manager and c["path"] not in PRODUCTION_MANAGER_ALLOWED_CHILDREN:
+                    continue
+                if is_operator and section["key"] == "settings":
+                    if c.get("path") not in OPERATOR_SETTINGS_SIDEBAR_PATHS:
+                        continue
+                if is_operator and c.get("path") and c.get("path") not in OPERATOR_SIDEBAR_CHILDREN:
                     continue
                 if _user_can_see_module(current_user, c["module"]):
                     allowed_children.append(

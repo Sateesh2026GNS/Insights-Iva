@@ -131,3 +131,22 @@ class DailyProductionReport(Base, TimestampMixin):
     work_order = relationship("WorkOrder", back_populates="daily_reports")
     product = relationship("Product")
     machine = relationship("Machine", back_populates="daily_reports")
+
+
+class ProductionEntry(Base, TimestampMixin):
+    """Shop-floor quantity entry by an operator (not the analytics report engine)."""
+
+    __tablename__ = "production_entries"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id"), nullable=False, index=True)
+    work_order_id: Mapped[int] = mapped_column(ForeignKey("work_orders.id"), nullable=False, index=True)
+    job_card_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    operator_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
+    quantity_produced: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False, default=0)
+    quantity_rejected: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False, default=0)
+    reject_reason: Mapped[str | None] = mapped_column(String(255))
+    shift: Mapped[str | None] = mapped_column(String(64))
+    recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    work_order = relationship("WorkOrder")

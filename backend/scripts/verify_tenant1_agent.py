@@ -83,9 +83,9 @@ def main() -> None:
         ]
         conv_id = None
         for msg in prompts:
-            print(f"\n=== POST /api/v1/agent/chat: {msg} ===")
+            print(f"\n=== POST /api/agent/chat: {msg} ===")
             ar = client.post(
-                "/api/v1/agent/chat",
+                "/api/agent/chat",
                 headers=headers,
                 json={"message": msg, "conversation_id": conv_id},
             )

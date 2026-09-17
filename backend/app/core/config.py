@@ -260,6 +260,10 @@ class Settings(BaseSettings):
         default="uploads",
         validation_alias=AliasChoices("FILE_STORAGE_LOCAL_PATH", "file_storage_local_path"),
     )
+    document_max_upload_bytes: int = Field(
+        default=25 * 1024 * 1024,
+        validation_alias=AliasChoices("DOCUMENT_MAX_UPLOAD_BYTES", "document_max_upload_bytes"),
+    )
     max_file_size_bytes: int = Field(
         default=100 * 1024 * 1024,
         validation_alias=AliasChoices("MAX_FILE_SIZE", "MAX_FILE_SIZE_BYTES", "max_file_size_bytes"),

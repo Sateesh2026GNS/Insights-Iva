@@ -37,6 +37,7 @@ import {
   rescheduleWorkOrder,
 } from "../../api/schedulingApi";
 import { getMachines, createWorkOrder, getProductionOrders } from "../../api/productionApi";
+import { getMyProductionSchedule } from "../../api/operatorExecutionApi";
 import useTenantId from "../../hooks/useTenantId";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import useAuth from "../../hooks/useAuth";
@@ -783,20 +784,24 @@ export default function ProductionSchedule() {
     }
     try {
       // 1. Fetch core primary data first for instant page availability
-      const [dashRes, timelineRes] = await Promise.allSettled([
-        getScheduleDashboard(),
-        getScheduleTimeline(),
-      ]);
+      const [dashRes, timelineRes] = await Promise.allSettled(
+        operatorMode
+          ? [getMyProductionSchedule(), getMyProductionSchedule()]
+          : [getScheduleDashboard(), getScheduleTimeline()],
+      );
 
       if (!isMountedRef.current) return;
 
       if (dashRes.status === "fulfilled" && dashRes.value?.data) {
         setDashboard({ ...DEMO_DASHBOARD, ...dashRes.value.data });
       }
-      if (timelineRes.status === "fulfilled" && Array.isArray(timelineRes.value?.data)) {
-        const rows = timelineRes.value.data;
+      if (timelineRes.status === "fulfilled") {
+        const rows = operatorMode
+          ? timelineRes.value?.data?.timeline || []
+          : Array.isArray(timelineRes.value?.data)
+            ? timelineRes.value.data
+            : [];
         setTimeline(rows);
-
         const kb = { planned: [], ready: [], running: [], quality: [], completed: [] };
         rows.forEach((r) => {
           const status = r.status === "in_progress" ? "running" : r.status;
@@ -857,13 +862,13 @@ export default function ProductionSchedule() {
         setLoading(false);
       }
     }
-  }, [timeline.length]);
+  }, [timeline.length, operatorMode]);
 
   usePageRefresh(() => load(true));
 
   useEffect(() => {
     load();
-  }, [load]);
+  }, [load, operatorMode]);
 
   const tableRows = useMemo(
     () => buildTableFromTimeline(timeline, shifts),

@@ -1,6 +1,6 @@
 import api from "./axiosConfig";
 
-const BASE = "/api/v1/reports";
+const BASE = "/api/reports";
 
 export function listReports() {
   return api.get(BASE);

@@ -15,10 +15,16 @@ from app.services.agent.audit import log_agent_event, serialize_tool_params
 from app.services.agent.confirmation import create_confirmation
 from app.services.agent.context import AgentContext
 from app.services.agent.conversation import append_message, get_or_create_conversation, recent_messages_for_llm
+from app.services.agent.tool_registry import (
+    ROLE_SALES_MANAGER,
+    ROLE_STORE_MANAGER,
+    agent_role_names,
+    user_may_use_tool_name,
+)
+from app.services.agent.tool_models import ConfirmationRequired, ToolResultBase
 from app.services.agent.tools import (
-    ConfirmationRequired,
-    ToolResultBase,
     ToolTimeoutError,
+    _WRITE_EXECUTE,
     execute_tool_async,
     openai_tool_definitions,
 )
@@ -29,13 +35,21 @@ logger = logging.getLogger(__name__)
 SYSTEM_PROMPT_VERSION = "v1"
 MAX_TOOL_ROUNDS = 3
 
-SYSTEM_PROMPT = f"""You are the Insights Iva Store Operator Agent ({SYSTEM_PROMPT_VERSION}).
+def _system_prompt_for(ctx: AgentContext) -> str:
+    roles = agent_role_names(ctx)
+    if ROLE_SALES_MANAGER in roles and ROLE_STORE_MANAGER not in roles:
+        persona = "Sales Manager Assistant"
+    elif ROLE_STORE_MANAGER in roles:
+        persona = "Store Operations Assistant"
+    else:
+        persona = "Insights Iva Assistant"
+    return f"""You are the Insights Iva {persona} ({SYSTEM_PROMPT_VERSION}).
 
 You may only answer using data returned by tool calls in this conversation turn. Never state a number, date, or status that did not come from a tool result.
 If no tool returns relevant data, say so plainly — do not guess or extrapolate.
 Never call a write tool without the user having confirmed in this conversation.
 
-Accept mixed Telugu/English input. Preserve item names, job card numbers, GRN numbers, and vendor names exactly as stored — never translate or transliterate identifiers.
+Accept mixed Telugu/English input. Preserve identifiers (order numbers, job cards, GRN, customer names) exactly as stored — never translate or transliterate identifiers.
 Respond in the same language the user's message was written in.
 
 When a tool times out, tell the user data fetch timed out and they should try again.
@@ -150,12 +164,12 @@ async def run_agent_chat(
 
     llm = AgentLlmClient()
     history = recent_messages_for_llm(db, conv)
-    messages: list[dict[str, Any]] = [{"role": "system", "content": SYSTEM_PROMPT}]
+    messages: list[dict[str, Any]] = [{"role": "system", "content": _system_prompt_for(ctx)}]
     messages.extend(history)
     if not history or history[-1].get("content") != user_message:
         messages.append({"role": "user", "content": user_message})
 
-    tools = openai_tool_definitions()
+    tools = openai_tool_definitions(ctx)
 
     if not llm.enabled:
         answer_text = (
@@ -367,8 +381,10 @@ def execute_confirmed_write(
     """Phase 2 — execute write after confirmation (feature-flagged)."""
     if not get_settings().agent_write_tools_enabled:
         return {"success": False, "error": "Write tools are disabled."}
-    if not ctx.is_store_manager_or_above:
+    if not user_may_use_tool_name(ctx, tool_name):
         return {"success": False, "error": "Permission denied for write action."}
+    if tool_name in _WRITE_EXECUTE:
+        return _WRITE_EXECUTE[tool_name](db, ctx, payload)
     # TODO: wire create_material_issue → submit_store_material_issue / purchase indent service
     return {
         "success": False,

@@ -788,6 +788,8 @@ export default function AppRoutes() {
       <Route path="/masters/bom" element={<ProtectedRoute><P.BomMaster /></ProtectedRoute>} />
       <Route path="/masters/departments" element={<ProtectedRoute><P.DepartmentManagement /></ProtectedRoute>} />
       <Route path="/production/schedule" element={<ProtectedRoute><P.ProductionSchedule /></ProtectedRoute>} />
+      <Route path="/production/my-machine" element={<ProtectedRoute><P.OperatorMyMachine /></ProtectedRoute>} />
+      <Route path="/production/my-entry" element={<ProtectedRoute><P.OperatorProductionEntry /></ProtectedRoute>} />
       <Route path="/procurement/rfq" element={<ProtectedRoute><P.RFQ /></ProtectedRoute>} />
       <Route path="/finance/accounts-payable" element={<ProtectedRoute><Navigate to="/accounts/accounts-payable" replace /></ProtectedRoute>} />
       <Route path="/finance/accounts-receivable" element={<ProtectedRoute><P.AccountsReceivable /></ProtectedRoute>} />

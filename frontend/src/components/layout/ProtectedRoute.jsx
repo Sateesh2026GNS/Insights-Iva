@@ -19,9 +19,11 @@ export default function ProtectedRoute({ children }) {
   }
 
   if (!userCanAccessPath(user, location.pathname)) {
-    return (
-      <AccessDenied message="You do not have permission to access this page." />
-    );
+    const path = location.pathname || "";
+    const message = path.startsWith("/settings/")
+      ? "This settings area is only available to administrators. Open Settings from the menu for your account options, or return to the dashboard."
+      : "You do not have permission to access this page.";
+    return <AccessDenied message={message} />;
   }
 
   return children;

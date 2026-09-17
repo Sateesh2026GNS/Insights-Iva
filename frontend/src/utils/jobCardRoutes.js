@@ -51,11 +51,15 @@ export function jobCardEditUrl(orderId) {
   return `/sales/orders/${orderId}/job-card`;
 }
 
-/** Operator / work-order row → unified job card details when sales order is linked. */
+/** Operator / work-order row → stage job card when linked via WorkflowStageJobCard.work_order_id. */
 export function operatorJobCardUrl(row) {
+  if (!row?.job_card_number) return null;
   const soId = row?.sales_order_id;
-  if (soId) return jobCardDetailsUrl(soId);
-  return "/production/operator-jobs";
+  if (!soId) return null;
+  if (row.job_card_stage) {
+    return `/manufacturing/workflow/order/${soId}/${row.job_card_stage}`;
+  }
+  return `/sales/orders/${soId}/job-card`;
 }
 
 /** Open job card from a production planning row (uses linked sales order when available). */

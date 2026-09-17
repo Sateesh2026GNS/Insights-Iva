@@ -38,6 +38,9 @@ class WorkOrderListRead(BaseModel):
     progress_pct: float = 0
     is_delayed: bool = False
     materials_issued: bool = False
+    job_card_number: str | None = None
+    job_card_stage: str | None = None
+    workflow_stage_job_card_id: int | None = None
     model_config = ConfigDict(from_attributes=True)
 
 

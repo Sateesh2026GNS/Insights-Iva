@@ -11,15 +11,13 @@ import Navbar from "./components/layout/Navbar";
 import Sidebar from "./components/layout/Sidebar";
 import GlobalRefreshButton from "./components/common/GlobalRefreshButton";
 import Button from "./components/common/Button";
-import { isOperator, isStoreManager, storeManagerPathAllowed } from "./config/permissions";
 import useAuth from "./hooks/useAuth";
 import useSettings from "./context/SettingsContext";
-import { isAiCopilotEnabled, isOperatorAiRoute } from "./utils/aiCopilot";
+import { resolveErpAiAssistantMode, erpPageContextLabel } from "./utils/erpAiAssistant";
 import { triggerServerWakeup, startServerKeepAlive, stopServerKeepAlive } from "./utils/serverWakeup";
 
-
-const AiChatWidget = lazy(() => import("./components/ai/AiChatWidget"));
-const StoreAgentChatPanel = lazy(() => import("./components/ai/StoreAgentChatPanel"));
+const ErpAiAssistant = lazy(() => import("./components/ai/ErpAiAssistant"));
+const OperatorSafetyFab = lazy(() => import("./components/operator/OperatorSafetyFab"));
 
 function normalizePath(pathname) {
   return (pathname || "/").replace(/\/+$/, "") || "/";
@@ -47,38 +45,14 @@ function isSettingsRoute(pathname) {
   return path === "/settings" || path.startsWith("/settings/");
 }
 
+/** @deprecated use resolveErpAiAssistantMode from utils/erpAiAssistant */
 export function shouldShowChatbot(user, pathname) {
-  if (!user || !isOperator(user)) return false;
-  if (!isAiCopilotEnabled()) return false;
-  const path = normalizePath(pathname);
-  if (
-    path === "/login" ||
-    path === "/register" ||
-    path === "/landing" ||
-    path === "/forgot-password" ||
-    path === "/reset-password" ||
-    path === "/verify-email"
-  ) {
-    return false;
-  }
-  if (path.startsWith("/gns-admin")) return false;
-  if (path.startsWith("/settings")) return false;
-  return isOperatorAiRoute(pathname);
+  return resolveErpAiAssistantMode(user, pathname) === "operator";
 }
 
+/** @deprecated use resolveErpAiAssistantMode from utils/erpAiAssistant */
 export function shouldShowStoreAgent(user, pathname) {
-  if (!user || !isStoreManager(user)) return false;
-  if (!isAiCopilotEnabled()) return false;
-  const path = normalizePath(pathname);
-  if (
-    path === "/login" ||
-    path === "/register" ||
-    path.startsWith("/gns-admin") ||
-    path.startsWith("/settings")
-  ) {
-    return false;
-  }
-  return storeManagerPathAllowed(pathname);
+  return resolveErpAiAssistantMode(user, pathname) === "registry";
 }
 
 export default function App() {
@@ -109,8 +83,8 @@ export default function App() {
     return () => stopServerKeepAlive();
   }, []);
 
-  const showChatbot = shouldShowChatbot(user, location.pathname);
-  const showStoreAgent = shouldShowStoreAgent(user, location.pathname);
+  const aiAssistantMode = resolveErpAiAssistantMode(user, location.pathname);
+  const aiPageContext = erpPageContextLabel(location.pathname);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -382,19 +356,17 @@ export default function App() {
               </RouteErrorBoundary>
             </Suspense>
           </div>
-          {showChatbot ? (
+          {aiAssistantMode ? (
             <Suspense fallback={null}>
-              <AiChatWidget />
+              <ErpAiAssistant mode={aiAssistantMode} pageContextLabel={aiPageContext} />
             </Suspense>
           ) : null}
-          {showStoreAgent ? (
-            <Suspense fallback={null}>
-              <StoreAgentChatPanel />
-            </Suspense>
-          ) : null}
+          <Suspense fallback={null}>
+            <OperatorSafetyFab />
+          </Suspense>
         </main>
         {!isInvoiceEditor ? (
-          <GlobalRefreshButton offsetForChat={showChatbot || showStoreAgent} />
+          <GlobalRefreshButton offsetForChat={Boolean(aiAssistantMode)} />
         ) : null}
       </div>
     </div>

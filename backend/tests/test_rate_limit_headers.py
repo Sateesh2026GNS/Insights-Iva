@@ -11,7 +11,7 @@ def test_rate_limit_includes_retry_after_header():
     scope = {
         "type": "http",
         "method": "GET",
-        "path": "/api/v1/reports",
+        "path": "/api/reports",
         "headers": [(b"host", b"testserver")],
         "client": ("203.0.113.9", 12345),
     }

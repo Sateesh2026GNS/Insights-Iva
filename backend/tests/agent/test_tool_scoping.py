@@ -22,16 +22,41 @@ from app.services.agent.tools import (
     GetMaterialIssueHistoryInput,
     GetPendingGrnsInput,
     GetStockInput,
+    execute_tool_async,
     get_low_stock,
     get_material_issue_history,
     get_pending_grns,
     get_stock,
+    openai_tool_definitions,
 )
 from app.services.auth_service import hash_password
 from app.services.reports.engine import ensure_reports_loaded
 
 SHARED_ITEM_NAME = "AgentScope PET Resin"
 STORE_MANAGER_NAME = "Store Manager A"
+SALES_MANAGER_NAME = "Sales Manager A"
+
+STORE_TOOL_NAMES = frozenset(
+    {
+        "get_stock",
+        "get_low_stock",
+        "get_pending_grns",
+        "get_job_card_status",
+        "get_material_issue_history",
+        "create_material_issue",
+        "create_purchase_indent",
+    }
+)
+SALES_TOOL_NAMES = frozenset(
+    {
+        "get_sales_orders",
+        "get_quotations",
+        "get_customer_history",
+        "get_invoice_status",
+        "create_quotation",
+        "update_order_status",
+    }
+)
 
 
 @pytest.fixture
@@ -94,8 +119,12 @@ def agent_scope_world(register_admin):
             request_number="ISS-B-SCOPE-001",
         )
         sm_user = _create_store_manager_user(db, tenant_a, STORE_MANAGER_NAME)
+        sales_user = _create_role_user(
+            db, tenant_a, "Sales Manager", SALES_MANAGER_NAME, "sales-scope"
+        )
         db.commit()
         sm_user_id = sm_user.id
+        sales_manager_id = sales_user.id
         wh_a_id = wh_a.id
         wh_b_id = wh_b.id
     finally:
@@ -107,6 +136,7 @@ def agent_scope_world(register_admin):
         "wh_a_id": wh_a_id,
         "wh_b_id": wh_b_id,
         "store_manager_id": sm_user_id,
+        "sales_manager_id": sales_manager_id,
         "item_a_qty": 100,
         "item_b_qty": 999,
     }
@@ -205,10 +235,10 @@ def _seed_material_issue(
     )
 
 
-def _create_store_manager_user(db: Session, tenant_id: int, full_name: str) -> User:
+def _create_role_user(db: Session, tenant_id: int, role_name: str, full_name: str, email_suffix: str) -> User:
     role = Role(
         tenant_id=tenant_id,
-        name="Store Manager",
+        name=role_name,
         description="Scope test",
         permissions=None,
     )
@@ -216,7 +246,7 @@ def _create_store_manager_user(db: Session, tenant_id: int, full_name: str) -> U
     db.flush()
     user = User(
         tenant_id=tenant_id,
-        email=f"store-scope-{tenant_id}@example.com",
+        email=f"{email_suffix}-{tenant_id}@example.com",
         full_name=full_name,
         hashed_password=hash_password("Passw0rd!123"),
         is_active=True,
@@ -226,6 +256,12 @@ def _create_store_manager_user(db: Session, tenant_id: int, full_name: str) -> U
     db.flush()
     db.execute(user_roles.insert().values(user_id=user.id, role_id=role.id))
     return user
+
+
+def _create_store_manager_user(db: Session, tenant_id: int, full_name: str) -> User:
+    return _create_role_user(
+        db, tenant_id, "Store Manager", full_name, f"store-scope-{full_name.replace(' ', '-').lower()}"
+    )
 
 
 def _load_store_manager(db: Session, user_id: int) -> User:
@@ -463,3 +499,91 @@ def test_get_material_issue_history_returns_tenant_a_issue(agent_scope_world):
         assert "ISS-B-SCOPE-001" not in issue_nos
     finally:
         db.close()
+
+
+def test_sales_manager_cannot_invoke_store_tool_at_role_gate(agent_scope_world):
+    import asyncio
+
+    db = SessionLocal()
+    try:
+        user = db.scalar(
+            select(User)
+            .options(selectinload(User.roles))
+            .where(User.id == agent_scope_world["sales_manager_id"])
+        )
+        ctx = _ctx_for_user(db, user)
+        with patch("app.services.agent.tools.fetch_report_for_agent") as mock_fetch:
+            result = asyncio.run(
+                execute_tool_async(db, ctx, "get_stock", {"item_query": "x"})
+            )
+            mock_fetch.assert_not_called()
+        assert result.get("error") == "Tool not permitted for your role."
+    finally:
+        db.close()
+
+
+def test_store_manager_cannot_invoke_sales_tool_at_role_gate(agent_scope_world):
+    import asyncio
+
+    db = SessionLocal()
+    try:
+        user = _load_store_manager(db, agent_scope_world["store_manager_id"])
+        ctx = _ctx_for_user(db, user)
+        with patch("app.services.agent.sales_agent_tools.list_sales_orders") as mock_list:
+            result = asyncio.run(
+                execute_tool_async(db, ctx, "get_sales_orders", {"status": "draft"})
+            )
+            mock_list.assert_not_called()
+        assert result.get("error") == "Tool not permitted for your role."
+    finally:
+        db.close()
+
+
+@patch("app.core.config.get_settings")
+def test_sales_manager_openai_schema_excludes_store_and_operator_tools(mock_settings, agent_scope_world):
+    settings = mock_settings.return_value
+    settings.agent_write_tools_enabled = True
+    db = SessionLocal()
+    try:
+        user = db.scalar(
+            select(User)
+            .options(selectinload(User.roles))
+            .where(User.id == agent_scope_world["sales_manager_id"])
+        )
+        ctx = _ctx_for_user(db, user)
+        names = {t["function"]["name"] for t in openai_tool_definitions(ctx)}
+        assert names == SALES_TOOL_NAMES
+        assert not names.intersection(STORE_TOOL_NAMES)
+    finally:
+        db.close()
+
+
+def test_elevated_customer_history_writes_sensitive_audit_fields(agent_scope_world):
+    db = SessionLocal()
+    try:
+        before = db.scalar(select(func.count()).select_from(AiAgentLog)) or 0
+        log_agent_event(
+            db,
+            tenant_id=agent_scope_world["tenant_a"],
+            user_id=agent_scope_world["sales_manager_id"],
+            role="Sales Manager",
+            user_message="customer 5 history",
+            tool_name="get_customer_history",
+            tool_params={"customer_id": 5},
+            result_row_count=0,
+            result_truncated=False,
+            response_text=None,
+            latency_ms=12,
+        )
+        row = db.scalars(select(AiAgentLog).order_by(AiAgentLog.id.desc())).first()
+        assert row is not None
+        assert (db.scalar(select(func.count()).select_from(AiAgentLog)) or 0) == before + 1
+        assert row.tool_sensitivity == "elevated"
+        assert row.sensitive_targets.get("target_customer_id") == 5
+    finally:
+        db.close()
+
+
+@pytest.mark.skip(reason="TODO: HR/Accountant elevated tools — follow-up pass")
+def test_hr_elevated_tool_audit_fields_placeholder():
+    """Stub for salary/GL tools with sensitivity=elevated."""

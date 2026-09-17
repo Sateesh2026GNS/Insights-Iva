@@ -181,6 +181,7 @@ PERMISSION_MATRIX = {
             "documents",
             "alerts",
             "masters",
+            "settings",
         ],
         "actions": [
             "production:read",
@@ -198,6 +199,39 @@ PERMISSION_MATRIX = {
 
 # Sidebar / route paths Store Manager may see.
 # Module grants stay broader so GRN/dispatch APIs still authorize; UI is narrowed here.
+# Settings sidebar links visible to Operator (personal prefs only; admin sections use module guards).
+OPERATOR_SIDEBAR_CHILDREN = frozenset({
+    "/",
+    "/my-job-cards",
+    "/production/work-orders",
+    "/production/schedule",
+    "/production/my-machine",
+    "/production/my-entry",
+    "/alerts",
+    "/alerts/low-stock",
+    "/alerts/machine-failure",
+    "/alerts/production-delay",
+    "/alerts/maintenance",
+    "/alerts/quality",
+    "/alerts/safety",
+    "/alerts/general",
+    "/documents",
+    "/documents/production",
+    "/settings",
+    "/settings/my-account",
+    "/settings/appearance",
+    "/settings/notifications",
+    "/settings/subscription",
+})
+
+OPERATOR_SETTINGS_SIDEBAR_PATHS = frozenset({
+    "/settings",
+    "/settings/my-account",
+    "/settings/appearance",
+    "/settings/notifications",
+    "/settings/subscription",
+})
+
 STORE_MANAGER_ALLOWED_PATHS = frozenset({
     "/",
     "/manufacturing/workflow",
@@ -298,6 +332,8 @@ SIDEBAR_MENU_CATALOG = [
             {"label": "Production Schedule", "path": "/production/schedule", "module": "production"},
             {"label": "Machine Allocation", "path": "/production/tasks", "module": "production"},
             {"label": "Daily Production Reports", "path": "/production/reports", "module": "production"},
+            {"label": "My Machine", "path": "/production/my-machine", "module": "production"},
+            {"label": "My Production Entry", "path": "/production/my-entry", "module": "production"},
         ],
     },
     {

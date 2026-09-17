@@ -1,7 +1,7 @@
 import api from "./axiosConfig";
 
 export async function sendAgentChat({ message, conversationId }) {
-  const { data } = await api.post("/api/v1/agent/chat", {
+  const { data } = await api.post("/api/agent/chat", {
     message,
     conversation_id: conversationId || null,
   });
@@ -9,7 +9,7 @@ export async function sendAgentChat({ message, conversationId }) {
 }
 
 export async function confirmAgentAction({ confirmationToken, confirmed }) {
-  const { data } = await api.post("/api/v1/agent/confirm", {
+  const { data } = await api.post("/api/agent/confirm", {
     confirmation_token: confirmationToken,
     confirmed,
   });

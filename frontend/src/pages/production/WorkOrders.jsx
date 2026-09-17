@@ -44,6 +44,7 @@ import { useToast } from "../../context/ToastContext";
 import useManufacturingRefresh from "../../hooks/useManufacturingRefresh";
 import useAuth from "../../hooks/useAuth";
 import { isOperator } from "../../config/permissions";
+import { getMyWorkOrders } from "../../api/operatorExecutionApi";
 import {
   completeWorkOrder,
   deleteWorkOrder,
@@ -180,7 +181,7 @@ function WoRowActions({
       icon: <Eye className="h-3.5 w-3.5 text-emerald-600" />,
       onClick: () => onView(row),
     },
-    serverId
+    serverId && row.job_card_number && operatorJobCardUrl(row)
       ? {
           label: "Job Card",
           icon: <ClipboardList className="h-3.5 w-3.5 text-indigo-600" />,
@@ -462,8 +463,9 @@ export default function WorkOrders() {
     setLoading(true);
     try {
       const poId = poFilter ? Number(poFilter) : undefined;
-      const wRes = await getWorkOrders(poId);
-      const apiRows = asArray(wRes?.data);
+      const operatorView = isOperator(user);
+      const wRes = operatorView ? await getMyWorkOrders() : await getWorkOrders(poId);
+      const apiRows = operatorView ? (wRes.data?.items || []) : asArray(wRes?.data);
       const enriched = apiRows.map((r, i) => enrichApiWorkOrder(r, i));
       enriched.sort(compareWorkOrders);
       setWorkOrders(enriched);
@@ -876,6 +878,15 @@ export default function WorkOrders() {
           <p className="mt-0.5 truncate text-[11px] text-[var(--color-text-muted)]" title={r.production_order_number || undefined}>
             {r.production_order_number ? `PO ${r.production_order_number}` : "No production order"}
           </p>
+          {r.job_card_number && operatorJobCardUrl(r) ? (
+            <Link
+              to={operatorJobCardUrl(r)}
+              className="mt-1 inline-flex max-w-full truncate rounded-md bg-indigo-50 px-1.5 py-0.5 text-[10px] font-semibold text-indigo-700 hover:bg-indigo-100"
+              title={`Job card ${r.job_card_number}`}
+            >
+              Job card: {r.job_card_number}
+            </Link>
+          ) : null}
         </div>
       ),
     },

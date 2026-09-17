@@ -30,7 +30,7 @@ def _register_download(path: Path, content_type: str) -> tuple[str, str]:
     token = secrets.token_urlsafe(24)
     expires = datetime.now(timezone.utc) + timedelta(seconds=_TOKEN_TTL_SEC)
     _EXPORT_TOKENS[token] = (time.time() + _TOKEN_TTL_SEC, path, content_type)
-    return f"/api/v1/reports/exports/{token}", expires.isoformat()
+    return f"/api/reports/exports/{token}", expires.isoformat()
 
 
 def resolve_export_token(token: str) -> tuple[Path, str]:

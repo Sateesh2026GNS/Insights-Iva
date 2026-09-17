@@ -581,9 +581,9 @@ export default function WorkOrderDetailModal({
                 Complete
               </Button>
             ) : null}
-            {hasServerId ? (
+            {hasServerId && w.job_card_number && operatorJobCardUrl(w) ? (
               <Button variant="secondary" to={operatorJobCardUrl(w)} disabled={detailLoading}>
-                <ClipboardList className="h-3.5 w-3.5" /> Open Job Card
+                <ClipboardList className="h-3.5 w-3.5" /> Job card: {w.job_card_number}
               </Button>
             ) : null}
             <Button variant="ghost" type="button" disabled={detailLoading} onClick={() => printWorkOrder(w, user)}>

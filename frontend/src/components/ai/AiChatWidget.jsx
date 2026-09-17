@@ -14,6 +14,7 @@ import {
 } from "../../api/aiAssistantApi";
 import AiMessageContent from "./AiMessageContent";
 import Button, { IconButton } from "../common/Button";
+import { apiErrorMessage, classifyApiError } from "../../utils/apiError";
 
 const DEFAULT_SUGGESTIONS = [
   "Today's Work Orders",
@@ -230,26 +231,25 @@ export default function AiChatWidget() {
         addToast(`Opening ${data.navigation}`, "info");
       }
     } catch (err) {
-      const status = err.response?.status;
-      const detail = err.response?.data?.detail;
-      let message;
-      if (!err.response) {
-        message =
-          "Could not reach the AI service. Ensure the backend is running and restart the dev server after pulling updates.";
-      } else if (typeof detail === "string") {
-        message = detail;
-      } else {
-        message = "I couldn't retrieve the requested data. Please try again later.";
+      const classified = classifyApiError(
+        err,
+        "The assistant could not complete that request. Please try again.",
+      );
+      let message = classified.message;
+      if (classified.type === "permission") {
+        message = apiErrorMessage(err, "AI assistant is available only when logged in as an Operator.");
+      } else if (classified.type === "session") {
+        message = apiErrorMessage(err, "Your session expired. Please sign in again as an Operator.");
+      } else if (classified.type === "network") {
+        message = apiErrorMessage(
+          err,
+          "Could not reach the AI service. Check your connection and ensure the backend is running.",
+        );
       }
-      if (status === 403) {
-        message =
-          typeof detail === "string" && detail
-            ? detail
-            : "AI assistant is available only when logged in as an Operator.";
-      } else if (status === 401) {
-        message = "Your session expired. Please sign in again as an Operator.";
-      }
-      setMessages((prev) => [...prev, { role: "assistant", content: message }]);
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: message, errorType: classified.type },
+      ]);
     } finally {
       setLoading(false);
     }
@@ -304,7 +304,7 @@ export default function AiChatWidget() {
           type="button"
           onClick={() => setOpen(true)}
           className="fixed bottom-5 right-5 z-[100] flex h-14 w-14 items-center justify-center rounded-full bg-[var(--color-primary)] text-white shadow-lg transition hover:bg-[var(--color-primary-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/40 focus-visible:ring-offset-2 sm:bottom-6 sm:right-6 dark:ring-offset-slate-900"
-          aria-label="Open AI Assistant"
+          aria-label="AI Assistant"
           title="AI Assistant"
         >
           <Sparkles className="h-6 w-6" aria-hidden />

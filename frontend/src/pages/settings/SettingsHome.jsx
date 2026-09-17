@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import LogoutConfirmModal from "../../components/common/LogoutConfirmModal";
-import { filterAccessibleSettingsCategories } from "../../config/permissions";
+import { filterAccessibleSettingsCategories, isOperator } from "../../config/permissions";
 import useAuth from "../../hooks/useAuth";
 import { SETTINGS_NAV_GROUPS, searchSettingsCategories } from "./settingsCatalog";
 import {
@@ -69,7 +69,11 @@ export default function SettingsHome() {
         busy={loggingOut}
       />
       <SettingsHero
-        subtitle="Manage company profile, users, security, workspace preferences, and operational defaults."
+        subtitle={
+          isOperator(user)
+            ? "Update your profile, notifications, appearance, and view your account details."
+            : "Manage company profile, users, security, workspace preferences, and operational defaults."
+        }
         actions={<SettingsThemeToggle className="self-start" />}
       >
         <SettingsSearchInput

@@ -10,7 +10,35 @@ from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.services.agent.context import AgentContext, intersect_warehouse_ids
+from app.services.agent.tool_models import ConfirmationRequired, ToolResultBase
 from app.services.agent.report_bridge import fetch_report_for_agent
+from app.services.agent.sales_agent_tools import (
+    CreateQuotationInput,
+    GetCustomerHistoryInput,
+    GetInvoiceStatusInput,
+    GetQuotationsInput,
+    GetSalesOrdersInput,
+    UpdateOrderStatusInput,
+    execute_create_quotation,
+    execute_update_order_status,
+    get_customer_history,
+    get_invoice_status,
+    get_quotations,
+    get_sales_orders,
+    prepare_create_quotation,
+    prepare_update_order_status,
+)
+from app.services.agent.tool_registry import (
+    AgentToolDefinition,
+    ROLE_ADMIN,
+    ROLE_PRODUCTION_MANAGER,
+    ROLE_SALES_MANAGER,
+    ROLE_STORE_MANAGER,
+    openai_tools_for_context,
+    register_tool,
+    tool_not_permitted_error,
+    user_may_use_tool_name,
+)
 from app.services.job_card_lookup_service import get_job_card_status_rows
 from app.services.reports.filters import ReportFilters
 
@@ -22,17 +50,6 @@ JOB_CARD_SOURCE_KEY = "job_card_lookup"
 
 class ToolTimeoutError(Exception):
     pass
-
-
-class ToolResultBase(BaseModel):
-    rows: list[dict[str, Any]] = Field(default_factory=list)
-    truncated: bool = False
-    total_count: int = 0
-    generated_at: str
-    source_report_key: str
-    report_title: str | None = None
-    columns: list[dict[str, Any]] = Field(default_factory=list)
-    error: str | None = None
 
 
 class StockResult(ToolResultBase):
@@ -53,13 +70,6 @@ class JobCardResult(ToolResultBase):
 
 class MaterialIssueResult(ToolResultBase):
     pass
-
-
-class ConfirmationRequired(BaseModel):
-    kind: str = "confirmation_required"
-    summary: str
-    tool_name: str
-    payload: dict[str, Any]
 
 
 class MaterialIssueCreated(BaseModel):
@@ -212,8 +222,6 @@ def prepare_create_material_issue(
 ) -> ConfirmationRequired | dict[str, str]:
     if not get_settings().agent_write_tools_enabled:
         return {"error": "Write tools are not enabled for this environment."}
-    if not ctx.is_store_manager_or_above:
-        return {"error": "Only Store Manager (or above) can create material issues."}
     item_lines = ", ".join(
         f"{it.get('item_id')} × {it.get('qty')}" for it in (inp.items or [])
     )
@@ -230,8 +238,6 @@ def prepare_create_purchase_indent(
 ) -> ConfirmationRequired | dict[str, str]:
     if not get_settings().agent_write_tools_enabled:
         return {"error": "Write tools are not enabled for this environment."}
-    if not ctx.is_store_manager_or_above:
-        return {"error": "Only Store Manager (or above) can create purchase indents."}
     summary = f"Create purchase indent for item {inp.item_id}, qty {inp.qty} — confirm?"
     return ConfirmationRequired(
         summary=summary,
@@ -252,87 +258,200 @@ _TOOL_DISPATCH: dict[str, Callable[..., Any]] = {
     "get_material_issue_history": lambda db, ctx, args: get_material_issue_history(
         db, ctx, GetMaterialIssueHistoryInput.model_validate(args)
     ),
+    "get_sales_orders": lambda db, ctx, args: get_sales_orders(
+        db, ctx, GetSalesOrdersInput.model_validate(args)
+    ),
+    "get_quotations": lambda db, ctx, args: get_quotations(
+        db, ctx, GetQuotationsInput.model_validate(args)
+    ),
+    "get_customer_history": lambda db, ctx, args: get_customer_history(
+        db, ctx, GetCustomerHistoryInput.model_validate(args)
+    ),
+    "get_invoice_status": lambda db, ctx, args: get_invoice_status(
+        db, ctx, GetInvoiceStatusInput.model_validate(args)
+    ),
 }
 
 
 _WRITE_PREP: dict[str, Callable[..., Any]] = {
-    "create_material_issue": lambda ctx, args: prepare_create_material_issue(
+    "create_material_issue": lambda db, ctx, args: prepare_create_material_issue(
         ctx, CreateMaterialIssueInput.model_validate(args)
     ),
-    "create_purchase_indent": lambda ctx, args: prepare_create_purchase_indent(
+    "create_purchase_indent": lambda db, ctx, args: prepare_create_purchase_indent(
         ctx, CreatePurchaseIndentInput.model_validate(args)
+    ),
+    "create_quotation": lambda db, ctx, args: prepare_create_quotation(
+        ctx, CreateQuotationInput.model_validate(args)
+    ),
+    "update_order_status": lambda db, ctx, args: prepare_update_order_status(
+        db, ctx, UpdateOrderStatusInput.model_validate(args)
     ),
 }
 
+_WRITE_EXECUTE: dict[str, Callable[..., Any]] = {
+    "create_quotation": lambda db, ctx, payload: execute_create_quotation(db, ctx, payload),
+    "update_order_status": lambda db, ctx, payload: execute_update_order_status(db, ctx, payload),
+}
 
-READ_TOOL_NAMES = list(_TOOL_DISPATCH.keys())
-WRITE_TOOL_NAMES = list(_WRITE_PREP.keys())
 
+def _register_agent_tools() -> None:
+    store_roles = frozenset({ROLE_STORE_MANAGER, ROLE_ADMIN, ROLE_PRODUCTION_MANAGER})
+    sales_roles = frozenset({ROLE_SALES_MANAGER, ROLE_ADMIN})
 
-def openai_tool_definitions() -> list[dict[str, Any]]:
-    return [
-        {
-            "type": "function",
-            "function": {
-                "name": "get_stock",
-                "description": "Current on-hand stock by item and warehouse. Optional item name/code search.",
-                "parameters": GetStockInput.model_json_schema(),
-            },
-        },
-        {
-            "type": "function",
-            "function": {
-                "name": "get_low_stock",
-                "description": "Items at or below minimum stock / reorder level.",
-                "parameters": GetLowStockInput.model_json_schema(),
-            },
-        },
-        {
-            "type": "function",
-            "function": {
-                "name": "get_pending_grns",
-                "description": "Purchase orders awaiting goods receipt (pending GRN).",
-                "parameters": GetPendingGrnsInput.model_json_schema(),
-            },
-        },
-        {
-            "type": "function",
-            "function": {
-                "name": "get_job_card_status",
-                "description": "Status of a job card by its exact job card number.",
-                "parameters": GetJobCardStatusInput.model_json_schema(),
-            },
-        },
-        {
-            "type": "function",
-            "function": {
-                "name": "get_material_issue_history",
-                "description": "Material issues from store to production for a date range.",
-                "parameters": GetMaterialIssueHistoryInput.model_json_schema(),
-            },
-        },
-    ] + (
-        [
-            {
-                "type": "function",
-                "function": {
-                    "name": "create_material_issue",
-                    "description": "Issue materials to a job card (requires user confirmation).",
-                    "parameters": CreateMaterialIssueInput.model_json_schema(),
-                },
-            },
-            {
-                "type": "function",
-                "function": {
-                    "name": "create_purchase_indent",
-                    "description": "Create a purchase indent (requires user confirmation).",
-                    "parameters": CreatePurchaseIndentInput.model_json_schema(),
-                },
-            },
-        ]
-        if get_settings().agent_write_tools_enabled
-        else []
+    register_tool(
+        AgentToolDefinition(
+            name="get_stock",
+            description="Current on-hand stock by item and warehouse. Optional item name/code search.",
+            parameters_schema=GetStockInput.model_json_schema(),
+            allowed_roles=store_roles,
+        )
     )
+    register_tool(
+        AgentToolDefinition(
+            name="get_low_stock",
+            description="Items at or below minimum stock / reorder level.",
+            parameters_schema=GetLowStockInput.model_json_schema(),
+            allowed_roles=store_roles,
+        )
+    )
+    register_tool(
+        AgentToolDefinition(
+            name="get_pending_grns",
+            description="Purchase orders awaiting goods receipt (pending GRN).",
+            parameters_schema=GetPendingGrnsInput.model_json_schema(),
+            allowed_roles=store_roles,
+        )
+    )
+    register_tool(
+        AgentToolDefinition(
+            name="get_job_card_status",
+            description="Status of a job card by its exact job card number.",
+            parameters_schema=GetJobCardStatusInput.model_json_schema(),
+            allowed_roles=store_roles,
+        )
+    )
+    register_tool(
+        AgentToolDefinition(
+            name="get_material_issue_history",
+            description="Material issues from store to production for a date range.",
+            parameters_schema=GetMaterialIssueHistoryInput.model_json_schema(),
+            allowed_roles=store_roles,
+        )
+    )
+    register_tool(
+        AgentToolDefinition(
+            name="create_material_issue",
+            description="Issue materials to a job card (requires user confirmation).",
+            parameters_schema=CreateMaterialIssueInput.model_json_schema(),
+            allowed_roles=frozenset({ROLE_STORE_MANAGER, ROLE_ADMIN}),
+            kind="write_prep",
+        )
+    )
+    register_tool(
+        AgentToolDefinition(
+            name="create_purchase_indent",
+            description="Create a purchase indent (requires user confirmation).",
+            parameters_schema=CreatePurchaseIndentInput.model_json_schema(),
+            allowed_roles=frozenset({ROLE_STORE_MANAGER, ROLE_ADMIN}),
+            kind="write_prep",
+        )
+    )
+    register_tool(
+        AgentToolDefinition(
+            name="get_sales_orders",
+            description="List sales orders with optional status, customer search, and date range.",
+            parameters_schema=GetSalesOrdersInput.model_json_schema(),
+            allowed_roles=sales_roles,
+        )
+    )
+    register_tool(
+        AgentToolDefinition(
+            name="get_quotations",
+            description="List quotations with optional status and customer search.",
+            parameters_schema=GetQuotationsInput.model_json_schema(),
+            allowed_roles=sales_roles,
+        )
+    )
+    register_tool(
+        AgentToolDefinition(
+            name="get_customer_history",
+            description="Orders, invoices, and payment activity for one customer.",
+            parameters_schema=GetCustomerHistoryInput.model_json_schema(),
+            allowed_roles=sales_roles,
+            sensitivity="elevated",
+            sensitive_param_keys=("customer_id",),
+        )
+    )
+    register_tool(
+        AgentToolDefinition(
+            name="get_invoice_status",
+            description="Invoice payment status by invoice number.",
+            parameters_schema=GetInvoiceStatusInput.model_json_schema(),
+            allowed_roles=sales_roles,
+        )
+    )
+    register_tool(
+        AgentToolDefinition(
+            name="create_quotation",
+            description="Create a sales quotation (requires user confirmation).",
+            parameters_schema=CreateQuotationInput.model_json_schema(),
+            allowed_roles=sales_roles,
+            kind="write_prep",
+        )
+    )
+    register_tool(
+        AgentToolDefinition(
+            name="update_order_status",
+            description="Update a sales order status (requires confirmation; valid transitions only).",
+            parameters_schema=UpdateOrderStatusInput.model_json_schema(),
+            allowed_roles=sales_roles,
+            kind="write_prep",
+        )
+    )
+
+
+_register_agent_tools()
+
+def _read_tool_names() -> list[str]:
+    from app.services.agent.tool_registry import AGENT_TOOL_REGISTRY
+
+    return [n for n, d in AGENT_TOOL_REGISTRY.items() if d.kind == "read"]
+
+
+READ_TOOL_NAMES = _read_tool_names()
+
+
+def _write_tool_names() -> list[str]:
+    from app.services.agent.tool_registry import AGENT_TOOL_REGISTRY
+
+    return [n for n, d in AGENT_TOOL_REGISTRY.items() if d.kind == "write_prep"]
+
+
+WRITE_TOOL_NAMES = _write_tool_names()
+
+
+def openai_tool_definitions(ctx: AgentContext | None = None) -> list[dict[str, Any]]:
+    if ctx is None:
+        from app.services.agent.tool_registry import AGENT_TOOL_REGISTRY
+        from app.core.config import get_settings
+
+        tools = list(AGENT_TOOL_REGISTRY.values())
+        out = []
+        for tool in tools:
+            if tool.kind == "write_prep" and not get_settings().agent_write_tools_enabled:
+                continue
+            out.append(
+                {
+                    "type": "function",
+                    "function": {
+                        "name": tool.name,
+                        "description": tool.description,
+                        "parameters": tool.parameters_schema,
+                    },
+                }
+            )
+        return out
+    return openai_tools_for_context(ctx)
 
 
 async def execute_tool_async(
@@ -341,11 +460,14 @@ async def execute_tool_async(
     tool_name: str,
     args: dict[str, Any],
 ) -> Any:
+    if not user_may_use_tool_name(ctx, tool_name):
+        return tool_not_permitted_error()
+
     loop = asyncio.get_event_loop()
 
     def _run() -> Any:
         if tool_name in _WRITE_PREP:
-            return _WRITE_PREP[tool_name](ctx, args)
+            return _WRITE_PREP[tool_name](db, ctx, args)
         if tool_name not in _TOOL_DISPATCH:
             return {"error": f"Unknown tool: {tool_name}"}
         return _TOOL_DISPATCH[tool_name](db, ctx, args)

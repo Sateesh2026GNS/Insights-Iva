@@ -235,7 +235,7 @@ _AUTH_PATH_FRAGMENTS = (
     "/platform/auth/",
 )
 
-_REPORTS_PATH_PREFIX = "/api/v1/reports"
+_REPORTS_PATH_PREFIX = "/api/reports"
 
 
 def rate_limit_json_response(exc: HTTPException) -> JSONResponse:

@@ -5,6 +5,8 @@ import { Bot, Loader2, Send, Sparkles, WifiOff, X } from "lucide-react";
 import { confirmAgentAction, sendAgentChat } from "../../api/agentApi";
 import Button from "../common/Button";
 import { useToast } from "../../context/ToastContext";
+import useAuth from "../../hooks/useAuth";
+import { isSalesManager, isStoreManager } from "../../config/permissions";
 import { apiErrorMessage, classifyApiError } from "../../utils/apiError";
 
 const SUGGESTION_CHIPS = [
@@ -15,7 +17,14 @@ const SUGGESTION_CHIPS = [
 ];
 
 const VISIBLE_CARD_ROWS = 5;
-const TEAL = "bg-teal-600 hover:bg-teal-700";
+const FAB_CLASS =
+  "fixed bottom-5 right-5 z-[100] flex h-14 w-14 items-center justify-center rounded-full bg-[var(--color-primary)] text-white shadow-lg transition hover:bg-[var(--color-primary-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/40 focus-visible:ring-offset-2 sm:bottom-6 sm:right-6";
+
+function messageWithPageContext(text, pageContextLabel) {
+  const msg = (text || "").trim();
+  if (!msg || !pageContextLabel) return msg;
+  return `[Context: user is viewing ${pageContextLabel}]\n${msg}`;
+}
 
 function formatSourceTime(iso) {
   if (!iso) return { relative: "", absolute: "" };
@@ -118,8 +127,8 @@ function AssistantTurn({ message, onConfirm, onCancel, confirmBusy }) {
             <Button
               type="button"
               size="sm"
+              variant="primary"
               disabled={confirmBusy}
-              className={TEAL}
               onClick={() => onConfirm(requires_confirmation)}
             >
               Confirm
@@ -140,8 +149,29 @@ function AssistantTurn({ message, onConfirm, onCancel, confirmBusy }) {
   );
 }
 
-export default function StoreAgentChatPanel() {
+export default function StoreAgentChatPanel({ pageContextLabel = "" }) {
+  const { user } = useAuth();
   const { addToast } = useToast();
+  const salesMode = isSalesManager(user);
+  const storeMode = isStoreManager(user);
+  const agentTitle = "AI Assistant";
+  const agentSubtitle =
+    salesMode && !storeMode
+      ? "Sales orders, quotations & customers"
+      : "Live inventory & job cards";
+  const suggestionChips =
+    salesMode && !storeMode
+      ? [
+          "List draft sales orders",
+          "Quotations pending approval",
+          "Customer order history",
+          "Invoice payment status",
+        ]
+      : SUGGESTION_CHIPS;
+  const emptyHint =
+    salesMode && !storeMode
+      ? "Ask about orders, quotations, customers, or invoices"
+      : "Ask about stock, GRNs, or job cards";
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -183,7 +213,10 @@ export default function StoreAgentChatPanel() {
     setLoading(true);
 
     try {
-      const data = await sendAgentChat({ message: msg, conversationId });
+      const data = await sendAgentChat({
+        message: messageWithPageContext(msg, pageContextLabel),
+        conversationId,
+      });
       setConversationId(data.conversation_id);
       pushAssistant({
         answer_text: data.answer_text,
@@ -225,7 +258,7 @@ export default function StoreAgentChatPanel() {
     } finally {
       setLoading(false);
     }
-  }, [input, loading, conversationId, offline, addToast, pushAssistant]);
+  }, [input, loading, conversationId, offline, addToast, pushAssistant, pageContextLabel]);
 
   const handleConfirm = async (conf) => {
     setConfirmBusy(true);
@@ -281,9 +314,9 @@ export default function StoreAgentChatPanel() {
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className={`fixed bottom-5 right-5 z-[100] flex h-14 w-14 items-center justify-center rounded-full ${TEAL} text-white shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/40 sm:bottom-6 sm:right-6`}
-          aria-label="Open Store AI Agent"
-          title="Store AI Agent"
+          className={FAB_CLASS}
+          aria-label="AI Assistant"
+          title="AI Assistant"
         >
           <Sparkles className="h-6 w-6" aria-hidden />
         </button>
@@ -291,16 +324,21 @@ export default function StoreAgentChatPanel() {
 
       {open && (
         <div className="fixed inset-x-3 bottom-3 z-[100] flex max-h-[min(640px,calc(100vh-1.5rem))] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl sm:inset-x-auto sm:bottom-6 sm:right-6 sm:w-[440px]">
-          <div className={`flex items-center justify-between border-b border-teal-700 ${TEAL} px-4 py-3 text-white`}>
+          <div className="flex items-center justify-between border-b border-[var(--color-border-soft)] bg-[var(--color-primary)] px-4 py-3 text-white">
             <div className="flex items-center gap-2">
-              <Bot className="h-5 w-5" />
+              <Bot className="h-5 w-5" aria-hidden />
               <div>
-                <p className="text-sm font-semibold">Store Operator Agent</p>
-                <p className="text-[10px] opacity-90">Live inventory &amp; job cards</p>
+                <p className="text-sm font-semibold">{agentTitle}</p>
+                <p className="text-[10px] opacity-90">{agentSubtitle}</p>
               </div>
             </div>
-            <button type="button" onClick={() => setOpen(false)} className="rounded-lg p-1.5 hover:bg-white/20">
-              <X className="h-4 w-4" />
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="rounded-lg p-1.5 hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+              aria-label="Close AI Assistant"
+            >
+              <X className="h-4 w-4" aria-hidden />
             </button>
           </div>
 
@@ -314,10 +352,10 @@ export default function StoreAgentChatPanel() {
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
             {messages.length === 0 && (
               <div className="text-center">
-                <p className="text-sm font-medium text-slate-700">Ask about stock, GRNs, or job cards</p>
-                <p className="mt-1 text-xs text-slate-400">Answers use live ERP data from reports.</p>
+                <p className="text-sm font-medium text-slate-700">{emptyHint}</p>
+                <p className="mt-1 text-xs text-slate-400">Answers use live ERP data for your role.</p>
                 <div className="mt-3 flex flex-wrap justify-center gap-2">
-                  {SUGGESTION_CHIPS.map((chip) => (
+                  {suggestionChips.map((chip) => (
                     <button
                       key={chip}
                       type="button"
@@ -376,7 +414,7 @@ export default function StoreAgentChatPanel() {
               <button
                 type="submit"
                 disabled={loading || !input.trim()}
-                className={`flex h-10 w-10 items-center justify-center rounded-xl text-white disabled:opacity-50 ${TEAL}`}
+                className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--color-primary)] text-white disabled:opacity-50 hover:bg-[var(--color-primary-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/40"
                 aria-label="Send"
               >
                 <Send className="h-4 w-4" />

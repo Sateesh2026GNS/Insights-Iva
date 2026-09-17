@@ -29,6 +29,9 @@ class Machine(Base, TimestampMixin):
     purchase_date: Mapped[date | None] = mapped_column(Date)
     warranty_until: Mapped[date | None] = mapped_column(Date)
     assigned_operator: Mapped[str | None] = mapped_column(String(255))
+    assigned_operator_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id"), nullable=True, index=True
+    )
     current_shift: Mapped[str | None] = mapped_column(String(64))
     current_work_order: Mapped[str | None] = mapped_column(String(64))
     health_score: Mapped[float | None] = mapped_column(Numeric(5, 2))

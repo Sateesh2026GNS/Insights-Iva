@@ -33,12 +33,16 @@ import {
   Wallet,
   Workflow,
   X,
+  LogOut,
 } from "lucide-react";
+import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 
 import useSettings from "../../context/SettingsContext";
 import { filterAccessibleSettingsCategories } from "../../config/permissions";
 import useAuth from "../../hooks/useAuth";
+import Button from "../../components/common/Button";
+import LogoutConfirmModal from "../../components/common/LogoutConfirmModal";
 import { SearchBar } from "../../components/common/SearchFilter";
 import {
   SETTINGS_NAV_GROUPS,
@@ -476,6 +480,60 @@ export function ToggleRow({ label, description, checked, onChange }) {
       </span>
       <SettingsSwitch checked={checked} onChange={() => onChange(!checked)} label={label} />
     </label>
+  );
+}
+
+/** Sign out — reuses AuthContext logout + shared confirmation modal (Sidebar / Account). */
+export function SettingsSignOutSection() {
+  const navigate = useNavigate();
+  const { logout } = useAuth();
+  const [logoutOpen, setLogoutOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  const handleConfirmLogout = async ({ allDevices }) => {
+    setLoggingOut(true);
+    try {
+      await logout({ allDevices });
+      navigate("/login", { replace: true });
+    } finally {
+      setLoggingOut(false);
+      setLogoutOpen(false);
+    }
+  };
+
+  return (
+    <>
+      <section
+        className="ui-card flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between"
+        aria-label="Sign out"
+      >
+        <div>
+          <p className="text-sm font-semibold text-[var(--color-text)]">Sign out of Insights Iva</p>
+          <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">
+            End your session on this device. You will need to sign in again to access the ERP.
+          </p>
+        </div>
+        <Button
+          type="button"
+          variant="danger"
+          size="md"
+          className="shrink-0 gap-2"
+          onClick={() => setLogoutOpen(true)}
+          aria-label="Sign out"
+        >
+          <LogOut className="h-4 w-4" aria-hidden />
+          Logout
+        </Button>
+      </section>
+      <LogoutConfirmModal
+        open={logoutOpen}
+        busy={loggingOut}
+        onCancel={() => {
+          if (!loggingOut) setLogoutOpen(false);
+        }}
+        onConfirm={handleConfirmLogout}
+      />
+    </>
   );
 }
 

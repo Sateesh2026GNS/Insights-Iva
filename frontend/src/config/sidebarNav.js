@@ -57,11 +57,13 @@ export const SIDEBAR_NAV = [
     labelKey: "erpNav.production",
     icon: Factory,
     children: [
-      { labelKey: "erpNav.productionPlanning", to: "/production/planning", module: "production" },
+      { labelKey: "erpNav.productionPlanning", to: "/production/planning", module: "production", managerOnly: true },
       { labelKey: "erpNav.workOrders", to: "/production/work-orders", module: "production" },
       { labelKey: "erpNav.productionSchedule", to: "/production/schedule", module: "production" },
-      { labelKey: "erpNav.machineAllocation", to: "/production/tasks", module: "production" },
-      { labelKey: "erpNav.dailyProductionReports", to: "/production/reports", module: "production" },
+      { labelKey: "erpNav.machineAllocation", to: "/production/tasks", module: "production", managerOnly: true },
+      { labelKey: "erpNav.dailyProductionReports", to: "/production/reports", module: "production", managerOnly: true },
+      { labelKey: "erpNav.myMachine", to: "/production/my-machine", module: "production", operatorOnly: true },
+      { labelKey: "erpNav.myProductionEntry", to: "/production/my-entry", module: "production", operatorOnly: true },
     ],
   },
   {

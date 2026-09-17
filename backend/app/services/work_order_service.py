@@ -14,6 +14,7 @@ from app.models.production import (
     ProductionOrder,
     WorkOrder,
 )
+from app.models.manufacturing_workflow import WorkflowStageJobCard
 from app.models.sales import SalesOrder
 from app.models.user import User
 from app.schemas.work_order import (
@@ -112,8 +113,18 @@ def _wo_context(db: Session, tenant_id: int, wo: WorkOrder) -> dict:
     }
 
 
+def _stage_job_card_for_work_order(db: Session, tenant_id: int, work_order_id: int) -> WorkflowStageJobCard | None:
+    return db.scalars(
+        select(WorkflowStageJobCard).where(
+            WorkflowStageJobCard.tenant_id == tenant_id,
+            WorkflowStageJobCard.work_order_id == work_order_id,
+        ).limit(1)
+    ).first()
+
+
 def _to_list_read(db: Session, tenant_id: int, wo: WorkOrder) -> WorkOrderListRead:
     ctx = _wo_context(db, tenant_id, wo)
+    stage_card = _stage_job_card_for_work_order(db, tenant_id, wo.id)
     po = ctx["po"]
     product = ctx["product"]
     machine = ctx["machine"]
@@ -161,6 +172,9 @@ def _to_list_read(db: Session, tenant_id: int, wo: WorkOrder) -> WorkOrderListRe
         progress_pct=ctx["progress"],
         is_delayed=_is_delayed(wo),
         materials_issued=bool(getattr(wo, "materials_issued", False)),
+        job_card_number=stage_card.card_number if stage_card else None,
+        job_card_stage=stage_card.stage if stage_card else None,
+        workflow_stage_job_card_id=stage_card.id if stage_card else None,
     )
 
 

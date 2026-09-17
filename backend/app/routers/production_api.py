@@ -15,7 +15,7 @@ from app.api.deps import get_db
 from app.core.permissions import require_action, user_can_action
 from app.models.production import ProductionOrder
 from app.models.user import User
-from app.routers.operator_deps import require_tenant
+from app.routers.operator_deps import deny_operator_production_planning, require_tenant
 from app.schemas.allocation import AllocationAssignRequest
 from app.schemas.production import (
     BatchCreate,
@@ -134,7 +134,11 @@ def list_operators(
 
 
 @router.get("/planning")
-def production_planning(user_tenant: tuple[User, int] = Depends(require_tenant("production")), db: Session = Depends(get_db)):
+def production_planning(
+    user_tenant: tuple[User, int] = Depends(require_tenant("production")),
+    _: User = Depends(deny_operator_production_planning),
+    db: Session = Depends(get_db),
+):
     _, tenant_id = user_tenant
     return success_response("Production planning retrieved", {
         "summary": _dump(get_production_planning_summary(db, tenant_id)),
@@ -145,6 +149,7 @@ def production_planning(user_tenant: tuple[User, int] = Depends(require_tenant("
 @router.get("/planning/summary")
 def production_planning_summary(
     user_tenant: tuple[User, int] = Depends(require_tenant("production")),
+    _: User = Depends(deny_operator_production_planning),
     db: Session = Depends(get_db),
 ):
     _, tenant_id = user_tenant
@@ -155,6 +160,7 @@ def production_planning_summary(
 def production_plan_detail(
     plan_id: int,
     user_tenant: tuple[User, int] = Depends(require_tenant("production")),
+    _: User = Depends(deny_operator_production_planning),
     db: Session = Depends(get_db),
 ):
     _, tenant_id = user_tenant
@@ -194,6 +200,7 @@ def delete_production_plan(
 def create_plan(
     payload: ProductionOrderCreate,
     user_tenant: tuple[User, int] = Depends(require_tenant("production")),
+    _: User = Depends(deny_operator_production_planning),
     db: Session = Depends(get_db),
 ):
     _, tenant_id = user_tenant
@@ -778,7 +785,11 @@ def allocation_summary(user_tenant: tuple[User, int] = Depends(require_tenant("a
 
 
 @router.get("/allocation/rows")
-def allocation_rows(user_tenant: tuple[User, int] = Depends(require_tenant("allocation")), db: Session = Depends(get_db)):
+def allocation_rows(
+    user_tenant: tuple[User, int] = Depends(require_tenant("allocation")),
+    _: User = Depends(deny_operator_production_planning),
+    db: Session = Depends(get_db),
+):
     try:
         _, tenant_id = user_tenant
         return success_response("Allocation rows retrieved", _dump(get_allocation_list(db, tenant_id)))
@@ -801,7 +812,11 @@ def allocation_rows(user_tenant: tuple[User, int] = Depends(require_tenant("allo
 
 
 @router.get("/allocation/machines")
-def allocation_machines(user_tenant: tuple[User, int] = Depends(require_tenant("allocation")), db: Session = Depends(get_db)):
+def allocation_machines(
+    user_tenant: tuple[User, int] = Depends(require_tenant("allocation")),
+    _: User = Depends(deny_operator_production_planning),
+    db: Session = Depends(get_db),
+):
     try:
         _, tenant_id = user_tenant
         return success_response("Allocation machines retrieved", _dump(get_machine_availability(db, tenant_id)))
@@ -827,6 +842,7 @@ def allocation_machines(user_tenant: tuple[User, int] = Depends(require_tenant("
 def assign_machine(
     payload: AllocationAssignRequest,
     user_tenant: tuple[User, int] = Depends(require_tenant("allocation")),
+    _: User = Depends(deny_operator_production_planning),
     db: Session = Depends(get_db),
 ):
     try:

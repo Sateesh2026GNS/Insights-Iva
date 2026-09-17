@@ -102,23 +102,42 @@ export const PRODUCTION_MANAGER_ALLOWED_CHILDREN = new Set([
 ]);
 
 /** Operator may only open production execution paths (no management/admin). */
+/** Production paths operators may open (planning / allocation excluded). */
+export const OPERATOR_ALLOWED_CHILDREN = new Set([
+  "/production/work-orders",
+  "/production/schedule",
+  "/production/my-machine",
+  "/production/my-entry",
+]);
+
+export const OPERATOR_BLOCKED_CHILDREN = new Set([
+  "/production/planning",
+  "/production/tasks",
+  "/production/reports",
+]);
+
 export const OPERATOR_ALLOWED_PATHS = new Set([
   "/",
   "/manufacturing/workflow",
   "/my-job-cards",
   "/production",
   "/production/dashboard",
-  "/manufacturing/workflow",
-  "/production/tasks",
   "/production/work-orders",
+  "/production/schedule",
+  "/production/my-machine",
+  "/production/my-entry",
   "/factory-monitor/machine-status",
   "/factory-monitor/production-lines",
   "/factory-monitor/live-production",
   "/documents",
   "/documents/production",
   "/alerts",
+  "/alerts/low-stock",
   "/alerts/machine-failure",
   "/alerts/production-delay",
+  "/alerts/maintenance",
+  "/alerts/quality",
+  "/alerts/safety",
   "/alerts/general",
   "/hr/attendance",
   "/hr/attendance/approval",
@@ -134,6 +153,14 @@ export const OPERATOR_ALLOWED_PATHS = new Set([
   "/hr/leave/plans/create",
   "/hr/leave/create",
   "/leave",
+  "/settings",
+  "/settings/my-account",
+  "/settings/notifications",
+  "/settings/appearance",
+  "/settings/subscription",
+  "/settings/help",
+  "/settings/about",
+  "/settings/alerts",
 ]);
 
 /** HR Manager sidebar — HR module plus shared collaboration sections. */
@@ -192,7 +219,6 @@ export const OPERATOR_BLOCKED_SECTIONS = new Set([
   "maintenance",
   "analytics",
   "admin",
-  "settings",
   "meetings",
 ]);
 
@@ -237,11 +263,15 @@ export function operatorPathAllowed(pathname) {
   ) {
     return true;
   }
+  if (OPERATOR_BLOCKED_CHILDREN.has(path)) return false;
   if (OPERATOR_ALLOWED_PATHS.has(path)) return true;
-  if (path.startsWith("/production/")) return true;
+  if (path.startsWith("/production/")) {
+    return OPERATOR_ALLOWED_CHILDREN.has(path) || path.startsWith("/production/work-orders/");
+  }
   if (path.startsWith("/manufacturing/")) return true;
   if (path.startsWith("/factory-monitor/")) return true;
   if (path.startsWith("/documents")) return true;
   if (path.startsWith("/alerts")) return true;
+  if (path === "/settings" || path.startsWith("/settings/")) return true;
   return false;
 }

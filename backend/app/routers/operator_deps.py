@@ -58,6 +58,19 @@ def require_tenant(module_key: str):
     return dependency
 
 
+def deny_operator_production_planning(current_user: User = Depends(get_current_user)) -> User:
+    """Block shop-floor operators from planning / allocation manager APIs."""
+    if user_is_admin(current_user):
+        return current_user
+    roles = {r.strip().lower() for r in get_role_names(current_user) if r}
+    if "operator" in roles and not any("manager" in r or "admin" in r for r in roles):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Production planning and machine allocation are restricted to managers.",
+        )
+    return current_user
+
+
 def deny_delete_for_operator(current_user: User = Depends(get_current_user)) -> User:
     if not user_is_admin(current_user) and "Operator" in get_role_names(current_user):
         raise HTTPException(

@@ -16,7 +16,7 @@ from app.services.agent.tools import READ_TOOL_NAMES
 
 def test_read_tool_schemas_are_valid_openai_functions():
     schemas = read_tool_schemas()
-    assert len(schemas) == 5
+    assert len(schemas) == len(READ_TOOL_NAMES)
     names = {t["function"]["name"] for t in schemas}
     assert names == set(READ_TOOL_NAMES)
     for tool in schemas:

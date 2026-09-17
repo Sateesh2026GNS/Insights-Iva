@@ -39,6 +39,8 @@ import {
   HR_MANAGER_ALLOWED_SECTIONS,
   ACCOUNTANT_ALLOWED_SECTIONS,
   ACCOUNTANT_ALLOWED_CHILDREN,
+  OPERATOR_ALLOWED_CHILDREN,
+  OPERATOR_BLOCKED_CHILDREN,
   OPERATOR_BLOCKED_SECTIONS,
 } from "../../config/rbacNavFilters";
 import { SIDEBAR_NAV, sectionHasActiveChild, filterNavTree, buildNestedExpanded, navNodeIsActive } from "../../config/sidebarNav";
@@ -186,6 +188,14 @@ export function filterStaticNav(user) {
       if (isAcct && (section.key === "alerts" || section.key === "analytics") && node.to) {
         if (!ACCOUNTANT_ALLOWED_CHILDREN.has(node.to) && !ACCOUNTANT_ALLOWED_CHILDREN.has(pathOnly)) return false;
       }
+      if (isOp) {
+        if (node.managerOnly) return false;
+        if (node.to && (OPERATOR_BLOCKED_CHILDREN.has(node.to) || OPERATOR_BLOCKED_CHILDREN.has(pathOnly))) return false;
+        if (section.key === "production" && node.to && !node.operatorOnly) {
+          if (!OPERATOR_ALLOWED_CHILDREN.has(node.to) && !OPERATOR_ALLOWED_CHILDREN.has(pathOnly)) return false;
+        }
+      }
+      if (!isOp && node.operatorOnly) return false;
       if (!userCanAccess(user, node.module)) return false;
       if (storeMgr && node.to) {
         return storeManagerPathAllowed(node.to) || storeManagerPathAllowed(pathOnly);

@@ -9,6 +9,7 @@ import {
   getEffectivePermissions,
   userCanAccess,
 } from "./permissions";
+import { operatorPathAllowed } from "./rbacNavFilters";
 
 describe("canAccess", () => {
   it("grants admins access to any module", () => {
@@ -143,6 +144,44 @@ describe("Store Manager settings access", () => {
     expect(userCanAccessPath(storeManager, "/sales/job-cards/create")).toBe(false);
     expect(userCanAccessPath(storeManager, "/sales/job-cards/42/edit")).toBe(false);
     expect(userCanAccessPath(storeManager, "/my-job-cards")).toBe(true);
+  });
+});
+
+describe("Operator production nav", () => {
+  const operator = { role: "Operator", permissions: ["dashboard", "production", "alerts"] };
+
+  it("blocks planning and allocation paths", () => {
+    expect(operatorPathAllowed("/production/planning")).toBe(false);
+    expect(operatorPathAllowed("/production/tasks")).toBe(false);
+    expect(operatorPathAllowed("/production/my-machine")).toBe(true);
+    expect(operatorPathAllowed("/production/my-entry")).toBe(true);
+  });
+
+  it("userCanAccessPath denies manager production URLs", () => {
+    expect(userCanAccessPath(operator, "/production/planning")).toBe(false);
+    expect(userCanAccessPath(operator, "/production/work-orders")).toBe(true);
+  });
+});
+
+describe("Operator settings access", () => {
+  const operator = { role: "Operator", permissions: ["dashboard", "production", "settings"] };
+
+  it("allows /settings home and personal sections", () => {
+    expect(userCanAccessPath(operator, "/settings")).toBe(true);
+    expect(userCanAccessPath(operator, "/settings/my-account")).toBe(true);
+    expect(userCanAccessPath(operator, "/settings/appearance")).toBe(true);
+    expect(userCanAccessPath(operator, "/settings/notifications")).toBe(true);
+  });
+
+  it("denies admin-only settings sections", () => {
+    expect(userCanAccessPath(operator, "/settings/users")).toBe(false);
+    expect(userCanAccessPath(operator, "/settings/company")).toBe(false);
+    expect(userCanAccessPath(operator, "/settings/ai")).toBe(false);
+  });
+
+  it("falls back to static role map with settings when API permissions are empty", () => {
+    expect(userCanAccessPath({ role: "Operator", permissions: [] }, "/settings")).toBe(true);
+    expect(userCanAccessPath({ role: "Operator", permissions: [] }, "/settings/company")).toBe(false);
   });
 });
 

@@ -50,3 +50,5 @@ class AiAgentLog(Base, TimestampMixin):
     result_truncated: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     response_text: Mapped[str | None] = mapped_column(Text)
     latency_ms: Mapped[int | None] = mapped_column(Integer)
+    tool_sensitivity: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    sensitive_targets: Mapped[dict | None] = mapped_column(JSON, nullable=True)

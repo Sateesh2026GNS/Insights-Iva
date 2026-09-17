@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.api.auth_deps import get_current_user
 from app.api.deps import get_db
 from app.core.config import get_settings
-from app.core.permissions import require_admin, require_permission
+from app.core.permissions import require_admin, require_any_permission, user_has_permission
 from app.middleware.security import check_rate_limit
 from app.models.ai_agent import AiAgentLog
 from app.models.user import User
@@ -38,12 +38,12 @@ async def agent_chat(
     body: AgentChatRequest,
     request: Request,
     db: Session = Depends(get_db),
-    user: User = Depends(require_permission("inventory")),
+    user: User = Depends(require_any_permission("inventory", "sales")),
 ):
     _agent_rate_limit(request, user)
 
     ctx = build_agent_context(db, user)
-    if not ctx.allowed_warehouse_ids:
+    if not ctx.allowed_warehouse_ids and not user_has_permission(user, "sales"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No warehouse access configured for your account.",
@@ -68,7 +68,7 @@ async def agent_confirm(
     body: AgentConfirmRequest,
     request: Request,
     db: Session = Depends(get_db),
-    user: User = Depends(require_permission("inventory")),
+    user: User = Depends(require_any_permission("inventory", "sales")),
 ):
     _agent_rate_limit(request, user)
 

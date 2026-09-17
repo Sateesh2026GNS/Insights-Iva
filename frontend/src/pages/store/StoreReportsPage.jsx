@@ -8,7 +8,7 @@ import Pagination from "../../components/common/Pagination";
 import StatusBadge from "../../components/common/StatusBadge";
 import { ListPageCard, ListPageShell } from "../../components/common/ListPageShell";
 import EmptyState from "../../components/common/EmptyState";
-import { PermissionDeniedState } from "../../components/common/states";
+import { PartialDataState, PermissionDeniedState } from "../../components/common/states";
 import StoreManagerNav from "../../components/inventory/StoreManagerNav";
 import { useToast } from "../../context/ToastContext";
 import { getWarehouses } from "../../api/inventoryApi";
@@ -21,7 +21,6 @@ import {
 import { apiErrorMessage, extractApiErrorDetail } from "../../utils/apiError";
 import { getApiBaseURL } from "../../api/axiosConfig";
 
-const SLOW_MS = 3000;
 const MAX_RANGE_DAYS = 366;
 
 function todayIso() {
@@ -118,19 +117,17 @@ export default function StoreReportsPage() {
 
   const [summary, setSummary] = useState(null);
   const [summaryLoading, setSummaryLoading] = useState(true);
+  const [summaryError, setSummaryError] = useState("");
 
   const [reportData, setReportData] = useState(null);
   const [reportLoading, setReportLoading] = useState(false);
   const [reportError, setReportError] = useState("");
   const [permissionDenied, setPermissionDenied] = useState(false);
-  const [slowFetch, setSlowFetch] = useState(false);
   const [offline, setOffline] = useState(!navigator.onLine);
   const [stale, setStale] = useState(false);
   const [sessionExpired, setSessionExpired] = useState(false);
 
   const abortRef = useRef(null);
-  const slowTimerRef = useRef(null);
-
   const selectedReport = filters.report;
   const activeMeta = catalog.find((c) => c.key === selectedReport);
 
@@ -203,12 +200,14 @@ export default function StoreReportsPage() {
 
   const loadSummary = useCallback(async () => {
     setSummaryLoading(true);
+    setSummaryError("");
     try {
       const res = await getReportsSummary(filtersToParams(filters));
       setSummary(res?.data ?? res);
       setStale(false);
-    } catch {
+    } catch (err) {
       setSummary(null);
+      setSummaryError(apiErrorMessage(err, "Could not load report KPI summary."));
     } finally {
       setSummaryLoading(false);
     }
@@ -235,8 +234,6 @@ export default function StoreReportsPage() {
     setReportLoading(true);
     setReportError("");
     setPermissionDenied(false);
-    setSlowFetch(false);
-    slowTimerRef.current = setTimeout(() => setSlowFetch(true), SLOW_MS);
     try {
       const res = await runReport(selectedReport, filtersToParams(filters), {
         signal: controller.signal,
@@ -259,8 +256,6 @@ export default function StoreReportsPage() {
         setStale(offline);
       }
     } finally {
-      clearTimeout(slowTimerRef.current);
-      setSlowFetch(false);
       setReportLoading(false);
     }
   }, [selectedReport, filters, catalog, offline]);
@@ -269,6 +264,10 @@ export default function StoreReportsPage() {
     loadReport();
     return () => abortRef.current?.abort();
   }, [loadReport]);
+
+  const retryPartialSections = useCallback(async () => {
+    await Promise.allSettled([loadSummary(), loadReport()]);
+  }, [loadSummary, loadReport]);
 
   const validateDraft = () => {
     const errs = {};
@@ -367,10 +366,21 @@ export default function StoreReportsPage() {
         <div className="mb-4 flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
           <WifiOff className="h-4 w-4 shrink-0" />
           You appear to be offline. {stale ? "Showing last loaded data (may be outdated)." : "Some data may not refresh."}
-          <Button variant="ghost" size="sm" className="ml-auto" onClick={() => { loadSummary(); loadReport(); }}>
+          <Button variant="ghost" size="sm" className="ml-auto" onClick={retryPartialSections}>
             Retry
           </Button>
         </div>
+      )}
+
+      {(summaryError || reportError) && (summary || reportData) && (
+        <PartialDataState
+          className="mb-4"
+          sections={[
+            { label: "KPI summary", ok: !summaryError },
+            { label: "Report data", ok: !reportError },
+          ]}
+          onRetry={retryPartialSections}
+        />
       )}
 
       <ListPageCard className="mb-4">
@@ -533,13 +543,6 @@ export default function StoreReportsPage() {
               <Button variant="outline" size="sm" onClick={() => window.print()}>Print</Button>
             </div>
           </div>
-
-          {slowFetch && reportLoading && (
-            <div className="flex items-center justify-between gap-2 border-b border-amber-100 bg-amber-50 px-4 py-2 text-sm text-amber-900">
-              Still fetching — large date ranges take longer.
-              <Button variant="ghost" size="sm" onClick={() => abortRef.current?.abort()}>Cancel</Button>
-            </div>
-          )}
 
           {reportError && (
             <div className="flex items-center gap-3 border-b border-red-100 bg-red-50 px-4 py-3 text-sm text-red-800">

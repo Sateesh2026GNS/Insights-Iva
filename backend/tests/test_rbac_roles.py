@@ -271,3 +271,49 @@ def test_store_manager_can_load_account_settings(client, register_admin):
 
     denied = client.get("/api/settings/users/stats", headers=headers)
     assert denied.status_code == 403
+
+
+def test_operator_role_includes_settings_module(client, register_admin):
+    """Operator may open personal settings; module must be present on the role."""
+    admin = register_admin()
+    tenant_id = admin["user"]["tenant_id"]
+    operator = _create_role_user(client, tenant_id, "Operator")
+    perms = operator["user"]["permissions"]
+    assert "settings" in perms, f"Operator permissions missing settings: {perms}"
+
+
+def test_operator_can_load_account_settings_not_admin_apis(client, register_admin):
+    admin = register_admin()
+    tenant_id = admin["user"]["tenant_id"]
+    operator = _create_role_user(client, tenant_id, "Operator")
+    headers = {"Authorization": f"Bearer {operator['access_token']}"}
+
+    overview = client.get("/settings/account-overview", headers=headers)
+    assert overview.status_code == 200, overview.text
+
+    denied = client.get("/api/settings/users/stats", headers=headers)
+    assert denied.status_code == 403
+
+    company_put = client.put(
+        "/settings/company",
+        headers=headers,
+        json={"company_name": "Should Not Update"},
+    )
+    assert company_put.status_code == 403
+
+
+def test_operator_sidebar_settings_children_are_personal_only(client, register_admin):
+    admin = register_admin()
+    tenant_id = admin["user"]["tenant_id"]
+    operator = _create_role_user(client, tenant_id, "Operator")
+    headers = {"Authorization": f"Bearer {operator['access_token']}"}
+
+    sidebar = client.get("/sidebar", headers=headers)
+    assert sidebar.status_code == 200, sidebar.text
+    settings_section = next((s for s in sidebar.json() if s.get("key") == "settings"), None)
+    assert settings_section is not None
+    paths = {c["path"] for c in settings_section.get("children") or []}
+    assert "/settings" in paths
+    assert "/settings/my-account" in paths or "/settings/appearance" in paths
+    assert "/settings/invoice-settings" not in paths
+    assert "/settings/sequence-reset" not in paths

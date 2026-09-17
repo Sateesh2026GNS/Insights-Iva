@@ -53,7 +53,10 @@ from app.api.settings import router as company_settings_router
 from app.api.supply_chain import router as supply_chain_router
 from app.api.task_management import router as task_management_router
 from app.api.warehouse import router as warehouse_router
-from app.api.v1 import v1_router
+from app.api.v1.agent import router as agent_api_router
+from app.api.v1.documents import router as document_library_router
+from app.api.v1.operator_execution import router as operator_execution_router
+from app.api.v1.reports import router as reports_engine_router
 from app.routers import (
     dashboard_api_router,
     masters_api_router,
@@ -530,4 +533,7 @@ from app.api.system_data import router as system_data_router
 from app.api.manufacturing_workflow_api import router as manufacturing_workflow_router
 app.include_router(system_data_router, prefix="/api")
 app.include_router(manufacturing_workflow_router)
-app.include_router(v1_router, prefix="/api")
+app.include_router(reports_engine_router, prefix="/api")
+app.include_router(agent_api_router, prefix="/api")
+app.include_router(document_library_router, prefix="/api")
+app.include_router(operator_execution_router, prefix="/api")

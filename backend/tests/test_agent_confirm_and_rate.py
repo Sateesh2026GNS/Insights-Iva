@@ -74,7 +74,7 @@ def test_agent_rate_limit_scope_configured():
     from app.middleware.security import check_rate_limit
     from fastapi import Request
 
-    req = Request({"type": "http", "path": "/api/v1/agent/chat", "headers": []})
+    req = Request({"type": "http", "path": "/api/agent/chat", "headers": []})
     with patch("app.middleware.security.get_settings") as gs:
         gs.return_value.api_agent_rate_limit = 1
         gs.return_value.api_agent_rate_window_seconds = 3600

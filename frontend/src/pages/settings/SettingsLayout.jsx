@@ -1,6 +1,6 @@
 import { Outlet, useLocation } from "react-router-dom";
 
-import { SettingsPageShell, SettingsSidebarNav } from "./settingsUi";
+import { SettingsPageShell, SettingsSidebarNav, SettingsSignOutSection } from "./settingsUi";
 
 export default function SettingsLayout() {
   const { pathname } = useLocation();
@@ -14,8 +14,9 @@ export default function SettingsLayout() {
             <SettingsSidebarNav />
           </aside>
         ) : null}
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 space-y-6">
           <Outlet />
+          <SettingsSignOutSection />
         </div>
       </div>
     </SettingsPageShell>

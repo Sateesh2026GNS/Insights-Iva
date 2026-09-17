@@ -25,6 +25,8 @@ export const FactoryMonitorMachineStatus = lazy(() => import("../pages/factoryMo
 export const FactoryMonitorProductionLines = lazy(() => import("../pages/factoryMonitor/ProductionLines"));
 export const CreateMachine = lazy(() => import("../pages/production/CreateMachine"));
 export const DailyReports = lazy(() => import("../pages/production/DailyReports"));
+export const OperatorMyMachine = lazy(() => import("../pages/production/OperatorMyMachine"));
+export const OperatorProductionEntry = lazy(() => import("../pages/production/OperatorProductionEntry"));
 export const CreateProduction = lazy(() => import("../pages/production/CreateProduction"));
 export const TaskManagement = lazy(() => import("../pages/production/TaskManagement"));
 export const InventoryDashboard = lazy(() => import("../pages/inventory/InventoryDashboard"));
