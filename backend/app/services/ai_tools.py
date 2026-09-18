@@ -179,7 +179,7 @@ def _serialize(obj: Any) -> Any:
 
 
 def _todays_production_totals(db: Session, tenant_id: int) -> tuple[int, int]:
-    """Return (produced, target) from today's daily production reports."""
+    """Return (produced, target) from today's daily production reports, with fallback to entries & work orders."""
     today = date.today()
     reports = list(
         db.scalars(
@@ -191,15 +191,60 @@ def _todays_production_totals(db: Session, tenant_id: int) -> tuple[int, int]:
     )
     produced = int(sum(float(r.produced_quantity or 0) for r in reports))
     target = int(sum(float(r.planned_quantity or 0) for r in reports))
-    if target <= 0:
-        target = int(
-            sum(
-                float(o.planned_quantity or 0)
-                for o in db.scalars(
-                    select(ProductionOrder).where(ProductionOrder.tenant_id == tenant_id)
+
+    # If no daily report submitted yet, check today's production entries
+    if produced == 0:
+        try:
+            from app.models.production_entry import ProductionEntry
+            today_start = datetime.combine(today, datetime.min.time())
+            entries = list(
+                db.scalars(
+                    select(ProductionEntry).where(
+                        ProductionEntry.tenant_id == tenant_id,
+                        ProductionEntry.recorded_at >= today_start,
+                    )
                 ).all()
             )
-        )
+            if entries:
+                produced = int(sum(float(e.quantity_produced or 0) for e in entries))
+        except Exception:
+            pass
+
+    # If no planned target in daily report, check active work orders
+    if target <= 0:
+        try:
+            wos = list(
+                db.scalars(
+                    select(WorkOrder).where(
+                        WorkOrder.tenant_id == tenant_id,
+                        WorkOrder.status.in_(["in_progress", "in-progress", "pending", "active", "planned", "released"]),
+                    )
+                ).all()
+            )
+            if wos:
+                target = int(sum(float(wo.planned_quantity or 0) for wo in wos))
+                if produced == 0:
+                    produced = int(sum(float(wo.actual_quantity or 0) for wo in wos))
+        except Exception:
+            pass
+
+    if target <= 0:
+        try:
+            pos = list(
+                db.scalars(
+                    select(ProductionOrder).where(
+                        ProductionOrder.tenant_id == tenant_id,
+                        ProductionOrder.status.in_(["in_progress", "in-progress", "pending", "active"]),
+                    )
+                ).all()
+            )
+            if pos:
+                target = int(sum(float(o.planned_quantity or 0) for o in pos))
+                if produced == 0:
+                    produced = int(sum(float(o.produced_quantity or 0) for o in pos))
+        except Exception:
+            pass
+
     return produced, target
 
 

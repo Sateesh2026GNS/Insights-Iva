@@ -597,8 +597,10 @@ def execute_tool(db: Session, user: User, tool_name: str, arguments: dict) -> di
         return {"success": True, "found": True, "work_order": detail, "endpoint": endpoint}
 
     if tool_name == "get_todays_production":
+        from datetime import datetime
         from sqlalchemy import select
-        from app.models.production import DailyProductionReport
+        from app.models.production import DailyProductionReport, WorkOrder, ProductionOrder
+        from app.models.production_entry import ProductionEntry
 
         reports = list(
             svc.db.scalars(
@@ -610,6 +612,55 @@ def execute_tool(db: Session, user: User, tool_name: str, arguments: dict) -> di
         )
         completed = int(sum(float(r.produced_quantity or 0) for r in reports))
         target = int(sum(float(r.planned_quantity or 0) for r in reports))
+
+        # If no daily report submitted yet, check today's production entries
+        if completed == 0:
+            try:
+                today_start = datetime.combine(date.today(), datetime.min.time())
+                entries = list(
+                    svc.db.scalars(
+                        select(ProductionEntry).where(
+                            ProductionEntry.tenant_id == svc.tenant_id,
+                            ProductionEntry.recorded_at >= today_start,
+                        )
+                    ).all()
+                )
+                if entries:
+                    completed = int(sum(float(e.quantity_produced or 0) for e in entries))
+            except Exception:
+                pass
+
+        # If no planned target in daily report, check active work orders
+        if target == 0:
+            try:
+                wos = list(
+                    svc.db.scalars(
+                        select(WorkOrder).where(
+                            WorkOrder.tenant_id == svc.tenant_id,
+                            WorkOrder.status.in_(["in_progress", "in-progress", "pending", "active", "planned", "released"]),
+                        )
+                    ).all()
+                )
+                if wos:
+                    target = int(sum(float(wo.planned_quantity or 0) for wo in wos))
+                    if completed == 0:
+                        completed = int(sum(float(wo.actual_quantity or 0) for wo in wos))
+                else:
+                    pos = list(
+                        svc.db.scalars(
+                            select(ProductionOrder).where(
+                                ProductionOrder.tenant_id == svc.tenant_id,
+                                ProductionOrder.status.in_(["in_progress", "in-progress", "pending", "active"]),
+                            )
+                        ).all()
+                    )
+                    if pos:
+                        target = int(sum(float(po.planned_quantity or 0) for po in pos))
+                        if completed == 0:
+                            completed = int(sum(float(po.produced_quantity or 0) for po in pos))
+            except Exception:
+                pass
+
         return {
             "success": True,
             "todays_target": target,
@@ -838,7 +889,16 @@ def format_tool_result(tool_name: str, result: dict) -> str:
         remaining = max(target - produced, 0)
         prog      = round(produced / target * 100, 1) if target else 0
         bar       = "█" * int(prog // 20) + "░" * (5 - int(prog // 20))
-        status    = "✅ On Track" if prog >= 80 else ("⚠️ Behind Schedule" if prog >= 50 else "🔴 Critical")
+        if target <= 0 and produced <= 0:
+            status = "ℹ️ No Production Scheduled"
+        elif target <= 0 and produced > 0:
+            status = "✅ Completed (No target set)"
+        elif prog >= 80:
+            status = "✅ On Track"
+        elif prog >= 50:
+            status = "⚠️ Behind Schedule"
+        else:
+            status = "🔴 Critical"
         return (
             "### 🏭 Today's Production Summary\n"
             "\n**📊 Production Metrics**\n"

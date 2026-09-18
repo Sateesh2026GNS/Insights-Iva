@@ -9,6 +9,7 @@ import useAuth from "../../hooks/useAuth";
 import { getAiEmptyHint, getAiQuickActions, getAiSubtitle } from "../../config/aiQuickActions";
 import { apiErrorMessage, classifyApiError } from "../../utils/apiError";
 import { downloadPlainTextPdf, printPlainTextReport } from "../../utils/aiReportExport";
+import AiMessageContent from "./AiMessageContent";
 
 const VISIBLE_CARD_ROWS = 5;
 const FAB_CLASS =
@@ -99,11 +100,11 @@ function AssistantTurn({ message, onConfirm, onCancel, confirmBusy, onExportToas
   return (
     <div className="max-w-[95%] space-y-2">
       <div className="rounded-2xl border border-slate-100 bg-slate-50 px-3.5 py-2.5 text-slate-800">
-        <p className="whitespace-pre-wrap text-sm font-medium leading-relaxed">{answer_text}</p>
+        <AiMessageContent content={answer_text} />
         {insight ? (
           <div className="mt-3 rounded-lg border border-amber-100 bg-amber-50/80 px-3 py-2 text-sm text-slate-800">
-            <p className="text-xs font-semibold text-amber-900">Insight</p>
-            <p className="mt-1 whitespace-pre-wrap leading-relaxed">{insight}</p>
+            <p className="text-xs font-semibold text-amber-900 mb-1">Insight</p>
+            <AiMessageContent content={insight} />
           </div>
         ) : null}
         {printable ? (
