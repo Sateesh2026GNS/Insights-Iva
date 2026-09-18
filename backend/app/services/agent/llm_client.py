@@ -10,6 +10,7 @@ from openai import APIConnectionError, APITimeoutError, AuthenticationError, Ope
 
 from app.core.config import get_settings
 from app.services.agent.tools import READ_TOOL_NAMES, openai_tool_definitions
+from app.utils.openai_settings import normalize_openai_base_url
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +53,7 @@ class AgentLlmClient:
         self._api_key = (settings.openai_api_key or "").strip()
         self._model = settings.openai_model
         self._timeout = float(settings.openai_timeout_seconds)
-        base = settings.openai_base_url
+        base = normalize_openai_base_url(settings.openai_base_url)
         self._client: OpenAI | None = None
         if self._api_key:
             kwargs: dict[str, Any] = {"api_key": self._api_key, "timeout": self._timeout}

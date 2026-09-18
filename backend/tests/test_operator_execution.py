@@ -25,3 +25,12 @@ def test_my_work_orders_endpoint_ok_for_operator(client, register_admin, make_re
     res = client.get("/api/work-orders/my?user_id=99999", headers=op["headers"])
     assert res.status_code == 200
     assert "items" in res.json()
+
+
+def test_my_machines_endpoint_not_captured_by_machine_id_route(client, register_admin, make_restricted_user):
+    """GET /api/machines/my must not hit /api/machines/{machine_id} (422 on machine_id=my)."""
+    admin = register_admin()
+    op = make_restricted_user(admin["user"]["tenant_id"], ["production"])
+    res = client.get("/api/machines/my", headers=op["headers"])
+    assert res.status_code == 200
+    assert "items" in res.json()

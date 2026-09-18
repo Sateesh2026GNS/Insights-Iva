@@ -1,23 +1,18 @@
-"""Operator execution APIs — my work orders, schedule, machines, production entries.
-
-Domain note: Sales/manufacturing *job cards* (`SalesJobCard`, `WorkflowStageJobCard` via
-`job_card_service`) are order-driven workflow documents. *Work orders* (`WorkOrder` on
-`production_orders`) are shop-floor execution tasks (machine, quantities). They link via
-`WorkflowStageJobCard.work_order_id`. Production entries record output against work orders;
-`job_card_id` is optional when a stage card is known.
-"""
+"""Operator execution APIs — my work orders, schedule, machines, production entries."""
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
+from decimal import Decimal
 
 from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.machine import Machine
-from app.models.production import ProductionEntry, WorkOrder
+from app.models.production import DailyProductionReport, ProductionEntry, WorkOrder
 from app.models.user import User
+from app.services.hr_service import list_shifts
 from app.services.operator_scope import (
     assert_operator_work_order_access,
     current_work_order_for_machine,
@@ -25,22 +20,42 @@ from app.services.operator_scope import (
     recent_machine_status_events,
     resolve_operator_machine_ids,
     scope_work_orders_for_operator,
+    user_is_operator_role,
 )
 from app.services.schedule_service import get_enhanced_timeline
-from app.services.work_order_service import _to_list_read, list_work_orders_enriched
-
+from app.services.work_order_service import (
+    COMPLETED_STATUSES,
+    PLANNED_STATUSES,
+    RUNNING_STATUSES,
+    _to_list_read,
+    normalize_status,
+)
 
 def list_my_work_orders(db: Session, user: User) -> list[dict]:
-    rows = list_work_orders_enriched(db, user.tenant_id, user=user)
-    return [r.model_dump(mode="json") if hasattr(r, "model_dump") else dict(r) for r in rows]
+    stmt = select(WorkOrder).where(WorkOrder.tenant_id == user.tenant_id)
+    stmt = scope_work_orders_for_operator(stmt, user, db)
+    if user_is_operator_role(user):
+        closed = tuple(COMPLETED_STATUSES | {"cancelled", "canceled"})
+        stmt = stmt.where(WorkOrder.status.notin_(closed))
+    rows = list(db.scalars(stmt.order_by(WorkOrder.id.desc())).all())
+    return [_to_list_read(db, user.tenant_id, wo).model_dump(mode="json") for wo in rows]
 
 
 def get_my_work_order(db: Session, user: User, work_order_id: int) -> dict:
     wo = db.get(WorkOrder, work_order_id)
     if not wo or wo.tenant_id != user.tenant_id:
         raise HTTPException(status_code=404, detail="Work order not found")
-    assert_operator_work_order_access(user, wo)
+    assert_operator_work_order_access(user, wo, db)
     return _to_list_read(db, user.tenant_id, wo).model_dump(mode="json")
+
+
+def list_operator_shifts(db: Session, user: User) -> list[dict]:
+    rows = list_shifts(db, user.tenant_id)
+    return [
+        {"id": s.id, "name": s.name}
+        for s in rows
+        if getattr(s, "is_active", True) and (getattr(s, "status", "active") or "active") == "active"
+    ]
 
 
 def my_production_schedule(db: Session, user: User) -> dict:
@@ -50,7 +65,7 @@ def my_production_schedule(db: Session, user: User) -> dict:
         timeline = [row for row in timeline if row.machine_id in machine_ids]
 
     stmt = select(WorkOrder).where(WorkOrder.tenant_id == user.tenant_id)
-    stmt = scope_work_orders_for_operator(stmt, user)
+    stmt = scope_work_orders_for_operator(stmt, user, db)
     work_orders = list(db.scalars(stmt).all())
     return {
         "timeline": [t.model_dump(mode="json") if hasattr(t, "model_dump") else dict(t) for t in timeline],
@@ -108,32 +123,134 @@ def create_production_entry(
     reject_reason: str | None,
     shift: str | None,
     recorded_at: datetime | None,
+    idempotency_key: str | None = None,
 ) -> dict:
-    if quantity_produced < 0 or quantity_rejected < 0:
+    produced = Decimal(str(quantity_produced))
+    rejected = Decimal(str(quantity_rejected))
+    if produced < 0 or rejected < 0:
         raise HTTPException(status_code=400, detail="Quantities must be non-negative")
-    if quantity_rejected > 0 and not (reject_reason or "").strip():
+    if produced == 0 and rejected == 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Enter a produced or rejected quantity greater than zero.",
+        )
+
+    reason = (reject_reason or "").strip() or None
+    if rejected > 0 and not reason:
         raise HTTPException(status_code=400, detail="Reject reason is required when rejected quantity > 0")
-    wo = db.get(WorkOrder, work_order_id)
-    if not wo or wo.tenant_id != user.tenant_id:
+
+    shift_val = (shift or "").strip() or None
+
+    wo = db.scalars(
+        select(WorkOrder)
+        .where(WorkOrder.id == work_order_id, WorkOrder.tenant_id == user.tenant_id)
+        .with_for_update()
+    ).first()
+    if not wo:
         raise HTTPException(status_code=404, detail="Work order not found")
-    assert_operator_work_order_access(user, wo)
+    assert_operator_work_order_access(user, wo, db)
+
+    status = normalize_status(wo.status)
+    if status in COMPLETED_STATUSES or status in {"cancelled", "canceled"}:
+        raise HTTPException(status_code=400, detail="Work order is no longer open for production entry")
+
+    planned = Decimal(str(wo.planned_quantity or 0))
+    current = Decimal(str(wo.actual_quantity or 0))
+    remaining = planned - current
+    if produced > remaining:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Produced quantity exceeds remaining quantity ({remaining}).",
+        )
 
     when = recorded_at or datetime.now(timezone.utc)
+
+    if idempotency_key:
+        existing = db.scalars(
+            select(ProductionEntry).where(
+                ProductionEntry.tenant_id == user.tenant_id,
+                ProductionEntry.operator_user_id == user.id,
+                ProductionEntry.work_order_id == work_order_id,
+                ProductionEntry.recorded_at >= when - timedelta(minutes=2),
+            )
+        ).first()
+        if existing and (
+            Decimal(str(existing.quantity_produced)) == produced
+            and Decimal(str(existing.quantity_rejected)) == rejected
+        ):
+            return _serialize_entry(db, existing)
+
+    recent_dup = db.scalars(
+        select(ProductionEntry)
+        .where(
+            ProductionEntry.tenant_id == user.tenant_id,
+            ProductionEntry.operator_user_id == user.id,
+            ProductionEntry.work_order_id == work_order_id,
+            ProductionEntry.quantity_produced == float(produced),
+            ProductionEntry.quantity_rejected == float(rejected),
+            ProductionEntry.recorded_at >= when - timedelta(seconds=45),
+        )
+        .limit(1)
+    ).first()
+    if recent_dup:
+        return _serialize_entry(db, recent_dup)
+
+    if not shift_val:
+        shift_val = (wo.shift or "").strip() or None
+    if not shift_val and wo.machine_id:
+        machine = db.get(Machine, wo.machine_id)
+        if machine and machine.current_shift:
+            shift_val = machine.current_shift
+
     entry = ProductionEntry(
         tenant_id=user.tenant_id,
         work_order_id=work_order_id,
         job_card_id=job_card_id,
         operator_user_id=user.id,
-        quantity_produced=quantity_produced,
-        quantity_rejected=quantity_rejected,
-        reject_reason=reject_reason,
-        shift=shift,
+        quantity_produced=float(produced),
+        quantity_rejected=float(rejected),
+        reject_reason=reason,
+        shift=shift_val,
         recorded_at=when,
     )
     db.add(entry)
-    produced = float(wo.actual_quantity or 0) + float(quantity_produced)
-    wo.actual_quantity = produced
-    db.commit()
+
+    wo.actual_quantity = float(current + produced)
+    st = normalize_status(wo.status)
+    if st in PLANNED_STATUSES and produced > 0:
+        wo.status = "running"
+    elif st not in RUNNING_STATUSES and st not in COMPLETED_STATUSES and produced > 0:
+        wo.status = "in_progress"
+    if planned > 0 and Decimal(str(wo.actual_quantity or 0)) >= planned:
+        wo.status = "completed"
+
+    if float(produced) > 0 or float(rejected) > 0:
+        from app.models.production import ProductionOrder
+
+        po = db.get(ProductionOrder, wo.production_order_id)
+        product_id = po.product_id if po and po.product_id else None
+        if product_id:
+            report = DailyProductionReport(
+                tenant_id=user.tenant_id,
+                report_date=when.date(),
+                product_id=product_id,
+                work_order_id=work_order_id,
+                machine_id=wo.machine_id,
+                produced_quantity=float(produced),
+                scrap_quantity=float(rejected) if rejected > 0 else None,
+                notes=reason,
+                created_by_user_id=user.id,
+            )
+            db.add(report)
+
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="Could not save production entry. Please refresh and try again.",
+        )
     db.refresh(entry)
     return _serialize_entry(db, entry)
 
@@ -159,14 +276,17 @@ def list_my_production_entries(db: Session, user: User, day: date | None = None)
 
 def _serialize_entry(db: Session, entry: ProductionEntry) -> dict:
     wo = db.get(WorkOrder, entry.work_order_id)
+    detail = _to_list_read(db, entry.tenant_id, wo) if wo else None
     return {
         "id": entry.id,
         "work_order_id": entry.work_order_id,
         "work_order_number": wo.work_order_number if wo else None,
+        "product_name": detail.product_name if detail else None,
         "job_card_id": entry.job_card_id,
         "quantity_produced": float(entry.quantity_produced),
         "quantity_rejected": float(entry.quantity_rejected),
         "reject_reason": entry.reject_reason,
         "shift": entry.shift,
         "recorded_at": entry.recorded_at.isoformat() if entry.recorded_at else None,
+        "status": wo.status if wo else None,
     }

@@ -18,8 +18,13 @@ export function getMyMachines() {
   return api.get(`${BASE}/machines/my`);
 }
 
-export function submitProductionEntry(body) {
-  return api.post(`${BASE}/production-entries`, body);
+export function getMyShifts() {
+  return api.get(`${BASE}/shifts/my`);
+}
+
+export function submitProductionEntry(body, idempotencyKey) {
+  const headers = idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {};
+  return api.post(`${BASE}/production-entries`, body, { headers });
 }
 
 export function getMyProductionEntries(params) {

@@ -584,6 +584,56 @@ def test_elevated_customer_history_writes_sensitive_audit_fields(agent_scope_wor
         db.close()
 
 
+def test_operator_openai_schema_excludes_store_and_sales_tools(agent_scope_world):
+    db = SessionLocal()
+    try:
+        operator = _create_role_user(
+            db,
+            agent_scope_world["tenant_a"],
+            "Operator",
+            "Operator Scope",
+            "operator-scope",
+        )
+        db.commit()
+        user = db.scalar(
+            select(User).options(selectinload(User.roles)).where(User.id == operator.id)
+        )
+        ctx = _ctx_for_user(db, user)
+        names = {t["function"]["name"] for t in openai_tool_definitions(ctx)}
+        assert not names.intersection(STORE_TOOL_NAMES)
+        assert not names.intersection(SALES_TOOL_NAMES)
+        assert "get_todays_work_orders" in names
+    finally:
+        db.close()
+
+
+def test_operator_cannot_invoke_store_tool_at_role_gate(agent_scope_world):
+    import asyncio
+
+    db = SessionLocal()
+    try:
+        operator = _create_role_user(
+            db,
+            agent_scope_world["tenant_a"],
+            "Operator",
+            "Operator Gate",
+            "operator-gate",
+        )
+        db.commit()
+        user = db.scalar(
+            select(User).options(selectinload(User.roles)).where(User.id == operator.id)
+        )
+        ctx = _ctx_for_user(db, user)
+        with patch("app.services.agent.tools.fetch_report_for_agent") as mock_fetch:
+            result = asyncio.run(
+                execute_tool_async(db, ctx, "get_stock", {"item_query": "x"})
+            )
+            mock_fetch.assert_not_called()
+        assert result.get("error") == "Tool not permitted for your role."
+    finally:
+        db.close()
+
+
 @pytest.mark.skip(reason="TODO: HR/Accountant elevated tools — follow-up pass")
 def test_hr_elevated_tool_audit_fields_placeholder():
     """Stub for salary/GL tools with sensitivity=elevated."""

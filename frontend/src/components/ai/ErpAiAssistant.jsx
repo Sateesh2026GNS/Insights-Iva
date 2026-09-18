@@ -1,15 +1,11 @@
-import AiChatWidget from "./AiChatWidget";
 import StoreAgentChatPanel from "./StoreAgentChatPanel";
 import { AI_ASSISTANT_MODES } from "../../utils/erpAiAssistant";
 
 /**
- * Single mount point for role-appropriate AI assistant UI (app shell only).
+ * Single mount point for the shared role-aware ERP AI assistant (app shell only).
  */
 export default function ErpAiAssistant({ mode, pageContextLabel }) {
-  if (mode === AI_ASSISTANT_MODES.OPERATOR) {
-    return <AiChatWidget />;
-  }
-  if (mode === AI_ASSISTANT_MODES.REGISTRY) {
+  if (mode === AI_ASSISTANT_MODES.SHARED) {
     return <StoreAgentChatPanel pageContextLabel={pageContextLabel} />;
   }
   return null;

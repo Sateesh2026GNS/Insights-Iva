@@ -12,6 +12,15 @@ from app.core.config import get_settings
 from app.services.agent.context import AgentContext, intersect_warehouse_ids
 from app.services.agent.tool_models import ConfirmationRequired, ToolResultBase
 from app.services.agent.report_bridge import fetch_report_for_agent
+from app.services.agent.module_agent_tools import (
+    EmptyInput,
+    get_accounts_summary,
+    get_business_summary,
+    get_hr_summary,
+    get_quality_summary,
+    register_module_role_tools,
+)
+from app.services.agent.operator_agent_tools import execute_operator_tool, register_operator_tools
 from app.services.agent.sales_agent_tools import (
     CreateQuotationInput,
     GetCustomerHistoryInput,
@@ -270,6 +279,18 @@ _TOOL_DISPATCH: dict[str, Callable[..., Any]] = {
     "get_invoice_status": lambda db, ctx, args: get_invoice_status(
         db, ctx, GetInvoiceStatusInput.model_validate(args)
     ),
+    "get_quality_summary": lambda db, ctx, args: get_quality_summary(
+        db, ctx, EmptyInput.model_validate(args or {})
+    ),
+    "get_hr_summary": lambda db, ctx, args: get_hr_summary(
+        db, ctx, EmptyInput.model_validate(args or {})
+    ),
+    "get_accounts_summary": lambda db, ctx, args: get_accounts_summary(
+        db, ctx, EmptyInput.model_validate(args or {})
+    ),
+    "get_business_summary": lambda db, ctx, args: get_business_summary(
+        db, ctx, EmptyInput.model_validate(args or {})
+    ),
 }
 
 
@@ -411,11 +432,31 @@ def _register_agent_tools() -> None:
 
 
 _register_agent_tools()
+register_operator_tools()
+register_module_role_tools()
+
+
+def _operator_tool_names() -> frozenset[str]:
+    from app.llm.function_registry import TOOL_DEFINITIONS
+
+    return frozenset(
+        (e.get("function") or {}).get("name")
+        for e in TOOL_DEFINITIONS
+        if (e.get("function") or {}).get("name")
+    )
+
+
+_OPERATOR_TOOL_NAMES = _operator_tool_names()
+
 
 def _read_tool_names() -> list[str]:
     from app.services.agent.tool_registry import AGENT_TOOL_REGISTRY
 
-    return [n for n, d in AGENT_TOOL_REGISTRY.items() if d.kind == "read"]
+    return [
+        n
+        for n, d in AGENT_TOOL_REGISTRY.items()
+        if d.kind == "read" and n not in _OPERATOR_TOOL_NAMES
+    ]
 
 
 READ_TOOL_NAMES = _read_tool_names()
@@ -468,6 +509,8 @@ async def execute_tool_async(
     def _run() -> Any:
         if tool_name in _WRITE_PREP:
             return _WRITE_PREP[tool_name](db, ctx, args)
+        if tool_name in _OPERATOR_TOOL_NAMES:
+            return execute_operator_tool(db, ctx, tool_name, args)
         if tool_name not in _TOOL_DISPATCH:
             return {"error": f"Unknown tool: {tool_name}"}
         return _TOOL_DISPATCH[tool_name](db, ctx, args)

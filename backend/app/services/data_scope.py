@@ -17,7 +17,12 @@ def _roles(user: User) -> set[str]:
         return set()
 
 
-def scope_work_orders(stmt: Select, user: User) -> Select:
+def scope_work_orders(
+    stmt: Select,
+    user: User,
+    *,
+    extra_machine_ids: list[int] | None = None,
+) -> Select:
     if user_is_admin(user):
         return stmt
 
@@ -51,6 +56,8 @@ def scope_work_orders(stmt: Select, user: User) -> Select:
     ]
     if user.assigned_machine_id:
         conds.append(WorkOrder.machine_id == user.assigned_machine_id)
+    if extra_machine_ids:
+        conds.append(WorkOrder.machine_id.in_(extra_machine_ids))
     if user.plant_code and ("Production Manager" in roles or "Supervisor" in roles):
         conds.append(WorkOrder.plant_code == user.plant_code)
 

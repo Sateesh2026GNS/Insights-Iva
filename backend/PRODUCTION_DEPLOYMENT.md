@@ -1,4 +1,4 @@
-# Insights Iva — Production Deployment Guide
+# sInsights Iva — Production Deployment Guide
 
 **Last updated:** 21 August 2026
 
@@ -20,17 +20,19 @@ This document describes how to deploy Insights Iva to production safely. It does
 
 Copy `backend/.env.example` → `backend/.env` and set **at minimum**:
 
-| Variable | Production requirement |
-|----------|------------------------|
-| `ENVIRONMENT` | `production` |
-| `DATABASE_URL` | `postgresql+psycopg://USER:PASS@HOST:5432/DBNAME` |
-| `JWT_SECRET_KEY` | Min 32 chars (`openssl rand -hex 32`) |
-| `CORS_ORIGINS` | Your frontend URL only — **no localhost, no `*`** |
-| `ALLOWED_HOSTS` | Your API domain(s) |
-| `FRONTEND_BASE_URL` | `https://app.yourdomain.com` |
-| `GOOGLE_OAUTH_REDIRECT_URI` | Production callback URL (if Calendar enabled) |
-| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | From Google Cloud Console |
-| `SMTP_*` | Required for password reset emails |
+
+| Variable                                    | Production requirement                            |
+| ------------------------------------------- | ------------------------------------------------- |
+| `ENVIRONMENT`                               | `production`                                      |
+| `DATABASE_URL`                              | `postgresql+psycopg://USER:PASS@HOST:5432/DBNAME` |
+| `JWT_SECRET_KEY`                            | Min 32 chars (`openssl rand -hex 32`)             |
+| `CORS_ORIGINS`                              | Your frontend URL only — **no localhost, no** `*` |
+| `ALLOWED_HOSTS`                             | Your API domain(s)                                |
+| `FRONTEND_BASE_URL`                         | `https://app.yourdomain.com`                      |
+| `GOOGLE_OAUTH_REDIRECT_URI`                 | Production callback URL (if Calendar enabled)     |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | From Google Cloud Console                         |
+| `SMTP_*`                                    | Required for password reset emails                |
+
 
 **Never commit** `.env` — it is listed in `.gitignore`.
 
@@ -38,18 +40,24 @@ SQLite (`smrt.db`) is **migration source only**. Do not set `DATABASE_URL` to SQ
 
 ---
 
+
+
 ## 2. Environment variables (frontend build)
 
 Copy `frontend/.env.example` → `frontend/.env.production`:
 
-| Variable | Notes |
-|----------|-------|
-| `VITE_API_BASE_URL` | Empty for same-origin nginx proxy, or `https://api.yourdomain.com` |
-| `VITE_FIREBASE_*` | Only if phone OTP is used — no secrets beyond public Firebase client keys |
 
-**Never put** JWT secrets, DB passwords, or Google client secrets in `VITE_*` variables.
+| Variable            | Notes                                                                     |
+| ------------------- | ------------------------------------------------------------------------- |
+| `VITE_API_BASE_URL` | Empty for same-origin nginx proxy, or `https://api.yourdomain.com`        |
+| `VITE_FIREBASE_*`   | Only if phone OTP is used — no secrets beyond public Firebase client keys |
+
+
+**Never put** JWT secrets, DB passwords, or Google client secrets in `VITE_`* variables.
 
 ---
+
+
 
 ## 3. Database setup
 
@@ -69,6 +77,8 @@ alembic current   # expect: k9l0m1n2o3p4 (head)
 
 ---
 
+
+
 ## 4. Backup before deploy
 
 ```bash
@@ -80,6 +90,8 @@ python scripts/backup_postgres.py
 Verify backup file exists before proceeding. **Do not drop tables or databases.**
 
 ---
+
+
 
 ## 5. Backend production startup
 
@@ -94,6 +106,8 @@ docker run --env-file .env -p 8000:8000 insights-iva-api
 # Dockerfile runs: alembic upgrade head && gunicorn ... -w 4
 ```
 
+
+
 ### Manual
 
 ```bash
@@ -105,6 +119,8 @@ gunicorn app.main:app -k uvicorn.workers.UvicornWorker -w 4 -b 0.0.0.0:8000
 Set `WEB_CONCURRENCY` to match CPU cores.
 
 ---
+
+
 
 ## 6. Frontend production build
 
@@ -119,16 +135,22 @@ The bundled `nginx.conf` proxies `/auth`, `/api`, `/manufacturing`, `/integratio
 
 ---
 
+
+
 ## 7. Health checks
 
-| Endpoint | Purpose |
-|----------|---------|
-| `GET /health` | App alive |
+
+| Endpoint         | Purpose                                                     |
+| ---------------- | ----------------------------------------------------------- |
+| `GET /health`    | App alive                                                   |
 | `GET /health/db` | PostgreSQL reachable (returns generic status in production) |
+
 
 Use these for load balancer / orchestrator probes.
 
 ---
+
+
 
 ## 8. Google Calendar (production)
 
@@ -141,6 +163,8 @@ Secrets stay server-side only.
 
 ---
 
+
+
 ## 9. Post-deploy manual checks
 
 - [ ] Login with production credentials (generic errors on failure)
@@ -152,6 +176,8 @@ Secrets stay server-side only.
 - [ ] Backup restore tested on staging
 
 ---
+
+
 
 ## 10. What production startup does NOT do
 
@@ -170,8 +196,11 @@ Idempotent seeds that **do** run: `seed_super_admin` (from env), `seed_roles` pe
 
 ---
 
+
+
 ## Related docs
 
 - [POSTGRES_MIGRATION.md](./backend/POSTGRES_MIGRATION.md) — SQLite → PostgreSQL migration
 - [SECURITY_REPORT.md](../SECURITY_REPORT.md) — Auth hardening
 - [README.md](../README.md) — Development setup
+

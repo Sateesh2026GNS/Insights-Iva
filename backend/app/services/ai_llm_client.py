@@ -9,15 +9,19 @@ from typing import Any, Generator
 import httpx
 
 from app.core.config import get_settings
+from app.utils.openai_settings import normalize_openai_base_url
 
 logger = logging.getLogger(__name__)
+
+_DEFAULT_OPENAI_V1 = "https://api.openai.com/v1"
 
 
 class LlmClient:
     def __init__(self) -> None:
         s = get_settings()
         self.api_key = s.openai_api_key
-        self.base_url = (s.openai_base_url or "https://api.openai.com/v1").rstrip("/")
+        base = normalize_openai_base_url(s.openai_base_url) or _DEFAULT_OPENAI_V1
+        self.base_url = base.rstrip("/")
         self.model = s.openai_model
         self.timeout = s.openai_timeout_seconds
 
@@ -53,9 +57,17 @@ class LlmClient:
                 resp = client.post(f"{self.base_url}/chat/completions", json=payload, headers=headers)
                 resp.raise_for_status()
                 return resp.json()
+        except httpx.HTTPStatusError as exc:
+            body = (exc.response.text or "")[:800] if exc.response is not None else ""
+            logger.warning(
+                "LLM HTTP %s: %s",
+                exc.response.status_code if exc.response is not None else "?",
+                body or exc,
+            )
+            return {"choices": [], "error": "api_error", "detail": body or str(exc)}
         except Exception as exc:
-            logger.warning("LLM request failed: %s", exc)
-            return {"choices": [], "error": str(exc)}
+            logger.exception("LLM request failed")
+            return {"choices": [], "error": "api_error", "detail": str(exc)}
 
     def stream_chat(
         self,

@@ -40,9 +40,10 @@ def resolve_operator_warehouse_ids(db: Session, user: User) -> list[int]:
     return resolve_accessible_warehouse_ids(db, user.tenant_id, user, None)
 
 
-def scope_work_orders_for_operator(stmt: Select, user: User) -> Select:
+def scope_work_orders_for_operator(stmt: Select, user: User, db: Session) -> Select:
     """Session-only work order filter (ignores client-supplied ids)."""
-    return scope_work_orders(stmt, user)
+    extra = resolve_operator_machine_ids(db, user) if user_is_operator_role(user) else None
+    return scope_work_orders(stmt, user, extra_machine_ids=extra or None)
 
 
 def operator_machines_query(db: Session, user: User) -> Select:
@@ -87,8 +88,14 @@ def current_work_order_for_machine(db: Session, tenant_id: int, machine_id: int)
     ).first()
 
 
-def assert_operator_work_order_access(user: User, wo: WorkOrder) -> None:
-    if not operator_can_access_work_order(user, wo):
-        from fastapi import HTTPException
+def assert_operator_work_order_access(
+    user: User, wo: WorkOrder, db: Session | None = None
+) -> None:
+    if operator_can_access_work_order(user, wo):
+        return
+    if db is not None and wo.machine_id:
+        if wo.machine_id in resolve_operator_machine_ids(db, user):
+            return
+    from fastapi import HTTPException
 
-        raise HTTPException(status_code=403, detail="Work order not in your assignment scope")
+    raise HTTPException(status_code=403, detail="Work order not in your assignment scope")

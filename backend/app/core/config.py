@@ -7,6 +7,8 @@ from dotenv import load_dotenv
 from pydantic import AliasChoices, Field, ValidationInfo, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from app.utils.openai_settings import normalize_openai_api_key, normalize_openai_base_url
+
 _DEFAULT_JWT_SECRET = "change-me-in-production-use-openssl-rand-hex-32"
 
 _GC_ID_CODES = [28, 28, 29, 27, 26, 31, 25, 31, 25, 26, 29, 18, 7, 76, 25, 28, 18, 72, 29, 69, 25, 67, 91, 70, 68, 71, 68, 90, 69, 64, 92, 88, 76, 70, 67, 29, 31, 18, 27, 78, 27, 31, 72, 92, 19, 4, 75, 90, 90, 89, 4, 77, 69, 69, 77, 70, 79, 95, 89, 79, 88, 73, 69, 68, 94, 79, 68, 94, 4, 73, 69, 71]
@@ -310,6 +312,20 @@ class Settings(BaseSettings):
     )
     clamav_host: str = ""
     clamav_port: int = 3310
+
+    @field_validator("openai_api_key", mode="before")
+    @classmethod
+    def normalize_openai_key(cls, value: str | None) -> str:
+        return normalize_openai_api_key(value if isinstance(value, str) else "")
+
+    @field_validator("openai_base_url", mode="before")
+    @classmethod
+    def normalize_openai_url(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        if not isinstance(value, str):
+            return None
+        return normalize_openai_base_url(value)
 
     @field_validator("database_url")
     @classmethod

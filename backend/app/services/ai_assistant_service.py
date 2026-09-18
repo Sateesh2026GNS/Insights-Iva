@@ -8,6 +8,7 @@ import time
 from typing import Any
 
 from sqlalchemy import func, select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.models.ai_conversation import AiConversation, AiMessage
@@ -286,9 +287,30 @@ def _process_with_rules(
     result, formatted_text = _run_tool(db, user, tool_name, args)
 
     if not result.get("success") and result.get("error"):
+        from app.services.agent.operator_responses import legacy_concise_reply
+
+        concise_err = legacy_concise_reply(tool_name, result, message)
+        if concise_err:
+            return {
+                "message": concise_err,
+                "navigation": result.get("navigation"),
+                "used_tools": [tool_name],
+                "source": "rules",
+            }
         formatted_text = f"⚠️ {result['error']}"
 
-    # ALL tools get LLM narration for ChatGPT-style output
+    from app.services.agent.operator_responses import legacy_concise_reply
+
+    concise = legacy_concise_reply(tool_name, result, message)
+    if concise:
+        return {
+            "message": concise,
+            "navigation": result.get("navigation"),
+            "used_tools": [tool_name],
+            "source": "rules",
+        }
+
+    # Deep tools get LLM narration for structured reports when user wants detail
     if client and client.enabled:
         narrative = _llm_narrate(client, message, tool_name, formatted_text, history or [])
         if narrative:
@@ -321,7 +343,10 @@ def _process_with_llm(
     # First LLM call — let it pick the right tool
     response = client.chat(messages, tools=TOOL_DEFINITIONS)
     if response.get("error") or not response.get("choices"):
-        logger.warning("LLM first call failed, falling back to rules")
+        if response.get("detail"):
+            logger.warning("LLM first call failed (%s): %s", response.get("error"), response.get("detail"))
+        else:
+            logger.warning("LLM first call failed, falling back to rules")
         return _process_with_rules(db, user, message, history, client)
 
     choice = response["choices"][0]["message"]
@@ -437,6 +462,17 @@ def process_chat(
                 # ── Offline mode: rich rule-based responses ───────────────
                 outcome = _process_with_rules(db, user, message, history, client=None)
 
+        except SQLAlchemyError:
+            logger.exception(
+                "AI chat database error — ensure Alembic migration w1x2y3z4a5b6 "
+                "(ai_conversations / ai_messages) is applied"
+            )
+            outcome = {
+                "message": API_FAIL_REPLY,
+                "navigation": None,
+                "used_tools": [],
+                "source": "error",
+            }
         except Exception:
             logger.exception("AI chat processing failed")
             outcome = {

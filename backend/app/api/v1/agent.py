@@ -8,7 +8,8 @@ from sqlalchemy.orm import Session
 from app.api.auth_deps import get_current_user
 from app.api.deps import get_db
 from app.core.config import get_settings
-from app.core.permissions import require_admin, require_any_permission, user_has_permission
+from app.core.permissions import require_admin, user_has_permission
+from app.services.agent.access import agent_has_tools_for_user, user_can_use_shared_agent
 from app.middleware.security import check_rate_limit
 from app.models.ai_agent import AiAgentLog
 from app.models.user import User
@@ -19,7 +20,7 @@ from app.services.agent.orchestrator import AgentChatResponse, execute_confirmed
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/agent", tags=["AI Operator Agent"])
+router = APIRouter(prefix="/agent", tags=["AI Assistant"])
 
 
 def _agent_rate_limit(request: Request, user: User) -> None:
@@ -33,20 +34,29 @@ def _agent_rate_limit(request: Request, user: User) -> None:
         raise exc
 
 
+def _require_shared_agent_user(user: User = Depends(get_current_user)) -> User:
+    if not user_can_use_shared_agent(user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="AI assistant is not available for your role.",
+        )
+    return user
+
+
 @router.post("/chat", response_model=AgentChatResponse)
 async def agent_chat(
     body: AgentChatRequest,
     request: Request,
     db: Session = Depends(get_db),
-    user: User = Depends(require_any_permission("inventory", "sales")),
+    user: User = Depends(_require_shared_agent_user),
 ):
     _agent_rate_limit(request, user)
 
     ctx = build_agent_context(db, user)
-    if not ctx.allowed_warehouse_ids and not user_has_permission(user, "sales"):
+    if not agent_has_tools_for_user(ctx):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="No warehouse access configured for your account.",
+            detail="AI assistant is not available for your role or permissions.",
         )
     try:
         return await run_agent_chat(db, ctx, body.message, body.conversation_id)
@@ -68,7 +78,7 @@ async def agent_confirm(
     body: AgentConfirmRequest,
     request: Request,
     db: Session = Depends(get_db),
-    user: User = Depends(require_any_permission("inventory", "sales")),
+    user: User = Depends(_require_shared_agent_user),
 ):
     _agent_rate_limit(request, user)
 

@@ -16,6 +16,7 @@ from app.services.agent.confirmation import create_confirmation
 from app.services.agent.context import AgentContext
 from app.services.agent.conversation import append_message, get_or_create_conversation, recent_messages_for_llm
 from app.services.agent.tool_registry import (
+    ROLE_OPERATOR,
     ROLE_SALES_MANAGER,
     ROLE_STORE_MANAGER,
     agent_role_names,
@@ -29,6 +30,9 @@ from app.services.agent.tools import (
     openai_tool_definitions,
 )
 from app.services.agent.llm_client import AgentLlmClient
+from app.services.agent.module_quick_replies import try_module_quick_reply
+from app.services.agent.operator_localize import localize_operator_text as localize_agent_text
+from app.services.agent.operator_responses import try_operator_structured_reply
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +41,10 @@ MAX_TOOL_ROUNDS = 3
 
 def _system_prompt_for(ctx: AgentContext) -> str:
     roles = agent_role_names(ctx)
-    if ROLE_SALES_MANAGER in roles and ROLE_STORE_MANAGER not in roles:
+    role_label = ", ".join(sorted(roles)) if roles else ctx.role
+    if ROLE_OPERATOR in roles and len(roles) == 1:
+        persona = "Operator Assistant"
+    elif ROLE_SALES_MANAGER in roles and ROLE_STORE_MANAGER not in roles:
         persona = "Sales Manager Assistant"
     elif ROLE_STORE_MANAGER in roles:
         persona = "Store Operations Assistant"
@@ -45,14 +52,22 @@ def _system_prompt_for(ctx: AgentContext) -> str:
         persona = "Insights Iva Assistant"
     return f"""You are the Insights Iva {persona} ({SYSTEM_PROMPT_VERSION}).
 
+Authenticated role(s): {role_label}. Only use tools provided in this request — they are already limited to what this user may access.
 You may only answer using data returned by tool calls in this conversation turn. Never state a number, date, or status that did not come from a tool result.
 If no tool returns relevant data, say so plainly — do not guess or extrapolate.
-Never call a write tool without the user having confirmed in this conversation.
+Never call a write tool without the user having confirmed in this conversation (sales/store write tools require confirmation).
 
 Accept mixed Telugu/English input. Preserve identifiers (order numbers, job cards, GRN, customer names) exactly as stored — never translate or transliterate identifiers.
 Respond in the same language the user's message was written in.
 
+For simple factual questions (counts, today's totals, a single work order status), give a short direct answer from tool data only.
+Evidence-based insights are allowed only when derived from tool results (e.g. delayed count > 0).
+Do not add unsolicited maintenance/training advice or invented causes.
+Never treat a failed or empty tool response as zero — say you could not retrieve the data.
+Respond in the same language the user used (English, Telugu, Hindi, or mixed).
+
 When a tool times out, tell the user data fetch timed out and they should try again.
+Tenant scope: never request or assume another company's data.
 """
 
 
@@ -87,6 +102,10 @@ class AgentChatResponse(BaseModel):
     cards: list[AgentCard] = Field(default_factory=list)
     suggested_actions: list[SuggestedAction] = Field(default_factory=list)
     requires_confirmation: RequiresConfirmation | None = None
+    insight: str | None = None
+    printable: bool = False
+    report_title: str | None = None
+    export_text: str | None = None
 
 
 def _warehouse_scope_label(ctx: AgentContext) -> str | None:
@@ -158,6 +177,42 @@ async def run_agent_chat(
     if user_message:
         append_message(db, conv, "user", user_message)
 
+    structured = try_module_quick_reply(db, ctx, user_message) or try_operator_structured_reply(
+        db, ctx, user_message
+    )
+    if structured:
+        answer_text, insight = localize_agent_text(
+            user_message, structured.answer_text, structured.insight
+        )
+        export_parts = [answer_text]
+        if insight:
+            export_parts.extend(["", "Insight:", insight])
+        export_text = "\n".join(export_parts)
+        append_message(
+            db,
+            conv,
+            "assistant",
+            answer_text,
+            payload={
+                "cards": [],
+                "insight": insight,
+                "printable": structured.printable,
+                "report_title": structured.report_title,
+                "export_text": export_text,
+            },
+        )
+        return AgentChatResponse(
+            answer_text=answer_text,
+            conversation_id=conv.external_id,
+            cards=[],
+            suggested_actions=[],
+            requires_confirmation=None,
+            insight=insight,
+            printable=structured.printable,
+            report_title=structured.report_title,
+            export_text=export_text,
+        )
+
     cards: list[AgentCard] = []
     requires_conf: RequiresConfirmation | None = None
     answer_text = ""
@@ -197,6 +252,9 @@ async def run_agent_chat(
                 answer_text = "The language model request timed out. Please try again."
                 break
             if err:
+                detail = response.get("detail")
+                if detail and not get_settings().is_production:
+                    logger.warning("Agent LLM error (%s): %s", err, detail)
                 answer_text = "I could not reach the language model. Please try again."
                 break
 
@@ -369,6 +427,10 @@ async def run_agent_chat(
         cards=cards,
         suggested_actions=[],
         requires_confirmation=requires_conf,
+        insight=None,
+        printable=bool(cards),
+        report_title=cards[0].report_title if cards else None,
+        export_text=answer_text if cards else None,
     )
 
 

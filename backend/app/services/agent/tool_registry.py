@@ -61,8 +61,6 @@ def agent_role_names(ctx: AgentContext) -> set[str]:
 
 
 def user_may_use_tool(ctx: AgentContext, tool: AgentToolDefinition) -> bool:
-    if user_is_admin(ctx.user):
-        return True
     roles = agent_role_names(ctx)
     return bool(roles.intersection(tool.allowed_roles))
 

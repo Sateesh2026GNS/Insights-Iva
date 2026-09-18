@@ -16,6 +16,8 @@ class ProductionEntryCreate(BaseModel):
     def reject_reason_when_needed(self):
         if self.quantity_rejected > 0 and not (self.reject_reason or "").strip():
             raise ValueError("reject_reason is required when quantity_rejected > 0")
+        if self.reject_reason:
+            self.reject_reason = self.reject_reason.strip() or None
         return self
 
 

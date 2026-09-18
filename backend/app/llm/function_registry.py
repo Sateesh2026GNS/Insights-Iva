@@ -754,7 +754,11 @@ def execute_tool(db: Session, user: User, tool_name: str, arguments: dict) -> di
         return {"success": True, **data, "endpoint": endpoint}
 
     if tool_name == "get_work_order_stats_deep":
-        return {"success": True, **svc.get_work_order_stats_deep(args.get("query", "")), "endpoint": endpoint}
+        return {
+            "success": True,
+            **svc.get_work_order_stats_deep(args.get("query", ""), user=user),
+            "endpoint": endpoint,
+        }
 
     if tool_name == "get_production_schedule_stats_deep":
         return {"success": True, **svc.get_production_schedule_stats_deep(), "endpoint": endpoint}

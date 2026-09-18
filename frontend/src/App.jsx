@@ -47,12 +47,12 @@ function isSettingsRoute(pathname) {
 
 /** @deprecated use resolveErpAiAssistantMode from utils/erpAiAssistant */
 export function shouldShowChatbot(user, pathname) {
-  return resolveErpAiAssistantMode(user, pathname) === "operator";
+  return resolveErpAiAssistantMode(user, pathname) === "shared";
 }
 
 /** @deprecated use resolveErpAiAssistantMode from utils/erpAiAssistant */
 export function shouldShowStoreAgent(user, pathname) {
-  return resolveErpAiAssistantMode(user, pathname) === "registry";
+  return resolveErpAiAssistantMode(user, pathname) === "shared";
 }
 
 export default function App() {

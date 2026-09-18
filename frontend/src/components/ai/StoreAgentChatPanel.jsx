@@ -1,20 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { Bot, Loader2, Send, Sparkles, WifiOff, X } from "lucide-react";
+import { Bot, Download, Loader2, Printer, Send, Sparkles, WifiOff, X } from "lucide-react";
 
 import { confirmAgentAction, sendAgentChat } from "../../api/agentApi";
 import Button from "../common/Button";
 import { useToast } from "../../context/ToastContext";
 import useAuth from "../../hooks/useAuth";
-import { isSalesManager, isStoreManager } from "../../config/permissions";
+import { getAiEmptyHint, getAiQuickActions, getAiSubtitle } from "../../config/aiQuickActions";
 import { apiErrorMessage, classifyApiError } from "../../utils/apiError";
-
-const SUGGESTION_CHIPS = [
-  "Low stock ఎంత ఉంది",
-  "Pending GRNs enni",
-  "Show current stock for PET",
-  "Job card JC status",
-];
+import { downloadPlainTextPdf, printPlainTextReport } from "../../utils/aiReportExport";
 
 const VISIBLE_CARD_ROWS = 5;
 const FAB_CLASS =
@@ -71,13 +65,67 @@ function MiniTable({ rows, columns }) {
   );
 }
 
-function AssistantTurn({ message, onConfirm, onCancel, confirmBusy }) {
-  const { answer_text, cards, requires_confirmation, error, retry } = message;
+function AssistantTurn({ message, onConfirm, onCancel, confirmBusy, onExportToast }) {
+  const {
+    answer_text,
+    insight,
+    printable,
+    report_title,
+    export_text,
+    cards,
+    requires_confirmation,
+    error,
+    retry,
+  } = message;
+
+  const exportBody =
+    export_text ||
+    [answer_text, insight ? `Insight:\n${insight}` : ""].filter(Boolean).join("\n\n");
+
+  const onPrint = () => {
+    const ok = printPlainTextReport(exportBody, report_title || "Insights Iva — AI Report");
+    if (!ok) onExportToast?.("Allow pop-ups to print this report.", "error");
+  };
+
+  const onPdf = async () => {
+    try {
+      await downloadPlainTextPdf(exportBody);
+      onExportToast?.("PDF downloaded.", "success");
+    } catch {
+      onExportToast?.("Could not generate PDF.", "error");
+    }
+  };
 
   return (
     <div className="max-w-[95%] space-y-2">
       <div className="rounded-2xl border border-slate-100 bg-slate-50 px-3.5 py-2.5 text-slate-800">
-        <p className="text-sm font-medium leading-relaxed">{answer_text}</p>
+        <p className="whitespace-pre-wrap text-sm font-medium leading-relaxed">{answer_text}</p>
+        {insight ? (
+          <div className="mt-3 rounded-lg border border-amber-100 bg-amber-50/80 px-3 py-2 text-sm text-slate-800">
+            <p className="text-xs font-semibold text-amber-900">Insight</p>
+            <p className="mt-1 whitespace-pre-wrap leading-relaxed">{insight}</p>
+          </div>
+        ) : null}
+        {printable ? (
+          <div className="mt-3 flex flex-wrap gap-2 border-t border-slate-200 pt-2">
+            <button
+              type="button"
+              onClick={onPrint}
+              className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+            >
+              <Printer className="h-3.5 w-3.5" aria-hidden />
+              Print
+            </button>
+            <button
+              type="button"
+              onClick={onPdf}
+              className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+            >
+              <Download className="h-3.5 w-3.5" aria-hidden />
+              PDF
+            </button>
+          </div>
+        ) : null}
         {error ? (
           <div className="mt-2 text-xs text-red-600">
             {error}
@@ -152,32 +200,21 @@ function AssistantTurn({ message, onConfirm, onCancel, confirmBusy }) {
 export default function StoreAgentChatPanel({ pageContextLabel = "" }) {
   const { user } = useAuth();
   const { addToast } = useToast();
-  const salesMode = isSalesManager(user);
-  const storeMode = isStoreManager(user);
   const agentTitle = "AI Assistant";
-  const agentSubtitle =
-    salesMode && !storeMode
-      ? "Sales orders, quotations & customers"
-      : "Live inventory & job cards";
-  const suggestionChips =
-    salesMode && !storeMode
-      ? [
-          "List draft sales orders",
-          "Quotations pending approval",
-          "Customer order history",
-          "Invoice payment status",
-        ]
-      : SUGGESTION_CHIPS;
-  const emptyHint =
-    salesMode && !storeMode
-      ? "Ask about orders, quotations, customers, or invoices"
-      : "Ask about stock, GRNs, or job cards";
+  const agentSubtitle = getAiSubtitle(user);
+  const suggestionChips = getAiQuickActions(user);
+  const emptyHint = getAiEmptyHint(user);
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [confirmBusy, setConfirmBusy] = useState(false);
   const [conversationId, setConversationId] = useState(null);
   const [messages, setMessages] = useState([]);
+
+  useEffect(() => {
+    setConversationId(null);
+    setMessages([]);
+  }, [user?.id]);
   const [offline, setOffline] = useState(!navigator.onLine);
   const bottomRef = useRef(null);
 
@@ -220,6 +257,10 @@ export default function StoreAgentChatPanel({ pageContextLabel = "" }) {
       setConversationId(data.conversation_id);
       pushAssistant({
         answer_text: data.answer_text,
+        insight: data.insight,
+        printable: Boolean(data.printable),
+        report_title: data.report_title,
+        export_text: data.export_text,
         cards: data.cards || [],
         requires_confirmation: data.requires_confirmation,
       });
@@ -323,7 +364,7 @@ export default function StoreAgentChatPanel({ pageContextLabel = "" }) {
       )}
 
       {open && (
-        <div className="fixed inset-x-3 bottom-3 z-[100] flex max-h-[min(640px,calc(100vh-1.5rem))] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl sm:inset-x-auto sm:bottom-6 sm:right-6 sm:w-[440px]">
+        <div className="fixed inset-x-3 bottom-3 z-[100] flex h-[min(640px,calc(100vh-1.5rem))] max-h-[min(640px,calc(100vh-1.5rem))] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl sm:inset-x-auto sm:bottom-6 sm:right-6 sm:w-[440px]">
           <div className="flex items-center justify-between border-b border-[var(--color-border-soft)] bg-[var(--color-primary)] px-4 py-3 text-white">
             <div className="flex items-center gap-2">
               <Bot className="h-5 w-5" aria-hidden />
@@ -349,23 +390,11 @@ export default function StoreAgentChatPanel({ pageContextLabel = "" }) {
             </div>
           ) : null}
 
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          <div className="min-h-0 flex-1 overflow-y-auto p-4 space-y-4">
             {messages.length === 0 && (
               <div className="text-center">
                 <p className="text-sm font-medium text-slate-700">{emptyHint}</p>
                 <p className="mt-1 text-xs text-slate-400">Answers use live ERP data for your role.</p>
-                <div className="mt-3 flex flex-wrap justify-center gap-2">
-                  {suggestionChips.map((chip) => (
-                    <button
-                      key={chip}
-                      type="button"
-                      onClick={() => setInput(chip)}
-                      className="rounded-full border border-teal-200 bg-teal-50 px-3 py-1 text-xs text-teal-800 hover:bg-teal-100"
-                    >
-                      {chip}
-                    </button>
-                  ))}
-                </div>
               </div>
             )}
 
@@ -381,6 +410,7 @@ export default function StoreAgentChatPanel({ pageContextLabel = "" }) {
                     onConfirm={handleConfirm}
                     onCancel={handleCancel}
                     confirmBusy={confirmBusy}
+                    onExportToast={addToast}
                   />
                 )}
               </div>
@@ -395,7 +425,23 @@ export default function StoreAgentChatPanel({ pageContextLabel = "" }) {
             <div ref={bottomRef} />
           </div>
 
-          <div className="border-t border-slate-100 p-3">
+          <div className="shrink-0 border-t border-slate-100 bg-white p-3">
+            <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+              Quick actions
+            </p>
+            <div className="mb-3 flex max-h-24 flex-wrap gap-2 overflow-y-auto">
+              {suggestionChips.map((chip) => (
+                <button
+                  key={chip}
+                  type="button"
+                  disabled={loading}
+                  onClick={() => sendMessage(chip)}
+                  className="rounded-full border border-teal-200 bg-teal-50 px-3 py-1 text-xs text-teal-800 hover:bg-teal-100 disabled:opacity-50"
+                >
+                  {chip}
+                </button>
+              ))}
+            </div>
             <form
               className="flex gap-2"
               onSubmit={(e) => {
@@ -407,7 +453,7 @@ export default function StoreAgentChatPanel({ pageContextLabel = "" }) {
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Ask in English or Telugu…"
+                placeholder="Ask in English, Telugu, or Hindi…"
                 className="flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
                 disabled={loading}
               />

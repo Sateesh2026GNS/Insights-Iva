@@ -93,7 +93,17 @@ INTENT_RULES: list[tuple[str, str, dict]] = [
     # ════════════════════════════════════════════════════════════════════════
     # 8. WORK ORDER STATS DEEP  (total WOs, high-priority, all WOs stats)
     # ════════════════════════════════════════════════════════════════════════
-    (r"total\s+work\s*orders?|work\s*order\s+(?:stats|summar|count|total|overview|all)|all\s+work\s*orders?", "get_work_order_stats_deep", {}),
+    (
+        r"total\s+work\s*orders?|work\s*orders?\s*(?:enni|enti|count|total)|"
+        r"work\s*order\s+(?:count|total)(?!\s+(?:stats|statistics|summar))",
+        "get_assigned_work_orders",
+        {},
+    ),
+    (
+        r"work\s*order\s+(?:stats|statistics|summar|overview)|all\s+work\s*orders?\s+(?:stats|statistics|summar)",
+        "get_work_order_stats_deep",
+        {},
+    ),
     (r"(?:planned|in.progress|completed|high.priority|paused|cancelled)\s+work\s*orders?\s*(?:count|total|how\s+many)?", "get_work_order_stats_deep", {}),
     (r"high\s+priority\s+work\s*orders?|how\s+many\s+work\s*orders?", "get_work_order_stats_deep", {}),
 

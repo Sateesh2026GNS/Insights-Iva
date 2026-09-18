@@ -475,6 +475,8 @@ def on_startup():
 
 app.include_router(settings_api_router)
 app.include_router(notifications_api_router)
+# Static paths like /api/machines/my must register before operator_api /machines/{machine_id}
+app.include_router(operator_execution_router, prefix="/api")
 app.include_router(operator_api_router)
 app.include_router(dashboard_api_router)
 app.include_router(masters_api_router)
@@ -536,4 +538,3 @@ app.include_router(manufacturing_workflow_router)
 app.include_router(reports_engine_router, prefix="/api")
 app.include_router(agent_api_router, prefix="/api")
 app.include_router(document_library_router, prefix="/api")
-app.include_router(operator_execution_router, prefix="/api")

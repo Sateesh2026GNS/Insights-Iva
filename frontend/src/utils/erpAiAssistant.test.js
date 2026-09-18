@@ -5,7 +5,7 @@ import {
   erpPageContextLabel,
   isErpAiEligibleRoute,
   resolveErpAiAssistantMode,
-  userCanUseRegistryAgent,
+  userCanUseSharedAgent,
 } from "./erpAiAssistant";
 
 describe("erpAiAssistant", () => {
@@ -15,29 +15,33 @@ describe("erpAiAssistant", () => {
     expect(isErpAiEligibleRoute("/settings/profile")).toBe(false);
   });
 
-  it("registry agent requires inventory or sales access", () => {
-    expect(userCanUseRegistryAgent({ role: "Sales Manager" })).toBe(true);
-    expect(userCanUseRegistryAgent({ role: "Store Manager" })).toBe(true);
-    expect(userCanUseRegistryAgent({ role: "HR Manager" })).toBe(false);
-    expect(userCanUseRegistryAgent({ role: "Admin" })).toBe(true);
+  it("shared agent is available for all primary ERP roles", () => {
+    expect(userCanUseSharedAgent({ role: "Sales Manager" })).toBe(true);
+    expect(userCanUseSharedAgent({ role: "Store Manager" })).toBe(true);
+    expect(userCanUseSharedAgent({ role: "Operator" })).toBe(true);
+    expect(userCanUseSharedAgent({ role: "HR Manager" })).toBe(true);
+    expect(userCanUseSharedAgent({ role: "Production Manager" })).toBe(true);
+    expect(userCanUseSharedAgent({ role: "Quality Control" })).toBe(true);
+    expect(userCanUseSharedAgent({ role: "Accountant" })).toBe(true);
+    expect(userCanUseSharedAgent({ role: "Admin" })).toBe(true);
   });
 
-  it("operator mode on allowed operator paths", () => {
+  it("operator gets shared mode on allowed operator paths", () => {
     expect(resolveErpAiAssistantMode({ role: "Operator" }, "/production/work-orders")).toBe(
-      AI_ASSISTANT_MODES.OPERATOR
+      AI_ASSISTANT_MODES.SHARED
     );
     expect(resolveErpAiAssistantMode({ role: "Operator" }, "/sales/orders")).toBe(null);
   });
 
-  it("sales manager gets registry agent on sales pages", () => {
+  it("sales manager gets shared agent on sales pages", () => {
     expect(resolveErpAiAssistantMode({ role: "Sales Manager" }, "/sales/orders")).toBe(
-      AI_ASSISTANT_MODES.REGISTRY
+      AI_ASSISTANT_MODES.SHARED
     );
   });
 
-  it("store manager gets registry agent on inventory pages", () => {
+  it("store manager gets shared agent on inventory pages", () => {
     expect(resolveErpAiAssistantMode({ role: "Store Manager" }, "/store/reports")).toBe(
-      AI_ASSISTANT_MODES.REGISTRY
+      AI_ASSISTANT_MODES.SHARED
     );
   });
 

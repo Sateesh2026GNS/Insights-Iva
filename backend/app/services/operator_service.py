@@ -1687,17 +1687,21 @@ class OperatorService:
             "products": product_stats,
         }
 
-    def get_work_order_stats_deep(self, query: str = "") -> dict:
+    def get_work_order_stats_deep(self, query: str = "", user: User | None = None) -> dict:
         """Work-order statistics, optionally filtered by the requested status."""
         from sqlalchemy import select, func
         from app.models.production import WorkOrder as WO, ProductionOrder
+        from app.services.work_order_service import list_work_orders
         from app.models.product import Product
         from app.models.user import User as UserModel
         from datetime import datetime, timezone
 
-        wos = list(self.db.scalars(
-            select(WO).where(WO.tenant_id == self.tenant_id)
-        ).all())
+        if user is not None:
+            wos = list(list_work_orders(self.db, self.tenant_id, user=user))
+        else:
+            wos = list(self.db.scalars(
+                select(WO).where(WO.tenant_id == self.tenant_id)
+            ).all())
 
         PLANNED = {
             "planned",

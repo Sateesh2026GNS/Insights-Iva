@@ -9,12 +9,14 @@ from app.models.user import User
 from app.schemas.hr import SafetyIncidentCreate
 from app.schemas.operator_execution import ProductionEntryCreate, SafetyIncidentOperatorCreate
 from app.services.hr_service import create_safety_incident, list_safety_incidents
+from app.core.idempotency import get_idempotency_key_header
 from app.services.operator_execution_service import (
     create_production_entry,
     get_my_work_order,
     list_my_machines,
     list_my_production_entries,
     list_my_work_orders,
+    list_operator_shifts,
     my_production_schedule,
 )
 router = APIRouter(tags=["operator-execution"])
@@ -49,11 +51,17 @@ def my_machines(user: User = Depends(_production_user), db: Session = Depends(ge
     return {"items": list_my_machines(db, user)}
 
 
+@router.get("/shifts/my")
+def my_shifts(user: User = Depends(_production_user), db: Session = Depends(get_db)):
+    return {"items": list_operator_shifts(db, user)}
+
+
 @router.post("/production-entries")
 def post_production_entry(
     body: ProductionEntryCreate,
     user: User = Depends(_production_user),
     db: Session = Depends(get_db),
+    idempotency_key: str | None = Depends(get_idempotency_key_header),
 ):
     return create_production_entry(
         db,
@@ -65,6 +73,7 @@ def post_production_entry(
         reject_reason=body.reject_reason,
         shift=body.shift,
         recorded_at=body.recorded_at,
+        idempotency_key=idempotency_key,
     )
 
 

@@ -18,6 +18,12 @@ export default function Dashboard() {
     return <ReferenceDashboard />;
   }
 
+  // Sidebar "Dashboard" is `/` for all roles. Operators have a dedicated post-login home
+  // (/my-job-cards) but must still be able to open the ERP dashboard from the nav.
+  if (isOperator(user)) {
+    return <ReferenceDashboard />;
+  }
+
   const target = getDashboardPathForRole(user || role);
   if (target && target !== "/") {
     return <Navigate to={target} replace />;
