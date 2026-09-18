@@ -49,6 +49,10 @@ class TestProductionConfig:
             )
 
     def test_production_rejects_local_storage(self, monkeypatch):
+        monkeypatch.delenv("RENDER", raising=False)
+        monkeypatch.delenv("RENDER_EXTERNAL_HOSTNAME", raising=False)
+        monkeypatch.delenv("RENDER_SERVICE_ID", raising=False)
+        monkeypatch.delenv("ALLOW_LOCAL_STORAGE_IN_PRODUCTION", raising=False)
         monkeypatch.setenv("STORAGE_PROVIDER", "local")
         with pytest.raises(ValueError, match="STORAGE_PROVIDER"):
             Settings(
@@ -58,7 +62,38 @@ class TestProductionConfig:
                 cors_origins="https://app.example.com",
                 allowed_hosts="app.example.com",
                 storage_provider="local",
+                allow_local_storage_in_production=False,
             )
+
+    def test_production_allows_local_storage_when_configured(self, monkeypatch):
+        monkeypatch.setenv("STORAGE_PROVIDER", "local")
+        monkeypatch.setenv("ALLOW_LOCAL_STORAGE_IN_PRODUCTION", "true")
+        s = Settings(
+            database_url="postgresql+psycopg://u:p@localhost:5432/db",
+            environment="production",
+            jwt_secret_key="a" * 32,
+            cors_origins="https://app.example.com",
+            allowed_hosts="app.example.com",
+            storage_provider="local",
+            allow_local_storage_in_production=True,
+        )
+        assert s.storage_provider == "local"
+
+    def test_production_allows_local_storage_on_render(self, monkeypatch):
+        monkeypatch.setenv("STORAGE_PROVIDER", "local")
+        monkeypatch.setenv("RENDER", "true")
+        monkeypatch.setenv("RENDER_EXTERNAL_HOSTNAME", "insights-iva-api.onrender.com")
+        s = Settings(
+            database_url="postgresql+psycopg://u:p@localhost:5432/db",
+            environment="production",
+            jwt_secret_key="a" * 32,
+            cors_origins="https://app.example.com",
+            allowed_hosts="app.example.com",
+            storage_provider="local",
+        )
+        assert s.storage_provider == "local"
+        assert "insights-iva-api.onrender.com" in s.allowed_hosts
+        assert "*.onrender.com" in s.allowed_hosts
 
 
 class TestRateLimiting:

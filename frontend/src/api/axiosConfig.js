@@ -20,7 +20,8 @@ export function getApiBaseURL() {
       hostname.includes("firebaseapp.com") ||
       hostname.includes("insightsiva.com") ||
       hostname.includes("vercel.app") ||
-      hostname.includes("netlify.app")
+      hostname.includes("netlify.app") ||
+      (hostname.includes("onrender.com") && !hostname.includes("insights-iva-api"))
     ) {
       return "https://insights-iva-api.onrender.com";
     }

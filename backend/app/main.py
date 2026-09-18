@@ -143,6 +143,10 @@ _cors_kwargs = {
 }
 if not settings.is_production:
     _cors_kwargs["allow_origin_regex"] = r"https?://(localhost|127\.0\.0\.1)(:\d+)?$"
+else:
+    _cors_kwargs["allow_origin_regex"] = (
+        r"^(https://([a-zA-Z0-9-]+\.)*(onrender\.com|web\.app|firebaseapp\.com|insightsiva\.com)|http://localhost(:\d+)?|http://127\.0\.0\.1(:\d+)?)$"
+    )
 app.add_middleware(CORSMiddleware, **_cors_kwargs)
 
 

@@ -251,6 +251,15 @@ class Settings(BaseSettings):
         default="local",
         validation_alias=AliasChoices("STORAGE_PROVIDER", "storage_provider"),
     )
+    allow_local_storage_in_production: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "ALLOW_LOCAL_STORAGE_IN_PRODUCTION",
+            "ALLOW_LOCAL_STORAGE",
+            "allow_local_storage_in_production",
+            "allow_local_storage",
+        ),
+    )
     s3_bucket: str = ""
     s3_region: str = ""
     s3_access_key_id: str = ""
@@ -367,15 +376,31 @@ class Settings(BaseSettings):
             if self.jwt_secret_key == _DEFAULT_JWT_SECRET:
                 raise ValueError("JWT_SECRET_KEY must be changed from default in production")
             if (self.storage_provider or "").strip().lower() == "local":
-                raise ValueError("STORAGE_PROVIDER cannot be 'local' in production. Use s3 or gcs.")
+                render_or_cloud_detected = bool(
+                    os.environ.get("RENDER")
+                    or os.environ.get("RENDER_EXTERNAL_HOSTNAME")
+                    or os.environ.get("RENDER_SERVICE_ID")
+                    or str(os.environ.get("ALLOW_LOCAL_STORAGE_IN_PRODUCTION", "")).lower() in ("true", "1", "yes")
+                    or self.allow_local_storage_in_production
+                )
+                if not render_or_cloud_detected:
+                    raise ValueError(
+                        "STORAGE_PROVIDER cannot be 'local' in production. "
+                        "Use s3 or gcs, or set ALLOW_LOCAL_STORAGE_IN_PRODUCTION=true."
+                    )
 
         # Ensure production domain defaults are always present in CORS
+        render_host = (os.environ.get("RENDER_EXTERNAL_HOSTNAME") or "").strip()
         production_defaults = [
             "https://insights-734ee.web.app",
             "https://insights-734ee.firebaseapp.com",
             "https://www.insightsiva.com",
             "https://insightsiva.com",
+            "https://insights-iva-api.onrender.com",
         ]
+        if render_host:
+            production_defaults.append(f"https://{render_host}")
+
         origins = [o.strip() for o in self.cors_origins.split(",") if o.strip()]
         for p in production_defaults:
             if p not in origins:
@@ -386,11 +411,16 @@ class Settings(BaseSettings):
         hosts = [h.strip() for h in self.allowed_hosts.split(",") if h.strip()]
         default_hosts = [
             "insights-iva-api.onrender.com",
+            "*.onrender.com",
             "insights-734ee.web.app",
             "insights-734ee.firebaseapp.com",
             "www.insightsiva.com",
             "insightsiva.com",
+            "localhost",
+            "127.0.0.1",
         ]
+        if render_host and render_host not in default_hosts:
+            default_hosts.append(render_host)
         for dh in default_hosts:
             if dh not in hosts:
                 hosts.append(dh)
@@ -416,6 +446,9 @@ class Settings(BaseSettings):
         if self.is_production:
             if uri and uri.startswith("https://") and "localhost" not in uri and not uri.startswith("https/"):
                 return uri
+            render_host = (os.environ.get("RENDER_EXTERNAL_HOSTNAME") or "").strip()
+            if render_host:
+                return f"https://{render_host}/integrations/google/calendar/callback"
             return "https://insights-iva-api.onrender.com/integrations/google/calendar/callback"
         if uri and "://" in uri and not uri.startswith("https/"):
             return uri
