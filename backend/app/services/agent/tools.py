@@ -17,6 +17,9 @@ from app.services.agent.module_agent_tools import (
     get_accounts_summary,
     get_business_summary,
     get_hr_summary,
+    get_my_pending_approvals,
+    get_production_pipeline_summary,
+    get_quick_actions_summary,
     get_quality_summary,
     register_module_role_tools,
 )
@@ -289,6 +292,15 @@ _TOOL_DISPATCH: dict[str, Callable[..., Any]] = {
         db, ctx, EmptyInput.model_validate(args or {})
     ),
     "get_business_summary": lambda db, ctx, args: get_business_summary(
+        db, ctx, EmptyInput.model_validate(args or {})
+    ),
+    "get_my_pending_approvals": lambda db, ctx, args: get_my_pending_approvals(
+        db, ctx, EmptyInput.model_validate(args or {})
+    ),
+    "get_quick_actions_summary": lambda db, ctx, args: get_quick_actions_summary(
+        db, ctx, EmptyInput.model_validate(args or {})
+    ),
+    "get_production_pipeline_summary": lambda db, ctx, args: get_production_pipeline_summary(
         db, ctx, EmptyInput.model_validate(args or {})
     ),
 }

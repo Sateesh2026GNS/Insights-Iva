@@ -1,248 +1,375 @@
-import { useCallback, useEffect, useState } from "react";
-import { CheckCircle2, Clock, XCircle, Check, Eye } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Check, CheckCircle2, Eye, RefreshCw, XCircle } from "lucide-react";
 
 import PageHeader from "../../components/common/PageHeader";
 import AccessDenied from "../../components/admin/AccessDenied";
+import ConfirmDialog from "../../components/admin/ConfirmDialog";
+import Pagination from "../../components/common/Pagination";
 import usePermissions from "../../hooks/usePermissions";
+import { userCanAccessApprovalQueue } from "../../config/permissions";
 import usePageRefresh from "../../hooks/usePageRefresh";
-import useAuth from "../../hooks/useAuth";
 import { useToast } from "../../context/ToastContext";
-import { getUsers } from "../../api/adminApi";
 import {
-  getMaterialRequests,
-  getPurchaseOrders,
-  getVendors,
-  approveMaterialRequest,
-  updateVendorApproval,
-  updatePurchaseOrderStatus,
-} from "../../api/procurementApi";
-import { getProductionOrders } from "../../api/productionApi";
+  approveLeaveRequest,
+  decideInventoryAdjustment,
+  decideMaterialRequest,
+  decideProductionOrder,
+  decidePurchaseOrder,
+  decideVendor,
+  getApprovalQueue,
+  getLeaveApprovalHistory,
+  rejectLeaveRequest,
+} from "../../api/approvalsApi";
 
-const CATEGORY_TAGS = {
-  po: { label: "Purchase Order", bg: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300" },
-  mr: { label: "Material Request", bg: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300" },
-  vendor: { label: "Vendor Registration", bg: "bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300" },
-  production: { label: "Production Order", bg: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300" },
+const CATEGORY_TABS = [
+  { id: "all", label: "All" },
+  { id: "leave", label: "Leaves" },
+  { id: "procurement", label: "Procurement" },
+  { id: "production", label: "Production" },
+  { id: "inventory", label: "Inventory" },
+];
+
+const CATEGORY_LABELS = {
+  leave: "Leave Request",
+  material_request: "Material Request",
+  purchase_order: "Purchase Order",
+  vendor: "Vendor Registration",
+  production: "Production Order",
+  inventory: "Inventory Adjustment",
 };
 
+function formatDate(value) {
+  if (!value) return "—";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return String(value).slice(0, 10);
+  return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+}
+
+function formatDateRange(extra) {
+  if (!extra?.start_date || !extra?.end_date) return null;
+  return `${formatDate(extra.start_date)} – ${formatDate(extra.end_date)}`;
+}
+
+function apiErrorMessage(err, fallback) {
+  const detail = err?.response?.data?.detail;
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail) && detail[0]?.msg) return detail[0].msg;
+  return fallback;
+}
+
 export default function PendingApprovals() {
-  const { isAdmin } = usePermissions();
-  const { user } = useAuth();
+  const { user } = usePermissions();
+  const allowed = userCanAccessApprovalQueue(user);
   const { addToast } = useToast();
+
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedDetail, setSelectedDetail] = useState(null);
+  const [error, setError] = useState(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [pendingTotal, setPendingTotal] = useState(0);
 
-  const fallbackCreatorName = user?.full_name || user?.name || "Rahul Sharma";
+  const [activeTab, setActiveTab] = useState("all");
+  const [searchInput, setSearchInput] = useState("");
+  const [statusFilter, setStatusFilter] = useState("pending");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+  const [appliedFilters, setAppliedFilters] = useState({
+    search: "",
+    status: "pending",
+    fromDate: "",
+    toDate: "",
+  });
+
+  const [selectedDetail, setSelectedDetail] = useState(null);
+  const [history, setHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
+  const [approveTarget, setApproveTarget] = useState(null);
+  const [rejectTarget, setRejectTarget] = useState(null);
+  const [rejectReason, setRejectReason] = useState("");
+  const [actionLoading, setActionLoading] = useState(false);
 
   const load = useCallback(async () => {
+    if (!allowed) return;
     setLoading(true);
-    const realItems = [];
-
-    // Helper for safe API calls
-    const safeFetch = async (fn) => {
-      try {
-        const res = await fn();
-        return res?.data || [];
-      } catch {
-        return [];
-      }
-    };
-
-    const [mrs, pos, vendors, prods, usersList] = await Promise.all([
-      safeFetch(getMaterialRequests),
-      safeFetch(getPurchaseOrders),
-      safeFetch(getVendors),
-      safeFetch(getProductionOrders),
-      safeFetch(getUsers),
-    ]);
-
-    // Build real user lookup map
-    const userMap = {};
-    if (Array.isArray(usersList)) {
-      usersList.forEach((u) => {
-        if (u.id) userMap[u.id] = u.full_name || u.name || u.email;
-      });
-    }
-
-    if (Array.isArray(mrs)) {
-      mrs.forEach((mr) => {
-        const st = (mr.approval_status || mr.status || "").toLowerCase();
-        if (st === "pending" || !st) {
-          const rawName = mr.requested_by_name || mr.created_by_name || (mr.user_id && userMap[mr.user_id]);
-          const uName = rawName && rawName !== "Production Manager" ? rawName : fallbackCreatorName;
-          realItems.push({
-            id: `MR-${mr.id}`,
-            realId: mr.id,
-            category: "mr",
-            code: mr.request_number || mr.mr_number || `MR-${mr.id}`,
-            user_name: uName,
-            title: mr.item_name || mr.purpose || "Material Request",
-            amount: mr.quantity ? `${mr.quantity} Units` : "Material Request",
-            reason: mr.reason || mr.purpose || mr.remarks || null,
-            submitted: mr.created_at ? String(mr.created_at).slice(0, 10) : "Today",
-            status: "pending",
-          });
-        }
-      });
-    }
-
-    if (Array.isArray(pos)) {
-      pos.forEach((po) => {
-        const st = (po.status || "").toLowerCase();
-        if (st === "draft" || st === "pending") {
-          const rawName = po.created_by_name || (po.user_id && userMap[po.user_id]);
-          const uName = rawName && rawName !== "Production Manager" ? rawName : fallbackCreatorName;
-          realItems.push({
-            id: `PO-${po.id}`,
-            realId: po.id,
-            category: "po",
-            code: po.po_number || `PO-${po.id}`,
-            user_name: uName,
-            title: po.vendor_name ? `PO: ${po.vendor_name}` : "Purchase Order",
-            amount: po.total_amount ? `₹${Number(po.total_amount).toLocaleString()}` : "Purchase Order",
-            reason: po.notes || po.remarks || po.purpose || null,
-            submitted: po.created_at ? String(po.created_at).slice(0, 10) : "Today",
-            status: "pending",
-          });
-        }
-      });
-    }
-
-    if (Array.isArray(vendors)) {
-      vendors.forEach((v) => {
-        const st = (v.approval_status || "").toLowerCase();
-        if (st === "pending") {
-          const rawName = v.contact_person || v.created_by_name || (v.user_id && userMap[v.user_id]);
-          const uName = rawName && rawName !== "Production Manager" ? rawName : fallbackCreatorName;
-          realItems.push({
-            id: `VND-${v.id}`,
-            realId: v.id,
-            category: "vendor",
-            code: v.vendor_code || `VND-${v.id}`,
-            user_name: uName,
-            title: `Vendor Approval: ${v.name}`,
-            amount: v.tax_number ? `GST: ${v.tax_number}` : "Vendor Approval",
-            reason: v.remarks || v.notes || v.purpose || null,
-            submitted: v.created_at ? String(v.created_at).slice(0, 10) : "Today",
-            status: "pending",
-          });
-        }
-      });
-    }
-
-    if (Array.isArray(prods)) {
-      prods.forEach((prd) => {
-        const st = (prd.status || "").toLowerCase();
-        if (st === "planned" || st === "pending") {
-          const rawName = prd.created_by_name || prd.operator_name || (prd.user_id && userMap[prd.user_id]);
-          const uName = rawName && rawName !== "Production Manager" ? rawName : fallbackCreatorName;
-          realItems.push({
-            id: `PRD-${prd.id}`,
-            realId: prd.id,
-            category: "production",
-            code: prd.order_number || prd.product_no || `PO-WORK-${prd.id}`,
-            user_name: uName,
-            title: prd.product_name ? `Production Release: ${prd.product_name}` : "Production Order Batch Release",
-            amount: prd.planned_quantity ? `${Number(prd.planned_quantity).toLocaleString()} Units` : "Production Order",
-            reason: prd.remarks || prd.notes || prd.purpose || null,
-            submitted: prd.created_at ? String(prd.created_at).slice(0, 10) : "Today",
-            status: "pending",
-          });
-        }
-      });
-    }
-
-    // Merge any real user-created items saved locally
-    let userCreated = [];
+    setError(null);
     try {
-      userCreated = JSON.parse(localStorage.getItem("gns_user_created_approvals") || "[]");
+      const res = await getApprovalQueue({
+        page,
+        page_size: pageSize,
+        category: activeTab === "all" ? undefined : activeTab,
+        status: appliedFilters.status || "pending",
+        search: appliedFilters.search || undefined,
+        from_date: appliedFilters.fromDate || undefined,
+        to_date: appliedFilters.toDate || undefined,
+      });
+      const data = res?.data || {};
+      setItems(data.items || []);
+      setTotal(data.total ?? 0);
+      setTotalPages(data.total_pages ?? 0);
+      setPendingTotal(data.pending_total ?? data.total ?? 0);
     } catch {
-      userCreated = [];
+      setError("load");
+      setItems([]);
+      setTotal(0);
+      setPendingTotal(0);
+    } finally {
+      setLoading(false);
     }
-
-    const merged = [...realItems, ...userCreated];
-
-    // Apply stored status updates from localStorage
-    let approvedStore = {};
-    try {
-      approvedStore = JSON.parse(localStorage.getItem("gns_approvals_status_map") || "{}");
-    } catch {
-      approvedStore = {};
-    }
-
-    const finalItems = merged.map((item) => {
-      let resolvedUser = item.user_name;
-      if (!resolvedUser || resolvedUser === "Production Manager") {
-        resolvedUser = fallbackCreatorName;
-      }
-      if (approvedStore[item.id]) {
-        return { ...item, user_name: resolvedUser, status: approvedStore[item.id] };
-      }
-      return { ...item, user_name: resolvedUser };
-    });
-
-    setItems(finalItems);
-    setLoading(false);
-  }, [fallbackCreatorName]);
+  }, [allowed, page, pageSize, activeTab, appliedFilters]);
 
   usePageRefresh(() => load());
 
   useEffect(() => {
-    if (isAdmin) load();
-  }, [isAdmin, load]);
+    if (allowed) load();
+  }, [allowed, load]);
 
-  if (!isAdmin) return <AccessDenied />;
-
-  const handleUpdateStatus = async (item, newStatus) => {
-    // 1. Update UI state & localStorage immediately
-    setItems((prev) =>
-      prev.map((i) => (i.id === item.id ? { ...i, status: newStatus } : i))
-    );
-
-    try {
-      let approvedStore = JSON.parse(localStorage.getItem("gns_approvals_status_map") || "{}");
-      approvedStore[item.id] = newStatus;
-      localStorage.setItem("gns_approvals_status_map", JSON.stringify(approvedStore));
-    } catch {
-      /* ignore */
+  useEffect(() => {
+    if (!selectedDetail || selectedDetail.category !== "leave") {
+      setHistory([]);
+      return;
     }
+    setHistoryLoading(true);
+    getLeaveApprovalHistory(selectedDetail.resource_id)
+      .then((res) => setHistory(res?.data || []))
+      .catch(() => setHistory([]))
+      .finally(() => setHistoryLoading(false));
+  }, [selectedDetail]);
 
-    // 2. Try API call safely if numeric ID exists
-    if (item.realId && Number.isInteger(Number(item.realId))) {
-      const numericId = Number(item.realId);
-      try {
-        if (newStatus === "approved") {
-          if (item.category === "mr") {
-            await approveMaterialRequest(numericId, { approved: true });
-          } else if (item.category === "vendor") {
-            await updateVendorApproval(numericId, "approved");
-          } else if (item.category === "po") {
-            await updatePurchaseOrderStatus(numericId, "approved");
-          }
-        }
-      } catch {
-        /* API error handled silently */
-      }
-    }
-
-    const text = newStatus === "approved" ? "Approved" : "Rejected";
-    addToast(`${text} ${item.code}`, "success");
+  const applyFilters = () => {
+    setPage(1);
+    setAppliedFilters({
+      search: searchInput.trim(),
+      status: statusFilter,
+      fromDate,
+      toDate,
+    });
   };
 
-  const pendingCount = items.filter((i) => i.status === "pending").length;
+  const resetFilters = () => {
+    setSearchInput("");
+    setStatusFilter("pending");
+    setFromDate("");
+    setToDate("");
+    setPage(1);
+    setAppliedFilters({ search: "", status: "pending", fromDate: "", toDate: "" });
+  };
+
+  const refreshAfterAction = () => {
+    load();
+  };
+
+  const runDecision = async (item, approved, rejectionReason) => {
+    const type = item.resource_type;
+    const id = item.resource_id;
+    const body = {
+      approved,
+      expected_status: item.status,
+      rejection_reason: rejectionReason || undefined,
+      notes: rejectionReason || undefined,
+    };
+    if (type === "leave_request") {
+      if (approved) {
+        await approveLeaveRequest(id, { expected_status: item.status });
+      } else {
+        await rejectLeaveRequest(id, {
+          expected_status: item.status,
+          rejection_reason: rejectionReason,
+        });
+      }
+      return;
+    }
+    if (type === "material_request") {
+      await decideMaterialRequest(id, body);
+      return;
+    }
+    if (type === "vendor") {
+      await decideVendor(id, body);
+      return;
+    }
+    if (type === "purchase_order") {
+      await decidePurchaseOrder(id, { ...body, expected_status: item.status || "draft" });
+      return;
+    }
+    if (type === "production_order") {
+      await decideProductionOrder(id, { ...body, expected_status: item.status || "planned" });
+      return;
+    }
+    if (type === "stock_adjustment") {
+      await decideInventoryAdjustment(id, body);
+    }
+  };
+
+  const handleConfirmApprove = async () => {
+    if (!approveTarget) return;
+    setActionLoading(true);
+    try {
+      await runDecision(approveTarget, true);
+      if (approveTarget.category === "leave") {
+        addToast("✓ Leave request approved successfully.", "success");
+      } else {
+        addToast(`✓ ${approveTarget.request_code} approved successfully.`, "success");
+      }
+      setApproveTarget(null);
+      setSelectedDetail(null);
+      refreshAfterAction();
+    } catch (err) {
+      addToast(
+        apiErrorMessage(
+          err,
+          "We couldn't process this approval right now. Please try again."
+        ),
+        "error"
+      );
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleConfirmReject = async () => {
+    if (!rejectTarget) return;
+    const reason = rejectReason.trim();
+    if (rejectTarget.category === "leave" && !reason) {
+      addToast("Rejection reason is required.", "error");
+      return;
+    }
+    setActionLoading(true);
+    try {
+      await runDecision(rejectTarget, false, reason);
+      if (rejectTarget.category === "leave") {
+        addToast("✓ Leave request rejected successfully.", "success");
+      } else {
+        addToast(`✓ ${rejectTarget.request_code} rejected successfully.`, "success");
+      }
+      setRejectTarget(null);
+      setRejectReason("");
+      setSelectedDetail(null);
+      refreshAfterAction();
+    } catch (err) {
+      addToast(
+        apiErrorMessage(
+          err,
+          "We couldn't process this approval right now. Please try again."
+        ),
+        "error"
+      );
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const subtitle = useMemo(() => {
+    if (loading) return "Review requests that require your approval.";
+    if (pendingTotal > 0) {
+      return `You have ${pendingTotal} request${pendingTotal === 1 ? "" : "s"} waiting for your approval.`;
+    }
+    return "Review requests that require your approval.";
+  }, [loading, pendingTotal]);
+
+  if (!allowed) return <AccessDenied />;
 
   return (
     <div className="space-y-4 pb-6">
       <PageHeader
-        eyebrow="Admin"
-        title="Pending Approvals Queue"
-        subtitle="Live approval queue showing real created user names and order specifications."
+        eyebrow="Administration"
+        title="Approvals"
+        subtitle={subtitle}
       />
+
+      <div className="flex flex-wrap gap-2">
+        {CATEGORY_TABS.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => {
+              setActiveTab(tab.id);
+              setPage(1);
+            }}
+            className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+              activeTab === tab.id
+                ? "bg-[var(--color-primary)] text-white"
+                : "border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)]"
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="ui-card p-4 flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-end">
+        <label className="flex flex-col gap-1 text-xs flex-1 min-w-[140px]">
+          <span className="text-[var(--color-text-muted)]">Search</span>
+          <input
+            type="search"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            placeholder="Employee, request #, department…"
+            className="rounded-lg border border-[var(--color-border)] px-3 py-2 text-sm"
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-xs">
+          <span className="text-[var(--color-text-muted)]">Status</span>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="rounded-lg border border-[var(--color-border)] px-3 py-2 text-sm"
+          >
+            <option value="pending">Pending</option>
+            <option value="all">All</option>
+          </select>
+        </label>
+        <label className="flex flex-col gap-1 text-xs">
+          <span className="text-[var(--color-text-muted)]">From</span>
+          <input
+            type="date"
+            value={fromDate}
+            onChange={(e) => setFromDate(e.target.value)}
+            className="rounded-lg border border-[var(--color-border)] px-3 py-2 text-sm"
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-xs">
+          <span className="text-[var(--color-text-muted)]">To</span>
+          <input
+            type="date"
+            value={toDate}
+            onChange={(e) => setToDate(e.target.value)}
+            className="rounded-lg border border-[var(--color-border)] px-3 py-2 text-sm"
+          />
+        </label>
+        <div className="flex gap-2">
+          <button type="button" className="ui-btn ui-btn-primary text-xs" onClick={applyFilters}>
+            Apply Filters
+          </button>
+          <button type="button" className="ui-btn ui-btn-secondary text-xs" onClick={resetFilters}>
+            Reset
+          </button>
+          <button
+            type="button"
+            className="ui-btn ui-btn-ghost p-2"
+            title="Refresh"
+            onClick={() => load()}
+          >
+            <RefreshCw className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
 
       {loading ? (
         <div className="ui-card p-8 text-center text-sm text-[var(--color-text-muted)]">
-          Loading live approvals…
+          Loading approvals…
+        </div>
+      ) : error ? (
+        <div className="ui-card flex flex-col items-center gap-3 p-10 text-center">
+          <p className="text-base font-semibold text-[var(--color-text)]">Unable to load approvals</p>
+          <p className="text-sm text-[var(--color-text-muted)] max-w-md">
+            We couldn&apos;t retrieve the approval queue right now.
+          </p>
+          <button type="button" className="ui-btn ui-btn-primary text-sm" onClick={() => load()}>
+            Try Again
+          </button>
         </div>
       ) : items.length === 0 ? (
         <div className="ui-card flex flex-col items-center justify-center p-12 text-center space-y-2">
@@ -251,185 +378,337 @@ export default function PendingApprovals() {
           </div>
           <h3 className="text-base font-bold text-[var(--color-text)]">All Approvals Clear</h3>
           <p className="text-xs text-[var(--color-text-muted)] max-w-sm">
-            There are currently no pending approvals. Real items submitted by users across procurement, production, HR, and inventory will appear here automatically.
+            There are currently no pending requests that require your approval.
           </p>
         </div>
       ) : (
-        <div className="ui-card overflow-hidden">
-          <div className="flex items-center justify-between border-b border-[var(--color-border)] px-4 py-3 bg-[var(--color-surface-muted)]">
-            <p className="text-xs font-semibold text-[var(--color-text-muted)]">
-              {pendingCount} Pending Item{pendingCount === 1 ? "" : "s"}
-            </p>
+        <>
+          <div className="hidden md:block ui-card overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead className="border-b border-[var(--color-border)] bg-[var(--color-surface-muted)] text-xs text-[var(--color-text-muted)]">
+                <tr>
+                  <th className="px-4 py-3 font-semibold">Request</th>
+                  <th className="px-4 py-3 font-semibold">Employee</th>
+                  <th className="px-4 py-3 font-semibold">Type</th>
+                  <th className="px-4 py-3 font-semibold">Details</th>
+                  <th className="px-4 py-3 font-semibold">Submitted</th>
+                  <th className="px-4 py-3 font-semibold">Status</th>
+                  <th className="px-4 py-3 font-semibold text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--color-border)]">
+                {items.map((item) => (
+                  <tr key={item.id} className="hover:bg-[var(--color-surface-hover)]">
+                    <td className="px-4 py-3 font-mono text-xs font-bold text-[var(--color-primary)]">
+                      {item.request_code}
+                    </td>
+                    <td className="px-4 py-3">{item.employee_name || "—"}</td>
+                    <td className="px-4 py-3">{CATEGORY_LABELS[item.category] || item.title}</td>
+                    <td className="px-4 py-3 text-[var(--color-text-muted)]">
+                      {item.category === "leave"
+                        ? formatDateRange(item.extra) || item.detail_summary
+                        : item.detail_summary}
+                    </td>
+                    <td className="px-4 py-3">{formatDate(item.submitted_at)}</td>
+                    <td className="px-4 py-3 capitalize">{item.status}</td>
+                    <td className="px-4 py-3 text-right">
+                      <RowActions
+                        item={item}
+                        onView={() => setSelectedDetail(item)}
+                        onApprove={() => setApproveTarget(item)}
+                        onReject={() => {
+                          setRejectTarget(item);
+                          setRejectReason("");
+                        }}
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
 
-          <div className="divide-y divide-[var(--color-border)]">
-            {items.map((item) => {
-              const catTag = CATEGORY_TAGS[item.category] || CATEGORY_TAGS.po;
-              return (
-                <div
-                  key={item.id}
-                  className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between transition hover:bg-[var(--color-surface-hover)]"
-                >
-                  {/* User & Info */}
-                  <div className="flex items-start gap-3 min-w-0">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--color-primary-soft)] text-xs font-bold text-[var(--color-primary)]">
-                      {String(item.user_name || "U")[0].toUpperCase()}
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="text-sm font-bold text-[var(--color-text)]">{item.user_name}</p>
-                        <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-bold ${catTag.bg}`}>
-                          {catTag.label}
-                        </span>
-                        <span className="font-mono text-xs font-bold text-[var(--color-primary)]">
-                          {item.code}
-                        </span>
-                      </div>
-                      <p className="text-xs text-[var(--color-text-muted)] truncate">{item.title}</p>
-                      <p className="text-[11px] font-medium text-slate-400 mt-0.5">
-                        {item.amount} · Submitted {item.submitted}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Actions: Approve, View, Reject */}
-                  <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
-                    {item.status === "pending" ? (
-                      <>
-                        <button
-                          type="button"
-                          onClick={() => handleUpdateStatus(item, "approved")}
-                          className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-emerald-700 shadow-sm"
-                        >
-                          <Check className="h-3.5 w-3.5" />
-                          Approve
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => setSelectedDetail(item)}
-                          className="inline-flex items-center gap-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5 text-xs font-semibold text-[var(--color-text)] transition hover:bg-[var(--color-surface-hover)] shadow-sm"
-                        >
-                          <Eye className="h-3.5 w-3.5 text-[var(--color-primary)]" />
-                          View
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => handleUpdateStatus(item, "rejected")}
-                          className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-900/30"
-                          title="Reject"
-                        >
-                          <XCircle className="h-4 w-4" />
-                        </button>
-                      </>
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-bold text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300">
-                          <Check className="h-3 w-3" />
-                          Approved
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => setSelectedDetail(item)}
-                          className="inline-flex items-center gap-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 py-1 text-xs font-semibold text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]"
-                        >
-                          <Eye className="h-3.5 w-3.5 text-[var(--color-primary)]" />
-                          View
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleUpdateStatus(item, "pending")}
-                          className="text-xs text-slate-400 hover:underline"
-                        >
-                          Undo
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+          <div className="md:hidden space-y-3">
+            {items.map((item) => (
+              <ApprovalCard
+                key={item.id}
+                item={item}
+                onView={() => setSelectedDetail(item)}
+                onApprove={() => setApproveTarget(item)}
+                onReject={() => {
+                  setRejectTarget(item);
+                  setRejectReason("");
+                }}
+              />
+            ))}
           </div>
-        </div>
+
+          <div className="ui-card px-4 py-3">
+            <Pagination
+              page={page}
+              pageSize={pageSize}
+              total={total}
+              totalPages={totalPages}
+              onPageChange={setPage}
+              onPageSizeChange={(size) => {
+                setPageSize(size);
+                setPage(1);
+              }}
+              summaryMode="entries"
+            />
+          </div>
+        </>
       )}
 
-      {/* View Detail Modal */}
       {selectedDetail && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 shadow-2xl space-y-4">
-            <div className="flex items-start justify-between">
-              <div>
-                <span className="text-xs font-bold uppercase tracking-wider text-[var(--color-primary)]">
-                  {selectedDetail.code}
-                </span>
-                <h3 className="text-base font-bold text-[var(--color-text)]">{selectedDetail.title}</h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setSelectedDetail(null)}
-                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-muted)] p-4 space-y-2 text-xs">
-              <div className="flex justify-between">
-                <span className="text-[var(--color-text-muted)]">Name:</span>
-                <span className="font-bold text-[var(--color-text)]">{selectedDetail.user_name}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-[var(--color-text-muted)]">Type:</span>
-                <span className="font-bold text-[var(--color-primary)]">
-                  {CATEGORY_TAGS[selectedDetail.category]?.label || "Approval Queue"}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-[var(--color-text-muted)]">Submitted Date:</span>
-                <span className="font-semibold text-[var(--color-text)]">{selectedDetail.submitted}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-[var(--color-text-muted)]">
-                  {selectedDetail.category === "po"
-                    ? "Order Value:"
-                    : selectedDetail.category === "mr" || selectedDetail.category === "production"
-                    ? "Quantity:"
-                    : "Value / Quantity:"}
-                </span>
-                <span className="font-bold text-[var(--color-primary)]">{selectedDetail.amount}</span>
-              </div>
-
-              <div className="flex justify-between">
-                <span className="text-[var(--color-text-muted)]">Current Status:</span>
-                <span className="font-bold uppercase text-[var(--color-text)]">{selectedDetail.status}</span>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-[var(--color-border)]">
-              <button
-                type="button"
-                onClick={() => setSelectedDetail(null)}
-                className="rounded-lg border border-[var(--color-border)] px-4 py-2 text-xs font-semibold text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]"
-              >
-                Close
-              </button>
-              {selectedDetail.status === "pending" && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    handleUpdateStatus(selectedDetail, "approved");
-                    setSelectedDetail(null);
-                  }}
-                  className="rounded-lg bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-700 shadow-sm"
-                >
-                  Approve Request
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
+        <DetailModal
+          item={selectedDetail}
+          history={history}
+          historyLoading={historyLoading}
+          onClose={() => setSelectedDetail(null)}
+          onApprove={() => setApproveTarget(selectedDetail)}
+          onReject={() => {
+            setRejectTarget(selectedDetail);
+            setRejectReason("");
+          }}
+        />
       )}
+
+      <ConfirmDialog
+        open={Boolean(approveTarget)}
+        title="Approve request?"
+        message={
+          approveTarget?.category === "leave"
+            ? approveLeaveMessage(approveTarget)
+            : `Approve ${approveTarget?.request_code}?`
+        }
+        confirmLabel={approveTarget?.category === "leave" ? "Approve Leave" : "Approve"}
+        onClose={() => setApproveTarget(null)}
+        onConfirm={handleConfirmApprove}
+        loading={actionLoading}
+      />
+
+      <ConfirmDialog
+        open={Boolean(rejectTarget)}
+        title={
+          rejectTarget?.category === "leave" ? "Reject Leave Request" : "Reject request"
+        }
+        confirmLabel={rejectTarget?.category === "leave" ? "Reject Leave" : "Reject"}
+        destructive
+        onClose={() => {
+          setRejectTarget(null);
+          setRejectReason("");
+        }}
+        onConfirm={handleConfirmReject}
+        loading={actionLoading}
+        confirmDisabled={
+          rejectTarget?.category === "leave" ? !rejectReason.trim() : false
+        }
+      >
+        {rejectTarget ? (
+          <RejectForm item={rejectTarget} reason={rejectReason} setReason={setRejectReason} />
+        ) : null}
+      </ConfirmDialog>
+    </div>
+  );
+}
+
+function RowActions({ item, onView, onApprove, onReject }) {
+  if ((item.status || "").toLowerCase() !== "pending" && item.category !== "purchase_order") {
+    return (
+      <button type="button" className="text-xs text-[var(--color-primary)]" onClick={onView}>
+        View
+      </button>
+    );
+  }
+  const isDraftPo = item.resource_type === "purchase_order" && item.status === "draft";
+  const canAct = item.status === "pending" || isDraftPo;
+  if (!canAct) {
+    return (
+      <button type="button" className="text-xs text-[var(--color-primary)]" onClick={onView}>
+        View
+      </button>
+    );
+  }
+  return (
+    <div className="flex justify-end gap-2">
+      <button type="button" className="text-xs font-semibold text-[var(--color-primary)]" onClick={onView}>
+        View
+      </button>
+      <button type="button" className="text-xs font-semibold text-emerald-600" onClick={onApprove}>
+        Approve
+      </button>
+      <button type="button" className="text-xs font-semibold text-rose-600" onClick={onReject}>
+        Reject
+      </button>
+    </div>
+  );
+}
+
+function ApprovalCard({ item, onView, onApprove, onReject }) {
+  const isLeave = item.category === "leave";
+  return (
+    <div className="ui-card p-4 space-y-3">
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <p className="text-sm font-bold text-[var(--color-text)]">
+            {isLeave ? "Leave Request" : CATEGORY_LABELS[item.category]}
+          </p>
+          <p className="text-xs text-[var(--color-text-muted)]">
+            {item.employee_name}
+            {item.department ? ` • ${item.department}` : ""}
+          </p>
+        </div>
+        <span className="text-xs font-semibold capitalize">{item.status}</span>
+      </div>
+      <p className="text-xs text-[var(--color-text)]">
+        {isLeave ? (
+          <>
+            {item.title} • {formatDateRange(item.extra)} • {item.detail_summary}
+          </>
+        ) : (
+          <>
+            {item.title} • {item.detail_summary}
+          </>
+        )}
+      </p>
+      <p className="text-[11px] text-[var(--color-text-muted)]">
+        Submitted: {formatDate(item.submitted_at)}
+      </p>
+      <div className="flex flex-wrap gap-2">
+        <button type="button" className="ui-btn ui-btn-secondary text-xs" onClick={onView}>
+          <Eye className="h-3.5 w-3.5 mr-1 inline" />
+          View Details
+        </button>
+        <button type="button" className="ui-btn ui-btn-primary text-xs" onClick={onApprove}>
+          <Check className="h-3.5 w-3.5 mr-1 inline" />
+          Approve
+        </button>
+        <button type="button" className="ui-btn ui-btn-ghost text-xs text-rose-600" onClick={onReject}>
+          <XCircle className="h-3.5 w-3.5 mr-1 inline" />
+          Reject
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function DetailModal({ item, history, historyLoading, onClose, onApprove, onReject }) {
+  const isLeave = item.category === "leave";
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-lg rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <h3 className="text-lg font-bold text-[var(--color-text)]">
+              {isLeave ? "Leave Request" : CATEGORY_LABELS[item.category]}
+            </h3>
+            <p className="text-xs font-mono text-[var(--color-primary)]">{item.request_code}</p>
+          </div>
+          <button type="button" className="text-slate-400 hover:text-slate-600" onClick={onClose}>
+            ✕
+          </button>
+        </div>
+
+        <dl className="grid grid-cols-1 gap-3 text-sm">
+          {isLeave && (
+            <>
+              <DetailRow label="Employee" value={item.employee_name} />
+              <DetailRow label="Department" value={item.department} />
+              <DetailRow label="Designation" value={item.designation} />
+              <DetailRow label="Leave Type" value={item.title || item.extra?.leave_type} />
+              <DetailRow label="Duration" value={formatDateRange(item.extra)} />
+              <DetailRow label="Days" value={item.extra?.days} />
+              {item.extra?.leave_balance != null && (
+                <DetailRow label="Leave balance" value={`${item.extra.leave_balance} day(s)`} />
+              )}
+            </>
+          )}
+          {!isLeave && (
+            <>
+              <DetailRow label="Summary" value={item.title} />
+              <DetailRow label="Details" value={item.detail_summary} />
+              {item.employee_name && <DetailRow label="Requested by" value={item.employee_name} />}
+            </>
+          )}
+          <DetailRow label="Reason" value={item.reason || "—"} />
+          <DetailRow label="Submitted" value={formatDate(item.submitted_at)} />
+          <DetailRow label="Status" value={item.status} />
+        </dl>
+
+        {isLeave && (
+          <div className="border-t border-[var(--color-border)] pt-3">
+            <p className="text-xs font-bold text-[var(--color-text-muted)] mb-2">Approval History</p>
+            {historyLoading ? (
+              <p className="text-xs text-[var(--color-text-muted)]">Loading…</p>
+            ) : history.length === 0 ? (
+              <p className="text-xs text-[var(--color-text-muted)]">No additional history.</p>
+            ) : (
+              <ul className="space-y-2 text-xs">
+                {history.map((h, idx) => (
+                  <li key={idx} className="rounded-lg bg-[var(--color-surface-muted)] p-2">
+                    <p className="font-semibold">{h.label}</p>
+                    <p className="text-[var(--color-text-muted)]">
+                      {formatDate(h.at)}
+                      {h.by_name ? ` · ${h.by_name}` : ""}
+                    </p>
+                    {h.status && <p className="capitalize">Status: {h.status}</p>}
+                    {h.detail && <p className="mt-1">{h.detail}</p>}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+
+        <div className="flex justify-end gap-2 pt-2 border-t border-[var(--color-border)]">
+          <button type="button" className="ui-btn ui-btn-secondary text-xs" onClick={onClose}>
+            Close
+          </button>
+          <button type="button" className="ui-btn ui-btn-ghost text-xs text-rose-600" onClick={onReject}>
+            Reject
+          </button>
+          <button type="button" className="ui-btn ui-btn-primary text-xs" onClick={onApprove}>
+            Approve
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DetailRow({ label, value }) {
+  return (
+    <div className="flex justify-between gap-4 border-b border-[var(--color-border)]/60 pb-2">
+      <dt className="text-[var(--color-text-muted)]">{label}</dt>
+      <dd className="font-medium text-[var(--color-text)] text-right">{value ?? "—"}</dd>
+    </div>
+  );
+}
+
+function approveLeaveMessage(item) {
+  const range = formatDateRange(item.extra);
+  return `Approve Leave Request?\n\n${item.employee_name}\n${item.title}\n${range}\n${item.detail_summary}\n\nAre you sure you want to approve this request?`;
+}
+
+function RejectForm({ item, reason, setReason }) {
+  const range = formatDateRange(item.extra);
+  const summary =
+    item.category === "leave"
+      ? `Employee: ${item.employee_name}\nLeave: ${range || item.detail_summary}`
+      : item.request_code;
+  return (
+    <div className="space-y-3 text-left text-sm">
+      <p className="whitespace-pre-line text-[var(--color-text-muted)]">{summary}</p>
+      <label className="block text-xs font-semibold">
+        Reason for rejection <span className="text-rose-500">*</span>
+        <textarea
+          className="mt-1 w-full rounded-lg border border-[var(--color-border)] px-3 py-2 text-sm"
+          rows={3}
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+        />
+      </label>
     </div>
   );
 }

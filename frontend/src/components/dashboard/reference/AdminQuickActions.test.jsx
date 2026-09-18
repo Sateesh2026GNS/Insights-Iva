@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 
@@ -8,6 +8,10 @@ vi.mock("react-i18next", () => ({
   useTranslation: () => ({
     t: (key) => key,
   }),
+}));
+
+vi.mock("./AdminQuickActionDrawer", () => ({
+  default: ({ open, actionId }) => (open ? <div data-testid="qa-drawer">{actionId}</div> : null),
 }));
 
 const mockUseAuth = vi.fn();
@@ -27,8 +31,6 @@ const mockSummary = {
     categories: [
       { key: "production", label: "Production", count: 2 },
       { key: "inventory", label: "Inventory", count: 1 },
-      { key: "sales", label: "Sales", count: 1 },
-      { key: "quality", label: "Quality", count: 1 },
     ],
   },
 };
@@ -46,47 +48,23 @@ describe("AdminQuickActions", () => {
     );
 
     expect(screen.getByText("refDashboard.quickActions")).toBeInTheDocument();
-    expect(screen.getByLabelText("refDashboard.newWorkOrderAria")).toHaveAttribute(
-      "href",
-      "/production/work-orders"
-    );
-    expect(screen.getByLabelText("refDashboard.productionEntryAria")).toHaveAttribute(
-      "href",
-      "/production/create"
-    );
-    expect(screen.getByLabelText("refDashboard.materialIssueAria")).toHaveAttribute(
-      "href",
-      "/inventory/stock-movement"
-    );
-    expect(screen.getByLabelText("refDashboard.stockTransferAria")).toHaveAttribute(
-      "href",
-      "/inventory/stock-transfer?new=1"
-    );
-    expect(screen.getByLabelText("refDashboard.qcEntryAria")).toHaveAttribute(
-      "href",
-      "/quality/inspection"
-    );
-    expect(screen.getByLabelText("refDashboard.reportsAria")).toHaveAttribute(
-      "href",
-      "/production/reports"
-    );
+    expect(screen.getByTestId("quick-action-new-work-order")).toBeInTheDocument();
+    expect(screen.getByTestId("quick-action-reports")).toBeInTheDocument();
   });
 
-  it("shows live work order counts from API summary", () => {
+  it("opens inline drawer on click without navigation", () => {
     mockUseAuth.mockReturnValue({
       user: { role: "Admin", permissions: ["*"] },
     });
 
     render(
-      <MemoryRouter>
+      <MemoryRouter initialEntries={["/"]}>
         <AdminQuickActions summary={mockSummary} loading={false} />
       </MemoryRouter>
     );
 
-    expect(screen.getAllByText("8").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("refDashboard.qaPending").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("7").length).toBeGreaterThan(0);
-    expect(screen.getByText("Production")).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("quick-action-new-work-order"));
+    expect(screen.getByTestId("qa-drawer")).toHaveTextContent("new-work-order");
   });
 
   it("shows loading skeletons when loading", () => {

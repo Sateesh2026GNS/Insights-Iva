@@ -39,14 +39,14 @@ import AdminProductionWidgets from "./AdminProductionWidgets";
 import AdminQuickActions from "./AdminQuickActions";
 import ProductionPipeline from "./ProductionPipeline";
 import { getErpDashboard } from "../../../api/dashboardApi";
-import { getMaterialRequests, getPurchaseOrders, getVendors } from "../../../api/procurementApi";
 import { getProductionOrders, getWorkOrders } from "../../../api/productionApi";
+import { getMyApprovalCounts } from "../../../api/approvalsApi";
 import useAuth from "../../../hooks/useAuth";
 import MachineControlCard from "../MachineControlCard";
 import ManufacturingWorkflowHub from "../ManufacturingWorkflowHub";
 import DashboardCheckIn from "../DashboardCheckIn";
 import useManufacturingRefresh from "../../../hooks/useManufacturingRefresh";
-import { isAdmin, isOperator } from "../../../config/permissions";
+import { isAdmin, isOperator, userCanAccessApprovalQueue } from "../../../config/permissions";
 import { CardShell, KpiIconWell, StatusBadge, TrendBadge, getKpiAccent } from "./ReferenceParts";
 
 /** Masters → Products visual tokens (only reference for this dashboard). */
@@ -959,25 +959,32 @@ export default function ReferenceDashboard() {
     pendingApprovalsCount: null,
     todayProdCount: null,
   });
+  const [quickActionsRefreshKey, setQuickActionsRefreshKey] = useState(0);
 
   const load = useCallback((isRefresh = false) => {
     if (!isRefresh) setLoading(true);
     setError(null);
 
+    const approvalsFetch = userCanAccessApprovalQueue(user)
+      ? getMyApprovalCounts()
+      : Promise.resolve({ data: null });
+
     Promise.allSettled([
       getErpDashboard({ includeManufacturingWorkflow: false }),
       getProductionOrders(),
       getWorkOrders(),
-      getMaterialRequests(),
-      getPurchaseOrders(),
-      getVendors(),
-    ]).then(([dashRes, prodRes, woRes, mrRes, poRes, vndRes]) => {
+      approvalsFetch,
+    ]).then(([dashRes, prodRes, woRes, approvalsRes]) => {
       if (dashRes.status === "fulfilled" && dashRes.value?.data) {
         setApiData(dashRes.value.data);
         setError(null);
       } else {
         setApiData(DEFAULT_ERP_DASHBOARD);
-        setError(null);
+        setError(
+          dashRes.status === "rejected"
+            ? dashRes.reason?.message || "Unable to load dashboard."
+            : "Unable to load dashboard."
+        );
       }
 
 
@@ -998,52 +1005,11 @@ export default function ReferenceDashboard() {
         woList = woRes.value.data;
       }
 
-      // Calculate exact pending approvals queue matching /admin/approvals
-      const pendingItems = [];
-      if (mrRes.status === "fulfilled" && Array.isArray(mrRes.value?.data)) {
-        mrRes.value.data.forEach((mr) => {
-          const st = (mr.approval_status || mr.status || "").toLowerCase();
-          if (st === "pending" || !st) pendingItems.push(`MR-${mr.id}`);
-        });
+      let realPendingApprovalsCount = null;
+      if (approvalsRes.status === "fulfilled" && approvalsRes.value?.data != null) {
+        const n = Number(approvalsRes.value.data.total);
+        realPendingApprovalsCount = Number.isFinite(n) ? n : 0;
       }
-      if (poRes.status === "fulfilled" && Array.isArray(poRes.value?.data)) {
-        poRes.value.data.forEach((po) => {
-          const st = (po.status || "").toLowerCase();
-          if (st === "draft" || st === "pending") pendingItems.push(`PO-${po.id}`);
-        });
-      }
-      if (vndRes.status === "fulfilled" && Array.isArray(vndRes.value?.data)) {
-        vndRes.value.data.forEach((v) => {
-          const st = (v.approval_status || "").toLowerCase();
-          if (st === "pending") pendingItems.push(`VND-${v.id}`);
-        });
-      }
-      if (prodRes.status === "fulfilled" && Array.isArray(prodRes.value?.data)) {
-        prodRes.value.data.forEach((prd) => {
-          const st = (prd.status || "").toLowerCase();
-          if (st === "planned" || st === "pending") pendingItems.push(`PRD-${prd.id}`);
-        });
-      }
-
-      let userCreatedApprovals = [];
-      try {
-        userCreatedApprovals = JSON.parse(localStorage.getItem("gns_user_created_approvals") || "[]");
-      } catch {
-        userCreatedApprovals = [];
-      }
-      userCreatedApprovals.forEach((u) => pendingItems.push(u.id));
-
-      let approvedStore = {};
-      try {
-        approvedStore = JSON.parse(localStorage.getItem("gns_approvals_status_map") || "{}");
-      } catch {
-        approvedStore = {};
-      }
-
-      const realPendingApprovalsCount = pendingItems.filter((id) => {
-        const st = approvedStore[id];
-        return !st || st === "pending";
-      }).length;
 
       const allOrdersMap = new Map();
       prodList.forEach((o) => allOrdersMap.set(String(o.id), o));
@@ -1078,8 +1044,9 @@ export default function ReferenceDashboard() {
       });
     }).finally(() => {
       setLoading(false);
+      setQuickActionsRefreshKey((k) => k + 1);
     });
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     load(false);
@@ -1234,7 +1201,13 @@ export default function ReferenceDashboard() {
         )}
 
         {showProductionPipeline ? (
-          <ProductionPipeline data={apiData?.production_pipeline} loading={loading} />
+          <ProductionPipeline
+            data={apiData?.production_pipeline}
+            loading={loading}
+            error={error}
+            onRetry={() => load(true)}
+            refreshKey={quickActionsRefreshKey}
+          />
         ) : null}
 
         {showAdminProductionWidgets ? (
@@ -1305,6 +1278,7 @@ export default function ReferenceDashboard() {
                   loading={loading}
                   error={error}
                   onRetry={() => load(true)}
+                  refreshKey={quickActionsRefreshKey}
                 />
               </div>
             ) : null}

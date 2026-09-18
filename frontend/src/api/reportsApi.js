@@ -2,8 +2,8 @@ import api from "./axiosConfig";
 
 const BASE = "/api/reports";
 
-export function listReports() {
-  return api.get(BASE);
+export function listReports(config = {}) {
+  return api.get(BASE, config);
 }
 
 export function runReport(reportKey, params, config = {}) {

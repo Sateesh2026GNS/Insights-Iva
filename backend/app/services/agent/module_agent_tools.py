@@ -148,6 +148,91 @@ def get_business_summary(db: Session, ctx: AgentContext, _inp: EmptyInput) -> Mo
     )
 
 
+def get_production_pipeline_summary(db: Session, ctx: AgentContext, _inp: EmptyInput) -> ModuleSummaryResult:
+    from app.services.dashboard_production_kpis import get_production_pipeline_counts
+
+    counts = get_production_pipeline_counts(db, ctx.tenant_id)
+    flat = {
+        "Pipeline pending": counts.get("pending", 0),
+        "Pipeline planned": counts.get("planned", 0),
+        "Pipeline in production": counts.get("in_production", 0),
+        "Pipeline QC": counts.get("qc", 0),
+        "Pipeline completed": counts.get("completed", 0),
+    }
+    return ModuleSummaryResult(
+        rows=_metric_rows(flat),
+        truncated=False,
+        total_count=len(flat),
+        generated_at=_now_iso(),
+        source_report_key="production_pipeline",
+        report_title="Production pipeline",
+    )
+
+
+def get_quick_actions_summary(db: Session, ctx: AgentContext, _inp: EmptyInput) -> ModuleSummaryResult:
+    from datetime import date
+
+    from app.services.dashboard_service import _get_quick_actions_summary
+
+    summary = _get_quick_actions_summary(db, ctx.tenant_id, date.today())
+    flat: dict[str, Any] = {}
+    wo = summary.get("work_orders") or {}
+    flat["Work orders pending"] = wo.get("pending", 0)
+    flat["Work orders in progress"] = wo.get("in_progress", 0)
+    prod = summary.get("production") or {}
+    flat["Production today (orders)"] = prod.get("today", 0)
+    flat["Produced quantity today"] = prod.get("produced_quantity", 0)
+    mi = summary.get("material_issue") or {}
+    flat["Material issues pending"] = mi.get("pending", 0)
+    st = summary.get("stock_transfer") or {}
+    flat["Stock transfers in transit"] = st.get("in_transit", 0)
+    qc = summary.get("quality_control") or {}
+    flat["QC failed"] = qc.get("failed", 0)
+    return ModuleSummaryResult(
+        rows=_metric_rows(flat),
+        truncated=False,
+        total_count=len(flat),
+        generated_at=_now_iso(),
+        source_report_key="quick_actions_summary",
+        report_title="Quick Actions summary",
+    )
+
+
+def get_my_pending_approvals(db: Session, ctx: AgentContext, _inp: EmptyInput) -> ModuleSummaryResult:
+    from app.services.approval_queue_service import list_approval_queue, pending_counts_for_user
+
+    counts = pending_counts_for_user(db, ctx.user)
+    queue = list_approval_queue(db, ctx.user, page=1, page_size=20)
+    leave_rows = [
+        {
+            "metric": f"Leave LR-{item.resource_id}",
+            "value": f"{item.employee_name} · {item.title} · {item.status}",
+        }
+        for item in queue["items"]
+        if item.category == "leave"
+    ]
+    summary_rows = _metric_rows(
+        {
+            "Pending approvals (yours)": counts.get("total", 0),
+            "Pending leave requests": counts.get("leave_requests", 0),
+            "Pending material requests": counts.get("material_requests", 0),
+            "Pending purchase orders": counts.get("purchase_orders", 0),
+            "Pending vendors": counts.get("vendors", 0),
+            "Pending production orders": counts.get("production_orders", 0),
+            "Pending inventory adjustments": counts.get("inventory", 0),
+        }
+    )
+    rows = summary_rows + leave_rows
+    return ModuleSummaryResult(
+        rows=rows,
+        truncated=len(queue["items"]) > 20,
+        total_count=len(rows),
+        generated_at=_now_iso(),
+        source_report_key="my_pending_approvals",
+        report_title="My pending approvals",
+    )
+
+
 def register_module_role_tools() -> None:
     empty_schema = EmptyInput.model_json_schema()
     register_tool(
@@ -182,6 +267,44 @@ def register_module_role_tools() -> None:
             description="High-level business dashboard KPIs for the tenant (admin).",
             parameters_schema=empty_schema,
             allowed_roles=frozenset({ROLE_ADMIN}),
+            sensitivity="elevated",
+        )
+    )
+    register_tool(
+        AgentToolDefinition(
+            name="get_quick_actions_summary",
+            description=(
+                "Admin dashboard Quick Actions counts: work orders, production, material issues, "
+                "stock transfers, QC (same data as dashboard cards)."
+            ),
+            parameters_schema=empty_schema,
+            allowed_roles=frozenset({ROLE_ADMIN, ROLE_HR_MANAGER}),
+            sensitivity="elevated",
+        )
+    )
+    register_tool(
+        AgentToolDefinition(
+            name="get_production_pipeline_summary",
+            description=(
+                "Admin dashboard Production Pipeline work-order counts by stage: pending, planned, "
+                "in production, QC, completed (same data as the pipeline strip)."
+            ),
+            parameters_schema=empty_schema,
+            allowed_roles=frozenset({ROLE_ADMIN}),
+            sensitivity="elevated",
+        )
+    )
+    register_tool(
+        AgentToolDefinition(
+            name="get_my_pending_approvals",
+            description=(
+                "Pending approval queue for the current user: counts and pending leave "
+                "requests they may approve (same RBAC as Approvals page)."
+            ),
+            parameters_schema=empty_schema,
+            allowed_roles=frozenset(
+                {ROLE_ADMIN, ROLE_HR_MANAGER, ROLE_ACCOUNTANT, ROLE_QUALITY_CONTROL}
+            ),
             sensitivity="elevated",
         )
     )

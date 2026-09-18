@@ -94,6 +94,12 @@ export const SIDEBAR_NAV = [
       { label: "Payments Made", to: "/purchases/payments-made", module: "procurement" },
       { label: "Debit Note", to: "/purchases/debit-notes", module: "procurement" },
       { label: "Purchase Order", to: "/procurement/purchase-orders", module: "procurement" },
+      {
+        label: "Pending Approvals",
+        to: "/admin/approvals",
+        module: "procurement",
+        approvalQueue: true,
+      },
     ],
   },
   {
@@ -231,7 +237,12 @@ export const SIDEBAR_NAV = [
       { label: "Users", to: "/admin/users", module: "admin" },
       { label: "Roles & Permissions", to: "/admin/roles", module: "admin" },
       { label: "Access Logs", to: "/admin/audit-logs", module: "admin" },
-      { label: "Pending Approvals", to: "/admin/approvals", module: "admin" },
+      {
+        label: "Pending Approvals",
+        to: "/admin/approvals",
+        module: "admin",
+        approvalQueue: true,
+      },
     ],
   },
   {
