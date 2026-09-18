@@ -19,13 +19,8 @@ router = APIRouter(prefix="/ai", tags=["ai-assistant"])
 
 
 def _require_operator_access(user: User) -> User:
-    if user_is_admin(user):
-        raise HTTPException(status_code=403, detail="Operator access is required to use the AI assistant.")
-
-    role_names = {name.lower() for name in get_role_names(user)}
-    if "operator" not in role_names:
-        raise HTTPException(status_code=403, detail="Operator access is required to use the AI assistant.")
-
+    if not user:
+        raise HTTPException(status_code=401, detail="Authentication required.")
     return user
 
 

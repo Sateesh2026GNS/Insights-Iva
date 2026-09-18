@@ -78,11 +78,40 @@ def is_account_locked(user: User) -> bool:
     return True
 
 
+def get_account_lockout_remaining_seconds(user: User) -> int:
+    if not user.locked_until:
+        return 0
+    locked_until = user.locked_until
+    if locked_until.tzinfo is None:
+        locked_until = locked_until.replace(tzinfo=timezone.utc)
+    now = _utcnow()
+    if now >= locked_until:
+        return 0
+    import math
+    return max(1, int(math.ceil((locked_until - now).total_seconds())))
+
+
 def register_failed_login(db: Session, user: User | None, email: str) -> None:
     if not user:
         return
     try:
         now = _utcnow()
+        # If user was previously locked and the lockout period has expired, reset failures before counting new attempt
+        if user.locked_until:
+            locked_until = user.locked_until
+            if locked_until.tzinfo is None:
+                locked_until = locked_until.replace(tzinfo=timezone.utc)
+            if now >= locked_until:
+                user.failed_login_attempts = 0
+                user.locked_until = None
+        elif user.last_failed_login_at:
+            last = user.last_failed_login_at
+            if last.tzinfo is None:
+                last = last.replace(tzinfo=timezone.utc)
+            # If last failure was more than 15 minutes ago, reset stale failure count
+            if now - last > timedelta(minutes=15):
+                user.failed_login_attempts = 0
+
         user.failed_login_attempts = int(user.failed_login_attempts or 0) + 1
         user.last_failed_login_at = now
         if user.failed_login_attempts >= settings.max_login_attempts:

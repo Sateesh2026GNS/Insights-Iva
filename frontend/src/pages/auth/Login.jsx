@@ -58,7 +58,9 @@ export default function Login() {
   const [error, setError] = useState("");
   const [showSuccess, setShowSuccess] = useState(false);
   const [redirectPath, setRedirectPath] = useState("/");
+  const [lockoutSeconds, setLockoutSeconds] = useState(0);
   const redirectTimerRef = useRef(null);
+  const lockoutTimerRef = useRef(null);
 
   useEffect(() => {
     document.documentElement.dataset.theme = "light";
@@ -67,8 +69,37 @@ export default function Login() {
     triggerServerWakeup();
     return () => {
       if (redirectTimerRef.current) clearTimeout(redirectTimerRef.current);
+      if (lockoutTimerRef.current) clearInterval(lockoutTimerRef.current);
     };
   }, []);
+
+  // Countdown timer — decrements lockoutSeconds every second
+  useEffect(() => {
+    if (lockoutSeconds <= 0) {
+      if (lockoutTimerRef.current) {
+        clearInterval(lockoutTimerRef.current);
+        lockoutTimerRef.current = null;
+      }
+      return;
+    }
+    lockoutTimerRef.current = setInterval(() => {
+      setLockoutSeconds((s) => {
+        if (s <= 1) {
+          clearInterval(lockoutTimerRef.current);
+          lockoutTimerRef.current = null;
+          setError("");
+          return 0;
+        }
+        return s - 1;
+      });
+    }, 1000);
+    return () => {
+      if (lockoutTimerRef.current) {
+        clearInterval(lockoutTimerRef.current);
+        lockoutTimerRef.current = null;
+      }
+    };
+  }, [lockoutSeconds > 0 ? 1 : 0]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const navigateNow = (targetPath) => {
     if (redirectTimerRef.current) {
@@ -97,6 +128,7 @@ export default function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    if (lockoutSeconds > 0) return; // Block submission during cooldown
     if (!email.trim() || !password || !role) {
       setError("Company email, password, and role are required.");
       return;
@@ -105,9 +137,20 @@ export default function Login() {
 
     try {
       const data = await loginApi(email.trim(), password, role);
+      setLockoutSeconds(0);
       completeLogin(data);
     } catch (err) {
-      setError(getLoginErrorMessage(err, "Login failed. Please verify your credentials and network connection."));
+      const status = err?.response?.status;
+      if (status === 429) {
+        // Extract Retry-After seconds from response header or default to 60s
+        const retryAfter = err?.response?.headers?.["retry-after"];
+        const secs = retryAfter ? parseInt(retryAfter, 10) : 60;
+        const validSecs = Number.isFinite(secs) && secs > 0 ? secs : 60;
+        setLockoutSeconds(validSecs);
+        setError(`Too many failed attempts. Please wait ${validSecs}s before trying again.`);
+      } else {
+        setError(getLoginErrorMessage(err, "Login failed. Please verify your credentials and network connection."));
+      }
     } finally {
       setLoading(false);
     }
@@ -136,8 +179,14 @@ export default function Login() {
               </div>
 
               {error && (
-                <div className="mb-3 w-full rounded-lg border border-red-300 bg-red-50 p-3 text-xs sm:text-sm text-red-700">
-                  {error}
+                <div
+                  className={`mb-3 w-full rounded-lg border p-3 text-xs sm:text-sm ${
+                    lockoutSeconds > 0
+                      ? "border-amber-300 bg-amber-50 text-amber-800"
+                      : "border-red-300 bg-red-50 text-red-700"
+                  }`}
+                >
+                  {lockoutSeconds > 0 ? "⏳ " : ""}{error}
                 </div>
               )}
 
@@ -218,11 +267,15 @@ export default function Login() {
                   type="submit"
                   variant="primary"
                   fullWidth
-                  disabled={loading}
+                  disabled={loading || lockoutSeconds > 0}
                   loading={loading}
                   className="min-h-[46px] uppercase tracking-wider font-semibold shadow-md active:scale-[0.99] transition-transform"
                 >
-                  {loading ? "SIGNING IN..." : "SIGN IN"}
+                  {lockoutSeconds > 0
+                    ? `PLEASE WAIT (${lockoutSeconds}s)`
+                    : loading
+                    ? "SIGNING IN..."
+                    : "SIGN IN"}
                 </Button>
               </form>
             </div>

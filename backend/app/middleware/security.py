@@ -34,6 +34,14 @@ def clear_buckets() -> None:
         _failure_buckets.clear()
 
 
+def clear_auth_backoff(request: Request, email: str | None = None) -> None:
+    """Clear in-memory auth failure count and backoff buckets upon successful login."""
+    key = _client_key(request, email)
+    with _lock:
+        _failure_buckets.pop(f"fail:{key}", None)
+        _buckets.pop(f"backoff:{key}", None)
+
+
 def _client_ip(request: Request) -> str:
     forwarded = request.headers.get("X-Forwarded-For")
     if forwarded:

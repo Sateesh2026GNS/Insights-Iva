@@ -129,6 +129,8 @@ def api_login(
         check_auth_backoff(request, email=email)
         user = find_user_by_email(db, email)
         if user and is_account_locked(user):
+            from app.services.security_service import get_account_lockout_remaining_seconds
+            rem = get_account_lockout_remaining_seconds(user)
             try:
                 AuditLogService.log_login_failed(db, request=request, email=email, user=user)
             except Exception:
@@ -136,14 +138,17 @@ def api_login(
             return JSONResponse(
                 status_code=429,
                 content=error_response("Account temporarily locked. Try again later."),
+                headers={"Retry-After": str(rem)},
             )
         try:
             authenticated = login_user(db, email, payload.password)
-            db.refresh(authenticated, ["roles", "tenant"])
-            role = assert_user_has_role(authenticated, payload.role)
         except HTTPException as exc:
+            if user:
+                from app.services.security_service import register_failed_login
+                register_failed_login(db, user, email)
+            record_auth_failure(request, email=email)
             detail = str(exc.detail)
-            target_user = authenticated if 'authenticated' in locals() and authenticated else user
+            target_user = user
             try:
                 AuditLogService.log_login_failed(
                     db,
@@ -161,6 +166,32 @@ def api_login(
                 status_code=exc.status_code,
                 content=error_response(detail, errors=[detail]),
             )
+
+        db.refresh(authenticated, ["roles", "tenant"])
+        try:
+            role = assert_user_has_role(authenticated, payload.role)
+        except HTTPException as exc:
+            detail = str(exc.detail)
+            try:
+                AuditLogService.log_login_failed(
+                    db,
+                    request=request,
+                    email=email,
+                    user=authenticated,
+                    details=detail if detail == ROLE_MISMATCH_MESSAGE else None,
+                    role=payload.role,
+                )
+            except Exception:
+                logger.exception("Failed to log failed login attempt for email %s", email)
+            return JSONResponse(
+                status_code=exc.status_code,
+                content=error_response(detail, errors=[detail]),
+            )
+        try:
+            from app.middleware.security import clear_auth_backoff
+            clear_auth_backoff(request, email=email)
+        except Exception:
+            pass
         AuditLogService.log_login_success(
             db, request=request, user=authenticated, role=role
         )

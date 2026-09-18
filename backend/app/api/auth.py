@@ -90,6 +90,8 @@ def login(req: LoginRequest, request: Request, db: Session = Depends(get_db)):
         user = find_user_by_email(db, email)
 
         if user and is_account_locked(user):
+            from app.services.security_service import get_account_lockout_remaining_seconds
+            remaining_seconds = get_account_lockout_remaining_seconds(user)
             record_login_attempt(
                 db,
                 email=email,
@@ -113,6 +115,7 @@ def login(req: LoginRequest, request: Request, db: Session = Depends(get_db)):
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 detail=ACCOUNT_LOCKED_MESSAGE,
+                headers={"Retry-After": str(remaining_seconds)},
             )
 
         if not db.scalar(select(func.count(User.id))):
@@ -214,6 +217,11 @@ def login(req: LoginRequest, request: Request, db: Session = Depends(get_db)):
             user=authenticated,
             role=actual_role,
         )
+        try:
+            from app.middleware.security import clear_auth_backoff
+            clear_auth_backoff(request, email=email)
+        except Exception:
+            pass
         data = issue_auth_response_data(
             db,
             authenticated,

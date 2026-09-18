@@ -1,9 +1,5 @@
 import { isAiCopilotEnabled, isOperatorAiRoute } from "./aiCopilot";
-import {
-  isAdmin,
-  isOperator,
-  userCanAccess,
-} from "../config/permissions";
+import { isOperator } from "../config/permissions";
 import { operatorPathAllowed } from "../config/rbacNavFilters";
 
 export const AI_ASSISTANT_MODES = {
@@ -36,12 +32,14 @@ export function isErpAiEligibleRoute(pathname) {
 /** Backend `/api/agent/chat` — inventory or sales module (role-filtered tools server-side). */
 export function userCanUseRegistryAgent(user) {
   if (!user) return false;
-  if (isAdmin(user)) return true;
-  return userCanAccess(user, "inventory") || userCanAccess(user, "sales");
+  // All authenticated users with any ERP access can use the agent; backend enforces tool-level access
+  return true;
 }
 
 /**
  * Which assistant to mount in the app shell (single instance, no per-page duplication).
+ * - Operators on their allowed routes → 'operator' (AiChatWidget)
+ * - All other authenticated ERP users → 'registry' (StoreAgentChatPanel)
  * @returns {'operator'|'registry'|null}
  */
 export function resolveErpAiAssistantMode(user, pathname) {
