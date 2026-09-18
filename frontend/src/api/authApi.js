@@ -175,10 +175,10 @@ export function getLoginErrorMessage(err, fallback = "Login failed. Please try a
   const detail = getApiErrorMessage(err, "");
 
   if (err?.code === "ECONNABORTED" || err?.message?.toLowerCase().includes("timeout")) {
-    return "The server is taking longer than expected to wake up. Please wait a few seconds and try again.";
+    return "Server request timed out. Please check your connection and try again.";
   }
   if (status === 502 || status === 503 || status === 504) {
-    return "The server is currently waking up. Please wait a few seconds and try again.";
+    return "Service temporarily unavailable. Please try again in a few moments.";
   }
   if (err?.code === "ERR_NETWORK" || (!err?.response && err?.message)) {
     return "Unable to connect to the backend server. Please check your internet connection or verify the API is running.";

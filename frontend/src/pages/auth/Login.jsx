@@ -55,12 +55,10 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [role, setRole] = useState("");
   const [loading, setLoading] = useState(false);
-  const [isWakingServer, setIsWakingServer] = useState(false);
   const [error, setError] = useState("");
   const [showSuccess, setShowSuccess] = useState(false);
   const [redirectPath, setRedirectPath] = useState("/");
   const redirectTimerRef = useRef(null);
-  const wakingTimerRef = useRef(null);
 
   useEffect(() => {
     document.documentElement.dataset.theme = "light";
@@ -69,7 +67,6 @@ export default function Login() {
     triggerServerWakeup();
     return () => {
       if (redirectTimerRef.current) clearTimeout(redirectTimerRef.current);
-      if (wakingTimerRef.current) clearTimeout(wakingTimerRef.current);
     };
   }, []);
 
@@ -92,7 +89,6 @@ export default function Login() {
     setRedirectPath(path);
     setShowSuccess(true);
     setLoading(false);
-    setIsWakingServer(false);
     redirectTimerRef.current = setTimeout(() => {
       navigate(path, { replace: true });
     }, LOGIN_SUCCESS_MS);
@@ -106,25 +102,14 @@ export default function Login() {
       return;
     }
     setLoading(true);
-    setIsWakingServer(false);
-
-    if (wakingTimerRef.current) clearTimeout(wakingTimerRef.current);
-    wakingTimerRef.current = setTimeout(() => {
-      setIsWakingServer(true);
-    }, 3000);
 
     try {
       const data = await loginApi(email.trim(), password, role);
-      if (wakingTimerRef.current) clearTimeout(wakingTimerRef.current);
       completeLogin(data);
     } catch (err) {
-      if (wakingTimerRef.current) clearTimeout(wakingTimerRef.current);
-      setIsWakingServer(false);
       setError(getLoginErrorMessage(err, "Login failed. Please verify your credentials and network connection."));
     } finally {
-      if (wakingTimerRef.current) clearTimeout(wakingTimerRef.current);
       setLoading(false);
-      setIsWakingServer(false);
     }
   };
 
@@ -237,7 +222,7 @@ export default function Login() {
                   loading={loading}
                   className="min-h-[46px] uppercase tracking-wider font-semibold shadow-md active:scale-[0.99] transition-transform"
                 >
-                  {loading ? (isWakingServer ? "WAKING UP SERVER..." : "SIGNING IN...") : "SIGN IN"}
+                  {loading ? "SIGNING IN..." : "SIGN IN"}
                 </Button>
               </form>
             </div>

@@ -48,17 +48,12 @@ export default function SuperAdminLogin() {
   const [password, setPassword] = useState("");
   const [showPwd, setShowPwd]   = useState(false);
   const [loading, setLoading]   = useState(false);
-  const [isWakingServer, setIsWakingServer] = useState(false);
   const [error, setError]       = useState("");
-  const wakingTimerRef = useRef(null);
 
   useEffect(() => {
     document.documentElement.dataset.theme = "light";
     document.documentElement.classList.remove("dark");
     triggerServerWakeup();
-    return () => {
-      if (wakingTimerRef.current) clearTimeout(wakingTimerRef.current);
-    };
   }, []);
 
   if (location.pathname === "/login") {
@@ -69,16 +64,9 @@ export default function SuperAdminLogin() {
     e.preventDefault();
     setError("");
     setLoading(true);
-    setIsWakingServer(false);
-
-    if (wakingTimerRef.current) clearTimeout(wakingTimerRef.current);
-    wakingTimerRef.current = setTimeout(() => {
-      setIsWakingServer(true);
-    }, 3000);
 
     try {
       const data = await superAdminLogin(email.trim(), password);
-      if (wakingTimerRef.current) clearTimeout(wakingTimerRef.current);
       navigate("/gns-admin/verify-otp", {
         replace: true,
         state: {
@@ -91,18 +79,14 @@ export default function SuperAdminLogin() {
         },
       });
     } catch (err) {
-      if (wakingTimerRef.current) clearTimeout(wakingTimerRef.current);
-      setIsWakingServer(false);
       if (!err.response) {
-        setError("The server is taking longer than expected to wake up. Please wait a few seconds and try again.");
+        setError("Unable to connect to the server. Please check your network connection and try again.");
       } else {
         const detail = err.response?.data?.detail;
         setError(typeof detail === "string" ? detail : "Login failed.");
       }
     } finally {
-      if (wakingTimerRef.current) clearTimeout(wakingTimerRef.current);
       setLoading(false);
-      setIsWakingServer(false);
     }
   };
 
@@ -216,7 +200,7 @@ export default function SuperAdminLogin() {
               disabled={loading}
               className="sa-btn"
             >
-              <span>{loading ? (isWakingServer ? "Connecting to server…" : "Verifying…") : "Continue"}</span>
+              <span>{loading ? "Verifying…" : "Continue"}</span>
               <ArrowIcon />
             </button>
           </form>

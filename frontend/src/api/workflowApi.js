@@ -65,8 +65,13 @@ export const getWorkflowQueue = (params = {}) =>
   api.get("/manufacturing/workflow/queue", { params });
 
 /** Role-filtered actionable queue — backend determines visibility (preferred). */
-export const getMyJobCardQueue = (params = {}) =>
-  api.get("/manufacturing/workflow/my-queue", { params });
+export const getMyJobCardQueue = (params = {}) => {
+  const safeParams = { ...params };
+  if (safeParams.limit != null && Number(safeParams.limit) > 500) {
+    safeParams.limit = 500;
+  }
+  return api.get("/manufacturing/workflow/my-queue", { params: safeParams });
+};
 
 export const getWorkflowRoutingMeta = () =>
   api.get("/manufacturing/workflow/routing");

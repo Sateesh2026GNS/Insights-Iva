@@ -53,7 +53,7 @@ import "../../styles/my-job-cards-page.css";
 import "../../styles/workflow-next-step.css";
 
 const PAGE_SIZES = [10, 20, 50, 100];
-const FETCH_LIMIT = 2000;
+const FETCH_LIMIT = 500;
 
 const EMPTY_FILTERS = {
   search: "",
