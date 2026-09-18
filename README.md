@@ -10,13 +10,14 @@ Insights Iva is a full-stack manufacturing ERP and business intelligence platfor
 | **Frontend** | React 18, Vite, React Router, Axios, Tailwind CSS, i18next |
 | **Database** | PostgreSQL 14+ (required at runtime); SQLite only for tests |
 
-Production deployment, security hardening, and environment variables: [backend/PRODUCTION_DEPLOYMENT.md](./backend/PRODUCTION_DEPLOYMENT.md).
+**Deployment:** [backend/PRODUCTION_DEPLOYMENT.md](./backend/PRODUCTION_DEPLOYMENT.md) · **PostgreSQL:** [backend/POSTGRES_MIGRATION.md](./backend/POSTGRES_MIGRATION.md) · **Render:** [`render.yaml`](./render.yaml) (API web service)
 
 ---
 
 ## Table of contents
 
 - [Features](#features)
+- [Admin dashboard](#admin-dashboard)
 - [Quick start](#quick-start)
 - [Development](#development)
 - [Project structure](#project-structure)
@@ -26,6 +27,7 @@ Production deployment, security hardening, and environment variables: [backend/P
 - [UI design system](#ui-design-system)
 - [Testing](#testing)
 - [Branding](#branding)
+- [Production deployment](#production-deployment)
 - [License](#license)
 
 ---
@@ -33,44 +35,82 @@ Production deployment, security hardening, and environment variables: [backend/P
 ## Features
 
 ### Production & manufacturing
+
 - Production planning, MRP, work orders, batch tracking, machine status, daily reports
 - **Manufacturing workflow engine** — Sales Order → Job Card → Inventory Check → Production → Quality → Packing → Billing → Completed
-- **My Job Cards** (`/my-job-cards`) — manual job card entry form, searchable/filterable queue, edit · view · delete with RBAC; one job card per confirmed sales order
+- **My Job Cards** (`/my-job-cards`) — manual job card entry, searchable queue, edit · view · delete with RBAC
 - Shop-floor job card views and role-based workflow boards (`/manufacturing/workflow`)
 
 ### Inventory & procurement
+
 - Store dashboard, raw materials, finished goods, stock transfer/adjustment, stock ledger, warehouses
 - Purchase orders, material requests, goods receipt (GRN), supplier payments
 - Enterprise vendor master with GST, bank verification, and performance tracking
 
 ### Sales & billing
+
 - Sales orders, quotations, tax invoices, proforma/export invoices, delivery challans, credit/debit notes
 - Payment receipts, refund vouchers, e-Invoice helpers, GST billing (SGST/CGST/IGST)
 - Confirmed sales orders advance the manufacturing workflow and expose job card creation
-- Sales order delete with structured 409 responses when downstream blockers exist (invoice, dispatch, quality inspection)
+- Sales order delete with structured 409 responses when downstream blockers exist
 
 ### Finance & accounts
+
 - Chart of accounts, ledger, manual journal entries, expenses, balance sheet, P&L, accounting reports
 - Excel/PDF export where supported
 
 ### HR (full stack)
+
 - Employees, attendance, leave, payroll, expenses, site visits, assets, recruitment, shifts
-- Organization setup (departments, designations, leave types, branches)
-- MIS reports (attendance, leave, PF, ESIC, salary, bank template)
-- Role permissions per HR role (`/hr/roles`)
+- Organization setup, MIS reports, role permissions per HR role
 - 60+ `/hr/*` APIs; operational pages use live PostgreSQL data only
 
 ### Quality, maintenance & analytics
+
 - Quality inspection, defect tracking, batch quality reports, compliance logs
 - Preventive maintenance, breakdown reports, maintenance schedules
 - Production, machine efficiency, inventory, and profit analytics
 
 ### Platform
+
 - Multi-tenant SaaS with JWT auth, refresh tokens, email verification, login lockout
 - In-app notification bell with unread badge and infinite scroll
 - Google Calendar + Meet integration for the Meetings module
 - Multi-language UI: English, Hindi, Tamil, Telugu
-- AI assistant endpoint (optional)
+- **AI assistant** — module tools use the same backend data as dashboards (no parallel mock counts)
+
+---
+
+## Admin dashboard
+
+The main ERP dashboard (`ReferenceDashboard`) loads from **`GET /api/erp/dashboard`** (tenant-scoped, RBAC via `require_tenant("dashboard")`). Data is live from PostgreSQL — not hardcoded on the client.
+
+| Widget | Behavior |
+|--------|----------|
+| **Production Pipeline** | Five stages (Pending → Planned → In Production → QC → Completed). Counts from `dashboard_production_kpis.get_production_pipeline_counts`. Click a stage → inline drawer with paginated work orders; row → existing **Work Order detail** modal. No route navigation on stage click. |
+| **Quick Actions** | Live summary on cards from `quick_actions_summary`. Click → inline drawer (work orders, production, material issue, transfers, QC, reports). **Open full page** link goes to existing ERP routes. |
+| **Approval Center** | `/admin/approvals` — unified queue (leave, procurement, production, inventory) with inline approve/reject. KPI counts from approval APIs. |
+
+**Pipeline status mapping** (backend only — one work order per current stage):
+
+| Stage | Work order statuses |
+|-------|---------------------|
+| Pending | `pending`, `on_hold`, `hold`, `paused` |
+| Planned | `draft`, `planned`, `released`, `material_ready`, `machine_ready` |
+| In production | `in_progress`, `running`, `started`, `active` |
+| QC | `quality_check`, `qc_pending`, `pending_qc` |
+| Completed | `completed`, `closed`, `done` |
+
+**Detail APIs** (same filters as counts):
+
+- `GET /api/erp/dashboard/production-pipeline/work-orders?stage=&page=&page_size=&search=`
+- `GET /api/erp/dashboard/quick-actions/work-orders` (and `/production`, `/material-issues`, `/stock-transfers`, `/quality`)
+
+**AI tools:** `get_production_pipeline_summary`, `get_quick_actions_summary`, `get_my_pending_approvals` — same sources as the UI.
+
+**Key frontend files:** `frontend/src/components/dashboard/reference/ProductionPipeline.jsx`, `ProductionPipelineDrawer.jsx`, `AdminQuickActions.jsx`, `AdminQuickActionDrawer.jsx`, `frontend/src/pages/admin/PendingApprovals.jsx`.
+
+**Key backend files:** `backend/app/services/dashboard_production_kpis.py`, `dashboard_service.py`, `quick_actions_detail_service.py`, `approval_queue_service.py`, `backend/app/routers/dashboard_api.py`.
 
 ---
 
@@ -111,7 +151,7 @@ pip install -r requirements.txt
 cp .env.example .env
 # Set DATABASE_URL to PostgreSQL (see .env.example)
 alembic upgrade head
-alembic current   # expect: k9l0m1n2o3p4 (head)
+alembic current   # confirm head revision
 
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
@@ -130,7 +170,9 @@ npm run dev
 
 - **App:** http://localhost:5173
 
-Vite proxies API routes (`/auth`, `/api`, `/sales`, `/manufacturing`, `/inventory`, `/hr`, etc.) to `http://127.0.0.1:8000` in development. **Restart Vite** after changing `vite.config.js`.
+Vite proxies API routes (`/auth`, `/api`, `/sales`, `/manufacturing`, `/inventory`, `/hr`, etc.) to `http://127.0.0.1:8000`. **Restart Vite** after changing `vite.config.js`.
+
+For Firebase / static hosting, `VITE_API_BASE_URL` can point at the hosted API (see `frontend/src/api/axiosConfig.js`).
 
 ### 4. First user
 
@@ -140,7 +182,7 @@ Register via the UI or:
 POST http://localhost:8000/auth/register
 ```
 
-Password minimum: **12 characters**. Demo seed accounts may be created on startup when configured in `.env` (`seed_users.py`).
+Password minimum: **12 characters**. Demo seed accounts may be created on startup when configured in `.env`.
 
 ---
 
@@ -170,9 +212,10 @@ Never commit `.env`. Never put secrets in `VITE_*` variables.
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
-| Vite `ECONNRESET` on `/sales/...` | Backend hot-reload restarted mid-request | Refresh; wait for uvicorn to finish starting |
-| Job card form empty after reload | Transient proxy error | Form retries automatically; ensure backend is on port 8000 |
+| Vite `ECONNRESET` on API calls | Backend hot-reload restarted mid-request | Refresh; wait for uvicorn to finish starting |
+| Dashboard drawers show “API endpoint not available” | Hosted frontend without matching API routes | Run latest backend locally or deploy API with new `/api/erp/dashboard/*` routes |
 | Migration errors | DB not on latest head | `alembic upgrade head` |
+| Pipeline / Quick Actions show `0` during load | Treating loading as zero | Use dashboard refresh; components show skeletons until `GET /api/erp/dashboard` completes |
 
 ---
 
@@ -183,45 +226,36 @@ Insights Iva/
 ├── backend/
 │   ├── app/
 │   │   ├── main.py              # FastAPI app, routers, middleware
-│   │   ├── api/                 # auth, sales, inventory, manufacturing_workflow_api, hr, …
-│   │   ├── routers/             # /api/* (notifications, dashboard, production, …)
-│   │   ├── services/            # Business logic
+│   │   ├── api/                 # auth, sales, inventory, manufacturing_workflow_api, admin, …
+│   │   ├── routers/             # dashboard_api, production_api, …
+│   │   ├── services/            # dashboard_*, approval_*, production_*, agent/
 │   │   ├── models/              # SQLAlchemy models
-│   │   ├── schemas/             # Pydantic schemas
+│   │   ├── schemas/
 │   │   └── core/                # Config, database, RBAC, seeds
 │   ├── alembic/
 │   ├── tests/
-│   ├── scripts/                 # backup_postgres.py, migration utilities
+│   ├── scripts/
 │   ├── docker-compose.postgres.yml
+│   ├── Dockerfile
 │   ├── PRODUCTION_DEPLOYMENT.md
+│   ├── POSTGRES_MIGRATION.md
 │   └── requirements.txt
 │
 ├── frontend/
-│   ├── public/                  # logo.png, auth slides
+│   ├── public/
 │   ├── src/
-│   │   ├── api/                 # Axios clients (salesApi, workflowApi, hrApi, …)
-│   │   ├── components/          # common/, manufacturing/, accounts/, inventory/, …
-│   │   ├── design-system/       # Button tokens, form controls, dateControls
-│   │   ├── pages/               # Route pages (lazy-loaded via lazyPages.jsx)
+│   │   ├── api/                 # axiosConfig, dashboardApi, productionPipelineApi, approvalsApi, …
+│   │   ├── components/          # dashboard/reference/, production/, common/, …
+│   │   ├── pages/               # Lazy-loaded via lazyPages.jsx
 │   │   ├── routes/
-│   │   ├── context/             # Auth, Toast, Settings
-│   │   └── utils/               # apiError, jobCardListStatus, transientNetworkRetry
+│   │   ├── config/              # permissions, sidebarNav, RBAC
+│   │   └── utils/               # apiError, sessionManager, …
 │   ├── vite.config.js
 │   └── package.json
 │
+├── render.yaml                  # Render.com API service definition
 └── README.md
 ```
-
-### Key files (recent manufacturing work)
-
-| File | Purpose |
-|------|---------|
-| `frontend/src/pages/manufacturing/MyJobCardsPage.jsx` | My Job Cards page (form + queue + filters) |
-| `frontend/src/components/manufacturing/MyJobCardEntryForm.jsx` | Manual job card create/edit form |
-| `frontend/src/components/manufacturing/JobCardQueueTable.jsx` | Job card list table |
-| `backend/app/services/job_card_service.py` | Job card business logic |
-| `backend/app/api/manufacturing_workflow_api.py` | Workflow + job card API routes |
-| `backend/app/services/sales_service.py` | Sales order delete + blocker checks |
 
 ---
 
@@ -255,15 +289,15 @@ Sales Order (confirmed)
 
 | Role | Typical access |
 |------|----------------|
-| Admin | Full access |
+| Admin | Full access; ERP dashboard, approvals, Quick Actions |
 | Sales Manager | Sales, customers, orders, quotations |
 | Production Manager | Production, MRP, workflow |
 | Store Manager | Inventory, purchases, GRN, vendors |
-| HR Manager | HR module |
+| HR Manager | HR module, approval center (where permitted) |
 | Accountant | Accounts, finance reports |
-| Operator | Shop-floor job cards, assigned work |
+| Operator | Shop-floor job cards, assigned work (no admin dashboard widgets) |
 
-Enforced on API (`require_permission`) and frontend (sidebar + route guards). Config: `backend/app/core/permissions.py`, `rbac_constants.py`.
+Enforced on API (`require_permission`, `require_tenant`) and frontend (sidebar + route guards). Config: `backend/app/core/permissions.py`, `frontend/src/config/permissions.js`.
 
 ---
 
@@ -272,7 +306,11 @@ Enforced on API (`require_permission`) and frontend (sidebar + route guards). Co
 | Prefix | Description |
 |--------|-------------|
 | `/auth` | Login, register, refresh, password reset |
-| `/api/*` | Notifications, dashboard, production, masters |
+| `/api/erp/dashboard` | ERP dashboard metrics, `production_pipeline`, `quick_actions_summary` |
+| `/api/erp/dashboard/production-pipeline/*` | Pipeline stage work-order lists |
+| `/api/erp/dashboard/quick-actions/*` | Quick Action drawer detail lists |
+| `/api/admin/approvals/*` | Approval queue, counts, decide endpoints |
+| `/api/*` | Notifications, production, masters, reports |
 | `/sales` | Customers, orders, invoices, quotations |
 | `/manufacturing` | Workflow, job cards, material checks |
 | `/inventory` | Items, warehouses, stock movements |
@@ -282,9 +320,9 @@ Enforced on API (`require_permission`) and frontend (sidebar + route guards). Co
 | `/meetings` | Calendar, Google OAuth |
 | `/health` | Health check |
 
-Interactive docs: http://localhost:8000/docs
+Interactive docs (non-production): http://localhost:8000/docs
 
-Frontend error handling: `frontend/src/utils/apiError.js` (reads `detail`, `message`, and envelope `data`).
+Frontend errors: `frontend/src/utils/apiError.js` (`detail`, `message`, standard envelope).
 
 ---
 
@@ -302,24 +340,29 @@ Tokens: `frontend/src/index.css`. Barrel: `frontend/src/design-system/index.js`.
 | `danger` | Delete |
 | `warning` | Hold / pending |
 
-Use `Button`, `AddButton`, `TableActionButtons` from `components/common/` — do not hand-roll colors on pages.
+Use `Button`, `AddButton`, `TableActionButtons` from `components/common/`.
 
-New pages: wireframe-first — [`.cursor/rules/wireframe-first-ui.mdc`](./.cursor/rules/wireframe-first-ui.mdc).
+**UI states:** loading, empty, error, and permission denied should be explicit — see `frontend/src/components/common/states/` and `docs/UI_STATE_STANDARD.md` when present.
 
 ---
 
 ## Testing
 
 ```bash
-# Backend
+# Backend (full suite)
 cd backend
 pytest
-pytest tests/test_sales_order_delete.py -v
-pytest tests/test_manual_job_card_create.py -v
+
+# Focused examples
+pytest tests/test_production_pipeline.py -v
+pytest tests/test_quick_actions_details.py -v
+pytest tests/test_approval_queue.py -v
 
 # Frontend
 cd frontend
 npm test
+npm test -- --run src/components/dashboard/reference/ProductionPipeline.test.jsx
+npm test -- --run src/components/dashboard/reference/AdminQuickActions.test.jsx
 ```
 
 ---
@@ -337,21 +380,17 @@ npm test
 
 ## Production deployment
 
-See **[backend/PRODUCTION_DEPLOYMENT.md](./backend/PRODUCTION_DEPLOYMENT.md)** for PostgreSQL setup, env vars, backups, TLS, and the security checklist.
+1. Read **[backend/PRODUCTION_DEPLOYMENT.md](./backend/PRODUCTION_DEPLOYMENT.md)** (env vars, backups, TLS, checklist).
+2. **API on Render:** `render.yaml` builds `backend/`, runs `alembic upgrade head`, starts Gunicorn + Uvicorn workers.
+3. **Frontend:** `cd frontend && npm ci && npm run build` → serve `frontend/dist/` (Firebase Hosting, nginx, or CDN). Set `VITE_API_BASE_URL` to your API origin if not same-origin proxied.
 
 ```bash
-cd frontend && npm run build   # → frontend/dist/
+cd frontend && npm run build
 ```
 
+Ensure **frontend and API revisions stay in sync** when new dashboard routes are added; older APIs return 404/HTML for missing paths and break inline drawers.
+
 ---
-
-## UI state standard
-
-All screens must handle loading, empty, success, error, network, permission, partial data, validation, and session-expired states consistently.
-
-- Standard: [docs/UI_STATE_STANDARD.md](./docs/UI_STATE_STANDARD.md)
-- Audit: [docs/UI_STATE_AUDIT.md](./docs/UI_STATE_AUDIT.md)
-- Components: `frontend/src/components/common/states/`
 
 ## License
 
