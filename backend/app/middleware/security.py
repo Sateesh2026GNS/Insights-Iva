@@ -230,6 +230,7 @@ _SKIP_PATH_PREFIXES = (
     "/docs",
     "/redoc",
     "/openapi.json",
+    "/api/agent",   # has its own per-user rate limit in the router
 )
 
 _AUTH_PATH_FRAGMENTS = (

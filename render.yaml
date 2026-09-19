@@ -4,7 +4,7 @@ services:
     runtime: python
     rootDir: backend
     buildCommand: "pip install --upgrade pip && pip install -r requirements.txt && alembic upgrade head"
-    startCommand: "gunicorn app.main:app -k uvicorn.workers.UvicornWorker -w 2 -b 0.0.0.0:$PORT"
+    startCommand: "gunicorn app.main:app -k uvicorn.workers.UvicornWorker -w 1 -b 0.0.0.0:$PORT"
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.0
@@ -24,3 +24,15 @@ services:
         value: "insights-iva-api.onrender.com,*.onrender.com,insights-734ee.web.app,insights-734ee.firebaseapp.com,www.insightsiva.com,insightsiva.com,localhost,127.0.0.1"
       - key: FRONTEND_BASE_URL
         value: "https://insights-734ee.web.app"
+      # OpenAI / AI Assistant — set OPENAI_API_KEY in Render dashboard (Environment tab)
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: "gpt-4o-mini"
+      - key: OPENAI_TIMEOUT_SECONDS
+        value: "45"
+      - key: AI_ASSISTANT_ENABLED
+        value: "true"
+      - key: AGENT_WRITE_TOOLS_ENABLED
+        value: "false"
+

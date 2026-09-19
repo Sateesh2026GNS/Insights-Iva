@@ -486,6 +486,7 @@ app.include_router(dashboard_api_router)
 app.include_router(masters_api_router)
 app.include_router(production_api_router)
 app.include_router(ai_assistant_router)
+app.include_router(ai_assistant_router, prefix="/api")  # /api/ai/* alias for production proxy
 app.include_router(auth_router)
 app.include_router(auth_router, prefix="/api")
 app.include_router(login_history_router)
