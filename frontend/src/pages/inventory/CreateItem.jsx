@@ -8,7 +8,12 @@ import {
 
 import Button from "../../components/common/Button";
 import PageHeader from "../../components/common/PageHeader";
-import { createInventoryItem, getWarehouses } from "../../api/inventoryApi";
+import { createInventoryItem, getInventoryItem, getWarehouses, updateInventoryItem } from "../../api/inventoryApi";
+import InventoryItemPhoto from "../../components/inventory/InventoryItemPhoto";
+import {
+  uploadAndAttachItemPhoto,
+  validateInventoryPhotoFile,
+} from "../../utils/inventoryItemPhoto";
 import { useToast } from "../../context/ToastContext";
 import useTenantId from "../../hooks/useTenantId";
 import { apiErrorMessage, asArray } from "../../utils/apiError";
@@ -102,12 +107,16 @@ export default function CreateItem() {
   const { addToast } = useToast();
   const [searchParams] = useSearchParams();
   const initialType = searchParams.get("type") === "finished_good" ? "finished_good" : "raw_material";
+  const editItemId = Number(searchParams.get("edit") || 0) || null;
+  const isEditMode = Boolean(editItemId);
 
   const [activeTab, setActiveTab] = useState("basic");
   const [warehouses, setWarehouses] = useState(DEFAULT_WAREHOUSES);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [imagePreview, setImagePreview] = useState(null);
+  const [pendingPhotoFile, setPendingPhotoFile] = useState(null);
+  const [existingPhotoFileId, setExistingPhotoFileId] = useState(null);
   const fileRef = useRef(null);
 
   const [form, setForm] = useState({
@@ -177,6 +186,33 @@ export default function CreateItem() {
     }));
   }, [initialType]);
 
+  useEffect(() => {
+    if (!editItemId) return;
+    getInventoryItem(editItemId)
+      .then((res) => {
+        const item = res.data;
+        if (!item) return;
+        setExistingPhotoFileId(item.photo_file_id || null);
+        const skuSuffix = (item.sku || "").replace(/^RM-|^FG-/i, "");
+        setForm((f) => ({
+          ...f,
+          item_type: item.item_type || initialType,
+          category: item.category || "",
+          sku_suffix: skuSuffix,
+          name: item.name || "",
+          description: item.description || "",
+          base_unit: item.unit || f.base_unit,
+          warehouse_name: item.warehouse_name || f.warehouse_name,
+          reorder_level: String(item.reorder_level ?? 0),
+          available_qty: String(Math.max(0, (item.quantity || 0) - (item.reserved || 0))),
+          reserved_qty: String(item.reserved || 0),
+          model_part_no: item.barcode || "",
+          is_active: item.is_active !== false,
+        }));
+      })
+      .catch(() => addToast("Could not load item for edit", "error"));
+  }, [editItemId, initialType, addToast]);
+
   const goToTab = (id) => {
     setActiveTab(id);
     const el = document.getElementById(id);
@@ -186,12 +222,14 @@ export default function CreateItem() {
   const onImagePick = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 2 * 1024 * 1024) {
-      addToast("Image must be under 2MB", "error");
+    const validation = validateInventoryPhotoFile(file);
+    if (validation) {
+      addToast(validation, "error");
       return;
     }
-    const url = URL.createObjectURL(file);
-    setImagePreview(url);
+    if (imagePreview?.startsWith("blob:")) URL.revokeObjectURL(imagePreview);
+    setPendingPhotoFile(file);
+    setImagePreview(URL.createObjectURL(file));
   };
 
   const resolveSku = () => {
@@ -224,7 +262,7 @@ export default function CreateItem() {
       return;
     }
 
-    const sku = resolveSku();
+    const sku = isEditMode ? (form.sku_suffix ? `${skuPrefix}${form.sku_suffix.replace(/^RM-|^FG-/i, "")}` : undefined) : resolveSku();
 
     const metaParts = [
       form.hsn_sac && `HSN/SAC: ${form.hsn_sac}`,
@@ -279,40 +317,48 @@ export default function CreateItem() {
         is_active: form.is_active !== false,
       };
 
-      try {
-        await createInventoryItem(payload);
-      } catch (apiErr) {
-        console.warn("Backend API item creation attempt error, saving to local master cache:", apiErr);
-        // Persist to local master lists so it immediately appears in dropdowns & tables
-        try {
-          const stored = localStorage.getItem("smrt_products");
-          const prods = stored ? JSON.parse(stored) : [];
-          const newProd = {
-            id: `local-${Date.now()}`,
-            name: form.name.trim(),
-            sku,
-            product_code: sku,
-            category: form.category,
-            unit: form.base_unit || "Pcs",
-            unit_price: unitCost || 0,
-            quantity: totalQty,
-            available: avail,
-            warehouse_name: form.warehouse_name || "Main Warehouse",
-            item_type: form.item_type,
-          };
-          localStorage.setItem("smrt_products", JSON.stringify([newProd, ...prods]));
-        } catch {}
+      let savedItemId = editItemId;
+      if (isEditMode && editItemId) {
+        const updatePayload = {
+          name: payload.name,
+          description: payload.description,
+          category: payload.category,
+          unit: payload.unit,
+          unit_cost: payload.unit_cost,
+          reorder_level: payload.reorder_level,
+          warehouse_name: payload.warehouse_name,
+          barcode: payload.barcode,
+          quantity: payload.quantity,
+          reserved: payload.reserved,
+          is_active: payload.is_active,
+        };
+        if (sku) updatePayload.sku = sku;
+        const res = await updateInventoryItem(editItemId, updatePayload);
+        savedItemId = res.data?.id || editItemId;
+        setExistingPhotoFileId(res.data?.photo_file_id || existingPhotoFileId);
+      } else {
+        const res = await createInventoryItem(payload);
+        savedItemId = res.data?.id;
+        if (!savedItemId) {
+          throw new Error("Item was created but no id was returned.");
+        }
+      }
+
+      if (pendingPhotoFile && savedItemId) {
+        const fileId = await uploadAndAttachItemPhoto(pendingPhotoFile, savedItemId);
+        setExistingPhotoFileId(fileId);
+        setPendingPhotoFile(null);
       }
 
       try {
         emitManufacturingEvent(MANUFACTURING_EVENTS.INVENTORY_CHANGED, {
           item_type: form.item_type,
-          sku,
+          sku: sku || form.sku_suffix,
           name: form.name.trim(),
         });
       } catch {}
 
-      addToast("Item created successfully", "success");
+      addToast(isEditMode ? "Item updated successfully" : "Item created successfully", "success");
       navigate(backPath);
     } catch (err) {
       const msg = apiErrorMessage(err, "Failed to create item.");
@@ -502,6 +548,8 @@ export default function CreateItem() {
             >
               {imagePreview ? (
                 <img src={imagePreview} alt="Item preview" className="max-h-36 rounded-lg object-contain" />
+              ) : existingPhotoFileId ? (
+                <InventoryItemPhoto photoFileId={existingPhotoFileId} className="max-h-36 rounded-lg object-contain" />
               ) : (
                 <>
                   <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white dark:bg-slate-700 text-slate-500 shadow-xs">
@@ -523,12 +571,14 @@ export default function CreateItem() {
               <button
                 type="button"
                 onClick={() => {
+                  if (imagePreview?.startsWith("blob:")) URL.revokeObjectURL(imagePreview);
                   setImagePreview(null);
+                  setPendingPhotoFile(null);
                   if (fileRef.current) fileRef.current.value = "";
                 }}
                 className="mt-2 text-xs font-semibold text-red-600 hover:underline"
               >
-                Remove photo
+                Clear selected photo
               </button>
             ) : null}
           </Card>

@@ -58,6 +58,7 @@ class FinishedGoodListRead(BaseModel):
 
 class MaterialDetailRead(BaseModel):
     id: int
+    photo_file_id: int | None = None
     sku: str
     name: str
     barcode: str | None = None

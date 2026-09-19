@@ -32,6 +32,7 @@ from app.services.warehouse_service import (
     list_warehouses_enriched,
     update_warehouse,
 )
+from app.services.inventory_item_photo import get_primary_photo_file_id
 from app.services.inventory_service import (
     create_inventory_item,
     create_stock_level,
@@ -111,6 +112,12 @@ from app.services.stock_in_service import (
 router = APIRouter(prefix="/inventory", tags=["inventory"])
 
 MODULE = "inventory"
+
+
+def _item_read(db: Session, item) -> InventoryItemRead:
+    base = InventoryItemRead.model_validate(item)
+    photo_id = get_primary_photo_file_id(db, item.tenant_id, item.id)
+    return base.model_copy(update={"photo_file_id": photo_id})
 
 
 @router.post("/warehouses", response_model=WarehouseRead)
@@ -218,7 +225,8 @@ def create_item_endpoint(
     db: Session = Depends(get_db),
 ) -> InventoryItemRead:
     payload.tenant_id = user.tenant_id
-    return create_inventory_item(db, payload)
+    item = create_inventory_item(db, payload)
+    return _item_read(db, item)
 
 
 @router.get("/items", response_model=list[InventoryItemRead])
@@ -258,7 +266,7 @@ def get_item_endpoint(
     item = get_inventory_item(db, tenant_id, item_id)
     if not item:
         raise HTTPException(404, "Item not found")
-    return item
+    return _item_read(db, item)
 
 
 @router.put("/items/{item_id}", response_model=InventoryItemRead)
@@ -273,7 +281,7 @@ def update_item_endpoint(
     )
     if not item:
         raise HTTPException(404, "Item not found")
-    return item
+    return _item_read(db, item)
 
 
 @router.delete("/items/{item_id}")
