@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { X } from "lucide-react";
 
+import InventoryItemPhoto from "./InventoryItemPhoto";
+
 const TABS = ["General", "Vendor", "Stock History", "Purchase", "Consumption", "Batches", "Barcode", "Documents"];
 
 export default function MaterialDetailModal({ material, onClose, readOnly = true, nameLabel = "Material Name" }) {
@@ -29,6 +31,11 @@ export default function MaterialDetailModal({ material, onClose, readOnly = true
         </div>
         <div className="overflow-y-auto p-6">
           {tab === "General" && (
+            <>
+            <div className="mb-4 rounded-lg border bg-slate-50 p-3">
+              <p className="mb-2 text-xs font-semibold text-slate-500">Item Photo</p>
+              <InventoryItemPhoto photoFileId={material.photo_file_id} />
+            </div>
             <dl className="grid gap-3 sm:grid-cols-2">
               {[
                 [nameLabel, material.name],
@@ -45,6 +52,7 @@ export default function MaterialDetailModal({ material, onClose, readOnly = true
                 <div key={k} className="rounded-lg border bg-slate-50 p-3"><dt className="text-xs text-slate-500">{k}</dt><dd className="font-semibold text-slate-800">{v ?? "—"}</dd></div>
               ))}
             </dl>
+            </>
           )}
           {tab === "Vendor" && (
             <dl className="grid gap-3 sm:grid-cols-2">

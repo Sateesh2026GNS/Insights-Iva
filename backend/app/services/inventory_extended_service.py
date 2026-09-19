@@ -274,8 +274,11 @@ def get_material_detail(db: Session, tenant_id: int, item_id: int) -> MaterialDe
 
     batches = [{"batch": item.batch_number or f"BATCH-{item.id:04d}", "qty": get_total_stock(db, item.id)}]
 
+    from app.services.inventory_item_photo import get_primary_photo_file_id
+
     return MaterialDetailRead(
         id=item.id,
+        photo_file_id=get_primary_photo_file_id(db, tenant_id, item.id),
         sku=item.sku,
         name=item.name,
         barcode=item.barcode,

@@ -323,7 +323,7 @@ export default function RawMaterials() {
 
   const handleEdit = (row) => {
     if (!requireLiveRow(row, "Edit")) return;
-    navigate(`/inventory/items/${row.id}?type=raw_material`);
+    navigate(`/inventory/items/create?type=raw_material&edit=${row.id}`);
   };
 
   const handleAdd = () => {

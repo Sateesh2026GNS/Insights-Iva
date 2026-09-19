@@ -24,6 +24,7 @@ _OPERATOR_WRITE_TOOL_NAMES = frozenset(
     {
         "clock_in",
         "clock_out",
+        "work_order_action",
         "update_production_progress",
         "report_machine_breakdown",
     }
@@ -58,13 +59,14 @@ def register_operator_tools() -> None:
         name = fn.get("name")
         if not name:
             continue
-        roles = OPERATOR_ROLES if name in _OPERATOR_WRITE_TOOL_NAMES else PRODUCTION_AGENT_ROLES
+        is_write = name in _OPERATOR_WRITE_TOOL_NAMES
+        roles = OPERATOR_ROLES if is_write else PRODUCTION_AGENT_ROLES
         register_tool(
             AgentToolDefinition(
                 name=name,
                 description=(fn.get("description") or name).strip(),
                 parameters_schema=fn.get("parameters") or {"type": "object", "properties": {}},
                 allowed_roles=roles,
-                kind="read",
+                kind="write_prep" if is_write else "read",
             )
         )

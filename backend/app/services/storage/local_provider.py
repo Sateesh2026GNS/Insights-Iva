@@ -70,9 +70,23 @@ class LocalStorageProvider(StorageProvider):
         storage_key: str,
         filename: str,
         expires_seconds: int,
+        *,
+        tenant_id: int | None = None,
+        user_id: int | None = None,
+        file_id: int | None = None,
     ) -> PresignedDownload:
+        if tenant_id is None or user_id is None or file_id is None:
+            raise ValueError("Local download tokens require tenant_id, user_id, and file_id")
         token = uuid.uuid4().hex
-        register_download_token(token, storage_key, filename, time.time() + expires_seconds)
+        register_download_token(
+            token,
+            storage_key,
+            filename,
+            time.time() + expires_seconds,
+            tenant_id=tenant_id,
+            user_id=user_id,
+            file_id=file_id,
+        )
         return PresignedDownload(
             download_url=f"/api/files/local-download/{token}",
             expires_in_seconds=expires_seconds,

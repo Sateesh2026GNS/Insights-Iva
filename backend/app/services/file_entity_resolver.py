@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.models.sales import Customer, SalesOrder
 from app.models.hr import Employee
 from app.models.document import Document
+from app.models.inventory import InventoryItem
 
 
 ENTITY_MODELS = {
@@ -15,14 +16,14 @@ ENTITY_MODELS = {
     "sales_order": SalesOrder,
     "employee": Employee,
     "document": Document,
+    "inventory_item": InventoryItem,
 }
 
 
 def validate_entity_access(db: Session, tenant_id: int, entity_type: str, entity_id: int) -> bool:
     model = ENTITY_MODELS.get((entity_type or "").lower().replace("-", "_"))
     if not model:
-        # Unknown entity types allowed at API level but flagged — extend registry per module
-        return True
+        return False
     row = db.get(model, entity_id)
     if not row:
         return False

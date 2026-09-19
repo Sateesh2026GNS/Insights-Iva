@@ -16,7 +16,7 @@ from app.services.reports.engine import run_report
 from app.services.reports.filters import ReportFilters
 
 EXPORT_ROW_CAP = 100_000
-_EXPORT_TOKENS: dict[str, tuple[float, Path, str]] = {}
+_EXPORT_TOKENS: dict[str, tuple[float, Path, str, int]] = {}
 _TOKEN_TTL_SEC = 3600
 
 
@@ -26,21 +26,23 @@ def _export_dir(tenant_id: int) -> Path:
     return base
 
 
-def _register_download(path: Path, content_type: str) -> tuple[str, str]:
+def _register_download(path: Path, content_type: str, tenant_id: int) -> tuple[str, str]:
     token = secrets.token_urlsafe(24)
     expires = datetime.now(timezone.utc) + timedelta(seconds=_TOKEN_TTL_SEC)
-    _EXPORT_TOKENS[token] = (time.time() + _TOKEN_TTL_SEC, path, content_type)
+    _EXPORT_TOKENS[token] = (time.time() + _TOKEN_TTL_SEC, path, content_type, tenant_id)
     return f"/api/reports/exports/{token}", expires.isoformat()
 
 
-def resolve_export_token(token: str) -> tuple[Path, str]:
+def resolve_export_token(token: str, user: User) -> tuple[Path, str]:
     entry = _EXPORT_TOKENS.get(token)
     if not entry:
         raise HTTPException(status_code=404, detail="Export not found or expired")
-    expires_at, path, content_type = entry
+    expires_at, path, content_type, tenant_id = entry
     if time.time() > expires_at:
         _EXPORT_TOKENS.pop(token, None)
         raise HTTPException(status_code=404, detail="Export expired")
+    if user.tenant_id != tenant_id:
+        raise HTTPException(status_code=403, detail="You do not have access to this export.")
     return path, content_type
 
 
@@ -80,7 +82,7 @@ def export_report(
             writer.writerow(headers)
             for row in rows:
                 writer.writerow([row.get(k) for k in keys])
-        url, expires = _register_download(path, "text/csv")
+        url, expires = _register_download(path, "text/csv", user.tenant_id)
         return {"download_url": url, "expires_at": expires}
 
     if fmt == "xlsx":
@@ -110,6 +112,7 @@ def export_report(
         url, expires = _register_download(
             path,
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            user.tenant_id,
         )
         return {"download_url": url, "expires_at": expires}
 
@@ -142,7 +145,7 @@ def export_report(
                 c.showPage()
                 y = height - 20 * mm
         c.save()
-        url, expires = _register_download(path, "application/pdf")
+        url, expires = _register_download(path, "application/pdf", user.tenant_id)
         return {"download_url": url, "expires_at": expires}
 
     raise HTTPException(status_code=400, detail="Unsupported export format")
