@@ -112,6 +112,24 @@ class InvoiceV2Create(BaseModel):
     signature_url: str | None = None
     bank_details: dict[str, Any] | None = None
     notes: str | None = None
+    payment_terms: str | None = None
+    delivery_note: str | None = None
+    delivery_note_date: date | None = None
+    reference_no: str | None = None
+    reference_date: date | None = None
+    other_references: str | None = None
+    dispatch_doc_no: str | None = None
+    destination: str | None = None
+    terms_of_delivery: str | None = None
+    consignee_name: str | None = None
+    consignee_address1: str | None = None
+    consignee_address2: str | None = None
+    consignee_state: str | None = None
+    consignee_state_code: str | None = None
+    consignee_gstin: str | None = None
+    consignee_phone: str | None = None
+    consignee_email: str | None = None
+    meta: dict[str, Any] | None = None
     custom_fields: list[dict[str, Any]] | dict[str, Any] | Any | None = None
     items: list[InvoiceV2ItemCreate] = Field(..., min_length=1)
 
@@ -194,6 +212,25 @@ class InvoiceV2Read(BaseModel):
     signature_url: str | None = None
     notes: str | None = None
     buyer_name: str | None = None
+    payment_terms: str | None = None
+    delivery_note: str | None = None
+    delivery_note_date: date | None = None
+    reference_no: str | None = None
+    reference_date: date | None = None
+    other_references: str | None = None
+    dispatch_doc_no: str | None = None
+    destination: str | None = None
+    terms_of_delivery: str | None = None
+    consignee_name: str | None = None
+    consignee_address1: str | None = None
+    consignee_address2: str | None = None
+    consignee_state: str | None = None
+    consignee_state_code: str | None = None
+    consignee_gstin: str | None = None
+    consignee_phone: str | None = None
+    consignee_email: str | None = None
+    meta: dict[str, Any] | None = None
+    custom_fields: list[dict[str, Any]] | dict[str, Any] | Any | None = None
     items: list[InvoiceV2ItemRead] = []
     model_config = ConfigDict(from_attributes=True)
 

@@ -115,17 +115,17 @@ function SummaryTab({ label, count, amount, active, onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className={`min-w-0 flex-1 border-b-[3px] px-4 py-3.5 text-left transition duration-150 cursor-pointer ${
+      className={`min-w-[125px] sm:min-w-0 flex-1 shrink-0 border-b-[3px] px-3.5 py-2.5 sm:px-4 sm:py-3.5 text-left transition duration-150 cursor-pointer ${
         active
           ? "border-[var(--color-primary)] bg-[var(--color-surface)] text-[var(--color-primary)]"
           : "border-transparent bg-transparent text-[var(--color-text-muted)] hover:bg-[var(--color-surface)]/80 hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
       }`}
     >
-      <p className={`text-[13px] font-medium transition-colors ${active ? "" : "text-[var(--color-text-muted)]"}`}>
+      <p className={`text-[12px] sm:text-[13px] font-medium transition-colors ${active ? "" : "text-[var(--color-text-muted)]"}`}>
         {label} <span className={active ? "opacity-70" : "text-[#a0a0ab]"}>({count})</span>
       </p>
       <p
-        className={`mt-1 text-[18px] font-bold tabular-nums transition-colors ${
+        className={`mt-1 text-[15px] sm:text-[18px] font-bold tabular-nums transition-colors ${
           active ? "text-[var(--color-primary)]" : "text-[var(--color-text)]"
         }`}
       >
@@ -335,7 +335,7 @@ export default function PaymentReceipts() {
     <div className="min-h-full space-y-4 bg-[var(--color-bg)] p-4 sm:p-6">
 
       <div className="overflow-hidden rounded-xl border border-[var(--color-table-border)] bg-[var(--color-surface-muted)]">
-        <div className="flex overflow-x-auto">
+        <div className="flex overflow-x-auto scrollbar-none sm:flex-wrap">
           {MODE_TABS.map((t) => (
             <SummaryTab
               key={t.id}
@@ -351,8 +351,8 @@ export default function PaymentReceipts() {
 
       {/* Row 1: Date Range, Total Unused & Record Payment */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="inline-flex items-center gap-3 rounded-full bg-[var(--color-surface)] px-4 py-2.5 text-[13px] text-[var(--color-text-secondary)] shadow-sm shadow-[#00000010] border border-[var(--color-border-soft)]">
+        <div className="flex w-full sm:w-auto flex-wrap items-center gap-3">
+          <div className="inline-flex w-full sm:w-auto justify-between sm:justify-start items-center gap-3 rounded-full bg-[var(--color-surface)] px-3.5 py-2 sm:px-4 sm:py-2.5 text-xs sm:text-[13px] text-[var(--color-text-secondary)] shadow-sm shadow-[#00000010] border border-[var(--color-border-soft)]">
             <button
               type="button"
               onClick={openDateFrom}

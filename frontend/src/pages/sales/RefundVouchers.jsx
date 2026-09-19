@@ -115,7 +115,7 @@ function SummaryTab({ label, count, amount, active, onClick, badgeColor }) {
     <button
       type="button"
       onClick={onClick}
-      className={`min-w-0 flex-1 border-b-[3px] px-4 py-3 text-left transition duration-150 cursor-pointer ${
+      className={`min-w-[130px] sm:min-w-0 flex-1 shrink-0 border-b-[3px] px-3.5 py-2.5 sm:px-4 sm:py-3 text-left transition duration-150 cursor-pointer ${
         active
           ? "border-[var(--color-primary)] bg-[var(--color-surface)] text-[var(--color-primary)]"
           : "border-transparent bg-transparent text-[var(--color-text-muted)] hover:bg-[var(--color-surface)]/80 hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
@@ -1322,7 +1322,7 @@ export default function RefundVouchers() {
   return (
     <div className="min-h-full space-y-4 bg-[var(--color-bg)] p-4 sm:p-6">
       {/* Summary KPI Tabs */}
-      <div className="flex flex-wrap overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xs">
+      <div className="flex overflow-x-auto scrollbar-none sm:flex-wrap rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xs">
         <SummaryTab
           label="All Refund Vouchers"
           count={rows.length}
@@ -1351,9 +1351,9 @@ export default function RefundVouchers() {
 
       {/* Row 1: Date Range & Action Buttons */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex w-full sm:w-auto flex-wrap items-center gap-3">
           {/* Date Picker Range Box */}
-          <div className="inline-flex items-center gap-3 rounded-full bg-[var(--color-surface)] px-4 py-2 text-[13px] text-[var(--color-text-secondary)] shadow-xs border border-[var(--color-border-soft)]">
+          <div className="inline-flex w-full sm:w-auto justify-between sm:justify-start items-center gap-3 rounded-full bg-[var(--color-surface)] px-3.5 py-2 sm:px-4 sm:py-2 text-xs sm:text-[13px] text-[var(--color-text-secondary)] shadow-xs border border-[var(--color-border-soft)]">
             <button
               type="button"
               onClick={openDateFrom}
@@ -1605,7 +1605,7 @@ export default function RefundVouchers() {
         </div>
 
         {/* Pagination */}
-        <div className="ui-pagination justify-between border-t border-[var(--color-border-soft)] px-4 py-3">
+        <div className="ui-pagination flex-wrap gap-3 justify-between border-t border-[var(--color-border-soft)] px-3 py-3 sm:px-4">
           <div className="flex items-center gap-2.5 flex-nowrap whitespace-nowrap text-[13px] text-[#596b82]">
             <span>Rows per page:</span>
             <select

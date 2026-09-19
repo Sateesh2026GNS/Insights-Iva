@@ -203,24 +203,24 @@ export default function TaxInvoiceCopy({ data, showPrintButton = true }) {
                   <td className={cell} colSpan={2}><Label>e-Way Bill No.</Label><Val mono>{eWayBill || "—"}</Val></td>
                 </tr>
                 <tr>
-                  <td className={cell}><Label>Delivery Note</Label><Val>{data.meta?.deliveryNote}</Val></td>
-                  <td className={cell}><Label>Mode/Terms of Payment</Label><Val bold>{data.meta?.modeTerms || "Advance"}</Val></td>
+                  <td className={cell}><Label>Delivery Note</Label><Val>{data.meta?.deliveryNote || data.meta?.delivery_note || data.delivery_note || data.challan_number || "—"}</Val></td>
+                  <td className={cell}><Label>Mode/Terms of Payment</Label><Val bold>{data.meta?.modeTerms || data.meta?.payment_terms || data.payment_terms || data.payment_mode || "—"}</Val></td>
                 </tr>
                 <tr>
-                  <td className={cell}><Label>Reference No. &amp; Date</Label><Val>{data.meta?.referenceNo}</Val></td>
-                  <td className={cell}><Label>Other References</Label><Val> </Val></td>
+                  <td className={cell}><Label>Reference No. &amp; Date</Label><Val>{data.meta?.referenceNo || data.meta?.reference_no || data.reference_no || "—"}</Val></td>
+                  <td className={cell}><Label>Other References</Label><Val>{data.meta?.otherReferences || data.meta?.other_references || data.other_references || "—"}</Val></td>
                 </tr>
                 <tr>
-                  <td className={cell}><Label>Buyer's Order No.</Label><Val>{data.meta?.buyersOrderNo}</Val></td>
-                  <td className={cell}><Label>Dated</Label><Val> </Val></td>
+                  <td className={cell}><Label>Buyer's Order No.</Label><Val>{data.meta?.buyersOrderNo || data.meta?.buyer_order_no || data.po_number || "—"}</Val></td>
+                  <td className={cell}><Label>Dated</Label><Val>{data.meta?.po_date || data.po_date || "—"}</Val></td>
                 </tr>
                 <tr>
-                  <td className={cell}><Label>Dispatch Doc No.</Label><Val>{data.meta?.dispatchDocNo}</Val></td>
-                  <td className={cell}><Label>Delivery Note Date</Label><Val> </Val></td>
+                  <td className={cell}><Label>Dispatch Doc No.</Label><Val>{data.meta?.dispatchDocNo || data.meta?.dispatch_doc_no || data.dispatch_doc_no || data.lr_number || "—"}</Val></td>
+                  <td className={cell}><Label>Delivery Note Date</Label><Val>{data.meta?.deliveryNoteDate || data.meta?.delivery_note_date || data.delivery_note_date || data.lr_date || "—"}</Val></td>
                 </tr>
                 <tr>
-                  <td className={cell}><Label>Dispatched through</Label><Val bold>{data.meta?.dispatchedThrough}</Val></td>
-                  <td className={cell}><Label>Destination</Label><Val bold>{data.meta?.destination}</Val></td>
+                  <td className={cell}><Label>Dispatched through</Label><Val bold>{data.meta?.dispatchedThrough || data.meta?.transporter_name || data.transporter_name || data.transport_mode || "—"}</Val></td>
+                  <td className={cell}><Label>Destination</Label><Val bold>{data.meta?.destination || data.destination || "—"}</Val></td>
                 </tr>
               </tbody>
             </table>

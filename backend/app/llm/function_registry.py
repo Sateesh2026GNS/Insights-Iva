@@ -884,13 +884,13 @@ def format_tool_result(tool_name: str, result: dict) -> str:
             lines += ["", f"⚠️ **Alert:** {delayed} work order(s) are delayed — immediate attention required!"]
         return "\n".join(lines)
     if tool_name == "get_todays_production":
-        target    = result.get("todays_target", 0)
-        produced  = result.get("todays_production", 0)
+        target    = int(result.get("todays_target") or result.get("target") or result.get("planned_quantity") or 0)
+        produced  = int(result.get("todays_production") or result.get("completed_quantity") or result.get("produced_quantity") or result.get("produced") or 0)
         remaining = max(target - produced, 0)
-        prog      = round(produced / target * 100, 1) if target else 0
+        prog      = round(produced / target * 100, 1) if target > 0 else 0
         bar       = "█" * int(prog // 20) + "░" * (5 - int(prog // 20))
         if target <= 0 and produced <= 0:
-            status = "ℹ️ No Production Scheduled"
+            status = "ℹ️ No Production Scheduled Today"
         elif target <= 0 and produced > 0:
             status = "✅ Completed (No target set)"
         elif prog >= 80:
@@ -900,13 +900,13 @@ def format_tool_result(tool_name: str, result: dict) -> str:
         else:
             status = "🔴 Critical"
         return (
-            "### 🏭 Today's Production Summary\n"
-            "\n**📊 Production Metrics**\n"
-            f"- 🎯 **Target:**    **{target:,} units**\n"
-            f"- 🟢 **Produced:**  **{produced:,} units**\n"
-            f"- ⏳ **Remaining:** **{remaining:,} units**\n"
-            f"- 📊 **Progress:**  **{prog}%** {bar}\n"
-            f"- 📍 **Status:**    {status}\n"
+            "### 🏭 Today's Production Summary\n\n"
+            "**📊 Production Metrics**\n"
+            f"- 🎯 **Target:** **{target:,} units**\n"
+            f"- 🟢 **Produced:** **{produced:,} units**\n"
+            f"- ⌛ **Remaining:** **{remaining:,} units**\n"
+            f"- 📈 **Progress:** **{prog}%** {bar}\n"
+            f"- 📍 **Status:** {status}\n"
         )
     if tool_name == "get_machine_status":
         machines = result.get("machines") or []

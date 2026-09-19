@@ -1,6 +1,7 @@
 import logging
 import json
 from datetime import date, timedelta
+from typing import Any
 
 from fastapi import HTTPException, status
 from sqlalchemy import select, update
@@ -33,6 +34,49 @@ from app.services.journal_service import (
 
 def _money(n: float) -> float:
     return round(float(n or 0), 2)
+
+
+def _serialize_custom_fields_json(payload: Any) -> str | None:
+    meta_dict = getattr(payload, "meta", None)
+    if not isinstance(meta_dict, dict):
+        meta_dict = {}
+    cf_data = getattr(payload, "custom_fields", None)
+
+    merged_data: dict[str, Any] = {}
+    if isinstance(cf_data, dict):
+        merged_data.update(cf_data)
+    elif cf_data is not None:
+        merged_data["custom_fields"] = cf_data
+
+    fields_to_sync = [
+        "payment_terms",
+        "delivery_note",
+        "delivery_note_date",
+        "reference_no",
+        "reference_date",
+        "other_references",
+        "dispatch_doc_no",
+        "destination",
+        "terms_of_delivery",
+        "consignee_name",
+        "consignee_address1",
+        "consignee_address2",
+        "consignee_state",
+        "consignee_state_code",
+        "consignee_gstin",
+        "consignee_phone",
+        "consignee_email",
+    ]
+    for key in fields_to_sync:
+        val = getattr(payload, key, None) or meta_dict.get(key) or merged_data.get(key)
+        if val is not None:
+            merged_data[key] = str(val) if isinstance(val, date) else val
+
+    if meta_dict:
+        merged_data["meta"] = meta_dict
+
+    return json.dumps(merged_data) if merged_data else None
+
 
 
 def _validate_invoice_references(
@@ -527,7 +571,7 @@ def create_invoice_v2(db: Session, payload: InvoiceV2Create) -> Invoice:
         stamp_url=payload.stamp_url,
         signature_url=payload.signature_url,
         bank_details_json=json.dumps(payload.bank_details) if payload.bank_details else None,
-        custom_fields_json=json.dumps(payload.custom_fields) if payload.custom_fields else None,
+        custom_fields_json=_serialize_custom_fields_json(payload),
         notes=getattr(payload, "notes", None),
     )
     try:
@@ -739,7 +783,7 @@ def update_invoice_v2(db: Session, tenant_id: int, invoice_id: int, payload: Inv
     inv.stamp_url = payload.stamp_url
     inv.signature_url = payload.signature_url
     inv.bank_details_json = json.dumps(payload.bank_details) if payload.bank_details else inv.bank_details_json
-    inv.custom_fields_json = json.dumps(payload.custom_fields) if payload.custom_fields else inv.custom_fields_json
+    inv.custom_fields_json = _serialize_custom_fields_json(payload) or inv.custom_fields_json
     inv.notes = payload.notes
     inv.e_waybill_status = "active" if payload.ewaybill_number else getattr(inv, "e_waybill_status", None) or "all"
 
@@ -1002,6 +1046,20 @@ def get_invoice_v2(db: Session, tenant_id: int, invoice_id: int) -> InvoiceV2Rea
     inv = db.scalars(stmt).first()
     if not inv:
         return None
+
+    custom_meta: dict[str, Any] = {}
+    if getattr(inv, "custom_fields_json", None):
+        try:
+            parsed = json.loads(inv.custom_fields_json)
+            if isinstance(parsed, dict):
+                custom_meta = parsed
+            elif isinstance(parsed, list):
+                custom_meta = {"custom_fields": parsed}
+        except Exception:
+            custom_meta = {}
+
+    meta_sub = custom_meta.get("meta") if isinstance(custom_meta.get("meta"), dict) else {}
+
     return InvoiceV2Read(
         id=inv.id,
         tenant_id=inv.tenant_id,
@@ -1051,6 +1109,25 @@ def get_invoice_v2(db: Session, tenant_id: int, invoice_id: int) -> InvoiceV2Rea
         signature_url=getattr(inv, "signature_url", None),
         notes=getattr(inv, "notes", None),
         buyer_name=inv.customer.name if inv.customer else None,
+        payment_terms=custom_meta.get("payment_terms") or meta_sub.get("payment_terms") or meta_sub.get("modeTerms") or meta_sub.get("payment_mode") or getattr(inv, "payment_terms", None),
+        delivery_note=custom_meta.get("delivery_note") or meta_sub.get("delivery_note") or inv.challan_number,
+        delivery_note_date=custom_meta.get("delivery_note_date") or meta_sub.get("delivery_note_date") or (str(inv.lr_date) if inv.lr_date else None),
+        reference_no=custom_meta.get("reference_no") or meta_sub.get("reference_no"),
+        reference_date=custom_meta.get("reference_date") or meta_sub.get("reference_date"),
+        other_references=custom_meta.get("other_references") or meta_sub.get("other_references"),
+        dispatch_doc_no=custom_meta.get("dispatch_doc_no") or meta_sub.get("dispatch_doc_no") or inv.lr_number,
+        destination=custom_meta.get("destination") or meta_sub.get("destination"),
+        terms_of_delivery=custom_meta.get("terms_of_delivery") or meta_sub.get("terms_of_delivery"),
+        consignee_name=custom_meta.get("consignee_name") or meta_sub.get("consignee_name"),
+        consignee_address1=custom_meta.get("consignee_address1") or meta_sub.get("consignee_address1"),
+        consignee_address2=custom_meta.get("consignee_address2") or meta_sub.get("consignee_address2"),
+        consignee_state=custom_meta.get("consignee_state") or meta_sub.get("consignee_state"),
+        consignee_state_code=custom_meta.get("consignee_state_code") or meta_sub.get("consignee_state_code"),
+        consignee_gstin=custom_meta.get("consignee_gstin") or meta_sub.get("consignee_gstin"),
+        consignee_phone=custom_meta.get("consignee_phone") or meta_sub.get("consignee_phone"),
+        consignee_email=custom_meta.get("consignee_email") or meta_sub.get("consignee_email"),
+        meta=meta_sub or custom_meta,
+        custom_fields=custom_meta.get("custom_fields") or custom_meta,
         items=[
             InvoiceV2ItemRead(
                 id=it.id,

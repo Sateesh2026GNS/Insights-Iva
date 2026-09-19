@@ -1,17 +1,19 @@
 /** Lightweight, robust markdown renderer for AI messages (bold, code, lists, headings, callouts). */
 
 function escapeHtml(text) {
-  return text
+  return String(text || "")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
 }
 
 function formatInline(text) {
+  if (!text) return "";
   let html = escapeHtml(text);
-  // Bold
+  // Bold: **text** or __text__
   html = html.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
-  // Inline code
+  html = html.replace(/__(.+?)__/g, "<strong>$1</strong>");
+  // Inline code: `code`
   html = html.replace(/`([^`]+)`/g, '<code class="rounded bg-slate-200/70 px-1.5 py-0.5 text-xs font-mono text-slate-800">$1</code>');
   return html;
 }
@@ -19,7 +21,7 @@ function formatInline(text) {
 export default function AiMessageContent({ content, contentRef }) {
   if (!content) return null;
 
-  const rawLines = content.split("\n");
+  const rawLines = String(content).split("\n");
   const blocks = [];
   let currentList = [];
 
@@ -34,11 +36,12 @@ export default function AiMessageContent({ content, contentRef }) {
   };
 
   rawLines.forEach((line) => {
-    const trimmed = line.trim();
+    const cleanLine = line.replace(/\r/g, "");
+    const trimmed = cleanLine.trim();
 
-    // List item (- or *)
-    if (/^[-*]\s/.test(trimmed)) {
-      const itemText = trimmed.replace(/^[-*]\s+/, "");
+    // List item (- or * or • or 1.)
+    if (/^[-*•]\s+/.test(trimmed) || /^\d+\.\s+/.test(trimmed)) {
+      const itemText = trimmed.replace(/^[-*•]\s+/, "").replace(/^\d+\.\s+/, "");
       currentList.push(itemText);
       return;
     }
@@ -51,17 +54,11 @@ export default function AiMessageContent({ content, contentRef }) {
       return;
     }
 
-    // Headings
-    if (/^###\s/.test(trimmed)) {
-      blocks.push({ type: "h3", text: trimmed.replace(/^###\s+/, "") });
-      return;
-    }
-    if (/^##\s/.test(trimmed)) {
-      blocks.push({ type: "h2", text: trimmed.replace(/^##\s+/, "") });
-      return;
-    }
-    if (/^#\s/.test(trimmed)) {
-      blocks.push({ type: "h1", text: trimmed.replace(/^#\s+/, "") });
+    // Headings (### or ## or #)
+    const headingMatch = trimmed.match(/^(#{1,6})\s+(.*)$/);
+    if (headingMatch) {
+      const level = headingMatch[1].length;
+      blocks.push({ type: level >= 3 ? "h3" : level === 2 ? "h2" : "h1", text: headingMatch[2] });
       return;
     }
 
@@ -72,8 +69,9 @@ export default function AiMessageContent({ content, contentRef }) {
     }
 
     // Subheading styled as bold line alone (e.g. **📊 Production Metrics**)
-    if (/^\*\*[^*]+\*\*$/.test(trimmed)) {
-      blocks.push({ type: "subheading", text: trimmed.replace(/^\*\*|\*\*$/g, "") });
+    const boldLineMatch = trimmed.match(/^\*\*(.+?)\*\*$/);
+    if (boldLineMatch) {
+      blocks.push({ type: "subheading", text: boldLineMatch[1] });
       return;
     }
 

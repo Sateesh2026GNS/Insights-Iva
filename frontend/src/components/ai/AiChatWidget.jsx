@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Bot, ChevronDown, Download, History, Loader2, Printer, Send, Sparkles, X,
+  Bot, ChevronDown, Download, History, Loader2, Printer, Send, Sparkles, Trash2, X,
 } from "lucide-react";
 
 
@@ -272,6 +272,13 @@ export default function AiChatWidget() {
     setShowHistory(false);
   };
 
+  const clearChat = useCallback(() => {
+    setConversationId(null);
+    setMessages([]);
+    setShowHistory(false);
+    addToast("Chat cleared", "info");
+  }, [addToast]);
+
   const handleNav = (path) => {
     if (path) {
       navigate(path);
@@ -323,15 +330,31 @@ export default function AiChatWidget() {
               </div>
             </div>
             <div className="flex items-center gap-1">
+              {messages.length > 0 && (
+                <button
+                  type="button"
+                  onClick={clearChat}
+                  className="rounded-lg p-1.5 transition-colors hover:bg-white/20"
+                  aria-label="Clear Chat"
+                  title="Clear Chat"
+                >
+                  <Trash2 className="h-4 w-4" aria-hidden />
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => { setShowHistory(!showHistory); if (!showHistory) loadHistory(); }}
-                className="rounded-lg p-1.5 hover:bg-white/20"
+                className="rounded-lg p-1.5 transition-colors hover:bg-white/20"
                 title="History"
               >
                 <History className="h-4 w-4" />
               </button>
-              <button type="button" onClick={() => setOpen(false)} className="rounded-lg p-1.5 hover:bg-white/20">
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="rounded-lg p-1.5 transition-colors hover:bg-white/20"
+                aria-label="Close AI Assistant"
+              >
                 <X className="h-4 w-4" />
               </button>
             </div>

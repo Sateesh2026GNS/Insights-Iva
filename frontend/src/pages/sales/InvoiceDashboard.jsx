@@ -121,17 +121,17 @@ function SummaryTab({ label, count, amount, active, tone, onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className={`min-w-0 flex-1 border-b-[3px] px-5 py-3.5 text-left transition duration-150 cursor-pointer ${
+      className={`min-w-[125px] sm:min-w-0 flex-1 shrink-0 border-b-[3px] px-3.5 py-2.5 sm:px-5 sm:py-3.5 text-left transition duration-150 cursor-pointer ${
         active
           ? `bg-[var(--color-surface)] ${currentTone.active}`
           : `border-transparent bg-transparent text-[var(--color-text-muted)] hover:bg-[var(--color-surface)]/80 ${currentTone.hover}`
       }`}
     >
-      <p className={`text-[13px] font-medium transition-colors ${active ? "" : "text-[var(--color-text-muted)]"}`}>
+      <p className={`text-[12px] sm:text-[13px] font-medium transition-colors ${active ? "" : "text-[var(--color-text-muted)]"}`}>
         {label}{" "}
         <span className={active ? "opacity-70" : "text-[#a0a0ab]"}>({count})</span>
       </p>
-      <p className={`mt-1 text-[18px] font-bold tabular-nums transition-colors ${active ? "text-inherit" : "text-[var(--color-text)]"}`}>
+      <p className={`mt-1 text-[15px] sm:text-[18px] font-bold tabular-nums transition-colors ${active ? "text-inherit" : "text-[var(--color-text)]"}`}>
         {amount}
       </p>
     </button>
@@ -269,17 +269,17 @@ export default function InvoiceDashboard() {
   if (loading && rows.length === 0) return <Loader label="Loading invoices…" />;
 
   return (
-    <div className="min-h-full bg-[var(--color-bg)] px-5 py-5 sm:px-6">
+    <div className="min-h-full bg-[var(--color-bg)] px-3 py-4 sm:px-6 sm:py-5">
       {/* Toolbar row 1: calendar + create */}
-      <div className="mb-4 flex justify-end gap-3">
-        <div className="inline-flex items-center gap-3 rounded-full bg-[var(--color-surface)] px-4 py-2.5 text-[13px] text-[var(--color-text-secondary)] shadow-sm shadow-[#00000010] border border-[var(--color-border-soft)]">
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex w-full items-center justify-between sm:w-auto sm:justify-start gap-2 rounded-full bg-[var(--color-surface)] px-3 py-2 sm:px-4 sm:py-2.5 text-xs sm:text-[13px] text-[var(--color-text-secondary)] shadow-sm shadow-[#00000010] border border-[var(--color-border-soft)]">
           <button
             type="button"
             onClick={openDateFrom}
             className="flex items-center justify-center text-[var(--color-text-muted)] hover:text-[#0f6d84] transition-colors cursor-pointer"
             aria-label="Open start date picker"
           >
-            <Calendar className="h-5 w-5" />
+            <Calendar className="h-4 w-4 sm:h-5 sm:w-5" />
           </button>
           <input
             ref={dateFromRef}
@@ -294,7 +294,7 @@ export default function InvoiceDashboard() {
           <button
             type="button"
             onClick={openDateFrom}
-            className="text-[14px] font-medium text-[#2c2b3d] dark:text-slate-100 hover:text-[#0f6d84] transition-colors cursor-pointer"
+            className="text-xs sm:text-[14px] font-medium text-[#2c2b3d] dark:text-slate-100 hover:text-[#0f6d84] transition-colors cursor-pointer"
             title="Click to select start date"
           >
             {fmtDisplayDate(dateFrom) || "Start Date"}
@@ -303,7 +303,7 @@ export default function InvoiceDashboard() {
           <button
             type="button"
             onClick={openDateTo}
-            className="text-[14px] font-medium text-[#2c2b3d] dark:text-slate-100 hover:text-[#0f6d84] transition-colors cursor-pointer"
+            className="text-xs sm:text-[14px] font-medium text-[#2c2b3d] dark:text-slate-100 hover:text-[#0f6d84] transition-colors cursor-pointer"
             title="Click to select end date"
           >
             {fmtDisplayDate(dateTo) || "End Date"}
@@ -324,17 +324,19 @@ export default function InvoiceDashboard() {
             className="flex items-center justify-center text-[var(--color-text-muted)] hover:text-[#0f6d84] transition-colors cursor-pointer"
             aria-label="Open end date picker"
           >
-            <Calendar className="h-5 w-5" />
+            <Calendar className="h-4 w-4 sm:h-5 sm:w-5" />
           </button>
         </div>
-        <Button variant="add" to="/sales/invoices/create" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
-          Create Invoice
-        </Button>
+        <div className="w-full sm:w-auto">
+          <Button variant="add" to="/sales/invoices/create" className="w-full sm:w-auto justify-center" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
+            Create Invoice
+          </Button>
+        </div>
       </div>
 
       {/* KPI strip */}
       <div className="mb-4 overflow-hidden rounded-xl bg-[var(--color-surface-muted)]">
-        <div className="flex flex-wrap">
+        <div className="flex overflow-x-auto scrollbar-none sm:flex-wrap">
           <SummaryTab
             label="Total Sales"
             count={kpis.all.count}
@@ -535,7 +537,7 @@ export default function InvoiceDashboard() {
         </div>
 
         {/* Pagination */}
-        <div className="ui-pagination justify-between border-t border-[var(--color-border-soft)] px-4 py-3">
+        <div className="ui-pagination flex-wrap gap-3 justify-between border-t border-[var(--color-border-soft)] px-3 py-3 sm:px-4">
           <div className="flex items-center gap-2.5 flex-nowrap whitespace-nowrap text-[13px] text-[var(--color-text-muted)]">
             <span>Rows per page:</span>
             <select

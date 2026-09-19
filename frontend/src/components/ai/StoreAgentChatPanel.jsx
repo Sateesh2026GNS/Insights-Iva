@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { Bot, Download, Loader2, Printer, Send, Sparkles, WifiOff, X } from "lucide-react";
+import { Bot, Download, Loader2, Printer, Send, Sparkles, Trash2, WifiOff, X } from "lucide-react";
 
 import { confirmAgentAction, sendAgentChat } from "../../api/agentApi";
 import Button from "../common/Button";
@@ -216,6 +216,13 @@ export default function StoreAgentChatPanel({ pageContextLabel = "" }) {
     setConversationId(null);
     setMessages([]);
   }, [user?.id]);
+
+  const clearChat = useCallback(() => {
+    setConversationId(null);
+    setMessages([]);
+    addToast("Chat cleared", "info");
+  }, [addToast]);
+
   const [offline, setOffline] = useState(!navigator.onLine);
   const bottomRef = useRef(null);
 
@@ -374,14 +381,27 @@ export default function StoreAgentChatPanel({ pageContextLabel = "" }) {
                 <p className="text-[10px] opacity-90">{agentSubtitle}</p>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={() => setOpen(false)}
-              className="rounded-lg p-1.5 hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
-              aria-label="Close AI Assistant"
-            >
-              <X className="h-4 w-4" aria-hidden />
-            </button>
+            <div className="flex items-center gap-1">
+              {messages.length > 0 && (
+                <button
+                  type="button"
+                  onClick={clearChat}
+                  className="rounded-lg p-1.5 transition-colors hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+                  aria-label="Clear Chat"
+                  title="Clear Chat"
+                >
+                  <Trash2 className="h-4 w-4" aria-hidden />
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="rounded-lg p-1.5 transition-colors hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+                aria-label="Close AI Assistant"
+              >
+                <X className="h-4 w-4" aria-hidden />
+              </button>
+            </div>
           </div>
 
           {offline ? (

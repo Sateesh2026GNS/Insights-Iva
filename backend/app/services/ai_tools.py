@@ -217,14 +217,14 @@ def _todays_production_totals(db: Session, tenant_id: int) -> tuple[int, int]:
                 db.scalars(
                     select(WorkOrder).where(
                         WorkOrder.tenant_id == tenant_id,
-                        WorkOrder.status.in_(["in_progress", "in-progress", "pending", "active", "planned", "released"]),
+                        func.lower(WorkOrder.status).in_(["in_progress", "in-progress", "running", "pending", "active", "planned", "released", "approved", "scheduled", "draft"]),
                     )
                 ).all()
             )
             if wos:
                 target = int(sum(float(wo.planned_quantity or 0) for wo in wos))
                 if produced == 0:
-                    produced = int(sum(float(wo.actual_quantity or 0) for wo in wos))
+                    produced = int(sum(float(wo.actual_quantity or wo.produced_quantity or 0) for wo in wos))
         except Exception:
             pass
 
@@ -234,7 +234,7 @@ def _todays_production_totals(db: Session, tenant_id: int) -> tuple[int, int]:
                 db.scalars(
                     select(ProductionOrder).where(
                         ProductionOrder.tenant_id == tenant_id,
-                        ProductionOrder.status.in_(["in_progress", "in-progress", "pending", "active"]),
+                        func.lower(ProductionOrder.status).in_(["in_progress", "in-progress", "running", "pending", "active", "planned", "approved"]),
                     )
                 ).all()
             )
@@ -242,6 +242,17 @@ def _todays_production_totals(db: Session, tenant_id: int) -> tuple[int, int]:
                 target = int(sum(float(o.planned_quantity or 0) for o in pos))
                 if produced == 0:
                     produced = int(sum(float(o.produced_quantity or 0) for o in pos))
+        except Exception:
+            pass
+
+    # If target is still 0, check ALL work orders for tenant so target is never 0 if work orders exist
+    if target <= 0:
+        try:
+            all_wos = list(db.scalars(select(WorkOrder).where(WorkOrder.tenant_id == tenant_id)).all())
+            if all_wos:
+                target = int(sum(float(wo.planned_quantity or 0) for wo in all_wos))
+                if produced == 0:
+                    produced = int(sum(float(wo.actual_quantity or wo.produced_quantity or 0) for wo in all_wos))
         except Exception:
             pass
 
@@ -296,23 +307,18 @@ def execute_tool(db: Session, user: User, tool_name: str, arguments: dict) -> di
                 "navigation": f"/production/work-orders",
             }
 
-        if tool_name == "get_todays_production_target":
-            produced, target = _todays_production_totals(db, tenant_id)
-            return {
-                "success": True,
-                "todays_target": target,
-                "todays_production": produced,
-                "remaining": max(target - produced, 0),
-                "navigation": "/factory-monitor/machine-status",
-            }
-
-        if tool_name == "get_todays_production":
+        if tool_name in ("get_todays_production", "get_todays_production_target"):
             produced, target = _todays_production_totals(db, tenant_id)
             return {
                 "success": True,
                 "completed_quantity": produced,
+                "todays_production": produced,
+                "produced": produced,
                 "target": target,
+                "todays_target": target,
                 "remaining_quantity": max(target - produced, 0),
+                "remaining": max(target - produced, 0),
+                "navigation": "/factory-monitor/machine-status",
             }
 
         if tool_name == "get_machine_status":

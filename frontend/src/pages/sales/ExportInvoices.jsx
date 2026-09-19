@@ -133,17 +133,17 @@ function SummaryTab({ label, count, amount, active, tone, onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className={`min-w-0 flex-1 border-b-[3px] px-5 py-3.5 text-left transition duration-150 cursor-pointer ${
+      className={`min-w-[125px] sm:min-w-0 flex-1 shrink-0 border-b-[3px] px-3.5 py-2.5 sm:px-5 sm:py-3.5 text-left transition duration-150 cursor-pointer ${
         active
           ? `bg-[var(--color-surface)] ${currentTone.active}`
           : `border-transparent bg-transparent text-[var(--color-text-muted)] hover:bg-[var(--color-surface)]/80 ${currentTone.hover}`
       }`}
     >
-      <p className={`text-[13px] font-medium transition-colors ${active ? "" : "text-[var(--color-text-muted)]"}`}>
+      <p className={`text-[12px] sm:text-[13px] font-medium transition-colors ${active ? "" : "text-[var(--color-text-muted)]"}`}>
         {label}{" "}
         <span className={active ? "opacity-70" : "text-[var(--color-text-faint)]"}>({count})</span>
       </p>
-      <p className={`mt-1 text-[18px] font-bold tabular-nums transition-colors ${active ? "text-inherit" : "text-[var(--color-text)]"}`}>
+      <p className={`mt-1 text-[15px] sm:text-[18px] font-bold tabular-nums transition-colors ${active ? "text-inherit" : "text-[var(--color-text)]"}`}>
         {amount}
       </p>
     </button>
@@ -319,7 +319,7 @@ export default function ExportInvoices() {
         }
       />
       <div className="mb-4 overflow-hidden rounded-xl bg-[var(--color-surface-muted)]">
-        <div className="flex flex-wrap">
+        <div className="flex overflow-x-auto scrollbar-none sm:flex-wrap">
           <SummaryTab
             label="Total Sales"
             count={kpis.all.count}
@@ -358,15 +358,15 @@ export default function ExportInvoices() {
       {/* Toolbar row 1: search | date + create */}
       <div className="mb-3 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <SearchBar value={search} onChange={setSearch} placeholder="Search" className="w-full" />
-        <div className="flex flex-wrap items-center gap-2.5">
-          <div className="inline-flex items-center gap-3 rounded-full bg-[var(--color-surface)] px-4 py-2.5 text-[13px] text-[var(--color-text-secondary)] shadow-sm shadow-[#00000010] border border-[var(--color-border-soft)]">
+        <div className="flex w-full sm:w-auto flex-wrap items-center gap-2.5">
+          <div className="inline-flex w-full sm:w-auto justify-between sm:justify-start items-center gap-3 rounded-full bg-[var(--color-surface)] px-3.5 py-2 sm:px-4 sm:py-2.5 text-xs sm:text-[13px] text-[var(--color-text-secondary)] shadow-sm shadow-[#00000010] border border-[var(--color-border-soft)]">
             <button
               type="button"
               onClick={openDateFrom}
               className="flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-primary)] transition-colors cursor-pointer"
               aria-label="Open start date picker"
             >
-              <Calendar className="h-5 w-5" />
+              <Calendar className="h-4 w-4 sm:h-5 sm:w-5" />
             </button>
             <input
               ref={dateFromRef}
@@ -582,7 +582,7 @@ export default function ExportInvoices() {
         </div>
 
         {/* Pagination */}
-        <div className="ui-pagination justify-between border-t border-[var(--color-border-soft)] px-4 py-3">
+        <div className="ui-pagination flex-wrap gap-3 justify-between border-t border-[var(--color-border-soft)] px-3 py-3 sm:px-4">
           <div className="flex items-center gap-2.5 flex-nowrap whitespace-nowrap text-[13px] text-[var(--color-text-muted)]">
             <span>Rows per page:</span>
             <select

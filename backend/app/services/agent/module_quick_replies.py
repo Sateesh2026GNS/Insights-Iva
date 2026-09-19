@@ -33,6 +33,20 @@ def try_module_quick_reply(db: Session, ctx: AgentContext, user_message: str) ->
     text = re.sub(r"\s+", " ", text)
     roles = agent_role_names(ctx)
 
+    if text in ("today's production", "todays production", "today production", "production today"):
+        from app.models.user import User
+        from app.services.ai_tools import execute_tool as exec_ai_tool
+        from app.llm.function_registry import format_tool_result
+        user = db.get(User, ctx.user_id)
+        if user:
+            res = exec_ai_tool(db, user, "get_todays_production", {})
+            body = format_tool_result("get_todays_production", res)
+            return OperatorReplyResult(
+                answer_text=body,
+                printable=True,
+                report_title="Today's Production Summary",
+            )
+
     if text in ("business summary", "give me business summary", "today business summary"):
         if ROLE_ADMIN not in roles:
             return None

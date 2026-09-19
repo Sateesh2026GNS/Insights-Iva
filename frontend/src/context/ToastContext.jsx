@@ -52,8 +52,8 @@ export function ToastProvider({ children }) {
     }
 
     const id = Date.now() + Math.random();
-    setToasts((prev) => [...prev, { id, message: text, type }]);
     const ttl = type === "error" ? 5000 : 3200;
+    setToasts((prev) => [...prev, { id, message: text, type, ttl }]);
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
     }, ttl);
@@ -99,6 +99,16 @@ export function ToastProvider({ children }) {
 
   return (
     <ToastContext.Provider value={{ addToast }}>
+      <style>{`
+        @keyframes toastProgressBar {
+          0% {
+            width: 0%;
+          }
+          100% {
+            width: 100%;
+          }
+        }
+      `}</style>
       {children}
       {/* Top Notification / Toast Container (positioned cleanly below the header bar) */}
       <div className="fixed top-[calc(var(--navbar-height,3.5rem)+0.75rem)] right-4 sm:right-6 z-[9999] flex flex-col items-center sm:items-end gap-2.5 pointer-events-none max-w-[calc(100vw-2rem)] sm:max-w-md w-full sm:w-auto">
@@ -139,7 +149,7 @@ export function ToastProvider({ children }) {
           return (
             <div
               key={t.id}
-              className="pointer-events-auto relative flex items-center gap-3 overflow-hidden rounded-xl border border-slate-200/90 bg-white/95 backdrop-blur-md py-3 pl-3.5 pr-3 shadow-[0_10px_25px_-5px_rgba(0,0,0,0.12),0_8px_10px_-6px_rgba(0,0,0,0.06),0_1px_3px_rgba(0,0,0,0.08)] transition-all animate-in fade-in slide-in-from-top-3 duration-200 w-full sm:w-auto"
+              className="pointer-events-auto relative flex items-center gap-3 overflow-hidden rounded-xl border border-slate-200/90 bg-white/95 backdrop-blur-md pb-4 pt-3.5 pl-3.5 pr-3 shadow-[0_10px_25px_-5px_rgba(0,0,0,0.12),0_8px_10px_-6px_rgba(0,0,0,0.06),0_1px_3px_rgba(0,0,0,0.08)] transition-all animate-in fade-in slide-in-from-top-3 duration-200 w-full sm:w-auto"
               style={{
                 minWidth: "280px",
                 maxWidth: "420px",
@@ -237,6 +247,19 @@ export function ToastProvider({ children }) {
                   <line x1="6" y1="6" x2="18" y2="18" />
                 </svg>
               </button>
+
+              {/* Bottom animated loading progress line from 0% to 100% */}
+              <div
+                className="absolute bottom-0 left-0 right-0 h-[3px] overflow-hidden rounded-b-xl"
+              >
+                <div
+                  className="h-full rounded-b-xl opacity-90"
+                  style={{
+                    backgroundColor: accentColor,
+                    animation: `toastProgressBar ${t.ttl || 3200}ms linear forwards`,
+                  }}
+                />
+              </div>
             </div>
           );
         })}

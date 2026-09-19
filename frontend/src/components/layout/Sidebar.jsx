@@ -400,14 +400,14 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
         : "text-slate-300 hover:bg-white/10 hover:text-white"
     }`;
 
-  const childLinkClass = ({ isActive }, hasIcon = false) =>
-    `relative block rounded-lg py-2 ${hasIcon ? "pl-3" : "pl-9"} pr-3 text-[13px] transition-colors ${
+  const childLinkClass = ({ isActive }) =>
+    `group relative flex w-full items-center rounded-lg px-3 py-2 text-[13px] transition-colors ${
       isActive
-        ? "bg-[var(--color-nav-active)] font-medium text-white"
-        : "text-slate-400 hover:bg-white/10 hover:text-slate-200"
+        ? "bg-white/15 font-semibold text-white"
+        : "text-slate-300 hover:bg-white/10 hover:text-white"
     }`;
 
-  const renderChildLabel = (child) => {
+  const renderChildLabel = (child, isActive = false) => {
     const label = childLabel(child);
     if (child.navIcon === "create") {
       return (
@@ -419,52 +419,53 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
         </span>
       );
     }
-    return label;
+    return (
+      <span className="flex items-center gap-2.5 min-w-0">
+        <span
+          className={`h-1.5 w-1.5 shrink-0 rounded-full transition-colors ${
+            isActive ? "bg-white" : "bg-slate-400 group-hover:bg-slate-200"
+          }`}
+          aria-hidden
+        />
+        <span className="truncate">{label}</span>
+      </span>
+    );
   };
 
   const nestedLinkClass = ({ isActive }, opts = {}) => {
-    const isBullet = opts.bullet;
-    if (isBullet) {
-      return `relative flex w-full items-center gap-2 rounded-md py-1.5 pr-2 text-[12px] leading-snug transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 ${
-        collapsed ? "justify-center px-2" : "pl-2.5"
-      } ${
-        isActive
-          ? "font-semibold text-white"
-          : "text-slate-400 hover:text-slate-200"
-      }`;
-    }
-    return `relative flex w-full items-center gap-2.5 rounded-lg py-2 pr-3 text-[13px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 ${
-      collapsed ? "justify-center px-2" : "pl-3"
+    return `group relative flex w-full items-center gap-2.5 rounded-lg px-3 py-1.5 text-[12.5px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 ${
+      collapsed ? "justify-center px-2" : ""
     } ${
       isActive
-        ? "bg-[var(--color-nav-active)] font-medium text-white"
+        ? "bg-white/15 font-semibold text-white"
         : "text-slate-300 hover:bg-white/10 hover:text-white"
     }`;
   };
 
   const submenuContainerClass = (sectionKey, depth) => {
-    if (sectionKey === "hr") {
-      return "mx-0.5 mb-1 space-y-0.5 rounded-lg border border-white/12 bg-black/15 p-1.5";
-    }
-    return `space-y-0.5 pb-0.5 ${depth === 0 ? "ml-3 border-l border-white/10 pl-2" : "ml-2 pl-2"}`;
+    return "mb-1.5 space-y-0.5 rounded-b-lg border border-t-0 border-white/12 bg-black/15 p-1.5 pt-1";
   };
 
-  const nestedGroupClass = (hasActive) =>
-    `relative flex w-full items-center rounded-lg py-2 text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 ${
-      collapsed ? "justify-center px-2" : "justify-between gap-2 px-3"
+  const nestedGroupClass = (isOpen, hasActive) =>
+    `relative flex w-full items-center text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 ${
+      collapsed ? "justify-center px-2 py-2 rounded-lg" : "justify-between gap-2 px-3 py-2"
     } ${
-      hasActive
-        ? "text-white"
-        : "text-slate-300 hover:bg-white/10 hover:text-white"
+      isOpen
+        ? "rounded-t-lg rounded-b-none bg-white/15 text-white font-semibold"
+        : hasActive
+        ? "rounded-lg bg-white/15 text-white"
+        : "rounded-lg text-slate-300 hover:bg-white/10 hover:text-white"
     }`;
 
-  const sectionButtonClass = (_isOpen, hasActive) =>
-    `relative flex w-full items-center rounded-lg py-2.5 text-sm font-medium transition-colors ${navItemPad} ${
-      collapsed ? "justify-center" : "justify-between gap-2"
+  const sectionButtonClass = (isOpen, hasActive) =>
+    `relative flex w-full items-center text-sm font-medium transition-all ${navItemPad} ${
+      collapsed ? "justify-center rounded-xl py-2.5" : "justify-between gap-2 py-2.5"
     } ${
-      hasActive
-        ? "bg-[var(--color-nav-active)] text-white"
-        : "text-slate-300 hover:bg-white/10 hover:text-white"
+      isOpen
+        ? "rounded-t-xl rounded-b-none bg-white/15 text-white font-semibold"
+        : hasActive
+        ? "rounded-xl bg-[var(--color-nav-active)] text-white font-semibold"
+        : "rounded-xl text-slate-300 hover:bg-white/10 hover:text-white"
     }`;
 
   const actionButtonClass = `flex w-full items-center rounded-lg py-2.5 text-sm text-slate-300 transition-colors hover:bg-white/10 hover:text-white ${navItemPad} ${
@@ -522,17 +523,19 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
           end={node.end}
           onClick={() => onClose?.()}
           title={collapsed ? label : undefined}
-          className={(state) => nestedLinkClass(state, { bullet: isBulletLeaf })}
+          className={nestedLinkClass}
         >
-          {isBulletLeaf ? (
-            <span
-              className="h-1.5 w-1.5 shrink-0 rounded-full bg-current opacity-80"
-              aria-hidden
-            />
-          ) : (
-            <Icon className="h-[18px] w-[18px] shrink-0" strokeWidth={1.75} aria-hidden />
+          {({ isActive }) => (
+            <>
+              <span
+                className={`h-1.5 w-1.5 shrink-0 rounded-full transition-colors ${
+                  isActive ? "bg-white" : "bg-slate-400 group-hover:bg-slate-200"
+                }`}
+                aria-hidden
+              />
+              {!collapsed && <span className="min-w-0 truncate">{label}</span>}
+            </>
           )}
-          {!collapsed && <span className="min-w-0 truncate">{label}</span>}
         </NavLink>
       );
     });
@@ -637,7 +640,7 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
                 )}
               </button>
               {!collapsed && isOpen && (
-                <div className={`space-y-0.5 pb-1 ${section.key === "hr" ? "pt-0.5" : ""}`}>
+                <div className="mb-2 space-y-0.5 rounded-b-xl border border-t-0 border-white/15 bg-black/20 p-1.5 pt-1">
                   {section.nestedNav
                     ? renderNestedNav(section.children, section.key)
                     : section.children.map((child) => (
@@ -646,9 +649,9 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
                           to={child.to}
                           end={child.end}
                           onClick={() => onClose?.()}
-                          className={(state) => childLinkClass(state, Boolean(child.navIcon))}
+                          className={childLinkClass}
                         >
-                          {renderChildLabel(child)}
+                          {({ isActive }) => renderChildLabel(child, isActive)}
                         </NavLink>
                       ))}
                 </div>

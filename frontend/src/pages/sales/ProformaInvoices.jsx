@@ -267,15 +267,15 @@ export default function ProformaInvoices() {
       <div className="space-y-4 p-4 sm:p-6">
 
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
-          <div className="flex flex-wrap items-center gap-2.5">
-            <div className="inline-flex items-center gap-3 rounded-full bg-[var(--color-surface)] px-4 py-2.5 text-[13px] text-[var(--color-text-secondary)] shadow-sm shadow-[#00000010] border border-[var(--color-border-soft)]">
+          <div className="flex w-full sm:w-auto flex-wrap items-center gap-2.5">
+            <div className="inline-flex w-full sm:w-auto justify-between sm:justify-start items-center gap-3 rounded-full bg-[var(--color-surface)] px-3.5 py-2 sm:px-4 sm:py-2.5 text-xs sm:text-[13px] text-[var(--color-text-secondary)] shadow-sm shadow-[#00000010] border border-[var(--color-border-soft)]">
               <button
                 type="button"
                 onClick={openDateFrom}
                 className="flex items-center justify-center text-[var(--color-text-muted)] hover:text-[#0f6d84] transition-colors cursor-pointer"
                 aria-label="Open start date picker"
               >
-                <Calendar className="h-5 w-5" />
+                <Calendar className="h-4 w-4 sm:h-5 sm:w-5" />
               </button>
               <input
                 ref={dateFromRef}
@@ -290,7 +290,7 @@ export default function ProformaInvoices() {
               <button
                 type="button"
                 onClick={openDateFrom}
-                className="text-[14px] font-medium text-[#2c2b3d] dark:text-slate-100 hover:text-[#0f6d84] transition-colors cursor-pointer"
+                className="text-xs sm:text-[14px] font-medium text-[#2c2b3d] dark:text-slate-100 hover:text-[#0f6d84] transition-colors cursor-pointer"
                 title="Click to select start date"
               >
                 {fmtDisplayDate(dateFrom) || "Start Date"}
@@ -299,7 +299,7 @@ export default function ProformaInvoices() {
               <button
                 type="button"
                 onClick={openDateTo}
-                className="text-[14px] font-medium text-[#2c2b3d] dark:text-slate-100 hover:text-[#0f6d84] transition-colors cursor-pointer"
+                className="text-xs sm:text-[14px] font-medium text-[#2c2b3d] dark:text-slate-100 hover:text-[#0f6d84] transition-colors cursor-pointer"
                 title="Click to select end date"
               >
                 {fmtDisplayDate(dateTo) || "End Date"}
@@ -320,12 +320,14 @@ export default function ProformaInvoices() {
                 className="flex items-center justify-center text-[var(--color-text-muted)] hover:text-[#0f6d84] transition-colors cursor-pointer"
                 aria-label="Open end date picker"
               >
-                <Calendar className="h-5 w-5" />
+                <Calendar className="h-4 w-4 sm:h-5 sm:w-5" />
               </button>
             </div>
-            <Button variant="add" to={createTo} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
-              {exportOnly ? "Export Proforma Invoice" : "Proforma Invoice"}
-            </Button>
+            <div className="w-full sm:w-auto">
+              <Button variant="add" to={createTo} className="w-full sm:w-auto justify-center" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
+                {exportOnly ? "Export Proforma Invoice" : "Proforma Invoice"}
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -472,7 +474,7 @@ export default function ProformaInvoices() {
             </table>
           </div>
 
-          <div className="ui-pagination justify-between border-t border-[var(--color-border-soft)] px-4 py-3">
+          <div className="ui-pagination flex-wrap gap-3 justify-between border-t border-[var(--color-border-soft)] px-3 py-3 sm:px-4">
             <div className="flex items-center gap-2.5 flex-nowrap whitespace-nowrap text-[13px] text-[#596b82]">
               <span>Rows per page:</span>
               <select
