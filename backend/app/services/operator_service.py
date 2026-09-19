@@ -26,7 +26,11 @@ from app.schemas.operator import (
 )
 from app.services.allocation_service import get_allocation_list, get_allocation_summary
 from app.services.batch_tracking_service import get_batch_detail, get_batch_summary, list_batches_enriched
-from app.services.data_scope import operator_can_access_work_order
+from app.services.data_scope import (
+    operator_can_access_batch,
+    operator_can_access_machine,
+    operator_can_access_work_order,
+)
 from app.services.notification_management_service import (
     NotificationManagementService,
     clear_all_notifications,
@@ -92,6 +96,7 @@ class OperatorService:
     def _get_po(self, po_id: int | None):
         if not po_id:
             return None
+        from sqlalchemy import select
         from app.models.production import ProductionOrder
         return self.db.scalars(
             select(ProductionOrder).where(
@@ -103,6 +108,7 @@ class OperatorService:
     def _get_product(self, product_id: int | None):
         if not product_id:
             return None
+        from sqlalchemy import select
         from app.models.product import Product
         return self.db.scalars(
             select(Product).where(
@@ -452,7 +458,14 @@ class OperatorService:
 
     # ── Deep Intelligence Methods (for AI Chatbot) ───────────────────────────
 
-    def get_machine_deep_status(self, query: str = "") -> list[dict]:
+    def _machines_visible_to_user(self, user: User) -> list:
+        return [
+            m
+            for m in self.machines.list_all()
+            if operator_can_access_machine(self.db, user, m)
+        ]
+
+    def get_machine_deep_status(self, user: User, query: str = "") -> list[dict]:
         """Return deep machine info: machine + active WO + product + manpower + time + efficiency."""
         from datetime import datetime, timezone
         from sqlalchemy import select
@@ -460,7 +473,7 @@ class OperatorService:
         from app.models.product import Product
         from app.models.user import User
 
-        machines = self.machines.list_all()
+        machines = self._machines_visible_to_user(user)
         result = []
         for m in machines:
             q = query.strip().lower()
@@ -532,7 +545,16 @@ class OperatorService:
 
             po = self._get_po(wo.production_order_id)
             product = self._get_product(po.product_id) if po else None
-            operator = self.db.get(User, wo.assigned_user_id) if wo.assigned_user_id else None
+            operator = (
+                self.db.scalars(
+                    select(User).where(
+                        User.id == wo.assigned_user_id,
+                        User.tenant_id == self.tenant_id,
+                    )
+                ).first()
+                if wo.assigned_user_id
+                else None
+            )
 
             planned = float(wo.planned_quantity or 0)
             actual = float(wo.actual_quantity or 0)
@@ -632,14 +654,14 @@ class OperatorService:
             })
         return result
 
-    def get_work_order_deep(self, query: str = "") -> list[dict]:
-        """Return all enriched work order data for AI deep answers."""
+    def get_work_order_deep(self, user: User, query: str = "") -> list[dict]:
+        """Return enriched work order data for AI deep answers (scoped to caller access)."""
         from datetime import datetime, timezone
         from sqlalchemy import select, func
-        from app.models.production import WorkOrder, ProductionOrder, DailyProductionReport
-        from app.models.product import Product
+        from app.models.production import WorkOrder, DailyProductionReport
         from app.models.machine import Machine
         from app.models.user import User
+        from app.services.data_scope import operator_can_access_work_order
 
         wos = list(self.db.scalars(
             select(WorkOrder)
@@ -653,10 +675,30 @@ class OperatorService:
         now = datetime.now(timezone.utc)
 
         for wo in wos:
+            if not operator_can_access_work_order(user, wo):
+                continue
             po = self._get_po(wo.production_order_id)
             product = self._get_product(po.product_id) if po else None
-            machine = self.db.get(Machine, wo.machine_id) if wo.machine_id else None
-            operator = self.db.get(User, wo.assigned_user_id) if wo.assigned_user_id else None
+            machine = (
+                self.db.scalars(
+                    select(Machine).where(
+                        Machine.id == wo.machine_id,
+                        Machine.tenant_id == self.tenant_id,
+                    )
+                ).first()
+                if wo.machine_id
+                else None
+            )
+            operator = (
+                self.db.scalars(
+                    select(User).where(
+                        User.id == wo.assigned_user_id,
+                        User.tenant_id == self.tenant_id,
+                    )
+                ).first()
+                if wo.assigned_user_id
+                else None
+            )
 
             if q:
                 searchable = " ".join(filter(None, [
@@ -735,9 +777,9 @@ class OperatorService:
             })
         return result
 
-    def get_batch_deep(self, query: str = "") -> list[dict]:
+    def get_batch_deep(self, user: User, query: str = "") -> list[dict]:
         """Return enriched batch data for AI deep answers."""
-        from sqlalchemy import select
+        from sqlalchemy import select, func
         from app.models.production import Batch, WorkOrder, ProductionOrder
         from app.models.product import Product
         from app.models.machine import Machine
@@ -750,11 +792,33 @@ class OperatorService:
         q = query.strip().lower()
         result = []
         for b in batches:
-            wo = self.db.get(WorkOrder, b.work_order_id)
+            if not operator_can_access_batch(self.db, user, b):
+                continue
+            wo = (
+                self.db.scalars(
+                    select(WorkOrder).where(
+                        WorkOrder.id == b.work_order_id,
+                        WorkOrder.tenant_id == self.tenant_id,
+                    )
+                ).first()
+                if b.work_order_id
+                else None
+            )
             po = self._get_po(wo.production_order_id) if wo else None
             product = self._get_product(po.product_id) if po else None
-            machine = self.db.get(Machine, wo.machine_id) if wo and wo.machine_id else None
-            operator = self.db.get(User, wo.assigned_user_id) if wo and wo.assigned_user_id else None
+            machine = (
+                self.machines.get_by_id(wo.machine_id) if wo and wo.machine_id else None
+            )
+            operator = (
+                self.db.scalars(
+                    select(User).where(
+                        User.id == wo.assigned_user_id,
+                        User.tenant_id == self.tenant_id,
+                    )
+                ).first()
+                if wo and wo.assigned_user_id
+                else None
+            )
 
             if q:
                 searchable = " ".join(filter(None, [
@@ -833,7 +897,9 @@ class OperatorService:
 
             so = None
             if po and getattr(po, "sales_order_id", None):
-                so = self.db.get(SalesOrder, po.sales_order_id)
+                from app.services.tenant_resources import get_tenant_row
+
+                so = get_tenant_row(self.db, SalesOrder, po.sales_order_id, self.tenant_id)
 
             if dispatch_sm or (so and getattr(so, "shipped", False)) or getattr(b, "dispatched", False):
                 dispatch_status = "dispatched"
@@ -1098,7 +1164,7 @@ class OperatorService:
             })
         return result
 
-    def get_shopfloor_deep(self) -> dict:
+    def get_shopfloor_deep(self, user: User) -> dict:
         """Return complete shop floor snapshot for AI deep answers."""
         from datetime import date
         from sqlalchemy import func, select
@@ -1106,34 +1172,31 @@ class OperatorService:
         from app.models.product import Product
         from app.models.machine import Machine
         from app.models.user import User
+        from app.services.data_scope import scope_daily_reports
+        from app.services.work_order_service import list_work_orders
 
         today = date.today()
-        machines = list(self.db.scalars(select(Machine).where(Machine.tenant_id == self.tenant_id)).all())
+        machines = self._machines_visible_to_user(user)
         running = [m for m in machines if m.status in ("running", "active")]
         idle = [m for m in machines if m.status in ("idle", "available")]
         breakdown = [m for m in machines if m.status in ("breakdown", "down", "maintenance")]
 
-        wos = list(self.db.scalars(
-            select(WorkOrder).where(
-                WorkOrder.tenant_id == self.tenant_id,
-                WorkOrder.status.in_(("running", "in_progress")),
-            )
-        ).all())
+        wos = [
+            w
+            for w in list_work_orders(self.db, self.tenant_id, user=user)
+            if w.status in ("running", "in_progress")
+        ]
 
-        operators_count = int(self.db.scalar(
-            select(func.count(func.distinct(WorkOrder.assigned_user_id))).where(
-                WorkOrder.tenant_id == self.tenant_id,
-                WorkOrder.status.in_(("running", "in_progress")),
-                WorkOrder.assigned_user_id.isnot(None),
-            )
-        ) or 0)
+        operators_count = len({w.assigned_user_id for w in wos if w.assigned_user_id})
 
-        reports_today = list(self.db.scalars(
+        report_stmt = scope_daily_reports(
             select(DailyProductionReport).where(
                 DailyProductionReport.tenant_id == self.tenant_id,
                 DailyProductionReport.report_date == today,
-            )
-        ).all())
+            ),
+            user,
+        )
+        reports_today = list(self.db.scalars(report_stmt).all())
 
         todays_production = int(sum(float(r.produced_quantity or 0) for r in reports_today))
         todays_scrap = int(sum(float(r.scrap_quantity or 0) for r in reports_today))
@@ -1141,10 +1204,21 @@ class OperatorService:
 
         running_jobs_detail = []
         for wo in wos[:10]:
+            if not operator_can_access_work_order(user, wo):
+                continue
             po = self._get_po(wo.production_order_id)
             product = self._get_product(po.product_id) if po else None
-            machine = self.db.get(Machine, wo.machine_id) if wo.machine_id else None
-            operator = self.db.get(User, wo.assigned_user_id) if wo.assigned_user_id else None
+            machine = self.machines.get_by_id(wo.machine_id) if wo.machine_id else None
+            operator = (
+                self.db.scalars(
+                    select(User).where(
+                        User.id == wo.assigned_user_id,
+                        User.tenant_id == self.tenant_id,
+                    )
+                ).first()
+                if wo.assigned_user_id
+                else None
+            )
             planned = float(wo.planned_quantity or 0)
             actual = float(wo.actual_quantity or 0)
             running_jobs_detail.append({
@@ -1932,14 +2006,14 @@ class OperatorService:
             "schedule": schedule_rows,
         }
 
-    def get_machine_allocation_deep(self) -> dict:
+    def get_machine_allocation_deep(self, user: User) -> dict:
         """Machine allocation: WO, product, machine, operator, shift, supervisor, capacity, status, total/allocated/free/maintenance/utilization."""
         from sqlalchemy import select
         from app.models.production import WorkOrder as WO, ProductionOrder
         from app.models.product import Product
         from app.models.user import User as UserModel
 
-        machines = self.machines.list_all()
+        machines = self._machines_visible_to_user(user)
         total = len(machines)
         ALLOC_STATUS = {"planned", "released", "material_ready", "machine_ready", "running", "in_progress"}
 
@@ -2019,15 +2093,17 @@ class OperatorService:
             "machines": rows,
         }
 
-    def get_batch_summary_deep(self) -> dict:
+    def get_batch_summary_deep(self, user: User) -> dict:
         """Batch summary: total, running, completed, hold, rejected, expired."""
         from sqlalchemy import select, func
         from app.models.production import Batch, WorkOrder as WO, ProductionOrder
         from app.models.product import Product
 
-        batches = list(self.db.scalars(
-            select(Batch).where(Batch.tenant_id == self.tenant_id)
-        ).all())
+        batches = [
+            b
+            for b in self.db.scalars(select(Batch).where(Batch.tenant_id == self.tenant_id)).all()
+            if operator_can_access_batch(self.db, user, b)
+        ]
 
         STATUS_MAP = {
             "running": 0, "in_process": 0,
@@ -2100,12 +2176,12 @@ class OperatorService:
             "recent_batches": recent,
         }
 
-    def get_machine_status_deep(self) -> dict:
+    def get_machine_status_deep(self, user: User) -> dict:
         """Machine status: total, running, idle, maintenance, breakdown, offline with details."""
         from sqlalchemy import select, func
         from app.models.production import WorkOrder as WO, DailyProductionReport
 
-        machines = self.machines.list_all()
+        machines = self._machines_visible_to_user(user)
         total = len(machines)
 
         ALLOC = {"planned", "released", "material_ready", "machine_ready", "running", "in_progress"}

@@ -10,6 +10,7 @@ from app.api.deps import get_db
 from app.core.permissions import get_role_names, user_is_admin
 from app.models.user import User
 from app.schemas.ai_assistant import ChatRequest, ChatResponse, ConversationDetail, ConversationSummary
+from app.services.agent.access import user_has_operator_role
 from app.services.ai_assistant_service import get_conversation, list_conversations, process_chat
 from app.services.ai_llm_client import LlmClient
 
@@ -21,6 +22,11 @@ router = APIRouter(prefix="/ai", tags=["ai-assistant"])
 def _require_operator_access(user: User) -> User:
     if not user:
         raise HTTPException(status_code=401, detail="Authentication required.")
+    if not user_has_operator_role(user):
+        raise HTTPException(
+            status_code=403,
+            detail="Operator access is required to use the AI assistant.",
+        )
     return user
 
 

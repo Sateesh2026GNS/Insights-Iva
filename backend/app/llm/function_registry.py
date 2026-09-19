@@ -701,17 +701,17 @@ def execute_tool(db: Session, user: User, tool_name: str, arguments: dict) -> di
 
     if tool_name == "get_machine_deep_status":
         query = args.get("query", "")
-        machines = svc.get_machine_deep_status(query)
+        machines = svc.get_machine_deep_status(user, query)
         return {"success": True, "query": query, "machines": machines, "count": len(machines), "endpoint": endpoint}
 
     if tool_name == "get_work_order_deep":
         query = args.get("query", "")
-        wos = svc.get_work_order_deep(query)
+        wos = svc.get_work_order_deep(user, query)
         return {"success": True, "work_orders": wos, "count": len(wos), "endpoint": endpoint}
 
     if tool_name == "get_batch_deep":
         query = args.get("query", "")
-        batches = svc.get_batch_deep(query)
+        batches = svc.get_batch_deep(user, query)
         return {"success": True, "batches": batches, "count": len(batches), "endpoint": endpoint}
 
     if tool_name == "get_production_plan_deep":
@@ -720,7 +720,7 @@ def execute_tool(db: Session, user: User, tool_name: str, arguments: dict) -> di
         return {"success": True, "plans": plans, "count": len(plans), "endpoint": endpoint}
 
     if tool_name == "get_shopfloor_deep":
-        data = svc.get_shopfloor_deep()
+        data = svc.get_shopfloor_deep(user)
         return {"success": True, **data, "endpoint": endpoint}
 
     if tool_name == "get_attendance_deep":
@@ -764,13 +764,13 @@ def execute_tool(db: Session, user: User, tool_name: str, arguments: dict) -> di
         return {"success": True, **svc.get_production_schedule_stats_deep(), "endpoint": endpoint}
 
     if tool_name == "get_machine_allocation_deep":
-        return {"success": True, **svc.get_machine_allocation_deep(), "endpoint": endpoint}
+        return {"success": True, **svc.get_machine_allocation_deep(user), "endpoint": endpoint}
 
     if tool_name == "get_batch_summary_deep":
-        return {"success": True, **svc.get_batch_summary_deep(), "endpoint": endpoint}
+        return {"success": True, **svc.get_batch_summary_deep(user), "endpoint": endpoint}
 
     if tool_name == "get_machine_status_deep":
-        return {"success": True, **svc.get_machine_status_deep(), "endpoint": endpoint}
+        return {"success": True, **svc.get_machine_status_deep(user), "endpoint": endpoint}
 
     return {"success": False, "error": f"Unknown tool: {tool_name}"}
 

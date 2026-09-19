@@ -393,6 +393,9 @@ def get_download_url(db: Session, user: User, file_id: int) -> dict:
         stored.storage_key,
         stored.original_filename,
         settings.signed_url_download_expiry_seconds,
+        tenant_id=user.tenant_id,
+        user_id=user.id,
+        file_id=stored.id,
     )
     AuditLogService.log(
         db=db,

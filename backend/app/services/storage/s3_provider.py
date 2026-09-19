@@ -78,6 +78,10 @@ class S3StorageProvider(StorageProvider):
         storage_key: str,
         filename: str,
         expires_seconds: int,
+        *,
+        tenant_id: int | None = None,
+        user_id: int | None = None,
+        file_id: int | None = None,
     ) -> PresignedDownload:
         url = self._client.generate_presigned_url(
             "get_object",

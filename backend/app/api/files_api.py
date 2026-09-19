@@ -7,6 +7,7 @@ from fastapi.responses import FileResponse
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from app.api.auth_deps import get_current_user
 from app.api.deps import get_db
 from app.core.config import get_settings
 from app.core.permissions import require_permission
@@ -234,19 +235,37 @@ async def local_upload_part(upload_id: str, part_number: int, request: Request):
 
 
 @router.get("/local-download/{token}")
-def local_download(token: str):
+def local_download(
+    token: str,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     settings = get_settings()
     if (settings.storage_provider or "local").lower() != "local":
         raise HTTPException(404, "Not found")
-    resolved = resolve_download_token(token)
-    if not resolved:
-        raise HTTPException(410, "Download URL has expired")
+    resolved = resolve_download_token(token, user.id, user.tenant_id)
+    if not resolved or resolved.file_id is None:
+        raise HTTPException(410, "Download URL has expired or is invalid")
+    from app.services.file_management_service import _get_file
+
+    stored = _get_file(db, user.tenant_id, resolved.file_id)
+    if stored.storage_key != resolved.storage_key:
+        raise HTTPException(403, "Download token does not match this file")
+    if stored.deleted_at is not None:
+        raise HTTPException(404, "File not found")
+    if stored.scan_status != "SAFE" or stored.processing_status != "READY":
+        raise HTTPException(409, "File is not available for download")
     provider = get_storage_provider()
     if not isinstance(provider, LocalStorageProvider):
         raise HTTPException(404, "Not found")
     path = provider._path_for_key(resolved.storage_key)
-    if not path.exists():
+    if not path.exists() or not path.is_file():
         raise HTTPException(404, "File not found")
+    root = provider._root.resolve()
+    try:
+        path.resolve().relative_to(root)
+    except ValueError:
+        raise HTTPException(403, "Invalid file location")
     return FileResponse(
         path,
         filename=resolved.filename or path.name,

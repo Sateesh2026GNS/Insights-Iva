@@ -21,8 +21,7 @@ ENTITY_MODELS = {
 def validate_entity_access(db: Session, tenant_id: int, entity_type: str, entity_id: int) -> bool:
     model = ENTITY_MODELS.get((entity_type or "").lower().replace("-", "_"))
     if not model:
-        # Unknown entity types allowed at API level but flagged — extend registry per module
-        return True
+        return False
     row = db.get(model, entity_id)
     if not row:
         return False

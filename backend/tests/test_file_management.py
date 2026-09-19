@@ -141,6 +141,8 @@ class TestFileUploadFlow:
         dl2 = client.get(f"/api/files/{file_id}/download-url", headers=admin["headers"])
         assert dl2.status_code == 200
         assert "download_url" in dl2.json()
+        file_bytes = client.get(dl2.json()["download_url"], headers=admin["headers"])
+        assert file_bytes.status_code == 200
 
     def test_tenant_isolation(self, client, register_admin):
         admin_a = register_admin()
@@ -198,6 +200,28 @@ class TestMultipartUpload:
         )
         assert resume.status_code == 200
         assert 1 in resume.json()["completed_part_numbers"]
+
+
+class TestEntityAttachment:
+    def test_unknown_entity_type_rejected(self, client, register_admin):
+        from app.services.file_entity_resolver import validate_entity_access
+        from app.core.database import SessionLocal
+
+        admin = register_admin()
+        db = SessionLocal()
+        try:
+            assert validate_entity_access(db, admin["user"]["tenant_id"], "unknown_entity", 1) is False
+        finally:
+            db.close()
+
+        resp = _initiate(
+            client,
+            admin["headers"],
+            size=len(_png_bytes()),
+            entity_type="unknown_entity",
+            entity_id=1,
+        )
+        assert resp.status_code == 404
 
 
 class TestAntivirusScanner:

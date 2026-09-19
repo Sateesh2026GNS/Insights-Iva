@@ -1,9 +1,11 @@
 import logging
 
 from sqlalchemy import Select, or_, select
+from sqlalchemy.orm import Session
 
 from app.core.permissions import get_role_names, user_is_admin
-from app.models.production import DailyProductionReport, WorkOrder
+from app.models.machine import Machine
+from app.models.production import Batch, DailyProductionReport, WorkOrder
 from app.models.user import User
 
 logger = logging.getLogger(__name__)
@@ -89,6 +91,69 @@ def scope_daily_reports(stmt: Select, user: User) -> Select:
     conds.append(DailyProductionReport.work_order_id.in_(wo_subquery))
 
     return stmt.where(or_(*conds))
+
+
+def user_has_broad_production_visibility(user: User) -> bool:
+    if user_is_admin(user):
+        return True
+    roles = _roles(user)
+    return bool(
+        roles.intersection(
+            {"Production Manager", "Plant Manager", "Manager", "Supervisor"},
+        )
+    )
+
+
+def _manager_machine_visible(user: User, machine: Machine) -> bool:
+    if user.plant_code and machine.plant_code and machine.plant_code != user.plant_code:
+        return False
+    if user.department and machine.department and machine.department != user.department:
+        return False
+    return True
+
+
+def operator_can_access_machine(db: Session, user: User, machine: Machine) -> bool:
+    if machine.tenant_id != user.tenant_id:
+        return False
+    if user_is_admin(user):
+        return True
+    roles = _roles(user)
+    if "Production Manager" in roles or "Plant Manager" in roles or "Manager" in roles:
+        return _manager_machine_visible(user, machine)
+    if "Supervisor" in roles:
+        return _manager_machine_visible(user, machine)
+    from app.services.operator_scope import resolve_operator_machine_ids
+
+    return machine.id in resolve_operator_machine_ids(db, user)
+
+
+def operator_can_access_batch(db: Session, user: User, batch: Batch) -> bool:
+    if batch.tenant_id != user.tenant_id:
+        return False
+    if user_is_admin(user):
+        return True
+    roles = _roles(user)
+    if "Production Manager" in roles or "Plant Manager" in roles or "Manager" in roles:
+        return True
+    if "Supervisor" in roles:
+        return True
+    if not batch.work_order_id:
+        return False
+    wo = db.scalars(
+        select(WorkOrder).where(
+            WorkOrder.id == batch.work_order_id,
+            WorkOrder.tenant_id == user.tenant_id,
+        )
+    ).first()
+    if not wo:
+        return False
+    if operator_can_access_work_order(user, wo):
+        return True
+    from app.services.operator_scope import resolve_operator_machine_ids
+
+    if wo.machine_id and wo.machine_id in resolve_operator_machine_ids(db, user):
+        return True
+    return False
 
 
 def operator_can_access_work_order(user: User, work_order: WorkOrder) -> bool:

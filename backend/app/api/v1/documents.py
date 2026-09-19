@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Upload
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
+from app.api.auth_deps import get_current_user
 from app.api.deps import get_db
 from app.core.permissions import require_permission
 from app.models.user import User
@@ -170,15 +171,18 @@ def preview_endpoint(
     path = resolve_file_path(ver.file_path)
     if ver.file_type not in ("pdf", "image"):
         raise HTTPException(status_code=400, detail="Preview not available for this file type")
-    token = register_preview_token(path, ver.file_type, True)
+    token = register_preview_token(path, ver.file_type, True, user.id, user.tenant_id)
     return {"url": f"/api/document-library/preview-file/{token}", "expires_in": 300}
 
 
 @router.get("/preview-file/{token}")
-def preview_file_endpoint(token: str):
+def preview_file_endpoint(
+    token: str,
+    user: User = Depends(get_current_user),
+):
     from app.services.documents.storage import consume_preview_token
 
-    path, file_type, _inline = consume_preview_token(token)
+    path, file_type, _inline = consume_preview_token(token, user.id, user.tenant_id)
     return FileResponse(
         path,
         media_type=media_type_for(file_type, path),

@@ -86,8 +86,11 @@ def list_reports(
 
 
 @router.get("/exports/{token}")
-def download_export(token: str):
-    path, media_type = resolve_export_token(token)
+def download_export(
+    token: str,
+    user: User = Depends(get_current_user),
+):
+    path, media_type = resolve_export_token(token, user)
     return FileResponse(path, media_type=media_type, filename=path.name)
 
 

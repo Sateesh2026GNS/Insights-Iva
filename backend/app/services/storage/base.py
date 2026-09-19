@@ -55,6 +55,10 @@ class StorageProvider(ABC):
         storage_key: str,
         filename: str,
         expires_seconds: int,
+        *,
+        tenant_id: int | None = None,
+        user_id: int | None = None,
+        file_id: int | None = None,
     ) -> PresignedDownload: ...
 
     @abstractmethod

@@ -31,6 +31,10 @@ vi.mock("../../../api/productionApi", () => ({
   getWorkOrders: vi.fn().mockResolvedValue({ data: [] }),
 }));
 
+vi.mock("../../../api/approvalsApi", () => ({
+  getMyApprovalCounts: vi.fn().mockResolvedValue({ data: { total: 0 } }),
+}));
+
 vi.mock("recharts", () => {
   const React = require("react");
   const Mock = ({ children }) => <div data-testid="recharts-mock">{children}</div>;

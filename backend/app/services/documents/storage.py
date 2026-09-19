@@ -12,7 +12,7 @@ from fastapi import HTTPException
 from app.core.config import get_settings
 
 _SAFE = re.compile(r"[^a-zA-Z0-9._-]+")
-_PREVIEW_TOKENS: dict[str, tuple[float, Path, str, bool]] = {}
+_PREVIEW_TOKENS: dict[str, tuple[float, Path, str, bool, int, int]] = {}
 _TOKEN_TTL = 300
 
 ALLOWED_EXTENSIONS = {
@@ -96,18 +96,20 @@ def media_type_for(file_type: str, path: Path) -> str:
     return MIME_BY_TYPE.get(file_type, "application/octet-stream")
 
 
-def register_preview_token(path: Path, file_type: str, inline: bool) -> str:
+def register_preview_token(path: Path, file_type: str, inline: bool, user_id: int, tenant_id: int) -> str:
     token = secrets.token_urlsafe(24)
-    _PREVIEW_TOKENS[token] = (time.time() + _TOKEN_TTL, path, file_type, inline)
+    _PREVIEW_TOKENS[token] = (time.time() + _TOKEN_TTL, path, file_type, inline, user_id, tenant_id)
     return token
 
 
-def consume_preview_token(token: str) -> tuple[Path, str, bool]:
+def consume_preview_token(token: str, user_id: int, tenant_id: int) -> tuple[Path, str, bool]:
     entry = _PREVIEW_TOKENS.get(token)
     if not entry:
         raise HTTPException(status_code=404, detail="Link expired or invalid")
-    expires, path, file_type, inline = entry
+    expires, path, file_type, inline, owner_id, owner_tenant = entry
     if time.time() > expires:
         _PREVIEW_TOKENS.pop(token, None)
         raise HTTPException(status_code=404, detail="Link expired")
+    if owner_id != user_id or owner_tenant != tenant_id:
+        raise HTTPException(status_code=403, detail="You do not have access to this preview.")
     return path, file_type, inline

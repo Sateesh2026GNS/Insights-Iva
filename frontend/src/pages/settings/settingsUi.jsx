@@ -33,7 +33,6 @@ import {
   Wallet,
   Workflow,
   X,
-  LogOut,
 } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";

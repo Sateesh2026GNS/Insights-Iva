@@ -148,6 +148,25 @@ def test_soft_delete_not_hard(register_admin, client):
     assert doc_id not in ids
 
 
+def test_preview_file_requires_auth_and_user_binding(register_admin, client, make_restricted_user):
+    admin = register_admin()
+    headers = admin["headers"]
+    dept_id = _ensure_department(client, headers, admin["user"]["tenant_id"])
+    created = _upload(client, headers, dept_id, name="Preview Doc")
+    doc_id = created.json()["id"]
+    preview = client.get(f"/api/document-library/{doc_id}/preview", headers=headers)
+    assert preview.status_code == 200
+    url = preview.json()["url"]
+    assert "/preview-file/" in url
+
+    unauth = client.get(url)
+    assert unauth.status_code == 401
+
+    other = make_restricted_user(admin["user"]["tenant_id"], ["documents"])
+    forbidden = client.get(url, headers=other["headers"])
+    assert forbidden.status_code == 403
+
+
 def test_duplicate_create_returns_409(register_admin, client):
     admin = register_admin()
     headers = admin["headers"]
