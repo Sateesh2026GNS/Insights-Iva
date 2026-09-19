@@ -32,7 +32,18 @@ import BrandLogo from "../common/BrandLogo";
 import LogoutConfirmModal from "../common/LogoutConfirmModal";
 import useAuth from "../../hooks/useAuth";
 import { getSidebarMenus } from "../../api/authApi";
-import { userCanAccess, isStoreManager, isProductionManager, isOperator, isHRManager, isAccountant, isSalesManager, isQualityTeam, storeManagerPathAllowed } from "../../config/permissions";
+import {
+  userCanAccess,
+  userCanAccessApprovalQueue,
+  isStoreManager,
+  isProductionManager,
+  isOperator,
+  isHRManager,
+  isAccountant,
+  isSalesManager,
+  isQualityTeam,
+  storeManagerPathAllowed,
+} from "../../config/permissions";
 import {
   PRODUCTION_MANAGER_ALLOWED_CHILDREN,
   PRODUCTION_MANAGER_ALLOWED_SECTIONS,
@@ -196,7 +207,9 @@ export function filterStaticNav(user) {
         }
       }
       if (!isOp && node.operatorOnly) return false;
-      if (!userCanAccess(user, node.module)) return false;
+      if (node.approvalQueue) {
+        if (!userCanAccessApprovalQueue(user)) return false;
+      } else if (!userCanAccess(user, node.module)) return false;
       if (storeMgr && node.to) {
         return storeManagerPathAllowed(node.to) || storeManagerPathAllowed(pathOnly);
       }

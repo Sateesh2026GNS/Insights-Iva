@@ -184,6 +184,21 @@ def require_any_permission(*modules: str):
     return dependency
 
 
+APPROVAL_QUEUE_MODULES = ("admin", "hr", "procurement", "production", "inventory")
+
+
+def require_approval_queue_access(current_user: User = Depends(get_current_user)) -> User:
+    """Users who can see at least one approval category in the unified queue."""
+    from app.services.approval_queue_service import user_can_access_approval_queue
+
+    if user_can_access_approval_queue(current_user):
+        return current_user
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail=MODULE_FORBIDDEN_MESSAGE,
+    )
+
+
 def require_action(module: str, action: str):
     def dependency(current_user: User = Depends(get_current_user)) -> User:
         if not user_has_permission(current_user, module):

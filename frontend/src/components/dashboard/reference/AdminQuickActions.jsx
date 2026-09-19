@@ -1,5 +1,4 @@
-import { useMemo } from "react";
-import { Link } from "react-router-dom";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ArrowLeftRight,
@@ -15,6 +14,7 @@ import useAuth from "../../../hooks/useAuth";
 import { isAdmin, isOperator, userCanAccess } from "../../../config/permissions";
 import { ADMIN_QUICK_ACTIONS } from "../../../data/referenceDashboardData";
 import { CardShell } from "./ReferenceParts";
+import AdminQuickActionDrawer from "./AdminQuickActionDrawer";
 
 const ACTION_ICONS = {
   clipboard: ClipboardList,
@@ -34,12 +34,20 @@ const SUMMARY_KEY_BY_ACTION = {
   reports: "reports",
 };
 
-function StatLine({ label, value, loading }) {
+function StatLine({ label, value, loading, unavailable }) {
   if (loading) {
     return (
       <div className="flex items-center justify-between gap-2 text-[10px] leading-tight">
         <span className="h-3 w-16 animate-pulse rounded bg-[var(--color-surface-muted)]" />
         <span className="h-3 w-5 animate-pulse rounded bg-[var(--color-surface-muted)]" />
+      </div>
+    );
+  }
+  if (unavailable) {
+    return (
+      <div className="flex items-center justify-between gap-2 text-[10px] leading-tight text-[var(--color-text-muted)]">
+        <span>{label}</span>
+        <span className="font-medium text-[var(--color-danger)]">—</span>
       </div>
     );
   }
@@ -51,16 +59,16 @@ function StatLine({ label, value, loading }) {
   );
 }
 
-function ActionStats({ actionId, summary, loading, t }) {
+function ActionStats({ actionId, summary, loading, unavailable, t }) {
   const data = summary?.[SUMMARY_KEY_BY_ACTION[actionId]];
 
   if (actionId === "new-work-order") {
     return (
       <div className="mt-2 w-full space-y-0.5 px-1">
-        <StatLine label={t("refDashboard.qaToday")} value={data?.today ?? 0} loading={loading} />
-        <StatLine label={t("refDashboard.qaPending")} value={data?.pending ?? 0} loading={loading} />
-        <StatLine label={t("refDashboard.qaInProgress")} value={data?.in_progress ?? 0} loading={loading} />
-        <StatLine label={t("refDashboard.qaCompleted")} value={data?.completed ?? 0} loading={loading} />
+        <StatLine label={t("refDashboard.qaToday")} value={data?.today} loading={loading} unavailable={unavailable} />
+        <StatLine label={t("refDashboard.qaPending")} value={data?.pending} loading={loading} unavailable={unavailable} />
+        <StatLine label={t("refDashboard.qaInProgress")} value={data?.in_progress} loading={loading} unavailable={unavailable} />
+        <StatLine label={t("refDashboard.qaCompleted")} value={data?.completed} loading={loading} unavailable={unavailable} />
       </div>
     );
   }
@@ -68,15 +76,16 @@ function ActionStats({ actionId, summary, loading, t }) {
   if (actionId === "production-entry") {
     return (
       <div className="mt-2 w-full space-y-0.5 px-1">
-        <StatLine label={t("refDashboard.qaToday")} value={data?.today ?? 0} loading={loading} />
-        <StatLine label={t("refDashboard.qaInProgress")} value={data?.in_progress ?? 0} loading={loading} />
-        <StatLine label={t("refDashboard.qaCompleted")} value={data?.completed ?? 0} loading={loading} />
-        <StatLine label={t("refDashboard.qaPending")} value={data?.pending ?? 0} loading={loading} />
-        {(loading || (data?.produced_quantity ?? 0) > 0) && (
+        <StatLine label={t("refDashboard.qaToday")} value={data?.today} loading={loading} unavailable={unavailable} />
+        <StatLine label={t("refDashboard.qaInProgress")} value={data?.in_progress} loading={loading} unavailable={unavailable} />
+        <StatLine label={t("refDashboard.qaCompleted")} value={data?.completed} loading={loading} unavailable={unavailable} />
+        <StatLine label={t("refDashboard.qaPending")} value={data?.pending} loading={loading} unavailable={unavailable} />
+        {(loading || unavailable || (data?.produced_quantity ?? 0) > 0) && (
           <StatLine
             label={t("refDashboard.qaProduced")}
-            value={loading ? 0 : data?.produced_quantity ?? 0}
+            value={data?.produced_quantity}
             loading={loading}
+            unavailable={unavailable}
           />
         )}
       </div>
@@ -86,9 +95,9 @@ function ActionStats({ actionId, summary, loading, t }) {
   if (actionId === "material-issue") {
     return (
       <div className="mt-2 w-full space-y-0.5 px-1">
-        <StatLine label={t("refDashboard.qaToday")} value={data?.today ?? 0} loading={loading} />
-        <StatLine label={t("refDashboard.qaPending")} value={data?.pending ?? 0} loading={loading} />
-        <StatLine label={t("refDashboard.qaIssued")} value={data?.issued ?? 0} loading={loading} />
+        <StatLine label={t("refDashboard.qaToday")} value={data?.today} loading={loading} unavailable={unavailable} />
+        <StatLine label={t("refDashboard.qaPending")} value={data?.pending} loading={loading} unavailable={unavailable} />
+        <StatLine label={t("refDashboard.qaIssued")} value={data?.issued} loading={loading} unavailable={unavailable} />
       </div>
     );
   }
@@ -96,9 +105,9 @@ function ActionStats({ actionId, summary, loading, t }) {
   if (actionId === "stock-transfer") {
     return (
       <div className="mt-2 w-full space-y-0.5 px-1">
-        <StatLine label={t("refDashboard.qaPending")} value={data?.pending ?? 0} loading={loading} />
-        <StatLine label={t("refDashboard.qaInTransit")} value={data?.in_transit ?? 0} loading={loading} />
-        <StatLine label={t("refDashboard.qaCompleted")} value={data?.completed ?? 0} loading={loading} />
+        <StatLine label={t("refDashboard.qaPending")} value={data?.pending} loading={loading} unavailable={unavailable} />
+        <StatLine label={t("refDashboard.qaInTransit")} value={data?.in_transit} loading={loading} unavailable={unavailable} />
+        <StatLine label={t("refDashboard.qaCompleted")} value={data?.completed} loading={loading} unavailable={unavailable} />
       </div>
     );
   }
@@ -106,10 +115,10 @@ function ActionStats({ actionId, summary, loading, t }) {
   if (actionId === "qc-entry") {
     return (
       <div className="mt-2 w-full space-y-0.5 px-1">
-        <StatLine label={t("refDashboard.qaPending")} value={data?.pending ?? 0} loading={loading} />
-        <StatLine label={t("refDashboard.qaPassed")} value={data?.passed ?? 0} loading={loading} />
-        <StatLine label={t("refDashboard.qaFailed")} value={data?.failed ?? 0} loading={loading} />
-        <StatLine label={t("refDashboard.qaRework")} value={data?.rework ?? 0} loading={loading} />
+        <StatLine label={t("refDashboard.qaPending")} value={data?.pending} loading={loading} unavailable={unavailable} />
+        <StatLine label={t("refDashboard.qaPassed")} value={data?.passed} loading={loading} unavailable={unavailable} />
+        <StatLine label={t("refDashboard.qaFailed")} value={data?.failed} loading={loading} unavailable={unavailable} />
+        <StatLine label={t("refDashboard.qaRework")} value={data?.rework} loading={loading} unavailable={unavailable} />
       </div>
     );
   }
@@ -126,6 +135,8 @@ function ActionStats({ actionId, summary, loading, t }) {
             <div className="h-3 w-20 animate-pulse rounded bg-[var(--color-surface-muted)]" />
             <div className="h-3 w-16 animate-pulse rounded bg-[var(--color-surface-muted)]" />
           </>
+        ) : unavailable ? (
+          <p className="text-[10px] text-[var(--color-danger)]">{t("refDashboard.qaDataUnavailable")}</p>
         ) : categories.length ? (
           categories.map((cat) => (
             <div
@@ -147,11 +158,18 @@ function ActionStats({ actionId, summary, loading, t }) {
 }
 
 /**
- * Admin / role dashboard — one-click shortcuts with live operational summaries.
+ * Admin dashboard — Quick Actions with live summaries and inline detail drawers (no navigation).
  */
-export default function AdminQuickActions({ summary = null, loading = false, error = null, onRetry }) {
+export default function AdminQuickActions({
+  summary = null,
+  loading = false,
+  error = null,
+  onRetry,
+  refreshKey = 0,
+}) {
   const { t } = useTranslation();
   const { user } = useAuth();
+  const [drawerAction, setDrawerAction] = useState(null);
 
   const actions = useMemo(() => {
     if (isOperator(user)) return [];
@@ -162,54 +180,72 @@ export default function AdminQuickActions({ summary = null, loading = false, err
 
   if (!actions.length) return null;
 
-  const showSummary = Boolean(summary) || loading;
+  const unavailable = Boolean(error) && !loading;
+  const showSummary = Boolean(summary) || loading || unavailable;
 
   return (
-    <CardShell title={t("refDashboard.quickActions")}>
-      {error && !loading ? (
-        <div className="mb-3 rounded-lg border border-[var(--color-danger)]/25 bg-[var(--color-danger-soft)] px-3 py-2 text-xs text-[var(--color-danger)]">
-          <p>{t("refDashboard.qaLoadError")}</p>
-          {onRetry ? (
-            <button
-              type="button"
-              onClick={onRetry}
-              className="mt-1 font-semibold underline hover:no-underline"
-            >
-              {t("common.retry", { defaultValue: "Retry" })}
-            </button>
-          ) : null}
-        </div>
-      ) : null}
-      <div className="grid grid-cols-2 gap-3 sm:gap-3.5">
-        {actions.map((action) => {
-          const Icon = ACTION_ICONS[action.icon] || Plus;
-          const label = t(`refDashboard.${action.labelKey}`);
-          const ariaLabel = t(`refDashboard.${action.ariaKey}`, { defaultValue: label });
-
-          return (
-            <Link
-              key={action.id}
-              to={action.to}
-              aria-label={ariaLabel}
-              className="group flex min-h-[7.5rem] flex-col items-center rounded-xl border border-[var(--color-border-soft)] bg-[var(--color-surface)] px-3 py-3.5 text-center shadow-sm transition hover:border-[var(--color-border)] hover:bg-[var(--color-surface-muted)]/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2"
-            >
-              <span
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white shadow-sm transition group-hover:scale-[1.03]"
-                style={{ backgroundColor: action.iconBg }}
-                aria-hidden
+    <>
+      <CardShell title={t("refDashboard.quickActions")}>
+        {error && !loading ? (
+          <div className="mb-3 rounded-lg border border-[var(--color-danger)]/25 bg-[var(--color-danger-soft)] px-3 py-2 text-xs text-[var(--color-danger)]">
+            <p>{t("refDashboard.qaLoadError")}</p>
+            {onRetry ? (
+              <button
+                type="button"
+                onClick={onRetry}
+                className="mt-1 font-semibold underline hover:no-underline"
               >
-                <Icon className="h-5 w-5" strokeWidth={2.25} />
-              </span>
-              <span className="mt-2 text-[11px] font-semibold leading-snug text-[var(--color-text)] sm:text-xs">
-                {label}
-              </span>
-              {showSummary ? (
-                <ActionStats actionId={action.id} summary={summary} loading={loading} t={t} />
-              ) : null}
-            </Link>
-          );
-        })}
-      </div>
-    </CardShell>
+                {t("common.retry", { defaultValue: "Retry" })}
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+        <div className="grid grid-cols-2 gap-3 sm:gap-3.5">
+          {actions.map((action) => {
+            const Icon = ACTION_ICONS[action.icon] || Plus;
+            const label = t(`refDashboard.${action.labelKey}`);
+            const ariaLabel = t(`refDashboard.${action.ariaKey}`, { defaultValue: label });
+
+            return (
+              <button
+                key={action.id}
+                type="button"
+                aria-label={ariaLabel}
+                data-testid={`quick-action-${action.id}`}
+                onClick={() => setDrawerAction(action.id)}
+                className="group flex min-h-[7.5rem] flex-col items-center rounded-xl border border-[var(--color-border-soft)] bg-[var(--color-surface)] px-3 py-3.5 text-center shadow-sm transition hover:border-[var(--color-border)] hover:bg-[var(--color-surface-muted)]/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2"
+              >
+                <span
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white shadow-sm transition group-hover:scale-[1.03]"
+                  style={{ backgroundColor: action.iconBg }}
+                  aria-hidden
+                >
+                  <Icon className="h-5 w-5" strokeWidth={2.25} />
+                </span>
+                <span className="mt-2 text-[11px] font-semibold leading-snug text-[var(--color-text)] sm:text-xs">
+                  {label}
+                </span>
+                {showSummary ? (
+                  <ActionStats
+                    actionId={action.id}
+                    summary={summary}
+                    loading={loading}
+                    unavailable={unavailable}
+                    t={t}
+                  />
+                ) : null}
+              </button>
+            );
+          })}
+        </div>
+      </CardShell>
+
+      <AdminQuickActionDrawer
+        actionId={drawerAction}
+        open={Boolean(drawerAction)}
+        onClose={() => setDrawerAction(null)}
+        refreshKey={refreshKey}
+      />
+    </>
   );
 }

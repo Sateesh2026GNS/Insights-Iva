@@ -14,7 +14,14 @@ from sqlalchemy.orm import Session
 logger = logging.getLogger(__name__)
 
 from app.api.deps import get_db
-from app.core.permissions import require_admin
+from app.core.permissions import require_admin, require_approval_queue_access
+from app.schemas.approval_queue import (
+    ApprovalHistoryEntryRead,
+    ApprovalQueuePageRead,
+    LeaveDecisionBody,
+    ProcurementDecisionBody,
+)
+from app.schemas.hr import LeaveRequestRead
 from app.models.user import User
 from app.schemas.rbac import (
     RoleCreate,
@@ -285,3 +292,191 @@ def pending_approvals(
             status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An unexpected error occurred while retrieving pending approvals.",
         )
+
+
+@router.get("/approvals/queue", response_model=ApprovalQueuePageRead)
+def approval_queue_list(
+    user: User = Depends(require_approval_queue_access),
+    db: Session = Depends(get_db),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(10, ge=1, le=100),
+    category: str | None = Query(None, description="all | leave | material_request | ..."),
+    status: str | None = Query("pending"),
+    search: str | None = Query(None),
+    from_date: str | None = Query(None),
+    to_date: str | None = Query(None),
+):
+    from app.services.approval_queue_service import list_approval_queue
+
+    try:
+        data = list_approval_queue(
+            db,
+            user,
+            page=page,
+            page_size=page_size,
+            category=category,
+            status_filter=status,
+            search=search,
+            from_date=from_date,
+            to_date=to_date,
+        )
+        return ApprovalQueuePageRead(**data)
+    except SQLAlchemyError:
+        logger.exception("approval_queue_list database error tenant=%s", user.tenant_id)
+        db.rollback()
+        raise HTTPException(
+            status_code=http_status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Unable to load approvals",
+        )
+    except Exception:
+        logger.exception("approval_queue_list unexpected error tenant=%s", user.tenant_id)
+        raise HTTPException(
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Unable to load approvals",
+        )
+
+
+@router.get("/approvals/my-counts")
+def approval_my_counts(
+    user: User = Depends(require_approval_queue_access),
+    db: Session = Depends(get_db),
+):
+    from app.services.approval_queue_service import pending_counts_for_user
+
+    return pending_counts_for_user(db, user)
+
+
+@router.post("/approvals/leave/{leave_id}/approve", response_model=LeaveRequestRead)
+def approval_leave_approve(
+    leave_id: int,
+    body: LeaveDecisionBody,
+    user: User = Depends(require_approval_queue_access),
+    db: Session = Depends(get_db),
+):
+    from app.services.approval_queue_service import approve_leave
+
+    return approve_leave(
+        db, user, leave_id, expected_status=body.expected_status or "pending"
+    )
+
+
+@router.post("/approvals/leave/{leave_id}/reject", response_model=LeaveRequestRead)
+def approval_leave_reject(
+    leave_id: int,
+    body: LeaveDecisionBody,
+    user: User = Depends(require_approval_queue_access),
+    db: Session = Depends(get_db),
+):
+    from app.services.approval_queue_service import reject_leave
+
+    return reject_leave(
+        db,
+        user,
+        leave_id,
+        expected_status=body.expected_status or "pending",
+        rejection_reason=body.rejection_reason,
+    )
+
+
+@router.get("/approvals/leave/{leave_id}/history", response_model=list[ApprovalHistoryEntryRead])
+def approval_leave_history(
+    leave_id: int,
+    user: User = Depends(require_approval_queue_access),
+    db: Session = Depends(get_db),
+):
+    from app.services.approval_queue_service import get_leave_approval_history
+
+    return get_leave_approval_history(db, user, leave_id)
+
+
+@router.post("/approvals/material-request/{mr_id}/decide")
+def approval_mr_decide(
+    mr_id: int,
+    body: ProcurementDecisionBody,
+    user: User = Depends(require_approval_queue_access),
+    db: Session = Depends(get_db),
+):
+    from app.services.approval_queue_service import act_on_procurement_mr
+
+    return act_on_procurement_mr(
+        db,
+        user,
+        mr_id,
+        approved=body.approved,
+        expected_status=body.expected_status or "pending",
+        notes=body.notes,
+        rejection_reason=body.rejection_reason,
+    )
+
+
+@router.post("/approvals/vendor/{vendor_id}/decide")
+def approval_vendor_decide(
+    vendor_id: int,
+    body: ProcurementDecisionBody,
+    user: User = Depends(require_approval_queue_access),
+    db: Session = Depends(get_db),
+):
+    from app.services.approval_queue_service import act_on_vendor
+
+    return act_on_vendor(
+        db,
+        user,
+        vendor_id,
+        approved=body.approved,
+        expected_status=body.expected_status or "pending",
+    )
+
+
+@router.post("/approvals/purchase-order/{po_id}/decide")
+def approval_po_decide(
+    po_id: int,
+    body: ProcurementDecisionBody,
+    user: User = Depends(require_approval_queue_access),
+    db: Session = Depends(get_db),
+):
+    from app.services.approval_queue_service import act_on_purchase_order
+
+    return act_on_purchase_order(
+        db,
+        user,
+        po_id,
+        approved=body.approved,
+        expected_status=body.expected_status or "draft",
+    )
+
+
+@router.post("/approvals/production/{order_id}/decide")
+def approval_production_decide(
+    order_id: int,
+    body: ProcurementDecisionBody,
+    user: User = Depends(require_approval_queue_access),
+    db: Session = Depends(get_db),
+):
+    from app.services.approval_queue_service import act_on_production_order
+
+    return act_on_production_order(
+        db,
+        user,
+        order_id,
+        approved=body.approved,
+        expected_status=body.expected_status or "planned",
+    )
+
+
+@router.post("/approvals/inventory/{adjustment_id}/decide")
+def approval_inventory_decide(
+    adjustment_id: int,
+    body: ProcurementDecisionBody,
+    user: User = Depends(require_approval_queue_access),
+    db: Session = Depends(get_db),
+):
+    from app.services.approval_queue_service import act_on_stock_adjustment
+
+    return act_on_stock_adjustment(
+        db,
+        user,
+        adjustment_id,
+        approved=body.approved,
+        expected_status=body.expected_status or "pending",
+        rejection_reason=body.rejection_reason,
+    )

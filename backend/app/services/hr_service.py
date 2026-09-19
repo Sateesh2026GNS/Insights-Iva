@@ -1,3 +1,4 @@
+import json
 import logging
 from datetime import date, datetime, timedelta
 
@@ -501,7 +502,15 @@ def _apply_leave_balance_change(
 
 
 def update_leave_request(
-    db: Session, tenant_id: int, leave_id: int, payload: LeaveRequestUpdate
+    db: Session,
+    tenant_id: int,
+    leave_id: int,
+    payload: LeaveRequestUpdate,
+    *,
+    expected_status: str | None = None,
+    approver_name: str | None = None,
+    rejection_reason: str | None = None,
+    approver_user_id: int | None = None,
 ) -> LeaveRequest | None:
     leave = db.scalars(
         select(LeaveRequest).where(
@@ -510,6 +519,13 @@ def update_leave_request(
     ).first()
     if not leave:
         return None
+
+    if expected_status is not None:
+        if (leave.status or "").lower() != str(expected_status).lower():
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="This leave request can no longer be approved. Its status has already changed.",
+            )
 
     update_dict = payload.model_dump(exclude_unset=True)
     old_status = leave.status
@@ -544,9 +560,41 @@ def update_leave_request(
     elif old_status == "approved" and new_status in ("cancelled", "rejected"):
         _apply_leave_balance_change(db, tenant_id, leave, -days)
 
+    if new_status in ("approved", "rejected") and approver_name:
+        from datetime import datetime, timezone
+
+        leave.approved_by_name = approver_name
+        leave.approved_at = datetime.now(timezone.utc)
+
+    audit_details = None
+    if new_status == "rejected" and rejection_reason:
+        audit_details = json.dumps(
+            {
+                "rejection_reason": rejection_reason.strip(),
+                "previous_status": old_status,
+                "new_status": new_status,
+            }
+        )
+
     try:
         db.commit()
         db.refresh(leave)
+        if audit_details or (new_status in ("approved", "rejected") and old_status != new_status):
+            try:
+                from app.services.audit_service import log_audit
+
+                action = "leave_approved" if new_status == "approved" else "leave_rejected"
+                log_audit(
+                    db,
+                    tenant_id=tenant_id,
+                    user_id=approver_user_id,
+                    action=action,
+                    resource="leave_request",
+                    resource_id=leave.id,
+                    details=audit_details or f"Status changed from {old_status} to {new_status}",
+                )
+            except Exception:
+                logger.exception("Failed to write leave approval audit for leave_id=%s", leave_id)
         return leave
     except HTTPException:
         raise

@@ -51,6 +51,13 @@ export const HR_SIDEBAR_ITEMS = [
     children: [
       { key: "leave-my", label: "My Leaves", to: "/hr/leave", module: hr, end: true, ...bullet },
       { key: "leave-approvals", label: "Leave Approvals", to: "/hr/leave/approvals", module: hr, ...bullet },
+      {
+        key: "approval-center",
+        label: "Approval Center",
+        to: "/admin/approvals",
+        module: hr,
+        ...bullet,
+      },
       { key: "leave-holiday", label: "Holiday", to: "/hr/leave/holiday", module: hr, ...bullet },
       { key: "leave-adjustment", label: "Leave Adjustment", to: "/hr/leave/adjustment", module: hr, ...bullet },
       { key: "leave-plans", label: "Leave Plans", to: "/hr/leave/plans", module: hr, ...bullet },

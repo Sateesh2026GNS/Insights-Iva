@@ -332,6 +332,7 @@ export const STORE_MANAGER_ALLOWED_PATHS = new Set([
   "/attendance",
   "/hr/leave",
   "/hr/leave/approvals",
+  "/admin/approvals",
   "/hr/leave/holiday",
   "/hr/leave/adjustment",
   "/hr/leave/plans",
@@ -431,10 +432,25 @@ export function filterAccessibleSettingsCategories(categories, user) {
   return (categories || []).filter((cat) => userCanAccessSettingsSection(user, cat.id));
 }
 
+/** Unified Approvals queue (`/admin/approvals`) — matches backend approval_categories_for_user. */
+export function userCanAccessApprovalQueue(user) {
+  if (!user) return false;
+  if (isAdmin(user)) return true;
+  return (
+    userCanAccess(user, "hr") ||
+    userCanAccess(user, "procurement") ||
+    userCanAccess(user, "production") ||
+    userCanAccess(user, "inventory")
+  );
+}
+
 export function userCanAccessPath(user, pathname) {
   if (!user) return false;
   if (isAdmin(user)) return true;
   const path = (pathname || "").replace(/\/$/, "") || "/";
+  if (path === "/admin/approvals") {
+    return userCanAccessApprovalQueue(user);
+  }
   if (
     path === "/hr/attendance" ||
     path === "/attendance" ||
