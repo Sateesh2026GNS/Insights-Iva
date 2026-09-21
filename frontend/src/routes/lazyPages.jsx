@@ -115,6 +115,7 @@ export const LedgerDetailsV2 = lazy(() => import("../pages/accounts/LedgerDetail
 export const ExpenseV2 = lazy(() => import("../pages/accounts/ExpenseV2"));
 export const ExpenseSettingsV2 = lazy(() => import("../pages/accounts/ExpenseSettingsV2"));
 export const AccountsDashboard = lazy(() => import("../pages/accounts/AccountsDashboard"));
+export const AccountsSettings = lazy(() => import("../pages/accounts/AccountsSettingsV2"));
 export const ProfitLoss = lazy(() => import("../pages/accounts/ProfitLossV2"));
 export const ExpenseTracking = lazy(() => import("../pages/accounts/ExpenseTracking"));
 export const TaxReports = lazy(() => import("../pages/accounts/TaxReports"));

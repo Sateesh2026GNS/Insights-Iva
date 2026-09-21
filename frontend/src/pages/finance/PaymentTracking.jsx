@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { Banknote, CheckCircle, CreditCard, IndianRupee, Plus, Users, XCircle } from "lucide-react";
 import KpiCard from "../../components/common/KpiCard";
@@ -36,6 +37,8 @@ function normalizePaymentRows(data) {
 }
 
 export default function PaymentTracking() {
+  const [searchParams] = useSearchParams();
+  const focus = searchParams.get("focus") || "";
   const { addToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState(INITIAL_PAY_SUMMARY);
@@ -74,7 +77,13 @@ export default function PaymentTracking() {
   const filtered = useMemo(() => {
     const list = Array.isArray(rows) ? rows : [];
     const q = search.toLowerCase();
+    const today = new Date().toISOString().slice(0, 10);
     return list.filter((r) => {
+      const status = String(r.status || "").toLowerCase();
+      const payDay = String(r.payment_date || "").slice(0, 10);
+      if (focus === "pending" && !["pending", "processing", "unpaid", "draft"].includes(status)) return false;
+      if (focus === "today_in" && (r.party_type !== "customer" || payDay !== today)) return false;
+      if (focus === "today_out" && (r.party_type === "customer" || payDay !== today)) return false;
       if (
         q &&
         ![r.payment_number, r.invoice, r.party_name, r.utr_number, r.transaction_id].some((v) =>
@@ -107,7 +116,7 @@ export default function PaymentTracking() {
 
       return true;
     });
-  }, [rows, search, branch, financialYear, month]);
+  }, [rows, search, branch, financialYear, month, focus]);
 
   const computedSummary = useMemo(() => {
     const today = new Date().toISOString().slice(0, 10);

@@ -8,7 +8,10 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:seed": "cd ../backend && python scripts/seed_e2e_users.py"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
@@ -38,6 +41,7 @@
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.1.0",
     "@vitejs/plugin-react": "^4.3.1",
+    "@playwright/test": "^1.51.0",
     "jsdom": "^25.0.1",
     "tailwindcss": "^4.3.3",
     "vite": "^5.4.2",

@@ -187,6 +187,22 @@ class PLExtendedRead(BaseModel):
     profit: float = 0.0
 
 
+class AccountsWorkCenterRead(BaseModel):
+    financial_year: str = ""
+    as_of_date: str = ""
+    kpis: dict = Field(default_factory=dict)
+    cash_flow_today: dict = Field(default_factory=dict)
+    bank_accounts: list[dict] = Field(default_factory=list)
+    receivables: list[dict] = Field(default_factory=list)
+    payables: list[dict] = Field(default_factory=list)
+    invoice_summary: dict = Field(default_factory=dict)
+    pending_work: list[dict] = Field(default_factory=list)
+    recent_activity: list[dict] = Field(default_factory=list)
+    expense_summary: dict = Field(default_factory=dict)
+    features: dict = Field(default_factory=dict)
+    gst_period: dict = Field(default_factory=dict)
+
+
 class FinanceHubRead(BaseModel):
     total_receivables: float = Field(0.0, ge=0.0)
     outstanding_payables: float = Field(0.0, ge=0.0)

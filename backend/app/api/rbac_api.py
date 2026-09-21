@@ -186,6 +186,9 @@ def get_sidebar_menus(
         "production manager" in r or "production_manager" in r for r in user_roles_list
     )
     is_operator = not is_admin and any(r == "operator" for r in user_roles_list)
+    is_accountant = not is_admin and any(
+        "accountant" in r or r.strip() == "accounts" or "finance manager" in r for r in user_roles_list
+    )
 
     menus: list[SidebarItemResponse] = []
     for section in SIDEBAR_MENU_CATALOG:
@@ -199,6 +202,12 @@ def get_sidebar_menus(
         if children_src:
             allowed_children = []
             for c in children_src:
+                if (
+                    is_accountant
+                    and section["key"] == "finance"
+                    and c.get("path") == "/accounts/dashboard"
+                ):
+                    continue
                 if is_prod_manager and c["path"] not in PRODUCTION_MANAGER_ALLOWED_CHILDREN:
                     continue
                 if is_operator and section["key"] == "settings":

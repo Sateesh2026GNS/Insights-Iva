@@ -13,6 +13,7 @@ from app.models.inventory import (
     InventoryItem,
     StockLevel,
     StockMovement,
+    StockTransfer,
     StoreIssueRequest,
     Warehouse,
 )
@@ -23,7 +24,13 @@ from app.schemas.store_workflow import (
     PurchaseRequisitionCreated,
     PurchaseRequisitionFromLowStock,
     StoreConsumeCreate,
+    StoreDashboardActivityRow,
+    StoreDashboardLowStockItem,
+    StoreDashboardMaterialCheckRow,
+    StoreDashboardMaterialRequestRow,
     StoreDashboardRead,
+    StoreDashboardTodayMovement,
+    StoreDashboardTransferRow,
     StoreIssueRequestCreate,
     StoreIssueRequestRead,
     StoreReturnCreate,
@@ -32,6 +39,39 @@ from app.schemas.store_workflow import (
     StoreStockInRead,
 )
 from app.services.inventory_service import get_total_stock, record_stock_movement
+
+_PENDING_TRANSFER_STATUSES = ("draft", "pending", "pending_approval", "in_transit")
+_STOCK_IN_TYPES = ("in", "return", "purchase")
+_STOCK_OUT_TYPES = ("out", "issue", "material_issue")
+_MR_CLOSED_STATUSES = ("cancelled", "converted", "fulfilled", "rejected")
+
+
+def _movement_activity_label(movement_type: str | None) -> str:
+    mt = (movement_type or "").lower()
+    labels = {
+        "in": "Stock In",
+        "purchase": "Stock In",
+        "return": "Material Return",
+        "out": "Stock Out",
+        "issue": "Material Issue",
+        "material_issue": "Material Issue",
+        "transfer": "Transfer",
+        "adjustment": "Adjustment",
+        "production": "Stock In",
+        "sales": "Stock Out",
+        "scrap": "Stock Out",
+    }
+    return labels.get(mt, mt.replace("_", " ").title() if mt else "Activity")
+
+
+def _material_check_summary(row: dict) -> str:
+    name = row.get("product_name") or "Items"
+    qty = row.get("quantity")
+    unit = (row.get("unit") or "").strip()
+    if qty is not None:
+        qty_text = f"{float(qty):g}"
+        return f"{name} ({qty_text}{f' {unit}' if unit else ''})"
+    return str(name)
 
 
 def _next_number(db: Session, tenant_id: int, prefix: str, model, field=None) -> str:
@@ -577,6 +617,7 @@ def get_store_dashboard(db: Session, tenant_id: int) -> StoreDashboardRead:
     current_qty = 0
     low = 0
     out = 0
+    low_stock_candidates: list[tuple[int, StoreDashboardLowStockItem]] = []
     for item in items:
         qty = get_total_stock(db, item.id)
         reserved = int(getattr(item, "reserved", 0) or 0)
@@ -584,15 +625,41 @@ def get_store_dashboard(db: Session, tenant_id: int) -> StoreDashboardRead:
         current_qty += qty
         if qty <= 0:
             out += 1
+            low_stock_candidates.append(
+                (
+                    qty,
+                    StoreDashboardLowStockItem(
+                        item_id=item.id,
+                        item_name=item.name,
+                        current_stock=qty,
+                        reorder_level=item.reorder_level,
+                        unit=item.unit,
+                    ),
+                )
+            )
         elif item.reorder_level and available <= item.reorder_level:
             low += 1
+            low_stock_candidates.append(
+                (
+                    qty,
+                    StoreDashboardLowStockItem(
+                        item_id=item.id,
+                        item_name=item.name,
+                        current_stock=qty,
+                        reorder_level=item.reorder_level,
+                        unit=item.unit,
+                    ),
+                )
+            )
+
+    low_stock_preview = [row for _, row in sorted(low_stock_candidates, key=lambda x: x[0])[:8]]
 
     today = date.today()
     todays_in = int(
         db.scalar(
             select(func.count(StockMovement.id)).where(
                 StockMovement.tenant_id == tenant_id,
-                StockMovement.movement_type.in_(["in", "return", "purchase"]),
+                StockMovement.movement_type.in_(_STOCK_IN_TYPES),
                 func.date(StockMovement.created_at) == today,
             )
         )
@@ -602,30 +669,118 @@ def get_store_dashboard(db: Session, tenant_id: int) -> StoreDashboardRead:
         db.scalar(
             select(func.count(StockMovement.id)).where(
                 StockMovement.tenant_id == tenant_id,
-                StockMovement.movement_type.in_(["out", "issue", "material_issue"]),
+                StockMovement.movement_type.in_(_STOCK_OUT_TYPES),
                 func.date(StockMovement.created_at) == today,
             )
         )
         or 0
     )
-    pending_req = int(
+    todays_in_qty = int(
         db.scalar(
-            select(func.count(StoreIssueRequest.id)).where(
-                StoreIssueRequest.tenant_id == tenant_id,
-                StoreIssueRequest.status == "pending",
+            select(func.coalesce(func.sum(StockMovement.quantity), 0)).where(
+                StockMovement.tenant_id == tenant_id,
+                StockMovement.movement_type.in_(_STOCK_IN_TYPES),
+                func.date(StockMovement.created_at) == today,
             )
         )
         or 0
     )
-    pending_pr = int(
+    todays_out_qty = int(
         db.scalar(
-            select(func.count(MaterialRequest.id)).where(
-                MaterialRequest.tenant_id == tenant_id,
-                MaterialRequest.approval_status == "pending",
+            select(func.coalesce(func.sum(StockMovement.quantity), 0)).where(
+                StockMovement.tenant_id == tenant_id,
+                StockMovement.movement_type.in_(_STOCK_OUT_TYPES),
+                func.date(StockMovement.created_at) == today,
             )
         )
         or 0
     )
+    pending_mr_filter = (
+        MaterialRequest.tenant_id == tenant_id,
+        MaterialRequest.approval_status == "pending",
+        MaterialRequest.status.notin_(_MR_CLOSED_STATUSES),
+    )
+    pending_mr_count = int(
+        db.scalar(select(func.count(MaterialRequest.id)).where(*pending_mr_filter)) or 0
+    )
+    pending_mrs = list(
+        db.scalars(
+            select(MaterialRequest)
+            .where(*pending_mr_filter)
+            .order_by(MaterialRequest.id.desc())
+            .limit(8)
+        ).all()
+    )
+    mr_line_counts: dict[int, int] = {}
+    if pending_mrs:
+        mr_ids = [mr.id for mr in pending_mrs]
+        for mr_id, cnt in db.execute(
+            select(MaterialRequestLine.material_request_id, func.count(MaterialRequestLine.id))
+            .where(MaterialRequestLine.material_request_id.in_(mr_ids))
+            .group_by(MaterialRequestLine.material_request_id)
+        ).all():
+            mr_line_counts[int(mr_id)] = int(cnt or 0)
+
+    pending_transfer_filter = (
+        StockTransfer.tenant_id == tenant_id,
+        StockTransfer.status.in_(_PENDING_TRANSFER_STATUSES),
+    )
+    pending_transfers_count = int(
+        db.scalar(select(func.count(StockTransfer.id)).where(*pending_transfer_filter)) or 0
+    )
+    transfer_rows_db = list(
+        db.scalars(
+            select(StockTransfer)
+            .where(*pending_transfer_filter)
+            .order_by(StockTransfer.id.desc())
+            .limit(8)
+        ).all()
+    )
+    wh_ids = {t.from_warehouse_id for t in transfer_rows_db} | {t.to_warehouse_id for t in transfer_rows_db}
+    wh_map: dict[int, str] = {}
+    if wh_ids:
+        for wh in db.scalars(select(Warehouse).where(Warehouse.id.in_(wh_ids))).all():
+            wh_map[wh.id] = wh.name
+    pending_transfer_rows = [
+        StoreDashboardTransferRow(
+            id=t.id,
+            reference_no=t.transfer_number,
+            from_warehouse=wh_map.get(t.from_warehouse_id, "—"),
+            to_warehouse=wh_map.get(t.to_warehouse_id, "—"),
+            status=t.status or "pending",
+        )
+        for t in transfer_rows_db
+    ]
+
+    recent_moves = list(
+        db.scalars(
+            select(StockMovement)
+            .where(StockMovement.tenant_id == tenant_id)
+            .order_by(StockMovement.id.desc())
+            .limit(8)
+        ).all()
+    )
+    item_name_map: dict[int, str] = {}
+    if recent_moves:
+        move_item_ids = {m.item_id for m in recent_moves}
+        for inv in db.scalars(
+            select(InventoryItem).where(
+                InventoryItem.tenant_id == tenant_id,
+                InventoryItem.id.in_(move_item_ids),
+            )
+        ).all():
+            item_name_map[inv.id] = inv.name
+    recent_stock_activity = [
+        StoreDashboardActivityRow(
+            id=m.id,
+            occurred_at=m.created_at,
+            activity_label=_movement_activity_label(m.movement_type),
+            item_name=item_name_map.get(m.item_id, "—"),
+            quantity=int(m.quantity or 0),
+            movement_type=m.movement_type or "",
+        )
+        for m in recent_moves
+    ]
 
     warehouses = list(db.scalars(select(Warehouse).where(Warehouse.tenant_id == tenant_id)).all())
     util = 0.0
@@ -657,6 +812,26 @@ def get_store_dashboard(db: Session, tenant_id: int) -> StoreDashboardRead:
     sales_jc_pending = count_manual_sales_job_cards_pending(db, tenant_id)
     store_kpi = _store_kpi_counts(db, tenant_id)
 
+    material_check_queue = [
+        StoreDashboardMaterialCheckRow(
+            sales_order_id=int(row["sales_order_id"]),
+            job_card_no=row.get("job_card_no"),
+            required_items_summary=_material_check_summary(row),
+            status_label=row.get("status_label") or row.get("status") or "Pending check",
+        )
+        for row in pending_orders
+    ]
+    pending_material_request_rows = [
+        StoreDashboardMaterialRequestRow(
+            id=mr.id,
+            mr_number=mr.mr_number,
+            department=mr.department,
+            items_count=mr_line_counts.get(mr.id, 0),
+            status=mr.approval_status or mr.status or "pending",
+        )
+        for mr in pending_mrs
+    ]
+
     return StoreDashboardRead(
         total_products=total_products,
         catalog_product_count=catalog_total,
@@ -667,8 +842,8 @@ def get_store_dashboard(db: Session, tenant_id: int) -> StoreDashboardRead:
         out_of_stock_items=out,
         todays_stock_in=todays_in,
         todays_material_issues=todays_out,
-        pending_material_requests=pending_req,
-        pending_purchase_requisitions=pending_pr,
+        pending_material_requests=pending_mr_count,
+        pending_purchase_requisitions=pending_mr_count,
         warehouse_utilization_pct=util,
         pending_inventory_checks=pending_count,
         sales_job_cards_pending=sales_jc_pending,
@@ -677,6 +852,18 @@ def get_store_dashboard(db: Session, tenant_id: int) -> StoreDashboardRead:
         pending_inventory_orders=[
             PendingInventoryCheckOrder(**row) for row in pending_orders
         ],
+        pending_transfers=pending_transfers_count,
+        today_movement=StoreDashboardTodayMovement(
+            stock_in_count=todays_in,
+            stock_out_count=todays_out,
+            stock_in_quantity=todays_in_qty,
+            stock_out_quantity=todays_out_qty,
+        ),
+        low_stock_preview=low_stock_preview,
+        material_check_queue=material_check_queue,
+        pending_material_request_rows=pending_material_request_rows,
+        pending_transfer_rows=pending_transfer_rows,
+        recent_stock_activity=recent_stock_activity,
     )
 
 

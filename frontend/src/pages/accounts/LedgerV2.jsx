@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import usePageRefresh from "../../hooks/usePageRefresh";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Banknote, Building2, ChevronLeft, ChevronRight, Download, Eye, FileText, IndianRupee, Landmark, Layers, List, Mail, MoreVertical, Pencil, Phone, Search, Target, Trash2, TrendingUp, UserPlus, Users, Wallet } from "lucide-react";
 
 import Loader from "../../components/common/Loader";
@@ -525,9 +525,11 @@ function Pagination({ page, pageSize, total, onPage, onPageSize }) {
 export default function LedgerV2() {
   const { addToast } = useToast();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const accountFromUrl = String(searchParams.get("account") || "").trim();
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState("debtors");
-  const [search, setSearch] = useState("");
+  const [tab, setTab] = useState(accountFromUrl ? "cash" : "debtors");
+  const [search, setSearch] = useState(accountFromUrl || "");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [customers, setCustomers] = useState([]);
@@ -586,8 +588,9 @@ export default function LedgerV2() {
 
   useEffect(() => {
     setPage(1);
-    setSearch("");
-  }, [tab]);
+    const account = String(searchParams.get("account") || "").trim();
+    if (!(tab === "cash" && account)) setSearch("");
+  }, [tab, searchParams]);
 
   useEffect(() => {
     setPage(1);

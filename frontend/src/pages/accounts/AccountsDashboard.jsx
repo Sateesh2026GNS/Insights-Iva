@@ -1,329 +1,484 @@
 import { useCallback, useEffect, useState } from "react";
-import usePageRefresh from "../../hooks/usePageRefresh";
-import { Link, useLocation } from "react-router-dom";
-import { AlertTriangle, ArrowDownRight, ArrowUpRight, IndianRupee, Landmark, TrendingDown, TrendingUp } from "lucide-react";
+import { Link } from "react-router-dom";
 import {
-  LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
-} from "recharts";
+  AlertTriangle,
+  ArrowDownRight,
+  ArrowUpRight,
+  Banknote,
+  Calendar,
+  IndianRupee,
+  RefreshCw,
+  Scale,
+  Wallet,
+} from "lucide-react";
+
+import { getAccountsDashboard } from "../../api/accountsApi";
+import Button from "../../components/common/Button";
 import KpiCard from "../../components/common/KpiCard";
 import PageHeader from "../../components/common/PageHeader";
+import DataTable from "../../components/common/DataTable";
+import EmptyState from "../../components/common/EmptyState";
+import ErrorState from "../../components/common/states/ErrorState";
+import LoadingState from "../../components/common/states/LoadingState";
+import usePageRefresh from "../../hooks/usePageRefresh";
+import { formatInr, statusColor } from "../../data/financeMasterData";
+import { apiErrorMessage } from "../../utils/apiError";
+import {
+  ACCOUNTS_ROUTES,
+  invoiceDetailLink,
+  invoicesLink,
+  ledgerAccountLink,
+  payablesLink,
+  paymentsLink,
+  receivablesLink,
+} from "../../utils/accountsDashboardLinks";
 
-import Loader from "../../components/common/Loader";
-import { getFinanceHub } from "../../api/accountsApi";
-import { getInvoices, getPayments } from "../../api/salesApi";
-import { FINANCE_FLOW, formatInr } from "../../data/financeMasterData";
-import RecordIncome from "./RecordIncome";
-import RecordExpense from "./RecordExpense";
+function moneyOrDash(value, failed) {
+  if (failed || value === null || value === undefined) return "—";
+  return formatInr(value);
+}
 
-import Button from "../../components/common/Button";
-
-const INITIAL_FINANCE_HUB = {
-  total_receivables: null,
-  outstanding_payables: null,
-  cash_balance: null,
-  monthly_revenue: null,
-  monthly_expenses: null,
-  net_profit: null,
-  gst_payable: null,
-  cash_flow_trend: [],
-  revenue_trend: [],
-  expense_trend: [],
-  profit_trend: [],
-  gst_trend: [],
-  vendor_payments: [],
-  customer_receipts: [],
-  monthly_cost: [],
-  department_cost: [],
-  manufacturing_cost: [],
-  budget_vs_actual: [],
-  accounts_aging: [],
-  alerts: [],
-};
-
-
-const alertIcons = { overdue: TrendingDown, gst: Landmark, ap: ArrowDownRight, budget: AlertTriangle };
+function SectionCard({ title, action, children, error }) {
+  return (
+    <section className="ui-card overflow-hidden">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-4 py-3 dark:border-slate-800">
+        <h2 className="text-sm font-bold text-slate-900 dark:text-slate-100">{title}</h2>
+        {action}
+      </div>
+      {error ? (
+        <div className="p-4">
+          <ErrorState title="Could not load this section" description={error} className="py-8" />
+        </div>
+      ) : (
+        children
+      )}
+    </section>
+  );
+}
 
 export default function AccountsDashboard() {
-  const location = useLocation();
-  const [loading, setLoading] = useState(false);
-  const [hub, setHub] = useState(INITIAL_FINANCE_HUB);
-  const [showRecordIncome, setShowRecordIncome] = useState(false);
-  const [showRecordExpense, setShowRecordExpense] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
+  const [data, setData] = useState(null);
 
   const load = useCallback(async (isRefresh = false) => {
-    if (isRefresh) setLoading(true);
+    if (isRefresh) setRefreshing(true);
+    else setLoading(true);
     setError(null);
-
-    const MN = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-
-    // Fetch real data from backend APIs only — no localStorage fallback
-    let allInv = [];
-    let payments = [];
-
     try {
-      const [invRes, payRes] = await Promise.allSettled([
-        getInvoices(),
-        getPayments(),
-      ]);
-
-      if (invRes.status === "fulfilled") {
-        const d = invRes.value?.data ?? invRes.value ?? [];
-        allInv = Array.isArray(d) ? d : [];
-      }
-      if (payRes.status === "fulfilled") {
-        const d = payRes.value?.data ?? payRes.value ?? [];
-        payments = Array.isArray(d) ? d : [];
-      }
-    } catch { /* ignore */ }
-
-    // ── KPI calculations from API data only ───────────────────────
-    const total_receivables = allInv.reduce((s, i) => s + (Number(i.grand_total ?? i.amount) || 0), 0);
-    const gst_payable       = allInv.reduce((s, i) =>
-      s + (Number(i.sgst_amount) || 0) + (Number(i.cgst_amount) || 0) + (Number(i.igst_amount) || 0), 0);
-    const amount_paid       = allInv.reduce((s, i) => s + (Number(i.amount_paid) || 0), 0);
-
-    // ── Monthly trend maps ────────────────────────────────────────
-    const revMap = {}, gstMap = {};
-    allInv.forEach((i) => {
-      const d = new Date(i.issue_date || i.created_at || "");
-      if (isNaN(d)) return;
-      const k = MN[d.getMonth()];
-      revMap[k] = (revMap[k] || 0) + (Number(i.grand_total ?? i.amount) || 0);
-      if (!gstMap[k]) gstMap[k] = { month: k, sgst: 0, cgst: 0, igst: 0 };
-      gstMap[k].sgst += Number(i.sgst_amount) || 0;
-      gstMap[k].cgst += Number(i.cgst_amount) || 0;
-      gstMap[k].igst += Number(i.igst_amount) || 0;
-    });
-
-    const revenue_trend   = MN.map((m) => ({ month: m, amount: revMap[m] || 0 }));
-    const cash_flow_trend = MN.map((m) => ({ month: m, inflow: revMap[m] || 0, outflow: 0 }));
-    const gst_trend       = MN.map((m) => gstMap[m] || { month: m, sgst: 0, cgst: 0, igst: 0 });
-    const customer_receipts = payments.map((p) => ({
-      month: new Date(p.payment_date || "").toLocaleDateString("en-IN", { month: "short" }) || "—",
-      amount: Number(p.amount) || 0,
-    }));
-
-    const computed = {
-      total_receivables,
-      outstanding_payables: 0,
-      cash_balance: amount_paid,
-      monthly_revenue: total_receivables,
-      monthly_expenses: 0,
-      net_profit: total_receivables,
-      gst_payable,
-      cash_flow_trend,
-      revenue_trend,
-      expense_trend: MN.map((m) => ({ month: m, amount: 0 })),
-      profit_trend:  MN.map((m) => ({ month: m, amount: revMap[m] || 0 })),
-      gst_trend,
-      vendor_payments: [],
-      customer_receipts,
-      monthly_cost: [],
-      department_cost: [],
-      manufacturing_cost: [],
-      budget_vs_actual: [],
-      accounts_aging: [],
-      alerts: [],
-    };
-
-    // Finance hub endpoint fills in extra data (vendor payments, expenses, aging etc.)
-    try {
-      const res = await getFinanceHub();
-      if (res?.data) {
-        setHub({
-          ...computed,
-          ...res.data,
-          // always prefer computed trends if hub returns empty arrays
-          revenue_trend:   res.data.revenue_trend?.length   ? res.data.revenue_trend   : computed.revenue_trend,
-          expense_trend:   res.data.expense_trend?.length   ? res.data.expense_trend   : computed.expense_trend,
-          profit_trend:    res.data.profit_trend?.length    ? res.data.profit_trend    : computed.profit_trend,
-          cash_flow_trend: res.data.cash_flow_trend?.length ? res.data.cash_flow_trend : computed.cash_flow_trend,
-          gst_trend:       res.data.gst_trend?.length       ? res.data.gst_trend       : computed.gst_trend,
-        });
-      } else {
-        setHub(computed);
-      }
+      const res = await getAccountsDashboard();
+      setData(res?.data ?? res);
     } catch (err) {
-      if (isRefresh) throw err;
-      setHub(computed);
+      setData(null);
+      setError(apiErrorMessage(err, "Could not load accounts dashboard."));
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, []);
 
   usePageRefresh(() => load(true));
+  useEffect(() => {
+    load();
+  }, [load]);
 
-  // reload on every visit (catches navigate-back after record create)
-  useEffect(() => { load(); }, [load, location.key]);
+  if (loading && !data) {
+    return (
+      <div className="pb-6">
+        <LoadingState label="Loading accounts dashboard" description="Fetching live financial data for your company." />
+      </div>
+    );
+  }
 
-  // Display layout immediately; live numbers populate when fetch resolves
+  if (error && !data) {
+    return (
+      <div className="space-y-4 pb-6">
+        <PageHeader title="Accounts Dashboard" subtitle="Accounting work control center" />
+        <ErrorState title="Dashboard unavailable" description={error} />
+        <Button type="button" variant="secondary" onClick={() => load()}>
+          Try again
+        </Button>
+      </div>
+    );
+  }
+
+  const kpis = data?.kpis || {};
+  const cashToday = data?.cash_flow_today || {};
+  const invoiceSummary = data?.invoice_summary || {};
+  const failed = Boolean(error);
+
+  const kpiItems = [
+    {
+      label: "Total Receivables",
+      value: moneyOrDash(kpis.total_receivables, failed),
+      icon: ArrowUpRight,
+      color: "bg-emerald-600",
+      to: receivablesLink("open"),
+    },
+    {
+      label: "Total Payables",
+      value: moneyOrDash(kpis.total_payables, failed),
+      icon: ArrowDownRight,
+      color: "bg-rose-600",
+      to: payablesLink("open"),
+    },
+    {
+      label: "Cash & Bank",
+      value: moneyOrDash(kpis.cash_and_bank_balance, failed),
+      icon: Wallet,
+      color: "bg-slate-700",
+      to: ACCOUNTS_ROUTES.ledger,
+    },
+    {
+      label: "Today's Collections",
+      value: moneyOrDash(kpis.todays_collections, failed),
+      icon: Banknote,
+      color: "bg-teal-600",
+      to: paymentsLink("today_in"),
+    },
+    {
+      label: "Today's Payments",
+      value: moneyOrDash(kpis.todays_payments, failed),
+      icon: IndianRupee,
+      color: "bg-amber-600",
+      to: paymentsLink("today_out"),
+    },
+    {
+      label: "Overdue Receivables",
+      value: moneyOrDash(kpis.overdue_receivables, failed),
+      icon: AlertTriangle,
+      tone: "danger",
+      color: "bg-red-600",
+      to: receivablesLink("overdue"),
+    },
+    {
+      label: "Overdue Payables",
+      value: moneyOrDash(kpis.overdue_payables, failed),
+      icon: AlertTriangle,
+      tone: "danger",
+      color: "bg-rose-600",
+      to: payablesLink("overdue"),
+    },
+  ];
+
+  if (data?.features?.gst) {
+    kpiItems.push({
+      label: "GST Liability (This Period)",
+      value: moneyOrDash(kpis.gst_liability_period, failed),
+      icon: Scale,
+      tone: "warning",
+      color: "bg-amber-600",
+      meta: kpis.gst_filing_due_label || data?.gst_period?.filing_due_label,
+      to: ACCOUNTS_ROUTES.gst,
+    });
+  }
+
+  const arColumns = [
+    { key: "customer_name", label: "Customer" },
+    { key: "invoice_number", label: "Invoice" },
+    { key: "issue_date", label: "Invoice Date" },
+    { key: "due_date", label: "Due Date" },
+    {
+      key: "amount",
+      label: "Amount",
+      render: (r) => formatInr(r.amount),
+    },
+    {
+      key: "paid",
+      label: "Paid",
+      render: (r) => formatInr(r.paid),
+    },
+    {
+      key: "balance",
+      label: "Balance",
+      render: (r) => formatInr(r.balance),
+    },
+    { key: "days_overdue", label: "Days Overdue" },
+    {
+      key: "status",
+      label: "Status",
+      render: (r) => (
+        <span className={`rounded-full px-2 py-0.5 text-xs font-semibold capitalize ${statusColor(r.status)}`}>
+          {r.status}
+        </span>
+      ),
+    },
+    {
+      key: "action",
+      label: "",
+      render: (r) => (
+        <Link to={invoiceDetailLink(r.id)} className="text-xs font-semibold text-[var(--color-action-teal)] hover:underline">
+          View
+        </Link>
+      ),
+    },
+  ];
+
+  const apColumns = [
+    { key: "vendor_name", label: "Vendor" },
+    { key: "bill_number", label: "Bill" },
+    { key: "invoice_date", label: "Bill Date" },
+    { key: "due_date", label: "Due Date" },
+    {
+      key: "amount",
+      label: "Amount",
+      render: (r) => formatInr((r.amount || 0) + (r.gst || 0)),
+    },
+    {
+      key: "paid",
+      label: "Paid",
+      render: (r) => formatInr(r.paid),
+    },
+    {
+      key: "balance",
+      label: "Balance",
+      render: (r) => formatInr(r.balance),
+    },
+    {
+      key: "status",
+      label: "Status",
+      render: (r) => (
+        <span className={`rounded-full px-2 py-0.5 text-xs font-semibold capitalize ${statusColor(r.status)}`}>
+          {r.status}
+        </span>
+      ),
+    },
+    {
+      key: "action",
+      label: "",
+      render: () => (
+        <Link to={payablesLink("open")} className="text-xs font-semibold text-[var(--color-action-teal)] hover:underline">
+          View
+        </Link>
+      ),
+    },
+  ];
+
+  const invoiceStatusRows = [
+    { key: "draft", label: "Draft", count: invoiceSummary.draft, link: invoicesLink({ invoiceStatus: "active" }) },
+    { key: "sent", label: "Sent (unpaid)", count: invoiceSummary.sent, link: invoicesLink({ payment: "unpaid" }) },
+    { key: "partially_paid", label: "Partially paid", count: invoiceSummary.partially_paid, link: invoicesLink({ payment: "partial" }) },
+    { key: "paid", label: "Paid", count: invoiceSummary.paid, link: invoicesLink({ payment: "paid" }) },
+    { key: "overdue", label: "Overdue", count: invoiceSummary.overdue, link: receivablesLink("overdue") },
+    { key: "cancelled", label: "Cancelled", count: invoiceSummary.cancelled, link: invoicesLink({ invoiceStatus: "cancelled" }) },
+  ];
+
   return (
-    <div className="space-y-5 pb-4">
-      {error && (
-        <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
-          {error}
-        </div>
-      )}
+    <div className="space-y-5 pb-8">
       <PageHeader
-        subtitle="Enterprise finance hub — cash flow, revenue, expenses, GST, and manufacturing cost insights."
+        title="Accounts Dashboard"
+        subtitle="Your accounting work control center — receivables, payables, cash, and what needs attention today."
         action={
-          <>
-            <Button variant="primary" type="button" onClick={() => setShowRecordIncome(true)}>+ Record Income</Button>
-            <Button variant="danger" type="button" onClick={() => setShowRecordExpense(true)}>+ Record Expense</Button>
-          </>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+              <Calendar className="h-3.5 w-3.5" aria-hidden />
+              FY {data?.financial_year || "—"}
+              {data?.as_of_date ? ` · ${data.as_of_date}` : ""}
+            </span>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => load(true)}
+              disabled={refreshing}
+              className="inline-flex items-center gap-2"
+            >
+              <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} aria-hidden />
+              Refresh
+            </Button>
+            <Link to={ACCOUNTS_ROUTES.settings}>
+              <Button type="button" variant="secondary">Settings</Button>
+            </Link>
+          </div>
         }
       />
 
-      <div className="ui-grid-kpi">
-        <KpiCard label="Total Receivables" value={formatInr(hub.total_receivables)} icon={ArrowUpRight} color="bg-[var(--color-success)]" />
-        <KpiCard label="Outstanding Payables" value={formatInr(hub.outstanding_payables)} icon={ArrowDownRight} color="bg-rose-600" />
-        <KpiCard label="Cash Balance" value={formatInr(hub.cash_balance)} icon={IndianRupee} color="bg-[var(--color-success)]" />
-        <KpiCard label="Monthly Revenue" value={formatInr(hub.monthly_revenue)} icon={TrendingUp} color="bg-indigo-600" />
-        <KpiCard label="Monthly Expenses" value={formatInr(hub.monthly_expenses)} icon={TrendingDown} color="bg-amber-500" />
-        <KpiCard label="Net Profit" value={formatInr(hub.net_profit)} icon={IndianRupee} color="bg-cyan-600" sub={`GST Payable: ${formatInr(hub.gst_payable)}`} />
-      </div>
+      {error ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          Last refresh failed: {error}. Showing previous data where available.
+        </div>
+      ) : null}
 
-      <div className="flex flex-wrap items-center gap-1 ui-card px-4 py-3 text-[10px] font-medium text-slate-600 sm:text-xs">
-        {FINANCE_FLOW.map((s, i) => (
-          <span key={s} className="flex items-center gap-1">
-            <span className="rounded bg-slate-50 px-1.5 py-0.5 ring-1 ring-slate-200/80">{s}</span>
-            {i < FINANCE_FLOW.length - 1 && <span className="text-slate-400">↓</span>}
-          </span>
+      <div className="ui-grid-kpi">
+        {kpiItems.map((k) => (
+          <Link key={k.label} to={k.to} className="block transition hover:opacity-95">
+            <KpiCard label={k.label} value={k.value} icon={k.icon} color={k.color} tone={k.tone} meta={k.meta} />
+          </Link>
         ))}
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-2">
-        <ChartCard title="Cash Flow Trend" data={hub.cash_flow_trend} lines={[{ key: "inflow", color: "#22c55e", name: "Inflow" }, { key: "outflow", color: "#ef4444", name: "Outflow" }]} />
-        <ChartCard title="Revenue Trend" data={hub.revenue_trend} lines={[{ key: "amount", color: "#0f6d84", name: "Revenue" }]} />
-        <ChartCard title="Expense Trend" data={hub.expense_trend} lines={[{ key: "amount", color: "#f59e0b", name: "Expenses" }]} />
-        <ChartCard title="Profit Trend" data={hub.profit_trend} lines={[{ key: "amount", color: "#10b981", name: "Profit" }]} />
-        <ChartCard title="GST Trend" data={hub.gst_trend} lines={[{ key: "sgst", color: "#6366f1", name: "SGST" }, { key: "cgst", color: "#8b5cf6", name: "CGST" }, { key: "igst", color: "#ec4899", name: "IGST" }]} />
-        <ChartCard title="Vendor Payments" data={hub.vendor_payments} lines={[{ key: "amount", color: "#ef4444", name: "Paid" }]} />
-        <ChartCard title="Customer Receipts" data={hub.customer_receipts} lines={[{ key: "amount", color: "#22c55e", name: "Received" }]} />
-        <ChartCard title="Budget vs Actual" data={hub.budget_vs_actual} bars={[{ key: "budget", color: "#94a3b8", name: "Budget" }, { key: "actual", color: "#0f6d84", name: "Actual" }]} />
-      </div>
+      <div className="grid gap-5 lg:grid-cols-3">
+        <SectionCard title="Cash flow today">
+          <div className="grid gap-3 p-4 sm:grid-cols-3">
+            <div className="rounded-lg bg-emerald-50 px-3 py-2 dark:bg-emerald-950/30">
+              <p className="text-xs text-slate-500">Money in</p>
+              <p className="text-lg font-bold text-emerald-800 dark:text-emerald-200">
+                {moneyOrDash(cashToday.money_in, failed)}
+              </p>
+            </div>
+            <div className="rounded-lg bg-rose-50 px-3 py-2 dark:bg-rose-950/30">
+              <p className="text-xs text-slate-500">Money out</p>
+              <p className="text-lg font-bold text-rose-800 dark:text-rose-200">
+                {moneyOrDash(cashToday.money_out, failed)}
+              </p>
+            </div>
+            <div className="rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-800/50">
+              <p className="text-xs text-slate-500">Net</p>
+              <p className="text-lg font-bold text-slate-900 dark:text-slate-100">
+                {moneyOrDash(cashToday.net, failed)}
+              </p>
+            </div>
+          </div>
+        </SectionCard>
 
-      <div className="grid gap-5 lg:grid-cols-2">
-        <div className="ui-card p-5">
-          <h2 className="ui-section-title mb-4">Department Cost</h2>
-          <ul className="space-y-2">
-            {(hub.department_cost || []).map((d) => (
-              <li key={d.name} className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-sm">
-                <span className="font-medium">{d.name}</span>
-                <span className="font-semibold text-[var(--color-primary)]">{formatInr(d.amount)}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-        <div className="ui-card p-5">
-          <h2 className="ui-section-title mb-4">Manufacturing Cost</h2>
-          <ul className="space-y-2">
-            {(hub.manufacturing_cost || []).map((d) => (
-              <li key={d.name} className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-sm">
-                <span className="font-medium">{d.name}</span>
-                <span className="font-semibold text-[var(--color-primary)]">{formatInr(d.amount)}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </div>
-
-      <div className="ui-card p-5">
-        <h2 className="ui-section-title mb-4">Accounts Aging</h2>
-        <div className="h-48">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={hub.accounts_aging || []}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="bucket" tick={{ fontSize: 11 }} />
-              <YAxis tickFormatter={(v) => formatInr(v)} tick={{ fontSize: 11 }} />
-              <Tooltip formatter={(v) => formatInr(v)} />
-              <Bar dataKey="amount" fill="#0f6d84" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
-      <div className="ui-card p-5">
-        <h2 className="ui-section-title mb-4">Alerts</h2>
-        <div className="grid gap-3 sm:grid-cols-2">
-          {(hub.alerts || []).map((a, i) => {
-            const Icon = alertIcons[a.type] || AlertTriangle;
-            return (
-              <div key={i} className="flex items-start gap-3 rounded-xl border border-amber-100 bg-amber-50 px-4 py-3">
-                <Icon className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
-                <p className="text-sm text-amber-900">{a.message}</p>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <QuickLink to="/finance/accounts-payable" label="Accounts Payable" />
-        <QuickLink to="/finance/accounts-receivable" label="Accounts Receivable" />
-        <QuickLink to="/finance/payment-tracking" label="Payment Tracking" />
-        <QuickLink to="/finance/general-ledger" label="General Ledger" />
-        <QuickLink to="/accounts/tax-reports" label="Goods & Services Tax (GST) Reports" />
-        <QuickLink to="/accounts/profit-loss" label="Profit & Loss" />
-        <QuickLink to="/accounts/balance-sheet" label="Balance Sheet" />
-        <QuickLink to="/accounts/trial-balance" label="Trial Balance" />
-        <QuickLink to="/accounts/journal-entries" label="Journal Entries" />
-        <QuickLink to="/accounts/chart-of-accounts" label="Chart of Accounts" />
-        <QuickLink to="/accounts/fixed-assets" label="Fixed Assets" />
-        <QuickLink to="/accounts/bank-reconciliation" label="Bank Reconciliation" />
-        <QuickLink to="/accounts/budget-actual" label="Budget vs Actual" />
-        <QuickLink to="/accounts/cost-allocation" label="Cost Allocation" />
-      </div>
-
-      {showRecordIncome && (
-        <RecordIncome onClose={() => { setShowRecordIncome(false); load(); }} />
-      )}
-      {showRecordExpense && (
-        <RecordExpense onClose={() => { setShowRecordExpense(false); load(); }} />
-      )}
-    </div>
-  );
-}
-
-function ChartCard({ title, data, lines, bars }) {
-  return (
-    <div className="ui-card p-5">
-      <h2 className="mb-4 text-sm font-semibold text-slate-900">{title}</h2>
-      <div className="h-44">
-        <ResponsiveContainer width="100%" height="100%">
-          {bars ? (
-            <BarChart data={data || []}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" tick={{ fontSize: 10 }} />
-              <YAxis tickFormatter={(v) => formatInr(v)} tick={{ fontSize: 10 }} />
-              <Tooltip formatter={(v) => formatInr(v)} />
-              <Legend />
-              {bars.map((b) => <Bar key={b.key} dataKey={b.key} name={b.name} fill={b.color} radius={[2, 2, 0, 0]} />)}
-            </BarChart>
+        <SectionCard
+          title="Cash & bank accounts"
+          action={
+            <Link to={ACCOUNTS_ROUTES.ledger} className="text-xs font-semibold text-[var(--color-action-teal)] hover:underline">
+              Open ledger
+            </Link>
+          }
+        >
+          {(data?.bank_accounts || []).length === 0 ? (
+            <EmptyState title="No cash/bank accounts" description="Add bank or cash accounts in Chart of Accounts or Ledger." className="py-8" />
           ) : (
-            <LineChart data={data || []}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" tick={{ fontSize: 10 }} />
-              <YAxis tickFormatter={(v) => formatInr(v)} tick={{ fontSize: 10 }} />
-              <Tooltip formatter={(v) => formatInr(v)} />
-              <Legend />
-              {(lines || []).map((l) => <Line key={l.key} type="monotone" dataKey={l.key} name={l.name} stroke={l.color} strokeWidth={2} dot={false} />)}
-            </LineChart>
+            <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+              {(data.bank_accounts || []).map((acc) => (
+                <li key={`${acc.code || acc.id}-${acc.name}`}>
+                  <Link
+                    to={ledgerAccountLink(acc.name)}
+                    className="flex items-center justify-between px-4 py-3 text-sm hover:bg-slate-50 dark:hover:bg-slate-800/40"
+                  >
+                    <span className="font-medium text-slate-800 dark:text-slate-100">{acc.name}</span>
+                    <span className="font-semibold tabular-nums">{formatInr(acc.balance)}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
           )}
-        </ResponsiveContainer>
-      </div>
-    </div>
-  );
-}
+        </SectionCard>
 
-function QuickLink({ to, label }) {
-  return (
-    <Link
-      to={to}
-      className="ui-card px-4 py-3 text-sm font-semibold text-slate-700 transition hover:border-[var(--color-primary)] hover:bg-[var(--color-primary-soft)] hover:text-[var(--color-primary)]"
-    >
-      {label} →
-    </Link>
+        <SectionCard title="Pending work">
+          <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+            {(data?.pending_work || []).map((item) => (
+              <li key={item.id}>
+                <Link
+                  to={item.href}
+                  className="flex items-center justify-between gap-2 px-4 py-3 text-sm hover:bg-slate-50 dark:hover:bg-slate-800/40"
+                >
+                  <span className="font-medium text-slate-800 dark:text-slate-100">{item.label}</span>
+                  <span className="text-xs text-slate-500">
+                    {item.count != null ? `${item.count} items` : "Open"}
+                    {item.amount != null ? ` · ${formatInr(item.amount)}` : ""}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </SectionCard>
+      </div>
+
+      <SectionCard
+        title="Receivables"
+        action={
+          <Link to={receivablesLink()} className="text-xs font-semibold text-[var(--color-action-teal)] hover:underline">
+            View all
+          </Link>
+        }
+      >
+        {(data?.receivables || []).length === 0 ? (
+          <EmptyState title="No open receivables" description="Customer invoices with a balance will appear here." className="py-8" />
+        ) : (
+          <DataTable columns={arColumns} data={data.receivables} searchPlaceholder="" searchKeys={[]} />
+        )}
+      </SectionCard>
+
+      <SectionCard
+        title="Payables"
+        action={
+          <Link to={payablesLink()} className="text-xs font-semibold text-[var(--color-action-teal)] hover:underline">
+            View all
+          </Link>
+        }
+      >
+        {(data?.payables || []).length === 0 ? (
+          <EmptyState title="No open payables" description="Vendor bills and purchase obligations will appear here." className="py-8" />
+        ) : (
+          <DataTable columns={apColumns} data={data.payables} searchPlaceholder="" searchKeys={[]} />
+        )}
+      </SectionCard>
+
+      <div className="grid gap-5 lg:grid-cols-2">
+        <SectionCard title="Invoice summary">
+          <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+            {invoiceStatusRows.map((row) => (
+              <li key={row.key}>
+                <Link
+                  to={row.link}
+                  className="flex items-center justify-between px-4 py-3 text-sm hover:bg-slate-50 dark:hover:bg-slate-800/40"
+                >
+                  <span>{row.label}</span>
+                  <span className="font-semibold tabular-nums">{failed ? "—" : row.count ?? 0}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </SectionCard>
+
+        <SectionCard title="Today's activity">
+          {(data?.recent_activity || []).length === 0 ? (
+            <EmptyState title="No recent activity" description="Payments, invoices, and journals from your company will show here." className="py-8" />
+          ) : (
+            <ul className="max-h-80 divide-y divide-slate-100 overflow-y-auto dark:divide-slate-800">
+              {(data.recent_activity || []).map((ev, idx) => (
+                <li key={`${ev.kind}-${ev.reference}-${idx}`} className="px-4 py-2.5 text-sm">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="font-medium text-slate-800 dark:text-slate-100">{ev.label}</p>
+                      <p className="text-xs capitalize text-slate-500">
+                        {String(ev.kind || "").replace(/_/g, " ")} · {ev.date || "—"}
+                      </p>
+                    </div>
+                    {ev.amount != null ? (
+                      <span className="shrink-0 font-semibold tabular-nums">{formatInr(ev.amount)}</span>
+                    ) : null}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </SectionCard>
+      </div>
+
+      {data?.features?.expenses ? (
+        <SectionCard
+          title="Expenses this month"
+          action={
+            <Link to={ACCOUNTS_ROUTES.expenses} className="text-xs font-semibold text-[var(--color-action-teal)] hover:underline">
+              View expenses
+            </Link>
+          }
+        >
+          <div className="flex flex-wrap gap-6 p-4 text-sm">
+            <div>
+              <p className="text-slate-500">Recorded amount</p>
+              <p className="text-xl font-bold">{moneyOrDash(data?.expense_summary?.month_total, failed)}</p>
+            </div>
+            <div>
+              <p className="text-slate-500">Voucher count</p>
+              <p className="text-xl font-bold">{failed ? "—" : data?.expense_summary?.month_count ?? 0}</p>
+            </div>
+          </div>
+        </SectionCard>
+      ) : null}
+
+      {data?.features?.bank_reconciliation ? (
+        <div className="flex justify-end">
+          <Link to={ACCOUNTS_ROUTES.bankRecon} className="text-sm font-semibold text-[var(--color-action-teal)] hover:underline">
+            Open bank reconciliation →
+          </Link>
+        </div>
+      ) : null}
+    </div>
   );
 }

@@ -55,6 +55,16 @@ import {
   OPERATOR_BLOCKED_SECTIONS,
 } from "../../config/rbacNavFilters";
 import { SIDEBAR_NAV, sectionHasActiveChild, filterNavTree, buildNestedExpanded, navNodeIsActive } from "../../config/sidebarNav";
+
+const ACCOUNTS_DASHBOARD_PATH_ONLY = "/accounts/dashboard";
+
+function stripFinanceDashboardDuplicate(children) {
+  return (children || []).filter((c) => {
+    const pathOnly = (c.to || c.path || "").split("?")[0];
+    return pathOnly !== ACCOUNTS_DASHBOARD_PATH_ONLY;
+  });
+}
+import { ACCOUNTS_DASHBOARD_PATH } from "../../utils/roleRedirect";
 import { STORE_MANAGER_NAV_ITEMS } from "../../config/storeManagerNavConfig";
 
 export function getRoleJobCardUrl(user) {
@@ -216,6 +226,10 @@ export function filterStaticNav(user) {
       return true;
     });
     if (children.length === 0) return null;
+    if (isAcct && section.key === "finance") {
+      children = stripFinanceDashboardDuplicate(children);
+      if (children.length === 0) return null;
+    }
     return { ...section, children };
   }).filter(Boolean);
 
@@ -319,13 +333,16 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
           .map((section) => {
             if (!ACCOUNTANT_ALLOWED_SECTIONS.has(section.key)) return null;
             if (!section.children) return section;
-            const children = section.children.filter((c) => {
+            let children = section.children.filter((c) => {
               if (section.key === "alerts" || section.key === "analytics") {
                 const pathOnly = (c.to || "").split("?")[0];
                 return ACCOUNTANT_ALLOWED_CHILDREN.has(c.to) || ACCOUNTANT_ALLOWED_CHILDREN.has(pathOnly);
               }
               return true;
             });
+            if (section.key === "finance") {
+              children = stripFinanceDashboardDuplicate(children);
+            }
             if (children.length === 0) return null;
             return { ...section, children };
           })
@@ -349,6 +366,13 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
         return {
           ...section,
           to: roleJobCardUrl,
+        };
+      }
+      if (section.key === "dashboard" && isAccountant(user) && section.to) {
+        return {
+          ...section,
+          to: ACCOUNTS_DASHBOARD_PATH,
+          end: true,
         };
       }
       return section;

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   Calendar,
   ChevronLeft,
@@ -151,6 +151,7 @@ export default function InvoiceDashboard() {
     paid: { count: 0, amount: 0 },
     partially_paid: { count: 0, amount: 0 },
   });
+  const [searchParams] = useSearchParams();
   const [kpiFilter, setKpiFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [searchDebounced, setSearchDebounced] = useState("");
@@ -183,6 +184,17 @@ export default function InvoiceDashboard() {
   const [pageSize, setPageSize] = useState(20);
   const [draftFilters, setDraftFilters] = useState(EMPTY_FILTERS);
   const [filters, setFilters] = useState(EMPTY_FILTERS);
+
+  useEffect(() => {
+    const payment = searchParams.get("payment");
+    if (payment && ["all", "unpaid", "paid", "partial"].includes(payment)) {
+      setKpiFilter(payment);
+    }
+    const invoiceStatus = searchParams.get("invoice_status");
+    if (invoiceStatus) {
+      setFilters((f) => ({ ...f, invoiceStatus }));
+    }
+  }, [searchParams]);
   const [menuId, setMenuId] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
 

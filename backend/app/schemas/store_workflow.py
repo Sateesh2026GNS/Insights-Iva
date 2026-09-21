@@ -120,6 +120,53 @@ class PendingInventoryChecksListRead(BaseModel):
     items: list[PendingInventoryCheckOrder] = Field(default_factory=list)
 
 
+class StoreDashboardTodayMovement(BaseModel):
+    stock_in_count: int = 0
+    stock_out_count: int = 0
+    stock_in_quantity: int = 0
+    stock_out_quantity: int = 0
+
+
+class StoreDashboardLowStockItem(BaseModel):
+    item_id: int
+    item_name: str
+    current_stock: int = 0
+    reorder_level: int | None = None
+    unit: str | None = None
+
+
+class StoreDashboardMaterialCheckRow(BaseModel):
+    sales_order_id: int
+    job_card_no: str | None = None
+    required_items_summary: str
+    status_label: str
+
+
+class StoreDashboardMaterialRequestRow(BaseModel):
+    id: int
+    mr_number: str
+    department: str | None = None
+    items_count: int = 0
+    status: str
+
+
+class StoreDashboardTransferRow(BaseModel):
+    id: int
+    reference_no: str
+    from_warehouse: str
+    to_warehouse: str
+    status: str
+
+
+class StoreDashboardActivityRow(BaseModel):
+    id: int
+    occurred_at: datetime | None = None
+    activity_label: str
+    item_name: str
+    quantity: int
+    movement_type: str
+
+
 class StoreDashboardRead(BaseModel):
     total_products: int = 0
     """Product catalog (All Items / Inventory V2) counts — align KPI clicks with /inventory."""
@@ -139,6 +186,15 @@ class StoreDashboardRead(BaseModel):
     store_pending: int = 0
     store_actionable_total: int = 0
     pending_inventory_orders: list[PendingInventoryCheckOrder] = Field(default_factory=list)
+    pending_transfers: int = 0
+    today_movement: StoreDashboardTodayMovement = Field(default_factory=StoreDashboardTodayMovement)
+    low_stock_preview: list[StoreDashboardLowStockItem] = Field(default_factory=list)
+    material_check_queue: list[StoreDashboardMaterialCheckRow] = Field(default_factory=list)
+    pending_material_request_rows: list[StoreDashboardMaterialRequestRow] = Field(
+        default_factory=list
+    )
+    pending_transfer_rows: list[StoreDashboardTransferRow] = Field(default_factory=list)
+    recent_stock_activity: list[StoreDashboardActivityRow] = Field(default_factory=list)
 
 
 class PurchaseRequisitionFromLowStock(BaseModel):

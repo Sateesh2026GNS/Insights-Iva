@@ -374,7 +374,16 @@ export function isSalesManager(user) {
 
 export function isAccountant(user) {
   if (!user || isAdmin(user)) return false;
-  return hasRole(user, "Accountant");
+  if (hasRole(user, "Accountant")) return true;
+  return getUserRoleNames(user).some((r) => {
+    const n = normalizeRoleName(r);
+    return (
+      n === "accounts" ||
+      n.includes("finance manager") ||
+      n === "billing" ||
+      n.includes("billing")
+    );
+  });
 }
 
 export function isQualityTeam(user) {

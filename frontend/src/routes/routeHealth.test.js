@@ -94,6 +94,8 @@ describe("route health", () => {
       "/sales/orders/:id",
       "/job-cards/:orderId",
       "/accounts/gst",
+      "/accounts/dashboard",
+      "/accounts/settings",
     ];
     for (const path of required) {
       expect(routePaths.has(path)).toBe(true);

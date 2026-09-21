@@ -27,6 +27,7 @@ from app.schemas.accounts import (
     JournalEntryRead,
     JournalEntryUpdate,
 )
+from app.services.gl_accounts_utils import dedupe_gl_accounts_by_code as _dedupe_gl_accounts
 from app.services.accounts_service import (
     create_expense,
     create_income,
@@ -697,16 +698,6 @@ def delete_journal_entry_endpoint(
     if not delete_journal_entry(db, tenant_id, entry_id):
         raise HTTPException(404, "Journal entry not found")
     return {"ok": True, "id": entry_id}
-
-
-def _dedupe_gl_accounts(rows: list[GLAccount]) -> list[GLAccount]:
-    """Return one row per account code (handles duplicate seed races)."""
-    by_code: dict[str, GLAccount] = {}
-    for row in rows:
-        prev = by_code.get(row.code)
-        if prev is None or row.id < prev.id:
-            by_code[row.code] = row
-    return sorted(by_code.values(), key=lambda r: r.code)
 
 
 @router.get("/gl-accounts", response_model=list[GLAccountRead])

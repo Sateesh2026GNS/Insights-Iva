@@ -88,3 +88,34 @@ def test_production_manager_sidebar_inventory(register_admin, client):
     assert "/inventory/warehouses" not in child_paths
 
 
+def test_accountant_sidebar_includes_accounts_dashboard(register_admin, client):
+    admin = register_admin()
+    email = "acct-nav@example.com"
+    password = "Passw0rd!123"
+    reg = client.post(
+        "/auth/register",
+        json={
+            "company_name": "Test Company AC",
+            "full_name": "Accountant User",
+            "email": email,
+            "password": password,
+            "role": "Accountant",
+        },
+    )
+    assert reg.status_code in (200, 201), reg.text
+    login = client.post("/auth/login", json={"email": email, "password": password, "role": "Accountant"})
+    assert login.status_code == 200, login.text
+    headers = {"Authorization": f"Bearer {login.json()['access_token']}"}
+    resp = client.get("/api/sidebar", headers=headers)
+    assert resp.status_code == 200
+    finance_menu = next((m for m in resp.json() if m["key"] == "finance"), None)
+    assert finance_menu is not None
+    child_paths = [c["path"] for c in finance_menu.get("children", [])]
+    assert "/accounts/dashboard" not in child_paths
+    assert "/accounts/settings" in child_paths
+    assert "/finance/accounts-receivable" in child_paths
+    dash_menu = next((m for m in resp.json() if m["key"] == "dashboard"), None)
+    assert dash_menu is not None
+    assert dash_menu.get("path") == "/"
+
+

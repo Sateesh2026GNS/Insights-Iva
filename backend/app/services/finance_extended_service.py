@@ -27,6 +27,17 @@ from app.schemas.finance_extended import (
 from app.services.accounts_service import get_profit_loss, get_tax_report
 
 
+def _invoice_eligible_for_ar(inv: Invoice) -> bool:
+    """Open receivable invoices — exclude draft and cancelled documents."""
+    if (inv.status or "").lower() == "draft":
+        return False
+    if (inv.status or "").lower() == "cancelled":
+        return False
+    if (inv.invoice_status or "").lower() == "cancelled":
+        return False
+    return True
+
+
 def _aging_bucket(days: int) -> str:
     if days <= 30:
         return "0-30"
@@ -289,11 +300,11 @@ def list_ap_enriched(db: Session, tenant_id: int) -> list[APListRead]:
 
 def get_ar_summary(db: Session, tenant_id: int) -> ARSummaryRead:
     today = date.today()
-    invs = list(
-        db.scalars(
-            select(Invoice).where(Invoice.tenant_id == tenant_id, Invoice.status != "draft")
-        ).all()
-    )
+    invs = [
+        i
+        for i in db.scalars(select(Invoice).where(Invoice.tenant_id == tenant_id)).all()
+        if _invoice_eligible_for_ar(i)
+    ]
     total_recv = sum(float(i.grand_total or 0) - float(i.amount_paid or 0) for i in invs)
     received_today = float(
         db.scalar(
@@ -342,12 +353,14 @@ def list_ar_enriched(db: Session, tenant_id: int) -> list[ARListRead]:
         db.scalars(
             select(Invoice)
             .options(joinedload(Invoice.customer))
-            .where(Invoice.tenant_id == tenant_id, Invoice.status != "draft")
+            .where(Invoice.tenant_id == tenant_id)
             .order_by(Invoice.issue_date.desc())
         ).all()
     )
     result = []
     for i in invs:
+        if not _invoice_eligible_for_ar(i):
+            continue
         amt = float(i.grand_total or 0)
         paid = float(i.amount_paid or 0)
         bal = amt - paid

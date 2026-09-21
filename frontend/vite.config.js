@@ -196,6 +196,7 @@ export default defineConfig({
     globals: true,
     setupFiles: "./src/test/setup.js",
     css: false,
+    exclude: ["**/node_modules/**", "**/dist/**", "e2e/**"],
   },
   build: {
     // Faster minification; esbuild is default in Vite 5 – keep explicit for clarity

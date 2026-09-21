@@ -189,6 +189,7 @@ export const ACCOUNTANT_ALLOWED_SECTIONS = new Set([
 ]);
 
 export const ACCOUNTANT_ALLOWED_CHILDREN = new Set([
+  "/accounts/settings",
   "/my-job-cards",
   "/alerts",
   "/alerts/general",

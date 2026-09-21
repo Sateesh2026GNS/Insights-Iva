@@ -661,7 +661,9 @@ export default function AppRoutes() {
       <Route path="/accounts/ledger/:kind/:id" element={<ProtectedRoute><P.LedgerDetailsV2 /></ProtectedRoute>} />
       <Route path="/ledger" element={<ProtectedRoute><P.LedgerV2 /></ProtectedRoute>} />
       <Route path="/ledger/:kind/:id" element={<ProtectedRoute><P.LedgerDetailsV2 /></ProtectedRoute>} />
-      <Route path="/accounts" element={<ProtectedRoute><P.AccountsDashboard /></ProtectedRoute>} />
+      <Route path="/accounts/dashboard" element={<ProtectedRoute><P.AccountsDashboard /></ProtectedRoute>} />
+      <Route path="/accounts/settings" element={<ProtectedRoute><P.AccountsSettings /></ProtectedRoute>} />
+      <Route path="/accounts" element={<ProtectedRoute><Navigate to="/accounts/dashboard" replace /></ProtectedRoute>} />
       <Route path="/accounts/profit-loss" element={<ProtectedRoute><P.ProfitLoss /></ProtectedRoute>} />
       <Route path="/accounts/expenses" element={<ProtectedRoute><P.ExpenseV2 /></ProtectedRoute>} />
       <Route path="/accounts/expenses/settings" element={<ProtectedRoute><P.ExpenseSettingsV2 /></ProtectedRoute>} />
@@ -796,7 +798,7 @@ export default function AppRoutes() {
       <Route path="/accounts/accounts-receivable" element={<Navigate to="/finance/accounts-receivable" replace />} />
       <Route path="/finance/payment-tracking" element={<ProtectedRoute><P.PaymentTracking /></ProtectedRoute>} />
       <Route path="/finance/general-ledger" element={<ProtectedRoute><P.GeneralLedger /></ProtectedRoute>} />
-      <Route path="/finance" element={<ProtectedRoute><Navigate to="/accounts" replace /></ProtectedRoute>} />
+      <Route path="/finance" element={<ProtectedRoute><Navigate to="/accounts/dashboard" replace /></ProtectedRoute>} />
       <Route path="/factory-monitor/live-production" element={<ProtectedRoute><Navigate to="/factory-monitor/machine-status" replace /></ProtectedRoute>} />
       <Route path="/factory-monitor/machine-status" element={<ProtectedRoute><P.FactoryMonitorMachineStatus /></ProtectedRoute>} />
       <Route path="/factory-monitor/production-lines" element={<ProtectedRoute><P.FactoryMonitorProductionLines /></ProtectedRoute>} />

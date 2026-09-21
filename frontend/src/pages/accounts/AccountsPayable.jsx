@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { AlertCircle, AlertTriangle, ArrowRight, BadgeCheck, Building2, Calendar, CheckCircle2, ChevronRight, Clock, CreditCard, Edit2, Eye, FileText, IndianRupee, Landmark, LayoutDashboard, Package, Plus, Receipt, Search, TrendingDown, TrendingUp, X, XCircle } from "lucide-react";
 import KpiCard from "../../components/common/KpiCard";
 import PageHeader from "../../components/common/PageHeader";
@@ -546,6 +546,7 @@ const INITIAL_SUMMARY = {
 };
 
 export default function AccountsPayable() {
+  const [searchParams] = useSearchParams();
   const tenantId = useTenantId();
   const { addToast } = useToast();
 
@@ -619,6 +620,17 @@ export default function AccountsPayable() {
   usePageRefresh(() => load(true));
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    const f = searchParams.get("focus");
+    if (f === "overdue") {
+      setActiveSection("bills");
+      setBillsTab("overdue");
+    } else if (f === "open") {
+      setActiveSection("bills");
+      setBillsTab("all");
+    }
+  }, [searchParams]);
 
   // ── Filtered Bills ──
   const filteredBills = useMemo(() => {

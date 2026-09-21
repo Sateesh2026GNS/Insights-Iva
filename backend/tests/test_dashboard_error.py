@@ -19,33 +19,35 @@ from app.services.accounts_service import get_accounts_dashboard
 # ---------------------------------------------------------------------------
 
 def test_dashboard_service_rolls_back_on_db_error():
-    """OperationalError during db.execute() → rollback + HTTP 503."""
+    """OperationalError during work-center load → rollback + HTTP 503."""
     mock_db = MagicMock()
-    mock_db.execute.side_effect = OperationalError(
-        "SELECT invoices", {}, Exception("DB connection lost")
-    )
-
-    try:
-        get_accounts_dashboard(mock_db, tenant_id=1)
-        assert False, "Should have raised HTTPException"
-    except HTTPException as exc:
-        assert exc.status_code == 503
-        assert "Database connection unavailable" in exc.detail
-        mock_db.rollback.assert_called_once()
+    with patch(
+        "app.services.accounts_work_center_service.get_ar_summary",
+        side_effect=OperationalError("SELECT", {}, Exception("DB connection lost")),
+    ):
+        try:
+            get_accounts_dashboard(mock_db, tenant_id=1)
+            assert False, "Should have raised HTTPException"
+        except HTTPException as exc:
+            assert exc.status_code == 503
+            assert "Database connection unavailable" in exc.detail
+            mock_db.rollback.assert_called_once()
 
 
 def test_dashboard_service_rolls_back_on_generic_exception():
     """Unexpected runtime error → rollback + HTTP 500."""
     mock_db = MagicMock()
-    mock_db.execute.side_effect = RuntimeError("Unexpected crash")
-
-    try:
-        get_accounts_dashboard(mock_db, tenant_id=1)
-        assert False, "Should have raised HTTPException"
-    except HTTPException as exc:
-        assert exc.status_code == 500
-        assert "Failed to load accounts dashboard" in exc.detail
-        mock_db.rollback.assert_called_once()
+    with patch(
+        "app.services.accounts_work_center_service.get_ar_summary",
+        side_effect=RuntimeError("Unexpected crash"),
+    ):
+        try:
+            get_accounts_dashboard(mock_db, tenant_id=1)
+            assert False, "Should have raised HTTPException"
+        except HTTPException as exc:
+            assert exc.status_code == 500
+            assert "Failed to load accounts dashboard" in exc.detail
+            mock_db.rollback.assert_called_once()
 
 
 # ---------------------------------------------------------------------------

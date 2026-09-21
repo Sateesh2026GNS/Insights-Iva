@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { FileText, IndianRupee, Plus, TrendingDown, Users, Wallet } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
@@ -32,6 +33,8 @@ const MONTH_NAMES = [
 ];
 
 export default function AccountsReceivable() {
+  const [searchParams] = useSearchParams();
+  const focus = searchParams.get("focus") || "";
   const { addToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState(INITIAL_AR_SUMMARY);
@@ -72,6 +75,8 @@ export default function AccountsReceivable() {
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
     return rows.filter((r) => {
+      if (focus === "overdue" && !(Number(r.days_overdue) > 0 && Number(r.balance) > 0)) return false;
+      if (focus === "open" && !(Number(r.balance) > 0)) return false;
       if (q && ![r.invoice_number, r.customer_name].some((v) => String(v || "").toLowerCase().includes(q)))
         return false;
 
@@ -100,7 +105,7 @@ export default function AccountsReceivable() {
 
       return true;
     });
-  }, [rows, search, branch, financialYear, month]);
+  }, [rows, search, branch, financialYear, month, focus]);
 
   const columns = [
     { key: "invoice_number", label: "Invoice No" },

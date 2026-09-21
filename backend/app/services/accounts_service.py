@@ -288,95 +288,11 @@ def get_profit_loss(db: Session, tenant_id: int, year: int, ytd_through_month: i
 
 
 def get_accounts_dashboard(db: Session, tenant_id: int) -> dict:
-    """Dashboard metrics: settlement, invoice count, overdue, paperless, etc."""
+    """Accounts work-control dashboard (single consolidated payload)."""
+    from app.services.accounts_work_center_service import get_accounts_work_center
+
     try:
-        inv_stmt = select(func.count(Invoice.id), func.coalesce(func.sum(Invoice.grand_total), 0)).where(Invoice.tenant_id == tenant_id).where(Invoice.status != "draft")
-        inv_row = db.execute(inv_stmt).first()
-        total_invoices = inv_row[0] or 0
-        total_amount = float(inv_row[1] or 0)
-
-        paid_stmt = select(func.coalesce(func.sum(Invoice.amount_paid), 0)).where(Invoice.tenant_id == tenant_id)
-        paid_row = db.execute(paid_stmt).first()
-        total_settlement = float(paid_row[0] or 0)
-
-        # Overdue (simplified: due_date < today and not fully paid)
-        from datetime import date as d
-        today = d.today()
-        overdue_stmt = (
-            select(func.count(Invoice.id), func.coalesce(func.sum(Invoice.grand_total - Invoice.amount_paid), 0))
-            .where(Invoice.tenant_id == tenant_id)
-            .where(Invoice.due_date < today)
-            .where(Invoice.amount_paid < Invoice.grand_total)
-        )
-        overdue_row = db.execute(overdue_stmt).first()
-        overdue_count = overdue_row[0] or 0
-        overdue_amount = float(overdue_row[1] or 0)
-
-        # Overdue aging buckets from actual overdue invoices
-        overdue_invoices = db.execute(
-            select(Invoice.due_date, Invoice.grand_total, Invoice.amount_paid)
-            .where(Invoice.tenant_id == tenant_id)
-            .where(Invoice.due_date < today)
-            .where(Invoice.amount_paid < Invoice.grand_total)
-        ).all()
-        buckets = {i: {"days": i, "count": 0, "amount": 0.0} for i in range(1, 46)}
-        for due_date, grand_total, amount_paid in overdue_invoices:
-            if not due_date:
-                continue
-            days_over = max(1, (today - due_date).days)
-            bucket = min(45, days_over)
-            buckets[bucket]["count"] += 1
-            buckets[bucket]["amount"] += float((grand_total or 0) - (amount_paid or 0))
-        overdue_by_days = [buckets[i] for i in range(1, 46)]
-
-        # Monthly settlement from invoices (last 12 months)
-        from datetime import timedelta
-        monthly_settlement = []
-        for i in range(12):
-            month_start = (today.replace(day=1) - timedelta(days=i * 30)).replace(day=1)
-            month_key = month_start.strftime("%Y-%m")
-            month_paid = db.execute(
-                select(func.coalesce(func.sum(Invoice.amount_paid), 0))
-                .where(Invoice.tenant_id == tenant_id)
-                .where(column_matches_year_month(Invoice.issue_date, month_key))
-            ).scalar()
-            month_count = db.execute(
-                select(func.count(Invoice.id))
-                .where(Invoice.tenant_id == tenant_id)
-                .where(column_matches_year_month(Invoice.issue_date, month_key))
-                .where(Invoice.status != "draft")
-            ).scalar()
-            monthly_settlement.append({
-                "month": month_key,
-                "amount": float(month_paid or 0),
-                "count": int(month_count or 0),
-            })
-
-        paid_invoices = db.execute(
-            select(Invoice.issue_date, Invoice.updated_at)
-            .where(Invoice.tenant_id == tenant_id)
-            .where(Invoice.amount_paid >= Invoice.grand_total)
-            .where(Invoice.issue_date.isnot(None))
-        ).all()
-        settle_days = []
-        for issue_date, updated_at in paid_invoices:
-            if issue_date and updated_at:
-                end = updated_at.date() if hasattr(updated_at, "date") else updated_at
-                settle_days.append(max(0, (end - issue_date).days))
-        avg_days_to_settle = round(sum(settle_days) / len(settle_days)) if settle_days else 0
-
-        return {
-            "total_settlement": total_settlement,
-            "total_invoice_count": total_invoices,
-            "overdue_count": overdue_count,
-            "overdue_amount": overdue_amount,
-            "overdue_by_days": overdue_by_days,
-            "monthly_settlement": monthly_settlement,
-            "paperless_conversion": total_invoices,
-            "paper_invoices": 0,
-            "avg_days_to_settle": avg_days_to_settle,
-            "disputed_share_pct": 0,
-        }
+        return get_accounts_work_center(db, tenant_id)
     except HTTPException:
         raise
     except SQLAlchemyError as exc:
