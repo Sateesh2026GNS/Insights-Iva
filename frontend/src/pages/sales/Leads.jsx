@@ -66,10 +66,18 @@ export default function Leads() {
     try {
       const [summaryRes, listRes] = await Promise.allSettled([getLeadSummary(), getLeadsEnriched()]);
 
-
-      const liveRows = listRes.status === "fulfilled" && Array.isArray(listRes.value?.data)
+      const rawRows = listRes.status === "fulfilled" && Array.isArray(listRes.value?.data)
         ? listRes.value.data
         : [];
+      // Backend returns "name" / "phone"; this page still reads the older
+      // "customer_name" / "contact" keys in its table, search, and export
+      // logic. Alias them here so both old and new leads render correctly
+      // without touching every render site below.
+      const liveRows = rawRows.map((r) => ({
+        ...r,
+        customer_name: r.customer_name ?? r.name,
+        contact: r.contact ?? r.phone,
+      }));
       const liveSummary = summaryRes.status === "fulfilled" && summaryRes.value?.data
         ? summaryRes.value.data
         : null;

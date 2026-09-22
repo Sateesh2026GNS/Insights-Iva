@@ -88,7 +88,7 @@ export default function LeadDetailModal({ lead, onClose, onStatusChange, onConve
         <div className="flex items-start justify-between border-b border-slate-100 px-6 py-4">
           <div>
             <p className="text-xs font-bold text-[var(--color-primary)] tracking-wider uppercase">{lead.lead_id}</p>
-            <h2 className="text-xl font-bold text-slate-900 mt-0.5">{lead.customer_name}</h2>
+            <h2 className="text-xl font-bold text-slate-900 mt-0.5">{lead.name || lead.customer_name}</h2>
             <p className="text-xs text-slate-500">{lead.company} · {lead.industry || "General Industry"}</p>
           </div>
           <button type="button" onClick={onClose} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 transition-colors"><X className="h-5 w-5" /></button>
@@ -119,7 +119,7 @@ export default function LeadDetailModal({ lead, onClose, onStatusChange, onConve
           )}
           {tab === "Contacts" && (
             <div className="space-y-3 text-sm">
-              <p className="flex items-center gap-2.5 font-medium text-slate-700"><Phone className="h-4 w-4 text-slate-400" />{lead.contact || "—"}</p>
+              <p className="flex items-center gap-2.5 font-medium text-slate-700"><Phone className="h-4 w-4 text-slate-400" />{lead.phone || lead.contact || "—"}</p>
               <p className="flex items-center gap-2.5 font-medium text-slate-700"><Mail className="h-4 w-4 text-slate-400" />{lead.email || "—"}</p>
             </div>
           )}
@@ -246,7 +246,7 @@ export default function LeadDetailModal({ lead, onClose, onStatusChange, onConve
             <Button
               variant="primary"
               size="sm"
-              to={`/sales/quotations?create=true&customer_name=${encodeURIComponent(lead.customer_name || lead.company || "")}`}
+              to={`/sales/quotations?create=true&customer_name=${encodeURIComponent(lead.name || lead.customer_name || lead.company || "")}`}
             >
               Create Quotation
             </Button>
