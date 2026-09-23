@@ -159,7 +159,6 @@ export const OPERATOR_ALLOWED_PATHS = new Set([
   "/settings/my-account",
   "/settings/notifications",
   "/settings/appearance",
-  "/settings/subscription",
   "/settings/help",
   "/settings/about",
   "/settings/alerts",

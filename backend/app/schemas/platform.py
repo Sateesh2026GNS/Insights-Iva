@@ -60,8 +60,6 @@ class SuperAdminLoginChallengeResponse(BaseModel):
     expires_in_seconds: int = 300
     resend_after_seconds: int = 60
     message: str = "OTP sent to your registered mobile number."
-    # Present only in development when SMS is not configured
-    dev_otp: str | None = None
 
 
 class SuperAdminVerifyOtpRequest(BaseModel):

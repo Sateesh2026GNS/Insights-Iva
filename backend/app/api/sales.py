@@ -1025,5 +1025,21 @@ def download_quotation_pdf_endpoint(
 
 
 @router.get("/hub", response_model=SalesHubRead)
-def sales_hub(tenant_id: int = Depends(tenant_scope(MODULE)), db: Session = Depends(get_db)):
-    return get_sales_hub(db, tenant_id)
+def sales_hub(
+    tenant_id: int = Depends(tenant_scope(MODULE)),
+    user: User = Depends(require_permission(MODULE)),
+    db: Session = Depends(get_db),
+):
+    return get_sales_hub(db, tenant_id, user=user)
+
+
+@router.get("/reports/summary")
+def sales_reports_summary_endpoint(
+    tenant_id: int = Depends(tenant_scope(MODULE)),
+    year: int = Query(None),
+    db: Session = Depends(get_db),
+):
+    """Sales-module analytics summary (same data as /analytics/sales/summary, sales RBAC only)."""
+    from app.services.analytics_extended_service import get_sales_analytics
+
+    return get_sales_analytics(db, tenant_id, year)

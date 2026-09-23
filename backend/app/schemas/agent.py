@@ -8,6 +8,14 @@ from pydantic import BaseModel, Field
 class AgentChatRequest(BaseModel):
     message: str
     conversation_id: str | None = None
+    image_base64: str | None = Field(
+        None,
+        description="Optional screenshot image (base64, max ~4MB decoded).",
+    )
+    image_media_type: str | None = Field(
+        "image/png",
+        description="MIME type for image_base64 (image/png, image/jpeg, image/webp).",
+    )
 
 
 class AgentConfirmRequest(BaseModel):

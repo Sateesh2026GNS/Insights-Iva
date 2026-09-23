@@ -103,6 +103,16 @@ export async function removeProfileAvatar() {
   return data;
 }
 
+export async function updateAuthProfile(payload) {
+  const { data } = await api.put("/auth/profile", payload);
+  return data;
+}
+
+export async function changeAuthPassword(payload) {
+  const { data } = await api.post("/auth/change-password", payload);
+  return data;
+}
+
 export async function register(companyName, fullName, email, password, role = "Admin") {
   triggerServerWakeup();
   return withAuthRetry(async () => {

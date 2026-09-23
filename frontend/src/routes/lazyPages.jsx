@@ -1,4 +1,4 @@
-import { lazy } from "react";
+import { createElement, lazy } from "react";
 
 export const Landing = lazy(() => import("../pages/Landing"));
 export const Login = lazy(() => import("../pages/auth/Login"));
@@ -90,6 +90,14 @@ export const SalesBills = lazy(() => import("../pages/sales/SalesBills"));
 export const BillDetail = lazy(() => import("../pages/sales/BillDetail"));
 export const CreateBill = lazy(() => import("../pages/sales/CreateBill"));
 export const SalesOrders = lazy(() => import("../pages/sales/SalesOrders"));
+export const SalesReportAnalytics = lazy(() =>
+  import("../pages/analytics/SalesAnalytics").then((m) => ({
+    default: () => createElement(m.default, { useSalesModuleApi: true }),
+  }))
+);
+export const SalesOrderReport = lazy(() => import("../pages/sales/reports/SalesOrderReport"));
+export const QuotationReport = lazy(() => import("../pages/sales/reports/QuotationReport"));
+export const CustomerReport = lazy(() => import("../pages/sales/reports/CustomerReport"));
 export const SalesOrderDetail = lazy(() => import("../pages/sales/SalesOrderDetail"));
 export const Customers = lazy(() => import("../pages/sales/Customers"));
 export const CustomerFormPage = lazy(() => import("../pages/sales/CustomerFormPage"));
@@ -198,6 +206,15 @@ export const Settings = lazy(() => import("../pages/settings/Settings"));
 export const SettingsLayout = lazy(() => import("../pages/settings/SettingsLayout"));
 export const SettingsHome = lazy(() => import("../pages/settings/SettingsHome"));
 export const SettingsSectionPage = lazy(() => import("../pages/settings/SettingsSectionPage"));
+export const SettingsMyAccountLayout = lazy(() =>
+  import("../pages/settings/SettingsMyAccount").then((m) => ({ default: m.SettingsMyAccountLayout }))
+);
+export const MyAccountProfileView = lazy(() =>
+  import("../pages/settings/SettingsMyAccount").then((m) => ({ default: m.MyAccountProfileView }))
+);
+export const MyAccountTwoFactorView = lazy(() =>
+  import("../pages/settings/SettingsMyAccount").then((m) => ({ default: m.MyAccountTwoFactorView }))
+);
 export const SettingsCompanyProfile = lazy(() => import("../pages/settings/SettingsCompanyProfile"));
 export const SettingsBillingAddress = lazy(() => import("../pages/settings/SettingsBillingAddress"));
 export const SettingsDeliveryLocation = lazy(() => import("../pages/settings/SettingsDeliveryLocation"));

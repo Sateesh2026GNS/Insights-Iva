@@ -157,6 +157,16 @@ def require_admin(current_user: User = Depends(get_current_user)) -> User:
     return current_user
 
 
+def require_admin_role(current_user: User = Depends(get_current_user)) -> User:
+    """Require the tenant Admin role name (not wildcard permission grants alone)."""
+    if ADMIN_ROLE not in get_role_names(current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Administrator privileges are required to perform this action.",
+        )
+    return current_user
+
+
 MODULE_FORBIDDEN_MESSAGE = "You do not have permission to access this module."
 
 

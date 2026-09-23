@@ -142,7 +142,7 @@ export default function Navbar({ onOpenSidebar, onToggleSidebar, sidebarCollapse
           ) : null}
           <div className="app-navbar__title-block">
             <AppPageTitle title={pageTitle} />
-            <div className="mt-0.5 hidden lg:block">
+            <div className="mt-2 hidden lg:block">
               <Breadcrumbs compact />
             </div>
           </div>
@@ -155,7 +155,7 @@ export default function Navbar({ onOpenSidebar, onToggleSidebar, sidebarCollapse
 
         {/* Right: notifications, fullscreen, search toggle, profile */}
         <div className="app-navbar__actions">
-          {isMobile ? (
+          <div className="relative flex flex-col items-end lg:hidden">
             <button
               type="button"
               onClick={() => setMobileSearchOpen((prev) => !prev)}
@@ -163,10 +163,19 @@ export default function Navbar({ onOpenSidebar, onToggleSidebar, sidebarCollapse
               title={mobileSearchOpen ? "Close search" : "Search"}
               aria-label={mobileSearchOpen ? "Close search" : "Search"}
               aria-expanded={mobileSearchOpen}
+              aria-controls="app-navbar-mobile-search"
             >
               {mobileSearchOpen ? <X className="h-4 w-4" /> : <Search className="h-4 w-4" />}
             </button>
-          ) : null}
+            {mobileSearchOpen ? (
+              <div
+                id="app-navbar-mobile-search"
+                className="app-navbar__mobile-search-popover"
+              >
+                <GlobalSearch onSelect={() => setMobileSearchOpen(false)} autoFocus />
+              </div>
+            ) : null}
+          </div>
 
           <NotificationBell />
 
@@ -206,7 +215,7 @@ export default function Navbar({ onOpenSidebar, onToggleSidebar, sidebarCollapse
                   {displayName}
                 </p>
                 {displayRole ? (
-                  <p className="truncate text-[11px] leading-tight text-[var(--color-text-muted)]">
+                  <p className="truncate text-[11px] leading-tight text-white/95">
                     {displayRole}
                   </p>
                 ) : null}
@@ -226,13 +235,6 @@ export default function Navbar({ onOpenSidebar, onToggleSidebar, sidebarCollapse
           </div>
         </div>
       </div>
-
-      {/* Mobile expandable search */}
-      {mobileSearchOpen ? (
-        <div className="app-navbar__mobile-search md:hidden">
-          <GlobalSearch onSelect={() => setMobileSearchOpen(false)} autoFocus />
-        </div>
-      ) : null}
 
       {/* Mobile single-line breadcrumb strip */}
       <div className="overflow-x-auto whitespace-nowrap scrollbar-none px-3.5 py-1 bg-black/10 border-t border-white/10 lg:hidden text-xs">

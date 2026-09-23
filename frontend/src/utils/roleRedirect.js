@@ -6,6 +6,9 @@
 /** Canonical Accounts module home (must match AppRoutes + sidebar). */
 export const ACCOUNTS_DASHBOARD_PATH = "/accounts/dashboard";
 
+/** Canonical Sales module home (must match AppRoutes + sidebar). */
+export const SALES_DASHBOARD_PATH = "/sales";
+
 function roleNamesLower(roleOrUser) {
   if (!roleOrUser) return [];
   if (typeof roleOrUser === "object") {
@@ -49,7 +52,7 @@ export function getDashboardPathForRole(roleOrUser) {
     return "/hr";
   }
   if (names.some((n) => n.includes("sales"))) {
-    return "/sales";
+    return SALES_DASHBOARD_PATH;
   }
   if (names.some((n) => n.includes("store"))) {
     return "/inventory/dashboard";

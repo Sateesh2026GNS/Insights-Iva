@@ -7,6 +7,27 @@ import { rowActionMenuItemClass } from "./rowActionTone.js";
 const DEFAULT_MENU_WIDTH = 192;
 const ITEM_HEIGHT = 36;
 
+function computeMenuPosition(rect, menuWidth) {
+  const top = rect.bottom + 4;
+  let left = Math.max(8, rect.right - menuWidth);
+  if (left + menuWidth > window.innerWidth - 8) {
+    left = Math.max(8, window.innerWidth - menuWidth - 8);
+  }
+  return { top, left };
+}
+
+/** Hidden responsive duplicates (e.g. mobile + desktop row) share openMenu but only one trigger is visible. */
+function isActionTriggerVisible(buttonEl) {
+  if (!buttonEl || typeof window === "undefined") return false;
+  let node = buttonEl;
+  while (node && node !== document.documentElement) {
+    const style = window.getComputedStyle(node);
+    if (style.display === "none" || style.visibility === "hidden") return false;
+    node = node.parentElement;
+  }
+  return true;
+}
+
 export default function RowActionMenu({
   rowId,
   openMenu,
@@ -22,6 +43,7 @@ export default function RowActionMenu({
 
   const [localOpen, setLocalOpen] = useState(false);
   const [menuPos, setMenuPos] = useState({ top: 0, left: 0 });
+  const [showPortal, setShowPortal] = useState(false);
   const [focusIndex, setFocusIndex] = useState(-1);
   const btnRef = useRef(null);
   const itemRefs = useRef([]);
@@ -41,19 +63,32 @@ export default function RowActionMenu({
     if (!val) setFocusIndex(-1);
   };
 
-  const openMenuAtButton = () => {
-    const rect = btnRef.current?.getBoundingClientRect();
-    if (rect) {
-      const top = rect.bottom + 4;
-      let left = Math.max(8, rect.right - menuWidth);
-      if (left + menuWidth > window.innerWidth - 8) {
-        left = Math.max(8, window.innerWidth - menuWidth - 8);
-      }
-      setMenuPos({ top, left });
+  const syncMenuPosition = () => {
+    const btn = btnRef.current;
+    if (!isActionTriggerVisible(btn)) {
+      setShowPortal(false);
+      return false;
     }
+    const rect = btn.getBoundingClientRect();
+    setMenuPos(computeMenuPosition(rect, menuWidth));
+    setShowPortal(true);
+    return true;
+  };
+
+  const openMenuAtButton = () => {
+    if (!syncMenuPosition()) return;
     setIsOpen(true);
     setFocusIndex(0);
   };
+
+  useEffect(() => {
+    if (!isOpen) {
+      setShowPortal(false);
+      return undefined;
+    }
+    syncMenuPosition();
+    return undefined;
+  }, [isOpen, menuWidth]);
 
   useEffect(() => {
     if (!isOpen) return undefined;
@@ -123,7 +158,7 @@ export default function RowActionMenu({
         <MoreVertical className="h-4 w-4" aria-hidden />
       </button>
 
-      {isOpen
+      {isOpen && showPortal
         ? createPortal(
             <>
               <button

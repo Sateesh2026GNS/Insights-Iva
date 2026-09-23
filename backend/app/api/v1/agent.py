@@ -16,6 +16,7 @@ from app.models.user import User
 from app.schemas.agent import AgentChatRequest, AgentConfirmRequest, AgentLogItem
 from app.services.agent.confirmation import pop_confirmation
 from app.services.agent.context import build_agent_context
+from app.services.agent.agent_evaluation_service import run_agent_evaluation
 from app.services.agent.orchestrator import AgentChatResponse, execute_confirmed_write, run_agent_chat
 
 logger = logging.getLogger(__name__)
@@ -59,7 +60,16 @@ async def agent_chat(
             detail="AI assistant is not available for your role or permissions.",
         )
     try:
-        return await run_agent_chat(db, ctx, body.message, body.conversation_id)
+        if body.image_base64 and len(body.image_base64) > 6_000_000:
+            raise HTTPException(status_code=400, detail="Image attachment is too large.")
+        return await run_agent_chat(
+            db,
+            ctx,
+            body.message,
+            body.conversation_id,
+            image_base64=body.image_base64,
+            image_media_type=body.image_media_type or "image/png",
+        )
     except HTTPException:
         raise
     except Exception as exc:
@@ -101,6 +111,18 @@ async def agent_confirm(
             detail=result.get("error", "Write action failed."),
         )
     return result
+
+
+@router.post("/evaluation/run")
+async def agent_evaluation_run(
+    request: Request,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_admin),
+):
+    """Run built-in AI assistant evaluation cases (Admin only)."""
+    _agent_rate_limit(request, user)
+    ctx = build_agent_context(db, user)
+    return await run_agent_evaluation(db, ctx)
 
 
 @router.get("/logs")

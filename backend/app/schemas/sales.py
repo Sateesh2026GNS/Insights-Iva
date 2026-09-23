@@ -484,26 +484,32 @@ class LeadBase(BaseModel):
     @classmethod
     def validate_opportunity_value(cls, value: Any) -> float | None:
         if value is None:
-            return value
-        try:
-            v = float(value)
-        except (TypeError, ValueError):
-            raise ValueError("opportunity_value must be a numeric value")
-        if v < 0:
-            raise ValueError("opportunity_value cannot be negative")
-        return value
+            return None
 
+        try:
+            value = float(value)
+        except (TypeError, ValueError):
+            raise ValueError(
+                "opportunity_value must be a numeric value"
+            )
+
+        if value < 0:
+            raise ValueError(
+                "opportunity_value cannot be negative"
+            )
+
+        return value
 
 
 class LeadCreate(LeadBase):
     """tenant_id is forced from the JWT on the API — optional in the body."""
-
     tenant_id: int = 0
 
 
 class LeadRead(LeadBase):
     id: int
     tenant_id: int
+
     model_config = ConfigDict(from_attributes=True)
 
 

@@ -45,6 +45,13 @@ function isSettingsRoute(pathname) {
   return path === "/settings" || path.startsWith("/settings/");
 }
 
+/** Document library routes use an in-page refresh control instead of the global FAB. */
+function isDocumentsLibraryRoute(pathname) {
+  const path = normalizePath(pathname);
+  if (path === "/hr/documents") return false;
+  return path === "/documents" || path.startsWith("/documents/");
+}
+
 /** @deprecated use resolveErpAiAssistantMode from utils/erpAiAssistant */
 export function shouldShowChatbot(user, pathname) {
   return resolveErpAiAssistantMode(user, pathname) === "shared";
@@ -60,6 +67,22 @@ export default function App() {
   const { user } = useAuth();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [isDesktopNav, setIsDesktopNav] = useState(() => {
+    if (typeof window === "undefined") return true;
+    return window.matchMedia("(min-width: 1024px)").matches;
+  });
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const onChange = () => {
+      setIsDesktopNav(mq.matches);
+      if (mq.matches) setMobileSidebarOpen(false);
+    };
+    onChange();
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
 
   // Close mobile sidebar on route change
   useEffect(() => {
@@ -220,6 +243,7 @@ export default function App() {
     location.pathname === "/ledger" ||
     location.pathname.startsWith("/ledger/");
   const isSettings = isSettingsRoute(location.pathname);
+  const isDocumentsLibrary = isDocumentsLibraryRoute(location.pathname);
   const isEInvoiceLogin = location.pathname === "/sales/e-invoice";
   const path = normalizePath(location.pathname);
   const isJobCardAuthoring =
@@ -285,34 +309,36 @@ export default function App() {
         />
       )}
 
-      {/* Mobile Off-Canvas Navigation Drawer */}
-      <div
-        className={`fixed inset-y-0 left-0 z-[75] flex w-[280px] max-w-[85vw] flex-col shadow-2xl transition-transform duration-300 ease-in-out lg:hidden ${
-          mobileSidebarOpen ? "translate-x-0" : "-translate-x-full pointer-events-none"
-        }`}
-        role="dialog"
-        aria-modal="true"
-        aria-label="Navigation Menu"
-      >
-        <Sidebar
-          collapsed={false}
-          onClose={() => setMobileSidebarOpen(false)}
-          isMobile={true}
-        />
-      </div>
+      {/* Mobile Off-Canvas Navigation Drawer — mount only when open (one Sidebar instance in DOM) */}
+      {mobileSidebarOpen && !isDesktopNav ? (
+        <div
+          className="fixed inset-y-0 left-0 z-[75] flex w-[280px] max-w-[85vw] flex-col shadow-2xl transition-transform duration-300 ease-in-out"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Navigation Menu"
+        >
+          <Sidebar
+            collapsed={false}
+            onClose={() => setMobileSidebarOpen(false)}
+            isMobile={true}
+          />
+        </div>
+      ) : null}
 
-      {/* Desktop In-Flow Sidebar */}
-      <aside
-        id="app-sidebar"
-        className={`relative z-40 hidden lg:block h-full shrink-0 transition-[width] duration-300 ease-in-out ${
-          sidebarCollapsed ? "w-[72px] overflow-visible" : "w-60 overflow-visible"
-        }`}
-      >
-        <Sidebar
-          collapsed={sidebarCollapsed}
-          onToggleCollapse={() => setSidebarCollapsed((v) => !v)}
-        />
-      </aside>
+      {/* Desktop In-Flow Sidebar — mount only at lg+ so one Sidebar instance exists in the DOM */}
+      {isDesktopNav ? (
+        <aside
+          id="app-sidebar"
+          className={`relative z-40 flex h-full min-h-0 shrink-0 flex-col overflow-visible transition-[width] duration-300 ease-in-out ${
+            sidebarCollapsed ? "w-[72px]" : "w-60"
+          }`}
+        >
+          <Sidebar
+            collapsed={sidebarCollapsed}
+            onToggleCollapse={() => setSidebarCollapsed((v) => !v)}
+          />
+        </aside>
+      ) : null}
       <div className="flex min-h-0 min-w-0 w-full flex-1 flex-col overflow-hidden">
         <Navbar
           onOpenSidebar={() => setMobileSidebarOpen(true)}
@@ -356,17 +382,29 @@ export default function App() {
               </RouteErrorBoundary>
             </Suspense>
           </div>
-          {aiAssistantMode ? (
-            <Suspense fallback={null}>
-              <ErpAiAssistant mode={aiAssistantMode} pageContextLabel={aiPageContext} />
-            </Suspense>
-          ) : null}
           <Suspense fallback={null}>
             <OperatorSafetyFab />
           </Suspense>
         </main>
         {!isInvoiceEditor ? (
-          <GlobalRefreshButton offsetForChat={Boolean(aiAssistantMode)} />
+          <div
+            className={`pointer-events-none fixed bottom-5 z-50 flex flex-col items-end gap-3 pb-[env(safe-area-inset-bottom,0px)] sm:bottom-6 ${
+              isSettings
+                ? "right-[var(--space-4)] sm:right-[var(--space-6)] lg:right-[var(--space-8)]"
+                : "right-5 sm:right-6"
+            }`}
+          >
+            {aiAssistantMode ? (
+              <Suspense fallback={null}>
+                <ErpAiAssistant
+                  mode={aiAssistantMode}
+                  pageContextLabel={aiPageContext}
+                  floatingStacked
+                />
+              </Suspense>
+            ) : null}
+            {!isDocumentsLibrary ? <GlobalRefreshButton stacked /> : null}
+          </div>
         ) : null}
       </div>
     </div>

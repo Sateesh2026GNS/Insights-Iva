@@ -14,9 +14,9 @@ export default function CreateLeadModal({ isOpen, onClose, onSuccess }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [form, setForm] = useState({
-    customer_name: "",
+    name: "",
     company: "",
-    contact: "",
+    phone: "",
     email: "",
     source: "Web Form",
     sales_executive: "Vikram Sharma",
@@ -30,15 +30,11 @@ export default function CreateLeadModal({ isOpen, onClose, onSuccess }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.customer_name.trim() || !form.company.trim()) {
-      setError("Customer Name and Company Name are required.");
+    if (!form.name.trim() || !form.company.trim()) {
+      setError("Contact Person and Company Name are required.");
       return;
     }
-    if (form.contact && !form.contact.trim()) {
-      setError("Contact Person cannot contain only spaces. Please enter a valid name or leave it blank.");
-      return;
-    }
-    if (form.contact && !/[a-zA-Z]/.test(form.contact)) {
+    if (form.name && !/[a-zA-Z]/.test(form.name)) {
       setError("Contact Person name must contain at least one letter.");
       return;
     }
@@ -58,11 +54,16 @@ export default function CreateLeadModal({ isOpen, onClose, onSuccess }) {
     setError("");
 
     const payload = {
-      ...form,
+      name: form.name.trim(),
+      company: form.company.trim(),
+      phone: form.phone || null,
       email: trimmedEmail || null,
-      estimated_value: form.estimated_value ? Number(form.estimated_value) : 0,
-      lead_id: `LD-${Math.floor(1000 + Math.random() * 9000)}`,
-      created_at: new Date().toISOString().slice(0, 10),
+      source: form.source,
+      sales_executive: form.sales_executive,
+      priority: form.priority,
+      status: form.status,
+      notes: form.notes || null,
+      opportunity_value: form.estimated_value ? Number(form.estimated_value) : 0,
       next_followup: new Date(Date.now() + 86400000 * 3).toISOString().slice(0, 10),
     };
 
@@ -73,9 +74,9 @@ export default function CreateLeadModal({ isOpen, onClose, onSuccess }) {
       if (onSuccess) onSuccess(created);
       onClose();
       setForm({
-        customer_name: "",
+        name: "",
         company: "",
-        contact: "",
+        phone: "",
         email: "",
         source: "Web Form",
         sales_executive: "Vikram Sharma",
@@ -134,8 +135,8 @@ export default function CreateLeadModal({ isOpen, onClose, onSuccess }) {
                 type="text"
                 required
                 placeholder="e.g. Rajesh Mehta"
-                value={form.customer_name}
-                onChange={(e) => setForm((f) => ({ ...f, customer_name: e.target.value }))}
+                value={form.name}
+                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                 className={inputClass}
               />
             </div>
@@ -158,8 +159,8 @@ export default function CreateLeadModal({ isOpen, onClose, onSuccess }) {
               <input
                 type="text"
                 placeholder="e.g. +91 98765 43210"
-                value={form.contact}
-                onChange={(e) => setForm((f) => ({ ...f, contact: e.target.value }))}
+                value={form.phone}
+                onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
                 className={inputClass}
               />
             </div>

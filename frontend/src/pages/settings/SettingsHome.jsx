@@ -5,6 +5,7 @@ import LogoutConfirmModal from "../../components/common/LogoutConfirmModal";
 import { filterAccessibleSettingsCategories, isOperator } from "../../config/permissions";
 import useAuth from "../../hooks/useAuth";
 import { SETTINGS_NAV_GROUPS, searchSettingsCategories } from "./settingsCatalog";
+import Button from "../../components/common/Button";
 import {
   SettingsGroupPanel,
   SettingsHero,
@@ -89,13 +90,9 @@ export default function SettingsHome() {
           <p className="mt-1 text-xs text-[var(--color-text-muted)]">
             Try users, password, GST, invoice, or subscription.
           </p>
-          <button
-            type="button"
-            onClick={() => setQuery("")}
-            className="mt-3 text-sm font-semibold text-[var(--color-primary)] hover:underline"
-          >
+          <Button type="button" variant="ghost" size="sm" className="mt-3" onClick={() => setQuery("")}>
             Clear search
-          </button>
+          </Button>
         </div>
       ) : (
         <div className="space-y-4">
