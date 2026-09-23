@@ -3,11 +3,11 @@ import { useTranslation } from "react-i18next";
 
 /** Vendors-page reference — shared list search layout tokens */
 export const SEARCH_BAR_WRAP_CLASS = "relative ui-search-wrap min-w-[10rem] flex-1";
-export const SEARCH_BAR_INPUT_CLASS = "ui-input w-full !rounded-full !pl-10";
+export const SEARCH_BAR_INPUT_CLASS = "ui-input w-full !rounded-full !pl-11 !pr-11";
 
 /** Navbar global search — same ui-input styling, wider cap */
 export const NAVBAR_SEARCH_WRAP_CLASS = "relative ui-search-wrap navbar-search-wrap min-w-0 w-full flex-1";
-export const NAVBAR_SEARCH_INPUT_CLASS = "ui-input global-search-input w-full !rounded-full !pl-10";
+export const NAVBAR_SEARCH_INPUT_CLASS = "ui-input global-search-input w-full !rounded-full !pl-11 !pr-11";
 
 /** Compact variant — dropdowns, forms, filters, autocomplete */
 export const SEARCH_BAR_COMPACT_WRAP_CLASS = "relative ui-search-wrap ui-search-wrap--compact min-w-0 flex-none";
@@ -16,14 +16,14 @@ export const SEARCH_BAR_COMPACT_INPUT_CLASS =
 
 const SIZE_PRESETS = {
   default: {
-    wrap: SEARCH_BAR_WRAP_CLASS,
-    input: SEARCH_BAR_INPUT_CLASS,
-    iconLeft: "left-3.5",
-    iconSize: "h-4 w-4",
-    clearRight: "right-3",
-    clearSize: "h-4 w-4",
-    clearPadding: " !pr-10",
-  },
+  wrap: SEARCH_BAR_WRAP_CLASS,
+  input: SEARCH_BAR_INPUT_CLASS,
+  iconLeft: "left-4",
+  iconSize: "h-4 w-4",
+  clearRight: "right-4",
+  clearSize: "h-4 w-4",
+  clearPadding: " !pr-11",
+},
   compact: {
     wrap: SEARCH_BAR_COMPACT_WRAP_CLASS,
     input: SEARCH_BAR_COMPACT_INPUT_CLASS,
@@ -57,7 +57,7 @@ export function SearchBar({
   onClick,
   inputRef,
   id,
-  type = "search",
+  type = "text",
   list,
   autoComplete,
   role,

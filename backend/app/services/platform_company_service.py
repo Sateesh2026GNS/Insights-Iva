@@ -3,6 +3,7 @@
 import re
 import secrets
 import string
+import logging
 from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException, status
@@ -24,6 +25,8 @@ from app.services.email_service import (
     smtp_config_error_message,
     smtp_is_configured,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def _slugify(name: str) -> str:
@@ -407,16 +410,22 @@ class PlatformCompanyService:
             err_msg = str(exc.orig).lower()
             if "users.email" in err_msg or "user_email" in err_msg or "uq_users_tenant_email" in err_msg:
                 detail_msg = "Admin email is already registered."
-            elif "tenants.email" in err_msg or "tenant_email" in err_msg:
+            elif "tenants.email" in err_msg or "tenant_email" in err_msg or "tenants_email_key" in err_msg:
                 detail_msg = "Company email is already registered to another company."
-            elif "tenants.phone" in err_msg or "tenant_phone" in err_msg:
+            elif "tenants.phone" in err_msg or "tenant_phone" in err_msg or "tenants_phone_key" in err_msg:
                 detail_msg = "Mobile number is already registered to another company."
-            elif "tenants.gst_number" in err_msg or "tenant_gst_number" in err_msg:
+            elif "tenants.gst_number" in err_msg or "tenant_gst_number" in err_msg or "tenants_gst_number_key" in err_msg:
                 detail_msg = "GST Number is already registered to another company."
-            elif "tenants.company_code" in err_msg or "company_code" in err_msg:
+            elif "tenants.company_code" in err_msg or "company_code" in err_msg or "tenants_company_code_key" in err_msg:
                 detail_msg = "Company code is already registered."
-            elif "tenants.name" in err_msg:
+            elif "tenants.name" in err_msg or "tenants_name_key" in err_msg:
                 detail_msg = "Company name is already registered."
+            elif "tenants.slug" in err_msg or "tenants_slug_key" in err_msg:
+                detail_msg = "Company identifier is already registered. Please use a different company name."
+            elif "company_settings_tenant_id_key" in err_msg:
+                detail_msg = "Company settings already exist for this company."
+            elif "company_licenses_tenant_id_key" in err_msg:
+                detail_msg = "A license already exists for this company."
             else:
                 detail_msg = "Could not create company due to a database conflict."
             raise HTTPException(

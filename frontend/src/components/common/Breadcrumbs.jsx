@@ -198,6 +198,10 @@ const PAGE_TITLE_OVERRIDES = {
   "/production/operator-jobs": "My Operator Jobs",
 };
 
+const BREADCRUMB_TITLE_OVERRIDES = {
+  "/inventory": "All Items",
+};
+
 const STAGE_LABELS = {
   inventory: "Inventory Check",
   store: "Store Issue",
@@ -309,6 +313,7 @@ function getLabel(segment, segments, index) {
 
 /** Build breadcrumb trail for a pathname. */
 export function getBreadcrumbTrail(pathname) {
+  const normalizedPath = (pathname || "/").replace(/\/$/, "") || "/";
   const segments = (pathname || "/").split("/").filter(Boolean);
 
   if (segments[0] === "admin") {
@@ -333,13 +338,19 @@ export function getBreadcrumbTrail(pathname) {
     return [{ label: "Dashboard", path: "/" }];
   }
 
-  return [
+  const trail = [
     { label: "Dashboard", path: "/" },
     ...segments.map((seg, i) => ({
       label: getLabel(seg, segments, i),
       path: "/" + segments.slice(0, i + 1).join("/"),
     })),
   ];
+
+  const lastItem = trail[trail.length - 1];
+  if (lastItem && BREADCRUMB_TITLE_OVERRIDES[normalizedPath]) {
+    lastItem.label = BREADCRUMB_TITLE_OVERRIDES[normalizedPath];
+  }
+  return trail;
 }
 
 /** Current page title from the last breadcrumb segment. */

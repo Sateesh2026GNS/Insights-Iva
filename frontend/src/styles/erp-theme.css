@@ -580,6 +580,9 @@
   color: #111827;
   font-weight: 500;
   box-shadow: none;
+  padding-left: 2.75rem;
+  padding-right: 2.75rem;
+  border-radius: 9999px;
 }
 
 .app-navbar .navbar-search-wrap .global-search-input::placeholder {
@@ -593,12 +596,12 @@
   outline: none;
 }
 
-.app-navbar .navbar-search-wrap .ui-search-wrap > svg,
-.app-navbar .navbar-search-wrap .ui-search-wrap button {
+.app-navbar .navbar-search-wrap svg,
+.app-navbar .navbar-search-wrap button {
   color: #6b7280;
 }
 
-.app-navbar .navbar-search-wrap .ui-search-wrap button:hover {
+.app-navbar .navbar-search-wrap button:hover {
   color: #111827;
 }
 

@@ -39,6 +39,22 @@ export default function Navbar({ onOpenSidebar, onToggleSidebar, sidebarCollapse
   const displayName = user?.full_name || user?.name || "User";
   const displayRole = formatRoleLabel(user?.role_name || user?.role || "");
 
+  //
+  const [isMobile, setIsMobile] = useState(() => {
+  if (typeof window === "undefined") return false;
+  return window.innerWidth < 768;
+  });
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   useEffect(() => {
     const onFullscreenChange = () => {
       setIsFullscreen(Boolean(document.fullscreenElement));
@@ -139,16 +155,18 @@ export default function Navbar({ onOpenSidebar, onToggleSidebar, sidebarCollapse
 
         {/* Right: notifications, fullscreen, search toggle, profile */}
         <div className="app-navbar__actions">
-          <button
-            type="button"
-            onClick={() => setMobileSearchOpen((prev) => !prev)}
-            className="app-navbar__icon-btn md:hidden"
-            title={mobileSearchOpen ? "Close search" : "Search"}
-            aria-label={mobileSearchOpen ? "Close search" : "Search"}
-            aria-expanded={mobileSearchOpen}
-          >
-            {mobileSearchOpen ? <X className="h-4 w-4" /> : <Search className="h-4 w-4" />}
-          </button>
+          {isMobile ? (
+            <button
+              type="button"
+              onClick={() => setMobileSearchOpen((prev) => !prev)}
+              className="app-navbar__icon-btn"
+              title={mobileSearchOpen ? "Close search" : "Search"}
+              aria-label={mobileSearchOpen ? "Close search" : "Search"}
+              aria-expanded={mobileSearchOpen}
+            >
+              {mobileSearchOpen ? <X className="h-4 w-4" /> : <Search className="h-4 w-4" />}
+            </button>
+          ) : null}
 
           <NotificationBell />
 

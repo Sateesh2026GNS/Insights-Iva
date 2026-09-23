@@ -266,6 +266,7 @@ export default function AddNewItemModal({
   placement = "modal",
   categories,
   onAddCategory,
+  categoryToSelect,
   item = null,
   entityName = "Item",
   title,
@@ -363,6 +364,15 @@ export default function AddNewItemModal({
     setCustomOpen(false);
     setBarcodeOpen(false);
   }, [open, item]);
+  
+  useEffect(() => {
+    if (!open || !categoryToSelect) return;
+
+    setForm((current) => ({
+      ...current,
+      category: categoryToSelect,
+    }));
+  }, [open, categoryToSelect]);
 
   const onPhoto = (e) => {
     const file = e.target.files?.[0];
