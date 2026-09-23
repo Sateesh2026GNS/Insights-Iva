@@ -150,7 +150,7 @@ export default function Navbar({ onOpenSidebar, onToggleSidebar, sidebarCollapse
 
         {/* Center: global search (only shown when search icon is clicked) */}
         <div className="app-navbar__center">
-          {searchOpen ? (
+          {!isMobile && searchOpen ? (
             <GlobalSearch
               onSelect={() => setSearchOpen(false)}
               onClose={() => setSearchOpen(false)}
@@ -232,7 +232,7 @@ export default function Navbar({ onOpenSidebar, onToggleSidebar, sidebarCollapse
       </div>
 
       {/* Mobile expandable search */}
-      {searchOpen ? (
+      {isMobile && searchOpen ? (
         <div className="app-navbar__mobile-search md:hidden">
           <GlobalSearch
             onSelect={() => setSearchOpen(false)}
