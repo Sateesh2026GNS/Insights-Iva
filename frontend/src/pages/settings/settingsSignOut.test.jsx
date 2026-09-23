@@ -33,7 +33,7 @@ describe("SettingsSignOutSection", () => {
       </MemoryRouter>,
     );
     expect(screen.getByRole("button", { name: /sign out/i })).toBeTruthy();
-    expect(screen.getByText("Logout")).toBeTruthy();
+    expect(screen.getByText("Sign out")).toBeTruthy();
   });
 
   it("opens confirmation and runs logout flow on confirm", async () => {

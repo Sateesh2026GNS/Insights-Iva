@@ -100,6 +100,7 @@ export {
   TimePicker,
   MonthPicker,
   DateRangePicker,
+  InlineNativeDateRange,
   DateRangeFields,
   FloatingDate,
   MonthCalendar,

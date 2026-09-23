@@ -282,9 +282,6 @@ export default function JobCardDetailsShell({
       <div className="ui-card overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--color-border-soft)] bg-[var(--color-surface)] px-4 py-3 print:hidden">
           <div className="min-w-0">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
-              Sales &amp; Manufacturing
-            </p>
             <h1 className="mt-0 text-base font-semibold text-[var(--color-text)] sm:text-lg">{headerTitle}</h1>
             <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">{headerSubtitle}</p>
           </div>

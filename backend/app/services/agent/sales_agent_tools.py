@@ -2,19 +2,21 @@
 
 from __future__ import annotations
 
+import uuid
 from datetime import date, datetime, timezone
 from typing import Any
 
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.models.sales import Invoice, SalesOrder
-from app.schemas.sales import QuotationCreate
+from app.models.sales import Customer, Invoice, SalesOrder
+from app.schemas.sales import QuotationCreate, SalesOrderCreate, SalesOrderLineCreate
 from app.services.agent.context import AgentContext
 from app.services.agent.tool_models import ConfirmationRequired, ToolResultBase
 from app.services.sales_service import (
     create_quotation,
+    create_sales_order,
     get_customer,
     list_invoices,
     list_payments,
@@ -71,6 +73,21 @@ class CreateQuotationInput(BaseModel):
 class UpdateOrderStatusInput(BaseModel):
     order_id: int = Field(gt=0)
     new_status: str
+
+
+class CreateSalesOrderLineInput(BaseModel):
+    item_description: str = Field(..., min_length=1, max_length=500)
+    quantity: float = Field(..., gt=0)
+    unit_price: float = Field(0.0, ge=0.0)
+    product_id: int | None = Field(None, ge=1)
+
+
+class CreateSalesOrderInput(BaseModel):
+    customer_id: int | None = Field(None, ge=1)
+    customer_query: str | None = Field(None, max_length=200)
+    lines: list[CreateSalesOrderLineInput] = Field(..., min_length=1)
+    order_date: date | None = None
+    status: str = "draft"
 
 
 _SO_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
@@ -408,6 +425,88 @@ def execute_create_quotation(db: Session, ctx: AgentContext, payload: dict[str, 
         "message": f"Quotation {quote.quote_number} created.",
         "reference": quote.quote_number,
         "quotation_id": quote.id,
+    }
+
+
+def _resolve_customer_id(
+    db: Session, tenant_id: int, customer_id: int | None, customer_query: str | None
+) -> int | None:
+    if customer_id:
+        row = db.scalars(
+            select(Customer).where(Customer.id == customer_id, Customer.tenant_id == tenant_id)
+        ).first()
+        return row.id if row else None
+    q = (customer_query or "").strip()
+    if not q:
+        return None
+    row = db.scalars(
+        select(Customer)
+        .where(Customer.tenant_id == tenant_id, func.lower(Customer.name).contains(q.lower()))
+        .order_by(Customer.id.asc())
+        .limit(1)
+    ).first()
+    return row.id if row else None
+
+
+def prepare_create_sales_order(
+    db: Session, ctx: AgentContext, inp: CreateSalesOrderInput
+) -> ConfirmationRequired | dict[str, str]:
+    from app.core.config import get_settings
+
+    if not get_settings().agent_write_tools_enabled:
+        return {"error": "Write tools are not enabled for this environment."}
+    customer_id = _resolve_customer_id(db, ctx.tenant_id, inp.customer_id, inp.customer_query)
+    if not customer_id:
+        return {"error": "Customer not found. Provide customer_id or a clearer customer_query."}
+    total = sum(float(l.quantity) * float(l.unit_price) for l in inp.lines)
+    summary = (
+        f"Create sales order for customer {customer_id} "
+        f"({len(inp.lines)} line(s), total ₹{total:,.2f}) — confirm?"
+    )
+    payload = inp.model_dump(mode="json")
+    payload["customer_id"] = customer_id
+    return ConfirmationRequired(
+        summary=summary,
+        tool_name="create_sales_order",
+        payload=payload,
+    )
+
+
+def execute_create_sales_order(db: Session, ctx: AgentContext, payload: dict[str, Any]) -> dict[str, Any]:
+    inp = CreateSalesOrderInput.model_validate(payload)
+    customer_id = _resolve_customer_id(db, ctx.tenant_id, inp.customer_id, inp.customer_query)
+    if not customer_id:
+        return {"success": False, "error": "Customer not found."}
+    order_date = inp.order_date or date.today()
+    order_number = f"SO-AI-{uuid.uuid4().hex[:8].upper()}"
+    line_items = [
+        SalesOrderLineCreate(
+            product_id=line.product_id,
+            item_description=line.item_description,
+            quantity=line.quantity,
+            unit_price=line.unit_price,
+            line_total=float(line.quantity) * float(line.unit_price),
+        )
+        for line in inp.lines
+    ]
+    so = create_sales_order(
+        db,
+        SalesOrderCreate(
+            tenant_id=ctx.tenant_id,
+            customer_id=customer_id,
+            order_number=order_number,
+            order_date=order_date,
+            status=inp.status or "draft",
+            line_items=line_items,
+            sales_person=(ctx.user.full_name or ctx.user.email or "").strip() or None,
+        ),
+    )
+    return {
+        "success": True,
+        "kind": "sales_order_created",
+        "message": f"Sales order {so.order_number} created.",
+        "reference": so.order_number,
+        "order_id": so.id,
     }
 
 

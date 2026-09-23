@@ -26,19 +26,40 @@ from app.services.agent.module_agent_tools import (
 from app.services.agent.operator_agent_tools import execute_operator_tool, register_operator_tools
 from app.services.agent.sales_agent_tools import (
     CreateQuotationInput,
+    CreateSalesOrderInput,
     GetCustomerHistoryInput,
     GetInvoiceStatusInput,
     GetQuotationsInput,
     GetSalesOrdersInput,
     UpdateOrderStatusInput,
     execute_create_quotation,
+    execute_create_sales_order,
     execute_update_order_status,
     get_customer_history,
     get_invoice_status,
     get_quotations,
     get_sales_orders,
     prepare_create_quotation,
+    prepare_create_sales_order,
     prepare_update_order_status,
+)
+from app.services.agent.extended_agent_tools import (
+    PrepareLeadInput,
+    SearchDocumentsInput,
+    TrainingScriptInput,
+    MultilingualTrainingInput,
+    JobSearchInput,
+    ScreenshotAnalysisInput,
+    WeeklyReportInput,
+    analyze_ui_screenshot_hint,
+    execute_create_lead,
+    generate_erp_training_script,
+    generate_multilingual_training_package,
+    get_weekly_business_report,
+    prepare_create_lead_from_enquiry,
+    register_extended_agent_tools,
+    search_erp_knowledge_documents,
+    search_job_opportunities,
 )
 from app.services.agent.tool_registry import (
     AgentToolDefinition,
@@ -303,6 +324,24 @@ _TOOL_DISPATCH: dict[str, Callable[..., Any]] = {
     "get_production_pipeline_summary": lambda db, ctx, args: get_production_pipeline_summary(
         db, ctx, EmptyInput.model_validate(args or {})
     ),
+    "search_erp_knowledge_documents": lambda db, ctx, args: search_erp_knowledge_documents(
+        db, ctx, SearchDocumentsInput.model_validate(args)
+    ),
+    "get_weekly_business_report": lambda db, ctx, args: get_weekly_business_report(
+        db, ctx, WeeklyReportInput.model_validate(args or {})
+    ),
+    "generate_erp_training_script": lambda db, ctx, args: generate_erp_training_script(
+        db, ctx, TrainingScriptInput.model_validate(args)
+    ),
+    "generate_multilingual_training_package": lambda db, ctx, args: generate_multilingual_training_package(
+        db, ctx, MultilingualTrainingInput.model_validate(args)
+    ),
+    "search_job_opportunities": lambda db, ctx, args: search_job_opportunities(
+        db, ctx, JobSearchInput.model_validate(args or {})
+    ),
+    "analyze_ui_screenshot": lambda db, ctx, args: analyze_ui_screenshot_hint(
+        db, ctx, ScreenshotAnalysisInput.model_validate(args or {})
+    ),
 }
 
 
@@ -319,11 +358,19 @@ _WRITE_PREP: dict[str, Callable[..., Any]] = {
     "update_order_status": lambda db, ctx, args: prepare_update_order_status(
         db, ctx, UpdateOrderStatusInput.model_validate(args)
     ),
+    "create_lead": lambda db, ctx, args: prepare_create_lead_from_enquiry(
+        ctx, PrepareLeadInput.model_validate(args)
+    ),
+    "create_sales_order": lambda db, ctx, args: prepare_create_sales_order(
+        db, ctx, CreateSalesOrderInput.model_validate(args)
+    ),
 }
 
 _WRITE_EXECUTE: dict[str, Callable[..., Any]] = {
     "create_quotation": lambda db, ctx, payload: execute_create_quotation(db, ctx, payload),
     "update_order_status": lambda db, ctx, payload: execute_update_order_status(db, ctx, payload),
+    "create_lead": lambda db, ctx, payload: execute_create_lead(db, ctx, payload),
+    "create_sales_order": lambda db, ctx, payload: execute_create_sales_order(db, ctx, payload),
 }
 
 
@@ -441,9 +488,19 @@ def _register_agent_tools() -> None:
             kind="write_prep",
         )
     )
+    register_tool(
+        AgentToolDefinition(
+            name="create_sales_order",
+            description="Create a sales order with line items (requires confirmation).",
+            parameters_schema=CreateSalesOrderInput.model_json_schema(),
+            allowed_roles=sales_roles,
+            kind="write_prep",
+        )
+    )
 
 
 _register_agent_tools()
+register_extended_agent_tools()
 register_operator_tools()
 register_module_role_tools()
 

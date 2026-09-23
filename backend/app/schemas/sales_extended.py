@@ -249,11 +249,16 @@ class SalesHubRead(BaseModel):
     dispatch_pending: int = 0
     outstanding_payments: float = Field(0.0, ge=0.0)
     new_customers: int = 0
+    open_leads: int = 0
+    open_quotations: int = 0
+    open_quotations_value: float = Field(0.0, ge=0.0)
+    conversion_rate: float = Field(0.0, ge=0.0)
+    period_label: str = ""
     top_customers: list[dict] = Field(default_factory=list)
     sales_executive_performance: list[dict] = Field(default_factory=list)
     alerts: list[dict] = Field(default_factory=list)
 
-    @field_validator("monthly_revenue", "outstanding_payments", mode="before")
+    @field_validator("monthly_revenue", "outstanding_payments", "open_quotations_value", mode="before")
     @classmethod
     def validate_non_negative(cls, value: float) -> float:
         try:

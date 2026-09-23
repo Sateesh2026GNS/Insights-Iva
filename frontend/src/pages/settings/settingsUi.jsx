@@ -97,16 +97,16 @@ export function SettingsPageShell({ children }) {
 export function SettingsHero({ title = "Settings", subtitle, actions, children }) {
   return (
     <div className="ui-card overflow-hidden">
-      <div className="settings-hero relative px-5 py-6 sm:px-6 sm:py-7">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="space-y-1">
+      <div className="settings-hero relative px-5 py-4 sm:px-6 sm:py-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="space-y-0.5">
             <p className="ui-eyebrow">Workspace</p>
-            <h1 className="ui-page-title">{title}</h1>
+            <h2 className="ui-page-title">{title}</h2>
             {subtitle ? <p className="ui-subtitle max-w-xl">{subtitle}</p> : null}
           </div>
           {actions}
         </div>
-        {children ? <div className="mt-5">{children}</div> : null}
+        {children ? <div className="mt-3">{children}</div> : null}
       </div>
     </div>
   );
@@ -116,9 +116,7 @@ export function SettingsGroupPanel({ title, children }) {
   return (
     <section className="ui-card overflow-hidden">
       <div className="border-b border-[var(--color-border)] bg-[var(--color-surface-muted)] px-4 py-2.5 sm:px-5">
-        <h2 className="text-[11px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
-          {title}
-        </h2>
+        <h2 className="text-sm font-semibold text-[var(--color-text-muted)]">{title}</h2>
       </div>
       <div className="divide-y divide-[var(--color-border-soft)]">{children}</div>
     </section>
@@ -307,7 +305,7 @@ export function SettingsSectionHeader({ category }) {
         <Icon className="h-6 w-6" strokeWidth={1.75} aria-hidden />
       </div>
       <div className="min-w-0">
-        <h1 className="ui-page-title">{category.title}</h1>
+        <h2 className="text-lg font-semibold text-[var(--color-text)]">{category.title}</h2>
         <p className="ui-subtitle mt-0.5 max-w-2xl">{category.description}</p>
       </div>
     </header>
@@ -426,9 +424,7 @@ export function SectionCard({ title, children, className = "" }) {
   return (
     <section className={`ui-card p-5 sm:p-6 ${className}`}>
       {title ? (
-        <h2 className="mb-4 text-[11px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
-          {title}
-        </h2>
+        <h2 className="mb-4 text-sm font-semibold text-[var(--color-text-muted)]">{title}</h2>
       ) : null}
       {children}
     </section>
@@ -521,7 +517,7 @@ export function SettingsSignOutSection() {
           aria-label="Sign out"
         >
           <LogOut className="h-4 w-4" aria-hidden />
-          Logout
+          Sign out
         </Button>
       </section>
       <LogoutConfirmModal

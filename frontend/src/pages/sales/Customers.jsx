@@ -166,6 +166,10 @@ export default function Customers() {
     setPage(1);
   }, [query, pageSize, activeView]);
 
+  useEffect(() => {
+    setOpenMenu(null);
+  }, [page, pageSize]);
+
   const total = filtered.length;
   const totalPages = Math.max(1, Math.ceil(total / pageSize) || 1);
   const rows = filtered.slice((page - 1) * pageSize, page * pageSize);

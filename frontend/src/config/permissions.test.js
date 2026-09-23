@@ -121,6 +121,7 @@ describe("Store Manager settings access", () => {
     expect(userCanAccessPath(withSettings, "/settings/my-account")).toBe(true);
     expect(userCanAccessPath(withSettings, "/settings/users")).toBe(false);
     expect(userCanAccessPath(withSettings, "/settings/company")).toBe(false);
+    expect(userCanAccessPath(withSettings, "/settings/subscription")).toBe(false);
   });
 
   it("falls back to static role map including settings when API permissions are empty", () => {
@@ -177,6 +178,7 @@ describe("Operator settings access", () => {
     expect(userCanAccessPath(operator, "/settings/users")).toBe(false);
     expect(userCanAccessPath(operator, "/settings/company")).toBe(false);
     expect(userCanAccessPath(operator, "/settings/ai")).toBe(false);
+    expect(userCanAccessPath(operator, "/settings/subscription")).toBe(false);
   });
 
   it("falls back to static role map with settings when API permissions are empty", () => {

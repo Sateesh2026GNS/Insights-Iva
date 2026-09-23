@@ -1,9 +1,10 @@
 import { Search, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
-/** Vendors-page reference — shared list search layout tokens */
-export const SEARCH_BAR_WRAP_CLASS = "relative ui-search-wrap min-w-[10rem] flex-1";
-export const SEARCH_BAR_INPUT_CLASS = "ui-input w-full !rounded-full !pl-10";
+/** List-page search — same visual language as navbar global search */
+export const SEARCH_BAR_WRAP_CLASS =
+  "relative ui-search-wrap min-w-[10rem] flex-1 max-w-[var(--search-max-width-nav)]";
+export const SEARCH_BAR_INPUT_CLASS = "ui-input global-search-input w-full !rounded-full !pl-10";
 
 /** Navbar global search — same ui-input styling, wider cap */
 export const NAVBAR_SEARCH_WRAP_CLASS = "relative ui-search-wrap navbar-search-wrap min-w-0 w-full flex-1";

@@ -108,3 +108,7 @@ export const getSalesOrderWorkflow = (orderId) =>
 export const getManufacturingWorkflowBoard = () => api.get("/sales/workflow/board");
 
 export const getSalesHub = () => api.get("/sales/hub");
+
+/** Sales Manager reports — tenant-scoped via sales module (not generic analytics). */
+export const getSalesReportsSummary = (year = null) =>
+  api.get("/sales/reports/summary", { params: year ? { year } : {} });

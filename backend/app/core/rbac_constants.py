@@ -62,11 +62,11 @@ PERMISSION_MATRIX = {
             "masters",
             "alerts",
             "documents",
-            "analytics",
             "meetings",
+            "settings",
         ],
         "description": (
-            "Leads, quotations, sales orders, customers, dispatch follow-up, and sales KPIs."
+            "Leads, quotations, sales orders, customers, dispatch follow-up, and sales reporting."
         ),
     },
     "Production Manager": {
@@ -221,7 +221,6 @@ OPERATOR_SIDEBAR_CHILDREN = frozenset({
     "/settings/my-account",
     "/settings/appearance",
     "/settings/notifications",
-    "/settings/subscription",
 })
 
 OPERATOR_SETTINGS_SIDEBAR_PATHS = frozenset({
@@ -229,7 +228,6 @@ OPERATOR_SETTINGS_SIDEBAR_PATHS = frozenset({
     "/settings/my-account",
     "/settings/appearance",
     "/settings/notifications",
-    "/settings/subscription",
 })
 
 STORE_MANAGER_ALLOWED_PATHS = frozenset({
@@ -258,7 +256,6 @@ STORE_MANAGER_ALLOWED_PATHS = frozenset({
     "/analytics/inventory",
     "/settings",
     "/settings/my-account",
-    "/settings/subscription",
     "/settings/notifications",
     "/settings/appearance",
     "/settings/security",

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Filter, LayoutGrid, List, PhoneCall, Plus, Target, TrendingUp, UserPlus, Users, XCircle } from "lucide-react";
 import KpiCard from "../../components/common/KpiCard";
 
@@ -9,7 +9,13 @@ import Loader from "../../components/common/Loader";
 import PageHeader from "../../components/common/PageHeader";
 import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
 import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
+import { SearchBar } from "../../components/common/SearchFilter";
 import Button from "../../components/common/Button";
+import {
+  salesListTextMuted,
+  salesListTextPrimary,
+  salesListTextSecondary,
+} from "../../components/sales/salesListDesignSystem";
 import CreateLeadModal from "../../components/sales/CreateLeadModal";
 import LeadDetailModal from "../../components/sales/LeadDetailModal";
 import { useToast } from "../../context/ToastContext";
@@ -47,6 +53,16 @@ const LEAD_EXPORT_COLUMNS = [
 
 const defaultFilters = { sales_executive: "", source: "", industry: "", region: "", status: "", priority: "" };
 
+function leadMatchesSearch(row, query) {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  const hay = [row.customer_name, row.company, row.sales_executive]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+  return hay.includes(q);
+}
+
 export default function Leads() {
   const { addToast } = useToast();
   const tenantId = useTenantId();
@@ -55,8 +71,11 @@ export default function Leads() {
   const [refreshing, setRefreshing] = useState(false);
   const [rows, setRows] = useState([]);
   const [summaryState, setSummaryState] = useState(null);
+  const [searchParams] = useSearchParams();
+  const openPipelineOnly = searchParams.get("open") === "1";
   const [filters, setFilters] = useState(defaultFilters);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [tableSearch, setTableSearch] = useState("");
   const [view, setView] = useState("table");
   const [selected, setSelected] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -112,14 +131,28 @@ export default function Leads() {
     return { total_leads, new_leads, contacted_leads, qualified_leads, won_customers, lost_leads, conversion_rate };
   }, [rows, summaryState]);
 
+  const hasAdvancedFilters = useMemo(
+    () => Object.values(filters).some((v) => Boolean(v)),
+    [filters]
+  );
+
   const filtered = useMemo(() => {
     let list = rows;
+    if (openPipelineOnly) {
+      list = list.filter((r) => {
+        const s = String(r.status || "").toLowerCase();
+        return s !== "converted" && s !== "lost" && s !== "won";
+      });
+    }
     Object.entries(filters).forEach(([k, v]) => {
       if (!v) return;
       list = list.filter((r) => String(r[k] || "").toLowerCase().includes(v.toLowerCase()));
     });
+    if (tableSearch.trim()) {
+      list = list.filter((r) => leadMatchesSearch(r, tableSearch));
+    }
     return list;
-  }, [rows, filters]);
+  }, [rows, filters, tableSearch, openPipelineOnly]);
 
   const handleStatus = async (lead, status) => {
     if (typeof lead.id === "number") {
@@ -172,18 +205,19 @@ export default function Leads() {
         const isQualified = ["qualified", "converted", "won"].includes(String(r.status || "").toLowerCase());
         return (
           <div className="flex items-center gap-2">
-            <button type="button" onClick={() => setSelected(r)} className="text-xs font-bold text-[var(--color-primary)] hover:underline">
+            <Button type="button" variant="ghost" size="sm" onClick={() => setSelected(r)}>
               View
-            </button>
+            </Button>
             {isQualified ? (
-              <Link
+              <Button
+                variant="outline"
+                size="sm"
                 to={`/sales/quotations?create=true&customer_name=${encodeURIComponent(r.customer_name || r.company || "")}`}
-            className="rounded bg-[var(--color-primary-soft)] px-2 py-0.5 text-[11px] font-bold text-[var(--color-primary)] hover:opacity-90 transition-colors"
               >
                 Create Quote
-              </Link>
+              </Button>
             ) : (
-              <span className="text-[11px] font-medium text-[var(--color-text-faint)] cursor-not-allowed" title="Quotation requires Qualified status">
+              <span className={`text-xs font-medium ${salesListTextMuted} cursor-not-allowed`} title="Quotation requires Qualified status">
                 Quote Locked
               </span>
             )}
@@ -217,9 +251,10 @@ export default function Leads() {
   if (loading) return <Loader label="Loading leads..." />;
 
   return (
-    <ListPageShell stackClassName="space-y-5 pb-4">
+    <ListPageShell stackClassName="space-y-4 pb-4">
       <PageHeader
-        subtitle="Enterprise CRM pipeline with Kanban view, 360° lead profile, and opportunity tracking."
+        className="erp-hero-header--compact inventory-hero-header--compact"
+        subtitle="Kanban and table views with lead profiles and quotation handoff."
         action={
           <div className="flex flex-wrap items-center gap-2">
             <ExportDownloadMenu disabled={!filtered.length} onExport={handleExport} />
@@ -244,50 +279,70 @@ export default function Leads() {
         <KpiCard label="Conversion Rate" value={summary.conversion_rate} suffix="%" icon={TrendingUp} tone="success" title="Overall conversion rate" />
       </div>
 
-      <div className="ui-card flex items-center gap-2 overflow-x-auto py-2.5 px-3 text-xs font-medium text-[var(--color-text-secondary)] scrollbar-none">
+      <div className={`ui-card flex items-center gap-2 overflow-x-auto py-2.5 px-3 text-xs font-medium ${salesListTextSecondary} scrollbar-none`}>
         {["Lead", "Qualification", "Opportunity", "Quotation", "Sales Order"].map((s, i, arr) => (
           <span key={s} className="flex items-center gap-2 shrink-0">
-            <span className="rounded-lg bg-[var(--color-surface-muted)] px-2.5 py-1 font-bold text-[var(--color-text)] ring-1 ring-[var(--color-border)]">
+            <span className={`rounded-lg bg-[var(--color-surface-muted)] px-2.5 py-1 font-semibold ${salesListTextPrimary} ring-1 ring-[var(--color-border)]`}>
               {s}
             </span>
-            {i < arr.length - 1 && <span className="text-[var(--color-text-faint)]">→</span>}
+            {i < arr.length - 1 && (
+              <span className={salesListTextMuted} aria-hidden="true">
+                →
+              </span>
+            )}
           </span>
         ))}
       </div>
 
       <ListPageCard>
         <ListPageCardBody>
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <button
-              type="button"
-              onClick={() => setShowAdvanced(!showAdvanced)}
-              className="inline-flex items-center gap-2 text-xs sm:text-[var(--text-sm)] font-semibold text-[var(--color-text-secondary)] hover:text-[var(--color-text)]"
-            >
-              <Filter className="h-4 w-4" /> Advanced Filters
-            </button>
-            <div className="flex gap-1 rounded-lg bg-[var(--color-surface-muted)] p-0.5">
-              <button
+          <div className="ui-list-toolbar mb-3">
+            <div className="ui-list-toolbar__start">
+              <SearchBar
+                value={tableSearch}
+                onChange={setTableSearch}
+                placeholder="Search"
+                aria-label="Search"
+                className="w-full min-w-[12rem] max-w-[var(--search-max-width-nav)]"
+              />
+              <Button
                 type="button"
-                onClick={() => setView("table")}
-                className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 sm:px-3 sm:py-1.5 text-xs font-semibold ${
-                  view === "table"
-                    ? "bg-[var(--color-surface)] text-[var(--color-primary)] shadow-xs"
-                    : "text-[var(--color-text-muted)]"
-                }`}
+                variant={showAdvanced || hasAdvancedFilters ? "outline" : "secondary"}
+                size="sm"
+                onClick={() => setShowAdvanced((open) => !open)}
+                leftIcon={<Filter className="h-4 w-4" aria-hidden />}
+                aria-expanded={showAdvanced}
               >
-                <List className="h-3.5 w-3.5" /> Table
-              </button>
-              <button
-                type="button"
-                onClick={() => setView("kanban")}
-                className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 sm:px-3 sm:py-1.5 text-xs font-semibold ${
-                  view === "kanban"
-                    ? "bg-[var(--color-surface)] text-[var(--color-primary)] shadow-xs"
-                    : "text-[var(--color-text-muted)]"
-                }`}
+                Advanced Filters
+              </Button>
+            </div>
+            <div className="ui-list-toolbar__end">
+              <div
+                className="inline-flex items-center gap-0.5 rounded-lg border border-[var(--color-border-soft)] bg-[var(--color-surface-muted)] p-0.5"
+                role="group"
+                aria-label="Lead view"
               >
-                <LayoutGrid className="h-3.5 w-3.5" /> Kanban
-              </button>
+                <Button
+                  type="button"
+                  variant={view === "table" ? "secondary" : "ghost"}
+                  size="sm"
+                  onClick={() => setView("table")}
+                  leftIcon={<List className="h-3.5 w-3.5" aria-hidden />}
+                  aria-pressed={view === "table"}
+                >
+                  Table
+                </Button>
+                <Button
+                  type="button"
+                  variant={view === "kanban" ? "secondary" : "ghost"}
+                  size="sm"
+                  onClick={() => setView("kanban")}
+                  leftIcon={<LayoutGrid className="h-3.5 w-3.5" aria-hidden />}
+                  aria-pressed={view === "kanban"}
+                >
+                  Kanban
+                </Button>
+              </div>
             </div>
           </div>
 
@@ -405,46 +460,41 @@ export default function Leads() {
                           </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-2 text-xs border-t border-[var(--color-border-soft)] pt-2 text-[var(--color-text-secondary)]">
+                        <div className={`grid grid-cols-2 gap-2 text-xs border-t border-[var(--color-border-soft)] pt-2 ${salesListTextSecondary}`}>
                           <div>
-                            <span className="text-[var(--color-text-muted)] block text-[10px] uppercase font-semibold">Contact</span>
+                            <span className={`${salesListTextMuted} block text-[10px] uppercase font-semibold`}>Contact</span>
                             <span className="font-medium truncate block">{r.contact || "—"}</span>
                           </div>
                           <div>
-                            <span className="text-[var(--color-text-muted)] block text-[10px] uppercase font-semibold">Sales Exec</span>
+                            <span className={`${salesListTextMuted} block text-[10px] uppercase font-semibold`}>Sales Exec</span>
                             <span className="font-medium truncate block">{r.sales_executive || "—"}</span>
                           </div>
                           <div>
-                            <span className="text-[var(--color-text-muted)] block text-[10px] uppercase font-semibold">Next Follow-up</span>
+                            <span className={`${salesListTextMuted} block text-[10px] uppercase font-semibold`}>Next Follow-up</span>
                             <span className="font-medium">{String(r.next_followup || "").slice(0, 10) || "—"}</span>
                           </div>
                           {(r.opportunity_value || r.estimated_value) && (
                             <div>
-                              <span className="text-[var(--color-text-muted)] block text-[10px] uppercase font-semibold">Value</span>
+                              <span className={`${salesListTextMuted} block text-[10px] uppercase font-semibold`}>Value</span>
                               <span className="font-bold text-[var(--color-success)]">{formatInr(r.opportunity_value || r.estimated_value)}</span>
                             </div>
                           )}
                         </div>
 
                         <div className="flex items-center justify-between border-t border-[var(--color-border-soft)] pt-2.5">
-                          <button
-                            type="button"
-                            onClick={() => setSelected(r)}
-                            className="text-xs font-bold text-[var(--color-primary)] hover:underline"
-                          >
+                          <Button type="button" variant="ghost" size="sm" onClick={() => setSelected(r)}>
                             View 360° Profile
-                          </button>
+                          </Button>
                           {isQualified ? (
-                            <Link
+                            <Button
+                              variant="outline"
+                              size="sm"
                               to={`/sales/quotations?create=true&customer_name=${encodeURIComponent(r.customer_name || r.company || "")}`}
-                              className="rounded bg-[var(--color-primary-soft)] px-2.5 py-1 text-xs font-bold text-[var(--color-primary)] hover:opacity-90"
                             >
-                              + Create Quote
-                            </Link>
+                              Create Quote
+                            </Button>
                           ) : (
-                            <span className="text-[11px] font-medium text-[var(--color-text-faint)]">
-                              Quote Locked
-                            </span>
+                            <span className={`text-xs font-medium ${salesListTextMuted}`}>Quote Locked</span>
                           )}
                         </div>
                       </div>
@@ -458,8 +508,7 @@ export default function Leads() {
                 <DataTable
                   columns={columns}
                   data={filtered}
-                  searchPlaceholder="Search"
-                  searchKeys={["customer_name", "company", "sales_executive"]}
+                  showSearch={false}
                   emptyState={
                     <EmptyState
                       icon="document"
@@ -476,11 +525,11 @@ export default function Leads() {
               {KANBAN_COLUMNS.map((col) => (
                 <div
                   key={col.id}
-                  className={`min-w-[260px] max-w-[280px] shrink-0 snap-center rounded-xl border p-3 sm:min-w-0 sm:max-w-none ${col.color}`}
+                  className={`min-w-[260px] max-w-[280px] shrink-0 snap-center rounded-lg border p-3 sm:min-w-0 sm:max-w-none ${col.color}`}
                 >
                   <div className="flex items-center justify-between mb-2">
-                    <p className="text-xs font-bold uppercase tracking-wider text-[var(--color-text)]">{col.label}</p>
-                    <span className="rounded-full bg-[var(--color-surface)]/80 px-2 py-0.5 text-[10px] font-extrabold text-[var(--color-text)] shadow-xs">
+                    <p className={`text-xs font-bold uppercase tracking-wider ${salesListTextPrimary}`}>{col.label}</p>
+                    <span className={`rounded-full bg-[var(--color-surface)]/80 px-2 py-0.5 text-[10px] font-bold ${salesListTextPrimary}`}>
                       {
                         filtered.filter(
                           (r) =>
@@ -504,39 +553,36 @@ export default function Leads() {
                         return (
                           <div
                             key={r.lead_id || r.id}
-                            className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3.5 shadow-sm transition-all hover:shadow-md"
+                            className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-3.5 shadow-sm transition-shadow hover:shadow-md"
                           >
                             <div className="flex items-start justify-between gap-1">
-                              <p className="text-sm font-bold text-[var(--color-text)] line-clamp-1">
+                              <p className={`text-sm font-bold line-clamp-1 ${salesListTextPrimary}`}>
                                 {r.customer_name}
                               </p>
                               <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold capitalize ${priorityColor(r.priority)}`}>
                                 {r.priority}
                               </span>
                             </div>
-                            <p className="text-xs text-[var(--color-text-muted)] font-medium">{r.company}</p>
+                            <p className={`text-xs font-medium ${salesListTextMuted}`}>{r.company}</p>
                             {(r.opportunity_value || r.estimated_value) && (
-                              <p className="mt-1.5 text-xs font-black text-[var(--color-success)]">
+                              <p className="mt-1.5 text-xs font-bold text-[var(--color-success)]">
                                 {formatInr(r.opportunity_value || r.estimated_value)}
                               </p>
                             )}
                             <div className="mt-3 flex items-center justify-between border-t border-[var(--color-border-soft)] pt-2 text-xs">
-                              <button
-                                type="button"
-                                onClick={() => setSelected(r)}
-                                className="font-bold text-[var(--color-success)] hover:underline"
-                              >
+                              <Button type="button" variant="ghost" size="sm" onClick={() => setSelected(r)}>
                                 View 360°
-                              </button>
+                              </Button>
                               {isQualified ? (
-                                <Link
+                                <Button
+                                  variant="outline"
+                                  size="sm"
                                   to={`/sales/quotations?create=true&customer_name=${encodeURIComponent(r.customer_name || r.company || "")}`}
-                                  className="text-[11px] font-bold text-[var(--color-text-secondary)] hover:text-[var(--color-success)] hover:underline"
                                 >
-                                  + Quote
-                                </Link>
+                                  Quote
+                                </Button>
                               ) : (
-                                <span className="text-[10px] font-semibold text-[var(--color-text-faint)] cursor-not-allowed">
+                                <span className={`text-xs font-semibold ${salesListTextMuted} cursor-not-allowed`}>
                                   Unqualified
                                 </span>
                               )}

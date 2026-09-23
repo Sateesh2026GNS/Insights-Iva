@@ -3,6 +3,8 @@ import usePageRefresh from "../../hooks/usePageRefresh";
 import { Info, Check, Eye, Phone, GitCompare, X } from "lucide-react";
 
 import { useToast } from "../../context/ToastContext";
+import { userCanAccessMySubscription } from "../../config/permissions";
+import useAuth from "../../hooks/useAuth";
 import {
   activateTrial,
   contactSales,
@@ -70,6 +72,7 @@ function Modal({ open, title, onClose, children, wide }) {
 }
 
 export default function SettingsMySubscription() {
+  const { user } = useAuth();
   const { addToast } = useToast();
   const [showDetails, setShowDetails] = useState(true);
   const [loading, setLoading] = useState(true);
@@ -85,6 +88,7 @@ export default function SettingsMySubscription() {
   const [contactPlan, setContactPlan] = useState("");
 
   const load = useCallback(async (isRefresh = false) => {
+    if (!userCanAccessMySubscription(user)) return;
     if (!isRefresh) setLoading(true);
     try {
       const res = await getSubscription();
@@ -103,13 +107,17 @@ export default function SettingsMySubscription() {
     } finally {
       setLoading(false);
     }
-  }, [addToast]);
+  }, [addToast, user]);
 
   usePageRefresh(() => load(true));
 
   useEffect(() => {
+    if (!userCanAccessMySubscription(user)) {
+      setLoading(false);
+      return;
+    }
     load();
-  }, [load]);
+  }, [load, user]);
 
   const trialActive = Boolean(subscription?.trial_active);
   const canActivate = Boolean(subscription?.can_activate_trial);

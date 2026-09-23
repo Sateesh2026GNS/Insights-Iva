@@ -24,6 +24,10 @@ export default function SettingsSectionPage() {
     return <Navigate to="/settings" replace />;
   }
 
+  if (category.id === "my-account") {
+    return <Navigate to="/settings/my-account/profile" replace />;
+  }
+
   if (!userCanAccessSettingsSection(user, category.id)) {
     return (
       <AccessDenied message="You do not have permission to access this settings section." />

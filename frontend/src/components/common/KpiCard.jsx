@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { ChevronRight } from "lucide-react";
 
 /**
  * Shared KPI card — used across dashboards and list pages.
@@ -61,6 +62,7 @@ export default function KpiCard({
   title,
   to,
   onClick,
+  navAriaLabel,
   active = false,
 }) {
   const resolved = resolveTone(tone, color);
@@ -77,17 +79,26 @@ export default function KpiCard({
   const activeClass = active
     ? "ring-2 ring-[var(--color-primary)] border-[var(--color-primary)] shadow-md"
     : "";
-  const cardClass = `ui-kpi ui-kpi--${resolved} group cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none ${hoverBorderClass} ${activeClass} ${className}`.trim();
+  const isInteractive = Boolean(to || onClick);
+  const cardClass = `ui-kpi ui-kpi--${resolved} group ${isInteractive ? "cursor-pointer" : ""} transition-all duration-200 ${isInteractive ? "hover:-translate-y-0.5 hover:shadow-md" : ""} focus-visible:outline-none ${isInteractive ? hoverBorderClass : ""} ${activeClass} ${className}`.trim();
 
   const inner = (
     <>
       <div className="ui-kpi__top">
-        <p className="ui-kpi__label">{label}</p>
-        {Icon ? (
-          <div className={`ui-kpi__icon ${TONE_CLASS[resolved]}`}>
-            <Icon className="h-4 w-4" aria-hidden />
-          </div>
-        ) : null}
+        <p className="ui-kpi__label min-w-0 flex-1">{label}</p>
+        <div className="flex shrink-0 items-center gap-1.5">
+          {isInteractive ? (
+            <ChevronRight
+              className="h-4 w-4 text-[var(--color-text-faint)] opacity-80 transition group-hover:translate-x-0.5 group-hover:opacity-100"
+              aria-hidden
+            />
+          ) : null}
+          {Icon ? (
+            <div className={`ui-kpi__icon ${TONE_CLASS[resolved]}`}>
+              <Icon className="h-4 w-4" aria-hidden />
+            </div>
+          ) : null}
+        </div>
       </div>
       <p className="ui-kpi__value">{displayValue}</p>
       {supporting ? <p className="ui-kpi__meta">{supporting}</p> : null}
@@ -95,8 +106,18 @@ export default function KpiCard({
   );
 
   if (to) {
+    const linkLabel =
+      navAriaLabel ||
+      (typeof label === "string" ? `${label}. ${tip || "View details"}` : tip);
     return (
-      <Link to={to} className={cardClass} title={tip} onClick={onClick} data-tone={resolved}>
+      <Link
+        to={to}
+        className={cardClass}
+        title={tip}
+        aria-label={linkLabel}
+        onClick={onClick}
+        data-tone={resolved}
+      >
         {inner}
       </Link>
     );

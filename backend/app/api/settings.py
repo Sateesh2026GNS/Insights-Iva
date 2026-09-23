@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 from app.api.auth_deps import get_current_user
 from app.api.deps import get_db
-from app.core.permissions import require_permission
+from app.core.permissions import require_admin_role, require_permission
 from app.models.user import User
 from app.schemas.company_settings import CompanySettingsRead, CompanySettingsUpdate
 from app.services import company_settings_service
@@ -60,7 +60,7 @@ def get_account_overview_endpoint(
 
 @router.get("/subscription")
 def get_subscription_endpoint(
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_admin_role),
     db: Session = Depends(get_db),
 ) -> dict:
     """Current subscription, trial status, and plan catalog for the tenant."""
@@ -81,7 +81,7 @@ def get_subscription_endpoint(
 
 @router.get("/subscription/plans")
 def list_plans_endpoint(
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_admin_role),
 ) -> dict:
     data = subscription_service.list_subscription_plans()
     return success_response("Plans retrieved", data)
@@ -90,7 +90,7 @@ def list_plans_endpoint(
 @router.get("/subscription/plans/{plan_id}")
 def get_plan_endpoint(
     plan_id: str,
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_admin_role),
 ) -> dict:
     data = subscription_service.get_plan_details(plan_id)
     return success_response("Plan details retrieved", data)
@@ -98,7 +98,7 @@ def get_plan_endpoint(
 
 @router.post("/subscription/activate-trial")
 def activate_trial_endpoint(
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_admin_role),
     db: Session = Depends(get_db),
 ) -> dict:
     """Activate free trial on the signed-in user's company (tenants + company_licenses)."""
@@ -109,7 +109,7 @@ def activate_trial_endpoint(
 @router.post("/subscription/contact-sales")
 def contact_sales_endpoint(
     payload: SalesInquiryRequest,
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_admin_role),
     db: Session = Depends(get_db),
 ) -> dict:
     data = subscription_service.submit_sales_inquiry(

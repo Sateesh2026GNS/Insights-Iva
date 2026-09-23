@@ -8,7 +8,7 @@ export const SETTINGS_CATEGORIES = [
   {
     id: "my-account",
     title: "My Account",
-    description: "Your profile, company, role, and subscription overview.",
+    description: "Your profile, password, two-factor number, and account details.",
     icon: "UserRound",
     soft: SETTINGS_ICON.default,
     keywords: ["my account", "profile", "me", "user", "role", "subscription", "company"],
@@ -233,12 +233,12 @@ export const SETTINGS_CATEGORIES = [
 export const SETTINGS_NAV_GROUPS = [
   {
     id: "account",
-    title: "Account & access",
+    title: "Account & Access",
     ids: ["my-account", "company", "users", "security", "subscription"],
   },
   {
     id: "workspace",
-    title: "Workspace preferences",
+    title: "Workspace Preferences",
     ids: ["ai", "notifications", "appearance", "change-format"],
   },
   {
@@ -258,7 +258,7 @@ export const SETTINGS_NAV_GROUPS = [
   {
     id: "system",
     title: "System & support",
-    ids: ["integrations", "api", "backup", "audit", "help", "about", "logout"],
+    ids: ["integrations", "api", "backup", "audit", "help", "about"],
   },
 ];
 

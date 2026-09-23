@@ -16,7 +16,13 @@ import {
   X,
 } from "lucide-react";
 import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
-import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
+import {
+  ListPageCard,
+  ListPageCardBody,
+  ListPageShell,
+  ListToolbar,
+} from "../../components/common/ListPageShell";
+import { ToolbarPageRefreshButton } from "../../components/common/GlobalRefreshButton";
 import KpiCard from "../../components/common/KpiCard";
 import PageHeader from "../../components/common/PageHeader";
 import EmptyState from "../../components/common/EmptyState";
@@ -55,6 +61,7 @@ import { apiErrorMessage, classifyApiError } from "../../utils/apiError";
 import { isAdmin } from "../../config/permissions";
 import { exportToExcel, exportToPdf } from "../../utils/exportUtils";
 import { formatDocDate, formatFileSize } from "../../utils/documentUtils";
+import "../../styles/documents-library.css";
 
 const PAGE_SIZE = 10;
 
@@ -171,7 +178,7 @@ export default function DocumentsLibrary({ initialDocType = null, title, subtitl
   const [summaryError, setSummaryError] = useState(null);
   const [listError, setListError] = useState(null);
   const [offline, setOffline] = useState(!navigator.onLine);
-  const [showFilters, setShowFilters] = useState(true);
+  const [showFilters, setShowFilters] = useState(false);
   const [searchDraft, setSearchDraft] = useState(filters.search);
   const searchDebounceRef = useRef(null);
 
@@ -484,8 +491,9 @@ export default function DocumentsLibrary({ initialDocType = null, title, subtitl
   const classified = errorObj ? classifyApiError(errorObj) : null;
 
   return (
-    <ListPageShell>
+    <ListPageShell className="documents-library-page" stackClassName="documents-library-page__stack">
       <PageHeader
+        className="documents-library-hero"
         title={title}
         showTitle={Boolean(title)}
         subtitle={
@@ -495,7 +503,7 @@ export default function DocumentsLibrary({ initialDocType = null, title, subtitl
         action={
           <div className="flex flex-wrap items-center gap-2">
             <ExportDownloadMenu disabled={!enriched.length} onExport={handleExport} />
-            <Button variant="add" type="button" onClick={openUpload} leftIcon={<Upload className="h-4 w-4" />}>
+            <Button variant="primary" type="button" onClick={openUpload} leftIcon={<Upload className="h-4 w-4" aria-hidden />}>
               Upload
             </Button>
           </div>
@@ -518,7 +526,7 @@ export default function DocumentsLibrary({ initialDocType = null, title, subtitl
         />
       )}
 
-      <div className="ui-grid-kpi">
+      <div className="ui-grid-kpi documents-library-kpi">
         <KpiCard
           label="Total Documents"
           value={summaryLoading ? "—" : summary?.total_documents ?? 0}
@@ -544,20 +552,36 @@ export default function DocumentsLibrary({ initialDocType = null, title, subtitl
       </div>
 
       <ListPageCard>
-        <ListPageCardBody>
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-            <SearchBar
-              value={searchDraft}
-              onChange={setSearchDraft}
-              placeholder="Search document name"
-              className="w-full"
-            />
-            <Button type="button" variant="secondary" onClick={() => setShowFilters((v) => !v)}>
-              <Filter className="h-4 w-4" /> Filters
-            </Button>
-          </div>
+        <ListPageCardBody className="documents-library-toolbar !py-3 sm:!py-3">
+          <ListToolbar
+            start={
+              <SearchBar
+                value={searchDraft}
+                onChange={setSearchDraft}
+                placeholder="Search documents…"
+                aria-label="Search documents"
+                className="documents-library-search w-full min-w-0 max-w-xl"
+                inputClassName="documents-library-search__input"
+              />
+            }
+            end={
+              <>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setShowFilters((v) => !v)}
+                  aria-expanded={showFilters}
+                  leftIcon={<Filter className="h-4 w-4" aria-hidden />}
+                >
+                  Filters
+                </Button>
+                <ToolbarPageRefreshButton />
+              </>
+            }
+          />
           {showFilters && (
-            <div className="mt-4 grid gap-3 border-t border-[var(--color-border-soft)] pt-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+            <div className="mt-2 grid grid-cols-1 gap-2 border-t border-[var(--color-border-soft)] pt-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
               <div>
                 <label className="ui-label mb-1 block">Category</label>
                 <select
@@ -631,7 +655,6 @@ export default function DocumentsLibrary({ initialDocType = null, title, subtitl
             </div>
           )}
         </ListPageCardBody>
-      </ListPageCard>
 
       {permissionDenied ? (
         <PermissionDeniedState description={error || "You do not have access to these documents."} />
@@ -642,16 +665,15 @@ export default function DocumentsLibrary({ initialDocType = null, title, subtitl
       ) : listError && !loading && !rows.length && !summary ? (
         <ErrorState description={listError} onRetry={load} />
       ) : (
-        <ListPageCard>
-          <ListPageCardBody className="p-0">
+          <ListPageCardBody className="border-t border-[var(--color-border-soft)] p-0">
             {loading ? (
               <SkeletonTable rows={6} cols={8} />
             ) : (
               <div className="ui-table-wrap ui-table-wrap--scroll">
-                <table className="ui-table min-w-full text-left text-sm">
+                <table className="ui-table documents-library-table min-w-full text-left text-sm">
                   <thead className="ui-table-head">
                     <tr>
-                      <SerialNumberHeader />
+                      <SerialNumberHeader className="!px-4" />
                       <th>Document Name</th>
                       <th>Category</th>
                       <th>Department</th>
@@ -683,7 +705,7 @@ export default function DocumentsLibrary({ initialDocType = null, title, subtitl
                               title="No records found."
                               description="Upload your first document to get started."
                               action={
-                                <Button type="button" variant="add" onClick={openUpload} leftIcon={<Upload className="h-4 w-4" />}>
+                                <Button type="button" variant="primary" onClick={openUpload} leftIcon={<Upload className="h-4 w-4" aria-hidden />}>
                                   Upload your first document
                                 </Button>
                               }
@@ -700,13 +722,15 @@ export default function DocumentsLibrary({ initialDocType = null, title, subtitl
                           <td>{doc.department_name || "—"}</td>
                           <td>{doc.uploaded_by_name || "—"}</td>
                           <td>
-                            <button
+                            <Button
                               type="button"
-                              className="rounded-md bg-[var(--color-primary-soft)] px-2 py-0.5 text-xs font-bold text-[var(--color-primary)]"
+                              variant="secondary"
+                              size="sm"
+                              className="!px-2 !py-0.5 !text-xs !font-bold"
                               onClick={() => openVersions(doc)}
                             >
                               v{doc.version_number}
-                            </button>
+                            </Button>
                           </td>
                           <td>
                             <StatusBadge tone={statusTone(doc.status)}>{statusLabel(doc.status)}</StatusBadge>
@@ -757,15 +781,23 @@ export default function DocumentsLibrary({ initialDocType = null, title, subtitl
               </div>
             )}
           </ListPageCardBody>
-        </ListPageCard>
       )}
+      </ListPageCard>
 
       {uploadOpen && (
         <div className="ui-modal-backdrop">
           <form onSubmit={submitUpload} className="ui-modal w-full max-w-lg space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-bold">Upload document</h2>
-              <button type="button" onClick={() => setUploadOpen(false)}><X className="h-5 w-5" /></button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label="Close upload dialog"
+                onClick={() => setUploadOpen(false)}
+              >
+                <X className="h-5 w-5" aria-hidden />
+              </Button>
             </div>
             <div
               role="button"
@@ -845,7 +877,15 @@ export default function DocumentsLibrary({ initialDocType = null, title, subtitl
           <div className="ui-modal max-w-lg space-y-3">
             <div className="flex justify-between">
               <h2 className="font-bold">Version history — {versionModal.doc.name}</h2>
-              <button type="button" onClick={() => setVersionModal(null)}><X /></button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label="Close version history"
+                onClick={() => setVersionModal(null)}
+              >
+                <X className="h-5 w-5" aria-hidden />
+              </Button>
             </div>
             <ul className="max-h-80 space-y-2 overflow-y-auto text-sm">
               {versionModal.versions.map((v) => (
@@ -871,7 +911,18 @@ export default function DocumentsLibrary({ initialDocType = null, title, subtitl
           <div className="ui-modal flex max-h-[90vh] w-full max-w-4xl flex-col">
             <div className="flex justify-between border-b pb-2">
               <h2 className="font-bold">{previewMeta.name}</h2>
-              <button type="button" onClick={() => { setPreviewUrl(null); setPreviewMeta(null); }}><X /></button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label="Close preview"
+                onClick={() => {
+                  setPreviewUrl(null);
+                  setPreviewMeta(null);
+                }}
+              >
+                <X className="h-5 w-5" aria-hidden />
+              </Button>
             </div>
             <div className="min-h-[50vh] flex-1 overflow-auto p-2">
               {previewMeta.file_type === "pdf" ? (
