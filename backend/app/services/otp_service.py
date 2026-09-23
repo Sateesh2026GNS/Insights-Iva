@@ -90,6 +90,8 @@ def send_otp_sms(mobile: str, code: str) -> None:
     digits = "".join(c for c in (mobile or "") if c.isdigit())
     digits10 = digits[-10:] if len(digits) >= 10 else digits
     phone_with_country = f"91{digits10}" if len(digits10) == 10 else digits
+    delivered = False
+    delivery_errors: list[str] = []
 
     # 1. Cellular SMS via Fast2SMS
     if settings.sms_api_key:
@@ -111,8 +113,18 @@ def send_otp_sms(mobile: str, code: str) -> None:
             req = urllib.request.Request(full_url, headers={"cache-control": "no-cache"})
             with urllib.request.urlopen(req, timeout=10) as resp:
                 resp_body = resp.read().decode("utf-8")
-                logger.info("Fast2SMS Cellular OTP sent to %s (status=%s, resp=%s)", masked, resp.status, resp_body)
+                if resp.status < 200 or resp.status >= 300:
+                    raise RuntimeError(f"Fast2SMS returned HTTP {resp.status}")
+                try:
+                    provider_result = json.loads(resp_body)
+                except json.JSONDecodeError as exc:
+                    raise RuntimeError("Fast2SMS returned an invalid response") from exc
+                if provider_result.get("return") is False:
+                    raise RuntimeError("Fast2SMS rejected the OTP request")
+                logger.info("Fast2SMS Cellular OTP sent to %s (status=%s)", masked, resp.status)
+                delivered = True
         except Exception as exc:
+            delivery_errors.append("SMS delivery failed")
             logger.exception("Fast2SMS delivery error: %s", exc)
 
     # 2. WhatsApp Notification via Green-API (Instant Backup)
@@ -129,15 +141,17 @@ def send_otp_sms(mobile: str, code: str) -> None:
             req = urllib.request.Request(api_url, data=req_data, headers=headers, method="POST")
             with urllib.request.urlopen(req, timeout=10) as resp:
                 resp_body = resp.read().decode("utf-8")
-                logger.info("Green-API WhatsApp OTP sent to %s (status=%s, resp=%s)", masked, resp.status, resp_body)
+                if resp.status < 200 or resp.status >= 300:
+                    raise RuntimeError(f"Green-API returned HTTP {resp.status}")
+                logger.info("Green-API WhatsApp OTP sent to %s (status=%s)", masked, resp.status)
+                delivered = True
         except Exception as exc:
+            delivery_errors.append("WhatsApp delivery failed")
             logger.warning("Green-API WhatsApp delivery notice: %s", exc)
-    else:
-        logger.info(
-            "SMS/WhatsApp not configured: OTP generated for %s (expires in %s min)",
-            masked,
-            OTP_EXPIRE_MINUTES,
-        )
+
+    if not delivered:
+        reason = ", ".join(delivery_errors) or "No SMS or WhatsApp provider is configured"
+        raise RuntimeError(f"OTP could not be delivered to {masked}: {reason}")
 
 
 def _log_audit(
@@ -347,9 +361,6 @@ def create_login_challenge(
             detail="Failed to send OTP SMS. Transaction has been rolled back.",
         ) from exc
 
-    from app.core.config import get_settings
-
-    settings = get_settings()
     payload = {
         "challenge_token": challenge_token,
         "masked_mobile": mask_mobile(admin.mobile),

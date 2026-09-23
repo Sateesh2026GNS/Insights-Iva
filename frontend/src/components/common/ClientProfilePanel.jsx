@@ -12,7 +12,7 @@ function formatRoleLabel(role) {
 }
 
 const MENU_ITEMS = [
-  { id: "account", label: "My Account", icon: UserRound, path: "/settings/my-account", iconBrand: true },
+  { id: "account", label: "My Account", icon: UserRound, path: "/settings/my-account/profile", iconBrand: true },
   { id: "settings", label: "Settings", icon: Settings, path: "/settings" },
   { id: "appearance", label: "Appearance", icon: Palette, path: "/settings/appearance" },
 ];
@@ -243,7 +243,7 @@ export default function ClientProfilePanel({ onClose, onRequestLogout }) {
         <p className="profile-dropdown__footer">
           Company &amp; subscription:{" "}
           <Link
-            to="/settings/my-account"
+            to="/settings/my-account/profile"
             onClick={onClose}
             className="profile-dropdown__footer-link"
           >

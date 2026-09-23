@@ -463,3 +463,44 @@ def register_user(
             status_code=status.HTTP_409_CONFLICT,
             detail="Could not create company account. Please try again.",
         )
+
+
+def update_user_profile(
+    db: Session,
+    user: User,
+    *,
+    full_name: str | None = None,
+    phone: str | None = None,
+) -> User:
+    if full_name is not None:
+        user.full_name = full_name.strip()
+    if phone is not None:
+        user.phone = phone.strip() if phone and phone.strip() else None
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+def change_user_password(
+    db: Session,
+    user: User,
+    *,
+    current_password: str,
+    new_password: str,
+    confirm_password: str,
+) -> None:
+    from app.utils.password import validate_password_strength
+
+    if new_password != confirm_password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="New password and confirmation do not match",
+        )
+    if not verify_password(current_password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Current password is incorrect",
+        )
+    validate_password_strength(new_password)
+    user.hashed_password = hash_password(new_password)
+    db.commit()

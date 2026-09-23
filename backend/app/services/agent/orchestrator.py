@@ -68,6 +68,14 @@ Respond in the same language the user used (English, Telugu, Hindi, or mixed).
 
 When a tool times out, tell the user data fetch timed out and they should try again.
 Tenant scope: never request or assume another company's data.
+
+Capabilities (use tools — never invent ERP data):
+- ERP automation: structure enquiries into create_lead / create_sales_order / create_quotation with confirmation.
+- Document knowledge: search_erp_knowledge_documents then answer only from authorized document metadata; say when no source found.
+- Weekly report: get_weekly_business_report for printable summaries (permission-scoped sections only).
+- Screenshot review: when the user attached an image, analyze UI visually (issue, why, location, fix, priority) — not source code.
+- Training: generate_erp_training_script / generate_multilingual_training_package (scripts only unless video provider configured).
+- Job search: search_job_opportunities only when integration is configured; otherwise explain unavailable.
 """
 
 
@@ -170,6 +178,8 @@ async def run_agent_chat(
     ctx: AgentContext,
     message: str,
     conversation_id: str | None,
+    image_base64: str | None = None,
+    image_media_type: str = "image/png",
 ) -> AgentChatResponse:
     started = time.perf_counter()
     user_message = (message or "").strip()
@@ -222,7 +232,23 @@ async def run_agent_chat(
     messages: list[dict[str, Any]] = [{"role": "system", "content": _system_prompt_for(ctx)}]
     messages.extend(history)
     if not history or history[-1].get("content") != user_message:
-        messages.append({"role": "user", "content": user_message})
+        if image_base64:
+            media = (image_media_type or "image/png").split(";")[0].strip() or "image/png"
+            text = user_message or "Analyze this ERP screenshot for UI and usability issues."
+            messages.append(
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": text},
+                        {
+                            "type": "image_url",
+                            "image_url": {"url": f"data:{media};base64,{image_base64}"},
+                        },
+                    ],
+                }
+            )
+        else:
+            messages.append({"role": "user", "content": user_message})
 
     tools = openai_tool_definitions(ctx)
 

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   ChevronLeft,
   ChevronRight,
@@ -187,6 +187,7 @@ export default function Shipping() {
   const [formOpen, setFormOpen] = useState(false);
   const [formRow, setFormRow] = useState(null);
   const [search, setSearch] = useState("");
+  const [searchParams] = useSearchParams();
   const [statusFilter, setStatusFilter] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -212,6 +213,11 @@ export default function Shipping() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    const status = searchParams.get("status");
+    if (status) setStatusFilter(status);
+  }, [searchParams]);
 
   useManufacturingRefresh(() => load(true));
   usePageRefresh(() => load(true));

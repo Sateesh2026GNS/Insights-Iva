@@ -7,7 +7,6 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models.platform import PlatformSuperAdmin
-from app.core.config import get_settings
 from app.services.auth_service import create_access_token, verify_password
 from app.services.otp_service import (
     PLATFORM_COMPANY_ID,
@@ -152,10 +151,6 @@ class SuperAdminService:
         )
         if result.admin:
             admin = result.admin
-        elif not get_settings().is_production and otp == "123456":
-            admin = self.db.scalars(
-                select(PlatformSuperAdmin).where(PlatformSuperAdmin.id == challenge.super_admin_id)
-            ).first()
         else:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,

@@ -345,6 +345,7 @@ export function getBreadcrumbTrail(pathname) {
 /** Current page title from the last breadcrumb segment. */
 export function getPageTitle(pathname, user = null) {
   const path = (pathname || "/").replace(/\/$/, "") || "/";
+  if (path === "/settings" || path.startsWith("/settings/")) return "Settings";
   if (PAGE_TITLE_OVERRIDES[path]) return PAGE_TITLE_OVERRIDES[path];
 
   // Specific dynamic pattern matches
@@ -406,7 +407,8 @@ export default function Breadcrumbs({ items: customItems, compact = false, class
           ) : (
             <Link
               to={item.path}
-              className="flex items-center gap-1 truncate opacity-90 transition-all hover:opacity-100 hover:underline"
+              className="flex items-center gap-1 truncate transition-colors hover:underline"
+              aria-label={i === 0 ? "Home" : undefined}
             >
               {i === 0 ? <Home className="h-3.5 w-3.5 shrink-0" aria-hidden /> : item.label}
             </Link>

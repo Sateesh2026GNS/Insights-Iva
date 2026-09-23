@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { Bot, Download, Loader2, Printer, Send, Sparkles, Trash2, WifiOff, X } from "lucide-react";
+import { Bot, Download, ImagePlus, Loader2, Printer, Send, Sparkles, Trash2, WifiOff, X } from "lucide-react";
 
 import { confirmAgentAction, sendAgentChat } from "../../api/agentApi";
 import Button from "../common/Button";
@@ -12,8 +12,9 @@ import { downloadPlainTextPdf, printPlainTextReport } from "../../utils/aiReport
 import AiMessageContent from "./AiMessageContent";
 
 const VISIBLE_CARD_ROWS = 5;
-const FAB_CLASS =
-  "fixed bottom-5 right-5 z-[100] flex h-14 w-14 items-center justify-center rounded-full bg-[var(--color-primary)] text-white shadow-lg transition hover:bg-[var(--color-primary-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/40 focus-visible:ring-offset-2 sm:bottom-6 sm:right-6";
+const FAB_CLASS_FIXED =
+  "app-shell-fab app-shell-fab--brand fixed bottom-5 right-5 z-[100] sm:bottom-6 sm:right-6";
+const FAB_CLASS_STACKED = "app-shell-fab app-shell-fab--brand";
 
 function messageWithPageContext(text, pageContextLabel) {
   const msg = (text || "").trim();
@@ -198,7 +199,7 @@ function AssistantTurn({ message, onConfirm, onCancel, confirmBusy, onExportToas
   );
 }
 
-export default function StoreAgentChatPanel({ pageContextLabel = "" }) {
+export default function StoreAgentChatPanel({ pageContextLabel = "", floatingStacked = false }) {
   const { user } = useAuth();
   const { addToast } = useToast();
   const agentTitle = "AI Assistant";
@@ -211,6 +212,8 @@ export default function StoreAgentChatPanel({ pageContextLabel = "" }) {
   const [confirmBusy, setConfirmBusy] = useState(false);
   const [conversationId, setConversationId] = useState(null);
   const [messages, setMessages] = useState([]);
+  const [pendingImage, setPendingImage] = useState(null);
+  const imageInputRef = useRef(null);
 
   useEffect(() => {
     setConversationId(null);
@@ -247,20 +250,31 @@ export default function StoreAgentChatPanel({ pageContextLabel = "" }) {
 
   const sendMessage = useCallback(async (text) => {
     const msg = (text || input).trim();
-    if (!msg || loading) return;
+    if ((!msg && !pendingImage) || loading) return;
     if (offline) {
       addToast("You are offline. Reconnect to use the agent.", "error");
       return;
     }
 
     setInput("");
-    setMessages((prev) => [...prev, { role: "user", content: msg }]);
+    const imagePayload = pendingImage;
+    setPendingImage(null);
+    setMessages((prev) => [
+      ...prev,
+      {
+        role: "user",
+        content: msg || "[Screenshot attached]",
+        imagePreview: imagePayload?.previewUrl || null,
+      },
+    ]);
     setLoading(true);
 
     try {
       const data = await sendAgentChat({
-        message: messageWithPageContext(msg, pageContextLabel),
+        message: messageWithPageContext(msg || "Analyze this ERP screenshot.", pageContextLabel),
         conversationId,
+        imageBase64: imagePayload?.base64,
+        imageMediaType: imagePayload?.mediaType,
       });
       setConversationId(data.conversation_id);
       pushAssistant({
@@ -307,7 +321,30 @@ export default function StoreAgentChatPanel({ pageContextLabel = "" }) {
     } finally {
       setLoading(false);
     }
-  }, [input, loading, conversationId, offline, addToast, pushAssistant, pageContextLabel]);
+  }, [input, loading, conversationId, offline, addToast, pushAssistant, pageContextLabel, pendingImage]);
+
+  const onPickScreenshot = useCallback((file) => {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      addToast("Please choose an image file (PNG, JPEG, or WebP).", "error");
+      return;
+    }
+    if (file.size > 4 * 1024 * 1024) {
+      addToast("Image must be 4MB or smaller.", "error");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = String(reader.result || "");
+      const base64 = dataUrl.split(",")[1] || "";
+      setPendingImage({
+        base64,
+        mediaType: file.type || "image/png",
+        previewUrl: dataUrl,
+      });
+    };
+    reader.readAsDataURL(file);
+  }, [addToast]);
 
   const handleConfirm = async (conf) => {
     setConfirmBusy(true);
@@ -363,7 +400,7 @@ export default function StoreAgentChatPanel({ pageContextLabel = "" }) {
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className={FAB_CLASS}
+          className={floatingStacked ? FAB_CLASS_STACKED : FAB_CLASS_FIXED}
           aria-label="AI Assistant"
           title="AI Assistant"
         >
@@ -372,7 +409,13 @@ export default function StoreAgentChatPanel({ pageContextLabel = "" }) {
       )}
 
       {open && (
-        <div className="fixed inset-x-3 bottom-3 z-[100] flex h-[min(640px,calc(100vh-1.5rem))] max-h-[min(640px,calc(100vh-1.5rem))] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl sm:inset-x-auto sm:bottom-6 sm:right-6 sm:w-[440px]">
+        <div
+          className={
+            floatingStacked
+              ? "pointer-events-auto fixed inset-x-3 bottom-20 z-[100] flex max-h-[min(480px,calc(100vh-7rem))] w-[calc(100vw-1.5rem)] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl sm:inset-x-auto sm:bottom-28 sm:right-6 sm:w-[380px] sm:max-h-[min(520px,calc(100vh-9rem))]"
+              : "pointer-events-auto fixed inset-x-3 bottom-3 z-[100] flex max-h-[min(520px,calc(100vh-1.5rem))] w-[calc(100vw-1.5rem)] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl sm:inset-x-auto sm:bottom-6 sm:right-6 sm:w-[400px]"
+          }
+        >
           <div className="flex items-center justify-between border-b border-[var(--color-border-soft)] bg-[var(--color-primary)] px-4 py-3 text-white">
             <div className="flex items-center gap-2">
               <Bot className="h-5 w-5" aria-hidden />
@@ -396,10 +439,11 @@ export default function StoreAgentChatPanel({ pageContextLabel = "" }) {
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="rounded-lg p-1.5 transition-colors hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+                className="pointer-events-auto shrink-0 rounded-lg p-2 text-white transition-colors hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
                 aria-label="Close AI Assistant"
+                title="Close"
               >
-                <X className="h-4 w-4" aria-hidden />
+                <X className="h-5 w-5" aria-hidden />
               </button>
             </div>
           </div>
@@ -423,6 +467,13 @@ export default function StoreAgentChatPanel({ pageContextLabel = "" }) {
               <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
                 {m.role === "user" ? (
                   <div className="max-w-[85%] rounded-2xl bg-slate-600 px-3.5 py-2.5 text-white">
+                    {m.imagePreview ? (
+                      <img
+                        src={m.imagePreview}
+                        alt="Attached screenshot"
+                        className="mb-2 max-h-32 rounded-lg border border-white/20 object-contain"
+                      />
+                    ) : null}
                     <p className="text-sm">{m.content}</p>
                   </div>
                 ) : (
@@ -463,6 +514,19 @@ export default function StoreAgentChatPanel({ pageContextLabel = "" }) {
                 </button>
               ))}
             </div>
+            {pendingImage?.previewUrl ? (
+              <div className="mb-2 flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2">
+                <img src={pendingImage.previewUrl} alt="" className="h-12 w-12 rounded object-cover" />
+                <span className="flex-1 text-xs text-slate-600">Screenshot ready to analyze</span>
+                <button
+                  type="button"
+                  className="text-xs text-slate-500 underline"
+                  onClick={() => setPendingImage(null)}
+                >
+                  Remove
+                </button>
+              </div>
+            ) : null}
             <form
               className="flex gap-2"
               onSubmit={(e) => {
@@ -470,6 +534,26 @@ export default function StoreAgentChatPanel({ pageContextLabel = "" }) {
                 sendMessage();
               }}
             >
+              <input
+                ref={imageInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                className="hidden"
+                onChange={(e) => {
+                  onPickScreenshot(e.target.files?.[0]);
+                  e.target.value = "";
+                }}
+              />
+              <button
+                type="button"
+                disabled={loading}
+                onClick={() => imageInputRef.current?.click()}
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+                aria-label="Attach screenshot"
+                title="Analyze screenshot"
+              >
+                <ImagePlus className="h-4 w-4" />
+              </button>
               <input
                 type="text"
                 value={input}
@@ -480,7 +564,7 @@ export default function StoreAgentChatPanel({ pageContextLabel = "" }) {
               />
               <button
                 type="submit"
-                disabled={loading || !input.trim()}
+                disabled={loading || (!input.trim() && !pendingImage)}
                 className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--color-primary)] text-white disabled:opacity-50 hover:bg-[var(--color-primary-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/40"
                 aria-label="Send"
               >

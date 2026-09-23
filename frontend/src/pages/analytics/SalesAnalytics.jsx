@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   IndianRupee, ShoppingCart, Users, Percent, TrendingUp, Truck, Target, BarChart3,
 } from "lucide-react";
@@ -17,6 +18,7 @@ import AnalyticsKpiCard from "../../components/analytics/AnalyticsKpiCard";
 import DrillDownBreadcrumb from "../../components/analytics/DrillDownBreadcrumb";
 import { useToast } from "../../context/ToastContext";
 import { getSalesAnalytics } from "../../api/analyticsApi";
+import { getSalesReportsSummary } from "../../api/salesApi";
 import { CHART_COLORS, SOURCE_LINKS, formatInr } from "../../data/analyticsMasterData";
 import useManufacturingRefresh from "../../hooks/useManufacturingRefresh";
 
@@ -58,8 +60,13 @@ const normalizeChartData = (rows = []) => {
     .filter((entry) => entry && (entry.value !== undefined || entry.value2 !== undefined));
 };
 
-export default function SalesAnalytics() {
+/**
+ * @param {object} props
+ * @param {boolean} [props.useSalesModuleApi] — load via GET /sales/reports/summary (sales RBAC).
+ */
+export default function SalesAnalytics({ useSalesModuleApi = false }) {
   const { addToast } = useToast();
+  const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState(emptyData);
   const [autoRefresh, setAutoRefresh] = useState(false);
@@ -69,10 +76,22 @@ export default function SalesAnalytics() {
     plant: "All Plants", customer: "All Customers", dateFrom: "", dateTo: "",
   });
 
+  useEffect(() => {
+    const from = searchParams.get("from");
+    const to = searchParams.get("to");
+    if (!from && !to) return;
+    setFilters((f) => ({
+      ...f,
+      ...(from ? { dateFrom: from } : {}),
+      ...(to ? { dateTo: to } : {}),
+    }));
+  }, [searchParams]);
+
   const load = useCallback(async (isRefresh = false) => {
     if (!isRefresh) setLoading(true);
     try {
-      const res = await getSalesAnalytics();
+      const fetchSummary = useSalesModuleApi ? getSalesReportsSummary : getSalesAnalytics;
+      const res = await fetchSummary();
       if (res.data) {
         setData({ ...emptyData, ...res.data });
         setDrillTrail(res.data.drill_revenue || []);
@@ -88,7 +107,7 @@ export default function SalesAnalytics() {
     } finally {
       setLoading(false);
     }
-  }, [addToast]);
+  }, [addToast, useSalesModuleApi]);
 
   useEffect(() => { load(); }, [load]);
   useManufacturingRefresh(() => load(true));
@@ -127,8 +146,12 @@ export default function SalesAnalytics() {
   return (
     <div className="space-y-6 bg-slate-50 p-4 dark:bg-slate-900 sm:p-6">
       <AnalyticsDashboardHeader
-        title="Sales Analytics"
-        subtitle="Revenue, orders, funnel, top customers/products — integrated with Sales module."
+        title={useSalesModuleApi ? "Sales Report" : "Sales Analytics"}
+        subtitle={
+          useSalesModuleApi
+            ? "Revenue, funnel, and customer insights — sales module reporting."
+            : "Revenue, orders, funnel, top customers/products — integrated with Sales module."
+        }
         lastUpdated={data.last_updated}
         onRefresh={load}
         autoRefresh={autoRefresh}

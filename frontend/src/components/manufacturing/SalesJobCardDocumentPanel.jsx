@@ -34,7 +34,7 @@ export default function SalesJobCardDocumentPanel({
   canEdit = false,
   storeMode = false,
   showEmptyShell = false,
-  emptyMessage = "Select a job card from the list below, or click Add Job Card to create one.",
+  emptyMessage = "Select a job card from the list below, or click New Job Card to create one.",
   showMaterialStatus = false,
   onSend,
 }) {

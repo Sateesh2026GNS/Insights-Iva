@@ -325,6 +325,38 @@ export default function AppRoutes() {
         }
       />
       <Route
+        path="/sales/reports/sales"
+        element={
+          <ProtectedRoute>
+            <P.SalesReportAnalytics />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/sales/reports/sales-orders"
+        element={
+          <ProtectedRoute>
+            <P.SalesOrderReport />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/sales/reports/quotations"
+        element={
+          <ProtectedRoute>
+            <P.QuotationReport />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/sales/reports/customers"
+        element={
+          <ProtectedRoute>
+            <P.CustomerReport />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/sales/leads"
         element={
           <ProtectedRoute>
@@ -766,6 +798,11 @@ export default function AppRoutes() {
       <Route path="/settings/expense-settings" element={<ProtectedRoute><Navigate to="/accounts/expenses/settings" replace /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><P.SettingsLayout /></ProtectedRoute>}>
         <Route index element={<P.SettingsHome />} />
+        <Route path="my-account" element={<P.SettingsMyAccountLayout />}>
+          <Route index element={<Navigate to="profile" replace />} />
+          <Route path="profile" element={<P.MyAccountProfileView />} />
+          <Route path="two-factor" element={<P.MyAccountTwoFactorView />} />
+        </Route>
         <Route path=":sectionId" element={<P.SettingsSectionPage />} />
         {/* Legacy deep links → section pages (must not target the same path or it loops) */}
         <Route path="addresses/billing" element={<Navigate to="/settings/company" replace />} />

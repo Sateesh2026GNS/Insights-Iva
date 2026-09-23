@@ -23,9 +23,10 @@ export default function PageHeader({
   const isHero = variant === "erp" || variant === "inventory";
 
   if (isHero) {
-    const heroTitle = (showTitle && title) || title || subtitle;
-    const heroSubtitle = (showTitle && title) || title ? subtitle : null;
-    if (!heroTitle && !toolbar) return null;
+    const heroTitle = (showTitle && title) || title || null;
+    const heroSubtitle = subtitle;
+    const supportingOnly = !heroTitle && Boolean(heroSubtitle);
+    if (!heroTitle && !heroSubtitle && !toolbar) return null;
     return (
       <header className={`erp-hero-header inventory-hero-header ${className}`.trim()}>
         <div className="min-w-0 flex-1">
@@ -37,7 +38,17 @@ export default function PageHeader({
           ) : null}
           {eyebrow ? <p className="text-xs font-semibold uppercase tracking-wide text-white/80">{eyebrow}</p> : null}
           {heroTitle ? <h2 className="erp-hero-header__title inventory-hero-header__title">{heroTitle}</h2> : null}
-          {heroSubtitle ? <p className="erp-hero-header__subtitle inventory-hero-header__subtitle">{heroSubtitle}</p> : null}
+          {heroSubtitle ? (
+            <p
+              className={
+                supportingOnly
+                  ? "erp-hero-header__subtitle erp-hero-header__subtitle--supporting-only inventory-hero-header__subtitle"
+                  : "erp-hero-header__subtitle inventory-hero-header__subtitle"
+              }
+            >
+              {heroSubtitle}
+            </p>
+          ) : null}
         </div>
         {toolbar ? <div className="erp-hero-header__actions inventory-hero-header__actions">{toolbar}</div> : null}
       </header>

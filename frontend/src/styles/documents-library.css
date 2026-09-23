@@ -1,0 +1,47 @@
+/* Documents library — compact layout & scoped table spacing */
+
+.documents-library-page__stack {
+  gap: var(--space-3);
+}
+
+.documents-library-page .documents-library-hero.erp-hero-header {
+  padding: 0.625rem 1rem;
+}
+
+@media (min-width: 640px) {
+  .documents-library-page .documents-library-hero.erp-hero-header {
+    padding: 0.75rem 1.25rem;
+  }
+}
+
+.documents-library-kpi {
+  gap: var(--space-2);
+}
+
+.documents-library-kpi .ui-kpi {
+  padding: 0.625rem 0.75rem;
+}
+
+.documents-library-kpi .ui-kpi__value {
+  font-size: 1.125rem;
+  line-height: 1.25;
+}
+
+.documents-library-kpi .ui-kpi__label {
+  font-size: var(--text-xs);
+}
+
+.documents-library-toolbar .ui-list-toolbar {
+  margin-bottom: 0;
+}
+
+.documents-library-search__input {
+  border-color: var(--color-border-strong);
+  background: var(--color-surface);
+  font-weight: 500;
+}
+
+.documents-library-table thead th {
+  padding-left: 1rem;
+  padding-right: 1rem;
+}

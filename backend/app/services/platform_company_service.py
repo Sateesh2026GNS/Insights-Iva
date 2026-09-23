@@ -195,7 +195,9 @@ class PlatformCompanyService:
         mobile = payload.mobile_number.strip()
         gstin = (payload.gst_number or None)
 
-        existing_admin = self.db.scalars(select(User).where(User.email == admin_email)).first()
+        existing_admin = self.db.scalars(
+            select(User).where(func.lower(func.trim(User.email)) == admin_email)
+        ).first()
         if existing_admin:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
@@ -203,7 +205,7 @@ class PlatformCompanyService:
             )
 
         existing_company_email = self.db.scalars(
-            select(Tenant).where(Tenant.email == company_email)
+            select(Tenant).where(func.lower(func.trim(Tenant.email)) == company_email)
         ).first()
         if existing_company_email:
             raise HTTPException(
@@ -405,18 +407,29 @@ class PlatformCompanyService:
         except IntegrityError as exc:
             self.db.rollback()
             err_msg = str(exc.orig).lower()
-            if "users.email" in err_msg or "user_email" in err_msg or "uq_users_tenant_email" in err_msg:
+            if (
+                "users.email" in err_msg
+                or "users_email" in err_msg
+                or "user_email" in err_msg
+                or "uq_users_tenant_email" in err_msg
+            ):
                 detail_msg = "Admin email is already registered."
-            elif "tenants.email" in err_msg or "tenant_email" in err_msg:
+            elif "tenants.email" in err_msg or "tenants_email" in err_msg or "tenant_email" in err_msg:
                 detail_msg = "Company email is already registered to another company."
-            elif "tenants.phone" in err_msg or "tenant_phone" in err_msg:
+            elif "tenants.phone" in err_msg or "tenants_phone" in err_msg or "tenant_phone" in err_msg:
                 detail_msg = "Mobile number is already registered to another company."
-            elif "tenants.gst_number" in err_msg or "tenant_gst_number" in err_msg:
+            elif (
+                "tenants.gst_number" in err_msg
+                or "tenants_gst_number" in err_msg
+                or "tenant_gst_number" in err_msg
+            ):
                 detail_msg = "GST Number is already registered to another company."
-            elif "tenants.company_code" in err_msg or "company_code" in err_msg:
+            elif "tenants.company_code" in err_msg or "tenants_company_code" in err_msg or "company_code" in err_msg:
                 detail_msg = "Company code is already registered."
-            elif "tenants.name" in err_msg:
+            elif "tenants.name" in err_msg or "tenants_name" in err_msg:
                 detail_msg = "Company name is already registered."
+            elif "tenants.slug" in err_msg or "tenants_slug" in err_msg:
+                detail_msg = "Company identifier is already registered. Please try a different company name."
             else:
                 detail_msg = "Could not create company due to a database conflict."
             raise HTTPException(

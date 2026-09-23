@@ -175,6 +175,49 @@ class VerifyEmailRequest(BaseModel):
         return s
 
 
+class ProfileUpdateRequest(BaseModel):
+    full_name: str | None = Field(None, min_length=1, max_length=255)
+    phone: str | None = Field(None, max_length=25)
+
+    @field_validator("full_name")
+    @classmethod
+    def sanitize_full_name(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        cleaned = sanitize_text(value, max_length=255)
+        if not cleaned:
+            raise ValueError("Display name is required")
+        return cleaned
+
+    @field_validator("phone")
+    @classmethod
+    def sanitize_phone(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        cleaned = sanitize_text(value, max_length=25)
+        return cleaned or None
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str = Field(..., min_length=1, max_length=128)
+    new_password: str = Field(..., min_length=12, max_length=128)
+    confirm_password: str = Field(..., min_length=12, max_length=128)
+
+    @field_validator("current_password", "new_password", "confirm_password")
+    @classmethod
+    def sanitize_password_fields(cls, value: str) -> str:
+        cleaned = sanitize_password(value)
+        if not cleaned:
+            raise ValueError("Password is required")
+        return cleaned
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_new_password_policy(cls, value: str) -> str:
+        validate_password_strength(value)
+        return value
+
+
 class UserResponse(BaseModel):
     id: int
     email: str

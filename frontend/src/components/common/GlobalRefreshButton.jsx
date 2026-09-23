@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { RefreshCw } from "lucide-react";
+import Button from "./Button";
 import {
   emitPageRefreshEvent,
   playPageRefreshBlink,
@@ -14,7 +15,53 @@ const POPUP_DURATION_MS = 1500;
  * Re-fetches registered page loaders via usePageRefresh (in-place SPA refresh).
  * Displays "Updated just now" ONLY when the user clicks this refresh button.
  */
-export default function GlobalRefreshButton({ offsetForChat = false }) {
+/** Inline toolbar refresh — same behavior as the global FAB (usePageRefresh handlers). */
+export function ToolbarPageRefreshButton({
+  variant = "secondary",
+  size = "sm",
+  className = "",
+  showLabel = true,
+}) {
+  const [refreshing, setRefreshing] = useState(false);
+  const inFlightRef = useRef(false);
+
+  const handleRefresh = useCallback(async () => {
+    if (inFlightRef.current || refreshing) return;
+    inFlightRef.current = true;
+    setRefreshing(true);
+    try {
+      playPageRefreshBlink();
+      emitPageRefreshEvent({ source: "toolbar-refresh" });
+      await runPageRefresh();
+    } catch (err) {
+      console.warn("Page refresh error:", err);
+    } finally {
+      setRefreshing(false);
+      inFlightRef.current = false;
+    }
+  }, [refreshing]);
+
+  return (
+    <Button
+      type="button"
+      variant={variant}
+      size={size}
+      className={className}
+      onClick={handleRefresh}
+      disabled={refreshing}
+      title={refreshing ? "Refreshing page…" : "Refresh page"}
+      aria-label="Refresh page"
+      aria-busy={refreshing}
+      leftIcon={
+        <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} aria-hidden />
+      }
+    >
+      {showLabel ? (refreshing ? "Refreshing…" : "Refresh") : null}
+    </Button>
+  );
+}
+
+export default function GlobalRefreshButton({ stacked = false }) {
   const [refreshing, setRefreshing] = useState(false);
   const [showPopup, setShowPopup] = useState(false);
   const timerRef = useRef(null);
@@ -73,12 +120,12 @@ export default function GlobalRefreshButton({ offsetForChat = false }) {
     }
   }, [refreshing]);
 
+  const rootClass = stacked
+    ? "pointer-events-none flex flex-col items-end gap-2"
+    : "pointer-events-none fixed bottom-5 right-5 z-[90] flex flex-col items-end gap-2 sm:bottom-6 sm:right-6";
+
   return (
-    <div
-      className={`pointer-events-none fixed right-5 z-[90] flex flex-col items-end gap-2 sm:right-6 ${
-        offsetForChat ? "bottom-24 sm:bottom-28" : "bottom-5 sm:bottom-6"
-      }`}
-    >
+    <div className={rootClass}>
       {showPopup ? (
         <div
           role="status"
@@ -95,10 +142,10 @@ export default function GlobalRefreshButton({ offsetForChat = false }) {
         title={refreshing ? "Refreshing page…" : "Refresh page"}
         aria-label="Refresh page"
         aria-busy={refreshing}
-        className="pointer-events-auto inline-flex h-12 w-12 items-center justify-center rounded-full border border-slate-300/80 bg-white text-slate-700 shadow-lg transition-all duration-200 hover:scale-105 hover:border-teal-600 hover:bg-slate-50 hover:text-[var(--color-success)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/40 focus-visible:ring-offset-2 active:scale-95 disabled:pointer-events-none disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-teal-400 dark:hover:text-teal-400"
+        className="app-shell-fab app-shell-fab--surface"
       >
         <RefreshCw
-          className={`h-5 w-5 ${refreshing ? "animate-spin text-teal-600 dark:text-teal-400" : ""}`}
+          className={`h-5 w-5 ${refreshing ? "animate-spin text-[var(--color-primary)]" : ""}`}
           aria-hidden
         />
       </button>
