@@ -38,12 +38,11 @@ export function scrollToJobCardDocumentPanel({ storeMode = false } = {}) {
 
 /** Whether Actions → Delete should appear (manual cards; API allowed_actions is authoritative). */
 export function manualJobCardCanDelete(row, { canDelete = false } = {}) {
-  if (!isManualSalesJobCardRow(row)) return Boolean(canDelete);
-  if (Array.isArray(row.allowed_actions) && row.allowed_actions.includes("delete")) {
-    return true;
+  if (Array.isArray(row?.allowed_actions)) {
+    return row.allowed_actions.includes("delete");
   }
-  if (!canDelete) return false;
-  return !(row.sent_to || row.sent_at);
+  if (row?.sent_at || row?.sent_to) return false;
+  return Boolean(canDelete);
 }
 
 /** Whether the row should offer Actions → Send (manual cards; API can_send is authoritative). */

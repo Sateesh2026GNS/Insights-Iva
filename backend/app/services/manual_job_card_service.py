@@ -28,6 +28,8 @@ SEND_RECIPIENT_ROLES = (
     "Sales Manager",
     "Production Manager",
     "Store Manager",
+    "Purchase Manager",
+    "Procurement Manager",
     "Quality Control",
     "HR Manager",
     "Accountant",
@@ -39,6 +41,8 @@ ROLE_SEND_CONFIG: dict[str, dict[str, Any]] = {
     "Sales Manager": {"workflow_stage": "SAVED", "dept": "sales"},
     "Production Manager": {"workflow_stage": "READY_FOR_PRODUCTION", "dept": "production"},
     "Store Manager": {"workflow_stage": "MATERIAL_CHECK_PENDING", "dept": "inventory"},
+    "Purchase Manager": {"workflow_stage": "MATERIAL_CHECK_PENDING", "dept": "procurement"},
+    "Procurement Manager": {"workflow_stage": "MATERIAL_CHECK_PENDING", "dept": "procurement"},
     "Quality Control": {"workflow_stage": "QUALITY_CHECK_PENDING", "dept": "quality"},
     "HR Manager": {"workflow_stage": "SAVED", "dept": "sales"},
     "Accountant": {"workflow_stage": "BILLING_PENDING", "dept": "billing"},
@@ -527,6 +531,10 @@ def _resolve_product_id_from_line(
         ).first()
         if match:
             return match.id
+        # When explicit product_code is provided, do not fall back to matching by name
+        # so we never pull a different product's BOM by mistake.
+        return None
+
     if name:
         match = db.scalars(
             select(Product).where(
@@ -555,21 +563,29 @@ def build_manual_bom_material_lines(
     from app.services.manufacturing_workflow_service import get_bom_requirements
 
     product_lines = doc.get("product_lines") or []
-    merged: dict[str, dict[str, Any]] = {}
-    line_index = 0
+    lines: list[dict[str, Any]] = []
 
     for pl in product_lines:
-        product_id = _resolve_product_id_from_line(db, tenant_id, pl)
+        code = _trim(pl.get("product_code"), 120)
+        name = _trim(pl.get("product_name"), 200)
         try:
             order_qty = float(pl.get("quantity") or 0)
         except (TypeError, ValueError):
             order_qty = 0.0
-        if not product_id or order_qty <= 0:
+        if order_qty <= 0:
             continue
 
-        bom_reqs = get_bom_requirements(db, tenant_id, product_id, order_qty)
+        product_id = _resolve_product_id_from_line(db, tenant_id, pl)
+        product = db.get(Product, product_id) if product_id else None
+
+        bom_reqs = get_bom_requirements(db, tenant_id, product_id, order_qty) if product_id else []
         if not bom_reqs:
-            product = db.get(Product, product_id)
+            mat_code = code or (product.sku if product else "")
+            mat_name = name or (product.name if product else "Product")
+            uom = pl.get("uom") or (product.unit if product else "Nos")
+
+            item_id = None
+            available = 0.0
             if product:
                 from app.services.manufacturing_workflow_service import (
                     find_or_create_inventory_item_for_product,
@@ -578,64 +594,55 @@ def build_manual_bom_material_lines(
                 item = find_or_create_inventory_item_for_product(
                     db, tenant_id, product, item_type="finished_goods"
                 )
+                item_id = item.id
                 available = float(get_total_stock(db, item.id, tenant_id))
-                required = order_qty
-                shortage = max(0.0, required - available)
-                key = f"item-{item.id}"
-                merged[key] = {
-                    "line_id": key,
-                    "material_code": product.sku or "",
-                    "material_name": product.name or pl.get("product_name") or "Product",
-                    "inventory_item_id": item.id,
-                    "component_product_id": product.id,
-                    "required_qty": round(required, 4),
-                    "available_qty": round(available, 4),
-                    "shortage_qty": round(shortage, 4),
-                    "uom": pl.get("uom") or product.unit or "Nos",
-                    "availability_status": _line_availability_status(required, available, shortage),
-                    "remarks": "",
-                    "product_line_no": pl.get("sl_no"),
-                }
+
+            required = order_qty
+            shortage = max(0.0, required - available)
+            line_id = f"pl-{pl.get('sl_no') or len(lines) + 1}"
+            lines.append({
+                "line_id": line_id,
+                "material_code": mat_code,
+                "material_name": mat_name,
+                "inventory_item_id": item_id,
+                "component_product_id": product_id,
+                "required_qty": round(required, 4),
+                "available_qty": round(available, 4),
+                "shortage_qty": round(shortage, 4),
+                "uom": uom,
+                "availability_status": _line_availability_status(required, available, shortage),
+                "remarks": "",
+                "product_line_no": pl.get("sl_no"),
+            })
             continue
 
         for req in bom_reqs:
-            line_index += 1
             item_id = req.get("item_id")
             comp_id = req.get("component_product_id")
-            key = f"item-{item_id}" if item_id else f"comp-{comp_id}-{line_index}"
+            mat_code = (req.get("sku") or req.get("material_code") or req.get("code") or code or (product.sku if product else "") or "").strip()
+            mat_name = (req.get("component_name") or name or "Material").strip()
             required = float(req.get("required_qty") or 0)
             available = float(req.get("available_qty") or 0)
             if item_id and available == 0:
                 available = float(get_total_stock(db, int(item_id), tenant_id))
             shortage = max(0.0, required - available)
-            existing = merged.get(key)
-            if existing:
-                existing["required_qty"] = round(float(existing["required_qty"]) + required, 4)
-                existing["shortage_qty"] = round(
-                    max(0.0, float(existing["required_qty"]) - float(existing["available_qty"])), 4
-                )
-                existing["availability_status"] = _line_availability_status(
-                    float(existing["required_qty"]),
-                    float(existing["available_qty"]),
-                    float(existing["shortage_qty"]),
-                )
-            else:
-                merged[key] = {
-                    "line_id": key,
-                    "material_code": req.get("sku") or "",
-                    "material_name": req.get("component_name") or "Material",
-                    "inventory_item_id": item_id,
-                    "component_product_id": comp_id,
-                    "required_qty": round(required, 4),
-                    "available_qty": round(available, 4),
-                    "shortage_qty": round(shortage, 4),
-                    "uom": req.get("unit") or "Nos",
-                    "availability_status": _line_availability_status(required, available, shortage),
-                    "remarks": "",
-                    "product_line_no": pl.get("sl_no"),
-                }
+            line_id = f"bom-{len(lines) + 1}"
+            lines.append({
+                "line_id": line_id,
+                "material_code": mat_code,
+                "material_name": mat_name,
+                "inventory_item_id": item_id,
+                "component_product_id": comp_id,
+                "required_qty": round(required, 4),
+                "available_qty": round(available, 4),
+                "shortage_qty": round(shortage, 4),
+                "uom": req.get("unit") or pl.get("uom") or "Nos",
+                "availability_status": _line_availability_status(required, available, shortage),
+                "remarks": "",
+                "product_line_no": pl.get("sl_no"),
+            })
 
-    return list(merged.values())
+    return lines
 
 
 def _derive_material_check_status(lines: list[dict[str, Any]]) -> tuple[str, str]:
@@ -736,13 +743,40 @@ def submit_manual_material_check(
         )
 
     line_updates = payload.get("lines") if isinstance(payload.get("lines"), list) else []
-    update_map = {
-        str(u.get("line_id")): u for u in line_updates if isinstance(u, dict) and u.get("line_id")
-    }
-    for ln in lines:
-        upd = update_map.get(str(ln.get("line_id")))
-        if upd and upd.get("remarks"):
-            ln["remarks"] = _trim(upd.get("remarks"), 500)
+    update_map: dict[str, dict[str, Any]] = {}
+    for idx, u in enumerate(line_updates):
+        if not isinstance(u, dict):
+            continue
+        if u.get("line_id"):
+            update_map[str(u["line_id"])] = u
+        if u.get("material_code"):
+            update_map[str(u["material_code"])] = u
+        update_map[f"idx-{idx}"] = u
+
+    for idx, ln in enumerate(lines):
+        upd = (
+            update_map.get(str(ln.get("line_id")))
+            or update_map.get(str(ln.get("material_code")))
+            or update_map.get(f"idx-{idx}")
+        )
+        if upd:
+            if upd.get("remarks"):
+                ln["remarks"] = _trim(upd.get("remarks"), 500)
+            if "available_qty" in upd and upd["available_qty"] is not None:
+                try:
+                    avail = max(0.0, float(upd["available_qty"]))
+                    req = float(ln.get("required_qty") or 0.0)
+                    ln["available_qty"] = avail
+                    shortage = max(0.0, req - avail)
+                    ln["shortage_qty"] = shortage
+                    if shortage <= 0:
+                        ln["availability_status"] = "available"
+                    elif avail > 0:
+                        ln["availability_status"] = "partially_available"
+                    else:
+                        ln["availability_status"] = "not_available"
+                except (ValueError, TypeError):
+                    pass
 
     materials_available = payload.get("materials_available")
     reason = _trim(payload.get("reason"), 2000)
@@ -1145,8 +1179,7 @@ def _store_allowed_actions(
             actions.append("send")
         if not _manual_in_store_workflow(jc) or ws == MANUAL_WORKFLOW_RETURNED:
             actions.append("edit")
-        if not _manual_is_sent(details) and jc.status in ("draft", "created"):
-            actions.append("delete")
+        actions.append("delete")
 
     return list(dict.fromkeys(actions))
 
@@ -1540,15 +1573,24 @@ def get_manual_job_card(db: Session, tenant_id: int, job_card_id: int, user: Use
 def delete_manual_job_card(db: Session, tenant_id: int, job_card_id: int, user: User) -> None:
     from app.core.permissions import get_role_names, user_is_admin
     from app.core.workflow_constants import TEAM_SALES, user_teams
+    from app.models.manufacturing_workflow import WorkflowStageJobCard
 
     teams = user_teams(get_role_names(user))
-    if not user_is_admin(user) and TEAM_SALES not in teams:
-        raise HTTPException(status_code=403, detail="Sales team permission required")
+    if not user_is_admin(user) and TEAM_SALES not in teams and "production" not in teams and "inventory" not in teams:
+        raise HTTPException(status_code=403, detail="Permission required to delete job card")
 
     jc = _get_manual_job_card(db, tenant_id, job_card_id)
     details = parse_details_json(jc.details_json)
-    if _manual_is_sent(details):
-        raise HTTPException(status_code=400, detail="Cannot delete a job card that has been sent.")
+    assignments = _get_send_assignments(details)
+    store_wf = get_store_workflow(details)
+    if assignments or store_wf.get("sent_at") or (jc.workflow_stage and jc.workflow_stage not in (MANUAL_WORKFLOW_DRAFT, "DRAFT", "MANUAL_DRAFT", MANUAL_WORKFLOW_SAVED, "SAVED")):
+        raise HTTPException(status_code=400, detail="Cannot delete a job card that has already been sent")
+
+    # Clean up dependent stage job cards if any exist
+    db.query(WorkflowStageJobCard).filter(
+        WorkflowStageJobCard.sales_job_card_id == jc.id
+    ).delete(synchronize_session=False)
+
     db.delete(jc)
     db.commit()
 

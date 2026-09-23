@@ -111,7 +111,7 @@ export function getAiEmptyHint(user) {
   if (isAdmin(user)) {
     return "Ask for business summary or cross-module reports";
   }
-  return "Ask in English, Telugu, or Hindi";
+  return "Ask…";
 }
 
 export function getAiSubtitle(user) {

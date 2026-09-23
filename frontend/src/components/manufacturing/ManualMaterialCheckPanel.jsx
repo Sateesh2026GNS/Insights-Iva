@@ -100,15 +100,29 @@ export default function ManualMaterialCheckPanel({
       addToast("Please provide the reason for material unavailability.", "error");
       return;
     }
+
+    let finalMaterialsAvailable = materialsAvailable;
+    if (allAvailablePreview) {
+      finalMaterialsAvailable = true;
+    } else if (materialsAvailable === true) {
+      addToast(
+        "Cannot confirm all materials available while shortages exist. Please set Available Qty equal to Required Qty for all lines, or select Materials Not Available.",
+        "error"
+      );
+      return;
+    }
+
     setSaving(true);
     setConflictMessage("");
     try {
       await submitManualMaterialCheck(jobCardId, {
-        materials_available: materialsAvailable,
+        materials_available: finalMaterialsAvailable,
         reason: reason.trim() || null,
         remarks: remarks.trim() || null,
-        lines: lines.map((ln) => ({
-          line_id: ln.line_id,
+        lines: lines.map((ln, idx) => ({
+          line_id: ln.line_id || `bom-${idx + 1}`,
+          material_code: ln.material_code || "",
+          available_qty: ln.available_qty === "" || ln.available_qty == null ? 0 : Number(ln.available_qty),
           remarks: ln.remarks || null,
         })),
       });
@@ -189,7 +203,43 @@ export default function ManualMaterialCheckPanel({
                   <td>{ln.material_name || "—"}</td>
                   <td className="text-right tabular-nums">{Number(ln.required_qty || 0).toLocaleString("en-IN")}</td>
                   <td>{ln.uom || "—"}</td>
-                  <td className="text-right tabular-nums">{Number(ln.available_qty || 0).toLocaleString("en-IN")}</td>
+                  <td className="text-right tabular-nums">
+                    {isCompleted || readOnly || apiReadOnly ? (
+                      Number(ln.available_qty || 0).toLocaleString("en-IN")
+                    ) : (
+                      <input
+                        type="number"
+                        min="0"
+                        step="any"
+                        className="ui-input ui-input--sm w-24 text-right"
+                        value={ln.available_qty ?? ""}
+                        placeholder="0"
+                        onChange={(e) => {
+                          const valStr = e.target.value;
+                          const avail = valStr === "" ? "" : Math.max(0, Number(valStr) || 0);
+                          const req = Number(ln.required_qty || 0);
+                          const availNum = Number(avail || 0);
+                          const shortage = Math.max(0, req - availNum);
+                          let status = "not_available";
+                          if (shortage <= 0) status = "available";
+                          else if (availNum > 0) status = "partially_available";
+
+                          setLines((rows) =>
+                            rows.map((r) =>
+                              r.line_id === ln.line_id
+                                ? {
+                                    ...r,
+                                    available_qty: avail,
+                                    shortage_qty: shortage,
+                                    availability_status: status,
+                                  }
+                                : r
+                            )
+                          );
+                        }}
+                      />
+                    )}
+                  </td>
                   <td className="text-right tabular-nums text-[var(--color-danger)]">
                     {Number(ln.shortage_qty || 0) > 0
                       ? Number(ln.shortage_qty).toLocaleString("en-IN")

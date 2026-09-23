@@ -207,7 +207,8 @@ def create_material_check_for_order(
         for req in bom_reqs:
             comp_id = req.get("component_product_id")
             item_id = req.get("item_id")
-            comp_name = req.get("component_name") or "Material"
+            sku = (req.get("sku") or "").strip()
+            comp_name = (req.get("component_name") or "Material").strip()
             required = float(req.get("required_qty") or 0)
             available = float(req.get("available_qty") or 0)
             if item_id and available == 0:

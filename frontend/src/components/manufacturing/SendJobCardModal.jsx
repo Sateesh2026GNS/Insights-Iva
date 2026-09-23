@@ -83,6 +83,9 @@ export default function SendJobCardModal({ open, onClose, jobCard, onSent }) {
         if (cancelled) return;
         const roleList = rolesRes?.data?.roles || rolesRes?.roles || [];
         setRoles(roleList);
+        if (roleList.length > 0) {
+          setSelectedRoles([]);
+        }
       })
       .catch((err) => {
         if (!cancelled) {
@@ -286,8 +289,7 @@ export default function SendJobCardModal({ open, onClose, jobCard, onSent }) {
       <AdminModal open={open} onClose={onClose} title="Send Job Card" maxWidth="max-w-md">
         <div className="flex max-h-[70vh] flex-col gap-4">
           <p className="send-job-card-modal__hint" role="note">
-            Sending routes this job card to the selected user. This is separate from Save — only click Send
-            when you are ready to forward the job card.
+            Sending routes this job card to the selected user. This is separate from Save — only click Send when you are ready to forward the job card.
           </p>
           <div className="shrink-0">
             <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Job Card No.</p>

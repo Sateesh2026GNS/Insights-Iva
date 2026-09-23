@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Building2, Plus, Printer, Upload, UserCheck, Users, Cpu, Layers } from "lucide-react";
+import { Building2, Plus, Printer, Upload, UserCheck, UsersRound, Cpu, Layers } from "lucide-react";
 
 import DataTable from "../../components/common/DataTable";
 import TableActionButtons from "../../components/common/TableActionButtons";
@@ -8,6 +8,7 @@ import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/
 import Loader from "../../components/common/Loader";
 import Button from "../../components/common/Button";
 import PageHeader from "../../components/common/PageHeader";
+import ConfirmDialog from "../../components/admin/ConfirmDialog";
 import { SearchBar } from "../../components/common/SearchFilter";
 import DepartmentDetailModal, { DepartmentFormModal } from "../../components/masters/DepartmentDetailModal";
 import { useToast } from "../../context/ToastContext";
@@ -36,16 +37,52 @@ import {
 } from "../../data/departmentsMasterData";
 import { exportToExcel, exportToPdf } from "../../utils/exportUtils";
 
+export function buildDepartmentImportTemplateCsv() {
+  const header = IMPORT_TEMPLATE_HEADERS.join(",");
+  return `${header}\nDEP013,IT,support,Plant 1,Hyderabad,Rajesh Kumar,+919999999999,rajesh@smrt.local,active`;
+}
+
+export function triggerDepartmentImportPicker({ addToast } = {}) {
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = ".csv,.xlsx,.xls";
+  input.style.display = "none";
+  document.body.appendChild(input);
+
+  input.onchange = () => {
+    const file = input.files?.[0];
+    if (!file) {
+      addToast?.("No file selected", "error");
+      return;
+    }
+
+    const name = (file.name || "").toLowerCase();
+    if (/\.(xlsx|xls)$/i.test(name)) {
+      addToast?.("Please upload a CSV file for department import.", "warning");
+      return;
+    }
+
+    addToast?.("Import file selected — the import flow will continue in the next step.", "info");
+  };
+
+  input.click();
+  window.setTimeout(() => input.remove(), 0);
+}
+
+export function triggerDepartmentPrint() {
+  window.print();
+}
+
 function SummaryCard({ label, value, icon: Icon, color }) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="flex items-center justify-between">
+      <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="text-xs font-medium text-slate-500">{label}</p>
+          <p className="text-xs font-medium leading-4 text-slate-500 break-words">{label}</p>
           <p className="mt-1 truncate text-xl font-bold tabular-nums text-slate-900 sm:text-2xl">{value}</p>
         </div>
-        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${color}`}>
-          <Icon className="h-5 w-5 text-white" />
+        <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${color}`}>
+          <Icon className="h-4 w-4 text-white" />
         </div>
       </div>
     </div>
@@ -63,7 +100,7 @@ function StatusPill({ status }) {
   );
 }
 
-const defaultFilters = {
+export const defaultFilters = {
   code: "",
   name: "",
   department_type: "",
@@ -72,6 +109,27 @@ const defaultFilters = {
   branch: "",
   status: "",
 };
+
+export function applyDepartmentFilters(nextFilters, currentFilters = defaultFilters) {
+  return {
+    ...currentFilters,
+    ...nextFilters,
+  };
+}
+
+export function clearDepartmentFilters(currentFilters = defaultFilters) {
+  return {
+    ...defaultFilters,
+    ...currentFilters,
+    code: "",
+    name: "",
+    department_type: "",
+    manager: "",
+    plant: "",
+    branch: "",
+    status: "",
+  };
+}
 
 export default function DepartmentManagement() {
   const tenantId = useTenantId();
@@ -82,7 +140,10 @@ export default function DepartmentManagement() {
   const [selected, setSelected] = useState(null);
   const [detail, setDetail] = useState(null);
   const [formDept, setFormDept] = useState(null);
+  const [deactivateTarget, setDeactivateTarget] = useState(null);
+  const [deactivating, setDeactivating] = useState(false);
   const [filters, setFilters] = useState(defaultFilters);
+  const [draftFilters, setDraftFilters] = useState(defaultFilters);
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   const loadDepartments = useCallback(async () => {
@@ -157,24 +218,33 @@ export default function DepartmentManagement() {
   };
 
   const handleExportPdf = () => {
-    exportToPdf(filteredDepartments, exportColumns, "Department Master", "departments");
+    exportToPdf(filteredDepartments, exportColumns, "Departments", "departments");
     addToast("Exported to PDF");
   };
 
-  const handlePrint = () => handleExportPdf();
+  const handlePrint = () => {
+    triggerDepartmentPrint();
+  };
+
+  const printTimestamp = new Date().toLocaleString();
 
   const handleListExport = (format) => {
     if (format === "pdf") handleExportPdf();
     else handleExportExcel();
   };
 
+  const handleImportFile = () => {
+    triggerDepartmentImportPicker({ addToast });
+  };
+
   const handleDownloadTemplate = () => {
-    const header = IMPORT_TEMPLATE_HEADERS.join(",");
-    const blob = new Blob([`${header}\nDEP013,IT,support,Plant 1,Hyderabad,Rajesh Kumar,+919999999999,rajesh@smrt.local,active`], { type: "text/csv" });
+    const csv = buildDepartmentImportTemplateCsv();
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = "departments_import_template.csv";
     a.click();
+    URL.revokeObjectURL(a.href);
     addToast("Template downloaded");
   };
 
@@ -238,23 +308,46 @@ export default function DepartmentManagement() {
     setFormDept(null);
   };
 
-  const handleDeactivate = async (dept) => {
-    if (!window.confirm(`Deactivate ${dept.name}?`)) return;
+  const handleDeactivate = (dept) => {
+    setDeactivateTarget(dept);
+  };
+
+  const handleApplyFilters = () => {
+    setFilters(applyDepartmentFilters(draftFilters, filters));
+    setShowAdvanced(false);
+  };
+
+  const handleClearFilters = () => {
+    const cleared = clearDepartmentFilters();
+    setDraftFilters(cleared);
+    setFilters(cleared);
+    setShowAdvanced(false);
+  };
+
+  const handleDeactivateConfirm = async () => {
+    if (!deactivateTarget) return;
+    const dept = deactivateTarget;
+    setDeactivating(true);
     if (typeof dept.id === "number") {
       try {
         await deactivateDepartment(dept.id);
         addToast("Department deactivated");
         loadDepartments();
         setSelected(null);
+        setDeactivateTarget(null);
         return;
       } catch {
         addToast("Could not deactivate", "error");
         return;
+      } finally {
+        setDeactivating(false);
       }
     }
     setDepartments((prev) => prev.map((d) => (d.id === dept.id ? { ...d, status: "inactive" } : d)));
     setSelected(null);
     addToast("Department deactivated");
+    setDeactivateTarget(null);
+    setDeactivating(false);
   };
 
   const columns = [
@@ -300,38 +393,138 @@ export default function DepartmentManagement() {
   if (loading) return <Loader label="Loading departments..." />;
 
   return (
-    <ListPageShell>
-    <div className="space-y-6 pb-8">
-      <PageHeader
-        subtitle="Manage all company departments and assign employees, machines, and work centers."
-        action={
-          <div className="flex flex-wrap gap-2">
-            <Button variant="add" type="button" onClick={() => setFormDept({})} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
-              Add Department
-            </Button>
-            <Button variant="outline" type="button" onClick={handleDownloadTemplate} leftIcon={<Upload className="h-4 w-4" />}>
-              Import
-            </Button>
-            <ExportDownloadMenu disabled={!filteredDepartments.length} onExport={handleListExport} />
-            <Button variant="secondary" type="button" onClick={handlePrint} leftIcon={<Printer className="h-4 w-4" />}>
-              Print
-            </Button>
-          </div>
+    <>
+      <style>{`
+        @media print {
+          @page { margin: 0.4in; size: auto; }
+          body * { visibility: hidden; }
+          .department-print-region, .department-print-region * { visibility: visible; }
+          .department-print-region {
+            position: static;
+            display: block;
+            width: 100% !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            color: #111827;
+            overflow: visible !important;
+          }
+          .no-print,
+          .print-hide,
+          [class*="SearchBar"],
+          [class*="TableActionButtons"],
+          [class*="ExportDownloadMenu"],
+          [class*="Button"],
+          .pagination,
+          .row-actions,
+          .report-block {
+            display: none !important;
+          }
+          .ui-list-card,
+          .ui-list-card__body,
+          .ui-table-wrap,
+          .ui-table-wrap--scroll {
+            border: none !important;
+            box-shadow: none !important;
+            border-radius: 0 !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            overflow: visible !important;
+            overflow-x: visible !important;
+            overflow-y: visible !important;
+            background: transparent !important;
+          }
+          ::-webkit-scrollbar {
+            display: none !important;
+            width: 0 !important;
+            height: 0 !important;
+          }
+          * {
+            scrollbar-width: none !important;
+            -ms-overflow-style: none !important;
+          }
+          .department-print-header {
+            display: block !important;
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #cbd5e1 !important;
+          }
+          .department-print-title {
+            font-size: 22px;
+            font-weight: 700;
+            letter-spacing: 0.01em;
+            color: #111827;
+          }
+          .department-print-meta {
+            font-size: 11px;
+            color: #4b5563;
+            margin-top: 4px;
+          }
+          table, .ui-table {
+            width: 100% !important;
+            border-collapse: collapse !important;
+            table-layout: auto !important;
+            font-size: 11px !important;
+            margin-top: 8px !important;
+            border: 1px solid #cbd5e1 !important;
+          }
+          th, td, .ui-table th, .ui-table td {
+            border: 1px solid #cbd5e1 !important;
+            padding: 8px 10px !important;
+            text-align: left;
+            vertical-align: middle;
+            white-space: normal !important;
+            word-break: normal !important;
+          }
+          thead th, .ui-table-head th {
+            background: #f8fafc !important;
+            font-weight: 700 !important;
+            color: #1e293b !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
         }
-      />
+      `}</style>
+    <ListPageShell>
+    <div className="department-print-region space-y-6 pb-8">
+      <div className="no-print">
+        <PageHeader
+          subtitle="Manage all company departments and assign employees, machines, and work centers."
+          action={
+            <div className="flex flex-wrap gap-2">
+              <Button variant="add" type="button" onClick={() => setFormDept({})} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
+                Add Department
+              </Button>
+              <Button variant="outline" type="button" onClick={handleImportFile} leftIcon={<Upload className="h-4 w-4" />}>
+                Import
+              </Button>
+              <ExportDownloadMenu disabled={!filteredDepartments.length} onExport={handleListExport} />
+              <Button variant="secondary" type="button" onClick={handlePrint} leftIcon={<Printer className="h-4 w-4" />}>
+                Print
+              </Button>
+            </div>
+          }
+        />
+      </div>
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-6">
+      <div className="department-print-header" style={{ display: "none" }}>
+        <div>
+          <div className="department-print-title">Departments</div>
+          <div className="department-print-meta">Printed on {printTimestamp}</div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-6 no-print">
         <SummaryCard label="Total Departments" value={summary.total_departments} icon={Building2} color="bg-[var(--color-primary)]" />
         <SummaryCard label="Active Departments" value={summary.active_departments} icon={UserCheck} color="bg-green-500" />
         <SummaryCard label="Production Departments" value={summary.production_departments} icon={Layers} color="bg-indigo-500" />
         <SummaryCard label="Support Departments" value={summary.support_departments} icon={Building2} color="bg-amber-500" />
-        <SummaryCard label="Employees" value={summary.total_employees} icon={Users} color="bg-[var(--color-success-soft)]0" />
+        <SummaryCard label="Employees" value={summary.total_employees} icon={UsersRound} color="bg-violet-500" />
         <SummaryCard label="Machines" value={summary.total_machines} icon={Cpu} color="bg-slate-600" />
       </div>
 
       <ListPageCard>
         <ListPageCardBody>
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 no-print">
           <div className="flex flex-wrap gap-2">
             <SearchBar
               value={filters.name}
@@ -339,35 +532,47 @@ export default function DepartmentManagement() {
               placeholder="Search"
               className="min-w-[200px]"
             />
-            <Button variant="secondary" type="button" onClick={() => setShowAdvanced(!showAdvanced)}>
+            <Button
+              variant="secondary"
+              type="button"
+              onClick={() => {
+                setDraftFilters(filters);
+                setShowAdvanced(!showAdvanced);
+              }}
+            >
               {showAdvanced ? "Hide Filters" : "Advanced Filters"}
             </Button>
           </div>
         </div>
 
         {showAdvanced && (
-          <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
-            <input placeholder="Department Code" value={filters.code} onChange={(e) => setFilters((f) => ({ ...f, code: e.target.value }))} className="ui-input" />
-            <select value={filters.department_type} onChange={(e) => setFilters((f) => ({ ...f, department_type: e.target.value }))} className="ui-select">
+          <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 no-print">
+            <input placeholder="Department Code" value={draftFilters.code} onChange={(e) => setDraftFilters((f) => ({ ...f, code: e.target.value }))} className="ui-input" />
+            <select value={draftFilters.department_type} onChange={(e) => setDraftFilters((f) => ({ ...f, department_type: e.target.value }))} className="ui-select">
               <option value="">Department Type</option>
               {DEPARTMENT_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
             </select>
-            <input placeholder="Manager" value={filters.manager} onChange={(e) => setFilters((f) => ({ ...f, manager: e.target.value }))} className="ui-input" />
-            <select value={filters.plant} onChange={(e) => setFilters((f) => ({ ...f, plant: e.target.value }))} className="ui-select">
+            <input placeholder="Manager" value={draftFilters.manager} onChange={(e) => setDraftFilters((f) => ({ ...f, manager: e.target.value }))} className="ui-input" />
+            <select value={draftFilters.plant} onChange={(e) => setDraftFilters((f) => ({ ...f, plant: e.target.value }))} className="ui-select">
               <option value="">Plant</option>
               {PLANTS.map((p) => <option key={p} value={p}>{p}</option>)}
             </select>
-            <select value={filters.branch} onChange={(e) => setFilters((f) => ({ ...f, branch: e.target.value }))} className="ui-select">
+            <select value={draftFilters.branch} onChange={(e) => setDraftFilters((f) => ({ ...f, branch: e.target.value }))} className="ui-select">
               <option value="">Branch</option>
               {BRANCHES.map((b) => <option key={b} value={b}>{b}</option>)}
             </select>
-            <select value={filters.status} onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value }))} className="ui-select">
+            <select value={draftFilters.status} onChange={(e) => setDraftFilters((f) => ({ ...f, status: e.target.value }))} className="ui-select">
               <option value="">Status</option>
               {DEPARTMENT_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
-            <button type="button" onClick={() => setFilters(defaultFilters)} className="ui-link-clear self-center">
-              Clear
-            </button>
+            <div className="flex items-center gap-2 self-end sm:col-span-2 lg:col-span-4 xl:col-span-1">
+              <Button variant="primary" type="button" onClick={handleApplyFilters}>
+                Apply Filters
+              </Button>
+              <Button variant="secondary" type="button" onClick={handleClearFilters}>
+                Clear
+              </Button>
+            </div>
           </div>
         )}
 
@@ -380,7 +585,7 @@ export default function DepartmentManagement() {
         </ListPageCardBody>
       </ListPageCard>
 
-      <div className="flex flex-wrap gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-4 py-3">
+      <div className="flex flex-wrap gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-4 py-3 no-print">
         {WORKFLOW_STEPS.map((step, i) => (
           <span key={step} className="flex items-center gap-2 text-xs text-[var(--color-text-muted)]">
             <span className="font-semibold text-[var(--color-primary)]">{step}</span>
@@ -389,7 +594,7 @@ export default function DepartmentManagement() {
         ))}
       </div>
 
-      <ListPageCard>
+      <ListPageCard className="no-print">
         <ListPageCardBody>
         <h3 className="mb-3 text-sm font-bold text-[var(--color-text)]">Reports</h3>
         <div className="flex flex-wrap gap-2">
@@ -419,7 +624,21 @@ export default function DepartmentManagement() {
           onSave={handleSave}
         />
       )}
+
+      <ConfirmDialog
+        open={Boolean(deactivateTarget)}
+        title="Deactivate department"
+        message={`Are you sure you want to deactivate ${deactivateTarget?.name || "this department"}?`}
+        confirmLabel="Deactivate"
+        loading={deactivating}
+        loadingLabel="Deactivating..."
+        onConfirm={handleDeactivateConfirm}
+        onClose={() => {
+          if (!deactivating) setDeactivateTarget(null);
+        }}
+      />
     </div>
     </ListPageShell>
+    </>
   );
 }

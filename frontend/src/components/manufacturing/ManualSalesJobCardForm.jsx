@@ -99,7 +99,6 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
   const {
     customers,
     products,
-    salesOrders,
     loading: mastersLoading,
     error: mastersError,
     reloadCustomers,
@@ -118,7 +117,6 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
   const [companyProfile, setCompanyProfile] = useState(null);
   const [dirty, setDirty] = useState(false);
   const [selectedCustomerId, setSelectedCustomerId] = useState("");
-  const [selectedSalesOrderId, setSelectedSalesOrderId] = useState("");
   const [workflowStatus, setWorkflowStatus] = useState("SAVED");
   const [recordVersion, setRecordVersion] = useState(null);
   const [readOnlySales, setReadOnlySales] = useState(false);
@@ -193,7 +191,6 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
       }),
     [salesOrdersForSelect]
   );
-
   const customerSelectValue = useMemo(() => {
     if (selectedCustomerId) return selectedCustomerId;
     const name = form.customer.customer_name?.trim();
@@ -203,16 +200,6 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
     );
     return match ? String(match.id) : name;
   }, [selectedCustomerId, form.customer.customer_name, customers]);
-
-  const salesOrderSelectValue = useMemo(() => {
-    if (selectedSalesOrderId) return selectedSalesOrderId;
-    const soNo = form.header.sales_order_no?.trim();
-    if (!soNo) return "";
-    const match = salesOrders.find(
-      (o) => String(o.order_number || "").toLowerCase() === soNo.toLowerCase()
-    );
-    return match ? String(match.id) : soNo;
-  }, [selectedSalesOrderId, form.header.sales_order_no, salesOrders]);
 
   const lineTotals = useMemo(() => manualFormLineTotals(form), [form.product_lines]);
 
@@ -384,7 +371,6 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
     },
     [salesOrders, products, form.product_lines, resolveCustomerForOrder]
   );
-
   const handleProductSelect = useCallback(
     (index, val) => {
       if (val === ADD_PRODUCT_VALUE) {

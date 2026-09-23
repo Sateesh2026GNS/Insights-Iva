@@ -689,9 +689,7 @@ export default function JobCardQueueTable({
                             icon: <Download className="h-4 w-4" />,
                             onClick: () => downloadSalesJobCardPdf(row, user),
                           },
-                          (row.is_manual
-                            ? manualJobCardCanDelete(row, { canDelete })
-                            : canDelete && onDelete)
+                          (Boolean(onDelete) && (row.is_manual ? manualJobCardCanDelete(row, { canDelete }) : Boolean(canDelete)))
                             ? {
                                 label: "Delete",
                                 icon: <Trash2 className="h-4 w-4" />,

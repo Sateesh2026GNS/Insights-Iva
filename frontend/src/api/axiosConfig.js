@@ -10,8 +10,11 @@ import { checkSessionStatus, isPrimaryTabAlive } from "../utils/sessionManager";
 /** Resolve API base URL. Empty string = same-origin (Docker/nginx proxy). */
 export function getApiBaseURL() {
   if (import.meta.env.VITE_API_BASE_URL !== undefined && String(import.meta.env.VITE_API_BASE_URL || "").trim()) {
-    const raw = String(import.meta.env.VITE_API_BASE_URL || "").trim();
-    return raw.replace(/\/+$/, "");
+    let raw = String(import.meta.env.VITE_API_BASE_URL || "").trim().replace(/\/+$/, "");
+    if (raw === "http://localhost:8000") {
+      raw = "http://127.0.0.1:8000";
+    }
+    return raw;
   }
   if (typeof window !== "undefined") {
     const hostname = window.location.hostname || "";

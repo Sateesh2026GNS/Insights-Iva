@@ -558,7 +558,7 @@ export default function StoreAgentChatPanel({ pageContextLabel = "", floatingSta
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Ask in English, Telugu, or Hindi…"
+                placeholder="Ask…"
                 className="flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
                 disabled={loading}
               />

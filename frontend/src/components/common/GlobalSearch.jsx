@@ -171,7 +171,13 @@ function useDropdownPosition(wrapRef, active) {
   return style;
 }
 
-export default function GlobalSearch({ onSelect, placeholderKey = "common.search", className = "" }) {
+export default function GlobalSearch({
+  onSelect,
+  onClose,
+  placeholderKey = "common.search",
+  className = "",
+  autoFocus = false,
+}) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -183,6 +189,12 @@ export default function GlobalSearch({ onSelect, placeholderKey = "common.search
   const inputRef = useRef(null);
   const listRef = useRef(null);
   const wrapRef = useRef(null);
+
+  useEffect(() => {
+    if (autoFocus) {
+      inputRef.current?.focus();
+    }
+  }, [autoFocus]);
 
   const trimmedQuery = query.trim();
   const trimmedDebounced = debouncedQuery.trim();
@@ -263,11 +275,12 @@ export default function GlobalSearch({ onSelect, placeholderKey = "common.search
       if (!wrapRef.current?.contains(e.target) && !listRef.current?.contains(e.target)) {
         setOpen(false);
         setFocus(false);
+        onClose?.();
       }
     };
     document.addEventListener("mousedown", onPointerDown);
     return () => document.removeEventListener("mousedown", onPointerDown);
-  }, []);
+  }, [onClose]);
 
   useEffect(() => {
     const onKeyDown = (e) => {
@@ -288,6 +301,7 @@ export default function GlobalSearch({ onSelect, placeholderKey = "common.search
         setOpen(false);
         setFocus(false);
         inputRef.current?.blur();
+        onClose?.();
         return;
       }
       if (document.activeElement !== inputRef.current || !showDropdown || isSearching) return;

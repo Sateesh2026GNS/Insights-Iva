@@ -29,7 +29,7 @@ export default function Navbar({ onOpenSidebar, onToggleSidebar, sidebarCollapse
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const [showProfile, setShowProfile] = useState(false);
-  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const [logoutOpen, setLogoutOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -77,7 +77,7 @@ export default function Navbar({ onOpenSidebar, onToggleSidebar, sidebarCollapse
 
   useEffect(() => {
     setShowProfile(false);
-    setMobileSearchOpen(false);
+    setSearchOpen(false);
   }, [location.pathname]);
 
   const toggleFullscreen = async () => {
@@ -140,7 +140,7 @@ export default function Navbar({ onOpenSidebar, onToggleSidebar, sidebarCollapse
               <Menu className="h-5 w-5" />
             </button>
           ) : null}
-          <div className="app-navbar__title-block">
+          <div className="app-navbar__title-block min-w-0 flex-1">
             <AppPageTitle title={pageTitle} />
             <div className="mt-2 hidden lg:block">
               <Breadcrumbs compact />
@@ -148,34 +148,29 @@ export default function Navbar({ onOpenSidebar, onToggleSidebar, sidebarCollapse
           </div>
         </div>
 
-        {/* Center: global search */}
+        {/* Center: global search (only shown when search icon is clicked) */}
         <div className="app-navbar__center">
-          <GlobalSearch />
+          {searchOpen ? (
+            <GlobalSearch
+              onSelect={() => setSearchOpen(false)}
+              onClose={() => setSearchOpen(false)}
+              autoFocus
+            />
+          ) : null}
         </div>
 
-        {/* Right: notifications, fullscreen, search toggle, profile */}
+        {/* Right: search toggle, notifications, fullscreen, profile */}
         <div className="app-navbar__actions">
-          <div className="relative flex flex-col items-end lg:hidden">
-            <button
-              type="button"
-              onClick={() => setMobileSearchOpen((prev) => !prev)}
-              className="app-navbar__icon-btn"
-              title={mobileSearchOpen ? "Close search" : "Search"}
-              aria-label={mobileSearchOpen ? "Close search" : "Search"}
-              aria-expanded={mobileSearchOpen}
-              aria-controls="app-navbar-mobile-search"
-            >
-              {mobileSearchOpen ? <X className="h-4 w-4" /> : <Search className="h-4 w-4" />}
-            </button>
-            {mobileSearchOpen ? (
-              <div
-                id="app-navbar-mobile-search"
-                className="app-navbar__mobile-search-popover"
-              >
-                <GlobalSearch onSelect={() => setMobileSearchOpen(false)} autoFocus />
-              </div>
-            ) : null}
-          </div>
+          <button
+            type="button"
+            onClick={() => setSearchOpen((prev) => !prev)}
+            className="app-navbar__icon-btn"
+            title={searchOpen ? "Close search" : "Search"}
+            aria-label={searchOpen ? "Close search" : "Search"}
+            aria-expanded={searchOpen}
+          >
+            {searchOpen ? <X className="h-4 w-4" /> : <Search className="h-4 w-4" />}
+          </button>
 
           <NotificationBell />
 
@@ -236,6 +231,16 @@ export default function Navbar({ onOpenSidebar, onToggleSidebar, sidebarCollapse
         </div>
       </div>
 
+      {/* Mobile expandable search */}
+      {searchOpen ? (
+        <div className="app-navbar__mobile-search md:hidden">
+          <GlobalSearch
+            onSelect={() => setSearchOpen(false)}
+            onClose={() => setSearchOpen(false)}
+            autoFocus
+          />
+        </div>
+      ) : null}
       {/* Mobile single-line breadcrumb strip */}
       <div className="overflow-x-auto whitespace-nowrap scrollbar-none px-3.5 py-1 bg-black/10 border-t border-white/10 lg:hidden text-xs">
         <Breadcrumbs compact />

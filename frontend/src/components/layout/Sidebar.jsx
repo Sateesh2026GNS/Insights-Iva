@@ -466,14 +466,14 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
   const navItemPad = collapsed ? "justify-center px-2" : "px-3";
 
   const topLinkClass = ({ isActive }) =>
-    `relative flex items-center gap-2.5 rounded-lg py-2.5 text-sm transition-all ${navItemPad} ${
+    `relative flex items-center gap-2.5 rounded-lg py-2.5 min-h-[42px] text-sm transition-all ${navItemPad} ${
       isActive
         ? "bg-[var(--color-nav-active)] font-medium text-white"
         : "text-slate-300 hover:bg-white/10 hover:text-white"
     }`;
 
   const childLinkClass = ({ isActive }) =>
-    `group relative flex w-full items-center rounded-lg px-3 py-2 text-[13px] transition-colors ${
+    `group relative flex w-full items-center rounded-lg px-3 py-2.5 min-h-[40px] text-[13px] transition-colors ${
       isActive
         ? "bg-white/15 font-semibold text-white"
         : "text-slate-300 hover:bg-white/10 hover:text-white"
@@ -505,7 +505,7 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
   };
 
   const nestedLinkClass = ({ isActive }, opts = {}) => {
-    return `group relative flex w-full items-center gap-2.5 rounded-lg px-3 py-1.5 text-[12.5px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 ${
+    return `group relative flex w-full items-center gap-2.5 rounded-lg px-3 py-2 min-h-[38px] text-[12.5px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 ${
       collapsed ? "justify-center px-2" : ""
     } ${
       isActive
@@ -520,7 +520,7 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
 
   const nestedGroupClass = (isOpen, hasActive) =>
     `relative flex w-full items-center text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 ${
-      collapsed ? "justify-center px-2 py-2 rounded-lg" : "justify-between gap-2 px-3 py-2"
+      collapsed ? "justify-center px-2 py-2 rounded-lg" : "justify-between gap-2 px-3 py-2.5 min-h-[40px]"
     } ${
       isOpen
         ? "rounded-t-lg rounded-b-none bg-white/15 text-white font-semibold"
@@ -531,7 +531,7 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
 
   const sectionButtonClass = (isOpen, hasActive) =>
     `relative flex w-full items-center text-sm font-medium transition-all ${navItemPad} ${
-      collapsed ? "justify-center rounded-xl py-2.5" : "justify-between gap-2 py-2.5"
+      collapsed ? "justify-center rounded-xl py-2.5" : "justify-between gap-2 py-2.5 min-h-[42px]"
     } ${
       isOpen
         ? "rounded-t-xl rounded-b-none bg-white/15 text-white font-semibold"
@@ -540,7 +540,7 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
         : "rounded-xl text-slate-300 hover:bg-white/10 hover:text-white"
     }`;
 
-  const actionButtonClass = `flex w-full items-center rounded-lg py-2.5 text-sm text-slate-300 transition-colors hover:bg-white/10 hover:text-white ${navItemPad} ${
+  const actionButtonClass = `flex w-full items-center rounded-lg py-2.5 min-h-[42px] text-sm text-slate-300 transition-colors hover:bg-white/10 hover:text-white ${navItemPad} ${
     collapsed ? "justify-center" : "gap-2.5"
   }`;
 

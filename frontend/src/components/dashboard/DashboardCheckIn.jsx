@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Clock, LogOut } from "lucide-react";
 
 import useAuth from "../../hooks/useAuth";
@@ -67,17 +67,6 @@ export default function DashboardCheckIn() {
     window.addEventListener("attendance-updated", syncState);
     return () => window.removeEventListener("attendance-updated", syncState);
   }, [syncState]);
-
-  useEffect(() => {
-    if (!checkedIn || !startTs) return undefined;
-    const interval = window.setInterval(() => {
-      const diff = Math.max(0, Math.floor((Date.now() - startTs) / 1000));
-      setElapsed(diff);
-    }, 1000);
-    return () => window.clearInterval(interval);
-  }, [checkedIn, startTs]);
-
-  if (!user) return null;
 
   const displayName = user?.full_name || user?.name || "User";
   const displayRole = user?.role_name || user?.role || "Employee";
@@ -150,7 +139,13 @@ export default function DashboardCheckIn() {
     addToast(`Checked in successfully at ${timeStr}`, "success");
   };
 
-  const handleCheckOut = async () => {
+  const autoCheckedOutRef = useRef(false);
+
+  useEffect(() => {
+    autoCheckedOutRef.current = false;
+  }, [startTs]);
+
+  const handleCheckOut = useCallback(async (customElapsed) => {
     const now = Date.now();
     const today = new Date().toISOString().slice(0, 10);
     const timeStr = new Date(now).toLocaleTimeString("en-US", {
@@ -159,10 +154,24 @@ export default function DashboardCheckIn() {
       hour12: true,
     });
 
-    const finalSecs = elapsed;
-    const hoursPart = Math.floor(finalSecs / 3600);
-    const minsPart = Math.floor((finalSecs % 3600) / 60);
-    const duration = `${String(hoursPart).padStart(2, "0")} hrs ${String(minsPart).padStart(2, "0")} min`;
+    const finalSecs = customElapsed !== undefined ? customElapsed : elapsed;
+    const SHIFT_LIMIT_SECS = 9 * 3600; // 9 hours limit
+
+    let regularSecs = finalSecs;
+    let overtimeSecs = 0;
+    if (finalSecs > SHIFT_LIMIT_SECS) {
+      regularSecs = SHIFT_LIMIT_SECS;
+      overtimeSecs = finalSecs - SHIFT_LIMIT_SECS;
+    }
+
+    const regH = Math.floor(regularSecs / 3600);
+    const regM = Math.floor((regularSecs % 3600) / 60);
+    const otH = Math.floor(overtimeSecs / 3600);
+    const otM = Math.floor((overtimeSecs % 3600) / 60);
+
+    const regStr = `${String(regH).padStart(2, "0")} hrs ${String(regM).padStart(2, "0")} min`;
+    const otStr = overtimeSecs > 0 ? `${String(otH).padStart(2, "0")} hrs ${String(otM).padStart(2, "0")} min` : "00 hrs 00 min";
+    const duration = overtimeSecs > 0 ? `${regStr} (+ ${otStr} OT)` : regStr;
 
     const session = getCheckInSession(user);
     const inTime = session?.checkInTime || checkInTime || timeStr;
@@ -192,6 +201,8 @@ export default function DashboardCheckIn() {
         checkedIn: false,
         checkedOut: true,
         finalElapsed: finalSecs,
+        regularSecs,
+        overtimeSecs,
         date: today,
         checkInTime: inTime,
         checkOutTime: timeStr,
@@ -210,6 +221,7 @@ export default function DashboardCheckIn() {
       check_in: inTime,
       check_out: timeStr,
       working_hours: duration,
+      overtime_hours: otStr,
       status: "present",
     });
 
@@ -222,8 +234,24 @@ export default function DashboardCheckIn() {
       // Local state is authoritative
     }
 
-    addToast(`Checked out at ${timeStr} (${duration})`, "success");
-  };
+    const toastMsg = overtimeSecs > 0
+      ? `Shift completed (9 hrs standard shift + ${otStr} Overtime calculated)`
+      : `Checked out at ${timeStr} (${duration})`;
+    addToast(toastMsg, "success");
+  }, [elapsed, checkInTime, user, displayName, displayRole, addToast]);
+
+  useEffect(() => {
+    if (!checkedIn || !startTs) return undefined;
+    const interval = window.setInterval(() => {
+      const diff = Math.max(0, Math.floor((Date.now() - startTs) / 1000));
+      setElapsed(diff);
+      if (diff >= 32400 && !autoCheckedOutRef.current) {
+        autoCheckedOutRef.current = true;
+        handleCheckOut(diff);
+      }
+    }, 1000);
+    return () => window.clearInterval(interval);
+  }, [checkedIn, startTs, handleCheckOut]);
 
   return (
     <div className="flex flex-col gap-3 rounded-xl border border-[var(--color-border-soft)] bg-[var(--color-surface)] p-3.5 shadow-xs transition sm:flex-row sm:items-center sm:justify-between sm:p-4">
@@ -259,17 +287,29 @@ export default function DashboardCheckIn() {
       <div className="flex flex-wrap items-center gap-3 sm:justify-end">
         {checkedIn ? (
           <>
-            <div className="flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300">
-              <span className="relative flex h-2.5 w-2.5">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
-              </span>
-              <span className="font-mono text-xs tabular-nums">{formatTimer(elapsed)}</span>
-            </div>
+            {elapsed >= 32400 ? (
+              <div className="flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800 dark:bg-amber-950/50 dark:text-amber-300">
+                <span className="relative flex h-2.5 w-2.5">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75" />
+                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-amber-500" />
+                </span>
+                <span className="font-mono text-xs tabular-nums">
+                  09:00:00 (+{formatTimer(elapsed - 32400)} OT)
+                </span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300">
+                <span className="relative flex h-2.5 w-2.5">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                </span>
+                <span className="font-mono text-xs tabular-nums">{formatTimer(elapsed)}</span>
+              </div>
+            )}
 
             <button
               type="button"
-              onClick={handleCheckOut}
+              onClick={() => handleCheckOut()}
               className="inline-flex items-center gap-2 rounded-full bg-rose-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-rose-700 active:scale-95"
             >
               <LogOut className="h-4 w-4" />

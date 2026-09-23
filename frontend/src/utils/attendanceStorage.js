@@ -36,9 +36,10 @@ export function saveLiveAttendanceRecord(record) {
       list[idx] = {
         ...list[idx],
         ...record,
-        check_in: record.check_in || list[idx].check_in,
-        check_out: record.check_out || list[idx].check_out,
-        working_hours: record.working_hours || list[idx].working_hours,
+        check_in: record.check_in !== undefined ? record.check_in : list[idx].check_in,
+        check_out: record.check_out !== undefined ? record.check_out : list[idx].check_out,
+        working_hours: record.working_hours !== undefined ? record.working_hours : list[idx].working_hours,
+        overtime_hours: record.overtime_hours !== undefined ? record.overtime_hours : list[idx].overtime_hours,
       };
     } else {
       list.unshift({

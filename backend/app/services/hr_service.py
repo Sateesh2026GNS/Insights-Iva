@@ -160,10 +160,11 @@ def record_clock_in(
         )
     ).first()
     if existing:
-        if existing.clock_in is not None:
-            # Preserve existing clock-in time and prevent overwrite
+        if existing.clock_in is not None and existing.clock_out is None:
+            # Active ongoing session
             return existing
         existing.clock_in = datetime.utcnow()
+        existing.clock_out = None
         existing.status = "present"
         try:
             db.commit()
@@ -187,7 +188,7 @@ def record_clock_in(
         employee_id=emp_id,
         record_date=d,
         clock_in=datetime.utcnow(),
-        capacity_hours=8.0,
+        capacity_hours=9.0,
         status="present",
     )
     try:

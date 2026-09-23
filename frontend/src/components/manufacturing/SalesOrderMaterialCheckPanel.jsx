@@ -99,7 +99,10 @@ export default function SalesOrderMaterialCheckPanel({
     try {
       const res = await submitMaterialCheck(orderId, {
         notes: notes.trim() || null,
-        lines: lines.map((ln) => ({ id: ln.id })),
+        lines: lines.map((ln) => ({
+          id: ln.id,
+          available_qty: ln.available_qty === "" || ln.available_qty == null ? 0 : Number(ln.available_qty),
+        })),
       });
       const data = res?.data ?? res;
       addToast(
@@ -191,7 +194,41 @@ export default function SalesOrderMaterialCheckPanel({
                   </td>
                   <td>{ln.uom || "—"}</td>
                   <td className="text-right tabular-nums">
-                    {Number(ln.available_qty || 0).toLocaleString("en-IN")}
+                    {canEdit && !isCompleted ? (
+                      <input
+                        type="number"
+                        min="0"
+                        step="any"
+                        className="ui-input ui-input--sm w-24 text-right"
+                        value={ln.available_qty ?? ""}
+                        placeholder="0"
+                        onChange={(e) => {
+                          const valStr = e.target.value;
+                          const avail = valStr === "" ? "" : Math.max(0, Number(valStr) || 0);
+                          const req = Number(ln.required_qty || 0);
+                          const availNum = Number(avail || 0);
+                          const shortage = Math.max(0, req - availNum);
+                          let status = "not_available";
+                          if (shortage <= 0) status = "available";
+                          else if (availNum > 0) status = "partially_available";
+
+                          setLines((rows) =>
+                            rows.map((r) =>
+                              r.id === ln.id
+                                ? {
+                                    ...r,
+                                    available_qty: avail,
+                                    shortage_qty: shortage,
+                                    availability_status: status,
+                                  }
+                                : r
+                            )
+                          );
+                        }}
+                      />
+                    ) : (
+                      Number(ln.available_qty || 0).toLocaleString("en-IN")
+                    )}
                   </td>
                   <td className="text-right tabular-nums text-[var(--color-danger)]">
                     {Number(ln.shortage_qty || 0) > 0
