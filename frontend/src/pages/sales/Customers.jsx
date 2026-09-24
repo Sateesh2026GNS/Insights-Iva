@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   ChevronLeft,
   ChevronRight,
+  Eye,
   MoreHorizontal,
   Pencil,
   Plus,
@@ -19,6 +20,7 @@ import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/
 import EmptyState from "../../components/common/EmptyState";
 import { AsyncPageBody, NoResultsState } from "../../components/common/states";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
+import CustomerDetailModal from "../../components/sales/CustomerDetailModal";
 import CustomersEmptyState from "../../components/sales/CustomersEmptyState";
 import CustomersViewSelector from "../../components/sales/CustomersViewSelector";
 import { useNetworkStatus } from "../../context/NetworkStatusContext";
@@ -65,6 +67,7 @@ export default function Customers() {
   const [pageSize, setPageSize] = useState(20);
   const [deleting, setDeleting] = useState(null);
   const [deletingBusy, setDeletingBusy] = useState(false);
+  const [viewing, setViewing] = useState(null);
   const [openMenu, setOpenMenu] = useState(null);
   const [overflowOpen, setOverflowOpen] = useState(false);
   const overflowRef = useRef(null);
@@ -133,6 +136,33 @@ export default function Customers() {
       if (customer?.id) navigate(`/sales/customers/${customer.id}/edit`);
     },
     [navigate]
+  );
+
+  const openView = useCallback((customer) => {
+    if (customer) setViewing(customer);
+  }, []);
+
+  const customerRowMenuItems = useCallback(
+    (c) => [
+      {
+        label: "View",
+        icon: <Eye className="h-4 w-4" />,
+        onClick: () => openView(c),
+      },
+      {
+        label: "Edit",
+        icon: <Pencil className="h-4 w-4" />,
+        onClick: () => openEdit(c),
+      },
+      { divider: true },
+      {
+        label: "Delete",
+        icon: <Trash2 className="h-4 w-4" />,
+        danger: true,
+        onClick: () => setDeleting(c),
+      },
+    ],
+    [openEdit, openView]
   );
 
   const viewFiltered = useMemo(
@@ -337,20 +367,8 @@ export default function Customers() {
                             rowId={c.id}
                             openMenu={openMenu}
                             setOpenMenu={setOpenMenu}
-                            items={[
-                              {
-                                label: "Edit",
-                                icon: <Pencil className="h-4 w-4" />,
-                                onClick: () => openEdit(c),
-                              },
-                              { divider: true },
-                              {
-                                label: "Delete",
-                                icon: <Trash2 className="h-4 w-4" />,
-                                danger: true,
-                                onClick: () => setDeleting(c),
-                              },
-                            ]}
+                            ariaLabel={`Actions for ${c.company || c.name || "customer"}`}
+                            items={customerRowMenuItems(c)}
                           />
                         </div>
                       </div>
@@ -427,20 +445,8 @@ export default function Customers() {
                                 rowId={c.id}
                                 openMenu={openMenu}
                                 setOpenMenu={setOpenMenu}
-                                items={[
-                                  {
-                                    label: "Edit",
-                                    icon: <Pencil className="h-4 w-4" />,
-                                    onClick: () => openEdit(c),
-                                  },
-                                  { divider: true },
-                                  {
-                                    label: "Delete",
-                                    icon: <Trash2 className="h-4 w-4" />,
-                                    danger: true,
-                                    onClick: () => setDeleting(c),
-                                  },
-                                ]}
+                                ariaLabel={`Actions for ${c.company || c.name || "customer"}`}
+                                items={customerRowMenuItems(c)}
                               />
                             </div>
                           </td>
@@ -526,6 +532,25 @@ export default function Customers() {
         onClose={() => !deletingBusy && setDeleting(null)}
         onConfirm={confirmDelete}
       />
+
+      {viewing ? (
+        <CustomerDetailModal
+          customer={{
+            ...viewing,
+            company: viewing.company || viewing.name,
+            contact_person: viewing.contact_person || viewing.name,
+          }}
+          onClose={() => setViewing(null)}
+          onEdit={(c) => {
+            setViewing(null);
+            openEdit(c);
+          }}
+          onDelete={(c) => {
+            setViewing(null);
+            setDeleting(c);
+          }}
+        />
+      ) : null}
     </ListPageShell>
   );
 }

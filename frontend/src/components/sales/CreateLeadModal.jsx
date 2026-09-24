@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { X, Save } from "lucide-react";
-import { createLead } from "../../api/salesApi";
+import { createLead, updateLead } from "../../api/salesApi";
 import { useToast } from "../../context/ToastContext";
 import { LEAD_SOURCES } from "../../data/salesMasterData";
 import Button from "../common/Button";
@@ -9,22 +9,49 @@ import { apiErrorMessage } from "../../utils/apiError";
 
 import { inputMtClass as inputClass } from "../../design-system/classes";
 
-export default function CreateLeadModal({ isOpen, onClose, onSuccess }) {
+const emptyLeadForm = () => ({
+  name: "",
+  company: "",
+  phone: "",
+  email: "",
+  source: "Web Form",
+  sales_executive: "Vikram Sharma",
+  priority: "Medium",
+  status: "New",
+  estimated_value: "",
+  notes: "",
+});
+
+function leadToForm(lead) {
+  if (!lead) return emptyLeadForm();
+  const cap = (s) => (s ? String(s).charAt(0).toUpperCase() + String(s).slice(1).toLowerCase() : "");
+  return {
+    name: lead.name || lead.customer_name || "",
+    company: lead.company || "",
+    phone: lead.phone || lead.contact || "",
+    email: lead.email || "",
+    source: lead.source || "Web Form",
+    sales_executive: lead.sales_executive || "Vikram Sharma",
+    priority: cap(lead.priority) || "Medium",
+    status: cap(lead.status) || "New",
+    estimated_value: lead.opportunity_value ?? lead.estimated_value ?? "",
+    notes: lead.notes || "",
+  };
+}
+
+export default function CreateLeadModal({ isOpen, onClose, onSuccess, leadToEdit = null }) {
   const { addToast } = useToast();
+  const isEdit = Boolean(leadToEdit && typeof leadToEdit.id === "number");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [form, setForm] = useState({
-    name: "",
-    company: "",
-    phone: "",
-    email: "",
-    source: "Web Form",
-    sales_executive: "Vikram Sharma",
-    priority: "Medium",
-    status: "New",
-    estimated_value: "",
-    notes: "",
-  });
+  const [form, setForm] = useState(emptyLeadForm);
+
+  useEffect(() => {
+    if (isOpen) {
+      setForm(leadToForm(leadToEdit));
+      setError("");
+    }
+  }, [isOpen, leadToEdit]);
 
   if (!isOpen) return null;
 
@@ -68,23 +95,19 @@ export default function CreateLeadModal({ isOpen, onClose, onSuccess }) {
     };
 
     try {
-      const res = await createLead(payload);
-      const created = res?.data || payload;
-      if (addToast) addToast("New lead created successfully!", "success");
-      if (onSuccess) onSuccess(created);
+      if (isEdit) {
+        const res = await updateLead(leadToEdit.id, payload);
+        const updated = res?.data || { ...leadToEdit, ...payload };
+        if (addToast) addToast("Lead updated successfully.", "success");
+        if (onSuccess) onSuccess(updated);
+      } else {
+        const res = await createLead(payload);
+        const created = res?.data || payload;
+        if (addToast) addToast("New lead created successfully!", "success");
+        if (onSuccess) onSuccess(created);
+      }
       onClose();
-      setForm({
-        name: "",
-        company: "",
-        phone: "",
-        email: "",
-        source: "Web Form",
-        sales_executive: "Vikram Sharma",
-        priority: "Medium",
-        status: "New",
-        estimated_value: "",
-        notes: "",
-      });
+      setForm(emptyLeadForm());
     } catch (err) {
       const message = apiErrorMessage(err, "Failed to create lead.");
       setError(message);
@@ -109,8 +132,12 @@ export default function CreateLeadModal({ isOpen, onClose, onSuccess }) {
       >
         <div className="flex items-start justify-between border-b border-slate-100 pb-3">
           <div>
-            <h3 className="text-lg font-bold text-slate-900">Create New Lead</h3>
-            <p className="text-xs text-slate-500 mt-0.5">Register a new prospective client entry into the CRM pipeline.</p>
+            <h3 className="text-lg font-bold text-slate-900">{isEdit ? "Edit Lead" : "Create New Lead"}</h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              {isEdit
+                ? "Update lead details in the CRM pipeline."
+                : "Register a new prospective client entry into the CRM pipeline."}
+            </p>
           </div>
           <button
             type="button"
@@ -260,7 +287,7 @@ export default function CreateLeadModal({ isOpen, onClose, onSuccess }) {
               Cancel
             </button>
             <Button type="submit" variant="primary" disabled={saving} loading={saving} leftIcon={!saving ? <Save className="h-4 w-4" aria-hidden /> : undefined}>
-              Save Lead
+              {isEdit ? "Save Changes" : "Save Lead"}
             </Button>
           </div>
         </form>

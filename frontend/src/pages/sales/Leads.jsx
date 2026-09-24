@@ -18,16 +18,19 @@ import {
 } from "../../components/sales/salesListDesignSystem";
 import CreateLeadModal from "../../components/sales/CreateLeadModal";
 import LeadDetailModal from "../../components/sales/LeadDetailModal";
+import LeadRowActionsMenu from "../../components/sales/LeadRowActionsMenu";
+import ConfirmationDialog from "../../components/common/ConfirmationDialog";
 import { useToast } from "../../context/ToastContext";
-import useTenantId from "../../hooks/useTenantId";
 import usePageRefresh from "../../hooks/usePageRefresh";
+import usePermissions from "../../hooks/usePermissions";
 import {
   convertLeadToQuotation,
-  createLead,
+  deleteLead,
   getLeadSummary,
   getLeadsEnriched,
   updateLeadStatus,
 } from "../../api/salesApi";
+import { apiErrorMessage } from "../../utils/apiError";
 import {
   KANBAN_COLUMNS,
   LEAD_INDUSTRIES,
@@ -65,13 +68,13 @@ function leadMatchesSearch(row, query) {
 
 export default function Leads() {
   const { addToast } = useToast();
-  const tenantId = useTenantId();
+  const { isAdmin, can, canAction } = usePermissions();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [rows, setRows] = useState([]);
   const [summaryState, setSummaryState] = useState(null);
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const openPipelineOnly = searchParams.get("open") === "1";
   const [filters, setFilters] = useState(defaultFilters);
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -79,6 +82,24 @@ export default function Leads() {
   const [view, setView] = useState("table");
   const [selected, setSelected] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [editingLead, setEditingLead] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [openMenu, setOpenMenu] = useState(null);
+  const [convertingLeadId, setConvertingLeadId] = useState(null);
+
+  const canViewLeads = can("sales");
+  const canEditLeads = isAdmin || canAction("sales", "update") || can("sales");
+  const canDeleteLeads = isAdmin || canAction("sales", "delete");
+  const canCreateQuotation = isAdmin || canAction("sales", "create") || can("sales");
+
+  useEffect(() => {
+    if (searchParams.get("create") !== "1") return;
+    setShowCreateModal(true);
+    const next = new URLSearchParams(searchParams);
+    next.delete("create");
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   const load = useCallback(async (isRefresh = false) => {
     if (!isRefresh) setLoading(true);
@@ -196,6 +217,101 @@ export default function Leads() {
     setSelected((prev) => (prev && matchLead(prev) ? { ...prev, status } : prev));
   };
 
+  const handleViewLead = (lead) => setSelected(lead);
+
+  const handleEditLead = (lead) => {
+    if (!canEditLeads) return;
+    if (typeof lead.id !== "number") {
+      addToast("This lead must be saved on the server before it can be edited.", "error");
+      return;
+    }
+    setEditingLead(lead);
+  };
+
+  const handleDeleteLead = (lead) => {
+    if (!canDeleteLeads) return;
+    setDeleteTarget(lead);
+  };
+
+  const confirmDeleteLead = async () => {
+    if (!deleteTarget || typeof deleteTarget.id !== "number") {
+      setDeleteTarget(null);
+      return;
+    }
+    setDeleteLoading(true);
+    try {
+      await deleteLead(deleteTarget.id);
+      setRows((prev) => prev.filter((l) => l.id !== deleteTarget.id));
+      if (selected?.id === deleteTarget.id) setSelected(null);
+      addToast("Lead deleted.", "success");
+      setDeleteTarget(null);
+    } catch (err) {
+      addToast(apiErrorMessage(err, "Could not delete lead."), "error");
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
+  const handleCreateQuotationFromLead = async (lead) => {
+    if (!canCreateQuotation) return;
+    if (typeof lead.id !== "number") {
+      addToast("Save this lead on the server before creating a quotation.", "error");
+      return;
+    }
+    setConvertingLeadId(lead.id);
+    try {
+      const res = await convertLeadToQuotation(lead.id);
+      const quote = res?.data;
+      const quoteId = quote?.id;
+      addToast(quote?.quote_number ? `Quotation ${quote.quote_number} created.` : "Quotation created.", "success");
+      if (quoteId) {
+        navigate(`/sales/quotations/${quoteId}/edit`);
+      } else {
+        navigate("/sales/quotations");
+      }
+    } catch (err) {
+      addToast(apiErrorMessage(err, "Could not create quotation from lead."), "error");
+    } finally {
+      setConvertingLeadId(null);
+    }
+  };
+
+  const handleLeadSaved = (saved) => {
+    if (!saved) {
+      load(true);
+      return;
+    }
+    setRows((prev) => {
+      const idx = prev.findIndex((l) => l.id === saved.id);
+      const normalized = {
+        ...saved,
+        customer_name: saved.customer_name ?? saved.name,
+        contact: saved.contact ?? saved.phone,
+      };
+      if (idx >= 0) {
+        const next = [...prev];
+        next[idx] = { ...next[idx], ...normalized };
+        return next;
+      }
+      return [normalized, ...prev];
+    });
+    setEditingLead(null);
+    load(true);
+  };
+
+  const leadActionMenuProps = {
+    openMenu,
+    setOpenMenu,
+    canView: canViewLeads,
+    canEdit: canEditLeads,
+    canDelete: canDeleteLeads,
+    canCreateQuotation,
+    onView: handleViewLead,
+    onEdit: handleEditLead,
+    onDelete: handleDeleteLead,
+    onCreateQuotation: handleCreateQuotationFromLead,
+  };
+
   const columns = [
     { key: "lead_id", label: "Lead ID", render: (r) => <span className="rounded bg-[var(--color-success-soft)] px-2 py-0.5 font-mono text-xs font-bold text-[var(--color-success)]">{r.lead_id || `LD-${r.id}`}</span> },
     { key: "customer_name", label: "Customer", render: (r) => <span className="font-bold text-[var(--color-text)]">{r.customer_name}</span> },
@@ -209,29 +325,11 @@ export default function Leads() {
     {
       key: "actions",
       label: "Actions",
-      render: (r) => {
-        const isQualified = ["qualified", "converted", "won"].includes(String(r.status || "").toLowerCase());
-        return (
-          <div className="flex items-center gap-2">
-            <Button type="button" variant="ghost" size="sm" onClick={() => setSelected(r)}>
-              View
-            </Button>
-            {isQualified ? (
-              <Button
-                variant="outline"
-                size="sm"
-                to={`/sales/quotations?create=true&customer_name=${encodeURIComponent(r.customer_name || r.company || "")}`}
-              >
-                Create Quote
-              </Button>
-            ) : (
-              <span className={`text-xs font-medium ${salesListTextMuted} cursor-not-allowed`} title="Quotation requires Qualified status">
-                Quote Locked
-              </span>
-            )}
-          </div>
-        );
-      },
+      align: "center",
+      sortable: false,
+      render: (r) => (
+        <LeadRowActionsMenu lead={r} {...leadActionMenuProps} />
+      ),
     },
   ];
 
@@ -438,9 +536,6 @@ export default function Leads() {
                   />
                 ) : (
                   filtered.map((r) => {
-                    const isQualified = ["qualified", "converted", "won"].includes(
-                      String(r.status || "").toLowerCase()
-                    );
                     return (
                       <div
                         key={r.lead_id || r.id}
@@ -489,21 +584,8 @@ export default function Leads() {
                           )}
                         </div>
 
-                        <div className="flex items-center justify-between border-t border-[var(--color-border-soft)] pt-2.5">
-                          <Button type="button" variant="ghost" size="sm" onClick={() => setSelected(r)}>
-                            View 360° Profile
-                          </Button>
-                          {isQualified ? (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              to={`/sales/quotations?create=true&customer_name=${encodeURIComponent(r.customer_name || r.company || "")}`}
-                            >
-                              Create Quote
-                            </Button>
-                          ) : (
-                            <span className={`text-xs font-medium ${salesListTextMuted}`}>Quote Locked</span>
-                          )}
+                        <div className="flex items-center justify-end border-t border-[var(--color-border-soft)] pt-2.5">
+                          <LeadRowActionsMenu lead={r} {...leadActionMenuProps} />
                         </div>
                       </div>
                     );
@@ -555,9 +637,6 @@ export default function Leads() {
                           (col.id === "converted" && (r.status === "converted" || r.status === "won"))
                       )
                       .map((r) => {
-                        const isQualified = ["qualified", "converted", "won"].includes(
-                          String(r.status || "").toLowerCase()
-                        );
                         return (
                           <div
                             key={r.lead_id || r.id}
@@ -577,23 +656,8 @@ export default function Leads() {
                                 {formatInr(r.opportunity_value || r.estimated_value)}
                               </p>
                             )}
-                            <div className="mt-3 flex items-center justify-between border-t border-[var(--color-border-soft)] pt-2 text-xs">
-                              <Button type="button" variant="ghost" size="sm" onClick={() => setSelected(r)}>
-                                View 360°
-                              </Button>
-                              {isQualified ? (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  to={`/sales/quotations?create=true&customer_name=${encodeURIComponent(r.customer_name || r.company || "")}`}
-                                >
-                                  Quote
-                                </Button>
-                              ) : (
-                                <span className={`text-xs font-semibold ${salesListTextMuted} cursor-not-allowed`}>
-                                  Unqualified
-                                </span>
-                              )}
+                            <div className="mt-3 flex items-center justify-end border-t border-[var(--color-border-soft)] pt-2 text-xs">
+                              <LeadRowActionsMenu lead={r} {...leadActionMenuProps} />
                             </div>
                           </div>
                         );
@@ -606,8 +670,35 @@ export default function Leads() {
         </ListPageCardBody>
       </ListPageCard>
 
-      {selected && <LeadDetailModal lead={selected} onClose={() => setSelected(null)} onStatusChange={handleStatus} />}
-      <CreateLeadModal isOpen={showCreateModal} onClose={() => setShowCreateModal(false)} onSuccess={load} />
+      {selected && (
+        <LeadDetailModal
+          lead={selected}
+          onClose={() => setSelected(null)}
+          onStatusChange={handleStatus}
+          converting={convertingLeadId === selected?.id}
+          onConvertToQuotation={handleCreateQuotationFromLead}
+        />
+      )}
+      <CreateLeadModal isOpen={showCreateModal} onClose={() => setShowCreateModal(false)} onSuccess={() => load(true)} />
+      <CreateLeadModal
+        isOpen={Boolean(editingLead)}
+        leadToEdit={editingLead}
+        onClose={() => setEditingLead(null)}
+        onSuccess={handleLeadSaved}
+      />
+      <ConfirmationDialog
+        open={Boolean(deleteTarget)}
+        title="Delete Lead?"
+        message={
+          deleteTarget
+            ? `Are you sure you want to delete ${deleteTarget.customer_name || deleteTarget.company || "this lead"}?`
+            : ""
+        }
+        confirmLabel="Delete"
+        loading={deleteLoading}
+        onConfirm={confirmDeleteLead}
+        onCancel={() => !deleteLoading && setDeleteTarget(null)}
+      />
     </ListPageShell>
   );
 }

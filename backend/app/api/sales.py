@@ -21,6 +21,7 @@ from app.schemas.sales import (
     CustomerRead,
     CustomerUpdate,
     LeadCreate,
+    LeadUpdate,
     LeadActivityCreate,
     LeadRead,
     PaymentCreate,
@@ -45,6 +46,7 @@ from app.schemas.invoice_v2 import (
 from app.services.sales_service import (
     create_customer,
     create_lead,
+    delete_lead,
     create_payment,
     create_quotation,
     create_sales_order,
@@ -59,6 +61,7 @@ from app.services.sales_service import (
     list_quotations,
     list_sales_orders,
     update_customer,
+    update_lead,
     update_lead_status,
     update_payment,
     update_quotation,
@@ -191,6 +194,31 @@ def update_lead_status_endpoint(
     if not lead:
         raise HTTPException(404, "Lead not found")
     return lead
+
+
+@router.patch("/leads/{lead_id}", response_model=LeadRead)
+def update_lead_endpoint(
+    lead_id: int,
+    payload: LeadUpdate,
+    user: User = Depends(require_permission(MODULE)),
+    db: Session = Depends(get_db),
+):
+    lead = update_lead(db, user.tenant_id, lead_id, payload)
+    if not lead:
+        raise HTTPException(404, "Lead not found")
+    return lead
+
+
+@router.delete("/leads/{lead_id}")
+def delete_lead_endpoint(
+    lead_id: int,
+    user: User = Depends(require_permission(MODULE)),
+    db: Session = Depends(get_db),
+):
+    deleted = delete_lead(db, user.tenant_id, lead_id)
+    if not deleted:
+        raise HTTPException(404, "Lead not found")
+    return {"ok": True, "id": lead_id}
 
 
 @router.get("/leads/{lead_id}/activities")

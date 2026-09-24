@@ -2870,6 +2870,103 @@ table > tbody > tr:first-child:has(th) {
   background: var(--color-surface-hover);
 }
 
+/* Mobile shell bottom action group — Dark Mode | Settings | Add | Logout */
+.app-shell-bottom-bar {
+  pointer-events: auto;
+  position: fixed;
+  z-index: 85;
+  left: 50%;
+  bottom: 0;
+  display: none;
+  width: min(100%, 24rem);
+  transform: translateX(-50%);
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 0.25rem;
+  padding: 0.5rem 0.75rem calc(0.5rem + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--color-border);
+  background: color-mix(in srgb, var(--color-surface) 94%, transparent);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 -4px 24px rgba(15, 23, 42, 0.08);
+}
+
+@media (max-width: 1023px) {
+  .app-shell-bottom-bar {
+    display: flex;
+  }
+}
+
+.app-shell-bottom-bar__btn {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 3rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  padding: 0.35rem 0.25rem;
+  border-radius: var(--radius-lg, 0.75rem);
+  color: var(--color-text-secondary);
+  font-size: 0.625rem;
+  font-weight: 600;
+  line-height: 1.1;
+  transition:
+    background-color var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.app-shell-bottom-bar__btn:hover:not(:disabled) {
+  background: var(--color-surface-muted);
+  color: var(--color-text);
+}
+
+.app-shell-bottom-bar__btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--color-focus-ring);
+}
+
+.app-shell-bottom-bar__btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.app-shell-bottom-bar__label {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-shell-create-menu {
+  overflow: hidden;
+  border-radius: var(--radius-lg, 0.75rem);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  padding: 0.35rem 0;
+  box-shadow: var(--shadow-card-hover, 0 8px 30px rgba(15, 23, 42, 0.12));
+}
+
+.app-shell-create-menu__item {
+  display: block;
+  width: 100%;
+  padding: 0.55rem 0.85rem;
+  text-align: left;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.app-shell-create-menu__item:hover {
+  background: var(--color-surface-muted);
+}
+
+.app-shell-create-menu__item:focus-visible {
+  outline: none;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+}
+
 /* ========== Dark theme — harmonize hardcoded light utilities ==========
  * Maps legacy Tailwind light classes to design tokens inside .dark
  * so pages/modals/dropdowns stay on-brand without per-file patches.

@@ -8,7 +8,13 @@ import Button from "../common/Button";
 
 const TABS = ["Overview", "Contacts", "Notes", "Timeline", "Activities"];
 
-export default function LeadDetailModal({ lead, onClose, onStatusChange, onConvertToQuotation, converting }) {
+export default function LeadDetailModal({
+  lead,
+  onClose,
+  onStatusChange,
+  onConvertToQuotation,
+  converting = false,
+}) {
   const [tab, setTab] = useState("Overview");
   const [activities, setActivities] = useState([]);
   const [showAddActivity, setShowAddActivity] = useState(false);
@@ -246,7 +252,10 @@ export default function LeadDetailModal({ lead, onClose, onStatusChange, onConve
             <Button
               variant="primary"
               size="sm"
-              to={`/sales/quotations?create=true&customer_name=${encodeURIComponent(lead.name || lead.customer_name || lead.company || "")}`}
+              type="button"
+              loading={converting}
+              disabled={converting || typeof lead.id !== "number"}
+              onClick={() => onConvertToQuotation?.(lead)}
             >
               Create Quotation
             </Button>
