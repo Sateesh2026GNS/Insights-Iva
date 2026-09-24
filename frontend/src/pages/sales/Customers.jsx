@@ -220,49 +220,7 @@ export default function Customers() {
             onNewView={() => addToast("Custom views will be available in a future update.", "info")}
           />
           <div className="customers-page__header-actions">
-            <Button
-              variant="add"
-              type="button"
-              onClick={openCreate}
-              leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}
-            >
-              New
-            </Button>
-            <div className="relative" ref={overflowRef}>
-              <button
-                type="button"
-                className="customers-page__overflow-btn"
-                aria-label="More actions"
-                aria-expanded={overflowOpen}
-                onClick={() => setOverflowOpen((v) => !v)}
-              >
-                <MoreHorizontal className="h-4 w-4" />
-              </button>
-              {overflowOpen ? (
-                <div className="customers-page__overflow-menu">
-                  <button
-                    type="button"
-                    className="customers-page__overflow-item"
-                    onClick={() => {
-                      setOverflowOpen(false);
-                      navigate("/sales/customers/bulk-import");
-                    }}
-                  >
-                    Import File
-                  </button>
-                  <button
-                    type="button"
-                    className="customers-page__overflow-item"
-                    onClick={() => {
-                      setOverflowOpen(false);
-                      loadCustomers();
-                    }}
-                  >
-                    Refresh
-                  </button>
-                </div>
-              ) : null}
-            </div>
+           
           </div>
         </div>
 
