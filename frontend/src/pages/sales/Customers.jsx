@@ -47,7 +47,7 @@ const CUSTOMER_EXPORT_COLUMNS = [
 function blankOr(value) {
   if (value == null) return "";
   const s = String(value).trim();
-  return !s || s === "—" ? "" : s;
+  return !s || s === "Ã¢â‚¬â€" ? "" : s;
 }
 
 export default function Customers() {
@@ -166,10 +166,6 @@ export default function Customers() {
     setPage(1);
   }, [query, pageSize, activeView]);
 
-  useEffect(() => {
-    setOpenMenu(null);
-  }, [page, pageSize]);
-
   const total = filtered.length;
   const totalPages = Math.max(1, Math.ceil(total / pageSize) || 1);
   const rows = filtered.slice((page - 1) * pageSize, page * pageSize);
@@ -223,51 +219,6 @@ export default function Customers() {
             onChange={setActiveView}
             onNewView={() => addToast("Custom views will be available in a future update.", "info")}
           />
-          <div className="customers-page__header-actions">
-            <Button
-              variant="add"
-              type="button"
-              onClick={openCreate}
-              leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}
-            >
-              New
-            </Button>
-            <div className="relative" ref={overflowRef}>
-              <button
-                type="button"
-                className="customers-page__overflow-btn"
-                aria-label="More actions"
-                aria-expanded={overflowOpen}
-                onClick={() => setOverflowOpen((v) => !v)}
-              >
-                <MoreHorizontal className="h-4 w-4" />
-              </button>
-              {overflowOpen ? (
-                <div className="customers-page__overflow-menu">
-                  <button
-                    type="button"
-                    className="customers-page__overflow-item"
-                    onClick={() => {
-                      setOverflowOpen(false);
-                      navigate("/sales/customers/bulk-import");
-                    }}
-                  >
-                    Import File
-                  </button>
-                  <button
-                    type="button"
-                    className="customers-page__overflow-item"
-                    onClick={() => {
-                      setOverflowOpen(false);
-                      loadCustomers();
-                    }}
-                  >
-                    Refresh
-                  </button>
-                </div>
-              ) : null}
-            </div>
-          </div>
         </div>
 
         <ListPageCardBody className={showFirstUseEmpty ? "customers-page__body--empty p-0" : ""}>
@@ -317,7 +268,7 @@ export default function Customers() {
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
                           <h3 className="font-bold text-sm text-[var(--color-text)] truncate">
-                            {c.company || c.name || "—"}
+                            {c.company || c.name || "Ã¢â‚¬â€"}
                           </h3>
                           {c.email && (
                             <p className="text-xs text-[var(--color-text-muted)] truncate">{c.email}</p>
@@ -358,19 +309,19 @@ export default function Customers() {
                       <div className="grid grid-cols-2 gap-2 text-xs text-[var(--color-text-secondary)] border-t border-[var(--color-border-soft)] pt-2">
                         <div>
                           <span className="text-[var(--color-text-muted)] block text-[10px] uppercase font-semibold">Phone</span>
-                          <span className="font-medium truncate block">{blankOr(c.phone) || "—"}</span>
+                          <span className="font-medium truncate block">{blankOr(c.phone) || "Ã¢â‚¬â€"}</span>
                         </div>
                         <div>
                           <span className="text-[var(--color-text-muted)] block text-[10px] uppercase font-semibold">GSTIN</span>
-                          <span className="font-medium font-mono text-[11px] truncate block">{blankOr(c.gstin) || "—"}</span>
+                          <span className="font-medium font-mono text-[11px] truncate block">{blankOr(c.gstin) || "Ã¢â‚¬â€"}</span>
                         </div>
                         <div>
                           <span className="text-[var(--color-text-muted)] block text-[10px] uppercase font-semibold">City</span>
-                          <span className="font-medium truncate block">{blankOr(c.city) || "—"}</span>
+                          <span className="font-medium truncate block">{blankOr(c.city) || "Ã¢â‚¬â€"}</span>
                         </div>
                         <div>
                           <span className="text-[var(--color-text-muted)] block text-[10px] uppercase font-semibold">State</span>
-                          <span className="font-medium truncate block">{blankOr(c.state) || "—"}</span>
+                          <span className="font-medium truncate block">{blankOr(c.state) || "Ã¢â‚¬â€"}</span>
                         </div>
                       </div>
                     </div>
@@ -486,7 +437,7 @@ export default function Customers() {
                         </option>
                       ))}
                     </select>
-                    <span>{total === 0 ? "0–0 of 0" : `${from}–${to} of ${total}`}</span>
+                    <span>{total === 0 ? "0Ã¢â‚¬â€œ0 of 0" : `${from}Ã¢â‚¬â€œ${to} of ${total}`}</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <button
