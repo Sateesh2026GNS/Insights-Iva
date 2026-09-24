@@ -625,18 +625,6 @@ def get_store_dashboard(db: Session, tenant_id: int) -> StoreDashboardRead:
         current_qty += qty
         if qty <= 0:
             out += 1
-            low_stock_candidates.append(
-                (
-                    qty,
-                    StoreDashboardLowStockItem(
-                        item_id=item.id,
-                        item_name=item.name,
-                        current_stock=qty,
-                        reorder_level=item.reorder_level,
-                        unit=item.unit,
-                    ),
-                )
-            )
         elif item.reorder_level and available <= item.reorder_level:
             low += 1
             low_stock_candidates.append(
@@ -799,7 +787,11 @@ def get_store_dashboard(db: Session, tenant_id: int) -> StoreDashboardRead:
     catalog_total = 0
     catalog_low = 0
     catalog_out = 0
-    for p in db.scalars(select(Product).where(Product.tenant_id == tenant_id)).all():
+    catalog_low_stock_rows: list[tuple[float, StoreDashboardLowStockItem]] = []
+    catalog_products = list(
+        db.scalars(select(Product).where(Product.tenant_id == tenant_id)).all()
+    )
+    for p in catalog_products:
         catalog_total += 1
         stock = float(p.current_stock or 0)
         min_stk = float(p.min_stock or 0) if p.min_stock is not None else 0.0
@@ -807,6 +799,22 @@ def get_store_dashboard(db: Session, tenant_id: int) -> StoreDashboardRead:
             catalog_out += 1
         elif min_stk > 0 and stock <= min_stk:
             catalog_low += 1
+            catalog_low_stock_rows.append(
+                (
+                    stock,
+                    StoreDashboardLowStockItem(
+                        item_id=p.id,
+                        item_name=p.name,
+                        current_stock=stock,
+                        reorder_level=p.min_stock,
+                        unit=p.unit,
+                    ),
+                )
+            )
+
+    low_stock_preview = [
+        row for _, row in sorted(catalog_low_stock_rows, key=lambda x: x[0])[:8]
+    ]
 
     pending_count, pending_orders = list_pending_inventory_checks(db, tenant_id, limit=8)
     sales_jc_pending = count_manual_sales_job_cards_pending(db, tenant_id)

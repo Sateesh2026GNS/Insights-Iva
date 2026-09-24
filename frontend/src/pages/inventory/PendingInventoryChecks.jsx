@@ -85,7 +85,12 @@ export default function PendingInventoryChecks() {
 
       <ListPageCard>
         <div className="flex flex-col gap-3 border-b border-[var(--color-border-soft)] p-4 sm:flex-row sm:items-center sm:justify-between">
-          <SearchBar value={search} onChange={setSearch} placeholder="Search order, customer, product…" />
+          <SearchBar
+            value={search}
+            onChange={setSearch}
+            placeholder="Search"
+            inputClassName="pending-inventory-search-input"
+          />
           <span className="text-sm font-medium text-[var(--color-text-muted)]">
             Total matching:{" "}
             {(search.trim() ? displayTotal : total || displayTotal).toLocaleString("en-IN")}
@@ -104,7 +109,7 @@ export default function PendingInventoryChecks() {
           </div>
         ) : displayTotal === 0 ? (
           <EmptyState
-            icon={ClipboardList}
+            icon={<ClipboardList className="h-14 w-14" aria-hidden />}
             title="No pending inventory checks"
             description="All stock checks are complete. New orders appear here after sales confirmation."
           />

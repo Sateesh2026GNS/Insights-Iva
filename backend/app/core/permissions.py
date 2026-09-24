@@ -98,6 +98,13 @@ def get_user_permissions(user: User) -> set[str]:
     return perms
 
 
+def _is_store_manager(user: User) -> bool:
+    return any(
+        str(name).strip().lower().replace("_", " ") == "store manager"
+        for name in get_role_names(user)
+    )
+
+
 def user_is_admin(user: User) -> bool:
     try:
         if ADMIN_ROLE in get_role_names(user):
@@ -113,6 +120,8 @@ def user_is_admin(user: User) -> bool:
 def user_has_permission(user: User, module: str) -> bool:
     if module == "meetings":
         return True
+    if module == "procurement" and _is_store_manager(user):
+        return True
     if user_is_admin(user):
         return True
     perms = get_user_permissions(user)
@@ -123,6 +132,8 @@ def user_has_permission(user: User, module: str) -> bool:
 
 def user_has_any_permission(user: User, *modules: str) -> bool:
     if "meetings" in modules:
+        return True
+    if "procurement" in modules and _is_store_manager(user):
         return True
     if user_is_admin(user):
         return True

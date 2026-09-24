@@ -712,6 +712,7 @@ export default function CreatePurchaseOrder() {
                   onChange={setVendorSearch}
                   placeholder="Search"
                   className="mb-2 w-full"
+                  inputClassName="pending-inventory-search-input"
                 />
                 <div className="max-h-44 overflow-y-auto">
                   {filteredVendors.length === 0 ? (
@@ -811,6 +812,7 @@ export default function CreatePurchaseOrder() {
                             placeholder="Select Item"
                             clearable={false}
                             className="w-full"
+                            inputClassName="pending-inventory-search-input"
                           />
                           <datalist id={`po-item-options-${idx}`}>
                             {catalogItems.map((item) => (

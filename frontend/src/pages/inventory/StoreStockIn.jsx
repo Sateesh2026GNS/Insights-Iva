@@ -717,6 +717,7 @@ export default function StoreStockIn() {
                 onChange={setSearch}
                 placeholder="Search stock in no., reference, supplier…"
                 className="w-full"
+                inputClassName="pending-inventory-search-input"
               />
               <Button variant="secondary" onClick={() => setShowFilters((v) => !v)}>
                 <Filter className="h-4 w-4" aria-hidden />

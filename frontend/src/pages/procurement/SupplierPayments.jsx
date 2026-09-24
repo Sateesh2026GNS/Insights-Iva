@@ -127,6 +127,7 @@ export default function SupplierPayments() {
           data={payments}
           searchPlaceholder="Search"
           searchKeys={["reference", "payment_method"]}
+          searchInputClassName="pending-inventory-search-input"
           emptyState={
             <EmptyState
               icon="clipboard"

@@ -589,6 +589,7 @@ export default function PurchaseForm() {
                   onChange={setVendorSearch}
                   placeholder="Search"
                   className="mb-2 w-full"
+                  inputClassName="pending-inventory-search-input"
                 />
                 <div className="max-h-44 overflow-y-auto">
                   {filteredVendors.length === 0 ? (
@@ -684,6 +685,7 @@ export default function PurchaseForm() {
                             placeholder="Select Item"
                             clearable={false}
                             className="w-full"
+                            inputClassName="pending-inventory-search-input"
                           />
                         </div>
                       </td>

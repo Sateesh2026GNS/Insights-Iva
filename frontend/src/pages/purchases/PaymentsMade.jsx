@@ -142,8 +142,8 @@ export default function PaymentsMade() {
         };
       });
       setRows(enriched);
-    } catch {
-      addToast("Failed to load payments made", "error");
+    } catch (err) {
+      addToast(apiErrorMessage(err, "Failed to load payments made"), "error");
       setRows([]);
 
 
@@ -243,7 +243,13 @@ export default function PaymentsMade() {
 
       <div className="rounded-t-2xl border border-[var(--color-border)] border-b-0 bg-[var(--color-surface)] px-4 pb-6 pt-4 sm:px-6">
         <div className="mb-3 flex flex-col gap-3 border-b border-[var(--color-border)] pb-3 lg:flex-row lg:items-center lg:justify-between">
-          <SearchBar value={search} onChange={setSearch} placeholder="Search" className="w-full" />
+          <SearchBar
+            value={search}
+            onChange={setSearch}
+            placeholder="Search"
+            className="w-full"
+            inputClassName="pending-inventory-search-input"
+          />
           <div className="flex flex-wrap items-center gap-2.5">
             <div className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-[13px] text-[var(--color-text-secondary)] shadow-sm">
               <button

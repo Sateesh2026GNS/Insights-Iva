@@ -316,6 +316,7 @@ export default function GoodsReceipt() {
           data={rows}
           searchPlaceholder="Search"
           searchKeys={["grn_number", "po_number", "vendor_name"]}
+          searchInputClassName="pending-inventory-search-input"
         />
         </ListPageCardBody>
       </ListPageCard>

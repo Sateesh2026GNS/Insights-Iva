@@ -330,6 +330,7 @@ export default function MakePaymentForm() {
                         placeholder="Search"
                         autoFocus
                         className="w-full"
+                        inputClassName="pending-inventory-search-input"
                       />
                     </div>
                     <div className="max-h-56 overflow-y-auto">
