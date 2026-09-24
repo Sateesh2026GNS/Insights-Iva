@@ -11,12 +11,79 @@ function normalizeToastMessage(message) {
   return formatApiError(message);
 }
 
+function formatSimpleToastMessage(text, isError) {
+  if (isError) return text;
+  const raw = String(text || "").trim();
+  const lower = raw.toLowerCase();
+
+  if (lower.includes("deactivate")) {
+    return "Deactivated successfully";
+  }
+  if (lower.includes("delete") || lower.includes("remove")) {
+    return "Deleted successfully";
+  }
+  if (lower.includes("clear")) {
+    return "Cleared successfully";
+  }
+  if (lower.includes("disable")) {
+    return "Disabled successfully";
+  }
+  if (lower.includes("reject")) {
+    return "Rejected successfully";
+  }
+  if (lower.includes("cancel")) {
+    return "Cancelled successfully";
+  }
+  if (lower.includes("create") || lower.includes("add") || lower.includes("generate")) {
+    return "Created successfully";
+  }
+  if (lower.includes("update")) {
+    return "Updated successfully";
+  }
+  if (lower.includes("save")) {
+    return "Saved successfully";
+  }
+
+  let cleanStr = raw.split(".")[0].trim();
+  if (!cleanStr.toLowerCase().includes("success")) {
+    cleanStr += " successfully";
+  }
+  return cleanStr;
+}
+
+function checkIsRedToast(type, text) {
+  if (
+    type === "error" ||
+    type === "danger" ||
+    type === "delete" ||
+    type === "destructive" ||
+    type === "deactivate" ||
+    type === "warning"
+  ) {
+    return true;
+  }
+  const lower = String(text || "").toLowerCase();
+  return (
+    lower.includes("deactivate") ||
+    lower.includes("delete") ||
+    lower.includes("clear") ||
+    lower.includes("remove") ||
+    lower.includes("disable") ||
+    lower.includes("reject") ||
+    lower.includes("cancel") ||
+    lower.includes("revoke") ||
+    lower.includes("destroy")
+  );
+}
+
 export function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([]);
   const lastErrorRef = useRef({ message: null, at: 0 });
 
   const addToast = useCallback((message, type = "success") => {
-    const text = normalizeToastMessage(message);
+    let text = normalizeToastMessage(message);
+    const isError = type === "error";
+    text = formatSimpleToastMessage(text, isError);
     const lower = String(text || "").toLowerCase();
 
     // Prevent noisy unauthenticated / unauthorized toast notifications on login or public routes
@@ -40,7 +107,7 @@ export function ToastProvider({ children }) {
       }
     }
 
-    if (type === "error") {
+    if (isError) {
       const now = Date.now();
       if (
         lastErrorRef.current.message === text &&
@@ -52,8 +119,10 @@ export function ToastProvider({ children }) {
     }
 
     const id = Date.now() + Math.random();
-    const ttl = type === "error" ? 5000 : 3200;
-    setToasts((prev) => [...prev, { id, message: text, type, ttl }]);
+    const isRed = checkIsRedToast(type, text);
+    // Green (create/update/save) toasts load for 1 sec (1000ms); red error/deactivate/delete/clear toasts have no load bar
+    const ttl = isError ? 4000 : 1000;
+    setToasts((prev) => [...prev, { id, message: text, type, isRed, ttl }]);
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
     }, ttl);
@@ -100,12 +169,12 @@ export function ToastProvider({ children }) {
   return (
     <ToastContext.Provider value={{ addToast }}>
       <style>{`
-        @keyframes toastProgressBar {
+        @keyframes toastProgressBarReverse {
           0% {
-            width: 0%;
+            width: 100%;
           }
           100% {
-            width: 100%;
+            width: 0%;
           }
         }
       `}</style>
@@ -113,38 +182,10 @@ export function ToastProvider({ children }) {
       {/* Top Notification / Toast Container (positioned cleanly below the header bar) */}
       <div className="fixed top-[calc(var(--navbar-height,3.5rem)+0.75rem)] right-4 sm:right-6 z-[9999] flex flex-col items-center sm:items-end gap-2.5 pointer-events-none max-w-[calc(100vw-2rem)] sm:max-w-md w-full sm:w-auto">
         {toasts.map((t) => {
-          if (t.type === "alert") {
-            return (
-              <div
-                key={t.id}
-                className="pointer-events-auto flex min-w-[280px] max-w-md items-center justify-between gap-6 rounded-full bg-[#FF4500] px-5 py-2.5 text-[13px] font-medium text-white shadow-lg animate-in fade-in slide-in-from-top-3 duration-200"
-              >
-                <span>{t.message}</span>
-                <button
-                  type="button"
-                  className="shrink-0 font-bold hover:opacity-80 transition-opacity"
-                  onClick={() => setToasts((prev) => prev.filter((x) => x.id !== t.id))}
-                >
-                  Close
-                </button>
-              </div>
-            );
-          }
+          const isRed = t.isRed || t.type === "error";
 
-          const isError = t.type === "error";
-          const isWarning = t.type === "warning";
-          const isCheckOut = t.type === "checkout";
-          const isInfo = t.type === "info";
-
-          const accentColor = isError
-            ? "#ef4444"
-            : isWarning
-            ? "#f59e0b"
-            : isCheckOut
-            ? "#e11d48"
-            : isInfo
-            ? "#0284c7"
-            : "#00c48c"; // Vibrant success green
+          // Accent colors: Red for error, deactivate, delete, clear; Green for success/create/update/save
+          const accentColor = isRed ? "#ef4444" : "#00c48c"; // Vibrant red vs vibrant success green
 
           return (
             <div
@@ -162,7 +203,7 @@ export function ToastProvider({ children }) {
                 style={{ backgroundColor: accentColor }}
               />
 
-              {/* Status circular icon badge with soft tint */}
+              {/* Status circular icon badge */}
               <div
                 className="grid h-7 w-7 shrink-0 place-items-center rounded-full ml-0.5"
                 style={{
@@ -170,7 +211,7 @@ export function ToastProvider({ children }) {
                   color: accentColor,
                 }}
               >
-                {isError ? (
+                {isRed ? (
                   <svg
                     viewBox="0 0 24 24"
                     className="h-3.5 w-3.5 stroke-current"
@@ -181,32 +222,6 @@ export function ToastProvider({ children }) {
                   >
                     <line x1="18" y1="6" x2="6" y2="18" />
                     <line x1="6" y1="6" x2="18" y2="18" />
-                  </svg>
-                ) : isWarning ? (
-                  <svg
-                    viewBox="0 0 24 24"
-                    className="h-3.5 w-3.5 stroke-current"
-                    fill="none"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <circle cx="12" cy="12" r="10" />
-                    <line x1="12" y1="8" x2="12" y2="12" />
-                    <line x1="12" y1="16" x2="12.01" y2="16" />
-                  </svg>
-                ) : isInfo ? (
-                  <svg
-                    viewBox="0 0 24 24"
-                    className="h-3.5 w-3.5 stroke-current"
-                    fill="none"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <circle cx="12" cy="12" r="10" />
-                    <line x1="12" y1="16" x2="12" y2="12" />
-                    <line x1="12" y1="8" x2="12.01" y2="8" />
                   </svg>
                 ) : (
                   <svg
@@ -248,18 +263,21 @@ export function ToastProvider({ children }) {
                 </svg>
               </button>
 
-              {/* Bottom animated loading progress line from 0% to 100% */}
-              <div
-                className="absolute bottom-0 left-0 right-0 h-[3px] overflow-hidden rounded-b-xl"
-              >
-                <div
-                  className="h-full rounded-b-xl opacity-90"
-                  style={{
-                    backgroundColor: accentColor,
-                    animation: `toastProgressBar ${t.ttl || 3200}ms linear forwards`,
-                  }}
-                />
-              </div>
+              {/* Loading progress bar line:
+                  Only rendered for GREEN (non-red) toasts.
+                  Red toasts (error, deactivate, delete, clear, remove, etc.) have NO loading line.
+              */}
+              {!isRed && (
+                <div className="absolute bottom-0 left-0 right-0 h-[3px] overflow-hidden rounded-b-xl">
+                  <div
+                    className="h-full rounded-b-xl opacity-90"
+                    style={{
+                      backgroundColor: accentColor,
+                      animation: `toastProgressBarReverse ${t.ttl || 1000}ms linear forwards`,
+                    }}
+                  />
+                </div>
+              )}
             </div>
           );
         })}

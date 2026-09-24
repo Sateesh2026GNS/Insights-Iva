@@ -29,8 +29,8 @@ export default function MaterialRequirementsTable({ materials = [] }) {
       <table className="ui-table min-w-full text-left text-[13px]">
         <thead className="ui-table-head">
           <tr>
-            <th className="px-3 py-2.5">Material</th>
             <th className="px-3 py-2.5">Material Code</th>
+            <th className="px-3 py-2.5">Material Name</th>
             <th className="px-2 py-2.5 text-right">Required Qty</th>
             <th className="px-2 py-2.5 text-right">Available Qty</th>
             <th className="px-2 py-2.5 text-right">Reserved Qty</th>
@@ -42,8 +42,8 @@ export default function MaterialRequirementsTable({ materials = [] }) {
         <tbody>
           {materials.map((row) => (
             <tr key={row.id || `${row.material_code}-${row.material_name}`} className="border-t border-[var(--color-border-soft)]">
-              <td className="px-3 py-2.5 font-medium text-[var(--color-text)]">{row.material || row.material_name || "—"}</td>
-              <td className="px-3 py-2.5 text-[var(--color-text-secondary)]">{row.material_code || "—"}</td>
+              <td className="px-3 py-2.5 font-mono font-semibold text-[var(--color-text)]">{row.material_code || row.sku || row.code || "—"}</td>
+              <td className="px-3 py-2.5 text-[var(--color-text-secondary)]">{row.material || row.material_name || "—"}</td>
               <td className="px-2 py-2.5 text-right tabular-nums">{fmtQty(row.required_qty)}</td>
               <td className="px-2 py-2.5 text-right tabular-nums text-[var(--color-text-secondary)]">{fmtQty(row.available_qty)}</td>
               <td className="px-2 py-2.5 text-right tabular-nums text-[var(--color-text-secondary)]">{fmtQty(row.reserved_qty)}</td>

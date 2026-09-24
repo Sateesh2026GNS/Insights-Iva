@@ -1,11 +1,17 @@
 """Sales extended — leads, quotations, SO, dispatch, invoices, hub."""
 
+from calendar import monthrange
 from datetime import date
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, joinedload
 
 from app.models.sales import Customer, DispatchShipment, Invoice, Lead, Quotation, SalesOrder, SalesOrderLine
+from app.models.user import User
+from app.services.sales_person_scope import (
+    monthly_revenue_scoped_to_sales_person,
+    sqlalchemy_sales_person_column_matches,
+)
 from app.schemas.sales_extended import (
     DispatchListRead,
     DispatchSummaryRead,
@@ -98,17 +104,188 @@ def list_quotations_enriched(db: Session, tenant_id: int) -> list[QuotationListR
 
 def get_so_summary(db: Session, tenant_id: int) -> SOSummaryRead:
     orders = list(db.scalars(select(SalesOrder).where(SalesOrder.tenant_id == tenant_id)).all())
-    revenue = sum(float(o.total_amount or 0) for o in orders)
+    active = [o for o in orders if (o.status or "").lower() != "cancelled"]
+    revenue = sum(float(o.total_amount or 0) for o in active)
     return SOSummaryRead(
-        total_orders=len(orders),
-        pending=sum(1 for o in orders if o.status in ("draft", "pending")),
-        confirmed=sum(1 for o in orders if o.status == "confirmed"),
-        packed=sum(1 for o in orders if o.packed),
-        shipped=sum(1 for o in orders if o.shipped),
-        delivered=sum(1 for o in orders if o.status in ("delivered", "closed")),
-        cancelled=sum(1 for o in orders if o.status == "cancelled"),
+        total_orders=len(active),
+        pending=sum(1 for o in active if o.status in ("draft", "pending")),
+        confirmed=sum(1 for o in active if o.status == "confirmed"),
+        packed=sum(1 for o in active if o.packed),
+        shipped=sum(1 for o in active if o.shipped),
+        delivered=sum(1 for o in active if o.status in ("delivered", "closed")),
+        cancelled=sum(1 for o in orders if (o.status or "").lower() == "cancelled"),
         revenue=revenue,
     )
+
+
+def _invoice_is_open(i: Invoice) -> bool:
+    st = (i.status or "").lower()
+    if st in ("paid", "draft", "cancelled"):
+        return False
+    if (getattr(i, "invoice_status", None) or "active").lower() == "cancelled":
+        return False
+    return True
+
+
+def _hub_period_label(year: int, month: int) -> str:
+    return date(year, month, 1).strftime("%b %Y")
+
+
+def _hub_monthly_invoice_revenue(invoices: list[Invoice], year: int, month: int) -> float:
+    return sum(
+        float(i.grand_total or 0)
+        for i in invoices
+        if i.issue_date
+        and i.issue_date.year == year
+        and i.issue_date.month == month
+        and (i.status or "").lower() not in ("draft", "cancelled")
+        and (getattr(i, "invoice_status", None) or "active").lower() != "cancelled"
+    )
+
+
+def _hub_monthly_revenue(
+    db: Session,
+    tenant_id: int,
+    year: int,
+    month: int,
+    user: User | None = None,
+) -> float:
+    """
+    Canonical hub monthly revenue: invoice grand_total in period, else sales order totals.
+    When the user is a sales rep (not Admin / Sales Manager / Accountant), scope to their sales_person.
+    """
+    period_start = date(year, month, 1)
+    period_end = date(year, month, monthrange(year, month)[1])
+    scoped = monthly_revenue_scoped_to_sales_person(user)
+
+    inv_status_ok = func.lower(Invoice.status).notin_(("draft", "cancelled"))
+    inv_lifecycle_ok = func.coalesce(func.lower(Invoice.invoice_status), "active") != "cancelled"
+    inv_period = (Invoice.issue_date >= period_start) & (Invoice.issue_date <= period_end)
+
+    inv_conditions = [
+        Invoice.tenant_id == tenant_id,
+        inv_period,
+        inv_status_ok,
+        inv_lifecycle_ok,
+    ]
+    if scoped and user is not None:
+        inv_q = (
+            select(func.coalesce(func.sum(Invoice.grand_total), 0))
+            .select_from(Invoice)
+            .outerjoin(SalesOrder, SalesOrder.id == Invoice.sales_order_id)
+            .where(
+                *inv_conditions,
+                or_(
+                    sqlalchemy_sales_person_column_matches(Invoice.sales_person, user),
+                    sqlalchemy_sales_person_column_matches(SalesOrder.sales_person, user),
+                ),
+            )
+        )
+    else:
+        inv_q = select(func.coalesce(func.sum(Invoice.grand_total), 0)).where(*inv_conditions)
+    monthly_rev = float(db.scalar(inv_q) or 0)
+
+    if monthly_rev <= 0:
+        so_q = select(func.coalesce(func.sum(SalesOrder.total_amount), 0)).where(
+            SalesOrder.tenant_id == tenant_id,
+            func.lower(SalesOrder.status) != "cancelled",
+            SalesOrder.order_date >= period_start,
+            SalesOrder.order_date <= period_end,
+        )
+        if scoped and user is not None:
+            so_q = so_q.where(sqlalchemy_sales_person_column_matches(SalesOrder.sales_person, user))
+        monthly_rev = float(db.scalar(so_q) or 0)
+
+    return monthly_rev
+
+
+def _hub_top_customers(db: Session, tenant_id: int, *, limit: int = 5) -> list[dict]:
+    rows = db.execute(
+        select(
+            Customer.name,
+            func.count(SalesOrder.id),
+            func.coalesce(func.sum(SalesOrder.total_amount), 0),
+        )
+        .join(SalesOrder, SalesOrder.customer_id == Customer.id)
+        .where(
+            SalesOrder.tenant_id == tenant_id,
+            Customer.tenant_id == tenant_id,
+            func.lower(SalesOrder.status) != "cancelled",
+        )
+        .group_by(Customer.id, Customer.name)
+        .order_by(func.count(SalesOrder.id).desc(), func.sum(SalesOrder.total_amount).desc())
+        .limit(limit)
+    ).all()
+    return [
+        {"name": str(name), "orders": int(order_count or 0), "revenue": float(revenue or 0)}
+        for name, order_count, revenue in rows
+    ]
+
+
+def _hub_sales_executive_performance(
+    db: Session, tenant_id: int, *, year: int, month: int, limit: int = 5
+) -> list[dict]:
+    period_start = date(year, month, 1)
+    period_end = date(year, month, monthrange(year, month)[1])
+    rows = db.execute(
+        select(
+            SalesOrder.sales_person,
+            func.count(SalesOrder.id),
+            func.coalesce(func.sum(SalesOrder.total_amount), 0),
+        )
+        .where(
+            SalesOrder.tenant_id == tenant_id,
+            func.lower(SalesOrder.status) != "cancelled",
+            SalesOrder.sales_person.isnot(None),
+            SalesOrder.sales_person != "",
+            SalesOrder.order_date >= period_start,
+            SalesOrder.order_date <= period_end,
+        )
+        .group_by(SalesOrder.sales_person)
+        .order_by(func.sum(SalesOrder.total_amount).desc())
+        .limit(limit)
+    ).all()
+    return [
+        {
+            "name": str(rep),
+            "orders": int(order_count or 0),
+            "revenue": float(revenue or 0),
+        }
+        for rep, order_count, revenue in rows
+        if rep
+    ]
+
+
+def _hub_open_leads_count(db: Session, tenant_id: int) -> int:
+    closed = ("converted", "lost")
+    return int(
+        db.scalar(
+            select(func.count(Lead.id)).where(
+                Lead.tenant_id == tenant_id,
+                func.lower(Lead.status).notin_(closed),
+            )
+        )
+        or 0
+    )
+
+
+def _hub_open_quotations(quotes: list[Quotation]) -> tuple[int, float]:
+    open_statuses = {"draft", "sent"}
+    open_quotes = [q for q in quotes if (q.status or "").lower() in open_statuses]
+    return len(open_quotes), sum(float(q.total_amount or 0) for q in open_quotes)
+
+
+def _hub_conversion_rate(quotes: list[Quotation], year: int, month: int) -> float:
+    in_period = [
+        q
+        for q in quotes
+        if q.quote_date and q.quote_date.year == year and q.quote_date.month == month
+    ]
+    if not in_period:
+        return 0.0
+    won_statuses = {"accepted", "converted", "invoiced"}
+    won = sum(1 for q in in_period if (q.status or "").lower() in won_statuses)
+    return round((won / len(in_period)) * 100.0, 1)
 
 
 def list_so_enriched(db: Session, tenant_id: int) -> list[SOListRead]:
@@ -318,82 +495,77 @@ def list_invoices_enriched(db: Session, tenant_id: int) -> list[InvoiceListEnric
     ]
 
 
-def get_sales_hub(db: Session, tenant_id: int) -> SalesHubRead:
+def get_sales_hub(db: Session, tenant_id: int, user: User | None = None) -> SalesHubRead:
     so_sum = get_so_summary(db, tenant_id)
     inv_sum = get_invoice_summary(db, tenant_id)
     disp_sum = get_dispatch_summary(db, tenant_id)
     customers = list(db.scalars(select(Customer).where(Customer.tenant_id == tenant_id)).all())
-    customer_count = len(customers)
+    invoices = list(db.scalars(select(Invoice).where(Invoice.tenant_id == tenant_id)).all())
+    quotes = list(db.scalars(select(Quotation).where(Quotation.tenant_id == tenant_id)).all())
 
     today = date.today()
+    period_label = _hub_period_label(today.year, today.month)
     new_customers_count = sum(
         1 for c in customers
         if getattr(c, "created_at", None) and c.created_at.year == today.year and c.created_at.month == today.month
     )
 
-    all_orders = list(db.scalars(select(SalesOrder).where(SalesOrder.tenant_id == tenant_id)).all())
-    monthly_orders = [
-        o for o in all_orders
-        if o.order_date and o.order_date.year == today.year and o.order_date.month == today.month and (o.status or "").lower() != "cancelled"
-    ]
-    monthly_rev = sum(float(o.total_amount or 0) for o in monthly_orders)
+    monthly_rev = _hub_monthly_revenue(db, tenant_id, today.year, today.month, user=user)
 
     outstanding = sum(
         float(i.grand_total or 0) - float(i.amount_paid or 0)
-        for i in db.scalars(select(Invoice).where(Invoice.tenant_id == tenant_id)).all()
-        if i.status not in ("paid", "draft")
+        for i in invoices
+        if _invoice_is_open(i)
     )
-    top_customers = []
-    for customer in customers[:5]:
-        order_count = int(
-            db.scalar(
-                select(func.count(SalesOrder.id)).where(
-                    SalesOrder.tenant_id == tenant_id,
-                    SalesOrder.customer_id == customer.id,
-                )
-            )
-            or 0
-        )
-        top_customers.append({"name": customer.name, "orders": order_count})
 
-    sales_executive_performance = []
-    for customer in customers[:5]:
-        sales_executive_performance.append(
-            {
-                "name": getattr(customer, "sales_person", None) or customer.name,
-                "revenue": float(
-                    db.scalar(
-                        select(func.coalesce(func.sum(SalesOrder.total_amount), 0)).where(
-                            SalesOrder.tenant_id == tenant_id,
-                            SalesOrder.customer_id == customer.id,
-                        )
-                    )
-                    or 0
-                ),
-                "orders": int(
-                    db.scalar(
-                        select(func.count(SalesOrder.id)).where(
-                            SalesOrder.tenant_id == tenant_id,
-                            SalesOrder.customer_id == customer.id,
-                        )
-                    )
-                    or 0
-                ),
-            }
-        )
+    overdue_amount = sum(
+        float(i.grand_total or 0) - float(i.amount_paid or 0)
+        for i in invoices
+        if _invoice_is_open(i) and i.due_date and i.due_date < today
+    )
+
+    top_customers = _hub_top_customers(db, tenant_id)
+    sales_executive_performance = _hub_sales_executive_performance(
+        db, tenant_id, year=today.year, month=today.month
+    )
+
+    open_leads = _hub_open_leads_count(db, tenant_id)
+    open_quotations, open_quotations_value = _hub_open_quotations(quotes)
+    conversion_rate = _hub_conversion_rate(quotes, today.year, today.month)
 
     alerts = []
-    if outstanding > 0:
-        alerts.append({"type": "overdue_payment", "message": f"Outstanding payments — ₹{outstanding:,.0f}"})
+    if overdue_amount > 0:
+        alerts.append(
+            {
+                "type": "overdue_payment",
+                "severity": "danger",
+                "message": f"Overdue payments — ₹{overdue_amount:,.0f}",
+            }
+        )
+    elif outstanding > 0:
+        alerts.append(
+            {
+                "type": "outstanding_payment",
+                "severity": "warning",
+                "message": f"Outstanding payments (all time) — ₹{outstanding:,.0f}",
+            }
+        )
     if disp_sum.ready_to_dispatch + disp_sum.packed > 0:
         alerts.append(
             {
                 "type": "pending_dispatch",
+                "severity": "info",
                 "message": f"Pending dispatch — {disp_sum.ready_to_dispatch + disp_sum.packed} orders ready to ship",
             }
         )
     if inv_sum.pending > 0:
-        alerts.append({"type": "pending_invoice", "message": f"Pending invoices — {inv_sum.pending}"})
+        alerts.append(
+            {
+                "type": "pending_invoice",
+                "severity": "warning",
+                "message": f"Pending invoices — {inv_sum.pending}",
+            }
+        )
 
     return SalesHubRead(
         monthly_revenue=monthly_rev,
@@ -402,6 +574,11 @@ def get_sales_hub(db: Session, tenant_id: int) -> SalesHubRead:
         dispatch_pending=disp_sum.ready_to_dispatch + disp_sum.packed,
         outstanding_payments=outstanding,
         new_customers=new_customers_count,
+        open_leads=open_leads,
+        open_quotations=open_quotations,
+        open_quotations_value=open_quotations_value,
+        conversion_rate=conversion_rate,
+        period_label=period_label,
         top_customers=top_customers,
         sales_executive_performance=sales_executive_performance,
         alerts=alerts,

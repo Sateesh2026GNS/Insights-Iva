@@ -24,6 +24,8 @@ from app.schemas.auth import (
     RefreshRequest,
     RegisterPendingResponse,
     RegisterRequest,
+    ChangePasswordRequest,
+    ProfileUpdateRequest,
     ResetPasswordRequest,
     ResetPasswordSuccessResponse,
     UserResponse,
@@ -41,9 +43,11 @@ from app.services.auth_service import (
     find_user_by_phone,
     get_user_with_role,
     issue_auth_response_data,
+    change_user_password,
     login_user,
     login_user_by_phone,
     register_user,
+    update_user_profile,
 )
 from app.services.email_service import send_verification_email
 from app.services.login_history_service import mark_logout, record_login_history
@@ -352,6 +356,81 @@ def get_auth_profile(
 
 class AvatarUpdateRequest(BaseModel):
     avatar: str | None = None
+
+
+@router.put("/profile", response_model=UserResponse)
+def update_auth_profile(
+    req: ProfileUpdateRequest,
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> UserResponse:
+    """Update signed-in user display name and phone (self-service)."""
+    if req.full_name is None and req.phone is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No profile fields to update")
+    try:
+        update_user_profile(
+            db,
+            current_user,
+            full_name=req.full_name,
+            phone=req.phone,
+        )
+    except SQLAlchemyError as exc:
+        db.rollback()
+        logger.exception("Failed to update profile for user_id=%s: %s", current_user.id, exc)
+        raise HTTPException(status_code=503, detail="Database connection unavailable") from exc
+    log_audit(
+        db,
+        tenant_id=current_user.tenant_id,
+        user_id=current_user.id,
+        action="profile_update",
+        resource="user_profile",
+        resource_id=current_user.id,
+        ip_address=_client_ip(request),
+    )
+    role_from_token = None
+    auth_header = request.headers.get("Authorization") or ""
+    if auth_header.startswith("Bearer "):
+        payload = decode_access_token(auth_header[7:])
+        if payload:
+            role_from_token = payload.get("role") or payload.get("role_name")
+    user_data = get_user_with_role(db, current_user, preferred_role=role_from_token)
+    user_data["email_verified"] = current_user.email_verified
+    return UserResponse(**user_data)
+
+
+@router.post("/change-password", response_model=MessageResponse)
+def change_password_endpoint(
+    req: ChangePasswordRequest,
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> MessageResponse:
+    """Change password for the signed-in user."""
+    try:
+        change_user_password(
+            db,
+            current_user,
+            current_password=req.current_password,
+            new_password=req.new_password,
+            confirm_password=req.confirm_password,
+        )
+    except HTTPException:
+        raise
+    except SQLAlchemyError as exc:
+        db.rollback()
+        logger.exception("Failed to change password for user_id=%s: %s", current_user.id, exc)
+        raise HTTPException(status_code=503, detail="Database connection unavailable") from exc
+    log_audit(
+        db,
+        tenant_id=current_user.tenant_id,
+        user_id=current_user.id,
+        action="password_change",
+        resource="user_password",
+        resource_id=current_user.id,
+        ip_address=_client_ip(request),
+    )
+    return MessageResponse(message="Password updated successfully.")
 
 
 @router.put("/avatar", response_model=UserResponse)

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import usePageRefresh from "../../hooks/usePageRefresh";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ClipboardList, ExternalLink, Eye, Filter, IndianRupee, Plus, ShoppingCart, Trash2, Truck } from "lucide-react";
 import KpiCard from "../../components/common/KpiCard";
 import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
@@ -44,6 +44,7 @@ export default function SalesOrders() {
   const [refreshing, setRefreshing] = useState(false);
   const [loadError, setLoadError] = useState("");
   const [rows, setRows] = useState([]);
+  const [searchParams] = useSearchParams();
   const [filters, setFilters] = useState(defaultFilters);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [selected, setSelected] = useState(null);
@@ -52,6 +53,13 @@ export default function SalesOrders() {
   const [deleteError, setDeleteError] = useState("");
   const [deleting, setDeleting] = useState(false);
   const deleteInFlight = useRef(false);
+
+  useEffect(() => {
+    const status = searchParams.get("status");
+    if (status) {
+      setFilters((prev) => ({ ...prev, status }));
+    }
+  }, [searchParams]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -266,7 +274,7 @@ export default function SalesOrders() {
             />
             {canCreate ? (
               <Button variant="primary" to={jobCardCreateUrl()}>
-                <Plus className="mr-1.5 inline h-4 w-4" /> Add Job Card
+                <Plus className="mr-1.5 inline h-4 w-4" /> New Job Card
               </Button>
             ) : null}
           </div>

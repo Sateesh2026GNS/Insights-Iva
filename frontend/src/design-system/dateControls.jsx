@@ -600,6 +600,84 @@ export function DateRangePicker({
   );
 }
 
+/**
+ * Compact inline native date range (single control, separate start/end pickers).
+ * Used on sales list toolbars; keeps sr-only inputs + accessible labels.
+ */
+export function InlineNativeDateRange({
+  from = "",
+  to = "",
+  onFromChange,
+  onToChange,
+  fromId = "date-range-from",
+  toId = "date-range-to",
+  fromLabel = "From date",
+  toLabel = "To date",
+  className = "",
+}) {
+  const fromRef = useRef(null);
+  const toRef = useRef(null);
+
+  const openFrom = useCallback(() => {
+    openNativeDatePicker(fromRef.current);
+  }, []);
+
+  const openTo = useCallback(() => {
+    openNativeDatePicker(toRef.current);
+  }, []);
+
+  return (
+    <div
+      className={`ui-date-range-control ${className}`.trim()}
+      role="group"
+      aria-label="Date range"
+    >
+      <label htmlFor={fromId} className="sr-only">{fromLabel}</label>
+      <label htmlFor={toId} className="sr-only">{toLabel}</label>
+      <input
+        id={fromId}
+        ref={fromRef}
+        type="date"
+        value={from}
+        onChange={(e) => onFromChange?.(e.target.value)}
+        className="sr-only"
+        tabIndex={-1}
+      />
+      <input
+        id={toId}
+        ref={toRef}
+        type="date"
+        value={to}
+        onChange={(e) => onToChange?.(e.target.value)}
+        className="sr-only"
+        tabIndex={-1}
+      />
+      <button
+        type="button"
+        onClick={openFrom}
+        className="ui-date-range-control__segment ui-date-range-control__segment--from"
+        aria-label={`${fromLabel}: ${formatDisplayDate(from) || "not set"}`}
+      >
+        <Calendar className="h-4 w-4 shrink-0 text-[var(--color-text-icon)]" aria-hidden />
+        <span className="font-medium tabular-nums text-[var(--color-text)]">
+          {formatDisplayDate(from) || "Start date"}
+        </span>
+      </button>
+      <span className="ui-date-range-control__sep" aria-hidden>—</span>
+      <button
+        type="button"
+        onClick={openTo}
+        className="ui-date-range-control__segment ui-date-range-control__segment--to"
+        aria-label={`${toLabel}: ${formatDisplayDate(to) || "not set"}`}
+      >
+        <span className="font-medium tabular-nums text-[var(--color-text)]">
+          {formatDisplayDate(to) || "End date"}
+        </span>
+      </button>
+    </div>
+  );
+}
+
 /** Pair of DatePickers for simple from/to filters */
 export function DateRangeFields({
   from,

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import {
@@ -82,20 +83,11 @@ function OutlinedField({ label, children }) {
   );
 }
 
-function DropdownMenu({ open, onClose, children, className = "" }) {
-  const ref = useRef(null);
-  useEffect(() => {
-    if (!open) return undefined;
-    const onDoc = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) onClose?.();
-    };
-    document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
-  }, [open, onClose]);
+function DropdownMenu({ open, children, className = "" }) {
   if (!open) return null;
+
   return (
     <div
-      ref={ref}
       className={`absolute right-0 z-30 mt-1 min-w-[180px] rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] py-1 shadow-lg ${className}`}
     >
       {children}
@@ -254,6 +246,7 @@ export default function InventoryV2() {
   const [stockFilter, setStockFilter] = useState(() => kpiStockFilter);
   const [sortOpen, setSortOpen] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
+  const toolbarRef = useRef(null);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [addOpen, setAddOpen] = useState(false);
@@ -261,6 +254,7 @@ export default function InventoryV2() {
   const [categoryModal, setCategoryModal] = useState(false);
   const [categoryName, setCategoryName] = useState("");
   const [categories, setCategories] = useState([]);
+  const [categoryToSelect, setCategoryToSelect] = useState("");
   const [openMenuId, setOpenMenuId] = useState(null);
   const [viewTarget, setViewTarget] = useState(null);
   const [stockTarget, setStockTarget] = useState(null);
@@ -301,6 +295,21 @@ export default function InventoryV2() {
   useEffect(() => {
     setPage(1);
   }, [search, sort, stockFilter, pageSize, tab]);
+
+  useEffect(() => {
+  const handleOutsideClick = (e) => {
+    if (!toolbarRef.current?.contains(e.target)) {
+      setSortOpen(false);
+      setFilterOpen(false);
+    }
+  };
+
+  document.addEventListener("mousedown", handleOutsideClick);
+
+  return () => {
+    document.removeEventListener("mousedown", handleOutsideClick);
+  };
+  }, []);
 
   const filteredItems = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -396,21 +405,36 @@ export default function InventoryV2() {
   };
 
   const createCategory = async () => {
-    const name = categoryName.trim();
-    if (!name) {
-      addToast("Enter a category name.", "error");
-      return;
+  const name = categoryName.trim();
+
+  if (!name) {
+    addToast("Enter a category name.", "error");
+    return;
+  }
+
+  try {
+    await createInventoryV2Category(name);
+
+    setCategoryName("");
+    setCategoryModal(false);
+
+    // Refresh categories so the new category appears
+    await load();
+
+    // If Add Category was opened from Add New Item,
+    // automatically select the newly created category.
+    if (addOpen) {
+      setCategoryToSelect(name);
     }
-    try {
-      await createInventoryV2Category(name);
-      setCategoryName("");
-      setCategoryModal(false);
-      addToast("Category created.");
-      load();
-    } catch (err) {
-      addToast(apiErrorMessage(err, "Could not create category."), "error");
-    }
-  };
+
+    addToast("Category created.");
+  } catch (err) {
+    addToast(
+      apiErrorMessage(err, "Could not create category."),
+      "error"
+    );
+  }
+};
 
   const onStockAdjust = async ({ qty, remark, unit }) => {
     if (!stockTarget || !qty || qty <= 0) {
@@ -529,7 +553,9 @@ export default function InventoryV2() {
             </div>
 
             {tab === "items" ? (
-              <div className="flex flex-wrap items-center gap-2">
+              <div 
+                ref={toolbarRef}
+                className="flex flex-wrap items-center gap-2">
                 <div className="relative">
                   <InventoryToolbarButton
                     onClick={() => {
@@ -539,9 +565,13 @@ export default function InventoryV2() {
                   >
                     <ListFilter className="h-4 w-4" />
                     {sortLabel}
-                    <ChevronDown className="h-4 w-4 text-[var(--color-text-muted)]" />
+                    <ChevronDown
+                      className={`h-4 w-4 text-[var(--color-text-muted)] transition-transform ${
+                        sortOpen ? "rotate-180" : ""
+              }`}
+                    />
                   </InventoryToolbarButton>
-                  <DropdownMenu open={sortOpen} onClose={() => setSortOpen(false)}>
+                  <DropdownMenu open={sortOpen}>
                     {SORT_OPTIONS.map((opt) => (
                       <RadioRow
                         key={opt.id}
@@ -565,9 +595,13 @@ export default function InventoryV2() {
                   >
                     <ListFilter className="h-4 w-4" />
                     Filters
-                    <ChevronDown className="h-4 w-4 text-[var(--color-text-muted)]" />
+                    <ChevronDown
+                      className={`h-4 w-4 text-[var(--color-text-muted)] transition-transform ${
+                        filterOpen ? "rotate-180" : ""
+            }`}
+                    />
                   </InventoryToolbarButton>
-                  <DropdownMenu open={filterOpen} onClose={() => setFilterOpen(false)}>
+                  <DropdownMenu open={filterOpen}>
                     {STOCK_FILTERS.map((opt) => (
                       <RadioRow
                         key={opt.id}
@@ -585,6 +619,7 @@ export default function InventoryV2() {
                 <InventoryAddButton
                   onClick={() => {
                     setEditing(null);
+                    setCategoryToSelect("");
                     setAddOpen(true);
                   }}
                 >
@@ -747,14 +782,14 @@ export default function InventoryV2() {
         placement="drawer"
         item={editing}
         categories={categories.map((c) => c.name || c)}
+        categoryToSelect={categoryToSelect}
         onAddCategory={() => {
-          setAddOpen(false);
           setCategoryModal(true);
         }}
         onClose={() => {
           setAddOpen(false);
           setEditing(null);
-        }}
+        }}      
         onSaved={() => {
           setAddOpen(false);
           setEditing(null);
@@ -791,40 +826,60 @@ export default function InventoryV2() {
         onClose={() => setViewTarget(null)}
       />
 
-      {categoryModal ? (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/45 p-4">
-          <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl">
-            <div className="mb-5 flex items-center justify-between">
-              <h3 className="text-[17px] font-bold text-[#1a1a1f]">Add Category</h3>
-              <button
-                type="button"
-                aria-label="Close"
-                onClick={() => setCategoryModal(false)}
-                className="grid h-8 w-8 place-items-center rounded-full bg-[#f0f0f4] text-[#1a1a1f]"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-            <OutlinedField label="Category name">
-              <input
-                autoFocus
-                className="w-full rounded-lg border border-[#cfcfd6] bg-white px-3 py-3 text-sm outline-none focus:border-[#0f6d84]"
-                placeholder="Category name"
-                value={categoryName}
-                onChange={(e) => setCategoryName(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && createCategory()}
-              />
-            </OutlinedField>
-            <button
-              type="button"
-              onClick={createCategory}
-              className="mt-6 w-full rounded-lg bg-[#6b6b76] py-3 text-[14px] font-bold text-white hover:bg-[#4a4a55]"
+      {categoryModal
+        ? createPortal(
+            <div
+              className="fixed inset-0 z-[13000] flex items-center justify-center bg-black/45 p-4"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="add-category-title"
+              onMouseDown={(e) => {
+                if (e.target === e.currentTarget) {
+                  setCategoryModal(false);
+                }
+              }}
             >
-              Create
-            </button>
-          </div>
-        </div>
-      ) : null}
+              <div
+                className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl"
+                onMouseDown={(e) => e.stopPropagation()}
+              >
+                <div className="mb-5 flex items-center justify-between">
+                  <h3 id="add-category-title" className="text-[17px] font-bold text-[#1a1a1f]">
+                    Add Category
+                  </h3>
+                  <button
+                    type="button"
+                    aria-label="Close"
+                    onClick={() => setCategoryModal(false)}
+                    className="grid h-8 w-8 place-items-center rounded-full bg-[#f0f0f4] text-[#1a1a1f]"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+
+                <OutlinedField label="Category name">
+                  <input
+                    autoFocus
+                    className="w-full rounded-lg border border-[#cfcfd6] bg-white px-3 py-3 text-sm outline-none focus:border-[#0f6d84]"
+                    placeholder="Category name"
+                    value={categoryName}
+                    onChange={(e) => setCategoryName(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && createCategory()}
+                  />
+                </OutlinedField>
+
+                <button
+                  type="button"
+                  onClick={createCategory}
+                  className="mt-6 w-full rounded-lg bg-[#6b6b76] py-3 text-[14px] font-bold text-white hover:bg-[#4a4a55]"
+                >
+                  Create
+                </button>
+              </div>
+            </div>,
+            document.body
+          )
+        : null}
     </InventoryPageShell>
   );
 }

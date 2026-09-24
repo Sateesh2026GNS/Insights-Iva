@@ -41,8 +41,8 @@ export const ROLE_PERMISSIONS = {
     "dashboard", "production", "quality", "analytics", "factoryMonitor", "alerts", "documents",
     "masters", "inventory", "maintenance", "procurement", "settings", "iot", "sales", "accounts", "meetings",
   ],
-  "Sales Manager": ["dashboard", "sales", "masters", "alerts", "documents", "analytics", "meetings"],
-  sales_manager: ["dashboard", "sales", "masters", "alerts", "documents", "analytics", "meetings"],
+  "Sales Manager": ["dashboard", "sales", "masters", "alerts", "documents", "meetings", "settings"],
+  sales_manager: ["dashboard", "sales", "masters", "alerts", "documents", "meetings", "settings"],
   "Store Manager": [
     "dashboard", "inventory", "procurement", "sales", "masters", "alerts", "documents", "settings", "analytics",
   ],
@@ -317,7 +317,6 @@ export const STORE_MANAGER_ALLOWED_PATHS = new Set([
   "/masters/vendors",
   "/masters/products",
   "/settings",
-  "/settings/subscription",
   "/settings/my-account",
   "/alerts/low-stock",
   "/documents",
@@ -406,6 +405,52 @@ export function userCanAccessMyJobCards(user) {
   return MY_JOB_CARDS_MODULES.some((m) => userCanAccess(user, m));
 }
 
+/** Paths Sales Manager may open (sales workflow + limited cross-module links). */
+export function salesManagerPathAllowed(pathname) {
+  if (!pathname) return false;
+  const path = pathname.replace(/\/$/, "") || "/";
+  if (path === "/" || path === "/sales" || path === "/sales/dashboard") return true;
+  if (path.startsWith("/sales")) return true;
+  if (path.startsWith("/my-job-cards")) return true;
+  if (path.startsWith("/job-cards/")) return true;
+  if (
+    path === "/alerts" ||
+    path === "/alerts/production-delay"
+  ) {
+    return true;
+  }
+  if (path.startsWith("/documents")) return true;
+  if (path.startsWith("/meetings")) return true;
+  if (path.startsWith("/settings")) return true;
+  return false;
+}
+
+/** HR attendance/leave URLs that previously bypassed module checks for all users. */
+export function isHrAttendanceLeavePath(pathname) {
+  const path = (pathname || "").replace(/\/$/, "") || "/";
+  return (
+    path === "/hr/attendance" ||
+    path === "/attendance" ||
+    path.startsWith("/hr/attendance/") ||
+    path === "/hr/leave" ||
+    path === "/leave" ||
+    path.startsWith("/hr/leave/")
+  );
+}
+
+/**
+ * HR attendance/leave routes: HR admins, or roles with explicit nav allow-lists (e.g. Store Manager).
+ * Does not grant HR module to Sales Manager.
+ */
+export function userCanAccessHrAttendanceLeavePath(user, pathname) {
+  if (!user) return false;
+  if (userCanAccess(user, "hr")) return true;
+  if (isStoreManager(user) && storeManagerPathAllowed(pathname)) return true;
+  if (isProductionManager(user) && productionManagerPathAllowed(pathname)) return true;
+  if (isOperator(user) && operatorPathAllowed(pathname)) return true;
+  return false;
+}
+
 export function storeManagerPathAllowed(pathname) {
   if (!pathname) return false;
   const path = pathname.replace(/\/$/, "") || "/";
@@ -431,8 +476,24 @@ export function storeManagerPathAllowed(pathname) {
   return false;
 }
 
+export const MY_SUBSCRIPTION_SETTINGS_SECTION_ID = "subscription";
+
+/** My Subscription settings — tenant Admin role only (not other ERP roles). */
+export function userCanAccessMySubscription(user) {
+  if (!user) return false;
+  return hasRole(user, "Admin");
+}
+
+export function isMySubscriptionSettingsPath(pathname) {
+  const path = (pathname || "").replace(/\/$/, "") || "/";
+  return path === "/settings/subscription" || getSettingsSectionIdFromPath(path) === MY_SUBSCRIPTION_SETTINGS_SECTION_ID;
+}
+
 export function userCanAccessSettingsSection(user, sectionId) {
   if (!user || !sectionId) return false;
+  if (sectionId === MY_SUBSCRIPTION_SETTINGS_SECTION_ID) {
+    return userCanAccessMySubscription(user);
+  }
   return userCanAccess(user, getSettingsSectionModule(sectionId));
 }
 
@@ -455,20 +516,16 @@ export function userCanAccessApprovalQueue(user) {
 
 export function userCanAccessPath(user, pathname) {
   if (!user) return false;
+  if (isMySubscriptionSettingsPath(pathname)) {
+    return userCanAccessMySubscription(user);
+  }
   if (isAdmin(user)) return true;
   const path = (pathname || "").replace(/\/$/, "") || "/";
   if (path === "/admin/approvals") {
     return userCanAccessApprovalQueue(user);
   }
-  if (
-    path === "/hr/attendance" ||
-    path === "/attendance" ||
-    path.startsWith("/hr/attendance/") ||
-    path === "/hr/leave" ||
-    path === "/leave" ||
-    path.startsWith("/hr/leave/")
-  ) {
-    return true;
+  if (isHrAttendanceLeavePath(pathname)) {
+    return userCanAccessHrAttendanceLeavePath(user, pathname);
   }
   if (isStoreManager(user) && isSalesJobCardAuthoringPath(pathname)) return false;
   if (
@@ -495,6 +552,7 @@ export function userCanAccessPath(user, pathname) {
   const settingsSection = getSettingsSectionIdFromPath(path);
   if (settingsSection && !userCanAccessSettingsSection(user, settingsSection)) return false;
   if (isStoreManager(user) && !storeManagerPathAllowed(pathname)) return false;
+  if (isSalesManager(user) && !salesManagerPathAllowed(pathname)) return false;
   if (isProductionManager(user) && !productionManagerPathAllowed(pathname)) return false;
   if (isOperator(user) && !operatorPathAllowed(pathname)) return false;
   return true;

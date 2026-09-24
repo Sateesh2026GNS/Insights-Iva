@@ -64,8 +64,9 @@ function stripFinanceDashboardDuplicate(children) {
     return pathOnly !== ACCOUNTS_DASHBOARD_PATH_ONLY;
   });
 }
-import { ACCOUNTS_DASHBOARD_PATH } from "../../utils/roleRedirect";
+import { ACCOUNTS_DASHBOARD_PATH, SALES_DASHBOARD_PATH } from "../../utils/roleRedirect";
 import { STORE_MANAGER_NAV_ITEMS } from "../../config/storeManagerNavConfig";
+import { SALES_MANAGER_NAV_ITEMS } from "../../config/salesManagerNavConfig";
 
 export function getRoleJobCardUrl(user) {
   if (isStoreManager(user)) return "/my-job-cards?dept=inventory";
@@ -104,6 +105,43 @@ const ICON_BY_KEY = {
   settings: Settings,
   admin: Settings,
 };
+
+function dedupeNavSections(sections) {
+  const seen = new Set();
+  return (sections || []).filter((section) => {
+    if (!section?.key || seen.has(section.key)) return false;
+    seen.add(section.key);
+    return true;
+  });
+}
+
+function buildSalesManagerSidebarNav() {
+  return SALES_MANAGER_NAV_ITEMS.map((item) => {
+    if (item.children?.length) {
+      return {
+        key: item.key,
+        label: item.label,
+        icon: item.icon,
+        module: item.module || "sales",
+        children: item.children.map((c) => ({
+          key: c.key,
+          label: c.label,
+          to: c.to,
+          module: c.module || item.module || "sales",
+          end: c.end,
+        })),
+      };
+    }
+    return {
+      key: item.key,
+      label: item.label,
+      to: item.to,
+      icon: item.icon,
+      module: item.module || "dashboard",
+      end: item.end,
+    };
+  });
+}
 
 function buildStoreManagerSidebarNav() {
   return STORE_MANAGER_NAV_ITEMS.map((item) => {
@@ -276,9 +314,14 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
   const [logoutOpen, setLogoutOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const storeMode = isStoreManager(user);
+  const salesMode = isSalesManager(user);
 
   useEffect(() => {
     if (!isAuthenticated) {
+      setApiNav(null);
+      return;
+    }
+    if (storeMode || salesMode) {
       setApiNav(null);
       return;
     }
@@ -293,12 +336,14 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
     return () => {
       cancelled = true;
     };
-  }, [isAuthenticated, user?.id, user?.role, user?.role_id]);
+  }, [isAuthenticated, user?.id, user?.role, user?.role_id, storeMode, salesMode]);
 
   const visibleNav = useMemo(() => {
     let result = [];
     if (storeMode) {
       result = buildStoreManagerSidebarNav();
+    } else if (salesMode) {
+      result = buildSalesManagerSidebarNav();
     } else {
       const staticNav = filterStaticNav(user);
       const raw = staticNav.length ? staticNav : apiNav && apiNav.length ? apiNav : [];
@@ -361,7 +406,7 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
     }
 
     const roleJobCardUrl = getRoleJobCardUrl(user);
-    return result.map((section) => {
+    return dedupeNavSections(result).map((section) => {
       if (section.key === "myJobCards") {
         return {
           ...section,
@@ -375,9 +420,12 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
           end: true,
         };
       }
+      if (section.key === "dashboard" && salesMode && section.to === SALES_DASHBOARD_PATH) {
+        return { ...section, end: true };
+      }
       return section;
     });
-  }, [apiNav, user, storeMode]);
+  }, [apiNav, user, storeMode, salesMode]);
 
   const [expanded, setExpanded] = useState(() =>
     buildInitialExpanded(location.pathname, visibleNav)
@@ -418,14 +466,14 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
   const navItemPad = collapsed ? "justify-center px-2" : "px-3";
 
   const topLinkClass = ({ isActive }) =>
-    `relative flex items-center gap-2.5 rounded-lg py-2.5 text-sm transition-all ${navItemPad} ${
+    `relative flex items-center gap-2.5 rounded-lg py-2.5 min-h-[42px] text-sm transition-all ${navItemPad} ${
       isActive
         ? "bg-[var(--color-nav-active)] font-medium text-white"
         : "text-slate-300 hover:bg-white/10 hover:text-white"
     }`;
 
   const childLinkClass = ({ isActive }) =>
-    `group relative flex w-full items-center rounded-lg px-3 py-2 text-[13px] transition-colors ${
+    `group relative flex w-full items-center rounded-lg px-3 py-2.5 min-h-[40px] text-[13px] transition-colors ${
       isActive
         ? "bg-white/15 font-semibold text-white"
         : "text-slate-300 hover:bg-white/10 hover:text-white"
@@ -457,7 +505,7 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
   };
 
   const nestedLinkClass = ({ isActive }, opts = {}) => {
-    return `group relative flex w-full items-center gap-2.5 rounded-lg px-3 py-1.5 text-[12.5px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 ${
+    return `group relative flex w-full items-center gap-2.5 rounded-lg px-3 py-2 min-h-[38px] text-[12.5px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 ${
       collapsed ? "justify-center px-2" : ""
     } ${
       isActive
@@ -472,7 +520,7 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
 
   const nestedGroupClass = (isOpen, hasActive) =>
     `relative flex w-full items-center text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 ${
-      collapsed ? "justify-center px-2 py-2 rounded-lg" : "justify-between gap-2 px-3 py-2"
+      collapsed ? "justify-center px-2 py-2 rounded-lg" : "justify-between gap-2 px-3 py-2.5 min-h-[40px]"
     } ${
       isOpen
         ? "rounded-t-lg rounded-b-none bg-white/15 text-white font-semibold"
@@ -483,7 +531,7 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
 
   const sectionButtonClass = (isOpen, hasActive) =>
     `relative flex w-full items-center text-sm font-medium transition-all ${navItemPad} ${
-      collapsed ? "justify-center rounded-xl py-2.5" : "justify-between gap-2 py-2.5"
+      collapsed ? "justify-center rounded-xl py-2.5" : "justify-between gap-2 py-2.5 min-h-[42px]"
     } ${
       isOpen
         ? "rounded-t-xl rounded-b-none bg-white/15 text-white font-semibold"
@@ -492,7 +540,7 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
         : "rounded-xl text-slate-300 hover:bg-white/10 hover:text-white"
     }`;
 
-  const actionButtonClass = `flex w-full items-center rounded-lg py-2.5 text-sm text-slate-300 transition-colors hover:bg-white/10 hover:text-white ${navItemPad} ${
+  const actionButtonClass = `flex w-full items-center rounded-lg py-2.5 min-h-[42px] text-sm text-slate-300 transition-colors hover:bg-white/10 hover:text-white ${navItemPad} ${
     collapsed ? "justify-center" : "gap-2.5"
   }`;
 
@@ -565,12 +613,12 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
     });
 
   return (
-    <aside className="relative flex h-full w-full shrink-0 flex-col bg-[var(--color-nav-bg)] text-white">
+    <div className="relative flex h-full min-h-0 w-full flex-col bg-[var(--color-nav-bg)] text-white">
       {typeof onToggleCollapse === "function" && !isMobile ? (
         <button
           type="button"
           onClick={onToggleCollapse}
-          className="absolute -right-3 top-[48%] z-20 hidden lg:flex h-11 w-6 -translate-y-1/2 items-center justify-center rounded-l-md border border-r-0 border-[#c8c8d0] bg-[var(--color-nav-bg)] text-white shadow-sm hover:bg-[var(--color-nav-bg-hover)]"
+          className="app-sidebar__collapse-btn absolute z-20 hidden lg:flex items-center justify-center rounded-l-lg border border-white/35 border-r-0 bg-[var(--color-nav-bg-hover)] text-white shadow-md transition-colors hover:border-white/50 hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/45 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-nav-bg)]"
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
@@ -581,13 +629,18 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
           )}
         </button>
       ) : null}
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <div className={`shrink-0 border-b border-white/10 ${collapsed ? "p-3" : "px-4 py-4 sm:py-5"} flex items-center justify-between`}>
-        <Link to={storeMode ? "/inventory/dashboard" : "/"} className={`flex items-center ${collapsed ? "justify-center" : "gap-3"} min-w-0`} onClick={() => onClose?.()}>
-          <BrandLogo size="md" imageClassName="rounded-lg bg-white/95 p-0.5" />
+        <Link
+          to={storeMode ? "/inventory/dashboard" : salesMode ? SALES_DASHBOARD_PATH : "/"}
+          className={`flex items-center ${collapsed ? "justify-center" : "gap-3"} min-w-0`}
+          onClick={() => onClose?.()}
+        >
+          <BrandLogo size="md" />
           {!collapsed && (
             <div className="min-w-0">
               <p className="text-lg font-bold tracking-tight">Insights Iva</p>
-              <p className="text-[9px] leading-tight text-slate-400">
+              <p className="text-xs leading-tight text-slate-400">
                 {storeMode ? "Store Manager" : t("nav.tagline")}
               </p>
             </div>
@@ -688,11 +741,12 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
       {!collapsed && !storeMode && (
         <div className="shrink-0 space-y-2.5 border-t border-white/10 px-3 py-3">
           <FactorySkyline />
-          <p className="text-center text-[9px] font-medium uppercase tracking-wider text-slate-500">
+          <p className="text-center text-xs font-medium text-slate-300">
             {t("nav.footerTagline")}
           </p>
         </div>
       )}
+      </div>
 
       <LogoutConfirmModal
         open={logoutOpen}
@@ -702,6 +756,6 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
         }}
         onConfirm={handleConfirmLogout}
       />
-    </aside>
+    </div>
   );
 }

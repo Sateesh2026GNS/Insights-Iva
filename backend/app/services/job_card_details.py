@@ -259,21 +259,38 @@ def queue_fields_from_details(details: dict[str, Any]) -> dict[str, Any]:
 def build_raw_materials_from_material_check(lines: list[Any]) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     for i, ln in enumerate(lines or [], start=1):
+        if isinstance(ln, dict):
+            code = ln.get("material_code") or ln.get("sku") or ln.get("product_code") or ""
+            name = ln.get("material_name") or ""
+            qty = float(ln.get("required_qty") or 0)
+            uom = ln.get("uom") or "Nos"
+            rem = ln.get("stock_location") or ln.get("remarks") or ""
+            pid = ln.get("product_id")
+            iid = ln.get("inventory_item_id")
+        else:
+            code = getattr(ln, "material_code", "") or getattr(ln, "sku", "") or getattr(ln, "product_code", "") or ""
+            name = getattr(ln, "material_name", "") or ""
+            qty = float(getattr(ln, "required_qty", 0) or 0)
+            uom = getattr(ln, "uom", "Nos") or "Nos"
+            rem = getattr(ln, "stock_location", "") or getattr(ln, "remarks", "") or ""
+            pid = getattr(ln, "product_id", None)
+            iid = getattr(ln, "inventory_item_id", None)
+
         rows.append(
             {
                 "sl_no": i,
-                "material_name": getattr(ln, "material_name", "") or "",
-                "material_code": "",
+                "material_name": name,
+                "material_code": code,
                 "paper_type": "",
                 "gsm": "",
                 "mill_grade": "",
-                "quantity": float(getattr(ln, "required_qty", 0) or 0),
-                "uom": "Nos",
+                "quantity": qty,
+                "uom": uom,
                 "batch_lot_no": "",
                 "quality": "",
-                "remarks": getattr(ln, "stock_location", "") or "",
-                "product_id": getattr(ln, "product_id", None),
-                "inventory_item_id": getattr(ln, "inventory_item_id", None),
+                "remarks": rem,
+                "product_id": pid,
+                "inventory_item_id": iid,
             }
         )
     return rows

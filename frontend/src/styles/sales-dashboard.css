@@ -1,0 +1,315 @@
+/* Sales Dashboard — layout aligned with sales hub mock */
+
+.sales-dash {
+  --sales-dash-card: #ffffff;
+  --sales-dash-border: #e2ebe8;
+  --sales-dash-muted: #64748b;
+  --sales-dash-heading: #0f3d2e;
+  --sales-dash-pipeline-bg: #f4faf7;
+}
+
+/* Top toolbar — no hero band; page title stays in navbar */
+.sales-dash__toolbar {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.75rem;
+  padding: 0;
+  background: transparent;
+  border: none;
+}
+
+@media (min-width: 768px) {
+  .sales-dash__toolbar {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem 1rem;
+  }
+}
+
+.sales-dash__toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.sales-dash__toolbar-dates {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+@media (min-width: 768px) {
+  .sales-dash__toolbar-dates {
+    width: auto;
+    min-width: min(100%, 280px);
+    max-width: 360px;
+    flex-shrink: 0;
+  }
+}
+
+/* KPI grid: max 4 columns (2×4), never 8 in one row */
+.sales-dash__kpi-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.75rem;
+}
+
+@media (min-width: 640px) {
+  .sales-dash__kpi-grid {
+    grid-template-columns: repeat(2, minmax(9.5rem, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .sales-dash__kpi-grid {
+    grid-template-columns: repeat(4, minmax(10rem, 1fr));
+  }
+}
+
+.sales-dash__kpi-grid .ui-kpi {
+  min-width: 0;
+  height: 100%;
+}
+
+.sales-dash__kpi-grid .ui-kpi__label {
+  word-break: normal;
+  overflow-wrap: normal;
+  text-wrap: pretty;
+  hyphens: manual;
+}
+
+.sales-dash__kpi-grid .ui-kpi__meta {
+  word-break: normal;
+  overflow-wrap: normal;
+}
+
+.sales-dash__mid-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+@media (min-width: 1024px) {
+  .sales-dash__mid-grid {
+    grid-template-columns: 1fr 280px;
+  }
+}
+
+.sales-dash__charts-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+@media (min-width: 1024px) {
+  .sales-dash__charts-grid {
+    grid-template-columns: 1.4fr 1fr 320px;
+  }
+}
+
+.sales-dash__bottom-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+@media (min-width: 1024px) {
+  .sales-dash__bottom-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.sales-dash-card {
+  background: var(--sales-dash-card);
+  border: 1px solid var(--sales-dash-border);
+  border-radius: 12px;
+  box-shadow: 0 1px 2px rgb(15 61 46 / 4%);
+}
+
+.sales-dash-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid var(--sales-dash-border);
+}
+
+.sales-dash-card__title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--sales-dash-heading);
+}
+
+.sales-dash-card__body {
+  padding: 1rem;
+}
+
+.sales-dash-pipeline {
+  display: flex;
+  min-width: 640px;
+  align-items: stretch;
+  gap: 0;
+  overflow-x: auto;
+  padding: 0.25rem 0;
+}
+
+.sales-dash-pipeline__stage {
+  flex: 1;
+  min-width: 88px;
+  position: relative;
+  padding: 0.65rem 0.5rem 0.65rem 1.25rem;
+  background: var(--sales-dash-pipeline-bg);
+  clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 50%, calc(100% - 12px) 100%, 0 100%, 12px 50%);
+}
+
+.sales-dash-pipeline__stage:first-child {
+  clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 50%, calc(100% - 12px) 100%, 0 100%);
+  padding-left: 0.75rem;
+  border-radius: 8px 0 0 8px;
+}
+
+.sales-dash-pipeline__stage:last-child {
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 12px 50%);
+  border-radius: 0 8px 8px 0;
+}
+
+.sales-dash-pipeline__label {
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--sales-dash-muted);
+}
+
+.sales-dash-pipeline__count {
+  font-size: 1.35rem;
+  font-weight: 800;
+  line-height: 1.1;
+  color: #0f172a;
+  margin-top: 0.15rem;
+}
+
+.sales-dash-quick {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.sales-dash-quick__btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.65rem 0.35rem;
+  border-radius: 10px;
+  border: 1px solid var(--sales-dash-border);
+  background: #fafdfb;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #334155;
+  text-align: center;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+
+.sales-dash-quick__btn:hover {
+  border-color: var(--color-primary, #036f71);
+  background: #ecfdf5;
+  color: var(--color-primary, #036f71);
+}
+
+.sales-dash-quick__icon {
+  display: flex;
+  height: 2.25rem;
+  width: 2.25rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #e6f4f4;
+  color: #036f71;
+}
+
+.sales-dash-quote-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.sales-dash-quote-tile {
+  border-radius: 10px;
+  padding: 0.65rem 0.5rem;
+  text-align: center;
+  border: 1px solid transparent;
+}
+
+.sales-dash-quote-tile strong {
+  display: block;
+  font-size: 1.15rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.sales-dash-quote-tile span {
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.sales-dash-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+}
+
+.sales-dash-table th {
+  text-align: left;
+  font-weight: 600;
+  color: var(--sales-dash-muted);
+  padding: 0.5rem 0.35rem;
+  border-bottom: 1px solid var(--sales-dash-border);
+}
+
+.sales-dash-table td {
+  padding: 0.55rem 0.35rem;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: middle;
+}
+
+.sales-dash-avatar {
+  display: inline-flex;
+  height: 1.75rem;
+  width: 1.75rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #e6f4f4;
+  color: #036f71;
+  font-size: 0.6rem;
+  font-weight: 700;
+  margin-right: 0.35rem;
+}
+
+.sales-dash-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.75rem;
+}
+
+.sales-dash-tabs button {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid var(--sales-dash-border);
+  background: #fff;
+  color: #475569;
+}
+
+.sales-dash-tabs button[aria-selected="true"] {
+  background: #036f71;
+  border-color: #036f71;
+  color: #fff;
+}

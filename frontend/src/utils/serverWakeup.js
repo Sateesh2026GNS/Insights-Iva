@@ -40,16 +40,13 @@ export function triggerServerWakeup({ force = false } = {}) {
   if (wakeupPromise && !force) return wakeupPromise;
 
   const baseURL = getApiBaseURL();
-  if (!baseURL) {
-    serverIsAwake = true;
-    return Promise.resolve(true);
-  }
+  const healthUrl = baseURL ? `${baseURL}/health` : "/health";
 
   wakeupPromise = (async () => {
     const maxAttempts = 12; // 12 attempts * ~3-10s = up to ~90s total window
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
-        const res = await axios.get(`${baseURL}/health`, {
+        const res = await axios.get(healthUrl, {
           timeout: 12_000,
           headers: { "Cache-Control": "no-cache" },
         });
@@ -85,9 +82,9 @@ export function startServerKeepAlive(intervalMinutes = 8) {
   const intervalMs = intervalMinutes * 60 * 1000;
   keepAliveTimer = setInterval(() => {
     const baseURL = getApiBaseURL();
-    if (!baseURL) return;
+    const healthUrl = baseURL ? `${baseURL}/health` : "/health";
     axios
-      .get(`${baseURL}/health`, {
+      .get(healthUrl, {
         timeout: 15_000,
         headers: { "Cache-Control": "no-cache" },
       })

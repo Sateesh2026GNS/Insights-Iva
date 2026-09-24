@@ -47,7 +47,7 @@ STORE_TOOL_NAMES = frozenset(
         "create_purchase_indent",
     }
 )
-SALES_TOOL_NAMES = frozenset(
+SALES_CORE_TOOL_NAMES = frozenset(
     {
         "get_sales_orders",
         "get_quotations",
@@ -55,6 +55,18 @@ SALES_TOOL_NAMES = frozenset(
         "get_invoice_status",
         "create_quotation",
         "update_order_status",
+        "create_lead",
+        "create_sales_order",
+    }
+)
+SALES_TOOL_NAMES = SALES_CORE_TOOL_NAMES | frozenset(
+    {
+        "search_erp_knowledge_documents",
+        "get_weekly_business_report",
+        "generate_erp_training_script",
+        "generate_multilingual_training_package",
+        "search_job_opportunities",
+        "analyze_ui_screenshot",
     }
 )
 
@@ -601,7 +613,7 @@ def test_operator_openai_schema_excludes_store_and_sales_tools(agent_scope_world
         ctx = _ctx_for_user(db, user)
         names = {t["function"]["name"] for t in openai_tool_definitions(ctx)}
         assert not names.intersection(STORE_TOOL_NAMES)
-        assert not names.intersection(SALES_TOOL_NAMES)
+        assert not names.intersection(SALES_CORE_TOOL_NAMES)
         assert "get_todays_work_orders" in names
     finally:
         db.close()

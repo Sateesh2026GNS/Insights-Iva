@@ -9,6 +9,12 @@ import {
   isStoreManager,
 } from "./permissions";
 
+const CAPABILITY_CHIPS = [
+  "Search documents: GRN process",
+  "Generate my weekly business report",
+  "Analyze screenshot (attach image)",
+];
+
 /** Role-specific AI quick action prompts (must match backend tools). */
 export function getAiQuickActions(user) {
   if (!user) return [];
@@ -27,6 +33,7 @@ export function getAiQuickActions(user) {
       "Quotations pending approval",
       "Customer order history",
       "Invoice payment status",
+      ...CAPABILITY_CHIPS.slice(0, 2),
     ];
   }
   if (isProductionManager(user) && !isAdmin(user)) {
@@ -70,9 +77,10 @@ export function getAiQuickActions(user) {
   if (isAdmin(user)) {
     return [
       "Business summary",
-      "Work order statistics",
+      "Generate my weekly business report",
+      "Search documents: leave policy",
       "Low stock items",
-      "Today's production",
+      "Run AI evaluation (admin)",
     ];
   }
   return ["Help me with this page"];
@@ -103,7 +111,7 @@ export function getAiEmptyHint(user) {
   if (isAdmin(user)) {
     return "Ask for business summary or cross-module reports";
   }
-  return "Ask in English, Telugu, or Hindi";
+  return "Ask…";
 }
 
 export function getAiSubtitle(user) {

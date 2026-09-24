@@ -2,14 +2,62 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildManualPayload,
+  emptyManualForm,
   manualFormFromApi,
   manualJobCardCanDelete,
   manualJobCardCanSend,
   mergeManualApiDocuments,
+  mergeSalesOrderIntoManualForm,
+  productLinesFromSalesOrderItems,
   validateManualForm,
 } from "./manualSalesJobCard";
 
 describe("manualSalesJobCard", () => {
+  it("merges sales order list row into manual form", () => {
+    const base = emptyManualForm("Sales Rep");
+    const merged = mergeSalesOrderIntoManualForm(
+      base,
+      {
+        id: 12,
+        order_number: "SO-100",
+        customer_name: "Acme Corp",
+        order_date: "2026-03-01",
+        delivery_date: "2026-03-20",
+        payment_terms: "Net 30",
+        priority: "high",
+        reference_number: "PO-77",
+        line_items: [{ item_description: "Widget", quantity: 2, unit: "Nos", unit_price: 10 }],
+      },
+      {
+        customer: {
+          id: 5,
+          name: "Acme Corp",
+          contact_name: "Jane",
+          phone: "999",
+          email: "j@acme.test",
+          address_line1: "1 Main St",
+          city: "Mumbai",
+        },
+        productLines: productLinesFromSalesOrderItems(
+          [{ item_description: "Widget", quantity: 2, unit: "Nos", unit_price: 10 }],
+          []
+        ),
+        replaceProductLines: true,
+      }
+    );
+
+    expect(merged.header.sales_order_no).toBe("SO-100");
+    expect(merged.header.customer_po_no).toBe("PO-77");
+    expect(merged.customer.customer_name).toBe("Acme Corp");
+    expect(merged.customer.contact_person).toBe("Jane");
+    expect(merged.order.sales_order_date).toBe("2026-03-01");
+    expect(merged.order.delivery_date).toBe("2026-03-20");
+    expect(merged.order.payment_terms).toBe("Net 30");
+    expect(merged.order.priority).toBe("high");
+    expect(merged.product_lines).toHaveLength(1);
+    expect(merged.product_lines[0].product_name).toBe("Widget");
+  });
+
   it("merges sparse manual_document with sales_document for edit hydration", () => {
     const merged = mergeManualApiDocuments(
       {

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Baby,
   Calendar,
@@ -145,15 +145,6 @@ function CheckInPanel({ user, onAttendanceChange }) {
     return () => window.removeEventListener("attendance-updated", syncSession);
   }, [user]);
 
-  // Timer tick
-  useEffect(() => {
-    if (!checkedIn || !startTs) return undefined;
-    const id = window.setInterval(() => {
-      setElapsed(Math.max(0, Math.floor((Date.now() - startTs) / 1000)));
-    }, 1000);
-    return () => window.clearInterval(id);
-  }, [checkedIn, startTs]);
-
   const handleCheckIn = async () => {
     const now = Date.now();
     const today = new Date().toISOString().slice(0, 10);
@@ -221,7 +212,13 @@ function CheckInPanel({ user, onAttendanceChange }) {
     if (onAttendanceChange) onAttendanceChange();
   };
 
-  const handleCheckOut = async () => {
+  const autoCheckedOutRef = useRef(false);
+
+  useEffect(() => {
+    autoCheckedOutRef.current = false;
+  }, [startTs]);
+
+  const handleCheckOut = useCallback(async (customElapsed) => {
     const now = Date.now();
     const today = new Date().toISOString().slice(0, 10);
     const checkOutTime = new Date(now).toLocaleTimeString("en-US", {
@@ -230,14 +227,28 @@ function CheckInPanel({ user, onAttendanceChange }) {
       hour12: true,
     });
 
-    const finalSecs = elapsed;
+    const finalSecs = customElapsed !== undefined ? customElapsed : elapsed;
+    const SHIFT_LIMIT_SECS = 9 * 3600; // 9 hours limit
+
+    let regularSecs = finalSecs;
+    let overtimeSecs = 0;
+    if (finalSecs > SHIFT_LIMIT_SECS) {
+      regularSecs = SHIFT_LIMIT_SECS;
+      overtimeSecs = finalSecs - SHIFT_LIMIT_SECS;
+    }
+
+    const regH = Math.floor(regularSecs / 3600);
+    const regM = Math.floor((regularSecs % 3600) / 60);
+    const otH = Math.floor(overtimeSecs / 3600);
+    const otM = Math.floor((overtimeSecs % 3600) / 60);
+
+    const regStr = `${String(regH).padStart(2, "0")} hrs ${String(regM).padStart(2, "0")} min`;
+    const otStr = overtimeSecs > 0 ? `${String(otH).padStart(2, "0")} hrs ${String(otM).padStart(2, "0")} min` : "00 hrs 00 min";
+    const formattedDuration = overtimeSecs > 0 ? `${regStr} (+ ${otStr} OT)` : regStr;
+
     setCheckedIn(false);
     setStartTs(null);
     setIsOvertime(false);
-
-    const hoursPart = Math.floor(finalSecs / 3600);
-    const minsPart = Math.floor((finalSecs % 3600) / 60);
-    const formattedDuration = `${String(hoursPart).padStart(2, "0")} hrs ${String(minsPart).padStart(2, "0")} min`;
 
     const session = getCheckInSession(user);
     const checkInTime = session?.checkInTime || checkOutTime;
@@ -261,6 +272,8 @@ function CheckInPanel({ user, onAttendanceChange }) {
         checkedIn: false,
         checkedOut: true,
         finalElapsed: finalSecs,
+        regularSecs,
+        overtimeSecs,
         date: today,
         checkInTime,
         checkOutTime,
@@ -279,6 +292,7 @@ function CheckInPanel({ user, onAttendanceChange }) {
       check_in: checkInTime,
       check_out: checkOutTime,
       working_hours: formattedDuration,
+      overtime_hours: otStr,
       status: "present",
     });
 
@@ -291,9 +305,26 @@ function CheckInPanel({ user, onAttendanceChange }) {
       // Handled via local storage
     }
 
-    addToast("Checked out successfully", "success");
+    const toastMsg = overtimeSecs > 0
+      ? `Shift completed (9 hrs standard shift + ${otStr} Overtime calculated)`
+      : `Checked out successfully`;
+    addToast(toastMsg, "success");
     if (onAttendanceChange) onAttendanceChange();
-  };
+  }, [elapsed, user, addToast, onAttendanceChange]);
+
+  // Timer tick
+  useEffect(() => {
+    if (!checkedIn || !startTs) return undefined;
+    const id = window.setInterval(() => {
+      const diff = Math.max(0, Math.floor((Date.now() - startTs) / 1000));
+      setElapsed(diff);
+      if (diff >= 32400 && !autoCheckedOutRef.current) {
+        autoCheckedOutRef.current = true;
+        handleCheckOut(diff);
+      }
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [checkedIn, startTs, handleCheckOut]);
 
   const handleToggleOvertime = () => {
     const next = !isOvertime;

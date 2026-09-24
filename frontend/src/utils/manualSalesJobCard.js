@@ -38,12 +38,11 @@ export function scrollToJobCardDocumentPanel({ storeMode = false } = {}) {
 
 /** Whether Actions → Delete should appear (manual cards; API allowed_actions is authoritative). */
 export function manualJobCardCanDelete(row, { canDelete = false } = {}) {
-  if (!isManualSalesJobCardRow(row)) return Boolean(canDelete);
-  if (Array.isArray(row.allowed_actions) && row.allowed_actions.includes("delete")) {
-    return true;
+  if (Array.isArray(row?.allowed_actions)) {
+    return row.allowed_actions.includes("delete");
   }
-  if (!canDelete) return false;
-  return !(row.sent_to || row.sent_at);
+  if (row?.sent_at || row?.sent_to) return false;
+  return Boolean(canDelete);
 }
 
 /** Whether the row should offer Actions → Send (manual cards; API can_send is authoritative). */
@@ -360,6 +359,100 @@ export function buildManualPayload(form, { expectedVersion = null } = {}) {
     payload.expected_version = Number(expectedVersion);
   }
   return payload;
+}
+
+export function formatCustomerAddress(customer) {
+  return [customer?.address_line1, customer?.address, customer?.city, customer?.state, customer?.pincode]
+    .filter(Boolean)
+    .join(", ");
+}
+
+export function isoDateOnly(value) {
+  if (value == null || value === "") return "";
+  return String(value).slice(0, 10);
+}
+
+export function customerFieldsFromMaster(customer) {
+  if (!customer) return null;
+  return {
+    customer_name: customer.name || customer.company || customer.customer_name || "",
+    contact_person: customer.contact_name || customer.contact_person || "",
+    phone: customer.phone || "",
+    email: customer.email || "",
+    billing_address: formatCustomerAddress(customer) || "",
+  };
+}
+
+export function manualFormHasEmptyProductLines(productLines) {
+  if (!Array.isArray(productLines) || !productLines.length) return true;
+  return productLines.every(
+    (row) => !String(row?.product_name || "").trim() && !String(row?.product_id || "").trim()
+  );
+}
+
+export function productLinesFromSalesOrderItems(lineItems, products = []) {
+  if (!Array.isArray(lineItems) || !lineItems.length) return null;
+  return lineItems.map((line, index) => {
+    const desc = String(line.item_description || line.product_name || "").trim();
+    const product =
+      line.product_id != null
+        ? products.find((p) => String(p.id) === String(line.product_id))
+        : products.find((p) => String(p.name || "").toLowerCase() === desc.toLowerCase());
+    return recalcProductLine({
+      sl_no: index + 1,
+      product_id: product ? String(product.id) : line.product_id != null ? String(line.product_id) : "",
+      product_code: product?.sku || product?.product_code || "",
+      product_name: desc || product?.name || "",
+      quantity: line.quantity != null && line.quantity !== "" ? line.quantity : "",
+      uom: line.unit || "Nos",
+      unit_price: line.unit_price != null && line.unit_price !== "" ? line.unit_price : "",
+    });
+  });
+}
+
+function normalizePaymentTermsFromOrder(terms) {
+  const t = String(terms || "").trim();
+  if (!t || t.toLowerCase() === "not specified") return "";
+  return t;
+}
+
+/** Apply enriched or detail sales order onto manual job card form state (no API calls). */
+export function mergeSalesOrderIntoManualForm(
+  prev,
+  order,
+  { customer = null, productLines = null, replaceProductLines = false } = {}
+) {
+  if (!order || typeof order !== "object") return prev;
+  const soNo = order.order_number || (order.id != null ? `SO-${order.id}` : "");
+  const masterCustomer = customerFieldsFromMaster(customer);
+  const next = {
+    ...prev,
+    header: {
+      ...prev.header,
+      sales_order_no: soNo || prev.header.sales_order_no,
+      customer_po_no:
+        order.reference_number != null && String(order.reference_number).trim()
+          ? String(order.reference_number).trim()
+          : prev.header.customer_po_no,
+    },
+    customer: {
+      ...prev.customer,
+      ...(masterCustomer || {}),
+      ...(!masterCustomer && order.customer_name ? { customer_name: order.customer_name } : {}),
+    },
+    order: {
+      ...prev.order,
+      sales_order_date: isoDateOnly(order.order_date) || prev.order.sales_order_date,
+      delivery_date: isoDateOnly(order.delivery_date) || prev.order.delivery_date,
+      payment_terms:
+        normalizePaymentTermsFromOrder(order.payment_terms) || prev.order.payment_terms,
+      priority: order.priority || prev.order.priority || "medium",
+    },
+  };
+  if (replaceProductLines && productLines?.length) {
+    next.product_lines = productLines;
+  }
+  return next;
 }
 
 export function scrollToFirstManualFormError(errors) {

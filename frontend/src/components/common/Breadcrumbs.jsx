@@ -198,6 +198,10 @@ const PAGE_TITLE_OVERRIDES = {
   "/production/operator-jobs": "My Operator Jobs",
 };
 
+const BREADCRUMB_TITLE_OVERRIDES = {
+  "/inventory": "All Items",
+};
+
 const STAGE_LABELS = {
   inventory: "Inventory Check",
   store: "Store Issue",
@@ -309,6 +313,7 @@ function getLabel(segment, segments, index) {
 
 /** Build breadcrumb trail for a pathname. */
 export function getBreadcrumbTrail(pathname) {
+  const normalizedPath = (pathname || "/").replace(/\/$/, "") || "/";
   const segments = (pathname || "/").split("/").filter(Boolean);
 
   if (segments[0] === "admin") {
@@ -333,18 +338,25 @@ export function getBreadcrumbTrail(pathname) {
     return [{ label: "Dashboard", path: "/" }];
   }
 
-  return [
+  const trail = [
     { label: "Dashboard", path: "/" },
     ...segments.map((seg, i) => ({
       label: getLabel(seg, segments, i),
       path: "/" + segments.slice(0, i + 1).join("/"),
     })),
   ];
+
+  const lastItem = trail[trail.length - 1];
+  if (lastItem && BREADCRUMB_TITLE_OVERRIDES[normalizedPath]) {
+    lastItem.label = BREADCRUMB_TITLE_OVERRIDES[normalizedPath];
+  }
+  return trail;
 }
 
 /** Current page title from the last breadcrumb segment. */
 export function getPageTitle(pathname, user = null) {
   const path = (pathname || "/").replace(/\/$/, "") || "/";
+  if (path === "/settings" || path.startsWith("/settings/")) return "Settings";
   if (PAGE_TITLE_OVERRIDES[path]) return PAGE_TITLE_OVERRIDES[path];
 
   // Specific dynamic pattern matches
@@ -406,7 +418,8 @@ export default function Breadcrumbs({ items: customItems, compact = false, class
           ) : (
             <Link
               to={item.path}
-              className="flex items-center gap-1 truncate opacity-90 transition-all hover:opacity-100 hover:underline"
+              className="flex items-center gap-1 truncate transition-colors hover:underline"
+              aria-label={i === 0 ? "Home" : undefined}
             >
               {i === 0 ? <Home className="h-3.5 w-3.5 shrink-0" aria-hidden /> : item.label}
             </Link>

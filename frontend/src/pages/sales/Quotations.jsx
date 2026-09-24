@@ -1,9 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import usePageRefresh from "../../hooks/usePageRefresh";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   Ban,
-  Calendar,
   Check,
   CheckCircle,
   ChevronLeft,
@@ -45,6 +44,12 @@ import {
 import { apiErrorMessage } from "../../utils/apiError";
 import { formatInr, statusColor } from "../../data/salesMasterData";
 import { runListExport } from "../../utils/listExport";
+import { InlineNativeDateRange } from "../../design-system/dateControls";
+import {
+  salesListTextMuted,
+  salesListTextPrimary,
+  salesListTextSecondary,
+} from "../../components/sales/salesListDesignSystem";
 
 const QUOTATION_EXPORT_COLUMNS = [
   { key: "quote_number", label: "Quotation No." },
@@ -77,17 +82,15 @@ const AMOUNT_BANDS = [
 
 function Chip({ label, active, onClick }) {
   return (
-    <button
+    <Button
       type="button"
+      variant={active ? "primary" : "secondary"}
+      size="sm"
       onClick={onClick}
-      className={`inline-flex items-center rounded-full px-3.5 py-1.5 text-[13px] font-medium transition ${
-        active
-          ? "bg-[var(--color-primary)] text-white"
-          : "bg-[var(--color-surface-muted)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"
-      }`}
+      className="!rounded-full"
     >
       {label}
-    </button>
+    </Button>
   );
 }
 
@@ -104,20 +107,22 @@ function SummaryTab({ label, count, amount, active, onClick }) {
   return (
     <button
       type="button"
+      role="tab"
+      aria-selected={active}
       onClick={onClick}
-      className={`min-w-[130px] flex-1 shrink-0 border-b-[3px] px-3.5 py-2.5 sm:px-5 sm:py-3.5 text-left transition duration-150 cursor-pointer ${
+      className={`min-w-[130px] flex-1 shrink-0 rounded-t-lg border-2 border-b-[3px] px-3.5 py-2.5 sm:px-5 sm:py-3.5 text-left transition duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-1 ${
         active
-          ? "border-[var(--color-primary)] bg-[var(--color-surface)] text-[var(--color-primary)]"
-          : "border-transparent bg-transparent text-[var(--color-text-muted)] hover:bg-[var(--color-surface)]/80 hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
+          ? "border-[var(--color-primary)] border-b-[var(--color-primary)] bg-[var(--color-primary-soft)] text-[var(--color-primary)] shadow-sm"
+          : "border-transparent border-b-transparent bg-[var(--color-surface-muted)] text-[var(--color-text-muted)] hover:border-[var(--color-border)] hover:bg-[var(--color-surface)] hover:text-[var(--color-primary)]"
       }`}
     >
-      <p className={`text-xs sm:text-[13px] font-medium transition-colors ${active ? "" : "text-[var(--color-text-muted)]"}`}>
+      <p className={`text-xs sm:text-[13px] transition-colors ${active ? "font-semibold" : "font-medium"}`}>
         {label}{" "}
-        <span className={active ? "opacity-70" : "text-[var(--color-text-faint)]"}>({count})</span>
+        <span className={active ? salesListTextMuted : "text-[var(--color-text-faint)]"}>({count})</span>
       </p>
       <p
         className={`mt-0.5 sm:mt-1 text-base sm:text-[18px] font-bold tabular-nums transition-colors ${
-          active ? "text-[var(--color-primary)]" : "text-[var(--color-text)]"
+          active ? "text-[var(--color-primary)]" : salesListTextPrimary
         }`}
       >
         {amount}
@@ -147,13 +152,6 @@ function fmtDate(iso) {
   return `${d}/${m}/${y}`;
 }
 
-function fmtDisplayDate(iso) {
-  if (!iso) return "";
-  const [y, m, d] = String(iso).slice(0, 10).split("-");
-  if (!y || !m || !d) return String(iso).slice(0, 10);
-  return `${d}/${m}/${y}`;
-}
-
 export default function Quotations() {
   const navigate = useNavigate();
   const { addToast } = useToast();
@@ -162,31 +160,11 @@ export default function Quotations() {
   const [summary, setSummary] = useState({});
   const [selected, setSelected] = useState(null);
   const [openMenu, setOpenMenu] = useState(null);
+  const [searchParams] = useSearchParams();
   const [kpiFilter, setKpiFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [dateFrom, setDateFrom] = useState("2026-04-01");
   const [dateTo, setDateTo] = useState("2027-03-31");
-  const dateFromRef = useRef(null);
-  const dateToRef = useRef(null);
-
-  const openDateFrom = () => {
-    if (typeof dateFromRef.current?.showPicker === "function") {
-      dateFromRef.current.showPicker();
-    } else {
-      dateFromRef.current?.focus();
-      dateFromRef.current?.click();
-    }
-  };
-
-  const openDateTo = () => {
-    if (typeof dateToRef.current?.showPicker === "function") {
-      dateToRef.current.showPicker();
-    } else {
-      dateToRef.current?.focus();
-      dateToRef.current?.click();
-    }
-  };
-
   const [showFilters, setShowFilters] = useState(false);
   const [showSort, setShowSort] = useState(false);
   const [sortId, setSortId] = useState("date_desc");
@@ -220,6 +198,11 @@ export default function Quotations() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    const kpi = searchParams.get("kpi");
+    if (kpi === "pending") setKpiFilter("pending");
+  }, [searchParams]);
 
   useEffect(() => {
     setPage(1);
@@ -381,7 +364,7 @@ export default function Quotations() {
       />
 
       <div className="overflow-hidden rounded-xl border border-[var(--color-table-border)] bg-[var(--color-surface-muted)]">
-        <div className="flex overflow-x-auto scrollbar-none">
+        <div className="flex overflow-x-auto scrollbar-none" role="tablist" aria-label="Quotation status">
           <SummaryTab
             label="All Quotations"
             count={tabStats.all.count}
@@ -414,90 +397,49 @@ export default function Quotations() {
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-2 rounded-xl sm:rounded-full bg-[var(--color-surface)] px-3.5 py-2 text-xs sm:text-[13px] text-[var(--color-text-secondary)] shadow-sm border border-[var(--color-border-soft)] w-fit flex-wrap">
-          <button
-            type="button"
-            onClick={openDateFrom}
-            className="flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-primary)] transition-colors cursor-pointer"
-            aria-label="Open start date picker"
-          >
-            <Calendar className="h-4 w-4 sm:h-5 sm:w-5" />
-          </button>
-          <input
-            ref={dateFromRef}
-            type="date"
-            value={dateFrom}
-            onChange={(e) => {
-              setDateFrom(e.target.value);
-              setPage(1);
-            }}
-            className="sr-only"
-          />
-          <button
-            type="button"
-            onClick={openDateFrom}
-            className="font-medium text-[var(--color-text)] hover:text-[var(--color-primary)] transition-colors cursor-pointer text-xs sm:text-[13px]"
-            title="Click to select start date"
-          >
-            {fmtDisplayDate(dateFrom) || "Start Date"}
-          </button>
-          <span className="text-[var(--color-text-faint)] select-none">→</span>
-          <button
-            type="button"
-            onClick={openDateTo}
-            className="font-medium text-[var(--color-text)] hover:text-[var(--color-primary)] transition-colors cursor-pointer text-xs sm:text-[13px]"
-            title="Click to select end date"
-          >
-            {fmtDisplayDate(dateTo) || "End Date"}
-          </button>
-          <input
-            ref={dateToRef}
-            type="date"
-            value={dateTo}
-            onChange={(e) => {
-              setDateTo(e.target.value);
-              setPage(1);
-            }}
-            className="sr-only"
-          />
-          <button
-            type="button"
-            onClick={openDateTo}
-            className="flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-primary)] transition-colors cursor-pointer"
-            aria-label="Open end date picker"
-          >
-            <Calendar className="h-4 w-4 sm:h-5 sm:w-5" />
-          </button>
-        </div>
+        <InlineNativeDateRange
+          from={dateFrom}
+          to={dateTo}
+          fromId="quotation-from-date"
+          toId="quotation-to-date"
+          onFromChange={(value) => {
+            setDateFrom(value);
+            setPage(1);
+          }}
+          onToChange={(value) => {
+            setDateTo(value);
+            setPage(1);
+          }}
+        />
       </div>
 
       <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
         <SearchBar value={search} onChange={setSearch} placeholder="Search quotations..." className="w-full" />
         <div className="flex items-center gap-2 shrink-0">
-          <button
+          <Button
             type="button"
+            variant="secondary"
+            size="sm"
+            className="flex-1 sm:flex-initial"
             onClick={() => {
               setDraftFilters(filters);
               setShowFilters(true);
             }}
-            className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 rounded-lg bg-[var(--color-surface-muted)] px-3.5 py-2 text-xs sm:text-[13px] font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] border border-[var(--color-border-soft)]"
+            leftIcon={<Filter className="h-4 w-4" aria-hidden />}
           >
-            <Filter className="h-4 w-4" />
             Filters
-          </button>
+          </Button>
           <div className="relative flex-1 sm:flex-initial">
-            <button
+            <Button
               type="button"
+              variant={showSort ? "outline" : "secondary"}
+              size="sm"
+              className="w-full"
               onClick={() => setShowSort((v) => !v)}
-              className={`w-full inline-flex items-center justify-center gap-1.5 rounded-lg px-3.5 py-2 text-xs sm:text-[13px] font-medium border border-[var(--color-border-soft)] ${
-                showSort
-                  ? "bg-[#dcdce3] text-[var(--color-text)]"
-                  : "bg-[var(--color-surface-muted)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"
-              }`}
+              leftIcon={<ListFilter className="h-4 w-4" aria-hidden />}
             >
-              <ListFilter className="h-4 w-4" />
               Sort by
-            </button>
+            </Button>
             {showSort ? (
               <>
                 <button
@@ -516,7 +458,7 @@ export default function Quotations() {
                         setShowSort(false);
                       }}
                       className={`block w-full px-4 py-2.5 text-left text-[13px] hover:bg-[var(--color-surface-hover)] ${
-                        sortId === opt.id ? "font-semibold text-[var(--color-text)]" : "text-[var(--color-text-secondary)]"
+                        sortId === opt.id ? `font-semibold ${salesListTextPrimary}` : salesListTextSecondary
                       }`}
                     >
                       {opt.label}
@@ -626,12 +568,12 @@ export default function Quotations() {
 
               <div className="flex items-center justify-between border-t border-[var(--color-border-soft)] pt-2 text-xs">
                 <div>
-                  <span className="text-[var(--color-text-muted)] text-[10px] block uppercase font-semibold">Date</span>
-                  <span className="text-[var(--color-text-secondary)] font-medium">{fmtDate(r.quote_date)}</span>
+                  <span className={`${salesListTextMuted} text-[10px] block uppercase font-semibold`}>Date</span>
+                  <span className={`${salesListTextSecondary} font-medium`}>{fmtDate(r.quote_date)}</span>
                 </div>
                 <div className="text-right">
-                  <span className="text-[var(--color-text-muted)] text-[10px] block uppercase font-semibold">Amount</span>
-                  <span className="text-sm font-bold text-[var(--color-text)] tabular-nums">{formatInr(r.amount)}</span>
+                  <span className={`${salesListTextMuted} text-[10px] block uppercase font-semibold`}>Amount</span>
+                  <span className={`text-sm font-bold tabular-nums ${salesListTextPrimary}`}>{formatInr(r.amount)}</span>
                 </div>
               </div>
 
@@ -784,7 +726,11 @@ export default function Quotations() {
       <div className="ui-pagination justify-between flex-wrap gap-2 border-t border-[var(--color-border-soft)] pt-3">
         <div className="flex items-center gap-2.5 flex-nowrap whitespace-nowrap text-xs sm:text-[13px] text-[var(--color-text-muted)]">
           <span>Rows:</span>
+          <label htmlFor="quotation-page-size" className="sr-only">
+            Items per page
+          </label>
           <select
+            id="quotation-page-size"
             value={pageSize}
             onChange={(e) => setPageSize(Number(e.target.value))}
             className="ui-pagination-select"
@@ -838,13 +784,15 @@ export default function Quotations() {
           <aside className="flex h-full w-full max-w-[400px] flex-col bg-[var(--color-surface)] shadow-2xl">
             <div className="flex items-center justify-between border-b border-[var(--color-table-border)] px-5 py-4">
               <h2 className="text-[18px] font-bold text-[var(--color-text)]">Filters</h2>
-              <button
+              <Button
                 type="button"
+                variant="ghost"
+                size="icon"
                 onClick={() => setShowFilters(false)}
-                className="rounded-lg p-1 text-[var(--color-text-faint)] hover:bg-[var(--color-surface-hover)]"
+                aria-label="Close filters"
               >
-                <X className="h-5 w-5" />
-              </button>
+                <X className="h-5 w-5" aria-hidden />
+              </Button>
             </div>
             <div className="flex-1 overflow-y-auto px-5">
               <FilterSection label="Quotation Type">
@@ -886,27 +834,29 @@ export default function Quotations() {
               </FilterSection>
             </div>
             <div className="grid grid-cols-2 gap-3 border-t border-[var(--color-table-border)] px-5 py-4">
-              <button
+              <Button
                 type="button"
+                variant="secondary"
+                className="w-full"
                 onClick={() => {
                   setDraftFilters(EMPTY_FILTERS);
                   setFilters(EMPTY_FILTERS);
                   setShowFilters(false);
                 }}
-                className="rounded-xl border border-[var(--color-border-soft)] bg-[var(--color-surface-muted)] py-3 text-[14px] font-semibold text-[var(--color-text)]"
               >
                 Clear Filter
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="primary"
+                className="w-full"
                 onClick={() => {
                   setFilters(draftFilters);
                   setShowFilters(false);
                 }}
-                className="rounded-xl bg-[var(--color-primary)] py-3 text-[14px] font-semibold text-white"
               >
                 Apply Filter
-              </button>
+              </Button>
             </div>
           </aside>
         </div>

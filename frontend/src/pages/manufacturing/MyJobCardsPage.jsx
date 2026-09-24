@@ -149,6 +149,7 @@ export default function MyJobCardsPage() {
   const canDelete =
     userCanAction(user, "sales", "delete") ||
     userCanAction(user, "production", "delete") ||
+    userCanAction(user, "inventory", "delete") ||
     userCanCreateSalesJobCard(user) ||
     isAdmin(user);
   const effectiveTeam =
@@ -182,22 +183,24 @@ export default function MyJobCardsPage() {
 
   const handleDeleteConfirm = async () => {
     if (!deleteTarget || deleteInFlight.current) return;
-    const isManual = Boolean(deleteTarget.is_manual);
-    const jobCardId = deleteTarget.job_card_id ?? (isManual ? deleteTarget.id : null);
+    const isManual = Boolean(
+      deleteTarget.is_manual || (!deleteTarget.sales_order_id && (deleteTarget.job_card_id || deleteTarget.id))
+    );
+    const jobCardId = deleteTarget.job_card_id ?? deleteTarget.id;
     const orderId = deleteTarget.sales_order_id;
     if (isManual && !jobCardId) {
       setDeleteError("Missing job card reference.");
       return;
     }
-    if (!isManual && !orderId) {
-      setDeleteError("Missing sales order reference for this job card.");
+    if (!isManual && !orderId && !jobCardId) {
+      setDeleteError("Missing reference for this job card.");
       return;
     }
     deleteInFlight.current = true;
     setDeleting(true);
     setDeleteError("");
     try {
-      if (isManual) {
+      if (isManual || (!orderId && jobCardId)) {
         await deleteManualJobCard(jobCardId);
         addToast("Job card deleted successfully", "success");
       } else {
