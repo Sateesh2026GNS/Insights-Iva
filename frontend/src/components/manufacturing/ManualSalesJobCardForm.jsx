@@ -910,7 +910,7 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
 
               <section className="manual-sjc__section manual-sjc__section--lines" aria-labelledby="manual-sjc-products">
                 <h3 id="manual-sjc-products" className="manual-sjc__section-title">
-                  Product / Job Details
+                  Product / Job Details*
                 </h3>
               <div className="sjc-doc__table-wrap manual-sjc__pricing-table-wrap" data-manual-field="product_lines">
                 {errors.product_lines ? <FieldError error={errors.product_lines} /> : null}
