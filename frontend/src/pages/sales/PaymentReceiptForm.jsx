@@ -526,7 +526,7 @@ export default function PaymentReceiptForm() {
                         onChange={setBuyerSearch}
                         placeholder="Search"
                         autoFocus
-                        className="w-full"
+                       
                       />
                     </div>
                     <div className="max-h-56 overflow-y-auto">

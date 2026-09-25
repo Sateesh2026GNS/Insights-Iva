@@ -861,7 +861,7 @@ export default function LedgerV2() {
           ) : null}
 
           <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <SearchBar value={search} onChange={setSearch} placeholder="Search" className="w-full" />
+            <SearchBar value={search} onChange={setSearch} placeholder="Search" />
 
             <div className="flex flex-wrap items-center gap-2">
               {tab === "debtors" ? (

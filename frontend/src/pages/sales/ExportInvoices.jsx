@@ -357,7 +357,7 @@ export default function ExportInvoices() {
 
       {/* Toolbar row 1: search | date + create */}
       <div className="mb-3 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <SearchBar value={search} onChange={setSearch} placeholder="Search" className="w-full" />
+        <SearchBar value={search} onChange={setSearch} placeholder="Search" />
         <div className="flex w-full sm:w-auto flex-wrap items-center gap-2.5">
           <div className="inline-flex w-full sm:w-auto justify-between sm:justify-start items-center gap-3 rounded-full bg-[var(--color-surface)] px-3.5 py-2 sm:px-4 sm:py-2.5 text-xs sm:text-[13px] text-[var(--color-text-secondary)] shadow-sm shadow-[#00000010] border border-[var(--color-border-soft)]">
             <button

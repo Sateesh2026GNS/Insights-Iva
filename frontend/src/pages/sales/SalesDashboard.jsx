@@ -453,7 +453,11 @@ export default function SalesDashboard() {
               <div className="sales-dash-card__body overflow-x-auto">
                 <div className="sales-dash-pipeline">
                   {PIPELINE_STAGES.map((stage) => (
-                    <Link key={stage.key} to={stage.to} className="sales-dash-pipeline__stage hover:opacity-90">
+                    <Link
+                      key={stage.key}
+                      to={stage.to}
+                      className={`sales-dash-pipeline__stage sales-dash-pipeline__stage--${stage.key} hover:opacity-90`}
+                    >
                       <div className="sales-dash-pipeline__label">{stage.label}</div>
                       <div className="sales-dash-pipeline__count">{pipelineCounts[stage.key] ?? 0}</div>
                     </Link>

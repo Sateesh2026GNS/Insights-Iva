@@ -5,7 +5,33 @@ import {
   isPageRefreshInProgress,
 } from "../utils/pageRefresh";
 import { httpStatusMessage } from "../utils/apiError";
-import { checkSessionStatus, isPrimaryTabAlive } from "../utils/sessionManager";
+import {
+  checkSessionStatus,
+  isPrimaryTabAlive,
+  recordSessionActivity,
+} from "../utils/sessionManager";
+
+export const AUTH_TOKEN_UPDATED_EVENT = "smrt-auth-token-updated";
+
+function persistAuthTokens(accessToken, refreshToken) {
+  if (accessToken) {
+    localStorage.setItem("smrt-token", accessToken);
+  }
+  if (refreshToken) {
+    localStorage.setItem("smrt-refresh-token", refreshToken);
+  }
+  try {
+    window.dispatchEvent(
+      new CustomEvent(AUTH_TOKEN_UPDATED_EVENT, {
+        detail: { accessToken, refreshToken },
+      })
+    );
+  } catch {}
+}
+
+function isDefinitiveSessionExpiry(reason) {
+  return reason === "primary_9hr_timeout" || reason === "new_tab_10min_timeout";
+}
 
 /** Resolve API base URL. Empty string = same-origin (Docker/nginx proxy). */
 export function getApiBaseURL() {
@@ -69,7 +95,7 @@ api.interceptors.request.use((config) => {
   try {
     if (!isPlatformRequest(config)) {
       const sessionStatus = checkSessionStatus();
-      if (sessionStatus.expired) {
+      if (sessionStatus.expired && isDefinitiveSessionExpiry(sessionStatus.reason)) {
         if (sessionStatus.reason === "primary_9hr_timeout" || !isPrimaryTabAlive()) {
           clearAuthStorage();
         }
@@ -176,6 +202,10 @@ api.interceptors.response.use(
       return Promise.reject(err);
     }
     const method = String(response.config?.method || "get").toLowerCase();
+    if (!isPlatformRequest(response.config)) {
+      recordSessionActivity();
+    }
+
     if (method === "get" && response.status === 200 && response.data && typeof response.data === "object") {
       const cacheKey = buildApiCacheKey(response.config);
       apiCache.set(cacheKey, {
@@ -215,7 +245,7 @@ api.interceptors.response.use(
       !original.url?.includes("/auth/refresh")
     ) {
       const sessionStatus = checkSessionStatus();
-      if (sessionStatus.expired) {
+      if (sessionStatus.expired && isDefinitiveSessionExpiry(sessionStatus.reason)) {
         if (sessionStatus.reason === "primary_9hr_timeout" || !isPrimaryTabAlive()) {
           clearAuthStorage();
         }
@@ -235,14 +265,15 @@ api.interceptors.response.use(
             });
           }
           const data = await refreshPromise;
-          localStorage.setItem("smrt-token", data.access_token);
-          if (data.refresh_token) {
-            localStorage.setItem("smrt-refresh-token", data.refresh_token);
-          }
+          persistAuthTokens(data.access_token, data.refresh_token);
+          original.headers = original.headers || {};
           original.headers.Authorization = `Bearer ${data.access_token}`;
           return api(original);
-        } catch {
-          clearAuthStorage();
+        } catch (refreshErr) {
+          const refreshStatus = refreshErr?.response?.status;
+          if (refreshStatus === 401 || refreshStatus === 403) {
+            clearAuthStorage();
+          }
         }
       }
     }

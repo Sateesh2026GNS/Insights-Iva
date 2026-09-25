@@ -29,7 +29,7 @@ describe("ProductionPipeline", () => {
 
   it("shows loading skeletons when loading", () => {
     const { container } = render(<ProductionPipeline data={null} loading={true} />);
-    expect(container.querySelectorAll(".animate-pulse").length).toBeGreaterThan(0);
+    expect(container.querySelectorAll(".production-pipeline__skeleton").length).toBeGreaterThan(0);
   });
 
   it("shows error state instead of zeros", () => {

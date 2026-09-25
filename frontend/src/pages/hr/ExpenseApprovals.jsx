@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 
 import Loader from "../../components/common/Loader";
+import { SearchBar } from "../../components/common/SearchFilter";
 import { ListPageShell } from "../../components/common/ListPageShell";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { useToast } from "../../context/ToastContext";
@@ -192,9 +193,15 @@ function EmployeeSelect({ value, onChange, employees }) {
       </button>
       {open ? (
         <div className="hr-exp-approvals__select-menu">
-          <div className="hr-exp-approvals__select-search">
-            <Search className="h-4 w-4 shrink-0 text-[#9ca3af]" />
-            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search Employee" />
+          <div className="hr-exp-approvals__select-search p-2">
+            <SearchBar
+              size="compact"
+              value={query}
+              onChange={setQuery}
+              placeholder="Search Employee"
+             
+              aria-label="Search employees"
+            />
           </div>
           {filtered.map((emp) => (
             <button

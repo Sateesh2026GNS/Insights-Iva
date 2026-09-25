@@ -174,7 +174,7 @@ export default function VendorsMaster() {
         <ListPageCardBody>
           <div className="ui-list-toolbar">
             <div className="ui-list-toolbar__start">
-              <SearchBar value={query} onChange={setQuery} placeholder="Search" className="w-full max-w-md" />
+              <SearchBar value={query} onChange={setQuery} placeholder="Search" />
             </div>
             <div className="ui-list-toolbar__end">
               <Button

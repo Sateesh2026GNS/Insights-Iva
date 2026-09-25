@@ -320,7 +320,12 @@ export default function Customers() {
               <>
                 <div className="ui-list-toolbar">
                   <div className="ui-list-toolbar__start w-full sm:w-auto">
-                    <SearchBar value={query} onChange={setQuery} placeholder="Search customers by name, phone, GSTIN..." className="w-full max-w-md" />
+                    <SearchBar
+                      value={query}
+                      onChange={setQuery}
+                      placeholder="Search customers..."
+                      aria-label="Search customers"
+                    />
                   </div>
                   <div className="ui-list-toolbar__end w-full sm:w-auto flex flex-wrap gap-2">
                     <Button

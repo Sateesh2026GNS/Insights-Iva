@@ -375,7 +375,6 @@ export default function VendorManagement() {
               value={filters.name}
               onChange={(v) => setFilters((f) => ({ ...f, name: v }))}
               placeholder="Search vendors..."
-              className="w-full sm:w-auto min-w-0 sm:min-w-[220px] flex-1"
             />
             <button
               type="button"

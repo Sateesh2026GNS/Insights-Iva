@@ -1,7 +1,7 @@
 import { createContext, useCallback, useEffect, useMemo, useState } from "react";
 
 import { getCurrentUser, logout as logoutApi, removeProfileAvatar, updateProfileAvatar } from "../api/authApi";
-import { setUnauthorizedHandler } from "../api/axiosConfig";
+import { AUTH_TOKEN_UPDATED_EVENT, setUnauthorizedHandler } from "../api/axiosConfig";
 import { invalidateReferenceCache } from "../utils/referenceDataCache";
 import {
   checkSessionStatus,
@@ -13,6 +13,7 @@ import {
   markAsPrimaryTab,
   markTabExpired,
   sendPrimaryHeartbeat,
+  recordSessionActivity,
 } from "../utils/sessionManager";
 
 export const AuthContext = createContext(null);
@@ -228,7 +229,11 @@ export function AuthProvider({ children }) {
         setUser(null);
       }
     };
+    const onTokenUpdated = () => {
+      recordSessionActivity();
+    };
     window.addEventListener("storage", onStorageChange);
+    window.addEventListener(AUTH_TOKEN_UPDATED_EVENT, onTokenUpdated);
 
     const onUnload = () => {
       if (getTabType() === "primary") {
@@ -242,6 +247,7 @@ export function AuthProvider({ children }) {
     return () => {
       clearInterval(interval);
       window.removeEventListener("storage", onStorageChange);
+      window.removeEventListener(AUTH_TOKEN_UPDATED_EVENT, onTokenUpdated);
       window.removeEventListener("beforeunload", onUnload);
     };
   }, [logout]);
@@ -265,20 +271,8 @@ export function AuthProvider({ children }) {
           localStorage.setItem("smrt-user", JSON.stringify(u));
         } catch {}
       })
-      .catch((err) => {
-        if (cancelled) return;
-        if (err.response?.status === 401) {
-          const loginTime = Number(localStorage.getItem("smrt-login-time") || 0);
-          if (Date.now() - loginTime > 60_000) {
-            try {
-              clearTenantDataCaches();
-              localStorage.removeItem("smrt-token");
-              localStorage.removeItem("smrt-refresh-token");
-              localStorage.removeItem("smrt-user");
-            } catch {}
-            setUser(null);
-          }
-        }
+      .catch(() => {
+        /* 401 refresh/logout handled by axios interceptors; keep cached user until then */
       });
     return () => {
       cancelled = true;

@@ -6,6 +6,7 @@
 import {
   operatorPathAllowed,
   productionManagerPathAllowed,
+  qualityControlPathAllowed,
 } from "./rbacNavFilters";
 import {
   getSettingsSectionIdFromPath,
@@ -26,7 +27,7 @@ export const ROLES = [
 export const MODULES = [
   "dashboard", "masters", "production", "inventory", "procurement",
   "sales", "accounts", "quality", "maintenance", "analytics", "alerts", "admin",
-  "documents", "documents_ops", "factoryMonitor", "iot", "settings", "meetings", "hr",
+  "documents", "documents_ops", "factoryMonitor", "iot", "settings", "meetings", "chat", "hr",
 ];
 
 /** Static fallback matrix — API permissions take precedence when present. */
@@ -62,10 +63,10 @@ export const ROLE_PERMISSIONS = {
     "dashboard", "procurement", "inventory", "masters", "accounts", "alerts", "documents", "analytics",
   ],
   "Quality Control": [
-    "dashboard", "quality", "production", "inventory", "masters", "documents", "alerts", "analytics", "meetings",
+    "dashboard", "quality", "production", "inventory", "documents", "alerts", "analytics", "meetings", "settings",
   ],
   quality_control: [
-    "dashboard", "quality", "production", "inventory", "masters", "documents", "alerts", "analytics", "meetings",
+    "dashboard", "quality", "production", "inventory", "documents", "alerts", "analytics", "meetings", "settings",
   ],
   "HR Manager": ["dashboard", "hr", "analytics", "alerts", "documents", "meetings", "settings"],
   hr_manager: ["dashboard", "hr", "analytics", "alerts", "documents", "meetings", "settings"],
@@ -169,6 +170,7 @@ export const ROUTE_MODULES = {
   "/settings": "settings",
   "/documents": "documents",
   "/meetings": "meetings",
+  "/chat": "chat",
   "/factory-monitor": "factoryMonitor",
   "/iot": "iot",
   "/hr": "hr",
@@ -252,6 +254,7 @@ export function getEffectivePermissions(user) {
 
 export function userHasModule(user, module) {
   if (!user || !module) return false;
+  if (module === "chat") return true;
   if (isAdmin(user)) return true;
   const perms = getEffectivePermissions(user);
   if (perms.includes("*") || perms.includes(module)) return true;
@@ -421,6 +424,7 @@ export function salesManagerPathAllowed(pathname) {
   }
   if (path.startsWith("/documents")) return true;
   if (path.startsWith("/meetings")) return true;
+  if (path.startsWith("/chat")) return true;
   if (path.startsWith("/settings")) return true;
   return false;
 }
@@ -473,6 +477,7 @@ export function storeManagerPathAllowed(pathname) {
   if (path.startsWith("/alerts")) return true;
   if (path.startsWith("/documents")) return true;
   if (path.startsWith("/manufacturing")) return true;
+  if (path.startsWith("/chat")) return true;
   return false;
 }
 
@@ -522,12 +527,14 @@ export function userCanAccessPath(user, pathname) {
   if (isAdmin(user)) return true;
   const path = (pathname || "").replace(/\/$/, "") || "/";
   if (path === "/admin/approvals") {
+    if (isQualityTeam(user)) return false;
     return userCanAccessApprovalQueue(user);
   }
   if (isHrAttendanceLeavePath(pathname)) {
     return userCanAccessHrAttendanceLeavePath(user, pathname);
   }
   if (isStoreManager(user) && isSalesJobCardAuthoringPath(pathname)) return false;
+  if (path.startsWith("/chat")) return true;
   if (
     path === "/my-job-cards" ||
     path.startsWith("/my-job-cards/") ||
@@ -538,11 +545,13 @@ export function userCanAccessPath(user, pathname) {
     if (!userCanAccessMyJobCards(user)) return false;
     if (isStoreManager(user) && !storeManagerPathAllowed(pathname)) return false;
     if (isProductionManager(user) && !productionManagerPathAllowed(pathname)) return false;
+    if (isQualityTeam(user) && !qualityControlPathAllowed(pathname)) return false;
     if (isOperator(user) && !operatorPathAllowed(pathname)) return false;
     return true;
   }
   if (path.startsWith("/procurement/vendors") || path.startsWith("/masters/vendors")) {
     if (isProductionManager(user)) return false;
+    if (isQualityTeam(user)) return false;
     if (!userCanAccess(user, "masters") && !userCanAccess(user, "procurement")) return false;
     if (isStoreManager(user) && !storeManagerPathAllowed(pathname)) return false;
     return true;
@@ -554,6 +563,7 @@ export function userCanAccessPath(user, pathname) {
   if (isStoreManager(user) && !storeManagerPathAllowed(pathname)) return false;
   if (isSalesManager(user) && !salesManagerPathAllowed(pathname)) return false;
   if (isProductionManager(user) && !productionManagerPathAllowed(pathname)) return false;
+  if (isQualityTeam(user) && !qualityControlPathAllowed(pathname)) return false;
   if (isOperator(user) && !operatorPathAllowed(pathname)) return false;
   return true;
 }

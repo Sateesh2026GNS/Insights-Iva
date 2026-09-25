@@ -315,7 +315,7 @@ export default function MaintenanceSchedule() {
               value={search}
               onChange={setSearch}
               placeholder="Search by task, machine, or assigned engineer..."
-              className="w-full"
+             
             />
           </div>
           <div className="lg:col-span-3">

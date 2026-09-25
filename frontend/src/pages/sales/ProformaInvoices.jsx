@@ -334,7 +334,7 @@ export default function ProformaInvoices() {
 
       <div className="rounded-t-2xl bg-white px-4 pb-6 pt-4 sm:px-6">
         <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <SearchBar value={search} onChange={setSearch} placeholder="Search" className="w-full" />
+          <SearchBar value={search} onChange={setSearch} placeholder="Search" />
           <div className="relative flex gap-2">
             <button
               type="button"

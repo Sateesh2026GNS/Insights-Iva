@@ -3,29 +3,48 @@
  * Admin uses the ERP reference dashboard at `/`; other roles land on their dedicated module home.
  */
 
+import { isQualityTeam } from "../config/permissions";
+
 /** Canonical Accounts module home (must match AppRoutes + sidebar). */
 export const ACCOUNTS_DASHBOARD_PATH = "/accounts/dashboard";
+
+/** Role-aware dashboard route for Quality Control (renders the quality module dashboard). */
+export const QUALITY_CONTROL_LANDING_PATH = "/dashboard";
 
 /** Canonical Sales module home (must match AppRoutes + sidebar). */
 export const SALES_DASHBOARD_PATH = "/sales";
 
+/** Canonical Production Manager module home (must match AppRoutes + PM sidebar). */
+export const PRODUCTION_DASHBOARD_PATH = "/production/dashboard";
+
 function roleNamesLower(roleOrUser) {
   if (!roleOrUser) return [];
   if (typeof roleOrUser === "object") {
-    const fromUser = [];
-    const active = String(
-      roleOrUser.role_name || roleOrUser.role || ""
-    ).trim();
-    if (active) fromUser.push(active);
-    if (Array.isArray(roleOrUser.roles)) {
-      roleOrUser.roles.forEach((r) => {
-        const name = typeof r === "object" ? r?.name : String(r || "");
-        if (name) fromUser.push(name);
-      });
+    const active = String(roleOrUser.role_name || roleOrUser.role || "").trim();
+    if (active) {
+      return [active.toLowerCase()];
     }
-    return fromUser.map((r) => String(r).trim().toLowerCase()).filter(Boolean);
+    if (Array.isArray(roleOrUser.roles)) {
+      return roleOrUser.roles
+        .map((r) => (typeof r === "object" ? r?.name : String(r || "")))
+        .map((r) => String(r).trim().toLowerCase())
+        .filter(Boolean);
+    }
+    return [];
   }
   return [String(roleOrUser).trim().toLowerCase()].filter(Boolean);
+}
+
+/** Merge the role selected at login into the API user payload (authoritative for landing). */
+export function withLoginRole(user, selectedRole) {
+  const role = String(selectedRole || "").trim();
+  if (!user || typeof user !== "object") {
+    if (!role) return null;
+    return { role, role_name: role };
+  }
+  const resolved = user.role || user.role_name || role;
+  const resolvedName = user.role_name || user.role || role;
+  return { ...user, role: resolved, role_name: resolvedName };
 }
 
 function isAccountsPrimaryRole(name) {
@@ -39,6 +58,10 @@ function isAccountsPrimaryRole(name) {
 }
 
 export function getDashboardPathForRole(roleOrUser) {
+  if (typeof roleOrUser === "object" && roleOrUser && isQualityTeam(roleOrUser)) {
+    return QUALITY_CONTROL_LANDING_PATH;
+  }
+
   const names = roleNamesLower(roleOrUser);
   const name = names[0] || "";
 
@@ -61,7 +84,7 @@ export function getDashboardPathForRole(roleOrUser) {
     return ACCOUNTS_DASHBOARD_PATH;
   }
   if (names.some((n) => n.includes("quality") || n === "qa" || n === "qc")) {
-    return "/quality";
+    return QUALITY_CONTROL_LANDING_PATH;
   }
   if (names.some((n) => n.includes("purchase") || n.includes("procurement"))) {
     return "/procurement";
@@ -70,7 +93,7 @@ export function getDashboardPathForRole(roleOrUser) {
     return "/my-job-cards";
   }
   if (names.some((n) => n.includes("production"))) {
-    return "/production";
+    return PRODUCTION_DASHBOARD_PATH;
   }
 
   if (isAccountsPrimaryRole(name)) {

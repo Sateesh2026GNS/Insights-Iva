@@ -511,7 +511,7 @@ export default function FinishedGoods() {
       <ListPageCard>
         <ListPageCardBody>
         <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <SearchBar value={search} onChange={setSearch} placeholder="Search finished goods..." className="w-full max-w-md" />
+          <SearchBar value={search} onChange={setSearch} placeholder="Search finished goods..." />
 
           <div className="flex flex-wrap items-center gap-2">
             <ExportDownloadMenu disabled={!exportRows.length} onExport={handleExport} />

@@ -39,6 +39,7 @@ import {
 
 import Button from "../../components/common/Button";
 import Loader from "../../components/common/Loader";
+import { SearchBar } from "../../components/common/SearchFilter";
 import { ListPageShell } from "../../components/common/ListPageShell";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { useToast } from "../../context/ToastContext";
@@ -671,16 +672,12 @@ export default function ExpenseOverview() {
               </div>
 
               <div className="flex flex-wrap items-center gap-2.5">
-                <div className="relative">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--color-text-muted)]" />
-                  <input
-                    type="search"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Search claims…"
-                    className="rounded-lg border border-[var(--color-border-soft)] bg-[var(--color-surface)] py-1.5 pl-8 pr-3 text-xs text-[var(--color-text)] outline-none focus:border-[var(--color-primary)]"
-                  />
-                </div>
+                <SearchBar
+                  value={search}
+                  onChange={setSearch}
+                  placeholder="Search claims…"
+                  aria-label="Search expense claims"
+                />
 
                 <select
                   value={categoryFilter}

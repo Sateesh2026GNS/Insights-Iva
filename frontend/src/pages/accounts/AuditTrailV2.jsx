@@ -100,7 +100,7 @@ function MultiSelectFilter({
               onChange={setQuery}
               placeholder="Search"
               autoFocus
-              className="w-full"
+             
             />
           </div>
 

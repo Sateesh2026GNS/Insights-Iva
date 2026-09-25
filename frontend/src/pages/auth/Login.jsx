@@ -10,7 +10,7 @@ import BrandLogo from "../../components/common/BrandLogo";
 import Button from "../../components/common/Button";
 import LoginSuccessOverlay from "../../components/common/LoginSuccessOverlay";
 import { ROLES } from "../../config/permissions";
-import { getDashboardPathForRole } from "../../utils/roleRedirect";
+import { getDashboardPathForRole, withLoginRole } from "../../utils/roleRedirect";
 
 const LOGIN_SUCCESS_MS = 20;
 const LOGIN_ROLES = ROLES.map((r) => r.name);
@@ -110,13 +110,13 @@ export default function Login() {
   };
 
   const completeLogin = (data) => {
+    const sessionUser = withLoginRole(data.user, role);
     login({
       access_token: data.access_token,
       refresh_token: data.refresh_token,
-      user: data.user,
+      user: sessionUser,
     });
-    const resolvedRole = data.user?.role_name || data.user?.role || role;
-    const path = getDashboardPathForRole(resolvedRole);
+    const path = getDashboardPathForRole(sessionUser ?? role);
     setRedirectPath(path);
     setShowSuccess(true);
     setLoading(false);

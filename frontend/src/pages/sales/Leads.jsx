@@ -407,9 +407,8 @@ export default function Leads() {
               <SearchBar
                 value={tableSearch}
                 onChange={setTableSearch}
-                placeholder="Search"
-                aria-label="Search"
-                className="w-full min-w-[12rem] max-w-[var(--search-max-width-nav)]"
+                placeholder="Search leads..."
+                aria-label="Search leads"
               />
               <Button
                 type="button"
