@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 
 import Loader from "../../components/common/Loader";
+import { SearchBar } from "../../components/common/SearchFilter";
 import { ListPageShell } from "../../components/common/ListPageShell";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { useToast } from "../../context/ToastContext";
@@ -568,10 +569,12 @@ export default function Offboarded() {
         <h1 className="hr-offboarded__title">Employee Offboarded</h1>
 
         <div className="hr-offboarded__toolbar">
-          <label className="hr-offboarded__search">
-            <Search className="h-4 w-4 shrink-0 text-[#9ca3af]" />
-            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search Employee" />
-          </label>
+          <SearchBar
+            value={search}
+            onChange={setSearch}
+            placeholder="Search employees..."
+            aria-label="Search offboarded employees"
+          />
           <button type="button" className="hr-offboarded__filter-btn" onClick={openFilters}>
             <Filter className="h-4 w-4" />
             Filter

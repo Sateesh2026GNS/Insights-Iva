@@ -6,6 +6,9 @@ export const SEARCH_BAR_WRAP_CLASS =
   "relative ui-search-wrap min-w-[10rem] flex-1 max-w-[var(--search-max-width-nav)]";
 export const SEARCH_BAR_INPUT_CLASS = "ui-input global-search-input w-full !rounded-full !pl-10";
 
+/** Procurement Vendors list toolbar — canonical width/flex for module list search */
+export const LIST_PAGE_SEARCH_BAR_CLASS = "w-full sm:w-auto min-w-0 sm:min-w-[220px] flex-1";
+
 /** Navbar global search — same ui-input styling, wider cap */
 export const NAVBAR_SEARCH_WRAP_CLASS = "relative ui-search-wrap navbar-search-wrap min-w-0 w-full flex-1";
 export const NAVBAR_SEARCH_INPUT_CLASS = "ui-input global-search-input w-full !rounded-full !pl-11 !pr-11";
@@ -46,7 +49,7 @@ export function SearchBar({
   onChange,
   placeholder,
   onClear,
-  className = "",
+  className,
   inputClassName = "",
   disabled = false,
   clearable = true,
@@ -71,6 +74,8 @@ export function SearchBar({
   const resolvedPlaceholder = placeholder ?? t("common.search", { defaultValue: "Search" });
   const hasValue = String(value ?? "").length > 0;
   const preset = SIZE_PRESETS[size] ?? SIZE_PRESETS.default;
+  const wrapLayoutClass =
+    className !== undefined ? className : size === "compact" ? "" : LIST_PAGE_SEARCH_BAR_CLASS;
 
   const handleClear = () => {
     onChange?.("");
@@ -78,7 +83,7 @@ export function SearchBar({
   };
 
   return (
-    <div className={`${preset.wrap}${className ? ` ${className}` : ""}`}>
+    <div className={`${preset.wrap}${wrapLayoutClass ? ` ${wrapLayoutClass}` : ""}`}>
       <Search
         className={`pointer-events-none absolute ${preset.iconLeft} top-1/2 z-10 ${preset.iconSize} -translate-y-1/2 text-[var(--color-text-icon)]`}
         aria-hidden

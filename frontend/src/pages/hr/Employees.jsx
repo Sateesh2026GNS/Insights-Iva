@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 
 import Loader from "../../components/common/Loader";
+import { SearchBar } from "../../components/common/SearchFilter";
 import { ListPageShell } from "../../components/common/ListPageShell";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { useToast } from "../../context/ToastContext";
@@ -258,10 +259,15 @@ export default function Employees() {
 
         <div className="hr-emp-onboard__toolbar">
           <div className="hr-emp-onboard__toolbar-left">
-            <label className="hr-emp-onboard__search">
-              <Search className="h-4 w-4 shrink-0 text-[#9ca3af]" />
-              <input value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} placeholder="Search Employee" />
-            </label>
+            <SearchBar
+              value={search}
+              onChange={(v) => {
+                setSearch(v);
+                setPage(1);
+              }}
+              placeholder="Search employees..."
+              aria-label="Search employees"
+            />
             <button type="button" className="hr-emp-onboard__filter-btn" onClick={openFilters}>
               <Filter className="h-4 w-4" />
               Filter

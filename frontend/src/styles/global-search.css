@@ -18,10 +18,10 @@
   --gs-text: #111827;
   --gs-muted: #6b7280;
   --gs-icon: #6b9080;
-  --gs-primary: #00733c;
+  --gs-primary: #3157d5;
   --gs-surface: #ffffff;
   --gs-border: #e5e7eb;
-  --gs-hover: #e8f5e9;
+  --gs-hover: #eef2ff;
 
   color: var(--gs-text);
   max-height: 16rem;

@@ -936,8 +936,8 @@ function buildSalesJobCardHtml(data) {
   <tbody>${lineRows || '<tr><td colspan="6">—</td></tr>'}</tbody></table>
   <div class="cap">Technical Specifications</div>
   <table class="data"><thead><tr><th>Sl.</th><th>Parameter</th><th>Specification</th></tr></thead><tbody>${specRows}</tbody></table>
-  <table class="data sign"><thead><tr><th>Prepared By</th><th>Checked By</th><th>Approved By</th><th>Date</th><th>Customer Acknowledgement</th></tr></thead>
-  <tbody><tr><td>${escapeHtml(a.prepared_by || "")}</td><td>${escapeHtml(a.checked_by || "")}</td><td>${escapeHtml(a.approved_by || "")}</td><td>${escapeHtml(a.prepared_date || a.approved_date || "")}</td><td>${escapeHtml(a.customer_acknowledgement || "")}</td></tr></tbody></table>
+  <table class="data sign"><thead><tr><th>Prepared By</th><th>Checked By</th><th>Approved By</th><th>Date</th></tr></thead>
+  <tbody><tr><td>${escapeHtml(a.prepared_by || "")}</td><td>${escapeHtml(a.checked_by || "")}</td><td>${escapeHtml(a.approved_by || "")}</td><td>${escapeHtml(a.prepared_date || a.approved_date || "")}</td></tr></tbody></table>
 </div></body></html>`;
 }
 

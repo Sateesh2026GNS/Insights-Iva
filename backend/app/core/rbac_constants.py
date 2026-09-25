@@ -14,6 +14,7 @@ MODULE_CATALOG = [
     {"code": "alerts", "label": "Alerts & Notifications"},
     {"code": "documents", "label": "Documents"},
     {"code": "meetings", "label": "Meetings"},
+    {"code": "chat", "label": "Work Chat"},
     {"code": "factoryMonitor", "label": "Factory Monitor"},
     {"code": "iot", "label": "IoT & Smart Factory"},
     {"code": "hr", "label": "Human Resources"},

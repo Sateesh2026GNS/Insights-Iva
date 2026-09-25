@@ -1,12 +1,16 @@
 import { ShieldX } from "lucide-react";
 
 import Button from "../common/Button";
+import useAuth from "../../hooks/useAuth";
+import { getDashboardPathForRole } from "../../utils/roleRedirect";
 
 /**
  * 403 Access Denied — unauthorized module / direct URL / missing role.
  * Never exposes sensitive data.
  */
 export default function AccessDenied({ message, requiredRole }) {
+  const { user } = useAuth();
+  const homePath = getDashboardPathForRole(user) || "/";
   const displayMessage =
     message || "You do not have permission to access this page.";
 
@@ -28,7 +32,7 @@ export default function AccessDenied({ message, requiredRole }) {
           Required access: <span className="font-medium text-slate-600 dark:text-slate-300">{requiredRole}</span>
         </p>
       ) : null}
-      <Button variant="primary" to="/" className="mt-6">
+      <Button variant="primary" to={homePath} className="mt-6">
         Back to Dashboard
       </Button>
     </div>

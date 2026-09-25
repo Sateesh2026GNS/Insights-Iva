@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 
 import Loader from "../../components/common/Loader";
+import { SearchBar } from "../../components/common/SearchFilter";
 import { ListPageShell } from "../../components/common/ListPageShell";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { useToast } from "../../context/ToastContext";
@@ -117,10 +118,15 @@ function EmployeeFilterSelect({ value, onChange, employees }) {
       {open ? (
         <div className="hr-monthly-shifts__select-menu">
           <div className="hr-monthly-shifts__search-wrap">
-            <label className="hr-monthly-shifts__search-input">
-              <Search className="h-4 w-4 shrink-0 text-[#9ca3af]" aria-hidden />
-              <input ref={inputRef} type="text" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search Employee" />
-            </label>
+            <SearchBar
+              size="compact"
+              value={query}
+              onChange={setQuery}
+              placeholder="Search Employee"
+              inputRef={inputRef}
+             
+              aria-label="Search employees"
+            />
           </div>
           <ul className="max-h-52 overflow-y-auto py-1">
             {filtered.map((opt) => (

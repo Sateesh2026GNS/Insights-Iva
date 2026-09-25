@@ -20,6 +20,7 @@ Insights Iva is a full-stack **manufacturing ERP** and business intelligence pla
 - [Features](#features)
 - [Admin dashboard](#admin-dashboard)
 - [Sales module](#sales-module)
+- [Quality Control module](#quality-control-module)
 - [Quick start](#quick-start)
 - [Development](#development)
 - [Project structure](#project-structure)
@@ -127,6 +128,43 @@ The main ERP dashboard (`ReferenceDashboard`) loads from **`GET /api/erp/dashboa
 
 **RBAC config:** `frontend/src/config/permissions.js`, `salesManagerNavConfig.js`  
 **Hub service:** `backend/app/services/sales_extended_service.py`, `sales_person_scope.py`
+
+---
+
+## Quality Control module
+
+Quality Control uses a **focused role sidebar** (not the full ERP menu). Navigation is defined in `frontend/src/config/qualityControlNavConfig.js` and applied in `Sidebar.jsx` when `isQualityTeam(user)` is true. Path allow-lists live in `frontend/src/config/rbacNavFilters.js` (`qualityControlPathAllowed`); `frontend/src/config/permissions.js` enforces the same rules on `ProtectedRoute`.
+
+### Login and dashboard
+
+| Item | Route | Notes |
+|------|-------|--------|
+| **Post-login landing** | `/dashboard` | `getDashboardPathForRole()` + `withLoginRole()` in `Login.jsx` merge the role selected on the form into the session user before navigation |
+| **Sidebar “Dashboard”** | `/dashboard` | Same destination as login |
+| **Dashboard UI** | `QualityDashboard` | Rendered inside `Dashboard.jsx` for QC users (same component as `/quality`) |
+| **Quality module home** | `/quality` | Linked under **Quality → Quality Dashboard**; hub KPIs from quality APIs |
+
+Other roles keep their existing landing paths (`roleRedirect.js`: e.g. Production Manager → `/production/dashboard`, Store Manager → `/inventory/dashboard`).
+
+### Sidebar (Quality Control)
+
+| Section | Items |
+|---------|--------|
+| Dashboard | `/dashboard` |
+| Quality | Incoming Inspection, In-Process QC, Final QC, Batch Reports, Quality Inspections (`/quality/inspection`), NCR / Non-Conformance (`/quality/defects`) |
+| Production | Production Orders (`/production/planning` — read-oriented; other production admin routes blocked) |
+| Materials | Raw Materials, Finished Goods only |
+| Alerts | All, Quality, Production Delay, Low Stock |
+| Workplace | Documents, Meetings, **Work Chat** (`/chat` — all authenticated users), Analytics (`/analytics/production`), Settings |
+
+**Not in QC navigation (pages remain for other roles):** Masters (customers/vendors/products), full inventory administration, procurement / purchase approvals (`/admin/approvals` blocked for QC on the frontend guard).
+
+**Not implemented (no dead links):** dedicated CAPA module; separate “Quality Reports” hub beyond **Batch Reports** (`/quality/batch-reports`). `/quality/compliance` exists but is not listed in the QC sidebar.
+
+**Job card queue:** `/my-job-cards?dept=quality` (workflow handoff; not the post-login home).
+
+**RBAC config:** `qualityControlNavConfig.js`, `rbacNavFilters.js`, `permissions.js`, `utils/roleRedirect.js`  
+**Backend matrix:** `backend/app/core/rbac_constants.py` (API remains the security boundary)
 
 ---
 
@@ -265,7 +303,7 @@ Insights Iva/
 │   │   ├── components/          # layout/, manufacturing/, dashboard/, common/, …
 │   │   ├── pages/               # Lazy-loaded via lazyPages.jsx
 │   │   ├── routes/              # AppRoutes.jsx
-│   │   ├── config/              # permissions, sidebarNav, salesManagerNavConfig
+│   │   ├── config/              # permissions, sidebarNav, *ManagerNavConfig, qualityControlNavConfig
 │   │   ├── design-system/       # date controls, shared UI tokens
 │   │   └── utils/               # apiError, manualSalesJobCard, salesDashboardKpis, …
 │   ├── vite.config.js
@@ -293,7 +331,7 @@ Sales Order (confirmed)
 
 | Page | Route |
 |------|-------|
-| Workflow hub | `/` (role-specific dashboards) |
+| Workflow hub | `/` or `/dashboard` (role-specific; QC lands on `/dashboard`) |
 | Team workflow board | `/manufacturing/workflow` |
 | Job card detail | `/sales/orders/:id/job-card`, `/manufacturing/job-card/:orderId` |
 | Create manual job card | `/sales/job-cards/create` |
@@ -312,7 +350,8 @@ Sales Order (confirmed)
 | Admin | Full access; ERP dashboard, approvals, settings |
 | Sales Manager | Sales module, reports, customers, orders, quotations |
 | Store Manager | Inventory, purchases, GRN, store job card queue |
-| Production Manager | Production, MRP, workflow |
+| Production Manager | Production dashboard `/production/dashboard`, MRP, workflow (`productionManagerNavConfig.js`) |
+| Quality Control | QC dashboard `/dashboard`, inspections, defects/NCR, limited production & materials (`qualityControlNavConfig.js`) |
 | HR Manager | HR module, approval center (where permitted) |
 | Accountant | Accounts, finance reports; company-wide sales hub revenue |
 | Operator | Shop-floor job cards, assigned work |

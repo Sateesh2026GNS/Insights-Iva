@@ -3,6 +3,7 @@ import {
   BarChart3,
   Bell,
   CalendarDays,
+  MessageSquare,
   ClipboardList,
   FileText,
   FolderOpen,
@@ -91,6 +92,14 @@ export const SALES_MANAGER_NAV_ITEMS = [
     children: [
       { key: "meetingsList", label: "Meetings", to: "/meetings", icon: CalendarDays, module: "meetings", end: true },
     ],
+  },
+  {
+    key: "chat",
+    label: "Work Chat",
+    to: "/chat",
+    icon: MessageSquare,
+    module: "chat",
+    end: true,
   },
   {
     key: "reports",

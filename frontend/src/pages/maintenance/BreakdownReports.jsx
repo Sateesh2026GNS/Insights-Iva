@@ -332,7 +332,7 @@ export default function BreakdownReports() {
               value={search}
               onChange={setSearch}
               placeholder="Search breakdown no, machine, cause, engineer..."
-              className="w-full"
+             
             />
           </div>
           <div className="lg:col-span-3">

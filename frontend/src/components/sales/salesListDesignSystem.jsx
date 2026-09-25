@@ -14,7 +14,10 @@ export const salesListPanelClass =
 export const salesListToolbarClass =
   "mb-3 flex flex-col gap-3 border-b border-[var(--color-border)] pb-3 lg:flex-row lg:items-center lg:justify-between";
 
-export { SEARCH_BAR_INPUT_CLASS as salesListSearchClass } from "../common/SearchFilter";
+export {
+  LIST_PAGE_SEARCH_BAR_CLASS as salesListSearchWrapClass,
+  SEARCH_BAR_INPUT_CLASS as salesListSearchClass,
+} from "../common/SearchFilter";
 
 export const salesListDateChipClass =
   "inline-flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-[13px] text-[var(--color-text-secondary)] shadow-sm";

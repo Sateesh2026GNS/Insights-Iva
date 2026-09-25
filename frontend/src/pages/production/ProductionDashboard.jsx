@@ -15,9 +15,6 @@ import {
 import KpiCard from "../../components/common/KpiCard";
 
 import Loader from "../../components/common/Loader";
-import PageHeader from "../../components/common/PageHeader";
-import DashboardWelcomeBanner from "../../components/dashboard/DashboardWelcomeBanner";
-import ProductionManagerNav from "../../components/production/ProductionManagerNav";
 import { useToast } from "../../context/ToastContext";
 import { getProductionHub } from "../../api/productionApi";
 import {
@@ -112,12 +109,6 @@ export default function ProductionDashboard() {
 
   return (
     <div className="space-y-5 pb-4">
-      <DashboardWelcomeBanner />
-
-      <ProductionManagerNav />
-
-      <PageHeader subtitle="Planning, schedule, allocation, batches, and quality in one control center." />
-
       {error ? (
         <div className="ui-card flex flex-wrap items-center justify-between gap-3 border-[var(--color-danger)]/30 bg-[var(--color-danger-soft)] px-4 py-3">
           <p className="text-sm text-[var(--color-danger)]">{error}</p>

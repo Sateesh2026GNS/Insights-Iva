@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import Table from "./Table";
 import Pagination from "./Pagination";
-import { SearchBar, FilterSelect } from "./SearchFilter";
+import { FilterSelect, LIST_PAGE_SEARCH_BAR_CLASS, SearchBar } from "./SearchFilter";
 import EmptyState from "./EmptyState";
 import NoResultsState from "./states/NoResultsState";
 import { asArray } from "../../utils/apiError";
@@ -122,7 +122,7 @@ export default function DataTable({
                   resetPage();
                 }}
                 placeholder={searchPlaceholder}
-                className="w-full max-w-md"
+                className={LIST_PAGE_SEARCH_BAR_CLASS}
                 inputClassName={searchInputClassName}
               />
             ) : null}

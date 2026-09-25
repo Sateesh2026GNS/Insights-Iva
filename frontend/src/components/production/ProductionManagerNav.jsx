@@ -11,9 +11,17 @@ import {
 
 import useAuth from "../../hooks/useAuth";
 import { isAdmin, userCanAccess } from "../../config/permissions";
+import { PRODUCTION_DASHBOARD_PATH } from "../../utils/roleRedirect";
 
 const NAV_ITEMS = [
-  { key: "dashboard", labelKey: "productionManagerNav.dashboard", to: "/", icon: LayoutDashboard, module: "dashboard", end: true },
+  {
+    key: "dashboard",
+    labelKey: "productionManagerNav.dashboard",
+    to: PRODUCTION_DASHBOARD_PATH,
+    icon: LayoutDashboard,
+    module: "production",
+    end: true,
+  },
   { key: "production", labelKey: "productionManagerNav.production", to: "/production", icon: Factory, module: "production" },
   { key: "inventory", labelKey: "productionManagerNav.inventory", to: "/inventory/raw-materials", icon: Boxes, module: "inventory" },
   { key: "quality", labelKey: "productionManagerNav.quality", to: "/quality/inspection", icon: CheckCircle2, module: "quality" },

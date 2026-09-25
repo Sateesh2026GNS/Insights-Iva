@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { ACCOUNTS_DASHBOARD_PATH, getDashboardPathForRole } from "./roleRedirect";
+import {
+  ACCOUNTS_DASHBOARD_PATH,
+  PRODUCTION_DASHBOARD_PATH,
+  QUALITY_CONTROL_LANDING_PATH,
+  getDashboardPathForRole,
+  withLoginRole,
+} from "./roleRedirect";
 import { userCanAccessPath } from "../config/permissions";
 
 describe("roleRedirect", () => {
@@ -16,6 +22,34 @@ describe("roleRedirect", () => {
 
   it("does not send sales manager to accounts dashboard", () => {
     expect(getDashboardPathForRole("Sales Manager")).toBe("/sales");
+  });
+
+  it("routes production manager to the production dashboard", () => {
+    expect(PRODUCTION_DASHBOARD_PATH).toBe("/production/dashboard");
+    expect(getDashboardPathForRole("Production Manager")).toBe("/production/dashboard");
+    expect(getDashboardPathForRole({ role_name: "Production Manager" })).toBe("/production/dashboard");
+    expect(getDashboardPathForRole({ role: "production_manager" })).toBe("/production/dashboard");
+  });
+
+  it("routes quality control to the role-aware dashboard", () => {
+    expect(QUALITY_CONTROL_LANDING_PATH).toBe("/dashboard");
+    expect(getDashboardPathForRole("Quality Control")).toBe("/dashboard");
+    expect(getDashboardPathForRole({ role_name: "Quality Inspector" })).toBe("/dashboard");
+  });
+
+  it("withLoginRole applies the role selected on the login form", () => {
+    expect(getDashboardPathForRole(withLoginRole({ id: 1, email: "qc@test.com" }, "Quality Control"))).toBe(
+      "/dashboard"
+    );
+  });
+
+  it("uses the active role for landing when multiple roles are present", () => {
+    expect(
+      getDashboardPathForRole({
+        role_name: "Production Manager",
+        roles: ["Store Manager", "Production Manager"],
+      })
+    ).toBe("/production/dashboard");
   });
 });
 

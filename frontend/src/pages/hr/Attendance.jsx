@@ -611,7 +611,7 @@ function EmployeeSearchSelect({ value, onChange, employees }) {
               inputRef={inputRef}
               clearable={false}
               type="text"
-              className="w-full"
+             
               onKeyDown={(e) => {
                 if (e.key === "Escape") setOpen(false);
               }}

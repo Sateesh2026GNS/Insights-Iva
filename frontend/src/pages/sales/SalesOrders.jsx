@@ -31,6 +31,7 @@ import { jobCardCreateUrl, jobCardDetailsUrl } from "../../utils/jobCardRoutes";
 
 
 import Button from "../../components/common/Button";
+import { SearchBar } from "../../components/common/SearchFilter";
 const defaultFilters = { customer: "", status: "", sales_person: "" };
 
 export default function SalesOrders() {
@@ -294,14 +295,22 @@ export default function SalesOrders() {
 
       <ListPageCard>
         <ListPageCardBody>
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <button
-            type="button"
-            onClick={() => setShowAdvanced(!showAdvanced)}
-            className="inline-flex items-center gap-2 text-[var(--text-sm)] font-semibold text-[var(--color-text-secondary)]"
-          >
-            <Filter className="h-4 w-4" /> Filters
-          </button>
+        <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+            <SearchBar
+              value={filters.customer}
+              onChange={(v) => setFilters((f) => ({ ...f, customer: v }))}
+              placeholder="Search sales orders..."
+              aria-label="Search sales orders"
+            />
+            <button
+              type="button"
+              onClick={() => setShowAdvanced(!showAdvanced)}
+              className="inline-flex items-center gap-2 text-[var(--text-sm)] font-semibold text-[var(--color-text-secondary)]"
+            >
+              <Filter className="h-4 w-4" /> Filters
+            </button>
+          </div>
           {hasAdvancedFilters ? (
             <button
               type="button"
@@ -313,13 +322,7 @@ export default function SalesOrders() {
           ) : null}
         </div>
         {showAdvanced && (
-          <div className="mb-4 grid gap-3 sm:grid-cols-3">
-            <input
-              value={filters.customer}
-              onChange={(e) => setFilters({ ...filters, customer: e.target.value })}
-              placeholder="Customer"
-              className="ui-input"
-            />
+          <div className="mb-4 grid gap-3 sm:grid-cols-2">
             <select
               value={filters.status}
               onChange={(e) => setFilters({ ...filters, status: e.target.value })}

@@ -387,7 +387,6 @@ export default function SalesJobCardDocument({
                 <th>Checked By</th>
                 <th>Approved By</th>
                 <th>Date</th>
-                <th>Customer Acknowledgement</th>
               </tr>
             </thead>
             <tbody>
@@ -396,7 +395,6 @@ export default function SalesJobCardDocument({
                 <td className="sjc-doc__sign-cell">{editable ? display(approval.checked_by) : signCell(approval.checked_by)}</td>
                 <td className="sjc-doc__sign-cell">{editable ? display(approval.approved_by) : signCell(approval.approved_by)}</td>
                 <td className="sjc-doc__sign-cell">{editable ? fmtDate(approval.prepared_date || approval.approved_date) : signCell(fmtDate(approval.prepared_date || approval.approved_date))}</td>
-                <td className="sjc-doc__sign-cell">{editable ? display(approval.customer_acknowledgement) : signCell(approval.customer_acknowledgement)}</td>
               </tr>
             </tbody>
           </table>

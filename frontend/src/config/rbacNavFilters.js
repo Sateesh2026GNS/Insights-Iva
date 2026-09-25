@@ -1,45 +1,20 @@
-/** Production Manager sidebar sections (module grants are broader for API access). */
+/** Production Manager sidebar sections (used when filtering generic nav; dedicated nav uses productionManagerNavConfig). */
 export const PRODUCTION_MANAGER_ALLOWED_SECTIONS = new Set([
   "dashboard",
-  "myJobCards",
-  "masters",
   "production",
-  "inventory",
-  "procurement",
+  "materials",
   "quality",
   "maintenance",
   "alerts",
   "documents",
   "meetings",
+  "chat",
   "analytics",
+  "settings",
 ]);
 
+/** Paths Production Manager may open (nav + deep links). */
 export const PRODUCTION_MANAGER_ALLOWED_CHILDREN = new Set([
-  // Dashboard
-  "/",
-  "/manufacturing/workflow",
-  "/my-job-cards",
-  "/hr/attendance",
-  "/hr/attendance/approval",
-  "/hr/attendance/overtime",
-  "/hr/attendance/adjusted-leave",
-  "/hr/attendance/settings",
-  "/attendance",
-  "/hr/leave",
-  "/hr/leave/approvals",
-  "/admin/approvals",
-  "/hr/leave/holiday",
-  "/hr/leave/adjustment",
-  "/hr/leave/plans",
-  "/hr/leave/plans/create",
-  "/hr/leave/create",
-  "/leave",
-
-  // Masters — products reference only
-  "/masters/products",
-  "/masters/bom",
-
-  // Production — full access
   "/production",
   "/production/dashboard",
   "/production/planning",
@@ -47,26 +22,18 @@ export const PRODUCTION_MANAGER_ALLOWED_CHILDREN = new Set([
   "/production/schedule",
   "/production/tasks",
   "/production/reports",
-  "/production/machines",
-  "/manufacturing/workflow",
+  "/my-job-cards",
 
-  // Inventory — read-only view (no Store Dashboard, no Inventory Settings)
   "/inventory/raw-materials",
   "/inventory/finished-goods",
   "/inventory/stock-transfer",
+  "/inventory/pending-inventory-checks",
 
-  // Purchases — Purchase Order only (no bills / payments / debit notes)
-  "/procurement/purchase-orders",
-
-  // Quality — full quality visibility including incoming and batch reports
   "/quality",
-  "/quality/incoming",
   "/quality/in-process",
   "/quality/final",
   "/quality/batch-reports",
-  "/quality/defects",
 
-  // Maintenance — full access
   "/maintenance",
   "/maintenance/equipment",
   "/maintenance/preventive",
@@ -74,32 +41,18 @@ export const PRODUCTION_MANAGER_ALLOWED_CHILDREN = new Set([
   "/maintenance/machine-history",
   "/maintenance/schedule",
 
-  // Alerts — all factory alerts
   "/alerts",
   "/alerts/low-stock",
   "/alerts/machine-failure",
   "/alerts/production-delay",
   "/alerts/maintenance",
   "/alerts/quality",
-  "/alerts/safety",
-  "/alerts/general",
 
-  // Documents
   "/documents",
-  "/documents/production",
-  "/documents/quality",
-  "/documents/reports",
-
-  // Meetings
   "/meetings",
-
-  // Analytics — production-focused only
-  "/analytics/live",
+  "/chat",
   "/analytics/production",
-
-  // Factory Monitor / IoT
-  "/factory-monitor/machine-status",
-  "/factory-monitor/production-lines",
+  "/settings",
 ]);
 
 /** Operator may only open production execution paths (no management/admin). */
@@ -172,6 +125,7 @@ export const HR_MANAGER_ALLOWED_SECTIONS = new Set([
   "alerts",
   "analytics",
   "meetings",
+  "chat",
   "settings",
 ]);
 
@@ -184,6 +138,7 @@ export const ACCOUNTANT_ALLOWED_SECTIONS = new Set([
   "documents",
   "alerts",
   "analytics",
+  "chat",
   "settings",
 ]);
 
@@ -228,29 +183,102 @@ export const OPERATOR_BLOCKED_SECTIONS = new Set([
 export function productionManagerPathAllowed(pathname) {
   if (!pathname) return false;
   const path = pathname.replace(/\/$/, "") || "/";
-  if (
-    path === "/my-job-cards" ||
-    path.startsWith("/my-job-cards/") ||
-    path.startsWith("/job-cards/") ||
-    path === "/sales/job-cards/create"
-  ) {
-    return true;
-  }
+  if (path === "/") return true;
+  if (path === "/production" || path === "/production/dashboard") return true;
   if (PRODUCTION_MANAGER_ALLOWED_CHILDREN.has(path)) return true;
+  if (path.startsWith("/my-job-cards/") || path.startsWith("/job-cards/")) return true;
   if (path.startsWith("/production/")) return true;
   if (path.startsWith("/inventory/raw-materials")) return true;
   if (path.startsWith("/inventory/finished-goods")) return true;
   if (path.startsWith("/inventory/stock-transfer")) return true;
-  if (path.startsWith("/procurement/purchase-orders")) return true;
-  if (path.startsWith("/quality/")) return true;
+  if (path.startsWith("/inventory/pending-inventory-checks")) return true;
+  if (path.startsWith("/quality/")) {
+    return (
+      path === "/quality" ||
+      path.startsWith("/quality/in-process") ||
+      path.startsWith("/quality/final") ||
+      path.startsWith("/quality/batch-reports")
+    );
+  }
   if (path.startsWith("/maintenance/")) return true;
-  if (path.startsWith("/alerts/")) return true;
+  if (path.startsWith("/alerts/")) {
+    return (
+      path === "/alerts" ||
+      path === "/alerts/low-stock" ||
+      path === "/alerts/machine-failure" ||
+      path === "/alerts/production-delay" ||
+      path === "/alerts/maintenance" ||
+      path === "/alerts/quality"
+    );
+  }
   if (path.startsWith("/documents")) return true;
   if (path.startsWith("/meetings")) return true;
-  if (path.startsWith("/analytics/live")) return true;
-  if (path.startsWith("/analytics/production")) return true;
-  if (path.startsWith("/factory-monitor/")) return true;
-  if (path.startsWith("/manufacturing/")) return true;
+  if (path.startsWith("/chat")) return true;
+  if (path === "/analytics/production" || path.startsWith("/analytics/production/")) return true;
+  if (path.startsWith("/manufacturing/workflow")) return true;
+  if (path === "/settings" || path.startsWith("/settings/")) return true;
+  return false;
+}
+
+/** Paths Quality Control may open (nav + job-card workflow deep links). */
+export const QUALITY_CONTROL_ALLOWED_CHILDREN = new Set([
+  "/dashboard",
+  "/quality",
+  "/quality/incoming",
+  "/quality/in-process",
+  "/quality/final",
+  "/quality/batch-reports",
+  "/quality/inspection",
+  "/quality/defects",
+  "/production/planning",
+  "/inventory/raw-materials",
+  "/inventory/finished-goods",
+  "/alerts",
+  "/alerts/quality",
+  "/alerts/production-delay",
+  "/alerts/low-stock",
+  "/documents",
+  "/meetings",
+  "/chat",
+  "/analytics/production",
+  "/settings",
+  "/my-job-cards",
+]);
+
+export function qualityControlPathAllowed(pathname) {
+  if (!pathname) return false;
+  const path = pathname.replace(/\/$/, "") || "/";
+  if (path === "/" || path === "/dashboard") return true;
+  if (QUALITY_CONTROL_ALLOWED_CHILDREN.has(path)) return true;
+  if (path.startsWith("/my-job-cards/") || path.startsWith("/job-cards/")) return true;
+  if (path.startsWith("/quality/")) {
+    return (
+      path === "/quality" ||
+      path.startsWith("/quality/incoming") ||
+      path.startsWith("/quality/in-process") ||
+      path.startsWith("/quality/final") ||
+      path.startsWith("/quality/batch-reports") ||
+      path.startsWith("/quality/inspection") ||
+      path.startsWith("/quality/defects")
+    );
+  }
+  if (path.startsWith("/production/planning")) return true;
+  if (path.startsWith("/inventory/raw-materials")) return true;
+  if (path.startsWith("/inventory/finished-goods")) return true;
+  if (path.startsWith("/alerts/")) {
+    return (
+      path === "/alerts" ||
+      path === "/alerts/quality" ||
+      path === "/alerts/production-delay" ||
+      path === "/alerts/low-stock"
+    );
+  }
+  if (path.startsWith("/documents")) return true;
+  if (path.startsWith("/meetings")) return true;
+  if (path.startsWith("/chat")) return true;
+  if (path === "/analytics/production" || path.startsWith("/analytics/production/")) return true;
+  if (path.startsWith("/manufacturing/workflow")) return true;
+  if (path === "/settings" || path.startsWith("/settings/")) return true;
   return false;
 }
 
@@ -276,5 +304,6 @@ export function operatorPathAllowed(pathname) {
   if (path.startsWith("/documents")) return true;
   if (path.startsWith("/alerts")) return true;
   if (path === "/settings" || path.startsWith("/settings/")) return true;
+  if (path.startsWith("/chat")) return true;
   return false;
 }

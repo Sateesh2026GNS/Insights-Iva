@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 
 import Button from "../../components/common/Button";
+import { SearchBar } from "../../components/common/SearchFilter";
 import Loader from "../../components/common/Loader";
 import { ListPageShell } from "../../components/common/ListPageShell";
 import usePageRefresh from "../../hooks/usePageRefresh";
@@ -537,16 +538,12 @@ export default function CompanyAssets() {
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             {/* Toolbar */}
             <div className="hr-company-assets__toolbar">
-              <div className="hr-company-assets__search-wrap">
-                <Search className="hr-company-assets__search-icon h-4 w-4" />
-                <input
-                  type="text"
-                  placeholder="Search code, name, staff, location..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="hr-company-assets__search-input"
-                />
-              </div>
+              <SearchBar
+                value={search}
+                onChange={setSearch}
+                placeholder="Search code, name, staff, location..."
+                aria-label="Search company assets"
+              />
 
               <div className="flex flex-wrap items-center gap-2">
                 <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Category:</label>

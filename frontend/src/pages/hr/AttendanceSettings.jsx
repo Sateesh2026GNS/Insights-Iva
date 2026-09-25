@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, FileSearch, Info, Search } from "lucide-react";
 
 import Loader from "../../components/common/Loader";
+import { SearchBar } from "../../components/common/SearchFilter";
 import { ListPageShell } from "../../components/common/ListPageShell";
 import { useToast } from "../../context/ToastContext";
 import usePageRefresh from "../../hooks/usePageRefresh";
@@ -244,10 +245,12 @@ function ExemptionTab({ employees, onSave }) {
       </p>
 
       <div className="hr-att-settings__exemption-toolbar">
-        <label className="hr-att-settings__search">
-          <Search className="h-4 w-4 shrink-0 text-[#9ca3af]" />
-          <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search Employees" />
-        </label>
+        <SearchBar
+          value={search}
+          onChange={setSearch}
+          placeholder="Search employees..."
+          aria-label="Search employees for attendance exemption"
+        />
         <label className="flex items-center gap-2 text-sm text-[#374151]">
           <input type="checkbox" checked={allSelected} onChange={toggleAll} className="accent-[#2563eb]" />
           Select all employees on this page

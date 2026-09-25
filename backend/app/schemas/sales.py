@@ -506,6 +506,22 @@ class LeadCreate(LeadBase):
     tenant_id: int = 0
 
 
+class LeadUpdate(BaseModel):
+    name: str | None = None
+    company: str | None = None
+    email: str | None = None
+    phone: str | None = None
+    source: str | None = None
+    status: str | None = None
+    notes: str | None = None
+    sales_executive: str | None = None
+    industry: str | None = None
+    region: str | None = None
+    priority: str | None = None
+    next_followup: date | None = None
+    opportunity_value: float | None = Field(None, ge=0.0)
+
+
 class LeadRead(LeadBase):
     id: int
     tenant_id: int

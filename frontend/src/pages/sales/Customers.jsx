@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   ChevronLeft,
   ChevronRight,
+  Eye,
   MoreHorizontal,
   Pencil,
   Plus,
@@ -19,6 +20,7 @@ import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/
 import EmptyState from "../../components/common/EmptyState";
 import { AsyncPageBody, NoResultsState } from "../../components/common/states";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
+import CustomerDetailModal from "../../components/sales/CustomerDetailModal";
 import CustomersEmptyState from "../../components/sales/CustomersEmptyState";
 import CustomersViewSelector from "../../components/sales/CustomersViewSelector";
 import { useNetworkStatus } from "../../context/NetworkStatusContext";
@@ -47,7 +49,7 @@ const CUSTOMER_EXPORT_COLUMNS = [
 function blankOr(value) {
   if (value == null) return "";
   const s = String(value).trim();
-  return !s || s === "Ã¢â‚¬â€" ? "" : s;
+  return !s || s === "—" ? "" : s;
 }
 
 export default function Customers() {
@@ -65,6 +67,7 @@ export default function Customers() {
   const [pageSize, setPageSize] = useState(20);
   const [deleting, setDeleting] = useState(null);
   const [deletingBusy, setDeletingBusy] = useState(false);
+  const [viewing, setViewing] = useState(null);
   const [openMenu, setOpenMenu] = useState(null);
   const [overflowOpen, setOverflowOpen] = useState(false);
   const overflowRef = useRef(null);
@@ -135,6 +138,33 @@ export default function Customers() {
     [navigate]
   );
 
+  const openView = useCallback((customer) => {
+    if (customer) setViewing(customer);
+  }, []);
+
+  const customerRowMenuItems = useCallback(
+    (c) => [
+      {
+        label: "View",
+        icon: <Eye className="h-4 w-4" />,
+        onClick: () => openView(c),
+      },
+      {
+        label: "Edit",
+        icon: <Pencil className="h-4 w-4" />,
+        onClick: () => openEdit(c),
+      },
+      { divider: true },
+      {
+        label: "Delete",
+        icon: <Trash2 className="h-4 w-4" />,
+        danger: true,
+        onClick: () => setDeleting(c),
+      },
+    ],
+    [openEdit, openView]
+  );
+
   const viewFiltered = useMemo(
     () => filterCustomersByView(customers, activeView),
     [customers, activeView]
@@ -165,6 +195,10 @@ export default function Customers() {
   useEffect(() => {
     setPage(1);
   }, [query, pageSize, activeView]);
+
+  useEffect(() => {
+    setOpenMenu(null);
+  }, [page, pageSize]);
 
   const total = filtered.length;
   const totalPages = Math.max(1, Math.ceil(total / pageSize) || 1);
@@ -219,6 +253,51 @@ export default function Customers() {
             onChange={setActiveView}
             onNewView={() => addToast("Custom views will be available in a future update.", "info")}
           />
+          <div className="customers-page__header-actions">
+            <Button
+              variant="add"
+              type="button"
+              onClick={openCreate}
+              leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}
+            >
+              New
+            </Button>
+            <div className="relative" ref={overflowRef}>
+              <button
+                type="button"
+                className="customers-page__overflow-btn"
+                aria-label="More actions"
+                aria-expanded={overflowOpen}
+                onClick={() => setOverflowOpen((v) => !v)}
+              >
+                <MoreHorizontal className="h-4 w-4" />
+              </button>
+              {overflowOpen ? (
+                <div className="customers-page__overflow-menu">
+                  <button
+                    type="button"
+                    className="customers-page__overflow-item"
+                    onClick={() => {
+                      setOverflowOpen(false);
+                      navigate("/sales/customers/bulk-import");
+                    }}
+                  >
+                    Import File
+                  </button>
+                  <button
+                    type="button"
+                    className="customers-page__overflow-item"
+                    onClick={() => {
+                      setOverflowOpen(false);
+                      loadCustomers();
+                    }}
+                  >
+                    Refresh
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          </div>
         </div>
 
         <ListPageCardBody className={showFirstUseEmpty ? "customers-page__body--empty p-0" : ""}>
@@ -241,7 +320,14 @@ export default function Customers() {
               <>
                 <div className="ui-list-toolbar">
                   <div className="ui-list-toolbar__start w-full sm:w-auto">
-                    <SearchBar value={query} onChange={setQuery} placeholder="Search customers by name, phone, GSTIN..." className="w-full max-w-md" />
+                    <SearchBar
+                      value={query}
+                      onChange={setQuery}
+                      placeholder="Search customers..."
+                      aria-label="Search customers"
+                      className="w-full"
+                      inputClassName="pending-inventory-search-input"
+                    />
                   </div>
                   <div className="ui-list-toolbar__end w-full sm:w-auto flex flex-wrap gap-2">
                     <Button
@@ -268,7 +354,7 @@ export default function Customers() {
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
                           <h3 className="font-bold text-sm text-[var(--color-text)] truncate">
-                            {c.company || c.name || "Ã¢â‚¬â€"}
+                            {c.company || c.name || "—"}
                           </h3>
                           {c.email && (
                             <p className="text-xs text-[var(--color-text-muted)] truncate">{c.email}</p>
@@ -288,20 +374,8 @@ export default function Customers() {
                             rowId={c.id}
                             openMenu={openMenu}
                             setOpenMenu={setOpenMenu}
-                            items={[
-                              {
-                                label: "Edit",
-                                icon: <Pencil className="h-4 w-4" />,
-                                onClick: () => openEdit(c),
-                              },
-                              { divider: true },
-                              {
-                                label: "Delete",
-                                icon: <Trash2 className="h-4 w-4" />,
-                                danger: true,
-                                onClick: () => setDeleting(c),
-                              },
-                            ]}
+                            ariaLabel={`Actions for ${c.company || c.name || "customer"}`}
+                            items={customerRowMenuItems(c)}
                           />
                         </div>
                       </div>
@@ -309,19 +383,19 @@ export default function Customers() {
                       <div className="grid grid-cols-2 gap-2 text-xs text-[var(--color-text-secondary)] border-t border-[var(--color-border-soft)] pt-2">
                         <div>
                           <span className="text-[var(--color-text-muted)] block text-[10px] uppercase font-semibold">Phone</span>
-                          <span className="font-medium truncate block">{blankOr(c.phone) || "Ã¢â‚¬â€"}</span>
+                          <span className="font-medium truncate block">{blankOr(c.phone) || "—"}</span>
                         </div>
                         <div>
                           <span className="text-[var(--color-text-muted)] block text-[10px] uppercase font-semibold">GSTIN</span>
-                          <span className="font-medium font-mono text-[11px] truncate block">{blankOr(c.gstin) || "Ã¢â‚¬â€"}</span>
+                          <span className="font-medium font-mono text-[11px] truncate block">{blankOr(c.gstin) || "—"}</span>
                         </div>
                         <div>
                           <span className="text-[var(--color-text-muted)] block text-[10px] uppercase font-semibold">City</span>
-                          <span className="font-medium truncate block">{blankOr(c.city) || "Ã¢â‚¬â€"}</span>
+                          <span className="font-medium truncate block">{blankOr(c.city) || "—"}</span>
                         </div>
                         <div>
                           <span className="text-[var(--color-text-muted)] block text-[10px] uppercase font-semibold">State</span>
-                          <span className="font-medium truncate block">{blankOr(c.state) || "Ã¢â‚¬â€"}</span>
+                          <span className="font-medium truncate block">{blankOr(c.state) || "—"}</span>
                         </div>
                       </div>
                     </div>
@@ -378,20 +452,8 @@ export default function Customers() {
                                 rowId={c.id}
                                 openMenu={openMenu}
                                 setOpenMenu={setOpenMenu}
-                                items={[
-                                  {
-                                    label: "Edit",
-                                    icon: <Pencil className="h-4 w-4" />,
-                                    onClick: () => openEdit(c),
-                                  },
-                                  { divider: true },
-                                  {
-                                    label: "Delete",
-                                    icon: <Trash2 className="h-4 w-4" />,
-                                    danger: true,
-                                    onClick: () => setDeleting(c),
-                                  },
-                                ]}
+                                ariaLabel={`Actions for ${c.company || c.name || "customer"}`}
+                                items={customerRowMenuItems(c)}
                               />
                             </div>
                           </td>
@@ -437,7 +499,7 @@ export default function Customers() {
                         </option>
                       ))}
                     </select>
-                    <span>{total === 0 ? "0Ã¢â‚¬â€œ0 of 0" : `${from}Ã¢â‚¬â€œ${to} of ${total}`}</span>
+                    <span>{total === 0 ? "0–0 of 0" : `${from}–${to} of ${total}`}</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <button
@@ -477,6 +539,25 @@ export default function Customers() {
         onClose={() => !deletingBusy && setDeleting(null)}
         onConfirm={confirmDelete}
       />
+
+      {viewing ? (
+        <CustomerDetailModal
+          customer={{
+            ...viewing,
+            company: viewing.company || viewing.name,
+            contact_person: viewing.contact_person || viewing.name,
+          }}
+          onClose={() => setViewing(null)}
+          onEdit={(c) => {
+            setViewing(null);
+            openEdit(c);
+          }}
+          onDelete={(c) => {
+            setViewing(null);
+            setDeleting(c);
+          }}
+        />
+      ) : null}
     </ListPageShell>
   );
 }

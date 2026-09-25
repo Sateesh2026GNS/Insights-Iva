@@ -127,6 +127,11 @@ export default defineConfig({
         changeOrigin: true,
         bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
       },
+      "/work-chat": {
+        target: "http://127.0.0.1:8000",
+        changeOrigin: true,
+        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+      },
       "/google-calendar": {
         target: "http://127.0.0.1:8000",
         changeOrigin: true,

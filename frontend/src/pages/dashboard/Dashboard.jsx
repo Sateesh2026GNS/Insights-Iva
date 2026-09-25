@@ -2,8 +2,9 @@ import { Navigate } from "react-router-dom";
 
 import ReferenceDashboard from "../../components/dashboard/reference/ReferenceDashboard";
 import useAuth from "../../hooks/useAuth";
-import { getDashboardPathForRole } from "../../utils/roleRedirect";
-import { getActiveRoleName, isOperator } from "../../config/permissions";
+import { getDashboardPathForRole, QUALITY_CONTROL_LANDING_PATH } from "../../utils/roleRedirect";
+import { getActiveRoleName, isOperator, isQualityTeam } from "../../config/permissions";
+import QualityDashboard from "../quality/QualityDashboard";
 
 function isAdminRole(role) {
   const name = String(role || "").trim().toLowerCase();
@@ -24,7 +25,15 @@ export default function Dashboard() {
     return <ReferenceDashboard />;
   }
 
+  if (isQualityTeam(user)) {
+    return <QualityDashboard />;
+  }
+
   const target = getDashboardPathForRole(user || role);
+  if (target === QUALITY_CONTROL_LANDING_PATH) {
+    return <QualityDashboard />;
+  }
+
   if (target && target !== "/") {
     return <Navigate to={target} replace />;
   }

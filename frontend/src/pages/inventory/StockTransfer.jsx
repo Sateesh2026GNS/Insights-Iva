@@ -836,7 +836,7 @@ export default function StockTransfer() {
         <div className="mb-4 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
           <h2 className="text-sm font-semibold text-[var(--color-text)]">Recent Transfers</h2>
           <div className="flex flex-wrap items-center gap-2">
-            <SearchBar value={search} onChange={setSearch} placeholder="Search" className="w-full" />
+            <SearchBar value={search} onChange={setSearch} placeholder="Search" />
             <ExportDownloadMenu disabled={!exportRows.length} onExport={handleExport} />
             <Button type="button" variant="secondary" onClick={() => setShowFilters((v) => !v)}>
               <Filter className="h-4 w-4" /> Filters

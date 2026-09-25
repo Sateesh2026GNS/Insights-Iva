@@ -349,7 +349,7 @@ function CreateEditRefundVoucherModal({
                     onChange={setPartySearch}
                     placeholder="Search party by name or company..."
                     autoFocus
-                    className="w-full"
+                   
                   />
                 </div>
                 <div className="max-h-44 overflow-y-auto">
@@ -1453,7 +1453,7 @@ export default function RefundVouchers() {
           value={search}
           onChange={setSearch}
           placeholder="Search voucher #, buyer name, mode, reference..."
-          className="w-full sm:max-w-md"
+         
         />
 
         {/* Mode Filter Chips */}

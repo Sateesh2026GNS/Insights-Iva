@@ -414,7 +414,7 @@ export default function Quotations() {
       </div>
 
       <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
-        <SearchBar value={search} onChange={setSearch} placeholder="Search quotations..." className="w-full" />
+        <SearchBar value={search} onChange={setSearch} placeholder="Search quotations..." />
         <div className="flex items-center gap-2 shrink-0">
           <Button
             type="button"

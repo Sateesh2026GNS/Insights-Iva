@@ -173,7 +173,7 @@ function MultiSelectDropdown({
                 value={query}
                 onChange={setQuery}
                 placeholder={placeholder}
-                className="w-full"
+               
               />
             </div>
           )}

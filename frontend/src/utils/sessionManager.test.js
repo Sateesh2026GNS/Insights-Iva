@@ -11,6 +11,7 @@ import {
   markTabExpired,
   clearTabSession,
   sendPrimaryHeartbeat,
+  recordSessionActivity,
 } from "./sessionManager";
 
 describe("sessionManager", () => {
@@ -54,20 +55,27 @@ describe("sessionManager", () => {
     expect(status.reason).toBe("primary_9hr_timeout");
   });
 
-  it("initializes new tab with 10-minute timer and expires after 10 minutes", () => {
+  it("keeps new tab valid while primary tab heartbeat is active", () => {
+    localStorage.setItem("smrt-token", "fake-token");
+    markAsPrimaryTab();
+
+    sessionStorage.clear();
+    localStorage.setItem("smrt-token", "fake-token");
+    initTabSession();
+
+    vi.advanceTimersByTime(NEW_TAB_TIMEOUT_MS + 5000);
+    sendPrimaryHeartbeat();
+    expect(checkSessionStatus().expired).toBe(false);
+  });
+
+  it("expires new tab after 10 minutes when primary tab is closed", () => {
     localStorage.setItem("smrt-token", "fake-token");
     initTabSession();
 
     expect(getTabType()).toBe("new_tab");
-    expect(sessionStorage.getItem("smrt-new-tab-opened-at")).toBeTruthy();
     expect(checkSessionStatus().expired).toBe(false);
 
-    // 9 minutes later
-    vi.advanceTimersByTime(9 * 60 * 1000);
-    expect(checkSessionStatus().expired).toBe(false);
-
-    // 10 minutes later
-    vi.advanceTimersByTime(1 * 60 * 1000 + 1000);
+    vi.advanceTimersByTime(NEW_TAB_TIMEOUT_MS + 1000);
     const status = checkSessionStatus();
     expect(status.expired).toBe(true);
     expect(status.reason).toBe("new_tab_10min_timeout");
@@ -79,8 +87,7 @@ describe("sessionManager", () => {
     sendPrimaryHeartbeat();
     expect(isPrimaryTabAlive()).toBe(true);
 
-    // After 7 seconds without heartbeat, primary tab is considered closed/dead
-    vi.advanceTimersByTime(7000);
+    vi.advanceTimersByTime(46_000);
     expect(isPrimaryTabAlive()).toBe(false);
   });
 
@@ -90,6 +97,15 @@ describe("sessionManager", () => {
     const status = checkSessionStatus();
     expect(status.expired).toBe(true);
     expect(status.reason).toBe("new_tab_10min_timeout");
+  });
+
+  it("recordSessionActivity refreshes primary heartbeat", () => {
+    localStorage.setItem("smrt-token", "fake-token");
+    markAsPrimaryTab();
+    vi.advanceTimersByTime(50_000);
+    expect(isPrimaryTabAlive()).toBe(false);
+    recordSessionActivity();
+    expect(isPrimaryTabAlive()).toBe(true);
   });
 
   it("promotes a new tab to primary upon login", () => {

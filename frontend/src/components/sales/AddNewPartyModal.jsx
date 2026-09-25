@@ -22,6 +22,8 @@ import {
   validateBasicDetails,
   validateOtherDetails,
 } from "../../utils/partyFormValidation";
+import { validateGstinField } from "../../utils/gstin";
+import { customerRecordFromApiResponse } from "../../utils/partySavedCustomer";
 import { inputClass } from "../../design-system/classes";
 
 const PANEL_CLASS =
@@ -460,32 +462,23 @@ export default function AddNewPartyModal({
         return;
       }
     }
-    const gstinVal = form.gstin ? form.gstin.trim() : "";
-    if (gstinVal) {
-      if (/[a-z]/.test(gstinVal)) {
-        addToast("GSTIN must contain only uppercase letters and numeric values", "error");
-        return;
-      }
-      if (gstinVal.length !== 15) {
-        addToast("GSTIN must be exactly 15 characters (e.g. 27AAAAA0000A1Z5)", "error");
-        return;
-      }
-      const gstinRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}[Zz0-9A-Z]{1}[0-9A-Z]{1}$/;
-      if (!gstinRegex.test(gstinVal)) {
-        addToast("Invalid GSTIN format. Standard GSTIN format is required (e.g. 27AAAAA0000A1Z5)", "error");
-        return;
-      }
-
-      // Prevent creation/update if GSTIN already belongs to another party
+    const gstinCheck = validateGstinField(form.gstin);
+    if (!gstinCheck.ok) {
+      setFieldErrors({ gstin: gstinCheck.error });
+      addToast(gstinCheck.error, "error");
+      return;
+    }
+    const normalizedGstin = gstinCheck.value;
+    if (normalizedGstin) {
       const dup = existingParties.find(
         (p) =>
           String(p.id) !== String(party?.id) &&
           p.gstin &&
-          p.gstin.trim().toUpperCase() === gstinVal
+          String(p.gstin).trim().toUpperCase() === normalizedGstin
       );
       if (dup) {
         addToast(
-          `A ${isVendor ? "vendor" : "customer"} with GSTIN "${gstinVal}" already exists.`,
+          `A ${isVendor ? "vendor" : "customer"} with GSTIN "${normalizedGstin}" already exists.`,
           "error"
         );
         return;
@@ -545,7 +538,7 @@ export default function AddNewPartyModal({
           tenant_id: tenantId,
           name: form.name.trim(),
           contact: form.name.trim(),
-          gstin: form.gstin.trim() || null,
+          gstin: normalizedGstin,
           phone: form.phone.trim(),
           email,
           address_line1: address.address_line1 || null,
@@ -595,7 +588,7 @@ export default function AddNewPartyModal({
       const payload = {
         tenant_id: tenantId,
         name: form.name.trim(),
-        gstin: form.gstin.trim() || null,
+        gstin: normalizedGstin,
         phone: form.phone.trim() || null,
         email: basicDetails?.email?.trim() || party?.email || null,
         address_line1: address.address_line1 || null,
@@ -637,22 +630,35 @@ export default function AddNewPartyModal({
         response = await createCustomer(payload);
         addToast("Buyer added successfully");
       }
-      onSaved?.(response?.data || payload, { isEdit, customer: party });
+      const saved = customerRecordFromApiResponse(response?.data, form, address, basicDetails);
+      if (!saved?.id) {
+        addToast(
+          "Buyer could not be linked to this form. Save again or select the customer from the list.",
+          "error"
+        );
+        return;
+      }
+      onSaved?.(saved, { isEdit, customer: party });
       onClose?.();
     } catch (err) {
-      const mapped = applyBackendFieldErrors(err, setFieldErrors, {
+      applyBackendFieldErrors(err, setFieldErrors, {
         name: "name",
         phone: "phone",
         gstin: "gstin",
         email: "email",
       });
-      addToast(
-        apiErrorMessage(err, isVendor ? "Failed to save vendor" : "Failed to save customer"),
-        "error"
-      );
-      if (!mapped) {
-        /* toast carries the message */
+      const raw = apiErrorMessage(err, isVendor ? "Failed to save vendor" : "Failed to save customer");
+      const isGst =
+        String(raw).toLowerCase().includes("gst") ||
+        String(err?.response?.data?.detail || "")
+          .toString()
+          .toLowerCase()
+          .includes("gst");
+      const toastMsg = isGst ? "Enter a valid GSTIN." : raw;
+      if (isGst) {
+        setFieldErrors((prev) => ({ ...prev, gstin: "Enter a valid GSTIN." }));
       }
+      addToast(toastMsg, "error");
     } finally {
       setSaving(false);
     }
@@ -689,12 +695,19 @@ export default function AddNewPartyModal({
               <div className="relative">
                 <input
                   value={form.gstin}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, gstin: e.target.value }))
-                  }
+                  onChange={(e) => {
+                    setForm((f) => ({ ...f, gstin: e.target.value }));
+                    if (fieldErrors.gstin) setFieldErrors((prev) => ({ ...prev, gstin: "" }));
+                  }}
                   placeholder="Enter GSTIN"
-                  className={inputClass}
+                  className={`${inputClass}${fieldErrors.gstin ? " border-[#e11d48]" : ""}`}
+                  aria-invalid={Boolean(fieldErrors.gstin)}
                 />
+                {fieldErrors.gstin ? (
+                  <p className="mt-1 text-[11px] font-medium text-[#e11d48]" role="alert">
+                    {fieldErrors.gstin}
+                  </p>
+                ) : null}
                 {isEdit && form.gstin ? (
                   <Check className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#6b6b76]" />
                 ) : null}
