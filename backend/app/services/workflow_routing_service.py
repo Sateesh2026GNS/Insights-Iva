@@ -491,9 +491,7 @@ def _load_product_inventory_map(
     for p in products:
         item = item_by_sku.get(p.sku) if p.sku else None
         if item:
-            on_hand = stock_by_item.get(item.id)
-            if on_hand is None:
-                on_hand = float(item.quantity or 0)
+            on_hand = stock_by_item.get(item.id, 0.0)
             reserved = float(item.reserved or 0)
             warehouse = warehouse_by_item.get(item.id) or item.warehouse_name or default_name
         else:

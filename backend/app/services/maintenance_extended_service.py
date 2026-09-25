@@ -18,6 +18,7 @@ from app.schemas.maintenance_extended import (
     SparePartRead,
     WorkOrderRead,
 )
+from app.services.inventory_service import get_total_stock
 
 
 def _fmt_duration(mins: int | None) -> str | None:
@@ -346,14 +347,13 @@ def get_maintenance_hub(db: Session, tenant_id: int) -> MaintenanceHubRead:
             "id": item.id,
             "part_number": item.sku or item.barcode or f"SP-{item.id}",
             "spare_name": item.name,
-            "stock": int(item.quantity or 0),
+            "stock": get_total_stock(db, item.id, tenant_id),
             "minimum_stock": int(item.reorder_level or 0),
             "vendor": item.warehouse_name or "—",
             "cost": float(item.unit_cost or 0),
             "is_low_stock": bool(
                 item.reorder_level is not None
-                and item.quantity is not None
-                and item.quantity <= item.reorder_level
+                and get_total_stock(db, item.id, tenant_id) <= item.reorder_level
             ),
         }
         for item in spare_items[:50]

@@ -166,7 +166,7 @@ const PAGE_TITLE_OVERRIDES = {
   "/accounts/reports": "Reports",
   "/settings": "Settings",
   "/inventory": "Inventory",
-  "/inventory/dashboard": "Store Dashboard",
+  "/inventory/dashboard": "Dashboard",
   "/inventory/settings": "Inventory Settings",
   "/inventory/list": "Inventory List",
   "/inventory/raw-materials": "Raw Materials",
@@ -203,7 +203,6 @@ const BREADCRUMB_TITLE_OVERRIDES = {
 };
 
 const STAGE_LABELS = {
-  inventory: "Inventory Check",
   store: "Store Issue",
   production: "Production Planning",
   operator: "Shop Floor Execution",
@@ -260,7 +259,7 @@ function getLabel(segment, segments, index) {
   const prev = index > 0 ? segments[index - 1] : null;
   const prevPrev = index > 1 ? segments[index - 2] : null;
 
-  if (segment === "dashboard" && prev === "inventory") return "Store Dashboard";
+  if (segment === "dashboard" && prev === "inventory") return "Dashboard";
   if (segment === "settings" && prev === "inventory") return "Inventory Settings";
   if (segment === "create" && prev && ENTITY_SINGULAR[prev]) {
     return `Create ${ENTITY_SINGULAR[prev]}`;
@@ -338,6 +337,32 @@ export function getBreadcrumbTrail(pathname) {
     return [{ label: "Dashboard", path: "/" }];
   }
 
+  if (normalizedPath === "/inventory/dashboard") {
+    return [
+      { label: "Dashboard", path: "/" },
+      { label: "Dashboard", path: "/inventory/dashboard" },
+    ];
+  }
+
+  if (normalizedPath === "/inventory/stock-in") {
+    return [
+      { label: "Dashboard", path: "/" },
+      { label: "Purchases", path: "/purchases" },
+      { label: "Stock In", path: "/inventory/stock-in" },
+    ];
+  }
+
+  if (normalizedPath === "/procurement/material-requests") {
+    return [
+      { label: "Dashboard", path: "/" },
+      { label: "Purchases", path: "/purchases" },
+      {
+        label: "Purchase Requisitions",
+        path: "/procurement/material-requests",
+      },
+    ];
+  }
+
   const trail = [
     { label: "Dashboard", path: "/" },
     ...segments.map((seg, i) => ({
@@ -346,8 +371,20 @@ export function getBreadcrumbTrail(pathname) {
     })),
   ];
 
+  if (normalizedPath === "/inventory") {
+    trail.push({
+      label: "All Items",
+      path: "/inventory",
+    });
+  }
+
   const lastItem = trail[trail.length - 1];
-  if (lastItem && BREADCRUMB_TITLE_OVERRIDES[normalizedPath]) {
+
+  if (
+    lastItem &&
+    BREADCRUMB_TITLE_OVERRIDES[normalizedPath] &&
+    normalizedPath !== "/inventory"
+  ) {
     lastItem.label = BREADCRUMB_TITLE_OVERRIDES[normalizedPath];
   }
   return trail;

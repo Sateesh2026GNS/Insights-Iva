@@ -29,7 +29,6 @@ def _warehouse_stats(db: Session, warehouse_id: int, tenant_id: int | None = Non
         InventoryItem.reorder_level,
         InventoryItem.item_type,
         InventoryItem.id,
-        InventoryItem.quantity,
     ]
     if max_stock_col is not None:
         select_cols.append(max_stock_col)
@@ -57,9 +56,9 @@ def _warehouse_stats(db: Session, warehouse_id: int, tenant_id: int | None = Non
     raw = finished = wip = 0
 
     for row in rows:
-        sl_qty, unit_cost, reorder, item_type, _item_id, item_qty = row[:6]
+        sl_qty, unit_cost, reorder, item_type, _item_id = row[:5]
         max_val = row[6] if len(row) > 6 else None
-        q = int(sl_qty if sl_qty is not None else (item_qty or 0))
+        q = int(sl_qty or 0)
         used += q
         item_count += 1
         cost = float(unit_cost or 0)
@@ -156,16 +155,6 @@ def get_warehouse_summary(db: Session, tenant_id: int) -> WarehouseSummaryRead:
         if stats["low_stock_items"] > 0 or stats["out_of_stock"] > 0 or (avail is not None and avail <= 0):
             low_stock_wh += 1
 
-
-    if total_value == 0:
-        all_items = db.execute(
-            select(InventoryItem.quantity, InventoryItem.unit_cost)
-            .where(InventoryItem.tenant_id == tenant_id, InventoryItem.is_active.is_(True))
-        ).all()
-        for i_qty, i_cost in all_items:
-            q = int(i_qty or 0)
-            c = float(i_cost or 0)
-            total_value += q * c
 
     util_pct = round(total_used / total_capacity * 100, 1) if total_capacity else 0
 

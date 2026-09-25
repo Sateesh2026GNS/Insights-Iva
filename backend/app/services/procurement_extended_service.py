@@ -6,7 +6,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, joinedload
 
-from app.models.inventory import InventoryItem, Supplier
+from app.models.inventory import InventoryItem, StockLevel, Supplier
 from app.models.procurement import (
     GoodsReceipt,
     MaterialRequest,
@@ -601,11 +601,18 @@ def get_procurement_hub(db: Session, tenant_id: int) -> ProcurementHubRead:
     todays_deliveries = todays_grn_count + todays_po_count
 
     alerts = []
+    stock_total = (
+        select(func.coalesce(func.sum(StockLevel.quantity), 0))
+        .where(StockLevel.item_id == InventoryItem.id)
+        .correlate(InventoryItem)
+        .scalar_subquery()
+    )
     low_stock_count = int(
         db.scalar(
             select(func.count(InventoryItem.id)).where(
                 InventoryItem.tenant_id == tenant_id,
-                InventoryItem.quantity <= InventoryItem.reorder_level,
+                InventoryItem.is_active.is_(True),
+                stock_total <= InventoryItem.reorder_level,
             )
         ) or 0
     )

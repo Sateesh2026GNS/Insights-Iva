@@ -194,7 +194,7 @@ def update_inventory_item(
     item = get_inventory_item(db, tenant_id, item_id)
     if not item:
         return None
-    valid_keys = {c.name for c in InventoryItem.__table__.columns} - {"id", "tenant_id"}
+    valid_keys = {c.name for c in InventoryItem.__table__.columns} - {"id", "tenant_id", "quantity", "reserved"}
     for key, value in data.items():
         if key in valid_keys and value is not None:
             setattr(item, key, value)
@@ -242,6 +242,11 @@ def get_total_stock(db: Session, item_id: int, tenant_id: int | None = None) -> 
         stmt = stmt.where(InventoryItem.tenant_id == tenant_id)
     r = db.scalars(stmt).first()
     return int(r) if r is not None else 0
+
+
+def _sync_cached_item_quantity(db: Session, item: InventoryItem) -> None:
+    """Keep the legacy aggregate cache aligned with warehouse stock levels."""
+    item.quantity = get_total_stock(db, item.id, item.tenant_id)
 
 
 def create_stock_level(db: Session, payload: StockLevelCreate) -> StockLevel:
@@ -350,11 +355,11 @@ def record_stock_movement(
         db.add(sl)
 
     if inv_item and effective == "out":
-        inv_item.quantity = max(0, int(inv_item.quantity or 0) - qty)
         if inv_item.reserved:
             inv_item.reserved = max(0, int(inv_item.reserved or 0) - qty)
-    elif inv_item and effective == "in":
-        inv_item.quantity = int(inv_item.quantity or 0) + qty
+
+    if inv_item:
+        _sync_cached_item_quantity(db, inv_item)
 
     try:
         if commit:

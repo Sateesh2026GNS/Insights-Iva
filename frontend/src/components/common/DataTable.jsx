@@ -25,6 +25,8 @@ export default function DataTable({
   tableClassName = "",
   toolbarActions = null,
   toolbarClassName = "",
+  searchInputClassName = "",
+  showResultsCount = true,
 }) {
   const { t } = useTranslation();
   const effectiveShowPagination = pagination !== undefined ? Boolean(pagination) : showPagination;
@@ -121,6 +123,7 @@ export default function DataTable({
                 }}
                 placeholder={searchPlaceholder}
                 className="w-full max-w-md"
+                inputClassName={searchInputClassName}
               />
             ) : null}
             {filters.map((f) => (
@@ -141,9 +144,11 @@ export default function DataTable({
                 {t("common.clearFilters", { defaultValue: "Clear filters" })}
               </button>
             ) : null}
-            <span className="ui-caption">
-              {filtered.length} {t("common.results", { defaultValue: "results" })}
-            </span>
+            {showResultsCount ? (
+              <span className="ui-caption">
+                {filtered.length} {t("common.results", { defaultValue: "results" })}
+              </span>
+            ) : null}
           </div>
           {toolbarActions ? <div className="ui-list-toolbar__end">{toolbarActions}</div> : null}
         </div>

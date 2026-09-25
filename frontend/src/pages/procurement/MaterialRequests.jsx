@@ -612,6 +612,8 @@ export default function MaterialRequests() {
           data={filtered}
           searchPlaceholder="Search"
           searchKeys={["mr_number", "department", "requested_by"]}
+          searchInputClassName="pending-inventory-search-input"
+          showResultsCount={false}
         />
         </ListPageCardBody>
       </ListPageCard>
