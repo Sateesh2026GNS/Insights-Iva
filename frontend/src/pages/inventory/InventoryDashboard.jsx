@@ -429,8 +429,8 @@ export default function InventoryDashboard() {
             <thead className="ui-table-head">
               <tr>
                 <th className={`${thClass} w-[50%]`}>Item</th>
-                <th className={`${thClass} w-[25%] text-right`}>Current Stock</th>
-                <th className={`${thClass} w-[25%] text-right`}>Reorder Level</th>
+                <th className={`${thClass} w-[25%] whitespace-nowrap !text-center`}>Current Stock</th>
+                <th className={`${thClass} w-[25%] whitespace-nowrap !text-center`}>Reorder Level</th>
               </tr>
             </thead>
             <tbody>
@@ -445,10 +445,10 @@ export default function InventoryDashboard() {
                       {row.item_name}
                     </Link>
                   </td>
-                  <td className={`${tdClass} text-right tabular-nums text-[var(--color-text)]`}>
+                  <td className={`${tdClass} !text-center tabular-nums text-[var(--color-text)]`}>
                     {formatQty(row.current_stock, row.unit)}
                   </td>
-                  <td className={`${tdClass} text-right tabular-nums text-[var(--color-text-muted)]`}>
+                  <td className={`${tdClass} !text-center tabular-nums text-[var(--color-text-muted)]`}>
                     {row.reorder_level != null ? formatQty(row.reorder_level, row.unit) : "—"}
                   </td>
                 </tr>

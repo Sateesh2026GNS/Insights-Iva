@@ -2305,6 +2305,18 @@ table > tbody > tr:first-child:has(th) {
   max-width: var(--search-max-width-nav);
 }
 
+.pending-inventory-search-input {
+  background: #d8e6df;
+}
+
+.pending-inventory-search-input:focus,
+.pending-inventory-search-input:focus-visible {
+  border-color: var(--color-primary);
+  background: var(--color-surface);
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+  outline: none;
+}
+
 /* App navbar — brand header chrome */
 .app-navbar {
   --color-text: #ffffff;

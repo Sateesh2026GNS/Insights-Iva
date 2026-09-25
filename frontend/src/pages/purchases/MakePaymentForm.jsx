@@ -329,7 +329,8 @@ export default function MakePaymentForm() {
                         onChange={setSellerSearch}
                         placeholder="Search"
                         autoFocus
-                       
+                        className="w-full"
+                        inputClassName="pending-inventory-search-input"
                       />
                     </div>
                     <div className="max-h-56 overflow-y-auto">

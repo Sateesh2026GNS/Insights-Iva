@@ -99,7 +99,7 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
   const {
     customers,
     products,
-    salesOrders,
+    salesOrders = [],
     loading: mastersLoading,
     error: mastersError,
     reloadCustomers,
@@ -118,6 +118,8 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
   const [companyProfile, setCompanyProfile] = useState(null);
   const [dirty, setDirty] = useState(false);
   const [selectedCustomerId, setSelectedCustomerId] = useState("");
+  // NEW: was used (setSelectedSalesOrderId) but never declared — this is the second latent bug.
+  const [selectedSalesOrderId, setSelectedSalesOrderId] = useState("");
   const [workflowStatus, setWorkflowStatus] = useState("SAVED");
   const [recordVersion, setRecordVersion] = useState(null);
   const [readOnlySales, setReadOnlySales] = useState(false);
@@ -126,7 +128,6 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
   const [showAddProduct, setShowAddProduct] = useState(false);
   const [addProductRowIndex, setAddProductRowIndex] = useState(null);
   const [customerFromOrder, setCustomerFromOrder] = useState(false);
-  const [selectedSalesOrderId, setSelectedSalesOrderId] = useState("");
 
   const uomOptions = useMemo(() => getUomOptions().map((u) => ({ value: u, label: u })), []);
   const paymentTermsOptions = useMemo(
@@ -193,6 +194,8 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
       }),
     [salesOrdersForSelect]
   );
+
+  // NEW: mirrors customerSelectValue's fallback pattern so the SearchableSelect
   const customerSelectValue = useMemo(() => {
     if (selectedCustomerId) return selectedCustomerId;
     const name = form.customer.customer_name?.trim();
@@ -388,8 +391,9 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
         return next;
       });
     },
-    [salesOrders, products, form.product_lines, resolveCustomerForOrder, customers]
+    [salesOrders, products, form.product_lines, resolveCustomerForOrder, customers, patch]
   );
+
   const handleProductSelect = useCallback(
     (index, val) => {
       if (val === ADD_PRODUCT_VALUE) {
@@ -577,7 +581,6 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
           : "Job card created. Status: Saved. Use Actions → Send to route to Store Manager.",
         "success"
       );
-      const id = data?.job_card_id || data?.id || jobCardId;
       navigate(backTo, { replace: true });
     } catch (err) {
       const detail = extractApiErrorDetail(err);
@@ -656,9 +659,6 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
               </p>
             ) : null}
           </div>
-          <Button type="button" variant="outline" onClick={handleCancel} disabled={saving}>
-            Cancel
-          </Button>
         </header>
 
         {mastersError ? (
@@ -923,7 +923,7 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
 
               <section className="manual-sjc__section manual-sjc__section--lines" aria-labelledby="manual-sjc-products">
                 <h3 id="manual-sjc-products" className="manual-sjc__section-title">
-                  Product / Job Details
+                  Product / Job Details*
                 </h3>
               <div className="sjc-doc__table-wrap manual-sjc__pricing-table-wrap" data-manual-field="product_lines">
                 {errors.product_lines ? <FieldError error={errors.product_lines} /> : null}

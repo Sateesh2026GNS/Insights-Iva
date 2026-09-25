@@ -304,7 +304,7 @@ export default function App() {
       {/* Mobile Drawer Backdrop */}
       {mobileSidebarOpen && (
         <div
-          className="fixed inset-0 z-[70] bg-slate-900/60 backdrop-blur-xs transition-opacity lg:hidden"
+     className="fixed inset-0 z-[70] transition-opacity lg:hidden"
           onClick={() => setMobileSidebarOpen(false)}
           aria-hidden="true"
         />

@@ -43,6 +43,7 @@ import {
   enrichApiWarehouse,
 } from "../../data/warehousesMasterData";
 import { asArray } from "../../utils/apiError";
+import { todayIso } from "../../utils/dateUtils";
 
 function formatInrAmount(value) {
   return `₹ ${Number(value || 0).toLocaleString("en-IN")}`;
@@ -87,7 +88,7 @@ export default function Warehouses() {
   const [statusFilter, setStatusFilter] = useState("");
   const [branchFilter, setBranchFilter] = useState("");
   const [showFilters, setShowFilters] = useState(false);
-  const [headerDate, setHeaderDate] = useState("2026-08-13");
+  const [headerDate, setHeaderDate] = useState("");
   const [headerScope, setHeaderScope] = useState("");
   const [openMenuId, setOpenMenuId] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -98,6 +99,8 @@ export default function Warehouses() {
     try {
       const wRes = await getWarehouses().catch(() => ({ data: [] }));
       const apiRows = asArray(wRes.data);
+      const createdDate = apiRows[0]?.created_at?.slice?.(0, 10) || todayIso();
+      setHeaderDate(createdDate);
       setWarehouses(apiRows.map((row, i) => ({ ...enrichApiWarehouse(row, i), live: true })));
     } catch {
       setWarehouses([]);
@@ -458,7 +461,13 @@ export default function Warehouses() {
       <ListPageCard>
         <ListPageCardBody>
           <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <SearchBar value={search} onChange={setSearch} placeholder="Search warehouses..." />
+            <SearchBar
+              value={search}
+              onChange={setSearch}
+              placeholder="Search warehouses..."
+              className="w-full max-w-md"
+              inputClassName="pending-inventory-search-input"
+            />
             <div className="flex flex-wrap items-center gap-2">
               <Button
                 type="button"

@@ -354,7 +354,13 @@ export default function PurchaseOrders() {
 
       <div className="rounded-t-2xl border border-[var(--color-border)] border-b-0 bg-[var(--color-surface)] px-4 pb-6 pt-4 sm:px-6">
         <div className="mb-3 flex flex-col gap-3 border-b border-[var(--color-border)] pb-3 lg:flex-row lg:items-center lg:justify-between">
-          <SearchBar value={search} onChange={setSearch} placeholder="Search" />
+          <SearchBar
+            value={search}
+            onChange={setSearch}
+            placeholder="Search"
+            className="w-full"
+            inputClassName="pending-inventory-search-input"
+          />
           <div className="flex flex-wrap items-center gap-2.5">
             <button
               type="button"
@@ -578,6 +584,7 @@ export default function PurchaseOrders() {
                   onChange={(v) => setDraftFilters((f) => ({ ...f, vendor: v }))}
                   placeholder="Search"
                   className="w-full"
+                  inputClassName="pending-inventory-search-input"
                 />
               </FilterSection>
             </div>

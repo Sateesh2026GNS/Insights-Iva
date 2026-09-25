@@ -23,6 +23,10 @@ export default defineConfig({
         target: "http://127.0.0.1:8000",
         changeOrigin: true,
       },
+      "/biz": {
+        target: "http://127.0.0.1:8000",
+        changeOrigin: true,
+      },
       "/ai": {
         target: "http://127.0.0.1:8000",
         changeOrigin: true,
