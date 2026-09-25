@@ -115,9 +115,21 @@ MODULE = "inventory"
 
 
 def _item_read(db: Session, item) -> InventoryItemRead:
-    base = InventoryItemRead.model_validate(item)
+    total_stock = get_total_stock(db, item.id, item.tenant_id)
+    values = {
+        field_name: getattr(item, field_name, None)
+        for field_name in InventoryItemRead.model_fields
+        if field_name != "photo_file_id"
+    }
+    values["quantity"] = total_stock
+    values["reserved"] = min(int(values.get("reserved") or 0), total_stock)
     photo_id = get_primary_photo_file_id(db, item.tenant_id, item.id)
-    return base.model_copy(update={"photo_file_id": photo_id})
+    base = InventoryItemRead.model_validate(values)
+    return base.model_copy(
+        update={
+            "photo_file_id": photo_id,
+        }
+    )
 
 
 @router.post("/warehouses", response_model=WarehouseRead)
@@ -236,7 +248,7 @@ def list_items_endpoint(
     item_type: str | None = Query(None),
     db: Session = Depends(get_db),
 ) -> list[InventoryItemRead]:
-    return list_inventory_items(db, tenant_id, low_stock_only, item_type)
+    return [_item_read(db, item) for item in list_inventory_items(db, tenant_id, low_stock_only, item_type)]
 
 
 @router.get("/items/barcode/{barcode}")
@@ -251,7 +263,7 @@ def get_item_by_barcode_endpoint(
     total = get_total_stock(db, item.id)
     return {
         "found": True,
-        "item": InventoryItemRead.model_validate(item),
+        "item": _item_read(db, item),
         "total_stock": total,
         "needs_reorder": total < item.reorder_level if item.reorder_level else False,
     }

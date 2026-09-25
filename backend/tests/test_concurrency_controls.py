@@ -164,6 +164,50 @@ def test_record_stock_movement_service_rejects_negative_stock():
         db.close()
 
 
+def test_stock_adjustment_reconciles_cached_item_quantity():
+    db = SessionLocal()
+    try:
+        wh = db.scalars(select(Warehouse).limit(1)).first()
+        assert wh is not None
+        item = InventoryItem(
+            tenant_id=wh.tenant_id,
+            sku=f"ADJ-{wh.id}",
+            name="Adjustment Consistency Item",
+            unit="PCS",
+            item_type="raw_material",
+            quantity=100,
+            is_active=True,
+        )
+        db.add(item)
+        db.flush()
+        db.add(StockLevel(warehouse_id=wh.id, item_id=item.id, quantity=100))
+        db.commit()
+
+        record_stock_movement(
+            db,
+            StockMovementCreate(
+                tenant_id=wh.tenant_id,
+                warehouse_id=wh.id,
+                item_id=item.id,
+                quantity=30,
+                movement_type="adjustment",
+            ),
+        )
+
+        db.refresh(item)
+        assert item.quantity == 130
+        assert int(
+            db.scalar(
+                select(StockLevel.quantity).where(
+                    StockLevel.warehouse_id == wh.id,
+                    StockLevel.item_id == item.id,
+                )
+            )
+        ) == 130
+    finally:
+        db.close()
+
+
 def test_duplicate_material_check_returns_conflict(client, register_admin):
     admin = register_admin()
     headers = admin["headers"]

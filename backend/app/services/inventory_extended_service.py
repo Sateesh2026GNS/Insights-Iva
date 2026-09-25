@@ -118,7 +118,7 @@ def get_materials_summary(db: Session, tenant_id: int) -> InventorySummaryRead:
     stock_map = _batch_total_stock(db, item_ids)
     for item in items:
         db_qty = stock_map.get(item.id, 0)
-        qty = item.quantity if (item.quantity is not None and item.quantity > 0) else db_qty
+        qty = db_qty
         item_cost = float(item.unit_cost or 0)
         value += item_cost * qty
 
@@ -170,7 +170,7 @@ def list_materials_enriched(db: Session, tenant_id: int) -> list[MaterialListRea
     supplier_map = _batch_suppliers(db, supplier_ids)
     for i, item in enumerate(items):
         db_qty = stock_map.get(item.id, 0)
-        qty = item.quantity if (item.quantity is not None and item.quantity > 0) else db_qty
+        qty = db_qty
         wh, wh_qty = warehouse_map.get(item.id, (None, 0))
         wh_name = item.warehouse_name or (wh.name if wh else "—")
         batch_no = item.batch_number or f"BATCH-{item.id:04d}"
@@ -312,7 +312,7 @@ def get_finished_goods_summary(db: Session, tenant_id: int) -> dict:
     value = 0.0
     for item in items:
         db_qty = get_total_stock(db, item.id)
-        qty = item.quantity if (item.quantity is not None and item.quantity > 0) else db_qty
+        qty = db_qty
         value += float(item.unit_cost or 0) * qty
         item_res = min(max(0, item.reserved), qty) if item.reserved is not None else 0
         avail = max(qty - item_res, 0)
@@ -353,7 +353,7 @@ def list_finished_goods_enriched(db: Session, tenant_id: int) -> list[FinishedGo
     warehouse_map = _batch_primary_warehouse(db, tenant_id, item_ids)
     for i, item in enumerate(items):
         db_qty = stock_map.get(item.id, 0)
-        qty = item.quantity if (item.quantity is not None and item.quantity > 0) else db_qty
+        qty = db_qty
         wh, _ = warehouse_map.get(item.id, (None, 0))
         wh_name = item.warehouse_name or (wh.name if wh else "—")
         reserved = min(max(0, item.reserved), qty) if item.reserved is not None else 0

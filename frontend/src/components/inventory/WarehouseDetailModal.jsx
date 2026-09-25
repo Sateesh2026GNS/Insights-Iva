@@ -287,7 +287,8 @@ export default function WarehouseDetailModal({ warehouse, detail, onClose, onEdi
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 

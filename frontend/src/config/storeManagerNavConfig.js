@@ -91,6 +91,12 @@ export const STORE_MANAGER_NAV_ITEMS = [
     children: [
       { key: "allItems", label: "All Items", to: "/inventory", icon: Package, end: true },
       {
+        key: "finishedGoods",
+        label: "Finished Goods",
+        to: "/inventory/finished-goods",
+        icon: Package,
+      },
+      {
         key: "materialRequests",
         label: "Material Requests",
         to: "/inventory/material-requests",
@@ -104,16 +110,16 @@ export const STORE_MANAGER_NAV_ITEMS = [
       },
       { key: "return", label: "Stock Return", to: "/inventory/stock-return", icon: RotateCcw },
       {
-        key: "inventoryCheck",
-        label: "Inventory Check",
-        to: "/my-job-cards?dept=inventory",
-        icon: ClipboardList,
-      },
-      {
         key: "transfer",
         label: "Stock Transfer",
         to: "/inventory/stock-transfer",
         icon: ArrowLeftRight,
+      },
+      {
+        key: "stockAdjustment",
+        label: "Stock Adjustment",
+        to: "/inventory/stock-adjustment",
+        icon: ClipboardList,
       },
       { key: "warehouses", label: "Warehouses", to: "/inventory/warehouses", icon: Warehouse },
       { key: "inventorySettings", label: "Inventory Settings", to: "/inventory/settings", icon: Settings },
