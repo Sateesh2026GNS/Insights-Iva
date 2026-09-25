@@ -1,12 +1,12 @@
-import { useState } from "react";
 import { ChevronDown, RefreshCw, SlidersHorizontal, X } from "lucide-react";
+import { useState } from "react";
 
 import Button from "../common/Button";
 import { Input, Select } from "../common/FormField";
+import SearchableSelect from "../common/SearchableSelect";
 import { SearchBar } from "../common/SearchFilter";
-import { ERP_LIST_STATUS_FILTER_OPTIONS } from "../../utils/jobCardListStatus";
-import { getWorkflowStatusLabel, WORKFLOW_STAGES } from "../../config/workflowStages";
 import { STORE_STATUS_FILTER_OPTIONS } from "../../utils/storeJobCardQueue";
+import { getWorkflowStatusLabel, WORKFLOW_STAGES } from "../../config/workflowStages";
 
 const PRIORITY_OPTIONS = [
   { value: "", label: "All priorities" },
@@ -73,8 +73,12 @@ export default function JobCardQueueFilters({
   autoApply = false,
   erpLayout = false,
   salesOrderOptions = [],
+  customerSelectOptions = [],
+  salesOrderSelectOptions = [],
+  searching = false,
   onClear,
   onApply,
+  onSearchKeyDown,
 }) {
   const [advancedOpen, setAdvancedOpen] = useState(false);
 
@@ -104,114 +108,62 @@ export default function JobCardQueueFilters({
 
   if (erpLayout) {
     return (
-      <div className="my-job-cards-filters">
-        <div className="my-job-cards-filters__grid">
+      <div className="my-job-cards-filters my-job-cards-filters--simple">
+        <h2 className="my-job-cards-filters__title">Search Job Cards</h2>
+        <div className="my-job-cards-filters__simple-grid">
           <div>
             <FilterLabel erp>Job Card No.</FilterLabel>
             <Input
               value={search}
               onChange={(e) => onSearchChange?.(e.target.value)}
-              placeholder="Enter Job Card No."
+              onKeyDown={onSearchKeyDown}
+              placeholder="JC-2026-0005"
               className="w-full"
-              aria-label="Filter by job card number"
+              aria-label="Job Card No."
             />
           </div>
           <div>
-            <FilterLabel erp>Customer</FilterLabel>
-            <Select
+            <FilterLabel erp>Customer Name</FilterLabel>
+            <SearchableSelect
               value={customer}
-              onChange={(e) => onCustomerChange?.(e.target.value)}
+              onChange={(v) => onCustomerChange?.(v)}
+              options={customerSelectOptions.length ? customerSelectOptions : customerOptions.map((name) => ({ value: name, label: name }))}
+              placeholder="Select Customer"
+              searchPlaceholder="Search customers"
               className="w-full"
-              aria-label="Filter by customer"
-            >
-              <option value="">Select Customer</option>
-              {customerOptions.map((name) => (
-                <option key={name} value={name}>
-                  {name}
-                </option>
-              ))}
-            </Select>
+            />
           </div>
           <div>
-            <FilterLabel erp>Sales Order</FilterLabel>
-            <Select
+            <FilterLabel erp>Sales Order No.</FilterLabel>
+            <SearchableSelect
               value={salesOrderNo}
-              onChange={(e) => onSalesOrderNoChange?.(e.target.value)}
+              onChange={(v) => onSalesOrderNoChange?.(v)}
+              options={
+                salesOrderSelectOptions.length
+                  ? salesOrderSelectOptions
+                  : salesOrderOptions.map((no) => ({ value: no, label: no }))
+              }
+              placeholder="Select Sales Order"
+              searchPlaceholder="Search sales orders"
               className="w-full"
-              aria-label="Filter by sales order"
-            >
-              <option value="">Select Sales Order</option>
-              {salesOrderOptions.map((no) => (
-                <option key={no} value={no}>
-                  {no}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <div>
-            <FilterLabel erp>Product</FilterLabel>
-            <Select
-              value={product}
-              onChange={(e) => onProductChange?.(e.target.value)}
-              className="w-full"
-              aria-label="Filter by product"
-            >
-              <option value="">Select Product</option>
-              {productOptions.map((name) => (
-                <option key={name} value={name}>
-                  {name}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <div>
-            <FilterLabel erp>Status</FilterLabel>
-            <Select
-              value={status}
-              onChange={(e) => onStatusChange?.(e.target.value)}
-              className="w-full"
-              aria-label="Filter by status"
-            >
-              {ERP_LIST_STATUS_FILTER_OPTIONS.map((opt) => (
-                <option key={opt.value || "all"} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <div>
-            <FilterLabel erp>From Date</FilterLabel>
-            <Input
-              type="date"
-              value={dateFrom}
-              onChange={(e) => onDateFromChange?.(e.target.value)}
-              className="w-full"
-              aria-label="Filter from date"
             />
           </div>
-          <div>
-            <FilterLabel erp>To Date</FilterLabel>
-            <Input
-              type="date"
-              value={dateTo}
-              onChange={(e) => onDateToChange?.(e.target.value)}
-              className="w-full"
-              aria-label="Filter to date"
-            />
-          </div>
-          <div className="my-job-cards-filters__actions">
+          <div className="my-job-cards-filters__simple-actions">
             <Button
               type="button"
               variant="primary"
               onClick={() => onApply?.()}
+              loading={searching}
+              disabled={searching}
             >
-              Apply
+              {searching ? "Searching…" : "Search"}
             </Button>
             <Button
               type="button"
               variant="outline"
               className="my-job-cards-filters__reset-btn"
               onClick={onClear}
+              disabled={searching}
               leftIcon={<RefreshCw className="h-4 w-4" aria-hidden />}
             >
               Reset

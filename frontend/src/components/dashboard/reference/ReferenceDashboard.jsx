@@ -33,7 +33,9 @@ import {
   Zap,
 } from "lucide-react";
 
+import DashboardReportExport from "../../common/DashboardReportExport";
 import EmptyChart from "../../common/EmptyChart";
+import { metricExportRows } from "../../../utils/dashboardExportRows";
 import SkeletonCard, { SkeletonChart } from "../../common/SkeletonCard";
 import AdminProductionWidgets from "./AdminProductionWidgets";
 import AdminQuickActions from "./AdminQuickActions";
@@ -1149,6 +1151,11 @@ export default function ReferenceDashboard() {
         ? "grid-cols-1 md:grid-cols-2"
         : "grid-cols-1 md:grid-cols-2 lg:grid-cols-3";
 
+  const erpExportRows = useMemo(
+    () => metricExportRows(kpiCardsLive.map((card) => ({ label: card.title, value: card.value }))),
+    [kpiCardsLive]
+  );
+
   if (loading) return <DashboardSkeleton />;
 
   if (error) {
@@ -1178,6 +1185,17 @@ export default function ReferenceDashboard() {
     <div className="min-h-full bg-[var(--color-bg)]">
       <div className="ui-page mx-auto max-w-[var(--page-max)] ui-stack">
         {sectionVisible(sections, "kpi") ? <KpiStrip cards={kpiCardsLive} /> : null}
+
+        {sectionVisible(sections, "kpi") ? (
+          <div className="flex justify-end">
+            <DashboardReportExport
+              title={isOp ? "Operator Dashboard" : "ERP Dashboard"}
+              filename="erp-dashboard"
+              rows={erpExportRows}
+              module="dashboard"
+            />
+          </div>
+        ) : null}
 
         <DashboardCheckIn />
 

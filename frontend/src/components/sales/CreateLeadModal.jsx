@@ -3,27 +3,31 @@ import { createPortal } from "react-dom";
 import { X, Save } from "lucide-react";
 import { createLead, updateLead } from "../../api/salesApi";
 import { useToast } from "../../context/ToastContext";
+import useAuth from "../../hooks/useAuth";
 import { LEAD_SOURCES } from "../../data/salesMasterData";
 import Button from "../common/Button";
 import { apiErrorMessage } from "../../utils/apiError";
 
 import { inputMtClass as inputClass } from "../../design-system/classes";
 
-const emptyLeadForm = () => ({
+const defaultSalesExecutive = (user) =>
+  (user?.full_name || user?.name || user?.email || "").trim();
+
+const emptyLeadForm = (user) => ({
   name: "",
   company: "",
   phone: "",
   email: "",
   source: "Web Form",
-  sales_executive: "Vikram Sharma",
+  sales_executive: defaultSalesExecutive(user),
   priority: "Medium",
   status: "New",
   estimated_value: "",
   notes: "",
 });
 
-function leadToForm(lead) {
-  if (!lead) return emptyLeadForm();
+function leadToForm(lead, user) {
+  if (!lead) return emptyLeadForm(user);
   const cap = (s) => (s ? String(s).charAt(0).toUpperCase() + String(s).slice(1).toLowerCase() : "");
   return {
     name: lead.name || lead.customer_name || "",
@@ -31,7 +35,7 @@ function leadToForm(lead) {
     phone: lead.phone || lead.contact || "",
     email: lead.email || "",
     source: lead.source || "Web Form",
-    sales_executive: lead.sales_executive || "Vikram Sharma",
+    sales_executive: lead.sales_executive || defaultSalesExecutive(user),
     priority: cap(lead.priority) || "Medium",
     status: cap(lead.status) || "New",
     estimated_value: lead.opportunity_value ?? lead.estimated_value ?? "",
@@ -41,17 +45,18 @@ function leadToForm(lead) {
 
 export default function CreateLeadModal({ isOpen, onClose, onSuccess, leadToEdit = null }) {
   const { addToast } = useToast();
+  const { user } = useAuth();
   const isEdit = Boolean(leadToEdit && typeof leadToEdit.id === "number");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [form, setForm] = useState(emptyLeadForm);
+  const [form, setForm] = useState(() => emptyLeadForm(user));
 
   useEffect(() => {
     if (isOpen) {
-      setForm(leadToForm(leadToEdit));
+      setForm(leadToForm(leadToEdit, user));
       setError("");
     }
-  }, [isOpen, leadToEdit]);
+  }, [isOpen, leadToEdit, user]);
 
   if (!isOpen) return null;
 

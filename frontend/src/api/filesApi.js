@@ -1,5 +1,5 @@
 import api, { getApiBaseURL } from "./axiosConfig";
-import { classifyApiError } from "../utils/apiError";
+import { apiErrorMessage, classifyApiError } from "../utils/apiError";
 
 const BASE = "/api/files";
 
@@ -126,6 +126,12 @@ export function mapFileUploadError(err) {
   if (classified.type === "network") {
     return { state: "offline", message: classified.message };
   }
+  if (status === 422) {
+    return {
+      state: "validation",
+      message: apiErrorMessage(err, "Please select a valid file."),
+    };
+  }
   if (classified.type === "permission") {
     return { state: "permission", message: classified.message };
   }
@@ -143,16 +149,38 @@ export const ALLOWED_EXTENSIONS = [
   "doc", "docx", "xls", "xlsx", "zip",
 ];
 
+const MIME_TO_EXT = {
+  "image/png": "png",
+  "image/jpeg": "jpg",
+  "image/jpg": "jpg",
+  "image/webp": "webp",
+  "image/gif": "gif",
+  "application/pdf": "pdf",
+};
+
 export function validateFileClient(file, maxBytes = 100 * 1024 * 1024) {
   if (!file) return "Please select a file.";
   const name = file.name || "";
-  const ext = name.includes(".") ? name.split(".").pop().toLowerCase() : "";
+  let ext = name.includes(".") ? name.split(".").pop().toLowerCase() : "";
+  if (!ext && file.type) {
+    ext = MIME_TO_EXT[file.type.toLowerCase()] || "";
+  }
   if (!ext || !ALLOWED_EXTENSIONS.includes(ext)) {
-    return `File type '.${ext || "?"}' is not supported.`;
+    return `This file type is not supported here.`;
   }
   if (file.size <= 0) return "File is empty.";
   if (file.size > maxBytes) {
-    return `File exceeds maximum size (${Math.round(maxBytes / (1024 * 1024))} MB).`;
+    return `File is too large. Maximum allowed size is ${Math.round(maxBytes / (1024 * 1024))} MB.`;
   }
   return null;
+}
+
+export function uploadErrorMessage(err, fallback = "Unable to upload this file. Please check the file and try again.") {
+  const mapped = mapFileUploadError(err);
+  if (mapped?.message && !mapped.message.includes("status code")) {
+    return mapped.message;
+  }
+  const msg = apiErrorMessage(err, fallback);
+  if (msg && !String(msg).includes("status code 422")) return msg;
+  return fallback;
 }

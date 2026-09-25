@@ -101,6 +101,18 @@ export default function Leads() {
     setSearchParams(next, { replace: true });
   }, [searchParams, setSearchParams]);
 
+  useEffect(() => {
+    const leadId = searchParams.get("lead");
+    if (!leadId || !rows.length) return;
+    const match = rows.find((r) => String(r.id) === String(leadId));
+    if (match) {
+      setSelected(match);
+      const next = new URLSearchParams(searchParams);
+      next.delete("lead");
+      setSearchParams(next, { replace: true });
+    }
+  }, [searchParams, rows, setSearchParams]);
+
   const load = useCallback(async (isRefresh = false) => {
     if (!isRefresh) setLoading(true);
     try {

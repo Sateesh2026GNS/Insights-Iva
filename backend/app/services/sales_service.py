@@ -917,10 +917,26 @@ def create_payment(
     return p
 
 
-def list_payments(db: Session, tenant_id: int, invoice_id: int | None = None) -> list[Payment]:
+def list_payments(
+    db: Session,
+    tenant_id: int,
+    invoice_id: int | None = None,
+    *,
+    customer_id: int | None = None,
+    date_from: date | None = None,
+    date_to: date | None = None,
+) -> list[Payment]:
     stmt = select(Payment).where(Payment.tenant_id == tenant_id)
     if invoice_id:
         stmt = stmt.where(Payment.invoice_id == invoice_id)
+    if customer_id is not None or date_from is not None or date_to is not None:
+        stmt = stmt.join(Invoice, Payment.invoice_id == Invoice.id)
+        if customer_id is not None:
+            stmt = stmt.where(Invoice.customer_id == customer_id)
+        if date_from is not None:
+            stmt = stmt.where(Payment.payment_date >= date_from)
+        if date_to is not None:
+            stmt = stmt.where(Payment.payment_date <= date_to)
     stmt = stmt.order_by(Payment.payment_date.desc())
     return list(db.scalars(stmt).all())
 

@@ -24,7 +24,9 @@ import {
   searchChatUsers,
   sendMessage,
 } from "../../api/workChatApi";
-import { requestUploadUrl, completeUpload, putToPresignedUrl, validateFileClient } from "../../api/filesApi";
+import { uploadErrorMessage, validateFileClient } from "../../api/filesApi";
+import { ensureFileHasName, fileFromClipboardEvent, uploadFileThroughPipeline } from "../../utils/fileUploadPipeline";
+import { apiErrorMessage } from "../../utils/apiError";
 import { useToast } from "../../context/ToastContext";
 import "../../styles/work-chat.css";
 
@@ -167,20 +169,13 @@ export default function WorkChat() {
     try {
       const fileIds = [];
       for (const file of pendingFiles) {
-        const err = validateFileClient(file, 25 * 1024 * 1024);
+        const normalized = ensureFileHasName(file, "attachment");
+        const err = validateFileClient(normalized, 25 * 1024 * 1024);
         if (err) throw new Error(err);
-        const init = await requestUploadUrl({
-          filename: file.name,
-          mime_type: file.type,
-          file_size: file.size,
-          entity_type: "work_chat_message",
+        const fileId = await uploadFileThroughPipeline(normalized, {
+          entityType: "work_chat_message",
+          maxBytes: 25 * 1024 * 1024,
         });
-        const payload = init?.data ?? init;
-        const fileId = payload?.file_id ?? payload?.id;
-        const uploadUrl = payload?.upload_url;
-        const headers = payload?.upload_headers || {};
-        await putToPresignedUrl(uploadUrl, file, headers);
-        await completeUpload(fileId, { checksum_sha256: payload?.checksum_sha256 });
         fileIds.push(fileId);
       }
       const msg = await sendMessage(activeId, {
@@ -192,7 +187,12 @@ export default function WorkChat() {
       setMessages((prev) => [...prev, msg]);
       loadConversations();
     } catch (e) {
-      addToast(e?.message || "Failed to send message.", "error");
+      addToast(
+        e?.message && !String(e.message).includes("status code")
+          ? e.message
+          : uploadErrorMessage(e, apiErrorMessage(e, "Failed to send message.")),
+        "error"
+      );
     } finally {
       setSending(false);
     }
@@ -401,7 +401,7 @@ export default function WorkChat() {
                     className="sr-only"
                     onChange={(e) => {
                       const f = e.target.files?.[0];
-                      if (f) setPendingFiles((p) => [...p, f]);
+                      if (f) setPendingFiles((p) => [...p, ensureFileHasName(f, "attachment")]);
                       e.target.value = "";
                     }}
                   />
@@ -412,6 +412,12 @@ export default function WorkChat() {
                   value={composer}
                   onChange={(e) => setComposer(e.target.value)}
                   onKeyDown={onComposerKeyDown}
+                  onPaste={(e) => {
+                    const imageFile = fileFromClipboardEvent(e);
+                    if (!imageFile) return;
+                    e.preventDefault();
+                    setPendingFiles((p) => [...p, ensureFileHasName(imageFile, "pasted-image")]);
+                  }}
                   placeholder="Write a message…"
                   aria-label="Message"
                 />

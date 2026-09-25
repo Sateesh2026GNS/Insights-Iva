@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Area,
@@ -30,8 +30,11 @@ import KpiCard from "../../components/common/KpiCard";
 import Button from "../../components/common/Button";
 import { ListPageShell } from "../../components/common/ListPageShell";
 import { AsyncPageBody, EmptyState } from "../../components/common/states";
+import RecentTransactionsPeriodSelect from "../../components/accounts/RecentTransactionsPeriodSelect";
+import DashboardReportExport from "../../components/common/DashboardReportExport";
+import { metricExportRows } from "../../utils/dashboardExportRows";
 import CreateLeadModal from "../../components/sales/CreateLeadModal";
-import { InlineNativeDateRange } from "../../design-system/dateControls";
+import SalesDashboardMyWork from "../../components/sales/SalesDashboardMyWork";
 import {
   getLeadsEnriched,
   getQuotationSummary,
@@ -45,11 +48,18 @@ import { classifyApiError } from "../../utils/apiError";
 import useAuth from "../../hooks/useAuth";
 import { userCanCreateSalesJobCard } from "../../config/permissions";
 import { jobCardCreateUrl } from "../../utils/jobCardRoutes";
-import { toIsoDate, startOfMonth } from "../../utils/dateUtils";
+import { toIsoDate } from "../../utils/dateUtils";
 import {
   resolveSalesDashboardKpiLink,
   salesDashboardKpiNavLabel,
 } from "../../utils/salesDashboardKpis";
+import { salesDashboardRangeParams } from "../../utils/salesDashboardPeriod";
+import {
+  PERIOD_RECENT,
+  buildRecentTransactionsPeriodOptions,
+  periodOptionLabel,
+  resolveRecentTransactionsPeriod,
+} from "../../utils/recentTransactionsPeriod";
 import "../../styles/sales-dashboard.css";
 
 const emptyHub = {
@@ -63,6 +73,8 @@ const emptyHub = {
   open_quotations_value: 0,
   conversion_rate: 0,
   period_label: "",
+  pipeline_production: 0,
+  pipeline_completed: 0,
   top_customers: [],
   sales_executive_performance: [],
   alerts: [],
@@ -134,11 +146,6 @@ function buildDailyRevenueSeries(orders, rangeFrom, rangeTo) {
   });
 }
 
-function countOrdersByStatus(orders, statuses) {
-  const set = new Set(statuses.map((s) => s.toLowerCase()));
-  return (orders || []).filter((o) => set.has(String(o.status || "").toLowerCase())).length;
-}
-
 const PIPELINE_STAGES = [
   { key: "leads", label: "Leads", to: "/sales/leads" },
   { key: "quotations", label: "Quotations", to: "/sales/quotations" },
@@ -164,23 +171,44 @@ export default function SalesDashboard() {
   const [showLeadModal, setShowLeadModal] = useState(false);
   const [alertTab, setAlertTab] = useState("all");
 
-  const today = new Date();
-  const [rangeFrom, setRangeFrom] = useState(toIsoDate(startOfMonth(today)));
-  const [rangeTo, setRangeTo] = useState(toIsoDate(today));
+  const periodOptions = useMemo(() => buildRecentTransactionsPeriodOptions(), []);
+  const initialRange = useMemo(
+    () => resolveRecentTransactionsPeriod(PERIOD_RECENT, periodOptions),
+    [periodOptions]
+  );
+  const [periodId, setPeriodId] = useState(PERIOD_RECENT);
+  const [customRange, setCustomRange] = useState(null);
+  const [rangeFrom, setRangeFrom] = useState(initialRange.from);
+  const [rangeTo, setRangeTo] = useState(initialRange.to);
+  const loadGenerationRef = useRef(0);
+  const loadRef = useRef(() => {});
+
+  const rangeParams = useMemo(
+    () => salesDashboardRangeParams(rangeFrom, rangeTo),
+    [rangeFrom, rangeTo]
+  );
+  const appliedFrom = rangeParams?.from_date ?? "";
+  const appliedTo = rangeParams?.to_date ?? "";
 
   const load = useCallback(
     async (isRefresh = false) => {
+      const params = salesDashboardRangeParams(rangeFrom, rangeTo);
+      if (!params) return;
+
+      const generation = ++loadGenerationRef.current;
       if (!isRefresh) setLoading(true);
       setLoadError("");
       setLoadErrorObj(null);
       markRequestStart();
       try {
         const [hubRes, quoteRes, leadsRes, ordersRes] = await Promise.allSettled([
-          getSalesHub(),
-          getQuotationSummary(),
-          getLeadsEnriched(),
-          getSalesOrdersEnriched(),
+          getSalesHub(params),
+          getQuotationSummary(params),
+          getLeadsEnriched(params),
+          getSalesOrdersEnriched(params),
         ]);
+        if (generation !== loadGenerationRef.current) return;
+
         if (hubRes.status === "fulfilled") {
           const data = pickData(hubRes.value);
           if (data) setHub({ ...emptyHub, ...data });
@@ -193,45 +221,68 @@ export default function SalesDashboard() {
             : []
         );
       } catch (err) {
+        if (generation !== loadGenerationRef.current) return;
         if (isRefresh) throw err;
         const classified = classifyApiError(err, "We couldn't load the sales dashboard.");
-        setHub(emptyHub);
         setLoadError(classified.message);
         setLoadErrorObj(err);
       } finally {
-        markRequestEnd();
-        setLoading(false);
+        if (generation === loadGenerationRef.current) {
+          markRequestEnd();
+          setLoading(false);
+        }
       }
     },
-    [markRequestStart, markRequestEnd]
+    [markRequestStart, markRequestEnd, rangeFrom, rangeTo]
   );
 
+  loadRef.current = load;
+
   useEffect(() => {
-    load();
-  }, [load]);
+    if (!appliedFrom || !appliedTo) return;
+    loadRef.current();
+  }, [appliedFrom, appliedTo]);
 
   useManufacturingRefresh(() => load(true));
   useEffect(() => registerRetry(() => load(true)), [registerRetry, load]);
 
-  const periodMeta = hub.period_label ? `This month (${hub.period_label})` : "This month";
+  const periodMeta = useMemo(
+    () => periodOptionLabel(periodId, periodOptions, customRange),
+    [periodId, periodOptions, customRange]
+  );
 
-  const pipelineCounts = useMemo(() => {
-    const production = countOrdersByStatus(orders, [
-      "in_production",
-      "production",
-      "confirmed",
-      "processing",
-    ]);
-    const completed = countOrdersByStatus(orders, ["delivered", "completed", "closed"]);
-    return {
+  const dashboardExportRows = useMemo(
+    () =>
+      metricExportRows([
+        { label: "Reporting period", value: periodMeta },
+        { label: "Revenue", value: formatInr(hub.monthly_revenue) },
+        { label: "Total orders", value: hub.total_orders },
+        { label: "Pending orders", value: hub.pending_orders },
+        { label: "Dispatch pending", value: hub.dispatch_pending },
+        { label: "Outstanding payments", value: formatInr(hub.outstanding_payments) },
+        { label: "Open leads", value: hub.open_leads },
+        { label: "Open quotations", value: hub.open_quotations },
+        { label: "Conversion rate", value: `${hub.conversion_rate ?? 0}%` },
+      ]),
+    [hub, periodMeta]
+  );
+
+  const onReportingPeriodApplied = useCallback(({ from, to }) => {
+    setRangeFrom(from);
+    setRangeTo(to);
+  }, []);
+
+  const pipelineCounts = useMemo(
+    () => ({
       leads: hub.open_leads,
       quotations: quoteSummary?.total_quotations ?? hub.open_quotations,
       sales_orders: hub.total_orders,
-      production,
+      production: hub.pipeline_production ?? 0,
       dispatch: hub.dispatch_pending,
-      completed,
-    };
-  }, [hub, orders, quoteSummary]);
+      completed: hub.pipeline_completed ?? 0,
+    }),
+    [hub, quoteSummary]
+  );
 
   const revenueSeries = useMemo(
     () => buildDailyRevenueSeries(orders, rangeFrom, rangeTo),
@@ -268,23 +319,15 @@ export default function SalesDashboard() {
       .slice(0, 5);
   }, [orders]);
 
-  const topCustomers = useMemo(() => {
-    const fromHub = (hub.top_customers || []).map((c) => ({
-      name: c.name,
-      orders: c.orders,
-      revenue: c.revenue ?? c.total ?? 0,
-    }));
-    if (fromHub.length) return fromHub.slice(0, 5);
-    const map = new Map();
-    for (const o of orders) {
-      const name = o.customer_name || "Customer";
-      const cur = map.get(name) || { name, orders: 0, revenue: 0 };
-      cur.orders += 1;
-      cur.revenue += Number(o.total_amount || o.amount || 0);
-      map.set(name, cur);
-    }
-    return [...map.values()].sort((a, b) => b.revenue - a.revenue).slice(0, 5);
-  }, [hub.top_customers, orders]);
+  const topCustomers = useMemo(
+    () =>
+      (hub.top_customers || []).map((c) => ({
+        name: c.name,
+        orders: c.orders,
+        revenue: c.revenue ?? c.total ?? 0,
+      })),
+    [hub.top_customers]
+  );
 
   const executives = hub.sales_executive_performance || [];
 
@@ -296,14 +339,14 @@ export default function SalesDashboard() {
     return alerts.filter((a) => !/follow|overdue/i.test(a.message || ""));
   }, [alerts, alertTab]);
 
-  const monthlyRevenueKpiRange = useMemo(() => {
-    const now = new Date();
-    return { dateFrom: toIsoDate(startOfMonth(now)), dateTo: toIsoDate(now) };
-  }, []);
+  const kpiRange = useMemo(
+    () => (rangeParams ? { dateFrom: rangeParams.from_date, dateTo: rangeParams.to_date } : {}),
+    [rangeParams]
+  );
 
   const kpiLinks = useMemo(
     () => ({
-      monthlyRevenue: resolveSalesDashboardKpiLink(user, "monthlyRevenue", monthlyRevenueKpiRange),
+      monthlyRevenue: resolveSalesDashboardKpiLink(user, "monthlyRevenue", kpiRange),
       totalOrders: resolveSalesDashboardKpiLink(user, "totalOrders"),
       pendingOrders: resolveSalesDashboardKpiLink(user, "pendingOrders"),
       dispatchPending: resolveSalesDashboardKpiLink(user, "dispatchPending"),
@@ -312,7 +355,7 @@ export default function SalesDashboard() {
       conversionRate: resolveSalesDashboardKpiLink(user, "conversionRate"),
       outstandingPayments: resolveSalesDashboardKpiLink(user, "outstandingPayments"),
     }),
-    [user, monthlyRevenueKpiRange]
+    [user, kpiRange]
   );
 
   const quoteTiles = [
@@ -345,14 +388,27 @@ export default function SalesDashboard() {
             </Button>
           ) : null}
         </div>
-        <InlineNativeDateRange
-          from={rangeFrom}
-          to={rangeTo}
-          onFromChange={setRangeFrom}
-          onToChange={setRangeTo}
-          className="sales-dash__toolbar-dates"
-        />
+        <div className="sales-dash__toolbar-dates flex flex-col items-stretch gap-2 sm:items-end">
+          <RecentTransactionsPeriodSelect
+            id="sales-dashboard-recent-transactions"
+            className="sales-dash__toolbar-period-select"
+            periodId={periodId}
+            customRange={customRange}
+            onPeriodIdChange={setPeriodId}
+            onCustomRangeChange={setCustomRange}
+            onRangeApplied={onReportingPeriodApplied}
+          />
+          <DashboardReportExport
+            title={`Sales Dashboard — ${periodMeta}`}
+            filename="sales-dashboard"
+            rows={dashboardExportRows}
+            disabled={loading}
+            module="sales"
+          />
+        </div>
       </div>
+
+      <SalesDashboardMyWork />
 
       <CreateLeadModal isOpen={showLeadModal} onClose={() => setShowLeadModal(false)} onSuccess={() => load(true)} />
 
@@ -369,7 +425,7 @@ export default function SalesDashboard() {
         <div className="space-y-4 sm:space-y-5">
           <div className="sales-dash__kpi-grid">
             <KpiCard
-              label="Monthly Revenue"
+              label="Revenue"
               value={formatInr(hub.monthly_revenue)}
               icon={IndianRupee}
               tone="teal"
@@ -382,7 +438,7 @@ export default function SalesDashboard() {
               value={hub.total_orders}
               icon={ShoppingCart}
               tone="info"
-              meta="All time (excl. cancelled)"
+              meta={`${periodMeta} (excl. cancelled)`}
               to={kpiLinks.totalOrders}
               navAriaLabel={salesDashboardKpiNavLabel("totalOrders")}
             />
@@ -391,7 +447,7 @@ export default function SalesDashboard() {
               value={hub.pending_orders}
               icon={ClipboardList}
               tone="warning"
-              meta="Includes draft and pending"
+              meta={periodMeta}
               to={kpiLinks.pendingOrders}
               navAriaLabel={salesDashboardKpiNavLabel("pendingOrders")}
             />
@@ -400,7 +456,7 @@ export default function SalesDashboard() {
               value={hub.dispatch_pending}
               icon={Truck}
               tone="violet"
-              meta="Ready to dispatch"
+              meta={periodMeta}
               to={kpiLinks.dispatchPending}
               navAriaLabel={salesDashboardKpiNavLabel("dispatchPending")}
             />
@@ -409,7 +465,7 @@ export default function SalesDashboard() {
               value={hub.open_leads}
               icon={Target}
               tone="success"
-              meta="Active enquiries"
+              meta={`${periodMeta} · open leads created`}
               to={kpiLinks.openLeads}
               navAriaLabel={salesDashboardKpiNavLabel("openLeads")}
             />
@@ -418,7 +474,7 @@ export default function SalesDashboard() {
               value={hub.open_quotations}
               icon={FileText}
               tone="info"
-              meta={`Total value ${formatInr(hub.open_quotations_value)}`}
+              meta={`${periodMeta} · ${formatInr(hub.open_quotations_value)} open value`}
               to={kpiLinks.openQuotations}
               navAriaLabel={salesDashboardKpiNavLabel("openQuotations")}
             />
@@ -427,7 +483,7 @@ export default function SalesDashboard() {
               value={`${Number(hub.conversion_rate || 0).toFixed(1)}%`}
               icon={Percent}
               tone="teal"
-              meta={periodMeta}
+              meta={`Quotations in ${periodMeta}`}
               to={kpiLinks.conversionRate}
               navAriaLabel={salesDashboardKpiNavLabel("conversionRate")}
             />
@@ -436,7 +492,7 @@ export default function SalesDashboard() {
               value={formatInr(hub.outstanding_payments)}
               icon={IndianRupee}
               tone="danger"
-              meta="All time receivables"
+              meta="Current receivables (as of today)"
               to={kpiLinks.outstandingPayments}
               navAriaLabel={salesDashboardKpiNavLabel("outstandingPayments")}
             />
@@ -766,6 +822,7 @@ export default function SalesDashboard() {
             <div className="sales-dash-card">
               <div className="sales-dash-card__head">
                 <h3 className="sales-dash-card__title">Sales Executive Performance</h3>
+                <span className="text-[11px] text-[var(--color-text-muted)]">{periodMeta}</span>
                 <Link to="/sales/reports/sales-orders" className="text-xs font-semibold text-[var(--color-primary)]">View All →</Link>
               </div>
               <div className="sales-dash-card__body overflow-x-auto">

@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from app.api.auth_deps import get_current_user
 from app.api.deps import get_db
 from app.core.config import get_settings
-from app.core.permissions import require_permission
+from app.core.permissions import require_any_permission, require_permission
 from app.models.user import User
 from app.schemas.file_storage import (
     AttachFileRequest,
@@ -43,6 +43,8 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/files", tags=["files"])
 MODULE = "documents"
+# Chat attachments and document uploads share the same file service.
+require_file_upload = require_any_permission("documents", "chat", "inventory")
 
 
 def _stored_file_out(data: dict) -> StoredFileOut:
@@ -53,7 +55,7 @@ def _stored_file_out(data: dict) -> StoredFileOut:
 def create_upload_url(
     payload: UploadUrlRequest,
     request: Request,
-    user: User = Depends(require_permission(MODULE)),
+    user: User = Depends(require_file_upload),
     db: Session = Depends(get_db),
 ) -> UploadUrlResponse:
     if not user.tenant_id:
@@ -85,7 +87,7 @@ def upload_complete(
     payload: UploadCompleteRequest,
     background_tasks: BackgroundTasks,
     request: Request,
-    user: User = Depends(require_permission(MODULE)),
+    user: User = Depends(require_file_upload),
     db: Session = Depends(get_db),
 ) -> dict:
     try:
@@ -110,7 +112,7 @@ def upload_complete(
 def register_part(
     session_id: str,
     payload: UploadPartRequest,
-    user: User = Depends(require_permission(MODULE)),
+    user: User = Depends(require_file_upload),
     db: Session = Depends(get_db),
 ) -> UploadPartResponse:
     result = register_upload_part(
@@ -127,7 +129,7 @@ def register_part(
 @router.get("/upload-sessions/{session_id}/resume", response_model=UploadSessionResumeResponse)
 def resume_session(
     session_id: str,
-    user: User = Depends(require_permission(MODULE)),
+    user: User = Depends(require_file_upload),
     db: Session = Depends(get_db),
 ) -> UploadSessionResumeResponse:
     result = resume_upload_session(db, user, session_id)

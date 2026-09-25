@@ -1,13 +1,11 @@
 import api from "../api/axiosConfig";
 import {
   attachFile,
-  completeUpload,
   getDownloadUrl,
   getFileStatus,
-  putToPresignedUrl,
-  requestUploadUrl,
   resolveUploadUrl,
 } from "../api/filesApi";
+import { uploadFileThroughPipeline } from "./fileUploadPipeline";
 
 const ENTITY_TYPE = "inventory_item";
 const PHOTO_LABEL = "item_photo";
@@ -44,16 +42,9 @@ export async function uploadAndAttachItemPhoto(file, itemId) {
   const err = validateInventoryPhotoFile(file);
   if (err) throw new Error(err);
 
-  const init = await requestUploadUrl({
-    filename: file.name,
-    mime_type: file.type || "image/png",
-    file_size: file.size,
+  const fileId = await uploadFileThroughPipeline(file, {
+    maxBytes: IMAGE_MAX_BYTES,
   });
-  const fileId = init.file?.id;
-  if (!fileId) throw new Error("Upload could not be started.");
-
-  await putToPresignedUrl(init.upload_url, file, init.headers || {});
-  await completeUpload(fileId, {});
   await waitUntilDownloadable(fileId);
   await attachFile(fileId, ENTITY_TYPE, itemId, PHOTO_LABEL);
   return fileId;

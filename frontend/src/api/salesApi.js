@@ -8,7 +8,8 @@ export const deleteCustomer = (customerId) => api.delete(`/sales/customers/${cus
 
 export const getSalesOrders = (_tenantId, status = null) =>
   api.get("/sales/sales-orders", { params: { status } });
-export const getSalesOrdersEnriched = () => api.get("/sales/sales-orders/enriched");
+export const getSalesOrdersEnriched = (params = {}) =>
+  api.get("/sales/sales-orders/enriched", { params: salesDateParams(params) });
 export const getSOSummary = () => api.get("/sales/sales-orders/summary");
 export const getSalesOrderDetail = (orderId) => api.get(`/sales/sales-orders/${orderId}`);
 export const createSalesOrder = (payload) => api.post("/sales/sales-orders", payload);
@@ -56,8 +57,14 @@ export const downloadInvoicePdf = (invoiceId) =>
 export const emailInvoice = (invoiceId, payload = {}) =>
   api.post(`/sales/invoices/${invoiceId}/email`, payload);
 
-export const getPayments = (_tenantId, invoiceId = null) =>
-  api.get("/sales/payments", { params: { invoice_id: invoiceId } });
+export const getPayments = (tenantIdOrParams = null, invoiceId = null) => {
+  if (tenantIdOrParams !== null && typeof tenantIdOrParams === "object") {
+    return api.get("/sales/payments", { params: tenantIdOrParams });
+  }
+  return api.get("/sales/payments", {
+    params: { invoice_id: invoiceId || undefined },
+  });
+};
 export const getPayment = (paymentId) => api.get(`/sales/payments/${paymentId}`);
 export const createPayment = (payload, idempotencyKey = null) =>
   api.post("/sales/payments", payload, {
@@ -69,7 +76,13 @@ export const deletePayment = (paymentId) => api.delete(`/sales/payments/${paymen
 
 export const getLeads = (status = null) => api.get("/sales/leads", { params: { status } });
 export const getLeadSummary = () => api.get("/sales/leads/summary");
-export const getLeadsEnriched = () => api.get("/sales/leads/enriched");
+export const getLeadsEnriched = (params = {}) =>
+  api.get("/sales/leads/enriched", {
+    params: {
+      ...(params.from_date ? { followup_from: params.from_date } : {}),
+      ...(params.to_date ? { followup_to: params.to_date } : {}),
+    },
+  });
 export const createLead = (payload) => api.post("/sales/leads", payload);
 export const updateLeadStatus = (leadId, status) =>
   api.patch(`/sales/leads/${leadId}/status`, null, { params: { status } });
@@ -84,7 +97,8 @@ export const createLeadActivity = (leadId, payload) =>
 
 export const getQuotations = (status = null) =>
   api.get("/sales/quotations", { params: { status } });
-export const getQuotationSummary = () => api.get("/sales/quotations/summary");
+export const getQuotationSummary = (params = {}) =>
+  api.get("/sales/quotations/summary", { params: salesDateParams(params) });
 export const getQuotationsEnriched = () => api.get("/sales/quotations/enriched");
 export const getQuotation = (quoteId) => api.get(`/sales/quotations/${quoteId}`);
 export const getQuotationDocument = (quoteId) => api.get(`/sales/quotations/${quoteId}/document`);
@@ -109,7 +123,18 @@ export const getSalesOrderWorkflow = (orderId) =>
 
 export const getManufacturingWorkflowBoard = () => api.get("/sales/workflow/board");
 
-export const getSalesHub = () => api.get("/sales/hub");
+function salesDateParams({ from_date, to_date } = {}) {
+  const params = {};
+  if (from_date) params.from_date = from_date;
+  if (to_date) params.to_date = to_date;
+  return params;
+}
+
+export const getSalesHub = (params = {}) => api.get("/sales/hub", { params: salesDateParams(params) });
+
+/** Daily sales activity for the authenticated user (YYYY-MM-DD). */
+export const getSalesMyWork = (params = {}) =>
+  api.get("/sales/my-work", { params: params.date ? { date: params.date } : {} });
 
 /** Sales Manager reports — tenant-scoped via sales module (not generic analytics). */
 export const getSalesReportsSummary = (year = null) =>

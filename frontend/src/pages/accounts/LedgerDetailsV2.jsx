@@ -1,16 +1,25 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { ChevronDown, ChevronLeft, ChevronRight, Eye, Mail, MoreVertical, Trash2 } from "lucide-react";
 
 import AdjustBalanceModal from "../../components/accounts/AdjustBalanceModal";
-import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
+import LedgerStatementExportMenu from "../../components/accounts/LedgerStatementExportMenu";
+import RecentTransactionsPeriodSelect from "../../components/accounts/RecentTransactionsPeriodSelect";
 import { SearchBar } from "../../components/common/SearchFilter";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
 import ContraEntryModal from "../../components/accounts/ContraEntryModal";
 import DeleteBankModal from "../../components/accounts/DeleteBankModal";
-import SendLedgerModal from "../../components/accounts/SendLedgerModal";
-import { exportToExcel, exportToPdf } from "../../utils/exportUtils";
 import { useToast } from "../../context/ToastContext";
+import {
+  PERIOD_RECENT,
+  resolveRecentTransactionsPeriod,
+  buildRecentTransactionsPeriodOptions,
+} from "../../utils/recentTransactionsPeriod";
+import {
+  fetchPartyLedgerTransactions,
+  filterLocalTransactionsByRange,
+} from "../../utils/ledgerPartyTransactions";
+import { apiErrorMessage } from "../../utils/apiError";
 
 const PAGE_BG = "var(--color-bg)";
 const PAGE_SIZES = [10, 20, 50];
@@ -155,18 +164,53 @@ export default function LedgerDetailsV2() {
   }, [currentAccount]);
 
   const [search, setSearch] = useState("");
-  const [fromDate, setFromDate] = useState("2020-01-01");
-  const [toDate, setToDate] = useState(todayIso());
+  const periodOptions = useMemo(() => buildRecentTransactionsPeriodOptions(), []);
+  const initialRange = useMemo(
+    () => resolveRecentTransactionsPeriod(PERIOD_RECENT, periodOptions),
+    [periodOptions]
+  );
+  const [periodId, setPeriodId] = useState(PERIOD_RECENT);
+  const [customRange, setCustomRange] = useState(null);
+  const [fromDate, setFromDate] = useState(initialRange.from);
+  const [toDate, setToDate] = useState(initialRange.to);
+  const [loadingStatement, setLoadingStatement] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [createOpen, setCreateOpen] = useState(false);
   const [adjustOpen, setAdjustOpen] = useState(false);
   const [contraOpen, setContraOpen] = useState(false);
-  const [sendOpen, setSendOpen] = useState(false);
   const [deleteRow, setDeleteRow] = useState(null);
   const [menuRowId, setMenuRowId] = useState(null);
 
   const [transactions, setTransactions] = useState([]);
+  const [localTransactions, setLocalTransactions] = useState([]);
+
+  const loadStatement = useCallback(async () => {
+    if (isMoneyLedger) {
+      setTransactions(filterLocalTransactionsByRange(localTransactions, fromDate, toDate));
+      return;
+    }
+    setLoadingStatement(true);
+    try {
+      const rows = await fetchPartyLedgerTransactions(kind, id, fromDate, toDate);
+      setTransactions(rows);
+    } catch (err) {
+      addToast(apiErrorMessage(err, "Could not load ledger transactions."), "error");
+      setTransactions([]);
+    } finally {
+      setLoadingStatement(false);
+    }
+  }, [isMoneyLedger, localTransactions, fromDate, toDate, kind, id, addToast]);
+
+  useEffect(() => {
+    loadStatement();
+  }, [loadStatement]);
+
+  const onPeriodRangeApplied = useCallback(({ from, to }) => {
+    setFromDate(from);
+    setToDate(to);
+    setPage(1);
+  }, []);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -199,16 +243,6 @@ export default function LedgerDetailsV2() {
     if (mine) setBalance(Number(mine.balance || 0));
   };
 
-  const onPdf = () => {
-    exportToPdf(filtered, exportCols, `Ledger - ${partyName}`, `ledger-${id || "party"}`);
-    addToast("PDF exported.");
-  };
-
-  const onExcel = () => {
-    exportToExcel(filtered, exportCols, `ledger-${id || "party"}`);
-    addToast("Excel exported.");
-  };
-
   const onAdjust = ({ accountId, type, amount, remark, date, voucherNo }) => {
     const next = ledgerAccounts.map((a) => {
       if (a.id !== accountId) return a;
@@ -220,18 +254,22 @@ export default function LedgerDetailsV2() {
       };
     });
     persistAccounts(next);
-    setTransactions((prev) => [
-      {
-        id: `txn-${Date.now()}`,
-        voucher_date: date,
-        voucher_no: voucherNo || String(prev.length + 1),
-        particulars: remark || (type === "add" ? "Add Money" : "Withdraw Money"),
-        voucher_type: type === "add" ? "Receipt" : "Payment",
-        debit: type === "withdraw" ? amount : 0,
-        credit: type === "add" ? amount : 0,
-      },
-      ...prev,
-    ]);
+    setLocalTransactions((prev) => {
+      const next = [
+        {
+          id: `txn-${Date.now()}`,
+          voucher_date: date,
+          voucher_no: voucherNo || String(prev.length + 1),
+          particulars: remark || (type === "add" ? "Add Money" : "Withdraw Money"),
+          voucher_type: type === "add" ? "Receipt" : "Payment",
+          debit: type === "withdraw" ? amount : 0,
+          credit: type === "add" ? amount : 0,
+        },
+        ...prev,
+      ];
+      setTransactions(filterLocalTransactionsByRange(next, fromDate, toDate));
+      return next;
+    });
     addToast(type === "add" ? "Money added." : "Money withdrawn.");
   };
 
@@ -242,18 +280,22 @@ export default function LedgerDetailsV2() {
       return a;
     });
     persistAccounts(next);
-    setTransactions((prev) => [
-      {
-        id: `txn-${Date.now()}`,
-        voucher_date: date,
-        voucher_no: voucherNo || String(prev.length + 1),
-        particulars: remark || "Contra Entry",
-        voucher_type: "Contra",
-        debit: fromId === id ? amount : 0,
-        credit: toId === id ? amount : 0,
-      },
-      ...prev,
-    ]);
+    setLocalTransactions((prev) => {
+      const next = [
+        {
+          id: `txn-${Date.now()}`,
+          voucher_date: date,
+          voucher_no: voucherNo || String(prev.length + 1),
+          particulars: remark || "Contra Entry",
+          voucher_type: "Contra",
+          debit: fromId === id ? amount : 0,
+          credit: toId === id ? amount : 0,
+        },
+        ...prev,
+      ];
+      setTransactions(filterLocalTransactionsByRange(next, fromDate, toDate));
+      return next;
+    });
     addToast("Contra entry saved.");
   };
 
@@ -304,24 +346,14 @@ export default function LedgerDetailsV2() {
               placeholder="Search"
               className="max-w-xs w-full"
             />
-            <label className="block text-[12px] font-medium text-[#6b6b76]">
-              From Date
-              <input
-                type="date"
-                value={fromDate}
-                onChange={(e) => setFromDate(e.target.value)}
-                className="ui-input mt-1 block w-full min-w-[150px]"
-              />
-            </label>
-            <label className="block text-[12px] font-medium text-[#6b6b76]">
-              To Date
-              <input
-                type="date"
-                value={toDate}
-                onChange={(e) => setToDate(e.target.value)}
-                className="ui-input mt-1 block w-full min-w-[150px]"
-              />
-            </label>
+            <RecentTransactionsPeriodSelect
+              periodId={periodId}
+              customRange={customRange}
+              onPeriodIdChange={setPeriodId}
+              onCustomRangeChange={setCustomRange}
+              onRangeApplied={onPeriodRangeApplied}
+              className="min-w-[14rem]"
+            />
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
@@ -380,9 +412,12 @@ export default function LedgerDetailsV2() {
                 ) : null}
               </div>
             )}
-            <ExportDownloadMenu
-              disabled={!filtered.length}
-              onExport={(format) => (format === "pdf" ? onPdf() : onExcel())}
+            <LedgerStatementExportMenu
+              disabled={!filtered.length || loadingStatement}
+              rows={filtered}
+              columns={exportCols}
+              title={`Ledger - ${partyName} (${formatDisplayDate(fromDate)} to ${formatDisplayDate(toDate)})`}
+              filename={`ledger-${id || "party"}`}
             />
           </div>
         </div>
@@ -415,7 +450,13 @@ export default function LedgerDetailsV2() {
               </tr>
             </thead>
             <tbody>
-              {pageRows.length === 0 ? (
+              {loadingStatement ? (
+                <tr>
+                  <td colSpan={8} className="px-4 py-14 text-center text-sm text-[#9a9aa5]">
+                    Loading transactions…
+                  </td>
+                </tr>
+              ) : pageRows.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-4 py-14 text-center text-sm text-[#9a9aa5]">
                     No data available
@@ -543,18 +584,13 @@ export default function LedgerDetailsV2() {
         </>
       ) : null}
 
-      <SendLedgerModal
-        open={sendOpen}
-        onClose={() => setSendOpen(false)}
-        partyName={partyName}
-        partyEmail=""
-      />
       <DeleteBankModal
         open={Boolean(deleteRow)}
         title="Delete Transaction"
         message="Are you sure you want to delete this transaction?"
         onClose={() => setDeleteRow(null)}
         onConfirm={() => {
+          setLocalTransactions((prev) => prev.filter((t) => t.id !== deleteRow?.id));
           setTransactions((prev) => prev.filter((t) => t.id !== deleteRow?.id));
           addToast("Transaction deleted.");
         }}

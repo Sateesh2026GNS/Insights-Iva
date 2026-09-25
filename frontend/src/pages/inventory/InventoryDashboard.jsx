@@ -11,7 +11,9 @@ import {
 } from "lucide-react";
 
 import KpiCard from "../../components/common/KpiCard";
+import DashboardReportExport from "../../components/common/DashboardReportExport";
 import PageHeader from "../../components/common/PageHeader";
+import { metricExportRows } from "../../utils/dashboardExportRows";
 import StatusBadge from "../../components/common/StatusBadge";
 import StoreManagerNav from "../../components/inventory/StoreManagerNav";
 import EmptyState from "../../components/common/EmptyState";
@@ -169,6 +171,16 @@ export default function InventoryDashboard() {
   const pendingTransfers = asArray(dash?.pending_transfer_rows);
   const recentActivity = asArray(dash?.recent_stock_activity);
 
+  const storeExportRows = metricExportRows([
+    { label: "Total items", value: kpiValue(failed, totalItems) },
+    { label: "Low stock items", value: kpiValue(failed, lowStock) },
+    { label: "Out of stock", value: kpiValue(failed, outOfStock) },
+    { label: "Pending material checks", value: kpiValue(failed, dash?.pending_inventory_checks) },
+    { label: "Pending material requests", value: kpiValue(failed, dash?.pending_material_requests) },
+    { label: "Stock in today", value: kpiValue(failed, movement.stock_in) },
+    { label: "Stock out today", value: kpiValue(failed, movement.stock_out) },
+  ]);
+
   const compactTableClass = "w-full table-fixed text-left text-[13px]";
   const thClass = "px-3 py-2 font-medium text-[var(--color-text-muted)]";
   const tdClass = "px-3 py-2.5 align-middle";
@@ -181,9 +193,18 @@ export default function InventoryDashboard() {
         variant="inventory"
         subtitle="Store work control center — stock, checks, and pending actions"
         action={
-          refreshing ? (
-            <span className="text-xs text-[var(--color-text-muted)]">Refreshing…</span>
-          ) : null
+          <div className="flex flex-wrap items-center gap-2">
+            {refreshing ? (
+              <span className="text-xs text-[var(--color-text-muted)]">Refreshing…</span>
+            ) : null}
+            <DashboardReportExport
+              title="Store Dashboard"
+              filename="store-dashboard"
+              rows={storeExportRows}
+              disabled={failed && !dash}
+              module="inventory"
+            />
+          </div>
         }
       />
 

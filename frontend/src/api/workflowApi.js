@@ -67,8 +67,8 @@ export const getWorkflowQueue = (params = {}) =>
 /** Role-filtered actionable queue — backend determines visibility (preferred). */
 export const getMyJobCardQueue = (params = {}) => {
   const safeParams = { ...params };
-  if (safeParams.limit != null && Number(safeParams.limit) > 500) {
-    safeParams.limit = 500;
+  if (safeParams.limit != null && Number(safeParams.limit) > 2000) {
+    safeParams.limit = 2000;
   }
   return api.get("/manufacturing/workflow/my-queue", { params: safeParams });
 };

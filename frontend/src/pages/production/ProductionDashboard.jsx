@@ -12,7 +12,9 @@ import {
   Users,
   AlertTriangle,
 } from "lucide-react";
+import DashboardReportExport from "../../components/common/DashboardReportExport";
 import KpiCard from "../../components/common/KpiCard";
+import { metricExportRows } from "../../utils/dashboardExportRows";
 
 import Loader from "../../components/common/Loader";
 import { useToast } from "../../context/ToastContext";
@@ -107,8 +109,26 @@ export default function ProductionDashboard() {
     );
   }
 
+  const productionExportRows = metricExportRows([
+    { label: "Job cards pending", value: summary.job_cards_pending ?? 0 },
+    { label: "Job cards in progress", value: summary.job_cards_in_progress ?? 0 },
+    { label: "Produced today", value: formatProducedToday(summary.produced_today) },
+    { label: "Pending QC", value: summary.pending_qc ?? 0 },
+    { label: "Material waiting", value: actions.material_waiting ?? 0 },
+    { label: "Overdue production", value: actions.overdue_production ?? 0 },
+  ]);
+
   return (
     <div className="space-y-5 pb-4">
+      <div className="flex justify-end">
+        <DashboardReportExport
+          title="Production Dashboard"
+          filename="production-dashboard"
+          rows={productionExportRows}
+          disabled={Boolean(error)}
+          module="production"
+        />
+      </div>
       {error ? (
         <div className="ui-card flex flex-wrap items-center justify-between gap-3 border-[var(--color-danger)]/30 bg-[var(--color-danger-soft)] px-4 py-3">
           <p className="text-sm text-[var(--color-danger)]">{error}</p>
