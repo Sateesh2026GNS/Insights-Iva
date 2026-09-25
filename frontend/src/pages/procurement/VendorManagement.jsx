@@ -35,10 +35,15 @@ import {
 } from "../../data/vendorsMasterData";
 import { exportToExcel, exportToPdf } from "../../utils/exportUtils";
 
-function SummaryCard({ label, value, icon: Icon, color, format }) {
+function SummaryCard({ label, value, icon: Icon, color, format, onClick }) {
   const display = format === "currency" ? `₹${Number(value || 0).toLocaleString("en-IN")}` : value;
   return (
-    <div className="ui-card p-3 sm:p-4">
+    <div
+      onClick={onClick}
+      className={`ui-card p-3 sm:p-4 transition-all duration-150 ${
+        onClick ? "cursor-pointer hover:border-slate-300 hover:shadow-md hover:-translate-y-0.5" : ""
+      }`}
+    >
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0">
           <p className="text-[11px] sm:text-xs font-medium text-slate-500 truncate">{label}</p>
@@ -360,10 +365,38 @@ export default function VendorManagement() {
       />
 
       <div className="grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-3 xl:grid-cols-6">
-        <SummaryCard label="Total Vendors" value={summary.total} icon={Building2} color="bg-[var(--color-primary)]" />
-        <SummaryCard label="Active Vendors" value={summary.active} icon={UserCheck} color="bg-green-500" />
-        <SummaryCard label="Inactive Vendors" value={summary.inactive} icon={UserX} color="bg-slate-500" />
-        <SummaryCard label="Pending Approval" value={summary.pendingApproval} icon={AlertCircle} color="bg-amber-500" />
+        <SummaryCard
+          label="Total Vendors"
+          value={summary.total}
+          icon={Building2}
+          color="bg-[var(--color-primary)]"
+          onClick={() => setFilters((f) => ({ ...f, status: "", approval_status: "" }))}
+          active={!filters.status && !filters.approval_status}
+        />
+        <SummaryCard
+          label="Active Vendors"
+          value={summary.active}
+          icon={UserCheck}
+          color="bg-green-500"
+          onClick={() => setFilters((f) => ({ ...f, status: f.status === "active" ? "" : "active", approval_status: "" }))}
+          active={filters.status === "active"}
+        />
+        <SummaryCard
+          label="Inactive Vendors"
+          value={summary.inactive}
+          icon={UserX}
+          color="bg-slate-500"
+          onClick={() => setFilters((f) => ({ ...f, status: f.status === "inactive" ? "" : "inactive", approval_status: "" }))}
+          active={filters.status === "inactive"}
+        />
+        <SummaryCard
+          label="Pending Approval"
+          value={summary.pendingApproval}
+          icon={AlertCircle}
+          color="bg-amber-500"
+          onClick={() => setFilters((f) => ({ ...f, approval_status: f.approval_status === "pending" ? "" : "pending" }))}
+          active={filters.approval_status === "pending"}
+        />
         <SummaryCard label="Outstanding Payables" value={summary.outstandingPayables} icon={Wallet} color="bg-red-500" format="currency" />
         <SummaryCard label="New Vendors (This Month)" value={summary.newThisMonth} icon={Star} color="bg-purple-500" />
       </div>

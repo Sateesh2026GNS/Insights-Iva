@@ -1,6 +1,6 @@
 from datetime import date, datetime, time
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, or_
 from sqlalchemy.orm import Session
 
 from app.models.machine import Machine
@@ -125,7 +125,14 @@ def get_production_hub(db: Session, tenant_id: int) -> ProductionHubRead:
     from app.models.inventory import InventoryItem, StockLevel, Warehouse
     from app.models.quality import QualityInspection
 
-    items = list(db.scalars(select(InventoryItem).where(InventoryItem.tenant_id == tenant_id)).all())
+    items = list(
+        db.scalars(
+            select(InventoryItem).where(
+                InventoryItem.tenant_id == tenant_id,
+                InventoryItem.is_active.is_(True),
+            )
+        ).all()
+    )
     levels = {}
     if items:
         item_ids = [i.id for i in items]

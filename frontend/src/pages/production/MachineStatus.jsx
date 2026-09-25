@@ -39,9 +39,15 @@ import { runListExport } from "../../utils/listExport";
 
 const PAGE_SIZES = [20, 50, 100];
 
-function SummaryCard({ label, value, icon: Icon, color, sub }) {
+function SummaryCard({ label, value, icon: Icon, color, sub, onClick }) {
   return (
-    <div className="ui-card p-4 min-h-[86px] flex flex-col justify-between min-w-0 overflow-hidden" title={typeof label === "string" ? label : undefined}>
+    <div
+      onClick={onClick}
+      className={`ui-card p-4 min-h-[86px] flex flex-col justify-between min-w-0 overflow-hidden transition-all duration-150 ${
+        onClick ? "cursor-pointer hover:border-slate-300 hover:shadow-md hover:-translate-y-0.5" : ""
+      }`}
+      title={typeof label === "string" ? label : undefined}
+    >
       <div className="flex items-center justify-between gap-1.5 min-w-0">
         <p className="truncate text-[11px] font-medium text-[var(--color-text-muted)] leading-tight sm:text-xs min-w-0 flex-1">{label}</p>
         {Icon && (
@@ -329,12 +335,54 @@ export default function MachineStatus() {
       <PageHeader subtitle="Digital profiles · Live status · OEE · Production integration" />
 
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8">
-          <SummaryCard label="Total Machines" value={summary.total_machines} icon={Cpu} color="bg-[var(--color-text-muted)]" />
-          <SummaryCard label="Running" value={summary.running} icon={Zap} color="bg-green-600" />
-          <SummaryCard label="Idle" value={summary.idle} icon={Activity} color="bg-yellow-500" />
-          <SummaryCard label="Maintenance" value={summary.maintenance} icon={Wrench} color="bg-[var(--color-primary)]" />
-          <SummaryCard label="Breakdown" value={summary.breakdown} icon={Activity} color="bg-red-600" />
-          <SummaryCard label="Offline" value={summary.offline} icon={Cpu} color="bg-[var(--color-text)]" />
+          <SummaryCard
+            label="Total Machines"
+            value={summary.total_machines}
+            icon={Cpu}
+            color="bg-[var(--color-text-muted)]"
+            onClick={() => setFilters((f) => ({ ...f, status: "" }))}
+            active={!filters.status}
+          />
+          <SummaryCard
+            label="Running"
+            value={summary.running}
+            icon={Zap}
+            color="bg-green-600"
+            onClick={() => setFilters((f) => ({ ...f, status: f.status === "running" ? "" : "running" }))}
+            active={filters.status === "running"}
+          />
+          <SummaryCard
+            label="Idle"
+            value={summary.idle}
+            icon={Activity}
+            color="bg-yellow-500"
+            onClick={() => setFilters((f) => ({ ...f, status: f.status === "idle" ? "" : "idle" }))}
+            active={filters.status === "idle"}
+          />
+          <SummaryCard
+            label="Maintenance"
+            value={summary.maintenance}
+            icon={Wrench}
+            color="bg-[var(--color-primary)]"
+            onClick={() => setFilters((f) => ({ ...f, status: f.status === "maintenance" ? "" : "maintenance" }))}
+            active={filters.status === "maintenance"}
+          />
+          <SummaryCard
+            label="Breakdown"
+            value={summary.breakdown}
+            icon={Activity}
+            color="bg-red-600"
+            onClick={() => setFilters((f) => ({ ...f, status: f.status === "breakdown" ? "" : "breakdown" }))}
+            active={filters.status === "breakdown"}
+          />
+          <SummaryCard
+            label="Offline"
+            value={summary.offline}
+            icon={Cpu}
+            color="bg-[var(--color-text)]"
+            onClick={() => setFilters((f) => ({ ...f, status: f.status === "offline" ? "" : "offline" }))}
+            active={filters.status === "offline"}
+          />
           <SummaryCard label="Utilization" value={`${summary.utilization_pct}%`} icon={Activity} color="bg-indigo-600" />
           <SummaryCard label="Today's Production" value={summary.todays_production?.toLocaleString?.() ?? summary.todays_production} icon={FileText} color="bg-teal-600" />
         </div>

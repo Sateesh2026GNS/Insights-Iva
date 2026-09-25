@@ -8,7 +8,7 @@ chart, an empty list is returned so the frontend can display an appropriate empt
 import logging
 from datetime import date, datetime, timedelta
 
-from sqlalchemy import case, func, select
+from sqlalchemy import case, func, select, or_
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -311,7 +311,14 @@ def get_inventory_analytics(db: Session, tenant_id: int) -> InventoryAnalyticsRe
         fg  = get_finished_goods_summary(db, tenant_id)
         inv_value = float(mat.stock_value or 0) + float(fg.get("stock_value") or 0)
 
-        items  = list(db.scalars(select(InventoryItem).where(InventoryItem.tenant_id == tenant_id)).all())
+        items  = list(
+            db.scalars(
+                select(InventoryItem).where(
+                    InventoryItem.tenant_id == tenant_id,
+                    InventoryItem.is_active.is_(True),
+                )
+            ).all()
+        )
         item_ids = [i.id for i in items]
         levels = {}
         if item_ids:

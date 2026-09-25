@@ -2,7 +2,7 @@
 
 from datetime import date, timedelta
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, or_
 from sqlalchemy.orm import Session, joinedload
 
 from app.core.sql_compat import column_matches_month_number
@@ -110,7 +110,7 @@ def get_ap_summary(db: Session, tenant_id: int) -> APSummaryRead:
         else:
             unallocated_supplier_payments[p.supplier_id] = unallocated_supplier_payments.get(p.supplier_id, 0.0) + p_amt
         
-    vendors = int(db.scalar(select(func.count(Supplier.id)).where(Supplier.tenant_id == tenant_id)) or 0)
+    vendors = int(db.scalar(select(func.count(Supplier.id)).where(Supplier.tenant_id == tenant_id, or_(Supplier.is_deleted.is_(False), Supplier.is_deleted.is_(None)))) or 0)
     
     outstanding = 0.0
     due_week = 0

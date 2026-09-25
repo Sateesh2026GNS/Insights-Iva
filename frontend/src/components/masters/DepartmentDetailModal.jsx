@@ -4,8 +4,10 @@ import {
   Building2,
   Cpu,
   FileText,
+  Power,
   Printer,
   Save,
+  Trash2,
   Users,
   Wrench,
   X,
@@ -177,7 +179,7 @@ export function DepartmentFormModal({ department, onClose, onSave }) {
   );
 }
 
-export default function DepartmentDetailModal({ department, detail, onClose, onEdit, onDeactivate }) {
+export default function DepartmentDetailModal({ department, detail, onClose, onEdit, onDeactivate, onDelete }) {
   const [tab, setTab] = useState("overview");
   if (!department) return null;
 
@@ -245,8 +247,18 @@ export default function DepartmentDetailModal({ department, detail, onClose, onE
             </button>
           )}
           {onDeactivate && d.status === "active" && (
-            <button type="button" onClick={() => onDeactivate(d)} className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50">
-              Deactivate
+            <button type="button" onClick={() => onDeactivate(d)} className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50">
+              <Power className="h-3.5 w-3.5" /> Deactivate
+            </button>
+          )}
+          {onDeactivate && d.status === "inactive" && (
+            <button type="button" onClick={() => onDeactivate(d)} className="inline-flex items-center gap-1.5 rounded-lg border border-green-200 px-3 py-1.5 text-xs font-semibold text-green-700 hover:bg-green-50">
+              <Power className="h-3.5 w-3.5" /> Activate
+            </button>
+          )}
+          {onDelete && (
+            <button type="button" onClick={() => onDelete(d)} className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50">
+              <Trash2 className="h-3.5 w-3.5" /> Delete
             </button>
           )}
         </div>

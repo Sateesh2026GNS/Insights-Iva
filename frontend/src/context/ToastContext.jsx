@@ -11,9 +11,16 @@ function normalizeToastMessage(message) {
   return formatApiError(message);
 }
 
-function formatSimpleToastMessage(text, isError) {
-  if (isError) return text;
+export function formatSimpleToastMessage(text, isError, type = "success") {
+  if (isError) return String(text || "").trim() || "Something went wrong.";
+
   const raw = String(text || "").trim();
+  if (!raw) return "Something went wrong.";
+
+  if (type === "warning" || type === "warn" || type === "info") {
+    return raw;
+  }
+
   const lower = raw.toLowerCase();
 
   if (lower.includes("deactivate")) {
@@ -57,8 +64,7 @@ function checkIsRedToast(type, text) {
     type === "danger" ||
     type === "delete" ||
     type === "destructive" ||
-    type === "deactivate" ||
-    type === "warning"
+    type === "deactivate"
   ) {
     return true;
   }
@@ -76,6 +82,17 @@ function checkIsRedToast(type, text) {
   );
 }
 
+export function resolveToastVisualState(type, text) {
+  const lower = String(text || "").toLowerCase();
+  const isWarning = type === "warning" || type === "warn" || type === "info";
+  const isUploadToast = lower.includes("import") || lower.includes("upload");
+  const isRed = checkIsRedToast(type, text);
+  const accentColor = isRed ? "#ef4444" : isWarning ? "#f59e0b" : "#00c48c";
+  const showLoadingBar = !isRed && !isWarning;
+
+  return { isRed, isWarning, isUploadToast, accentColor, showLoadingBar };
+}
+
 export function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([]);
   const lastErrorRef = useRef({ message: null, at: 0 });
@@ -83,7 +100,7 @@ export function ToastProvider({ children }) {
   const addToast = useCallback((message, type = "success") => {
     let text = normalizeToastMessage(message);
     const isError = type === "error";
-    text = formatSimpleToastMessage(text, isError);
+    text = formatSimpleToastMessage(text, isError, type);
     const lower = String(text || "").toLowerCase();
 
     // Prevent noisy unauthenticated / unauthorized toast notifications on login or public routes
@@ -182,10 +199,7 @@ export function ToastProvider({ children }) {
       {/* Top Notification / Toast Container (positioned cleanly below the header bar) */}
       <div className="fixed top-[calc(var(--navbar-height,3.5rem)+0.75rem)] right-4 sm:right-6 z-[9999] flex flex-col items-center sm:items-end gap-2.5 pointer-events-none max-w-[calc(100vw-2rem)] sm:max-w-md w-full sm:w-auto">
         {toasts.map((t) => {
-          const isRed = t.isRed || t.type === "error";
-
-          // Accent colors: Red for error, deactivate, delete, clear; Green for success/create/update/save
-          const accentColor = isRed ? "#ef4444" : "#00c48c"; // Vibrant red vs vibrant success green
+          const { isRed, isWarning, isUploadToast, accentColor, showLoadingBar } = resolveToastVisualState(t.type, t.message);
 
           return (
             <div
@@ -222,6 +236,20 @@ export function ToastProvider({ children }) {
                   >
                     <line x1="18" y1="6" x2="6" y2="18" />
                     <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                ) : isUploadToast ? (
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="h-3.5 w-3.5 stroke-current"
+                    fill="none"
+                    strokeWidth="2.3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M12 16V5" />
+                    <path d="M7.5 9.5L12 5l4.5 4.5" />
+                    <path d="M5 15.5v1.5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-1.5" />
+                    <path d="M16.5 18.5l-4.5-4.5-4.5 4.5" opacity="0.55" />
                   </svg>
                 ) : (
                   <svg
@@ -267,7 +295,7 @@ export function ToastProvider({ children }) {
                   Only rendered for GREEN (non-red) toasts.
                   Red toasts (error, deactivate, delete, clear, remove, etc.) have NO loading line.
               */}
-              {!isRed && (
+              {showLoadingBar && (
                 <div className="absolute bottom-0 left-0 right-0 h-[3px] overflow-hidden rounded-b-xl">
                   <div
                     className="h-full rounded-b-xl opacity-90"

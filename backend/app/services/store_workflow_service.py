@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date, datetime
 
 from fastapi import HTTPException
-from sqlalchemy import func, select
+from sqlalchemy import func, select, or_
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -954,7 +954,12 @@ def list_enriched_movements(
     }
     item_map = {
         i.id: i.name
-        for i in db.scalars(select(InventoryItem).where(InventoryItem.tenant_id == tenant_id)).all()
+        for i in db.scalars(
+            select(InventoryItem).where(
+                InventoryItem.tenant_id == tenant_id,
+                InventoryItem.is_active.is_(True),
+            )
+        ).all()
     }
     out = []
     for m in rows:

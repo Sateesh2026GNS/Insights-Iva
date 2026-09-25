@@ -7,9 +7,18 @@ export function resolveRowActionTone(label, { danger = false } = {}) {
     lower.includes("remove") ||
     lower.includes("reject") ||
     lower.includes("sign out") ||
-    lower.includes("cancelled")
+    lower.includes("cancelled") ||
+    lower.includes("deactivate") ||
+    lower.includes("inactivate") ||
+    lower.includes("disable")
   ) {
     return "danger";
+  }
+  if (
+    lower.includes("activate") ||
+    lower.includes("enable")
+  ) {
+    return "view";
   }
   if (
     lower.includes("edit") ||

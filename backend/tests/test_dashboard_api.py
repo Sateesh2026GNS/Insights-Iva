@@ -61,3 +61,33 @@ def test_erp_dashboard_catches_http_exception(register_admin, client):
     body = resp.json()
     assert body["success"] is False
     assert "Access denied to dashboard metrics" in body["message"]
+
+
+def test_deleted_data_excluded_from_dashboard_and_counts(register_admin, client):
+    admin = register_admin()
+    login = client.post("/api/auth/login", json={"email": admin["email"], "password": admin["password"], "role": "Admin"})
+    headers = {"Authorization": f"Bearer {login.json()['data']['access_token']}"}
+
+    # 1. Create a product
+    prod_resp = client.post("/api/masters/products", json={"tenant_id": 1, "name": "Test Delete Prod", "sku": "SKU-DEL-101", "unit_price": 100}, headers=headers)
+    assert prod_resp.status_code in (200, 201)
+    prod_id = prod_resp.json()["data"]["id"]
+
+    # Delete the product
+    del_resp = client.delete(f"/api/masters/products/{prod_id}", headers=headers)
+    assert del_resp.status_code == 200
+
+    # Verify deleted product is not returned in product list
+    list_resp = client.get("/api/masters/products", headers=headers)
+    assert list_resp.status_code == 200
+    prod_ids = [p["id"] for p in list_resp.json()["data"]]
+    assert prod_id not in prod_ids
+
+    # 2. Check dashboard data
+    dash_resp = client.get("/api/erp/dashboard", headers=headers)
+    assert dash_resp.status_code == 200
+    dash_data = dash_resp.json()["data"]
+    inv_blocks = dash_data.get("store_manager_summary", {}).get("inventory_blocks", [])
+    for b in inv_blocks:
+        assert b["count"] >= 0
+

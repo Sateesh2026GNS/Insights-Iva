@@ -1,20 +1,25 @@
-import { Eye, Pencil, Trash2 } from "lucide-react";
+import { Eye, Pencil, Power, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import RowActionMenu from "./RowActionMenu";
 
 /**
- * 3-dots vertical action menu for table rows with View / Edit / Delete.
+ * 3-dots vertical action menu for table rows with View / Edit / Deactivate / Delete.
  */
 export default function TableActionButtons({
   onView,
   onEdit,
+  onDeactivate,
   onDelete,
   showView = true,
   showEdit = true,
+  showDeactivate,
   showDelete = true,
   viewLabel = "View",
   editLabel = "Edit",
+  deactivateLabel = "Deactivate",
   deleteLabel = "Delete",
+  deactivateIcon,
+  deleteIcon,
   viewTo,
   editTo,
   extraItems = [],
@@ -24,6 +29,7 @@ export default function TableActionButtons({
   className = "",
   viewDisabled = false,
   editDisabled = false,
+  deactivateDisabled = false,
   deleteDisabled = false,
 }) {
   const navigate = useNavigate();
@@ -40,10 +46,30 @@ export default function TableActionButtons({
     else if (editTo) navigate(editTo);
   };
 
+  const handleDeactivate = () => {
+    if (deactivateDisabled) return;
+    if (onDeactivate) onDeactivate();
+  };
+
   const handleDelete = () => {
     if (deleteDisabled) return;
     if (onDelete) onDelete();
   };
+
+  const shouldShowDeactivate =
+    showDeactivate !== undefined ? showDeactivate : Boolean(onDeactivate);
+
+  const isDeactivateDeleteLabel = String(deleteLabel || "")
+    .toLowerCase()
+    .includes("deactivate");
+
+  const resolvedDeleteIcon =
+    deleteIcon ||
+    (isDeactivateDeleteLabel ? (
+      <Power className="h-4 w-4" />
+    ) : (
+      <Trash2 className="h-4 w-4" />
+    ));
 
   const items = [
     showView && (onView || viewTo)
@@ -62,13 +88,21 @@ export default function TableActionButtons({
           disabled: editDisabled,
         }
       : null,
+    shouldShowDeactivate && onDeactivate
+      ? {
+          label: deactivateLabel,
+          icon: deactivateIcon || <Power className="h-4 w-4" />,
+          onClick: handleDeactivate,
+          disabled: deactivateDisabled,
+        }
+      : null,
     ...(Array.isArray(extraItems) ? extraItems : []),
     showDelete && onDelete ? { divider: true } : null,
     showDelete && onDelete
       ? {
           label: deleteLabel,
-          icon: <Trash2 className="h-4 w-4" />,
-          danger: true,
+          icon: resolvedDeleteIcon,
+          danger: !isDeactivateDeleteLabel,
           onClick: handleDelete,
           disabled: deleteDisabled,
         }
@@ -86,3 +120,4 @@ export default function TableActionButtons({
     </div>
   );
 }
+

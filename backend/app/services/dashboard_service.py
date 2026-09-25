@@ -502,12 +502,13 @@ def _get_quick_actions_summary(db: Session, tenant_id: int, today: date) -> dict
     wo_pending_statuses = ("planned", "pending", "on_hold", "hold", "paused")
     wo_in_progress_statuses = ("in_progress", "running", "active")
     wo_base = WorkOrder.tenant_id == tenant_id
+    wo_active_base = and_(wo_base, ~WorkOrder.status.in_(("cancelled", "canceled", "rejected")))
 
     work_orders = {
-        "total": int(db.scalar(select(func.count(WorkOrder.id)).where(wo_base)) or 0),
+        "total": int(db.scalar(select(func.count(WorkOrder.id)).where(wo_active_base)) or 0),
         "today": int(
             db.scalar(
-                select(func.count(WorkOrder.id)).where(wo_base, func.date(WorkOrder.created_at) == today)
+                select(func.count(WorkOrder.id)).where(wo_active_base, func.date(WorkOrder.created_at) == today)
             )
             or 0
         ),
@@ -893,8 +894,15 @@ def get_erp_dashboard(
     _daily_buckets = _fetch_production_daily_buckets(db, tenant_id, _overview_start, today)
     overview = _production_overview(_daily_buckets, today, 7)
 
-    # Inventory blocks for dashboard (real stock only)
-    items = list(db.scalars(select(InventoryItem).where(InventoryItem.tenant_id == tenant_id)).all())
+    # Inventory blocks for dashboard (real active stock only)
+    items = list(
+        db.scalars(
+            select(InventoryItem).where(
+                InventoryItem.tenant_id == tenant_id,
+                InventoryItem.is_active.is_(True),
+            )
+        ).all()
+    )
     item_ids = [i.id for i in items]
     levels = list(db.scalars(select(StockLevel).where(StockLevel.item_id.in_(item_ids))).all()) if item_ids else []
     level_by_item: dict[int, float] = {}

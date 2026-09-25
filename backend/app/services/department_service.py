@@ -291,3 +291,30 @@ def deactivate_department(
         department_id,
         DepartmentUpdate(status="inactive", is_active=False),
     )
+
+
+def delete_department(
+    db: Session, tenant_id: int, department_id: int
+) -> bool:
+    dept = db.scalars(
+        select(Department).where(
+            Department.id == department_id, Department.tenant_id == tenant_id
+        )
+    ).first()
+    if not dept:
+        return False
+    try:
+        db.delete(dept)
+        db.commit()
+        return True
+    except SQLAlchemyError as exc:
+        logger.exception("Database error deleting department_id=%s for tenant_id=%s: %s", department_id, tenant_id, exc)
+        try:
+            db.rollback()
+        except Exception:
+            pass
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Database error while deleting department.",
+        ) from exc
+

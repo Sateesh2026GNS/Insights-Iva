@@ -1,5 +1,6 @@
 import logging
-from sqlalchemy import select, func
+from datetime import date
+from sqlalchemy import select, func, or_
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
@@ -45,7 +46,10 @@ def create_supplier(db: Session, payload: SupplierCreate) -> Supplier:
 
 
 def list_suppliers(db: Session, tenant_id: int) -> list[Supplier]:
-    stmt = select(Supplier).where(Supplier.tenant_id == tenant_id)
+    stmt = select(Supplier).where(
+        Supplier.tenant_id == tenant_id,
+        or_(Supplier.is_deleted.is_(False), Supplier.is_deleted.is_(None)),
+    )
     return list(db.scalars(stmt).all())
 
 

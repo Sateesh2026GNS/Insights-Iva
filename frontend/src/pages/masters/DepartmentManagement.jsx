@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Building2, Plus, Printer, Upload, UserCheck, UsersRound, Cpu, Layers } from "lucide-react";
 
 import DataTable from "../../components/common/DataTable";
@@ -6,6 +7,7 @@ import TableActionButtons from "../../components/common/TableActionButtons";
 import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
 import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
 import Loader from "../../components/common/Loader";
+import { triggerBrandLoader } from "../../components/common/NavigationLoadingOverlay";
 import Button from "../../components/common/Button";
 import PageHeader from "../../components/common/PageHeader";
 import ConfirmDialog from "../../components/admin/ConfirmDialog";
@@ -17,6 +19,7 @@ import usePageRefresh from "../../hooks/usePageRefresh";
 import {
   createDepartment,
   deactivateDepartment,
+  deleteDepartment,
   getDepartmentDetail,
   getDepartmentSummary,
   getDepartments,
@@ -42,47 +45,179 @@ export function buildDepartmentImportTemplateCsv() {
   return `${header}\nDEP013,IT,support,Plant 1,Hyderabad,Rajesh Kumar,+919999999999,rajesh@smrt.local,active`;
 }
 
-export function triggerDepartmentImportPicker({ addToast } = {}) {
+
+export function triggerDepartmentImportPicker({ addToast, onImport } = {}) {
   const input = document.createElement("input");
   input.type = "file";
-  input.accept = ".csv,.xlsx,.xls";
+  input.accept = ".csv";
   input.style.display = "none";
   document.body.appendChild(input);
 
   input.onchange = () => {
     const file = input.files?.[0];
+
     if (!file) {
-      addToast?.("No file selected", "error");
+      addToast?.("Please upload a valid department CSV file", "warning");
+      input.remove();
       return;
     }
 
     const name = (file.name || "").toLowerCase();
-    if (/\.(xlsx|xls)$/i.test(name)) {
-      addToast?.("Please upload a CSV file for department import.", "warning");
+
+    if (!name.endsWith(".csv")) {
+      addToast?.("Please upload a valid department CSV file", "warning");
+      input.remove();
       return;
     }
 
-    addToast?.("Import file selected — the import flow will continue in the next step.", "info");
-  };
+    const reader = new FileReader();
 
+    reader.onload = async (event) => {
+      const csvText = event.target?.result;
+
+      if (typeof csvText !== "string" || !csvText.trim()) {
+        addToast?.("Please upload a valid department CSV file", "warning");
+        input.remove();
+        return;
+      }
+
+      const lines = csvText
+        .split(/\r?\n/)
+        .map((l) => l.trim())
+        .filter(Boolean);
+
+      if (lines.length <= 1) {
+        addToast?.("Please upload a valid department CSV file", "warning");
+        input.remove();
+        return;
+      }
+
+      const firstLine = lines[0];
+      const expectedHeaders = IMPORT_TEMPLATE_HEADERS.map((header) =>
+        header.trim().toLowerCase()
+      );
+      const uploadedHeaders = firstLine
+        .split(",")
+        .map((header) => header.trim().toLowerCase());
+
+      const isValidDepartmentCsv =
+        uploadedHeaders.length >= expectedHeaders.length &&
+        expectedHeaders.every(
+          (header, index) => uploadedHeaders[index] === header
+        );
+
+      if (!isValidDepartmentCsv) {
+        addToast?.("Please upload a valid department CSV file", "warning");
+        input.remove();
+        return;
+      }
+
+      const parsedRows = [];
+      for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].split(",").map((v) => v.trim());
+        if (values.length >= expectedHeaders.length) {
+          const rowObj = {};
+          uploadedHeaders.forEach((h, idx) => {
+            rowObj[h] = values[idx] || "";
+          });
+          parsedRows.push(rowObj);
+        }
+      }
+
+      if (parsedRows.length === 0) {
+        addToast?.("Please upload a valid department CSV file", "warning");
+        input.remove();
+        return;
+      }
+
+      if (onImport) {
+        try {
+          await onImport(parsedRows);
+        } catch {
+          /* ignore */
+        }
+      }
+
+      addToast?.("Department data imported successfully", "success");
+      input.remove();
+    };
+
+    reader.onerror = () => {
+      addToast?.("Please upload a valid department CSV file", "warning");
+      input.remove();
+    };
+
+    reader.readAsText(file);
+
+    window.setTimeout(() => input.remove(), 0);
+  };
   input.click();
-  window.setTimeout(() => input.remove(), 0);
 }
 
 export function triggerDepartmentPrint() {
   window.print();
 }
 
-function SummaryCard({ label, value, icon: Icon, color }) {
+const KPI_COLOR_THEMES = {
+  "bg-[var(--color-primary)]": {
+    hoverBorder: "hover:border-blue-600 hover:ring-2 hover:ring-blue-600/20",
+    activeBorder: "border-blue-600 ring-2 ring-blue-600/20 bg-blue-50/30",
+  },
+  "bg-primary-600": {
+    hoverBorder: "hover:border-blue-600 hover:ring-2 hover:ring-blue-600/20",
+    activeBorder: "border-blue-600 ring-2 ring-blue-600/20 bg-blue-50/30",
+  },
+  "bg-green-500": {
+    hoverBorder: "hover:border-green-500 hover:ring-2 hover:ring-green-500/20",
+    activeBorder: "border-green-500 ring-2 ring-green-500/20 bg-green-50/30",
+  },
+  "bg-indigo-500": {
+    hoverBorder: "hover:border-indigo-500 hover:ring-2 hover:ring-indigo-500/20",
+    activeBorder: "border-indigo-500 ring-2 ring-indigo-500/20 bg-indigo-50/30",
+  },
+  "bg-amber-500": {
+    hoverBorder: "hover:border-amber-500 hover:ring-2 hover:ring-amber-500/20",
+    activeBorder: "border-amber-500 ring-2 ring-amber-500/20 bg-amber-50/30",
+  },
+  "bg-violet-500": {
+    hoverBorder: "hover:border-violet-500 hover:ring-2 hover:ring-violet-500/20",
+    activeBorder: "border-violet-500 ring-2 ring-violet-500/20 bg-violet-50/30",
+  },
+  "bg-slate-600": {
+    hoverBorder: "hover:border-slate-500 hover:ring-2 hover:ring-slate-500/20",
+    activeBorder: "border-slate-500 ring-2 ring-slate-500/20 bg-slate-50/30",
+  },
+};
+
+function SummaryCard({ label, value, icon: Icon, color, onClick, isActive }) {
+  const theme = KPI_COLOR_THEMES[color] || {
+    hoverBorder: "hover:border-slate-300 hover:ring-2 hover:ring-slate-400/20",
+    activeBorder: "border-slate-400 ring-2 ring-slate-400/20 bg-slate-50/30",
+  };
+
+  const handleClick = (e) => {
+    if (onClick) {
+      triggerBrandLoader(300);
+      onClick(e);
+    }
+  };
+
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div
+      onClick={handleClick}
+      className={`group relative rounded-2xl border bg-white p-4 shadow-sm transition-all duration-200 ${
+        isActive ? `${theme.activeBorder} shadow-sm` : "border-slate-200"
+      } ${
+        onClick ? `cursor-pointer ${theme.hoverBorder} hover:shadow-md hover:-translate-y-0.5` : ""
+      }`}
+    >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="text-xs font-medium leading-4 text-slate-500 break-words">{label}</p>
+          <p className="text-xs font-medium leading-4 text-slate-500 break-words group-hover:text-slate-700 transition-colors">{label}</p>
           <p className="mt-1 truncate text-xl font-bold tabular-nums text-slate-900 sm:text-2xl">{value}</p>
         </div>
-        <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${color}`}>
-          <Icon className="h-4 w-4 text-white" />
+        <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl transition-transform duration-200 group-hover:scale-110 ${color}`}>
+          <Icon className="h-4.5 w-4.5 text-white" />
         </div>
       </div>
     </div>
@@ -132,6 +267,7 @@ export function clearDepartmentFilters(currentFilters = defaultFilters) {
 }
 
 export default function DepartmentManagement() {
+  const navigate = useNavigate();
   const tenantId = useTenantId();
   const { addToast } = useToast();
   const [loading, setLoading] = useState(true);
@@ -142,6 +278,8 @@ export default function DepartmentManagement() {
   const [formDept, setFormDept] = useState(null);
   const [deactivateTarget, setDeactivateTarget] = useState(null);
   const [deactivating, setDeactivating] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleting, setDeleting] = useState(false);
   const [filters, setFilters] = useState(defaultFilters);
   const [draftFilters, setDraftFilters] = useState(defaultFilters);
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -196,11 +334,8 @@ export default function DepartmentManagement() {
   }, [departments, filters]);
 
   const summary = useMemo(() => {
-    if (apiSummary && !Object.values(filters).some(Boolean)) {
-      return apiSummary;
-    }
     return computeDepartmentSummary(filteredDepartments);
-  }, [apiSummary, filteredDepartments, filters]);
+  }, [filteredDepartments]);
 
   const exportColumns = [
     { key: "code", label: "Code" },
@@ -234,7 +369,49 @@ export default function DepartmentManagement() {
   };
 
   const handleImportFile = () => {
-    triggerDepartmentImportPicker({ addToast });
+    triggerDepartmentImportPicker({
+      addToast,
+      onImport: async (rows) => {
+        if (!Array.isArray(rows) || rows.length === 0) return;
+
+        const newDepartments = [];
+        for (let i = 0; i < rows.length; i++) {
+          const r = rows[i];
+          const payload = {
+            tenant_id: tenantId,
+            code: r.code || `DEP${String(departments.length + i + 1).padStart(3, "0")}`,
+            name: r.name || `Department ${i + 1}`,
+            department_type: (r.department_type || "support").toLowerCase(),
+            plant: r.plant || "Plant 1",
+            branch: r.branch || "Hyderabad",
+            manager_name: r.manager_name || "Manager",
+            manager_mobile: r.manager_mobile || "",
+            manager_email: r.manager_email || "",
+            status: (r.status || "active").toLowerCase(),
+            employee_count: r.employee_count ? Number(r.employee_count) : 0,
+            machine_count: r.machine_count ? Number(r.machine_count) : 0,
+            work_center_count: r.work_center_count ? Number(r.work_center_count) : 0,
+            is_active: (r.status || "active").toLowerCase() === "active",
+          };
+
+          try {
+            await createDepartment(payload);
+          } catch {
+            newDepartments.push(
+              enrichApiDepartment(
+                { id: `imported-${Date.now()}-${i}`, ...payload },
+                departments.length + i
+              )
+            );
+          }
+        }
+
+        if (newDepartments.length > 0) {
+          setDepartments((prev) => [...prev, ...newDepartments]);
+        }
+        await loadDepartments();
+      },
+    });
   };
 
   const handleDownloadTemplate = () => {
@@ -245,7 +422,7 @@ export default function DepartmentManagement() {
     a.download = "departments_import_template.csv";
     a.click();
     URL.revokeObjectURL(a.href);
-    addToast("Template downloaded");
+    addToast("Upload your department data using Import", "warning");
   };
 
   const handleSave = async (form) => {
@@ -312,6 +489,28 @@ export default function DepartmentManagement() {
     setDeactivateTarget(dept);
   };
 
+  const handleActivate = async (dept) => {
+    if (typeof dept.id === "number") {
+      try {
+        await updateDepartment(dept.id, { status: "active", is_active: true });
+        addToast("Department activated");
+        loadDepartments();
+        return;
+      } catch {
+        addToast("Could not activate department", "error");
+        return;
+      }
+    }
+    setDepartments((prev) =>
+      prev.map((d) => (d.id === dept.id ? { ...d, status: "active" } : d))
+    );
+    addToast("Department activated");
+  };
+
+  const handleDelete = (dept) => {
+    setDeleteTarget(dept);
+  };
+
   const handleApplyFilters = () => {
     setFilters(applyDepartmentFilters(draftFilters, filters));
     setShowAdvanced(false);
@@ -350,6 +549,34 @@ export default function DepartmentManagement() {
     setDeactivating(false);
   };
 
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
+    const dept = deleteTarget;
+    setDeleting(true);
+    setApiSummary(null);
+    if (typeof dept.id === "number") {
+      try {
+        await deleteDepartment(dept.id);
+        addToast("Department deleted successfully");
+        setDepartments((prev) => prev.filter((d) => d.id !== dept.id));
+        await loadDepartments();
+        setSelected(null);
+        setDeleteTarget(null);
+        return;
+      } catch {
+        addToast("Could not delete department", "error");
+        return;
+      } finally {
+        setDeleting(false);
+      }
+    }
+    setDepartments((prev) => prev.filter((d) => d.id !== dept.id));
+    setSelected(null);
+    addToast("Department deleted successfully");
+    setDeleteTarget(null);
+    setDeleting(false);
+  };
+
   const columns = [
     { key: "code", label: "Code" },
     { key: "name", label: "Department" },
@@ -382,9 +609,15 @@ export default function DepartmentManagement() {
         <TableActionButtons
           onView={() => openDepartment(r)}
           onEdit={() => setFormDept(r)}
-          onDelete={r.status === "active" ? () => handleDeactivate(r) : undefined}
-          showDelete={r.status === "active"}
-          deleteLabel="Deactivate"
+          onDeactivate={
+            r.status === "active"
+              ? () => handleDeactivate(r)
+              : () => handleActivate(r)
+          }
+          deactivateLabel={r.status === "active" ? "Deactivate" : "Activate"}
+          showDeactivate={true}
+          onDelete={() => handleDelete(r)}
+          showDelete={true}
         />
       ),
     },
@@ -514,12 +747,67 @@ export default function DepartmentManagement() {
       </div>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-6 no-print">
-        <SummaryCard label="Total Departments" value={summary.total_departments} icon={Building2} color="bg-[var(--color-primary)]" />
-        <SummaryCard label="Active Departments" value={summary.active_departments} icon={UserCheck} color="bg-green-500" />
-        <SummaryCard label="Production Departments" value={summary.production_departments} icon={Layers} color="bg-indigo-500" />
-        <SummaryCard label="Support Departments" value={summary.support_departments} icon={Building2} color="bg-amber-500" />
-        <SummaryCard label="Employees" value={summary.total_employees} icon={UsersRound} color="bg-violet-500" />
-        <SummaryCard label="Machines" value={summary.total_machines} icon={Cpu} color="bg-slate-600" />
+        <SummaryCard
+          label="Total Departments"
+          value={summary.total_departments}
+          icon={Building2}
+          color="bg-[var(--color-primary)]"
+          onClick={() => {
+            const cleared = clearDepartmentFilters();
+            setFilters(cleared);
+            setDraftFilters(cleared);
+          }}
+        />
+        <SummaryCard
+          label="Active Departments"
+          value={summary.active_departments}
+          icon={UserCheck}
+          color="bg-green-500"
+          onClick={() => {
+            const nextStatus = filters.status === "active" ? "" : "active";
+            setFilters((f) => ({ ...f, status: nextStatus, department_type: "" }));
+            setDraftFilters((f) => ({ ...f, status: nextStatus, department_type: "" }));
+          }}
+          isActive={filters.status === "active"}
+        />
+        <SummaryCard
+          label="Production Departments"
+          value={summary.production_departments}
+          icon={Layers}
+          color="bg-indigo-500"
+          onClick={() => {
+            const nextType = filters.department_type === "production" ? "" : "production";
+            setFilters((f) => ({ ...f, department_type: nextType }));
+            setDraftFilters((f) => ({ ...f, department_type: nextType }));
+          }}
+          isActive={filters.department_type === "production"}
+        />
+        <SummaryCard
+          label="Support Departments"
+          value={summary.support_departments}
+          icon={Building2}
+          color="bg-amber-500"
+          onClick={() => {
+            const nextType = filters.department_type === "support" ? "" : "support";
+            setFilters((f) => ({ ...f, department_type: nextType }));
+            setDraftFilters((f) => ({ ...f, department_type: nextType }));
+          }}
+          isActive={filters.department_type === "support"}
+        />
+        <SummaryCard
+          label="Employees"
+          value={summary.total_employees}
+          icon={UsersRound}
+          color="bg-violet-500"
+          onClick={() => navigate("/hr/employees")}
+        />
+        <SummaryCard
+          label="Machines"
+          value={summary.total_machines}
+          icon={Cpu}
+          color="bg-slate-600"
+          onClick={() => navigate("/production/machines")}
+        />
       </div>
 
       <ListPageCard>
@@ -613,7 +901,15 @@ export default function DepartmentManagement() {
           detail={detail}
           onClose={() => { setSelected(null); setDetail(null); }}
           onEdit={(d) => { setSelected(null); setFormDept(d); }}
-          onDeactivate={handleDeactivate}
+          onDeactivate={(d) => {
+            setSelected(null);
+            if (d.status === "active") handleDeactivate(d);
+            else handleActivate(d);
+          }}
+          onDelete={(d) => {
+            setSelected(null);
+            handleDelete(d);
+          }}
         />
       )}
 
@@ -635,6 +931,19 @@ export default function DepartmentManagement() {
         onConfirm={handleDeactivateConfirm}
         onClose={() => {
           if (!deactivating) setDeactivateTarget(null);
+        }}
+      />
+
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        title="Delete department"
+        message={`Are you sure you want to delete ${deleteTarget?.name || "this department"}? This action cannot be undone.`}
+        confirmLabel="Delete"
+        loading={deleting}
+        loadingLabel="Deleting..."
+        onConfirm={handleDeleteConfirm}
+        onClose={() => {
+          if (!deleting) setDeleteTarget(null);
         }}
       />
     </div>

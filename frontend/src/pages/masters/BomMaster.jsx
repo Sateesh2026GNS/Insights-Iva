@@ -34,15 +34,67 @@ import {
 } from "../../data/bomMasterData";
 import { exportToExcel, exportToPdf } from "../../utils/exportUtils";
 
-function SummaryCard({ label, value, icon: Icon, color }) {
+const KPI_COLOR_THEMES = {
+  "bg-[var(--color-primary)]": {
+    hoverBorder: "hover:border-blue-600 hover:ring-2 hover:ring-blue-600/20",
+    activeBorder: "border-blue-600 ring-2 ring-blue-600/20 bg-blue-50/30",
+  },
+  "bg-primary-600": {
+    hoverBorder: "hover:border-blue-600 hover:ring-2 hover:ring-blue-600/20",
+    activeBorder: "border-blue-600 ring-2 ring-blue-600/20 bg-blue-50/30",
+  },
+  "bg-green-500": {
+    hoverBorder: "hover:border-green-500 hover:ring-2 hover:ring-green-500/20",
+    activeBorder: "border-green-500 ring-2 ring-green-500/20 bg-green-50/30",
+  },
+  "bg-indigo-500": {
+    hoverBorder: "hover:border-indigo-500 hover:ring-2 hover:ring-indigo-500/20",
+    activeBorder: "border-indigo-500 ring-2 ring-indigo-500/20 bg-indigo-50/30",
+  },
+  "bg-amber-500": {
+    hoverBorder: "hover:border-amber-500 hover:ring-2 hover:ring-amber-500/20",
+    activeBorder: "border-amber-500 ring-2 ring-amber-500/20 bg-amber-50/30",
+  },
+  "bg-violet-500": {
+    hoverBorder: "hover:border-violet-500 hover:ring-2 hover:ring-violet-500/20",
+    activeBorder: "border-violet-500 ring-2 ring-violet-500/20 bg-violet-50/30",
+  },
+  "bg-slate-600": {
+    hoverBorder: "hover:border-slate-500 hover:ring-2 hover:ring-slate-500/20",
+    activeBorder: "border-slate-400 ring-2 ring-slate-400/20 bg-slate-50/30",
+  },
+};
+
+import { triggerBrandLoader } from "../../components/common/NavigationLoadingOverlay";
+
+function SummaryCard({ label, value, icon: Icon, color, onClick, isActive }) {
+  const theme = KPI_COLOR_THEMES[color] || {
+    hoverBorder: "hover:border-slate-300 hover:ring-2 hover:ring-slate-400/20",
+    activeBorder: "border-slate-400 ring-2 ring-slate-400/20 bg-slate-50/30",
+  };
+
+  const handleClick = (e) => {
+    if (onClick) {
+      triggerBrandLoader(300);
+      onClick(e);
+    }
+  };
+
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div
+      onClick={handleClick}
+      className={`group relative rounded-2xl border bg-white p-4 shadow-sm transition-all duration-200 ${
+        isActive ? `${theme.activeBorder} shadow-sm` : "border-slate-200"
+      } ${
+        onClick ? `cursor-pointer ${theme.hoverBorder} hover:shadow-md hover:-translate-y-0.5` : ""
+      }`}
+    >
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-xs font-medium text-slate-500">{label}</p>
+          <p className="text-xs font-medium text-slate-500 group-hover:text-slate-700 transition-colors">{label}</p>
           <p className="mt-1 text-2xl font-bold tabular-nums text-slate-900">{value}</p>
         </div>
-        <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${color}`}>
+        <div className={`flex h-10 w-10 items-center justify-center rounded-xl transition-transform duration-200 group-hover:scale-110 ${color}`}>
           <Icon className="h-5 w-5 text-white" />
         </div>
       </div>
@@ -402,12 +454,52 @@ export default function BomMaster() {
       </header>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-6">
-        <SummaryCard label="Total Bill of Materials (BOM)" value={summary.total} icon={Layers} color="bg-[var(--color-primary)]" />
-        <SummaryCard label="Active Bill of Materials (BOM)" value={summary.active} icon={CheckCircle2} color="bg-green-500" />
-        <SummaryCard label="Draft Bill of Materials (BOM)" value={summary.draft} icon={ClipboardList} color="bg-amber-500" />
-        <SummaryCard label="Inactive Bill of Materials (BOM)" value={summary.inactive} icon={FileText} color="bg-slate-500" />
-        <SummaryCard label="Products Without Bill of Materials (BOM)" value={summary.withoutBom} icon={AlertTriangle} color="bg-orange-500" />
-        <SummaryCard label="Pending Approval" value={summary.pendingApproval} icon={AlertTriangle} color="bg-purple-500" />
+        <SummaryCard
+          label="Total Bill of Materials (BOM)"
+          value={summary.total}
+          icon={Layers}
+          color="bg-[var(--color-primary)]"
+          onClick={() => setFilters((f) => ({ ...f, status: "" }))}
+          active={!filters.status}
+        />
+        <SummaryCard
+          label="Active Bill of Materials (BOM)"
+          value={summary.active}
+          icon={CheckCircle2}
+          color="bg-green-500"
+          onClick={() => setFilters((f) => ({ ...f, status: f.status === "active" ? "" : "active" }))}
+          active={filters.status === "active"}
+        />
+        <SummaryCard
+          label="Draft Bill of Materials (BOM)"
+          value={summary.draft}
+          icon={ClipboardList}
+          color="bg-amber-500"
+          onClick={() => setFilters((f) => ({ ...f, status: f.status === "draft" ? "" : "draft" }))}
+          active={filters.status === "draft"}
+        />
+        <SummaryCard
+          label="Inactive Bill of Materials (BOM)"
+          value={summary.inactive}
+          icon={FileText}
+          color="bg-slate-500"
+          onClick={() => setFilters((f) => ({ ...f, status: f.status === "inactive" ? "" : "inactive" }))}
+          active={filters.status === "inactive"}
+        />
+        <SummaryCard
+          label="Products Without Bill of Materials (BOM)"
+          value={summary.withoutBom}
+          icon={AlertTriangle}
+          color="bg-orange-500"
+        />
+        <SummaryCard
+          label="Pending Approval"
+          value={summary.pendingApproval}
+          icon={AlertTriangle}
+          color="bg-purple-500"
+          onClick={() => setFilters((f) => ({ ...f, status: f.status === "pending" ? "" : "pending" }))}
+          active={filters.status === "pending"}
+        />
       </div>
 
       <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">

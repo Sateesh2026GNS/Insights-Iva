@@ -15,6 +15,7 @@ from app.services.department_service import (
     _to_list_read,
     create_department,
     deactivate_department,
+    delete_department,
     get_department_detail,
     get_department_summary,
     list_departments_enriched,
@@ -98,3 +99,16 @@ def deactivate_department_endpoint(
     if not match:
         raise HTTPException(404, "Department not found")
     return match
+
+
+@router.delete("/{department_id}")
+def delete_department_endpoint(
+    department_id: int,
+    user: User = Depends(require_permission(MODULE)),
+    db: Session = Depends(get_db),
+):
+    success = delete_department(db, user.tenant_id, department_id)
+    if not success:
+        raise HTTPException(404, "Department not found")
+    return {"message": "Department deleted successfully"}
+

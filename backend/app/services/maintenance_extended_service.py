@@ -2,7 +2,7 @@
 
 from datetime import date, timedelta
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, or_
 from sqlalchemy.orm import Session, joinedload
 
 from app.models.inventory import InventoryItem
@@ -330,6 +330,7 @@ def get_maintenance_hub(db: Session, tenant_id: int) -> MaintenanceHubRead:
         db.scalars(
             select(InventoryItem).where(
                 InventoryItem.tenant_id == tenant_id,
+                InventoryItem.is_active.is_(True),
                 InventoryItem.category.ilike("%spare%"),
             )
         ).all()
@@ -337,7 +338,10 @@ def get_maintenance_hub(db: Session, tenant_id: int) -> MaintenanceHubRead:
     if not spare_items:
         spare_items = list(
             db.scalars(
-                select(InventoryItem).where(InventoryItem.tenant_id == tenant_id).limit(50)
+                select(InventoryItem).where(
+                    InventoryItem.tenant_id == tenant_id,
+                    InventoryItem.is_active.is_(True),
+                ).limit(50)
             ).all()
         )
 

@@ -1,3 +1,4 @@
+from datetime import date
 from fastapi import HTTPException
 from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError

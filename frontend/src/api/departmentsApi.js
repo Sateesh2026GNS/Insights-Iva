@@ -8,3 +8,6 @@ export const updateDepartment = (departmentId, payload) =>
   api.put(`/masters/departments/${departmentId}`, payload);
 export const deactivateDepartment = (departmentId) =>
   api.patch(`/masters/departments/${departmentId}/deactivate`);
+export const deleteDepartment = (departmentId) =>
+  api.delete(`/masters/departments/${departmentId}`);
+
