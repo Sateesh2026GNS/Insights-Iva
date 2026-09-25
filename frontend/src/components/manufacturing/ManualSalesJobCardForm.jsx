@@ -99,6 +99,7 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
   const {
     customers,
     products,
+    salesOrders,
     loading: mastersLoading,
     error: mastersError,
     reloadCustomers,
@@ -125,6 +126,7 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
   const [showAddProduct, setShowAddProduct] = useState(false);
   const [addProductRowIndex, setAddProductRowIndex] = useState(null);
   const [customerFromOrder, setCustomerFromOrder] = useState(false);
+  const [selectedSalesOrderId, setSelectedSalesOrderId] = useState("");
 
   const uomOptions = useMemo(() => getUomOptions().map((u) => ({ value: u, label: u })), []);
   const paymentTermsOptions = useMemo(
@@ -200,6 +202,23 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
     );
     return match ? String(match.id) : name;
   }, [selectedCustomerId, form.customer.customer_name, customers]);
+
+  const salesOrderSelectValue = useMemo(() => {
+    if (selectedSalesOrderId) return selectedSalesOrderId;
+    const soNo = form.header.sales_order_no?.trim();
+    if (!soNo) return "";
+    const match = salesOrders.find((o) => {
+      const num = String(o.order_number || "").trim();
+      const idLabel = o.id != null ? `SO-${o.id}` : "";
+      const hay = soNo.toLowerCase();
+      return (
+        (num && num.toLowerCase() === hay) ||
+        (idLabel && idLabel.toLowerCase() === hay) ||
+        (o.id != null && String(o.id) === soNo)
+      );
+    });
+    return match ? String(match.id) : soNo;
+  }, [selectedSalesOrderId, form.header.sales_order_no, salesOrders]);
 
   const lineTotals = useMemo(() => manualFormLineTotals(form), [form.product_lines]);
 
@@ -369,7 +388,7 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
         return next;
       });
     },
-    [salesOrders, products, form.product_lines, resolveCustomerForOrder]
+    [salesOrders, products, form.product_lines, resolveCustomerForOrder, customers]
   );
   const handleProductSelect = useCallback(
     (index, val) => {
@@ -678,7 +697,10 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
                 </div>
               ) : null}
 
-              <section className="manual-sjc__section" aria-labelledby="manual-sjc-customer-order">
+              <section
+                className="manual-sjc__section manual-sjc__section--block"
+                aria-labelledby="manual-sjc-customer-order"
+              >
                 <h3 id="manual-sjc-customer-order" className="manual-sjc__section-title">
                   Customer &amp; Order
                 </h3>
@@ -788,7 +810,10 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
                 </div>
               </section>
 
-              <section className="manual-sjc__section manual-sjc__section--panel" aria-labelledby="manual-sjc-order-info">
+              <section
+                className="manual-sjc__section manual-sjc__section--block"
+                aria-labelledby="manual-sjc-order-info"
+              >
                 <h3 id="manual-sjc-order-info" className="manual-sjc__section-title">
                   Order Information
                 </h3>
@@ -856,7 +881,10 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
                 </div>
               </section>
 
-              <section className="manual-sjc__section manual-sjc__section--panel" aria-labelledby="manual-sjc-additional">
+              <section
+                className="manual-sjc__section manual-sjc__section--block"
+                aria-labelledby="manual-sjc-additional"
+              >
                 <h3 id="manual-sjc-additional" className="manual-sjc__section-title">
                   Additional Information
                 </h3>
@@ -1094,7 +1122,6 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
                       <th>Checked By</th>
                       <th>Approved By</th>
                       <th>Date</th>
-                      <th>Customer Acknowledgement</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1125,13 +1152,6 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
                           compact
                           value={form.approval.prepared_date}
                           onChange={(v) => patch("approval.prepared_date", v)}
-                        />
-                      </td>
-                      <td>
-                        <Input
-                          value={form.approval.customer_acknowledgement}
-                          onChange={(e) => patch("approval.customer_acknowledgement", e.target.value)}
-                          className="sjc-doc__input"
                         />
                       </td>
                     </tr>

@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 
 import Loader from "../../components/common/Loader";
+import { SearchBar } from "../../components/common/SearchFilter";
 import { ListPageShell } from "../../components/common/ListPageShell";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { useToast } from "../../context/ToastContext";
@@ -486,10 +487,15 @@ export default function Preboarding() {
         ) : null}
 
         <div className="hr-preboarding__toolbar">
-          <label className="hr-preboarding__search">
-            <Search className="h-4 w-4 shrink-0 text-[#9ca3af]" />
-            <input value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} placeholder="Search" />
-          </label>
+          <SearchBar
+            value={search}
+            onChange={(v) => {
+              setSearch(v);
+              setPage(1);
+            }}
+            placeholder="Search preboarding candidates..."
+            aria-label="Search preboarding candidates"
+          />
         </div>
 
         <div className="hr-preboarding__table-wrap">

@@ -1258,6 +1258,46 @@ def update_lead_status(
     return lead
 
 
+def update_lead(db: Session, tenant_id: int, lead_id: int, payload) -> Lead | None:
+    lead = db.scalars(
+        select(Lead).where(Lead.id == lead_id, Lead.tenant_id == tenant_id)
+    ).first()
+    if not lead:
+        return None
+    data = payload.model_dump(exclude_unset=True)
+    for key, value in data.items():
+        setattr(lead, key, value)
+    db.commit()
+    db.refresh(lead)
+    return lead
+
+
+def delete_lead(db: Session, tenant_id: int, lead_id: int) -> bool:
+    from fastapi import HTTPException
+
+    from app.models.sales import Quotation
+
+    lead = db.scalars(
+        select(Lead).where(Lead.id == lead_id, Lead.tenant_id == tenant_id)
+    ).first()
+    if not lead:
+        return False
+    linked = db.scalars(
+        select(Quotation).where(
+            Quotation.tenant_id == tenant_id,
+            Quotation.lead_id == lead_id,
+        )
+    ).first()
+    if linked:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot delete lead: quotation {linked.quote_number} is linked.",
+        )
+    db.delete(lead)
+    db.commit()
+    return True
+
+
 def list_lead_activities(db: Session, tenant_id: int, lead_id: int) -> list[dict]:
     from fastapi import HTTPException
 

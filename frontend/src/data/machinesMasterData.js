@@ -27,8 +27,17 @@ export const IMPORT_TEMPLATE_HEADERS = [
 ];
 
 export function normalizeStatus(machine) {
+  if (!machine) return "idle";
+  if (typeof machine === "string") {
+    const s = machine.toLowerCase();
+    if (["down", "fault", "breakdown"].includes(s)) return "breakdown";
+    if (MACHINE_STATUSES.includes(s)) return s;
+    return "idle";
+  }
+  if (typeof machine !== "object") return "idle";
   if (!machine.is_active && machine.is_active !== undefined) return "offline";
-  const s = (machine.display_status || machine.status || "idle").toLowerCase();
+  const raw = machine.display_status || machine.status || "idle";
+  const s = typeof raw === "string" ? raw.toLowerCase() : "idle";
   if (["down", "fault", "breakdown"].includes(s)) return "breakdown";
   if (MACHINE_STATUSES.includes(s)) return s;
   return "idle";

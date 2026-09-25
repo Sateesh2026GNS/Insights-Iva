@@ -1,0 +1,152 @@
+import {
+  BarChart3,
+  Bell,
+  Boxes,
+  CalendarDays,
+  CheckCircle2,
+  Factory,
+  FolderOpen,
+  LayoutDashboard,
+  MessageSquare,
+  Settings,
+  Wrench,
+} from "lucide-react";
+
+import { PRODUCTION_DASHBOARD_PATH } from "../utils/roleRedirect";
+
+/**
+ * Production Manager sidebar — focused on planning, execution, materials, quality,
+ * maintenance, and operational alerts. Paths must exist in AppRoutes.
+ */
+export const PRODUCTION_MANAGER_NAV_ITEMS = [
+  {
+    key: "dashboard",
+    label: "Dashboard",
+    to: PRODUCTION_DASHBOARD_PATH,
+    icon: LayoutDashboard,
+    module: "production",
+    end: true,
+  },
+  {
+    key: "production",
+    label: "Production",
+    icon: Factory,
+    module: "production",
+    children: [
+      {
+        key: "planning",
+        label: "Production Planning",
+        to: "/production/planning",
+        module: "production",
+        end: true,
+      },
+      { key: "workOrders", label: "Work Orders", to: "/production/work-orders", module: "production" },
+      { key: "schedule", label: "Production Schedule", to: "/production/schedule", module: "production" },
+      { key: "machineAllocation", label: "Machine Allocation", to: "/production/tasks", module: "production" },
+      { key: "dailyReports", label: "Daily Production Reports", to: "/production/reports", module: "production" },
+      {
+        key: "productionQueue",
+        label: "Production Queue",
+        to: "/my-job-cards?dept=production",
+        module: "production",
+      },
+    ],
+  },
+  {
+    key: "materials",
+    label: "Materials",
+    icon: Boxes,
+    module: "inventory",
+    children: [
+      { key: "rawMaterials", label: "Raw Materials", to: "/inventory/raw-materials", module: "inventory" },
+      { key: "finishedGoods", label: "Finished Goods", to: "/inventory/finished-goods", module: "inventory" },
+      {
+        key: "materialAvailability",
+        label: "Material Availability",
+        to: "/inventory/pending-inventory-checks",
+        module: "inventory",
+      },
+      { key: "stockTransfer", label: "Stock Transfer", to: "/inventory/stock-transfer", module: "inventory" },
+    ],
+  },
+  {
+    key: "quality",
+    label: "Quality",
+    icon: CheckCircle2,
+    module: "quality",
+    children: [
+      { key: "qualityDashboard", label: "Quality Dashboard", to: "/quality", module: "quality" },
+      { key: "inProcessQc", label: "In-Process QC", to: "/quality/in-process", module: "quality" },
+      { key: "finalQc", label: "Final QC", to: "/quality/final", module: "quality" },
+      { key: "batchReports", label: "Batch Reports", to: "/quality/batch-reports", module: "quality" },
+    ],
+  },
+  {
+    key: "maintenance",
+    label: "Maintenance",
+    icon: Wrench,
+    module: "maintenance",
+    children: [
+      { key: "maintenanceDashboard", label: "Maintenance Dashboard", to: "/maintenance", module: "maintenance" },
+      { key: "equipment", label: "Equipment & Spare Parts", to: "/maintenance/equipment", module: "maintenance" },
+      { key: "preventive", label: "Preventive Maintenance", to: "/maintenance/preventive", module: "maintenance" },
+      { key: "breakdowns", label: "Breakdown Maintenance", to: "/maintenance/breakdowns", module: "maintenance" },
+      { key: "machineHistory", label: "Machine History", to: "/maintenance/machine-history", module: "maintenance" },
+      { key: "schedule", label: "Maintenance Schedule", to: "/maintenance/schedule", module: "maintenance" },
+    ],
+  },
+  {
+    key: "alerts",
+    label: "Alerts",
+    icon: Bell,
+    module: "alerts",
+    children: [
+      { key: "allAlerts", label: "All Alerts", to: "/alerts", module: "alerts", end: true },
+      { key: "productionDelay", label: "Production Delay", to: "/alerts/production-delay", module: "alerts" },
+      { key: "machineFailure", label: "Machine / Equipment", to: "/alerts/machine-failure", module: "alerts" },
+      { key: "qualityAlerts", label: "Quality", to: "/alerts/quality", module: "alerts" },
+      { key: "lowStock", label: "Low Stock", to: "/alerts/low-stock", module: "alerts" },
+      { key: "maintenanceAlerts", label: "Maintenance", to: "/alerts/maintenance", module: "alerts" },
+    ],
+  },
+  {
+    key: "documents",
+    label: "Documents",
+    to: "/documents",
+    icon: FolderOpen,
+    module: "documents",
+    end: true,
+  },
+  {
+    key: "meetings",
+    label: "Meetings",
+    to: "/meetings",
+    icon: CalendarDays,
+    module: "meetings",
+    end: true,
+  },
+  {
+    key: "chat",
+    label: "Work Chat",
+    to: "/chat",
+    icon: MessageSquare,
+    module: "chat",
+    end: true,
+  },
+  {
+    key: "analytics",
+    label: "Analytics",
+    to: "/analytics/production",
+    icon: BarChart3,
+    module: "analytics",
+    end: true,
+  },
+  {
+    key: "settings",
+    label: "Settings",
+    to: "/settings",
+    icon: Settings,
+    module: "settings",
+    end: true,
+  },
+];

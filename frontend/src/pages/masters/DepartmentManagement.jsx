@@ -7,7 +7,6 @@ import TableActionButtons from "../../components/common/TableActionButtons";
 import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
 import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
 import Loader from "../../components/common/Loader";
-import { triggerBrandLoader } from "../../components/common/NavigationLoadingOverlay";
 import Button from "../../components/common/Button";
 import PageHeader from "../../components/common/PageHeader";
 import ConfirmDialog from "../../components/admin/ConfirmDialog";
@@ -25,6 +24,8 @@ import {
   getDepartments,
   updateDepartment,
 } from "../../api/departmentsApi";
+import { getEmployees } from "../../api/hrApi";
+import { getMachines } from "../../api/productionApi";
 import {
   BRANCHES,
   DEMO_DEPARTMENTS,
@@ -39,6 +40,7 @@ import {
   enrichApiDepartment,
 } from "../../data/departmentsMasterData";
 import { exportToExcel, exportToPdf } from "../../utils/exportUtils";
+import { emitPageRefreshEvent } from "../../utils/pageRefresh";
 
 export function buildDepartmentImportTemplateCsv() {
   const header = IMPORT_TEMPLATE_HEADERS.join(",");
@@ -195,30 +197,25 @@ function SummaryCard({ label, value, icon: Icon, color, onClick, isActive }) {
     activeBorder: "border-slate-400 ring-2 ring-slate-400/20 bg-slate-50/30",
   };
 
-  const handleClick = (e) => {
-    if (onClick) {
-      triggerBrandLoader(300);
-      onClick(e);
-    }
-  };
-
   return (
     <div
-      onClick={handleClick}
-      className={`group relative rounded-2xl border bg-white p-4 shadow-sm transition-all duration-200 ${
+      onClick={onClick}
+      className={`group relative flex h-full flex-col justify-between rounded-2xl border bg-white p-4 shadow-sm transition-all duration-200 ${
         isActive ? `${theme.activeBorder} shadow-sm` : "border-slate-200"
       } ${
         onClick ? `cursor-pointer ${theme.hoverBorder} hover:shadow-md hover:-translate-y-0.5` : ""
       }`}
     >
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <p className="text-xs font-medium leading-4 text-slate-500 break-words group-hover:text-slate-700 transition-colors">{label}</p>
-          <p className="mt-1 truncate text-xl font-bold tabular-nums text-slate-900 sm:text-2xl">{value}</p>
-        </div>
+      <div className="flex items-start justify-between gap-2 min-h-[38px]">
+        <p className="text-[11px] font-medium leading-tight text-slate-500 transition-colors group-hover:text-slate-700 sm:text-xs min-w-0 pr-1">
+          {label}
+        </p>
         <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl transition-transform duration-200 group-hover:scale-110 ${color}`}>
           <Icon className="h-4.5 w-4.5 text-white" />
         </div>
+      </div>
+      <div className="mt-3 pt-1">
+        <p className="truncate text-xl font-bold tabular-nums text-slate-900 sm:text-2xl">{value}</p>
       </div>
     </div>
   );
@@ -283,17 +280,42 @@ export default function DepartmentManagement() {
   const [filters, setFilters] = useState(defaultFilters);
   const [draftFilters, setDraftFilters] = useState(defaultFilters);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [activeCard, setActiveCard] = useState(null);
+  const [globalEmployeeCount, setGlobalEmployeeCount] = useState(0);
+  const [globalMachineCount, setGlobalMachineCount] = useState(0);
 
   const loadDepartments = useCallback(async () => {
     setLoading(true);
     try {
-      const [dRes, sRes] = await Promise.all([
+      const [dRes, sRes, eRes, mRes] = await Promise.all([
         getDepartments().catch(() => ({ data: [] })),
         getDepartmentSummary().catch(() => ({ data: null })),
+        getEmployees().catch(() => ({ data: [] })),
+        getMachines().catch(() => ({ data: [] })),
       ]);
       const apiRows = dRes.data || [];
-      setDepartments(apiRows.map((row, i) => enrichApiDepartment(row, i)));
+      const empList = Array.isArray(eRes.data) ? eRes.data : [];
+      const machList = Array.isArray(mRes.data) ? mRes.data : (mRes.data?.data || mRes.data?.machines || []);
+
+      const enrichedDepts = apiRows.map((row, i) => {
+        const enriched = enrichApiDepartment(row, i);
+        const empCount = empList.filter(
+          (e) => e.department_id === row.id || (e.department && row.name && e.department.toLowerCase() === row.name.toLowerCase())
+        ).length;
+        const machCount = machList.filter(
+          (m) => m.department_id === row.id || (m.department && row.name && m.department.toLowerCase() === row.name.toLowerCase())
+        ).length;
+        return {
+          ...enriched,
+          employee_count: Math.max(enriched.employee_count || 0, empCount),
+          machine_count: Math.max(enriched.machine_count || 0, machCount),
+        };
+      });
+
+      setDepartments(enrichedDepts);
       setApiSummary(sRes.data);
+      setGlobalEmployeeCount(empList.length);
+      setGlobalMachineCount(machList.length);
     } catch {
       setDepartments([]);
     } finally {
@@ -334,8 +356,11 @@ export default function DepartmentManagement() {
   }, [departments, filters]);
 
   const summary = useMemo(() => {
-    return computeDepartmentSummary(filteredDepartments);
-  }, [filteredDepartments]);
+    return computeDepartmentSummary(filteredDepartments, apiSummary, {
+      employeeCount: globalEmployeeCount,
+      machineCount: globalMachineCount,
+    });
+  }, [filteredDepartments, apiSummary, globalEmployeeCount, globalMachineCount]);
 
   const exportColumns = [
     { key: "code", label: "Code" },
@@ -349,12 +374,12 @@ export default function DepartmentManagement() {
 
   const handleExportExcel = () => {
     exportToExcel(filteredDepartments, exportColumns, "departments");
-    addToast("Exported to Excel");
+    addToast("Department list exported to Excel", "success");
   };
 
   const handleExportPdf = () => {
     exportToPdf(filteredDepartments, exportColumns, "Departments", "departments");
-    addToast("Exported to PDF");
+    addToast("Department list exported to PDF", "success");
   };
 
   const handlePrint = () => {
@@ -724,14 +749,14 @@ export default function DepartmentManagement() {
           subtitle="Manage all company departments and assign employees, machines, and work centers."
           action={
             <div className="flex flex-wrap gap-2">
-              <Button variant="add" type="button" onClick={() => setFormDept({})} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
+              <Button variant="add" type="button" onClick={() => { emitPageRefreshEvent(); setFormDept({}); }} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
                 Add Department
               </Button>
-              <Button variant="outline" type="button" onClick={handleImportFile} leftIcon={<Upload className="h-4 w-4" />}>
+              <Button variant="outline" type="button" onClick={() => { emitPageRefreshEvent(); handleImportFile(); }} leftIcon={<Upload className="h-4 w-4" />}>
                 Import
               </Button>
-              <ExportDownloadMenu disabled={!filteredDepartments.length} onExport={handleListExport} />
-              <Button variant="secondary" type="button" onClick={handlePrint} leftIcon={<Printer className="h-4 w-4" />}>
+              <ExportDownloadMenu disabled={!filteredDepartments.length} onExport={(fmt) => { emitPageRefreshEvent(); handleListExport(fmt); }} />
+              <Button variant="secondary" type="button" onClick={() => { emitPageRefreshEvent(); handlePrint(); }} leftIcon={<Printer className="h-4 w-4" />}>
                 Print
               </Button>
             </div>
@@ -753,10 +778,13 @@ export default function DepartmentManagement() {
           icon={Building2}
           color="bg-[var(--color-primary)]"
           onClick={() => {
+            emitPageRefreshEvent();
             const cleared = clearDepartmentFilters();
             setFilters(cleared);
             setDraftFilters(cleared);
+            setActiveCard((prev) => (prev === "total" ? null : "total"));
           }}
+          isActive={activeCard === "total"}
         />
         <SummaryCard
           label="Active Departments"
@@ -764,11 +792,13 @@ export default function DepartmentManagement() {
           icon={UserCheck}
           color="bg-green-500"
           onClick={() => {
+            emitPageRefreshEvent();
             const nextStatus = filters.status === "active" ? "" : "active";
             setFilters((f) => ({ ...f, status: nextStatus, department_type: "" }));
             setDraftFilters((f) => ({ ...f, status: nextStatus, department_type: "" }));
+            setActiveCard((prev) => (prev === "active" ? null : "active"));
           }}
-          isActive={filters.status === "active"}
+          isActive={activeCard === "active"}
         />
         <SummaryCard
           label="Production Departments"
@@ -776,11 +806,13 @@ export default function DepartmentManagement() {
           icon={Layers}
           color="bg-indigo-500"
           onClick={() => {
+            emitPageRefreshEvent();
             const nextType = filters.department_type === "production" ? "" : "production";
             setFilters((f) => ({ ...f, department_type: nextType }));
             setDraftFilters((f) => ({ ...f, department_type: nextType }));
+            setActiveCard((prev) => (prev === "production" ? null : "production"));
           }}
-          isActive={filters.department_type === "production"}
+          isActive={activeCard === "production"}
         />
         <SummaryCard
           label="Support Departments"
@@ -788,25 +820,37 @@ export default function DepartmentManagement() {
           icon={Building2}
           color="bg-amber-500"
           onClick={() => {
+            emitPageRefreshEvent();
             const nextType = filters.department_type === "support" ? "" : "support";
             setFilters((f) => ({ ...f, department_type: nextType }));
             setDraftFilters((f) => ({ ...f, department_type: nextType }));
+            setActiveCard((prev) => (prev === "support" ? null : "support"));
           }}
-          isActive={filters.department_type === "support"}
+          isActive={activeCard === "support"}
         />
         <SummaryCard
           label="Employees"
           value={summary.total_employees}
           icon={UsersRound}
           color="bg-violet-500"
-          onClick={() => navigate("/hr/employees")}
+          onClick={() => {
+            emitPageRefreshEvent();
+            setActiveCard("employees");
+            navigate("/hr/employees");
+          }}
+          isActive={activeCard === "employees"}
         />
         <SummaryCard
           label="Machines"
           value={summary.total_machines}
           icon={Cpu}
           color="bg-slate-600"
-          onClick={() => navigate("/production/machines")}
+          onClick={() => {
+            emitPageRefreshEvent();
+            setActiveCard("machines");
+            navigate("/production/machines");
+          }}
+          isActive={activeCard === "machines"}
         />
       </div>
 

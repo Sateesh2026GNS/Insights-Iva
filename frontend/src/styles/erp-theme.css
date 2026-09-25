@@ -5,11 +5,11 @@
  */
 
 :root {
-  --erp-primary: #00733c;
-  --erp-primary-dark: #007236;
-  --erp-primary-hover: #005f32;
-  --erp-primary-soft: #e8f5ee;
-  --erp-page-bg: #f4f7f6;
+  --erp-primary: #3157d5;
+  --erp-primary-dark: #2648b8;
+  --erp-primary-hover: #2648b8;
+  --erp-primary-soft: #eef2ff;
+  --erp-page-bg: #f6f8fc;
   --erp-card-border: #d1d5db;
   --erp-header-text: #ffffff;
   --erp-label-size: 1rem;
@@ -102,8 +102,8 @@
 }
 
 .dark .app-navbar {
-  background: #1a5c38;
-  border-bottom-color: #144a2e;
+  background: #1e293b;
+  border-bottom-color: #111827;
 }
 
 /* Green hero page header (toolbar under navbar) */

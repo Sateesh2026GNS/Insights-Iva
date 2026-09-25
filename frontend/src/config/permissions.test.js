@@ -57,7 +57,16 @@ describe("isProductionManager and userCanAccessPath", () => {
     const pm = { role: "Production Manager" };
     expect(userCanAccessPath(pm, "/procurement/vendors")).toBe(false);
     expect(userCanAccessPath(pm, "/masters/vendors")).toBe(false);
-    expect(userCanAccessPath(pm, "/masters/products")).toBe(true);
+    expect(userCanAccessPath(pm, "/masters/products")).toBe(false);
+    expect(userCanAccessPath(pm, "/production/planning")).toBe(true);
+    expect(userCanAccessPath(pm, "/procurement/purchase-orders")).toBe(false);
+    expect(userCanAccessPath(pm, "/quality/incoming")).toBe(false);
+    expect(userCanAccessPath(pm, "/alerts/safety")).toBe(false);
+    expect(userCanAccessPath(pm, "/")).toBe(true);
+    expect(userCanAccessPath(pm, "/production")).toBe(true);
+    expect(userCanAccessPath(pm, "/production/dashboard")).toBe(true);
+    expect(userCanAccessPath(pm, "/settings")).toBe(true);
+    expect(userCanAccessPath(pm, "/settings/users")).toBe(false);
   });
 });
 
@@ -148,6 +157,33 @@ describe("Store Manager settings access", () => {
   });
 });
 
+describe("Work Chat — authenticated common feature", () => {
+  it("grants chat module to any authenticated user", () => {
+    expect(userCanAccess({ role: "Store Manager", permissions: [] }, "chat")).toBe(true);
+    expect(userCanAccess({ role: "Operator", permissions: [] }, "chat")).toBe(true);
+    expect(userCanAccess({ role: "Accountant", permissions: [] }, "chat")).toBe(true);
+    expect(userCanAccess({ role: "Sales Manager", permissions: [] }, "chat")).toBe(true);
+    expect(userCanAccess(null, "chat")).toBe(false);
+  });
+
+  it("allows /chat for roles without chat in static permission map", () => {
+    const storeManager = { role: "Store Manager", permissions: [] };
+    const operator = { role: "Operator", permissions: [] };
+    const accountant = { role: "Accountant", permissions: [] };
+    expect(userCanAccessPath(storeManager, "/chat")).toBe(true);
+    expect(userCanAccessPath(operator, "/chat")).toBe(true);
+    expect(userCanAccessPath(accountant, "/chat")).toBe(true);
+    expect(userCanAccessPath(null, "/chat")).toBe(false);
+  });
+
+  it("does not grant unrelated modules via chat access", () => {
+    const operator = { role: "Operator", permissions: [] };
+    expect(userCanAccessPath(operator, "/chat")).toBe(true);
+    expect(userCanAccessPath(operator, "/sales")).toBe(false);
+    expect(userCanAccessPath(operator, "/hr")).toBe(false);
+  });
+});
+
 describe("Operator production nav", () => {
   const operator = { role: "Operator", permissions: ["dashboard", "production", "alerts"] };
 
@@ -156,6 +192,7 @@ describe("Operator production nav", () => {
     expect(operatorPathAllowed("/production/tasks")).toBe(false);
     expect(operatorPathAllowed("/production/my-machine")).toBe(true);
     expect(operatorPathAllowed("/production/my-entry")).toBe(true);
+    expect(operatorPathAllowed("/chat")).toBe(true);
   });
 
   it("userCanAccessPath denies manager production URLs", () => {
@@ -187,11 +224,33 @@ describe("Operator settings access", () => {
   });
 });
 
+describe("Quality Control path access", () => {
+  const qc = { role: "Quality Control", permissions: [] };
+
+  it("allows quality and materials routes", () => {
+    expect(userCanAccessPath(qc, "/dashboard")).toBe(true);
+    expect(userCanAccessPath(qc, "/quality")).toBe(true);
+    expect(userCanAccessPath(qc, "/quality/defects")).toBe(true);
+    expect(userCanAccessPath(qc, "/inventory/raw-materials")).toBe(true);
+    expect(userCanAccessPath(qc, "/production/planning")).toBe(true);
+    expect(userCanAccessPath(qc, "/settings")).toBe(true);
+    expect(userCanAccessPath(qc, "/chat")).toBe(true);
+  });
+
+  it("blocks masters, procurement, and inventory admin URLs", () => {
+    expect(userCanAccessPath(qc, "/masters/products")).toBe(false);
+    expect(userCanAccessPath(qc, "/procurement/purchase-orders")).toBe(false);
+    expect(userCanAccessPath(qc, "/inventory/warehouses")).toBe(false);
+    expect(userCanAccessPath(qc, "/admin/approvals")).toBe(false);
+    expect(userCanAccessPath(qc, "/settings/users")).toBe(false);
+  });
+});
+
 describe("getDashboardPathForRole", () => {
   it("routes ERP roles to their module home dashboards", async () => {
     const { getDashboardPathForRole } = await import("../utils/roleRedirect");
     expect(getDashboardPathForRole("Admin")).toBe("/");
-    expect(getDashboardPathForRole("Production Manager")).toBe("/production");
+    expect(getDashboardPathForRole("Production Manager")).toBe("/production/dashboard");
     expect(getDashboardPathForRole("Operator")).toBe("/my-job-cards");
     expect(getDashboardPathForRole("operator")).toBe("/my-job-cards");
     expect(getDashboardPathForRole("Store Manager")).toBe("/inventory/dashboard");
@@ -200,7 +259,7 @@ describe("getDashboardPathForRole", () => {
     expect(getDashboardPathForRole("Accountant")).toBe("/accounts/dashboard");
     expect(getDashboardPathForRole("Accounts")).toBe("/accounts/dashboard");
     expect(getDashboardPathForRole("Finance Manager")).toBe("/accounts/dashboard");
-    expect(getDashboardPathForRole("Quality Control")).toBe("/quality");
+    expect(getDashboardPathForRole("Quality Control")).toBe("/dashboard");
   });
 
   it("routes GNS Super Admin to /gns-admin", async () => {

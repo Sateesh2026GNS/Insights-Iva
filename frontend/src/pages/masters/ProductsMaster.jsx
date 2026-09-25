@@ -219,7 +219,7 @@ export default function ProductsMaster() {
 
         <div className="ui-card p-4 sm:p-5">
           <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <SearchBar value={query} onChange={setQuery} placeholder="Search products..." className="w-full sm:max-w-md" />
+            <SearchBar value={query} onChange={setQuery} placeholder="Search products..." aria-label="Search products" />
             <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto sm:justify-end">
               {!isPM && (
                 <Button

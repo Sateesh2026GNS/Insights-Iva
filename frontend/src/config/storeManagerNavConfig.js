@@ -10,6 +10,7 @@ import {
   History,
   Layers,
   LayoutDashboard,
+  MessageSquare,
   Package,
   PackageMinus,
   PackagePlus,
@@ -67,6 +68,14 @@ export const STORE_MANAGER_NAV_ITEMS = [
     label: "My Job Cards",
     to: "/my-job-cards?dept=inventory",
     icon: ClipboardList,
+    end: true,
+  },
+  {
+    key: "chat",
+    label: "Work Chat",
+    to: "/chat",
+    icon: MessageSquare,
+    module: "chat",
     end: true,
   },
   {

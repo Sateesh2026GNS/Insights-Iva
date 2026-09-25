@@ -272,7 +272,7 @@ const DEFAULT_CARD_LINKS = {
   "total-employees": "/masters/departments",
   "pending-approvals": "/admin/approvals",
   "total-orders": "/production/planning",
-  "today-production": "/production/planning",
+  "today-production": "/production/planning?preset=today",
   "pending-orders": "/production/work-orders?view=pending",
   "revenue-cost-snapshot": "/accounts/profit-loss",
   "machines-running": "/production/machines",

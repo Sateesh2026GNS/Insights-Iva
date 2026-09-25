@@ -522,8 +522,13 @@ export default function ProductionPlanning() {
   useEffect(() => {
     const date_from = searchParams.get("date_from") ?? "";
     const date_to = searchParams.get("date_to") ?? "";
-    if (date_from || date_to) {
-      const updated = { ...defaultFilters, preset: "today", date_from, date_to };
+    const presetParam = searchParams.get("preset") ?? searchParams.get("filter") ?? searchParams.get("view") ?? "";
+    if (date_from || date_to || presetParam === "today" || presetParam === "todays_production") {
+      const todayIso = new Date().toISOString().slice(0, 10);
+      const localToday = new Date().toLocaleDateString("sv");
+      const effectiveFrom = date_from || localToday;
+      const effectiveTo = date_to || localToday;
+      const updated = { ...defaultFilters, preset: "today", date_from: effectiveFrom, date_to: effectiveTo };
       setFilters(updated);
       setAppliedFilters(updated);
       setShowAdvanced(true);
@@ -661,27 +666,46 @@ export default function ProductionPlanning() {
       const effectiveDate = startDate || createdDate;
       const effectiveDue = dueDate || effectiveDate;
 
-      if (appliedFilters.date_from) {
-        const woStartMatch = Array.isArray(o.work_orders)
-          ? o.work_orders.some((w) => {
-              const ws = w.planned_start ? String(w.planned_start).slice(0, 10) : (w.created_at ? String(w.created_at).slice(0, 10) : "");
-              return ws && ws >= appliedFilters.date_from;
-            })
-          : false;
-        if ((!effectiveDate || effectiveDate < appliedFilters.date_from) && !woStartMatch) {
+      if (appliedFilters.preset === "today") {
+        const todayIso = new Date().toISOString().slice(0, 10);
+        const localToday = new Date().toLocaleDateString("sv");
+        const targetFrom = appliedFilters.date_from || localToday;
+        const targetTo = appliedFilters.date_to || localToday;
+
+        const isTodayStart = (startDate && startDate >= targetFrom && startDate <= targetTo) || startDate === todayIso || startDate === localToday;
+        const isTodayCreate = (createdDate && createdDate >= targetFrom && createdDate <= targetTo) || createdDate === todayIso || createdDate === localToday;
+        const isTodayWo = Array.isArray(o.work_orders) && o.work_orders.some((w) => {
+          const ws = w.planned_start ? String(w.planned_start).slice(0, 10) : (w.created_at ? String(w.created_at).slice(0, 10) : "");
+          return ws && ((ws >= targetFrom && ws <= targetTo) || ws === todayIso || ws === localToday);
+        });
+        const isTodayActive = effectiveDate <= targetTo && effectiveDue >= targetFrom;
+
+        if (!isTodayStart && !isTodayCreate && !isTodayWo && !isTodayActive) {
           return false;
         }
-      }
+      } else {
+        if (appliedFilters.date_from) {
+          const woStartMatch = Array.isArray(o.work_orders)
+            ? o.work_orders.some((w) => {
+                const ws = w.planned_start ? String(w.planned_start).slice(0, 10) : (w.created_at ? String(w.created_at).slice(0, 10) : "");
+                return ws && ws >= appliedFilters.date_from;
+              })
+            : false;
+          if ((!effectiveDate || effectiveDate < appliedFilters.date_from) && !woStartMatch) {
+            return false;
+          }
+        }
 
-      if (appliedFilters.date_to) {
-        const woDueMatch = Array.isArray(o.work_orders)
-          ? o.work_orders.some((w) => {
-              const wd = w.planned_end ? String(w.planned_end).slice(0, 10) : (w.planned_start ? String(w.planned_start).slice(0, 10) : (w.created_at ? String(w.created_at).slice(0, 10) : ""));
-              return wd && wd <= appliedFilters.date_to;
-            })
-          : false;
-        if ((!effectiveDue || effectiveDue > appliedFilters.date_to) && !woDueMatch) {
-          return false;
+        if (appliedFilters.date_to) {
+          const woDueMatch = Array.isArray(o.work_orders)
+            ? o.work_orders.some((w) => {
+                const wd = w.planned_end ? String(w.planned_end).slice(0, 10) : (w.planned_start ? String(w.planned_start).slice(0, 10) : (w.created_at ? String(w.created_at).slice(0, 10) : ""));
+                return wd && wd <= appliedFilters.date_to;
+              })
+            : false;
+          if ((!effectiveDate || effectiveDate > appliedFilters.date_to) && !woDueMatch) {
+            return false;
+          }
         }
       }
       return true;

@@ -581,7 +581,7 @@ export default function DailyReports() {
       <ListPageCard>
         <ListPageCardBody>
         <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <SearchBar value={searchQuery} onChange={setSearchQuery} placeholder="Search" className="w-full" />
+          <SearchBar value={searchQuery} onChange={setSearchQuery} placeholder="Search" />
           <div className="flex flex-wrap items-center gap-2">
             <Button type="button" variant="secondary" onClick={() => setShowFilters((v) => !v)}>
               {showFilters ? "Hide Filters" : "Filters"}

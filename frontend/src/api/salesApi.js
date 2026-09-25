@@ -73,6 +73,8 @@ export const getLeadsEnriched = () => api.get("/sales/leads/enriched");
 export const createLead = (payload) => api.post("/sales/leads", payload);
 export const updateLeadStatus = (leadId, status) =>
   api.patch(`/sales/leads/${leadId}/status`, null, { params: { status } });
+export const updateLead = (leadId, payload) => api.patch(`/sales/leads/${leadId}`, payload);
+export const deleteLead = (leadId) => api.delete(`/sales/leads/${leadId}`);
 export const convertLeadToQuotation = (leadId) =>
   api.post(`/sales/leads/${leadId}/convert-to-quotation`);
 export const getLeadActivities = (leadId) =>

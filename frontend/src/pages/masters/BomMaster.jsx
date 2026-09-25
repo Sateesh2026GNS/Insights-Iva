@@ -65,38 +65,31 @@ const KPI_COLOR_THEMES = {
   },
 };
 
-import { triggerBrandLoader } from "../../components/common/NavigationLoadingOverlay";
-
 function SummaryCard({ label, value, icon: Icon, color, onClick, isActive }) {
   const theme = KPI_COLOR_THEMES[color] || {
     hoverBorder: "hover:border-slate-300 hover:ring-2 hover:ring-slate-400/20",
     activeBorder: "border-slate-400 ring-2 ring-slate-400/20 bg-slate-50/30",
   };
 
-  const handleClick = (e) => {
-    if (onClick) {
-      triggerBrandLoader(300);
-      onClick(e);
-    }
-  };
-
   return (
     <div
-      onClick={handleClick}
-      className={`group relative rounded-2xl border bg-white p-4 shadow-sm transition-all duration-200 ${
+      onClick={onClick}
+      className={`group relative flex h-full flex-col justify-between rounded-2xl border bg-white p-4 shadow-sm transition-all duration-200 ${
         isActive ? `${theme.activeBorder} shadow-sm` : "border-slate-200"
       } ${
         onClick ? `cursor-pointer ${theme.hoverBorder} hover:shadow-md hover:-translate-y-0.5` : ""
       }`}
     >
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-xs font-medium text-slate-500 group-hover:text-slate-700 transition-colors">{label}</p>
-          <p className="mt-1 text-2xl font-bold tabular-nums text-slate-900">{value}</p>
-        </div>
-        <div className={`flex h-10 w-10 items-center justify-center rounded-xl transition-transform duration-200 group-hover:scale-110 ${color}`}>
+      <div className="flex items-start justify-between gap-2 min-h-[38px]">
+        <p className="text-[11px] font-medium leading-tight text-slate-500 transition-colors group-hover:text-slate-700 sm:text-xs min-w-0 pr-1">
+          {label}
+        </p>
+        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-transform duration-200 group-hover:scale-110 ${color}`}>
           <Icon className="h-5 w-5 text-white" />
         </div>
+      </div>
+      <div className="mt-3 pt-1">
+        <p className="truncate text-2xl font-bold tabular-nums text-slate-900">{value}</p>
       </div>
     </div>
   );

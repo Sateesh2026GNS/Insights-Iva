@@ -4,6 +4,7 @@ import {
   Boxes,
   CalendarDays,
   CheckCircle2,
+  MessageSquare,
   ClipboardList,
   Factory,
   FolderOpen,
@@ -225,6 +226,14 @@ export const SIDEBAR_NAV = [
     children: [
       { labelKey: "erpNav.allMeetings", to: "/meetings", module: "meetings", end: true },
     ],
+  },
+  {
+    key: "chat",
+    label: "Work Chat",
+    to: "/chat",
+    icon: MessageSquare,
+    module: "chat",
+    end: true,
   },
   {
     key: "analytics",

@@ -377,7 +377,7 @@ export default function DebitNotes() {
 
       <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 pb-6 pt-4 sm:px-6">
         <div className="mb-3 flex flex-col gap-3 border-b border-[var(--color-border)] pb-3 lg:flex-row lg:items-center lg:justify-between">
-          <SearchBar value={search} onChange={setSearch} placeholder="Search" className="w-full" />
+          <SearchBar value={search} onChange={setSearch} placeholder="Search" />
           <div className="flex flex-wrap items-center justify-end gap-2">
             <button
               type="button"

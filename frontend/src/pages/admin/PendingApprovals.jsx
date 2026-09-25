@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Check, CheckCircle2, Eye, RefreshCw, XCircle } from "lucide-react";
+import { Check, CheckCircle2, Eye, RefreshCw, Search, XCircle } from "lucide-react";
 
 import PageHeader from "../../components/common/PageHeader";
 import AccessDenied from "../../components/admin/AccessDenied";
@@ -300,16 +300,18 @@ export default function PendingApprovals() {
       </div>
 
       <div className="ui-card p-4 flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-end">
-        <label className="flex flex-col gap-1 text-xs flex-1 min-w-[140px]">
-          <span className="text-[var(--color-text-muted)]">Search</span>
-          <input
-            type="search"
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            placeholder="Employee, request #, department…"
-            className="rounded-lg border border-[var(--color-border)] px-3 py-2 text-sm"
-          />
-        </label>
+        <div className="flex-1 min-w-[200px]">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <input
+              type="search"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder="Search"
+              className="w-full rounded-lg border border-[var(--color-border)] bg-white pl-9 pr-3 py-2 text-sm text-slate-800 placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+          </div>
+        </div>
         <label className="flex flex-col gap-1 text-xs">
           <span className="text-[var(--color-text-muted)]">Status</span>
           <select

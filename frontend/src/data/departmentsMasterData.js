@@ -94,16 +94,32 @@ export function enrichApiDepartment(row, index = 0) {
   };
 }
 
-export function computeDepartmentSummary(departments) {
+export function computeDepartmentSummary(departments, apiSummary = null, extraCounts = {}) {
   const active = departments.filter((d) => d.status === "active").length;
   const production = departments.filter(
-    (d) => d.department_type === "production" && d.status === "active"
+    (d) => d.department_type === "production" && (d.status === "active" || !d.status)
   ).length;
   const support = departments.filter(
-    (d) => d.department_type === "support" && d.status === "active"
+    (d) => (d.department_type === "support" || d.department_type === "admin") && (d.status === "active" || !d.status)
   ).length;
-  const totalEmployees = departments.reduce((s, d) => s + (d.employee_count || 0), 0);
-  const totalMachines = departments.reduce((s, d) => s + (d.machine_count || 0), 0);
+  const sumEmployees = departments.reduce(
+    (s, d) => s + (Number(d.employee_count) || (Array.isArray(d.employees) ? d.employees.length : 0)),
+    0
+  );
+  const sumMachines = departments.reduce(
+    (s, d) => s + (Number(d.machine_count) || (Array.isArray(d.machines) ? d.machines.length : 0)),
+    0
+  );
+  const totalEmployees = Math.max(
+    sumEmployees,
+    Number(extraCounts.employeeCount || 0),
+    Number(apiSummary?.total_employees || 0)
+  );
+  const totalMachines = Math.max(
+    sumMachines,
+    Number(extraCounts.machineCount || 0),
+    Number(apiSummary?.total_machines || 0)
+  );
   return {
     total_departments: departments.length,
     active_departments: active,

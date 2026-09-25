@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 
 import Button from "../../components/common/Button";
+import { SearchBar } from "../../components/common/SearchFilter";
 import Loader from "../../components/common/Loader";
 import { ListPageShell } from "../../components/common/ListPageShell";
 import usePageRefresh from "../../hooks/usePageRefresh";
@@ -197,16 +198,12 @@ export default function MappedAssets() {
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           {/* Toolbar */}
           <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-            <div className="relative min-w-[240px] flex-1 max-w-sm">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Search employee, asset code, department..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-800 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
-              />
-            </div>
+            <SearchBar
+              value={search}
+              onChange={setSearch}
+              placeholder="Search employee, asset code, department..."
+              aria-label="Search mapped assets"
+            />
 
             <div className="flex flex-wrap items-center gap-2">
               {categories.length > 0 && (

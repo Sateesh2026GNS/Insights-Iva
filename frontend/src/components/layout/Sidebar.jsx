@@ -67,6 +67,8 @@ function stripFinanceDashboardDuplicate(children) {
 import { ACCOUNTS_DASHBOARD_PATH, SALES_DASHBOARD_PATH } from "../../utils/roleRedirect";
 import { STORE_MANAGER_NAV_ITEMS } from "../../config/storeManagerNavConfig";
 import { SALES_MANAGER_NAV_ITEMS } from "../../config/salesManagerNavConfig";
+import { PRODUCTION_MANAGER_NAV_ITEMS } from "../../config/productionManagerNavConfig";
+import { QUALITY_CONTROL_DASHBOARD_NAV_PATH, QUALITY_CONTROL_NAV_ITEMS } from "../../config/qualityControlNavConfig";
 
 export function getRoleJobCardUrl(user) {
   if (isStoreManager(user)) return "/my-job-cards?dept=inventory";
@@ -143,6 +145,62 @@ function buildSalesManagerSidebarNav() {
   });
 }
 
+function buildQualityControlSidebarNav() {
+  return QUALITY_CONTROL_NAV_ITEMS.map((item) => {
+    if (item.children?.length) {
+      return {
+        key: item.key,
+        label: item.label,
+        icon: item.icon,
+        module: item.module,
+        children: item.children.map((c) => ({
+          key: c.key,
+          label: c.label,
+          to: c.to,
+          module: c.module,
+          end: c.end,
+        })),
+      };
+    }
+    return {
+      key: item.key,
+      label: item.label,
+      to: item.to,
+      icon: item.icon,
+      module: item.module,
+      end: item.end,
+    };
+  });
+}
+
+function buildProductionManagerSidebarNav() {
+  return PRODUCTION_MANAGER_NAV_ITEMS.map((item) => {
+    if (item.children?.length) {
+      return {
+        key: item.key,
+        label: item.label,
+        icon: item.icon,
+        module: item.module,
+        children: item.children.map((c) => ({
+          key: c.key,
+          label: c.label,
+          to: c.to,
+          module: c.module,
+          end: c.end,
+        })),
+      };
+    }
+    return {
+      key: item.key,
+      label: item.label,
+      to: item.to,
+      icon: item.icon,
+      module: item.module,
+      end: item.end,
+    };
+  });
+}
+
 function buildStoreManagerSidebarNav() {
   return STORE_MANAGER_NAV_ITEMS.map((item) => {
     if (item.action) {
@@ -173,7 +231,7 @@ function buildStoreManagerSidebarNav() {
       label: item.label,
       to: item.to,
       icon: item.icon,
-      module: "inventory",
+      module: item.module || "inventory",
       end: item.end,
     };
   });
@@ -315,13 +373,15 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
   const [loggingOut, setLoggingOut] = useState(false);
   const storeMode = isStoreManager(user);
   const salesMode = isSalesManager(user);
+  const productionMode = isProductionManager(user);
+  const qualityMode = isQualityTeam(user);
 
   useEffect(() => {
     if (!isAuthenticated) {
       setApiNav(null);
       return;
     }
-    if (storeMode || salesMode) {
+    if (storeMode || salesMode || productionMode || qualityMode) {
       setApiNav(null);
       return;
     }
@@ -336,7 +396,7 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
     return () => {
       cancelled = true;
     };
-  }, [isAuthenticated, user?.id, user?.role, user?.role_id, storeMode, salesMode]);
+  }, [isAuthenticated, user?.id, user?.role, user?.role_id, storeMode, salesMode, productionMode, qualityMode]);
 
   const visibleNav = useMemo(() => {
     let result = [];
@@ -344,23 +404,14 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
       result = buildStoreManagerSidebarNav();
     } else if (salesMode) {
       result = buildSalesManagerSidebarNav();
+    } else if (productionMode) {
+      result = buildProductionManagerSidebarNav();
+    } else if (qualityMode) {
+      result = buildQualityControlSidebarNav();
     } else {
       const staticNav = filterStaticNav(user);
       const raw = staticNav.length ? staticNav : apiNav && apiNav.length ? apiNav : [];
-      if (isProductionManager(user)) {
-        result = raw
-          .map((section) => {
-            if (!PRODUCTION_MANAGER_ALLOWED_SECTIONS.has(section.key)) return null;
-            if (!section.children) return section;
-            const children = section.children.filter((c) => {
-              const pathOnly = (c.to || "").split("?")[0];
-              return PRODUCTION_MANAGER_ALLOWED_CHILDREN.has(c.to) || PRODUCTION_MANAGER_ALLOWED_CHILDREN.has(pathOnly);
-            });
-            if (children.length === 0) return null;
-            return { ...section, children };
-          })
-          .filter(Boolean);
-      } else if (isOperator(user)) {
+      if (isOperator(user)) {
         result = raw.filter((section) => !OPERATOR_BLOCKED_SECTIONS.has(section.key));
       } else if (isHRManager(user)) {
         const hrIndex = raw.findIndex((s) => s.key === "hr");
@@ -618,7 +669,9 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
         <button
           type="button"
           onClick={onToggleCollapse}
-          className="app-sidebar__collapse-btn absolute z-20 hidden lg:flex items-center justify-center rounded-l-lg border border-white/35 border-r-0 bg-[var(--color-nav-bg-hover)] text-white shadow-md transition-colors hover:border-white/50 hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/45 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-nav-bg)]"
+          className={`app-sidebar__collapse-btn absolute z-20 hidden lg:flex items-center justify-center border border-white/35 bg-[var(--color-nav-bg-hover)] text-white shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/45 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-nav-bg)] ${
+            collapsed ? "rounded-r-lg border-l-0" : "rounded-l-lg border-r-0"
+          }`}
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
@@ -632,7 +685,17 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <div className={`shrink-0 border-b border-white/10 ${collapsed ? "p-3" : "px-4 py-4 sm:py-5"} flex items-center justify-between`}>
         <Link
-          to={storeMode ? "/inventory/dashboard" : salesMode ? SALES_DASHBOARD_PATH : "/"}
+          to={
+            storeMode
+              ? "/inventory/dashboard"
+              : salesMode
+                ? SALES_DASHBOARD_PATH
+                : productionMode
+                  ? "/production/dashboard"
+                  : qualityMode
+                    ? QUALITY_CONTROL_DASHBOARD_NAV_PATH
+                    : "/"
+          }
           className={`flex items-center ${collapsed ? "justify-center" : "gap-3"} min-w-0`}
           onClick={() => onClose?.()}
         >

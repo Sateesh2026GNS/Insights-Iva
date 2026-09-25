@@ -90,10 +90,18 @@ export default function AppRoutes() {
         }
       />
       <Route
+        path="/dashboard"
+        element={
+          <ProtectedRoute>
+            <P.Dashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/production"
         element={
           <ProtectedRoute>
-            <P.ProductionDashboard />
+            <Navigate to="/production/dashboard" replace />
           </ProtectedRoute>
         }
       />
@@ -779,6 +787,7 @@ export default function AppRoutes() {
       <Route path="/documents" element={<ProtectedRoute><P.DocumentsDashboard /></ProtectedRoute>} />
       <Route path="/meetings" element={<ProtectedRoute><P.MeetingsList /></ProtectedRoute>} />
       <Route path="/meetings/:id" element={<ProtectedRoute><P.MeetingDetail /></ProtectedRoute>} />
+      <Route path="/chat" element={<ProtectedRoute><P.WorkChat /></ProtectedRoute>} />
       <Route path="/integrations/google/calendar/callback" element={<GoogleCalendarOAuthRedirect />} />
       <Route path="/api/integrations/google/calendar/callback" element={<GoogleCalendarOAuthRedirect />} />
       <Route path="/documents/purchase" element={<ProtectedRoute><P.PurchaseDocuments /></ProtectedRoute>} />

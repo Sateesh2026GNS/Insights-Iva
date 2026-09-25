@@ -10,6 +10,7 @@ import RouteErrorBoundary from "./components/common/RouteErrorBoundary";
 import Navbar from "./components/layout/Navbar";
 import Sidebar from "./components/layout/Sidebar";
 import GlobalRefreshButton from "./components/common/GlobalRefreshButton";
+import AppShellBottomActionBar from "./components/layout/AppShellBottomActionBar";
 import Button from "./components/common/Button";
 import useAuth from "./hooks/useAuth";
 import useSettings from "./context/SettingsContext";
@@ -353,9 +354,9 @@ export default function App() {
             overscrollBehaviorX: "none",
             overscrollBehaviorY: "contain",
           }}
-          className={`min-h-0 min-w-0 w-full flex-1 bg-transparent outline-none overscroll-contain ${
+          className={`min-h-0 min-w-0 w-full flex-1 bg-transparent outline-none overscroll-contain max-lg:pb-[calc(4.75rem+env(safe-area-inset-bottom,0px))] ${
             isInvoiceEditor || isEInvoiceLogin
-              ? "overflow-hidden"
+              ? "overflow-hidden max-lg:pb-0"
               : "overflow-y-auto"
           }`}
         >
@@ -386,9 +387,10 @@ export default function App() {
             <OperatorSafetyFab />
           </Suspense>
         </main>
+        {user && !isInvoiceEditor && !isEInvoiceLogin ? <AppShellBottomActionBar /> : null}
         {!isInvoiceEditor ? (
           <div
-            className={`pointer-events-none fixed bottom-5 z-50 flex flex-col items-end gap-3 pb-[env(safe-area-inset-bottom,0px)] sm:bottom-6 ${
+            className={`pointer-events-none fixed bottom-5 z-50 flex flex-col items-end gap-3 pb-[env(safe-area-inset-bottom,0px)] sm:bottom-6 max-lg:bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] ${
               isSettings
                 ? "right-[var(--space-4)] sm:right-[var(--space-6)] lg:right-[var(--space-8)]"
                 : "right-5 sm:right-6"

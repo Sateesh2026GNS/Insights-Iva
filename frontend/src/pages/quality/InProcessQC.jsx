@@ -166,7 +166,7 @@ function MultiSelectDropdown({
                 value={query}
                 onChange={setQuery}
                 placeholder={placeholder}
-                className="w-full"
+               
               />
             </div>
           )}
@@ -393,16 +393,12 @@ export default function InProcessQC() {
 
       <div className="ui-card ui-card--padded space-y-3">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="relative ui-search-wrap min-w-[220px] flex-1">
-            <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]" />
-            <input
-              type="search"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by QC no, work order, operation, product..."
-              className="ui-input w-full !pl-10 text-[13px] text-[var(--color-text)]"
-            />
-          </div>
+          <SearchBar
+            value={search}
+            onChange={setSearch}
+            placeholder="Search by QC no, work order, operation, product..."
+            aria-label="Search in-process QC records"
+          />
           <div className="flex flex-wrap items-center gap-2.5">
             <div className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border-soft)] bg-[var(--color-surface)] px-3 py-1.5 text-[13px] shadow-xs">
               <CalendarDays className="h-4 w-4 shrink-0 text-[var(--color-text-muted)]" />

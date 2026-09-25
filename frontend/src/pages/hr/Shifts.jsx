@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 
 import Loader from "../../components/common/Loader";
+import { SearchBar } from "../../components/common/SearchFilter";
 import { ListPageShell } from "../../components/common/ListPageShell";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { useToast } from "../../context/ToastContext";
@@ -342,10 +343,14 @@ function AssignShiftDrawer({ open, onClose, onSave, shifts, employees }) {
           <div className="hr-manage-shifts__assign-layout">
             <div className="hr-manage-shifts__assign-left">
               <p className="hr-manage-shifts__assign-note">Note: You can select a maximum of 200 employees at a time.</p>
-              <label className="hr-manage-shifts__search">
-                <Search className="h-4 w-4 shrink-0 text-[#9ca3af]" />
-                <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search Employee" />
-              </label>
+              <SearchBar
+                size="compact"
+                value={query}
+                onChange={setQuery}
+                placeholder="Search Employee"
+               
+                aria-label="Search employees to assign shift"
+              />
               <label className="mt-3 flex items-center gap-2 text-sm">
                 <input
                   type="checkbox"
@@ -634,10 +639,12 @@ export default function Shifts() {
           {activeTab === "assigned" ? (
             <>
               <div className="hr-manage-shifts__toolbar">
-                <label className="hr-manage-shifts__search">
-                  <Search className="h-4 w-4 shrink-0 text-[#9ca3af]" />
-                  <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search Employee" />
-                </label>
+                <SearchBar
+                  value={search}
+                  onChange={setSearch}
+                  placeholder="Search employees..."
+                  aria-label="Search assigned shifts"
+                />
                 <button
                   type="button"
                   className="hr-manage-shifts__filter-btn"

@@ -43,3 +43,4 @@ import app.models.security  # noqa: F401
 import app.models.task  # noqa: F401
 import app.models.tenant  # noqa: F401
 import app.models.user  # noqa: F401
+import app.models.work_chat  # noqa: F401

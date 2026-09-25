@@ -423,7 +423,7 @@ export default function PaymentReceipts() {
 
       {/* Row 2: Search Bar & Filters/Sort */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <SearchBar value={search} onChange={setSearch} placeholder="Search" className="w-full" />
+        <SearchBar value={search} onChange={setSearch} placeholder="Search" />
         <div className="flex shrink-0 items-center gap-2">
           <button
             type="button"

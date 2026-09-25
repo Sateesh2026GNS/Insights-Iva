@@ -5,7 +5,32 @@
   --sales-dash-border: #e2ebe8;
   --sales-dash-muted: #64748b;
   --sales-dash-heading: #0f3d2e;
-  --sales-dash-pipeline-bg: #f4faf7;
+
+  /* Pipeline chevrons — fixed stage palette (text = darkest/lightest stop per family) */
+  --sales-pipeline-leads-bg: #aaa6e5;
+  --sales-pipeline-leads-fg: #3d3878;
+  --sales-pipeline-quotations-bg: #7d75d8;
+  --sales-pipeline-quotations-fg: #2a2452;
+  --sales-pipeline-sales_orders-bg: #554cb8;
+  --sales-pipeline-sales_orders-fg: #ebe8fa;
+  --sales-pipeline-production-bg: #5bc6a5;
+  --sales-pipeline-production-fg: #0f5a45;
+  --sales-pipeline-dispatch-bg: #20a17d;
+  --sales-pipeline-dispatch-fg: #e3f5ef;
+  --sales-pipeline-completed-bg: #5a981c;
+  --sales-pipeline-completed-fg: #eef6e2;
+}
+
+.dark .sales-dash {
+  --sales-dash-card: var(--color-surface);
+  --sales-dash-border: var(--color-border);
+  --sales-dash-muted: var(--color-text-muted);
+  --sales-dash-heading: var(--color-text);
+
+  /* Same fills; brighter light text on deep indigo / teal / green stages */
+  --sales-pipeline-sales_orders-fg: #f5f3ff;
+  --sales-pipeline-dispatch-fg: #ecfbf6;
+  --sales-pipeline-completed-fg: #f4fae8;
 }
 
 /* Top toolbar — no hero band; page title stays in navbar */
@@ -160,8 +185,38 @@
   min-width: 88px;
   position: relative;
   padding: 0.65rem 0.5rem 0.65rem 1.25rem;
-  background: var(--sales-dash-pipeline-bg);
   clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 50%, calc(100% - 12px) 100%, 0 100%, 12px 50%);
+  color: inherit;
+}
+
+.sales-dash-pipeline__stage--leads {
+  background: var(--sales-pipeline-leads-bg);
+  color: var(--sales-pipeline-leads-fg);
+}
+
+.sales-dash-pipeline__stage--quotations {
+  background: var(--sales-pipeline-quotations-bg);
+  color: var(--sales-pipeline-quotations-fg);
+}
+
+.sales-dash-pipeline__stage--sales_orders {
+  background: var(--sales-pipeline-sales_orders-bg);
+  color: var(--sales-pipeline-sales_orders-fg);
+}
+
+.sales-dash-pipeline__stage--production {
+  background: var(--sales-pipeline-production-bg);
+  color: var(--sales-pipeline-production-fg);
+}
+
+.sales-dash-pipeline__stage--dispatch {
+  background: var(--sales-pipeline-dispatch-bg);
+  color: var(--sales-pipeline-dispatch-fg);
+}
+
+.sales-dash-pipeline__stage--completed {
+  background: var(--sales-pipeline-completed-bg);
+  color: var(--sales-pipeline-completed-fg);
 }
 
 .sales-dash-pipeline__stage:first-child {
@@ -180,14 +235,15 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.02em;
-  color: var(--sales-dash-muted);
+  color: inherit;
+  opacity: 0.92;
 }
 
 .sales-dash-pipeline__count {
   font-size: 1.35rem;
   font-weight: 800;
   line-height: 1.1;
-  color: #0f172a;
+  color: inherit;
   margin-top: 0.15rem;
 }
 

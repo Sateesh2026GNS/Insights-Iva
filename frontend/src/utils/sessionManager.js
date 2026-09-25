@@ -10,7 +10,8 @@
 
 export const PRIMARY_SESSION_TIMEOUT_MS = 9 * 60 * 60 * 1000; // 9 hours
 export const NEW_TAB_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
-const HEARTBEAT_WINDOW_MS = 6000; // Primary tab heartbeat validity
+/** Primary tab considered alive if heartbeat updated within this window (throttled tabs / brief idle). */
+export const HEARTBEAT_WINDOW_MS = 45_000;
 
 /**
  * Generate or retrieve unique tab ID for this browser tab.
@@ -116,6 +117,23 @@ export function sendPrimaryHeartbeat() {
 }
 
 /**
+ * Call on authenticated API activity — keeps primary heartbeat fresh and
+ * extends secondary-tab grace while the primary session is still active.
+ */
+export function recordSessionActivity() {
+  try {
+    if (!localStorage.getItem("smrt-token")) return;
+    if (getTabType() === "primary") {
+      sendPrimaryHeartbeat();
+      return;
+    }
+    if (isPrimaryTabAlive()) {
+      sessionStorage.setItem("smrt-new-tab-opened-at", String(Date.now()));
+    }
+  } catch {}
+}
+
+/**
  * Check if the primary tab is currently open and sending heartbeats.
  */
 export function isPrimaryTabAlive() {
@@ -148,8 +166,11 @@ export function checkSessionStatus() {
       return { expired: true, reason: "primary_9hr_timeout" };
     }
 
-    // 2. 10-minute limit if this is a new tab
+    // 2. 10-minute limit for secondary tabs only when the primary tab is no longer active
     if (getTabType() === "new_tab") {
+      if (isPrimaryTabAlive()) {
+        return { expired: false, reason: null };
+      }
       const openedAt = Number(sessionStorage.getItem("smrt-new-tab-opened-at") || 0);
       if (openedAt > 0 && Date.now() - openedAt >= NEW_TAB_TIMEOUT_MS) {
         return { expired: true, reason: "new_tab_10min_timeout" };

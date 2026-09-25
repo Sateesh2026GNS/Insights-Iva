@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Activity, ChevronLeft, ChevronRight, Cpu, FileText, Grid3X3, LayoutList, Plus, Printer, Thermometer, Upload, Wrench, Zap } from "lucide-react";
 
 import DataTable from "../../components/common/DataTable";
@@ -20,6 +20,7 @@ import {
   getMachineSummary,
   getMachines,
   updateMachineStatus,
+  getProductionOrders,
 } from "../../api/productionApi";
 import {
   DEPARTMENTS,
@@ -39,57 +40,105 @@ import { runListExport } from "../../utils/listExport";
 
 const PAGE_SIZES = [20, 50, 100];
 
-function SummaryCard({ label, value, icon: Icon, color, sub, onClick }) {
+const KPI_COLOR_THEMES = {
+  "bg-[var(--color-text-muted)]": {
+    hoverBorder: "hover:border-slate-500 hover:ring-2 hover:ring-slate-500/20",
+    activeBorder: "border-slate-500 ring-2 ring-slate-500/20 bg-slate-50/30",
+  },
+  "bg-slate-600": {
+    hoverBorder: "hover:border-slate-500 hover:ring-2 hover:ring-slate-500/20",
+    activeBorder: "border-slate-500 ring-2 ring-slate-500/20 bg-slate-50/30",
+  },
+  "bg-green-600": {
+    hoverBorder: "hover:border-green-500 hover:ring-2 hover:ring-green-500/20",
+    activeBorder: "border-green-500 ring-2 ring-green-500/20 bg-green-50/30",
+  },
+  "bg-yellow-500": {
+    hoverBorder: "hover:border-amber-500 hover:ring-2 hover:ring-amber-500/20",
+    activeBorder: "border-amber-500 ring-2 ring-amber-500/20 bg-amber-50/30",
+  },
+  "bg-[var(--color-primary)]": {
+    hoverBorder: "hover:border-blue-600 hover:ring-2 hover:ring-blue-600/20",
+    activeBorder: "border-blue-600 ring-2 ring-blue-600/20 bg-blue-50/30",
+  },
+  "bg-red-600": {
+    hoverBorder: "hover:border-red-500 hover:ring-2 hover:ring-red-500/20",
+    activeBorder: "border-red-500 ring-2 ring-red-500/20 bg-red-50/30",
+  },
+  "bg-[var(--color-text)]": {
+    hoverBorder: "hover:border-slate-600 hover:ring-2 hover:ring-slate-600/20",
+    activeBorder: "border-slate-600 ring-2 ring-slate-600/20 bg-slate-50/30",
+  },
+  "bg-indigo-600": {
+    hoverBorder: "hover:border-indigo-600 hover:ring-2 hover:ring-indigo-600/20",
+    activeBorder: "border-indigo-600 ring-2 ring-indigo-600/20 bg-indigo-50/30",
+  },
+  "bg-teal-600": {
+    hoverBorder: "hover:border-teal-600 hover:ring-2 hover:ring-teal-600/20",
+    activeBorder: "border-teal-600 ring-2 ring-teal-600/20 bg-teal-50/30",
+  },
+};
+
+function SummaryCard({ label, value, icon: Icon, color, sub, onClick, active }) {
+  const theme = KPI_COLOR_THEMES[color] || {
+    hoverBorder: "hover:border-slate-300 hover:ring-2 hover:ring-slate-400/20",
+    activeBorder: "border-slate-400 ring-2 ring-slate-400/20 bg-slate-50/30",
+  };
+
   return (
     <div
       onClick={onClick}
-      className={`ui-card p-4 min-h-[86px] flex flex-col justify-between min-w-0 overflow-hidden transition-all duration-150 ${
-        onClick ? "cursor-pointer hover:border-slate-300 hover:shadow-md hover:-translate-y-0.5" : ""
+      className={`group relative flex h-full flex-col justify-between rounded-2xl border bg-white p-3.5 shadow-sm transition-all duration-200 ${
+        active ? `${theme.activeBorder} shadow-sm` : "border-slate-200"
+      } ${
+        onClick ? `cursor-pointer ${theme.hoverBorder} hover:shadow-md hover:-translate-y-0.5` : ""
       }`}
-      title={typeof label === "string" ? label : undefined}
     >
-      <div className="flex items-center justify-between gap-1.5 min-w-0">
-        <p className="truncate text-[11px] font-medium text-[var(--color-text-muted)] leading-tight sm:text-xs min-w-0 flex-1">{label}</p>
+      <div className="flex items-start justify-between gap-1.5 min-h-[38px]">
+        <p className="text-[11px] font-medium leading-tight text-slate-500 transition-colors group-hover:text-slate-700 sm:text-xs min-w-0 pr-0.5 break-words line-clamp-2">
+          {label}
+        </p>
         {Icon && (
-          <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md ${color}`}>
-            <Icon className="h-3.5 w-3.5 text-white" />
+          <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition-transform duration-200 group-hover:scale-110 ${color}`}>
+            <Icon className="h-4 w-4 text-white" />
           </div>
         )}
       </div>
-      <div className="mt-2">
-        <p className="truncate text-xl font-bold tabular-nums text-[var(--color-text)] leading-none sm:text-2xl">{value}</p>
-        {sub && <p className="mt-1 text-[10px] text-[var(--color-text-faint)]">{sub}</p>}
+      <div className="mt-2 pt-0.5">
+        <p className="truncate text-xl font-bold tabular-nums text-slate-900 sm:text-2xl">{value}</p>
+        {sub && <p className="mt-1 text-[10px] text-slate-400">{sub}</p>}
       </div>
     </div>
   );
 }
 
 function StatusBadge({ status, large }) {
-  const s = normalizeStatus({ status, display_status: status });
-  const c = STATUS_COLORS[s] || STATUS_COLORS.idle;
+  const s = normalizeStatus(status);
+  const c = STATUS_COLORS[s] || STATUS_COLORS.idle || { dot: "⚫", bg: "bg-slate-200", text: "text-slate-700", border: "border-slate-300", ring: "bg-slate-500" };
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full border font-semibold capitalize ${c.bg} ${c.text} ${c.border} ${
+    <span className={`inline-flex items-center gap-1 rounded-full border font-semibold capitalize ${c.bg || "bg-slate-100"} ${c.text || "text-slate-800"} ${c.border || "border-slate-200"} ${
       large ? "px-3 py-1 text-sm" : "px-2.5 py-0.5 text-xs"
     }`}>
-      <span>{c.dot}</span>
+      <span>{c.dot || "⚫"}</span>
       {statusLabel(s)}
     </span>
   );
 }
 
 function MachineCard({ machine, onClick }) {
+  if (!machine) return null;
   const s = normalizeStatus(machine);
-  const c = STATUS_COLORS[s] || STATUS_COLORS.idle;
+  const c = STATUS_COLORS[s] || STATUS_COLORS.idle || { dot: "⚫", bg: "bg-slate-200", text: "text-slate-700", border: "border-slate-300", ring: "bg-slate-500" };
   return (
     <button
       type="button"
-      onClick={() => onClick(machine)}
+      onClick={() => onClick?.(machine)}
       className="w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 text-left shadow-sm transition-all hover:border-[var(--color-action-blue)]/40 hover:shadow-md"
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <h3 className="truncate text-base font-bold text-[var(--color-text)]">{machine.name}</h3>
-          <p className="text-xs text-[var(--color-text-muted)]">{machine.code}</p>
+          <h3 className="truncate text-base font-bold text-[var(--color-text)]">{machine.name || "Unnamed Machine"}</h3>
+          <p className="text-xs text-[var(--color-text-muted)]">{machine.code || "—"}</p>
         </div>
         <StatusBadge status={s} />
       </div>
@@ -132,7 +181,7 @@ function MachineCard({ machine, onClick }) {
         </div>
       </div>
       <div className="mt-3 flex items-center gap-2 border-t border-[var(--color-border-soft)] pt-3">
-        <div className={`h-2 w-2 rounded-full ${c.ring} ${s === "running" ? "animate-pulse" : ""}`} />
+        <div className={`h-2 w-2 rounded-full ${c.ring || "bg-slate-500"} ${s === "running" ? "animate-pulse" : ""}`} />
         <span className="text-[10px] text-[var(--color-text-muted)]">Last maint: {machine.last_maintenance_date || "—"}</span>
       </div>
     </button>
@@ -153,17 +202,30 @@ const defaultFilters = {
 
 export default function MachineStatus() {
   const tenantId = useTenantId();
+  const navigate = useNavigate();
   const { addToast } = useToast();
   const { user } = useAuth();
   const operatorMode = isOperator(user);
   const [loading, setLoading] = useState(true);
   const [machines, setMachines] = useState([]);
+  const [todayOrdersCount, setTodayOrdersCount] = useState(0);
   const [apiSummary, setApiSummary] = useState(null);
   const [selected, setSelected] = useState(null);
   const [detail, setDetail] = useState(null);
   const [filters, setFilters] = useState(defaultFilters);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [viewMode, setViewMode] = useState("grid");
+  const [activeKpiCard, setActiveKpiCard] = useState(null);
+
+  const handleKpiCardClick = (kpiKey, statusVal = "") => {
+    if (activeKpiCard === kpiKey) {
+      setActiveKpiCard(null);
+      setFilters((f) => ({ ...f, status: "" }));
+    } else {
+      setActiveKpiCard(kpiKey);
+      setFilters((f) => ({ ...f, status: statusVal }));
+    }
+  };
 
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
@@ -171,16 +233,26 @@ export default function MachineStatus() {
   const loadMachines = useCallback(async () => {
     setLoading(true);
     try {
-      const [mRes, sRes] = await Promise.all([
+      const [mRes, sRes, poRes] = await Promise.all([
         getMachines(),
         getMachineSummary().catch(() => ({ data: null })),
+        getProductionOrders().catch(() => ({ data: [] })),
       ]);
       const apiRows = Array.isArray(mRes?.data) ? mRes.data : [];
       setMachines(apiRows.map((row, i) => enrichApiMachine(row, i)));
       setApiSummary(sRes?.data ?? null);
+
+      const orders = Array.isArray(poRes?.data) ? poRes.data : Array.isArray(poRes) ? poRes : [];
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const count = orders.filter((o) => {
+        const dateVal = o.start_date || o.created_at || "";
+        return dateVal.startsWith(todayStr);
+      }).length;
+      setTodayOrdersCount(count);
     } catch {
       setMachines([]);
       setApiSummary(null);
+      setTodayOrdersCount(0);
       addToast("Failed to load machines", "error");
     } finally {
       setLoading(false);
@@ -207,19 +279,25 @@ export default function MachineStatus() {
   };
 
   const filtered = useMemo(() => {
-    return machines.filter((m) => {
-      if (filters.name && !m.name.toLowerCase().includes(filters.name.toLowerCase())) return false;
-      if (filters.code && !m.code.toLowerCase().includes(filters.code.toLowerCase())) return false;
-      if (filters.status && normalizeStatus(m.status) !== filters.status) return false;
+    return (machines || []).filter((m) => {
+      if (!m) return false;
+      const mName = String(m.name || "");
+      const mCode = String(m.code || "");
+      if (filters.name && !mName.toLowerCase().includes(filters.name.toLowerCase())) return false;
+      if (filters.code && !mCode.toLowerCase().includes(filters.code.toLowerCase())) return false;
+      const normSt = normalizeStatus(m);
+      if (filters.status && normSt !== filters.status) return false;
       if (filters.department && m.department !== filters.department) return false;
       if (filters.production_line && m.production_line !== filters.production_line) return false;
       if (filters.machine_type && m.machine_type !== filters.machine_type) return false;
       if (filters.operator && !String(m.assigned_operator || m.operator_name || "").toLowerCase().includes(filters.operator.toLowerCase())) return false;
       if (filters.shift && (m.current_shift || m.shift) !== filters.shift) return false;
       if (filters.work_center && m.work_center !== filters.work_center) return false;
+      if (activeKpiCard === "utilization" && (m.efficiency_pct ?? 0) <= 0 && normSt === "offline") return false;
+      if (activeKpiCard === "todays_production" && (m.todays_output ?? 0) <= 0) return false;
       return true;
     });
-  }, [machines, filters]);
+  }, [machines, filters, activeKpiCard]);
 
   const filteredMachines = filtered;
 
@@ -236,11 +314,14 @@ export default function MachineStatus() {
   const to = Math.min(page * pageSize, total);
 
   const summary = useMemo(() => {
-    if (apiSummary && !Object.values(filters).some(Boolean)) {
-      return apiSummary;
-    }
-    return computeMachineSummary(filtered);
-  }, [apiSummary, filtered, filters]);
+    const base = apiSummary && !Object.values(filters).some(Boolean) && !activeKpiCard
+      ? apiSummary
+      : computeMachineSummary(filtered);
+    return {
+      ...base,
+      todays_production: Math.max(Number(base?.todays_production || 0), todayOrdersCount),
+    };
+  }, [apiSummary, filtered, filters, activeKpiCard, todayOrdersCount]);
 
   const exportColumns = [
     { key: "code", label: "Machine Code" },
@@ -332,101 +413,125 @@ export default function MachineStatus() {
 
   return (
     <ListPageShell>
-      <PageHeader subtitle="Digital profiles · Live status · OEE · Production integration" />
+      <PageHeader
+        subtitle="Digital profiles · Live status · OEE · Production integration"
+        action={
+          !operatorMode && (
+            <Button variant="add" to="/production/machines/create" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
+              New Machine
+            </Button>
+          )
+        }
+      />
 
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8">
+        <div className="grid gap-3 grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 2xl:grid-cols-8">
           <SummaryCard
             label="Total Machines"
-            value={summary.total_machines}
+            value={summary?.total_machines ?? 0}
             icon={Cpu}
             color="bg-[var(--color-text-muted)]"
-            onClick={() => setFilters((f) => ({ ...f, status: "" }))}
-            active={!filters.status}
+            onClick={() => handleKpiCardClick("total", "")}
+            active={activeKpiCard === "total"}
           />
           <SummaryCard
             label="Running"
-            value={summary.running}
+            value={summary?.running ?? 0}
             icon={Zap}
             color="bg-green-600"
-            onClick={() => setFilters((f) => ({ ...f, status: f.status === "running" ? "" : "running" }))}
-            active={filters.status === "running"}
+            onClick={() => handleKpiCardClick("running", "running")}
+            active={activeKpiCard === "running" || (activeKpiCard === null && filters.status === "running")}
           />
           <SummaryCard
             label="Idle"
-            value={summary.idle}
+            value={summary?.idle ?? 0}
             icon={Activity}
             color="bg-yellow-500"
-            onClick={() => setFilters((f) => ({ ...f, status: f.status === "idle" ? "" : "idle" }))}
-            active={filters.status === "idle"}
+            onClick={() => handleKpiCardClick("idle", "idle")}
+            active={activeKpiCard === "idle" || (activeKpiCard === null && filters.status === "idle")}
           />
           <SummaryCard
             label="Maintenance"
-            value={summary.maintenance}
+            value={summary?.maintenance ?? 0}
             icon={Wrench}
             color="bg-[var(--color-primary)]"
-            onClick={() => setFilters((f) => ({ ...f, status: f.status === "maintenance" ? "" : "maintenance" }))}
-            active={filters.status === "maintenance"}
+            onClick={() => handleKpiCardClick("maintenance", "maintenance")}
+            active={activeKpiCard === "maintenance" || (activeKpiCard === null && filters.status === "maintenance")}
           />
           <SummaryCard
             label="Breakdown"
-            value={summary.breakdown}
+            value={summary?.breakdown ?? 0}
             icon={Activity}
             color="bg-red-600"
-            onClick={() => setFilters((f) => ({ ...f, status: f.status === "breakdown" ? "" : "breakdown" }))}
-            active={filters.status === "breakdown"}
+            onClick={() => handleKpiCardClick("breakdown", "breakdown")}
+            active={activeKpiCard === "breakdown" || (activeKpiCard === null && filters.status === "breakdown")}
           />
           <SummaryCard
             label="Offline"
-            value={summary.offline}
+            value={summary?.offline ?? 0}
             icon={Cpu}
             color="bg-[var(--color-text)]"
-            onClick={() => setFilters((f) => ({ ...f, status: f.status === "offline" ? "" : "offline" }))}
-            active={filters.status === "offline"}
+            onClick={() => handleKpiCardClick("offline", "offline")}
+            active={activeKpiCard === "offline" || (activeKpiCard === null && filters.status === "offline")}
           />
-          <SummaryCard label="Utilization" value={`${summary.utilization_pct}%`} icon={Activity} color="bg-indigo-600" />
-          <SummaryCard label="Today's Production" value={summary.todays_production?.toLocaleString?.() ?? summary.todays_production} icon={FileText} color="bg-teal-600" />
+          <SummaryCard
+            label="Utilization"
+            value={`${summary?.utilization_pct ?? 0}%`}
+            icon={Activity}
+            color="bg-indigo-600"
+            onClick={() => handleKpiCardClick("utilization", "")}
+            active={activeKpiCard === "utilization"}
+          />
+          <SummaryCard
+            label="Today's Production"
+            value={summary?.todays_production?.toLocaleString?.() ?? summary?.todays_production ?? 0}
+            icon={FileText}
+            color="bg-teal-600"
+            onClick={() => navigate("/production/planning?preset=today")}
+            active={activeKpiCard === "todays_production"}
+          />
         </div>
 
         <ListPageCard>
           <ListPageCardBody>
-          <div className="mb-4 flex flex-wrap items-center gap-2.5">
-            <SearchBar
-              value={filters.name}
-              onChange={(val) => setFilters((f) => ({ ...f, name: val }))}
-              placeholder="Search"
-              className="w-full"
-            />
-            <select
-              value={filters.status}
-              onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value }))}
-              className="ui-select w-auto min-w-[140px]"
-            >
-              <option value="">All Status</option>
-              {MACHINE_STATUSES.map((s) => (
-                <option key={s} value={s}>{statusLabel(s)}</option>
-              ))}
-            </select>
-            <button
-              type="button"
-              onClick={() => setShowAdvanced((v) => !v)}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-3.5 py-2.5 text-[13px] font-semibold text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]"
-            >
-              {showAdvanced ? "Hide Filters" : "More Filters"}
-            </button>
-            {!operatorMode && (
-              <>
-                <Button type="button" variant="secondary" onClick={handleDownloadTemplate}>
-                  <Upload className="h-4 w-4" /> Import
-                </Button>
-                <ExportDownloadMenu disabled={!filteredMachines.length} onExport={handleExport} />
-              </>
-            )}
-            {!operatorMode && (
-              <Button variant="add" to="/production/machines/create" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
-                New Machine
-              </Button>
-            )}
-            <div className="ml-auto flex rounded-lg border border-[var(--color-border)] p-0.5">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2.5">
+            <div className="flex flex-wrap items-center gap-2.5 flex-1 min-w-0">
+              <SearchBar
+                value={filters.name}
+                onChange={(val) => setFilters((f) => ({ ...f, name: val }))}
+                placeholder="Search"
+                className="w-full sm:w-auto min-w-[180px] max-w-[240px]"
+              />
+              <select
+                value={filters.status}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setFilters((f) => ({ ...f, status: val }));
+                  setActiveKpiCard(val || null);
+                }}
+                className="ui-select min-w-[130px] max-w-[170px]"
+              >
+                <option value="">All Status</option>
+                {MACHINE_STATUSES.map((s) => (
+                  <option key={s} value={s}>{statusLabel(s)}</option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => setShowAdvanced((v) => !v)}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-3.5 py-2.5 text-[13px] font-semibold text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]"
+              >
+                {showAdvanced ? "Hide Filters" : "More Filters"}
+              </button>
+              {!operatorMode && (
+                <>
+                  <Button type="button" variant="secondary" onClick={handleDownloadTemplate}>
+                    <Upload className="h-4 w-4" /> Import
+                  </Button>
+                  <ExportDownloadMenu disabled={!filteredMachines.length} onExport={handleExport} />
+                </>
+              )}
+            </div>
+            <div className="flex rounded-lg border border-[var(--color-border)] p-0.5 shrink-0">
               <button
                 type="button"
                 onClick={() => setViewMode("grid")}

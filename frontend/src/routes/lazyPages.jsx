@@ -198,6 +198,7 @@ export const PendingApprovals = lazy(() => import("../pages/admin/PendingApprova
 export const DocumentsDashboard = lazy(() => import("../pages/documents/DocumentsDashboard"));
 export const MeetingsList = lazy(() => import("../pages/meetings/MeetingsList"));
 export const MeetingDetail = lazy(() => import("../pages/meetings/MeetingDetail"));
+export const WorkChat = lazy(() => import("../pages/chat/WorkChat"));
 export const PurchaseDocuments = lazy(() => import("../pages/documents/PurchaseDocuments"));
 export const ProductionFiles = lazy(() => import("../pages/documents/ProductionFiles"));
 export const QualityCertificates = lazy(() => import("../pages/documents/QualityCertificates"));

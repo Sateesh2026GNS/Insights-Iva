@@ -253,7 +253,7 @@ export default function Purchases() {
 
       <div className="rounded-t-2xl border border-[var(--color-border)] border-b-0 bg-[var(--color-surface)] px-4 pb-6 pt-4 sm:px-6">
         <div className="mb-3 flex flex-col gap-3 border-b border-[var(--color-border)] pb-3 sm:flex-row sm:items-center sm:justify-between">
-          <SearchBar value={search} onChange={setSearch} placeholder="Search" className="w-full" />
+          <SearchBar value={search} onChange={setSearch} placeholder="Search" />
           <div className="relative flex gap-2">
             <button
               type="button"

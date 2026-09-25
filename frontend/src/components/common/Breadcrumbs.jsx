@@ -196,10 +196,13 @@ const PAGE_TITLE_OVERRIDES = {
   "/sales/payments/create": "Record Payment",
   "/sales/payment-receipts/create": "Record Payment",
   "/production/operator-jobs": "My Operator Jobs",
+  "/production/dashboard": "Dashboard",
+  "/production/planning": "Production Planning",
 };
 
 const BREADCRUMB_TITLE_OVERRIDES = {
   "/inventory": "All Items",
+  "/production/dashboard": "Dashboard",
 };
 
 const STAGE_LABELS = {
@@ -280,8 +283,11 @@ function getLabel(segment, segments, index) {
     if (cat) return cat.title;
   }
 
-  // Manufacturing workflow stage handling
-  if (STAGE_LABELS[segment]) {
+  // Manufacturing workflow stage labels — not for top-level /production routes
+  const inWorkflowStage =
+    segments.includes("workflow") &&
+    (prev === "order" || (prev && /^\d+$/.test(prev) && segments.includes("order")));
+  if (inWorkflowStage && STAGE_LABELS[segment]) {
     return STAGE_LABELS[segment];
   }
 
@@ -336,6 +342,18 @@ export function getBreadcrumbTrail(pathname) {
 
   if (!segments.length) {
     return [{ label: "Dashboard", path: "/" }];
+  }
+
+  if (normalizedPath === "/production/dashboard") {
+    return [{ label: "Dashboard", path: "/production/dashboard" }];
+  }
+
+  if (normalizedPath === "/production/planning") {
+    return [
+      { label: "Dashboard", path: "/production/dashboard" },
+      { label: "Production", path: "/production/planning" },
+      { label: "Production Planning", path: "/production/planning" },
+    ];
   }
 
   const trail = [

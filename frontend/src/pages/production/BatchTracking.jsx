@@ -162,12 +162,7 @@ export default function BatchTracking() {
       <ListPageCard>
         <ListPageCardBody>
           <div className="mb-4 print:hidden">
-            <SearchBar
-              value={search}
-              onChange={setSearch}
-              placeholder="Search"
-              className="w-full"
-            />
+            <SearchBar value={search} onChange={setSearch} placeholder="Search batches..." aria-label="Search batches" />
           </div>
           <DataTable
             columns={columns}

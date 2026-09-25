@@ -45,6 +45,7 @@ from app.api.iot import router as iot_router
 from app.api.maintenance import router as maintenance_router
 from app.api.meetings import google_router as google_calendar_router
 from app.api.meetings import router as meetings_router
+from app.api.work_chat import router as work_chat_router
 from app.api.procurement import router as procurement_router
 from app.api.production_scheduling import router as production_scheduling_router
 from app.api.quality import router as quality_router
@@ -527,6 +528,8 @@ app.include_router(forecasting_router)
 app.include_router(integration_router)
 app.include_router(meetings_router)
 app.include_router(meetings_router, prefix="/api")
+app.include_router(work_chat_router)
+app.include_router(work_chat_router, prefix="/api")
 app.include_router(google_calendar_router)
 app.include_router(google_calendar_router, prefix="/api")
 app.include_router(iot_router)

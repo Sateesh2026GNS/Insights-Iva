@@ -494,7 +494,7 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
       <ListPageCard className="print:hidden">
         <ListPageCardBody>
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <SearchBar value={search} onChange={setSearch} placeholder="Search" className="w-full" />
+          <SearchBar value={search} onChange={setSearch} placeholder="Search" />
           <div className="flex flex-wrap items-center gap-2">
             <Button type="button" variant="secondary" onClick={() => setShowFilters((v) => !v)}>
               <Filter className="h-4 w-4" />
