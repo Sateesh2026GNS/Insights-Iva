@@ -668,6 +668,7 @@ export default function Quotations() {
                               icon: <Edit2 className="h-4 w-4" />,
                               onClick: () => navigate(`/sales/quotations/${r.id}/edit`),
                             },
+                            
                             (r.status || "").toLowerCase() !== "cancelled"
                               ? {
                                   label: "Convert to Sales Order",

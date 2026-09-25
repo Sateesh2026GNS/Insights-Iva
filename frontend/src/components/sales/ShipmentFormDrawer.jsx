@@ -84,8 +84,8 @@ export default function ShipmentFormDrawer({
     getSalesOrdersEnriched()
       .then((res) => {
         if (cancelled) return;
-        const list = (res?.data || []).filter((o) => !o.shipped);
-        setOrders(list);
+        const list = Array.isArray(res?.data) ? res.data : [];
+setOrders(list);
       })
       .catch(() => {
         if (!cancelled) setOrders([]);
@@ -185,7 +185,9 @@ export default function ShipmentFormDrawer({
           <button
             type="button"
             onClick={onClose}
-            disabled={saving}
+          
+ 
+
             className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
             aria-label="Close"
           >
