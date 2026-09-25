@@ -15,7 +15,9 @@ import {
 import { CheckCircle, ClipboardCheck, Clock, Percent, XCircle } from "lucide-react";
 
 import Loader from "../../components/common/Loader";
+import DashboardReportExport from "../../components/common/DashboardReportExport";
 import PageHeader from "../../components/common/PageHeader";
+import { metricExportRows } from "../../utils/dashboardExportRows";
 import { getQualityHub } from "../../api/qualityApi";
 import { EMPTY_QUALITY_HUB, mergeQualityHub, qcStatusColor } from "../../data/qualityMasterData";
 import useManufacturingRefresh from "../../hooks/useManufacturingRefresh";
@@ -112,10 +114,27 @@ export default function QualityDashboard() {
   const trendData = hub.inspection_trend || [];
   const typeData = hub.inspection_by_type || [];
   const recentRows = hub.recent_inspections || [];
+  const qualityExportRows = metricExportRows([
+    { label: "Total inspections", value: hub.total_inspections },
+    { label: "Passed", value: hub.passed },
+    { label: "Failed", value: hub.failed },
+    { label: "Pending", value: hub.pending },
+    { label: "Pass rate", value: `${hub.pass_rate ?? 0}%` },
+  ]);
 
   return (
     <div className="min-w-0 space-y-5 pb-4">
-      <PageHeader subtitle="Overview of quality activities and performance." />
+      <PageHeader
+        subtitle="Overview of quality activities and performance."
+        action={
+          <DashboardReportExport
+            title="Quality Dashboard"
+            filename="quality-dashboard"
+            rows={qualityExportRows}
+            module="quality"
+          />
+        }
+      />
 
       {/* KPI row */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">

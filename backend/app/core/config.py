@@ -145,14 +145,26 @@ class Settings(BaseSettings):
     )
 
     # SMTP (required for password-reset emails — never fake success)
-    smtp_host: str = ""
-    smtp_port: int = 587
+    smtp_host: str = Field(
+        default="",
+        validation_alias=AliasChoices("SMTP_HOST", "smtp_host"),
+    )
+    smtp_port: int = Field(
+        default=587,
+        validation_alias=AliasChoices("SMTP_PORT", "smtp_port"),
+    )
     smtp_user: str = Field(
         default="",
         validation_alias=AliasChoices("SMTP_USERNAME", "SMTP_USER", "smtp_user"),
     )
-    smtp_password: str = ""
-    smtp_from_email: str = "noreply@gnssoftwares.com"
+    smtp_password: str = Field(
+        default="",
+        validation_alias=AliasChoices("SMTP_PASSWORD", "smtp_password"),
+    )
+    smtp_from_email: str = Field(
+        default="",
+        validation_alias=AliasChoices("SMTP_FROM_EMAIL", "SMTP_FROM", "smtp_from_email"),
+    )
 
     # Environment: "development" | "production"
     environment: str = "development"

@@ -616,6 +616,7 @@ def serialize_queue_order(
         "job_card_no": job_card.job_card_no if job_card else None,
         "job_card_date": job_card.created_at.date().isoformat() if job_card and job_card.created_at else None,
         "order_number": so.order_number,
+        "customer_id": so.customer_id,
         "customer_name": so.customer.name if so.customer else None,
         "product_name": product_name,
         "product_code": product_code,
@@ -778,6 +779,44 @@ def build_store_queue_context(
     return ctx
 
 
+def filter_my_job_card_queue_items(
+    items: list[dict[str, Any]],
+    *,
+    job_card_no: str | None = None,
+    customer_id: int | None = None,
+    customer_name: str | None = None,
+    sales_order_no: str | None = None,
+) -> list[dict[str, Any]]:
+    """AND semantics across supplied search fields (server-side)."""
+    jc_q = (job_card_no or "").strip().lower()
+    cust_name_q = (customer_name or "").strip()
+    so_q = (sales_order_no or "").strip()
+    if not jc_q and not customer_id and not cust_name_q and not so_q:
+        return items
+
+    def matches(row: dict[str, Any]) -> bool:
+        if jc_q:
+            hay = str(row.get("job_card_no") or row.get("order_number") or "").lower()
+            if jc_q not in hay:
+                return False
+        if customer_id is not None:
+            row_cid = row.get("customer_id")
+            if row_cid is None and cust_name_q:
+                if str(row.get("customer_name") or "").strip() != cust_name_q:
+                    return False
+            elif int(row_cid or 0) != int(customer_id):
+                return False
+        elif cust_name_q:
+            if str(row.get("customer_name") or "").strip() != cust_name_q:
+                return False
+        if so_q:
+            if str(row.get("order_number") or "").strip() != so_q:
+                return False
+        return True
+
+    return [row for row in items if matches(row)]
+
+
 def get_my_job_card_queue(
     db: Session,
     tenant_id: int,
@@ -787,6 +826,10 @@ def get_my_job_card_queue(
     limit: int = 50,
     strict: bool = True,
     include_completed: bool = True,
+    job_card_no: str | None = None,
+    customer_id: int | None = None,
+    customer_name: str | None = None,
+    sales_order_no: str | None = None,
 ) -> dict[str, Any]:
     """Return job cards actionable by the current user — backend role filtering only."""
     from app.services.workflow_team_service import repair_confirmed_orders_missing_workflow
@@ -818,6 +861,13 @@ def get_my_job_card_queue(
     # Operator queue: assignee-scoped via work orders
     if TEAM_OPERATOR in teams and not is_admin and (not status_filter or status_filter.upper() in ACTIONABLE_STATUSES_BY_TEAM[TEAM_OPERATOR]):
         items = _operator_my_queue(db, tenant_id, user, status_filter=status_filter, limit=limit)
+        items = filter_my_job_card_queue_items(
+            items,
+            job_card_no=job_card_no,
+            customer_id=customer_id,
+            customer_name=customer_name,
+            sales_order_no=sales_order_no,
+        )
         return {"items": items, "meta": metadata, "total": len(items)}
 
     orders: list[SalesOrder] = []
@@ -947,6 +997,14 @@ def get_my_job_card_queue(
                 key=lambda r: r.get("received_at") or r.get("created_at") or "",
                 reverse=True,
             )
+
+    items = filter_my_job_card_queue_items(
+        items,
+        job_card_no=job_card_no,
+        customer_id=customer_id,
+        customer_name=customer_name,
+        sales_order_no=sales_order_no,
+    )
 
     total = len(items)
     if total > effective_limit:

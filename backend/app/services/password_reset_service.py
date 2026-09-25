@@ -78,7 +78,7 @@ class PasswordResetService:
             detail = smtp_config_error_message() or MSG_SMTP_FAILED
             logger.error("Password Reset Failed user_id=%s reason=smtp_not_configured", user.id)
             raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail=detail,
             )
 
@@ -90,14 +90,19 @@ class PasswordResetService:
         try:
             await send_password_reset_email_async(user.email, raw_token)
         except EmailDeliveryError as exc:
-            logger.error("Password Reset Failed user_id=%s reason=smtp detail=%s", user.id, exc)
+            logger.error(
+                "Password Reset Failed user_id=%s reason=%s detail=%s",
+                user.id,
+                exc.reason,
+                exc.internal_detail,
+            )
             row = self.repo.get_reset_token_row(raw_token)
             if row:
                 self.repo.delete_reset_token(row)
                 self.repo.commit()
             raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=str(exc) or MSG_SMTP_FAILED,
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=exc.public_message or MSG_SMTP_FAILED,
             ) from None
         except Exception:
             logger.exception("Password Reset Failed user_id=%s", user.id)
@@ -282,14 +287,19 @@ class PasswordResetService:
         try:
             send_password_reset_email(user.email, raw_token)
         except EmailDeliveryError as exc:
-            logger.error("Password Reset Failed admin_trigger user_id=%s reason=smtp detail=%s", user.id, exc)
+            logger.error(
+                "Password Reset Failed admin_trigger user_id=%s reason=%s detail=%s",
+                user.id,
+                exc.reason,
+                exc.internal_detail,
+            )
             row = self.repo.get_reset_token_row(raw_token)
             if row:
                 self.repo.delete_reset_token(row)
                 self.repo.commit()
             raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=str(exc) or MSG_SMTP_FAILED,
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=exc.public_message or MSG_SMTP_FAILED,
             ) from None
         except Exception as exc:
             logger.exception("Password Reset Failed admin_trigger user_id=%s", user.id)

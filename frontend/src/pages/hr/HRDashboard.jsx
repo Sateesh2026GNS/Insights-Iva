@@ -17,7 +17,9 @@ import {
 import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
 
 import Loader from "../../components/common/Loader";
+import DashboardReportExport from "../../components/common/DashboardReportExport";
 import DashboardWelcomeBanner from "../../components/dashboard/DashboardWelcomeBanner";
+import { metricExportRows } from "../../utils/dashboardExportRows";
 import useAuth from "../../hooks/useAuth";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { useToast } from "../../context/ToastContext";
@@ -571,8 +573,25 @@ export default function HRDashboard() {
     [data.expense_categories]
   );
 
+  const hrExportRows = metricExportRows([
+    { label: "Active employees", value: data.active_employees },
+    { label: "Hired this month", value: data.hired_month },
+    { label: "Exits this month", value: data.exits_month },
+    { label: "On leave today", value: data.on_leave_today },
+    { label: "Pending leave requests", value: data.pending_leave_requests },
+    { label: "Open positions", value: data.open_positions },
+  ]);
+
   return (
     <div className="hr-dashboard ui-page ui-stack min-w-0 space-y-4">
+      <div className="flex justify-end">
+        <DashboardReportExport
+          title="HR Dashboard"
+          filename="hr-dashboard"
+          rows={hrExportRows}
+          module="hr"
+        />
+      </div>
       {/* Row 1: Welcome Banner (2 cols) & Check In / Let's Get To Work (1 col) */}
       <div className="grid gap-4 lg:grid-cols-3 items-stretch">
         <div className="lg:col-span-2 flex flex-col">

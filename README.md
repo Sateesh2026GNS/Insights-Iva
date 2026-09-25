@@ -169,7 +169,6 @@ Other roles keep their existing landing paths (`roleRedirect.js`: e.g. Productio
 ---
 
 ## Quick start
-
 ### Prerequisites
 
 - **Python 3.12+**
@@ -209,6 +208,8 @@ alembic current   # confirm head revision
 
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
+
+**Outbound email (optional in dev, required for password reset and Email PDF):** copy SMTP settings from `backend/.env.example` into `backend/.env` (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM_EMAIL`). `SMTP_PASSWORD` must be a non-empty app password (Gmail requires a Google App Password, not your login password). Use port **587** with STARTTLS (default) or **465** with SSL. Verify without sending mail: `python scripts/check_smtp.py` from `backend/`. **Stop and restart uvicorn** after changing `.env`.
 
 - **API docs:** http://localhost:8000/docs  
 - **Health:** http://localhost:8000/health
@@ -270,6 +271,7 @@ Never commit `.env`. Never put secrets in `VITE_*` variables.
 | Vite `ECONNRESET` on API calls | Backend hot-reload restarted mid-request | Refresh; wait for uvicorn to finish starting |
 | Dashboard drawers show “API endpoint not available” | Hosted frontend without matching API routes | Run latest backend locally or deploy API with new `/api/erp/dashboard/*` routes |
 | Migration errors | DB not on latest head | `alembic upgrade head` |
+| Email PDF / forgot password fails with “contact your administrator” | SMTP not set in `backend/.env` | Fill `SMTP_*` in `.env`, restart backend; check uvicorn log for `SMTP email service is configured` |
 | Pipeline / Quick Actions show `0` during load | Treating loading as zero | Use dashboard refresh; components show skeletons until `GET /api/erp/dashboard` completes |
 
 ---

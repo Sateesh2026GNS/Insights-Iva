@@ -721,6 +721,37 @@
   padding: 1rem 1.25rem 1.25rem;
 }
 
+.my-job-cards-filters__title {
+  margin: 0 0 0.75rem;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: #111827;
+}
+
+.my-job-cards-filters--simple {
+  padding: 0.875rem 1.25rem 1rem;
+}
+
+.my-job-cards-filters__simple-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem 1rem;
+  align-items: end;
+}
+
+@media (min-width: 768px) {
+  .my-job-cards-filters__simple-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) minmax(0, 1.2fr) auto;
+  }
+}
+
+.my-job-cards-filters__simple-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
 .my-job-cards-filters__grid {
   display: grid;
   grid-template-columns: 1fr;

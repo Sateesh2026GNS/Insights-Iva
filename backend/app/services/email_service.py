@@ -23,9 +23,42 @@ except ImportError:  # pragma: no cover
     ConnectionConfig = FastMail = MessageSchema = MessageType = None  # type: ignore
     _HAS_FASTAPI_MAIL = False
 
+# Safe for API responses and end-user UI (never mention .env or specific env var names).
+PUBLIC_MSG_NOT_CONFIGURED = (
+    "Email service is not configured. Please contact your administrator."
+)
+PUBLIC_MSG_UNAVAILABLE = (
+    "Email service is temporarily unavailable. Please try again later."
+)
+PUBLIC_MSG_AUTH_FAILED = PUBLIC_MSG_UNAVAILABLE
+PUBLIC_MSG_CONNECTION_FAILED = PUBLIC_MSG_UNAVAILABLE
+PUBLIC_MSG_SEND_FAILED = PUBLIC_MSG_UNAVAILABLE
+
+EMAIL_ERROR_CODES = {
+    "not_configured": "smtp_not_configured",
+    "auth": "smtp_auth_failed",
+    "connection": "smtp_connection_failed",
+    "delivery": "smtp_send_failed",
+}
+
 
 class EmailDeliveryError(Exception):
-    """Raised when SMTP is misconfigured or delivery fails."""
+    """SMTP misconfiguration or delivery failure."""
+
+    def __init__(
+        self,
+        public_message: str,
+        *,
+        reason: str = "delivery",
+        internal_detail: str | None = None,
+    ):
+        self.public_message = public_message
+        self.reason = reason
+        self.internal_detail = internal_detail or public_message
+        super().__init__(public_message)
+
+    def __str__(self) -> str:
+        return self.public_message
 
 
 def _settings():
@@ -33,18 +66,8 @@ def _settings():
     return get_settings()
 
 
-def smtp_is_configured() -> bool:
-    s = _settings()
-    return bool(
-        (s.smtp_host or "").strip()
-        and (s.smtp_user or "").strip()
-        and (s.smtp_password or "").strip()
-        and (s.smtp_from_email or "").strip()
-    )
-
-
-def smtp_config_error_message() -> str | None:
-    """Return a specific missing-config message, or None if SMTP looks complete."""
+def smtp_missing_env_var_names() -> list[str]:
+    """Names of unset SMTP settings (for server logs only — never log secret values)."""
     s = _settings()
     missing = []
     if not (s.smtp_host or "").strip():
@@ -55,19 +78,133 @@ def smtp_config_error_message() -> str | None:
         missing.append("SMTP_PASSWORD")
     if not (s.smtp_from_email or "").strip():
         missing.append("SMTP_FROM_EMAIL")
-    if not missing:
+    return missing
+
+
+def smtp_is_configured() -> bool:
+    return not smtp_missing_env_var_names()
+
+
+def smtp_config_error_message() -> str | None:
+    """User-safe message when SMTP is incomplete, or None if settings look complete."""
+    if smtp_is_configured():
         return None
-    return (
-        "Email server is not configured. Set "
-        + ", ".join(missing)
-        + " in backend/.env, then restart the backend."
+    return PUBLIC_MSG_NOT_CONFIGURED
+
+
+def log_smtp_startup_status() -> None:
+    """Log whether outbound email is configured (no credentials)."""
+    snap = smtp_configuration_snapshot()
+    if not snap["configured"]:
+        logger.warning(
+            "SMTP email service is not configured. missing_settings=%s",
+            ", ".join(snap["missing_settings"]),
+        )
+        return
+    logger.info(
+        "SMTP email service is configured host=%s port=%s username_configured=%s "
+        "password_configured=%s from_configured=%s transport=%s",
+        snap["host"],
+        snap["port"],
+        snap["username_configured"],
+        snap["password_configured"],
+        snap["from_configured"],
+        snap["transport"],
     )
 
 
+def smtp_configuration_snapshot() -> dict:
+    """Safe diagnostic snapshot (no secret values)."""
+    s = _settings()
+    missing = smtp_missing_env_var_names()
+    host = (s.smtp_host or "").strip()
+    return {
+        "configured": not missing,
+        "missing_settings": missing,
+        "host": host,
+        "port": int(s.smtp_port),
+        "username_configured": bool((s.smtp_user or "").strip()),
+        "password_configured": bool((s.smtp_password or "").strip()),
+        "from_configured": bool((s.smtp_from_email or "").strip()),
+        "from_email": (s.smtp_from_email or "").strip(),
+        "transport": "ssl" if _smtp_use_implicit_ssl(s) else "starttls",
+    }
+
+
+def email_delivery_http_detail(exc: EmailDeliveryError) -> dict[str, str]:
+    code = EMAIL_ERROR_CODES.get(exc.reason, "smtp_send_failed")
+    return {"message": exc.public_message, "code": code}
+
+
+def _smtp_use_implicit_ssl(s) -> bool:
+    return int(s.smtp_port) == 465
+
+
+def _smtp_session(s):
+    host = (s.smtp_host or "").strip()
+    port = int(s.smtp_port)
+    timeout = 15
+    if _smtp_use_implicit_ssl(s):
+        return smtplib.SMTP_SSL(host, port, timeout=timeout)
+    return smtplib.SMTP(host, port, timeout=timeout)
+
+
+def _prepare_smtp_server(server, s) -> None:
+    server.ehlo()
+    if not _smtp_use_implicit_ssl(s):
+        server.starttls()
+        server.ehlo()
+
+
+def _smtp_login_and_send(server, s, msg: EmailMessage) -> None:
+    server.login(s.smtp_user, s.smtp_password)
+    server.send_message(msg)
+
+
 def _require_smtp() -> None:
-    msg = smtp_config_error_message()
-    if msg:
-        raise EmailDeliveryError(msg)
+    missing = smtp_missing_env_var_names()
+    if missing:
+        logger.warning(
+            "SMTP email service is not configured. missing_settings=%s",
+            ", ".join(missing),
+        )
+        raise EmailDeliveryError(
+            PUBLIC_MSG_NOT_CONFIGURED,
+            reason="not_configured",
+            internal_detail=f"missing_settings={','.join(missing)}",
+        )
+
+
+def _classify_delivery_failure(exc: Exception) -> EmailDeliveryError:
+    if isinstance(exc, EmailDeliveryError):
+        return exc
+    if isinstance(exc, smtplib.SMTPAuthenticationError):
+        logger.warning("email_auth_failed: %s", exc)
+        return EmailDeliveryError(
+            PUBLIC_MSG_AUTH_FAILED,
+            reason="auth",
+            internal_detail=str(exc),
+        )
+    if isinstance(exc, (smtplib.SMTPConnectError, smtplib.SMTPServerDisconnected, TimeoutError, OSError)):
+        logger.warning("email_connection_failed: %s", exc)
+        return EmailDeliveryError(
+            PUBLIC_MSG_CONNECTION_FAILED,
+            reason="connection",
+            internal_detail=str(exc),
+        )
+    if isinstance(exc, smtplib.SMTPException):
+        logger.warning("email_smtp_failed: %s", exc)
+        return EmailDeliveryError(
+            PUBLIC_MSG_SEND_FAILED,
+            reason="delivery",
+            internal_detail=str(exc),
+        )
+    logger.exception("email_send_failed_unexpected")
+    return EmailDeliveryError(
+        PUBLIC_MSG_SEND_FAILED,
+        reason="delivery",
+        internal_detail=str(exc),
+    )
 
 
 def _send_via_smtplib(
@@ -92,17 +229,13 @@ def _send_via_smtplib(
         msg.add_attachment(content, maintype=maintype, subtype=subtype or "octet-stream", filename=filename)
 
     try:
-        with smtplib.SMTP(s.smtp_host, s.smtp_port, timeout=10) as server:
-            server.ehlo()
-            server.starttls()
-            server.ehlo()
-            server.login(s.smtp_user, s.smtp_password)
-            server.send_message(msg)
+        with _smtp_session(s) as server:
+            _prepare_smtp_server(server, s)
+            _smtp_login_and_send(server, s, msg)
     except EmailDeliveryError:
         raise
     except Exception as exc:
-        logger.exception("email_send_failed to=%s subject=%s", to, subject)
-        raise EmailDeliveryError("Failed to send password reset email.") from exc
+        raise _classify_delivery_failure(exc) from exc
 
 
 async def _send_via_fastapi_mail(
@@ -114,6 +247,7 @@ async def _send_via_fastapi_mail(
 ) -> None:
     _require_smtp()
     s = _settings()
+    use_ssl = _smtp_use_implicit_ssl(s)
     conf = ConnectionConfig(
         MAIL_USERNAME=s.smtp_user,
         MAIL_PASSWORD=s.smtp_password,
@@ -121,8 +255,8 @@ async def _send_via_fastapi_mail(
         MAIL_PORT=s.smtp_port,
         MAIL_SERVER=s.smtp_host,
         MAIL_FROM_NAME="Insights Iva",
-        MAIL_STARTTLS=True,
-        MAIL_SSL_TLS=False,
+        MAIL_STARTTLS=not use_ssl,
+        MAIL_SSL_TLS=use_ssl,
         USE_CREDENTIALS=True,
         VALIDATE_CERTS=True,
     )
@@ -135,8 +269,7 @@ async def _send_via_fastapi_mail(
     try:
         await FastMail(conf).send_message(message)
     except Exception as exc:
-        logger.exception("email_send_failed to=%s subject=%s", to, subject)
-        raise EmailDeliveryError("Failed to send password reset email.") from exc
+        raise _classify_delivery_failure(exc) from exc
 
 
 async def send_email_async(
@@ -153,6 +286,8 @@ async def send_email_async(
         try:
             await _send_via_fastapi_mail(to, subject, body, html=html)
             return
+        except EmailDeliveryError:
+            raise
         except Exception as exc:
             logger.warning("fastapi_mail_failed_falling_back_to_smtplib to=%s: %s", to, exc)
     await asyncio.to_thread(_send_via_smtplib, to, subject, body, html=html, attachments=attachments)

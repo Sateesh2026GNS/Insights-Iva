@@ -364,8 +364,13 @@ class PlatformCompanyService:
 
             if not smtp_is_configured():
                 email_sent = False
-                email_error = smtp_config_error_message() or "Email server is not configured."
-                logger.warning("Welcome email skipped for company %s: %s", company_id, email_error)
+                email_error = smtp_config_error_message() or (
+                    "Email service is currently unavailable. Please contact your administrator."
+                )
+                logger.warning(
+                    "Welcome email skipped for company %s: SMTP not configured",
+                    company_id,
+                )
             else:
                 email_sent = True
                 def _dispatch_email():

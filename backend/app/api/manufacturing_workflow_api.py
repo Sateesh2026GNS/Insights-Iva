@@ -190,12 +190,26 @@ def my_job_card_queue(
     status: str | None = Query(None),
     limit: int = Query(50, ge=1, le=2000),
     include_completed: bool = Query(True),
+    job_card_no: str | None = Query(None, max_length=80),
+    customer_id: int | None = Query(None, ge=1),
+    customer_name: str | None = Query(None, max_length=200),
+    sales_order_no: str | None = Query(None, max_length=80),
     user: User = Depends(require_any_permission(*WORKFLOW_MODULES)),
     db: Session = Depends(get_db),
 ):
     """Role-filtered actionable job card queue — backend determines visibility."""
     return get_my_job_card_queue(
-        db, user.tenant_id, user, status_filter=status, limit=limit, strict=True, include_completed=include_completed
+        db,
+        user.tenant_id,
+        user,
+        status_filter=status,
+        limit=limit,
+        strict=True,
+        include_completed=include_completed,
+        job_card_no=job_card_no,
+        customer_id=customer_id,
+        customer_name=customer_name,
+        sales_order_no=sales_order_no,
     )
 
 

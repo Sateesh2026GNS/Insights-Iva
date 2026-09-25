@@ -15,7 +15,9 @@ import {
 import { getAccountsDashboard } from "../../api/accountsApi";
 import Button from "../../components/common/Button";
 import KpiCard from "../../components/common/KpiCard";
+import DashboardReportExport from "../../components/common/DashboardReportExport";
 import PageHeader from "../../components/common/PageHeader";
+import { metricExportRows } from "../../utils/dashboardExportRows";
 import DataTable from "../../components/common/DataTable";
 import EmptyState from "../../components/common/EmptyState";
 import ErrorState from "../../components/common/states/ErrorState";
@@ -109,57 +111,57 @@ export default function AccountsDashboard() {
   const failed = Boolean(error);
 
   const kpiItems = [
-    {
-      label: "Total Receivables",
-      value: moneyOrDash(kpis.total_receivables, failed),
-      icon: ArrowUpRight,
-      color: "bg-emerald-600",
-      to: receivablesLink("open"),
-    },
-    {
-      label: "Total Payables",
-      value: moneyOrDash(kpis.total_payables, failed),
-      icon: ArrowDownRight,
-      color: "bg-rose-600",
-      to: payablesLink("open"),
-    },
-    {
-      label: "Cash & Bank",
-      value: moneyOrDash(kpis.cash_and_bank_balance, failed),
-      icon: Wallet,
-      color: "bg-slate-700",
-      to: ACCOUNTS_ROUTES.ledger,
-    },
-    {
-      label: "Today's Collections",
-      value: moneyOrDash(kpis.todays_collections, failed),
-      icon: Banknote,
-      color: "bg-teal-600",
-      to: paymentsLink("today_in"),
-    },
-    {
-      label: "Today's Payments",
-      value: moneyOrDash(kpis.todays_payments, failed),
-      icon: IndianRupee,
-      color: "bg-amber-600",
-      to: paymentsLink("today_out"),
-    },
-    {
-      label: "Overdue Receivables",
-      value: moneyOrDash(kpis.overdue_receivables, failed),
-      icon: AlertTriangle,
-      tone: "danger",
-      color: "bg-red-600",
-      to: receivablesLink("overdue"),
-    },
-    {
-      label: "Overdue Payables",
-      value: moneyOrDash(kpis.overdue_payables, failed),
-      icon: AlertTriangle,
-      tone: "danger",
-      color: "bg-rose-600",
-      to: payablesLink("overdue"),
-    },
+      {
+        label: "Total Receivables",
+        value: moneyOrDash(kpis.total_receivables, failed),
+        icon: ArrowUpRight,
+        color: "bg-emerald-600",
+        to: receivablesLink("open"),
+      },
+      {
+        label: "Total Payables",
+        value: moneyOrDash(kpis.total_payables, failed),
+        icon: ArrowDownRight,
+        color: "bg-rose-600",
+        to: payablesLink("open"),
+      },
+      {
+        label: "Cash & Bank",
+        value: moneyOrDash(kpis.cash_and_bank_balance, failed),
+        icon: Wallet,
+        color: "bg-slate-700",
+        to: ACCOUNTS_ROUTES.ledger,
+      },
+      {
+        label: "Today's Collections",
+        value: moneyOrDash(kpis.todays_collections, failed),
+        icon: Banknote,
+        color: "bg-teal-600",
+        to: paymentsLink("today_in"),
+      },
+      {
+        label: "Today's Payments",
+        value: moneyOrDash(kpis.todays_payments, failed),
+        icon: IndianRupee,
+        color: "bg-amber-600",
+        to: paymentsLink("today_out"),
+      },
+      {
+        label: "Overdue Receivables",
+        value: moneyOrDash(kpis.overdue_receivables, failed),
+        icon: AlertTriangle,
+        tone: "danger",
+        color: "bg-red-600",
+        to: receivablesLink("overdue"),
+      },
+      {
+        label: "Overdue Payables",
+        value: moneyOrDash(kpis.overdue_payables, failed),
+        icon: AlertTriangle,
+        tone: "danger",
+        color: "bg-rose-600",
+        to: payablesLink("overdue"),
+      },
   ];
 
   if (data?.features?.gst) {
@@ -173,6 +175,8 @@ export default function AccountsDashboard() {
       to: ACCOUNTS_ROUTES.gst,
     });
   }
+
+  const accountsExportRows = metricExportRows(kpiItems.map(({ label, value }) => ({ label, value })));
 
   const arColumns = [
     { key: "customer_name", label: "Customer" },
@@ -289,6 +293,13 @@ export default function AccountsDashboard() {
             <Link to={ACCOUNTS_ROUTES.settings}>
               <Button type="button" variant="secondary">Settings</Button>
             </Link>
+            <DashboardReportExport
+              title="Accounts Dashboard"
+              filename="accounts-dashboard"
+              rows={accountsExportRows}
+              disabled={failed && !data}
+              module="accounts"
+            />
           </div>
         }
       />

@@ -242,6 +242,26 @@ class InvoiceListEnrichedRead(BaseModel):
         return value
 
 
+class SalesMyWorkActivityRead(BaseModel):
+    id: str
+    category: str
+    title: str
+    subtitle: str = ""
+    status: str = "completed"
+    view_path: str
+    occurred_at: str | None = None
+    time_label: str | None = None
+
+
+class SalesMyWorkRead(BaseModel):
+    activity_date: str
+    completed_count: int = 0
+    pending_count: int = 0
+    completed: list[SalesMyWorkActivityRead] = Field(default_factory=list)
+    pending: list[SalesMyWorkActivityRead] = Field(default_factory=list)
+    timeline: list[SalesMyWorkActivityRead] = Field(default_factory=list)
+
+
 class SalesHubRead(BaseModel):
     monthly_revenue: float = Field(0.0, ge=0.0)
     total_orders: int = 0
@@ -254,6 +274,10 @@ class SalesHubRead(BaseModel):
     open_quotations_value: float = Field(0.0, ge=0.0)
     conversion_rate: float = Field(0.0, ge=0.0)
     period_label: str = ""
+    period_from: str = ""
+    period_to: str = ""
+    pipeline_production: int = 0
+    pipeline_completed: int = 0
     top_customers: list[dict] = Field(default_factory=list)
     sales_executive_performance: list[dict] = Field(default_factory=list)
     alerts: list[dict] = Field(default_factory=list)

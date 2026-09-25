@@ -533,6 +533,26 @@ export default function StoreAgentChatPanel({ pageContextLabel = "", floatingSta
                 e.preventDefault();
                 sendMessage();
               }}
+              onPaste={(e) => {
+                const items = e.clipboardData?.items;
+                if (!items?.length) return;
+                let picked = null;
+                for (const item of items) {
+                  if (item.type?.startsWith("image/")) {
+                    const blob = item.getAsFile();
+                    if (blob) {
+                      picked = blob;
+                      break;
+                    }
+                  }
+                }
+                if (!picked) return;
+                e.preventDefault();
+                const ext = picked.type?.includes("jpeg") ? "jpg" : picked.type?.split("/")[1] || "png";
+                const name = `pasted-image-${new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19)}.${ext}`;
+                const file = new File([picked], name, { type: picked.type || "image/png" });
+                onPickScreenshot(file);
+              }}
             >
               <input
                 ref={imageInputRef}

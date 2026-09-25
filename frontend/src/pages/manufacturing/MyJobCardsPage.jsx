@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { ClipboardList, Plus, SlidersHorizontal } from "lucide-react";
+import { ClipboardList, Plus } from "lucide-react";
 
 import Button from "../../components/common/Button";
 import { ListPageShell } from "../../components/common/ListPageShell";
@@ -20,7 +20,9 @@ import StoreManagerJobCardDocumentPanel from "../../components/manufacturing/Sto
 import useAuth from "../../hooks/useAuth";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { deleteManualJobCard, getMyJobCardQueue, getWorkflowRoutingMeta } from "../../api/workflowApi";
-import { deleteSalesOrder } from "../../api/salesApi";
+import { deleteSalesOrder, getSalesOrdersEnriched } from "../../api/salesApi";
+import { fetchCustomersWithFallback } from "../../utils/customerOptions";
+import { asArray } from "../../utils/apiError";
 import {
   isAccountant,
   isAdmin,
@@ -37,7 +39,6 @@ import {
   compareStoreQueueRows,
   matchesStoreStatusBucket,
   STORE_ACTIONABLE_STATUSES,
-  uniqueFilterValues,
 } from "../../utils/storeJobCardQueue";
 import {
   jobCardCreateUrl,
@@ -53,7 +54,29 @@ import "../../styles/my-job-cards-page.css";
 import "../../styles/workflow-next-step.css";
 
 const PAGE_SIZES = [10, 20, 50, 100];
-const FETCH_LIMIT = 500;
+const FETCH_LIMIT = 2000;
+
+function hasQueueSearchFilters(filters) {
+  return Boolean(
+    String(filters?.search || "").trim()
+    || String(filters?.customer || "").trim()
+    || String(filters?.salesOrderNo || "").trim()
+  );
+}
+
+function buildQueueSearchParams(filters) {
+  const params = { limit: FETCH_LIMIT };
+  const jc = String(filters?.search || "").trim();
+  const cust = String(filters?.customer || "").trim();
+  const so = String(filters?.salesOrderNo || "").trim();
+  if (jc) params.job_card_no = jc;
+  if (cust) {
+    if (/^\d+$/.test(cust)) params.customer_id = Number(cust);
+    else params.customer_name = cust;
+  }
+  if (so) params.sales_order_no = so;
+  return params;
+}
 
 const EMPTY_FILTERS = {
   search: "",
@@ -140,9 +163,13 @@ export default function MyJobCardsPage() {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteError, setDeleteError] = useState("");
   const [deleting, setDeleting] = useState(false);
-  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [searching, setSearching] = useState(false);
+  const [serverSearchActive, setServerSearchActive] = useState(false);
+  const [customerSelectOptions, setCustomerSelectOptions] = useState([]);
+  const [salesOrderSelectOptions, setSalesOrderSelectOptions] = useState([]);
   const [sendTarget, setSendTarget] = useState(null);
   const deleteInFlight = useRef(false);
+  const searchInFlight = useRef(false);
 
   const canCreate = userCanCreateSalesJobCard(user);
   const canUpdate = userCanAction(user, "sales", "update") || canCreate;
@@ -208,7 +235,7 @@ export default function MyJobCardsPage() {
         addToast("Job card / sales order deleted successfully", "success");
       }
       setDeleteTarget(null);
-      await load(true);
+      await load(true, serverSearchActive ? appliedFilters : null);
     } catch (err) {
       const message = salesOrderDeleteErrorMessage(err, "Failed to delete job card.");
       setDeleteError(message);
@@ -220,14 +247,16 @@ export default function MyJobCardsPage() {
   };
 
   const load = useCallback(
-    async (silent = false) => {
+    async (silent = false, searchFilters = null) => {
       if (!silent) setLoading(true);
       setLoadError("");
       setLoadErrorObj(null);
       setPartialWarning("");
       markRequestStart();
       try {
-        const params = { limit: FETCH_LIMIT };
+        const params = searchFilters && hasQueueSearchFilters(searchFilters)
+          ? buildQueueSearchParams(searchFilters)
+          : { limit: FETCH_LIMIT };
         let metaWarning = "";
         const [queueRes, metaRes] = await Promise.all([
           getMyJobCardQueue(params),
@@ -254,11 +283,57 @@ export default function MyJobCardsPage() {
     [markRequestStart, markRequestEnd]
   );
 
-  usePageRefresh(() => load(true));
+  const reloadQueue = useCallback(
+    () => load(true, serverSearchActive ? appliedFilters : null),
+    [load, serverSearchActive, appliedFilters]
+  );
+
+  usePageRefresh(reloadQueue);
   useEffect(() => {
     load();
   }, [load]);
-  useEffect(() => registerRetry(() => load(true)), [registerRetry, load]);
+  useEffect(() => registerRetry(() => load(true, serverSearchActive ? appliedFilters : null)), [registerRetry, load, serverSearchActive, appliedFilters]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const customers = await fetchCustomersWithFallback();
+        if (cancelled) return;
+        setCustomerSelectOptions(
+          customers
+            .map((c) => ({
+              value: String(c.id),
+              label: String(c.name || c.company || c.customer_code || "").trim(),
+            }))
+            .filter((o) => o.label)
+        );
+      } catch {
+        if (!cancelled) setCustomerSelectOptions([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await getSalesOrdersEnriched({ limit: 500 });
+        if (cancelled) return;
+        const orders = asArray(res?.data ?? res);
+        const numbers = [...new Set(orders.map((o) => o.order_number).filter(Boolean))].sort();
+        setSalesOrderSelectOptions(numbers.map((n) => ({ value: n, label: n })));
+      } catch {
+        if (!cancelled) setSalesOrderSelectOptions([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const statusFromUrl = searchParams.get("status");
   useEffect(() => {
@@ -295,9 +370,11 @@ export default function MyJobCardsPage() {
   const filtered = useMemo(() => {
     let list = rows;
     const f = appliedFilters;
-    const jc = f.search.trim().toLowerCase();
-    if (jc) {
-      list = list.filter((r) => String(r.job_card_no || "").toLowerCase().includes(jc));
+    if (!serverSearchActive) {
+      const jc = f.search.trim().toLowerCase();
+      if (jc) {
+        list = list.filter((r) => String(r.job_card_no || "").toLowerCase().includes(jc));
+      }
     }
     if (f.priority) {
       list = list.filter((r) => String(r.priority || "").toLowerCase() === f.priority);
@@ -320,14 +397,22 @@ export default function MyJobCardsPage() {
     if (f.status) {
       list = list.filter((r) => matchesErpListStatusFilter(r, f.status));
     }
-    if (f.customer) {
-      list = list.filter((r) => String(r.customer_name || "") === f.customer);
+    if (!serverSearchActive) {
+      if (f.customer) {
+        const custLabel =
+          customerSelectOptions.find((o) => o.value === f.customer)?.label || f.customer;
+        list = list.filter(
+          (r) =>
+            String(r.customer_id || "") === String(f.customer)
+            || String(r.customer_name || "") === custLabel
+        );
+      }
+      if (f.salesOrderNo.trim()) {
+        list = list.filter((r) => String(r.order_number || "") === f.salesOrderNo);
+      }
     }
     if (f.product) {
       list = list.filter((r) => String(r.product_name || "") === f.product);
-    }
-    if (f.salesOrderNo.trim()) {
-      list = list.filter((r) => String(r.order_number || "") === f.salesOrderNo);
     }
     if (f.dateFrom || f.dateTo) {
       list = list.filter((r) => inDateRange(r.order_date || r.received_at, f.dateFrom, f.dateTo));
@@ -339,7 +424,7 @@ export default function MyJobCardsPage() {
       list = [...list].sort(compareStoreQueueRows);
     }
     return list;
-  }, [rows, appliedFilters, showStockFilter, effectiveTeam, storeMode, bucketFromUrl]);
+  }, [rows, appliedFilters, showStockFilter, effectiveTeam, storeMode, bucketFromUrl, serverSearchActive, customerSelectOptions]);
 
   useEffect(() => {
     if (!isSalesListMode) return;
@@ -384,16 +469,6 @@ export default function MyJobCardsPage() {
       { replace: true }
     );
   }, [isSalesListMode, loading, filtered, activeOrderId, activeJobCardId, setSearchParams]);
-
-  const statusOptions = useMemo(() => {
-    const fromMeta = queueMeta?.actionable_statuses;
-    if (Array.isArray(fromMeta) && fromMeta.length) return fromMeta;
-    return [];
-  }, [queueMeta]);
-
-  const customerOptions = useMemo(() => uniqueFilterValues(rows, "customer_name"), [rows]);
-  const productOptions = useMemo(() => uniqueFilterValues(rows, "product_name"), [rows]);
-  const salesOrderOptions = useMemo(() => uniqueFilterValues(rows, "order_number"), [rows]);
 
   const activeRow = useMemo(() => {
     if (activeJobCardId) {
@@ -490,56 +565,77 @@ export default function MyJobCardsPage() {
     if (page > totalPages) setPage(totalPages);
   }, [page, totalPages]);
 
-  const hasAppliedFilters = useMemo(
-    () => Object.values(appliedFilters).some((v) => Boolean(String(v || "").trim())),
-    [appliedFilters]
-  );
+  const hasAppliedFilters = useMemo(() => hasQueueSearchFilters(appliedFilters), [appliedFilters]);
 
-  const applyFilters = (next = draftFilters) => {
-    setAppliedFilters({ ...next });
+  const handleApplyFilters = async () => {
+    if (searchInFlight.current) return;
+    searchInFlight.current = true;
+    setSearching(true);
+    const next = { ...draftFilters };
+    setAppliedFilters(next);
     setPage(1);
+    const active = hasQueueSearchFilters(next);
+    setServerSearchActive(active);
+    try {
+      await load(true, active ? next : null);
+    } finally {
+      searchInFlight.current = false;
+      setSearching(false);
+    }
   };
 
-  const handleApplyFilters = () => {
-    applyFilters();
-    setFiltersOpen(false);
-  };
-
-  const clearFilters = () => {
+  const clearFilters = async () => {
+    if (searchInFlight.current) return;
     const cleared = { ...EMPTY_FILTERS };
     setDraftFilters(cleared);
     setAppliedFilters(cleared);
+    setServerSearchActive(false);
     setPage(1);
+    searchInFlight.current = true;
+    setSearching(true);
+    try {
+      await load(true, null);
+    } finally {
+      searchInFlight.current = false;
+      setSearching(false);
+    }
   };
 
-  const toggleFilters = () => {
-    setFiltersOpen((open) => !open);
+  const handleSearchKeyDown = (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleApplyFilters();
+    }
   };
 
   const patchDraft = (key, value) => {
     setDraftFilters((prev) => ({ ...prev, [key]: value }));
   };
 
-  const emptyTitle = storeMode
-    ? "No Store Manager Job Cards"
-    : billingMode
-      ? "No Billing Job Cards"
-      : operatorMode
-        ? "No Operator Job Cards"
-        : qualityMode
-          ? "No Quality Control Job Cards"
-          : "No Job Cards Found";
-  const emptyDescription = storeMode
-    ? "Sales Job Cards appear here only after a Sales person explicitly sends them to you."
-    : billingMode
-      ? "Packed and dispatched orders appear here for GST invoicing and ledger posting."
-      : operatorMode
-        ? "Assigned production jobs appear here when ready for shop floor execution."
-        : qualityMode
-          ? "Completed production jobs appear here when ready for quality inspection."
-          : canCreate
-            ? "Create your first Sales Job Card using the button below."
-            : "Job cards appear here when they are created in the manufacturing workflow.";
+  const emptyTitle = hasAppliedFilters
+    ? "No job cards found"
+    : storeMode
+      ? "No Store Manager Job Cards"
+      : billingMode
+        ? "No Billing Job Cards"
+        : operatorMode
+          ? "No Operator Job Cards"
+          : qualityMode
+            ? "No Quality Control Job Cards"
+            : "No Job Cards Found";
+  const emptyDescription = hasAppliedFilters
+    ? "Try a different Job Card number, customer, or sales order."
+    : storeMode
+      ? "Sales Job Cards appear here only after a Sales person explicitly sends them to you."
+      : billingMode
+        ? "Packed and dispatched orders appear here for GST invoicing and ledger posting."
+        : operatorMode
+          ? "Assigned production jobs appear here when ready for shop floor execution."
+          : qualityMode
+            ? "Completed production jobs appear here when ready for quality inspection."
+            : canCreate
+              ? "Create your first Sales Job Card using the button below."
+              : "Job cards appear here when they are created in the manufacturing workflow.";
   const sectionTitle = storeMode
     ? "Sales Orders / Job Cards from Sales"
     : billingMode
@@ -627,7 +723,7 @@ export default function MyJobCardsPage() {
           jobCardId={activeJobCardId || null}
           row={activeRow}
           onSend={(row) => setSendTarget(row)}
-          onQueueUpdated={() => load(true)}
+          onQueueUpdated={reloadQueue}
           showEmptyShell={!activeOrderId && !activeJobCardId}
           emptyMessage={
             filtered.length === 0
@@ -658,17 +754,6 @@ export default function MyJobCardsPage() {
           </div>
           <div className="my-job-cards-page__section-actions">
             <span className="my-job-cards-page__section-total">Total: {filtered.length}</span>
-            <Button
-              variant={hasAppliedFilters ? "primary" : "outline"}
-              size="sm"
-              onClick={toggleFilters}
-              aria-expanded={filtersOpen}
-              aria-controls="my-job-cards-filters-panel"
-              className={hasAppliedFilters ? "" : "my-job-cards-page__filter-btn"}
-              leftIcon={<SlidersHorizontal className="h-4 w-4" aria-hidden />}
-            >
-              Filter{hasAppliedFilters ? " · Active" : ""}
-            </Button>
             {canCreate && !storeMode && !billingMode && !operatorMode && !qualityMode ? (
               <Button
                 variant="add"
@@ -682,47 +767,23 @@ export default function MyJobCardsPage() {
           </div>
         </div>
 
-        {filtersOpen ? (
-          <div
-            id="my-job-cards-filters-panel"
-            className="my-job-cards-page__filters-panel"
-          >
-            <h2 className="ui-section-title">Search &amp; Filters</h2>
-            <JobCardQueueFilters
-              search={draftFilters.search}
-              onSearchChange={(v) => patchDraft("search", v)}
-              priority={draftFilters.priority}
-              onPriorityChange={(v) => patchDraft("priority", v)}
-              status={draftFilters.status}
-              onStatusChange={(v) => patchDraft("status", v)}
-              stage={draftFilters.stage}
-              onStageChange={(v) => patchDraft("stage", v)}
-              deliveryDate={draftFilters.deliveryDate}
-              onDeliveryDateChange={(v) => patchDraft("deliveryDate", v)}
-              dateFrom={draftFilters.dateFrom}
-              onDateFromChange={(v) => patchDraft("dateFrom", v)}
-              dateTo={draftFilters.dateTo}
-              onDateToChange={(v) => patchDraft("dateTo", v)}
-              stockStatus={draftFilters.stock}
-              onStockStatusChange={(v) => patchDraft("stock", v)}
-              customer={draftFilters.customer}
-              onCustomerChange={(v) => patchDraft("customer", v)}
-              product={draftFilters.product}
-              onProductChange={(v) => patchDraft("product", v)}
-              salesOrderNo={draftFilters.salesOrderNo}
-              onSalesOrderNoChange={(v) => patchDraft("salesOrderNo", v)}
-              customerOptions={customerOptions}
-              productOptions={productOptions}
-              salesOrderOptions={salesOrderOptions}
-              statusOptions={statusOptions}
-              showStockFilter={showStockFilter}
-              storeMode={storeMode}
-              erpLayout
-              onClear={clearFilters}
-              onApply={handleApplyFilters}
-            />
-          </div>
-        ) : null}
+        <div id="my-job-cards-filters-panel" className="my-job-cards-page__filters-panel">
+          <JobCardQueueFilters
+            search={draftFilters.search}
+            onSearchChange={(v) => patchDraft("search", v)}
+            customer={draftFilters.customer}
+            onCustomerChange={(v) => patchDraft("customer", v)}
+            salesOrderNo={draftFilters.salesOrderNo}
+            onSalesOrderNoChange={(v) => patchDraft("salesOrderNo", v)}
+            customerSelectOptions={customerSelectOptions}
+            salesOrderSelectOptions={salesOrderSelectOptions}
+            erpLayout
+            searching={searching}
+            onClear={clearFilters}
+            onApply={handleApplyFilters}
+            onSearchKeyDown={handleSearchKeyDown}
+          />
+        </div>
 
         {partialWarning ? (
           <div className="px-4 pt-4">
@@ -733,7 +794,7 @@ export default function MyJobCardsPage() {
                 { label: "Job cards loaded", ok: true },
                 { label: "Workflow metadata", ok: false },
               ]}
-              onRetry={() => load(true)}
+              onRetry={reloadQueue}
               retryLabel="Retry filters"
             />
           </div>
@@ -763,7 +824,7 @@ export default function MyJobCardsPage() {
                 ? { label: "Create Job Card", onClick: () => navigate(jobCardCreateUrl()) }
                 : undefined
             }
-            onRefresh={() => load(true)}
+            onRefresh={reloadQueue}
             snoOffset={from}
             storeMode={storeMode}
             erpLayout
@@ -802,7 +863,7 @@ export default function MyJobCardsPage() {
         open={Boolean(sendTarget)}
         jobCard={sendTarget}
         onClose={() => setSendTarget(null)}
-        onSent={() => load(true)}
+        onSent={reloadQueue}
       />
 
       <ConfirmDialog

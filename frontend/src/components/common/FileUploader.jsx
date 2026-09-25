@@ -7,13 +7,16 @@ import {
   completeUpload,
   getFileStatus,
   mapFileUploadError,
-  putToPresignedUrl,
   registerUploadPart,
-  requestUploadUrl,
   resumeUploadSession,
   uploadChunk,
   validateFileClient,
 } from "../../api/filesApi";
+import {
+  ensureFileHasName,
+  fileFromClipboardEvent,
+  uploadFileThroughPipeline,
+} from "../../utils/fileUploadPipeline";
 import LoadingState from "./states/LoadingState";
 
 const MULTIPART_THRESHOLD = 10 * 1024 * 1024;
@@ -107,85 +110,35 @@ export default function FileUploader({
     onError?.(mapped);
   }, [onError]);
 
-  const uploadMultipart = async (file, initData) => {
-    const sessionId = initData.upload_session_id;
-    sessionRef.current = sessionId;
-    fileIdRef.current = initData.file.id;
-    const parts = initData.parts || [];
-    const total = parts.length;
-    let completed = 0;
-
-    for (const part of parts) {
-      if (abortRef.current) throw new Error("Upload cancelled");
-      const start = (part.part_number - 1) * (initData.chunk_size_bytes || MULTIPART_THRESHOLD);
-      const end = Math.min(start + (initData.chunk_size_bytes || MULTIPART_THRESHOLD), file.size);
-      const chunk = file.slice(start, end);
-      const { etag, size } = await uploadChunk(part.upload_url, chunk, part.headers || {});
-      await registerUploadPart(sessionId, {
-        part_number: part.part_number,
-        etag: etag || `"part${part.part_number}"`,
-        size_bytes: size,
-      });
-      completed += 1;
-      setProgress(Math.round((completed / total) * 100));
-    }
-
-    await completeUpload(initData.file.id, { upload_session_id: sessionId });
-  };
-
-  const uploadSimple = async (file, initData) => {
-    fileIdRef.current = initData.file.id;
-    await putToPresignedUrl(
-      initData.upload_url,
-      file,
-      initData.headers || {},
-      setProgress,
-    );
-    await completeUpload(initData.file.id, {});
-  };
-
   const startUpload = async (file) => {
     abortRef.current = false;
-    const validationError = validateFileClient(file, maxBytes);
+    const normalized = ensureFileHasName(file, "upload");
+    const validationError = validateFileClient(normalized, maxBytes);
     if (validationError) {
       setUiState("validation");
       setMessage(validationError);
       return;
     }
 
-    setSelectedName(file.name);
+    setSelectedName(normalized.name);
     setUiState("uploading");
     setMessage(STATUS_LABELS.uploading);
     setProgress(0);
 
     try {
-      const initData = await requestUploadUrl({
-        filename: file.name,
-        mime_type: file.type || undefined,
-        file_size: file.size,
-        entity_type: entityType,
-        entity_id: entityId,
-        idempotency_key: idempotencyKey,
+      const fileId = await uploadFileThroughPipeline(normalized, {
+        entityType,
+        entityId,
+        idempotencyKey,
+        maxBytes,
+        onProgress: setProgress,
       });
-
-      if (initData.reused && initData.file?.upload_status === "UPLOADED") {
-        fileIdRef.current = initData.file.id;
-        setFileMeta(initData.file);
-        setUiState("upload_success");
-        await pollStatus(initData.file.id);
-        return;
-      }
-
-      if (initData.multipart) {
-        await uploadMultipart(file, initData);
-      } else {
-        await uploadSimple(file, initData);
-      }
+      fileIdRef.current = fileId;
 
       setUiState("upload_success");
       setMessage(STATUS_LABELS.upload_success);
       setProgress(100);
-      await pollStatus(initData.file.id);
+      await pollStatus(fileId);
     } catch (err) {
       if (abortRef.current) {
         setUiState("idle");
@@ -249,6 +202,14 @@ export default function FileUploader({
     if (file) startUpload(file);
   };
 
+  const onPaste = (e) => {
+    if (disabled) return;
+    const imageFile = fileFromClipboardEvent(e);
+    if (!imageFile) return;
+    e.preventDefault();
+    startUpload(imageFile);
+  };
+
   const cancel = () => {
     abortRef.current = true;
     setUiState("idle");
@@ -269,6 +230,7 @@ export default function FileUploader({
         }`}
         onDragOver={(e) => e.preventDefault()}
         onDrop={onDrop}
+        onPaste={onPaste}
         onClick={() => !disabled && inputRef.current?.click()}
         role="button"
         tabIndex={0}

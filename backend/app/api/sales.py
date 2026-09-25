@@ -76,6 +76,7 @@ from app.schemas.sales_extended import (
     QuotationListRead,
     QuotationSummaryRead,
     SalesHubRead,
+    SalesMyWorkRead,
     SOListRead,
     SOSummaryRead,
 )
@@ -154,6 +155,8 @@ def create_lead_endpoint(
     db: Session = Depends(get_db),
 ):
     payload.tenant_id = user.tenant_id
+    if not (payload.sales_executive or "").strip():
+        payload.sales_executive = (user.full_name or user.email or "").strip() or None
     return create_lead(db, payload)
 
 
@@ -317,8 +320,23 @@ def so_summary(tenant_id: int = Depends(tenant_scope(MODULE)), db: Session = Dep
 
 
 @router.get("/sales-orders/enriched", response_model=list[SOListRead])
-def so_enriched(tenant_id: int = Depends(tenant_scope(MODULE)), db: Session = Depends(get_db)):
-    return list_so_enriched(db, tenant_id)
+def so_enriched(
+    tenant_id: int = Depends(tenant_scope(MODULE)),
+    db: Session = Depends(get_db),
+    from_date: str | None = Query(None),
+    to_date: str | None = Query(None),
+):
+    period_start = period_end = None
+    if from_date or to_date:
+        from app.services.sales_extended_service import resolve_sales_hub_period
+
+        try:
+            period_start, period_end = resolve_sales_hub_period(from_date, to_date)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return list_so_enriched(
+        db, tenant_id, period_start=period_start, period_end=period_end
+    )
 
 
 @router.delete("/sales-orders/{order_id}")
@@ -611,6 +629,7 @@ def list_invoices_v2_endpoint(
     export_status: str | None = Query(None),
     document_type: str | None = Query(None, description="sale|bos|export"),
     amount_band: str | None = Query(None),
+    customer_id: int | None = Query(None),
     db: Session = Depends(get_db),
 ):
     """Paginated Invoice v2 list with filters + sort."""
@@ -622,6 +641,7 @@ def list_invoices_v2_endpoint(
         search=search,
         date_from=date_from,
         date_to=date_to,
+        customer_id=customer_id,
         payment_filter=payment_filter,
         sort_by=sort_by,
         due=due,
@@ -643,6 +663,7 @@ def invoices_enriched(
     search: str | None = Query(None),
     date_from: date | None = Query(None),
     date_to: date | None = Query(None),
+    customer_id: int | None = Query(None),
     payment_filter: str | None = Query("all"),
     sort_by: str = Query("date_desc"),
     db: Session = Depends(get_db),
@@ -656,6 +677,7 @@ def invoices_enriched(
         search=search,
         date_from=date_from,
         date_to=date_to,
+        customer_id=customer_id,
         payment_filter=payment_filter,
         sort_by=sort_by,
     )
@@ -671,6 +693,7 @@ def list_invoices_endpoint(
     payment_filter: str | None = Query(None),
     date_from: date | None = Query(None),
     date_to: date | None = Query(None),
+    customer_id: int | None = Query(None),
     sort_by: str = Query("date_desc"),
     db: Session = Depends(get_db),
 ):
@@ -685,6 +708,7 @@ def list_invoices_endpoint(
         search=search,
         date_from=date_from,
         date_to=date_to,
+        customer_id=customer_id,
         payment_filter=pf,
         sort_by=sort_by,
     )
@@ -821,7 +845,7 @@ async def email_invoice_endpoint(
             attachments=[(f"Invoice-{inv_no}.pdf", pdf_bytes, "application/pdf")],
         )
     except EmailDeliveryError as exc:
-        raise HTTPException(503, str(exc)) from exc
+        raise HTTPException(503, exc.public_message) from exc
 
     try:
         AuditLogService.log(
@@ -916,9 +940,19 @@ def create_payment_endpoint(
 def list_payments_endpoint(
     tenant_id: int = Depends(tenant_scope(MODULE)),
     invoice_id: int | None = Query(None),
+    customer_id: int | None = Query(None),
+    date_from: date | None = Query(None),
+    date_to: date | None = Query(None),
     db: Session = Depends(get_db),
 ):
-    return list_payments(db, tenant_id, invoice_id)
+    return list_payments(
+        db,
+        tenant_id,
+        invoice_id,
+        customer_id=customer_id,
+        date_from=date_from,
+        date_to=date_to,
+    )
 
 
 @router.get("/payments/{payment_id}", response_model=PaymentRead)
@@ -965,13 +999,43 @@ def leads_summary(tenant_id: int = Depends(tenant_scope(MODULE)), db: Session = 
 
 
 @router.get("/leads/enriched", response_model=list[LeadListRead])
-def leads_enriched(tenant_id: int = Depends(tenant_scope(MODULE)), db: Session = Depends(get_db)):
-    return list_leads_enriched(db, tenant_id)
+def leads_enriched(
+    tenant_id: int = Depends(tenant_scope(MODULE)),
+    db: Session = Depends(get_db),
+    followup_from: str | None = Query(None),
+    followup_to: str | None = Query(None),
+):
+    fu_from = fu_to = None
+    if followup_from or followup_to:
+        from app.services.sales_extended_service import resolve_sales_hub_period
+
+        try:
+            fu_from, fu_to = resolve_sales_hub_period(followup_from, followup_to)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return list_leads_enriched(
+        db, tenant_id, followup_from=fu_from, followup_to=fu_to
+    )
 
 
 @router.get("/quotations/summary", response_model=QuotationSummaryRead)
-def quotations_summary(tenant_id: int = Depends(tenant_scope(MODULE)), db: Session = Depends(get_db)):
-    return get_quotation_summary(db, tenant_id)
+def quotations_summary(
+    tenant_id: int = Depends(tenant_scope(MODULE)),
+    db: Session = Depends(get_db),
+    from_date: str | None = Query(None),
+    to_date: str | None = Query(None),
+):
+    period_start = period_end = None
+    if from_date or to_date:
+        from app.services.sales_extended_service import resolve_sales_hub_period
+
+        try:
+            period_start, period_end = resolve_sales_hub_period(from_date, to_date)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return get_quotation_summary(
+        db, tenant_id, period_start=period_start, period_end=period_end
+    )
 
 
 @router.get("/quotations/enriched", response_model=list[QuotationListRead])
@@ -1057,8 +1121,31 @@ def sales_hub(
     tenant_id: int = Depends(tenant_scope(MODULE)),
     user: User = Depends(require_permission(MODULE)),
     db: Session = Depends(get_db),
+    from_date: str | None = Query(None),
+    to_date: str | None = Query(None),
 ):
-    return get_sales_hub(db, tenant_id, user=user)
+    from app.services.sales_extended_service import resolve_sales_hub_period
+
+    try:
+        resolve_sales_hub_period(from_date, to_date)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return get_sales_hub(db, tenant_id, user=user, from_date=from_date, to_date=to_date)
+
+
+@router.get("/my-work", response_model=SalesMyWorkRead)
+def sales_my_work(
+    tenant_id: int = Depends(tenant_scope(MODULE)),
+    user: User = Depends(require_permission(MODULE)),
+    db: Session = Depends(get_db),
+    date: str | None = Query(None, description="Activity date (YYYY-MM-DD)"),
+):
+    from app.services.sales_my_work_service import get_sales_my_work
+
+    try:
+        return get_sales_my_work(db, tenant_id, user, activity_date=date)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.get("/reports/summary")

@@ -761,6 +761,30 @@ textarea {
   border-color: var(--color-secondary);
 }
 
+/* Report export toolbar — shared Button styling (format, Download, Email) */
+.report-export-toolbar .report-export-toolbar__action.ui-btn {
+  border-style: solid;
+  appearance: none;
+  -webkit-appearance: none;
+}
+.report-export-toolbar .report-export-toolbar__action.ui-btn--secondary,
+.report-export-toolbar .report-export-toolbar__action.ui-btn-secondary {
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: none;
+}
+.report-export-toolbar .report-export-toolbar__action.ui-btn--secondary:hover:not(:disabled):not(.is-loading):not(
+    [aria-disabled="true"]
+  ),
+.report-export-toolbar .report-export-toolbar__action.ui-btn-secondary:hover:not(:disabled):not(.is-loading):not(
+    [aria-disabled="true"]
+  ) {
+  background: var(--color-surface-hover);
+  border-color: var(--color-border-strong);
+  color: var(--color-text);
+}
+
 /* Cancel — dismiss form / discard changes (soft danger) */
 .ui-btn--cancel,
 .ui-btn-cancel {

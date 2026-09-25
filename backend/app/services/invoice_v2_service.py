@@ -325,6 +325,7 @@ def list_invoices_v2(
     export_status: str | None = None,
     document_type: str | None = None,
     amount_band: str | None = None,
+    customer_id: int | None = None,
 ) -> InvoiceV2ListResponse:
     from sqlalchemy import func, or_
 
@@ -341,6 +342,8 @@ def list_invoices_v2(
         amount_min, amount_max = 20000, None
 
     base_filters = [Invoice.tenant_id == tenant_id]
+    if customer_id is not None:
+        base_filters.append(Invoice.customer_id == customer_id)
     if date_from:
         base_filters.append(Invoice.issue_date >= date_from)
     if date_to:

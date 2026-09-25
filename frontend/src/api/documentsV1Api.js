@@ -20,7 +20,6 @@ export function checkDocumentDuplicate(body) {
 
 export function createDocument(formData, config = {}) {
   return api.post(BASE, formData, {
-    headers: { "Content-Type": "multipart/form-data" },
     timeout: 120_000,
     ...config,
   });
@@ -28,7 +27,6 @@ export function createDocument(formData, config = {}) {
 
 export function uploadDocumentVersion(documentId, formData, config = {}) {
   return api.post(`${BASE}/${documentId}/versions`, formData, {
-    headers: { "Content-Type": "multipart/form-data" },
     timeout: 120_000,
     ...config,
   });

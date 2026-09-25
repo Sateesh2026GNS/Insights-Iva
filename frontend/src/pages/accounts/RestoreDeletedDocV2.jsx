@@ -206,6 +206,7 @@ export default function RestoreDeletedDocV2() {
             from={from}
             to={to}
             presets={RESTORE_DATE_PRESETS}
+            popoverAlign="end"
             onChange={({ from: f, to: t }) => {
               setFrom(f);
               setTo(t);

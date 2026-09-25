@@ -73,6 +73,13 @@ export function formatDisplayDate(iso, separator = "/") {
   return `${d}${separator}${m}${separator}${y}`;
 }
 
+/** e.g. 25 Sep 2026 — local calendar, for activity labels. */
+export function formatMediumDate(iso) {
+  const d = parseIsoDate(iso);
+  if (!d) return iso || "";
+  return d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+}
+
 /** Parse display DD/MM/YYYY or DD-MM-YYYY → `YYYY-MM-DD`. Returns "" if invalid. */
 export function parseDisplayDate(str) {
   if (!str || typeof str !== "string") return "";

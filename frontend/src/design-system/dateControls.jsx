@@ -4,7 +4,7 @@
  * All date-only values are YYYY-MM-DD (local calendar, no UTC shift).
  */
 
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Calendar, CalendarDays, ChevronLeft, ChevronRight, X } from "lucide-react";
 
@@ -49,7 +49,7 @@ function CalendarTriggerButton({ onClick, disabled, label = "Open calendar", com
 }
 
 /** Month grid for popover range picker */
-export function MonthCalendar({ monthDate, rangeFrom, rangeTo, onPick, min, max, single = false }) {
+export function MonthCalendar({ monthDate, rangeFrom, rangeTo, onPick, min, max, single = false, hideMonthTitle = false }) {
   const year = monthDate.getFullYear();
   const month = monthDate.getMonth();
   const firstDow = new Date(year, month, 1).getDay();
@@ -72,7 +72,9 @@ export function MonthCalendar({ monthDate, rangeFrom, rangeTo, onPick, min, max,
 
   return (
     <div className="ui-date-calendar min-w-[220px]">
-      <div className="mb-2 text-center text-[13px] font-semibold text-[var(--color-text)]">{label}</div>
+      {hideMonthTitle ? null : (
+        <div className="mb-2 text-center text-[13px] font-semibold text-[var(--color-text)]">{label}</div>
+      )}
       <div className="mb-1 grid grid-cols-7 gap-0.5 text-center text-[10px] font-medium text-[var(--color-text-muted)]">
         {WEEKDAYS.map((d) => (
           <div key={d}>{d}</div>
@@ -90,11 +92,18 @@ export function MonthCalendar({ monthDate, rangeFrom, rangeTo, onPick, min, max,
               : from && !to && iso === rangeFrom;
           const isEdge = iso === rangeFrom || iso === rangeTo;
           const selected = single ? iso === rangeFrom : isEdge;
+          const dayLabel = date.toLocaleDateString("en-IN", {
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+          });
           return (
             <button
               key={iso}
               type="button"
               disabled={disabled}
+              aria-label={dayLabel}
+              aria-pressed={selected}
               onClick={() => !disabled && onPick(iso)}
               className={`ui-date-calendar-day h-8 rounded-md text-[12px] transition ${
                 disabled
@@ -385,6 +394,22 @@ export function MonthPicker({ label, value = "", onChange, disabled, required, c
  * Date range picker with presets + dual calendar popover.
  * onChange receives { from, to } as YYYY-MM-DD strings.
  */
+function computeRangePopoverStyle(triggerEl, panelEl, align = "start") {
+  const margin = 8;
+  const gap = 8;
+  const tr = triggerEl.getBoundingClientRect();
+  const pw = panelEl.offsetWidth || 560;
+  const ph = panelEl.offsetHeight || 320;
+  let top = tr.bottom + gap;
+  let left = align === "end" ? tr.right - pw : tr.left;
+  left = Math.max(margin, Math.min(left, window.innerWidth - pw - margin));
+  if (top + ph > window.innerHeight - margin) {
+    const above = tr.top - gap - ph;
+    if (above >= margin) top = above;
+  }
+  return { position: "fixed", top, left, zIndex: 80, visibility: "visible" };
+}
+
 export function DateRangePicker({
   from = "",
   to = "",
@@ -396,6 +421,8 @@ export function DateRangePicker({
   disabled = false,
   portal = true,
   showPresets = true,
+  /** "start" | "end" — end aligns popover right edge with trigger (bottom-end). */
+  popoverAlign = "start",
 }) {
   const [open, setOpen] = useState(false);
   const [draftFrom, setDraftFrom] = useState(from);
@@ -403,6 +430,7 @@ export function DateRangePicker({
   const [leftMonth, setLeftMonth] = useState(() => startOfMonth(parseIsoDate(from) || new Date()));
   const [activePreset, setActivePreset] = useState("");
   const [rangeError, setRangeError] = useState("");
+  const [panelStyle, setPanelStyle] = useState(null);
   const wrapRef = useRef(null);
   const triggerRef = useRef(null);
   const panelRef = useRef(null);
@@ -434,6 +462,32 @@ export function DateRangePicker({
       document.removeEventListener("keydown", onKey);
     };
   }, [open]);
+
+  useLayoutEffect(() => {
+    if (!open) {
+      setPanelStyle(null);
+      return undefined;
+    }
+    const update = () => {
+      const trigger = triggerRef.current;
+      const panel = panelRef.current;
+      if (!trigger || !panel) return;
+      if (portal) {
+        setPanelStyle(computeRangePopoverStyle(trigger, panel, popoverAlign));
+      } else {
+        setPanelStyle(null);
+      }
+    };
+    update();
+    const raf = requestAnimationFrame(update);
+    window.addEventListener("resize", update);
+    window.addEventListener("scroll", update, true);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", update);
+      window.removeEventListener("scroll", update, true);
+    };
+  }, [open, portal, popoverAlign]);
 
   const pickDay = (iso) => {
     if (!draftFrom || (draftFrom && draftTo)) {
@@ -476,23 +530,16 @@ export function DateRangePicker({
     setOpen(false);
   };
 
+  const panelPopoverClass =
+    !portal && open
+      ? `absolute top-full z-[80] mt-2 ${popoverAlign === "end" ? "right-0 left-auto" : "left-0"}`
+      : "";
+
   const panel = open ? (
     <div
       ref={panelRef}
-      className="ui-date-range-popover flex overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl"
-      style={
-        portal && triggerRef.current
-          ? {
-              position: "fixed",
-              top: triggerRef.current.getBoundingClientRect().bottom + 8,
-              left: Math.min(
-                triggerRef.current.getBoundingClientRect().left,
-                window.innerWidth - 620,
-              ),
-              zIndex: 80,
-            }
-          : undefined
-      }
+      className={`ui-date-range-popover flex overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl ${panelPopoverClass}`}
+      style={portal ? panelStyle ?? { position: "fixed", visibility: "hidden", zIndex: 80 } : undefined}
     >
       {showPresets ? (
         <div className="max-h-[320px] w-[150px] shrink-0 overflow-y-auto border-r border-[var(--color-border-soft)] bg-[var(--color-surface-muted)] py-2">
@@ -513,7 +560,7 @@ export function DateRangePicker({
                   : "text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"
               }`}
             >
-              {p.id}
+              {p.label ?? p.id}
             </button>
           ))}
         </div>
@@ -614,6 +661,8 @@ export function InlineNativeDateRange({
   fromLabel = "From date",
   toLabel = "To date",
   className = "",
+  min,
+  max,
 }) {
   const fromRef = useRef(null);
   const toRef = useRef(null);
@@ -639,6 +688,8 @@ export function InlineNativeDateRange({
         ref={fromRef}
         type="date"
         value={from}
+        min={min}
+        max={to || max || undefined}
         onChange={(e) => onFromChange?.(e.target.value)}
         className="sr-only"
         tabIndex={-1}
@@ -648,6 +699,8 @@ export function InlineNativeDateRange({
         ref={toRef}
         type="date"
         value={to}
+        min={from || min || undefined}
+        max={max}
         onChange={(e) => onToChange?.(e.target.value)}
         className="sr-only"
         tabIndex={-1}

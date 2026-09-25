@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import CITIES_MAP from "../../data/indiaCitiesToStates.json";
 import Button from "../common/Button";
+import PartyLedgerStatementSection from "../accounts/PartyLedgerStatementSection";
 const TABS = [
   { id: "overview", label: "Overview" },
   { id: "orders", label: "Sales Orders" },
@@ -179,7 +180,17 @@ export default function CustomerDetailModal({ customer, onClose, onEdit, onDelet
           {tab === "payments" && <TabPlaceholder title="Payments" link="/sales/payments" linkLabel="View Payments" />}
           {tab === "quotations" && <TabPlaceholder title="Quotations" link="/sales/quotations" linkLabel="View Quotations" />}
           {tab === "dispatch" && <TabPlaceholder title="Dispatch" link="/sales/dispatch" linkLabel="View Dispatch" />}
-          {tab === "ledger" && <TabPlaceholder title="Customer Ledger" link="/accounts" linkLabel="View Accounts" />}
+          {tab === "ledger" && customer.id ? (
+            <PartyLedgerStatementSection
+              kind="customer"
+              partyId={customer.id}
+              partyName={customer.company || customer.name}
+              partyEmail={customer.email || customer.contact_email || ""}
+              compact
+            />
+          ) : (
+            <TabPlaceholder title="Customer Ledger" link="/accounts/ledger" linkLabel="View Ledger" />
+          )}
           {tab === "documents" && (
             <ul className="space-y-2">
               {(customer.documents || []).length === 0 ? (
@@ -203,7 +214,11 @@ export default function CustomerDetailModal({ customer, onClose, onEdit, onDelet
           <Link to="/sales/orders" className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 no-underline">
             <ShoppingCart className="h-3.5 w-3.5" /> Sales History
           </Link>
-          <Link to="/accounts" className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 no-underline">
+          <Link
+            to={customer.id ? `/accounts/ledger/customer/${customer.id}` : "/accounts/ledger"}
+            state={{ name: customer.company || customer.name }}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 no-underline"
+          >
             <History className="h-3.5 w-3.5" /> Ledger
           </Link>
           <Link to="/sales/invoices" className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 no-underline">

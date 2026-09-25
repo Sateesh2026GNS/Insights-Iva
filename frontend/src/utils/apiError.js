@@ -31,12 +31,13 @@ export function extractApiErrorDetail(err) {
   const data = err?.response?.data;
   if (!data) return null;
   if (data.detail != null && data.detail !== "") return data.detail;
+  if (Array.isArray(data.errors) && data.errors.length) return data.errors;
   if (data.data && typeof data.data === "object") {
     const nested = data.data;
     if (nested.message || nested.code || nested.blockers) return nested;
   }
+  if (data.message && data.message !== "Validation failed") return data.message;
   if (data.message) return data.message;
-  if (Array.isArray(data.errors) && data.errors.length) return data.errors;
   return null;
 }
 
@@ -92,6 +93,76 @@ export function httpStatusMessage(err, fallback = "Something went wrong.") {
     return "The request timed out. Please try again.";
   }
   return err?.message || fallback;
+}
+
+const EMAIL_SERVICE_LEAK_PATTERN =
+  /backend\/\.env|set\s+SMTP_|missing_settings=/i;
+
+const REPORT_EMAIL_CODE_MESSAGES = {
+  smtp_not_configured:
+    "Email service is not configured. Please contact your administrator.",
+  smtp_auth_failed: "Email service is temporarily unavailable. Please try again later.",
+  smtp_connection_failed: "Email service is temporarily unavailable. Please try again later.",
+  smtp_send_failed: "Email service is temporarily unavailable. Please try again later.",
+};
+
+function reportEmailDetailMessage(detail, fallback) {
+  if (detail == null || detail === "") return null;
+  if (typeof detail === "object" && !Array.isArray(detail)) {
+    const code = detail.code;
+    if (code && REPORT_EMAIL_CODE_MESSAGES[code]) {
+      return REPORT_EMAIL_CODE_MESSAGES[code];
+    }
+    const message = detail.message;
+    if (typeof message === "string" && message.trim()) {
+      if (EMAIL_SERVICE_LEAK_PATTERN.test(message)) {
+        return REPORT_EMAIL_CODE_MESSAGES.smtp_not_configured;
+      }
+      return message;
+    }
+  }
+  const text = formatApiError(detail, fallback);
+  if (!text) return null;
+  if (EMAIL_SERVICE_LEAK_PATTERN.test(text)) {
+    return REPORT_EMAIL_CODE_MESSAGES.smtp_not_configured;
+  }
+  return text;
+}
+
+/** User-facing errors for dashboard/ledger report email (PDF). */
+export function reportEmailErrorMessage(err, fallback = "Unable to send the report. Please try again.") {
+  const status = err?.response?.status;
+  const detail = extractApiErrorDetail(err);
+  if (status === 404) {
+    return "Report email service is currently unavailable.";
+  }
+  if (status === 403) {
+    return "You don't have permission to email this report.";
+  }
+  if (status === 422) {
+    return reportEmailDetailMessage(detail, "Please check the email details.")
+      || "Please check the email details.";
+  }
+  if (status === 503) {
+    return (
+      reportEmailDetailMessage(detail, fallback)
+      || "Email service is temporarily unavailable. Please try again later."
+    );
+  }
+  if (detail != null && detail !== "") {
+    const mapped = reportEmailDetailMessage(detail, fallback);
+    if (mapped) return mapped;
+  }
+  if (status && status >= 500) {
+    return "Unable to send the report right now. Please try again.";
+  }
+  if (err?.code === "ERR_NETWORK" || err?.code === "ECONNABORTED") {
+    return httpStatusMessage(err, fallback);
+  }
+  if (err?.message && !/^Request failed with status code \d+$/i.test(err.message)) {
+    return err.message;
+  }
+  return fallback;
 }
 
 export function asArray(data) {
