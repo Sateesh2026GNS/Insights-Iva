@@ -154,6 +154,13 @@ def create_sales_order(db: Session, payload: SalesOrderCreate) -> SalesOrder:
         )
     except Exception:
         pass
+    try:
+        from app.services.automation.events import AutomationEvent
+        from app.services.automation.hooks import dispatch_automation_event_isolated
+
+        dispatch_automation_event_isolated(so.tenant_id, AutomationEvent.SALES_ORDER_CREATED)
+    except Exception:
+        pass
     return so
 
 
@@ -732,6 +739,13 @@ def create_invoice(db: Session, payload: InvoiceCreate, *, commit: bool = True) 
             )
         except Exception:
             pass
+        try:
+            from app.services.automation.events import AutomationEvent
+            from app.services.automation.hooks import dispatch_automation_event_isolated
+
+            dispatch_automation_event_isolated(inv.tenant_id, AutomationEvent.INVOICE_CREATED)
+        except Exception:
+            pass
     else:
         db.flush()
         db.refresh(inv)
@@ -912,6 +926,13 @@ def create_payment(
                     reference_id=so.id,
                     created_by="Finance",
                 )
+    except Exception:
+        pass
+    try:
+        from app.services.automation.events import AutomationEvent
+        from app.services.automation.hooks import dispatch_automation_event_isolated
+
+        dispatch_automation_event_isolated(payload.tenant_id, AutomationEvent.PAYMENT_RECEIVED)
     except Exception:
         pass
     return p
@@ -1249,6 +1270,13 @@ def create_lead(db: Session, payload: LeadCreate) -> Lead:
     db.add(lead)
     db.commit()
     db.refresh(lead)
+    try:
+        from app.services.automation.events import AutomationEvent
+        from app.services.automation.hooks import dispatch_automation_event_isolated
+
+        dispatch_automation_event_isolated(lead.tenant_id, AutomationEvent.LEAD_CREATED)
+    except Exception:
+        pass
     return lead
 
 
@@ -1463,6 +1491,13 @@ def create_quotation(db: Session, payload: QuotationCreate) -> Quotation:
         db.commit()
 
     db.refresh(quote)
+    try:
+        from app.services.automation.events import AutomationEvent
+        from app.services.automation.hooks import dispatch_automation_event_isolated
+
+        dispatch_automation_event_isolated(quote.tenant_id, AutomationEvent.QUOTATION_CREATED)
+    except Exception:
+        pass
     return quote
 
 

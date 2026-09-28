@@ -169,6 +169,35 @@ class Settings(BaseSettings):
     # Environment: "development" | "production"
     environment: str = "development"
 
+    automation_scheduler_enabled: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "AUTOMATION_SCHEDULER_ENABLED",
+            "automation_scheduler_enabled",
+        ),
+    )
+    automation_scheduler_interval_minutes: int = Field(
+        default=360,
+        validation_alias=AliasChoices(
+            "AUTOMATION_SCHEDULER_INTERVAL_MINUTES",
+            "automation_scheduler_interval_minutes",
+        ),
+    )
+    automation_morning_summary_enabled: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "AUTOMATION_MORNING_SUMMARY_ENABLED",
+            "automation_morning_summary_enabled",
+        ),
+    )
+    automation_morning_summary_time: str = Field(
+        default="08:00",
+        validation_alias=AliasChoices(
+            "AUTOMATION_MORNING_SUMMARY_TIME",
+            "automation_morning_summary_time",
+        ),
+    )
+
     # Public self-registration (disabled for SaaS — companies created by Super Admin)
     allow_public_registration: bool = False
 

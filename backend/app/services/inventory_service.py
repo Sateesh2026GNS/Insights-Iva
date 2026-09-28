@@ -369,6 +369,13 @@ def record_stock_movement(
         if commit:
             db.commit()
             db.refresh(mov)
+            if payload.tenant_id:
+                try:
+                    from app.services.alert_service import sync_low_stock_alerts
+
+                    sync_low_stock_alerts(db, int(payload.tenant_id), trigger_automation=True)
+                except Exception:
+                    pass
         else:
             db.flush()
         return mov

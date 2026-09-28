@@ -17,6 +17,7 @@ export const SETTINGS_SECTION_MODULES = {
   security: "admin",
   ai: "admin",
   audit: "admin",
+  automations: "admin",
   integrations: "admin",
   api: "admin",
   backup: "admin",

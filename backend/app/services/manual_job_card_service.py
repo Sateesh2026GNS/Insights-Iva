@@ -1498,6 +1498,14 @@ def create_manual_job_card(
     db.add(jc)
     db.commit()
     db.refresh(jc)
+    if finalize:
+        try:
+            from app.services.automation.events import AutomationEvent
+            from app.services.automation.hooks import dispatch_automation_event_isolated
+
+            dispatch_automation_event_isolated(tenant_id, AutomationEvent.JOB_CARD_CREATED)
+        except Exception:
+            pass
     return build_manual_job_card_response(db, jc, user=user)
 
 
