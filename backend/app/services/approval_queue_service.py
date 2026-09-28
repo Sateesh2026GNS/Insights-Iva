@@ -420,7 +420,13 @@ def list_approval_queue(
 
     if status_filter and status_filter.lower() != "all":
         sf = status_filter.lower()
-        all_items = [i for i in all_items if (i.status or "").lower() == sf]
+        if sf == "pending":
+            all_items = [
+                i for i in all_items
+                if (i.status or "").lower() in ("pending", "draft", "planned")
+            ]
+        else:
+            all_items = [i for i in all_items if (i.status or "").lower() == sf]
 
     from_d = _parse_date(from_date)
     to_d = _parse_date(to_date)
