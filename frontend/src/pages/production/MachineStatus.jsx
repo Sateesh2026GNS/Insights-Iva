@@ -213,6 +213,7 @@ export default function MachineStatus() {
   const [selected, setSelected] = useState(null);
   const [detail, setDetail] = useState(null);
   const [filters, setFilters] = useState(defaultFilters);
+  const [appliedFilters, setAppliedFilters] = useState(defaultFilters);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [viewMode, setViewMode] = useState("grid");
   const [activeKpiCard, setActiveKpiCard] = useState(null);
@@ -220,12 +221,32 @@ export default function MachineStatus() {
   const handleKpiCardClick = (kpiKey, statusVal = "") => {
     if (activeKpiCard === kpiKey) {
       setActiveKpiCard(null);
-      setFilters((f) => ({ ...f, status: "" }));
+      setFilters((f) => {
+        const next = { ...f, status: "" };
+        setAppliedFilters(next);
+        return next;
+      });
     } else {
       setActiveKpiCard(kpiKey);
-      setFilters((f) => ({ ...f, status: statusVal }));
+      setFilters((f) => {
+        const next = { ...f, status: statusVal };
+        setAppliedFilters(next);
+        return next;
+      });
     }
   };
+
+  const handleApplyFilters = useCallback(() => {
+    setAppliedFilters({ ...filters });
+    setPage(1);
+  }, [filters]);
+
+  const handleClearFilters = useCallback(() => {
+    setFilters(defaultFilters);
+    setAppliedFilters(defaultFilters);
+    setActiveKpiCard(null);
+    setPage(1);
+  }, []);
 
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
@@ -283,27 +304,27 @@ export default function MachineStatus() {
       if (!m) return false;
       const mName = String(m.name || "");
       const mCode = String(m.code || "");
-      if (filters.name && !mName.toLowerCase().includes(filters.name.toLowerCase())) return false;
-      if (filters.code && !mCode.toLowerCase().includes(filters.code.toLowerCase())) return false;
+      if (appliedFilters.name && !mName.toLowerCase().includes(appliedFilters.name.toLowerCase())) return false;
+      if (appliedFilters.code && !mCode.toLowerCase().includes(appliedFilters.code.toLowerCase())) return false;
       const normSt = normalizeStatus(m);
-      if (filters.status && normSt !== filters.status) return false;
-      if (filters.department && m.department !== filters.department) return false;
-      if (filters.production_line && m.production_line !== filters.production_line) return false;
-      if (filters.machine_type && m.machine_type !== filters.machine_type) return false;
-      if (filters.operator && !String(m.assigned_operator || m.operator_name || "").toLowerCase().includes(filters.operator.toLowerCase())) return false;
-      if (filters.shift && (m.current_shift || m.shift) !== filters.shift) return false;
-      if (filters.work_center && m.work_center !== filters.work_center) return false;
+      if (appliedFilters.status && normSt !== appliedFilters.status) return false;
+      if (appliedFilters.department && m.department !== appliedFilters.department) return false;
+      if (appliedFilters.production_line && m.production_line !== appliedFilters.production_line) return false;
+      if (appliedFilters.machine_type && m.machine_type !== appliedFilters.machine_type) return false;
+      if (appliedFilters.operator && !String(m.assigned_operator || m.operator_name || "").toLowerCase().includes(appliedFilters.operator.toLowerCase())) return false;
+      if (appliedFilters.shift && (m.current_shift || m.shift) !== appliedFilters.shift) return false;
+      if (appliedFilters.work_center && m.work_center !== appliedFilters.work_center) return false;
       if (activeKpiCard === "utilization" && (m.efficiency_pct ?? 0) <= 0 && normSt === "offline") return false;
       if (activeKpiCard === "todays_production" && (m.todays_output ?? 0) <= 0) return false;
       return true;
     });
-  }, [machines, filters, activeKpiCard]);
+  }, [machines, appliedFilters, activeKpiCard]);
 
   const filteredMachines = filtered;
 
   useEffect(() => {
     setPage(1);
-  }, [filters, pageSize]);
+  }, [appliedFilters, pageSize]);
 
   const total = filtered.length;
   const totalPages = Math.max(1, Math.ceil(total / pageSize) || 1);
@@ -314,14 +335,14 @@ export default function MachineStatus() {
   const to = Math.min(page * pageSize, total);
 
   const summary = useMemo(() => {
-    const base = apiSummary && !Object.values(filters).some(Boolean) && !activeKpiCard
+    const base = apiSummary && !Object.values(appliedFilters).some(Boolean) && !activeKpiCard
       ? apiSummary
       : computeMachineSummary(filtered);
     return {
       ...base,
       todays_production: Math.max(Number(base?.todays_production || 0), todayOrdersCount),
     };
-  }, [apiSummary, filtered, filters, activeKpiCard, todayOrdersCount]);
+  }, [apiSummary, filtered, appliedFilters, activeKpiCard, todayOrdersCount]);
 
   const exportColumns = [
     { key: "code", label: "Machine Code" },
@@ -497,7 +518,13 @@ export default function MachineStatus() {
             <div className="flex flex-wrap items-center gap-2.5 flex-1 min-w-0">
               <SearchBar
                 value={filters.name}
-                onChange={(val) => setFilters((f) => ({ ...f, name: val }))}
+                onChange={(val) => {
+                  setFilters((f) => {
+                    const next = { ...f, name: val };
+                    setAppliedFilters(next);
+                    return next;
+                  });
+                }}
                 placeholder="Search"
                 className="w-full sm:w-auto min-w-[180px] max-w-[240px]"
               />
@@ -505,7 +532,11 @@ export default function MachineStatus() {
                 value={filters.status}
                 onChange={(e) => {
                   const val = e.target.value;
-                  setFilters((f) => ({ ...f, status: val }));
+                  setFilters((f) => {
+                    const next = { ...f, status: val };
+                    setAppliedFilters(next);
+                    return next;
+                  });
                   setActiveKpiCard(val || null);
                 }}
                 className="ui-select min-w-[130px] max-w-[170px]"
@@ -553,7 +584,13 @@ export default function MachineStatus() {
 
           {showAdvanced && (
             <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <input placeholder="Machine Code" value={filters.code} onChange={(e) => setFilters((f) => ({ ...f, code: e.target.value }))} className="ui-input" />
+              <input
+                placeholder="Machine Code"
+                value={filters.code}
+                onChange={(e) => setFilters((f) => ({ ...f, code: e.target.value }))}
+                onKeyDown={(e) => e.key === "Enter" && handleApplyFilters()}
+                className="ui-input"
+              />
               <select value={filters.department} onChange={(e) => setFilters((f) => ({ ...f, department: e.target.value }))} className="ui-select">
                 <option value="">All Departments</option>
                 {DEPARTMENTS.map((d) => <option key={d} value={d}>{d}</option>)}
@@ -566,7 +603,13 @@ export default function MachineStatus() {
                 <option value="">All Types</option>
                 {MACHINE_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
               </select>
-              <input placeholder="Operator" value={filters.operator} onChange={(e) => setFilters((f) => ({ ...f, operator: e.target.value }))} className="ui-input" />
+              <input
+                placeholder="Operator"
+                value={filters.operator}
+                onChange={(e) => setFilters((f) => ({ ...f, operator: e.target.value }))}
+                onKeyDown={(e) => e.key === "Enter" && handleApplyFilters()}
+                className="ui-input"
+              />
               <select value={filters.shift} onChange={(e) => setFilters((f) => ({ ...f, shift: e.target.value }))} className="ui-select">
                 <option value="">All Shifts</option>
                 {SHIFTS.map((s) => {
@@ -579,9 +622,22 @@ export default function MachineStatus() {
                 <option value="">All Work Centers</option>
                 {WORK_CENTERS.map((w) => <option key={w} value={w}>{w}</option>)}
               </select>
-              <button type="button" onClick={() => setFilters(defaultFilters)} className="rounded-lg border border-[var(--color-border)] px-3 py-2 text-sm font-semibold text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-muted)]">
-                Clear Filters
-              </button>
+              <div className="flex items-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={handleApplyFilters}
+                  className="flex-1 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold px-5 py-2.5 text-sm transition-all shadow-sm active:scale-95 cursor-pointer"
+                >
+                  Apply Filters
+                </button>
+                <button
+                  type="button"
+                  onClick={handleClearFilters}
+                  className="rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-800 font-bold px-5 py-2.5 text-sm transition-all shadow-sm active:scale-95 cursor-pointer"
+                >
+                  Clear
+                </button>
+              </div>
             </div>
           )}
 
