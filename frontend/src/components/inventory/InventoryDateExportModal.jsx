@@ -23,6 +23,7 @@ import {
 
 
 import Button from "../common/Button";
+import SendMetricReportEmailModal from "../common/SendMetricReportEmailModal";
 import { useToast } from "../../context/ToastContext";
 import {
   getStoreInventoryHistory,
@@ -31,6 +32,7 @@ import {
   getRawMaterials,
   getFinishedGoods,
 } from "../../api/inventoryApi";
+import { emailMetricReport } from "../../api/metricReportEmailApi";
 import { asArray } from "../../utils/apiError";
 import WhatsAppIcon from "../common/WhatsAppIcon";
 
@@ -92,6 +94,7 @@ export default function InventoryDateExportModal({
   const [emailSubject, setEmailSubject] = useState("");
   const [emailCc, setEmailCc] = useState("");
   const [copiedEmail, setCopiedEmail] = useState(false);
+  const [showEmailModal, setShowEmailModal] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -100,6 +103,7 @@ export default function InventoryDateExportModal({
       setActiveTab("download");
       setCopiedWa(false);
       setCopiedEmail(false);
+      setShowEmailModal(false);
     }
   }, [open, initialDate, warehouseId]);
 
@@ -723,41 +727,51 @@ export default function InventoryDateExportModal({
     setTimeout(() => setCopiedEmail(false), 2500);
   };
 
-  // ── Gmail / Email share: share PDF file directly ──
-  const handleOpenGmail = async () => {
+  // ── Gmail / Email share: opens Email report (PDF) modal matching image 2 ──
+  const handleSendEmailCustom = async ({ recipient, cc, subject, message }) => {
     const filePrefix = sectionTitle.replace(/\s+/g, "_");
     const fileName = `${filePrefix}_Report_${selectedDate}.pdf`;
-    const doc = buildPdfDoc();
-    const pdfBlob = doc.output("blob");
-    const pdfFile = new File([pdfBlob], fileName, { type: "application/pdf" });
+    const doc = await buildPdfDoc();
 
-    // 1. If Web Share API is available, pass the PDF file directly (attaches file in Outlook / Mail / Gmail app)
-    if (navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
-      try {
-        await navigator.share({
-          files: [pdfFile],
-          title: `Insights Iva — ${sectionTitle} Report (${formatReadableDate(selectedDate)})`,
-        });
-        addToast(`"${fileName}" sent to email share`, "success");
-        return;
-      } catch (err) {
-        if (err.name === "AbortError") {
-          return; // User cancelled share sheet
-        }
-      }
+    try {
+      const reportRows = movements.length > 0 ? movements : sectionItems;
+      await emailMetricReport({
+        to_email: recipient,
+        cc: cc || undefined,
+        subject: subject || undefined,
+        message: message || undefined,
+        title: `${sectionTitle} Report (${formatReadableDate(selectedDate)})`,
+        filename: fileName,
+        module: "inventory",
+        rows: reportRows.map((r) => ({
+          product: r.product || r.name || "—",
+          quantity: r.quantity ?? r.total_quantity ?? 0,
+          warehouse: r.warehouse || activeWarehouseName,
+          transaction: r.transaction || r.category || "—",
+          date: r.date || r.created_at || selectedDate,
+        })),
+        columns: [
+          { key: "product", label: "Item / Product" },
+          { key: "quantity", label: "Quantity" },
+          { key: "warehouse", label: "Warehouse" },
+          { key: "transaction", label: "Transaction / Category" },
+          { key: "date", label: "Date" },
+        ],
+      });
+      addToast(`Report emailed successfully to ${recipient}.`, "success");
+    } catch {
+      // Web fallback: download PDF file directly and open Gmail compose
+      doc.save(fileName);
+      addToast(`"${fileName}" downloaded! Opening Gmail compose...`, "info");
+      setTimeout(() => {
+        const to = encodeURIComponent(recipient);
+        const su = encodeURIComponent(subject || `Insights Iva — ${sectionTitle} Report (${formatReadableDate(selectedDate)})`);
+        const ccParam = cc ? encodeURIComponent(cc) : "";
+        const bodyParam = encodeURIComponent(message || emailBodyText);
+        const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${to}&su=${su}&body=${bodyParam}${ccParam ? `&cc=${ccParam}` : ""}`;
+        window.open(gmailUrl, "_blank", "noopener,noreferrer");
+      }, 300);
     }
-
-    // 2. Web fallback: Download the PDF file directly and open Gmail compose
-    doc.save(fileName);
-    addToast(`"${fileName}" downloaded! Please attach the downloaded file to your email.`, "info");
-
-    setTimeout(() => {
-      const to = encodeURIComponent(recipientEmail.trim());
-      const su = encodeURIComponent(emailSubject || `Insights Iva — ${sectionTitle} Report (${formatReadableDate(selectedDate)})`);
-      const cc = emailCc.trim() ? encodeURIComponent(emailCc.trim()) : "";
-      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${to}&su=${su}${cc ? `&cc=${cc}` : ""}`;
-      window.open(gmailUrl, "_blank", "noopener,noreferrer");
-    }, 300);
   };
 
   const displayedPreviewItems = previewFilter === "created_today" ? itemsCreatedOnDate : sectionItems;
@@ -765,117 +779,130 @@ export default function InventoryDateExportModal({
   if (!open) return null;
 
   return createPortal(
-    <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-3 sm:p-4 backdrop-blur-[2px]"
-      role="dialog"
-      aria-modal="true"
-      onMouseDown={(e) => e.target === e.currentTarget && onClose?.()}
-    >
+    <>
       <div
-        className="relative flex flex-col max-h-[92vh] w-full max-w-3xl overflow-hidden rounded-2xl bg-white shadow-2xl border border-emerald-100 text-[var(--color-text,#1f2937)]"
-        onMouseDown={(e) => e.stopPropagation()}
+        className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-3 sm:p-4 backdrop-blur-[2px]"
+        role="dialog"
+        aria-modal="true"
+        onMouseDown={(e) => e.target === e.currentTarget && onClose?.()}
       >
-        {/* Modal Header */}
-        <div className="flex items-center justify-between border-b border-emerald-100 bg-emerald-50/50 px-6 py-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-sm">
-              <Calendar className="h-5 w-5" />
+        <div
+          className="relative flex flex-col max-h-[92vh] w-full max-w-3xl overflow-hidden rounded-2xl bg-white shadow-2xl border border-emerald-100 text-[var(--color-text,#1f2937)]"
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          {/* Modal Header */}
+          <div className="flex items-center justify-between border-b border-emerald-100 bg-emerald-50/50 px-6 py-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-sm">
+                <Calendar className="h-5 w-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-[17px] font-bold tracking-tight text-emerald-950">
+                    {sectionTitle} Date Activity & Export
+                  </h2>
+                  <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-800">
+                    {formatReadableDate(selectedDate)}
+                  </span>
+                </div>
+                <p className="text-[12px] text-emerald-700">
+                  Download reports or share data via WhatsApp and Email for {sectionTitle} on selected calendar date
+                </p>
+              </div>
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-[17px] font-bold tracking-tight text-emerald-950">
-                  {sectionTitle} Date Activity & Export
-                </h2>
-                <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-800">
-                  {formatReadableDate(selectedDate)}
-                </span>
-              </div>
-              <p className="text-[12px] text-emerald-700">
-                Download reports or share data via WhatsApp and Email for {sectionTitle} on selected calendar date
-              </p>
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex h-8 w-8 items-center justify-center rounded-lg border-0 bg-transparent text-emerald-800 hover:bg-emerald-100 hover:text-emerald-950 transition-colors cursor-pointer"
+              aria-label="Close modal"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+
+          {/* Modal Body: Minimal Direct Action Icons & Buttons */}
+          <div className="p-6">
+            <p className="mb-4 text-[13px] text-slate-600">
+              Select an action to export or share <strong className="text-slate-900">{sectionTitle}</strong> data for{" "}
+              <span className="font-semibold text-slate-900">{formatReadableDate(selectedDate)}</span>:
+            </p>
+
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {/* 1. PDF / Print */}
+              <button
+                type="button"
+                onClick={handleDownloadPdf}
+                className="flex flex-col items-center justify-center gap-2 rounded-xl border border-rose-200 bg-rose-50/60 p-4 transition-all hover:bg-rose-100 hover:border-rose-300 hover:shadow-md cursor-pointer group"
+              >
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-rose-600 text-white shadow-sm group-hover:scale-105 transition-transform">
+                  <FileText className="h-6 w-6" />
+                </div>
+                <span className="text-[13px] font-bold text-rose-950">PDF / Print</span>
+              </button>
+
+              {/* 2. WhatsApp */}
+              <button
+                type="button"
+                onClick={handleShareWhatsApp}
+                className="flex flex-col items-center justify-center gap-2 rounded-xl border border-[#25D366]/30 bg-emerald-50/60 p-4 transition-all hover:bg-emerald-100 hover:border-[#25D366]/60 hover:shadow-md cursor-pointer group"
+              >
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#25D366] text-white shadow-sm group-hover:scale-105 transition-transform">
+                  <WhatsAppIcon className="h-6 w-6" />
+                </div>
+                <span className="text-[13px] font-bold text-emerald-950">WhatsApp</span>
+              </button>
+
+              {/* 3. Email / Gmail */}
+              <button
+                type="button"
+                onClick={() => setShowEmailModal(true)}
+                className="flex flex-col items-center justify-center gap-2 rounded-xl border border-sky-200 bg-sky-50/60 p-4 transition-all hover:bg-sky-100 hover:border-sky-300 hover:shadow-md cursor-pointer group"
+              >
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-sky-600 text-white shadow-sm group-hover:scale-105 transition-transform">
+                  <Mail className="h-6 w-6" />
+                </div>
+                <span className="text-[13px] font-bold text-sky-950">Gmail / Email</span>
+              </button>
+
+              {/* 4. Excel Spreadsheet */}
+              <button
+                type="button"
+                onClick={handleDownloadExcel}
+                className="flex flex-col items-center justify-center gap-2 rounded-xl border border-teal-200 bg-teal-50/60 p-4 transition-all hover:bg-teal-100 hover:border-teal-300 hover:shadow-md cursor-pointer group"
+              >
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-teal-600 text-white shadow-sm group-hover:scale-105 transition-transform">
+                  <FileSpreadsheet className="h-6 w-6" />
+                </div>
+                <span className="text-[13px] font-bold text-teal-950">Excel (.xlsx)</span>
+              </button>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex h-8 w-8 items-center justify-center rounded-lg border-0 bg-transparent text-emerald-800 hover:bg-emerald-100 hover:text-emerald-950 transition-colors cursor-pointer"
-            aria-label="Close modal"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
 
-        {/* Modal Body: Minimal Direct Action Icons & Buttons */}
-        <div className="p-6">
-          <p className="mb-4 text-[13px] text-slate-600">
-            Select an action to export or share <strong className="text-slate-900">{sectionTitle}</strong> data for{" "}
-            <span className="font-semibold text-slate-900">{formatReadableDate(selectedDate)}</span>:
-          </p>
-
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {/* 1. PDF / Print */}
-            <button
-              type="button"
-              onClick={handleDownloadPdf}
-              className="flex flex-col items-center justify-center gap-2 rounded-xl border border-rose-200 bg-rose-50/60 p-4 transition-all hover:bg-rose-100 hover:border-rose-300 hover:shadow-md cursor-pointer group"
-            >
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-rose-600 text-white shadow-sm group-hover:scale-105 transition-transform">
-                <FileText className="h-6 w-6" />
-              </div>
-              <span className="text-[13px] font-bold text-rose-950">PDF / Print</span>
-            </button>
-
-            {/* 2. WhatsApp */}
-            <button
-              type="button"
-              onClick={handleShareWhatsApp}
-              className="flex flex-col items-center justify-center gap-2 rounded-xl border border-[#25D366]/30 bg-emerald-50/60 p-4 transition-all hover:bg-emerald-100 hover:border-[#25D366]/60 hover:shadow-md cursor-pointer group"
-            >
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#25D366] text-white shadow-sm group-hover:scale-105 transition-transform">
-                <WhatsAppIcon className="h-6 w-6" />
-              </div>
-              <span className="text-[13px] font-bold text-emerald-950">WhatsApp</span>
-            </button>
-
-            {/* 3. Email / Gmail */}
-            <button
-              type="button"
-              onClick={handleOpenGmail}
-              className="flex flex-col items-center justify-center gap-2 rounded-xl border border-sky-200 bg-sky-50/60 p-4 transition-all hover:bg-sky-100 hover:border-sky-300 hover:shadow-md cursor-pointer group"
-            >
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-sky-600 text-white shadow-sm group-hover:scale-105 transition-transform">
-                <Mail className="h-6 w-6" />
-              </div>
-              <span className="text-[13px] font-bold text-sky-950">Gmail / Email</span>
-            </button>
-
-            {/* 4. Excel Spreadsheet */}
-            <button
-              type="button"
-              onClick={handleDownloadExcel}
-              className="flex flex-col items-center justify-center gap-2 rounded-xl border border-teal-200 bg-teal-50/60 p-4 transition-all hover:bg-teal-100 hover:border-teal-300 hover:shadow-md cursor-pointer group"
-            >
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-teal-600 text-white shadow-sm group-hover:scale-105 transition-transform">
-                <FileSpreadsheet className="h-6 w-6" />
-              </div>
-              <span className="text-[13px] font-bold text-teal-950">Excel (.xlsx)</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Modal Footer */}
-        <div className="flex items-center justify-between border-t border-slate-200 bg-slate-50 px-6 py-3.5">
-          <div className="flex items-center gap-2 text-[12px] text-slate-600">
-            <span>Selected date: <strong className="text-slate-900">{selectedDate}</strong></span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button type="button" variant="secondary" onClick={onClose}>
-              Close
-            </Button>
+          {/* Modal Footer */}
+          <div className="flex items-center justify-between border-t border-slate-200 bg-slate-50 px-6 py-3.5">
+            <div className="flex items-center gap-2 text-[12px] text-slate-600">
+              <span>Selected date: <strong className="text-slate-900">{selectedDate}</strong></span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button type="button" variant="secondary" onClick={onClose}>
+                Close
+              </Button>
+            </div>
           </div>
         </div>
       </div>
-    </div>,
+
+      {showEmailModal && (
+        <SendMetricReportEmailModal
+          open={showEmailModal}
+          onClose={() => setShowEmailModal(false)}
+          title={`${sectionTitle} Report (${formatReadableDate(selectedDate)})`}
+          filename={`${sectionTitle.replace(/\s+/g, "_")}_Report_${selectedDate}`}
+          module="inventory"
+          onSendCustom={handleSendEmailCustom}
+        />
+      )}
+    </>,
     document.body
   );
 }

@@ -32,6 +32,7 @@ export default function SendMetricReportEmailModal({
   rows = [],
   columns,
   defaultRecipient = "",
+  onSendCustom,
 }) {
   const { addToast } = useToast();
   const [recipient, setRecipient] = useState("");
@@ -67,25 +68,35 @@ export default function SendMetricReportEmailModal({
 
   const onSend = async (e) => {
     e.preventDefault();
-    if (!rows?.length) {
-      addToast("No data available for the selected period.", "info");
-      return;
-    }
     if (!validate()) return;
     setSending(true);
     try {
-      await emailMetricReport({
-        to_email: recipient.trim(),
-        cc: cc.trim() || undefined,
-        subject: subject.trim() || undefined,
-        message: message.trim() || undefined,
-        title,
-        filename,
-        module,
-        rows,
-        columns: exportColumns.map((c) => ({ key: c.key, label: c.label || c.key })),
-      });
-      addToast("Report emailed successfully.", "success");
+      if (onSendCustom) {
+        await onSendCustom({
+          recipient: recipient.trim(),
+          cc: cc.trim(),
+          subject: subject.trim(),
+          message: message.trim(),
+        });
+      } else {
+        if (!rows?.length) {
+          addToast("No data available for the selected period.", "info");
+          setSending(false);
+          return;
+        }
+        await emailMetricReport({
+          to_email: recipient.trim(),
+          cc: cc.trim() || undefined,
+          subject: subject.trim() || undefined,
+          message: message.trim() || undefined,
+          title,
+          filename,
+          module,
+          rows,
+          columns: exportColumns.map((c) => ({ key: c.key, label: c.label || c.key })),
+        });
+        addToast("Report emailed successfully.", "success");
+      }
       onClose?.();
     } catch (err) {
       addToast(reportEmailErrorMessage(err), "error");
@@ -96,13 +107,13 @@ export default function SendMetricReportEmailModal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[90] flex items-center justify-center bg-black/40 p-4"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4 backdrop-blur-[1px]"
       role="presentation"
       onMouseDown={(e) => e.target === e.currentTarget && onClose?.()}
     >
       <form
         onSubmit={onSend}
-        className="flex w-full max-w-xl flex-col overflow-hidden rounded-lg bg-white shadow-2xl"
+        className="flex w-full max-w-xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl border border-slate-200"
         onMouseDown={(e) => e.stopPropagation()}
       >
         <div className="flex shrink-0 items-center justify-between bg-[#2d2a4a] px-5 py-3.5">
@@ -110,7 +121,7 @@ export default function SendMetricReportEmailModal({
           <button
             type="button"
             onClick={onClose}
-            className="rounded p-1 text-white/90 hover:bg-white/10"
+            className="rounded p-1 text-white/90 hover:bg-white/10 transition-colors cursor-pointer"
             aria-label="Close"
           >
             <X className="h-5 w-5" />
