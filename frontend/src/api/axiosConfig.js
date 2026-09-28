@@ -35,27 +35,59 @@ function isDefinitiveSessionExpiry(reason) {
 
 /** Resolve API base URL. Empty string = same-origin (Docker/nginx proxy). */
 export function getApiBaseURL() {
-  if (import.meta.env.VITE_API_BASE_URL !== undefined && String(import.meta.env.VITE_API_BASE_URL || "").trim()) {
-    let raw = String(import.meta.env.VITE_API_BASE_URL || "").trim().replace(/\/+$/, "");
-    if (raw === "http://localhost:8000") {
-      raw = "http://127.0.0.1:8000";
-    }
-    return raw;
-  }
   if (typeof window !== "undefined") {
     const hostname = window.location.hostname || "";
-    if (
-      hostname.includes("web.app") ||
-      hostname.includes("firebaseapp.com") ||
-      hostname.includes("insightsiva.com") ||
-      hostname.includes("vercel.app") ||
-      hostname.includes("netlify.app") ||
-      (hostname.includes("onrender.com") && !hostname.includes("insights-iva-api"))
-    ) {
-      return "https://insights-iva-api.onrender.com";
+    const isLocalhost =
+      hostname === "localhost" ||
+      hostname === "127.0.0.1" ||
+      hostname === "0.0.0.0" ||
+      hostname === "::1" ||
+      hostname.endsWith(".local");
+
+    const envUrl = String(import.meta.env.VITE_API_BASE_URL || "").trim();
+    if (envUrl) {
+      let raw = envUrl.replace(/\/+$/, "");
+      if (raw === "http://localhost:8000") {
+        raw = "http://127.0.0.1:8000";
+      }
+      // If VITE_API_BASE_URL points to localhost but the site is loaded from a global/remote host,
+      // override localhost so the browser doesn't attempt to connect to 127.0.0.1 on the remote visitor's device.
+      if (!isLocalhost && (raw.includes("localhost") || raw.includes("127.0.0.1"))) {
+        if (
+          hostname.includes("web.app") ||
+          hostname.includes("firebaseapp.com") ||
+          hostname.includes("insightsiva.com") ||
+          hostname.includes("vercel.app") ||
+          hostname.includes("netlify.app") ||
+          hostname.includes("onrender.com")
+        ) {
+          return "https://insights-iva-api.onrender.com";
+        }
+        return ""; // Same-origin relative path for proxied hostings
+      }
+      return raw;
+    }
+
+    if (!isLocalhost) {
+      if (
+        hostname.includes("web.app") ||
+        hostname.includes("firebaseapp.com") ||
+        hostname.includes("insightsiva.com") ||
+        hostname.includes("vercel.app") ||
+        hostname.includes("netlify.app") ||
+        (hostname.includes("onrender.com") && !hostname.includes("insights-iva-api"))
+      ) {
+        return "https://insights-iva-api.onrender.com";
+      }
+      return "";
     }
   }
-  return "";
+
+  let raw = String(import.meta.env.VITE_API_BASE_URL || "").trim().replace(/\/+$/, "");
+  if (raw === "http://localhost:8000") {
+    raw = "http://127.0.0.1:8000";
+  }
+  return raw;
 }
 
 function isPlatformRequest(config) {
@@ -64,7 +96,12 @@ function isPlatformRequest(config) {
 }
 
 const apiCache = new Map();
-const CACHE_TTL_MS = 120_000; // Keep recently visited pages instant during normal navigation.
+const CACHE_TTL_MS = 5_000; // 5s short TTL so changes are immediately visible upon navigation.
+
+if (typeof window !== "undefined") {
+  window.addEventListener("focus", clearApiCache);
+  window.addEventListener("storage", clearApiCache);
+}
 
 function getApiCacheScope() {
   try {
