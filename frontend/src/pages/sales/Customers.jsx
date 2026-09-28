@@ -28,7 +28,6 @@ import {
 } from "../../components/common/SerialNumberCell";
 import CustomerDetailModal from "../../components/sales/CustomerDetailModal";
 import CustomersEmptyState from "../../components/sales/CustomersEmptyState";
-import CustomersViewSelector from "../../components/sales/CustomersViewSelector";
 import { useNetworkStatus } from "../../context/NetworkStatusContext";
 import { useToast } from "../../context/ToastContext";
 import usePageRefresh from "../../hooks/usePageRefresh";
@@ -349,18 +348,8 @@ export default function Customers() {
   return (
     <ListPageShell>
       <ListPageCard className="customers-page">
-        <div className="customers-page__header">
-          <CustomersViewSelector
-            value={activeView}
-            onChange={setActiveView}
-            onNewView={() =>
-              addToast(
-                "Custom views will be available in a future update.",
-                "info"
-              )
-            }
-          />
-        </div>
+
+        {/* Top + New and 3-dots removed */}
 
         <ListPageCardBody
           className={
@@ -543,30 +532,39 @@ export default function Customers() {
                     <thead className="ui-table-head">
                       <tr>
                         <SerialNumberHeader />
+
                         <th className="px-4 py-3 font-medium">
                           Customer Name
                         </th>
+
                         <th className="px-4 py-3 font-medium">
                           GSTIN
                         </th>
+
                         <th className="px-4 py-3 font-medium">
                           Email
                         </th>
+
                         <th className="px-4 py-3 font-medium">
                           Mobile No.
                         </th>
+
                         <th className="px-4 py-3 font-medium">
                           Address
                         </th>
+
                         <th className="px-4 py-3 font-medium">
                           City
                         </th>
+
                         <th className="px-4 py-3 font-medium">
                           State
                         </th>
+
                         <th className="px-4 py-3 font-medium">
                           Pincode
                         </th>
+
                         <th className="px-4 py-3 text-right font-medium">
                           Actions
                         </th>
@@ -792,5 +790,4 @@ export default function Customers() {
       ) : null}
     </ListPageShell>
   );
-}
 }
