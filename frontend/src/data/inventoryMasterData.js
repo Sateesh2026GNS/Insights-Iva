@@ -62,9 +62,10 @@ export const DEMO_INVENTORY_HUB = {
 };
 
 export function formatInr(value) {
-  if (value >= 10_000_000) return `₹${(value / 10_000_000).toFixed(1)} Cr`;
-  if (value >= 100_000) return `₹${(value / 100_000).toFixed(1)} L`;
-  return `₹${Number(value).toLocaleString("en-IN")}`;
+  if (value == null || value === "") return "₹0";
+  const n = Number(value);
+  if (Number.isNaN(n)) return "₹0";
+  return `₹${n.toLocaleString("en-IN")}`;
 }
 
 export function stockStatusColor(status) {

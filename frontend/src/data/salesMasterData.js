@@ -38,9 +38,10 @@ export const DEMO_SALES_HUB = {
 };
 
 export function formatInr(v) {
-  if (v >= 10_000_000) return `₹${(v / 10_000_000).toFixed(1)} Cr`;
-  if (v >= 100_000) return `₹${(v / 100_000).toFixed(1)} L`;
-  return `₹${Number(v).toLocaleString("en-IN")}`;
+  if (v == null || v === "") return "₹0";
+  const n = Number(v);
+  if (Number.isNaN(n)) return "₹0";
+  return `₹${n.toLocaleString("en-IN")}`;
 }
 
 export function statusColor(s) {

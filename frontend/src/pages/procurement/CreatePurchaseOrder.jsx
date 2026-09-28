@@ -892,7 +892,7 @@ export default function CreatePurchaseOrder() {
                         </div>
                       </td>
                       <td className={`${cell} tabular-nums text-[var(--color-text-muted)]`}>
-                        {hasDesc ? t.taxable.toFixed(2) : "—"}
+                        {hasDesc ? t.taxable.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "—"}
                       </td>
                       <td className={cell}>
                         <select
@@ -909,7 +909,7 @@ export default function CreatePurchaseOrder() {
                         </select>
                       </td>
                       <td className={`${cell} font-semibold tabular-nums`}>
-                        {hasDesc ? t.total.toFixed(2) : "—"}
+                        {hasDesc ? t.total.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "—"}
                       </td>
                       <td className="border-b border-[var(--color-border)] px-2 py-2">
                         <button type="button" onClick={() => removeItem(idx)} className="text-red-500 hover:text-red-700">
@@ -935,20 +935,20 @@ export default function CreatePurchaseOrder() {
             <div className="min-w-[260px] overflow-hidden rounded-lg border border-[var(--color-border)] text-[13px]">
               <div className="flex justify-between border-b border-dashed border-[var(--color-border)] px-3 py-2 text-[var(--color-text-muted)]">
                 <span>Taxable Amount</span>
-                <span className="tabular-nums">₹ {taxableAmount.toFixed(2)}</span>
+                <span className="tabular-nums">₹ {taxableAmount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
               <div className="flex justify-between border-b border-dashed border-[var(--color-border)] px-3 py-2 text-[var(--color-text-muted)]">
                 <span>GST Amount</span>
-                <span className="tabular-nums">₹ {gstAmount.toFixed(2)}</span>
+                <span className="tabular-nums">₹ {gstAmount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
               <div className="flex justify-between border-b border-dashed border-[var(--color-border)] px-3 py-2 font-medium text-[var(--color-text)]">
                 <span>Total Amount</span>
-                <span className="tabular-nums">₹ {itemsTotal.toFixed(2)}</span>
+                <span className="tabular-nums">₹ {itemsTotal.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
               {showGstTds ? (
                 <div className="flex items-center justify-between border-b border-dashed border-[var(--color-border)] px-3 py-2 text-[var(--color-danger)]">
                   <span><button type="button" onClick={() => setShowGstTds(false)} className="mr-1"><X className="inline h-3.5 w-3.5" /></button>2% GST TDS</span>
-                  <span>₹ {gstTdsAmount.toFixed(2)} (deducted)</span>
+                  <span>₹ {gstTdsAmount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (deducted)</span>
                 </div>
               ) : null}
               {showTaxType ? (
@@ -971,7 +971,7 @@ export default function CreatePurchaseOrder() {
                       <label className="text-[11px] text-[var(--color-text-muted)]">TDS on<SoftSelect value={tdsOn} onChange={(e) => setTdsOn(e.target.value)}><option value="taxable">Taxable Amount</option><option value="final">Final Amount</option></SoftSelect></label>
                     </div>
                   )}
-                  <div className="flex justify-between text-[var(--color-danger)]"><span>{taxType.toUpperCase()} deducted</span><span>₹ {tcsOrTdsAmount.toFixed(2)}</span></div>
+                  <div className="flex justify-between text-[var(--color-danger)]"><span>{taxType.toUpperCase()} deducted</span><span>₹ {tcsOrTdsAmount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
                 </div>
               ) : null}
               {showPurchaseDiscount ? (
@@ -983,7 +983,7 @@ export default function CreatePurchaseOrder() {
               ) : null}
               <div className="flex justify-between border-b border-[var(--color-border)] bg-[var(--color-surface-muted)] px-3 py-2.5 text-[16px] font-bold text-[var(--color-text)]">
                 <span>Final Amount</span>
-                <span className="tabular-nums">₹ {finalAmount.toFixed(2)}</span>
+                <span className="tabular-nums">₹ {finalAmount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
               <div className="flex flex-col gap-2 p-3">
                 <button
@@ -993,7 +993,7 @@ export default function CreatePurchaseOrder() {
                   style={{ borderColor: ERP_PRIMARY, color: ERP_PRIMARY }}
                 >
                   {otherChargeMeta?.charge_name
-                    ? `${otherChargeMeta.charge_name} · ₹ ${otherCharge.toFixed(2)}`
+                    ? `${otherChargeMeta.charge_name} · ₹ ${otherCharge.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                     : "+ Add Other Charge"}
                 </button>
                 <button

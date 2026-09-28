@@ -470,8 +470,8 @@ export default function LedgerDetailsV2() {
                     <td className="px-4 py-3">{row.voucher_no}</td>
                     <td className="px-4 py-3 font-semibold">{row.particulars}</td>
                     <td className="px-4 py-3">{row.voucher_type}</td>
-                    <td className="px-4 py-3 tabular-nums">{Number(row.debit || 0).toFixed(2)}</td>
-                    <td className="px-4 py-3 tabular-nums">{Number(row.credit || 0).toFixed(2)}</td>
+                    <td className="px-4 py-3 tabular-nums">{Number(row.debit || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td className="px-4 py-3 tabular-nums">{Number(row.credit || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                     <td className="relative px-4 py-3">
                       <div className="flex items-center gap-1.5">
                         <button
@@ -496,7 +496,7 @@ export default function LedgerDetailsV2() {
                               return;
                             }
                             addToast(
-                              `${row.voucher_no}: ${row.particulars} · Dr ${Number(row.debit || 0).toFixed(2)} / Cr ${Number(row.credit || 0).toFixed(2)}`,
+                              `${row.voucher_no}: ${row.particulars} · Dr ${Number(row.debit || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / Cr ${Number(row.credit || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
                               "info"
                             );
                           }}

@@ -679,21 +679,21 @@ export default function InventoryV2() {
                           </td>
                           {stockFilter === "low" ? (
                             <>
-                              <td className={`${inventoryTdClass} tabular-nums`}>{Number(row.current_stock || 0)}</td>
-                              <td className={`${inventoryTdClass} tabular-nums`}>{Number(row.min_stock || 0)}</td>
-                              <td className={`${inventoryTdClass} tabular-nums`}>{Number(row.stock_value || 0).toFixed(1)}</td>
+                              <td className={`${inventoryTdClass} tabular-nums`}>{Number(row.current_stock || 0).toLocaleString("en-IN")}</td>
+                              <td className={`${inventoryTdClass} tabular-nums`}>{Number(row.min_stock || 0).toLocaleString("en-IN")}</td>
+                              <td className={`${inventoryTdClass} tabular-nums`}>{Number(row.stock_value || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                             </>
                           ) : stockFilter === "out" ? (
                             <>
-                              <td className={`${inventoryTdClass} tabular-nums`}>{Number(row.current_stock || 0)}</td>
-                              <td className={`${inventoryTdClass} tabular-nums`}>{Number(row.stock_value || 0).toFixed(1)}</td>
+                              <td className={`${inventoryTdClass} tabular-nums`}>{Number(row.current_stock || 0).toLocaleString("en-IN")}</td>
+                              <td className={`${inventoryTdClass} tabular-nums`}>{Number(row.stock_value || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                             </>
                           ) : (
                             <>
-                              <td className={`${inventoryTdClass} tabular-nums`}>{Number(row.stock_value || 0).toFixed(1)}</td>
-                              <td className={`${inventoryTdClass} tabular-nums`}>{Number(row.purchase_price || 0).toFixed(1)}</td>
-                              <td className={`${inventoryTdClass} tabular-nums`}>{Number(row.selling_price || 0).toFixed(1)}</td>
-                              <td className={`${inventoryTdClass} tabular-nums`}>{Number(row.current_stock || 0)}</td>
+                              <td className={`${inventoryTdClass} tabular-nums`}>{Number(row.stock_value || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                              <td className={`${inventoryTdClass} tabular-nums`}>{Number(row.purchase_price || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                              <td className={`${inventoryTdClass} tabular-nums`}>{Number(row.selling_price || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                              <td className={`${inventoryTdClass} tabular-nums`}>{Number(row.current_stock || 0).toLocaleString("en-IN")}</td>
                             </>
                           )}
                           <td className={inventoryTdClass}>

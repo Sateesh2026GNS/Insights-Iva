@@ -12,10 +12,9 @@ export const MACHINES = ["All Machines"];
 export const CHART_COLORS = ["#2563EB", "#0d9488", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#ec4899"];
 
 export function formatInr(v) {
-  if (v == null) return "₹0";
+  if (v == null || v === "") return "₹0";
   const n = Number(v);
-  if (n >= 10_000_000) return `₹${(n / 10_000_000).toFixed(1)} Cr`;
-  if (n >= 100_000) return `₹${(n / 100_000).toFixed(1)} L`;
+  if (Number.isNaN(n)) return "₹0";
   return `₹${n.toLocaleString("en-IN")}`;
 }
 
