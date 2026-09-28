@@ -134,6 +134,16 @@ def transition_workflow_status(
                 actor=user,
                 in_transaction=False,
             )
+        try:
+            from app.services.automation.hooks import dispatch_workflow_status_automation
+
+            dispatch_workflow_status_automation(
+                tenant_id,
+                target,
+                sales_order_id=sales_order.id,
+            )
+        except Exception:
+            logger.exception("workflow_automation_dispatch_failed so=%s", sales_order.id)
     else:
         db.flush()
         if notify:

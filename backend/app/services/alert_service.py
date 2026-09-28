@@ -320,7 +320,12 @@ def delete_alert(db: Session, alert_id: int, tenant_id: int) -> bool:
         ) from exc
 
 
-def sync_low_stock_alerts(db: Session, tenant_id: int) -> list[Alert]:
+def sync_low_stock_alerts(
+    db: Session,
+    tenant_id: int,
+    *,
+    trigger_automation: bool = True,
+) -> list[Alert]:
     """Create, update, or resolve low-stock alerts from current inventory levels."""
     try:
         dashboard = get_inventory_dashboard(db, tenant_id)
@@ -374,6 +379,10 @@ def sync_low_stock_alerts(db: Session, tenant_id: int) -> list[Alert]:
                 )
 
         db.commit()
+        if trigger_automation:
+            from app.services.automation.hooks import after_inventory_stock_sync
+
+            after_inventory_stock_sync(tenant_id)
         return list_alerts(db, tenant_id, alert_type="low_stock")
     except HTTPException:
         raise

@@ -481,6 +481,40 @@ TOOL_DEFINITIONS: list[dict] = [
     {
         "type": "function",
         "function": {
+            "name": "get_automation_daily_summary",
+            "description": (
+                "Get today's automation summary: follow-ups due/overdue, quotations expiring, "
+                "delayed production, QC pending, invoices due/overdue, maintenance due. "
+                "Use when user asks what automations or alerts affect them today."
+            ),
+            "parameters": {"type": "object", "properties": {}, "required": []},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_automation_weekly_summary",
+            "description": (
+                "Get this week's automation/business summary (sales, production, inventory, quality, accounts). "
+                "Use when user asks for weekly summary or week-to-date activity."
+            ),
+            "parameters": {"type": "object", "properties": {}, "required": []},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_automation_executions_today",
+            "description": (
+                "List automation rule executions for today (admin). "
+                "Use when user asks what automations ran today."
+            ),
+            "parameters": {"type": "object", "properties": {}, "required": []},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "get_machine_status_deep",
             "description": (
                 "Get machine status overview: total machines, running, idle, maintenance, breakdown, offline "
@@ -822,6 +856,42 @@ def execute_tool(db: Session, user: User, tool_name: str, arguments: dict) -> di
 
     if tool_name == "get_machine_status_deep":
         return {"success": True, **svc.get_machine_status_deep(user), "endpoint": endpoint}
+
+    if tool_name == "get_automation_daily_summary":
+        from app.services.automation.summary_service import build_daily_automation_summary_for_user
+
+        summary = build_daily_automation_summary_for_user(db, user)
+        return {"success": True, "summary": summary, "endpoint": "GET /api/automation/summary/daily"}
+
+    if tool_name == "get_automation_weekly_summary":
+        from app.services.automation.summary_service import build_weekly_automation_summary
+
+        summary = build_weekly_automation_summary(db, user.tenant_id, user=user)
+        return {
+            "success": True,
+            "summary": summary,
+            "endpoint": "GET /api/automation/summary/weekly",
+        }
+
+    if tool_name == "get_automation_executions_today":
+        from app.core.permissions import user_is_admin
+        from app.services.automation.summary_service import list_automation_executions_today
+
+        if not user_is_admin(user):
+            return {"success": False, "error": "Admin access required for automation execution log"}
+        rows = list_automation_executions_today(db, user.tenant_id)
+        return {
+            "success": True,
+            "executions": [
+                {
+                    "event_type": r.event_type,
+                    "status": r.status,
+                    "action_summary": r.action_summary,
+                    "started_at": r.started_at.isoformat() if r.started_at else None,
+                }
+                for r in rows
+            ],
+        }
 
     return {"success": False, "error": f"Unknown tool: {tool_name}"}
 

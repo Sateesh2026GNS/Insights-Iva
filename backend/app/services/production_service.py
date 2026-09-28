@@ -163,6 +163,14 @@ def create_production_order(db: Session, payload: ProductionOrderCreate) -> Prod
     db.add(wo)
     db.commit()
     db.refresh(order)
+    try:
+        from app.services.automation.events import AutomationEvent
+        from app.services.automation.hooks import dispatch_automation_event_isolated
+
+        dispatch_automation_event_isolated(order.tenant_id, AutomationEvent.PRODUCTION_ORDER_CREATED)
+        dispatch_automation_event_isolated(order.tenant_id, AutomationEvent.WORK_ORDER_CREATED)
+    except Exception:
+        pass
     return order
 
 

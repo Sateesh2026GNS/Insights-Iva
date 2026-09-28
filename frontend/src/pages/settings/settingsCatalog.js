@@ -204,6 +204,23 @@ export const SETTINGS_CATEGORIES = [
     keywords: ["audit", "logs", "login history", "activity", "role changes"],
   },
   {
+    id: "automations",
+    title: "Automations",
+    description: "ERP rules for stock alerts, follow-ups, QC, invoices, and maintenance.",
+    icon: "Workflow",
+    soft: SETTINGS_ICON.info,
+    keywords: [
+      "automation",
+      "automations",
+      "rules",
+      "alerts",
+      "follow-up",
+      "low stock",
+      "scheduler",
+      "notifications",
+    ],
+  },
+  {
     id: "help",
     title: "Help & Support",
     description: "Docs, tickets, FAQ, and contact options.",
@@ -258,7 +275,7 @@ export const SETTINGS_NAV_GROUPS = [
   {
     id: "system",
     title: "System & support",
-    ids: ["integrations", "api", "backup", "audit", "help", "about"],
+    ids: ["integrations", "api", "backup", "audit", "automations", "help", "about"],
   },
 ];
 

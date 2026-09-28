@@ -37,6 +37,7 @@ import SettingsMyPermissions from "./SettingsMyPermissions";
 import SettingsMySubscription from "./SettingsMySubscription";
 import SettingsTeams from "./SettingsTeams";
 import SettingsUsers from "./SettingsUsers";
+import AutomationsSettingsSection from "./AutomationsSettingsSection";
 import { MANUFACTURING_WORKFLOW_SETTINGS_LINKS } from "../../config/manufacturingWorkflow";
 import Button from "../../components/common/Button";
 import {
@@ -1402,6 +1403,7 @@ export default function SettingsSectionContent({ sectionId, category }) {
       api: ApiSection,
       backup: BackupSection,
       audit: AuditSection,
+      automations: AutomationsSettingsSection,
       help: HelpSection,
       about: AboutSection,
       logout: LogoutSection,
