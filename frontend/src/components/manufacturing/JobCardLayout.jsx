@@ -1,5 +1,4 @@
 import { Link } from "react-router-dom";
-
 import Button from "../common/Button";
 import JobCardHeader from "./JobCardHeader";
 import JobCardSummary from "./JobCardSummary";

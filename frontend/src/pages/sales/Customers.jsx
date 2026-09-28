@@ -4,7 +4,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Eye,
-  MoreHorizontal,
   Pencil,
   Plus,
   Trash2,
@@ -16,10 +15,17 @@ import ConfirmDialog from "../../components/admin/ConfirmDialog";
 import RowActionMenu from "../../components/common/RowActionMenu";
 import { SearchBar } from "../../components/common/SearchFilter";
 import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
-import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
+import {
+  ListPageCard,
+  ListPageCardBody,
+  ListPageShell,
+} from "../../components/common/ListPageShell";
 import EmptyState from "../../components/common/EmptyState";
 import { AsyncPageBody, NoResultsState } from "../../components/common/states";
-import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
+import {
+  SerialNumberCell,
+  SerialNumberHeader,
+} from "../../components/common/SerialNumberCell";
 import CustomerDetailModal from "../../components/sales/CustomerDetailModal";
 import CustomersEmptyState from "../../components/sales/CustomersEmptyState";
 import CustomersViewSelector from "../../components/sales/CustomersViewSelector";
@@ -28,9 +34,15 @@ import { useToast } from "../../context/ToastContext";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { deleteCustomer, getCustomers } from "../../api/salesApi";
 import { enrichApiCustomer } from "../../data/customersMasterData";
-import { filterCustomersByView, viewLabel } from "../../utils/customerListViews";
+import {
+  filterCustomersByView,
+  viewLabel,
+} from "../../utils/customerListViews";
 import { runListExport } from "../../utils/listExport";
-import { apiErrorMessage, classifyApiError } from "../../utils/apiError";
+import {
+  apiErrorMessage,
+  classifyApiError,
+} from "../../utils/apiError";
 import "../../styles/customers-page.css";
 
 const PAGE_SIZES = [20, 50, 100];
@@ -48,71 +60,100 @@ const CUSTOMER_EXPORT_COLUMNS = [
 
 function blankOr(value) {
   if (value == null) return "";
+
   const s = String(value).trim();
+
   return !s || s === "—" ? "" : s;
 }
 
 export default function Customers() {
   const { addToast } = useToast();
-  const { online, markRequestStart, markRequestEnd, registerRetry } = useNetworkStatus();
+
+  const {
+    online,
+    markRequestStart,
+    markRequestEnd,
+    registerRetry,
+  } = useNetworkStatus();
+
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [loadErrorObj, setLoadErrorObj] = useState(null);
+
   const [customers, setCustomers] = useState([]);
   const [query, setQuery] = useState("");
   const [activeView, setActiveView] = useState("all");
+
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
+
   const [deleting, setDeleting] = useState(null);
   const [deletingBusy, setDeletingBusy] = useState(false);
+
   const [viewing, setViewing] = useState(null);
   const [openMenu, setOpenMenu] = useState(null);
-  const [overflowOpen, setOverflowOpen] = useState(false);
-  const overflowRef = useRef(null);
 
   const isMountedRef = useRef(true);
 
   useEffect(() => {
     isMountedRef.current = true;
+
     return () => {
       isMountedRef.current = false;
     };
   }, []);
 
-  useEffect(() => {
-    if (!overflowOpen) return undefined;
-    const onDoc = (e) => {
-      if (!overflowRef.current?.contains(e.target)) setOverflowOpen(false);
-    };
-    document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
-  }, [overflowOpen]);
+  const loadCustomers = useCallback(
+    async (isRefresh = false) => {
+      if (!isMountedRef.current) return;
 
-  const loadCustomers = useCallback(async (isRefresh = false) => {
-    if (!isMountedRef.current) return;
-    if (!isRefresh) setLoading(true);
-    setLoadError("");
-    setLoadErrorObj(null);
-    markRequestStart();
-    try {
-      const res = await getCustomers();
-      if (!isMountedRef.current) return;
-      const rows = Array.isArray(res.data) ? res.data : [];
-      setCustomers(rows.map((row, index) => enrichApiCustomer(row, index)));
-    } catch (err) {
-      if (!isMountedRef.current) return;
-      if (isRefresh) throw err;
-      const classified = classifyApiError(err, "Could not load customers.");
-      setCustomers([]);
-      setLoadError(classified.message);
-      setLoadErrorObj(err);
-    } finally {
-      markRequestEnd();
-      if (isMountedRef.current) setLoading(false);
-    }
-  }, [markRequestStart, markRequestEnd]);
+      if (!isRefresh) {
+        setLoading(true);
+      }
+
+      setLoadError("");
+      setLoadErrorObj(null);
+
+      markRequestStart();
+
+      try {
+        const res = await getCustomers();
+
+        if (!isMountedRef.current) return;
+
+        const rows = Array.isArray(res.data) ? res.data : [];
+
+        setCustomers(
+          rows.map((row, index) => enrichApiCustomer(row, index))
+        );
+      } catch (err) {
+        if (!isMountedRef.current) return;
+
+        if (isRefresh) {
+          throw err;
+        }
+
+        const classified = classifyApiError(
+          err,
+          "Could not load customers."
+        );
+
+        setCustomers([]);
+        setLoadError(classified.message);
+        setLoadErrorObj(err);
+      } finally {
+        markRequestEnd();
+
+        if (isMountedRef.current) {
+          setLoading(false);
+        }
+      }
+    },
+    [markRequestStart, markRequestEnd]
+  );
 
   usePageRefresh(() => loadCustomers(true));
 
@@ -120,11 +161,16 @@ export default function Customers() {
     loadCustomers();
   }, [loadCustomers]);
 
-  useEffect(() => registerRetry(() => loadCustomers(true)), [registerRetry, loadCustomers]);
+  useEffect(() => {
+    return registerRetry(() => loadCustomers(true));
+  }, [registerRetry, loadCustomers]);
 
   useEffect(() => {
     if (searchParams.get("create") !== "1") return;
-    navigate("/sales/customers/create", { replace: true });
+
+    navigate("/sales/customers/create", {
+      replace: true,
+    });
   }, [searchParams, navigate]);
 
   const openCreate = useCallback(() => {
@@ -133,33 +179,39 @@ export default function Customers() {
 
   const openEdit = useCallback(
     (customer) => {
-      if (customer?.id) navigate(`/sales/customers/${customer.id}/edit`);
+      if (customer?.id) {
+        navigate(`/sales/customers/${customer.id}/edit`);
+      }
     },
     [navigate]
   );
 
   const openView = useCallback((customer) => {
-    if (customer) setViewing(customer);
+    if (customer) {
+      setViewing(customer);
+    }
   }, []);
 
   const customerRowMenuItems = useCallback(
-    (c) => [
+    (customer) => [
       {
         label: "View",
         icon: <Eye className="h-4 w-4" />,
-        onClick: () => openView(c),
+        onClick: () => openView(customer),
       },
       {
         label: "Edit",
         icon: <Pencil className="h-4 w-4" />,
-        onClick: () => openEdit(c),
+        onClick: () => openEdit(customer),
       },
-      { divider: true },
+      {
+        divider: true,
+      },
       {
         label: "Delete",
         icon: <Trash2 className="h-4 w-4" />,
         danger: true,
-        onClick: () => setDeleting(c),
+        onClick: () => setDeleting(customer),
       },
     ],
     [openEdit, openView]
@@ -172,18 +224,22 @@ export default function Customers() {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return viewFiltered;
-    return viewFiltered.filter((c) =>
+
+    if (!q) {
+      return viewFiltered;
+    }
+
+    return viewFiltered.filter((customer) =>
       [
-        c.company,
-        c.name,
-        c.gstin,
-        c.email,
-        c.phone,
-        c.address_line1 || c.billing_address,
-        c.city,
-        c.state,
-        c.pincode,
+        customer.company,
+        customer.name,
+        customer.gstin,
+        customer.email,
+        customer.phone,
+        customer.address_line1 || customer.billing_address,
+        customer.city,
+        customer.state,
+        customer.pincode,
       ]
         .filter(Boolean)
         .join(" ")
@@ -201,17 +257,34 @@ export default function Customers() {
   }, [page, pageSize]);
 
   const total = filtered.length;
-  const totalPages = Math.max(1, Math.ceil(total / pageSize) || 1);
-  const rows = filtered.slice((page - 1) * pageSize, page * pageSize);
-  const from = total === 0 ? 0 : (page - 1) * pageSize + 1;
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(total / pageSize) || 1
+  );
+
+  const rows = filtered.slice(
+    (page - 1) * pageSize,
+    page * pageSize
+  );
+
+  const from =
+    total === 0 ? 0 : (page - 1) * pageSize + 1;
+
   const to = Math.min(page * pageSize, total);
 
   const exportRows = useMemo(
     () =>
-      filtered.map((c) => ({
-        ...c,
-        company: c.company || c.name || "",
-        address_line1: c.address_line1 || c.billing_address || "",
+      filtered.map((customer) => ({
+        ...customer,
+        company:
+          customer.company ||
+          customer.name ||
+          "",
+        address_line1:
+          customer.address_line1 ||
+          customer.billing_address ||
+          "",
       })),
     [filtered]
   );
@@ -223,26 +296,55 @@ export default function Customers() {
       filename: "customers",
       title: viewLabel(activeView),
     });
-    addToast(format === "pdf" ? "Exported to PDF" : "Exported to Excel", "success");
+
+    addToast(
+      format === "pdf"
+        ? "Exported to PDF"
+        : "Exported to Excel",
+      "success"
+    );
   };
 
   const confirmDelete = async () => {
     if (!deleting) return;
+
     setDeletingBusy(true);
+
     try {
-      if (typeof deleting.id === "number") await deleteCustomer(deleting.id);
-      setCustomers((prev) => prev.filter((c) => c.id !== deleting.id));
+      if (typeof deleting.id === "number") {
+        await deleteCustomer(deleting.id);
+      }
+
+      setCustomers((prev) =>
+        prev.filter(
+          (customer) => customer.id !== deleting.id
+        )
+      );
+
       setDeleting(null);
+
       addToast("Customer deleted", "success");
     } catch (err) {
-      addToast(apiErrorMessage(err, "Could not delete customer."), "error");
+      addToast(
+        apiErrorMessage(
+          err,
+          "Could not delete customer."
+        ),
+        "error"
+      );
     } finally {
       setDeletingBusy(false);
     }
   };
 
-  const hasActiveFilters = Boolean(query.trim()) || activeView !== "all";
-  const showFirstUseEmpty = !loading && !loadError && customers.length === 0;
+  const hasActiveFilters =
+    Boolean(query.trim()) ||
+    activeView !== "all";
+
+  const showFirstUseEmpty =
+    !loading &&
+    !loadError &&
+    customers.length === 0;
 
   return (
     <ListPageShell>
@@ -251,56 +353,22 @@ export default function Customers() {
           <CustomersViewSelector
             value={activeView}
             onChange={setActiveView}
-            onNewView={() => addToast("Custom views will be available in a future update.", "info")}
+            onNewView={() =>
+              addToast(
+                "Custom views will be available in a future update.",
+                "info"
+              )
+            }
           />
-          <div className="customers-page__header-actions">
-            <Button
-              variant="add"
-              type="button"
-              onClick={openCreate}
-              leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}
-            >
-              New
-            </Button>
-            <div className="relative" ref={overflowRef}>
-              <button
-                type="button"
-                className="customers-page__overflow-btn"
-                aria-label="More actions"
-                aria-expanded={overflowOpen}
-                onClick={() => setOverflowOpen((v) => !v)}
-              >
-                <MoreHorizontal className="h-4 w-4" />
-              </button>
-              {overflowOpen ? (
-                <div className="customers-page__overflow-menu">
-                  <button
-                    type="button"
-                    className="customers-page__overflow-item"
-                    onClick={() => {
-                      setOverflowOpen(false);
-                      navigate("/sales/customers/bulk-import");
-                    }}
-                  >
-                    Import File
-                  </button>
-                  <button
-                    type="button"
-                    className="customers-page__overflow-item"
-                    onClick={() => {
-                      setOverflowOpen(false);
-                      loadCustomers();
-                    }}
-                  >
-                    Refresh
-                  </button>
-                </div>
-              ) : null}
-            </div>
-          </div>
         </div>
 
-        <ListPageCardBody className={showFirstUseEmpty ? "customers-page__body--empty p-0" : ""}>
+        <ListPageCardBody
+          className={
+            showFirstUseEmpty
+              ? "customers-page__body--empty p-0"
+              : ""
+          }
+        >
           <AsyncPageBody
             loading={loading}
             error={loadError}
@@ -314,7 +382,11 @@ export default function Customers() {
             {showFirstUseEmpty ? (
               <CustomersEmptyState
                 onCreate={openCreate}
-                onImport={() => navigate("/sales/customers/bulk-import")}
+                onImport={() =>
+                  navigate(
+                    "/sales/customers/bulk-import"
+                  )
+                }
               />
             ) : (
               <>
@@ -323,20 +395,40 @@ export default function Customers() {
                     <SearchBar
                       value={query}
                       onChange={setQuery}
-                      placeholder="Search customers..."
+                      placeholder="Search customers by name, phone, GSTIN..."
+                      className="w-full max-w-md"
                       aria-label="Search customers"
                     />
                   </div>
+
                   <div className="ui-list-toolbar__end w-full sm:w-auto flex flex-wrap gap-2">
                     <Button
                       variant="outline"
                       to="/sales/customers/bulk-import"
-                      leftIcon={<Upload className="h-4 w-4" />}
+                      leftIcon={
+                        <Upload className="h-4 w-4" />
+                      }
                     >
                       Bulk Import
                     </Button>
-                    <ExportDownloadMenu disabled={!exportRows.length} onExport={handleExport} />
-                    <Button variant="add" type="button" to="/sales/customers/create" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
+
+                    <ExportDownloadMenu
+                      disabled={!exportRows.length}
+                      onExport={handleExport}
+                    />
+
+                    <Button
+                      variant="add"
+                      type="button"
+                      to="/sales/customers/create"
+                      leftIcon={
+                        <Plus
+                          className="h-4 w-4"
+                          strokeWidth={2.5}
+                          aria-hidden
+                        />
+                      }
+                    >
                       Create Customer
                     </Button>
                   </div>
@@ -344,56 +436,101 @@ export default function Customers() {
 
                 {/* Mobile Cards View */}
                 <div className="space-y-3 md:hidden">
-                  {rows.map((c) => (
+                  {rows.map((customer) => (
                     <div
-                      key={c.id}
+                      key={customer.id}
                       className="ui-card p-3.5 space-y-2.5 transition-all hover:border-[var(--color-primary-soft)]"
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
                           <h3 className="font-bold text-sm text-[var(--color-text)] truncate">
-                            {c.company || c.name || "—"}
+                            {customer.company ||
+                              customer.name ||
+                              "—"}
                           </h3>
-                          {c.email && (
-                            <p className="text-xs text-[var(--color-text-muted)] truncate">{c.email}</p>
+
+                          {customer.email && (
+                            <p className="text-xs text-[var(--color-text-muted)] truncate">
+                              {customer.email}
+                            </p>
                           )}
                         </div>
-                        <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+
+                        <div
+                          className="flex items-center gap-1"
+                          onClick={(e) =>
+                            e.stopPropagation()
+                          }
+                        >
                           <Button
                             variant="secondary"
                             size="sm"
                             type="button"
-                            onClick={() => openEdit(c)}
-                            leftIcon={<Pencil className="h-3.5 w-3.5" />}
+                            onClick={() =>
+                              openEdit(customer)
+                            }
+                            leftIcon={
+                              <Pencil className="h-3.5 w-3.5" />
+                            }
                           >
                             Edit
                           </Button>
+
                           <RowActionMenu
-                            rowId={c.id}
+                            rowId={customer.id}
                             openMenu={openMenu}
                             setOpenMenu={setOpenMenu}
-                            ariaLabel={`Actions for ${c.company || c.name || "customer"}`}
-                            items={customerRowMenuItems(c)}
+                            ariaLabel={`Actions for ${
+                              customer.company ||
+                              customer.name ||
+                              "customer"
+                            }`}
+                            items={customerRowMenuItems(
+                              customer
+                            )}
                           />
                         </div>
                       </div>
 
                       <div className="grid grid-cols-2 gap-2 text-xs text-[var(--color-text-secondary)] border-t border-[var(--color-border-soft)] pt-2">
                         <div>
-                          <span className="text-[var(--color-text-muted)] block text-[10px] uppercase font-semibold">Phone</span>
-                          <span className="font-medium truncate block">{blankOr(c.phone) || "—"}</span>
+                          <span className="text-[var(--color-text-muted)] block text-[10px] uppercase font-semibold">
+                            Phone
+                          </span>
+                          <span className="font-medium truncate block">
+                            {blankOr(customer.phone) ||
+                              "—"}
+                          </span>
                         </div>
+
                         <div>
-                          <span className="text-[var(--color-text-muted)] block text-[10px] uppercase font-semibold">GSTIN</span>
-                          <span className="font-medium font-mono text-[11px] truncate block">{blankOr(c.gstin) || "—"}</span>
+                          <span className="text-[var(--color-text-muted)] block text-[10px] uppercase font-semibold">
+                            GSTIN
+                          </span>
+                          <span className="font-medium font-mono text-[11px] truncate block">
+                            {blankOr(customer.gstin) ||
+                              "—"}
+                          </span>
                         </div>
+
                         <div>
-                          <span className="text-[var(--color-text-muted)] block text-[10px] uppercase font-semibold">City</span>
-                          <span className="font-medium truncate block">{blankOr(c.city) || "—"}</span>
+                          <span className="text-[var(--color-text-muted)] block text-[10px] uppercase font-semibold">
+                            City
+                          </span>
+                          <span className="font-medium truncate block">
+                            {blankOr(customer.city) ||
+                              "—"}
+                          </span>
                         </div>
+
                         <div>
-                          <span className="text-[var(--color-text-muted)] block text-[10px] uppercase font-semibold">State</span>
-                          <span className="font-medium truncate block">{blankOr(c.state) || "—"}</span>
+                          <span className="text-[var(--color-text-muted)] block text-[10px] uppercase font-semibold">
+                            State
+                          </span>
+                          <span className="font-medium truncate block">
+                            {blankOr(customer.state) ||
+                              "—"}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -406,52 +543,118 @@ export default function Customers() {
                     <thead className="ui-table-head">
                       <tr>
                         <SerialNumberHeader />
-                        <th className="px-4 py-3 font-medium">Customer Name</th>
-                        <th className="px-4 py-3 font-medium">GSTIN</th>
-                        <th className="px-4 py-3 font-medium">Email</th>
-                        <th className="px-4 py-3 font-medium">Mobile No.</th>
-                        <th className="px-4 py-3 font-medium">Address</th>
-                        <th className="px-4 py-3 font-medium">City</th>
-                        <th className="px-4 py-3 font-medium">State</th>
-                        <th className="px-4 py-3 font-medium">Pincode</th>
-                        <th className="px-4 py-3 text-right font-medium">Actions</th>
+                        <th className="px-4 py-3 font-medium">
+                          Customer Name
+                        </th>
+                        <th className="px-4 py-3 font-medium">
+                          GSTIN
+                        </th>
+                        <th className="px-4 py-3 font-medium">
+                          Email
+                        </th>
+                        <th className="px-4 py-3 font-medium">
+                          Mobile No.
+                        </th>
+                        <th className="px-4 py-3 font-medium">
+                          Address
+                        </th>
+                        <th className="px-4 py-3 font-medium">
+                          City
+                        </th>
+                        <th className="px-4 py-3 font-medium">
+                          State
+                        </th>
+                        <th className="px-4 py-3 font-medium">
+                          Pincode
+                        </th>
+                        <th className="px-4 py-3 text-right font-medium">
+                          Actions
+                        </th>
                       </tr>
                     </thead>
+
                     <tbody>
-                      {rows.map((c, rowIndex) => (
-                        <tr key={c.id}>
-                          <SerialNumberCell rowIndex={rowIndex} page={page} pageSize={pageSize} />
+                      {rows.map((customer, rowIndex) => (
+                        <tr key={customer.id}>
+                          <SerialNumberCell
+                            rowIndex={rowIndex}
+                            page={page}
+                            pageSize={pageSize}
+                          />
+
                           <td
                             className="max-w-[220px] truncate px-4 py-3.5 font-medium text-[var(--color-text)]"
-                            title={c.company || c.name || ""}
+                            title={
+                              customer.company ||
+                              customer.name ||
+                              ""
+                            }
                           >
-                            {c.company || c.name || ""}
+                            {customer.company ||
+                              customer.name ||
+                              ""}
                           </td>
-                          <td className="px-4 py-3.5 text-[var(--color-text-secondary)]">{blankOr(c.gstin)}</td>
+
+                          <td className="px-4 py-3.5 text-[var(--color-text-secondary)]">
+                            {blankOr(customer.gstin)}
+                          </td>
+
                           <td
                             className="max-w-[180px] truncate px-4 py-3.5 text-[var(--color-text-secondary)]"
-                            title={c.email || ""}
+                            title={customer.email || ""}
                           >
-                            {blankOr(c.email)}
+                            {blankOr(customer.email)}
                           </td>
-                          <td className="px-4 py-3.5 text-[var(--color-text-secondary)]">{blankOr(c.phone)}</td>
+
+                          <td className="px-4 py-3.5 text-[var(--color-text-secondary)]">
+                            {blankOr(customer.phone)}
+                          </td>
+
                           <td
                             className="max-w-[220px] truncate px-4 py-3.5 text-[var(--color-text-secondary)]"
-                            title={c.address_line1 || c.billing_address || ""}
+                            title={
+                              customer.address_line1 ||
+                              customer.billing_address ||
+                              ""
+                            }
                           >
-                            {blankOr(c.address_line1 || c.billing_address)}
+                            {blankOr(
+                              customer.address_line1 ||
+                                customer.billing_address
+                            )}
                           </td>
-                          <td className="px-4 py-3.5 text-[var(--color-text-secondary)]">{blankOr(c.city)}</td>
-                          <td className="px-4 py-3.5 text-[var(--color-text-secondary)]">{blankOr(c.state)}</td>
-                          <td className="px-4 py-3.5 text-[var(--color-text-secondary)]">{blankOr(c.pincode)}</td>
-                          <td className="px-4 py-2" onClick={(e) => e.stopPropagation()}>
+
+                          <td className="px-4 py-3.5 text-[var(--color-text-secondary)]">
+                            {blankOr(customer.city)}
+                          </td>
+
+                          <td className="px-4 py-3.5 text-[var(--color-text-secondary)]">
+                            {blankOr(customer.state)}
+                          </td>
+
+                          <td className="px-4 py-3.5 text-[var(--color-text-secondary)]">
+                            {blankOr(customer.pincode)}
+                          </td>
+
+                          <td
+                            className="px-4 py-2"
+                            onClick={(e) =>
+                              e.stopPropagation()
+                            }
+                          >
                             <div className="flex items-center justify-end">
                               <RowActionMenu
-                                rowId={c.id}
+                                rowId={customer.id}
                                 openMenu={openMenu}
                                 setOpenMenu={setOpenMenu}
-                                ariaLabel={`Actions for ${c.company || c.name || "customer"}`}
-                                items={customerRowMenuItems(c)}
+                                ariaLabel={`Actions for ${
+                                  customer.company ||
+                                  customer.name ||
+                                  "customer"
+                                }`}
+                                items={customerRowMenuItems(
+                                  customer
+                                )}
                               />
                             </div>
                           </td>
@@ -459,63 +662,89 @@ export default function Customers() {
                       ))}
                     </tbody>
                   </table>
-                  {!rows.length ? (
-                    hasActiveFilters ? (
-                      <NoResultsState
-                        title="No Customers Match Filters"
-                        description="Try a different search term, view, or clear filters."
-                        onClear={() => {
-                          setQuery("");
-                          setActiveView("all");
-                        }}
-                        className="border-none bg-transparent py-12"
-                      />
-                    ) : (
-                      <EmptyState
-                        icon="document"
-                        title="No Customers Found"
-                        description="Customers will appear here once you create them."
-                        actionLabel="Create Customer"
-                        onAction={openCreate}
-                        className="border-none bg-transparent py-12"
-                      />
-                    )
-                  ) : null}
+
+                  {!rows.length
+                    ? hasActiveFilters
+                      ? (
+                          <NoResultsState
+                            title="No Customers Match Filters"
+                            description="Try a different search term, view, or clear filters."
+                            onClear={() => {
+                              setQuery("");
+                              setActiveView("all");
+                            }}
+                            className="border-none bg-transparent py-12"
+                          />
+                        )
+                      : (
+                          <EmptyState
+                            icon="document"
+                            title="No Customers Found"
+                            description="Customers will appear here once you create them."
+                            actionLabel="Create Customer"
+                            onAction={openCreate}
+                            className="border-none bg-transparent py-12"
+                          />
+                        )
+                    : null}
                 </div>
 
+                {/* Pagination */}
                 <div className="mt-4 ui-pagination justify-between flex-wrap gap-2">
                   <div className="flex items-center gap-2.5 flex-nowrap whitespace-nowrap">
                     <span>Rows per page:</span>
+
                     <select
                       value={pageSize}
-                      onChange={(e) => setPageSize(Number(e.target.value))}
+                      onChange={(e) =>
+                        setPageSize(Number(e.target.value))
+                      }
                       className="ui-pagination-select"
                     >
-                      {PAGE_SIZES.map((n) => (
-                        <option key={n} value={n}>
-                          {n}
+                      {PAGE_SIZES.map((size) => (
+                        <option key={size} value={size}>
+                          {size}
                         </option>
                       ))}
                     </select>
-                    <span>{total === 0 ? "0–0 of 0" : `${from}–${to} of ${total}`}</span>
+
+                    <span>
+                      {total === 0
+                        ? "0–0 of 0"
+                        : `${from}–${to} of ${total}`}
+                    </span>
                   </div>
+
                   <div className="flex items-center gap-1">
                     <button
                       type="button"
                       disabled={page <= 1}
-                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      onClick={() =>
+                        setPage((p) =>
+                          Math.max(1, p - 1)
+                        )
+                      }
                       className="ui-page-btn"
                       aria-label="Previous page"
                     >
                       <ChevronLeft className="h-4 w-4" />
                     </button>
-                    <button type="button" className="ui-page-btn ui-page-btn--active">
+
+                    <button
+                      type="button"
+                      className="ui-page-btn ui-page-btn--active"
+                    >
                       {page}
                     </button>
+
                     <button
                       type="button"
                       disabled={page >= totalPages}
-                      onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                      onClick={() =>
+                        setPage((p) =>
+                          Math.min(totalPages, p + 1)
+                        )
+                      }
                       className="ui-page-btn"
                       aria-label="Next page"
                     >
@@ -534,7 +763,9 @@ export default function Customers() {
         title="Delete"
         message="Are you sure you want to delete this Customer? This action is not reversible."
         loading={deletingBusy}
-        onClose={() => !deletingBusy && setDeleting(null)}
+        onClose={() =>
+          !deletingBusy && setDeleting(null)
+        }
         onConfirm={confirmDelete}
       />
 
@@ -542,20 +773,24 @@ export default function Customers() {
         <CustomerDetailModal
           customer={{
             ...viewing,
-            company: viewing.company || viewing.name,
-            contact_person: viewing.contact_person || viewing.name,
+            company:
+              viewing.company || viewing.name,
+            contact_person:
+              viewing.contact_person ||
+              viewing.name,
           }}
           onClose={() => setViewing(null)}
-          onEdit={(c) => {
+          onEdit={(customer) => {
             setViewing(null);
-            openEdit(c);
+            openEdit(customer);
           }}
-          onDelete={(c) => {
+          onDelete={(customer) => {
             setViewing(null);
-            setDeleting(c);
+            setDeleting(customer);
           }}
         />
       ) : null}
     </ListPageShell>
   );
+}
 }
