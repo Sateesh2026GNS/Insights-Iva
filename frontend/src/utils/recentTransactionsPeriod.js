@@ -57,18 +57,18 @@ export function formatCustomPeriodRangeLabel(from, to) {
   return `${formatMediumDate(from)} — ${formatMediumDate(to)}`;
 }
 
-export function resolveRecentTransactionsPeriod(periodId, options, customRange = null) {
+export function resolveRecentTransactionsPeriod(periodId, options, customRange = null, now = new Date()) {
   if (periodId === PERIOD_CUSTOM && customRange?.from && customRange?.to) {
     return { from: customRange.from, to: customRange.to };
   }
   if (periodId === PERIOD_RECENT) {
-    const to = todayIso();
-    const from = toIsoDate(new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate() - 30));
+    const to = todayIso(now);
+    const from = toIsoDate(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 30));
     return { from, to };
   }
   const match = options.find((o) => o.id === periodId);
   if (match?.from && match?.to) return { from: match.from, to: match.to };
-  return resolveRecentTransactionsPeriod(PERIOD_RECENT, options);
+  return resolveRecentTransactionsPeriod(PERIOD_RECENT, options, null, now);
 }
 
 export function periodOptionLabel(periodId, options, customRange) {

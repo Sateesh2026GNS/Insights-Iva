@@ -46,7 +46,7 @@ describe("recentTransactionsPeriod", () => {
 
   it("resolves recent transactions as rolling window", () => {
     const options = buildRecentTransactionsPeriodOptions(now);
-    const { from, to } = resolveRecentTransactionsPeriod(PERIOD_RECENT, options);
+    const { from, to } = resolveRecentTransactionsPeriod(PERIOD_RECENT, options, null, now);
     expect(to).toBe("2026-09-25");
     expect(from).toBe("2026-08-26");
   });
