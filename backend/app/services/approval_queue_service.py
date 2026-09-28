@@ -80,10 +80,19 @@ def user_can_access_approval_queue(user: User) -> bool:
 def _parse_date(value: str | None) -> date | None:
     if not value:
         return None
-    try:
-        return date.fromisoformat(value[:10])
-    except ValueError:
+    val = str(value).strip()
+    if not val:
         return None
+    try:
+        return date.fromisoformat(val[:10])
+    except ValueError:
+        pass
+    for fmt in ("%d-%m-%Y", "%d/%m/%Y", "%Y/%m/%d", "%Y-%m-%d"):
+        try:
+            return datetime.strptime(val[:10], fmt).date()
+        except ValueError:
+            pass
+    return None
 
 
 def _leave_balance_snapshot(

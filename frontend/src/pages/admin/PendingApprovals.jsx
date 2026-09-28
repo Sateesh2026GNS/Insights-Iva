@@ -316,8 +316,19 @@ export default function PendingApprovals() {
           <span className="text-[var(--color-text-muted)]">Status</span>
           <select
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="rounded-lg border border-[var(--color-border)] px-3 py-2 text-sm"
+            onChange={(e) => {
+              const val = e.target.value;
+              setStatusFilter(val);
+              setPage(1);
+              setAppliedFilters((prev) => ({
+                ...prev,
+                status: val,
+                search: searchInput.trim(),
+                fromDate,
+                toDate,
+              }));
+            }}
+            className="rounded-lg border border-[var(--color-border)] px-3 py-2 text-sm cursor-pointer"
           >
             <option value="pending">Pending</option>
             <option value="all">All</option>
