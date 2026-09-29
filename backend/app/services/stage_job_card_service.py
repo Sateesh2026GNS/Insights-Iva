@@ -188,16 +188,21 @@ def ensure_stage_card(
 def _ensure_store_issue_lines(
     db: Session, store_card: WorkflowStageJobCard, mc: SalesOrderMaterialCheck
 ) -> None:
-    if store_card.issue_lines:
-        return
+    existing_check_line_ids = {
+        line.material_check_line_id
+        for line in store_card.issue_lines
+        if line.material_check_line_id is not None
+    }
     for ln in mc.lines or []:
+        if ln.id in existing_check_line_ids:
+            continue
         material_code = None
         if ln.product_id:
             prod = db.get(Product, ln.product_id)
             material_code = prod.sku if prod else None
         required = float(ln.required_qty or 0)
         available = float(ln.available_qty or 0)
-        db.add(
+        store_card.issue_lines.append(
             WorkflowMaterialIssueLine(
                 stage_job_card_id=store_card.id,
                 material_check_line_id=ln.id,
@@ -212,6 +217,7 @@ def _ensure_store_issue_lines(
                 issue_status="pending",
             )
         )
+        existing_check_line_ids.add(ln.id)
     db.flush()
 
 

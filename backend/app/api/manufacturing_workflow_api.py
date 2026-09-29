@@ -792,12 +792,43 @@ def get_stage_job_card_endpoint(
     if stage not in STAGE_PREFIX:
         raise HTTPException(status_code=400, detail=f"Invalid stage: {stage}")
     perms = STAGE_PERMISSIONS.get(stage, WORKFLOW_MODULES)
+    allowed_to_view = user_is_admin(user)
     if not user_is_admin(user):
         from app.core.permissions import user_has_any_permission
 
-        if not user_has_any_permission(user, *perms):
+        allowed_to_view = user_has_any_permission(user, *perms)
+        # Store users may follow a job they handed off into Production Planning.
+        # The stage payload remains read-only for them (`allowed_actions: ["view"]`);
+        # all production mutations are still guarded by production permissions.
+        if stage == "production_manager" and not allowed_to_view and user_has_any_permission(user, "inventory"):
+            from app.services.workflow_state_service import get_sales_order_or_404
+
+            so = get_sales_order_or_404(db, user.tenant_id, order_id)
+            allowed_to_view = (so.workflow_status or "").upper() in {
+                "READY_FOR_PRODUCTION",
+                "PRODUCTION_ASSIGNED",
+                "PRODUCTION_IN_PROGRESS",
+                "PRODUCTION_COMPLETED",
+                "PRODUCTION_REWORK",
+                "QUALITY_CHECK_PENDING",
+                "QUALITY_ON_HOLD",
+                "QUALITY_APPROVED",
+                "QUALITY_REJECTED",
+                "PACKING_PENDING",
+                "PACKING_IN_PROGRESS",
+                "PACKED",
+                "BILLING_PENDING",
+                "INVOICED",
+                "COMPLETED",
+            }
+        if not allowed_to_view:
             raise HTTPException(status_code=403, detail="Not authorized for this stage")
-    return build_stage_job_card(db, user.tenant_id, order_id, stage, user=user)
+    result = build_stage_job_card(db, user.tenant_id, order_id, stage, user=user)
+    # The Store stage lazily backfills issue lines from the verified material check.
+    # Persist those lines here so the first page load can display and issue them.
+    if stage == "store" and result.get("material_issue_lines"):
+        db.commit()
+    return result
 
 
 @router.post("/sales-orders/{order_id}/store-issue")

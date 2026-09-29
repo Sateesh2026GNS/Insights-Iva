@@ -722,7 +722,11 @@ def submit_material_check(
         notify=True,
     )
 
-    from app.services.stage_job_card_service import ensure_stage_card, complete_stage_card
+    from app.services.stage_job_card_service import (
+        _ensure_store_issue_lines,
+        complete_stage_card,
+        ensure_stage_card,
+    )
 
     inv_card = ensure_stage_card(
         db, tenant_id, sales_order_id, "inventory_check",
@@ -739,6 +743,7 @@ def submit_material_check(
             material_check_id=mc.id,
             status="pending",
         )
+        _ensure_store_issue_lines(db, store_card, mc)
         transition_workflow_status(
             db,
             tenant_id=tenant_id,

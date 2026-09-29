@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { ChevronDown, ChevronUp, Download, Printer, Send } from "lucide-react";
+import { ChevronDown, ChevronUp, Download, PackageCheck, Printer, Send } from "lucide-react";
 
 import Button from "../common/Button";
 import CommonStatusBadge from "../common/StatusBadge";
@@ -135,6 +135,13 @@ export default function StoreManagerJobCardDocumentPanel({
     return () => cancelAnimationFrame(frame);
   }, [focusMaterialCheck, isManual, setSearchParams, showDocument]);
   const workflowStatus = erpListStatus(card || row || {});
+  const storeWorkflowStatus = String(
+    row?.workflow_status || salesOrder?.workflow_status || materialCheck?.workflow_status || ""
+  ).toUpperCase();
+  const canOpenStoreIssue =
+    !isManual &&
+    Boolean(resolvedOrderId) &&
+    ["MATERIAL_AVAILABLE", "STORE_ISSUE_PENDING", "STORE_ISSUE_PARTIAL"].includes(storeWorkflowStatus);
   const orderCancelled =
     String(salesOrder?.status || "").toLowerCase() === "cancelled" ||
     String(salesOrder?.workflow_status || row?.workflow_status || "").toUpperCase() === "CANCELLED" ||
@@ -243,6 +250,16 @@ export default function StoreManagerJobCardDocumentPanel({
             ) : null}
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            {canOpenStoreIssue ? (
+              <Button
+                variant="primary"
+                size="sm"
+                to={`/manufacturing/workflow/order/${resolvedOrderId}/store`}
+                leftIcon={<PackageCheck className="h-4 w-4" aria-hidden />}
+              >
+                Issue Materials
+              </Button>
+            ) : null}
             {canSendJobCard ? (
               <Button
                 variant="primary"

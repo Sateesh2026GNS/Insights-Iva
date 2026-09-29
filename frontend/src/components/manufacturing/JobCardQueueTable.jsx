@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
-import { ClipboardCheck, Download, Eye, Pencil, Printer, Send, Trash2 } from "lucide-react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { ClipboardCheck, Download, Eye, PackageCheck, Pencil, Printer, Send, Trash2 } from "lucide-react";
 
 import Button from "../common/Button";
 import RowActionMenu from "../common/RowActionMenu";
@@ -11,7 +11,7 @@ import { PriorityBadge, WorkflowStatusBadge, fmtDeliveryDisplay } from "./jobCar
 import { WORKFLOW_STAGES } from "../../config/workflowStages";
 import { jobCardDetailsUrl } from "../../utils/jobCardRoutes";
 import { stageJobCardUrl } from "../../utils/workflowStageRoutes";
-import { storeQueueStatusLabel, storeStatusVariant } from "../../utils/storeJobCardQueue";
+import { storeActionUrl, storeQueueStatusLabel, storeStatusVariant } from "../../utils/storeJobCardQueue";
 import {
   downloadProductionJobCardPdf,
   downloadSalesJobCardPdf,
@@ -102,6 +102,7 @@ function buildRowMenuItems({
   onEdit,
   onDelete,
   onSend,
+  onIssueMaterials,
   canDelete,
   canEdit,
   canSend,
@@ -119,6 +120,12 @@ function buildRowMenuItems({
     row.is_manual &&
     Array.isArray(row.allowed_actions) &&
     row.allowed_actions.includes("material_check");
+  const rowCanIssueMaterials =
+    storeMode &&
+    !row.is_manual &&
+    ["MATERIAL_AVAILABLE", "STORE_ISSUE_PENDING", "STORE_ISSUE_PARTIAL"].includes(
+      String(row.workflow_status || "").toUpperCase()
+    );
   return [
     {
       label: "View",
@@ -137,6 +144,13 @@ function buildRowMenuItems({
             else onSelect?.(orderId);
             scrollToManualMaterialCheck();
           },
+        }
+      : null,
+    rowCanIssueMaterials
+      ? {
+          label: "Issue Materials",
+          icon: <PackageCheck className="h-4 w-4" />,
+          onClick: () => onIssueMaterials?.(row),
         }
       : null,
     canEdit && onEdit
@@ -344,9 +358,14 @@ export default function JobCardQueueTable({
   jobCardLinkForRow = null,
 }) {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [openMenu, setOpenMenu] = useState(null);
   const location = useLocation();
   const linkState = { from: location.pathname };
+  const onIssueMaterials = (row) => {
+    const url = storeActionUrl(row, "issue_materials");
+    if (url) navigate(url);
+  };
 
   if (!rows.length) {
     return (
@@ -401,6 +420,7 @@ export default function JobCardQueueTable({
                   onEdit,
                   onDelete,
                   onSend,
+                  onIssueMaterials,
                   canDelete,
                   canEdit,
                   canSend,
@@ -513,6 +533,7 @@ export default function JobCardQueueTable({
                 onEdit={onEdit}
                 canEdit={canEdit}
                 onSend={onSend}
+                onIssueMaterials={onIssueMaterials}
                 canSend={canSend}
                 user={user}
                 openMenu={openMenu}

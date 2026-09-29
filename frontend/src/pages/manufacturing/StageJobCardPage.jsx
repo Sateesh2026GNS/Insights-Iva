@@ -26,6 +26,7 @@ import { CardSectionHeader } from "../../components/manufacturing/jobCardUiShare
 import { useToast } from "../../context/ToastContext";
 import useAuth from "../../hooks/useAuth";
 import usePermissions from "../../hooks/usePermissions";
+import useTenantId from "../../hooks/useTenantId";
 import useJobCardDetails from "../../hooks/useJobCardDetails";
 import CompletedJobCardAllStagesReport from "../../components/manufacturing/CompletedJobCardAllStagesReport";
 import { getTeamDirectory, getUsers } from "../../api/adminApi";
