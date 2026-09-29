@@ -144,7 +144,7 @@ export default function ShorthandQuantityInput({
         onFocus={(e) => e.target.select()}
         placeholder={placeholder}
         disabled={disabled}
-        className={`ui-input w-full ${parsedNum != null && parsedNum > 0 ? "pr-20" : "pr-3"} ${
+        className={`ui-input w-full ${parsedNum != null && parsedNum > 0 ? "pr-9" : "pr-3"} ${
           error ? "border-[var(--color-danger)]" : ""
         } ${className}`}
         {...rest}
@@ -156,10 +156,10 @@ export default function ShorthandQuantityInput({
           onClick={handleToggleConversion}
           title={tooltipText}
           disabled={disabled}
-          className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 rounded-md border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 transition-colors"
+          className="absolute right-1.5 top-1/2 -translate-y-1/2 flex h-6 w-6 items-center justify-center rounded-md border border-emerald-200 dark:border-emerald-800/80 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/70 transition-colors"
+          aria-label="Toggle conversion between numbers and words"
         >
-          <ArrowLeftRight className="h-3 w-3" />
-          <span>{isWordsMode ? "123" : "Words"}</span>
+          <ArrowLeftRight className="h-3.5 w-3.5" />
         </button>
       ) : null}
     </div>
