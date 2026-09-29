@@ -20,6 +20,7 @@ import Loader from "../../components/common/Loader";
 import PageHeader from "../../components/common/PageHeader";
 import RecordDetailModal from "../../components/inventory/RecordDetailModal";
 import StatusBadge from "../../components/common/StatusBadge";
+import ShorthandQuantityInput from "../../components/common/ShorthandQuantityInput";
 import StoreManagerNav from "../../components/inventory/StoreManagerNav";
 import WorkflowNextStep from "../../components/manufacturing/WorkflowNextStep";
 import { getStockInWorkflowGuidance } from "../../utils/inventoryWorkflowUx";
@@ -937,23 +938,22 @@ export default function StoreStockIn() {
                         <td className="min-w-[120px] px-2 py-2 text-[var(--color-text-muted)]">
                           {itemDescription(item) || "—"}
                         </td>
-                        <td className="px-2 py-2">
-                          <Input
-                            type="number"
-                            min="0"
+                        <td className="px-2 py-2 min-w-[120px]">
+                          <ShorthandQuantityInput
                             disabled={isReadOnly}
                             value={ln.ordered_qty}
-                            onChange={(e) => updateLine(ln.key, { ordered_qty: e.target.value })}
+                            onChange={(val) => updateLine(ln.key, { ordered_qty: val })}
+                            placeholder="0"
+                            className="text-xs"
                           />
                         </td>
-                        <td className="px-2 py-2">
-                          <Input
-                            type="number"
-                            min="1"
-                            required
+                        <td className="px-2 py-2 min-w-[120px]">
+                          <ShorthandQuantityInput
                             disabled={isReadOnly}
                             value={ln.received_qty}
-                            onChange={(e) => updateLine(ln.key, { received_qty: e.target.value })}
+                            onChange={(val) => updateLine(ln.key, { received_qty: val })}
+                            placeholder="0"
+                            className="text-xs"
                           />
                         </td>
                         <td className="px-2 py-2 whitespace-nowrap">{ln.unit}</td>

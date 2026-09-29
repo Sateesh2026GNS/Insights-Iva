@@ -25,6 +25,7 @@ import { SearchBar } from "../../components/common/SearchFilter";
 import PageHeader from "../../components/common/PageHeader";
 import InventoryHeaderControls from "../../components/inventory/InventoryHeaderControls";
 import StatusBadge from "../../components/common/StatusBadge";
+import ShorthandQuantityInput from "../../components/common/ShorthandQuantityInput";
 import ConfirmDialog from "../../components/admin/ConfirmDialog";
 import InventoryRowActionsMenu from "../../components/inventory/InventoryRowActionsMenu";
 import RecordDetailModal from "../../components/inventory/RecordDetailModal";
@@ -698,19 +699,11 @@ export default function StockAdjustment() {
 
                   <label className="text-sm">
                     <span className="ui-label">Adjustment Quantity *</span>
-                    <div className="relative">
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={form.adj_qty}
-                        onChange={(e) => setForm((f) => ({ ...f, adj_qty: e.target.value }))}
-                        className="ui-input !pr-12"
-                      />
-                      <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-[var(--color-text-muted)]">
-                        {unit}
-                      </span>
-                    </div>
+                    <ShorthandQuantityInput
+                      value={form.adj_qty}
+                      onChange={(val) => setForm((f) => ({ ...f, adj_qty: val }))}
+                      placeholder={`e.g. 50,000 (${unit})`}
+                    />
                   </label>
 
                   <label className="text-sm">

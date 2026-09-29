@@ -4,6 +4,7 @@ import { ArrowLeft, Building2, ChevronDown, FileText, Grid2x2, ImagePlus, Paperc
 
 import Loader from "../../components/common/Loader";
 import { SearchBar } from "../../components/common/SearchFilter";
+import ShorthandQuantityInput from "../../components/common/ShorthandQuantityInput";
 import AddCustomFieldModal from "../../components/sales/AddCustomFieldModal";
 import AddNewItemModal from "../../components/sales/AddNewItemModal";
 import AddOtherChargesModal, {
@@ -832,12 +833,11 @@ export default function CreatePurchaseOrder() {
                         />
                       </td>
                       <td className={cell}>
-                        <input
-                          type="number"
+                        <ShorthandQuantityInput
                           value={row.qty}
-                          onChange={(e) => updateItem(idx, "qty", e.target.value)}
+                          onChange={(val) => updateItem(idx, "qty", val)}
                           placeholder="0"
-                          className="w-14 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-1.5 py-1.5 text-[12px] text-[var(--color-text)] focus:border-[var(--color-action-blue)] focus:bg-[var(--color-surface)] focus:outline-none focus:ring-1 focus:ring-[var(--color-action-blue)]/30"
+                          className="w-24 text-[12px]"
                         />
                       </td>
                       <td className={cell}>
@@ -853,13 +853,13 @@ export default function CreatePurchaseOrder() {
                         </select>
                       </td>
                       <td className={cell}>
-                        <div className="flex items-center gap-0.5">
+                        <div className="flex items-center gap-0.5 min-w-[100px]">
                           <span className="text-[var(--color-text-faint)]">₹</span>
-                          <input
-                            type="number"
+                          <ShorthandQuantityInput
                             value={row.rate}
-                            onChange={(e) => updateItem(idx, "rate", e.target.value)}
-                            className="w-20 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-1.5 py-1.5"
+                            onChange={(val) => updateItem(idx, "rate", val)}
+                            placeholder="0"
+                            className="w-full text-[12px]"
                           />
                         </div>
                       </td>

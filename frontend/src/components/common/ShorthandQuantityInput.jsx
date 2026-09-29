@@ -13,6 +13,9 @@ export default function ShorthandQuantityInput({
   error = false,
   id,
   name,
+  disabled,
+  showPreview = true,
+  ...rest
 }) {
   const [displayValue, setDisplayValue] = useState("");
 
@@ -110,9 +113,11 @@ export default function ShorthandQuantityInput({
         onBlur={handleBlur}
         onFocus={(e) => e.target.select()}
         placeholder={placeholder}
+        disabled={disabled}
         className={`ui-input w-full ${error ? "border-[var(--color-danger)]" : ""} ${className}`}
+        {...rest}
       />
-      {parsedNum != null && parsedNum > 0 ? (
+      {showPreview && parsedNum != null && parsedNum > 0 ? (
         <p className="text-[12px] font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 pt-0.5">
           <span>=</span>
           {pureNumeric ? (

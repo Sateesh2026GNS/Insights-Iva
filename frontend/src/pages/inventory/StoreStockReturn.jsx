@@ -20,6 +20,7 @@ import Loader from "../../components/common/Loader";
 import PageHeader from "../../components/common/PageHeader";
 import RecordDetailModal from "../../components/inventory/RecordDetailModal";
 import StatusBadge from "../../components/common/StatusBadge";
+import ShorthandQuantityInput from "../../components/common/ShorthandQuantityInput";
 import StoreManagerNav from "../../components/inventory/StoreManagerNav";
 import WorkflowNextStep from "../../components/manufacturing/WorkflowNextStep";
 import { getStockReturnWorkflowGuidance } from "../../utils/inventoryWorkflowUx";
@@ -823,13 +824,12 @@ export default function StoreStockReturn() {
                         <Input value={ln.batch_number} onChange={(e) => updateLine(ln.key, { batch_number: e.target.value })} />
                       </td>
                       <td className="px-3 py-2 tabular-nums">{formatQty(ln.available_qty)}</td>
-                      <td className="px-3 py-2">
-                        <Input
-                          type="number"
-                          min="0"
-                          max={ln.available_qty || undefined}
+                      <td className="px-3 py-2 min-w-[120px]">
+                        <ShorthandQuantityInput
                           value={ln.return_qty}
-                          onChange={(e) => updateLine(ln.key, { return_qty: e.target.value })}
+                          onChange={(val) => updateLine(ln.key, { return_qty: val })}
+                          placeholder="0"
+                          className="text-xs"
                         />
                       </td>
                       <td className="px-3 py-2">{ln.unit}</td>

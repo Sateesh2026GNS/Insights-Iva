@@ -5,6 +5,7 @@ import { ArrowLeft, Building2, ChevronDown, FileText, Grid2x2, GripVertical, Ima
 import Button from "../../components/common/Button";
 import Loader from "../../components/common/Loader";
 import { SearchBar } from "../../components/common/SearchFilter";
+import ShorthandQuantityInput from "../../components/common/ShorthandQuantityInput";
 import AddBankAccountModal from "../../components/sales/AddBankAccountModal";
 import AddCustomFieldModal from "../../components/sales/AddCustomFieldModal";
 import AddNewItemModal from "../../components/sales/AddNewItemModal";
@@ -1436,13 +1437,12 @@ export default function TaxInvoiceForm() {
                           className="w-16 rounded-md border border-[#d0d0d8] bg-[#f7f7f9] px-1.5 py-1.5"
                         />
                       </td>
-                      <td className="border-b border-r border-[#d0d0d8] px-2 py-2">
-                        <input
-                          type="number"
+                      <td className="border-b border-r border-[#d0d0d8] px-2 py-2 min-w-[90px]">
+                        <ShorthandQuantityInput
                           value={row.qty}
-                          onChange={(e) => updateItem(idx, "qty", e.target.value)}
+                          onChange={(val) => updateItem(idx, "qty", val)}
                           placeholder="-"
-                          className="w-16 rounded-md border border-[#d0d0d8] bg-[#f7f7f9] px-1.5 py-1.5"
+                          className="w-full text-xs"
                         />
                       </td>
                       <td className="border-b border-r border-[#d0d0d8] px-2 py-2">
@@ -1459,15 +1459,14 @@ export default function TaxInvoiceForm() {
                           <option value="BOX">BOX</option>
                         </select>
                       </td>
-                      <td className="border-b border-r border-[#d0d0d8] px-2 py-2">
+                      <td className="border-b border-r border-[#d0d0d8] px-2 py-2 min-w-[100px]">
                         <div className="flex items-center gap-0.5">
                           <span className="text-[#9a9aa5]">₹</span>
-                          <input
-                            type="number"
+                          <ShorthandQuantityInput
                             value={row.rate}
-                            onChange={(e) => updateItem(idx, "rate", e.target.value)}
+                            onChange={(val) => updateItem(idx, "rate", val)}
                             placeholder="-"
-                            className="w-20 rounded-md border border-[#d0d0d8] bg-[#f7f7f9] px-1.5 py-1.5"
+                            className="w-full text-xs"
                           />
                         </div>
                       </td>

@@ -21,6 +21,7 @@ import Loader from "../../components/common/Loader";
 import PageHeader from "../../components/common/PageHeader";
 import { SearchBar } from "../../components/common/SearchFilter";
 import StatusBadge from "../../components/common/StatusBadge";
+import ShorthandQuantityInput from "../../components/common/ShorthandQuantityInput";
 import { useToast } from "../../context/ToastContext";
 import {
   createDailyReport,
@@ -242,11 +243,21 @@ function NewReportModal({ onClose, onSuccess }) {
             <div className="grid gap-3 sm:grid-cols-3">
               <div>
                 <label className="ui-label">Produced *</label>
-                <input type="number" min="0" step="any" name="produced_quantity" value={form.produced_quantity} onChange={handleChange} required className="ui-input" placeholder="0" />
+                <ShorthandQuantityInput
+                  name="produced_quantity"
+                  value={form.produced_quantity}
+                  onChange={(val) => setForm((f) => ({ ...f, produced_quantity: val }))}
+                  placeholder="e.g. 50,000, 1 Lakh"
+                />
               </div>
               <div>
                 <label className="ui-label">Scrap</label>
-                <input type="number" min="0" step="any" name="scrap_quantity" value={form.scrap_quantity} onChange={handleChange} className="ui-input" />
+                <ShorthandQuantityInput
+                  name="scrap_quantity"
+                  value={form.scrap_quantity}
+                  onChange={(val) => setForm((f) => ({ ...f, scrap_quantity: val }))}
+                  placeholder="0"
+                />
               </div>
               <div>
                 <label className="ui-label">Downtime (min)</label>

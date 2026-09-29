@@ -23,6 +23,7 @@ import { SearchBar } from "../../components/common/SearchFilter";
 import PageHeader from "../../components/common/PageHeader";
 import InventoryHeaderControls from "../../components/inventory/InventoryHeaderControls";
 import StatusBadge from "../../components/common/StatusBadge";
+import ShorthandQuantityInput from "../../components/common/ShorthandQuantityInput";
 import ConfirmDialog from "../../components/admin/ConfirmDialog";
 import InventoryRowActionsMenu from "../../components/inventory/InventoryRowActionsMenu";
 import RecordDetailModal from "../../components/inventory/RecordDetailModal";
@@ -709,12 +710,10 @@ export default function StockTransfer() {
                   </label>
                   <label className="text-sm">
                     <span className="ui-label">Quantity *</span>
-                    <input
-                      type="number"
-                      min="1"
+                    <ShorthandQuantityInput
                       value={form.quantity}
-                      onChange={(e) => setForm((f) => ({ ...f, quantity: e.target.value }))}
-                      className="ui-input"
+                      onChange={(val) => setForm((f) => ({ ...f, quantity: val }))}
+                      placeholder="e.g. 50,000, 1 Lakh"
                     />
                   </label>
                   <label className="text-sm">
