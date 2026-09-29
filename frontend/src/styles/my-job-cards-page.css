@@ -168,7 +168,9 @@
 }
 
 .my-job-cards-page__filters-panel {
-  overflow: hidden;
+  position: relative;
+  z-index: 20;
+  overflow: visible;
   border-top: 1px solid #b8dfc4;
 }
 
@@ -209,7 +211,7 @@
 }
 
 .my-job-cards-page__section.ui-card {
-  overflow: hidden;
+  overflow: visible;
   width: 100%;
   max-width: none;
   padding: 0;

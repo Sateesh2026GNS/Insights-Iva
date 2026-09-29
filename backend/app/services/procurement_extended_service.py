@@ -4,7 +4,7 @@ from datetime import date
 
 from fastapi import HTTPException, status
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, joinedload, selectinload
 
 from app.models.inventory import InventoryItem, StockLevel, Supplier
 from app.models.procurement import (
@@ -374,8 +374,45 @@ def list_po_enriched(db: Session, tenant_id: int) -> list[POListRead]:
 
 
 def get_grn_summary(db: Session, tenant_id: int) -> GRNSummaryRead:
-    grns = list(db.scalars(select(GoodsReceipt).where(GoodsReceipt.tenant_id == tenant_id)).all())
+    grns = list(
+        db.scalars(
+            select(GoodsReceipt)
+            .options(
+                selectinload(GoodsReceipt.line_items),
+                joinedload(GoodsReceipt.purchase_order).selectinload(PurchaseOrder.line_items),
+            )
+            .where(GoodsReceipt.tenant_id == tenant_id)
+        ).unique().all()
+    )
     today = date.today()
+    total_value = 0.0
+    for grn in grns:
+        if grn.status != "received" or (getattr(grn, "qc_status", "") or "").lower() not in {"pass", "passed", "approved"}:
+            continue
+
+        # GRN lines currently identify the inventory item, while PO lines hold
+        # the agreed price. Use a quantity-weighted item price if the PO has
+        # duplicate lines for the same item.
+        weighted_prices: dict[int, tuple[float, float]] = {}
+        for po_line in (grn.purchase_order.line_items if grn.purchase_order else []):
+            po_qty = float(po_line.quantity or 0)
+            unit_price = po_line.unit_price
+            if unit_price is None and po_line.line_total is not None and po_qty > 0:
+                unit_price = float(po_line.line_total) / po_qty
+            if unit_price is None or po_qty <= 0:
+                continue
+            amount, quantity = weighted_prices.get(po_line.item_id, (0.0, 0.0))
+            weighted_prices[po_line.item_id] = (amount + float(unit_price) * po_qty, quantity + po_qty)
+
+        for grn_line in grn.line_items or []:
+            accepted_qty = max(
+                0.0,
+                float(grn_line.quantity_received or 0) - float(grn_line.quantity_rejected or 0),
+            )
+            amount, quantity = weighted_prices.get(grn_line.item_id, (0.0, 0.0))
+            if accepted_qty > 0 and quantity > 0:
+                total_value += accepted_qty * (amount / quantity)
+
     return GRNSummaryRead(
         todays_grn=sum(1 for g in grns if g.receipt_date == today),
         pending_qc=sum(
@@ -391,7 +428,7 @@ def get_grn_summary(db: Session, tenant_id: int) -> GRNSummaryRead:
             if g.status == "rejected"
             or (getattr(g, "qc_status", None) or "") == "rejected"
         ),
-        total_value=0.0,
+        total_value=round(total_value, 2),
     )
 
 

@@ -130,6 +130,7 @@ export default function JobCardQueueFilters({
               options={customerSelectOptions.length ? customerSelectOptions : customerOptions.map((name) => ({ value: name, label: name }))}
               placeholder="Select Customer"
               searchPlaceholder="Search customers"
+              searchable={false}
               className="w-full"
             />
           </div>
@@ -145,6 +146,7 @@ export default function JobCardQueueFilters({
               }
               placeholder="Select Sales Order"
               searchPlaceholder="Search sales orders"
+              searchable={false}
               className="w-full"
             />
           </div>

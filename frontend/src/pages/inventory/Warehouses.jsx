@@ -295,6 +295,7 @@ export default function Warehouses() {
     {
       key: "name",
       label: "Warehouse Name",
+      width: "280px",
       render: (r) => (
         <div className="flex min-w-[200px] items-start gap-2.5">
           <span
@@ -318,11 +319,13 @@ export default function Warehouses() {
     {
       key: "code",
       label: "Warehouse Code",
+      width: "145px",
       render: (r) => <span className="tabular-nums text-[13px] text-[var(--color-text-secondary)]">{r.code || "—"}</span>,
     },
     {
       key: "location",
       label: "Location",
+      width: "165px",
       render: (r) => (
         <span className="inline-flex max-w-[180px] items-start gap-1 text-[13px] text-[var(--color-text-secondary)]">
           <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--color-text-muted)]" />
@@ -336,6 +339,7 @@ export default function Warehouses() {
     {
       key: "total_items",
       label: "Total Items",
+      width: "110px",
       render: (r) => (
         <span className="tabular-nums text-[13px] font-semibold text-[var(--color-text)]">
           {Number(r.total_items || 0).toLocaleString("en-IN")}
@@ -345,6 +349,7 @@ export default function Warehouses() {
     {
       key: "inventory_value",
       label: "Stock Value",
+      width: "120px",
       render: (r) => (
         <span className="whitespace-nowrap tabular-nums text-[13px] font-semibold text-[var(--color-text)]">
           {formatInrAmount(r.inventory_value)}
@@ -354,6 +359,7 @@ export default function Warehouses() {
     {
       key: "utilization_pct",
       label: "Utilization",
+      width: "155px",
       render: (r) => {
         const pct = Number(r.utilization_pct) || 0;
         const tone = utilizationTone(pct);
@@ -372,6 +378,7 @@ export default function Warehouses() {
     {
       key: "status",
       label: "Status",
+      width: "105px",
       render: (r) => (
         <StatusBadge tone={r.status === "active" ? "success" : "neutral"}>
           {r.status === "active" ? "Active" : "Inactive"}
@@ -382,6 +389,7 @@ export default function Warehouses() {
       key: "actions",
       label: "Actions",
       sortable: false,
+      width: "74px",
       className: "min-w-[4.5rem] w-[4.5rem] whitespace-nowrap",
       render: (r) => (
         <div className="flex items-center justify-end whitespace-nowrap">
@@ -528,6 +536,7 @@ export default function Warehouses() {
             showSearch={false}
             pageSize={10}
             wrapClassName="inventory-table-scroll--warehouses rounded-lg border border-[var(--color-border-soft)]"
+            tableClassName="table-fixed"
             emptyState={
               <EmptyState
                 icon="document"

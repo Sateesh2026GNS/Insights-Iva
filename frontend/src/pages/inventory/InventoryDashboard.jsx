@@ -489,7 +489,7 @@ export default function InventoryDashboard() {
                 <th className={`${thClass} w-[22%]`}>Time</th>
                 <th className={`${thClass} w-[22%]`}>Activity</th>
                 <th className={`${thClass} w-[36%]`}>Item</th>
-                <th className={`${thClass} w-[20%] text-right`}>Quantity</th>
+                <th className={`${thClass} w-[20%] !text-right`}>Quantity</th>
               </tr>
             </thead>
             <tbody>
@@ -506,7 +506,7 @@ export default function InventoryDashboard() {
                   <td className={`${tdClass} truncate text-[var(--color-text)]`} title={row.item_name}>
                     {row.item_name}
                   </td>
-                  <td className={`${tdClass} text-right tabular-nums font-medium text-[var(--color-text)]`}>
+                  <td className={`${tdClass} !text-right tabular-nums font-medium text-[var(--color-text)]`}>
                     {Number(row.quantity || 0).toLocaleString("en-IN")}
                   </td>
                 </tr>

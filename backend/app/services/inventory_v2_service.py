@@ -53,7 +53,7 @@ def serialize_item(p: Product) -> dict:
         "min_stock": _f(p.min_stock),
         "max_stock": _f(p.max_stock) if p.max_stock is not None else None,
         "current_stock": stock,
-        "stock_value": round(stock * sale, 3),
+        "stock_value": round(stock * purchase, 3),
     }
 
 

@@ -43,6 +43,7 @@ export default function SearchableSelect({
   footerOptions = [],
   placeholder = "Select…",
   searchPlaceholder = "Search",
+  searchable = true,
   disabled = false,
   error = false,
   allowCustom = false,
@@ -120,25 +121,27 @@ export default function SearchableSelect({
         <div
           className={`absolute left-0 right-0 top-full z-40 mt-1 overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-lg ${menuClassName}`.trim()}
         >
-          <div className="border-b border-[var(--color-border-muted)] p-2">
-            <SearchBar
-              size="compact"
-              value={query}
-              onChange={setQuery}
-              placeholder={searchPlaceholder}
-              inputRef={inputRef}
-              clearable={false}
-              type="text"
-              className="w-full"
-              onKeyDown={(e) => {
-                if (e.key === "Escape") setOpen(false);
-                if (e.key === "Enter" && allowCustom && query.trim()) {
-                  onChange?.(query.trim());
-                  setOpen(false);
-                }
-              }}
-            />
-          </div>
+          {searchable ? (
+            <div className="border-b border-[var(--color-border-muted)] p-2">
+              <SearchBar
+                size="compact"
+                value={query}
+                onChange={setQuery}
+                placeholder={searchPlaceholder}
+                inputRef={inputRef}
+                clearable={false}
+                type="text"
+                className="w-full"
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") setOpen(false);
+                  if (e.key === "Enter" && allowCustom && query.trim()) {
+                    onChange?.(query.trim());
+                    setOpen(false);
+                  }
+                }}
+              />
+            </div>
+          ) : null}
           <ul role="listbox" className="max-h-56 overflow-y-auto py-1">
             {filtered.length === 0 ? (
               <li className="px-3 py-3 text-center text-xs text-[var(--color-text-muted)]">
