@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 /** List-page search — same visual language as navbar global search */
 export const SEARCH_BAR_WRAP_CLASS =
   "relative ui-search-wrap min-w-[10rem] flex-1 max-w-[var(--search-max-width-nav)]";
-export const SEARCH_BAR_INPUT_CLASS = "ui-input global-search-input w-full !rounded-full !pl-10";
+export const SEARCH_BAR_INPUT_CLASS = "ui-input global-search-input erp-list-search-input w-full !rounded-full !pl-10";
 
 /** Procurement Vendors list toolbar — canonical width/flex for module list search */
 export const LIST_PAGE_SEARCH_BAR_CLASS = "w-full sm:w-auto min-w-0 sm:min-w-[220px] flex-1";

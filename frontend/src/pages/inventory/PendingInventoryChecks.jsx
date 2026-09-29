@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
-import { ClipboardList } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { ClipboardCheck, ClipboardList, Eye } from "lucide-react";
 
 import Button from "../../components/common/Button";
 import EmptyState from "../../components/common/EmptyState";
 import Loader from "../../components/common/Loader";
 import PageHeader from "../../components/common/PageHeader";
 import Pagination from "../../components/common/Pagination";
+import RowActionMenu from "../../components/common/RowActionMenu";
 import { ListPageCard, ListPageShell } from "../../components/common/ListPageShell";
 import { SearchBar } from "../../components/common/SearchFilter";
 import StatusBadge from "../../components/common/StatusBadge";
@@ -14,7 +15,6 @@ import StoreManagerNav from "../../components/inventory/StoreManagerNav";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { getPendingInventoryChecks } from "../../api/inventoryApi";
 import { apiErrorMessage } from "../../utils/apiError";
-import { stageJobCardUrl } from "../../utils/workflowStageRoutes";
 
 const PAGE_SIZES = [10, 20, 50, 100];
 
@@ -27,6 +27,8 @@ function formatDate(value) {
 }
 
 export default function PendingInventoryChecks() {
+  const navigate = useNavigate();
+  const [openMenu, setOpenMenu] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [total, setTotal] = useState(0);
@@ -132,12 +134,12 @@ export default function PendingInventoryChecks() {
               <tbody>
                 {pageRows.map((row, idx) => {
                   const orderId = row.sales_order_id;
-                  const checkUrl = orderId
-                    ? stageJobCardUrl(orderId, "MATERIAL_CHECK_PENDING")
-                    : "/my-job-cards?dept=inventory";
                   const listUrl = orderId
                     ? `/my-job-cards?dept=inventory&order=${orderId}`
                     : "/my-job-cards?dept=inventory";
+                  const checkUrl = orderId
+                    ? `${listUrl}&focus=material-check`
+                    : listUrl;
                   return (
                     <tr key={orderId || idx} className="ui-table-row">
                       <td className="px-3 py-2 text-[var(--color-text-muted)]">
@@ -154,15 +156,26 @@ export default function PendingInventoryChecks() {
                       <td className="px-3 py-2">
                         <StatusBadge label={row.status || "Awaiting Inventory Check"} tone="warning" />
                       </td>
-                      <td className="px-3 py-2">
-                        <div className="flex flex-wrap gap-2">
-                          <Link to={listUrl} className="text-xs font-semibold text-[var(--color-primary)] hover:underline">
-                            Open
-                          </Link>
-                          <Link to={checkUrl} className="text-xs font-semibold text-[var(--color-action-teal)] hover:underline">
-                            Inventory Check
-                          </Link>
-                        </div>
+                      <td className="w-[88px] px-3 py-2 text-center">
+                        <RowActionMenu
+                          rowId={orderId ?? row.job_card_no ?? idx}
+                          openMenu={openMenu}
+                          setOpenMenu={setOpenMenu}
+                          menuWidth={208}
+                          ariaLabel={`Actions for ${row.job_card_no || row.order_number || "job card"}`}
+                          items={[
+                            {
+                              label: "Open Job Card",
+                              icon: <Eye className="h-4 w-4" />,
+                              onClick: () => navigate(listUrl),
+                            },
+                            {
+                              label: "Inventory Check",
+                              icon: <ClipboardCheck className="h-4 w-4" />,
+                              onClick: () => navigate(checkUrl),
+                            },
+                          ]}
+                        />
                       </td>
                     </tr>
                   );

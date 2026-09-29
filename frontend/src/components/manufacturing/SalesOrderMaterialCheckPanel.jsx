@@ -165,7 +165,7 @@ export default function SalesOrderMaterialCheckPanel({
 
       {!loading && !error && lines.length === 0 ? (
         <p className="store-manual-jc-actions__hint">
-          No materials could be resolved. Ensure products have a BOM linked to inventory items.
+          No materials could be resolved. Check that the ordered product is linked to inventory.
         </p>
       ) : null}
 

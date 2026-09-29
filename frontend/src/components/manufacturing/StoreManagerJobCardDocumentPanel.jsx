@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { ChevronDown, ChevronUp, Download, Printer, Send } from "lucide-react";
 
 import Button from "../common/Button";
@@ -31,6 +32,8 @@ export default function StoreManagerJobCardDocumentPanel({
   onQueueUpdated,
 }) {
   const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const focusMaterialCheck = searchParams.get("focus") === "material-check";
   const tenantId = useTenantId();
   const isManual = Boolean(jobCardId || row?.is_manual);
   const resolvedJobCardId = jobCardId || (row?.is_manual ? row?.job_card_id : null);
@@ -116,6 +119,21 @@ export default function StoreManagerJobCardDocumentPanel({
   const hasSelection = Boolean(resolvedOrderId || resolvedJobCardId);
   const showDocument = Boolean(hasSelection && card && !loading && !error);
   const showEmptyLayout = showEmptyShell && !hasSelection;
+
+  useEffect(() => {
+    if (!focusMaterialCheck || !showDocument || isManual) return undefined;
+    const frame = requestAnimationFrame(() => {
+      document
+        .getElementById("sales-order-material-check-panel")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+      setSearchParams((current) => {
+        const next = new URLSearchParams(current);
+        next.delete("focus");
+        return next;
+      }, { replace: true });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [focusMaterialCheck, isManual, setSearchParams, showDocument]);
   const workflowStatus = erpListStatus(card || row || {});
   const orderCancelled =
     String(salesOrder?.status || "").toLowerCase() === "cancelled" ||

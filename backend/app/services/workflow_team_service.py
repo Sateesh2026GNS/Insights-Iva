@@ -36,6 +36,7 @@ from app.services.inventory_service import get_total_stock
 from app.services.manufacturing_workflow_service import (
     create_gst_invoice_from_sales_order,
     ensure_work_order_for_production_order,
+    find_or_create_inventory_item_for_product,
     get_bom_requirements,
     run_mrp,
 )
@@ -181,7 +182,7 @@ def create_material_check_for_order(
             SalesOrderMaterialCheck.sales_order_id == sales_order.id,
         )
     ).first()
-    if existing:
+    if existing and existing.lines:
         return existing
 
     lines = list(
@@ -189,21 +190,45 @@ def create_material_check_for_order(
             select(SalesOrderLine).where(SalesOrderLine.sales_order_id == sales_order.id)
         ).all()
     )
-    mc = SalesOrderMaterialCheck(
+    mc = existing or SalesOrderMaterialCheck(
         tenant_id=tenant_id,
         sales_order_id=sales_order.id,
         check_number=f"MC-{sales_order.order_number}",
         status="pending",
     )
-    db.add(mc)
-    db.flush()
+    if not existing:
+        db.add(mc)
+        db.flush()
 
     for so_line in lines:
         if not so_line.product_id:
             continue
+        order_qty = float(so_line.quantity or 0)
         bom_reqs = get_bom_requirements(
-            db, tenant_id, so_line.product_id, float(so_line.quantity)
+            db, tenant_id, so_line.product_id, order_qty
         )
+        if not bom_reqs:
+            # Raw materials and other inventory products may be sold directly;
+            # check their own stock instead of requiring a BOM to exist.
+            product = db.get(Product, so_line.product_id)
+            if product and product.tenant_id == tenant_id:
+                category = (product.category or "").strip().lower()
+                item_type = (
+                    "raw_material"
+                    if any(token in category for token in ("raw", "packaging", "wip", "consumable", "spare"))
+                    else "finished_good"
+                )
+                item = find_or_create_inventory_item_for_product(
+                    db, tenant_id, product, item_type=item_type
+                )
+                bom_reqs = [{
+                    "component_product_id": product.id,
+                    "item_id": item.id,
+                    "sku": product.sku,
+                    "component_name": product.name,
+                    "required_qty": order_qty,
+                    "available_qty": float(get_total_stock(db, item.id, tenant_id)),
+                }]
         for req in bom_reqs:
             comp_id = req.get("component_product_id")
             item_id = req.get("item_id")
