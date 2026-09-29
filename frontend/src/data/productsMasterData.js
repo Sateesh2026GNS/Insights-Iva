@@ -133,7 +133,7 @@ export function enrichApiProduct(apiRow) {
     current_stock: stock,
     warehouse: apiRow.warehouse || "—",
     description: apiRow.description || "",
-    status: apiRow.status || "active",
+    status: String(apiRow.status ?? (apiRow.is_active === false ? "inactive" : "active")).trim().toLowerCase(),
     bom: apiRow.bom || "—",
     production_time: apiRow.production_time || "—",
     machine_required: apiRow.machine_required || "—",
@@ -153,8 +153,8 @@ export function computeSummary(products) {
   const categories = new Set(products.map((p) => p.category));
   return {
     total: products.length,
-    active: products.filter((p) => p.status === "active").length,
-    inactive: products.filter((p) => p.status === "inactive").length,
+    active: products.filter((p) => String(p.status || "").trim().toLowerCase() === "active").length,
+    inactive: products.filter((p) => String(p.status || "").trim().toLowerCase() === "inactive").length,
     lowStock: products.filter((p) => p.current_stock > 0 && p.current_stock <= p.min_stock).length,
     outOfStock: products.filter((p) => p.current_stock === 0).length,
     categories: categories.size,

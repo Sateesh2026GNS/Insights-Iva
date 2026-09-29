@@ -699,10 +699,9 @@ def list_ledger_entries(
     all_movements = list(db.scalars(stmt).all())
 
     wh_map = {w.id: w.name for w in db.scalars(select(Warehouse).where(Warehouse.tenant_id == tenant_id)).all()}
-    item_map = {
-        i.id: i.name
-        for i in db.scalars(select(InventoryItem).where(InventoryItem.tenant_id == tenant_id)).all()
-    }
+    items = list(db.scalars(select(InventoryItem).where(InventoryItem.tenant_id == tenant_id)).all())
+    item_map = {item.id: item.name for item in items}
+    unit_map = {item.id: (item.unit or "pcs") for item in items}
     balance_tracker: dict[int, float] = {}
     entries = []
     for m in all_movements:
@@ -724,6 +723,7 @@ def list_ledger_entries(
                 transaction=m.movement_type,
                 warehouse_name=wh_map.get(m.warehouse_id, "—"),
                 item_name=item_map.get(m.item_id, "—"),
+                unit=unit_map.get(m.item_id, "pcs"),
                 batch_number=m.batch_number,
                 qty_in=qty_in,
                 qty_out=qty_out,

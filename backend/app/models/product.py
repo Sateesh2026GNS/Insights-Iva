@@ -25,6 +25,7 @@ class Product(Base, TimestampMixin):
     hsn_code: Mapped[str | None] = mapped_column(String(32))
     gst_percent: Mapped[float | None] = mapped_column(Numeric(5, 2), default=0)
     cess_percent: Mapped[float | None] = mapped_column(Numeric(5, 2), default=0)
+    status: Mapped[str] = mapped_column(String(32), default="active", nullable=False)
 
     tenant = relationship("Tenant", back_populates="products")
     bom_items = relationship(

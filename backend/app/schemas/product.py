@@ -19,6 +19,7 @@ class ProductBase(BaseModel):
     hsn_code: str | None = Field(None, max_length=32)
     gst_percent: float | None = Field(None, ge=0, le=100.0)
     cess_percent: float | None = Field(None, ge=0, le=100.0)
+    status: str = Field("active", pattern="^(active|inactive)$")
 
     @field_validator("gst_percent", "cess_percent", mode="before")
     @classmethod
@@ -110,6 +111,7 @@ class ProductUpdate(BaseModel):
     hsn_code: str | None = Field(None, max_length=32)
     gst_percent: float | None = Field(None, ge=0, le=100.0)
     cess_percent: float | None = Field(None, ge=0, le=100.0)
+    status: str | None = Field(None, pattern="^(active|inactive)$")
 
     @field_validator("gst_percent", "cess_percent", mode="before")
     @classmethod

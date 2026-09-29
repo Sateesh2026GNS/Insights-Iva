@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { FileBarChart2, Lock, RefreshCw, WifiOff } from "lucide-react";
+import { ChevronDown, FileBarChart2, Lock, RefreshCw, WifiOff } from "lucide-react";
 
 import Button from "../../components/common/Button";
 import PageHeader from "../../components/common/PageHeader";
@@ -52,6 +52,9 @@ function normalizeApiList(payload) {
   if (Array.isArray(payload)) return payload;
   if (Array.isArray(payload?.data)) return payload.data;
   if (Array.isArray(payload?.items)) return payload.items;
+  if (Array.isArray(payload?.warehouses)) return payload.warehouses;
+  if (Array.isArray(payload?.data?.items)) return payload.data.items;
+  if (Array.isArray(payload?.data?.warehouses)) return payload.data.warehouses;
   return [];
 }
 
@@ -128,6 +131,7 @@ export default function StoreReportsPage() {
   const [sessionExpired, setSessionExpired] = useState(false);
 
   const abortRef = useRef(null);
+  const warehouseDropdownRef = useRef(null);
   const selectedReport = filters.report;
   const activeMeta = catalog.find((c) => c.key === selectedReport);
 
@@ -178,10 +182,20 @@ export default function StoreReportsPage() {
       setCatalogLoading(true);
       setCatalogError("");
       try {
-        const [repRes, whRes] = await Promise.all([listReports(), getWarehouses()]);
+        const [repRes, whRes] = await Promise.allSettled([listReports(), getWarehouses()]);
         if (cancelled) return;
-        setCatalog(normalizeApiList(repRes?.data ?? repRes));
-        setWarehouses(normalizeApiList(whRes?.data ?? whRes));
+        if (repRes.status === "fulfilled") {
+          setCatalog(normalizeApiList(repRes.value?.data ?? repRes.value));
+        } else {
+          setCatalog([]);
+          setCatalogError(apiErrorMessage(repRes.reason, "Could not load the report catalog. Restart the API or sign in again."));
+        }
+        if (whRes.status === "fulfilled") {
+          setWarehouses(normalizeApiList(whRes.value?.data ?? whRes.value));
+        } else {
+          setWarehouses([]);
+          setCatalogError((current) => current || apiErrorMessage(whRes.reason, "Could not load available warehouses."));
+        }
       } catch (err) {
         if (!cancelled) {
           setCatalog([]);
@@ -383,13 +397,13 @@ export default function StoreReportsPage() {
         />
       )}
 
-      <ListPageCard className="mb-4">
-        <div className="grid gap-4 p-4 sm:grid-cols-2 lg:grid-cols-5 lg:items-end">
+      <ListPageCard className="mb-4 !overflow-visible">
+        <div className="grid gap-4 p-4 sm:grid-cols-2 lg:grid-cols-[repeat(3,minmax(0,1fr))_auto] lg:items-end">
           <label className="text-sm">
             <span className="mb-1 block text-[var(--color-text-muted)]">From</span>
             <input
               type="date"
-              className="w-full rounded-lg border border-[var(--color-border-soft)] px-3 py-2"
+              className="h-[54px] w-full rounded-lg border border-[var(--color-border-soft)] px-3 py-2"
               value={draft.date_from}
               onChange={(e) => {
                 setDraft((d) => ({ ...d, date_from: e.target.value }));
@@ -401,7 +415,7 @@ export default function StoreReportsPage() {
             <span className="mb-1 block text-[var(--color-text-muted)]">To</span>
             <input
               type="date"
-              className="w-full rounded-lg border border-[var(--color-border-soft)] px-3 py-2"
+              className="h-[54px] w-full rounded-lg border border-[var(--color-border-soft)] px-3 py-2"
               value={draft.date_to}
               onChange={(e) => {
                 setDraft((d) => ({ ...d, date_to: e.target.value }));
@@ -412,22 +426,56 @@ export default function StoreReportsPage() {
               <span className="mt-1 block text-xs text-red-600">{fieldErrors.date_to}</span>
             )}
           </label>
-          <label className="text-sm lg:col-span-2">
+          <div className="min-w-0 text-sm">
             <span className="mb-1 block text-[var(--color-text-muted)]">Warehouses</span>
-            <select
-              multiple
-              className="min-h-[2.75rem] w-full rounded-lg border border-[var(--color-border-soft)] px-3 py-2"
-              value={draft.warehouse_ids.map(String)}
-              onChange={(e) => {
-                const ids = [...e.target.selectedOptions].map((o) => Number(o.value));
-                setDraft((d) => ({ ...d, warehouse_ids: ids }));
-              }}
-            >
-              {warehouses.map((w) => (
-                <option key={w.id} value={w.id}>{w.name}</option>
-              ))}
-            </select>
-          </label>
+            <details ref={warehouseDropdownRef} className="group relative w-full">
+              <summary className="flex h-[54px] w-full cursor-pointer list-none items-center justify-between rounded-lg border border-[var(--color-border-soft)] bg-white px-3 py-2 text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] [&::-webkit-details-marker]:hidden">
+                <span className="truncate pr-3">
+                  {draft.warehouse_ids.length
+                    ? draft.warehouse_ids.length === 1
+                      ? warehouses.find((w) => String(w.id) === String(draft.warehouse_ids[0]))?.name || "1 warehouse selected"
+                      : `${draft.warehouse_ids.length} warehouses selected`
+                    : "All accessible warehouses"}
+                </span>
+                <ChevronDown className="h-4 w-4 shrink-0 text-[var(--color-text-muted)] transition-transform group-open:rotate-180" />
+              </summary>
+              <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-30 max-h-56 overflow-y-auto rounded-lg border border-[var(--color-border-soft)] bg-white p-2 shadow-lg">
+                <label className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-2 hover:bg-[var(--color-surface-muted)]">
+                  <input
+                    type="checkbox"
+                    checked={draft.warehouse_ids.length === 0}
+                    onChange={() => {
+                      setDraft((d) => ({ ...d, warehouse_ids: [] }));
+                      warehouseDropdownRef.current?.removeAttribute("open");
+                    }}
+                    className="h-4 w-4 accent-[var(--color-primary)]"
+                  />
+                  <span>All accessible warehouses</span>
+                </label>
+                {warehouses.length ? warehouses.map((w) => (
+                    <label key={w.id} className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-2 hover:bg-[var(--color-surface-muted)]">
+                      <input
+                        type="checkbox"
+                        checked={draft.warehouse_ids.some((id) => String(id) === String(w.id))}
+                      onChange={() => {
+                        setDraft((d) => ({
+                          ...d,
+                          warehouse_ids: d.warehouse_ids.some((id) => String(id) === String(w.id))
+                            ? d.warehouse_ids.filter((id) => String(id) !== String(w.id))
+                            : [...d.warehouse_ids, Number(w.id)],
+                        }));
+                        warehouseDropdownRef.current?.removeAttribute("open");
+                      }}
+                        className="h-4 w-4 accent-[var(--color-primary)]"
+                      />
+                      <span className="truncate">{w.name}</span>
+                    </label>
+                  )) : (
+                    <p className="px-2 py-2 text-sm text-[var(--color-text-muted)]">No warehouses available.</p>
+                  )}
+              </div>
+            </details>
+          </div>
           <div className="flex gap-2">
             <Button variant="primary" size="sm" onClick={applyFilters}>Apply</Button>
             <Button variant="outline" size="sm" onClick={resetFilters}>Reset</Button>

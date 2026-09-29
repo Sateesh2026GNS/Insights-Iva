@@ -43,6 +43,7 @@ const EMPTY = {
   cess: "0",
   cess_mode: "Percent Wise",
   category: "",
+  status: "active",
   purchase_price: "0",
   purchase_tax_type: "Exclusive",
   opening_stock: "",
@@ -346,6 +347,7 @@ export default function AddNewItemModal({
         hsn_sac: cleanHsn,
         cess: item?.cess_percent != null && item.cess_percent !== "" ? String(item.cess_percent) : (item?.cess ?? "0"),
         category: item?.category && item.category !== "—" ? item.category : "",
+        status: String(item?.status || "active").toLowerCase(),
         purchase_price: String(item?.purchase_price ?? item?.unit_cost ?? "0"),
         opening_stock: String(item?.current_stock ?? ""),
         min_stock: String(item?.min_stock ?? ""),
@@ -488,6 +490,7 @@ export default function AddNewItemModal({
         sku,
         name: form.name.trim(),
         category: form.category || "Finished Goods",
+        ...(isProduct ? { status: form.status } : {}),
         product_type: form.item_type === "services" ? "Service" : (form.category || "Finished Goods"),
         description: fullDesc,
         hsn_code: cleanHsn || null,
@@ -692,6 +695,20 @@ export default function AddNewItemModal({
                 </select>
               </label>
             </div>
+
+            {isProduct ? (
+              <label className="block max-w-sm">
+                <SoftLabel required>Product Status</SoftLabel>
+                <select
+                  value={form.status}
+                  onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}
+                  className={inputClass}
+                >
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+              </label>
+            ) : null}
 
             <div className="grid grid-cols-2 gap-3">
               <label className="block">

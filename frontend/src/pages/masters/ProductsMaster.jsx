@@ -332,7 +332,7 @@ export default function ProductsMaster() {
                     <div>
                       <span className="text-[var(--color-text-muted)] block text-[10px] uppercase font-semibold">Price</span>
                       <span className="font-bold tabular-nums text-[var(--color-text)]">
-                        ₹ {Number(p.selling_price ?? p.unit_price ?? 0).toLocaleString("en-IN")}
+                        ₹{Number(p.selling_price ?? p.unit_price ?? 0).toLocaleString("en-IN")}
                       </span>
                     </div>
                     <div>
@@ -367,7 +367,7 @@ export default function ProductsMaster() {
                     <th className="px-4 py-3 font-medium">Description</th>
                     <th className="px-4 py-3 font-medium">HSN</th>
                     <th className="px-4 py-3 font-medium">Unit</th>
-                    <th className="px-4 py-3 font-medium">Price</th>
+                    <th className="px-4 py-3 text-right font-medium">Price</th>
                     <th className="px-4 py-3 font-medium">GST Tax</th>
                     <th className="px-4 py-3 font-medium">CESS %</th>
                     <th className="px-4 py-3 text-right font-medium">Actions</th>
@@ -402,8 +402,8 @@ export default function ProductsMaster() {
                         <td className="px-4 py-3.5 ui-table-text-secondary">{desc}</td>
                         <td className="px-4 py-3.5 ui-table-text-secondary">{hsn}</td>
                         <td className="px-4 py-3.5 ui-table-text-secondary">{unit}</td>
-                        <td className="px-4 py-3.5 tabular-nums text-[var(--color-table-text)]">
-                          ₹ {Number(p.selling_price ?? p.unit_price ?? 0).toLocaleString("en-IN")}
+                        <td className="whitespace-nowrap px-4 py-3.5 text-right tabular-nums text-[var(--color-table-text)]">
+                          ₹{Number(p.selling_price ?? p.unit_price ?? 0).toLocaleString("en-IN")}
                         </td>
                         <td className="px-4 py-3.5 ui-table-text-secondary">{gst}</td>
                         <td className="px-4 py-3.5 ui-table-text-secondary">{cess}</td>

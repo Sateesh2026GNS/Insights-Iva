@@ -26,6 +26,15 @@ function formatDate(value) {
   return `${day}/${m}/${y}`;
 }
 
+function conciseStatus(row) {
+  const status = String(row.status || row.workflow_status || "").toLowerCase();
+  if (/approv|confirm|available|complete/.test(status)) return "Approved";
+  if (/reject|fail|shortage/.test(status)) return "Rejected";
+  if (/hold/.test(status)) return "On Hold";
+  if (/pending|check|partial/.test(status)) return "Pending";
+  return status ? status.replaceAll("_", " ").replace(/\b\w/g, (char) => char.toUpperCase()) : "Pending";
+}
+
 export default function PendingInventoryChecks() {
   const navigate = useNavigate();
   const [openMenu, setOpenMenu] = useState(null);
@@ -154,7 +163,9 @@ export default function PendingInventoryChecks() {
                       <td className="px-3 py-2">{formatDate(row.order_date)}</td>
                       <td className="px-3 py-2">{row.sales_person || "—"}</td>
                       <td className="px-3 py-2">
-                        <StatusBadge label={row.status || "Awaiting Inventory Check"} tone="warning" />
+                        <StatusBadge tone="warning">
+                          {conciseStatus(row)}
+                        </StatusBadge>
                       </td>
                       <td className="w-[88px] px-3 py-2 text-center">
                         <RowActionMenu

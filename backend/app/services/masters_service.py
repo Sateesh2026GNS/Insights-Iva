@@ -61,6 +61,7 @@ class MastersService:
             "category": getattr(p, "category", None) or "No Category",
             "gst_percent": float(p.gst_percent) if getattr(p, "gst_percent", None) is not None else 0,
             "cess_percent": float(p.cess_percent) if getattr(p, "cess_percent", None) is not None else 0,
+            "status": getattr(p, "status", None) or "active",
             "min_stock": int(p.min_stock) if p.min_stock is not None else None,
             "max_stock": int(p.max_stock) if p.max_stock is not None else None,
             "current_stock": float(p.current_stock) if p.current_stock is not None else 0,

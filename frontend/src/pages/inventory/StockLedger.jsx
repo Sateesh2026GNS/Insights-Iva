@@ -27,22 +27,13 @@ import InventoryRowActionsMenu from "../../components/inventory/InventoryRowActi
 import RecordDetailModal from "../../components/inventory/RecordDetailModal";
 import StoreManagerNav from "../../components/inventory/StoreManagerNav";
 import { useToast } from "../../context/ToastContext";
-import { getLedgerSummary, getStockLedger, getWarehouses } from "../../api/inventoryApi";
+import { getStockLedger, getWarehouses } from "../../api/inventoryApi";
 import useManufacturingRefresh from "../../hooks/useManufacturingRefresh";
 import { exportToExcel, exportToPdf } from "../../utils/exportUtils";
 import useAuth from "../../hooks/useAuth";
 import { isStoreManager } from "../../config/permissions";
 import { asArray } from "../../utils/apiError";
 import { todayIso } from "../../utils/dateUtils";
-
-const EMPTY_SUMMARY = {
-  stock_in: 0,
-  stock_out: 0,
-  transfers: 0,
-  adjustments: 0,
-  total_transactions: 0,
-  uom: "KG",
-};
 
 const STOCK_LEDGER_EXPORT_COLUMNS = [
   { key: "date", label: "Date" },
@@ -66,6 +57,19 @@ function formatQty(value, { dashZero = true } = {}) {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
+}
+
+function formatQtyByUnit(totals) {
+  const parts = Object.entries(totals)
+    .filter(([, quantity]) => quantity > 0)
+    .sort(([unitA], [unitB]) => unitA.localeCompare(unitB))
+    .map(([unit, quantity]) => `${formatQty(quantity, { dashZero: false })} ${unit}`);
+  if (parts.length <= 1) return parts[0] || "0.00";
+  return (
+    <span title={parts.join(" · ")} aria-label={parts.join(", ")}>
+      Multiple units
+    </span>
+  );
 }
 
 function formatDateParts(value) {
@@ -145,7 +149,6 @@ export default function StockLedger({ variant = "" }) {
   const dateFromRef = useRef(null);
   const dateToRef = useRef(null);
   const [loading, setLoading] = useState(true);
-  const [summary, setSummary] = useState({});
   const [entries, setEntries] = useState([]);
   const [warehousesApi, setWarehousesApi] = useState([]);
   const [filters, setFilters] = useState({
@@ -165,20 +168,16 @@ export default function StockLedger({ variant = "" }) {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [sumRes, listRes, whRes] = await Promise.allSettled([
-        getLedgerSummary(),
+      const [listRes, whRes] = await Promise.allSettled([
         getStockLedger(),
         getWarehouses(),
       ]);
-      if (sumRes.status === "fulfilled" && sumRes.value?.data) setSummary(sumRes.value.data);
-      else setSummary({});
       if (listRes.status === "fulfilled") setEntries(asArray(listRes.value?.data));
       else setEntries([]);
       if (whRes.status === "fulfilled") setWarehousesApi(asArray(whRes.value?.data));
       else setWarehousesApi([]);
     } catch {
       setEntries([]);
-      setSummary({});
     } finally {
       setLoading(false);
     }
@@ -280,35 +279,28 @@ export default function StockLedger({ variant = "" }) {
   }, [rows, search, filters]);
 
   const kpis = useMemo(() => {
-    if (!entries.length) return EMPTY_SUMMARY;
-    let stockIn = Number(summary.stock_in) || 0;
-    let stockOut = Number(summary.stock_out) || 0;
-    let transfers = Number(summary.transfers) || 0;
-    let adjustments = Number(summary.adjustments) || 0;
-    if (!summary.stock_in && !summary.stock_out) {
-      stockIn = 0;
-      stockOut = 0;
-      transfers = 0;
-      adjustments = 0;
-      filtered.forEach((r) => {
-        const type = resolveTxnType(r);
-        const qi = Number(r.qty_in) || 0;
-        const qo = Number(r.qty_out) || 0;
-        if (type === "in") stockIn += qi;
-        else if (type === "out") stockOut += qo;
-        else if (type === "transfer_in" || type === "transfer_out") transfers += qi || qo;
-        else if (type === "adjustment") adjustments += qi || qo;
-      });
-    }
+    const totals = { stockIn: {}, stockOut: {} };
+    let transferCount = 0;
+    let adjustmentCount = 0;
+    filtered.forEach((row) => {
+      const type = resolveTxnType(row);
+      const unit = String(row.unit || "Unit").trim();
+      const quantity = Math.abs(Number(row.qty_in) || Number(row.qty_out) || 0);
+      const bucket = type === "in" ? totals.stockIn
+        : type === "out" ? totals.stockOut
+          : null;
+      if (bucket && quantity > 0) bucket[unit] = (bucket[unit] || 0) + quantity;
+      if (type === "transfer_in" || type === "transfer_out") transferCount += 1;
+      if (type === "adjustment") adjustmentCount += 1;
+    });
     return {
-      stock_in: stockIn,
-      stock_out: stockOut,
-      transfers,
-      adjustments,
-      total_transactions: summary.total_transactions ?? filtered.length,
-      uom: "KG",
+      stock_in: totals.stockIn,
+      stock_out: totals.stockOut,
+      transfers: transferCount,
+      adjustments: adjustmentCount,
+      total_transactions: filtered.length,
     };
-  }, [entries.length, summary, filtered]);
+  }, [filtered]);
 
   const clearFilters = () => {
     setSearch("");
@@ -623,7 +615,7 @@ export default function StockLedger({ variant = "" }) {
         >
           <KpiCard
             label="Total Stock In"
-            value={`${formatQty(kpis.stock_in, { dashZero: false })} ${kpis.uom}`}
+            value={formatQtyByUnit(kpis.stock_in)}
             icon={ArrowDownToLine}
             tone="success"
             meta="Click to filter"
@@ -637,7 +629,7 @@ export default function StockLedger({ variant = "" }) {
         >
           <KpiCard
             label="Total Stock Out"
-            value={`${formatQty(kpis.stock_out, { dashZero: false })} ${kpis.uom}`}
+            value={formatQtyByUnit(kpis.stock_out)}
             icon={ArrowUpFromLine}
             tone="danger"
             meta="Click to filter"
@@ -651,7 +643,7 @@ export default function StockLedger({ variant = "" }) {
         >
           <KpiCard
             label="Total Transfers"
-            value={`${formatQty(kpis.transfers, { dashZero: false })} ${kpis.uom}`}
+            value={Number(kpis.transfers).toLocaleString("en-IN")}
             icon={ArrowLeftRight}
             tone="info"
             meta="Click to filter"
@@ -665,7 +657,7 @@ export default function StockLedger({ variant = "" }) {
         >
           <KpiCard
             label="Total Adjustments"
-            value={`${formatQty(kpis.adjustments, { dashZero: false })} ${kpis.uom}`}
+            value={Number(kpis.adjustments).toLocaleString("en-IN")}
             icon={ClipboardList}
             tone="warning"
             meta="Click to filter"

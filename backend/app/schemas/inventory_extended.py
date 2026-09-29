@@ -200,6 +200,7 @@ class LedgerEntryRead(BaseModel):
     transaction: str
     warehouse_name: str
     item_name: str
+    unit: str = "pcs"
     batch_number: str | None = None
     qty_in: int = Field(0, ge=0)
     qty_out: int = Field(0, ge=0)
