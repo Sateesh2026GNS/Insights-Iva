@@ -1,31 +1,36 @@
 import { useEffect, useState } from "react";
+import { ArrowLeftRight } from "lucide-react";
 import { formatNumber, parseShorthandNumber, numberToWords, isPureNumericInput } from "../../utils/numberFormat";
 
 /**
  * Quantity & Amount Input component with automatic Indian shorthand parsing ("1 Lakh", "1.5L", "2 Cr", "50k")
- * and words/number preview below input.
+ * and right-end icon button to convert between numbers and words without extra line clutter below.
  */
 export default function ShorthandQuantityInput({
   value,
   onChange,
-  placeholder = "e.g. 500 (or 1 Lakh, 50k)",
+  placeholder = "e.g. 5,000 or 1 Lakh",
   className = "",
   error = false,
   id,
   name,
   disabled,
-  showPreview = true,
   ...rest
 }) {
   const [displayValue, setDisplayValue] = useState("");
+  const [isWordsMode, setIsWordsMode] = useState(false);
 
   useEffect(() => {
     if (value != null && value !== "") {
       const parsedFromProp = parseShorthandNumber(value);
       const parsedFromDisplay = parseShorthandNumber(displayValue);
-      // Only set displayValue if displayValue doesn't already parse to the same numeric value
+
       if (parsedFromProp != null && parsedFromDisplay !== parsedFromProp) {
-        setDisplayValue(isPureNumericInput(value) ? formatNumber(parsedFromProp) : String(value));
+        if (isWordsMode) {
+          setDisplayValue(numberToWords(parsedFromProp) || formatNumber(parsedFromProp));
+        } else {
+          setDisplayValue(isPureNumericInput(value) ? formatNumber(parsedFromProp) : String(value));
+        }
       }
     } else if (value === "" || value == null) {
       if (displayValue !== "") {
@@ -36,6 +41,8 @@ export default function ShorthandQuantityInput({
 
   const parsedNum = parseShorthandNumber(displayValue);
   const pureNumeric = isPureNumericInput(displayValue);
+  const words = parsedNum != null ? numberToWords(parsedNum) : "";
+  const formattedNum = parsedNum != null ? formatNumber(parsedNum) : "";
 
   const handleInputChange = (e) => {
     const val = e.target.value;
@@ -53,6 +60,7 @@ export default function ShorthandQuantityInput({
       }
 
       setDisplayValue(formatted);
+      setIsWordsMode(false);
       onChange(String(num));
 
       setTimeout(() => {
@@ -80,6 +88,7 @@ export default function ShorthandQuantityInput({
       }, 0);
     } else {
       setDisplayValue(val);
+      setIsWordsMode(!isPureNumericInput(val) && Boolean(val.trim()));
       if (num != null) {
         onChange(String(num));
       } else if (!val.trim()) {
@@ -90,20 +99,41 @@ export default function ShorthandQuantityInput({
 
   const handleBlur = () => {
     if (parsedNum != null) {
-      // If user entered pure numeric digits (e.g. 100000), format with commas: 1,00,000
-      // If user entered shorthand/words (e.g. 1 Lakh, 50k, one lakh), keep what they typed in the input box!
-      if (pureNumeric) {
+      if (!isWordsMode && pureNumeric) {
         setDisplayValue(formatNumber(parsedNum));
       }
       onChange(String(parsedNum));
     }
   };
 
-  const words = parsedNum != null ? numberToWords(parsedNum) : "";
-  const formattedNum = parsedNum != null ? formatNumber(parsedNum) : "";
+  const handleToggleConversion = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (parsedNum == null || parsedNum <= 0) return;
+
+    if (isWordsMode) {
+      // Switch from words to digits
+      setDisplayValue(formattedNum);
+      setIsWordsMode(false);
+    } else {
+      // Switch from digits to words
+      if (words) {
+        setDisplayValue(words);
+        setIsWordsMode(true);
+      }
+    }
+    onChange(String(parsedNum));
+  };
+
+  const tooltipText =
+    parsedNum != null && parsedNum > 0
+      ? isWordsMode
+        ? `Click to convert to Digits: ${formattedNum}`
+        : `Click to convert to Words: ${words || formattedNum}`
+      : "Type amount or shorthand (e.g. 50,000 or 1 Lakh)";
 
   return (
-    <div className="space-y-1">
+    <div className="relative w-full">
       <input
         type="text"
         id={id}
@@ -114,18 +144,23 @@ export default function ShorthandQuantityInput({
         onFocus={(e) => e.target.select()}
         placeholder={placeholder}
         disabled={disabled}
-        className={`ui-input w-full ${error ? "border-[var(--color-danger)]" : ""} ${className}`}
+        className={`ui-input w-full ${parsedNum != null && parsedNum > 0 ? "pr-20" : "pr-3"} ${
+          error ? "border-[var(--color-danger)]" : ""
+        } ${className}`}
         {...rest}
       />
-      {showPreview && parsedNum != null && parsedNum > 0 ? (
-        <p className="text-[12px] font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 pt-0.5">
-          <span>=</span>
-          {pureNumeric ? (
-            <span>{words || formattedNum}</span>
-          ) : (
-            <span>{formattedNum}{words ? ` (${words})` : ""}</span>
-          )}
-        </p>
+
+      {parsedNum != null && parsedNum > 0 ? (
+        <button
+          type="button"
+          onClick={handleToggleConversion}
+          title={tooltipText}
+          disabled={disabled}
+          className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 rounded-md border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 transition-colors"
+        >
+          <ArrowLeftRight className="h-3 w-3" />
+          <span>{isWordsMode ? "123" : "Words"}</span>
+        </button>
       ) : null}
     </div>
   );

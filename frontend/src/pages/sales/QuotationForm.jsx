@@ -2281,135 +2281,10 @@ export default function QuotationForm() {
                   />
                 </label>
 
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[1100px] border-collapse text-left text-[12px]">
-              <thead className="ui-table-head">
-                <tr>
-                  {["#", "Item Name", "HSN", "Qty Unit", "Price", "Tax Type", "Discount", "Taxable Value", "GST", "Total Amt", ""].map(
-                    (h) => (
-                      <th key={h || "x"} className="whitespace-nowrap border-b border-r border-[#d0d0d8] px-2 py-2.5 font-semibold last:border-r-0">
-                        {h}
-                      </th>
-                    )
-                  )}
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((row, idx) => {
-                  const t = lineTotals(row);
-                  const hasDesc = Boolean(row.item_description?.trim());
-                  return (
-                    <tr key={idx}>
-                      <td className="border-b border-r border-[#d0d0d8] px-2 py-2 text-[#9a9aa5]">{idx + 1}</td>
-                      <td className="border-b border-r border-[#d0d0d8] px-2 py-2">
-                        <div className="relative min-w-[160px]">
-                          <SearchBar
-                            size="compact"
-                            value={row.item_description}
-                            onChange={(v) => updateItem(idx, "item_description", v)}
-                            placeholder="Select Item"
-                            clearable={false}
-                            className="w-full"
-                          />
-                        </div>
-                      </td>
-                      <td className="border-b border-r border-[#d0d0d8] px-2 py-2">
-                        <input
-                          value={row.hsn}
-                          onChange={(e) => updateItem(idx, "hsn", e.target.value)}
-                          className="w-16 rounded-md border border-[#d0d0d8] bg-[#f7f7f9] px-1.5 py-1.5"
-                        />
-                      </td>
-                      <td className="border-b border-r border-[#d0d0d8] px-2 py-2">
-                        <div className="flex gap-1 min-w-[120px]">
-                          <ShorthandQuantityInput
-                            value={row.qty}
-                            onChange={(val) => updateItem(idx, "qty", val)}
-                            placeholder="0"
-                            className="w-20"
-                          />
-                          <select
-                            value={row.unit}
-                            onChange={(e) => updateItem(idx, "unit", e.target.value)}
-                            className="rounded-md border border-[#d0d0d8] bg-[#f7f7f9] px-1 py-1.5 text-xs"
-                          >
-                            <option value="">Unit</option>
-                            <option value="pcs">pcs</option>
-                            <option value="KGS">KGS</option>
-                            <option value="MT">MT</option>
-                          </select>
-                        </div>
-                      </td>
-                      <td className="border-b border-r border-[#d0d0d8] px-2 py-2">
-                        <div className="flex items-center gap-0.5 min-w-[100px]">
-                          <span className="text-[#9a9aa5]">₹</span>
-                          <ShorthandQuantityInput
-                            value={row.rate}
-                            onChange={(val) => updateItem(idx, "rate", val)}
-                            placeholder="0"
-                            className="w-full text-xs"
-                          />
-                        </div>
-                      </td>
-                      <td className="border-b border-r border-[#d0d0d8] px-2 py-2">
-                        <select
-                          value={row.tax_type}
-                          onChange={(e) => updateItem(idx, "tax_type", e.target.value)}
-                          className="rounded-md border border-[#d0d0d8] bg-[#f7f7f9] px-1.5 py-1.5"
-                        >
-                          <option>Exclusive</option>
-                          <option>Inclusive</option>
-                        </select>
-                      </td>
-                      <td className="border-b border-r border-[#d0d0d8] px-2 py-2">
-                        <div className="flex gap-1">
-                          <input
-                            type="number"
-                            value={row.discount}
-                            onChange={(e) => updateItem(idx, "discount", e.target.value)}
-                            className="w-14 rounded-md border border-[#d0d0d8] bg-[#f7f7f9] px-1.5 py-1.5"
-                          />
-                          <select
-                            value={row.discount_type}
-                            onChange={(e) => updateItem(idx, "discount_type", e.target.value)}
-                            className="rounded-md border border-[#d0d0d8] bg-[#f7f7f9] px-1 py-1.5"
-                          >
-                            <option value="₹">₹</option>
-                            <option value="%">%</option>
-                          </select>
-                        </div>
-                      </td>
-                      <td className="border-b border-r border-[#d0d0d8] px-2 py-2 tabular-nums text-[#6b6b76]">
-                        {hasDesc ? t.taxable.toFixed(2) : "—"}
-                      </td>
-                      <td className="border-b border-r border-[#d0d0d8] px-2 py-2">
-                        <select
-                          value={row.gst_pct}
-                          onChange={(e) => updateItem(idx, "gst_pct", e.target.value)}
-                          className="rounded-md border border-[#d0d0d8] bg-[#f7f7f9] px-1.5 py-1.5"
-                        >
-                          <option value="">—</option>
-                          <option value="0">0%</option>
-                          <option value="5">5%</option>
-                          <option value="12">12%</option>
-                          <option value="18">18%</option>
-                          <option value="28">28%</option>
-                        </select>
-                      </td>
-                      <td className="border-b border-r border-[#d0d0d8] px-2 py-2 font-semibold tabular-nums">
-                        {hasDesc ? t.total.toFixed(2) : "—"}
-                      </td>
-                      <td className="border-b border-r border-[#d0d0d8] px-2 py-2">
-                        <button type="button" onClick={() => removeItem(idx)} className="text-red-500 hover:text-red-700">
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                <label className="block">
+                  <FieldLabel>
+                    Quotation Validity Date
+                  </FieldLabel>
 
                   <SoftInput
                     type="date"
@@ -3263,24 +3138,12 @@ export default function QuotationForm() {
                           </td>
 
                           <td className="border-b border-r border-[#d0d0d8] px-2 py-2">
-                            <div className="flex gap-1">
-                              <input
-                                type="number"
-                                value={
-                                  row.qty
-                                }
-                                onChange={(
-                                  e
-                                ) =>
-                                  updateItem(
-                                    idx,
-                                    "qty",
-                                    e.target
-                                      .value
-                                  )
-                                }
+                            <div className="flex gap-1 min-w-[120px]">
+                              <ShorthandQuantityInput
+                                value={row.qty}
+                                onChange={(val) => updateItem(idx, "qty", val)}
                                 placeholder="0"
-                                className="w-14 rounded-md border border-[#d0d0d8] bg-[#f7f7f9] px-1.5 py-1.5"
+                                className="w-20 text-xs"
                               />
 
                               <select
@@ -3297,7 +3160,7 @@ export default function QuotationForm() {
                                       .value
                                   )
                                 }
-                                className="rounded-md border border-[#d0d0d8] bg-[#f7f7f9] px-1 py-1.5"
+                                className="rounded-md border border-[#d0d0d8] bg-[#f7f7f9] px-1 py-1.5 text-xs"
                               >
                                 <option value="">
                                   Unit
@@ -3319,27 +3182,16 @@ export default function QuotationForm() {
                           </td>
 
                           <td className="border-b border-r border-[#d0d0d8] px-2 py-2">
-                            <div className="flex items-center gap-0.5">
+                            <div className="flex items-center gap-0.5 min-w-[100px]">
                               <span className="text-[#9a9aa5]">
                                 ₹
                               </span>
 
-                              <input
-                                type="number"
-                                value={
-                                  row.rate
-                                }
-                                onChange={(
-                                  e
-                                ) =>
-                                  updateItem(
-                                    idx,
-                                    "rate",
-                                    e.target
-                                      .value
-                                  )
-                                }
-                                className="w-20 rounded-md border border-[#d0d0d8] bg-[#f7f7f9] px-1.5 py-1.5"
+                              <ShorthandQuantityInput
+                                value={row.rate}
+                                onChange={(val) => updateItem(idx, "rate", val)}
+                                placeholder="0"
+                                className="w-full text-xs"
                               />
                             </div>
                           </td>
