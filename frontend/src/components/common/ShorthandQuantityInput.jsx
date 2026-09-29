@@ -36,12 +36,52 @@ export default function ShorthandQuantityInput({
 
   const handleInputChange = (e) => {
     const val = e.target.value;
-    setDisplayValue(val);
+    const inputElem = e.target;
+    const selectionStart = inputElem.selectionStart || 0;
+
     const num = parseShorthandNumber(val);
-    if (num != null) {
+
+    if (isPureNumericInput(val) && num != null && !val.endsWith(".") && !/\.\d*0$/.test(val)) {
+      const rawDigitsBeforeCursor = val.slice(0, selectionStart).replace(/,/g, "").length;
+      const parts = val.replace(/,/g, "").split(".");
+      let formatted = formatNumber(Number(parts[0]));
+      if (parts.length > 1) {
+        formatted = `${formatted}.${parts[1]}`;
+      }
+
+      setDisplayValue(formatted);
       onChange(String(num));
-    } else if (!val.trim()) {
-      onChange("");
+
+      setTimeout(() => {
+        if (!inputElem) return;
+        let newCursorPos = 0;
+        let digitCount = 0;
+        const cleanVal = formatted.replace(/,/g, "");
+        const targetDigits = Math.min(rawDigitsBeforeCursor, cleanVal.length);
+
+        for (let i = 0; i < formatted.length; i++) {
+          if (formatted[i] !== ",") {
+            digitCount++;
+          }
+          if (digitCount === targetDigits) {
+            newCursorPos = i + 1;
+            break;
+          }
+        }
+        if (newCursorPos === 0) newCursorPos = formatted.length;
+        try {
+          inputElem.setSelectionRange(newCursorPos, newCursorPos);
+        } catch {
+          // input element selection range fallback
+        }
+      }, 0);
+    } else {
+      setDisplayValue(val);
+      if (num != null) {
+        onChange(String(num));
+      } else if (!val.trim()) {
+        onChange("");
+      }
     }
   };
 
