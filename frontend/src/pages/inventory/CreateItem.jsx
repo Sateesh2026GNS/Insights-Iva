@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 
 import Button from "../../components/common/Button";
+import ShorthandQuantityInput from "../../components/common/ShorthandQuantityInput";
 import PageHeader from "../../components/common/PageHeader";
 import { createInventoryItem, getInventoryItem, getWarehouses, updateInventoryItem } from "../../api/inventoryApi";
 import InventoryItemPhoto from "../../components/inventory/InventoryItemPhoto";
@@ -644,48 +645,36 @@ export default function CreateItem() {
           <Card title="3. Valuation & Pricing" subtitle={isFinishedGood ? "Sales pricing and manufacturing valuation" : "Procurement cost and valuation"}>
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Purchase / Procurement Price (₹)" hint="Standard supplier purchase price per unit">
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
+                <ShorthandQuantityInput
                   value={form.purchase_price}
-                  onChange={(e) => set("purchase_price", e.target.value)}
-                  className="ui-input w-full"
+                  onChange={(val) => set("purchase_price", val)}
+                  placeholder="e.g. 500 (or 1 Lakh, 50k)"
                 />
               </Field>
 
               <Field label="Standard Cost (₹)" hint="Cost used in BOM & valuation ledger">
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
+                <ShorthandQuantityInput
                   value={form.standard_cost}
-                  onChange={(e) => set("standard_cost", e.target.value)}
-                  className="ui-input w-full"
+                  onChange={(val) => set("standard_cost", val)}
+                  placeholder="e.g. 500 (or 1 Lakh, 50k)"
                 />
               </Field>
 
               {isFinishedGood ? (
                 <>
                   <Field label="Sales Price (₹)" hint="Default selling price before GST">
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
+                    <ShorthandQuantityInput
                       value={form.sales_price}
-                      onChange={(e) => set("sales_price", e.target.value)}
-                      className="ui-input w-full"
+                      onChange={(val) => set("sales_price", val)}
+                      placeholder="e.g. 500 (or 1 Lakh, 50k)"
                     />
                   </Field>
 
                   <Field label="MRP (₹)" hint="Maximum Retail Price (if applicable)">
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
+                    <ShorthandQuantityInput
                       value={form.mrp}
-                      onChange={(e) => set("mrp", e.target.value)}
-                      className="ui-input w-full"
+                      onChange={(val) => set("mrp", val)}
+                      placeholder="e.g. 500 (or 1 Lakh, 50k)"
                     />
                   </Field>
                 </>
@@ -747,46 +736,34 @@ export default function CreateItem() {
           <Card id="inventory" title="5. Inventory & Stock Levels" subtitle="Opening stock, safety threshold, and reorder triggers">
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Opening Available Stock" required hint="Current quantity ready on shelf">
-                <input
-                  type="number"
-                  min="0"
-                  step="any"
+                <ShorthandQuantityInput
                   value={form.available_qty}
-                  onChange={(e) => set("available_qty", e.target.value)}
-                  className="ui-input w-full"
+                  onChange={(val) => set("available_qty", val)}
+                  placeholder="e.g. 500 (or 1 Lakh, 50k)"
                 />
               </Field>
 
               <Field label="Safety / Reorder Level" required hint="Alerts when available stock drops below this">
-                <input
-                  type="number"
-                  min="0"
-                  step="any"
+                <ShorthandQuantityInput
                   value={form.reorder_level}
-                  onChange={(e) => set("reorder_level", e.target.value)}
-                  className="ui-input w-full"
+                  onChange={(val) => set("reorder_level", val)}
+                  placeholder="e.g. 500 (or 1 Lakh, 50k)"
                 />
               </Field>
 
               <Field label="Recommended Reorder Qty" hint="Standard batch order quantity">
-                <input
-                  type="number"
-                  min="0"
-                  step="any"
+                <ShorthandQuantityInput
                   value={form.reorder_qty}
-                  onChange={(e) => set("reorder_qty", e.target.value)}
-                  className="ui-input w-full"
+                  onChange={(val) => set("reorder_qty", val)}
+                  placeholder="e.g. 500 (or 1 Lakh, 50k)"
                 />
               </Field>
 
               <Field label="Reserved Stock" hint="Stock allocated to active work orders">
-                <input
-                  type="number"
-                  min="0"
-                  step="any"
+                <ShorthandQuantityInput
                   value={form.reserved_qty}
-                  onChange={(e) => set("reserved_qty", e.target.value)}
-                  className="ui-input w-full"
+                  onChange={(val) => set("reserved_qty", val)}
+                  placeholder="e.g. 500 (or 1 Lakh, 50k)"
                 />
               </Field>
             </div>

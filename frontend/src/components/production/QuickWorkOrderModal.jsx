@@ -11,6 +11,7 @@ import AddNewItemModal from "../sales/AddNewItemModal";
 import AddNewPartyModal from "../sales/AddNewPartyModal";
 import CreateMachineModal from "./CreateMachineModal";
 import Button from "../common/Button";
+import ShorthandQuantityInput from "../common/ShorthandQuantityInput";
 
 function toDateTimeLocal(value) {
   if (!value) return "";
@@ -331,14 +332,10 @@ export default function QuickWorkOrderModal({ order, onClose, onSuccess, addToas
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <label className="block space-y-1">
               <span className="ui-label">Planned Quantity</span>
-              <input
-                type="number"
-                name="planned_quantity"
-                min="1"
+              <ShorthandQuantityInput
                 value={form.planned_quantity}
-                onChange={handleChange}
-                required
-                className="ui-input"
+                onChange={(val) => setForm((prev) => ({ ...prev, planned_quantity: val }))}
+                placeholder="e.g. 500 (or 1 Lakh, 50k)"
               />
             </label>
             <label className="block space-y-1">
