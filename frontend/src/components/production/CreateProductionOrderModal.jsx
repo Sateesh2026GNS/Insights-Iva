@@ -11,6 +11,7 @@ import AddNewItemModal from "../sales/AddNewItemModal";
 import CreateMachineModal from "./CreateMachineModal";
 import AddUserModal from "../admin/AddUserModal";
 import Button, { IconButton } from "../common/Button";
+import ShorthandQuantityInput from "../common/ShorthandQuantityInput";
 
 const SHIFT_OPTIONS = [
   { id: "General Shift (9:00 AM – 6:00 PM)", label: "General Shift (9:00 AM – 6:00 PM)" },
@@ -599,14 +600,11 @@ export default function CreateProductionOrderModal({
               <span className="ui-label">
                 Planned Quantity <span className="text-[var(--color-danger)]">*</span>
               </span>
-              <input
-                type="number"
-                min="1"
+              <ShorthandQuantityInput
                 value={form.planned_quantity}
-                onFocus={(e) => e.target.select()}
-                onChange={(e) => handleChange("planned_quantity", e.target.value)}
-                placeholder="e.g. 500"
-                className={`ui-input w-full ${errors.planned_quantity ? "border-[var(--color-danger)]" : ""}`}
+                onChange={(val) => handleChange("planned_quantity", val)}
+                placeholder="e.g. 500 (or 1 Lakh, 50k)"
+                error={Boolean(errors.planned_quantity)}
               />
               {errors.planned_quantity ? (
                 <p className="text-xs text-[var(--color-danger)]">{errors.planned_quantity}</p>

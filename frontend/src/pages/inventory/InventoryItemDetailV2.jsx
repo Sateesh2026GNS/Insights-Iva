@@ -319,17 +319,17 @@ export default function InventoryItemDetailV2() {
         <div className="grid gap-4 lg:grid-cols-2">
           <div className="space-y-4">
             <DetailBlock title="Sales Details">
-              <DetailRow label="Sale Price" value={`${salePrice.toFixed(1)} Rs.`} />
-              <DetailRow label="Purchase Price" value={`${purchasePrice.toFixed(1)} Rs.`} />
-              <DetailRow label="Wholesale Price" value={`${wholesale.toFixed(1)} Rs.`} />
-              <DetailRow label="Stock Qty" value={stockQty.toFixed(3)} />
-              <DetailRow label="Stock Value" value={`${stockValue.toFixed(3)} Rs.`} />
+              <DetailRow label="Sale Price" value={`₹ ${salePrice.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
+              <DetailRow label="Purchase Price" value={`₹ ${purchasePrice.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
+              <DetailRow label="Wholesale Price" value={`₹ ${wholesale.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
+              <DetailRow label="Stock Qty" value={stockQty.toLocaleString("en-IN")} />
+              <DetailRow label="Stock Value" value={`₹ ${stockValue.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
             </DetailBlock>
 
             <DetailBlock title="Items Details">
               <DetailRow label="Measurement Unit" value={item.unit || "—"} />
               <DetailRow label="Category" value={item.category || "No Category"} />
-              <DetailRow label="Low Stock Alert" value={Number(item.min_stock || 0).toFixed(3)} />
+              <DetailRow label="Low Stock Alert" value={Number(item.min_stock || 0).toLocaleString("en-IN")} />
             </DetailBlock>
 
             <DetailBlock title="Tax Details">
@@ -360,8 +360,8 @@ export default function InventoryItemDetailV2() {
                           {row.date ? ` / ${row.date}` : ""}
                         </div>
                       </td>
-                      <td className="px-4 py-3 tabular-nums">{Number(row.change).toFixed(2)}</td>
-                      <td className="px-4 py-3 tabular-nums">{Number(row.final).toFixed(2)}</td>
+                      <td className="px-4 py-3 tabular-nums">{Number(row.change || 0).toLocaleString("en-IN")}</td>
+                      <td className="px-4 py-3 tabular-nums">{Number(row.final || 0).toLocaleString("en-IN")}</td>
                     </tr>
                   ))}
                 </tbody>

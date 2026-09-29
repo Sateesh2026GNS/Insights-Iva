@@ -897,7 +897,7 @@ export default function PurchaseDebitNoteForm() {
                         </div>
                       </td>
                       <td className={`${cell} tabular-nums text-[#6b6b76]`}>
-                        {hasDesc ? t.taxable.toFixed(2) : "—"}
+                        {hasDesc ? t.taxable.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "—"}
                       </td>
                       <td className={cell}>
                         <select
@@ -914,7 +914,7 @@ export default function PurchaseDebitNoteForm() {
                         </select>
                       </td>
                       <td className={`${cell} font-semibold tabular-nums`}>
-                        {hasDesc ? t.total.toFixed(2) : "—"}
+                        {hasDesc ? t.total.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "—"}
                       </td>
                       <td className="border-b border-[#d0d0d8] px-2 py-2">
                         <button type="button" onClick={() => removeItem(idx)} className="text-red-500 hover:text-red-700">
@@ -941,20 +941,20 @@ export default function PurchaseDebitNoteForm() {
             <div className="min-w-[260px] overflow-hidden rounded-lg border border-[#d0d0d8] text-[13px]">
               <div className="flex justify-between border-b border-dashed border-[#d0d0d8] px-3 py-2 text-[#6b6b76]">
                 <span>Taxable Amount</span>
-                <span className="tabular-nums">₹ {taxableAmount.toFixed(2)}</span>
+                <span className="tabular-nums">₹ {taxableAmount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
               <div className="flex justify-between border-b border-dashed border-[#d0d0d8] px-3 py-2 text-[#6b6b76]">
                 <span>GST Amount</span>
-                <span className="tabular-nums">₹ {gstAmount.toFixed(2)}</span>
+                <span className="tabular-nums">₹ {gstAmount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
               <div className="flex justify-between border-b border-dashed border-[#d0d0d8] px-3 py-2 font-medium text-[#1a1a1f]">
                 <span>Total Amount</span>
-                <span className="tabular-nums">₹ {itemsTotal.toFixed(2)}</span>
+                <span className="tabular-nums">₹ {itemsTotal.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
               {showGstTds ? (
                 <div className="flex items-center justify-between border-b border-dashed border-[#d0d0d8] px-3 py-2 text-[#b42318]">
                   <span><button type="button" onClick={() => setShowGstTds(false)} className="mr-1"><X className="inline h-3.5 w-3.5" /></button>2% GST TDS</span>
-                  <span>₹ {gstTdsAmount.toFixed(2)} (deducted)</span>
+                  <span>₹ {gstTdsAmount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (deducted)</span>
                 </div>
               ) : null}
               {showTaxType ? (

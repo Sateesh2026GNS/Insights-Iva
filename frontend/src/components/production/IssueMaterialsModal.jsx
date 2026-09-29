@@ -4,6 +4,7 @@ import { getMachines, issueWorkOrderMaterials, updateProductionOrderMachine } fr
 import { fetchProductsWithFallback } from "../../utils/productOptions";
 import { notifyManufacturingSpine, MANUFACTURING_EVENTS } from "../../utils/manufacturingEvents";
 import useTenantId from "../../hooks/useTenantId";
+import ShorthandQuantityInput from "../common/ShorthandQuantityInput";
 
 const WAREHOUSES = [
   { id: "WH-MAIN", name: "Main Store (WH-MAIN)" },
@@ -191,13 +192,10 @@ export default function IssueMaterialsModal({ workOrder, onClose, onSuccess, add
               <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
                 Target Quantity
               </label>
-              <input
-                type="number"
-                name="quantity"
+              <ShorthandQuantityInput
                 value={form.quantity}
-                onChange={handleChange}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-[#2563EB] focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                required
+                onChange={(val) => setForm((prev) => ({ ...prev, quantity: val }))}
+                placeholder="e.g. 100 (or 1 Lakh, 50k)"
               />
             </div>
           </div>

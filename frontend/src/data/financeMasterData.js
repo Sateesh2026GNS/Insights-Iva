@@ -127,8 +127,6 @@ export function formatInr(v) {
   if (v == null || v === "") return "—";
   const n = Number(v);
   if (Number.isNaN(n)) return "—";
-  if (n >= 10_000_000) return `₹${(n / 10_000_000).toFixed(1)} Cr`;
-  if (n >= 100_000) return `₹${(n / 100_000).toFixed(1)} L`;
   return `₹${n.toLocaleString("en-IN")}`;
 }
 

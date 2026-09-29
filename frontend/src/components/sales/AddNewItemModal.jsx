@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 
 import Button from "../common/Button";
+import ShorthandQuantityInput from "../common/ShorthandQuantityInput";
 import AddCustomFieldModal from "./AddCustomFieldModal";
 import { createProduct, getProducts, updateProduct } from "../../api/productsApi";
 import { PRODUCT_CATEGORIES, PRODUCT_UNITS } from "../../data/productsMasterData";
@@ -654,24 +655,18 @@ export default function AddNewItemModal({
             <div className="grid grid-cols-2 gap-3">
               <label className="block">
                 <SoftLabel required>Sale Price</SoftLabel>
-                <div className="flex overflow-hidden rounded-lg border border-[var(--color-border-soft)] bg-[var(--color-surface-muted)] focus-within:border-[var(--color-primary)] focus-within:ring-1 focus-within:ring-[var(--color-primary)]">
-                  <span className="flex items-center pl-3 text-[13px] text-[#6b6b76] select-none pointer-events-none">₹</span>
-                  <input
-                    value={form.sale_price}
-                    onChange={(e) =>
-                      setForm((f) => ({
-                        ...f,
-                        sale_price: e.target.value.replace(/[^\d.-]/g, ""),
-                      }))
-                    }
-                    placeholder="Enter Price"
-                    required
-                    className="min-w-0 flex-1 border-0 bg-transparent px-2 py-2.5 text-[13px] text-[#1a1a1f] placeholder:text-[#a0a0ab] !outline-none focus:border-0 focus:!outline-none focus:ring-0 focus-visible:!outline-none focus-visible:ring-0 shadow-none"
-                  />
+                <div className="flex items-center gap-1.5">
+                  <div className="flex-1">
+                    <ShorthandQuantityInput
+                      value={form.sale_price}
+                      onChange={(val) => setForm((f) => ({ ...f, sale_price: val }))}
+                      placeholder="e.g. 500 (or 1 Lakh, 50k)"
+                    />
+                  </div>
                   <select
                     value={form.tax_type}
                     onChange={(e) => setForm((f) => ({ ...f, tax_type: e.target.value }))}
-                    className="border-0 border-l border-[var(--color-border-soft)] bg-[var(--color-surface-muted)] px-2 text-[12px] text-[#1a1a1f] !outline-none focus:border-0 focus:!outline-none focus:ring-0 focus-visible:!outline-none focus-visible:ring-0 shadow-none"
+                    className="border border-[var(--color-border-soft)] rounded-lg bg-[var(--color-surface-muted)] px-2 py-2.5 text-[12px] text-[#1a1a1f]"
                   >
                     {TAX_TYPES.map((t) => (
                       <option key={t} value={t}>
@@ -855,26 +850,20 @@ export default function AddNewItemModal({
               >
                 <label className="block">
                   <SoftLabel>Purchase Price</SoftLabel>
-                  <div className="flex overflow-hidden rounded-lg border border-[var(--color-border-soft)] bg-[var(--color-surface-muted)] focus-within:border-[var(--color-primary)] focus-within:ring-1 focus-within:ring-[var(--color-primary)]">
-                    <span className="flex items-center pl-3 text-[13px] text-[#6b6b76] select-none pointer-events-none">₹</span>
-                    <input
-                      value={form.purchase_price}
-                      onFocus={(e) => { const t = e.target; setTimeout(() => t?.select?.(), 0); }}
-                      onChange={(e) =>
-                        setForm((f) => {
-                          let val = e.target.value.replace(/[^\d.-]/g, "");
-                          val = val.replace(/^0+(?=[0-9])/, "");
-                          return { ...f, purchase_price: val };
-                        })
-                      }
-                      className="min-w-0 flex-1 border-0 bg-transparent px-2 py-2.5 text-[13px] text-[#1a1a1f] placeholder:text-[#a0a0ab] !outline-none focus:border-0 focus:!outline-none focus:ring-0 focus-visible:!outline-none focus-visible:ring-0 shadow-none"
-                    />
+                  <div className="flex items-center gap-1.5">
+                    <div className="flex-1">
+                      <ShorthandQuantityInput
+                        value={form.purchase_price}
+                        onChange={(val) => setForm((f) => ({ ...f, purchase_price: val }))}
+                        placeholder="e.g. 500 (or 1 Lakh, 50k)"
+                      />
+                    </div>
                     <select
                       value={form.purchase_tax_type}
                       onChange={(e) =>
                         setForm((f) => ({ ...f, purchase_tax_type: e.target.value }))
                       }
-                      className="border-0 border-l border-[var(--color-border-soft)] bg-[var(--color-surface-muted)] px-2 text-[12px] text-[#1a1a1f] !outline-none focus:border-0 focus:!outline-none focus:ring-0 focus-visible:!outline-none focus-visible:ring-0 shadow-none"
+                      className="border border-[var(--color-border-soft)] rounded-lg bg-[var(--color-surface-muted)] px-2 py-2.5 text-[12px] text-[#1a1a1f]"
                     >
                       {TAX_TYPES.map((t) => (
                         <option key={t} value={t}>
@@ -894,34 +883,18 @@ export default function AddNewItemModal({
                 <div className="grid grid-cols-2 gap-3">
                   <label className="block">
                     <SoftLabel>Opening Stock</SoftLabel>
-                    <input
+                    <ShorthandQuantityInput
                       value={form.opening_stock}
-                      onFocus={(e) => { const t = e.target; setTimeout(() => t?.select?.(), 0); }}
-                      onChange={(e) =>
-                        setForm((f) => {
-                          let val = e.target.value.replace(/[^\d.-]/g, "");
-                          val = val.replace(/^0+(?=[0-9])/, "");
-                          return { ...f, opening_stock: val };
-                        })
-                      }
-                      placeholder="Enter stock quantity"
-                      className={inputClass}
+                      onChange={(val) => setForm((f) => ({ ...f, opening_stock: val }))}
+                      placeholder="e.g. 500 (or 1 Lakh, 50k)"
                     />
                   </label>
                   <label className="block">
                     <SoftLabel>Min Stock</SoftLabel>
-                    <input
+                    <ShorthandQuantityInput
                       value={form.min_stock}
-                      onFocus={(e) => { const t = e.target; setTimeout(() => t?.select?.(), 0); }}
-                      onChange={(e) =>
-                        setForm((f) => {
-                          let val = e.target.value.replace(/[^\d.-]/g, "");
-                          val = val.replace(/^0+(?=[0-9])/, "");
-                          return { ...f, min_stock: val };
-                        })
-                      }
-                      placeholder="Enter min stock"
-                      className={inputClass}
+                      onChange={(val) => setForm((f) => ({ ...f, min_stock: val }))}
+                      placeholder="e.g. 500 (or 1 Lakh, 50k)"
                     />
                   </label>
                 </div>
