@@ -6,6 +6,7 @@ import {
   formatInr,
   parseShorthandNumber,
   numberToWords,
+  isPureNumericInput,
 } from "./numberFormat";
 
 describe("numberFormat utility module", () => {
@@ -68,12 +69,24 @@ describe("numberFormat utility module", () => {
   });
 
   describe("parseShorthandNumber", () => {
-    it("parses shorthand expressions like 1 Lakh, 1.5 L, 2 Cr, 50k", () => {
+    it("parses shorthand expressions like 1 Lakh, 1.5 L, 2 Cr, 50k, 1LAKH, 50K", () => {
       expect(parseShorthandNumber("1 Lakh")).toBe(100000);
       expect(parseShorthandNumber("1.5 Lakh")).toBe(150000);
       expect(parseShorthandNumber("1.5 L")).toBe(150000);
       expect(parseShorthandNumber("2 Cr")).toBe(20000000);
       expect(parseShorthandNumber("50k")).toBe(50000);
+      expect(parseShorthandNumber("1LAKH")).toBe(100000);
+      expect(parseShorthandNumber("1L")).toBe(100000);
+      expect(parseShorthandNumber("50K")).toBe(50000);
+    });
+
+    it("parses full English word numbers in any case", () => {
+      expect(parseShorthandNumber("one lakh")).toBe(100000);
+      expect(parseShorthandNumber("One Lakh")).toBe(100000);
+      expect(parseShorthandNumber("ONE LAKH")).toBe(100000);
+      expect(parseShorthandNumber("one lakh fifty thousand")).toBe(150000);
+      expect(parseShorthandNumber("two thousand five hundred")).toBe(2500);
+      expect(parseShorthandNumber("fifty thousand")).toBe(50000);
     });
 
     it("parses raw digits and comma-separated numeric strings", () => {
@@ -86,6 +99,16 @@ describe("numberFormat utility module", () => {
       expect(parseShorthandNumber("")).toBeNull();
       expect(parseShorthandNumber(null)).toBeNull();
       expect(parseShorthandNumber("invalid text")).toBeNull();
+    });
+  });
+
+  describe("isPureNumericInput", () => {
+    it("identifies pure numeric inputs vs shorthand/words", () => {
+      expect(isPureNumericInput("100")).toBe(true);
+      expect(isPureNumericInput("1,00,000")).toBe(true);
+      expect(isPureNumericInput("1 Lakh")).toBe(false);
+      expect(isPureNumericInput("1L")).toBe(false);
+      expect(isPureNumericInput("one lakh")).toBe(false);
     });
   });
 
