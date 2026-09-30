@@ -581,7 +581,12 @@ export default function RawMaterials() {
       <ListPageCard>
         <ListPageCardBody>
         <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <SearchBar value={search} onChange={setSearch} placeholder="Search raw materials..." />
+          <SearchBar
+            value={search}
+            onChange={setSearch}
+            placeholder="Search raw materials..."
+            className="w-full min-w-0 max-w-none flex-1 lg:mr-4"
+          />
 
           <div className="flex flex-wrap items-center gap-2">
             <ExportDownloadMenu disabled={!exportRows.length} onExport={handleExport} />

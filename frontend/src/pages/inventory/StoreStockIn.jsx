@@ -717,7 +717,7 @@ export default function StoreStockIn() {
                 value={search}
                 onChange={setSearch}
                 placeholder="Search stock in no., reference, supplier…"
-                className="w-full"
+                className="w-full min-w-0 max-w-none flex-1 lg:mr-4"
                 inputClassName="pending-inventory-search-input"
               />
               
@@ -727,7 +727,7 @@ export default function StoreStockIn() {
               </Button>
             </div>
             {showFilters ? (
-              <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
                 <FormField label="Status">
                   <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
                     <option value="">All</option>
@@ -752,7 +752,7 @@ export default function StoreStockIn() {
                     ))}
                   </Select>
                 </FormField>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 gap-2 sm:col-span-2 lg:col-span-2">
                   <DatePicker label="From" value={dateFrom} onChange={setDateFrom} />
                   <DatePicker label="To" value={dateTo} onChange={setDateTo} />
                 </div>

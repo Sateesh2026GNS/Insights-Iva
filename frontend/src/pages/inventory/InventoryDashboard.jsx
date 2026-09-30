@@ -100,6 +100,17 @@ function kpiValue(failed, value) {
   return Number(value ?? 0).toLocaleString("en-IN");
 }
 
+function materialCheckStatus(status) {
+  const value = String(status || "").trim().toLowerCase();
+  if (["approved", "materials confirmed", "material available"].includes(value)) {
+    return { label: "Approved", tone: "success" };
+  }
+  if (["pending", "pending inventory check", "pending check", "store pending"].includes(value)) {
+    return { label: "Pending", tone: "warning" };
+  }
+  return { label: status || "Pending", tone: "neutral" };
+}
+
 export default function InventoryDashboard() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -350,7 +361,10 @@ export default function InventoryDashboard() {
                     {row.required_items_summary}
                   </td>
                   <td className={tdClass}>
-                    <StatusBadge tone="warning">{row.status_label}</StatusBadge>
+                    {(() => {
+                      const status = materialCheckStatus(row.status_label);
+                      return <StatusBadge tone={status.tone}>{status.label}</StatusBadge>;
+                    })()}
                   </td>
                 </tr>
               ))}

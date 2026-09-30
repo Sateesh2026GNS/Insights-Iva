@@ -833,9 +833,16 @@ export default function StockTransfer() {
       <ListPageCard>
         <ListPageCardBody>
         <div className="mb-4 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-          <h2 className="text-sm font-semibold text-[var(--color-text)]">Recent Transfers</h2>
-          <div className="flex flex-wrap items-center gap-2">
-            <SearchBar value={search} onChange={setSearch} placeholder="Search" />
+          <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-center xl:gap-5">
+            <h2 className="shrink-0 text-sm font-semibold text-[var(--color-text)]">Recent Transfers</h2>
+            <SearchBar
+              value={search}
+              onChange={setSearch}
+              placeholder="Search transfers"
+              className="w-full min-w-0 max-w-none flex-1 sm:min-w-[18rem]"
+            />
+          </div>
+          <div className="flex flex-wrap items-center gap-2 xl:shrink-0">
             <ExportDownloadMenu disabled={!exportRows.length} onExport={handleExport} />
             <Button type="button" variant="secondary" onClick={() => setShowFilters((v) => !v)}>
               <Filter className="h-4 w-4" /> Filters

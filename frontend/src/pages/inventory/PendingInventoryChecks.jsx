@@ -100,6 +100,7 @@ export default function PendingInventoryChecks() {
             value={search}
             onChange={setSearch}
             placeholder="Search"
+            className="w-full min-w-0 max-w-none flex-1 sm:mr-4"
             inputClassName="pending-inventory-search-input"
           />
           <span className="text-sm font-medium text-[var(--color-text-muted)]">

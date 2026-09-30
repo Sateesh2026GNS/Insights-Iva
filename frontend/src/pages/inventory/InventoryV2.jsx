@@ -543,13 +543,13 @@ export default function InventoryV2() {
 
         <div className="space-y-4 p-4 sm:p-5">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-center">
-              <InventorySearchInput value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search" />
-              {tab === "items" ? (
-                <span className="text-sm font-medium text-[var(--color-text-muted)] whitespace-nowrap">
-                  Total matching: {total.toLocaleString("en-IN")}
-                </span>
-              ) : null}
+            <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center">
+              <InventorySearchInput
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search"
+                className="w-full min-w-0 max-w-none flex-1"
+              />
             </div>
 
             {tab === "items" ? (

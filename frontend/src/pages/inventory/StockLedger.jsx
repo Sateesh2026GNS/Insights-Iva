@@ -687,7 +687,7 @@ export default function StockLedger({ variant = "" }) {
               value={search}
               onChange={setSearch}
               placeholder="Search stock movements"
-              className="min-w-0 flex-1 xl:max-w-md"
+              className="w-full min-w-0 max-w-none flex-1 xl:mr-4"
             />
             <div className="flex flex-wrap items-center gap-3">
               <Button

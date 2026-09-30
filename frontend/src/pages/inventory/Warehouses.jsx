@@ -473,7 +473,7 @@ export default function Warehouses() {
               value={search}
               onChange={setSearch}
               placeholder="Search warehouses..."
-              className="w-full max-w-md"
+              className="w-full min-w-0 max-w-none flex-1 lg:mr-4"
               inputClassName="pending-inventory-search-input"
             />
             <div className="flex flex-wrap items-center gap-2">

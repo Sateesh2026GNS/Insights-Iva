@@ -659,6 +659,7 @@ export default function StoreStockReturn() {
             value={search}
             onChange={setSearch}
             placeholder="Search return no., reference, returned by…"
+            className="w-full min-w-0 max-w-none flex-1 lg:mr-4"
            
           />
           <Button variant="secondary" onClick={() => setShowFilters((v) => !v)}>
