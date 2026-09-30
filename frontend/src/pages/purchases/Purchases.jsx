@@ -13,7 +13,6 @@ import {
   Search,
   ShoppingCart,
   Trash2,
-  X,
 } from "lucide-react";
 
 import Loader from "../../components/common/Loader";
@@ -74,15 +73,6 @@ function Chip({ label, active, onClick }) {
     >
       {label}
     </button>
-  );
-}
-
-function FilterSection({ label, children }) {
-  return (
-    <div className="border-b border-[var(--color-border)] py-4 last:border-b-0">
-      <p className="mb-2.5 text-[12px] font-medium text-[var(--color-text-faint)]">{label}</p>
-      <div className="flex flex-wrap gap-2">{children}</div>
-    </div>
   );
 }
 
@@ -261,20 +251,78 @@ export default function Purchases() {
             inputClassName="pending-inventory-search-input"
           />
           <div className="relative flex gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                setDraftDocUpload(docUpload);
-                setShowFilters(true);
-              }}
-              className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-3.5 py-2 text-[13px] font-medium text-[var(--color-text-secondary)]"
-            >
-              <Filter className="h-4 w-4" /> Filters
-            </button>
             <div className="relative">
               <button
                 type="button"
-                onClick={() => setShowSort((v) => !v)}
+                aria-expanded={showFilters}
+                onClick={() => {
+                  setDraftDocUpload(docUpload);
+                  setShowFilters((open) => !open);
+                  setShowSort(false);
+                }}
+                className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-3.5 py-2 text-[13px] font-medium text-[var(--color-text-secondary)]"
+              >
+                <Filter className="h-4 w-4" /> Filters
+              </button>
+              {showFilters ? (
+                <>
+                  <button
+                    type="button"
+                    className="fixed inset-0 z-10 cursor-default"
+                    aria-label="Close filters"
+                    onClick={() => setShowFilters(false)}
+                  />
+                  <div className="absolute right-0 z-20 mt-1.5 w-[min(20rem,calc(100vw-2rem))] rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-lg">
+                    <p className="mb-3 text-[12px] font-medium text-[var(--color-text-faint)]">Document uploaded</p>
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        { id: "all", label: "All" },
+                        { id: "uploaded", label: "Uploaded" },
+                        { id: "not_uploaded", label: "Not uploaded" },
+                      ].map((opt) => (
+                        <Chip
+                          key={opt.id}
+                          label={opt.label}
+                          active={draftDocUpload === opt.id}
+                          onClick={() => setDraftDocUpload(opt.id)}
+                        />
+                      ))}
+                    </div>
+                    <div className="mt-4 flex justify-between gap-2 border-t border-[var(--color-border)] pt-3">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDraftDocUpload("all");
+                          setDocUpload("all");
+                          setShowFilters(false);
+                        }}
+                        className="rounded-lg border border-[var(--color-border-soft)] bg-[var(--color-surface-muted)] px-3 py-2 text-[13px] font-semibold"
+                      >
+                        Clear
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDocUpload(draftDocUpload);
+                          setShowFilters(false);
+                        }}
+                        className="rounded-lg px-3 py-2 text-[13px] font-semibold text-white"
+                        style={{ background: "#036f71" }}
+                      >
+                        Apply
+                      </button>
+                    </div>
+                  </div>
+                </>
+              ) : null}
+            </div>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowSort((v) => !v);
+                  setShowFilters(false);
+                }}
                 className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-3.5 py-2 text-[13px] font-medium text-[var(--color-text-secondary)]"
               >
                 <ListFilter className="h-4 w-4" /> Sort by
@@ -454,66 +502,6 @@ export default function Purchases() {
         </div>
       </div>
 
-      {showFilters ? (
-        <div
-          className="fixed inset-0 z-50 flex justify-end bg-black/35"
-          role="presentation"
-          onMouseDown={(e) => e.target === e.currentTarget && setShowFilters(false)}
-        >
-          <aside className="flex h-full w-full max-w-[400px] flex-col border-l border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl">
-            <div className="flex items-center justify-between border-b border-[var(--color-border)] px-5 py-4">
-              <h2 className="text-[18px] font-bold text-[var(--color-text)]">Filters</h2>
-              <button
-                type="button"
-                onClick={() => setShowFilters(false)}
-                className="rounded-lg p-1 text-[var(--color-text-faint)] hover:bg-[var(--color-surface-hover)]"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto px-5">
-              <FilterSection label="Document uploaded">
-                {[
-                  { id: "all", label: "All" },
-                  { id: "uploaded", label: "Uploaded" },
-                  { id: "not_uploaded", label: "Not uploaded" },
-                ].map((opt) => (
-                  <Chip
-                    key={opt.id}
-                    label={opt.label}
-                    active={draftDocUpload === opt.id}
-                    onClick={() => setDraftDocUpload(opt.id)}
-                  />
-                ))}
-              </FilterSection>
-            </div>
-            <div className="grid grid-cols-2 gap-3 border-t border-[var(--color-border)] px-5 py-4">
-              <button
-                type="button"
-                onClick={() => {
-                  setDraftDocUpload("all");
-                  setDocUpload("all");
-                  setShowFilters(false);
-                }}
-                className="rounded-xl border border-[var(--color-border-soft)] bg-[#f0f0f4] py-3 text-[14px] font-semibold"
-              >
-                Clear Filter
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setDocUpload(draftDocUpload);
-                  setShowFilters(false);
-                }}
-                className="rounded-xl py-3 text-[14px] font-semibold text-white"
-                style={{ background: "#036f71" }}
-              >
-                Apply Filter
-              </button>
-            </div>
-          </aside>
-        </div>
-      ) : null}
     </div>
   );
 }
