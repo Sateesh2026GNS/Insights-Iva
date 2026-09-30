@@ -59,6 +59,7 @@ export default function SalesOrderMaterialCheckPanel({
   const isPending = ws === "MATERIAL_CHECK_PENDING";
   const isCompleted = Boolean(checkMeta?.verified_at) || !isPending;
   const canEdit = isPending && (actions.has("check_stock") || actions.size === 0);
+  const canRecheck = isCompleted && ["MATERIAL_SHORTAGE", "MATERIAL_PARTIAL"].includes(ws);
 
   const load = useCallback(async () => {
     if (!orderId) return;
@@ -124,6 +125,35 @@ export default function SalesOrderMaterialCheckPanel({
         );
       }
       addToast(apiErrorMessage(err, "Could not save material check."), "error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleRecheck = async () => {
+    if (!orderId || saving || !canRecheck) return;
+    setSaving(true);
+    setConflictMessage("");
+    try {
+      const res = await submitMaterialCheck(orderId, {});
+      const data = res?.data ?? res;
+      const nextStatus = String(data?.workflow_status || "").toUpperCase();
+      if (nextStatus === "STORE_ISSUE_PENDING") {
+        addToast("All materials are available. The order is ready for Store Issue.", "success");
+      } else if (nextStatus === "MATERIAL_PARTIAL") {
+        addToast("Stock rechecked. Some materials are still short.", "info");
+      } else {
+        addToast("Stock rechecked. Materials are still unavailable.", "info");
+      }
+      await load();
+      onUpdated?.(data);
+    } catch (err) {
+      if (isConflictError(err)) {
+        setConflictMessage(
+          conflictErrorMessage(err, "This order was updated by another user. Refresh and try again.")
+        );
+      }
+      addToast(apiErrorMessage(err, "Could not recheck material availability."), "error");
     } finally {
       setSaving(false);
     }
@@ -298,6 +328,16 @@ export default function SalesOrderMaterialCheckPanel({
             {checkMeta.verified_at ? ` · ${new Date(checkMeta.verified_at).toLocaleString()}` : ""}
           </p>
           {checkMeta.notes ? <p><strong>Notes:</strong> {checkMeta.notes}</p> : null}
+          {canRecheck ? (
+            <div className="store-manual-jc-actions__toolbar mt-3">
+              <Button variant="primary" size="sm" loading={saving} disabled={saving} onClick={handleRecheck}>
+                {saving ? "Rechecking Stock…" : "Recheck Stock"}
+              </Button>
+              <p className="store-manual-jc-actions__hint" role="note">
+                Refresh availability after receiving the requested materials into inventory.
+              </p>
+            </div>
+          ) : null}
         </div>
       ) : null}
     </section>

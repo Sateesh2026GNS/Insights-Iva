@@ -432,6 +432,25 @@ def on_startup():
                                 conn.execute(
                                     text(f"ALTER TABLE {table_name} ADD COLUMN {col.name} {col_type}")
                                 )
+                # Development startup adds new columns without running Alembic.
+                # Backfill pre-existing catalog rows once: null means this field
+                # predates the explicit saleability choice, while false is an
+                # intentional opt-out made after the column was introduced.
+                if "products" in db_tables:
+                    product_columns = {
+                        column["name"]
+                        for column in inspect(engine).get_columns("products")
+                    }
+                    if "is_sellable" in product_columns:
+                        conn.execute(
+                            text(
+                                "UPDATE products SET is_sellable = CASE "
+                                "WHEN lower(trim(coalesce(category, ''))) IN "
+                                "('finished goods', 'finished good', 'service', 'services') "
+                                "THEN TRUE ELSE FALSE END "
+                                "WHERE is_sellable IS NULL"
+                            )
+                        )
         except Exception:
             logger.exception("Schema sync warning during startup (development only)")
 

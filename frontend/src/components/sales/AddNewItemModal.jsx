@@ -44,6 +44,7 @@ const EMPTY = {
   cess_mode: "Percent Wise",
   category: "",
   status: "active",
+  is_sellable: false,
   purchase_price: "0",
   purchase_tax_type: "Exclusive",
   opening_stock: "",
@@ -348,6 +349,7 @@ export default function AddNewItemModal({
         cess: item?.cess_percent != null && item.cess_percent !== "" ? String(item.cess_percent) : (item?.cess ?? "0"),
         category: item?.category && item.category !== "—" ? item.category : "",
         status: String(item?.status || "active").toLowerCase(),
+        is_sellable: Boolean(item?.is_sellable),
         purchase_price: String(item?.purchase_price ?? item?.unit_cost ?? "0"),
         opening_stock: String(item?.current_stock ?? ""),
         min_stock: String(item?.min_stock ?? ""),
@@ -491,6 +493,9 @@ export default function AddNewItemModal({
         name: form.name.trim(),
         category: form.category || "Finished Goods",
         ...(isProduct ? { status: form.status } : {}),
+        // Items created from a sales document are intentionally saleable;
+        // product-master entries require an explicit user choice.
+        is_sellable: isProduct ? Boolean(form.is_sellable) : true,
         product_type: form.item_type === "services" ? "Service" : (form.category || "Finished Goods"),
         description: fullDesc,
         hsn_code: cleanHsn || null,
@@ -697,17 +702,29 @@ export default function AddNewItemModal({
             </div>
 
             {isProduct ? (
-              <label className="block max-w-sm">
-                <SoftLabel required>Product Status</SoftLabel>
-                <select
-                  value={form.status}
-                  onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}
-                  className={inputClass}
-                >
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                </select>
-              </label>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="block">
+                  <SoftLabel required>Product Status</SoftLabel>
+                  <select
+                    value={form.status}
+                    onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}
+                    className={inputClass}
+                  >
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                  </select>
+                </label>
+                <label className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-[#e8e8ee] px-3 py-2.5">
+                  <span>
+                    <span className="block text-[12px] font-semibold text-[#6b6b76]">Available for sale</span>
+                    <span className="block text-[11px] text-[#8a8a95]">Show in quotations and sales</span>
+                  </span>
+                  <Toggle
+                    on={Boolean(form.is_sellable)}
+                    onChange={(value) => setForm((f) => ({ ...f, is_sellable: value }))}
+                  />
+                </label>
+              </div>
             ) : null}
 
             <div className="grid grid-cols-2 gap-3">

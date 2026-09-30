@@ -105,6 +105,7 @@ export default function ProductDetailModal({
                 <Field label="Goods & Services Tax (GST) %" value={product.gst_percent != null ? `${product.gst_percent}%` : "—"} />
                 <Field label="Warehouse" value={product.warehouse} />
                 <Field label="Status" value={product.status} />
+                <Field label="Available for Sale" value={product.is_sellable ? "Yes" : "No"} />
               </div>
               <Field label="Description" value={product.description} />
               <div>
@@ -224,6 +225,7 @@ export function ProductFormModal({ product, onClose, onSave }) {
     price_per_unit: product?.price_per_unit ?? product?.selling_price ?? product?.price ?? "",
     description: product?.description || "",
     status: product?.status || "active",
+    is_sellable: Boolean(product?.is_sellable),
   });
 
   const set = (key, val) => setForm((f) => ({ ...f, [key]: val }));

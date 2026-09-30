@@ -82,7 +82,7 @@ import {
 const YELLOW = "var(--color-primary)";
 
 const PREFIX_STORAGE_KEY = "gns_quotation_prefixes";
-const DEFAULT_PREFIXES = ["QUO"];
+const DEFAULT_PREFIXES = ["QUO-"];
 const ADD_PREFIX_VALUE = "__add_prefix__";
 
 /* -------------------------------------------------------------------------- */
@@ -150,20 +150,20 @@ function getQuotationRows(response) {
  *
  * Example:
  *
- * QUO1, QUO2, QUO3, QUO4
- * delete QUO4
- * next => QUO4
+ * QUO-000001, QUO-000002, QUO-000003, QUO-000004
+ * delete QUO-000004
+ * next => QUO-000005
  *
- * QUO1, QUO2, QUO3, QUO4
- * delete QUO2
- * next => QUO5
+ * QUO-000001, QUO-000002, QUO-000003, QUO-000004
+ * delete QUO-000002
+ * next => QUO-000005
  *
- * QUO1, QUO2, QUO3, QUO4
- * delete QUO3 + QUO4
- * next => QUO3
+ * QUO-000001, QUO-000002, QUO-000003, QUO-000004
+ * delete QUO-000003 + QUO-000004
+ * next => QUO-000005
  *
  * No quotations
- * next => 1
+ * next => QUO-000001
  *
  * The number is calculated from the CURRENT existing quotations,
  * not from a permanent counter.
@@ -173,6 +173,7 @@ function getNextQuotationNumber(
   prefix = ""
 ) {
   const selectedPrefix = String(prefix || "").trim();
+  const prefixStem = selectedPrefix.replace(/[-\s]+$/, "");
 
   let maxNumber = 0;
 
@@ -189,8 +190,8 @@ function getNextQuotationNumber(
 
     let numberPart = "";
 
-    if (selectedPrefix) {
-      const escapedPrefix = selectedPrefix.replace(
+    if (prefixStem) {
+      const escapedPrefix = prefixStem.replace(
         /[.*+?^${}()|[\]\\]/g,
         "\\$&"
       );
@@ -227,7 +228,7 @@ function getNextQuotationNumber(
     }
   }
 
-  return String(maxNumber + 1);
+  return String(maxNumber + 1).padStart(6, "0");
 }
 
 const emptyItem = () => ({
@@ -882,17 +883,15 @@ export default function QuotationForm() {
           }
         }
 
-        if (co?.invoice_prefix) {
-          setForm((f) =>
-            f.invoice_prefix
-              ? f
-              : {
-                  ...f,
-                  invoice_prefix:
-                    co.invoice_prefix,
-                }
-          );
-        }
+        setForm((f) =>
+          f.invoice_prefix
+            ? f
+            : {
+                ...f,
+                invoice_prefix:
+                  co?.quotation_prefix || DEFAULT_PREFIXES[0],
+              }
+        );
 
         if (co?.bank_name) {
           setBankAccount({
@@ -1303,8 +1302,8 @@ export default function QuotationForm() {
       ...DEFAULT_PREFIXES,
       ...customPrefixes,
 
-      ...(company?.invoice_prefix
-        ? [company.invoice_prefix]
+      ...(company?.quotation_prefix
+        ? [company.quotation_prefix]
         : []),
 
       ...(form.invoice_prefix
@@ -1315,7 +1314,7 @@ export default function QuotationForm() {
     return [...set].filter(Boolean);
   }, [
     customPrefixes,
-    company?.invoice_prefix,
+    company?.quotation_prefix,
     form.invoice_prefix,
   ]);
 
@@ -1465,14 +1464,19 @@ export default function QuotationForm() {
         .trim()
         .toLowerCase();
 
+    const sellableProducts = products.filter((product) =>
+      String(product.status || "active").toLowerCase() === "active" &&
+      product.is_sellable === true
+    );
+
     if (!q) {
-      return products.slice(
+      return sellableProducts.slice(
         0,
         40
       );
     }
 
-    return products
+    return sellableProducts
       .filter((p) =>
         [
           p.name,
@@ -1489,10 +1493,7 @@ export default function QuotationForm() {
           )
       )
       .slice(0, 40);
-  }, [
-    products,
-    itemSearch,
-  ]);
+  }, [products, itemSearch]);
 
   const removeItem = (idx) => {
     setItems((prev) =>
@@ -1635,10 +1636,7 @@ export default function QuotationForm() {
       /*
        * Prefix + number
        *
-       * Examples:
-       * QUO + 1 => QUO1
-       * QUO- + 1 => QUO-1
-       * no prefix + 1 => 1
+       * Prefix punctuation is preserved exactly as configured.
        */
       const quoteNumber = [
         form.invoice_prefix,

@@ -134,6 +134,7 @@ export function enrichApiProduct(apiRow) {
     warehouse: apiRow.warehouse || "—",
     description: apiRow.description || "",
     status: String(apiRow.status ?? (apiRow.is_active === false ? "inactive" : "active")).trim().toLowerCase(),
+    is_sellable: Boolean(apiRow.is_sellable),
     bom: apiRow.bom || "—",
     production_time: apiRow.production_time || "—",
     machine_required: apiRow.machine_required || "—",

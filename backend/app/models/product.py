@@ -1,4 +1,4 @@
-from sqlalchemy import ForeignKey, Integer, Numeric, String, Text
+from sqlalchemy import Boolean, ForeignKey, Integer, Numeric, String, Text, false
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin
@@ -26,6 +26,9 @@ class Product(Base, TimestampMixin):
     gst_percent: Mapped[float | None] = mapped_column(Numeric(5, 2), default=0)
     cess_percent: Mapped[float | None] = mapped_column(Numeric(5, 2), default=0)
     status: Mapped[str] = mapped_column(String(32), default="active", nullable=False)
+    is_sellable: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default=false(), nullable=False
+    )
 
     tenant = relationship("Tenant", back_populates="products")
     bom_items = relationship(

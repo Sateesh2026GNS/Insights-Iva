@@ -31,6 +31,8 @@ class CompanySettingsBase(BaseModel):
 
     invoice_prefix: str | None = None
     invoice_next_number: int = Field(1, ge=1)
+    quotation_prefix: str | None = None
+    quotation_next_number: int = Field(1, ge=1)
     po_prefix: str | None = None
     so_prefix: str | None = None
 
@@ -144,6 +146,8 @@ class CompanySettingsUpdate(BaseModel):
 
     invoice_prefix: str | None = None
     invoice_next_number: int | None = Field(None, ge=1)
+    quotation_prefix: str | None = None
+    quotation_next_number: int | None = Field(None, ge=1)
     po_prefix: str | None = None
     so_prefix: str | None = None
 

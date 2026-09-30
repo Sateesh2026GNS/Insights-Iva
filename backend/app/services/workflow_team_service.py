@@ -127,7 +127,11 @@ def _serialize_material_check(
 
 
 def refresh_pending_material_check_stock(
-    db: Session, tenant_id: int, mc: SalesOrderMaterialCheck | None
+    db: Session,
+    tenant_id: int,
+    mc: SalesOrderMaterialCheck | None,
+    *,
+    force: bool = False,
 ) -> SalesOrderMaterialCheck | None:
     """Refresh on-hand / reserved / shortage on a pending material check from live inventory."""
     if not mc:
@@ -136,7 +140,7 @@ def refresh_pending_material_check_stock(
     from app.models.inventory import InventoryItem, StockLevel, Warehouse
     from app.services.inventory_service import get_default_warehouse, get_total_stock
 
-    pending = (mc.status or "pending").lower() in {"pending", ""}
+    pending = force or (mc.status or "pending").lower() in {"pending", ""}
     default_wh = get_default_warehouse(db, tenant_id)
     for ln in mc.lines or []:
         reserved = 0.0
@@ -654,7 +658,8 @@ def submit_material_check(
     if not mc:
         mc = create_material_check_for_order(db, tenant_id, so)
 
-    if ws != "MATERIAL_CHECK_PENDING":
+    rechecking = ws in {"MATERIAL_SHORTAGE", "MATERIAL_PARTIAL"}
+    if ws != "MATERIAL_CHECK_PENDING" and not rechecking:
         if line_updates:
             raise HTTPException(
                 status_code=409,
@@ -673,9 +678,9 @@ def submit_material_check(
             detail=f"Order not awaiting material check (status={so.workflow_status})",
         )
 
-    refresh_pending_material_check_stock(db, tenant_id, mc)
+    refresh_pending_material_check_stock(db, tenant_id, mc, force=rechecking)
 
-    if line_updates:
+    if line_updates and not rechecking:
         line_map = {ln.id: ln for ln in mc.lines}
         for upd in line_updates:
             ln = line_map.get(upd.get("id"))
@@ -709,18 +714,19 @@ def submit_material_check(
     mc.verified_at = datetime.now(timezone.utc)
     mc.notes = notes
 
-    transition_workflow_status(
-        db,
-        tenant_id=tenant_id,
-        sales_order=so,
-        new_status=target,
-        user=user,
-        action="MATERIAL_CHECK_COMPLETED",
-        team=TEAM_INVENTORY,
-        details=f"Material check {mc.check_number}: {mc.status}",
-        commit=False,
-        notify=True,
-    )
+    if target != ws:
+        transition_workflow_status(
+            db,
+            tenant_id=tenant_id,
+            sales_order=so,
+            new_status=target,
+            user=user,
+            action="MATERIAL_STOCK_RECHECKED" if rechecking else "MATERIAL_CHECK_COMPLETED",
+            team=TEAM_INVENTORY,
+            details=f"Material check {mc.check_number}: {mc.status}",
+            commit=False,
+            notify=True,
+        )
 
     from app.services.stage_job_card_service import (
         _ensure_store_issue_lines,

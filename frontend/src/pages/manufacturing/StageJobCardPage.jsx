@@ -313,6 +313,20 @@ export default function StageJobCardPage() {
           addToast("Inventory check submitted. Advanced to Stage 3: Store Issue.", "success");
           navigate(`/manufacturing/workflow/order/${orderId}/store`);
           return;
+        } else if (action === "recheck_inventory") {
+          const res = await submitMaterialCheck(orderId, {});
+          const result = res?.data ?? res;
+          if (result?.workflow_status === "STORE_ISSUE_PENDING") {
+            addToast("All materials are available. Advanced to Store Issue.", "success");
+            navigate(`/manufacturing/workflow/order/${orderId}/store`);
+            return;
+          }
+          addToast(
+            result?.workflow_status === "MATERIAL_PARTIAL"
+              ? "Stock rechecked. Some materials are still short."
+              : "Stock rechecked. Materials are still unavailable.",
+            "info"
+          );
         } else if (action === "hold_order") {
           await holdWorkflowOrder(orderId, { reason: "On hold by store" });
           addToast("Order placed on hold by Store Manager", "success");
@@ -485,6 +499,7 @@ export default function StageJobCardPage() {
             onAction={runAction}
             labels={{
               confirm_inventory: "Confirm Materials",
+              recheck_inventory: "Recheck Stock",
               raise_material_request: "Record Shortage",
             }}
           />

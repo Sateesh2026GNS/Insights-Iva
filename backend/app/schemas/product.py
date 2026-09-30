@@ -20,6 +20,7 @@ class ProductBase(BaseModel):
     gst_percent: float | None = Field(None, ge=0, le=100.0)
     cess_percent: float | None = Field(None, ge=0, le=100.0)
     status: str = Field("active", pattern="^(active|inactive)$")
+    is_sellable: bool = False
 
     @field_validator("gst_percent", "cess_percent", mode="before")
     @classmethod
@@ -112,6 +113,7 @@ class ProductUpdate(BaseModel):
     gst_percent: float | None = Field(None, ge=0, le=100.0)
     cess_percent: float | None = Field(None, ge=0, le=100.0)
     status: str | None = Field(None, pattern="^(active|inactive)$")
+    is_sellable: bool | None = None
 
     @field_validator("gst_percent", "cess_percent", mode="before")
     @classmethod

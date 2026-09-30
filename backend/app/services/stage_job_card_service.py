@@ -374,8 +374,8 @@ def _stage_allowed_actions(stage: str, ws: str, user: User | None) -> list[str]:
     actions_map = {
         "inventory_check": {
             "MATERIAL_CHECK_PENDING": ["confirm_inventory", "hold_order", "raise_material_request"],
-            "MATERIAL_SHORTAGE": ["hold_order", "raise_material_request"],
-            "MATERIAL_PARTIAL": ["hold_order", "raise_material_request"],
+            "MATERIAL_SHORTAGE": ["recheck_inventory", "hold_order", "raise_material_request"],
+            "MATERIAL_PARTIAL": ["recheck_inventory", "hold_order", "raise_material_request"],
         },
         "store": {
             "STORE_ISSUE_PENDING": ["issue_materials", "partial_issue", "hold", "send_to_production"],
