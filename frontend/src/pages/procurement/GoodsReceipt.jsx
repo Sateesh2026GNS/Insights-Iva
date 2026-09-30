@@ -211,6 +211,7 @@ export default function GoodsReceipt() {
     {
       key: "qc_status",
       label: "Quality Control (QC)",
+      align: "center",
       render: (r) => (
         <span
           className={`rounded-full px-2 py-0.5 text-xs font-semibold capitalize ${qcColor(r.qc_status)}`}
@@ -316,6 +317,7 @@ export default function GoodsReceipt() {
           data={rows}
           searchPlaceholder="Search"
           searchKeys={["grn_number", "po_number", "vendor_name"]}
+          showResultsCount={false}
           searchInputClassName="pending-inventory-search-input"
         />
         </ListPageCardBody>

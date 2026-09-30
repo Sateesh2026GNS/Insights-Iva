@@ -365,7 +365,7 @@ export default function PurchaseOrders() {
             <button
               type="button"
               onClick={() => {
-                setDraftFilters(filters);
+                setDraftFilters({ ...filters, vendor: "" });
                 setShowFilters(true);
               }}
               className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-3.5 py-2 text-[13px] font-medium text-[var(--color-text-secondary)]"
@@ -582,6 +582,10 @@ export default function PurchaseOrders() {
                   size="compact"
                   value={draftFilters.vendor}
                   onChange={(v) => setDraftFilters((f) => ({ ...f, vendor: v }))}
+                  onClear={() => {
+                    setFilters((f) => ({ ...f, vendor: "" }));
+                    setPage(1);
+                  }}
                   placeholder="Search"
                   className="w-full"
                   inputClassName="pending-inventory-search-input"
@@ -606,6 +610,7 @@ export default function PurchaseOrders() {
                 className="flex-1"
                 onClick={() => {
                   setFilters(draftFilters);
+                  setDraftFilters((f) => ({ ...f, vendor: "" }));
                   setShowFilters(false);
                 }}
               >
