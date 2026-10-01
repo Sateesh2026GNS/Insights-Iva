@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import logging
 import math
-import re
 from datetime import date, datetime, timezone
 from typing import Any
 
@@ -34,6 +33,33 @@ from app.services.inventory_service import (
     record_stock_movement,
 )
 from app.services.procurement_service import create_material_request
+
+
+def _product_requires_bom(product: Product | None) -> bool:
+    """Finished and assembled products need an explicit recipe before production planning."""
+    if not product:
+        return False
+    category = (product.category or "finished goods").strip().lower().replace("_", " ")
+    direct_stock_categories = ("raw material", "packaging", "wip", "consumable", "spare", "component")
+    return not any(token in category for token in direct_stock_categories)
+
+
+def _is_legacy_sample_bom(product: Product | None, rows: list[BillOfMaterial], db: Session) -> bool:
+    """Recognize the old four-line demo recipe so it cannot drive real material planning."""
+    if not product or not product.sku or not rows:
+        return False
+    expected_skus = {
+        f"RAW-{product.sku}-01",
+        f"RAW-{product.sku}-02",
+        "RAW-DYE-01",
+        f"PKG-{product.sku}-01",
+    }
+    component_skus = {
+        component.sku
+        for row in rows
+        if (component := db.get(Product, row.component_product_id)) is not None
+    }
+    return bool(component_skus.intersection(expected_skus))
 
 
 def sales_order_has_final_qc_pass(
@@ -192,192 +218,11 @@ def find_or_create_inventory_item_for_product(
     *,
     item_type: str = "raw_material",
 ) -> InventoryItem:
-    item = db.scalars(
-        select(InventoryItem).where(
-            InventoryItem.tenant_id == tenant_id,
-            InventoryItem.sku == product.sku,
-        )
-    ).first()
-    if item:
-        if item.item_type != item_type and item_type == "finished_good":
-            item.item_type = "finished_good"
-        return item
-    item = InventoryItem(
-        tenant_id=tenant_id,
-        sku=product.sku,
-        name=product.name,
-        description=product.description,
-        unit=getattr(product, "unit", None) or "pcs",
-        unit_cost=float(product.unit_cost) if product.unit_cost else None,
-        item_type=item_type,
-        is_active=True,
+    from app.services.inventory_service import get_or_create_inventory_item_for_product
+
+    return get_or_create_inventory_item_for_product(
+        db, tenant_id, product, item_type=item_type
     )
-    db.add(item)
-    db.flush()
-    return item
-
-
-_COMPONENT_CATEGORY_HINTS = (
-    "raw material",
-    "raw_material",
-    "packaging",
-    "wip",
-    "consumable",
-    "spare",
-    "component",
-)
-
-_AUTO_COMPONENT_NAME_PREFIXES = (
-    "raw polymer / resin",
-    "preform / sub-component",
-    "outer corrugated box",
-    "color masterbatch",
-)
-
-
-def _is_bom_component_product(product: Product) -> bool:
-    """True for raw/packaging/WIP items — do not auto-generate a BOM for these."""
-    cat = (getattr(product, "category", None) or "").strip().lower()
-    if any(h in cat for h in _COMPONENT_CATEGORY_HINTS):
-        return True
-    sku = (getattr(product, "sku", None) or "").strip().upper()
-    if sku.startswith(("RAW-", "PKG-")):
-        return True
-    name = (product.name or "").strip().lower()
-    return any(name.startswith(p) for p in _AUTO_COMPONENT_NAME_PREFIXES)
-
-
-def _base_label_for_bom(name: str | None) -> str:
-    """Strip nested auto-BOM wrappers so packaging names stay one level deep."""
-    s = (name or "Product").strip()
-    while True:
-        m = re.match(r"^Outer Corrugated Box\s+\((Outer Corrugated Box\s+\(.+\))\)\s*$", s, flags=re.I)
-        if not m:
-            break
-        s = m.group(1).strip()
-    for pattern in (
-        r"^Raw Polymer / Resin\s+\((.+)\)\s*$",
-        r"^Preform / Sub-component\s+\((.+)\)\s*$",
-        r"^Outer Corrugated Box\s+\((.+)\)\s*$",
-    ):
-        m = re.match(pattern, s, flags=re.I)
-        if m:
-            inner = m.group(1).strip()
-            # Keep a clean FG label for component naming (unwrap nested boxes first).
-            while True:
-                nested = re.match(
-                    r"^Outer Corrugated Box\s+\((Outer Corrugated Box\s+\(.+\))\)\s*$",
-                    inner,
-                    flags=re.I,
-                )
-                if not nested:
-                    break
-                inner = nested.group(1).strip()
-            # If still "Outer Corrugated Box (FG)", use FG only.
-            box_inner = re.match(r"^Outer Corrugated Box\s+\((.+)\)\s*$", inner, flags=re.I)
-            s = box_inner.group(1).strip() if box_inner else inner
-            break
-    return s or "Product"
-
-
-def ensure_default_bom_for_product(db: Session, tenant_id: int, product: Product) -> list[BillOfMaterial]:
-    """If a finished product has no BOM, generate realistic raw material components & BOM entries."""
-    existing = list(
-        db.scalars(
-            select(BillOfMaterial).where(
-                BillOfMaterial.tenant_id == tenant_id,
-                BillOfMaterial.product_id == product.id,
-            )
-        ).all()
-    )
-    if existing:
-        return existing
-
-    # Never explode BOM for components/packaging — that created nested
-    # "Outer Corrugated Box (Outer Corrugated Box (...))" product names.
-    if _is_bom_component_product(product):
-        return []
-
-    p_name = _base_label_for_bom(product.name)
-    p_code = product.sku or (product.product_code if hasattr(product, "product_code") else None)
-    p_code = p_code or f"PROD-{product.id}"
-    # Keep SKUs short/stable even if product name was previously nested.
-    p_code = re.sub(r"[^A-Za-z0-9_-]+", "-", str(p_code)).strip("-")[:40] or f"PROD-{product.id}"
-
-    default_components = [
-        {
-            "name": f"Raw Polymer / Resin ({p_name})",
-            "sku": f"RAW-{p_code}-01",
-            "category": "Raw Material",
-            "unit": "KG",
-            "qty": 0.85,
-            "stock": 15.0,
-            "unit_cost": 45.0,
-        },
-        {
-            "name": f"Preform / Sub-component ({p_name})",
-            "sku": f"RAW-{p_code}-02",
-            "category": "Raw Material",
-            "unit": "Pcs",
-            "qty": 1.0,
-            "stock": 25.0,
-            "unit_cost": 12.0,
-        },
-        {
-            "name": "Color Masterbatch Additive",
-            "sku": "RAW-DYE-01",
-            "category": "Raw Material",
-            "unit": "KG",
-            "qty": 0.05,
-            "stock": 8.0,
-            "unit_cost": 120.0,
-        },
-        {
-            "name": f"Outer Corrugated Box ({p_name})",
-            "sku": f"PKG-{p_code}-01",
-            "category": "Packaging Material",
-            "unit": "Box",
-            "qty": 0.02,
-            "stock": 5.0,
-            "unit_cost": 25.0,
-        },
-    ]
-
-    new_boms = []
-    for comp in default_components:
-        c_prod = db.scalars(
-            select(Product).where(
-                Product.tenant_id == tenant_id,
-                Product.sku == comp["sku"],
-            )
-        ).first()
-        if not c_prod:
-            c_prod = Product(
-                tenant_id=tenant_id,
-                sku=comp["sku"],
-                name=comp["name"],
-                category=comp["category"],
-                unit=comp["unit"],
-                unit_cost=comp["unit_cost"],
-                current_stock=comp["stock"],
-                min_stock=10,
-                max_stock=500,
-            )
-            db.add(c_prod)
-            db.flush()
-
-        bom = BillOfMaterial(
-            tenant_id=tenant_id,
-            product_id=product.id,
-            component_product_id=c_prod.id,
-            quantity=comp["qty"],
-            unit=comp["unit"],
-        )
-        db.add(bom)
-        new_boms.append(bom)
-
-    db.commit()
-    return new_boms
 
 
 def get_bom_requirements(
@@ -395,10 +240,10 @@ def get_bom_requirements(
             )
         ).all()
     )
-    if not bom_rows:
-        product = db.get(Product, product_id)
-        if product:
-            bom_rows = ensure_default_bom_for_product(db, tenant_id, product)
+    product = db.get(Product, product_id)
+    if _is_legacy_sample_bom(product, bom_rows, db):
+        # Keep old generated rows available for review, but do not plan production from them.
+        return []
 
     requirements: list[dict[str, Any]] = []
     for row in bom_rows:
@@ -446,6 +291,11 @@ def run_mrp(
         raise HTTPException(status_code=404, detail="Product not found")
 
     requirements = get_bom_requirements(db, tenant_id, product_id, quantity)
+    if not requirements and _product_requires_bom(product):
+        raise HTTPException(
+            status_code=400,
+            detail=f"No verified BOM is available for '{product.name}'. A production-authorized member must create or replace the BOM before material planning.",
+        )
     shortages = [r for r in requirements if not r["enough"]]
     material_request_id = None
     mr_number = None
@@ -1029,9 +879,9 @@ def confirm_sales_order_workflow(
                 raise HTTPException(
                     status_code=400,
                     detail=(
-                        f"No active BOM for product "
+                        f"No verified BOM for product "
                         f"'{product.name if product else line.product_id}'. "
-                        "Load/verify BOM before confirming the sales order for production."
+                        "A production-authorized member must create or replace the BOM before confirming production."
                     ),
                 )
             mrp = run_mrp(

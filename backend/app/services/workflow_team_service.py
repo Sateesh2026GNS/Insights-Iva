@@ -38,6 +38,7 @@ from app.services.manufacturing_workflow_service import (
     ensure_work_order_for_production_order,
     find_or_create_inventory_item_for_product,
     get_bom_requirements,
+    _product_requires_bom,
     run_mrp,
 )
 from app.services.workflow_state_service import (
@@ -124,6 +125,20 @@ def _serialize_material_check(
         "notes": mc.notes,
         "lines": [_serialize_material_check_line(ln, db) for ln in (mc.lines or [])],
     }
+
+
+def _products_missing_bom(db: Session, tenant_id: int, sales_order: SalesOrder) -> list[Product]:
+    """Return manufactured order products without usable BOM requirements."""
+    missing = []
+    for line in db.scalars(
+        select(SalesOrderLine).where(SalesOrderLine.sales_order_id == sales_order.id)
+    ).all():
+        product = db.get(Product, line.product_id) if line.product_id else None
+        if product and _product_requires_bom(product) and not get_bom_requirements(
+            db, tenant_id, product.id, float(line.quantity or 0)
+        ):
+            missing.append(product)
+    return missing
 
 
 def refresh_pending_material_check_stock(
@@ -215,6 +230,13 @@ def create_material_check_for_order(
             # Raw materials and other inventory products may be sold directly;
             # check their own stock instead of requiring a BOM to exist.
             product = db.get(Product, so_line.product_id)
+            if _product_requires_bom(product):
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        f"No verified BOM is available for '{product.name}'. A production-authorized member must create or replace the BOM before the store can check materials."
+                    ),
+                )
             if product and product.tenant_id == tenant_id:
                 category = (product.category or "").strip().lower()
                 item_type = (
@@ -269,7 +291,7 @@ def _ensure_workflow_artifacts(
     tenant_id: int,
     so: SalesOrder,
     user: User | None,
-) -> SalesOrderMaterialCheck:
+) -> SalesOrderMaterialCheck | None:
     """Ensure material check and job card exist for a confirmed workflow order."""
     from app.services.job_card_service import ensure_sales_job_card_from_order
 
@@ -279,7 +301,24 @@ def _ensure_workflow_artifacts(
             SalesOrderMaterialCheck.sales_order_id == so.id,
         )
     ).first()
-    if not mc:
+    missing_boms = _products_missing_bom(db, tenant_id, so)
+    if missing_boms and (so.workflow_status or "").upper() in {
+        "SALES_CONFIRMED", "MATERIAL_CHECK_PENDING"
+    }:
+        transition_workflow_status(
+            db,
+            tenant_id=tenant_id,
+            sales_order=so,
+            new_status="BOM_PENDING",
+            user=None,
+            action="BOM_REQUIRED",
+            team=TEAM_PRODUCTION,
+            details="Production must create or correct the BOM before Store can check availability.",
+            skip_permission_check=True,
+            commit=False,
+            notify=True,
+        )
+    if not mc and (so.workflow_status or "").upper() != "BOM_PENDING":
         mc = create_material_check_for_order(db, tenant_id, so, commit=False)
     ensure_sales_job_card_from_order(db, tenant_id, so.id, user)
     return mc
@@ -574,9 +613,11 @@ def confirm_sales_order_with_workflow(
     if not lines:
         raise HTTPException(status_code=400, detail="Add product lines before confirming")
 
+    missing_boms = _products_missing_bom(db, tenant_id, so)
+    missing_bom_ids = {product.id for product in missing_boms}
     mrp_results = []
     for line in lines:
-        if not line.product_id:
+        if not line.product_id or line.product_id in missing_bom_ids:
             continue
         mrp = run_mrp(
             db,
@@ -593,6 +634,7 @@ def confirm_sales_order_with_workflow(
     if not so.sales_person:
         so.sales_person = user.full_name
 
+    next_status = "BOM_PENDING" if missing_boms else "MATERIAL_CHECK_PENDING"
     transition_workflow_status(
         db,
         tenant_id=tenant_id,
@@ -608,14 +650,14 @@ def confirm_sales_order_with_workflow(
         db,
         tenant_id=tenant_id,
         sales_order=so,
-        new_status="MATERIAL_CHECK_PENDING",
+        new_status=next_status,
         user=user,
-        action="MATERIAL_CHECK_CREATED",
+        action="BOM_REQUIRED" if missing_boms else "MATERIAL_CHECK_CREATED",
         team=TEAM_SALES,
         commit=False,
         notify=True,
     )
-    mc = create_material_check_for_order(db, tenant_id, so)
+    mc = None if missing_boms else create_material_check_for_order(db, tenant_id, so)
     from app.services.job_card_service import ensure_sales_job_card_from_order
 
     ensure_sales_job_card_from_order(db, tenant_id, so.id, user)
@@ -628,7 +670,8 @@ def confirm_sales_order_with_workflow(
         "workflow_status": so.workflow_status,
         "priority": normalize_priority(so.priority),
         "mrp_results": mrp_results,
-        "material_check": _serialize_material_check(mc, db),
+        "material_check": _serialize_material_check(mc, db) if mc else None,
+        "bom_required_products": [p.name for p in missing_boms],
     }
 
 

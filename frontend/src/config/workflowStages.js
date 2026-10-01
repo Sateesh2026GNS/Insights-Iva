@@ -5,6 +5,7 @@
 
 export const WORKFLOW_STATUS_LABELS = {
   SALES_CONFIRMED: "Sales Confirmed",
+  BOM_PENDING: "BOM Creation / Correction Required",
   MATERIAL_CHECK_PENDING: "Pending Inventory Check",
   MATERIAL_AVAILABLE: "Materials Confirmed",
   MATERIAL_SHORTAGE: "Material Shortage",
@@ -36,6 +37,7 @@ export const WORKFLOW_STATUS_LABELS = {
 
 export const WORKFLOW_STATUS_VARIANTS = {
   SALES_CONFIRMED: "info",
+  BOM_PENDING: "warning",
   MATERIAL_CHECK_PENDING: "warning",
   MATERIAL_AVAILABLE: "success",
   MATERIAL_SHORTAGE: "danger",
@@ -64,6 +66,18 @@ export const WORKFLOW_STATUS_VARIANTS = {
 
 /** Stage definitions — route segment, backend stage key, queue filter, responsible role. */
 export const WORKFLOW_STAGES = [
+  {
+    id: "bom_pending",
+    stageKey: "bom_pending",
+    routeSegment: "production",
+    label: "BOM Creation / Correction",
+    queueLabel: "BOM Required",
+    filterStatuses: ["BOM_PENDING"],
+    filterStatus: "BOM_PENDING",
+    responsibleRole: "Production Manager",
+    team: "production",
+    path: "/manufacturing/workflow?status=BOM_PENDING",
+  },
   {
     id: "sales",
     stageKey: "sales",

@@ -30,7 +30,11 @@ MODULE_MAP = {
 
 
 def _check_operator_restrictions(user: User, module_key: str) -> None:
-    if module_key in ("notifications", "products", "bom", "masters", "machines", "vendors"):
+    if module_key == "bom":
+        # BOM authoring is for production/planning or masters-authorized members.
+        if user_has_any_permission(user, "masters", "production", "admin"):
+            return
+    if module_key in ("notifications", "products", "masters", "machines", "vendors"):
         if user_has_any_permission(
             user, "masters", "production", "inventory", "sales", "admin", "procurement"
         ):

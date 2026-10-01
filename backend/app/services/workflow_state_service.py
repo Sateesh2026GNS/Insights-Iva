@@ -182,7 +182,10 @@ def _notify_team_for_status(
 
         title = f"Workflow: {sales_order.order_number} → {new_status.replace('_', ' ').title()}"
         message = (
-            f"Sales order {sales_order.order_number} requires action at stage "
+            f"Sales order {sales_order.order_number} requires BOM creation or correction. "
+            "Store availability checking is waiting for a usable BOM."
+            if new_status == "BOM_PENDING"
+            else f"Sales order {sales_order.order_number} requires action at stage "
             f"{new_status.replace('_', ' ').lower()}."
         )
         for uid in user_ids:
@@ -198,7 +201,11 @@ def _notify_team_for_status(
                             type="production",
                             priority=normalize_priority(getattr(sales_order, "priority", "medium")),
                             module="production",
-                            action_url=f"/manufacturing/workflow?order={sales_order.id}",
+                            action_url=(
+                                "/masters/bom"
+                                if new_status == "BOM_PENDING"
+                                else f"/manufacturing/workflow?order={sales_order.id}"
+                            ),
                             created_by=actor.full_name if actor else "System",
                             created_by_user_id=actor.id if actor else None,
                             commit=False,
@@ -213,7 +220,11 @@ def _notify_team_for_status(
                         type="production",
                         priority=normalize_priority(getattr(sales_order, "priority", "medium")),
                         module="production",
-                        action_url=f"/manufacturing/workflow?order={sales_order.id}",
+                        action_url=(
+                            "/masters/bom"
+                            if new_status == "BOM_PENDING"
+                            else f"/manufacturing/workflow?order={sales_order.id}"
+                        ),
                         created_by=actor.full_name if actor else "System",
                         created_by_user_id=actor.id if actor else None,
                         commit=True,

@@ -53,6 +53,7 @@ export default function SalesOrderMaterialCheckPanel({
   const [checkMeta, setCheckMeta] = useState(null);
   const [wfStatus, setWfStatus] = useState(workflowStatus);
   const [conflictMessage, setConflictMessage] = useState("");
+  const [bomRequiredProducts, setBomRequiredProducts] = useState([]);
 
   const actions = new Set(allowedActions);
   const ws = String(wfStatus || workflowStatus || "").toUpperCase();
@@ -71,6 +72,7 @@ export default function SalesOrderMaterialCheckPanel({
       const mc = data?.material_check || {};
       setCheckMeta(mc);
       setWfStatus(data?.workflow_status || workflowStatus);
+      setBomRequiredProducts(data?.bom_required_products || []);
       setLines(Array.isArray(mc?.lines) ? mc.lines : []);
       setNotes(mc?.notes || "");
     } catch (err) {
@@ -189,6 +191,13 @@ export default function SalesOrderMaterialCheckPanel({
 
       {loading ? <LoadingState label="Loading inventory…" compact className="py-6" /> : null}
       {error ? <p className="store-manual-jc-actions__hint text-[var(--color-danger)]">{error}</p> : null}
+      {!loading && !error && bomRequiredProducts.length > 0 ? (
+        <div className="store-manual-jc-actions__hint" role="status">
+          <strong>BOM creation or correction required.</strong> Production has been notified for:
+          {" "}{bomRequiredProducts.join(", ")}. Store availability checking will become available after
+          a usable BOM is saved; refresh this panel then.
+        </div>
+      ) : null}
       {conflictMessage ? (
         <ConcurrencyConflictBanner message={conflictMessage} onRefresh={load} className="mb-3" />
       ) : null}

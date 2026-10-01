@@ -556,6 +556,7 @@ class QuotationBase(BaseModel):
     status: str = "draft"
     total_amount: float = Field(0.0, ge=0.0)
     notes: str | None = None
+    meta_json: dict | str | None = None
 
     @field_validator("total_amount", mode="before")
     @classmethod
@@ -635,8 +636,18 @@ class QuotationRead(QuotationBase):
     model_config = ConfigDict(from_attributes=True)
 
 
+class QuotationConvertItem(BaseModel):
+    product_id: int | None = None
+    item_description: str
+    quantity: float = Field(..., gt=0)
+    unit: str = "pcs"
+    unit_price: float = Field(0.0, ge=0.0)
+
+
 class QuotationConvertRequest(BaseModel):
-    """Optional product line when converting a quotation into a sales order."""
+    """Quotation lines to copy into the sales order."""
+
+    items: list[QuotationConvertItem] = Field(default_factory=list)
 
     product_id: int | None = None
     item_description: str | None = None

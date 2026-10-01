@@ -539,6 +539,7 @@ def convert_quotation_to_sales_order(
     tenant_id: int,
     quote_id: int,
     *,
+    items: list[dict] | None = None,
     product_id: int | None = None,
     item_description: str | None = None,
     quantity: float | None = None,
@@ -586,6 +587,18 @@ def convert_quotation_to_sales_order(
             detail=f"Sales order {existing.order_number} already exists for this quotation.",
         )
 
+    requested_items = list(items or [])
+    if not requested_items and (product_id or item_description):
+        requested_items = [{
+            "product_id": product_id,
+            "item_description": item_description or "",
+            "quantity": quantity or 1,
+            "unit": unit,
+            "unit_price": unit_price,
+        }]
+    if not requested_items:
+        raise HTTPException(status_code=400, detail="Select at least one quotation item before converting.")
+
     ts = date_cls.today().strftime("%Y%m%d")
     so = SalesOrder(
         tenant_id=tenant_id,
@@ -600,38 +613,43 @@ def convert_quotation_to_sales_order(
     db.add(so)
     db.flush()
 
-    if product_id:
-        product = db.scalars(
-            select(Product).where(
-                Product.id == product_id,
-                Product.tenant_id == tenant_id,
-            )
-        ).first()
-        if not product:
-            raise HTTPException(
-                status_code=404,
-                detail="Product not found or does not belong to the current tenant.",
-            )
-        qty = float(quantity or 1)
+    order_total = 0.0
+    for line in requested_items:
+        line_product_id = line.get("product_id")
+        product = None
+        if line_product_id:
+            product = db.scalars(
+                select(Product).where(
+                    Product.id == line_product_id,
+                    Product.tenant_id == tenant_id,
+                )
+            ).first()
+            if not product:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Product not found or does not belong to the current tenant.",
+                )
+        qty = float(line.get("quantity") or 1)
         price = float(
-            unit_price
-            if unit_price is not None
+            line.get("unit_price")
+            if line.get("unit_price") is not None
             else (product.unit_price if product and product.unit_price else 0)
         )
-        desc = item_description or (product.name if product else f"Product #{product_id}")
+        desc = line.get("item_description") or (product.name if product else f"Product #{line_product_id}")
         line_total = round(qty * price, 2)
+        order_total += line_total
         db.add(
             SalesOrderLine(
                 sales_order_id=so.id,
-                product_id=product_id,
+                product_id=line_product_id,
                 item_description=desc,
                 quantity=qty,
-                unit=unit,
+                unit=line.get("unit") or "pcs",
                 unit_price=price,
                 line_total=line_total,
             )
         )
-        so.total_amount = line_total
+    so.total_amount = round(order_total, 2)
 
     quote.status = "accepted"
     db.commit()

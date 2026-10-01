@@ -24,6 +24,7 @@ from app.services.workflow_state_service import (
 )
 from app.services.stage_job_card_service import list_live_workflow_cards
 from app.services.workflow_team_service import (
+    _products_missing_bom,
     assign_operator_to_work_order,
     confirm_sales_order_with_workflow,
     create_billing_invoice,
@@ -519,6 +520,47 @@ def get_material_check(
     from app.models.manufacturing_workflow import SalesOrderMaterialCheck
 
     so = get_sales_order_or_404(db, user.tenant_id, order_id)
+    from app.core.workflow_constants import TEAM_PRODUCTION
+    from app.services.workflow_state_service import transition_workflow_status
+
+    missing_boms = _products_missing_bom(db, user.tenant_id, so)
+    if missing_boms:
+        if (so.workflow_status or "").upper() != "BOM_PENDING":
+            transition_workflow_status(
+                db,
+                tenant_id=user.tenant_id,
+                sales_order=so,
+                new_status="BOM_PENDING",
+                user=None,
+                action="BOM_REQUIRED",
+                team=TEAM_PRODUCTION,
+                details="Production must create or correct the BOM before Store can check availability.",
+                skip_permission_check=True,
+                commit=False,
+                notify=True,
+            )
+        db.commit()
+        return {
+            "sales_order_id": so.id,
+            "workflow_status": so.workflow_status,
+            "bom_required_products": [p.name for p in missing_boms],
+            "material_check": None,
+            "message": "Production must create or correct the BOM before Store can check material availability.",
+        }
+    if (so.workflow_status or "").upper() == "BOM_PENDING":
+        transition_workflow_status(
+            db,
+            tenant_id=user.tenant_id,
+            sales_order=so,
+            new_status="MATERIAL_CHECK_PENDING",
+            user=None,
+            action="BOM_READY_FOR_STORE_CHECK",
+            team=TEAM_PRODUCTION,
+            details="Usable BOM is now available; returned to Store for material availability check.",
+            skip_permission_check=True,
+            commit=False,
+            notify=True,
+        )
     mc = db.scalars(
         select(SalesOrderMaterialCheck)
         .options(selectinload(SalesOrderMaterialCheck.lines))

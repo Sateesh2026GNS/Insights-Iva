@@ -8,6 +8,7 @@ from typing import FrozenSet
 
 WORKFLOW_STATUSES = frozenset({
     "SALES_CONFIRMED",
+    "BOM_PENDING",
     "MATERIAL_CHECK_PENDING",
     "MATERIAL_AVAILABLE",
     "MATERIAL_SHORTAGE",
@@ -40,6 +41,7 @@ ORDER_PRIORITIES = frozenset({"high", "medium", "low"})
 # User-facing labels for workflow_status (canonical backend values only).
 WORKFLOW_STATUS_LABELS: dict[str, str] = {
     "SALES_CONFIRMED": "Sales Confirmed",
+    "BOM_PENDING": "BOM Creation / Correction Required",
     "MATERIAL_CHECK_PENDING": "Pending Inventory Check",
     "MATERIAL_AVAILABLE": "Materials Confirmed",
     "MATERIAL_SHORTAGE": "Material Shortage",
@@ -107,19 +109,26 @@ WORKFLOW_TRANSITIONS: dict[str, dict[str, str]] = {
     },
     "SALES_CONFIRMED": {
         "MATERIAL_CHECK_PENDING": TEAM_SALES,
+        "BOM_PENDING": TEAM_SALES,
+    },
+    "BOM_PENDING": {
+        "MATERIAL_CHECK_PENDING": TEAM_PRODUCTION,
     },
     "MATERIAL_CHECK_PENDING": {
+        "BOM_PENDING": TEAM_PRODUCTION,
         "MATERIAL_AVAILABLE": TEAM_INVENTORY,
         "MATERIAL_SHORTAGE": TEAM_INVENTORY,
         "MATERIAL_PARTIAL": TEAM_INVENTORY,
         "WORKFLOW_ON_HOLD": TEAM_INVENTORY,
     },
     "MATERIAL_SHORTAGE": {
+        "BOM_PENDING": TEAM_PRODUCTION,
         "MATERIAL_AVAILABLE": TEAM_INVENTORY,
         "MATERIAL_PARTIAL": TEAM_INVENTORY,
         "WORKFLOW_ON_HOLD": TEAM_INVENTORY,
     },
     "MATERIAL_PARTIAL": {
+        "BOM_PENDING": TEAM_PRODUCTION,
         "MATERIAL_AVAILABLE": TEAM_INVENTORY,
         "MATERIAL_SHORTAGE": TEAM_INVENTORY,
         "WORKFLOW_ON_HOLD": TEAM_INVENTORY,
@@ -213,6 +222,7 @@ WORKFLOW_TRANSITIONS: dict[str, dict[str, str]] = {
 # Sales Manager customer-request cancellation — allowed only before production starts.
 _CANCELLATION_FROM_STATUSES = (
     "SALES_CONFIRMED",
+    "BOM_PENDING",
     "MATERIAL_CHECK_PENDING",
     "MATERIAL_AVAILABLE",
     "MATERIAL_SHORTAGE",
@@ -230,6 +240,7 @@ for _cancel_src in _CANCELLATION_FROM_STATUSES:
 # Admin dashboard count buckets → filter path
 WORKFLOW_COUNT_BUCKETS: list[dict[str, str]] = [
     {"key": "sales_confirmed", "statuses": "SALES_CONFIRMED", "label": "Sales Orders", "path": "/manufacturing/workflow?status=SALES_CONFIRMED"},
+    {"key": "bom_pending", "statuses": "BOM_PENDING", "label": "BOM Required", "path": "/manufacturing/workflow?status=BOM_PENDING"},
     {"key": "inventory_pending", "statuses": "MATERIAL_CHECK_PENDING", "label": "Inventory Pending", "path": "/manufacturing/workflow?status=MATERIAL_CHECK_PENDING"},
     {"key": "inventory_shortage", "statuses": "MATERIAL_SHORTAGE,MATERIAL_PARTIAL", "label": "Inventory Shortage", "path": "/manufacturing/workflow?status=MATERIAL_SHORTAGE"},
     {"key": "store_pending", "statuses": "STORE_ISSUE_PENDING,STORE_ISSUE_PARTIAL,MATERIAL_AVAILABLE", "label": "Store Pending", "path": "/manufacturing/workflow?status=STORE_ISSUE_PENDING"},
@@ -244,6 +255,7 @@ WORKFLOW_COUNT_BUCKETS: list[dict[str, str]] = [
 
 # Notification target roles per transition target status
 STATUS_NOTIFY_ROLES: dict[str, list[str]] = {
+    "BOM_PENDING": ["Production Manager", "Admin"],
     "MATERIAL_CHECK_PENDING": ["Store Manager", "Admin"],
     "STORE_ISSUE_PENDING": ["Store Manager", "Admin"],
     "READY_FOR_PRODUCTION": ["Production Manager", "Admin"],

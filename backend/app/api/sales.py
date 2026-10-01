@@ -425,6 +425,7 @@ def convert_quotation_to_so_endpoint(
         db,
         user.tenant_id,
         quote_id,
+        items=[item.model_dump() for item in body.items],
         product_id=body.product_id,
         item_description=body.item_description,
         quantity=body.quantity,

@@ -50,6 +50,7 @@ STAGE_ALIASES: dict[str, str] = {
 
 # ERP role responsible for acting on a status (primary owner)
 RESPONSIBLE_ROLE_BY_STATUS: dict[str, str] = {
+    "BOM_PENDING": "Production Manager",
     "SALES_CONFIRMED": "Sales Manager",
     "MATERIAL_CHECK_PENDING": "Store Manager",
     "MATERIAL_SHORTAGE": "Store Manager",
@@ -78,6 +79,7 @@ RESPONSIBLE_ROLE_BY_STATUS: dict[str, str] = {
 }
 
 RESPONSIBLE_TEAM_BY_STATUS: dict[str, str] = {
+    "BOM_PENDING": TEAM_PRODUCTION,
     "SALES_CONFIRMED": TEAM_SALES,
     "MATERIAL_CHECK_PENDING": TEAM_INVENTORY,
     "MATERIAL_SHORTAGE": TEAM_INVENTORY,
@@ -117,6 +119,7 @@ ACTIONABLE_STATUSES_BY_TEAM: dict[str, frozenset[str]] = {
         "STORE_ISSUE_PARTIAL",
     }),
     TEAM_PRODUCTION: frozenset({
+        "BOM_PENDING",
         "READY_FOR_PRODUCTION",
         "PRODUCTION_REWORK",
         "QUALITY_REJECTED",
