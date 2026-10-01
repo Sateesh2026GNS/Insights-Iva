@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import {
@@ -8,7 +8,6 @@ import {
   Clock,
   Copy,
   FileText,
-  History,
   Package,
   Plus,
   Trash2,
@@ -16,7 +15,7 @@ import {
 } from "lucide-react";
 import { addBomItem, deleteBomItem, getBillOfMaterials } from "../../api/bomApi";
 import { getProducts } from "../../api/productsApi";
-import { DEMO_PRODUCTS, enrichApiProduct } from "../../data/productsMasterData";
+import { enrichApiProduct } from "../../data/productsMasterData";
 import { useToast } from "../../context/ToastContext";
 import useTenantId from "../../hooks/useTenantId";
 
@@ -75,69 +74,85 @@ function WorkflowStep({ step, index, total }) {
   );
 }
 
-function AddComponentModal({ open, onClose, onAdd, bomId }) {
-  const [form, setForm] = useState({
-    component: "",
-    item_code: "",
-    category: "Raw Material",
-    unit: "Nos",
-    qty: 1,
-    unit_cost: 0,
-  });
+function isMaterialProduct(product) {
+  const category = String(product?.category || "").toLowerCase().replace(/[_-]+/g, " ");
+  const code = String(product?.sku || product?.product_code || "").toUpperCase();
+  return ["raw", "material", "packaging", "consumable", "spare", "component", "wip", "semi finished", "sub assembly"]
+    .some((part) => category.includes(part)) || code.startsWith("RAW-") || code.startsWith("PKG-");
+}
+
+function isFinishedProduct(product) {
+  const category = String(product?.category || "").toLowerCase().replace(/[_-]+/g, " ");
+  const code = String(product?.sku || product?.product_code || "").toUpperCase();
+  return !["raw", "packaging", "consumable", "spare", "component", "wip"]
+    .some((part) => category.includes(part)) && !code.startsWith("RAW-") && !code.startsWith("PKG-");
+}
+
+function AddComponentModal({ open, onClose, onAdd, productId, existingComponents = [] }) {
+  const tenantId = useTenantId();
+  const [products, setProducts] = useState([]);
+  const [componentProductId, setComponentProductId] = useState("");
+  const [quantity, setQuantity] = useState("1");
   const [busy, setBusy] = useState(false);
   const { addToast } = useToast();
 
+  useEffect(() => {
+    if (!open) return undefined;
+    let mounted = true;
+    getProducts()
+      .then((res) => {
+        if (mounted) setProducts((res?.data || []).map(enrichApiProduct).filter(isMaterialProduct));
+      })
+      .catch(() => {
+        if (mounted) {
+          setProducts([]);
+          addToast("Could not load Product Master. Add or correct the material there first.", "error");
+        }
+      });
+    return () => { mounted = false; };
+  }, [open, addToast]);
+
   if (!open) return null;
+
+  const existingIds = new Set(existingComponents.map((component) => String(component.component_product_id || "")));
+  const eligibleProducts = products.filter((product) =>
+    String(product.id) !== String(productId) && !existingIds.has(String(product.id))
+  );
+  const selectedProduct = products.find((product) => String(product.id) === String(componentProductId));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const name = form.component.trim();
-    if (!name) {
-      addToast("Component name is required.", "error");
-      return;
-    }
-    const quantity = Number(form.qty);
-    if (isNaN(quantity) || quantity <= 0) {
-      addToast("Quantity must be greater than 0.", "error");
-      return;
-    }
-    const cost = Number(form.unit_cost) || 0;
-    if (cost < 0) {
-      addToast("Unit cost cannot be negative.", "error");
+    const qty = Number(quantity);
+    if (!selectedProduct || !productId || !Number.isFinite(qty) || qty <= 0) {
+      addToast("Select a material and enter a quantity greater than zero.", "error");
       return;
     }
 
     setBusy(true);
     try {
-      const newComp = {
-        id: Date.now(),
-        component: name,
-        item_code: form.item_code.trim() || `RM-${Date.now().toString().slice(-4)}`,
-        category: form.category || "Raw Material",
-        unit: form.unit || "Nos",
-        qty: quantity,
-        unit_cost: cost,
-        total_cost: quantity * cost,
-      };
-
-      if (bomId && typeof bomId === "number") {
-        try {
-          await addBomItem({
-            bom_id: bomId,
-            component_id: newComp.id,
-            qty: quantity,
-            unit_cost: cost,
-          });
-        } catch {
-          // ignore offline / demo fallback
-        }
-      }
-
-      onAdd(newComp);
-      addToast("Component added successfully.");
+      const response = await addBomItem(Number(productId), {
+        tenant_id: Number(tenantId),
+        component_product_id: Number(selectedProduct.id),
+        quantity: qty,
+        unit: selectedProduct.unit || "Pcs",
+      });
+      const line = response?.data || {};
+      const unitCost = Number(selectedProduct.unit_cost || selectedProduct.price_per_unit || 0);
+      onAdd({
+        id: line.id,
+        component_product_id: selectedProduct.id,
+        component: selectedProduct.name,
+        item_code: selectedProduct.product_code || selectedProduct.sku,
+        category: selectedProduct.category,
+        unit: line.unit || selectedProduct.unit || "Pcs",
+        qty: line.quantity ?? qty,
+        unit_cost: unitCost,
+        total_cost: qty * unitCost,
+      });
+      addToast("Material added to the BOM.");
       onClose();
-    } catch (err) {
-      addToast("Failed to add component.", "error");
+    } catch (error) {
+      addToast(error?.response?.data?.detail || "Could not save this material.", "error");
     } finally {
       setBusy(false);
     }
@@ -145,87 +160,36 @@ function AddComponentModal({ open, onClose, onAdd, bomId }) {
 
   return createPortal(
     <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 p-4">
-      <form onSubmit={handleSubmit} className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl space-y-4">
+      <form onSubmit={handleSubmit} className="w-full max-w-lg space-y-5 rounded-2xl bg-white p-6 shadow-2xl">
         <div className="flex items-center justify-between">
-          <h3 className="text-base font-bold text-slate-800">Add Component</h3>
+          <div>
+            <h3 className="text-base font-bold text-slate-800">Add BOM material</h3>
+            <p className="mt-1 text-xs text-slate-500">Choose an existing Product Master item and set its per-unit quantity.</p>
+          </div>
           <button type="button" onClick={onClose} className="rounded-full p-1 text-slate-400 hover:bg-slate-100">
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        <div>
-          <label className="block text-xs font-medium text-slate-600 mb-1">Component Name *</label>
-          <input
-            required
-            value={form.component}
-            onChange={(e) => setForm((f) => ({ ...f, component: e.target.value }))}
-            placeholder="e.g. Active Ingredient / Raw Material"
-            className="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-sm outline-none focus:border-blue-500"
-          />
-        </div>
+        <label className="block min-w-0">
+          <span className="mb-1 block text-xs font-medium text-slate-600">Material product *</span>
+          <select required value={componentProductId} onChange={(event) => setComponentProductId(event.target.value)} className="w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm outline-none focus:border-blue-500" disabled={busy}>
+            <option value="">{eligibleProducts.length ? "Choose a material or component" : "No material products available"}</option>
+            {eligibleProducts.map((product) => <option key={product.id} value={product.id}>{product.name} — {product.product_code || product.sku || "No code"}</option>)}
+          </select>
+        </label>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1">Item Code</label>
-            <input
-              value={form.item_code}
-              onChange={(e) => setForm((f) => ({ ...f, item_code: e.target.value }))}
-              placeholder="e.g. RM-001"
-              className="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-sm outline-none focus:border-blue-500"
-            />
+        <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="min-w-0 rounded-xl bg-slate-50 px-3.5 py-3">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Code · category · unit</p>
+            <p className="mt-1 truncate text-sm font-medium text-slate-700" title={selectedProduct ? `${selectedProduct.product_code || selectedProduct.sku || "No code"} · ${selectedProduct.category || "Uncategorized"} · ${selectedProduct.unit || "Pcs"}` : "Select a material first"}>
+              {selectedProduct ? `${selectedProduct.product_code || selectedProduct.sku || "No code"} · ${selectedProduct.category || "Uncategorized"} · ${selectedProduct.unit || "Pcs"}` : "Select a material first"}
+            </p>
           </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1">Category</label>
-            <select
-              value={form.category}
-              onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
-              className="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-sm outline-none focus:border-blue-500"
-            >
-              <option value="Raw Material">Raw Material</option>
-              <option value="Semi-Finished">Semi-Finished</option>
-              <option value="Consumables">Consumables</option>
-              <option value="Spare Parts">Spare Parts</option>
-              <option value="Packaging">Packaging</option>
-            </select>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-3 gap-3">
-          <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1">Unit</label>
-            <select
-              value={form.unit}
-              onChange={(e) => setForm((f) => ({ ...f, unit: e.target.value }))}
-              className="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-sm outline-none focus:border-blue-500"
-            >
-              {PRODUCT_UNITS.map((u) => (
-                <option key={u} value={u}>{u}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1">Qty *</label>
-            <input
-              type="number"
-              min="0.001"
-              step="any"
-              required
-              value={form.qty}
-              onChange={(e) => setForm((f) => ({ ...f, qty: e.target.value }))}
-              className="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-sm outline-none focus:border-blue-500"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1">Unit Cost (₹)</label>
-            <input
-              type="number"
-              min="0"
-              step="any"
-              value={form.unit_cost}
-              onChange={(e) => setForm((f) => ({ ...f, unit_cost: e.target.value }))}
-              className="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-sm outline-none focus:border-blue-500"
-            />
-          </div>
+          <label className="block min-w-0">
+            <span className="mb-1 block text-xs font-medium text-slate-600">Quantity per finished unit *</span>
+            <input type="number" min="0.001" step="any" required value={quantity} onChange={(event) => setQuantity(event.target.value)} className="w-full min-w-0 rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm outline-none focus:border-blue-500" disabled={busy} />
+          </label>
         </div>
 
         <div className="mt-4 flex justify-end gap-3 pt-2">
@@ -286,13 +250,13 @@ export default function BomDetailModal({ bom, onClose, onEdit, onCopy, onDelete,
           </button>
         </div>
 
-        <div className="flex flex-wrap gap-1.5 border-b border-slate-100 px-5 py-2">
+        <div className="flex shrink-0 gap-1.5 overflow-x-auto border-b border-slate-100 px-5 py-2">
           {TABS.map((t) => (
             <button
               key={t.id}
               type="button"
               onClick={() => setTab(t.id)}
-              className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${tab === t.id ? "bg-[var(--color-primary)] text-white" : "text-slate-600 hover:bg-slate-100"}`}
+              className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold ${tab === t.id ? "bg-[var(--color-primary)] text-white" : "text-slate-600 hover:bg-slate-100"}`}
             >
               {t.label}
             </button>
@@ -304,7 +268,7 @@ export default function BomDetailModal({ bom, onClose, onEdit, onCopy, onDelete,
             <div className="space-y-5">
               <div>
                 <h3 className="mb-3 text-sm font-bold text-slate-800">Bill of Materials (BOM) Information</h3>
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                   <Field label="Bill of Materials (BOM) Number" value={bom.bom_number} />
                   <Field label="Product Name" value={bom.product_name || bom.product} />
                   <Field label="Product Code" value={bom.product_code} />
@@ -552,7 +516,7 @@ export default function BomDetailModal({ bom, onClose, onEdit, onCopy, onDelete,
           )}
         </div>
 
-        <div className="flex flex-wrap gap-2 border-t border-slate-100 bg-slate-50 px-5 py-3">
+        <div className="flex flex-col gap-2 border-t border-slate-100 bg-slate-50 px-5 py-3 sm:flex-row sm:flex-wrap sm:items-center">
           <Button type="button" onClick={() => onEdit(bom)} variant="edit" size="sm">Edit BOM</Button>
           <button type="button" onClick={() => onCopy(bom)} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">
             <Copy className="h-3.5 w-3.5" /> Copy BOM
@@ -563,10 +527,7 @@ export default function BomDetailModal({ bom, onClose, onEdit, onCopy, onDelete,
           <Link to="/production/work-orders" className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 no-underline">
             <Package className="h-3.5 w-3.5" /> Create Production Order
           </Link>
-          <button type="button" className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">
-            <History className="h-3.5 w-3.5" /> Material Requirement
-          </button>
-          <button type="button" onClick={() => onDelete(bom)} className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50">
+          <button type="button" onClick={() => onDelete(bom)} className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 sm:ml-auto">
             <Trash2 className="h-3.5 w-3.5" /> Delete
           </button>
         </div>
@@ -579,7 +540,8 @@ export default function BomDetailModal({ bom, onClose, onEdit, onCopy, onDelete,
           if (bom) bom.components = [...(bom.components || []), newComp];
           onRefresh?.();
         }}
-        bomId={bom?.id}
+        productId={bom?.product_id}
+        existingComponents={localComponents}
       />
     </div>
   );
@@ -633,15 +595,9 @@ export function BomFormModal({ bom, onClose, onSave, existingBoms = [] }) {
 
   const [errors, setErrors] = useState({});
   const [productOptions, setProductOptions] = useState([]);
+  const [selectedProductId, setSelectedProductId] = useState(bom?.product_id ? String(bom.product_id) : "");
   const [loadingProducts, setLoadingProducts] = useState(false);
   const [existingBomNumbers, setExistingBomNumbers] = useState([]);
-  const [query, setQuery] = useState("");
-  const [dropdownOpen, setDropdownOpen] = useState(false);
-  const wrapperRef = useRef(null);
-
-  const [nameQuery, setNameQuery] = useState("");
-  const [nameDropdownOpen, setNameDropdownOpen] = useState(false);
-  const nameWrapperRef = useRef(null);
 
   const [saving, setSaving] = useState(false);
 
@@ -653,12 +609,11 @@ export function BomFormModal({ bom, onClose, onSave, existingBoms = [] }) {
     getProducts()
       .then((res) => {
         const apiData = res?.data || [];
-        const combined = apiData.length > 0 ? apiData : DEMO_PRODUCTS;
-        const rows = combined.map((r) => enrichApiProduct(r));
+        const rows = apiData.map((r) => enrichApiProduct(r)).filter(isFinishedProduct);
         if (mounted) setProductOptions(rows);
       })
       .catch(() => {
-        if (mounted) setProductOptions(DEMO_PRODUCTS.map((r) => enrichApiProduct(r)));
+        if (mounted) setProductOptions([]);
       })
       .finally(() => mounted && setLoadingProducts(false));
     return () => (mounted = false);
@@ -678,42 +633,9 @@ export function BomFormModal({ bom, onClose, onSave, existingBoms = [] }) {
     return () => (mounted = false);
   }, []);
 
-  // close dropdowns when clicking outside
-  useEffect(() => {
-    const onDocClick = (e) => {
-      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
-        setDropdownOpen(false);
-      }
-      if (nameWrapperRef.current && !nameWrapperRef.current.contains(e.target)) {
-        setNameDropdownOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", onDocClick);
-    return () => document.removeEventListener("mousedown", onDocClick);
-  }, []);
-
-  const q = (query || form.product_code || "").toLowerCase().trim();
-  const filteredOptions = productOptions.filter((p) => {
-    if (!q) return true;
-    return (
-      (p.product_code || "").toLowerCase().includes(q) ||
-      (p.name || "").toLowerCase().includes(q) ||
-      (p.sku || "").toLowerCase().includes(q)
-    );
-  });
-
-  const nq = (nameQuery || form.product_name || "").toLowerCase().trim();
-  const filteredNameOptions = productOptions.filter((p) => {
-    if (!nq) return true;
-    return (
-      (p.name || "").toLowerCase().includes(nq) ||
-      (p.product_code || "").toLowerCase().includes(nq) ||
-      (p.sku || "").toLowerCase().includes(nq)
-    );
-  });
-
   const handleSelectProduct = (p) => {
     if (!p) return;
+    setSelectedProductId(String(p.id));
     const code = p.product_code || p.sku || (p.id ? `PRD-${String(p.id).padStart(3, "0")}` : "");
     const name = (p.name || "").trim();
 
@@ -731,43 +653,6 @@ export function BomFormModal({ bom, onClose, onSave, existingBoms = [] }) {
       ...(code ? { product_code: null } : {}),
       ...(name ? { product_name: null } : {}),
     }));
-  };
-
-  const handleSelectProductCode = (code) => {
-    setField("product_code", code);
-    if (code && errors.product_code) {
-      setErrors((prev) => ({ ...prev, product_code: null }));
-    }
-    if (!code) return;
-    const p = productOptions.find(
-      (x) =>
-        x.product_code === code ||
-        x.sku === code ||
-        String(x.id) === String(code)
-    );
-    if (p) {
-      handleSelectProduct(p);
-    }
-  };
-
-  const handleProductNameChange = (val) => {
-    setField("product_name", val);
-    setNameQuery(val);
-    setNameDropdownOpen(true);
-    if (errors.product_name && val.trim() !== "") {
-      setErrors((prev) => ({ ...prev, product_name: null }));
-    }
-
-    if (val.trim()) {
-      const match = productOptions.find(
-        (x) =>
-          (x.name || "").toLowerCase().trim() === val.toLowerCase().trim() ||
-          (x.product_code || "").toLowerCase().trim() === val.toLowerCase().trim()
-      );
-      if (match) {
-        handleSelectProduct(match);
-      }
-    }
   };
 
   const [allExistingBoms, setAllExistingBoms] = useState([]);
@@ -803,6 +688,9 @@ export function BomFormModal({ bom, onClose, onSave, existingBoms = [] }) {
     }
     if (!version) {
       errs.version = "Version is required and cannot be blank or contain only spaces.";
+    }
+    if (!productOptions.some((product) => String(product.id) === selectedProductId)) {
+      errs.product_name = "Select a finished product from Product Master before creating its BOM.";
     }
 
     if (prodName && prodCode && productOptions && productOptions.length > 0) {
@@ -847,6 +735,11 @@ export function BomFormModal({ bom, onClose, onSave, existingBoms = [] }) {
       ...(bom?._existingBoms || []),
       ...allExistingBoms,
     ];
+    const selectedProduct = productOptions.find((product) => String(product.id) === selectedProductId);
+    if (!selectedProduct) {
+      addToast("Select a finished product from Product Master before creating its BOM.", "error");
+      return;
+    }
 
     // Validate BOM number uniqueness
     const entered = bomNo;
@@ -881,6 +774,7 @@ export function BomFormModal({ bom, onClose, onSave, existingBoms = [] }) {
 
     const savedBom = {
       id: bom?.id || `bom-custom-${Date.now()}`,
+      product_id: Number(selectedProduct.id),
       bom_number: bomNo,
       product_name: prodName,
       product: prodName,
@@ -893,9 +787,7 @@ export function BomFormModal({ bom, onClose, onSave, existingBoms = [] }) {
       created_by: bom?.created_by || "Store Manager",
       created_date: bom?.created_date || new Date().toISOString().slice(0, 10),
       last_updated: "Just now",
-      components: bom?.components || [
-        { id: 1, component: "Raw Material Item", item_code: "RM-001", category: "Raw Material", unit: "Nos", qty: 1, unit_cost: costVal, total_cost: costVal }
-      ],
+      components: bom?.components || [],
       costing: {
         material_cost: costVal,
         labour_cost: Math.round(costVal * 0.2),
@@ -915,7 +807,7 @@ export function BomFormModal({ bom, onClose, onSave, existingBoms = [] }) {
       <form
         noValidate
         onSubmit={handleSubmit}
-        className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl space-y-4"
+        className="w-full max-w-2xl space-y-5 rounded-3xl bg-white p-6 shadow-2xl"
       >
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -931,174 +823,37 @@ export function BomFormModal({ bom, onClose, onSave, existingBoms = [] }) {
           </button>
         </div>
 
-        {/* Row 1: BOM No */}
-        <div>
-          <label className="block text-xs font-medium text-slate-600 mb-1">
-            BOM No *
+        <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
+          <label className="block min-w-0">
+            <span className="mb-1 block text-xs font-medium text-slate-600">BOM No *</span>
+            <input value={form.bom_number} onChange={(e) => { const value = e.target.value; setField("bom_number", value); if (errors.bom_number && value.trim()) setErrors((prev) => ({ ...prev, bom_number: null })); }} placeholder="e.g. BOM-2024-001" className={`w-full min-w-0 rounded-xl border ${errors.bom_number ? "border-red-500 ring-1 ring-red-500" : "border-slate-200"} px-3.5 py-2.5 text-sm outline-none focus:border-blue-500`} />
+            {errors.bom_number && <p className="mt-1 text-xs font-medium text-red-500">{errors.bom_number}</p>}
           </label>
-          <input
-            value={form.bom_number}
-            onChange={(e) => {
-              const val = e.target.value;
-              setField("bom_number", val);
-              if (errors.bom_number && val.trim() !== "") {
-                setErrors((prev) => ({ ...prev, bom_number: null }));
-              }
-            }}
-            placeholder="e.g. BOM-2024-001"
-            className={`w-full rounded-2xl border ${
-              errors.bom_number ? "border-red-500 ring-1 ring-red-500" : "border-slate-200"
-            } px-3.5 py-2.5 text-sm outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-all placeholder:text-slate-400`}
-          />
-          {errors.bom_number && (
-            <p className="mt-1 text-xs font-medium text-red-500">{errors.bom_number}</p>
-          )}
+          <label className="block min-w-0">
+            <span className="mb-1 block text-xs font-medium text-slate-600">Version *</span>
+            <input value={form.version} onChange={(e) => { const value = e.target.value; setField("version", value); if (errors.version && value.trim()) setErrors((prev) => ({ ...prev, version: null })); }} placeholder="e.g. V1.0" className={`w-full min-w-0 rounded-xl border ${errors.version ? "border-red-500 ring-1 ring-red-500" : "border-slate-200"} px-3.5 py-2.5 text-sm outline-none focus:border-blue-500`} />
+            {errors.version && <p className="mt-1 text-xs font-medium text-red-500">{errors.version}</p>}
+          </label>
         </div>
 
-        {/* Row 2: Product Code */}
-        <div className="relative" ref={wrapperRef}>
-          <label className="block text-xs font-medium text-slate-600 mb-1">
-            Product Code *
+        <label className="block min-w-0">
+          <span className="mb-1 block text-xs font-medium text-slate-600">Finished product *</span>
+          <select required value={selectedProductId} onChange={(event) => handleSelectProduct(productOptions.find((product) => String(product.id) === event.target.value))} disabled={loadingProducts || saving || productOptions.length === 0} className={`w-full min-w-0 rounded-xl border ${errors.product_name ? "border-red-500 ring-1 ring-red-500" : "border-slate-200"} bg-white px-3.5 py-2.5 text-sm outline-none focus:border-blue-500 disabled:bg-slate-50`}>
+            <option value="">{loadingProducts ? "Loading products…" : productOptions.length ? "Choose a Product Master item" : "No finished products found in Product Master"}</option>
+            {productOptions.map((product) => <option key={product.id} value={product.id}>{product.name} — {product.product_code || product.sku || "No code"}</option>)}
+          </select>
+          {errors.product_name && <p className="mt-1 text-xs font-medium text-red-500">{errors.product_name}</p>}
+        </label>
+
+        <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
+          <label className="block min-w-0">
+            <span className="mb-1 block text-xs font-medium text-slate-600">Product code</span>
+            <input value={form.product_code} readOnly className="w-full min-w-0 rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-600" />
           </label>
-          <div className="relative">
-            {/* Searchable dropdown container */}
-            <div className="relative">
-              <input
-                value={form.product_code}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setField("product_code", val);
-                  setQuery(val);
-                  setDropdownOpen(true);
-                  if (errors.product_code && val.trim() !== "") {
-                    setErrors((prev) => ({ ...prev, product_code: null }));
-                  }
-                  if (val.trim()) {
-                    const match = productOptions.find(
-                      (x) =>
-                        (x.product_code || "").toLowerCase().trim() === val.toLowerCase().trim() ||
-                        (x.sku || "").toLowerCase().trim() === val.toLowerCase().trim()
-                    );
-                    if (match) handleSelectProduct(match);
-                  }
-                }}
-                onFocus={() => setDropdownOpen(true)}
-                placeholder={loadingProducts ? "Loading products..." : "Select or type product code"}
-                className={`w-full rounded-2xl border ${
-                  errors.product_code ? "border-red-500 ring-1 ring-red-500" : "border-slate-200"
-                } px-3.5 py-2.5 text-sm outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-all`}
-              />
-              <button type="button" onClick={() => setDropdownOpen((s) => !s)} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500">
-                ▾
-              </button>
-            </div>
-
-            {dropdownOpen && (
-              <div className="absolute z-40 mt-2 max-h-56 w-full overflow-auto rounded-xl border border-slate-100 bg-white shadow-lg">
-                <ul className="p-2">
-                  {filteredOptions.length === 0 ? (
-                    <li className="px-3 py-2 text-sm text-slate-400">No products</li>
-                  ) : (
-                    filteredOptions.map((p) => (
-                      <li
-                        key={`code-opt-${p.product_code || p.id}`}
-                        onMouseDown={() => {
-                          handleSelectProduct(p);
-                          setQuery(p.product_code || "");
-                          setDropdownOpen(false);
-                        }}
-                        className="cursor-pointer rounded-lg px-3 py-2 hover:bg-slate-50"
-                      >
-                        <div className="text-sm font-bold text-slate-800">{p.product_code || p.sku}</div>
-                        <div className="text-xs text-slate-500">{p.name}</div>
-                      </li>
-                    ))
-                  )}
-                </ul>
-              </div>
-            )}
-          </div>
-          {errors.product_code && (
-            <p className="mt-1 text-xs font-medium text-red-500">{errors.product_code}</p>
-          )}
-        </div>
-
-        {/* Row 3: Product Name & Version */}
-        <div className="grid grid-cols-3 gap-3">
-          <div className="col-span-2 relative" ref={nameWrapperRef}>
-            <label className="block text-xs font-medium text-slate-600 mb-1">
-              Product Name *
-            </label>
-            <div className="relative">
-              <input
-                value={form.product_name}
-                onChange={(e) => handleProductNameChange(e.target.value)}
-                onFocus={() => setNameDropdownOpen(true)}
-                placeholder={loadingProducts ? "Loading products..." : "Select or type product name"}
-                className={`w-full rounded-2xl border ${
-                  errors.product_name ? "border-red-500 ring-1 ring-red-500" : "border-slate-200"
-                } px-3.5 py-2.5 text-sm outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-all`}
-              />
-              <button
-                type="button"
-                onClick={() => setNameDropdownOpen((s) => !s)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500"
-              >
-                ▾
-              </button>
-            </div>
-
-            {nameDropdownOpen && (
-              <div className="absolute z-40 mt-2 max-h-56 w-full overflow-auto rounded-xl border border-slate-100 bg-white shadow-lg">
-                <ul className="p-2">
-                  {filteredNameOptions.length === 0 ? (
-                    <li className="px-3 py-2 text-sm text-slate-400">No products found</li>
-                  ) : (
-                    filteredNameOptions.map((p) => (
-                      <li
-                        key={`name-opt-${p.product_code || p.id}`}
-                        onMouseDown={() => {
-                          handleSelectProduct(p);
-                          setNameQuery(p.name || "");
-                          setNameDropdownOpen(false);
-                        }}
-                        className="cursor-pointer rounded-lg px-3 py-2 hover:bg-slate-50"
-                      >
-                        <div className="text-sm font-bold text-slate-800">{p.name}</div>
-                        <div className="text-xs text-slate-500">Code: {p.product_code || p.sku || "N/A"}</div>
-                      </li>
-                    ))
-                  )}
-                </ul>
-              </div>
-            )}
-
-            {errors.product_name && (
-              <p className="mt-1 text-xs font-medium text-red-500">{errors.product_name}</p>
-            )}
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1">
-              Version *
-            </label>
-            <input
-              value={form.version}
-              onChange={(e) => {
-                const val = e.target.value;
-                setField("version", val);
-                if (errors.version && val.trim() !== "") {
-                  setErrors((prev) => ({ ...prev, version: null }));
-                }
-              }}
-              placeholder="e.g. V1.0"
-              className={`w-full rounded-2xl border ${
-                errors.version ? "border-red-500 ring-1 ring-red-500" : "border-slate-200"
-              } px-3.5 py-2.5 text-sm outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-all placeholder:text-slate-400`}
-            />
-            {errors.version && (
-              <p className="mt-1 text-xs font-medium text-red-500">{errors.version}</p>
-            )}
-          </div>
+          <label className="block min-w-0">
+            <span className="mb-1 block text-xs font-medium text-slate-600">Category</span>
+            <input value={productOptions.find((product) => String(product.id) === selectedProductId)?.category || ""} readOnly className="w-full min-w-0 rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-600" />
+          </label>
         </div>
 
         {/* Row 4: Cost (₹) & Status */}

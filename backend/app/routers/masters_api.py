@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 from app.api.deps import get_db
 from app.models.user import User
 from app.models.role import Role
-from app.routers.operator_deps import deny_delete_for_operator, require_tenant
+from app.routers.operator_deps import deny_delete_for_operator, deny_operator_production_planning, require_tenant
 from app.schemas.machine import MachineCreateExtended, MachineFullUpdate
 from app.schemas.product import BomItemCreate, ProductCreate, ProductUpdate
 from app.schemas.vendor import VendorBulkImportRequest, VendorCreate, VendorUpdate
@@ -129,6 +129,7 @@ def bom_for_product(
 def add_bom_line(
     payload: BomItemCreate,
     user_tenant: tuple[User, int] = Depends(require_tenant("bom")),
+    _planner: User = Depends(deny_operator_production_planning),
     db: Session = Depends(get_db),
 ):
     _, tenant_id = user_tenant

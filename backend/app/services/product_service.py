@@ -79,6 +79,36 @@ def create_product(db: Session, payload: ProductCreate) -> Product:
     )
     product = Product(**payload.model_dump())
     db.add(product)
+    db.flush()
+    if product.sku:
+        from app.models.inventory import InventoryItem
+
+        matches = list(
+            db.scalars(
+                select(InventoryItem).where(
+                    InventoryItem.tenant_id == payload.tenant_id,
+                    InventoryItem.sku == product.sku,
+                )
+            ).all()
+        )
+        if len(matches) > 1:
+            db.rollback()
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    f"Multiple inventory records use SKU '{product.sku}'. "
+                    "Reconcile them before adding this product to the catalog."
+                ),
+            )
+        if matches:
+            item = matches[0]
+            if item.product_id not in (None, product.id):
+                db.rollback()
+                raise HTTPException(
+                    status_code=409,
+                    detail=f"Inventory SKU '{product.sku}' is already linked to another product.",
+                )
+            item.product_id = product.id
     db.commit()
     db.refresh(product)
     return product
@@ -113,6 +143,39 @@ def update_product(
     )
     for field, value in data.items():
         setattr(product, field, value)
+    from app.models.inventory import InventoryItem
+
+    linked_item = db.scalars(
+        select(InventoryItem).where(
+            InventoryItem.tenant_id == tenant_id,
+            InventoryItem.product_id == product.id,
+        )
+    ).first()
+    if linked_item:
+        if "sku" in data:
+            collision = db.scalars(
+                select(InventoryItem).where(
+                    InventoryItem.tenant_id == tenant_id,
+                    InventoryItem.sku == data["sku"],
+                    InventoryItem.id != linked_item.id,
+                )
+            ).first()
+            if collision:
+                db.rollback()
+                raise HTTPException(
+                    status_code=409,
+                    detail=f"Inventory SKU '{data['sku']}' is already in use by another item.",
+                )
+            linked_item.sku = data["sku"]
+        for product_field, inventory_field in (
+            ("name", "name"),
+            ("description", "description"),
+            ("unit", "unit"),
+            ("unit_cost", "unit_cost"),
+            ("category", "category"),
+        ):
+            if product_field in data:
+                setattr(linked_item, inventory_field, data[product_field])
     db.commit()
     db.refresh(product)
     return product

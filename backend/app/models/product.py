@@ -31,6 +31,7 @@ class Product(Base, TimestampMixin):
     )
 
     tenant = relationship("Tenant", back_populates="products")
+    inventory_item = relationship("InventoryItem", back_populates="product", uselist=False)
     bom_items = relationship(
         "BillOfMaterial",
         foreign_keys="BillOfMaterial.product_id",

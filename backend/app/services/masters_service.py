@@ -108,6 +108,14 @@ class MastersService:
 
     def add_bom_line(self, payload: BomItemCreate) -> dict:
         payload.tenant_id = self.tenant_id
+        component = get_product(self.db, self.tenant_id, payload.component_product_id)
+        if not component:
+            raise HTTPException(404, "BOM component product not found")
+        from app.services.inventory_service import get_or_create_inventory_item_for_product
+
+        get_or_create_inventory_item_for_product(
+            self.db, self.tenant_id, component, item_type="raw_material"
+        )
         item = add_bom_item(self.db, payload)
         return self.bom.enrich_item(item)
 

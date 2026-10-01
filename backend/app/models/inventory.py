@@ -1,6 +1,6 @@
 from datetime import date
 
-from sqlalchemy import Boolean, CheckConstraint, Date, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, CheckConstraint, Date, ForeignKey, Index, Integer, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin
@@ -136,10 +136,14 @@ class VendorProduct(Base, TimestampMixin):
 
 class InventoryItem(Base, TimestampMixin):
     __tablename__ = "inventory_items"
+    __table_args__ = (Index("uq_inventory_items_product_id", "product_id", unique=True),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     tenant_id: Mapped[int] = mapped_column(
         ForeignKey("tenants.id"), nullable=False, index=True
+    )
+    product_id: Mapped[int | None] = mapped_column(
+        ForeignKey("products.id"), nullable=True, index=True
     )
     supplier_id: Mapped[int | None] = mapped_column(ForeignKey("suppliers.id"))
     sku: Mapped[str] = mapped_column(String(64), nullable=False)
@@ -166,6 +170,7 @@ class InventoryItem(Base, TimestampMixin):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     supplier = relationship("Supplier", back_populates="inventory_items")
+    product = relationship("Product", back_populates="inventory_item")
     stock_levels = relationship(
         "StockLevel", back_populates="item", cascade="all, delete-orphan"
     )

@@ -3,14 +3,11 @@ import {
   AlertTriangle,
   CheckCircle2,
   ClipboardList,
-  Copy,
   Download,
   FileDown,
   FileText,
   Layers,
   Plus,
-  Trash2,
-  Upload,
 } from "lucide-react";
 
 import DataTable from "../../components/common/DataTable";
@@ -28,7 +25,6 @@ import {
   DEMO_BOMS,
   IMPORT_TEMPLATE_HEADERS,
   PRODUCT_CATEGORIES,
-  REPORT_TYPES,
   computeBomSummary,
   groupApiBomRows,
 } from "../../data/bomMasterData";
@@ -74,7 +70,7 @@ function SummaryCard({ label, value, icon: Icon, color, onClick, isActive }) {
   return (
     <div
       onClick={onClick}
-      className={`group relative flex h-full flex-col justify-between rounded-2xl border bg-white p-4 shadow-sm transition-all duration-200 ${
+      className={`group relative flex h-full min-w-0 flex-col justify-between rounded-2xl border bg-white p-4 shadow-sm transition-all duration-200 ${
         isActive ? `${theme.activeBorder} shadow-sm` : "border-slate-200"
       } ${
         onClick ? `cursor-pointer ${theme.hoverBorder} hover:shadow-md hover:-translate-y-0.5` : ""
@@ -155,8 +151,11 @@ export default function BomMaster() {
       localStorage.setItem(`gns_custom_boms_${tenantId || 1}`, json);
       localStorage.setItem("gns_custom_boms_1", json);
       localStorage.setItem("gns_custom_boms", json);
+      const saved = JSON.parse(localStorage.getItem(`gns_custom_boms_${tenantId || 1}`) || "[]");
+      return Array.isArray(saved) && saved.length === list.length;
     } catch (e) {
       console.error("Error saving custom BOMs to localStorage:", e);
+      return false;
     }
   }, [tenantId]);
 
@@ -172,7 +171,28 @@ export default function BomMaster() {
 
       const combined = [...customBoms];
       for (const apiBom of groupedApi) {
-        if (!combined.some((b) => String(b.id) === String(apiBom.id) || String(b.bom_number).trim().toLowerCase() === String(apiBom.bom_number).trim().toLowerCase())) {
+        const apiProductName = String(apiBom.product_name || apiBom.product || "").trim().toLowerCase();
+        const matchingIndex = combined.findIndex((bom) => {
+          const sameIdentity = String(bom.id) === String(apiBom.id) ||
+            String(bom.bom_number || "").trim().toLowerCase() === String(apiBom.bom_number || "").trim().toLowerCase();
+          const sameProductBom = bom.product_id != null && apiBom.product_id != null &&
+            String(bom.product_id) === String(apiBom.product_id) &&
+            String(bom.product_name || bom.product || "").trim().toLowerCase() === apiProductName &&
+            String(bom.version || "V1.0").trim().toLowerCase() === String(apiBom.version || "V1.0").trim().toLowerCase();
+          return sameIdentity || sameProductBom;
+        });
+
+        if (matchingIndex >= 0) {
+          // BOM headers are stored locally while component lines come from the API.
+          // Merge the lines into the matching header instead of showing a second BOM
+          // for the same finished product.
+          combined[matchingIndex] = {
+            ...apiBom,
+            ...combined[matchingIndex],
+            components: apiBom.components,
+            costing: apiBom.costing,
+          };
+        } else {
           combined.push(apiBom);
         }
       }
@@ -193,12 +213,14 @@ export default function BomMaster() {
 
   const filteredBoms = useMemo(() => {
     return boms.filter((b) => {
-      if (filters.bom_number && !b.bom_number.toLowerCase().includes(filters.bom_number.toLowerCase())) return false;
+      const query = String(filters.bom_number || "").trim().toLowerCase();
+      if (query && ![b.bom_number, b.product_name, b.product, b.product_code, b.description]
+        .some((value) => String(value || "").toLowerCase().includes(query))) return false;
       if (filters.category && b.category !== filters.category) return false;
       if (filters.version && b.version !== filters.version) return false;
       if (filters.status && b.status !== filters.status) return false;
       if (filters.warehouse && b.warehouse !== filters.warehouse) return false;
-      if (filters.created_by && !b.created_by.toLowerCase().includes(filters.created_by.toLowerCase())) return false;
+      if (filters.created_by && !String(b.created_by || "").toLowerCase().includes(filters.created_by.toLowerCase())) return false;
       return true;
     });
   }, [boms, filters]);
@@ -219,14 +241,6 @@ export default function BomMaster() {
   const handleExport = () => {
     exportToExcel(filteredBoms, exportColumns, "bom-master");
     addToast("BOM list exported");
-  };
-
-  const handleImport = () => {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = ".csv,.xlsx";
-    input.onchange = () => addToast("Import queued — map file columns in a future release", "info");
-    input.click();
   };
 
   const handlePrintPdf = (bom) => {
@@ -316,21 +330,6 @@ export default function BomMaster() {
           return;
         }
 
-        if (sProdName && sProdCode && products && products.length > 0) {
-          const matchByName = products.find(
-            (x) => (x.name || "").toLowerCase().trim() === sProdName.toLowerCase()
-          );
-          const matchByCode = products.find(
-            (x) =>
-              (x.product_code || "").toLowerCase().trim() === sProdCode.toLowerCase() ||
-              (x.sku || "").toLowerCase().trim() === sProdCode.toLowerCase()
-          );
-          if (matchByName && matchByCode && matchByName.id !== matchByCode.id) {
-            addToast(`Product Code "${sProdCode}" belongs to "${matchByCode.name}", not "${sProdName}". Please select matching product details.`, "error");
-            return;
-          }
-        }
-
         const sanitizedBom = {
           ...savedBom,
           product_name: sProdName,
@@ -371,13 +370,26 @@ export default function BomMaster() {
         } else {
           list.unshift(sanitizedBom);
         }
-        saveCustomBomsToStorage(list);
+        if (!saveCustomBomsToStorage(list)) {
+          addToast("BOM could not be saved in this browser. Check browser storage and try again.", "error");
+          return;
+        }
+
+        setBoms((current) => {
+          const existingIndex = current.findIndex((item) =>
+            String(item.id) === String(sanitizedBom.id) ||
+            String(item.bom_number || "").trim().toLowerCase() === sBomNo.toLowerCase()
+          );
+          if (existingIndex < 0) return [sanitizedBom, ...current];
+          return current.map((item, index) => index === existingIndex ? sanitizedBom : item);
+        });
       } catch (e) {
-        console.error("LocalStorage save error:", e);
+        console.error("BOM save failed:", e);
+        addToast(e instanceof Error ? `BOM could not be saved: ${e.message}` : "BOM could not be saved. Please try again.", "error");
+        return;
       }
     }
     setFormBom(null);
-    await loadBoms();
     addToast("BOM saved successfully");
   };
 
@@ -385,22 +397,25 @@ export default function BomMaster() {
     setFilters({ bom_number: "", category: "", version: "", status: "", warehouse: "", created_by: "" });
 
   const columns = [
-    { key: "bom_number", label: "BOM No" },
-    { key: "product_name", label: "Product" },
+    { key: "bom_number", label: "BOM No", width: "10%" },
+    { key: "product_name", label: "Product", width: "22%" },
     {
       key: "costing",
       label: "Cost",
+      width: "12%",
       render: (r) => `₹${Number(r.costing?.total_cost || 0).toLocaleString("en-IN")}`,
     },
     {
       key: "status",
       label: "Status",
+      width: "14%",
       render: (r) => <StatusPill status={r.status} />,
     },
-    { key: "last_updated", label: "Last Updated" },
+    { key: "last_updated", label: "Last Updated", width: "16%" },
     {
       key: "actions",
       label: "Action",
+      width: "10%",
       sortable: false,
       render: (r) => (
         <button type="button" onClick={() => setSelected(r)} className="text-xs font-semibold text-[#2563EB] hover:underline">
@@ -413,40 +428,20 @@ export default function BomMaster() {
   if (loading) return <Loader label="Loading Bill of Materials (BOM)s..." />;
 
   return (
-    <div className="space-y-6 pb-8">
-      <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div>
+    <div className="min-w-0 w-full max-w-full space-y-6 overflow-x-hidden pb-8">
+      <header className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
           <h1 className="text-2xl font-bold text-slate-900">Bill of Materials (BOM)</h1>
           <p className="mt-1 max-w-2xl text-sm text-slate-500">
-            Manage product structures, components, production routing, and manufacturing costs.
+            Create and maintain product recipes for production.
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="add" type="button" onClick={() => setFormBom({ _existingBoms: boms })} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
-            Create Bill of Materials (BOM)
-          </Button>
-          <button type="button" onClick={() => selected && setFormBom(selected)} disabled={!selected} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40">
-            Edit Bill of Materials (BOM)
-          </button>
-          <button type="button" onClick={() => selected && handleCopy(selected)} disabled={!selected} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40">
-            <Copy className="h-4 w-4" /> Copy Bill of Materials (BOM)
-          </button>
-          <button type="button" onClick={handleImport} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
-            <Upload className="h-4 w-4" /> Import Bill of Materials (BOM)
-          </button>
-          <button type="button" onClick={handleExport} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
-            <Download className="h-4 w-4" /> Export Bill of Materials (BOM)
-          </button>
-          <button type="button" onClick={() => handlePrintPdf(selected)} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
-            <FileText className="h-4 w-4" /> Print PDF
-          </button>
-          <button type="button" onClick={() => selected && handleDelete(selected)} disabled={!selected} className="inline-flex items-center gap-2 rounded-lg border border-red-200 bg-white px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-40">
-            <Trash2 className="h-4 w-4" /> Delete Bill of Materials (BOM)
-          </button>
-        </div>
+        <Button variant="add" type="button" onClick={() => setFormBom({ _existingBoms: boms })} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />} className="shrink-0">
+          Create BOM
+        </Button>
       </header>
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-6">
+      <div className="grid min-w-0 grid-cols-2 gap-4 lg:grid-cols-3 2xl:grid-cols-4">
         <SummaryCard
           label="Total Bill of Materials (BOM)"
           value={summary.total}
@@ -495,86 +490,60 @@ export default function BomMaster() {
         />
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
+      <section className="min-w-0 max-w-full rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+        <div className="mb-4 flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <SearchBar
             value={filters.bom_number}
             onChange={(v) => setFilters((f) => ({ ...f, bom_number: v }))}
-            placeholder="Search"
-            className="min-w-0"
+            placeholder="Search BOM, product, or code"
+            className="min-w-0 w-full lg:max-w-md"
           />
-          <select value={filters.category} onChange={(e) => setFilters((f) => ({ ...f, category: e.target.value }))} className="rounded-lg border border-slate-200 px-3 py-2 text-sm">
-            <option value="">Product Category</option>
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <button type="button" onClick={handleExport} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+              <Download className="h-4 w-4" /> Export
+            </button>
+            <button type="button" onClick={handleDownloadTemplate} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+              <FileDown className="h-4 w-4" /> Template
+            </button>
+          </div>
+        </div>
+
+        <div className="mb-4 grid min-w-0 grid-cols-2 gap-3 md:grid-cols-3 2xl:grid-cols-6">
+          <select value={filters.category} onChange={(e) => setFilters((f) => ({ ...f, category: e.target.value }))} className="min-w-0 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm">
+            <option value="">All categories</option>
             {PRODUCT_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
-          <select value={filters.status} onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value }))} className="rounded-lg border border-slate-200 px-3 py-2 text-sm">
-            <option value="">Status</option>
+          <select value={filters.status} onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value }))} className="min-w-0 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm">
+            <option value="">All statuses</option>
             {BOM_STATUSES.map((s) => <option key={s} value={s}>{s.replace(/_/g, " ")}</option>)}
           </select>
-          <select value={filters.warehouse} onChange={(e) => setFilters((f) => ({ ...f, warehouse: e.target.value }))} className="rounded-lg border border-slate-200 px-3 py-2 text-sm">
-            <option value="">Warehouse</option>
+          <select value={filters.version} onChange={(e) => setFilters((f) => ({ ...f, version: e.target.value }))} className="min-w-0 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm">
+            <option value="">All versions</option>
+            {BOM_VERSIONS.map((v) => <option key={v} value={v}>{v}</option>)}
+          </select>
+          <select value={filters.warehouse} onChange={(e) => setFilters((f) => ({ ...f, warehouse: e.target.value }))} className="min-w-0 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm">
+            <option value="">All warehouses</option>
             {warehouses.map((w) => <option key={w} value={w}>{w}</option>)}
           </select>
-          <select value={filters.created_by} onChange={(e) => setFilters((f) => ({ ...f, created_by: e.target.value }))} className="rounded-lg border border-slate-200 px-3 py-2 text-sm">
-            <option value="">Created By</option>
+          <select value={filters.created_by} onChange={(e) => setFilters((f) => ({ ...f, created_by: e.target.value }))} className="min-w-0 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm">
+            <option value="">All creators</option>
             {creators.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
-          <button type="button" onClick={clearFilters} className="text-sm font-semibold text-[#2563EB] hover:underline">
-            Clear Filters
+          <button type="button" onClick={clearFilters} className="rounded-lg px-3 py-2 text-left text-sm font-semibold text-[#2563EB] hover:bg-blue-50">
+            Clear filters
           </button>
         </div>
+
+        <div className="mb-3 text-sm text-slate-500">Showing {filteredBoms.length} of {boms.length} BOMs</div>
 
         <DataTable
           columns={columns}
           data={filteredBoms}
-          searchPlaceholder="Search"
-          searchKeys={["bom_number", "product_name", "product_code", "description"]}
+          showSearch={false}
           pageSize={10}
+          tableClassName="table-fixed"
         />
-      </div>
-
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h3 className="mb-3 text-sm font-bold text-slate-800">Quick Actions</h3>
-          <div className="flex flex-wrap gap-2">
-            <Button type="button" variant="primary" size="sm" onClick={() => setFormBom({})}>
-              Create Production Order
-            </Button>
-            <button type="button" className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700">Generate Material Requirement</button>
-            <button type="button" onClick={() => handlePrintPdf(selected)} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700">Print BOM</button>
-            <button type="button" onClick={handleDownloadTemplate} className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700">
-              <FileDown className="h-3.5 w-3.5" /> Download Template
-            </button>
-            <button type="button" onClick={() => selected && handleCopy(selected)} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700">Clone BOM</button>
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h3 className="mb-3 text-sm font-bold text-slate-800">Reports</h3>
-          <ul className="space-y-2">
-            {REPORT_TYPES.map((r) => (
-              <li key={r}>
-                <button type="button" onClick={() => addToast(`${r} — coming soon`, "info")} className="text-sm font-medium text-[#2563EB] hover:underline">
-                  {r}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </div>
-
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h3 className="mb-2 text-sm font-bold text-slate-800">BOM Workflow</h3>
-        <p className="text-xs text-slate-500 mb-3">Product → Create BOM → Add Components → Calculate Cost → Approval → Production Planning → Work Order → Manufacturing → Finished Goods</p>
-        <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-600">
-          {["Product", "Create BOM", "Add Components", "Calculate Cost", "Approval", "Production Planning", "Work Order", "Manufacturing", "Finished Goods"].map((step, i, arr) => (
-            <span key={step} className="flex items-center gap-2">
-              <span className="rounded-full bg-blue-50 px-3 py-1 text-[#2563EB]">{step}</span>
-              {i < arr.length - 1 && <span className="text-slate-300">→</span>}
-            </span>
-          ))}
-        </div>
-      </div>
+      </section>
 
       {selected && (
         <BomDetailModal

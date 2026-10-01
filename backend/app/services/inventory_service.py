@@ -45,6 +45,77 @@ def create_supplier(db: Session, payload: SupplierCreate) -> Supplier:
     return s
 
 
+def get_or_create_inventory_item_for_product(
+    db: Session,
+    tenant_id: int,
+    product: Product,
+    *,
+    item_type: str = "raw_material",
+) -> InventoryItem:
+    """Resolve the one inventory record linked to a product, creating it at zero stock."""
+    if product.tenant_id != tenant_id:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    linked = db.scalars(
+        select(InventoryItem).where(
+            InventoryItem.tenant_id == tenant_id,
+            InventoryItem.product_id == product.id,
+        )
+    ).first()
+    if linked:
+        return linked
+
+    sku = (product.sku or "").strip()
+    if not sku:
+        sku = f"PRD{int(product.id):06d}"
+        product.sku = sku
+        db.flush()
+
+    legacy_matches = list(
+        db.scalars(
+            select(InventoryItem).where(
+                InventoryItem.tenant_id == tenant_id,
+                InventoryItem.sku == sku,
+            )
+        ).all()
+    )
+    if len(legacy_matches) > 1:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"Multiple inventory records use SKU '{sku}'. Reconcile the duplicate "
+                "inventory records before linking this product."
+            ),
+        )
+    if legacy_matches:
+        item = legacy_matches[0]
+        if item.product_id not in (None, product.id):
+            raise HTTPException(
+                status_code=409,
+                detail=f"Inventory SKU '{sku}' is already linked to another product.",
+            )
+        item.product_id = product.id
+        db.flush()
+        return item
+
+    item = InventoryItem(
+        tenant_id=tenant_id,
+        product_id=product.id,
+        sku=sku,
+        name=product.name,
+        description=product.description,
+        unit=getattr(product, "unit", None) or "pcs",
+        unit_cost=float(product.unit_cost) if product.unit_cost else None,
+        item_type=item_type,
+        quantity=0,
+        reserved=0,
+        is_active=True,
+    )
+    db.add(item)
+    db.flush()
+    return item
+
+
 def list_suppliers(db: Session, tenant_id: int) -> list[Supplier]:
     stmt = select(Supplier).where(
         Supplier.tenant_id == tenant_id,
@@ -89,6 +160,46 @@ def create_inventory_item(
     data = payload.model_dump()
     valid_keys = {c.name for c in InventoryItem.__table__.columns}
     item_data = {k: v for k, v in data.items() if k in valid_keys and v is not None}
+    sku_collision = db.scalars(
+        select(InventoryItem).where(
+            InventoryItem.tenant_id == payload.tenant_id,
+            InventoryItem.sku == payload.sku,
+        )
+    ).first()
+    if sku_collision:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Inventory SKU '{payload.sku}' already exists (item {sku_collision.id}). Update that record instead.",
+        )
+    product_matches = list(
+        db.scalars(
+            select(Product).where(
+                Product.tenant_id == payload.tenant_id,
+                Product.sku == payload.sku,
+            )
+        ).all()
+    )
+    if len(product_matches) > 1:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Multiple products use SKU '{payload.sku}'. Reconcile the product catalog first.",
+        )
+    if product_matches:
+        item_data["product_id"] = product_matches[0].id
+        existing_link = db.scalars(
+            select(InventoryItem).where(
+                InventoryItem.tenant_id == payload.tenant_id,
+                InventoryItem.product_id == product_matches[0].id,
+            )
+        ).first()
+        if existing_link:
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    f"Product SKU '{payload.sku}' already has an inventory record "
+                    f"(item {existing_link.id}). Update that item instead of creating a duplicate."
+                ),
+            )
     
     # Handle user-selected entry date
     entry_date = data.get("date") or data.get("created_at")
@@ -199,9 +310,46 @@ def update_inventory_item(
     if not item:
         return None
     valid_keys = {c.name for c in InventoryItem.__table__.columns} - {"id", "tenant_id", "quantity", "reserved"}
+    product = None
+    new_sku = data.get("sku")
+    if new_sku and new_sku != item.sku:
+        inventory_collision = db.scalars(
+            select(InventoryItem).where(
+                InventoryItem.tenant_id == tenant_id,
+                InventoryItem.sku == new_sku,
+                InventoryItem.id != item.id,
+            )
+        ).first()
+        if inventory_collision:
+            raise HTTPException(
+                status_code=409,
+                detail=f"Inventory SKU '{new_sku}' is already assigned to another item.",
+            )
+    if item.product_id:
+        product = db.scalars(
+            select(Product).where(
+                Product.id == item.product_id,
+                Product.tenant_id == tenant_id,
+            )
+        ).first()
+        if product and new_sku and new_sku != product.sku:
+            product_collision = db.scalars(
+                select(Product).where(
+                    Product.tenant_id == tenant_id,
+                    Product.sku == new_sku,
+                    Product.id != product.id,
+                )
+            ).first()
+            if product_collision:
+                raise HTTPException(
+                    status_code=409,
+                    detail=f"Product SKU '{new_sku}' is already assigned to another product.",
+                )
     for key, value in data.items():
         if key in valid_keys and value is not None:
             setattr(item, key, value)
+            if product and key in {"sku", "name", "description", "unit", "unit_cost", "category"}:
+                setattr(product, key, value)
     db.commit()
     db.refresh(item)
     return item
@@ -508,23 +656,6 @@ def get_default_warehouse(db: Session, tenant_id: int) -> Warehouse:
 def find_or_create_finished_good_for_product(
     db: Session, tenant_id: int, product: Product
 ) -> InventoryItem:
-    item = db.scalars(
-        select(InventoryItem).where(
-            InventoryItem.tenant_id == tenant_id,
-            InventoryItem.sku == product.sku,
-        )
-    ).first()
-    if item:
-        return item
-    item = InventoryItem(
-        tenant_id=tenant_id,
-        sku=product.sku,
-        name=product.name,
-        description=product.description,
-        unit_cost=float(product.unit_cost) if product.unit_cost else None,
-        item_type="finished_good",
-        is_active=True,
+    return get_or_create_inventory_item_for_product(
+        db, tenant_id, product, item_type="finished_good"
     )
-    db.add(item)
-    db.flush()
-    return item

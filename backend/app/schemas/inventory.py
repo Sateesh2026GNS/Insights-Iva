@@ -132,6 +132,7 @@ class InventoryItemUpdate(BaseModel):
 
 class InventoryItemRead(InventoryItemBase):
     id: int
+    product_id: int | None = None
     photo_file_id: int | None = None
     model_config = ConfigDict(from_attributes=True)
 
