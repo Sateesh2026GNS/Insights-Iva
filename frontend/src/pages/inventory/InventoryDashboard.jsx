@@ -339,11 +339,16 @@ export default function InventoryDashboard() {
           <EmptyState className="py-6" title="No pending material checks" description="Sales job cards awaiting store verification will appear here." />
         ) : (
           <table className={compactTableClass}>
+            <colgroup>
+              <col className="w-[28%]" />
+              <col className="w-[44%]" />
+              <col className="w-[28%]" />
+            </colgroup>
             <thead className="ui-table-head">
               <tr>
-                <th className={`${thClass} w-[28%]`}>Job Card</th>
-                <th className={`${thClass} w-[44%]`}>Required Items</th>
-                <th className={`${thClass} w-[28%]`}>Status</th>
+                <th className={thClass}>Job Card</th>
+                <th className={`${thClass} !text-center`}>Required Items</th>
+                <th className={`${thClass} !text-right`}>Status</th>
               </tr>
             </thead>
             <tbody>
@@ -357,10 +362,10 @@ export default function InventoryDashboard() {
                       {row.job_card_no || `SO #${row.sales_order_id}`}
                     </Link>
                   </td>
-                  <td className={`${tdClass} truncate text-[var(--color-text-secondary)]`} title={row.required_items_summary}>
+                  <td className={`${tdClass} truncate !text-center text-[var(--color-text-secondary)]`} title={row.required_items_summary}>
                     {row.required_items_summary}
                   </td>
-                  <td className={tdClass}>
+                  <td className={`${tdClass} !text-right`}>
                     {(() => {
                       const status = materialCheckStatus(row.status_label);
                       return <StatusBadge tone={status.tone}>{status.label}</StatusBadge>;
