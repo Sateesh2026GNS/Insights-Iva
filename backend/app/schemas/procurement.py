@@ -19,6 +19,11 @@ class PurchaseOrderLineCreate(PurchaseOrderLineBase):
 class PurchaseOrderLineRead(PurchaseOrderLineBase):
     id: int
     purchase_order_id: int
+    item_name: str | None = None
+    item_sku: str | None = None
+    item_unit: str | None = None
+    received_quantity: float = 0
+    remaining_quantity: float = 0
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -83,6 +88,9 @@ class MaterialRequestLineCreate(MaterialRequestLineBase):
 class MaterialRequestLineRead(MaterialRequestLineBase):
     id: int
     material_request_id: int
+    item_name: str | None = None
+    item_sku: str | None = None
+    item_unit: str | None = None
     model_config = ConfigDict(from_attributes=True)
 
 

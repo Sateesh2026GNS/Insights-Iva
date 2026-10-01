@@ -37,6 +37,34 @@ export default function CreateGoodsReceipt() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
+  const approvedPurchaseOrders = purchaseOrders.filter(
+    (po) =>
+      ["approved", "partially_received", "received"].includes(String(po.status || "").toLowerCase()) &&
+      (po.line_items || []).some((line) => Number(line.remaining_quantity ?? line.quantity ?? 0) > 0.000001)
+  );
+
+  const selectedPurchaseOrder = approvedPurchaseOrders.find(
+    (po) => String(po.id) === String(form.purchase_order_id)
+  );
+
+  useEffect(() => {
+    if (!form.purchase_order_id || !purchaseOrders.length) return;
+    const selected = approvedPurchaseOrders.find(
+      (po) => String(po.id) === String(form.purchase_order_id)
+    );
+    if (!selected) return;
+    const openLines = (selected.line_items || []).filter(
+      (line) => Number(line.remaining_quantity ?? line.quantity ?? 0) > 0.000001
+    );
+    if (openLines.length) {
+      setLineItems(openLines.map((line) => ({
+        item_id: String(line.item_id),
+        quantity_received: String(line.remaining_quantity ?? line.quantity),
+        quantity_rejected: "0",
+      })));
+    }
+  }, [form.purchase_order_id, purchaseOrders]);
+
   useEffect(() => {
     Promise.all([
       getWarehouses().then((r) => setWarehouses(r.data || [])),
@@ -52,6 +80,10 @@ export default function CreateGoodsReceipt() {
     );
     if (validLines.length === 0) {
       setError("Add at least one line with received quantity.");
+      return;
+    }
+    if (form.purchase_order_id && !selectedPurchaseOrder) {
+      setError("The selected purchase order must be approved by the Purchase Manager before creating a GRN.");
       return;
     }
     setError("");
@@ -173,19 +205,38 @@ export default function CreateGoodsReceipt() {
           Purchase order (optional)
           <select
             value={form.purchase_order_id}
-            onChange={(e) =>
-              setForm((f) => ({ ...f, purchase_order_id: e.target.value }))
-            }
+            onChange={(e) => {
+              const purchaseOrderId = e.target.value;
+              setForm((f) => ({ ...f, purchase_order_id: purchaseOrderId }));
+              if (!purchaseOrderId) {
+                setLineItems([{ item_id: "", quantity_received: "", quantity_rejected: "0" }]);
+              }
+            }}
             className={inputClass}
           >
             <option value="">— None —</option>
-            {purchaseOrders.map((po) => (
+            {approvedPurchaseOrders.map((po) => (
               <option key={po.id} value={po.id}>
                 {po.po_number || `PO-${po.id}`}
               </option>
             ))}
           </select>
         </label>
+        {selectedPurchaseOrder ? (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
+            <p className="mb-2 font-semibold">Outstanding purchase order quantities</p>
+            <ul className="space-y-1">
+              {(selectedPurchaseOrder.line_items || [])
+                .filter((line) => Number(line.remaining_quantity ?? line.quantity ?? 0) > 0.000001)
+                .map((line) => (
+                  <li key={line.id}>
+                    {line.item_name || line.item_sku || `Item ${line.item_id}`}: ordered {line.quantity} {line.item_unit || ""},
+                    received {line.received_quantity || 0}, <strong>{line.remaining_quantity ?? line.quantity} remaining</strong>
+                  </li>
+                ))}
+            </ul>
+          </div>
+        ) : null}
         <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
           Incoming QC
           <select

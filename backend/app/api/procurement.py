@@ -56,10 +56,10 @@ from app.services.vendor_service import (
 )
 
 VENDOR_ACCESS_ROLES = frozenset(
-    {"Admin", "Purchase Manager", "Procurement Manager", "Store Manager"}
+    {"Admin", "Purchase Manager", "Store Manager"}
 )
 VENDOR_WRITE_ROLES = frozenset(
-    {"Admin", "Purchase Manager", "Procurement Manager", "Store Manager"}
+    {"Admin", "Purchase Manager", "Store Manager"}
 )
 
 
@@ -188,10 +188,19 @@ def list_purchase_orders_endpoint(
 def update_purchase_order_status_endpoint(
     po_id: int,
     status: str = Query(..., description="e.g. draft, approved, received, cancelled"),
-    tenant_id: int = Depends(tenant_scope(MODULE)),
+    user: User = Depends(require_permission(MODULE)),
     db: Session = Depends(get_db),
 ) -> PurchaseOrderRead:
-    po = update_purchase_order_status(db, po_id, tenant_id, status)
+    requested_status = status.strip().lower()
+    approval_roles = {"Purchase Manager"}
+    if requested_status in {"approved", "cancelled"} and not (
+        user_is_admin(user) or approval_roles.intersection(get_role_names(user))
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail="Only a Purchase Manager can approve or reject a Purchase Order.",
+        )
+    po = update_purchase_order_status(db, po_id, user.tenant_id, requested_status)
     if not po:
         raise HTTPException(404, "Purchase order not found")
     return po
@@ -772,11 +781,19 @@ def get_purchase_order_endpoint(
 def update_purchase_order_endpoint(
     po_id: int,
     payload: PurchaseOrderUpdate,
-    tenant_id: int = Depends(tenant_scope(MODULE)),
+    user: User = Depends(require_permission(MODULE)),
     db: Session = Depends(get_db),
 ) -> PurchaseOrderRead:
+    requested_status = (payload.status or "").strip().lower()
+    if requested_status in {"approved", "cancelled"} and not (
+        user_is_admin(user) or "Purchase Manager" in get_role_names(user)
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail="Only a Purchase Manager can approve or cancel a Purchase Order.",
+        )
     po = update_purchase_order(
-        db, tenant_id, po_id, payload.model_dump(exclude_unset=True)
+        db, user.tenant_id, po_id, payload.model_dump(exclude_unset=True)
     )
     if not po:
         raise HTTPException(404, "Purchase order not found")

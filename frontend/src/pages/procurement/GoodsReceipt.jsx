@@ -88,6 +88,11 @@ function GRNDetailModal({ row, onClose, onQC }) {
               ? "QC rejected — no stock posted."
               : "QC passed — raw material inventory and stock ledger updated."}
         </div>
+        {Number(row.remaining_quantity) > 0.000001 ? (
+          <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            <strong>Pending delivery:</strong> {row.remaining_summary || `${row.remaining_quantity} remains outstanding`} on this purchase order. Create another GRN when the supplier delivers the balance.
+          </div>
+        ) : null}
         <div className="mt-4 flex flex-wrap gap-2">
           {pending && typeof row.id === "number" && (
             <>
@@ -142,7 +147,13 @@ export default function GoodsReceipt() {
         setSummary(emptySummary);
       }
       if (listRes.status === "fulfilled") setRows(listRes.value?.data || []);
-      else setRows([]);
+      else {
+        setRows([]);
+        addToast(
+          listRes.reason?.response?.data?.detail || "Failed to load goods receipt list",
+          "error",
+        );
+      }
     } catch {
       addToast("Failed to load goods receipts", "error");
     } finally {
@@ -225,11 +236,18 @@ export default function GoodsReceipt() {
       key: "status",
       label: "Status",
       render: (r) => (
-        <span
-          className={`rounded-full px-2 py-0.5 text-xs font-semibold capitalize ${statusColor(r.status)}`}
-        >
-          {r.status}
-        </span>
+        <div>
+          <span
+            className={`rounded-full px-2 py-0.5 text-xs font-semibold capitalize ${statusColor(r.status)}`}
+          >
+            {r.status}
+          </span>
+          {Number(r.remaining_quantity) > 0.000001 ? (
+            <span className="mt-1 block text-xs font-medium text-amber-700">
+              {r.remaining_summary || `${r.remaining_quantity} pending on PO`}
+            </span>
+          ) : null}
+        </div>
       ),
     },
     {

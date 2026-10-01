@@ -12,6 +12,7 @@ from app.models.procurement import (
     MaterialRequest,
     MaterialRequestLine,
     PurchaseOrder,
+    PurchaseOrderLine,
     RFQ,
     VendorBill,
     VendorQuotation,
@@ -436,11 +437,56 @@ def list_grn_enriched(db: Session, tenant_id: int) -> list[GRNListRead]:
     grns = list(
         db.scalars(
             select(GoodsReceipt)
-            .options(joinedload(GoodsReceipt.warehouse), joinedload(GoodsReceipt.purchase_order).joinedload(PurchaseOrder.supplier))
+            .options(
+                joinedload(GoodsReceipt.warehouse),
+                selectinload(GoodsReceipt.purchase_order).options(
+                    joinedload(PurchaseOrder.supplier),
+                    selectinload(PurchaseOrder.line_items).joinedload(PurchaseOrderLine.item),
+                ),
+                selectinload(GoodsReceipt.line_items),
+            )
             .where(GoodsReceipt.tenant_id == tenant_id)
             .order_by(GoodsReceipt.receipt_date.desc())
         ).all()
     )
+    grns_by_po: dict[int, list[GoodsReceipt]] = {}
+    for grn in grns:
+        if grn.purchase_order_id:
+            grns_by_po.setdefault(grn.purchase_order_id, []).append(grn)
+
+    remaining_by_po: dict[int, float] = {}
+    remaining_summary_by_po: dict[int, str] = {}
+    for po_id, po_grns in grns_by_po.items():
+        po = po_grns[0].purchase_order
+        ordered_by_item: dict[int, float] = {}
+        received_by_item: dict[int, float] = {}
+        for po_line in (po.line_items or []) if po else []:
+            ordered_by_item[po_line.item_id] = ordered_by_item.get(po_line.item_id, 0.0) + float(po_line.quantity or 0)
+        for grn in po_grns:
+            if grn.status == "rejected" or (grn.qc_status or "").lower() == "rejected":
+                continue
+            for line in grn.line_items or []:
+                accepted = max(0.0, float(line.quantity_received or 0) - float(line.quantity_rejected or 0))
+                received_by_item[line.item_id] = received_by_item.get(line.item_id, 0.0) + accepted
+        remaining_by_po[po_id] = round(
+            sum(max(0.0, qty - received_by_item.get(item_id, 0.0)) for item_id, qty in ordered_by_item.items()),
+            2,
+        )
+        remaining_lines = []
+        seen_items: set[int] = set()
+        for po_line in (po.line_items or []) if po else []:
+            item_id = po_line.item_id
+            if item_id in seen_items:
+                continue
+            seen_items.add(item_id)
+            remainder = max(0.0, ordered_by_item.get(item_id, 0.0) - received_by_item.get(item_id, 0.0))
+            if remainder > 0.000001:
+                item = po_line.item
+                label = (item.name if item else None) or (item.sku if item else None) or f"Item {item_id}"
+                unit = item.unit if item else ""
+                remaining_lines.append(f"{label}: {remainder:g} {unit}".strip())
+        remaining_summary_by_po[po_id] = " · ".join(remaining_lines)
+
     result = []
     for gr in grns:
         qty = sum(float(l.quantity_received or 0) for l in gr.line_items) if gr.line_items else 0
@@ -454,6 +500,8 @@ def list_grn_enriched(db: Session, tenant_id: int) -> list[GRNListRead]:
                 vendor_name=vendor,
                 warehouse_name=gr.warehouse.name if gr.warehouse else None,
                 quantity=qty,
+                remaining_quantity=remaining_by_po.get(gr.purchase_order_id) if gr.purchase_order_id else None,
+                remaining_summary=remaining_summary_by_po.get(gr.purchase_order_id) if gr.purchase_order_id else None,
                 qc_status=getattr(gr, "qc_status", "pending") or "pending",
                 received_by=getattr(gr, "received_by", None),
                 status=gr.status,

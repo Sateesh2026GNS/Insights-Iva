@@ -60,6 +60,18 @@ class PurchaseOrderLine(Base, TimestampMixin):
     purchase_order = relationship("PurchaseOrder", back_populates="line_items")
     item = relationship("InventoryItem")
 
+    @property
+    def item_name(self) -> str | None:
+        return self.item.name if self.item else None
+
+    @property
+    def item_sku(self) -> str | None:
+        return self.item.sku if self.item else None
+
+    @property
+    def item_unit(self) -> str | None:
+        return self.item.unit if self.item else None
+
 
 class MaterialRequest(Base, TimestampMixin):
     __tablename__ = "material_requests"
@@ -101,6 +113,18 @@ class MaterialRequestLine(Base, TimestampMixin):
 
     material_request = relationship("MaterialRequest", back_populates="line_items")
     item = relationship("InventoryItem")
+
+    @property
+    def item_name(self) -> str | None:
+        return self.item.name if self.item else None
+
+    @property
+    def item_sku(self) -> str | None:
+        return self.item.sku if self.item else None
+
+    @property
+    def item_unit(self) -> str | None:
+        return self.item.unit if self.item else None
 
 
 class GoodsReceipt(Base, TimestampMixin):

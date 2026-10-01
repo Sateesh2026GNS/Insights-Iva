@@ -170,7 +170,8 @@ function ConvertToPOModal({ row, onClose, onConverted }) {
               <ul className="max-h-32 overflow-auto rounded-lg border border-[var(--color-border-soft)] bg-[var(--color-surface-muted)] px-3 py-2 text-xs text-[var(--color-text-secondary)]">
                 {detail.line_items.map((l) => (
                   <li key={l.id}>
-                    Item #{l.item_id} · qty {l.quantity}
+                    {l.item_name || l.notes?.match(/^Shortage for (.+?) \([^)]*\)$/)?.[1] || `Inventory item #${l.item_id}`}
+                    {l.item_sku ? ` · ${l.item_sku}` : ""} · qty {l.quantity}{l.item_unit ? ` ${l.item_unit}` : ""}
                   </li>
                 ))}
               </ul>
@@ -199,6 +200,29 @@ function ConvertToPOModal({ row, onClose, onConverted }) {
 function MRDetailModal({ row, onClose, onConvert, onApproved }) {
   const { addToast } = useToast();
   const [approving, setApproving] = useState(false);
+  const [detail, setDetail] = useState(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState("");
+
+  useEffect(() => {
+    if (!row || typeof row.id !== "number") return undefined;
+    let cancelled = false;
+    setDetail(null);
+    setDetailError("");
+    setDetailLoading(true);
+    getMaterialRequest(row.id)
+      .then((response) => {
+        if (!cancelled) setDetail(response.data || null);
+      })
+      .catch((error) => {
+        if (!cancelled) setDetailError(error.response?.data?.detail || "Could not load requisition materials.");
+      })
+      .finally(() => {
+        if (!cancelled) setDetailLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [row?.id]);
+
   if (!row) return null;
   const approval = (row.approval_status || "").toLowerCase();
   const canApprove =
@@ -226,7 +250,7 @@ function MRDetailModal({ row, onClose, onConvert, onApproved }) {
 
   return (
     <div className="ui-modal-backdrop">
-      <div className="ui-modal w-full max-w-lg">
+      <div className="ui-modal max-h-[85vh] w-full max-w-2xl overflow-y-auto">
         <h2 className="text-lg font-bold text-[var(--color-text)]">{row.mr_number}</h2>
         <p className="text-sm text-[var(--color-text-muted)]">
           {row.department} · {row.requested_by}
@@ -253,6 +277,54 @@ function MRDetailModal({ row, onClose, onConvert, onApproved }) {
             </span>
           </div>
         </div>
+        <section className="mt-5" aria-label="Requested materials">
+          <h3 className="mb-2 text-sm font-semibold text-[var(--color-text)]">
+            Requested materials ({detail?.line_items?.length ?? row.item_count ?? 0})
+          </h3>
+          {detailLoading ? (
+            <p className="rounded-lg bg-[var(--color-surface-muted)] px-3 py-3 text-sm text-[var(--color-text-muted)]">Loading material lines…</p>
+          ) : detailError ? (
+            <p className="rounded-lg bg-[var(--color-danger-soft)] px-3 py-3 text-sm text-[var(--color-danger)]">{detailError}</p>
+          ) : (detail?.line_items || []).length ? (
+            <div className="overflow-x-auto rounded-lg border border-[var(--color-border-soft)]">
+              <table className="w-full min-w-[600px] table-fixed text-left text-sm">
+                <colgroup>
+                  <col className="w-[32%]" />
+                  <col className="w-[22%]" />
+                  <col className="w-[18%]" />
+                  <col className="w-[28%]" />
+                </colgroup>
+                <thead className="bg-[var(--color-surface-muted)] text-xs text-[var(--color-text-muted)]">
+                  <tr>
+                    <th className="px-3 py-2">Material</th>
+                    <th className="px-3 py-2">Code</th>
+                    <th className="whitespace-nowrap px-3 py-2 text-right">Qty to purchase</th>
+                    <th className="px-3 py-2">Reason</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {detail.line_items.map((line) => {
+                    const materialFromNote = line.notes?.match(/^Shortage for (.+?) \([^)]*\)$/)?.[1];
+                    return (
+                      <tr key={line.id} className="border-t border-[var(--color-border-soft)]">
+                        <td className="break-words px-3 py-2 align-top font-medium text-[var(--color-text)]">
+                          {line.item_name || materialFromNote || `Inventory item #${line.item_id}`}
+                        </td>
+                        <td className="break-words px-3 py-2 align-top text-[var(--color-text-secondary)]">{line.item_sku || "—"}</td>
+                        <td className="whitespace-nowrap px-3 py-2 text-right align-top font-semibold tabular-nums text-[var(--color-text)]">
+                          {Number(line.quantity || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}{line.item_unit ? ` ${line.item_unit}` : ""}
+                        </td>
+                        <td className="break-words px-3 py-2 align-top text-xs text-[var(--color-text-muted)]">{line.notes || "—"}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="rounded-lg bg-[var(--color-surface-muted)] px-3 py-3 text-sm text-[var(--color-text-muted)]">This requisition has no material lines.</p>
+          )}
+        </section>
         {canApprove ? (
           <p className="mt-3 text-xs text-[var(--kpi-warning)]">
             Purchase Manager must approve this requisition before creating a Purchase Order.

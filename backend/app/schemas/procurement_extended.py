@@ -114,6 +114,8 @@ class GRNListRead(BaseModel):
     vendor_name: str | None = None
     warehouse_name: str | None = None
     quantity: float = 0
+    remaining_quantity: float | None = None
+    remaining_summary: str | None = None
     qc_status: str = "pending"
     received_by: str | None = None
     status: str = "received"

@@ -469,12 +469,14 @@ export default function PurchaseOrders() {
                               icon: <Edit2 className="h-4 w-4" />,
                               onClick: () => navigate(`/procurement/purchase-orders/${r.id}/edit`),
                             },
-                            {
-                              label: "Create GRN",
-                              icon: <Plus className="h-4 w-4" />,
-                              onClick: () =>
-                                navigate(`/procurement/goods-receipt/create?po_id=${r.id}`),
-                            },
+                            ...( ["approved", "partially_received", "received"].includes(String(r.status || "").toLowerCase()) &&
+                              (r.line_items || []).some((line) => Number(line.remaining_quantity ?? line.quantity ?? 0) > 0.000001)
+                              ? [{
+                                  label: "Create GRN",
+                                  icon: <Plus className="h-4 w-4" />,
+                                  onClick: () => navigate(`/procurement/goods-receipt/create?po_id=${r.id}`),
+                                }]
+                              : []),
                             {
                               label: "Delete",
                               icon: <Trash2 className="h-4 w-4" />,
