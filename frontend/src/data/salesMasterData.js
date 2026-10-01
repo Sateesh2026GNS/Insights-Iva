@@ -44,6 +44,11 @@ export function formatInr(v) {
   return `₹${n.toLocaleString("en-IN")}`;
 }
 
+export function formatQuotationInr(v) {
+  const amount = Number(v);
+  return formatInr(Number.isFinite(amount) ? Math.round(amount) : 0);
+}
+
 export function statusColor(s) {
   const m = {
     new: "bg-blue-100 text-blue-800", contacted: "bg-indigo-100 text-indigo-800",

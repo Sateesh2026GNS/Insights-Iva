@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Download, Mail, Printer, X } from "lucide-react";
 
-import { convertQuotationToSalesOrder, downloadQuotationPdf } from "../../api/salesApi";
+import { convertQuotationToSalesOrder, downloadQuotationPdf, getQuotation } from "../../api/salesApi";
 import { getProducts } from "../../api/productionApi";
-import { formatInr, statusColor } from "../../data/salesMasterData";
+import { formatQuotationInr, statusColor } from "../../data/salesMasterData";
 import { useToast } from "../../context/ToastContext";
 import { exportToPdf } from "../../utils/exportUtils";
 import Button from "../common/Button";
@@ -14,9 +14,10 @@ export default function QuoteDetailModal({ quote, onClose, onStatusChange, onCon
   const { addToast } = useToast();
   const [converting, setConverting] = useState(false);
   const [error, setError] = useState("");
-  const [productId, setProductId] = useState("");
-  const [quantity, setQuantity] = useState("1");
+  const [selectedItems, setSelectedItems] = useState([]);
+  const [quantities, setQuantities] = useState({});
   const [products, setProducts] = useState([]);
+  const [quoteItems, setQuoteItems] = useState([]);
   const [productsLoaded, setProductsLoaded] = useState(false);
 
   if (!quote) return null;
@@ -78,7 +79,7 @@ export default function QuoteDetailModal({ quote, onClose, onStatusChange, onCon
       addToast("Quote PDF downloaded");
     } catch {
       addToast(
-        `PDF unavailable — ${quote.quote_number}: ${quote.customer_name || "Customer"} ${formatInr(amount)}`,
+        `PDF unavailable — ${quote.quote_number}: ${quote.customer_name || "Customer"} ${formatQuotationInr(amount)}`,
         "info"
       );
     }
@@ -89,7 +90,7 @@ export default function QuoteDetailModal({ quote, onClose, onStatusChange, onCon
     const customerEmail = `${(quote.customer_name || "client").toLowerCase().replace(/[^a-z0-9]/g, "")}@company.com`;
     const subject = encodeURIComponent(`Commercial Quotation ${quote.quote_number} - Insights Iva`);
     const body = encodeURIComponent(
-      `Dear ${quote.customer_name || "Customer"},\n\nPlease find attached Commercial Quotation ${quote.quote_number} for total amount ${formatInr(amount)}.\n\nQuote Date: ${quote.quote_date || "—"}\nValid Until: ${quote.valid_until || "—"}\nSales Representative: ${quote.sales_person || "Vikram Sharma"}\n\nTerms & Notes:\n${quote.notes || "30% advance deposit, 70% upon dispatch. Validity: 30 days."}\n\nBest regards,\nInsights Iva Sales Team\nCompany Email: ${companyEmail}`
+      `Dear ${quote.customer_name || "Customer"},\n\nPlease find attached Commercial Quotation ${quote.quote_number} for total amount ${formatQuotationInr(amount)}.\n\nQuote Date: ${quote.quote_date || "—"}\nValid Until: ${quote.valid_until || "—"}\nSales Representative: ${quote.sales_person || "Vikram Sharma"}\n\nTerms & Notes:\n${quote.notes || "30% advance deposit, 70% upon dispatch. Validity: 30 days."}\n\nBest regards,\nInsights Iva Sales Team\nCompany Email: ${companyEmail}`
     );
 
     const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&tf=1&to=${customerEmail}&cc=${companyEmail}&su=${subject}&body=${body}`;
@@ -101,14 +102,39 @@ export default function QuoteDetailModal({ quote, onClose, onStatusChange, onCon
   const loadProducts = async () => {
     if (productsLoaded) return;
     try {
-      const res = await getProducts();
-      setProducts(res.data || []);
+      const [productRes, quoteRes] = await Promise.all([
+        getProducts(),
+        getQuotation(quote.id),
+      ]);
+      const catalog = productRes.data || [];
+      setProducts(catalog);
+      let meta = quoteRes.data?.meta_json || {};
+      if (typeof meta === "string") {
+        try { meta = JSON.parse(meta); } catch { meta = {}; }
+      }
+      const lines = Array.isArray(meta.items) ? meta.items : [];
+      const quoteLines = lines.map((item, index) => {
+        const description = item.item_description || item.name || `Quotation item ${index + 1}`;
+        const normalized = String(description).trim().toLowerCase();
+        const matchedProduct = catalog.find((product) =>
+          [product.name, product.sku].some((value) => String(value || "").trim().toLowerCase() === normalized)
+        );
+        return { ...item, description, productId: matchedProduct?.id || "", key: `${index}-${description}` };
+      });
+      setQuoteItems(quoteLines);
+      setSelectedItems(quoteLines.map((item) => item.key));
+      setQuantities(Object.fromEntries(quoteLines.map((item) => [item.key, String(item.qty || 1)])));
     } catch {
       setProducts([]);
+      setQuoteItems([]);
     } finally {
       setProductsLoaded(true);
     }
   };
+
+  useEffect(() => {
+    if (quote?.id) loadProducts();
+  }, [quote?.id]);
 
   const handleConvert = async () => {
     if (typeof quote.id !== "number") {
@@ -118,14 +144,29 @@ export default function QuoteDetailModal({ quote, onClose, onStatusChange, onCon
     setConverting(true);
     setError("");
     try {
-      const payload = {};
-      if (productId) {
-        const product = products.find((p) => String(p.id) === String(productId));
-        payload.product_id = Number(productId);
-        payload.quantity = Number(quantity) || 1;
-        payload.item_description = product?.name;
-        payload.unit_price = product?.unit_price != null ? Number(product.unit_price) : 0;
+      if (!selectedItems.length) {
+        setError("Select at least one quotation item to continue.");
+        return;
       }
+      const invalidQuantity = quoteItems.some((item) =>
+        selectedItems.includes(item.key) && (!Number.isFinite(Number(quantities[item.key])) || Number(quantities[item.key]) <= 0)
+      );
+      if (invalidQuantity) {
+        setError("Enter a quantity greater than zero for every selected item.");
+        return;
+      }
+      const payload = {
+        items: quoteItems.filter((item) => selectedItems.includes(item.key)).map((item) => {
+          const product = products.find((p) => String(p.id) === String(item.productId));
+          return {
+            ...(product ? { product_id: Number(product.id) } : {}),
+            item_description: item.description,
+            quantity: Number(quantities[item.key]) || 1,
+            unit: item.unit || "pcs",
+            unit_price: Number(item.rate ?? product?.unit_price ?? 0),
+          };
+        }),
+      };
       const res = await convertQuotationToSalesOrder(quote.id, payload);
       const so = res.data;
       onConverted?.(so);
@@ -178,7 +219,7 @@ export default function QuoteDetailModal({ quote, onClose, onStatusChange, onCon
             </div>
             <div>
               <dt className="text-xs uppercase text-slate-400">Amount</dt>
-              <dd className="font-medium">{formatInr(quote.amount ?? quote.total_amount)}</dd>
+              <dd className="font-medium">{formatQuotationInr(quote.amount ?? quote.total_amount)}</dd>
             </div>
           </dl>
 
@@ -191,38 +232,37 @@ export default function QuoteDetailModal({ quote, onClose, onStatusChange, onCon
 
           <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-4 print:hidden">
             <p className="mb-2 text-sm font-semibold text-slate-800">Convert to Sales Order</p>
-            <p className="mb-3 text-xs text-slate-500">
-              Creates a draft SO linked to this quotation. Optionally attach a product line for MRP / production.
+              <p className="mb-3 text-xs text-slate-500">
+              Creates a draft sales order with the selected quotation items. At least one item is required.
             </p>
-            <div className="grid gap-3 sm:grid-cols-2" onFocus={loadProducts}>
-              <label className="block text-xs font-medium text-slate-600">
-                Product (optional)
-                <select
-                  value={productId}
-                  onChange={(e) => setProductId(e.target.value)}
-                  onClick={loadProducts}
-                  className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-                >
-                  <option value="">Header only</option>
-                  {products.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.sku} — {p.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="block text-xs font-medium text-slate-600">
-                Quantity
-                <input
-                  type="number"
-                  min="0.001"
-                  step="any"
-                  value={quantity}
-                  onChange={(e) => setQuantity(e.target.value)}
-                  className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-                  disabled={!productId}
-                />
-              </label>
+            <div className="space-y-2">
+              {quoteItems.length ? quoteItems.map((item) => {
+                const checked = selectedItems.includes(item.key);
+                return (
+                  <div key={item.key} className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2">
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={(event) => setSelectedItems((current) => event.target.checked
+                        ? [...current, item.key]
+                        : current.filter((key) => key !== item.key))}
+                      aria-label={`Include ${item.description}`}
+                    />
+                    <span className="min-w-0 flex-1 text-sm text-slate-700">{item.description}</span>
+                    <span className="text-xs text-slate-500">{item.unit || "pcs"} · ₹{Number(item.rate || 0).toLocaleString("en-IN")}</span>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      pattern="[0-9]*[.]?[0-9]*"
+                      value={quantities[item.key] ?? ""}
+                      onChange={(event) => setQuantities((current) => ({ ...current, [item.key]: event.target.value }))}
+                      className="w-24 rounded-lg border px-2 py-1.5 text-sm"
+                      aria-label={`Quantity for ${item.description}`}
+                      disabled={!checked}
+                    />
+                  </div>
+                );
+              }) : <p className="text-sm text-amber-700">{productsLoaded ? "This quotation has no saved line items. Add quotation items before converting." : "Loading quotation items…"}</p>}
             </div>
             {error && <p className="mt-2 text-sm text-rose-600">{error}</p>}
           </div>
@@ -238,7 +278,7 @@ export default function QuoteDetailModal({ quote, onClose, onStatusChange, onCon
           <button type="button" onClick={handleSendEmail} className="inline-flex items-center gap-1 rounded-lg border px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
             <Mail className="h-4 w-4" /> Email
           </button>
-          <Button type="button" variant="primary" disabled={converting} loading={converting} onClick={handleConvert}>
+          <Button type="button" variant="primary" disabled={converting || !quoteItems.length || !selectedItems.length} loading={converting} onClick={handleConvert}>
             {converting ? "Converting…" : "Convert to Sales Order"}
           </Button>
           {quote.status === "draft" && (

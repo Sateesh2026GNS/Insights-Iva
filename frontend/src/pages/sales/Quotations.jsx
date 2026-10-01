@@ -42,7 +42,7 @@ import {
   updateQuotationStatus,
 } from "../../api/salesApi";
 import { apiErrorMessage } from "../../utils/apiError";
-import { formatInr, statusColor } from "../../data/salesMasterData";
+import { formatQuotationInr, statusColor } from "../../data/salesMasterData";
 import { runListExport } from "../../utils/listExport";
 import { InlineNativeDateRange } from "../../design-system/dateControls";
 import {
@@ -368,28 +368,28 @@ export default function Quotations() {
           <SummaryTab
             label="All Quotations"
             count={tabStats.all.count}
-            amount={formatInr(tabStats.all.amount)}
+            amount={formatQuotationInr(tabStats.all.amount)}
             active={kpiFilter === "all"}
             onClick={() => setKpiFilter("all")}
           />
           <SummaryTab
             label="Pending"
             count={tabStats.pending.count}
-            amount={formatInr(tabStats.pending.amount)}
+            amount={formatQuotationInr(tabStats.pending.amount)}
             active={kpiFilter === "pending"}
             onClick={() => setKpiFilter("pending")}
           />
           <SummaryTab
             label="Accepted"
             count={tabStats.accepted.count}
-            amount={formatInr(tabStats.accepted.amount)}
+            amount={formatQuotationInr(tabStats.accepted.amount)}
             active={kpiFilter === "accepted"}
             onClick={() => setKpiFilter("accepted")}
           />
           <SummaryTab
             label="Cancelled"
             count={tabStats.cancelled.count}
-            amount={formatInr(tabStats.cancelled.amount)}
+            amount={formatQuotationInr(tabStats.cancelled.amount)}
             active={kpiFilter === "cancelled"}
             onClick={() => setKpiFilter("cancelled")}
           />
@@ -573,7 +573,7 @@ export default function Quotations() {
                 </div>
                 <div className="text-right">
                   <span className={`${salesListTextMuted} text-[10px] block uppercase font-semibold`}>Amount</span>
-                  <span className={`text-sm font-bold tabular-nums ${salesListTextPrimary}`}>{formatInr(r.amount)}</span>
+                  <span className={`text-sm font-bold tabular-nums ${salesListTextPrimary}`}>{formatQuotationInr(r.amount)}</span>
                 </div>
               </div>
 
@@ -642,7 +642,7 @@ export default function Quotations() {
                     <td className="border-t border-r border-[var(--color-table-border)] px-4 py-3 text-[var(--color-text-secondary)]">{fmtDate(r.quote_date)}</td>
                     <td className="border-t border-r border-[var(--color-table-border)] px-4 py-3 text-[var(--color-text)]">{r.customer_name || "—"}</td>
                     <td className="border-t border-r border-[var(--color-table-border)] px-4 py-3 tabular-nums font-medium text-[var(--color-text)]">
-                      {formatInr(r.amount)}
+                      {formatQuotationInr(r.amount)}
                     </td>
                     <td className="border-t border-r border-[var(--color-table-border)] px-4 py-3">
                       <span
