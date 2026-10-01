@@ -54,7 +54,7 @@ class InventoryItemBase(BaseModel):
     category: str | None = None
     warehouse_name: str | None = None
     batch_number: str | None = None
-    quantity: int | None = Field(0, ge=0)
+    quantity: float | None = Field(0, ge=0)
     reserved: int | None = Field(0, ge=0)
     status: str | None = "in_stock"
     customer_name: str | None = None
@@ -102,7 +102,7 @@ class InventoryItemUpdate(BaseModel):
     category: str | None = None
     warehouse_name: str | None = None
     batch_number: str | None = None
-    quantity: int | None = Field(None, ge=0)
+    quantity: float | None = Field(None, ge=0)
     reserved: int | None = Field(None, ge=0)
     status: str | None = None
     customer_name: str | None = None
@@ -140,7 +140,7 @@ class InventoryItemRead(InventoryItemBase):
 class StockLevelBase(BaseModel):
     warehouse_id: int = Field(..., ge=1)
     item_id: int = Field(..., ge=1)
-    quantity: int = Field(0, ge=0)
+    quantity: float = Field(0, ge=0)
 
 
 class StockLevelCreate(StockLevelBase):
@@ -159,7 +159,7 @@ class StockMovementBase(BaseModel):
     tenant_id: int = Field(..., ge=1)
     warehouse_id: int = Field(..., ge=1)
     item_id: int = Field(..., ge=1)
-    quantity: int = Field(..., ge=1)
+    quantity: float = Field(..., gt=0)
     movement_type: str  # in, out, adjustment, return, scrap, transfer
     reference: str | None = None
     batch_number: str | None = None

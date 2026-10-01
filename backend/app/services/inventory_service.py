@@ -393,7 +393,7 @@ def get_total_stock(db: Session, item_id: int, tenant_id: int | None = None) -> 
     if tenant_id is not None:
         stmt = stmt.where(InventoryItem.tenant_id == tenant_id)
     r = db.scalars(stmt).first()
-    return int(r) if r is not None else 0
+    return float(r) if r is not None else 0.0
 
 
 def _sync_cached_item_quantity(db: Session, item: InventoryItem) -> None:
@@ -410,7 +410,7 @@ def create_stock_level(db: Session, payload: StockLevelCreate) -> StockLevel:
 
 
 def update_stock_level(
-    db: Session, warehouse_id: int, item_id: int, quantity: int
+    db: Session, warehouse_id: int, item_id: int, quantity: float
 ) -> StockLevel | None:
     stmt = select(StockLevel).where(
         StockLevel.warehouse_id == warehouse_id, StockLevel.item_id == item_id
@@ -457,7 +457,7 @@ def record_stock_movement(
         .with_for_update()
     )
     sl = db.scalars(stmt).first()
-    qty = abs(int(payload.quantity))
+    qty = abs(float(payload.quantity))
     inv_item = db.get(InventoryItem, payload.item_id)
     if sl:
         if effective == "in":
@@ -465,7 +465,7 @@ def record_stock_movement(
         elif effective == "out":
             from app.core.concurrency import raise_insufficient_stock
 
-            current_qty = int(sl.quantity or 0)
+            current_qty = float(sl.quantity or 0)
             if current_qty < qty:
                 try:
                     db.rollback()
@@ -502,7 +502,7 @@ def record_stock_movement(
         sl = StockLevel(
             warehouse_id=payload.warehouse_id,
             item_id=payload.item_id,
-            quantity=max(0, int(payload.quantity)),
+            quantity=max(0.0, float(payload.quantity)),
         )
         db.add(sl)
 

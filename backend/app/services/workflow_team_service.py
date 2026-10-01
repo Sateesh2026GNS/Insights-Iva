@@ -931,7 +931,7 @@ def raise_material_request(
             MaterialRequestLine(
                 material_request_id=existing.id,
                 item_id=item_id,
-                quantity=max(1.0, float(ln.shortage_qty or 0)),
+                quantity=max(0.01, float(ln.shortage_qty or 0)),
                 notes=f"Shortage for {ln.material_name} ({so.order_number})",
             )
         )

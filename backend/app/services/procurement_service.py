@@ -2,7 +2,7 @@ from datetime import date
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, joinedload, selectinload
 
 from app.models.inventory import Supplier
 from app.models.procurement import (
@@ -49,7 +49,9 @@ def create_purchase_order(db: Session, payload: PurchaseOrderCreate) -> Purchase
         po_number=payload.po_number,
         order_date=payload.order_date,
         expected_date=payload.expected_date,
-        status=payload.status,
+        # New purchase orders always require explicit Purchase Manager approval.
+        # Approval is recorded through the protected status endpoint.
+        status="draft",
         total_amount=payload.total_amount,
         notes=payload.notes,
         material_request_id=payload.material_request_id,
@@ -95,14 +97,78 @@ def create_purchase_order(db: Session, payload: PurchaseOrderCreate) -> Purchase
 def get_purchase_order(
     db: Session, tenant_id: int, po_id: int
 ) -> PurchaseOrder | None:
-    return db.scalars(
+    po = db.scalars(
         select(PurchaseOrder)
         .options(
             joinedload(PurchaseOrder.supplier),
-            joinedload(PurchaseOrder.line_items),
+            joinedload(PurchaseOrder.line_items).joinedload(PurchaseOrderLine.item),
         )
         .where(PurchaseOrder.id == po_id, PurchaseOrder.tenant_id == tenant_id)
     ).unique().first()
+    if po:
+        _apply_purchase_order_receipt_progress(db, po)
+    return po
+
+
+def _purchase_order_receipt_totals(
+    db: Session, po: PurchaseOrder
+) -> tuple[dict[int, float], dict[int, float], list[GoodsReceipt]]:
+    ordered: dict[int, float] = {}
+    received: dict[int, float] = {}
+    for line in po.line_items or []:
+        ordered[line.item_id] = ordered.get(line.item_id, 0.0) + float(line.quantity or 0)
+
+    grns = list(
+        db.scalars(
+            select(GoodsReceipt)
+            .options(selectinload(GoodsReceipt.line_items))
+            .where(
+                GoodsReceipt.purchase_order_id == po.id,
+                GoodsReceipt.tenant_id == po.tenant_id,
+            )
+        ).unique().all()
+    )
+    for grn in grns:
+        if grn.status == "rejected" or (grn.qc_status or "").lower() == "rejected":
+            continue
+        for line in grn.line_items or []:
+            accepted = max(
+                0.0,
+                float(line.quantity_received or 0) - float(line.quantity_rejected or 0),
+            )
+            received[line.item_id] = received.get(line.item_id, 0.0) + accepted
+    return ordered, received, grns
+
+
+def _apply_purchase_order_receipt_progress(db: Session, po: PurchaseOrder) -> None:
+    ordered, received, _ = _purchase_order_receipt_totals(db, po)
+    unallocated_received = dict(received)
+    for line in po.line_items or []:
+        line_ordered = float(line.quantity or 0)
+        received_for_line = min(line_ordered, unallocated_received.get(line.item_id, 0.0))
+        unallocated_received[line.item_id] = max(
+            0.0, unallocated_received.get(line.item_id, 0.0) - received_for_line
+        )
+        line.received_quantity = round(received_for_line, 2)
+        line.remaining_quantity = round(max(0.0, line_ordered - received_for_line), 2)
+
+
+def _refresh_purchase_order_receipt_status(db: Session, po: PurchaseOrder) -> None:
+    ordered, received, grns = _purchase_order_receipt_totals(db, po)
+    remaining = sum(max(0.0, qty - received.get(item_id, 0.0)) for item_id, qty in ordered.items())
+    total_received = sum(received.values())
+    if total_received <= 0:
+        po.status = "approved"
+    elif remaining > 0:
+        po.status = "partially_received"
+    elif any(
+        (grn.qc_status or "pending").lower() == "pending"
+        or grn.status == "pending_qc"
+        for grn in grns
+    ):
+        po.status = "pending_qc"
+    else:
+        po.status = "received"
 
 
 def update_purchase_order(
@@ -178,11 +244,17 @@ def delete_purchase_order(db: Session, tenant_id: int, po_id: int) -> bool:
 def list_purchase_orders(db: Session, tenant_id: int) -> list[PurchaseOrder]:
     stmt = (
         select(PurchaseOrder)
-        .options(joinedload(PurchaseOrder.supplier))
+        .options(
+            joinedload(PurchaseOrder.supplier),
+            joinedload(PurchaseOrder.line_items).joinedload(PurchaseOrderLine.item),
+        )
         .where(PurchaseOrder.tenant_id == tenant_id)
         .order_by(PurchaseOrder.order_date.desc())
     )
-    return list(db.scalars(stmt).unique().all())
+    orders = list(db.scalars(stmt).unique().all())
+    for po in orders:
+        _apply_purchase_order_receipt_progress(db, po)
+    return orders
 
 
 def create_material_request(
@@ -236,7 +308,7 @@ def create_material_request(
 def list_material_requests(db: Session, tenant_id: int) -> list[MaterialRequest]:
     stmt = (
         select(MaterialRequest)
-        .options(joinedload(MaterialRequest.line_items))
+        .options(joinedload(MaterialRequest.line_items).joinedload(MaterialRequestLine.item))
         .where(MaterialRequest.tenant_id == tenant_id)
         .order_by(MaterialRequest.id.desc())
     )
@@ -248,7 +320,7 @@ def get_material_request(
 ) -> MaterialRequest | None:
     return db.scalars(
         select(MaterialRequest)
-        .options(joinedload(MaterialRequest.line_items))
+        .options(joinedload(MaterialRequest.line_items).joinedload(MaterialRequestLine.item))
         .where(
             MaterialRequest.id == mr_id,
             MaterialRequest.tenant_id == tenant_id,
@@ -389,8 +461,8 @@ def approve_material_request(
 def _post_grn_stock(db: Session, gr: GoodsReceipt, tenant_id: int) -> None:
     """Post accepted quantities (received − rejected) into warehouse stock (same txn)."""
     for line in gr.line_items:
-        accepted = int(
-            max(0, float(line.quantity_received or 0) - float(line.quantity_rejected or 0))
+        accepted = max(
+            0.0, float(line.quantity_received or 0) - float(line.quantity_rejected or 0)
         )
         if accepted > 0:
             record_stock_movement(
@@ -409,8 +481,8 @@ def _post_grn_stock(db: Session, gr: GoodsReceipt, tenant_id: int) -> None:
 def _reverse_grn_stock(db: Session, gr: GoodsReceipt, tenant_id: int) -> None:
     """Reverse accepted quantities from warehouse stock (same txn)."""
     for line in gr.line_items:
-        accepted = int(
-            max(0, float(line.quantity_received or 0) - float(line.quantity_rejected or 0))
+        accepted = max(
+            0.0, float(line.quantity_received or 0) - float(line.quantity_rejected or 0)
         )
         if accepted > 0:
             record_stock_movement(
@@ -432,6 +504,52 @@ def create_goods_receipt(db: Session, payload: GoodsReceiptCreate) -> GoodsRecei
     Pending QC keeps inventory unchanged until QC approval.
     """
     from app.utils.tenant_validation import assert_inventory_item_owned, assert_warehouse_owned
+
+    if payload.purchase_order_id:
+        purchase_order = db.scalars(
+            select(PurchaseOrder)
+            .options(selectinload(PurchaseOrder.line_items))
+            .where(
+                PurchaseOrder.id == payload.purchase_order_id,
+                PurchaseOrder.tenant_id == payload.tenant_id,
+            )
+            .with_for_update()
+        ).first()
+        if not purchase_order:
+            raise HTTPException(status_code=404, detail="Purchase order not found")
+        ordered, received, _ = _purchase_order_receipt_totals(db, purchase_order)
+        remaining_total = sum(
+            max(0.0, qty - received.get(item_id, 0.0))
+            for item_id, qty in ordered.items()
+        )
+        po_status = (purchase_order.status or "").strip().lower()
+        can_receive = po_status in {"approved", "partially_received"} or (
+            po_status == "received" and remaining_total > 0.000001
+        )
+        if not can_receive:
+            raise HTTPException(
+                status_code=400,
+                detail="The purchase order must be approved by the Purchase Manager and have an outstanding quantity before creating a GRN.",
+            )
+        incoming: dict[int, float] = {}
+        for line in payload.line_items:
+            if line.item_id not in ordered:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Item {line.item_id} is not listed on this purchase order.",
+                )
+            accepted = max(0.0, float(line.quantity_received) - float(line.quantity_rejected or 0))
+            incoming[line.item_id] = incoming.get(line.item_id, 0.0) + accepted
+        for item_id, accepted in incoming.items():
+            remaining = max(0.0, ordered[item_id] - received.get(item_id, 0.0))
+            if accepted - remaining > 0.000001:
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        f"Received quantity exceeds the remaining purchase order quantity "
+                        f"for item {item_id}. Remaining: {remaining:g}."
+                    ),
+                )
 
     assert_warehouse_owned(db, payload.tenant_id, payload.warehouse_id)
     for line in payload.line_items:
@@ -474,10 +592,12 @@ def create_goods_receipt(db: Session, payload: GoodsReceiptCreate) -> GoodsRecei
             .where(GoodsReceipt.id == gr.id)
         ).unique().first()
         _post_grn_stock(db, gr, payload.tenant_id)
-        if payload.purchase_order_id:
-            po = db.get(PurchaseOrder, payload.purchase_order_id)
-            if po and po.tenant_id == payload.tenant_id:
-                po.status = "received"
+
+    if payload.purchase_order_id:
+        db.flush()
+        po = db.get(PurchaseOrder, payload.purchase_order_id)
+        if po and po.tenant_id == payload.tenant_id:
+            _refresh_purchase_order_receipt_status(db, po)
 
     db.commit()
     db.refresh(gr)
@@ -518,10 +638,6 @@ def approve_goods_receipt_qc(
         _post_grn_stock(db, gr, tenant_id)
         gr.qc_status = "pass"
         gr.status = "received"
-        if gr.purchase_order_id:
-            po = db.get(PurchaseOrder, gr.purchase_order_id)
-            if po and po.tenant_id == tenant_id:
-                po.status = "received"
         if payload.notes:
             gr.notes = ((gr.notes or "") + f"\nQC pass: {payload.notes}").strip()
     else:
@@ -529,6 +645,12 @@ def approve_goods_receipt_qc(
         gr.status = "rejected"
         if payload.notes:
             gr.notes = ((gr.notes or "") + f"\nQC fail: {payload.notes}").strip()
+
+    if gr.purchase_order_id:
+        db.flush()
+        po = db.get(PurchaseOrder, gr.purchase_order_id)
+        if po and po.tenant_id == tenant_id:
+            _refresh_purchase_order_receipt_status(db, po)
 
     db.commit()
     db.refresh(gr)

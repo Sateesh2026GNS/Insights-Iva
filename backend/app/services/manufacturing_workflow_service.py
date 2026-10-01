@@ -44,24 +44,6 @@ def _product_requires_bom(product: Product | None) -> bool:
     return not any(token in category for token in direct_stock_categories)
 
 
-def _is_legacy_sample_bom(product: Product | None, rows: list[BillOfMaterial], db: Session) -> bool:
-    """Recognize the old four-line demo recipe so it cannot drive real material planning."""
-    if not product or not product.sku or not rows:
-        return False
-    expected_skus = {
-        f"RAW-{product.sku}-01",
-        f"RAW-{product.sku}-02",
-        "RAW-DYE-01",
-        f"PKG-{product.sku}-01",
-    }
-    component_skus = {
-        component.sku
-        for row in rows
-        if (component := db.get(Product, row.component_product_id)) is not None
-    }
-    return bool(component_skus.intersection(expected_skus))
-
-
 def sales_order_has_final_qc_pass(
     db: Session, tenant_id: int, sales_order: SalesOrder
 ) -> bool:
@@ -240,11 +222,6 @@ def get_bom_requirements(
             )
         ).all()
     )
-    product = db.get(Product, product_id)
-    if _is_legacy_sample_bom(product, bom_rows, db):
-        # Keep old generated rows available for review, but do not plan production from them.
-        return []
-
     requirements: list[dict[str, Any]] = []
     for row in bom_rows:
         component = db.get(Product, row.component_product_id)
@@ -306,7 +283,7 @@ def run_mrp(
         lines = [
             MaterialRequestLineCreate(
                 item_id=s["item_id"],
-                quantity=max(1.0, float(s["shortage_qty"])),
+                quantity=max(0.01, float(s["shortage_qty"])),
                 notes=f"MRP shortage for {product.sku} x {quantity}",
             )
             for s in shortages

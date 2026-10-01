@@ -159,7 +159,7 @@ class InventoryItem(Base, TimestampMixin):
     category: Mapped[str | None] = mapped_column(String(128))
     warehouse_name: Mapped[str | None] = mapped_column(String(128))
     batch_number: Mapped[str | None] = mapped_column(String(128))
-    quantity: Mapped[int | None] = mapped_column(Integer, default=0)
+    quantity: Mapped[float | None] = mapped_column(Numeric(12, 2), default=0)
     reserved: Mapped[int | None] = mapped_column(Integer, default=0)
     status: Mapped[str | None] = mapped_column(String(64), default="in_stock")
     customer_name: Mapped[str | None] = mapped_column(String(255))
@@ -192,7 +192,7 @@ class StockLevel(Base, TimestampMixin):
     item_id: Mapped[int] = mapped_column(
         ForeignKey("inventory_items.id"), nullable=False, index=True
     )
-    quantity: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    quantity: Mapped[float] = mapped_column(Numeric(12, 2), default=0, nullable=False)
 
     warehouse = relationship("Warehouse", back_populates="stock_levels")
     item = relationship("InventoryItem", back_populates="stock_levels")
@@ -211,7 +211,7 @@ class StockMovement(Base, TimestampMixin):
     item_id: Mapped[int] = mapped_column(
         ForeignKey("inventory_items.id"), nullable=False, index=True
     )
-    quantity: Mapped[int] = mapped_column(Integer, nullable=False)
+    quantity: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
     movement_type: Mapped[str] = mapped_column(
         String(32), nullable=False
     )  # in, out, adjustment, transfer, purchase, production, sales, return, scrap
