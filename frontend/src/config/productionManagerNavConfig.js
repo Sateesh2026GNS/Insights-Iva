@@ -7,6 +7,7 @@ import {
   Factory,
   FolderOpen,
   LayoutDashboard,
+  Layers,
   MessageSquare,
   Settings,
   Wrench,
@@ -67,6 +68,15 @@ export const PRODUCTION_MANAGER_NAV_ITEMS = [
         module: "inventory",
       },
       { key: "stockTransfer", label: "Stock Transfer", to: "/inventory/stock-transfer", module: "inventory" },
+    ],
+  },
+  {
+    key: "masters",
+    label: "Masters",
+    icon: Layers,
+    module: "production",
+    children: [
+      { key: "bom", label: "Bill of Materials (BOM)", to: "/masters/bom", module: "production" },
     ],
   },
   {

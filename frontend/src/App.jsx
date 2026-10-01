@@ -288,7 +288,13 @@ export default function App() {
 
   return (
     <div
-      className="app-shell relative flex h-screen overflow-hidden dark:bg-slate-950"
+      className={`app-shell relative grid h-screen overflow-hidden dark:bg-slate-950 ${
+        isDesktopNav
+          ? sidebarCollapsed
+            ? "grid-cols-[4.5rem_minmax(0,1fr)]"
+            : "grid-cols-[15rem_minmax(0,1fr)]"
+          : "grid-cols-[minmax(0,1fr)]"
+      }`}
       data-sidebar-collapsed={sidebarCollapsed ? "true" : "false"}
     >
       <NavigationProgressBar />
@@ -340,7 +346,7 @@ export default function App() {
           />
         </aside>
       ) : null}
-      <div className="flex min-h-0 min-w-0 w-full flex-1 flex-col overflow-hidden">
+      <div className="flex min-h-0 min-w-0 w-full flex-col overflow-hidden">
         <Navbar
           onOpenSidebar={() => setMobileSidebarOpen(true)}
           onToggleSidebar={() => setSidebarCollapsed((value) => !value)}
@@ -354,7 +360,7 @@ export default function App() {
             overscrollBehaviorX: "none",
             overscrollBehaviorY: "contain",
           }}
-          className={`min-h-0 min-w-0 w-full flex-1 bg-transparent outline-none overscroll-contain max-lg:pb-[calc(4.75rem+env(safe-area-inset-bottom,0px))] ${
+          className={`min-h-0 min-w-0 max-w-full flex-1 overflow-x-hidden bg-transparent outline-none overscroll-contain max-lg:pb-[calc(4.75rem+env(safe-area-inset-bottom,0px))] ${
             isInvoiceEditor || isEInvoiceLogin
               ? "overflow-hidden max-lg:pb-0"
               : "overflow-y-auto"

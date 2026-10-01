@@ -3,6 +3,7 @@ export const PRODUCTION_MANAGER_ALLOWED_SECTIONS = new Set([
   "dashboard",
   "production",
   "materials",
+  "masters",
   "quality",
   "maintenance",
   "alerts",
@@ -23,6 +24,7 @@ export const PRODUCTION_MANAGER_ALLOWED_CHILDREN = new Set([
   "/production/tasks",
   "/production/reports",
   "/my-job-cards",
+  "/masters/bom",
 
   "/inventory/raw-materials",
   "/inventory/finished-goods",

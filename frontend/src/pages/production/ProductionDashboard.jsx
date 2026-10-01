@@ -119,7 +119,7 @@ export default function ProductionDashboard() {
   ]);
 
   return (
-    <div className="space-y-5 pb-4">
+    <div className="min-w-0 max-w-full space-y-5 overflow-x-hidden pb-4">
       <div className="flex justify-end">
         <DashboardReportExport
           title="Production Dashboard"

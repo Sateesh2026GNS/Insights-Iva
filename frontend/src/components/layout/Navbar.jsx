@@ -124,7 +124,7 @@ export default function Navbar({ onOpenSidebar, onToggleSidebar, sidebarCollapse
   };
 
   return (
-    <header className="app-navbar print:hidden">
+    <header className="app-navbar block w-full shrink-0 print:hidden">
       <div className="app-navbar__row">
         {/* Left: page title */}
         <div className="app-navbar__left">

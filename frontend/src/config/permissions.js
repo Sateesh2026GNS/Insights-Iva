@@ -116,7 +116,7 @@ export const ROUTE_MODULE_OVERRIDES = {
   "/masters/products": "masters",
   "/master/products": "masters",
   "/products": "masters",
-  "/masters/bom": "masters",
+  "/masters/bom": "production",
   "/production/schedule": "production",
   "/procurement/rfq": "procurement",
   "/procurement/vendors": "masters",
@@ -556,6 +556,9 @@ export function userCanAccessPath(user, pathname) {
     if (isStoreManager(user) && !storeManagerPathAllowed(pathname)) return false;
     return true;
   }
+  // BOM maintenance is available to members explicitly granted production access,
+  // even though its route sits under Masters.
+  if (path === "/masters/bom" && userCanAccess(user, "production")) return true;
   const module = getModuleForPath(pathname);
   if (!userCanAccess(user, module)) return false;
   const settingsSection = getSettingsSectionIdFromPath(path);

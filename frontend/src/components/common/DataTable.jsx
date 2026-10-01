@@ -110,7 +110,7 @@ export default function DataTable({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="min-w-0 max-w-full space-y-4">
       {(showSearch && (searchKeys.length > 0 || filters.length > 0)) || toolbarActions ? (
         <div className={`ui-list-toolbar print:hidden ${toolbarClassName}`.trim()}>
           <div className="ui-list-toolbar__start">

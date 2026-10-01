@@ -2368,6 +2368,9 @@ table > tbody > tr:first-child:has(th) {
   position: sticky;
   top: 0;
   z-index: 60;
+  display: block;
+  width: 100%;
+  min-height: var(--navbar-height);
   flex-shrink: 0;
   border-bottom: 1px solid var(--erp-primary-dark, #2648b8);
   background: var(--erp-primary, #3157d5);
@@ -2382,6 +2385,7 @@ table > tbody > tr:first-child:has(th) {
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
+  width: 100%;
   min-height: var(--navbar-height);
   padding: 0 0.75rem;
 }
@@ -3636,5 +3640,4 @@ table > tbody > tr:first-child:has(th) {
     min-height: 38px;
   }
 }
-
 
