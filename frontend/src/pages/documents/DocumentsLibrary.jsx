@@ -108,7 +108,7 @@ function userCanHr(user) {
 function userCanDelete(user) {
   if (!user || isAdmin(user)) return true;
   const role = String(user.role_name || user.role || "");
-  return ["Production Manager", "Store Manager", "Purchase Manager", "Procurement Manager"].includes(role);
+  return ["Production Manager", "Store Manager", "Purchase Manager"].includes(role);
 }
 
 function extOk(filename) {

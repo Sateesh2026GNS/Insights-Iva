@@ -200,7 +200,7 @@ export default function CreateVendor() {
   const canWrite =
     isAdmin ||
     roles.some((r) =>
-      ["Purchase Manager", "Procurement Manager", "Store Manager", "Admin", "Production Manager"].includes(
+      ["Purchase Manager", "Store Manager", "Admin", "Production Manager"].includes(
         r
       )
     );

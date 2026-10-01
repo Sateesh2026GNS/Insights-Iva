@@ -44,7 +44,6 @@ REGISTERABLE_ROLES = [
     "Production Manager",
     "Store Manager",
     "Purchase Manager",
-    "Procurement Manager",
     "Quality Control",
     "HR Manager",
     "Accountant",
@@ -120,19 +119,6 @@ PERMISSION_MATRIX = {
             "analytics",
         ],
         "description": "Full Vendor Master and purchase lifecycle access.",
-    },
-    "Procurement Manager": {
-        "modules": [
-            "dashboard",
-            "procurement",
-            "inventory",
-            "masters",
-            "accounts",
-            "alerts",
-            "documents",
-            "analytics",
-        ],
-        "description": "Full Vendor Master and procurement operations access.",
     },
     "Quality Control": {
         "modules": [

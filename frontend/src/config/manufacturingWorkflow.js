@@ -338,7 +338,6 @@ const ROLE_TEAM_MAP = {
   "HR Manager": ["hr"],
   Accountant: ["billing"],
   "Purchase Manager": ["inventory"],
-  "Procurement Manager": ["inventory"],
 };
 
 export function getUserWorkflowTeams(user) {

@@ -53,7 +53,7 @@ export default function VendorDetail() {
   const hasWriteRole =
     isAdmin ||
     roles.some((r) =>
-      ["Purchase Manager", "Procurement Manager", "Store Manager", "Admin", "Production Manager"].includes(
+      ["Purchase Manager", "Store Manager", "Admin", "Production Manager"].includes(
         r
       )
     );

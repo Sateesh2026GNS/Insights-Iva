@@ -18,6 +18,7 @@ export const ROLES = [
   { id: "sales_manager", name: "Sales Manager", description: "Leads, quotations, sales orders, customers" },
   { id: "production_manager", name: "Production Manager", description: "Production modules for assigned plant" },
   { id: "store_manager", name: "Store Manager", description: "Inventory and store operations" },
+  { id: "purchase_manager", name: "Purchase Manager", description: "Purchase requisitions, purchase orders, and procurement approvals" },
   { id: "quality_control", name: "Quality Control", description: "Quality inspection (QA), tests, and approval stamps" },
   { id: "hr_manager", name: "HR Manager", description: "Departments and organizational data" },
   { id: "accountant", name: "Accountant", description: "Finance and accounts" },
@@ -54,12 +55,6 @@ export const ROLE_PERMISSIONS = {
     "dashboard", "procurement", "inventory", "masters", "accounts", "alerts", "documents", "analytics",
   ],
   purchase_manager: [
-    "dashboard", "procurement", "inventory", "masters", "accounts", "alerts", "documents", "analytics",
-  ],
-  "Procurement Manager": [
-    "dashboard", "procurement", "inventory", "masters", "accounts", "alerts", "documents", "documents_ops", "analytics",
-  ],
-  procurement_manager: [
     "dashboard", "procurement", "inventory", "masters", "accounts", "alerts", "documents", "analytics",
   ],
   "Quality Control": [

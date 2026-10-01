@@ -105,9 +105,8 @@ describe("getEffectivePermissions / userCanAccess", () => {
     expect(userCanAccess(user, "quality")).toBe(false);
   });
 
-  it("grants Purchase/Procurement Manager inventory access from the static map", () => {
+  it("grants Purchase Manager inventory access from the static map", () => {
     expect(userCanAccess({ role: "Purchase Manager" }, "inventory")).toBe(true);
-    expect(userCanAccess({ role: "Procurement Manager" }, "inventory")).toBe(true);
   });
 });
 

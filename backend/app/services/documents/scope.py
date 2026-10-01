@@ -26,7 +26,6 @@ def user_can_delete_documents(user: User) -> bool:
                 "Production Manager",
                 "Store Manager",
                 "Purchase Manager",
-                "Procurement Manager",
             }
         )
     )
