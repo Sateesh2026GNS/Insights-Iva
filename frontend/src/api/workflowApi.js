@@ -7,7 +7,7 @@ export const saveSalesJobCard = (orderId, payload) =>
   api.patch(`/manufacturing/workflow/sales-orders/${orderId}/job-card`, payload);
 
 export const getSalesJobCard = (orderId) =>
-  api.get(`/manufacturing/workflow/sales-orders/${orderId}/job-card`);
+  api.get(`/manufacturing/workflow/sales-orders/${orderId}/job-card`, { skipCache: true });
 
 export const createManualJobCard = (payload) =>
   api.post("/manufacturing/workflow/job-cards/manual", payload);
@@ -42,7 +42,7 @@ export const addManualStoreComment = (jobCardId, payload) =>
   api.post(`/manufacturing/workflow/job-cards/manual/${jobCardId}/store-comments`, payload);
 
 export const getManualMaterialCheck = (jobCardId) =>
-  api.get(`/manufacturing/workflow/job-cards/manual/${jobCardId}/material-check`);
+  api.get(`/manufacturing/workflow/job-cards/manual/${jobCardId}/material-check`, { skipCache: true });
 
 export const submitManualMaterialCheck = (jobCardId, payload) =>
   api.post(`/manufacturing/workflow/job-cards/manual/${jobCardId}/material-check`, payload);
@@ -51,7 +51,7 @@ export const getWorkflowJobCards = (params = {}) =>
   api.get("/manufacturing/workflow/job-cards", { params });
 
 export const getWorkflowContext = (orderId) =>
-  api.get(`/manufacturing/workflow/sales-orders/${orderId}/context`);
+  api.get(`/manufacturing/workflow/sales-orders/${orderId}/context`, { skipCache: true });
 
 export const backfillWorkflowStatuses = (dryRun = false) =>
   api.post("/manufacturing/workflow/backfill", null, { params: { dry_run: dryRun } });
@@ -80,7 +80,7 @@ export const confirmSalesOrderWorkflow = (orderId) =>
   api.post(`/manufacturing/workflow/sales-orders/${orderId}/confirm`);
 
 export const getMaterialCheck = (orderId) =>
-  api.get(`/manufacturing/workflow/sales-orders/${orderId}/material-check`);
+  api.get(`/manufacturing/workflow/sales-orders/${orderId}/material-check`, { skipCache: true });
 
 export const submitMaterialCheck = (orderId, payload) =>
   api.post(`/manufacturing/workflow/sales-orders/${orderId}/material-check`, payload);
@@ -110,7 +110,7 @@ export const completePacking = (orderId, payload) =>
   api.post(`/manufacturing/workflow/packing/${orderId}/complete`, payload);
 
 export const getStageJobCard = (orderId, stage) =>
-  api.get(`/manufacturing/workflow/sales-orders/${orderId}/stage/${stage}`);
+  api.get(`/manufacturing/workflow/sales-orders/${orderId}/stage/${stage}`, { skipCache: true });
 
 export const submitStoreIssue = (orderId, payload) =>
   api.post(`/manufacturing/workflow/sales-orders/${orderId}/store-issue`, payload);

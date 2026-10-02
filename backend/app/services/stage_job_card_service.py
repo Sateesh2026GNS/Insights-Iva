@@ -438,7 +438,7 @@ def _build_inventory_check(
     if mc:
         from app.services.workflow_team_service import refresh_pending_material_check_stock
 
-        refresh_pending_material_check_stock(db, tenant_id, mc)
+        refresh_pending_material_check_stock(db, tenant_id, mc, force=True)
         for ln in mc.lines or []:
             req = float(ln.required_qty or 0)
             avail = float(ln.available_qty or 0)

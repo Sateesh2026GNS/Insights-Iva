@@ -571,7 +571,7 @@ def get_material_check(
     ).first()
     if not mc:
         mc = create_material_check_for_order(db, user.tenant_id, so, commit=True)
-    refresh_pending_material_check_stock(db, user.tenant_id, mc)
+    refresh_pending_material_check_stock(db, user.tenant_id, mc, force=True)
     db.commit()
     return {
         "sales_order_id": so.id,
