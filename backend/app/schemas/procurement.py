@@ -146,6 +146,7 @@ class GoodsReceiptBase(BaseModel):
     grn_number: str
     receipt_date: date
     warehouse_id: int
+    received_by: str | None = None
     status: str = "received"
     qc_status: str = "pending"
     notes: str | None = None
@@ -153,6 +154,11 @@ class GoodsReceiptBase(BaseModel):
 
 class GoodsReceiptCreate(GoodsReceiptBase):
     line_items: list[GoodsReceiptLineCreate] = []
+
+
+class GoodsReceiptUpdate(BaseModel):
+    received_by: str | None = None
+    notes: str | None = None
 
 
 class GoodsReceiptRead(GoodsReceiptBase):

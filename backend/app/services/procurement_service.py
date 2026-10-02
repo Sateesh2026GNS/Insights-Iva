@@ -498,6 +498,25 @@ def _reverse_grn_stock(db: Session, gr: GoodsReceipt, tenant_id: int) -> None:
             )
 
 
+def update_goods_receipt(
+    db: Session, tenant_id: int, grn_id: int, data: dict
+) -> GoodsReceipt | None:
+    grn = db.scalars(
+        select(GoodsReceipt).where(
+            GoodsReceipt.id == grn_id,
+            GoodsReceipt.tenant_id == tenant_id,
+        )
+    ).first()
+    if not grn:
+        return None
+    for key in ("received_by", "notes"):
+        if key in data:
+            setattr(grn, key, data[key])
+    db.commit()
+    db.refresh(grn)
+    return grn
+
+
 def create_goods_receipt(db: Session, payload: GoodsReceiptCreate) -> GoodsReceipt:
     """
     Create GRN. Stock is posted only when qc_status is pass/passed.
@@ -567,6 +586,7 @@ def create_goods_receipt(db: Session, payload: GoodsReceiptCreate) -> GoodsRecei
         grn_number=payload.grn_number,
         receipt_date=payload.receipt_date,
         warehouse_id=payload.warehouse_id,
+        received_by=payload.received_by,
         status=status,
         qc_status="pass" if post_stock_now else "pending",
         notes=payload.notes,

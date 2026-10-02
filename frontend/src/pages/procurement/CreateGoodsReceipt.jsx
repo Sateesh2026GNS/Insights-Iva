@@ -31,6 +31,7 @@ export default function CreateGoodsReceipt() {
     receipt_date: new Date().toISOString().slice(0, 10),
     warehouse_id: "",
     purchase_order_id: searchParams.get("po_id") || "",
+    received_by: "",
     qc_status: "pending",
     notes: "",
   });
@@ -98,6 +99,7 @@ export default function CreateGoodsReceipt() {
         purchase_order_id: form.purchase_order_id
           ? Number(form.purchase_order_id)
           : null,
+        received_by: form.received_by.trim() || null,
         status: qc === "pass" ? "received" : "pending_qc",
         qc_status: qc,
         notes: form.notes || null,
@@ -200,6 +202,16 @@ export default function CreateGoodsReceipt() {
               </option>
             ))}
           </select>
+        </label>
+        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+          Received By
+          <input
+            type="text"
+            value={form.received_by}
+            onChange={(e) => setForm((f) => ({ ...f, received_by: e.target.value }))}
+            placeholder="Name of receiver"
+            className={inputClass}
+          />
         </label>
         <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
           Purchase order (optional)
