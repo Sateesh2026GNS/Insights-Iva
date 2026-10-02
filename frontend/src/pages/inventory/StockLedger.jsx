@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   ArrowDownToLine,
   ArrowLeftRight,
@@ -138,7 +138,6 @@ function ClickableKpiCard({ onClick, title, children }) {
 }
 
 export default function StockLedger({ variant = "" }) {
-  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const todaysStockOutMode = variant === "todays_stock_out";
   const { addToast } = useToast();
@@ -226,7 +225,7 @@ export default function StockLedger({ variant = "" }) {
         ...e,
         item_code: e.item_code || e.sku || e.batch_number || "",
         unit: e.unit || "",
-        remarks: e.remarks || e.notes || e.reference || "",
+        remarks: e.remarks || e.notes || "",
         live: true,
       })),
     [entries]
@@ -315,18 +314,6 @@ export default function StockLedger({ variant = "" }) {
 
   const handleView = (row) => setViewTarget(row);
 
-  const handleEdit = () => {
-    addToast("Stock ledger entries are read-only and cannot be edited.", "warning");
-  };
-
-  const handleAdd = () => {
-    navigate("/inventory/stock-adjustment?new=1");
-  };
-
-  const handleDeleteRequest = () => {
-    addToast("Stock ledger entries cannot be deleted.", "warning");
-  };
-
   const viewFields = viewTarget
     ? (() => {
         const type = resolveTxnType(viewTarget);
@@ -354,6 +341,8 @@ export default function StockLedger({ variant = "" }) {
     {
       key: "date",
       label: "Date & Time",
+      width: 140,
+      minWidth: 140,
       render: (r) => {
         const { day, time } = formatDateParts(r.date);
         return (
@@ -367,6 +356,8 @@ export default function StockLedger({ variant = "" }) {
     {
       key: "item_name",
       label: "Item",
+      width: 190,
+      minWidth: 190,
       render: (r) => (
         <div className="max-w-[180px]">
           <p className="truncate text-[13px] font-semibold text-[var(--color-text)]">{r.item_name || "—"}</p>
@@ -377,6 +368,8 @@ export default function StockLedger({ variant = "" }) {
     {
       key: "transaction",
       label: "Transaction Type",
+      width: 140,
+      minWidth: 140,
       render: (r) => {
         const type = resolveTxnType(r);
         const meta = txnBadge(type);
@@ -394,8 +387,13 @@ export default function StockLedger({ variant = "" }) {
     {
       key: "reference",
       label: "Reference No.",
+      width: 280,
+      minWidth: 280,
       render: (r) => (
-        <span className="ui-num whitespace-nowrap text-[12px] text-[var(--color-text-secondary)]">
+        <span
+          className="block truncate ui-num text-[12px] text-[var(--color-text-secondary)]"
+          title={r.reference || ""}
+        >
           {r.reference || "—"}
         </span>
       ),
@@ -403,11 +401,15 @@ export default function StockLedger({ variant = "" }) {
     {
       key: "warehouse_name",
       label: "Warehouse",
+      width: 130,
+      minWidth: 130,
       render: (r) => <span className="text-[13px] text-[var(--color-text-secondary)]">{r.warehouse_name || "—"}</span>,
     },
     {
       key: "qty_in",
       label: "Stock In",
+      width: 100,
+      minWidth: 100,
       render: (r) => (
         <span className={`text-[13px] ${r.qty_in ? "ui-value-positive ui-num" : "ui-value-neutral ui-num"}`}>
           {r.qty_in ? formatQty(r.qty_in) : "—"}
@@ -417,6 +419,8 @@ export default function StockLedger({ variant = "" }) {
     {
       key: "qty_out",
       label: "Stock Out",
+      width: 100,
+      minWidth: 100,
       render: (r) => (
         <span className={`text-[13px] ${r.qty_out ? "ui-value-negative ui-num" : "ui-value-neutral ui-num"}`}>
           {r.qty_out ? formatQty(r.qty_out) : "—"}
@@ -426,6 +430,8 @@ export default function StockLedger({ variant = "" }) {
     {
       key: "balance",
       label: "Balance",
+      width: 100,
+      minWidth: 100,
       render: (r) => (
         <span className="ui-num text-[13px] font-semibold text-[var(--color-text)]">
           {r.balance != null ? formatQty(r.balance) : "—"}
@@ -435,11 +441,15 @@ export default function StockLedger({ variant = "" }) {
     {
       key: "unit",
       label: "UOM",
+      width: 80,
+      minWidth: 80,
       render: (r) => <span className="text-[13px] text-[var(--color-text-secondary)]">{r.unit || "—"}</span>,
     },
     {
       key: "user_name",
       label: "User",
+      width: 120,
+      minWidth: 120,
       render: (r) => <span className="text-[13px] text-[var(--color-text-secondary)]">{r.user_name || "—"}</span>,
     },
     {
@@ -460,7 +470,10 @@ export default function StockLedger({ variant = "" }) {
     {
       key: "actions",
       label: "Actions",
+      align: "center",
       sortable: false,
+      width: 72,
+      minWidth: 72,
       className: "min-w-[4.5rem] w-[4.5rem] whitespace-nowrap",
       render: (r) => (
         <div className="flex items-center justify-end whitespace-nowrap">
@@ -470,9 +483,9 @@ export default function StockLedger({ variant = "" }) {
             onOpen={setOpenMenuId}
             onClose={() => setOpenMenuId(null)}
             onView={() => handleView(r)}
-            onEdit={handleEdit}
-            onAdd={handleAdd}
-            onDelete={handleDeleteRequest}
+            showEdit={false}
+            showAdd={false}
+            showDelete={false}
           />
         </div>
       ),
@@ -775,6 +788,7 @@ export default function StockLedger({ variant = "" }) {
         <DataTable
           columns={columns}
           data={filtered}
+          tableClassName="min-w-[1792px] table-fixed"
           showSearch={false}
           pageSize={10}
           wrapClassName="inventory-table-scroll--ledger rounded-lg border border-[var(--color-border-soft)]"
