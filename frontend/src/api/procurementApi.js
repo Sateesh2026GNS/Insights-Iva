@@ -73,6 +73,8 @@ export const getGoodsReceipt = (grnId) => api.get(`/procurement/goods-receipt/${
 export const getGRNSummary = () => api.get("/procurement/goods-receipt/summary");
 export const getGRNEnriched = () => api.get("/procurement/goods-receipt/enriched");
 export const createGoodsReceipt = (payload) => api.post("/procurement/goods-receipt", payload);
+export const updateGoodsReceipt = (grnId, payload) =>
+  api.put(`/procurement/goods-receipt/${grnId}`, payload);
 export const approveGoodsReceiptQC = (grnId, payload) =>
   api.post(`/procurement/goods-receipt/${grnId}/qc`, payload);
 export const deleteGoodsReceipt = (grnId) => api.delete(`/procurement/goods-receipt/${grnId}`);

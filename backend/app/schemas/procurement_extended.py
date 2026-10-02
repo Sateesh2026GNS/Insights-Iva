@@ -118,6 +118,7 @@ class GRNListRead(BaseModel):
     remaining_summary: str | None = None
     qc_status: str = "pending"
     received_by: str | None = None
+    notes: str | None = None
     status: str = "received"
     receipt_date: str | None = None
 

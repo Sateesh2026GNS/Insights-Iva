@@ -504,6 +504,7 @@ def list_grn_enriched(db: Session, tenant_id: int) -> list[GRNListRead]:
                 remaining_summary=remaining_summary_by_po.get(gr.purchase_order_id) if gr.purchase_order_id else None,
                 qc_status=getattr(gr, "qc_status", "pending") or "pending",
                 received_by=getattr(gr, "received_by", None),
+                notes=gr.notes,
                 status=gr.status,
                 receipt_date=gr.receipt_date.isoformat() if gr.receipt_date else None,
             )

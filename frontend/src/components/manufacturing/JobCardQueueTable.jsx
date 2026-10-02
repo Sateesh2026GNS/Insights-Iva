@@ -114,7 +114,8 @@ function buildRowMenuItems({
   const rowCanSend = Boolean(onSend) && canSend && manualJobCardCanSend(row);
   const rowCanDelete =
     Boolean(onDelete) &&
-    (row.is_manual ? manualJobCardCanDelete(row, { canDelete }) : Boolean(canDelete));
+    row.is_manual &&
+    manualJobCardCanDelete(row, { canDelete });
   const rowCanMaterialCheck =
     storeMode &&
     row.is_manual &&
