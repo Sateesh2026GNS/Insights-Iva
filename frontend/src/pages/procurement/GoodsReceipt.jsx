@@ -303,20 +303,27 @@ export default function GoodsReceipt() {
     {
       key: "status",
       label: "Status",
-      render: (r) => (
-        <div>
-          <span
-            className={`rounded-full px-2 py-0.5 text-xs font-semibold capitalize ${statusColor(r.status)}`}
-          >
-            {r.status}
-          </span>
-          {Number(r.remaining_quantity) > 0.000001 ? (
-            <span className="mt-1 block text-xs font-medium text-amber-700">
-              {r.remaining_summary || `${r.remaining_quantity} pending on PO`}
-            </span>
-          ) : null}
-        </div>
-      ),
+      render: (r) => {
+        const rawStatus = String(r.status || "").trim().toLowerCase();
+        const hideStatusPill = ["pending", "pending_qc", "in_transit"].includes(rawStatus);
+
+        return (
+          <div>
+            {!hideStatusPill ? (
+              <span
+                className={`rounded-full px-2 py-0.5 text-xs font-semibold capitalize ${statusColor(r.status)}`}
+              >
+                {r.status}
+              </span>
+            ) : null}
+            {Number(r.remaining_quantity) > 0.000001 ? (
+              <span className="mt-1 block text-xs font-medium text-amber-700">
+                {r.remaining_summary || `${r.remaining_quantity} pending on PO`}
+              </span>
+            ) : null}
+          </div>
+        );
+      },
     },
     {
       key: "actions",
