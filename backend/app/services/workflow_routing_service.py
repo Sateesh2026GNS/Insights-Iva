@@ -32,6 +32,7 @@ from app.models.manufacturing_workflow import (
     ManufacturingWorkflowTransition,
     SalesJobCard,
     SalesOrderMaterialCheck,
+    WorkflowStageJobCard,
 )
 from app.models.product import Product
 from app.models.production import ProductionOrder, WorkOrder
@@ -776,7 +777,33 @@ def build_store_queue_context(
         if ws in POST_STORE_STATUSES or ws in {"READY_FOR_PRODUCTION", "PRODUCTION_ASSIGNED"}
         else "Production Manager (after store stage)"
     )
-    ctx["material_requirements"] = serialize_material_requirements(db, mc)
+    requirements = serialize_material_requirements(db, mc)
+    store_card = db.scalars(
+        select(WorkflowStageJobCard)
+        .options(selectinload(WorkflowStageJobCard.issue_lines))
+        .where(
+            WorkflowStageJobCard.tenant_id == tenant_id,
+            WorkflowStageJobCard.sales_order_id == so.id,
+            WorkflowStageJobCard.stage == "store",
+        )
+    ).first()
+    issued_lines = {
+        line.material_check_line_id: line
+        for line in (store_card.issue_lines if store_card else [])
+        if line.material_check_line_id is not None
+    }
+    materials_issued = bool(store_card and store_card.status == "completed")
+    if materials_issued:
+        for material in requirements:
+            issue = issued_lines.get(material["id"])
+            if issue:
+                material["issued_qty"] = float(issue.issued_qty or 0)
+                material["remaining_qty"] = float(issue.remaining_qty or 0)
+                material["stock_status"] = (
+                    "Issued" if issue.issue_status == "issued" else "Partially Issued"
+                )
+    ctx["materials_issued"] = materials_issued
+    ctx["material_requirements"] = requirements
     return ctx
 
 

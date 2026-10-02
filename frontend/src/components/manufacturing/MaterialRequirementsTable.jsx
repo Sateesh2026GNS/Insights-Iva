@@ -11,11 +11,11 @@ function stockStatusVariant(status) {
   const s = String(status || "").toLowerCase();
   if (s.includes("out of stock")) return "danger";
   if (s.includes("shortage")) return "warning";
-  if (s.includes("ready")) return "success";
+  if (s.includes("ready") || s.includes("issued")) return "success";
   return "info";
 }
 
-export default function MaterialRequirementsTable({ materials = [] }) {
+export default function MaterialRequirementsTable({ materials = [], materialsIssued = false }) {
   if (!materials.length) {
     return (
       <p className="px-4 py-6 text-sm text-[var(--color-text-muted)]">
@@ -32,9 +32,9 @@ export default function MaterialRequirementsTable({ materials = [] }) {
             <th className="px-3 py-2.5">Material Code</th>
             <th className="px-3 py-2.5">Material Name</th>
             <th className="px-2 py-2.5 text-right">Required Qty</th>
-            <th className="px-2 py-2.5 text-right">Available Qty</th>
+            <th className="px-2 py-2.5 text-right">{materialsIssued ? "Issued Qty" : "Available Qty"}</th>
             <th className="px-2 py-2.5 text-right">Reserved Qty</th>
-            <th className="px-2 py-2.5 text-right">Shortage Qty</th>
+            <th className="px-2 py-2.5 text-right">{materialsIssued ? "Remaining Qty" : "Shortage Qty"}</th>
             <th className="px-2 py-2.5">Unit</th>
             <th className="px-3 py-2.5">Stock Status</th>
           </tr>
@@ -45,11 +45,11 @@ export default function MaterialRequirementsTable({ materials = [] }) {
               <td className="px-3 py-2.5 font-mono font-semibold text-[var(--color-text)]">{row.material_code || row.sku || row.code || "—"}</td>
               <td className="px-3 py-2.5 text-[var(--color-text-secondary)]">{row.material || row.material_name || "—"}</td>
               <td className="px-2 py-2.5 text-right tabular-nums">{fmtQty(row.required_qty)}</td>
-              <td className="px-2 py-2.5 text-right tabular-nums text-[var(--color-text-secondary)]">{fmtQty(row.available_qty)}</td>
+              <td className="px-2 py-2.5 text-right tabular-nums text-[var(--color-text-secondary)]">{fmtQty(materialsIssued ? row.issued_qty : row.available_qty)}</td>
               <td className="px-2 py-2.5 text-right tabular-nums text-[var(--color-text-secondary)]">{fmtQty(row.reserved_qty)}</td>
               <td className="px-2 py-2.5 text-right tabular-nums">
-                {Number(row.shortage_qty) > 0 ? (
-                  <span className="font-semibold text-[var(--color-danger)]">{fmtQty(row.shortage_qty)}</span>
+                {Number(materialsIssued ? row.remaining_qty : row.shortage_qty) > 0 ? (
+                  <span className="font-semibold text-[var(--color-danger)]">{fmtQty(materialsIssued ? row.remaining_qty : row.shortage_qty)}</span>
                 ) : (
                   <span className="text-[var(--color-success)]">0</span>
                 )}

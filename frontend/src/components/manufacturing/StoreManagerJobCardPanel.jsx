@@ -149,10 +149,23 @@ export default function StoreManagerJobCardPanel({
             variant={storeStatusVariant(row)}
           />
         </div>
-        <MaterialRequirementsTable materials={storeContext.material_requirements || []} />
+        <MaterialRequirementsTable
+          materials={storeContext.material_requirements || []}
+          materialsIssued={storeContext.materials_issued}
+        />
       </article>
 
-      <article className="ui-card overflow-hidden">
+      {storeContext.materials_issued ? (
+        <article className="ui-card overflow-hidden">
+          <div className="border-b border-[var(--color-border-soft)] px-4 py-3">
+            <h2 className="text-sm font-bold uppercase tracking-wide text-[var(--color-text-muted)]">Store Issue Completed</h2>
+            <p className="mt-1 text-sm text-[var(--color-text-secondary)]">Materials have been issued to Production Manager.</p>
+          </div>
+          <div className="flex justify-end px-4 py-3">
+            <Button variant="ghost" size="sm" onClick={() => navigate("/my-job-cards")}>Back to Queue</Button>
+          </div>
+        </article>
+      ) : <article className="ui-card overflow-hidden">
         <div className="border-b border-[var(--color-border-soft)] px-4 py-3">
           <h2 className="text-sm font-bold uppercase tracking-wide text-[var(--color-text-muted)]">Store Manager Actions</h2>
         </div>
@@ -206,7 +219,7 @@ export default function StoreManagerJobCardPanel({
             <span className="font-semibold text-[var(--color-text)]">Remarks:</span> {storeContext.notes}
           </p>
         ) : null}
-      </article>
+      </article>}
     </div>
   );
 }
