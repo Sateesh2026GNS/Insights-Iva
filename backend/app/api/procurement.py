@@ -29,6 +29,7 @@ from app.schemas.procurement import (
     GoodsReceiptCreate,
     GoodsReceiptQCRequest,
     GoodsReceiptRead,
+    GoodsReceiptUpdate,
     MaterialRequestConvertToPORequest,
     MaterialRequestCreate,
     MaterialRequestRead,
@@ -108,6 +109,7 @@ from app.services.procurement_service import (
     list_purchase_orders,
     list_supplier_payments,
     update_material_request,
+    update_goods_receipt,
     update_purchase_order,
     update_purchase_order_status,
     update_supplier_payment,
@@ -607,6 +609,21 @@ def get_goods_receipt_endpoint(
     if not gr:
         raise HTTPException(404, "Goods receipt not found")
     return gr
+
+
+@router.put("/goods-receipt/{grn_id}", response_model=GoodsReceiptRead)
+def update_goods_receipt_endpoint(
+    grn_id: int,
+    payload: GoodsReceiptUpdate,
+    user: User = Depends(require_permission(MODULE)),
+    db: Session = Depends(get_db),
+) -> GoodsReceiptRead:
+    grn = update_goods_receipt(
+        db, user.tenant_id, grn_id, payload.model_dump(exclude_unset=True)
+    )
+    if not grn:
+        raise HTTPException(404, "Goods receipt not found")
+    return grn
 
 
 @router.delete("/goods-receipt/{grn_id}", status_code=204)

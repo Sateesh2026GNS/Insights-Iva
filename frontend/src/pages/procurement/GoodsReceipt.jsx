@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { CheckCircle, Eye, Package, Plus, Trash2, X } from "lucide-react";
+import { CheckCircle, Eye, Package, Pencil, Plus, Trash2, X } from "lucide-react";
 import KpiCard from "../../components/common/KpiCard";
 import PageHeader from "../../components/common/PageHeader";
 import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
@@ -15,6 +15,7 @@ import {
   deleteGoodsReceipt,
   getGRNEnriched,
   getGRNSummary,
+  updateGoodsReceipt,
 } from "../../api/procurementApi";
 import { formatInr, statusColor } from "../../data/procurementMasterData";
 import useManufacturingRefresh from "../../hooks/useManufacturingRefresh";
@@ -118,6 +119,56 @@ function GRNDetailModal({ row, onClose, onQC }) {
   );
 }
 
+function GRNEditModal({ row, saving, onClose, onSave }) {
+  const [receivedBy, setReceivedBy] = useState(row.received_by || "");
+  const [notes, setNotes] = useState(row.notes || "");
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    onSave({
+      received_by: receivedBy.trim() || null,
+      notes: notes.trim() || null,
+    });
+  };
+
+  return (
+    <div className="ui-modal-backdrop">
+      <form onSubmit={handleSubmit} className="ui-modal w-full max-w-lg space-y-4">
+        <div>
+          <h2 className="text-lg font-bold text-[var(--color-text)]">Edit GRN details</h2>
+          <p className="text-sm text-[var(--color-text-muted)]">{row.grn_number}</p>
+        </div>
+        <label className="block text-sm font-medium text-[var(--color-text)]">
+          Received By
+          <input
+            type="text"
+            value={receivedBy}
+            onChange={(event) => setReceivedBy(event.target.value)}
+            className="mt-1 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm"
+          />
+        </label>
+        <label className="block text-sm font-medium text-[var(--color-text)]">
+          Notes
+          <textarea
+            rows={3}
+            value={notes}
+            onChange={(event) => setNotes(event.target.value)}
+            className="mt-1 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm"
+          />
+        </label>
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="cancel" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button type="submit" variant="primary" disabled={saving}>
+            {saving ? "Saving…" : "Save changes"}
+          </Button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
 const emptySummary = {
   todays_grn: 0,
   pending_qc: 0,
@@ -134,8 +185,10 @@ export default function GoodsReceipt() {
   const [summary, setSummary] = useState(emptySummary);
   const [rows, setRows] = useState([]);
   const [selected, setSelected] = useState(null);
+  const [editing, setEditing] = useState(null);
   const [openMenu, setOpenMenu] = useState(null);
   const [qcBusy, setQcBusy] = useState(false);
+  const [editBusy, setEditBusy] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -203,6 +256,21 @@ export default function GoodsReceipt() {
     }
   };
 
+  const handleEditSave = async (values) => {
+    if (!editing?.id || editBusy) return;
+    setEditBusy(true);
+    try {
+      await updateGoodsReceipt(editing.id, values);
+      addToast("Goods receipt updated", "success");
+      setEditing(null);
+      await load();
+    } catch (err) {
+      addToast(err.response?.data?.detail || "Failed to update goods receipt", "error");
+    } finally {
+      setEditBusy(false);
+    }
+  };
+
   const qcColor = (qc) => {
     const m = {
       passed: "bg-green-100 text-green-800",
@@ -266,6 +334,11 @@ export default function GoodsReceipt() {
                 label: "View / QC",
                 icon: <Eye className="h-4 w-4" />,
                 onClick: () => setSelected(r),
+              },
+              {
+                label: "Edit",
+                icon: <Pencil className="h-4 w-4" />,
+                onClick: () => setEditing(r),
               },
               { divider: true },
               {
@@ -346,6 +419,14 @@ export default function GoodsReceipt() {
           row={selected}
           onClose={() => setSelected(null)}
           onQC={handleQC}
+        />
+      )}
+      {editing && (
+        <GRNEditModal
+          row={editing}
+          saving={editBusy}
+          onClose={() => setEditing(null)}
+          onSave={handleEditSave}
         />
       )}
     </ListPageShell>
