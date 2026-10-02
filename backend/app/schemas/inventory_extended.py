@@ -187,8 +187,8 @@ class StockAdjustmentRead(BaseModel):
 
 class LedgerSummaryRead(BaseModel):
     total_transactions: int = Field(0, ge=0)
-    stock_in: int = Field(0, ge=0)
-    stock_out: int = Field(0, ge=0)
+    stock_in: float = Field(0, ge=0)
+    stock_out: float = Field(0, ge=0)
     transfers: int = Field(0, ge=0)
     adjustments: int = Field(0, ge=0)
     current_stock_value: float = Field(0.0, ge=0.0)
@@ -202,9 +202,9 @@ class LedgerEntryRead(BaseModel):
     item_name: str
     unit: str = "pcs"
     batch_number: str | None = None
-    qty_in: int = Field(0, ge=0)
-    qty_out: int = Field(0, ge=0)
-    balance: int = Field(0, ge=0)
+    qty_in: float = Field(0, ge=0)
+    qty_out: float = Field(0, ge=0)
+    balance: float = Field(0, ge=0)
     user_name: str | None = None
     reference: str | None = None
 

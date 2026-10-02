@@ -82,6 +82,7 @@ def test_post_grn_stock_passes_commit_false():
     line.item_id = 7
     gr = MagicMock()
     gr.warehouse_id = 3
+    gr.grn_number = "GRN-TEST-001"
     gr.line_items = [line]
 
     with patch("app.services.procurement_service.record_stock_movement") as mock_mov:
@@ -91,3 +92,4 @@ def test_post_grn_stock_passes_commit_false():
         payload = mock_mov.call_args.args[1]
         assert payload.quantity == 8
         assert payload.movement_type == "in"
+        assert payload.reference == "GRN GRN-TEST-001"

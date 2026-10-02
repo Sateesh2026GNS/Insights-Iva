@@ -2,7 +2,7 @@ import time
 import uuid
 
 
-from sqlalchemy import text
+from sqlalchemy import Integer, text
 from sqlalchemy.exc import IntegrityError, OperationalError, SQLAlchemyError
 
 from fastapi import FastAPI, Request
@@ -432,6 +432,19 @@ def on_startup():
                                 conn.execute(
                                     text(f"ALTER TABLE {table_name} ADD COLUMN {col.name} {col_type}")
                                 )
+                if conn.dialect.name == "postgresql":
+                    for table_name in ("inventory_items", "stock_levels", "stock_movements"):
+                        columns = {
+                            column["name"]: column["type"]
+                            for column in inspect(conn).get_columns(table_name)
+                        }
+                        if isinstance(columns.get("quantity"), Integer):
+                            conn.execute(
+                                text(
+                                    f"ALTER TABLE {table_name} ALTER COLUMN quantity "
+                                    "TYPE NUMERIC(12, 2) USING quantity::numeric"
+                                )
+                            )
                 # Development startup adds new columns without running Alembic.
                 # Backfill pre-existing catalog rows once: null means this field
                 # predates the explicit saleability choice, while false is an

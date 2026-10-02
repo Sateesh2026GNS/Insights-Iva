@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import date
+from types import SimpleNamespace
 
 import pytest
 from sqlalchemy import select
@@ -11,11 +12,17 @@ from sqlalchemy import select
 from app.core.database import SessionLocal
 from app.core.seed_roles import seed_roles
 from app.core.seed_tenant import seed_tenant
+from app.models.inventory import InventoryItem, StockLevel, StockMovement, Warehouse
+from app.models.manufacturing_workflow import SalesOrderMaterialCheck
 from app.models.product import Product
 from app.models.role import Role
 from app.models.sales import Customer, SalesOrder
 from app.models.user import User, user_roles
+from app.schemas.inventory import StockMovementCreate
 from app.services.auth_service import hash_password
+from app.services.inventory_service import record_stock_movement
+from app.services.stage_job_card_service import build_stage_job_card
+from app.services.workflow_team_service import _deduct_store_issue_stock
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -285,6 +292,86 @@ def test_material_check_all_available_advances_to_store_issue(client):
     assert matched.get("job_card_no")
 
 
+def test_material_check_recomputes_live_stock_when_shortage_status_is_stale(client):
+    tenant_id = 1
+    customer_id, _ = _ensure_customer_and_product(tenant_id)
+    sales_headers = _create_role_user(client, tenant_id, "Sales Manager")
+    store_headers = _create_role_user(client, tenant_id, "Store Manager")
+
+    db = SessionLocal()
+    try:
+        product = db.scalars(
+            select(Product).where(Product.tenant_id == tenant_id, Product.sku == "WF-STALE-STOCK-001")
+        ).first()
+        if not product:
+            product = Product(
+                tenant_id=tenant_id,
+                sku="WF-STALE-STOCK-001",
+                name="Raw Material For Stock Refresh",
+                category="raw_material",
+                unit_price=8.0,
+                unit_cost=4.0,
+            )
+            db.add(product)
+            db.flush()
+        product_id = product.id
+        db.commit()
+    finally:
+        db.close()
+
+    order_id = _create_sales_order(client, sales_headers, customer_id, product_id)
+    confirm = client.post(f"/sales/sales-orders/{order_id}/confirm", headers=sales_headers)
+    assert confirm.status_code == 200, confirm.text
+
+    mat = client.get(
+        f"/manufacturing/workflow/sales-orders/{order_id}/material-check",
+        headers=store_headers,
+    )
+    assert mat.status_code == 200, mat.text
+
+    db = SessionLocal()
+    try:
+        so = db.get(SalesOrder, order_id)
+        assert so is not None
+        mc = db.scalars(
+            select(SalesOrderMaterialCheck).where(
+                SalesOrderMaterialCheck.sales_order_id == order_id,
+                SalesOrderMaterialCheck.tenant_id == tenant_id,
+            )
+        ).first()
+        assert mc is not None
+        assert mc.lines
+        so.workflow_status = "MATERIAL_SHORTAGE"
+        mc.status = "shortage"
+        for ln in mc.lines:
+            ln.available_qty = 0.0
+            ln.shortage_qty = float(ln.required_qty or 0)
+            ln.is_available = False
+            ln.stock_location = "Main Warehouse"
+
+        item = db.get(InventoryItem, int(mc.lines[0].inventory_item_id))
+        assert item is not None
+        db.commit()
+
+        record_stock_movement(
+            db,
+            StockMovementCreate(
+                tenant_id=tenant_id,
+                warehouse_id=1,
+                item_id=item.id,
+                quantity=float(mc.lines[0].required_qty or 0),
+                movement_type="in",
+            ),
+            commit=True,
+        )
+
+        payload = build_stage_job_card(db, tenant_id, order_id, "inventory_check")
+        assert payload["stock_status"] == "Available", payload
+        assert payload["materials"][0]["availability_status"] == "Available", payload
+    finally:
+        db.close()
+
+
 def test_store_manager_cannot_confirm_sales_order(client):
     tenant_id = 1
     customer_id, product_id = _ensure_customer_and_product(tenant_id)
@@ -448,3 +535,58 @@ def test_complete_store_stage_moves_to_production_manager_queue(client):
         assert matched.get("job_card_no")
     else:
         assert in_store_queue
+
+
+def test_store_issue_preserves_fractional_quantities():
+    db = SessionLocal()
+    try:
+        suffix = uuid.uuid4().hex[:8]
+        warehouse = Warehouse(
+            tenant_id=1,
+            name=f"Fractional Issue Warehouse {suffix}",
+            code=f"FI-{suffix}",
+        )
+        item = InventoryItem(
+            tenant_id=1,
+            sku=f"FI-{suffix}",
+            name="Fractional Issue Material",
+            unit="kg",
+            quantity=1,
+        )
+        db.add_all([warehouse, item])
+        db.flush()
+        level = StockLevel(warehouse_id=warehouse.id, item_id=item.id, quantity=1)
+        db.add(level)
+        db.flush()
+
+        issue_line = SimpleNamespace(
+            material_check_line_id=99,
+            store_location=warehouse.name,
+            material_name="Fractional Issue Material",
+        )
+        material_line = SimpleNamespace(
+            inventory_item_id=item.id,
+            stock_location=warehouse.name,
+        )
+        _deduct_store_issue_stock(
+            db,
+            1,
+            SimpleNamespace(full_name="Store Test"),
+            SimpleNamespace(order_number="SO-FRACTIONAL-TEST"),
+            issue_line,
+            0.06,
+            {99: material_line},
+        )
+
+        db.refresh(level)
+        movement = db.scalars(
+            select(StockMovement).where(
+                StockMovement.item_id == item.id,
+                StockMovement.reference == "ST-ISSUE | SO-FRACTIONAL-TEST | Fractional Issue Material",
+            )
+        ).one()
+        assert float(movement.quantity) == 0.06
+        assert float(level.quantity) == 0.94
+    finally:
+        db.rollback()
+        db.close()

@@ -473,6 +473,7 @@ def _post_grn_stock(db: Session, gr: GoodsReceipt, tenant_id: int) -> None:
                     item_id=line.item_id,
                     quantity=accepted,
                     movement_type="in",
+                    reference=f"GRN {gr.grn_number}",
                 ),
                 commit=False,
             )
@@ -493,6 +494,7 @@ def _reverse_grn_stock(db: Session, gr: GoodsReceipt, tenant_id: int) -> None:
                     item_id=line.item_id,
                     quantity=accepted,
                     movement_type="out",
+                    reference=f"GRN reversal {gr.grn_number}",
                 ),
                 commit=False,
             )

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime, timezone
+from decimal import Decimal
 from typing import Any
 
 from fastapi import HTTPException
@@ -155,7 +156,24 @@ def refresh_pending_material_check_stock(
     from app.models.inventory import InventoryItem, StockLevel, Warehouse
     from app.services.inventory_service import get_default_warehouse, get_total_stock
 
-    pending = force or (mc.status or "pending").lower() in {"pending", ""}
+    pending = force or (mc.status or "pending").lower() in {
+        "pending",
+        "",
+        "material_check_pending",
+        "material_shortage",
+        "material_partial",
+        "material_available",
+    }
+    if not force and (mc.status or "").strip().lower() not in {
+        "pending",
+        "",
+        "material_check_pending",
+        "material_shortage",
+        "material_partial",
+        "material_available",
+    }:
+        pending = True
+
     default_wh = get_default_warehouse(db, tenant_id)
     for ln in mc.lines or []:
         reserved = 0.0
@@ -987,9 +1005,8 @@ def _deduct_store_issue_stock(
 ) -> None:
     from app.schemas.inventory import StockMovementCreate
     from app.services.inventory_service import record_stock_movement
-    from app.services.manufacturing_workflow_service import _qty_int
 
-    qty = _qty_int(qty_delta)
+    qty = Decimal(str(qty_delta or 0))
     if qty <= 0:
         return
     mc_line = mc_line_map.get(issue_line.material_check_line_id) if issue_line.material_check_line_id else None
@@ -1008,7 +1025,7 @@ def _deduct_store_issue_stock(
             tenant_id=tenant_id,
             warehouse_id=warehouse.id,
             item_id=int(item_id),
-            quantity=qty,
+            quantity=float(qty),
             movement_type="out",
             reference=f"ST-ISSUE | {so.order_number} | {issue_line.material_name}",
             created_by=user.full_name,

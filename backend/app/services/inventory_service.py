@@ -1,5 +1,6 @@
 import logging
 from datetime import date
+from decimal import Decimal
 from sqlalchemy import select, func, or_
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -457,28 +458,29 @@ def record_stock_movement(
         .with_for_update()
     )
     sl = db.scalars(stmt).first()
-    qty = abs(float(payload.quantity))
+    qty = abs(Decimal(str(payload.quantity)))
     inv_item = db.get(InventoryItem, payload.item_id)
     if sl:
         if effective == "in":
-            sl.quantity += qty
+            sl.quantity = Decimal(str(sl.quantity or 0)) + qty
         elif effective == "out":
             from app.core.concurrency import raise_insufficient_stock
 
-            current_qty = float(sl.quantity or 0)
+            current_qty = Decimal(str(sl.quantity or 0))
             if current_qty < qty:
                 try:
                     db.rollback()
                 except Exception:
                     pass
                 raise_insufficient_stock(
-                    current_qty,
+                    float(current_qty),
                     qty,
                     unit=inv_item.unit if inv_item else None,
                 )
             sl.quantity = current_qty - qty
         elif effective == "adjustment":
-            sl.quantity = max(0, sl.quantity + payload.quantity)
+            adjustment = Decimal(str(payload.quantity))
+            sl.quantity = max(Decimal("0"), Decimal(str(sl.quantity or 0)) + adjustment)
     elif effective == "in":
         sl = StockLevel(
             warehouse_id=payload.warehouse_id,
@@ -502,7 +504,7 @@ def record_stock_movement(
         sl = StockLevel(
             warehouse_id=payload.warehouse_id,
             item_id=payload.item_id,
-            quantity=max(0.0, float(payload.quantity)),
+            quantity=max(Decimal("0"), Decimal(str(payload.quantity))),
         )
         db.add(sl)
 
@@ -511,6 +513,7 @@ def record_stock_movement(
             inv_item.reserved = max(0, int(inv_item.reserved or 0) - qty)
 
     if inv_item:
+        db.flush()
         _sync_cached_item_quantity(db, inv_item)
 
     try:

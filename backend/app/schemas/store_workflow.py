@@ -123,14 +123,14 @@ class PendingInventoryChecksListRead(BaseModel):
 class StoreDashboardTodayMovement(BaseModel):
     stock_in_count: int = 0
     stock_out_count: int = 0
-    stock_in_quantity: int = 0
-    stock_out_quantity: int = 0
+    stock_in_quantity: float = 0
+    stock_out_quantity: float = 0
 
 
 class StoreDashboardLowStockItem(BaseModel):
     item_id: int
     item_name: str
-    current_stock: int = 0
+    current_stock: float = 0
     reorder_level: int | None = None
     unit: str | None = None
 
@@ -163,7 +163,7 @@ class StoreDashboardActivityRow(BaseModel):
     occurred_at: datetime | None = None
     activity_label: str
     item_name: str
-    quantity: int
+    quantity: float
     movement_type: str
 
 
@@ -173,7 +173,7 @@ class StoreDashboardRead(BaseModel):
     catalog_product_count: int = 0
     catalog_low_stock_count: int = 0
     catalog_out_of_stock_count: int = 0
-    current_inventory_qty: int = 0
+    current_inventory_qty: float = 0
     low_stock_items: int = 0
     out_of_stock_items: int = 0
     todays_stock_in: int = 0

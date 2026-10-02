@@ -617,7 +617,7 @@ def get_store_dashboard(db: Session, tenant_id: int) -> StoreDashboardRead:
     current_qty = 0
     low = 0
     out = 0
-    low_stock_candidates: list[tuple[int, StoreDashboardLowStockItem]] = []
+    low_stock_candidates: list[tuple[float, StoreDashboardLowStockItem]] = []
     for item in items:
         qty = get_total_stock(db, item.id)
         reserved = int(getattr(item, "reserved", 0) or 0)
@@ -663,7 +663,7 @@ def get_store_dashboard(db: Session, tenant_id: int) -> StoreDashboardRead:
         )
         or 0
     )
-    todays_in_qty = int(
+    todays_in_qty = float(
         db.scalar(
             select(func.coalesce(func.sum(StockMovement.quantity), 0)).where(
                 StockMovement.tenant_id == tenant_id,
@@ -673,7 +673,7 @@ def get_store_dashboard(db: Session, tenant_id: int) -> StoreDashboardRead:
         )
         or 0
     )
-    todays_out_qty = int(
+    todays_out_qty = float(
         db.scalar(
             select(func.coalesce(func.sum(StockMovement.quantity), 0)).where(
                 StockMovement.tenant_id == tenant_id,
@@ -764,7 +764,7 @@ def get_store_dashboard(db: Session, tenant_id: int) -> StoreDashboardRead:
             occurred_at=m.created_at,
             activity_label=_movement_activity_label(m.movement_type),
             item_name=item_name_map.get(m.item_id, "—"),
-            quantity=int(m.quantity or 0),
+            quantity=float(m.quantity or 0),
             movement_type=m.movement_type or "",
         )
         for m in recent_moves

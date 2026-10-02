@@ -11,7 +11,11 @@ from app.core.seed_tenant import seed_tenant
 from app.models.inventory import InventoryItem, StockLevel, StockMovement, Warehouse
 from app.models.role import Role
 from app.models.user import User, user_roles
+from app.schemas.inventory import StockMovementCreate
 from app.services.auth_service import hash_password
+from app.services.inventory_service import record_stock_movement
+from app.services.inventory_extended_service import get_ledger_summary, list_ledger_entries
+from app.services.store_workflow_service import get_store_dashboard
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -103,6 +107,63 @@ def _stock_level_qty(tenant_id, wh_id, item_id):
         ).first()
         return int(sl.quantity if sl else 0)
     finally:
+        db.close()
+
+
+def test_fractional_stock_movement_updates_warehouse_balance(register_admin):
+    tenant_id = register_admin()["user"]["tenant_id"]
+    db = SessionLocal()
+    try:
+        suffix = uuid.uuid4().hex[:8]
+        warehouse = Warehouse(
+            tenant_id=tenant_id,
+            name=f"Fractional Warehouse {suffix}",
+            code=f"FRACT-{suffix}",
+        )
+        item = InventoryItem(
+            tenant_id=tenant_id,
+            sku=f"FRACT-{suffix}",
+            name="Fractional Stock Test",
+            unit="kg",
+            quantity=0,
+        )
+        db.add_all([warehouse, item])
+        db.flush()
+        level = StockLevel(warehouse_id=warehouse.id, item_id=item.id, quantity=0)
+        db.add(level)
+        db.flush()
+
+        movement = record_stock_movement(
+            db,
+            StockMovementCreate(
+                tenant_id=tenant_id,
+                warehouse_id=warehouse.id,
+                item_id=item.id,
+                quantity=0.5,
+                movement_type="in",
+            ),
+            commit=False,
+        )
+
+        db.refresh(level)
+        db.refresh(item)
+        assert float(movement.quantity) == 0.5
+        assert float(level.quantity) == 0.5
+        assert float(item.quantity) == 0.5
+
+        dashboard = get_store_dashboard(db, tenant_id)
+        assert float(dashboard.current_inventory_qty) == 0.5
+        assert float(dashboard.today_movement.stock_in_quantity) == 0.5
+        assert float(dashboard.recent_stock_activity[0].quantity) == 0.5
+
+        ledger = list_ledger_entries(db, tenant_id)
+        item_entry = next(row for row in ledger if row.item_name == item.name)
+        assert float(item_entry.qty_in) == 0.5
+        assert float(item_entry.balance) == 0.5
+        summary = get_ledger_summary(db, tenant_id)
+        assert float(summary.stock_in) == 0.5
+    finally:
+        db.rollback()
         db.close()
 
 
