@@ -405,7 +405,7 @@ export default function Warehouses() {
             onClose={() => setOpenMenuId(null)}
             onView={() => openWarehouse(r)}
             onEdit={() => setFormWarehouse(r.live ? r : {})}
-            onAdd={() => setFormWarehouse({})}
+            showAdd={false}
             onDelete={() => handleDeleteRequest(r)}
           />
         </div>
