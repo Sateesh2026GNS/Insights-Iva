@@ -49,13 +49,6 @@ function formatInrAmount(value) {
   return `₹ ${Number(value || 0).toLocaleString("en-IN")}`;
 }
 
-function utilizationTone(pct) {
-  const n = Number(pct) || 0;
-  if (n >= 80) return { bar: "bg-[#ef4444]", text: "text-[#ef4444]" };
-  if (n >= 55 && n < 70) return { bar: "bg-[#f59e0b]", text: "text-[#d97706]" };
-  return { bar: "bg-[#16a34a]", text: "text-[#16a34a]" };
-}
-
 function thumbColor(name = "") {
   const colors = ["#2563eb", "#16a34a", "#f59e0b", "#7c3aed", "#0ea5e9", "#64748b", "#14b8a6", "#ef4444"];
   let hash = 0;
@@ -122,9 +115,6 @@ export default function Warehouses() {
         country: w.country || "India",
         total_items: w.total_items ?? w.item_count ?? 0,
         inventory_value: Number(w.inventory_value ?? w.stock_value ?? 0) || 0,
-        utilization_pct:
-          w.utilization_pct ??
-          (w.capacity ? Math.round(((w.used_capacity || 0) / w.capacity) * 100) : 0),
         thumb: thumbColor(w.name || w.code || ""),
         live: true,
       })),
@@ -153,15 +143,10 @@ export default function Warehouses() {
     const active = filtered.filter((w) => w.status === "active").length;
     const totalItems = filtered.reduce((s, w) => s + Number(w.total_items || 0), 0);
     const stockValue = filtered.reduce((s, w) => s + Number(w.inventory_value || 0), 0);
-    const utilValues = filtered.map((w) => Number(w.utilization_pct) || 0).filter((n) => n > 0);
-    const avgUtilization = utilValues.length
-      ? Math.round(utilValues.reduce((a, b) => a + b, 0) / utilValues.length)
-      : 0;
     return {
       total: filtered.length,
       totalItems,
       stockValue,
-      avgUtilization,
       active,
     };
   }, [filtered]);
@@ -359,26 +344,6 @@ export default function Warehouses() {
       ),
     },
     {
-      key: "utilization_pct",
-      label: "Utilization",
-      align: "center",
-      width: "155px",
-      render: (r) => {
-        const pct = Number(r.utilization_pct) || 0;
-        const tone = utilizationTone(pct);
-        return (
-          <div className="min-w-[110px]">
-            <div className="mb-1 flex items-center justify-between gap-2">
-              <span className={`text-[12px] font-semibold tabular-nums ${tone.text}`}>{pct}%</span>
-            </div>
-            <div className="h-1.5 overflow-hidden rounded-full bg-[var(--color-surface-muted)]">
-              <div className={`h-full rounded-full ${tone.bar}`} style={{ width: `${Math.min(pct, 100)}%` }} />
-            </div>
-          </div>
-        );
-      },
-    },
-    {
       key: "status",
       label: "Status",
       align: "center",
@@ -433,7 +398,7 @@ export default function Warehouses() {
         }
       />
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <ClickableKpiCard
           onClick={() => { setStatusFilter(""); setSearch(""); }}
           title="Show all warehouses"
@@ -454,13 +419,6 @@ export default function Warehouses() {
           tone="warning"
         >
           <KpiCard label="Total Stock Value" value={formatInrAmount(kpis.stockValue)} icon={IndianRupee} tone="warning" meta="Across all warehouses" />
-        </ClickableKpiCard>
-        <ClickableKpiCard
-          onClick={() => { setStatusFilter(""); setSearch(""); }}
-          title="View average utilization"
-          tone="primary"
-        >
-          <KpiCard label="Avg. Utilization" value={`${kpis.avgUtilization}%`} icon={Building2} tone="primary" meta="Warehouse capacity" />
         </ClickableKpiCard>
         <ClickableKpiCard
           onClick={() => { setStatusFilter("active"); setSearch(""); }}
