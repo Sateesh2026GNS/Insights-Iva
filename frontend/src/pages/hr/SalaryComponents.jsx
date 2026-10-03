@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { Info, Pencil, Plus, Trash2, X } from "lucide-react";
 
 import Loader from "../../components/common/Loader";
+import ShorthandQuantityInput from "../../components/common/ShorthandQuantityInput";
 import { ListPageShell } from "../../components/common/ListPageShell";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { useToast } from "../../context/ToastContext";
@@ -231,17 +232,12 @@ function ComponentDrawer({ open, mode, tab, initial, onClose, onSave }) {
                 <span className="hr-salary-components__suffix">%</span>
               </div>
             ) : (
-              <div className="hr-salary-components__amount-wrap">
-                <span className="hr-salary-components__amount-prefix">₹</span>
-                <input
-                  className="hr-salary-components__input"
-                  type="number"
-                  min="0"
-                  value={value}
-                  onChange={(e) => setValue(e.target.value)}
-                  placeholder="0"
-                />
-              </div>
+              <ShorthandQuantityInput
+                value={value}
+                onChange={(val) => setValue(val)}
+                prefix="₹"
+                placeholder="0"
+              />
             )}
           </div>
 

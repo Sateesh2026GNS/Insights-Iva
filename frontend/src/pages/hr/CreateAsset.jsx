@@ -1,8 +1,9 @@
-﻿import { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { ArrowLeft, Save } from "lucide-react";
 
 import Loader from "../../components/common/Loader";
+import ShorthandQuantityInput from "../../components/common/ShorthandQuantityInput";
 import { useToast } from "../../context/ToastContext";
 import { createHrAsset, getEmployees } from "../../api/hrApi";
 import { apiErrorMessage } from "../../utils/apiError";
@@ -192,13 +193,11 @@ export default function CreateAsset() {
               />
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Purchase Cost (₹)</label>
-              <input
-                type="number"
-                placeholder="e.g. 45000"
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Purchase Cost (₹)</label>
+              <ShorthandQuantityInput
                 value={form.purchase_cost}
-                onChange={(e) => handleChange("purchase_cost", e.target.value)}
-                className={inputClass}
+                onChange={(val) => handleChange("purchase_cost", val)}
+                placeholder="e.g. 45,000 or 45k"
               />
             </div>
           </div>

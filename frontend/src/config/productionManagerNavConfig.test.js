@@ -33,10 +33,10 @@ describe("productionManagerNavConfig", () => {
     expect(queue?.to).toContain("dept=production");
   });
 
-  it("omits procurement, masters, and incoming inspection", () => {
+  it("omits procurement and incoming inspection", () => {
     const keys = PRODUCTION_MANAGER_NAV_ITEMS.map((n) => n.key);
     expect(keys).not.toContain("procurement");
-    expect(keys).not.toContain("masters");
+    expect(keys).toContain("masters");
     const quality = PRODUCTION_MANAGER_NAV_ITEMS.find((n) => n.key === "quality");
     const paths = (quality?.children || []).map((c) => c.to);
     expect(paths).not.toContain("/quality/incoming");
@@ -61,6 +61,7 @@ describe("productionManagerNavConfig", () => {
       "dashboard",
       "production",
       "materials",
+      "masters",
       "quality",
       "maintenance",
       "alerts",

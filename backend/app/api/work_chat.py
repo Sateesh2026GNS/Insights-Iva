@@ -9,7 +9,9 @@ from app.schemas.work_chat import (
     GroupChatCreate,
     MarkReadBody,
     MessageCreate,
+    MessageForward,
     MessageUpdate,
+    ReactionToggle,
 )
 from app.services import work_chat_service as chat
 
@@ -137,3 +139,25 @@ def search_messages(
     db: Session = Depends(get_db),
 ):
     return chat.search_messages(db, current_user, q, limit=limit)
+
+
+@router.post("/messages/{message_id}/reactions")
+def toggle_reaction(
+    message_id: int,
+    payload: ReactionToggle,
+    tenant_id: int = Depends(tenant_scope(MODULE)),
+    current_user: User = Depends(require_permission(MODULE)),
+    db: Session = Depends(get_db),
+):
+    return chat.toggle_reaction(db, current_user, message_id, payload.emoji)
+
+
+@router.post("/messages/{message_id}/forward")
+def forward_message(
+    message_id: int,
+    payload: MessageForward,
+    tenant_id: int = Depends(tenant_scope(MODULE)),
+    current_user: User = Depends(require_permission(MODULE)),
+    db: Session = Depends(get_db),
+):
+    return chat.forward_message(db, current_user, message_id, payload.target_conversation_ids)

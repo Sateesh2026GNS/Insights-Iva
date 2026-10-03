@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
 import Button from "../common/Button";
+import ShorthandQuantityInput from "../common/ShorthandQuantityInput";
 
 import { inputClass } from "../../design-system/classes";
 
@@ -99,16 +100,13 @@ export default function AddInvoiceDiscountModal({
                 <option value="₹">₹</option>
                 <option value="%">%</option>
               </select>
-              <input
+              <ShorthandQuantityInput
                 autoFocus
-                type="number"
-                min="0"
-                step="any"
                 value={value}
-                onChange={(e) => setValue(e.target.value)}
+                onChange={(val) => setValue(val)}
                 placeholder="Enter discount"
                 required
-                className="min-w-0 flex-1 px-3 py-2.5 text-[13px] outline-none"
+                className="min-w-0 flex-1 border-none shadow-none focus:outline-none"
               />
             </div>
             {value !== "" ? (

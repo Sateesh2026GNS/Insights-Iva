@@ -4,6 +4,7 @@ import { Globe, Mail, Plus, Upload, X } from "lucide-react";
 
 import Button from "../common/Button";
 import SearchableSelect from "../common/SearchableSelect";
+import ShorthandQuantityInput from "../common/ShorthandQuantityInput";
 import GstPrefillModal from "./GstPrefillModal";
 import { INDIAN_STATES } from "../../data/indiaLocations";
 import { lookupIndianPincode } from "../../api/addressLookupApi";
@@ -378,9 +379,13 @@ export default function CustomerForm({ initialForm, customer = null, onCancel })
                 </select>
               </FormRow>
               <FormRow label="Opening Balance">
-                <div className="customer-form__phone-row">
-                  <span className="customer-form__input flex items-center bg-[var(--color-surface-muted)]">INR</span>
-                  <input className="customer-form__input" value={form.other.opening_balance} onChange={(e) => patch("other.opening_balance", e.target.value.replace(/[^\d.]/g, ""))} />
+                <div className="customer-form__phone-row items-center gap-2">
+                  <span className="customer-form__input flex items-center justify-center bg-[var(--color-surface-muted)] max-w-16 text-xs font-medium">INR</span>
+                  <ShorthandQuantityInput
+                    value={form.other.opening_balance}
+                    onChange={(val) => patch("other.opening_balance", val)}
+                    placeholder="e.g. 50,000 or 1 Lakh"
+                  />
                 </div>
               </FormRow>
               <FormRow label="Payment Terms">

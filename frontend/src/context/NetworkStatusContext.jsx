@@ -10,6 +10,7 @@ import {
 
 import { OfflineBanner } from "../components/common/states/OfflineState";
 import SlowNetworkBanner from "../components/common/states/SlowNetworkBanner";
+import { triggerServerWakeup } from "../utils/serverWakeup";
 
 const NetworkStatusContext = createContext({
   online: true,
@@ -86,6 +87,7 @@ export function NetworkStatusProvider({ children }) {
   }, []);
 
   const runRetries = useCallback(() => {
+    triggerServerWakeup({ force: true });
     retryFnsRef.current.forEach((fn) => {
       try {
         fn();

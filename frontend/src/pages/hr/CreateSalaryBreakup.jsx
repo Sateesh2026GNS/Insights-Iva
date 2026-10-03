@@ -4,6 +4,7 @@ import { ArrowLeft, User } from "lucide-react";
 
 import Loader from "../../components/common/Loader";
 import { ListPageShell } from "../../components/common/ListPageShell";
+import ShorthandQuantityInput from "../../components/common/ShorthandQuantityInput";
 import { useToast } from "../../context/ToastContext";
 import {
   createSalaryBreakup,
@@ -284,16 +285,11 @@ export default function CreateSalaryBreakup() {
               </div>
               <div className="hr-create-salary-breakup__field">
                 <label className="hr-create-salary-breakup__label">Gross Amount <span>*</span></label>
-                <div className="hr-create-salary-breakup__amount-wrap">
-                  <span className="hr-create-salary-breakup__amount-prefix">₹</span>
-                  <input
-                    className="hr-create-salary-breakup__input"
-                    type="number"
-                    min="0"
-                    value={grossAmount}
-                    onChange={(e) => setGrossAmount(e.target.value)}
-                  />
-                </div>
+                <ShorthandQuantityInput
+                  value={grossAmount}
+                  onChange={(val) => setGrossAmount(val)}
+                  placeholder="e.g. 50,000 or 1 Lakh"
+                />
               </div>
               <div className="hr-create-salary-breakup__input-actions">
                 <button type="button" className="hr-create-salary-breakup__reset-btn" onClick={handleReset}>Reset</button>

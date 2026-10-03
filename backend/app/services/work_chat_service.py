@@ -136,13 +136,25 @@ def serialize_message(db: Session, msg: WorkChatMessage, viewer: User) -> dict:
     for att in msg.attachments:
         f = db.get(StoredFile, att.file_id)
         if f and f.tenant_id == viewer.tenant_id and not f.deleted_at:
+            if f.scan_status in ("PENDING_SCAN", "SCANNING") or f.processing_status in ("PENDING", "PROCESSING"):
+                from app.services.file_management_service import _run_scan_and_process
+                _run_scan_and_process(f.id, viewer.tenant_id)
+                db.refresh(f)
+            signed_url = None
+            if f.scan_status == "SAFE" and f.processing_status == "READY":
+                try:
+                    from app.services.file_management_service import get_download_url
+                    signed_url = get_download_url(db, viewer, f.id).get("download_url")
+                except Exception:
+                    signed_url = None
             attachments.append(
                 {
                     "file_id": f.id,
                     "filename": f.original_filename,
-                    "mime_type": f.mime_type,
+                    "mime_type": f.mime_type or f.detected_mime_type,
                     "file_size": f.file_size,
                     "is_downloadable": f.scan_status == "SAFE" and f.processing_status == "READY",
+                    "download_url": signed_url,
                 }
             )
     links = [
@@ -160,6 +172,23 @@ def serialize_message(db: Session, msg: WorkChatMessage, viewer: User) -> dict:
             mentions = json.loads(msg.mention_user_ids)
         except json.JSONDecodeError:
             mentions = []
+    reactions_raw = {}
+    if getattr(msg, "reactions", None):
+        try:
+            reactions_raw = json.loads(msg.reactions)
+        except Exception:
+            reactions_raw = {}
+    reactions = []
+    for emoji, uids in (reactions_raw or {}).items():
+        if isinstance(uids, list) and uids:
+            reactions.append(
+                {
+                    "emoji": emoji,
+                    "count": len(uids),
+                    "user_ids": uids,
+                    "reacted": viewer.id in uids,
+                }
+            )
     body = msg.body if not msg.deleted_at else ""
     return {
         "id": msg.id,
@@ -170,6 +199,7 @@ def serialize_message(db: Session, msg: WorkChatMessage, viewer: User) -> dict:
         "mentions": mentions,
         "attachments": attachments,
         "links": links,
+        "reactions": reactions,
         "is_deleted": bool(msg.deleted_at),
         "is_own": msg.sender_id == viewer.id,
         "edited_at": _iso(msg.edited_at),
@@ -203,19 +233,18 @@ def list_conversations(db: Session, user: User, search: str | None = None) -> di
     return {"items": items, "total_unread": total_unread}
 
 
-def search_users(db: Session, user: User, query: str, limit: int = 20) -> dict:
-    if not query or not query.strip():
-        return {"items": []}
-    term = f"%{query.strip().lower()}%"
+def search_users(db: Session, user: User, query: str, limit: int = 50) -> dict:
+    stmt = select(User).where(
+        User.tenant_id == user.tenant_id,
+        User.is_active.is_(True),
+        User.id != user.id,
+    )
+    if query and query.strip():
+        term = f"%{query.strip().lower()}%"
+        stmt = stmt.where(or_(func.lower(User.full_name).like(term), func.lower(User.email).like(term)))
+
     users = db.scalars(
-        select(User)
-        .where(
-            User.tenant_id == user.tenant_id,
-            User.is_active.is_(True),
-            User.id != user.id,
-            or_(func.lower(User.full_name).like(term), func.lower(User.email).like(term)),
-        )
-        .limit(min(limit, 50))
+        stmt.order_by(User.full_name.asc()).limit(min(limit, 100))
     ).all()
     return {"items": [_user_brief(u) for u in users if _user_brief(u)]}
 
@@ -432,7 +461,12 @@ def send_message(
                 )
             )
     conv = db.get(WorkChatConversation, conversation_id)
-    preview = text[:500] if text else "Attachment"
+    if text:
+        preview = text[:500]
+    elif attachment_file_ids:
+        preview = "📎 Attachment"
+    else:
+        preview = "Message"
     conv.last_message_at = _utcnow()
     conv.last_message_preview = preview
     db.commit()
@@ -548,3 +582,96 @@ def search_messages(db: Session, user: User, query: str, limit: int = 30) -> dic
             for m in msgs
         ]
     }
+
+
+def toggle_reaction(db: Session, user: User, message_id: int, emoji: str) -> dict:
+    msg = db.get(WorkChatMessage, message_id)
+    if not msg or msg.tenant_id != user.tenant_id or msg.deleted_at:
+        raise HTTPException(status_code=404, detail="Message not found.")
+    _require_member(db, user, msg.conversation_id)
+    emoji = (emoji or "").strip()
+    if not emoji:
+        raise HTTPException(status_code=400, detail="Emoji is required.")
+
+    reactions_dict = {}
+    if getattr(msg, "reactions", None):
+        try:
+            reactions_dict = json.loads(msg.reactions)
+        except Exception:
+            reactions_dict = {}
+
+    uids = set(reactions_dict.get(emoji, []))
+    if user.id in uids:
+        uids.remove(user.id)
+    else:
+        uids.add(user.id)
+
+    if uids:
+        reactions_dict[emoji] = sorted(list(uids))
+    else:
+        reactions_dict.pop(emoji, None)
+
+    msg.reactions = json.dumps(reactions_dict) if reactions_dict else None
+    db.commit()
+    db.refresh(msg)
+    return serialize_message(db, msg, user)
+
+
+def forward_message(db: Session, user: User, message_id: int, target_conversation_ids: list[int]) -> dict:
+    msg = db.get(WorkChatMessage, message_id)
+    if not msg or msg.tenant_id != user.tenant_id or msg.deleted_at:
+        raise HTTPException(status_code=404, detail="Message not found.")
+    _require_member(db, user, msg.conversation_id)
+
+    unique_targets = list(set(target_conversation_ids))
+    if not unique_targets:
+        raise HTTPException(status_code=400, detail="Select at least one conversation to forward to.")
+
+    forwarded_count = 0
+    for target_id in unique_targets:
+        _require_member(db, user, target_id)
+        f_msg = WorkChatMessage(
+            tenant_id=user.tenant_id,
+            conversation_id=target_id,
+            sender_id=user.id,
+            body=msg.body,
+        )
+        db.add(f_msg)
+        db.flush()
+
+        for att in msg.attachments:
+            db.add(
+                WorkChatMessageAttachment(
+                    tenant_id=user.tenant_id,
+                    message_id=f_msg.id,
+                    file_id=att.file_id,
+                )
+            )
+            db.add(
+                FileAttachment(
+                    tenant_id=user.tenant_id,
+                    file_id=att.file_id,
+                    entity_type="work_chat_message",
+                    entity_id=f_msg.id,
+                    created_by_user_id=user.id,
+                )
+            )
+        for link in msg.links:
+            db.add(
+                WorkChatMessageLink(
+                    tenant_id=user.tenant_id,
+                    message_id=f_msg.id,
+                    entity_type=link.entity_type,
+                    entity_id=link.entity_id,
+                    label=link.label,
+                    path=link.path,
+                )
+            )
+        conv = db.get(WorkChatConversation, target_id)
+        preview = msg.body[:500] if msg.body else "📎 Attachment"
+        conv.last_message_at = _utcnow()
+        conv.last_message_preview = preview
+        forwarded_count += 1
+
+    db.commit()
+    return {"ok": True, "forwarded_count": forwarded_count}

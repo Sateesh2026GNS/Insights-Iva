@@ -2122,6 +2122,33 @@ def create_announcement(db: Session, tenant_id: int, payload: dict, user: User) 
     return model_to_dict(row)
 
 
+def update_announcement(db: Session, tenant_id: int, announcement_id: int, payload: dict, user: User) -> dict:
+    row = db.scalar(
+        select(Announcement).where(Announcement.id == announcement_id, Announcement.tenant_id == tenant_id)
+    )
+    if not row:
+        raise HTTPException(status_code=404, detail="Announcement not found")
+    for k, v in payload.items():
+        if k not in ("id", "tenant_id") and hasattr(row, k):
+            setattr(row, k, v)
+    db.commit()
+    db.refresh(row)
+    audit_hr(db, user=user, action="update", entity_type="announcement", entity_id=row.id)
+    return model_to_dict(row)
+
+
+def delete_announcement(db: Session, tenant_id: int, announcement_id: int, user: User) -> dict:
+    row = db.scalar(
+        select(Announcement).where(Announcement.id == announcement_id, Announcement.tenant_id == tenant_id)
+    )
+    if not row:
+        raise HTTPException(status_code=404, detail="Announcement not found")
+    db.delete(row)
+    db.commit()
+    audit_hr(db, user=user, action="delete", entity_type="announcement", entity_id=announcement_id)
+    return {"message": "Announcement deleted successfully"}
+
+
 # ── HR role permissions (UI toggles) ─────────────────────────────────────────
 
 HR_ROLE_KEY_LABELS = {

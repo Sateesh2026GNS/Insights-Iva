@@ -1,13 +1,17 @@
 import requests
 
-baseURL = "http://localhost:8000"
+def main():
+    baseURL = "http://localhost:8000"
 
-# Log in
-login_res = requests.post(f"{baseURL}/auth/login", json={
-    "email": "admin@smrt.local",
-    "password": "admin123"
-})
-print("Login Status:", login_res.status_code)
+    # Log in
+    login_res = requests.post(f"{baseURL}/auth/login", json={
+        "email": "admin@smrt.local",
+        "password": "admin123"
+    })
+    print("Login Status:", login_res.status_code)
+
+if __name__ == "__main__":
+    main()
 if login_res.status_code == 200:
     token = login_res.json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}

@@ -309,5 +309,6 @@ export const HRPfReport = lazy(() => import("../pages/hr/PfReport"));
 export const HREsicReport = lazy(() => import("../pages/hr/EsicReport"));
 export const HRSalaryReport = lazy(() => import("../pages/hr/SalaryReport"));
 export const HRBankTemplateReport = lazy(() => import("../pages/hr/BankTemplateReport"));
+export const HRAnnouncements = lazy(() => import("../pages/hr/Announcements"));
 export const HRPlaceholders = lazy(() => import("../pages/hr/HrPlaceholders"));
 export const NotFound = lazy(() => import("../pages/NotFound"));

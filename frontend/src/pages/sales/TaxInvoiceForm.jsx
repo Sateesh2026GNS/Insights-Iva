@@ -1437,12 +1437,12 @@ export default function TaxInvoiceForm() {
                           className="w-16 rounded-md border border-[#d0d0d8] bg-[#f7f7f9] px-1.5 py-1.5"
                         />
                       </td>
-                      <td className="border-b border-r border-[#d0d0d8] px-2 py-2 min-w-[90px]">
+                      <td className="border-b border-r border-[#d0d0d8] px-2 py-2 min-w-[110px]">
                         <ShorthandQuantityInput
                           value={row.qty}
                           onChange={(val) => updateItem(idx, "qty", val)}
                           placeholder="-"
-                          className="w-full text-xs"
+                          className="w-full text-xs min-w-[90px]"
                         />
                       </td>
                       <td className="border-b border-r border-[#d0d0d8] px-2 py-2">
@@ -1459,14 +1459,14 @@ export default function TaxInvoiceForm() {
                           <option value="BOX">BOX</option>
                         </select>
                       </td>
-                      <td className="border-b border-r border-[#d0d0d8] px-2 py-2 min-w-[100px]">
+                      <td className="border-b border-r border-[#d0d0d8] px-2 py-2 min-w-[125px]">
                         <div className="flex items-center gap-0.5">
-                          <span className="text-[#9a9aa5]">₹</span>
+                          <span className="text-[#9a9aa5] shrink-0">₹</span>
                           <ShorthandQuantityInput
                             value={row.rate}
                             onChange={(val) => updateItem(idx, "rate", val)}
                             placeholder="-"
-                            className="w-full text-xs"
+                            className="w-full text-xs min-w-[95px]"
                           />
                         </div>
                       </td>

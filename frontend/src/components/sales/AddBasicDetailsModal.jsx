@@ -4,6 +4,7 @@ import { X } from "lucide-react";
 
 import Button from "../common/Button";
 import FieldError from "../common/states/FieldError";
+import ShorthandQuantityInput from "../common/ShorthandQuantityInput";
 import { inputClass } from "../../design-system/classes";
 import {
   fieldErrorClass,
@@ -146,24 +147,19 @@ export default function AddBasicDetailsModal({
             <label className="mb-1.5 block text-[13px] font-medium text-[#8a8a95]">
               Opening Balance
             </label>
-            <div className="relative">
-              <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[14px] font-medium text-[#6b6b76]">
-                ₹
-              </span>
-              <input
-                value={form.opening_balance}
-                onChange={(e) => {
-                  setForm((f) => ({
-                    ...f,
-                    opening_balance: e.target.value.replace(/[^\d.]/g, ""),
-                  }));
-                  clearError("opening_balance");
-                }}
-                placeholder="Enter Opening Balance"
-                className={fieldErrorClass(`${inputClass} !pl-9`, Boolean(errors.opening_balance))}
-                aria-invalid={Boolean(errors.opening_balance)}
-              />
-            </div>
+            <ShorthandQuantityInput
+              value={form.opening_balance}
+              onChange={(val) => {
+                setForm((f) => ({
+                  ...f,
+                  opening_balance: val,
+                }));
+                clearError("opening_balance");
+              }}
+              prefix="₹"
+              placeholder="Enter Opening Balance"
+              error={Boolean(errors.opening_balance)}
+            />
             <FieldError message={errors.opening_balance} />
             <div className="mt-2.5 grid grid-cols-2 gap-2.5">
               {[

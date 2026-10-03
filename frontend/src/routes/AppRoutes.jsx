@@ -916,6 +916,7 @@ export default function AppRoutes() {
       <Route path="/hr/reports/esic" element={<ProtectedRoute><P.HREsicReport /></ProtectedRoute>} />
       <Route path="/hr/reports/salary" element={<ProtectedRoute><P.HRSalaryReport /></ProtectedRoute>} />
       <Route path="/hr/reports/bank-template" element={<ProtectedRoute><P.HRBankTemplateReport /></ProtectedRoute>} />
+      <Route path="/hr/announcements" element={<ProtectedRoute><P.HRAnnouncements /></ProtectedRoute>} />
       {HR_PLACEHOLDER_PATHS.map((path) => (
         <Route key={path} path={path} element={<ProtectedRoute><P.HRPlaceholders /></ProtectedRoute>} />
       ))}

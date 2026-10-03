@@ -85,6 +85,7 @@ class WorkChatMessage(Base, TimestampMixin):
         ForeignKey("work_chat_messages.id"), nullable=True
     )
     mention_user_ids: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON array
+    reactions: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON dict e.g. {"👍": [1, 2]}
     edited_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 

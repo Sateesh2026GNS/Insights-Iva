@@ -18,6 +18,7 @@ import {
 
 import Loader from "../../components/common/Loader";
 import { SearchBar } from "../../components/common/SearchFilter";
+import ShorthandQuantityInput from "../../components/common/ShorthandQuantityInput";
 import { ListPageShell } from "../../components/common/ListPageShell";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { useToast } from "../../context/ToastContext";
@@ -382,10 +383,12 @@ function AddExpenseDrawer({ open, onClose, onSave, employees }) {
 
           <div className="hr-exp-approvals__form-field">
             <label className="hr-exp-approvals__form-label">Amount <span>*</span></label>
-            <div className="hr-exp-approvals__amount-wrap">
-              <span className="hr-exp-approvals__amount-prefix">₹</span>
-              <input className="hr-exp-approvals__input" type="number" min="0" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Enter Amount" />
-            </div>
+            <ShorthandQuantityInput
+              value={amount}
+              onChange={(val) => setAmount(val)}
+              prefix="₹"
+              placeholder="Enter Amount (e.g. 1,500 or 15k)"
+            />
           </div>
 
           <div className="hr-exp-approvals__form-field">

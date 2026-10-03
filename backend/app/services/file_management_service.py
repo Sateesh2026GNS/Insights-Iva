@@ -378,6 +378,9 @@ def register_upload_part(
 
 def get_download_url(db: Session, user: User, file_id: int) -> dict:
     stored = _get_file(db, user.tenant_id, file_id)
+    if stored.scan_status in ("PENDING_SCAN", "SCANNING") or stored.processing_status in ("PENDING", "PROCESSING"):
+        _run_scan_and_process(file_id, user.tenant_id)
+        stored = _get_file(db, user.tenant_id, file_id)
     if stored.scan_status != "SAFE":
         if stored.scan_status in ("QUARANTINED", "REJECTED"):
             raise HTTPException(403, "This file has been quarantined and cannot be downloaded.")

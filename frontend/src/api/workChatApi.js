@@ -44,3 +44,11 @@ export function deleteChatMessage(messageId) {
 export function searchChatMessages(q, limit = 30) {
   return api.get(`${BASE}/search`, { params: { q, limit } }).then(unwrap);
 }
+
+export function toggleChatMessageReaction(messageId, emoji) {
+  return api.post(`${BASE}/messages/${messageId}/reactions`, { emoji }).then(unwrap);
+}
+
+export function forwardChatMessage(messageId, targetConversationIds) {
+  return api.post(`${BASE}/messages/${messageId}/forward`, { target_conversation_ids: targetConversationIds }).then(unwrap);
+}

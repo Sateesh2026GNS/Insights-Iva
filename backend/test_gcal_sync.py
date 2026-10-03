@@ -7,27 +7,31 @@ from app.models.meeting import Meeting, GoogleCalendarCredential
 from app.services import google_calendar_service as gcal
 from sqlalchemy import select
 
-db = SessionLocal()
+def main():
+    db = SessionLocal()
 
-# Get credentials
-cred_rows = db.scalars(select(GoogleCalendarCredential)).all()
-print(f"Credentials: {len(cred_rows)}")
-for r in cred_rows:
-    print(f"  tenant={r.tenant_id} user={r.user_id} email={r.google_account_email} refresh={bool(r.refresh_token)}")
+    # Get credentials
+    cred_rows = db.scalars(select(GoogleCalendarCredential)).all()
+    print(f"Credentials: {len(cred_rows)}")
+    for r in cred_rows:
+        print(f"  tenant={r.tenant_id} user={r.user_id} email={r.google_account_email} refresh={bool(r.refresh_token)}")
 
-# Get the meeting
-meeting = db.scalars(select(Meeting)).first()
-if not meeting:
-    print("No meetings found!")
-    db.close()
-    sys.exit(1)
+    # Get the meeting
+    meeting = db.scalars(select(Meeting)).first()
+    if not meeting:
+        print("No meetings found!")
+        db.close()
+        sys.exit(1)
 
-print(f"\nMeeting: id={meeting.id} title={meeting.title} date={meeting.meeting_date} start={meeting.start_time} end={meeting.end_time} tz={meeting.timezone}")
+    print(f"\nMeeting: id={meeting.id} title={meeting.title} date={meeting.meeting_date} start={meeting.start_time} end={meeting.end_time} tz={meeting.timezone}")
 
-tenant_id = cred_rows[0].tenant_id
-user_id = cred_rows[0].user_id
+    tenant_id = cred_rows[0].tenant_id
+    user_id = cred_rows[0].user_id
 
-print(f"\nTrying to sync to Google Calendar (tenant={tenant_id}, user={user_id})...")
+    print(f"\nTrying to sync to Google Calendar (tenant={tenant_id}, user={user_id})...")
+
+if __name__ == "__main__":
+    main()
 try:
     # Try to get valid credentials
     row, creds = gcal.get_valid_credentials(db, tenant_id=tenant_id, user_id=user_id)

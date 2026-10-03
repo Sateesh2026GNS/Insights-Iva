@@ -3,6 +3,7 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { Banknote, Bookmark, Building2, ChevronDown, MoreVertical, Pencil, Star, Trash2, CircleMinus } from "lucide-react";
 
 import Button from "../../components/common/Button";
+import ShorthandQuantityInput from "../../components/common/ShorthandQuantityInput";
 import { SearchBar } from "../../components/common/SearchFilter";
 import Loader from "../../components/common/Loader";
 import AddNewPartyModal from "../../components/sales/AddNewPartyModal";
@@ -487,13 +488,10 @@ export default function MakePaymentForm() {
 
               <label className="block">
                 <SoftLabel>Amount Paid</SoftLabel>
-                <input
+                <ShorthandQuantityInput
                   value={form.amount}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, amount: e.target.value.replace(/[^\d.]/g, "") }))
-                  }
-                  placeholder="Amount"
-                  className={inputClass}
+                  onChange={(val) => setForm((f) => ({ ...f, amount: val }))}
+                  placeholder="Amount (e.g. 50,000 or 1 Lakh)"
                 />
               </label>
 

@@ -6,6 +6,7 @@ import { useToast } from "../../context/ToastContext";
 import useAuth from "../../hooks/useAuth";
 import { LEAD_SOURCES } from "../../data/salesMasterData";
 import Button from "../common/Button";
+import ShorthandQuantityInput from "../common/ShorthandQuantityInput";
 import { apiErrorMessage } from "../../utils/apiError";
 
 import { inputMtClass as inputClass } from "../../design-system/classes";
@@ -261,13 +262,12 @@ export default function CreateLeadModal({ isOpen, onClose, onSuccess, leadToEdit
               </select>
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Estimated Value (₹)</label>
-              <input
-                type="number"
-                placeholder="e.g. 250000"
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Estimated Value (₹)</label>
+              <ShorthandQuantityInput
+                placeholder="e.g. 2,50,000 or 1 Lakh"
                 value={form.estimated_value}
-                onChange={(e) => setForm((f) => ({ ...f, estimated_value: e.target.value }))}
-                className={`${inputClass} text-right`}
+                onChange={(val) => setForm((f) => ({ ...f, estimated_value: val }))}
+                prefix="₹"
               />
             </div>
           </div>

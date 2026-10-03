@@ -727,51 +727,36 @@ export default function InventoryDateExportModal({
     setTimeout(() => setCopiedEmail(false), 2500);
   };
 
-  // ── Gmail / Email share: opens Email report (PDF) modal matching image 2 ──
+  // ── Email share: directly sends Email report (PDF) via API without compose popup or file download ──
   const handleSendEmailCustom = async ({ recipient, cc, subject, message }) => {
     const filePrefix = sectionTitle.replace(/\s+/g, "_");
     const fileName = `${filePrefix}_Report_${selectedDate}.pdf`;
-    const doc = await buildPdfDoc();
+    const reportRows = movements.length > 0 ? movements : sectionItems;
 
-    try {
-      const reportRows = movements.length > 0 ? movements : sectionItems;
-      await emailMetricReport({
-        to_email: recipient,
-        cc: cc || undefined,
-        subject: subject || undefined,
-        message: message || undefined,
-        title: `${sectionTitle} Report (${formatReadableDate(selectedDate)})`,
-        filename: fileName,
-        module: "inventory",
-        rows: reportRows.map((r) => ({
-          product: r.product || r.name || "—",
-          quantity: r.quantity ?? r.total_quantity ?? 0,
-          warehouse: r.warehouse || activeWarehouseName,
-          transaction: r.transaction || r.category || "—",
-          date: r.date || r.created_at || selectedDate,
-        })),
-        columns: [
-          { key: "product", label: "Item / Product" },
-          { key: "quantity", label: "Quantity" },
-          { key: "warehouse", label: "Warehouse" },
-          { key: "transaction", label: "Transaction / Category" },
-          { key: "date", label: "Date" },
-        ],
-      });
-      addToast(`Report emailed successfully to ${recipient}.`, "success");
-    } catch {
-      // Web fallback: download PDF file directly and open Gmail compose
-      doc.save(fileName);
-      addToast(`"${fileName}" downloaded! Opening Gmail compose...`, "info");
-      setTimeout(() => {
-        const to = encodeURIComponent(recipient);
-        const su = encodeURIComponent(subject || `Insights Iva — ${sectionTitle} Report (${formatReadableDate(selectedDate)})`);
-        const ccParam = cc ? encodeURIComponent(cc) : "";
-        const bodyParam = encodeURIComponent(message || emailBodyText);
-        const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${to}&su=${su}&body=${bodyParam}${ccParam ? `&cc=${ccParam}` : ""}`;
-        window.open(gmailUrl, "_blank", "noopener,noreferrer");
-      }, 300);
-    }
+    await emailMetricReport({
+      to_email: recipient,
+      cc: cc || undefined,
+      subject: subject || undefined,
+      message: message || undefined,
+      title: `${sectionTitle} Report (${formatReadableDate(selectedDate)})`,
+      filename: fileName,
+      module: "inventory",
+      rows: reportRows.map((r) => ({
+        product: r.product || r.name || "—",
+        quantity: r.quantity ?? r.total_quantity ?? 0,
+        warehouse: r.warehouse || activeWarehouseName,
+        transaction: r.transaction || r.category || "—",
+        date: r.date || r.created_at || selectedDate,
+      })),
+      columns: [
+        { key: "product", label: "Item / Product" },
+        { key: "quantity", label: "Quantity" },
+        { key: "warehouse", label: "Warehouse" },
+        { key: "transaction", label: "Transaction / Category" },
+        { key: "date", label: "Date" },
+      ],
+    });
+    addToast(`Report emailed successfully to ${recipient}.`, "success");
   };
 
   const displayedPreviewItems = previewFilter === "created_today" ? itemsCreatedOnDate : sectionItems;

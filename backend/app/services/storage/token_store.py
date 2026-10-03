@@ -56,7 +56,11 @@ def register_download_token(
         )
 
 
-def resolve_download_token(token: str, user_id: int, tenant_id: int) -> StoredToken | None:
+def resolve_download_token(
+    token: str,
+    user_id: int | None = None,
+    tenant_id: int | None = None,
+) -> StoredToken | None:
     with _lock:
         entry = _download_tokens.get(token)
         if not entry:
@@ -65,7 +69,9 @@ def resolve_download_token(token: str, user_id: int, tenant_id: int) -> StoredTo
         if time.time() > expires_at:
             _download_tokens.pop(token, None)
             return None
-        if owner_user != user_id or owner_tenant != tenant_id:
+        if user_id is not None and owner_user != user_id:
+            return None
+        if tenant_id is not None and owner_tenant != tenant_id:
             return None
         return StoredToken(storage_key=storage_key, filename=filename, file_id=file_id)
 

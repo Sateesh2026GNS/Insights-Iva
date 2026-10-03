@@ -251,3 +251,11 @@ export const updateTrainingEnrollment = (enrollmentId, payload) =>
   api.put(`/hr/training/enrollments/${enrollmentId}`, payload);
 export const deleteTrainingEnrollment = (enrollmentId) =>
   api.delete(`/hr/training/enrollments/${enrollmentId}`);
+
+export const getAnnouncements = () => api.get("/hr/announcements");
+export const createAnnouncement = (payload) => api.post("/hr/announcements", payload);
+export const updateAnnouncement = (announcementId, payload) =>
+  api.put(`/hr/announcements/${announcementId}`, payload);
+export const deleteAnnouncement = (announcementId) =>
+  api.delete(`/hr/announcements/${announcementId}`);
+

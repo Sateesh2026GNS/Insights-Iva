@@ -550,8 +550,36 @@ export const PAYROLL_STATUS_BADGES = {
   paid: "bg-emerald-50 text-emerald-700",
 };
 
-export const EMPTY_PAYROLL_DASHBOARD = {total_employees: 0, total_payroll: 0, net_pay: 0, deductions: 0, pending_approval: 0, period_label: "",
-  kpi_trends: {}, summary_slices: [], payroll_runs: [], recent_payslips: [], important_dates: [], quick_links: [],};
+export const DEFAULT_PAYROLL_QUICK_LINKS = [
+  { label: "Salary Components", to: "/hr/payroll/salary-components" },
+  { label: "Statutory Components", to: "/hr/payroll/statutory-components" },
+  { label: "Salary Breakup", to: "/hr/payroll/salary-breakup" },
+  { label: "Run Payroll", to: "/hr/payroll/create" },
+  { label: "Salary On Hold", to: "/hr/payroll/on-hold" },
+  { label: "My Payslips", to: "/hr/payroll/my-payslips" },
+  { label: "Payroll Settings", to: "/hr/payroll/settings" },
+];
+
+export const DEFAULT_PAYROLL_IMPORTANT_DATES = [
+  { label: "Cut-off Date", value: "25th of every month", icon: "calendar" },
+  { label: "Disbursement Date", value: "1st of every month", icon: "wallet" },
+  { label: "PF & ESIC Filing", value: "15th of every month", icon: "clock" },
+];
+
+export const EMPTY_PAYROLL_DASHBOARD = {
+  total_employees: 0,
+  total_payroll: 0,
+  net_pay: 0,
+  deductions: 0,
+  pending_approval: 0,
+  period_label: "",
+  kpi_trends: {},
+  summary_slices: [],
+  payroll_runs: [],
+  recent_payslips: [],
+  important_dates: DEFAULT_PAYROLL_IMPORTANT_DATES,
+  quick_links: DEFAULT_PAYROLL_QUICK_LINKS,
+};
 export const DEMO_PAYROLL_DASHBOARD = EMPTY_PAYROLL_DASHBOARD;
 
 function mapPayslipRow(row, index) {
@@ -579,29 +607,40 @@ export function mergePayrollDashboard({ summary = {}, rows = [], employeeCount =
   const deductions =
     (Number(summary.pf) || 0) + (Number(summary.esi) || 0) + (Number(summary.professional_tax) || 0);
 
-  if (monthly <= 0 && mappedPayslips.length === 0) {
-    return { ...EMPTY_PAYROLL_DASHBOARD };
-  }
-
   const netPay = processed || monthly;
   const totalPayroll = monthly + deductions * 0.5 || monthly;
   const basic = totalPayroll * 0.6;
   const allowances = totalPayroll * 0.224;
   const dedAmount = deductions || totalPayroll * 0.219;
 
+  const runs = mappedPayslips.length ? [
+    {
+      id: 1,
+      name: summary.name || "Monthly Payroll Run",
+      period: summary.period || new Date().toISOString().slice(0, 7),
+      employees: mappedPayslips.length || employeeCount,
+      total_payroll: monthly || totalPayroll,
+      net_pay: netPay,
+      status: "processed",
+    }
+  ] : [];
+
   return {
     ...EMPTY_PAYROLL_DASHBOARD,
-    total_employees: employeeCount  || 0,
-    total_payroll: monthly  || 0,
-    net_pay: netPay  || 0,
-    deductions: dedAmount  || 0,
+    total_employees: employeeCount || mappedPayslips.length || 0,
+    total_payroll: monthly || 0,
+    net_pay: netPay || 0,
+    deductions: dedAmount || 0,
     pending_approval: pending > 0 ? Math.min(99, Math.ceil(pending / 50000)) : 0,
     recent_payslips: mappedPayslips.slice(0, 8),
+    payroll_runs: runs,
     summary_slices: [
       { key: "basic", label: "Basic Pay", amount: basic, pct: 59.9, color: "#8b5cf6" },
       { key: "allowances", label: "Allowances", amount: allowances, pct: 22.4, color: "#3b82f6" },
       { key: "deductions", label: "Deductions", amount: dedAmount, pct: 21.9, color: "#22c55e" },
     ],
+    important_dates: DEFAULT_PAYROLL_IMPORTANT_DATES,
+    quick_links: DEFAULT_PAYROLL_QUICK_LINKS,
   };
 }
 

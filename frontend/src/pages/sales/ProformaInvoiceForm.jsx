@@ -27,6 +27,7 @@ import {
 import Button from "../../components/common/Button";
 import Loader from "../../components/common/Loader";
 import { SearchBar } from "../../components/common/SearchFilter";
+import ShorthandQuantityInput from "../../components/common/ShorthandQuantityInput";
 import AddBankAccountModal from "../../components/sales/AddBankAccountModal";
 import AddCustomFieldModal from "../../components/sales/AddCustomFieldModal";
 import AddNewItemModal from "../../components/sales/AddNewItemModal";
@@ -1383,12 +1384,11 @@ export default function ProformaInvoiceForm() {
                           />
                         </td>
                         <td className="border-b border-r border-[#d0d0d8] px-2 py-2">
-                          <input
-                            type="number"
+                          <ShorthandQuantityInput
                             value={row.qty}
-                            onChange={(e) => updateItem(idx, "qty", e.target.value)}
+                            onChange={(val) => updateItem(idx, "qty", val)}
                             placeholder="-"
-                            className="w-16 rounded-md border border-[#d0d0d8] bg-[#f7f7f9] px-1.5 py-1.5"
+                            className="w-20 rounded-md border border-[#d0d0d8] bg-[#f7f7f9] px-1.5 py-1.5 text-[12px] text-[#1a1a1f]"
                           />
                         </td>
                         <td className="border-b border-r border-[#d0d0d8] px-2 py-2">
@@ -1406,16 +1406,13 @@ export default function ProformaInvoiceForm() {
                           </select>
                         </td>
                         <td className="border-b border-r border-[#d0d0d8] px-2 py-2">
-                          <div className="flex items-center gap-0.5">
-                            <span className="text-[#9a9aa5]">₹</span>
-                            <input
-                              type="number"
-                              value={row.rate}
-                              onChange={(e) => updateItem(idx, "rate", e.target.value)}
-                              placeholder="-"
-                              className="w-20 rounded-md border border-[#d0d0d8] bg-[#f7f7f9] px-1.5 py-1.5"
-                            />
-                          </div>
+                          <ShorthandQuantityInput
+                            value={row.rate}
+                            onChange={(val) => updateItem(idx, "rate", val)}
+                            prefix="₹"
+                            placeholder="-"
+                            className="w-24 rounded-md border border-[#d0d0d8] bg-[#f7f7f9] px-1.5 py-1.5 text-[12px] text-[#1a1a1f]"
+                          />
                         </td>
                         <td className="border-b border-r border-[#d0d0d8] px-2 py-2">
                           <select
@@ -1429,12 +1426,11 @@ export default function ProformaInvoiceForm() {
                         </td>
                         <td className="border-b border-r border-[#d0d0d8] px-2 py-2">
                           <div className="flex gap-1">
-                            <input
-                              type="number"
+                            <ShorthandQuantityInput
                               value={row.discount}
-                              onChange={(e) => updateItem(idx, "discount", e.target.value)}
+                              onChange={(val) => updateItem(idx, "discount", val)}
                               placeholder="-"
-                              className="w-14 rounded-md border border-[#d0d0d8] bg-[#f7f7f9] px-1.5 py-1.5"
+                              className="w-20 rounded-md border border-[#d0d0d8] bg-[#f7f7f9] px-1.5 py-1.5 text-[12px] text-[#1a1a1f]"
                             />
                             <select
                               value={row.discount_type}

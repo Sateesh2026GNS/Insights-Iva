@@ -3,6 +3,7 @@ import { useLocation, useNavigate, useParams, useSearchParams } from "react-rout
 import { ArrowLeft, Banknote, Bookmark, Building2, ChevronDown, MoreVertical, Pencil, Star, Trash2, CircleMinus } from "lucide-react";
 
 import Button from "../../components/common/Button";
+import ShorthandQuantityInput from "../../components/common/ShorthandQuantityInput";
 import { SearchBar } from "../../components/common/SearchFilter";
 import Loader from "../../components/common/Loader";
 import AddNewPartyModal from "../../components/sales/AddNewPartyModal";
@@ -680,13 +681,10 @@ export default function PaymentReceiptForm() {
 
               <label className="block">
                 <SoftLabel>Amount Collected</SoftLabel>
-                <input
+                <ShorthandQuantityInput
                   value={form.amount}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, amount: e.target.value.replace(/[^\d.]/g, "") }))
-                  }
-                  placeholder="Amount"
-                  className={inputClass}
+                  onChange={(val) => setForm((f) => ({ ...f, amount: val }))}
+                  placeholder="Amount (e.g. 50,000 or 1 Lakh)"
                 />
               </label>
 
@@ -729,18 +727,11 @@ export default function PaymentReceiptForm() {
                 </button>
                 <span className="text-[13px] font-medium text-[#1a1a1f]">Yes, Apply TDS</span>
                 {form.apply_tds ? (
-                  <div className="flex items-center gap-1 rounded-lg border border-[#d0d0d8] bg-[#f7f7f9] px-2 py-1.5">
-                    <span className="text-[#9a9aa5]">₹</span>
-                    <input
+                  <div className="w-36">
+                    <ShorthandQuantityInput
                       value={form.tds_amount}
-                      onChange={(e) =>
-                        setForm((f) => ({
-                          ...f,
-                          tds_amount: e.target.value.replace(/[^\d.]/g, ""),
-                        }))
-                      }
-                      placeholder="Amount"
-                      className="w-24 bg-transparent text-[13px] outline-none"
+                      onChange={(val) => setForm((f) => ({ ...f, tds_amount: val }))}
+                      placeholder="TDS Amount"
                     />
                   </div>
                 ) : null}

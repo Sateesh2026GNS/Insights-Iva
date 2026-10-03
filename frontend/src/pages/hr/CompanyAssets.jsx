@@ -19,6 +19,7 @@ import {
 import Button from "../../components/common/Button";
 import { SearchBar } from "../../components/common/SearchFilter";
 import Loader from "../../components/common/Loader";
+import ShorthandQuantityInput from "../../components/common/ShorthandQuantityInput";
 import { ListPageShell } from "../../components/common/ListPageShell";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { useToast } from "../../context/ToastContext";
@@ -268,15 +269,12 @@ function AddAssetModal({ open, onClose, onSave, saving, categories, employees })
                 />
               </div>
               <div>
-                <label className="hr-company-assets__field-label">Purchase Cost (₹)</label>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  className={inputClass}
+                <label className="hr-company-assets__field-label mb-1">Purchase Cost (₹)</label>
+                <ShorthandQuantityInput
                   value={form.purchase_cost}
-                  onChange={(e) => setForm({ ...form, purchase_cost: e.target.value })}
-                  placeholder="e.g. 65000"
+                  onChange={(val) => setForm({ ...form, purchase_cost: val })}
+                  prefix="₹"
+                  placeholder="e.g. 65,000 or 65k"
                 />
               </div>
             </div>

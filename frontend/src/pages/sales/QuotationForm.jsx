@@ -3135,13 +3135,13 @@ export default function QuotationForm() {
                             />
                           </td>
 
-                          <td className="border-b border-r border-[#d0d0d8] px-2 py-2">
-                            <div className="flex gap-1 min-w-[120px]">
+                          <td className="border-b border-r border-[#d0d0d8] px-2 py-2 min-w-[140px]">
+                            <div className="flex gap-1 items-center">
                               <ShorthandQuantityInput
                                 value={row.qty}
                                 onChange={(val) => updateItem(idx, "qty", val)}
                                 placeholder="0"
-                                className="w-20 text-xs"
+                                className="w-full text-xs min-w-[85px]"
                               />
 
                               <select
@@ -3158,7 +3158,7 @@ export default function QuotationForm() {
                                       .value
                                   )
                                 }
-                                className="rounded-md border border-[#d0d0d8] bg-[#f7f7f9] px-1 py-1.5 text-xs"
+                                className="rounded-md border border-[#d0d0d8] bg-[#f7f7f9] px-1 py-1.5 text-xs shrink-0"
                               >
                                 <option value="">
                                   Unit
@@ -3179,9 +3179,9 @@ export default function QuotationForm() {
                             </div>
                           </td>
 
-                          <td className="border-b border-r border-[#d0d0d8] px-2 py-2">
-                            <div className="flex items-center gap-0.5 min-w-[100px]">
-                              <span className="text-[#9a9aa5]">
+                          <td className="border-b border-r border-[#d0d0d8] px-2 py-2 min-w-[120px]">
+                            <div className="flex items-center gap-0.5">
+                              <span className="text-[#9a9aa5] shrink-0">
                                 ₹
                               </span>
 
@@ -3189,7 +3189,7 @@ export default function QuotationForm() {
                                 value={row.rate}
                                 onChange={(val) => updateItem(idx, "rate", val)}
                                 placeholder="0"
-                                className="w-full text-xs"
+                                className="w-full text-xs min-w-[95px]"
                               />
                             </div>
                           </td>

@@ -10,6 +10,7 @@ import {
   isPrimaryTabAlive,
   recordSessionActivity,
 } from "../utils/sessionManager";
+import { triggerServerWakeup } from "../utils/serverWakeup";
 
 export const AUTH_TOKEN_UPDATED_EVENT = "smrt-auth-token-updated";
 
@@ -263,15 +264,43 @@ api.interceptors.response.use(
     const status = error.response?.status;
     const isGatewayError = status === 502 || status === 503 || status === 504;
 
-    // Auto-retry up to 2 times for GET requests on timeout / network error / gateway spin-up errors
-    if (method === "get" && (isTimeout || isNetworkErr || isGatewayError) && original && (original._retryCount || 0) < 2) {
+    // Auto-retry up to 4 times for GET requests on timeout / network error / gateway spin-up errors (e.g. Render server cold-starts)
+    const maxRetries = isGatewayError ? 4 : 3;
+    if (method === "get" && (isTimeout || isNetworkErr || isGatewayError) && original && (original._retryCount || 0) < maxRetries) {
       original._retryCount = (original._retryCount || 0) + 1;
-      await new Promise((resolve) => setTimeout(resolve, 1500 * original._retryCount));
+      triggerServerWakeup({ force: true });
+      const delayMs = 1500 * Math.pow(1.4, original._retryCount - 1);
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
       return api(original);
     }
 
+    // Fallback: If GET request fails due to timeout/network error but we have cached data in apiCache, return cached response
+    if (method === "get" && (isTimeout || isNetworkErr || isGatewayError) && original) {
+      const cacheKey = buildApiCacheKey(original);
+      const cached = apiCache.get(cacheKey);
+      if (cached) {
+        return {
+          data: JSON.parse(JSON.stringify(cached.data)),
+          status: cached.status,
+          statusText: cached.statusText,
+          headers: { ...cached.headers, "x-offline-cached": "true" },
+          config: original,
+          request: {},
+          isOfflineCached: true,
+        };
+      }
+    }
+
     if (isTimeout || isNetworkErr || isGatewayError) {
-      error.message = "Server response timed out. Operating in offline/cached mode.";
+      if (typeof navigator !== "undefined" && !navigator.onLine) {
+        error.message = "Network error: You appear to be offline. Check your internet connection.";
+      } else if (isGatewayError) {
+        error.message = "Server is starting up or temporarily unavailable. Please try again in a moment.";
+      } else if (isTimeout) {
+        error.message = "Server response timed out. Please try again.";
+      } else {
+        error.message = "Unable to connect to server. Please try again.";
+      }
     }
 
     if (

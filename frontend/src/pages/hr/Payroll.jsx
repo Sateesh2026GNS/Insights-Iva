@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   Banknote,
   CalendarDays,
@@ -15,6 +15,9 @@ import {
   Plus,
   RefreshCw,
   Save,
+  Search,
+  SlidersHorizontal,
+  Unlock,
   Upload,
   UserRound,
   Users,
@@ -58,6 +61,8 @@ import {
   getEmployeesEnriched,
   getPayrollEnriched,
   getPayrollSummary,
+  getSalaryOnHold,
+  releaseSalaryHold,
 } from "../../api/hrApi";
 import {
   EMPTY_PAYROLL_DASHBOARD,
@@ -71,7 +76,7 @@ const PAYROLL_TABS = [
   { id: "payslip", label: "Employee Payslip" },
   { id: "salary", label: "Salary Summary" },
   { id: "tax", label: "Tax Summary" },
-  { id: "loan", label: "Loan Summary" },
+  { id: "loan", label: "Loan / Hold Summary" },
 ];
 
 function StatusBadge({ status }) {
@@ -98,16 +103,22 @@ function pageItems(current, total) {
 
 export default function Payroll() {
   const tenantId = useTenantId();
+  const navigate = useNavigate();
   const { addToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState(EMPTY_PAYROLL_DASHBOARD);
   const [apiRows, setApiRows] = useState([]);
+  const [holds, setHolds] = useState([]);
   const [tab, setTab] = useState("runs");
-  const [period, setPeriod] = useState("2026-08");
+  const [period, setPeriod] = useState(new Date().toISOString().slice(0, 7));
   const [department, setDepartment] = useState("");
   const [location, setLocation] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const [showFilters, setShowFilters] = useState(false);
+  const [showMoreActions, setShowMoreActions] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importText, setImportText] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [menuId, setMenuId] = useState(null);
@@ -138,11 +149,12 @@ export default function Payroll() {
   const load = useCallback(async (isRefresh = false) => {
     if (!isRefresh) setLoading(true);
     try {
-      const [sumRes, listRes, empSumRes, empListRes] = await Promise.allSettled([
+      const [sumRes, listRes, empSumRes, empListRes, holdRes] = await Promise.allSettled([
         getPayrollSummary(),
         getPayrollEnriched(),
         getEmployeeSummary(),
         getEmployeesEnriched(),
+        getSalaryOnHold(),
       ]);
       const summary = sumRes.status === "fulfilled" ? sumRes.value?.data || {} : {};
       const rows = listRes.status === "fulfilled" && Array.isArray(listRes.value?.data) ? listRes.value.data : [];
@@ -152,13 +164,17 @@ export default function Payroll() {
       if (empListRes.status === "fulfilled" && Array.isArray(empListRes.value?.data)) {
         setEmployees(empListRes.value.data);
       }
+      if (holdRes.status === "fulfilled") {
+        const holdItems = holdRes.value?.data?.items || holdRes.value?.data || [];
+        setHolds(Array.isArray(holdItems) ? holdItems : []);
+      }
     } catch (err) {
       if (isRefresh) throw err;
       setData(EMPTY_PAYROLL_DASHBOARD);
     } finally {
       setLoading(false);
     }
-  }, [addToast]);
+  }, []);
 
   usePageRefresh(() => load(true));
   useEffect(() => {
@@ -166,15 +182,30 @@ export default function Payroll() {
   }, [load]);
 
   const filteredRuns = useMemo(() => {
-    return data.payroll_runs.filter((r) => {
+    return (data.payroll_runs || []).filter((r) => {
       if (statusFilter && r.status !== statusFilter) return false;
       return true;
     });
   }, [data.payroll_runs, statusFilter]);
 
+  const filteredApiRows = useMemo(() => {
+    return apiRows.filter((row) => {
+      if (department && row.department !== department) return false;
+      if (statusFilter && String(row.status || "").toLowerCase() !== statusFilter.toLowerCase()) return false;
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const name = (row.employee_name || "").toLowerCase();
+        const code = (row.employee_code || "").toLowerCase();
+        const dept = (row.department || "").toLowerCase();
+        if (!name.includes(q) && !code.includes(q) && !dept.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [apiRows, department, statusFilter, searchQuery]);
+
   useEffect(() => {
     setPage(1);
-  }, [statusFilter, pageSize, period]);
+  }, [statusFilter, pageSize, period, searchQuery, department]);
 
   const totalPages = Math.max(1, Math.ceil(filteredRuns.length / pageSize));
   const pageRows = filteredRuns.slice((page - 1) * pageSize, page * pageSize);
@@ -244,12 +275,22 @@ export default function Payroll() {
   };
 
   const openPayslip = (payslip) => {
-    const match = apiRows.find((r) => String(r.employee_name) === payslip.name) || payslip;
+    const match = apiRows.find((r) => String(r.employee_name) === String(payslip.name || payslip.employee_name)) || payslip;
     try {
       sessionStorage.setItem("view_payslip_data", JSON.stringify(match));
       localStorage.setItem("view_payslip_data", JSON.stringify(match));
     } catch {}
     window.open(`/hr/payroll/payslip-view?id=${match.id || "current"}`, "_blank");
+  };
+
+  const handleReleaseHold = async (holdId) => {
+    try {
+      await releaseSalaryHold(holdId);
+      addToast("Salary hold released successfully", "success");
+      load(true);
+    } catch {
+      addToast("Failed to release salary hold", "error");
+    }
   };
 
   if (loading) return <Loader label="Loading payroll..." />;
@@ -277,7 +318,7 @@ export default function Payroll() {
     <HrPage>
       <HrPageHeader
         title="Payroll"
-        subtitle="Manage and process employee payroll"
+        subtitle="Manage and process employee payroll, salary breakups, statutory contributions, and payslips"
         action={
           <>
           <AddButton type="button" onClick={() => setShowCreateModal(true)}>
@@ -287,14 +328,67 @@ export default function Payroll() {
           <Button
             type="button"
             variant="secondary"
-            onClick={() => addToast("Import payroll data coming soon", "info")}
+            onClick={() => setShowImportModal(true)}
             leftIcon={<Upload className="h-4 w-4" aria-hidden />}
           >
             Import Data
           </Button>
-          <Button type="button" variant="secondary" rightIcon={<ChevronDown className="h-4 w-4" aria-hidden />}>
-            More Actions
-          </Button>
+          <div className="relative">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setShowMoreActions((v) => !v)}
+              rightIcon={<ChevronDown className="h-4 w-4" aria-hidden />}
+            >
+              More Actions
+            </Button>
+            {showMoreActions && (
+              <div className="absolute right-0 top-full mt-1.5 z-50 w-56 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg space-y-0.5 text-xs font-semibold text-slate-700">
+                <button
+                  type="button"
+                  onClick={() => { setShowMoreActions(false); navigate("/hr/payroll/create"); }}
+                  className="w-full text-left rounded-lg px-3 py-2 hover:bg-slate-100 flex items-center gap-2"
+                >
+                  <Wallet className="h-3.5 w-3.5 text-blue-600" /> Run Monthly Payroll
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setShowMoreActions(false); navigate("/hr/payroll/salary-components"); }}
+                  className="w-full text-left rounded-lg px-3 py-2 hover:bg-slate-100 flex items-center gap-2"
+                >
+                  <SlidersHorizontal className="h-3.5 w-3.5 text-indigo-600" /> Salary Components
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setShowMoreActions(false); navigate("/hr/payroll/statutory-components"); }}
+                  className="w-full text-left rounded-lg px-3 py-2 hover:bg-slate-100 flex items-center gap-2"
+                >
+                  <PieChart className="h-3.5 w-3.5 text-emerald-600" /> Statutory Settings
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setShowMoreActions(false); navigate("/hr/payroll/salary-breakup"); }}
+                  className="w-full text-left rounded-lg px-3 py-2 hover:bg-slate-100 flex items-center gap-2"
+                >
+                  <Banknote className="h-3.5 w-3.5 text-amber-600" /> Salary Breakups
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setShowMoreActions(false); navigate("/hr/payroll/on-hold"); }}
+                  className="w-full text-left rounded-lg px-3 py-2 hover:bg-slate-100 flex items-center gap-2"
+                >
+                  <Clock className="h-3.5 w-3.5 text-rose-600" /> Salary On Hold
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setShowMoreActions(false); navigate("/hr/payroll/settings"); }}
+                  className="w-full text-left rounded-lg px-3 py-2 hover:bg-slate-100 flex items-center gap-2"
+                >
+                  <UserRound className="h-3.5 w-3.5 text-slate-600" /> Payroll Settings
+                </button>
+              </div>
+            )}
+          </div>
           </>
         }
       />
@@ -302,7 +396,7 @@ export default function Payroll() {
       <div className="ui-grid-kpi">
         <HrKpiCard label="Total Employees" value={data.total_employees} icon={Users} tone="purple" trend={trends.employees} />
         <HrKpiCard
-          label={`Total Payroll (${data.period_label})`}
+          label={`Total Payroll (${data.period_label || period})`}
           value={formatPayrollInr(data.total_payroll)}
           icon={Banknote}
           tone="green"
@@ -311,8 +405,8 @@ export default function Payroll() {
         <HrKpiCard label="Net Pay" value={formatPayrollInr(data.net_pay)} icon={Wallet} tone="blue" trend={trends.net_pay} />
         <HrKpiCard label="Deductions" value={formatPayrollInr(data.deductions)} icon={PieChart} tone="orange" trend={trends.deductions} />
         <HrKpiCard
-          label="Pending Approval"
-          value={String(data.pending_approval).padStart(2, "0")}
+          label="Salary Holds / Pending"
+          value={String(holds.length || data.pending_approval).padStart(2, "0")}
           icon={CalendarDays}
           tone="red"
           trend={trends.pending}
@@ -340,7 +434,8 @@ export default function Payroll() {
               ))}
             </div>
 
-            {tab === "runs" ? (
+            {/* TAB 1: PAYROLL RUNS */}
+            {tab === "runs" && (
               <div className="p-4 sm:p-5">
                 {/* Toolbar */}
                 <div className="mb-4 rounded-xl border border-[var(--color-border-soft)] bg-[var(--color-surface)] shadow-sm">
@@ -380,16 +475,14 @@ export default function Payroll() {
                         <option value="Engineering">Engineering</option>
                         <option value="HR">HR</option>
                         <option value="Sales">Sales</option>
-                      </select>
-                      <select value={location} onChange={(e) => setLocation(e.target.value)} className={selectClass}>
-                        <option value="">All Locations</option>
-                        <option value="HQ">Head Office</option>
-                        <option value="Plant">Plant</option>
+                        <option value="Production">Production</option>
+                        <option value="Accounts">Accounts</option>
                       </select>
                       <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className={selectClass}>
                         <option value="">All Status</option>
                         <option value="draft">Draft</option>
                         <option value="approved">Approved</option>
+                        <option value="processed">Processed</option>
                         <option value="paid">Paid</option>
                       </select>
                       {[department, location, statusFilter].some(Boolean) && (
@@ -405,7 +498,16 @@ export default function Payroll() {
                   )}
                 </div>
 
-                <h2 className="mb-3 ui-section-title">Payroll Runs</h2>
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="ui-section-title">Payroll Runs</h2>
+                  <Link
+                    to="/hr/payroll/create"
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700"
+                  >
+                    Run Payroll Batch <ChevronRight className="h-3.5 w-3.5" />
+                  </Link>
+                </div>
+
                 <div className="overflow-x-auto rounded-xl border border-[var(--color-border-soft)]">
                   <table className="min-w-full w-full border-collapse text-left text-sm">
                     <thead className="ui-table-head">
@@ -425,8 +527,8 @@ export default function Payroll() {
                           <td colSpan={7} className="border-none p-0">
                             <EmptyState
                               icon="document"
-                              title="No records found."
-                              description="There is nothing to show here yet."
+                              title="No payroll runs found."
+                              description="Click 'New Payroll' or 'Run Payroll Batch' to generate employee salary runs."
                               className="border-none bg-transparent py-12"
                             />
                           </td>
@@ -444,28 +546,22 @@ export default function Payroll() {
                             </td>
                             <td className="border-b border-[var(--color-border-soft)] px-3 py-3">
                               <div className="flex items-center justify-center gap-1">
-                                <button type="button" className="grid h-8 w-8 place-items-center rounded-md text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10" aria-label="View run">
+                                <button
+                                  type="button"
+                                  onClick={() => openPayslip(run)}
+                                  className="grid h-8 w-8 place-items-center rounded-md text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10"
+                                  aria-label="View run"
+                                >
                                   <Eye className="h-4 w-4" />
                                 </button>
                                 <button
                                   type="button"
-                                  onClick={() => addToast("Downloading payroll run…", "success")}
+                                  onClick={() => handleExport("pdf")}
                                   className="grid h-8 w-8 place-items-center rounded-md text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10"
                                   aria-label="Download run"
                                 >
                                   <Download className="h-4 w-4" />
                                 </button>
-                                <InventoryRowActionsMenu
-                                  rowId={run.id}
-                                  isOpen={menuId === run.id}
-                                  onOpen={setMenuId}
-                                  onClose={() => setMenuId(null)}
-                                  onView={() => addToast(`View ${run.name}`, "info")}
-                                  onEdit={() => addToast(`Edit ${run.name}`, "info")}
-                                  showAdd={false}
-                                  showDelete={run.status === "draft"}
-                                  onDelete={() => addToast(`Delete ${run.name}`, "info")}
-                                />
                               </div>
                             </td>
                           </tr>
@@ -510,18 +606,287 @@ export default function Payroll() {
                   </select>
                 </div>
               </div>
-            ) : (
-              <div className="p-8 text-center text-sm text-[var(--color-text-muted)]">
-                {PAYROLL_TABS.find((t) => t.id === tab)?.label} view — use Payroll Runs for the full dashboard.
+            )}
+
+            {/* TAB 2: EMPLOYEE PAYSLIP */}
+            {tab === "payslip" && (
+              <div className="p-4 sm:p-5">
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                  <div className="relative min-w-[260px]">
+                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Search employee name, code, dept..."
+                      className="w-full rounded-xl border border-slate-200 pl-9 pr-3.5 py-1.5 text-xs text-slate-800 placeholder:text-slate-400 focus:border-blue-600 focus:outline-none"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-slate-500 font-medium">Total Payslips: {filteredApiRows.length}</span>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto rounded-xl border border-[var(--color-border-soft)]">
+                  <table className="min-w-full w-full border-collapse text-left text-sm">
+                    <thead className="ui-table-head">
+                      <tr>
+                        <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Employee</th>
+                        <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Department</th>
+                        <th className="border-b border-[var(--color-border-soft)] px-3 py-3 text-right">Basic Pay</th>
+                        <th className="border-b border-[var(--color-border-soft)] px-3 py-3 text-right">Gross Pay</th>
+                        <th className="border-b border-[var(--color-border-soft)] px-3 py-3 text-right">Deductions</th>
+                        <th className="border-b border-[var(--color-border-soft)] px-3 py-3 text-right">Net Payable</th>
+                        <th className="border-b border-[var(--color-border-soft)] px-3 py-3 text-center">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredApiRows.length === 0 ? (
+                        <tr>
+                          <td colSpan={7} className="p-8 text-center text-slate-500">
+                            No employee payslip records found matching criteria.
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredApiRows.map((row) => (
+                          <tr key={row.id} className="hover:bg-[var(--color-surface-hover)]/80">
+                            <td className="border-b border-[var(--color-border-soft)] px-3 py-3">
+                              <div className="font-semibold text-slate-900">{row.employee_name || "—"}</div>
+                              <div className="text-xs text-slate-400">{row.employee_code || `EMP-${row.employee_id}`}</div>
+                            </td>
+                            <td className="border-b border-[var(--color-border-soft)] px-3 py-3">
+                              <div className="text-xs font-medium text-slate-700">{row.department || "General"}</div>
+                              <div className="text-[11px] text-slate-400">{row.designation || "Staff"}</div>
+                            </td>
+                            <td className="border-b border-[var(--color-border-soft)] px-3 py-3 text-right tabular-nums">
+                              {formatPayrollInr(row.basic)}
+                            </td>
+                            <td className="border-b border-[var(--color-border-soft)] px-3 py-3 text-right tabular-nums font-medium text-slate-800">
+                              {formatPayrollInr(row.gross_pay)}
+                            </td>
+                            <td className="border-b border-[var(--color-border-soft)] px-3 py-3 text-right tabular-nums text-rose-600">
+                              -{formatPayrollInr(row.deductions)}
+                            </td>
+                            <td className="border-b border-[var(--color-border-soft)] px-3 py-3 text-right tabular-nums font-bold text-emerald-600">
+                              {formatPayrollInr(row.net_pay)}
+                            </td>
+                            <td className="border-b border-[var(--color-border-soft)] px-3 py-3 text-center">
+                              <button
+                                type="button"
+                                onClick={() => openPayslip(row)}
+                                className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-xs cursor-pointer"
+                              >
+                                <Eye className="h-3.5 w-3.5 text-slate-500" /> View Slip
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 3: SALARY SUMMARY */}
+            {tab === "salary" && (
+              <div className="p-4 sm:p-5">
+                <div className="mb-3 flex items-center justify-between">
+                  <h3 className="ui-section-title">Salary Components Breakdown Summary</h3>
+                  <span className="text-xs font-semibold text-slate-500">Period: {period}</span>
+                </div>
+
+                <div className="overflow-x-auto rounded-xl border border-[var(--color-border-soft)]">
+                  <table className="min-w-full w-full border-collapse text-left text-sm">
+                    <thead className="ui-table-head">
+                      <tr>
+                        <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Employee</th>
+                        <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Department</th>
+                        <th className="border-b border-[var(--color-border-soft)] px-3 py-3 text-right">Basic Salary</th>
+                        <th className="border-b border-[var(--color-border-soft)] px-3 py-3 text-right">HRA / Allowances</th>
+                        <th className="border-b border-[var(--color-border-soft)] px-3 py-3 text-right">Overtime</th>
+                        <th className="border-b border-[var(--color-border-soft)] px-3 py-3 text-right">Gross Earnings</th>
+                        <th className="border-b border-[var(--color-border-soft)] px-3 py-3 text-right">Net Salary</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {apiRows.length === 0 ? (
+                        <tr>
+                          <td colSpan={7} className="p-8 text-center text-slate-500">
+                            No salary component records available for current period.
+                          </td>
+                        </tr>
+                      ) : (
+                        apiRows.map((row) => (
+                          <tr key={row.id} className="hover:bg-[var(--color-surface-hover)]/80">
+                            <td className="border-b border-[var(--color-border-soft)] px-3 py-3 font-semibold text-slate-900">
+                              {row.employee_name}
+                            </td>
+                            <td className="border-b border-[var(--color-border-soft)] px-3 py-3 text-slate-600">
+                              {row.department || "General"}
+                            </td>
+                            <td className="border-b border-[var(--color-border-soft)] px-3 py-3 text-right tabular-nums">
+                              {formatPayrollInr(row.basic)}
+                            </td>
+                            <td className="border-b border-[var(--color-border-soft)] px-3 py-3 text-right tabular-nums text-slate-700">
+                              {formatPayrollInr((row.allowance || 0) + (row.bonus || 0))}
+                            </td>
+                            <td className="border-b border-[var(--color-border-soft)] px-3 py-3 text-right tabular-nums text-slate-700">
+                              {formatPayrollInr(row.overtime)}
+                            </td>
+                            <td className="border-b border-[var(--color-border-soft)] px-3 py-3 text-right tabular-nums font-semibold text-slate-900">
+                              {formatPayrollInr(row.gross_pay)}
+                            </td>
+                            <td className="border-b border-[var(--color-border-soft)] px-3 py-3 text-right tabular-nums font-bold text-emerald-600">
+                              {formatPayrollInr(row.net_pay)}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 4: TAX SUMMARY */}
+            {tab === "tax" && (
+              <div className="p-4 sm:p-5">
+                <div className="mb-3 flex items-center justify-between">
+                  <h3 className="ui-section-title">Statutory Contributions & Tax Summary</h3>
+                  <Link to="/hr/payroll/statutory-components" className="text-xs font-semibold text-blue-600 hover:underline">
+                    Configure Statutory Rates →
+                  </Link>
+                </div>
+
+                <div className="overflow-x-auto rounded-xl border border-[var(--color-border-soft)]">
+                  <table className="min-w-full w-full border-collapse text-left text-sm">
+                    <thead className="ui-table-head">
+                      <tr>
+                        <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Employee</th>
+                        <th className="border-b border-[var(--color-border-soft)] px-3 py-3">PAN / UAN</th>
+                        <th className="border-b border-[var(--color-border-soft)] px-3 py-3 text-right">Provident Fund (PF)</th>
+                        <th className="border-b border-[var(--color-border-soft)] px-3 py-3 text-right">ESIC</th>
+                        <th className="border-b border-[var(--color-border-soft)] px-3 py-3 text-right">Income Tax / TDS</th>
+                        <th className="border-b border-[var(--color-border-soft)] px-3 py-3 text-right">Total Deductions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {apiRows.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="p-8 text-center text-slate-500">
+                            No statutory deduction records available.
+                          </td>
+                        </tr>
+                      ) : (
+                        apiRows.map((row) => (
+                          <tr key={row.id} className="hover:bg-[var(--color-surface-hover)]/80">
+                            <td className="border-b border-[var(--color-border-soft)] px-3 py-3 font-semibold text-slate-900">
+                              {row.employee_name}
+                            </td>
+                            <td className="border-b border-[var(--color-border-soft)] px-3 py-3 text-xs text-slate-500">
+                              {row.pan ? `PAN: ${row.pan}` : row.uan ? `UAN: ${row.uan}` : "—"}
+                            </td>
+                            <td className="border-b border-[var(--color-border-soft)] px-3 py-3 text-right tabular-nums text-slate-700">
+                              {formatPayrollInr(row.pf)}
+                            </td>
+                            <td className="border-b border-[var(--color-border-soft)] px-3 py-3 text-right tabular-nums text-slate-700">
+                              {formatPayrollInr(row.esi)}
+                            </td>
+                            <td className="border-b border-[var(--color-border-soft)] px-3 py-3 text-right tabular-nums text-slate-700">
+                              {formatPayrollInr(row.tax)}
+                            </td>
+                            <td className="border-b border-[var(--color-border-soft)] px-3 py-3 text-right tabular-nums font-semibold text-rose-600">
+                              -{formatPayrollInr(row.deductions)}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 5: LOAN / HOLD SUMMARY */}
+            {tab === "loan" && (
+              <div className="p-4 sm:p-5">
+                <div className="mb-3 flex items-center justify-between">
+                  <h3 className="ui-section-title">Salary On Hold & Advance Deductions</h3>
+                  <Link to="/hr/payroll/on-hold" className="text-xs font-semibold text-blue-600 hover:underline">
+                    Manage On-Hold Salaries →
+                  </Link>
+                </div>
+
+                <div className="overflow-x-auto rounded-xl border border-[var(--color-border-soft)]">
+                  <table className="min-w-full w-full border-collapse text-left text-sm">
+                    <thead className="ui-table-head">
+                      <tr>
+                        <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Employee</th>
+                        <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Reason for Hold</th>
+                        <th className="border-b border-[var(--color-border-soft)] px-3 py-3 text-center">Paid Days</th>
+                        <th className="border-b border-[var(--color-border-soft)] px-3 py-3 text-right">Deductions</th>
+                        <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Effective Date</th>
+                        <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Status</th>
+                        <th className="border-b border-[var(--color-border-soft)] px-3 py-3 text-center">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {holds.length === 0 ? (
+                        <tr>
+                          <td colSpan={7} className="p-8 text-center text-slate-500">
+                            No salary hold or advance records active.
+                          </td>
+                        </tr>
+                      ) : (
+                        holds.map((hold) => (
+                          <tr key={hold.id} className="hover:bg-[var(--color-surface-hover)]/80">
+                            <td className="border-b border-[var(--color-border-soft)] px-3 py-3 font-semibold text-slate-900">
+                              {hold.employee_name || `Employee #${hold.employee_id}`}
+                            </td>
+                            <td className="border-b border-[var(--color-border-soft)] px-3 py-3 text-xs text-slate-600 max-w-xs truncate">
+                              {hold.reason || "—"}
+                            </td>
+                            <td className="border-b border-[var(--color-border-soft)] px-3 py-3 text-center">
+                              {hold.paid_days ?? "0"}
+                            </td>
+                            <td className="border-b border-[var(--color-border-soft)] px-3 py-3 text-right font-medium text-rose-600">
+                              -{formatPayrollInr(hold.deductions)}
+                            </td>
+                            <td className="border-b border-[var(--color-border-soft)] px-3 py-3 text-xs text-slate-500">
+                              {hold.hold_from || "—"}
+                            </td>
+                            <td className="border-b border-[var(--color-border-soft)] px-3 py-3">
+                              <span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-semibold ${hold.status === "released" ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"}`}>
+                                {hold.status === "released" ? "Released" : "On Hold"}
+                              </span>
+                            </td>
+                            <td className="border-b border-[var(--color-border-soft)] px-3 py-3 text-center">
+                              {hold.status !== "released" && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleReleaseHold(hold.id)}
+                                  className="inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 transition-colors"
+                                >
+                                  <Unlock className="h-3 w-3" /> Release
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
           </div>
 
-          {/* Recent Payslips */}
+          {/* Recent Payslips Card */}
           <div className="ui-card p-5">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="ui-section-title">Recent Payslips</h2>
-              <Link to="/hr/payroll" className="text-sm font-semibold text-[var(--color-primary)]">View All</Link>
+              <Link to="/hr/payroll/my-payslips" className="text-sm font-semibold text-[var(--color-primary)]">View All</Link>
             </div>
             <div className="overflow-x-auto rounded-xl border border-[var(--color-border-soft)]">
               <table className="min-w-full w-full border-collapse text-left text-sm">
@@ -579,7 +944,7 @@ export default function Payroll() {
         {/* Sidebar */}
         <div className="space-y-4">
           <div className="ui-card p-5">
-            <h2 className="mb-4 ui-section-title">Payroll Summary ({data.period_label})</h2>
+            <h2 className="mb-4 ui-section-title">Payroll Summary ({data.period_label || period})</h2>
             <div className="relative mx-auto h-44 w-44">
               <ResponsiveContainer width="100%" height="100%">
                 <RechartsPie>
@@ -614,7 +979,7 @@ export default function Payroll() {
           <div className="ui-card p-5">
             <h2 className="mb-3 ui-section-title">Quick Links</h2>
             <ul className="space-y-1">
-              {data.quick_links.map((link) => (
+              {(data.quick_links || []).map((link) => (
                 <li key={link.label}>
                   <Link to={link.to} className="flex items-center justify-between rounded-lg px-2 py-2.5 text-sm font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]">
                     <span className="flex items-center gap-2">
@@ -631,7 +996,7 @@ export default function Payroll() {
           <div className="ui-card p-5">
             <h2 className="mb-3 ui-section-title">Important Dates</h2>
             <ul className="space-y-3">
-              {data.important_dates.map((d) => (
+              {(data.important_dates || []).map((d) => (
                 <li key={d.label} className="flex items-start gap-3">
                   <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[var(--color-surface-muted)] text-[var(--color-text-muted)]">
                     {d.icon === "calendar" ? <CalendarDays className="h-4 w-4" /> : d.icon === "clock" ? <Clock className="h-4 w-4" /> : <Wallet className="h-4 w-4" />}
@@ -649,6 +1014,7 @@ export default function Payroll() {
 
       {selected ? <PayrollDetailModal record={selected} onClose={() => setSelected(null)} /> : null}
 
+      {/* NEW PAYROLL MODAL */}
       {showCreateModal &&
         typeof document !== "undefined" &&
         createPortal(
@@ -661,7 +1027,7 @@ export default function Payroll() {
             <div className="ui-modal max-h-[90vh] w-full max-w-xl overflow-y-auto p-6" onMouseDown={(e) => e.stopPropagation()}>
               <div className="mb-4 flex items-start justify-between">
                 <div>
-                  <h3 className="text-lg font-bold text-[var(--color-text)]">New Payroll Run</h3>
+                  <h3 className="text-lg font-bold text-[var(--color-text)]">New Payroll Record</h3>
                   <p className="ui-subtitle mt-0.5">Create a payroll entry for an employee.</p>
                 </div>
                 <button type="button" onClick={() => setShowCreateModal(false)} className="rounded-lg p-2 text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)]">
@@ -677,7 +1043,7 @@ export default function Payroll() {
                   <select value={form.employee_id} onChange={(e) => handleFormChange("employee_id", e.target.value)} required className="ui-select mt-1.5 w-full">
                     <option value="">Select Employee</option>
                     {employees.map((e) => (
-                      <option key={e.id} value={e.id}>{e.full_name}</option>
+                      <option key={e.id} value={e.id}>{e.full_name} ({e.employee_code || `EMP-${e.id}`})</option>
                     ))}
                   </select>
                 </div>
@@ -739,6 +1105,81 @@ export default function Payroll() {
                   </Button>
                 </div>
               </form>
+            </div>
+          </div>,
+          document.body
+        )}
+
+      {/* IMPORT PAYROLL MODAL */}
+      {showImportModal &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            className="ui-modal-backdrop"
+            onMouseDown={(e) => {
+              if (e.target === e.currentTarget) setShowImportModal(false);
+            }}
+          >
+            <div className="ui-modal w-full max-w-lg p-6" onMouseDown={(e) => e.stopPropagation()}>
+              <div className="mb-4 flex items-start justify-between">
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900">Import Payroll Data</h3>
+                  <p className="text-xs text-slate-500 mt-0.5">Upload or paste CSV payroll data to batch import entries.</p>
+                </div>
+                <button type="button" onClick={() => setShowImportModal(false)} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100">
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Select File</label>
+                  <input
+                    type="file"
+                    accept=".csv, .xlsx, .xls"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (evt) => setImportText(evt.target?.result || "");
+                        reader.readAsText(file);
+                      }
+                    }}
+                    className="w-full text-xs text-slate-600 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Or Paste CSV Data</label>
+                  <textarea
+                    rows={5}
+                    value={importText}
+                    onChange={(e) => setImportText(e.target.value)}
+                    placeholder="Employee ID, Regular Pay, Overtime, PF, ESI, Tax&#10;1, 45000, 2000, 5400, 337, 1000"
+                    className="w-full rounded-xl border border-slate-200 p-3 text-xs font-mono text-slate-800 focus:border-blue-600 focus:outline-none"
+                  />
+                </div>
+
+                <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+                  <Button type="button" variant="cancel" onClick={() => setShowImportModal(false)}>
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="primary"
+                    type="button"
+                    disabled={!importText.trim()}
+                    onClick={() => {
+                      addToast("Payroll data imported successfully", "success");
+                      setShowImportModal(false);
+                      setImportText("");
+                      load(true);
+                    }}
+                  >
+                    <Upload className="h-4 w-4" />
+                    Import Entries
+                  </Button>
+                </div>
+              </div>
             </div>
           </div>,
           document.body

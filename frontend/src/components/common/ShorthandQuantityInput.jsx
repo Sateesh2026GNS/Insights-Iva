@@ -4,7 +4,7 @@ import { formatNumber, parseShorthandNumber, numberToWords, isPureNumericInput }
 
 /**
  * Quantity & Amount Input component with automatic Indian shorthand parsing ("1 Lakh", "1.5L", "2 Cr", "50k")
- * and right-end icon button to convert between numbers and words without extra line clutter below.
+ * and right-end icon button (ArrowLeftRight) to convert between formatted numbers with commas (e.g. 1,00,000) and words (e.g. One Lakh).
  */
 export default function ShorthandQuantityInput({
   value,
@@ -15,6 +15,8 @@ export default function ShorthandQuantityInput({
   id,
   name,
   disabled,
+  style,
+  prefix = "",
   ...rest
 }) {
   const [displayValue, setDisplayValue] = useState("");
@@ -41,7 +43,7 @@ export default function ShorthandQuantityInput({
 
   const parsedNum = parseShorthandNumber(displayValue);
   const pureNumeric = isPureNumericInput(displayValue);
-  const words = parsedNum != null ? numberToWords(parsedNum) : "";
+  const words = parsedNum != null && parsedNum > 0 ? numberToWords(parsedNum) : "";
   const formattedNum = parsedNum != null ? formatNumber(parsedNum) : "";
 
   const handleInputChange = (e) => {
@@ -82,9 +84,7 @@ export default function ShorthandQuantityInput({
         if (newCursorPos === 0) newCursorPos = formatted.length;
         try {
           inputElem.setSelectionRange(newCursorPos, newCursorPos);
-        } catch {
-          // input element selection range fallback
-        }
+        } catch {}
       }, 0);
     } else {
       setDisplayValue(val);
@@ -112,11 +112,9 @@ export default function ShorthandQuantityInput({
     if (parsedNum == null || parsedNum <= 0) return;
 
     if (isWordsMode) {
-      // Switch from words to digits
       setDisplayValue(formattedNum);
       setIsWordsMode(false);
     } else {
-      // Switch from digits to words
       if (words) {
         setDisplayValue(words);
         setIsWordsMode(true);
@@ -133,7 +131,12 @@ export default function ShorthandQuantityInput({
       : "Type amount or shorthand (e.g. 50,000 or 1 Lakh)";
 
   return (
-    <div className="relative w-full">
+    <div className="relative w-full min-w-[72px] flex items-center">
+      {prefix ? (
+        <span className="absolute left-2.5 text-xs font-semibold text-slate-400 pointer-events-none select-none z-10">
+          {prefix}
+        </span>
+      ) : null}
       <input
         type="text"
         id={id}
@@ -144,24 +147,29 @@ export default function ShorthandQuantityInput({
         onFocus={(e) => e.target.select()}
         placeholder={placeholder}
         disabled={disabled}
-        className={`ui-input w-full ${parsedNum != null && parsedNum > 0 ? "pr-9" : "pr-3"} ${
+        className={`ui-input w-full ${prefix ? "pl-7" : ""} ${parsedNum != null && parsedNum > 0 ? "pr-8" : "pr-3"} ${
           error ? "border-[var(--color-danger)]" : ""
         } ${className}`}
+        style={{
+          paddingLeft: prefix ? "1.75rem" : undefined,
+          paddingRight: parsedNum != null && parsedNum > 0 ? "1.95rem" : undefined,
+          ...style,
+        }}
         {...rest}
       />
 
-      {parsedNum != null && parsedNum > 0 ? (
+      {parsedNum != null && parsedNum > 0 && (
         <button
           type="button"
           onClick={handleToggleConversion}
           title={tooltipText}
           disabled={disabled}
-          className="absolute right-1.5 top-1/2 -translate-y-1/2 flex h-6 w-6 items-center justify-center rounded-md border border-emerald-200 dark:border-emerald-800/80 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/70 transition-colors"
+          className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center justify-center p-0.5 rounded text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/40 transition-colors focus:outline-none z-10 cursor-pointer"
           aria-label="Toggle conversion between numbers and words"
         >
           <ArrowLeftRight className="h-3.5 w-3.5" />
         </button>
-      ) : null}
+      )}
     </div>
   );
 }

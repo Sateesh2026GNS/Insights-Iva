@@ -25,3 +25,11 @@ class MessageUpdate(BaseModel):
 
 class MarkReadBody(BaseModel):
     message_id: int
+
+
+class ReactionToggle(BaseModel):
+    emoji: str = Field(..., min_length=1, max_length=16)
+
+
+class MessageForward(BaseModel):
+    target_conversation_ids: list[int] = Field(..., min_length=1)

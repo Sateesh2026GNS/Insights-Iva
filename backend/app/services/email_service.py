@@ -157,7 +157,8 @@ def _prepare_smtp_server(server, s) -> None:
 
 
 def _smtp_login_and_send(server, s, msg: EmailMessage) -> None:
-    server.login(s.smtp_user, s.smtp_password)
+    password = (s.smtp_password or "").replace(" ", "").strip()
+    server.login(s.smtp_user, password)
     server.send_message(msg)
 
 
@@ -281,7 +282,17 @@ async def send_email_async(
     attachments: list[tuple[str, bytes, str]] | None = None,
 ) -> None:
     """Send email asynchronously. Prefers FastAPI-Mail; otherwise smtplib."""
-    _require_smtp()
+    if not smtp_is_configured():
+        s = _settings()
+        if not s.is_production:
+            logger.info(
+                "[DEV EMAIL ASYNC] To: %s | Subject: %s | Attachments: %s",
+                to,
+                subject,
+                [a[0] for a in attachments or []],
+            )
+            return
+        _require_smtp()
     if _HAS_FASTAPI_MAIL and not attachments:
         try:
             await _send_via_fastapi_mail(to, subject, body, html=html)

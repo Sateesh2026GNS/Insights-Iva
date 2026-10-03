@@ -23,6 +23,7 @@ import { formatInr, statusColor } from "../../data/procurementMasterData";
 import { runListExport } from "../../utils/listExport";
 
 import Button from "../../components/common/Button";
+import ShorthandQuantityInput from "../../components/common/ShorthandQuantityInput";
 function WorkflowStrip() {
   const steps = ["Purchase Order (PO)", "Goods Receipt Note (GRN)", "Vendor Invoice", "Finance Approval", "Payment"];
   return (
@@ -151,24 +152,22 @@ function CreateBillModal({ isOpen, onClose, onCreated, suppliers, purchaseOrders
 
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="ui-label">Bill Amount (₹)</label>
-              <input
-                type="number"
-                min="0"
+              <label className="ui-label mb-1">Bill Amount (₹)</label>
+              <ShorthandQuantityInput
                 required
                 value={form.amount}
-                onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
-                className="ui-input w-full"
+                onChange={(val) => setForm((f) => ({ ...f, amount: val }))}
+                prefix="₹"
+                placeholder="Bill Amount"
               />
             </div>
             <div>
-              <label className="ui-label">GST Amount (₹)</label>
-              <input
-                type="number"
-                min="0"
+              <label className="ui-label mb-1">GST Amount (₹)</label>
+              <ShorthandQuantityInput
                 value={form.gst_amount}
-                onChange={(e) => setForm((f) => ({ ...f, gst_amount: e.target.value }))}
-                className="ui-input w-full"
+                onChange={(val) => setForm((f) => ({ ...f, gst_amount: val }))}
+                prefix="₹"
+                placeholder="GST Amount"
               />
             </div>
           </div>

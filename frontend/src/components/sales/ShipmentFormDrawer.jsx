@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { Paperclip, Truck, X } from "lucide-react";
 
 import Button from "../common/Button";
+import ShorthandQuantityInput from "../common/ShorthandQuantityInput";
 import { createDispatchShipment } from "../../api/dispatchApi";
 import { getSalesOrdersEnriched } from "../../api/salesApi";
 import { useToast } from "../../context/ToastContext";
@@ -294,24 +295,18 @@ setOrders(list);
           <div className="grid grid-cols-2 gap-3">
             <label className="block space-y-1">
               <FieldLabel>No. of Boxes</FieldLabel>
-              <input
-                type="number"
-                min="0"
-                step="1"
+              <ShorthandQuantityInput
                 value={form.box_count}
-                onChange={(e) => handleChange("box_count", e.target.value)}
-                className={inputClass}
+                onChange={(val) => handleChange("box_count", val)}
+                placeholder="1"
               />
             </label>
             <label className="block space-y-1">
               <FieldLabel>Total Weight (LBS)</FieldLabel>
-              <input
-                type="number"
-                min="0"
-                step="0.1"
+              <ShorthandQuantityInput
                 value={form.total_weight}
-                onChange={(e) => handleChange("total_weight", e.target.value)}
-                className={inputClass}
+                onChange={(val) => handleChange("total_weight", val)}
+                placeholder="0.0"
               />
             </label>
           </div>

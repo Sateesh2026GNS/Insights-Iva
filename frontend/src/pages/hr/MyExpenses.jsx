@@ -25,6 +25,7 @@ import {
 
 import Loader from "../../components/common/Loader";
 import { ListPageShell } from "../../components/common/ListPageShell";
+import ShorthandQuantityInput from "../../components/common/ShorthandQuantityInput";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { useToast } from "../../context/ToastContext";
 import { createMyExpense, deleteMyExpense, getMyExpenses, getMyExpensesSummary } from "../../api/hrApi";
@@ -242,10 +243,11 @@ function AddExpenseDrawer({ open, onClose, onSave }) {
 
           <div className="hr-my-expenses__field">
             <label className="hr-my-expenses__field-label">Amount <span>*</span></label>
-            <div className="hr-my-expenses__amount-wrap">
-              <span className="hr-my-expenses__amount-prefix">₹</span>
-              <input className="hr-my-expenses__input" type="number" min="0" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Enter Amount" />
-            </div>
+            <ShorthandQuantityInput
+              value={amount}
+              onChange={(val) => setAmount(val)}
+              placeholder="e.g. 1,500 or 15k"
+            />
           </div>
 
           <div className="hr-my-expenses__field">

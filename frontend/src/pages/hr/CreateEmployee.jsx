@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { CalendarDays, Check, Loader2, LocateFixed, Plus, X } from "lucide-react";
 
 import { ListPageShell } from "../../components/common/ListPageShell";
+import ShorthandQuantityInput from "../../components/common/ShorthandQuantityInput";
 import { useToast } from "../../context/ToastContext";
 import { createEmployee, getEmployeesEnriched, updateEmployee } from "../../api/hrApi";
 import { fetchCurrentLocationAddress } from "../../api/addressLookupApi";
@@ -569,14 +570,10 @@ export default function CreateEmployee() {
           <h2 className="hr-create-employee__section-title">Salary & Compensation</h2>
           <div className="hr-create-employee__grid-3">
             <Field label="Monthly Gross Salary (₹)">
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                className="hr-create-employee__input"
+              <ShorthandQuantityInput
                 value={salary}
-                onChange={(e) => setSalary(e.target.value)}
-                placeholder="e.g. 50000 or 63583"
+                onChange={setSalary}
+                placeholder="e.g. 50,000 or 1 Lakh"
               />
             </Field>
           </div>

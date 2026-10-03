@@ -1,7 +1,5 @@
 /** HR placeholder route titles for pages not yet fully built. */
-export const HR_ROUTE_META = {
-  "/hr/announcements": { title: "Announcements", description: "Company-wide HR announcements and notices." },
-};
+export const HR_ROUTE_META = {};
 
 /** Paths registered as HR placeholder pages in AppRoutes. */
 export const HR_PLACEHOLDER_PATHS = Object.keys(HR_ROUTE_META);

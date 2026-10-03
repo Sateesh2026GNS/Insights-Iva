@@ -15,6 +15,8 @@ from app.services.hr_module_service import (
     archive_preboarding,
     assign_shift,
     create_announcement,
+    update_announcement,
+    delete_announcement,
     create_asset_category,
     create_expense,
     create_holiday,
@@ -836,6 +838,25 @@ def announcements_create(
     db: Session = Depends(get_db),
 ):
     return create_announcement(db, user.tenant_id, payload, user)
+
+
+@router.put("/announcements/{announcement_id}")
+def announcements_update(
+    announcement_id: int,
+    payload: dict,
+    user: User = Depends(require_permission(MODULE)),
+    db: Session = Depends(get_db),
+):
+    return update_announcement(db, user.tenant_id, announcement_id, payload, user)
+
+
+@router.delete("/announcements/{announcement_id}")
+def announcements_delete(
+    announcement_id: int,
+    user: User = Depends(require_permission(MODULE)),
+    db: Session = Depends(get_db),
+):
+    return delete_announcement(db, user.tenant_id, announcement_id, user)
 
 
 # ── HR role permissions ──────────────────────────────────────────────────────

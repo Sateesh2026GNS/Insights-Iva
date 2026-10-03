@@ -44,7 +44,8 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/files", tags=["files"])
 MODULE = "documents"
 # Chat attachments and document uploads share the same file service.
-require_file_upload = require_any_permission("documents", "chat", "inventory")
+require_file_upload = require_any_permission("documents", "chat", "inventory", "sales", "hr", "manufacturing", "procurement", "production", "quality")
+require_file_access = require_any_permission("documents", "chat", "inventory", "sales", "hr", "manufacturing", "procurement", "production", "quality", "dashboard")
 
 
 def _stored_file_out(data: dict) -> StoredFileOut:
@@ -139,7 +140,7 @@ def resume_session(
 @router.get("/{file_id}", response_model=StoredFileOut)
 def get_file(
     file_id: int,
-    user: User = Depends(require_permission(MODULE)),
+    user: User = Depends(require_file_access),
     db: Session = Depends(get_db),
 ) -> StoredFileOut:
     return StoredFileOut(**get_file_status(db, user, file_id))
@@ -148,7 +149,7 @@ def get_file(
 @router.get("/{file_id}/status", response_model=StoredFileOut)
 def get_file_status_endpoint(
     file_id: int,
-    user: User = Depends(require_permission(MODULE)),
+    user: User = Depends(require_file_access),
     db: Session = Depends(get_db),
 ) -> StoredFileOut:
     return StoredFileOut(**get_file_status(db, user, file_id))
@@ -157,7 +158,7 @@ def get_file_status_endpoint(
 @router.get("/{file_id}/download-url", response_model=DownloadUrlResponse)
 def download_url(
     file_id: int,
-    user: User = Depends(require_permission(MODULE)),
+    user: User = Depends(require_file_access),
     db: Session = Depends(get_db),
 ) -> DownloadUrlResponse:
     result = get_download_url(db, user, file_id)
@@ -168,7 +169,7 @@ def download_url(
 def attach_file_endpoint(
     file_id: int,
     payload: AttachFileRequest,
-    user: User = Depends(require_permission(MODULE)),
+    user: User = Depends(require_file_access),
     db: Session = Depends(get_db),
 ) -> AttachFileResponse:
     result = attach_file(
@@ -186,7 +187,7 @@ def attach_file_endpoint(
 def delete_file(
     file_id: int,
     request: Request,
-    user: User = Depends(require_permission(MODULE)),
+    user: User = Depends(require_file_access),
     db: Session = Depends(get_db),
 ) -> DeleteFileResponse:
     result = soft_delete_file(db, user, file_id, request=request)
@@ -239,19 +240,18 @@ async def local_upload_part(upload_id: str, part_number: int, request: Request):
 @router.get("/local-download/{token}")
 def local_download(
     token: str,
-    user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     settings = get_settings()
     if (settings.storage_provider or "local").lower() != "local":
         raise HTTPException(404, "Not found")
-    resolved = resolve_download_token(token, user.id, user.tenant_id)
+    resolved = resolve_download_token(token)
     if not resolved or resolved.file_id is None:
         raise HTTPException(410, "Download URL has expired or is invalid")
-    from app.services.file_management_service import _get_file
+    from app.models.file_storage import StoredFile
 
-    stored = _get_file(db, user.tenant_id, resolved.file_id)
-    if stored.storage_key != resolved.storage_key:
+    stored = db.get(StoredFile, resolved.file_id)
+    if not stored or stored.storage_key != resolved.storage_key:
         raise HTTPException(403, "Download token does not match this file")
     if stored.deleted_at is not None:
         raise HTTPException(404, "File not found")
@@ -268,8 +268,9 @@ def local_download(
         path.resolve().relative_to(root)
     except ValueError:
         raise HTTPException(403, "Invalid file location")
+    mime = stored.mime_type or stored.detected_mime_type or "application/octet-stream"
     return FileResponse(
         path,
         filename=resolved.filename or path.name,
-        media_type="application/octet-stream",
+        media_type=mime,
     )

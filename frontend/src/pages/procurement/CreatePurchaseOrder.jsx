@@ -853,15 +853,13 @@ export default function CreatePurchaseOrder() {
                         </select>
                       </td>
                       <td className={cell}>
-                        <div className="flex items-center gap-0.5 min-w-[100px]">
-                          <span className="text-[var(--color-text-faint)]">₹</span>
-                          <ShorthandQuantityInput
-                            value={row.rate}
-                            onChange={(val) => updateItem(idx, "rate", val)}
-                            placeholder="0"
-                            className="w-full text-[12px]"
-                          />
-                        </div>
+                        <ShorthandQuantityInput
+                          value={row.rate}
+                          onChange={(val) => updateItem(idx, "rate", val)}
+                          prefix="₹"
+                          placeholder="0"
+                          className="w-24 text-[12px]"
+                        />
                       </td>
                       <td className={cell}>
                         <select
@@ -875,11 +873,11 @@ export default function CreatePurchaseOrder() {
                       </td>
                       <td className={cell}>
                         <div className="flex gap-1">
-                          <input
-                            type="number"
+                          <ShorthandQuantityInput
                             value={row.discount}
-                            onChange={(e) => updateItem(idx, "discount", e.target.value)}
-                            className="w-14 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-1.5 py-1.5"
+                            onChange={(val) => updateItem(idx, "discount", val)}
+                            placeholder="0"
+                            className="w-20 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-1.5 py-1.5 text-[12px]"
                           />
                           <select
                             value={row.discount_type}
@@ -977,7 +975,11 @@ export default function CreatePurchaseOrder() {
               {showPurchaseDiscount ? (
                 <div className="flex items-center gap-2 border-b border-dashed border-[var(--color-border)] p-3">
                   <button type="button" onClick={() => setShowPurchaseDiscount(false)} className="text-[var(--color-danger)]"><X className="h-4 w-4" /></button>
-                  <SoftInput type="number" placeholder="Discount" value={purchaseDiscountVal} onChange={(e) => setPurchaseDiscountVal(e.target.value)} />
+                  <ShorthandQuantityInput
+                    value={purchaseDiscountVal}
+                    onChange={(val) => setPurchaseDiscountVal(val)}
+                    placeholder="Discount"
+                  />
                   <SoftSelect value={purchaseDiscountType} onChange={(e) => setPurchaseDiscountType(e.target.value)} className="max-w-16"><option>%</option><option>₹</option></SoftSelect>
                 </div>
               ) : null}
