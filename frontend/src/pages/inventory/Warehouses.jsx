@@ -339,6 +339,7 @@ export default function Warehouses() {
     {
       key: "total_items",
       label: "Total Items",
+      align: "center",
       width: "110px",
       render: (r) => (
         <span className="tabular-nums text-[13px] font-semibold text-[var(--color-text)]">
@@ -349,6 +350,7 @@ export default function Warehouses() {
     {
       key: "inventory_value",
       label: "Stock Value",
+      align: "center",
       width: "120px",
       render: (r) => (
         <span className="whitespace-nowrap tabular-nums text-[13px] font-semibold text-[var(--color-text)]">
@@ -359,6 +361,7 @@ export default function Warehouses() {
     {
       key: "utilization_pct",
       label: "Utilization",
+      align: "center",
       width: "155px",
       render: (r) => {
         const pct = Number(r.utilization_pct) || 0;
@@ -378,6 +381,7 @@ export default function Warehouses() {
     {
       key: "status",
       label: "Status",
+      align: "center",
       width: "105px",
       render: (r) => (
         <StatusBadge tone={r.status === "active" ? "success" : "neutral"}>
@@ -388,11 +392,12 @@ export default function Warehouses() {
     {
       key: "actions",
       label: "Actions",
+      align: "center",
       sortable: false,
       width: "74px",
       className: "min-w-[4.5rem] w-[4.5rem] whitespace-nowrap",
       render: (r) => (
-        <div className="flex items-center justify-end whitespace-nowrap">
+        <div className="flex items-center justify-center whitespace-nowrap">
           <InventoryRowActionsMenu
             rowId={r.id}
             isOpen={openMenuId === r.id}
