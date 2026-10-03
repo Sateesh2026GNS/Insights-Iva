@@ -18,22 +18,32 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    bind = op.get_bind()
+    insp = sa.inspect(bind)
+    existing_tables = set(insp.get_table_names())
+
     for table in ("inventory_items", "stock_levels", "stock_movements"):
-        with op.batch_alter_table(table) as batch_op:
-            batch_op.alter_column(
-                "quantity",
-                existing_type=sa.Integer(),
-                type_=sa.Numeric(12, 2),
-                existing_nullable=(table == "inventory_items"),
-            )
+        if table in existing_tables:
+            with op.batch_alter_table(table) as batch_op:
+                batch_op.alter_column(
+                    "quantity",
+                    existing_type=sa.Integer(),
+                    type_=sa.Numeric(12, 2),
+                    existing_nullable=(table == "inventory_items"),
+                )
 
 
 def downgrade() -> None:
+    bind = op.get_bind()
+    insp = sa.inspect(bind)
+    existing_tables = set(insp.get_table_names())
+
     for table in ("inventory_items", "stock_levels", "stock_movements"):
-        with op.batch_alter_table(table) as batch_op:
-            batch_op.alter_column(
-                "quantity",
-                existing_type=sa.Numeric(12, 2),
-                type_=sa.Integer(),
-                existing_nullable=(table == "inventory_items"),
-            )
+        if table in existing_tables:
+            with op.batch_alter_table(table) as batch_op:
+                batch_op.alter_column(
+                    "quantity",
+                    existing_type=sa.Numeric(12, 2),
+                    type_=sa.Integer(),
+                    existing_nullable=(table == "inventory_items"),
+                )

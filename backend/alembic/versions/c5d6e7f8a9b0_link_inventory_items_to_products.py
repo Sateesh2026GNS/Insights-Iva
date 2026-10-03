@@ -18,26 +18,33 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.add_column(
-        "inventory_items",
-        sa.Column("product_id", sa.Integer(), nullable=True),
-    )
-    op.create_foreign_key(
-        "fk_inventory_items_product_id_products",
-        "inventory_items",
-        "products",
-        ["product_id"],
-        ["id"],
-    )
-    op.create_index(
-        "ix_inventory_items_product_id", "inventory_items", ["product_id"]
-    )
-    op.create_index(
-        "uq_inventory_items_product_id",
-        "inventory_items",
-        ["product_id"],
-        unique=True,
-    )
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    existing_tables = set(inspector.get_table_names())
+
+    if "inventory_items" in existing_tables:
+        columns = {column["name"] for column in inspector.get_columns("inventory_items")}
+        if "product_id" not in columns:
+            op.add_column(
+                "inventory_items",
+                sa.Column("product_id", sa.Integer(), nullable=True),
+            )
+            op.create_foreign_key(
+                "fk_inventory_items_product_id_products",
+                "inventory_items",
+                "products",
+                ["product_id"],
+                ["id"],
+            )
+            op.create_index(
+                "ix_inventory_items_product_id", "inventory_items", ["product_id"]
+            )
+            op.create_index(
+                "uq_inventory_items_product_id",
+                "inventory_items",
+                ["product_id"],
+                unique=True,
+            )
 
     # Backfill only unambiguous tenant/SKU matches. Duplicate legacy inventory
     # rows are left unlinked for manual reconciliation rather than guessed.
