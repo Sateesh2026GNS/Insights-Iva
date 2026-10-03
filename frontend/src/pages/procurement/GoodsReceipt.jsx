@@ -36,7 +36,7 @@ function GRNDetailModal({ row, onClose, onQC }) {
 
   return (
     <div className="ui-modal-backdrop">
-      <div className="ui-modal w-full max-w-lg">
+      <div className="ui-modal max-h-[90vh] w-full max-w-lg overflow-y-auto">
         <div className="flex items-start justify-between">
           <div>
             <h2 className="text-lg font-bold text-[var(--color-text)]">{row.grn_number}</h2>
@@ -74,6 +74,44 @@ function GRNDetailModal({ row, onClose, onQC }) {
             <p className="font-medium text-[var(--color-text)]">{row.received_by || "—"}</p>
           </div>
         </div>
+        <section className="mt-4">
+          <h3 className="mb-2 text-sm font-semibold text-[var(--color-text)]">Received items</h3>
+          {row.line_items?.length ? (
+            <div className="overflow-x-auto rounded-lg border border-[var(--color-border)]">
+              <table className="w-full min-w-[34rem] text-left text-xs">
+                <thead className="bg-[var(--color-surface-muted)] text-[var(--color-text-muted)]">
+                  <tr>
+                    <th className="px-3 py-2 font-semibold">Item</th>
+                    <th className="px-3 py-2 font-semibold">SKU</th>
+                    <th className="px-3 py-2 text-right font-semibold">Received</th>
+                    <th className="px-3 py-2 text-right font-semibold">Rejected</th>
+                    <th className="px-3 py-2 text-right font-semibold">Accepted</th>
+                    <th className="px-3 py-2 font-semibold">Unit</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {row.line_items.map((line, index) => (
+                    <tr
+                      key={`${line.item_id}-${index}`}
+                      className="border-t border-[var(--color-border)] text-[var(--color-text)]"
+                    >
+                      <td className="px-3 py-2 font-medium">{line.item_name || `Item ${line.item_id}`}</td>
+                      <td className="px-3 py-2 text-[var(--color-text-muted)]">{line.item_sku || "—"}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{line.quantity_received}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{line.quantity_rejected}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{line.quantity_accepted}</td>
+                      <td className="px-3 py-2">{line.unit || "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="rounded-lg border border-[var(--color-border)] px-3 py-2 text-sm text-[var(--color-text-muted)]">
+              No item details are available for this GRN.
+            </p>
+          )}
+        </section>
         <div
           className={`mt-4 rounded-lg border px-4 py-3 text-xs ${
             pending

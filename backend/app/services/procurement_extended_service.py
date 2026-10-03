@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session, joinedload, selectinload
 from app.models.inventory import InventoryItem, StockLevel, Supplier
 from app.models.procurement import (
     GoodsReceipt,
+    GoodsReceiptLine,
     MaterialRequest,
     MaterialRequestLine,
     PurchaseOrder,
@@ -443,7 +444,7 @@ def list_grn_enriched(db: Session, tenant_id: int) -> list[GRNListRead]:
                     joinedload(PurchaseOrder.supplier),
                     selectinload(PurchaseOrder.line_items).joinedload(PurchaseOrderLine.item),
                 ),
-                selectinload(GoodsReceipt.line_items),
+                selectinload(GoodsReceipt.line_items).joinedload(GoodsReceiptLine.item),
             )
             .where(GoodsReceipt.tenant_id == tenant_id)
             .order_by(GoodsReceipt.receipt_date.desc())
@@ -500,6 +501,22 @@ def list_grn_enriched(db: Session, tenant_id: int) -> list[GRNListRead]:
                 vendor_name=vendor,
                 warehouse_name=gr.warehouse.name if gr.warehouse else None,
                 quantity=qty,
+                line_items=[
+                    {
+                        "item_id": line.item_id,
+                        "item_name": line.item.name if line.item else None,
+                        "item_sku": line.item.sku if line.item else None,
+                        "unit": line.item.unit if line.item else None,
+                        "quantity_received": float(line.quantity_received or 0),
+                        "quantity_rejected": float(line.quantity_rejected or 0),
+                        "quantity_accepted": max(
+                            0.0,
+                            float(line.quantity_received or 0)
+                            - float(line.quantity_rejected or 0),
+                        ),
+                    }
+                    for line in gr.line_items or []
+                ],
                 remaining_quantity=remaining_by_po.get(gr.purchase_order_id) if gr.purchase_order_id else None,
                 remaining_summary=remaining_summary_by_po.get(gr.purchase_order_id) if gr.purchase_order_id else None,
                 qc_status=getattr(gr, "qc_status", "pending") or "pending",

@@ -107,6 +107,16 @@ class GRNSummaryRead(BaseModel):
     total_value: float = 0
 
 
+class GRNLineItemRead(BaseModel):
+    item_id: int
+    item_name: str | None = None
+    item_sku: str | None = None
+    unit: str | None = None
+    quantity_received: float = 0
+    quantity_rejected: float = 0
+    quantity_accepted: float = 0
+
+
 class GRNListRead(BaseModel):
     id: int
     grn_number: str
@@ -119,6 +129,7 @@ class GRNListRead(BaseModel):
     qc_status: str = "pending"
     received_by: str | None = None
     notes: str | None = None
+    line_items: list[GRNLineItemRead] = []
     status: str = "received"
     receipt_date: str | None = None
 
