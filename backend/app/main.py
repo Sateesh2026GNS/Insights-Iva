@@ -414,9 +414,9 @@ def on_startup():
             from app.models.base import Base
 
             Base.metadata.create_all(bind=engine)
-            inspector = inspect(engine)
-            db_tables = inspector.get_table_names()
             with engine.begin() as conn:
+                inspector = inspect(conn)
+                db_tables = set(inspector.get_table_names())
                 for table_name, table in Base.metadata.tables.items():
                     if table_name in db_tables:
                         existing_cols = {c["name"] for c in inspector.get_columns(table_name)}
@@ -434,25 +434,22 @@ def on_startup():
                                 )
                 if conn.dialect.name == "postgresql":
                     for table_name in ("inventory_items", "stock_levels", "stock_movements"):
-                        columns = {
-                            column["name"]: column["type"]
-                            for column in inspect(conn).get_columns(table_name)
-                        }
-                        if isinstance(columns.get("quantity"), Integer):
-                            conn.execute(
-                                text(
-                                    f"ALTER TABLE {table_name} ALTER COLUMN quantity "
-                                    "TYPE NUMERIC(12, 2) USING quantity::numeric"
+                        if table_name in db_tables:
+                            columns = {
+                                column["name"]: column["type"]
+                                for column in inspector.get_columns(table_name)
+                            }
+                            if isinstance(columns.get("quantity"), Integer):
+                                conn.execute(
+                                    text(
+                                        f"ALTER TABLE {table_name} ALTER COLUMN quantity "
+                                        "TYPE NUMERIC(12, 2) USING quantity::numeric"
+                                    )
                                 )
-                            )
-                # Development startup adds new columns without running Alembic.
-                # Backfill pre-existing catalog rows once: null means this field
-                # predates the explicit saleability choice, while false is an
-                # intentional opt-out made after the column was introduced.
                 if "products" in db_tables:
                     product_columns = {
                         column["name"]
-                        for column in inspect(engine).get_columns("products")
+                        for column in inspector.get_columns("products")
                     }
                     if "is_sellable" in product_columns:
                         conn.execute(
@@ -465,7 +462,7 @@ def on_startup():
                             )
                         )
         except Exception:
-            logger.exception("Schema sync warning during startup (development only)")
+            logger.warning("Development schema sync bypassed or interrupted")
 
     from app.core.database import SessionLocal
     from app.core.seed_finance import seed_finance_data
