@@ -240,12 +240,13 @@ async def local_upload_part(upload_id: str, part_number: int, request: Request):
 @router.get("/local-download/{token}")
 def local_download(
     token: str,
+    user: User = Depends(require_file_access),
     db: Session = Depends(get_db),
 ):
     settings = get_settings()
     if (settings.storage_provider or "local").lower() != "local":
         raise HTTPException(404, "Not found")
-    resolved = resolve_download_token(token)
+    resolved = resolve_download_token(token, user_id=user.id, tenant_id=user.tenant_id)
     if not resolved or resolved.file_id is None:
         raise HTTPException(410, "Download URL has expired or is invalid")
     from app.models.file_storage import StoredFile

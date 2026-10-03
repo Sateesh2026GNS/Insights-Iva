@@ -39,9 +39,9 @@ def _product_requires_bom(product: Product | None) -> bool:
     """Finished and assembled products need an explicit recipe before production planning."""
     if not product:
         return False
-    category = (product.category or "finished goods").strip().lower().replace("_", " ")
-    direct_stock_categories = ("raw material", "packaging", "wip", "consumable", "spare", "component")
-    return not any(token in category for token in direct_stock_categories)
+    category = (product.category or "").strip().lower().replace("_", " ")
+    manufactured_categories = ("assembly", "manufactured", "make to order", "mto", "build to order")
+    return any(token in category for token in manufactured_categories)
 
 
 def sales_order_has_final_qc_pass(

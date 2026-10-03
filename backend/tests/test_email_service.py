@@ -63,13 +63,13 @@ def test_email_delivery_http_detail_codes():
     assert payload["code"] == "smtp_not_configured"
 
 
-@pytest.mark.asyncio
 @patch("app.api.metric_report_email_api.send_email_async", new_callable=AsyncMock)
 @patch("app.api.metric_report_email_api.user_has_permission", return_value=True)
 @patch("app.api.metric_report_email_api.generate_metric_report_pdf", return_value=b"%PDF")
-async def test_metric_report_email_smtp_not_configured_returns_503_safe_detail(
+def test_metric_report_email_smtp_not_configured_returns_503_safe_detail(
     _pdf, _perm, mock_send
 ):
+    import asyncio
     from fastapi import HTTPException
 
     from app.api.metric_report_email_api import email_metric_report
@@ -90,7 +90,7 @@ async def test_metric_report_email_smtp_not_configured_returns_503_safe_detail(
         rows=[{"metric": "Revenue", "value": "100"}],
     )
     with pytest.raises(HTTPException) as exc:
-        await email_metric_report(payload, user=user)
+        asyncio.run(email_metric_report(payload, user=user))
     assert exc.value.status_code == 503
     assert exc.value.detail["code"] == "smtp_not_configured"
     assert exc.value.detail["message"] == PUBLIC_MSG_NOT_CONFIGURED

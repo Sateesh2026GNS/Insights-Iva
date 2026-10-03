@@ -481,6 +481,24 @@ def test_complete_store_stage_moves_to_production_manager_queue(client):
         json={"lines": [{"id": ln["id"], "available_qty": ln["required_qty"]} for ln in lines if ln.get("id")]},
     )
 
+    db = SessionLocal()
+    try:
+        for ln in lines:
+            if ln.get("inventory_item_id"):
+                record_stock_movement(
+                    db,
+                    StockMovementCreate(
+                        tenant_id=tenant_id,
+                        warehouse_id=1,
+                        item_id=int(ln["inventory_item_id"]),
+                        quantity=float(ln.get("required_qty", 10)),
+                        movement_type="in",
+                    ),
+                    commit=True,
+                )
+    finally:
+        db.close()
+
     store_issue = client.get(
         f"/manufacturing/workflow/sales-orders/{order_id}/stage/store",
         headers=store_headers,
