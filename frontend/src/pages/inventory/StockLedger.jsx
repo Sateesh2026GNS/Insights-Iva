@@ -408,6 +408,7 @@ export default function StockLedger({ variant = "" }) {
     {
       key: "qty_in",
       label: "Stock In",
+      align: "center",
       width: 100,
       minWidth: 100,
       render: (r) => (
@@ -419,6 +420,7 @@ export default function StockLedger({ variant = "" }) {
     {
       key: "qty_out",
       label: "Stock Out",
+      align: "center",
       width: 100,
       minWidth: 100,
       render: (r) => (
@@ -430,6 +432,7 @@ export default function StockLedger({ variant = "" }) {
     {
       key: "balance",
       label: "Balance",
+      align: "center",
       width: 100,
       minWidth: 100,
       render: (r) => (
@@ -441,6 +444,7 @@ export default function StockLedger({ variant = "" }) {
     {
       key: "unit",
       label: "UOM",
+      align: "center",
       width: 80,
       minWidth: 80,
       render: (r) => <span className="text-[13px] text-[var(--color-text-secondary)]">{r.unit || "—"}</span>,
