@@ -9,8 +9,6 @@ import {
   X,
 } from "lucide-react";
 
-import { DEMO_BIN_TREE } from "../../data/warehousesMasterData";
-
 import Button from "../common/Button";
 import { inputClass as dsInput } from "../../design-system/classes";
 
@@ -41,6 +39,42 @@ function formatInr(n) {
   return `₹${Number(n || 0).toLocaleString("en-IN")}`;
 }
 
+function rackName(index) {
+  let value = index + 1;
+  let label = "";
+  while (value > 0) {
+    value -= 1;
+    label = String.fromCharCode(65 + (value % 26)) + label;
+    value = Math.floor(value / 26);
+  }
+  return label;
+}
+
+function buildBinTree(code, rackCount, binCount) {
+  if (!rackCount) return [];
+  const binsPerRack = Math.floor(binCount / rackCount);
+  const extraBins = binCount % rackCount;
+
+  return Array.from({ length: rackCount }, (_, rackIndex) => {
+    const rack = rackName(rackIndex);
+    const rackBins = binsPerRack + (rackIndex < extraBins ? 1 : 0);
+    return {
+      name: `Rack ${rack} — ${code || "Warehouse"}`,
+      type: "rack",
+      children: [
+        {
+          name: "Shelf 01",
+          type: "shelf",
+          children: Array.from({ length: rackBins }, (_, binIndex) => ({
+            name: `Bin ${code || "WH"}-${rack}${String(binIndex + 1).padStart(2, "0")}`,
+            type: "bin",
+          })),
+        },
+      ],
+    };
+  });
+}
+
 function BinTree({ nodes, depth = 0 }) {
   if (!nodes?.length) return null;
   return (
@@ -65,7 +99,13 @@ export default function WarehouseDetailModal({ warehouse, detail, onClose, onEdi
   if (!warehouse) return null;
 
   const w = { ...warehouse, ...(detail || {}) };
-  const binTree = detail?.bin_tree || [];
+  const rackCount = Number(w.rack_count) || 0;
+  const binCount = Number(w.bin_count) || 0;
+  const hasRackCount = w.rack_count != null;
+  const hasBinCount = w.bin_count != null;
+  const binTree = hasRackCount && hasBinCount
+    ? buildBinTree(w.code, rackCount, binCount)
+    : [];
 
   const kpis = [
     { label: "Inventory Value", value: formatInr(w.inventory_value) },
@@ -248,9 +288,32 @@ export default function WarehouseDetailModal({ warehouse, detail, onClose, onEdi
           )}
 
           {tab === "bins" && (
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-              <h3 className="mb-3 text-sm font-bold text-slate-800">Bin & Rack Layout</h3>
-              <BinTree nodes={binTree} />
+            <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <h3 className="text-sm font-bold text-slate-800">Rack & Bin Counts</h3>
+              {w.rack_count != null || w.bin_count != null ? (
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="Racks" value={w.rack_count} />
+                  <Field label="Bin Locations" value={w.bin_count} />
+                </div>
+              ) : (
+                <p className="rounded-lg border border-dashed border-slate-200 bg-white px-4 py-6 text-center text-sm text-slate-500">
+                  Rack and bin counts haven’t been entered. Select Edit to add them.
+                </p>
+              )}
+              {binTree.length > 0 ? (
+                <div className="rounded-lg border border-slate-200 bg-white p-3">
+                  <BinTree nodes={binTree} />
+                </div>
+              ) : hasRackCount || hasBinCount ? (
+                <p className="text-sm text-slate-500">
+                  {!rackCount
+                    ? "No racks are configured, so a rack/bin layout can’t be displayed."
+                    : "Enter both rack and bin counts to generate the layout."}
+                </p>
+              ) : null}
+              <p className="text-xs text-slate-500">
+                This layout is generated from the saved counts, with one shelf per rack and bins spread evenly across racks. It doesn’t assign inventory items to locations.
+              </p>
             </div>
           )}
 
@@ -308,6 +371,8 @@ export function WarehouseFormModal({ warehouse, onClose, onSave }) {
     capacity: warehouse?.capacity || "",
     used_capacity: warehouse?.used_capacity ?? 0,
     available_capacity: warehouse?.available_capacity ?? "",
+    rack_count: warehouse?.rack_count ?? "",
+    bin_count: warehouse?.bin_count ?? "",
     is_primary: warehouse?.is_primary || false,
     status: warehouse?.status || "active",
   });
@@ -430,6 +495,30 @@ export function WarehouseFormModal({ warehouse, onClose, onSave }) {
                 placeholder={form.capacity && form.used_capacity != null ? Math.max(0, form.capacity - form.used_capacity) : "Auto-calculated"}
                 value={form.available_capacity}
                 onChange={(e) => set("available_capacity", e.target.value)}
+                className={inputClass}
+              />
+            </label>
+            <label className="block text-sm font-medium text-slate-700">
+              Rack Count
+              <input
+                type="number"
+                min="0"
+                step="1"
+                placeholder="e.g., 12"
+                value={form.rack_count}
+                onChange={(e) => set("rack_count", e.target.value)}
+                className={inputClass}
+              />
+            </label>
+            <label className="block text-sm font-medium text-slate-700">
+              Bin Locations
+              <input
+                type="number"
+                min="0"
+                step="1"
+                placeholder="e.g., 120"
+                value={form.bin_count}
+                onChange={(e) => set("bin_count", e.target.value)}
                 className={inputClass}
               />
             </label>

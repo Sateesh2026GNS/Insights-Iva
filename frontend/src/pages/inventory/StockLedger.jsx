@@ -6,13 +6,14 @@ import {
   ArrowUpFromLine,
   CalendarDays,
   ClipboardList,
+  Eye,
   Filter,
   Hash,
   RefreshCw,
   Wrench,
 } from "lucide-react";
 
-import Button from "../../components/common/Button";
+import Button, { ViewButton } from "../../components/common/Button";
 import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
 import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
 import { SearchBar } from "../../components/common/SearchFilter";
@@ -23,7 +24,6 @@ import Loader from "../../components/common/Loader";
 import PageHeader from "../../components/common/PageHeader";
 import { HeaderWarehouseField } from "../../components/inventory/InventoryHeaderControls";
 import StatusBadge from "../../components/common/StatusBadge";
-import InventoryRowActionsMenu from "../../components/inventory/InventoryRowActionsMenu";
 import RecordDetailModal from "../../components/inventory/RecordDetailModal";
 import StoreManagerNav from "../../components/inventory/StoreManagerNav";
 import { useToast } from "../../context/ToastContext";
@@ -161,7 +161,6 @@ export default function StockLedger({ variant = "" }) {
   const [search, setSearch] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [remarksWidth, setRemarksWidth] = useState(220);
-  const [openMenuId, setOpenMenuId] = useState(null);
   const [viewTarget, setViewTarget] = useState(null);
 
   const load = useCallback(async () => {
@@ -476,21 +475,18 @@ export default function StockLedger({ variant = "" }) {
       label: "Actions",
       align: "center",
       sortable: false,
-      width: 72,
-      minWidth: 72,
-      className: "min-w-[4.5rem] w-[4.5rem] whitespace-nowrap",
+      width: 96,
+      minWidth: 96,
+      className: "min-w-[6rem] w-[6rem] whitespace-nowrap",
       render: (r) => (
-        <div className="flex items-center justify-end whitespace-nowrap">
-          <InventoryRowActionsMenu
-            rowId={r.id}
-            isOpen={openMenuId === r.id}
-            onOpen={setOpenMenuId}
-            onClose={() => setOpenMenuId(null)}
-            onView={() => handleView(r)}
-            showEdit={false}
-            showAdd={false}
-            showDelete={false}
-          />
+        <div className="flex items-center justify-center whitespace-nowrap">
+          <ViewButton
+            size="sm"
+            leftIcon={<Eye className="h-3.5 w-3.5" aria-hidden />}
+            onClick={() => handleView(r)}
+          >
+            View
+          </ViewButton>
         </div>
       ),
     },

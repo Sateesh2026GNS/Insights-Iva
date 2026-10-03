@@ -89,7 +89,7 @@ export const STORE_MANAGER_NAV_ITEMS = [
     label: "Inventory",
     icon: Boxes,
     children: [
-      { key: "allItems", label: "All Items", to: "/inventory", icon: Package, end: true },
+      { key: "allItems", label: "Stock Items", to: "/inventory", icon: Package, end: true },
       {
         key: "finishedGoods",
         label: "Finished Goods",
@@ -162,7 +162,7 @@ export const STORE_MANAGER_NAV_ITEMS = [
     label: "Masters",
     icon: Layers,
     children: [
-      { key: "products", label: "Products", to: "/masters/products", icon: Package },
+      { key: "products", label: "Product Catalog", to: "/masters/products", icon: Package },
       { key: "vendorsMaster", label: "Vendors", to: "/procurement/vendors", icon: Building2 },
       {
         key: "warehousesMaster",

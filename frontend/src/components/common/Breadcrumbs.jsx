@@ -55,7 +55,7 @@ const pathLabels = {
   "goods-receipt": "Goods Receipt Note (GRN)",
   "supply-chain": "Supply Chain",
   masters: "Masters",
-  products: "Products",
+  products: "Product Catalog",
   bom: "Bill of Materials (BOM)",
   quality: "Quality",
   analytics: "Analytics",
@@ -201,7 +201,7 @@ const PAGE_TITLE_OVERRIDES = {
 };
 
 const BREADCRUMB_TITLE_OVERRIDES = {
-  "/inventory": "All Items",
+  "/inventory": "Stock Items",
   "/production/dashboard": "Dashboard",
 };
 
@@ -390,7 +390,7 @@ export function getBreadcrumbTrail(pathname) {
 
   if (normalizedPath === "/inventory") {
     trail.push({
-      label: "All Items",
+      label: "Stock Items",
       path: "/inventory",
     });
   }
