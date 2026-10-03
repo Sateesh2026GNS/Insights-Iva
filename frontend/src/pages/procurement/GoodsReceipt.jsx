@@ -33,6 +33,12 @@ function GRNDetailModal({ row, onClose, onQC }) {
   if (!row) return null;
   const pending =
     (row.qc_status || "pending") === "pending" || row.status === "pending_qc";
+  const hasAcceptedItems = (row.line_items || []).some((line) => {
+    const received = Number(line.quantity_received) || 0;
+    const rejected = Number(line.quantity_rejected) || 0;
+    const accepted = Number(line.quantity_accepted ?? Math.max(0, received - rejected));
+    return accepted > 0;
+  });
 
   return (
     <div className="ui-modal-backdrop">
@@ -125,7 +131,11 @@ function GRNDetailModal({ row, onClose, onQC }) {
             ? "Pending QC — inventory is not updated until inspection passes."
             : row.qc_status === "rejected"
               ? "QC rejected — no stock posted."
-              : "QC passed — raw material inventory and stock ledger updated."}
+              : hasAcceptedItems
+                ? "QC passed — accepted quantities posted to warehouse inventory and stock ledger."
+                : row.line_items?.length
+                  ? "QC passed — no accepted quantities to post."
+                  : "QC passed."}
         </div>
         {Number(row.remaining_quantity) > 0.000001 ? (
           <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
