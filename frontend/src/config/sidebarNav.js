@@ -50,7 +50,7 @@ export const SIDEBAR_NAV = [
     children: [
       { label: "Customers", to: "/sales/customers", module: "masters" },
       { label: "Vendors", to: "/procurement/vendors", module: "masters" },
-      { label: "Products", to: "/masters/products", module: "masters" },
+      { label: "Product Catalog", to: "/masters/products", module: "masters" },
       { label: "Bill of Materials (BOM)", to: "/masters/bom", module: "production" },
     ],
   },

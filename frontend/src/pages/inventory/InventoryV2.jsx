@@ -530,7 +530,7 @@ export default function InventoryV2() {
           active={tab}
           onChange={setTab}
           tabs={[
-            { id: "items", label: "All Items" },
+            { id: "items", label: "Stock Items" },
             { id: "categories", label: "Category Wise" },
           ]}
           action={

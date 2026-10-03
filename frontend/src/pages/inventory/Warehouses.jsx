@@ -188,6 +188,8 @@ export default function Warehouses() {
       manager_phone: form.manager_phone,
       capacity: cap,
       used_capacity: usedCap,
+      rack_count: form.rack_count === "" ? null : Number(form.rack_count),
+      bin_count: form.bin_count === "" ? null : Number(form.bin_count),
       is_primary: form.is_primary,
       status: form.status,
     };

@@ -14,7 +14,6 @@ from app.schemas.warehouse import (
     WarehouseStockItemRead,
     WarehouseSummaryRead,
     WarehouseUpdate,
-    WarehouseBinNode,
 )
 
 
@@ -178,37 +177,6 @@ def get_warehouse_summary(db: Session, tenant_id: int) -> WarehouseSummaryRead:
 
 
 
-def _default_bin_tree(wh: Warehouse) -> list[WarehouseBinNode]:
-    prefix = wh.code or "WH"
-    return [
-        WarehouseBinNode(
-            name=f"Rack A — {prefix}",
-            type="rack",
-            children=[
-                WarehouseBinNode(
-                    name="Shelf 01",
-                    type="shelf",
-                    children=[
-                        WarehouseBinNode(name=f"Bin {prefix}-A01", type="bin"),
-                        WarehouseBinNode(name=f"Bin {prefix}-A02", type="bin"),
-                    ],
-                ),
-            ],
-        ),
-        WarehouseBinNode(
-            name=f"Rack B — {prefix}",
-            type="rack",
-            children=[
-                WarehouseBinNode(
-                    name="Shelf 01",
-                    type="shelf",
-                    children=[WarehouseBinNode(name=f"Bin {prefix}-B01", type="bin")],
-                ),
-            ],
-        ),
-    ]
-
-
 def get_warehouse_detail(
     db: Session, tenant_id: int, warehouse_id: int
 ) -> WarehouseDetailRead | None:
@@ -327,7 +295,7 @@ def get_warehouse_detail(
 
     detail.daily_inward = daily_in
     detail.daily_outward = daily_out
-    detail.bin_tree = _default_bin_tree(wh)
+    detail.bin_tree = []
     detail.rack_count = wh.rack_count
     detail.bin_count = wh.bin_count
     return detail
