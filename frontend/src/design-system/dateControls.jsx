@@ -723,6 +723,7 @@ export function InlineNativeDateRange({
         className="ui-date-range-control__segment ui-date-range-control__segment--to"
         aria-label={`${toLabel}: ${formatDisplayDate(to) || "not set"}`}
       >
+        <Calendar className="h-4 w-4 shrink-0 text-[var(--color-text-icon)]" aria-hidden />
         <span className="font-medium tabular-nums text-[var(--color-text)]">
           {formatDisplayDate(to) || "End date"}
         </span>

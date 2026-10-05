@@ -159,7 +159,7 @@ class Settings(BaseSettings):
     )
     smtp_password: str = Field(
         default="",
-        validation_alias=AliasChoices("SMTP_PASSWORD", "smtp_password"),
+        validation_alias=AliasChoices("SMTP_PASSWORD", "SMTP_PASS", "smtp_password"),
     )
     smtp_from_email: str = Field(
         default="",
@@ -429,6 +429,9 @@ class Settings(BaseSettings):
                         "STORAGE_PROVIDER cannot be 'local' in production. "
                         "Use s3 or gcs, or set ALLOW_LOCAL_STORAGE_IN_PRODUCTION=true."
                     )
+
+        if (self.smtp_user or "").strip() and not (self.smtp_from_email or "").strip():
+            self.smtp_from_email = self.smtp_user.strip()
 
         # Ensure production domain defaults are always present in CORS
         render_host = (os.environ.get("RENDER_EXTERNAL_HOSTNAME") or "").strip()

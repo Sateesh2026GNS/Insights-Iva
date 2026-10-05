@@ -6,6 +6,7 @@ import {
   CheckSquare,
   Download,
   Eye,
+  EyeOff,
   File,
   FileSpreadsheet,
   FileText,
@@ -110,6 +111,7 @@ function getFileIcon(filename, mimeType) {
 }
 
 function WorkChatImageAttachment({ attachment, own, onOpenLightbox, onDownload }) {
+  const fileId = attachment.file_id || attachment.id;
   const [imgSrc, setImgSrc] = useState(() => {
     return attachment.download_url ? resolveUploadUrl(attachment.download_url) : null;
   });
@@ -120,14 +122,14 @@ function WorkChatImageAttachment({ attachment, own, onOpenLightbox, onDownload }
     let active = true;
     let createdUrl = null;
 
-    if (!imgSrc && attachment.file_id) {
+    if (!imgSrc && fileId) {
       async function fetchImage() {
         setLoading(true);
         setError(false);
         let attempts = 0;
         while (active && attempts < 5) {
           try {
-            const { download_url } = await getDownloadUrl(attachment.file_id);
+            const { download_url } = await getDownloadUrl(fileId);
             const resolved = resolveUploadUrl(download_url);
             if (active) {
               setImgSrc(resolved);
@@ -155,15 +157,23 @@ function WorkChatImageAttachment({ attachment, own, onOpenLightbox, onDownload }
         URL.revokeObjectURL(createdUrl);
       }
     };
-  }, [attachment.file_id, imgSrc]);
+  }, [fileId, imgSrc]);
 
   const handleImageError = async () => {
     try {
-      const { download_url } = await getDownloadUrl(attachment.file_id);
+      if (!fileId) {
+        setError(true);
+        return;
+      }
+      const { download_url } = await getDownloadUrl(fileId);
       const url = resolveUploadUrl(download_url);
-      const res = await api.get(url, { responseType: "blob" });
-      const objectUrl = URL.createObjectURL(res.data);
-      setImgSrc(objectUrl);
+      const res = await api.get(url, { responseType: "blob", skipCache: true });
+      if (res.data && res.data.type !== "application/json") {
+        const objectUrl = URL.createObjectURL(res.data);
+        setImgSrc(objectUrl);
+      } else {
+        setError(true);
+      }
     } catch {
       setError(true);
     }
@@ -189,7 +199,7 @@ function WorkChatImageAttachment({ attachment, own, onOpenLightbox, onDownload }
         alt={attachment.filename}
         className="work-chat-img-thumb"
         onError={handleImageError}
-        onClick={() => onOpenLightbox(imgSrc, attachment.filename, attachment.file_id)}
+        onClick={() => onOpenLightbox(imgSrc, attachment.filename, fileId)}
       />
       <div className="work-chat-img-overlay">
         <button
@@ -198,7 +208,7 @@ function WorkChatImageAttachment({ attachment, own, onOpenLightbox, onDownload }
           title="View full image"
           onClick={(e) => {
             e.stopPropagation();
-            onOpenLightbox(imgSrc, attachment.filename, attachment.file_id);
+            onOpenLightbox(imgSrc, attachment.filename, fileId);
           }}
         >
           <Eye className="h-4 w-4" />
@@ -209,7 +219,7 @@ function WorkChatImageAttachment({ attachment, own, onOpenLightbox, onDownload }
           title="Download image"
           onClick={(e) => {
             e.stopPropagation();
-            onDownload(attachment.file_id, attachment.filename, attachment.download_url);
+            onDownload(fileId, attachment.filename, attachment.download_url);
           }}
         >
           <Download className="h-4 w-4" />
@@ -222,17 +232,18 @@ function WorkChatImageAttachment({ attachment, own, onOpenLightbox, onDownload }
 function WorkChatFileAttachment({ attachment, own, onDownload }) {
   const Icon = getFileIcon(attachment.filename, attachment.mime_type);
   const sizeText = formatFileSize(attachment.file_size);
+  const fileId = attachment.file_id || attachment.id;
 
   return (
     <div
       className={`work-chat-file-card cursor-pointer hover:opacity-95 transition-opacity ${own ? "work-chat-file-card--own" : ""}`}
-      onClick={() => onDownload(attachment.file_id, attachment.filename)}
+      onClick={() => onDownload(fileId, attachment.filename, attachment.download_url)}
       role="button"
       tabIndex={0}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          onDownload(attachment.file_id, attachment.filename);
+          onDownload(fileId, attachment.filename, attachment.download_url);
         }
       }}
     >
@@ -251,7 +262,7 @@ function WorkChatFileAttachment({ attachment, own, onDownload }) {
         title="Download file"
         onClick={(e) => {
           e.stopPropagation();
-          onDownload(attachment.file_id, attachment.filename);
+          onDownload(fileId, attachment.filename, attachment.download_url);
         }}
       >
         <Download className="h-3.5 w-3.5" />
@@ -695,6 +706,190 @@ function ThemeModal({ currentTheme, onSelect, onClose }) {
   );
 }
 
+function ChatLockModal({ mode, conversation, onClose, onLockSuccess, onUnlockSuccess }) {
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPass, setShowPass] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
+
+  if (!mode || !conversation) return null;
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    setErrorMsg("");
+
+    if (mode === "set") {
+      if (!password.trim()) {
+        setErrorMsg("Please enter a password.");
+        return;
+      }
+      if (password.length < 3) {
+        setErrorMsg("Password must be at least 3 characters.");
+        return;
+      }
+      if (password !== confirmPassword) {
+        setErrorMsg("Passwords do not match.");
+        return;
+      }
+      onLockSuccess(conversation.id, password.trim());
+    } else if (mode === "enter" || mode === "unlock") {
+      if (!password) {
+        setErrorMsg("Please enter your password.");
+        return;
+      }
+      if (mode === "enter") {
+        onLockSuccess(conversation.id, password);
+      } else {
+        onUnlockSuccess(conversation.id, password);
+      }
+    }
+  };
+
+  return (
+    <div className="work-chat-modal-backdrop" role="dialog" aria-modal="true">
+      <div className="work-chat-modal ui-card max-w-sm">
+        <div className="flex items-center justify-between border-b border-[var(--color-border)] px-4 py-3">
+          <h3 className="font-bold text-sm text-[var(--color-text)] flex items-center gap-2">
+            <Lock className="h-4 w-4 text-amber-500" />
+            {mode === "set" ? "Lock Chat with Password" : mode === "unlock" ? "Unlock & Remove Password" : "Enter Chat Password"}
+          </h3>
+          <button type="button" onClick={onClose} aria-label="Close">
+            <X className="h-5 w-5 text-[var(--color-text-muted)] hover:text-[var(--color-text)]" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-4 space-y-4">
+          <p className="text-xs text-[var(--color-text-muted)]">
+            {mode === "set"
+              ? `Create a password to lock "${conversation.name}".`
+              : mode === "unlock"
+              ? `Enter password to remove lock for "${conversation.name}".`
+              : `"${conversation.name}" is locked. Enter password to access.`}
+          </p>
+
+          {errorMsg && (
+            <div className="p-2.5 text-xs rounded-lg bg-red-50 text-red-700 border border-red-200">
+              {errorMsg}
+            </div>
+          )}
+
+          <div className="space-y-3">
+            <div>
+              <label className="block text-xs font-semibold text-[var(--color-text)] mb-1">
+                {mode === "set" ? "Set Password" : "Password"}
+              </label>
+              <div className="relative">
+                <input
+                  type={showPass ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter password..."
+                  className="w-full px-3 py-2 pr-10 border border-[var(--color-border)] rounded-lg text-sm bg-[var(--color-surface)] text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
+                  autoFocus
+                />
+                <button
+                  type="button"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
+                  onClick={() => setShowPass((p) => !p)}
+                >
+                  {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+
+            {mode === "set" && (
+              <div>
+                <label className="block text-xs font-semibold text-[var(--color-text)] mb-1">
+                  Confirm Password
+                </label>
+                <input
+                  type={showPass ? "text" : "password"}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Confirm password..."
+                  className="w-full px-3 py-2 border border-[var(--color-border)] rounded-lg text-sm bg-[var(--color-surface)] text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
+                />
+              </div>
+            )}
+          </div>
+
+          <div className="flex gap-2 justify-end pt-2">
+            <Button type="button" variant="secondary" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="primary">
+              {mode === "set" ? "Lock Chat" : mode === "unlock" ? "Unlock Chat" : "Access Chat"}
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function ChatLockedPlaceholder({ conversation, onUnlockClick }) {
+  const [inputPass, setInputPass] = useState("");
+  const [showPass, setShowPass] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleUnlock = (e) => {
+    e.preventDefault();
+    if (!inputPass) {
+      setError("Please enter password.");
+      return;
+    }
+    const success = onUnlockClick(inputPass);
+    if (!success) {
+      setError("Incorrect password. Access denied.");
+    }
+  };
+
+  return (
+    <div className="work-chat-empty work-chat-empty--tall flex flex-col items-center justify-center p-8 text-center bg-[var(--color-surface)] rounded-2xl m-4 border border-[var(--color-border-soft)] shadow-sm">
+      <div className="p-4 rounded-full bg-amber-50 text-amber-600 mb-4 ring-8 ring-amber-50/50">
+        <Lock className="h-10 w-10" />
+      </div>
+      <h3 className="font-bold text-lg text-[var(--color-text)] mb-1">
+        {conversation?.name || "Chat"} is Locked
+      </h3>
+      <p className="text-xs text-[var(--color-text-muted)] max-w-xs mb-6">
+        This conversation is password protected. Enter the password below to view messages.
+      </p>
+
+      <form onSubmit={handleUnlock} className="w-full max-w-xs space-y-3">
+        {error && (
+          <p className="text-xs text-red-600 bg-red-50 p-2 rounded border border-red-200">
+            {error}
+          </p>
+        )}
+        <div className="relative">
+          <input
+            type={showPass ? "text" : "password"}
+            value={inputPass}
+            onChange={(e) => {
+              setInputPass(e.target.value);
+              setError("");
+            }}
+            placeholder="Enter chat password..."
+            className="w-full px-3 py-2 pr-10 border border-[var(--color-border)] rounded-lg text-sm bg-[var(--color-surface)] text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
+            autoFocus
+          />
+          <button
+            type="button"
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
+            onClick={() => setShowPass((p) => !p)}
+          >
+            {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          </button>
+        </div>
+        <Button type="submit" variant="primary" className="w-full">
+          Unlock Conversation
+        </Button>
+      </form>
+    </div>
+  );
+}
+
 export default function WorkChat() {
   const { user } = useAuth();
   const { addToast } = useToast();
@@ -727,8 +922,27 @@ export default function WorkChat() {
   const [selectMode, setSelectMode] = useState(false);
   const [selectedMsgIds, setSelectedMsgIds] = useState(new Set());
   const [mutedConvs, setMutedConvs] = useState(new Set());
-  const [lockedConvs, setLockedConvs] = useState(new Set());
+  const [lockedPasswords, setLockedPasswords] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("smrt-chat-locked-passwords") || "{}");
+    } catch {
+      return {};
+    }
+  });
+  const [unlockedConvs, setUnlockedConvs] = useState(new Set());
+  const [lockModal, setLockModal] = useState({ open: false, mode: "set", convId: null });
   const [favConvs, setFavConvs] = useState(new Set());
+
+  const saveLockedPasswords = (newPasswords) => {
+    setLockedPasswords(newPasswords);
+    try {
+      localStorage.setItem("smrt-chat-locked-passwords", JSON.stringify(newPasswords));
+    } catch {}
+  };
+
+  const lockedConvs = useMemo(() => {
+    return new Set(Object.keys(lockedPasswords).map(Number));
+  }, [lockedPasswords]);
 
   const bottomRef = useRef(null);
   const pollRef = useRef(null);
@@ -802,16 +1016,24 @@ export default function WorkChat() {
     setShowSearchThread(false);
     setSelectMode(false);
     setSelectedMsgIds(new Set());
-    loadMessages(activeId).catch(() => addToast("Could not load messages.", "error"));
+
+    if (lockedConvs.has(activeId) && !unlockedConvs.has(activeId)) {
+      setLockModal({ open: true, mode: "enter", convId: activeId });
+    } else {
+      loadMessages(activeId).catch(() => addToast("Could not load messages.", "error"));
+    }
+
     setSearchParams((p) => {
       const next = new URLSearchParams(p);
       next.set("conversation", String(activeId));
       return next;
     });
-  }, [activeId, loadMessages, addToast, setSearchParams]);
+  }, [activeId, loadMessages, addToast, setSearchParams, lockedConvs, unlockedConvs]);
 
   useEffect(() => {
     if (!activeId) return;
+    if (lockedConvs.has(activeId) && !unlockedConvs.has(activeId)) return;
+
     pollRef.current = window.setInterval(() => {
       loadMessages(activeId).catch(() => {});
       loadConversations();
@@ -819,7 +1041,7 @@ export default function WorkChat() {
     return () => {
       if (pollRef.current) window.clearInterval(pollRef.current);
     };
-  }, [activeId, loadMessages, loadConversations]);
+  }, [activeId, loadMessages, loadConversations, lockedConvs, unlockedConvs]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -846,41 +1068,84 @@ export default function WorkChat() {
   }, [messages, threadQuery]);
 
   const selectConversation = (id) => {
+    setUnlockedConvs(new Set());
     setActiveId(id);
     setMobileView("chat");
   };
 
-  const handleDownloadFile = async (fileId, filename) => {
+  const handleDownloadFile = async (fileId, filename, initialUrl = null) => {
+    const targetId = fileId;
     let attempts = 0;
+    let currentUrl = initialUrl;
+
     while (attempts < 3) {
       try {
-        const res = await getDownloadUrl(fileId);
-        const urlToUse = res?.download_url;
-        if (!urlToUse) throw new Error("No download URL available");
+        if (!currentUrl) {
+          if (!targetId) {
+            throw new Error("File ID is missing.");
+          }
+          const res = await getDownloadUrl(targetId);
+          currentUrl = res?.download_url;
+        }
+
+        if (!currentUrl) {
+          throw new Error("No download URL available.");
+        }
 
         const isExternalCloud =
-          (urlToUse.startsWith("http://") || urlToUse.startsWith("https://")) &&
-          !urlToUse.includes("/api/files/");
+          (currentUrl.startsWith("http://") || currentUrl.startsWith("https://")) &&
+          !currentUrl.includes("/api/files/");
 
         if (isExternalCloud) {
-          const cloudRes = await fetch(urlToUse);
-          if (!cloudRes.ok) throw new Error("Cloud download failed");
-          const blob = await cloudRes.blob();
-          const blobUrl = URL.createObjectURL(blob);
+          try {
+            const cloudRes = await fetch(currentUrl);
+            if (cloudRes.ok) {
+              const blob = await cloudRes.blob();
+              const blobUrl = URL.createObjectURL(blob);
+              const link = document.createElement("a");
+              link.href = blobUrl;
+              link.download = filename || "download";
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+              setTimeout(() => URL.revokeObjectURL(blobUrl), 2000);
+              return;
+            }
+          } catch {
+            /* Fall back to direct window/link opening if fetch fails due to CORS */
+          }
           const link = document.createElement("a");
-          link.href = blobUrl;
+          link.href = currentUrl;
           link.download = filename || "download";
+          link.target = "_blank";
+          link.rel = "noopener noreferrer";
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);
-          setTimeout(() => URL.revokeObjectURL(blobUrl), 2000);
           return;
         }
 
         // Internal API endpoint — attempt authenticated blob download via axios
-        const downloadRes = await api.get(urlToUse, { responseType: "blob", skipCache: true });
-        if (downloadRes.data && (downloadRes.data instanceof Blob || downloadRes.data.size !== undefined)) {
-          const blobUrl = URL.createObjectURL(downloadRes.data);
+        const resolvedUrl = resolveUploadUrl(currentUrl);
+        const downloadRes = await api.get(resolvedUrl, { responseType: "blob", skipCache: true });
+
+        if (downloadRes?.data) {
+          const blobData = downloadRes.data;
+
+          // Check if server returned a JSON error response wrapped in Blob
+          if (blobData.type === "application/json" || (blobData instanceof Blob && blobData.type?.includes("json"))) {
+            const text = await blobData.text();
+            let errorMessage = "Download failed.";
+            try {
+              const parsed = JSON.parse(text);
+              errorMessage = parsed.detail || parsed.message || errorMessage;
+            } catch {
+              /* ignore parse error */
+            }
+            throw new Error(errorMessage);
+          }
+
+          const blobUrl = URL.createObjectURL(blobData);
           const link = document.createElement("a");
           link.href = blobUrl;
           link.download = filename || "download";
@@ -891,12 +1156,15 @@ export default function WorkChat() {
           return;
         }
 
-        throw new Error("Invalid response received during file download");
+        throw new Error("Invalid response received during file download.");
       } catch (err) {
         console.error("File download attempt failed:", err);
+        // If initialUrl or currentUrl failed, clear it so next attempt fetches a fresh token
+        currentUrl = null;
         attempts += 1;
         if (attempts >= 3) {
-          addToast("Failed to download file.", "error");
+          const msg = apiErrorMessage(err, err?.message || "Failed to download file.");
+          addToast(msg, "error");
           break;
         }
         await new Promise((r) => setTimeout(r, 400));
@@ -1012,20 +1280,65 @@ export default function WorkChat() {
     setShowMenu(false);
   };
 
+  const handleLockSuccess = (convId, password) => {
+    if (lockModal.mode === "set") {
+      const next = { ...lockedPasswords, [convId]: password };
+      saveLockedPasswords(next);
+      setUnlockedConvs((prev) => {
+        const set = new Set(prev);
+        set.delete(convId);
+        return set;
+      });
+      addToast("Chat locked with password.", "success");
+      setLockModal({ open: true, mode: "enter", convId });
+    } else if (lockModal.mode === "enter") {
+      if (lockedPasswords[convId] === password) {
+        setUnlockedConvs((prev) => new Set(prev).add(convId));
+        addToast("Access granted.", "success");
+        setLockModal({ open: false, mode: "enter", convId: null });
+        loadMessages(convId).catch(() => {});
+      } else {
+        addToast("Incorrect password.", "error");
+      }
+    }
+  };
+
+  const handleUnlockSuccess = (convId, password) => {
+    if (lockedPasswords[convId] === password) {
+      const next = { ...lockedPasswords };
+      delete next[convId];
+      saveLockedPasswords(next);
+      setUnlockedConvs((prev) => {
+        const set = new Set(prev);
+        set.delete(convId);
+        return set;
+      });
+      addToast("Chat lock removed successfully.", "info");
+      setLockModal({ open: false, mode: "unlock", convId: null });
+    } else {
+      addToast("Incorrect password.", "error");
+    }
+  };
+
   const toggleLock = () => {
     if (!activeId) return;
-    setLockedConvs((prev) => {
-      const next = new Set(prev);
-      if (next.has(activeId)) {
-        next.delete(activeId);
-        addToast("Chat unlocked.", "info");
-      } else {
-        next.add(activeId);
-        addToast("Chat locked.", "info");
-      }
-      return next;
-    });
     setShowMenu(false);
+    if (lockedConvs.has(activeId)) {
+      setLockModal({ open: true, mode: "unlock", convId: activeId });
+    } else {
+      setLockModal({ open: true, mode: "set", convId: activeId });
+    }
+  };
+
+  const handlePlaceholderUnlock = (pass) => {
+    if (!activeId) return false;
+    if (lockedPasswords[activeId] === pass) {
+      setUnlockedConvs((prev) => new Set(prev).add(activeId));
+      addToast("Access granted.", "success");
+      loadMessages(activeId).catch(() => {});
+      return true;
+    }
+    return false;
   };
 
   const toggleFav = () => {
@@ -1193,7 +1506,8 @@ export default function WorkChat() {
                         <span className="flex items-center justify-between gap-2">
                           <span className="truncate font-semibold text-sm text-[var(--color-text)] flex items-center gap-1">
                             {c.name}
-                            {isFav ? <Heart className="h-3 w-3 fill-red-500 text-red-500 inline" /> : null}
+                            {lockedConvs.has(c.id) ? <Lock className="h-3.5 w-3.5 text-amber-500 inline shrink-0" title="Locked chat" /> : null}
+                            {isFav ? <Heart className="h-3 w-3 fill-red-500 text-red-500 inline shrink-0" /> : null}
                           </span>
                           <span className="shrink-0 text-[11px] text-[var(--color-text-muted)]">
                             {formatTime(c.last_message_at)}
@@ -1386,254 +1700,263 @@ export default function WorkChat() {
                 </div>
               </div>
 
-              {/* Inline Search in Chat Bar */}
-              {showSearchThread && (
-                <div className="p-2 border-b border-[var(--color-border-soft)] bg-[var(--color-surface-muted)] flex items-center gap-2">
-                  <SearchBar
-                    size="compact"
-                    value={threadQuery}
-                    onChange={setThreadQuery}
-                    placeholder="Search in this chat..."
-                    className="flex-1"
-                    aria-label="Search in this chat"
-                  />
-                  <button
-                    type="button"
-                    className="p-1 rounded text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
-                    onClick={() => {
-                      setShowSearchThread(false);
-                      setThreadQuery("");
-                    }}
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-              )}
+              {lockedConvs.has(activeConv.id) && !unlockedConvs.has(activeConv.id) ? (
+                <ChatLockedPlaceholder
+                  conversation={activeConv}
+                  onUnlockClick={handlePlaceholderUnlock}
+                />
+              ) : (
+                <>
+                  {/* Inline Search in Chat Bar */}
+                  {showSearchThread && (
+                    <div className="p-2 border-b border-[var(--color-border-soft)] bg-[var(--color-surface-muted)] flex items-center gap-2">
+                      <SearchBar
+                        size="compact"
+                        value={threadQuery}
+                        onChange={setThreadQuery}
+                        placeholder="Search in this chat..."
+                        className="flex-1"
+                        aria-label="Search in this chat"
+                      />
+                      <button
+                        type="button"
+                        className="p-1 rounded text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
+                        onClick={() => {
+                          setShowSearchThread(false);
+                          setThreadQuery("");
+                        }}
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  )}
 
-              {/* Select Messages Action Bar */}
-              {selectMode && (
-                <div className="work-chat-select-bar">
-                  <span className="text-xs font-semibold text-[var(--color-text)]">
-                    {selectedMsgIds.size} message(s) selected
-                  </span>
-                  <div className="flex items-center gap-2">
+                  {/* Select Messages Action Bar */}
+                  {selectMode && (
+                    <div className="work-chat-select-bar">
+                      <span className="text-xs font-semibold text-[var(--color-text)]">
+                        {selectedMsgIds.size} message(s) selected
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          className="text-xs font-semibold px-2.5 py-1 rounded bg-[var(--color-surface)] border border-[var(--color-border)] hover:bg-[var(--color-surface-muted)]"
+                          onClick={() => setSelectMode(false)}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Thread Messages List */}
+                  <div
+                    className={`work-chat-messages work-chat-messages--${chatTheme}`}
+                    role="log"
+                    aria-live="polite"
+                  >
+                    {hasMore ? (
+                      <button
+                        type="button"
+                        className="work-chat-load-more"
+                        onClick={() => loadMessages(activeId, messages[0]?.id, true)}
+                      >
+                        Load earlier messages
+                      </button>
+                    ) : null}
+                    {filteredMessages.length === 0 ? (
+                      <p className="text-center text-sm text-[var(--color-text-muted)] py-8">
+                        {threadQuery ? "No matching messages found." : "No messages yet. Start the conversation."}
+                      </p>
+                    ) : (
+                      filteredMessages.map((m) => {
+                        const own = m.sender?.id === user?.id;
+                        const showPicker = activeEmojiPickerId === m.id;
+                        const isSelected = selectedMsgIds.has(m.id);
+
+                        return (
+                          <div key={m.id} className={`work-chat-bubble-row ${own ? "work-chat-bubble-row--own" : ""}`}>
+                            {selectMode ? (
+                              <input
+                                type="checkbox"
+                                className="mr-2 self-center h-4 w-4 accent-[var(--color-primary)]"
+                                checked={isSelected}
+                                onChange={() => {
+                                  setSelectedMsgIds((prev) => {
+                                    const next = new Set(prev);
+                                    if (next.has(m.id)) next.delete(m.id);
+                                    else next.add(m.id);
+                                    return next;
+                                  });
+                                }}
+                              />
+                            ) : null}
+                            <div className="work-chat-bubble-container">
+                              <div className={`work-chat-bubble ${own ? "work-chat-bubble--own" : ""}`}>
+                                {!own ? (
+                                  <p className="text-[11px] font-semibold text-[var(--color-primary)] mb-0.5">
+                                    {m.sender?.full_name}
+                                  </p>
+                                ) : null}
+                                {m.reply_to ? (
+                                  <p className="work-chat-reply text-xs opacity-80 mb-1">{m.reply_to.body}</p>
+                                ) : null}
+                                {m.body ? (
+                                  <p className="text-sm whitespace-pre-wrap break-words">{m.body}</p>
+                                ) : null}
+                                {m.links?.length ? (
+                                  <div className="mt-2 flex flex-wrap gap-2">
+                                    {m.links.map((link) => (
+                                      <Link
+                                        key={`${link.entity_type}-${link.entity_id}`}
+                                        to={link.path || "#"}
+                                        className="work-chat-erp-link"
+                                      >
+                                        {link.label}
+                                      </Link>
+                                    ))}
+                                  </div>
+                                ) : null}
+                                {m.attachments?.length ? (
+                                  <div className="work-chat-attachments">
+                                    {m.attachments.map((a) => (
+                                      <WorkChatAttachmentItem
+                                        key={a.file_id}
+                                        attachment={a}
+                                        own={own}
+                                        onOpenLightbox={(url, filename, fileId) =>
+                                          setLightbox({ url, filename, fileId })
+                                        }
+                                        onDownload={handleDownloadFile}
+                                      />
+                                    ))}
+                                  </div>
+                                ) : null}
+                                {m.reactions?.length ? (
+                                  <div className="work-chat-reactions">
+                                    {m.reactions.map((r) => (
+                                      <button
+                                        key={r.emoji}
+                                        type="button"
+                                        className={`work-chat-reaction-badge ${
+                                          r.reacted ? "work-chat-reaction-badge--active" : ""
+                                        }`}
+                                        onClick={() => handleToggleReaction(m.id, r.emoji)}
+                                        title={`${r.count} reaction(s)`}
+                                      >
+                                        <span>{r.emoji}</span>
+                                        <span>{r.count}</span>
+                                      </button>
+                                    ))}
+                                  </div>
+                                ) : null}
+                                <p className="mt-1 text-[10px] text-[var(--color-text-muted)]">{formatTime(m.created_at)}</p>
+                              </div>
+
+                              {/* Action Buttons matching reference style */}
+                              {!m.is_deleted ? (
+                                <div className={`work-chat-msg-actions ${showPicker ? "work-chat-msg-actions--active" : ""}`}>
+                                  <button
+                                    type="button"
+                                    className="work-chat-msg-action-btn"
+                                    title="Forward message"
+                                    onClick={() => setForwardingMsg(m)}
+                                  >
+                                    <Forward className="h-3.5 w-3.5" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="work-chat-msg-action-btn"
+                                    title="React with emoji"
+                                    onClick={() => setActiveEmojiPickerId(showPicker ? null : m.id)}
+                                  >
+                                    <Smile className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
+                              ) : null}
+
+                              {/* Emoji Quick Picker Popover */}
+                              {showPicker ? (
+                                <div className="work-chat-emoji-popover">
+                                  {QUICK_EMOJIS.map((emoji) => (
+                                    <button
+                                      key={emoji}
+                                      type="button"
+                                      className="work-chat-emoji-opt"
+                                      onClick={() => {
+                                        handleToggleReaction(m.id, emoji);
+                                        setActiveEmojiPickerId(null);
+                                      }}
+                                    >
+                                      {emoji}
+                                    </button>
+                                  ))}
+                                </div>
+                              ) : null}
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                    <div ref={bottomRef} />
+                  </div>
+
+                  {pendingFiles.length ? (
+                    <div className="work-chat-pending-files">
+                      {pendingFiles.map((f, i) => (
+                        <PendingFileChip
+                          key={`${f.name}-${i}`}
+                          file={f}
+                          onRemove={() => setPendingFiles((p) => p.filter((_, j) => j !== i))}
+                        />
+                      ))}
+                    </div>
+                  ) : null}
+
+                  <div className="work-chat-composer">
+                    <label className="work-chat-attach-btn" title="Attach file">
+                      <Paperclip className="h-4 w-4" aria-hidden />
+                      <input
+                        type="file"
+                        className="sr-only"
+                        multiple
+                        onChange={(e) => {
+                          const selected = Array.from(e.target.files || []);
+                          if (selected.length) {
+                            const renamed = selected.map((f) => ensureFileHasName(f, "attachment"));
+                            setPendingFiles((p) => [...p, ...renamed]);
+                          }
+                          e.target.value = "";
+                        }}
+                      />
+                    </label>
+                    <textarea
+                      className="work-chat-composer__input"
+                      rows={1}
+                      value={composer}
+                      onChange={(e) => setComposer(e.target.value)}
+                      onKeyDown={onComposerKeyDown}
+                      onPaste={(e) => {
+                        const imageFile = fileFromClipboardEvent(e);
+                        if (!imageFile) return;
+                        e.preventDefault();
+                        setPendingFiles((p) => [...p, ensureFileHasName(imageFile, "pasted-image")]);
+                      }}
+                      placeholder="Write a message…"
+                      aria-label="Message"
+                    />
                     <button
                       type="button"
-                      className="text-xs font-semibold px-2.5 py-1 rounded bg-[var(--color-surface)] border border-[var(--color-border)] hover:bg-[var(--color-surface-muted)]"
-                      onClick={() => setSelectMode(false)}
+                      className="work-chat-send"
+                      disabled={sending}
+                      onClick={handleSend}
+                      aria-label="Send message"
                     >
-                      Cancel
+                      {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                     </button>
                   </div>
-                </div>
+                </>
               )}
-
-              {/* Thread Messages List */}
-              <div
-                className={`work-chat-messages work-chat-messages--${chatTheme}`}
-                role="log"
-                aria-live="polite"
-              >
-                {hasMore ? (
-                  <button
-                    type="button"
-                    className="work-chat-load-more"
-                    onClick={() => loadMessages(activeId, messages[0]?.id, true)}
-                  >
-                    Load earlier messages
-                  </button>
-                ) : null}
-                {filteredMessages.length === 0 ? (
-                  <p className="text-center text-sm text-[var(--color-text-muted)] py-8">
-                    {threadQuery ? "No matching messages found." : "No messages yet. Start the conversation."}
-                  </p>
-                ) : (
-                  filteredMessages.map((m) => {
-                    const own = m.sender?.id === user?.id;
-                    const showPicker = activeEmojiPickerId === m.id;
-                    const isSelected = selectedMsgIds.has(m.id);
-
-                    return (
-                      <div key={m.id} className={`work-chat-bubble-row ${own ? "work-chat-bubble-row--own" : ""}`}>
-                        {selectMode ? (
-                          <input
-                            type="checkbox"
-                            className="mr-2 self-center h-4 w-4 accent-[var(--color-primary)]"
-                            checked={isSelected}
-                            onChange={() => {
-                              setSelectedMsgIds((prev) => {
-                                const next = new Set(prev);
-                                if (next.has(m.id)) next.delete(m.id);
-                                else next.add(m.id);
-                                return next;
-                              });
-                            }}
-                          />
-                        ) : null}
-                        <div className="work-chat-bubble-container">
-                          <div className={`work-chat-bubble ${own ? "work-chat-bubble--own" : ""}`}>
-                            {!own ? (
-                              <p className="text-[11px] font-semibold text-[var(--color-primary)] mb-0.5">
-                                {m.sender?.full_name}
-                              </p>
-                            ) : null}
-                            {m.reply_to ? (
-                              <p className="work-chat-reply text-xs opacity-80 mb-1">{m.reply_to.body}</p>
-                            ) : null}
-                            {m.body ? (
-                              <p className="text-sm whitespace-pre-wrap break-words">{m.body}</p>
-                            ) : null}
-                            {m.links?.length ? (
-                              <div className="mt-2 flex flex-wrap gap-2">
-                                {m.links.map((link) => (
-                                  <Link
-                                    key={`${link.entity_type}-${link.entity_id}`}
-                                    to={link.path || "#"}
-                                    className="work-chat-erp-link"
-                                  >
-                                    {link.label}
-                                  </Link>
-                                ))}
-                              </div>
-                            ) : null}
-                            {m.attachments?.length ? (
-                              <div className="work-chat-attachments">
-                                {m.attachments.map((a) => (
-                                  <WorkChatAttachmentItem
-                                    key={a.file_id}
-                                    attachment={a}
-                                    own={own}
-                                    onOpenLightbox={(url, filename, fileId) =>
-                                      setLightbox({ url, filename, fileId })
-                                    }
-                                    onDownload={handleDownloadFile}
-                                  />
-                                ))}
-                              </div>
-                            ) : null}
-                            {m.reactions?.length ? (
-                              <div className="work-chat-reactions">
-                                {m.reactions.map((r) => (
-                                  <button
-                                    key={r.emoji}
-                                    type="button"
-                                    className={`work-chat-reaction-badge ${
-                                      r.reacted ? "work-chat-reaction-badge--active" : ""
-                                    }`}
-                                    onClick={() => handleToggleReaction(m.id, r.emoji)}
-                                    title={`${r.count} reaction(s)`}
-                                  >
-                                    <span>{r.emoji}</span>
-                                    <span>{r.count}</span>
-                                  </button>
-                                ))}
-                              </div>
-                            ) : null}
-                            <p className="mt-1 text-[10px] text-[var(--color-text-muted)]">{formatTime(m.created_at)}</p>
-                          </div>
-
-                          {/* Action Buttons matching reference style */}
-                          {!m.is_deleted ? (
-                            <div className={`work-chat-msg-actions ${showPicker ? "work-chat-msg-actions--active" : ""}`}>
-                              <button
-                                type="button"
-                                className="work-chat-msg-action-btn"
-                                title="Forward message"
-                                onClick={() => setForwardingMsg(m)}
-                              >
-                                <Forward className="h-3.5 w-3.5" />
-                              </button>
-                              <button
-                                type="button"
-                                className="work-chat-msg-action-btn"
-                                title="React with emoji"
-                                onClick={() => setActiveEmojiPickerId(showPicker ? null : m.id)}
-                              >
-                                <Smile className="h-3.5 w-3.5" />
-                              </button>
-                            </div>
-                          ) : null}
-
-                          {/* Emoji Quick Picker Popover */}
-                          {showPicker ? (
-                            <div className="work-chat-emoji-popover">
-                              {QUICK_EMOJIS.map((emoji) => (
-                                <button
-                                  key={emoji}
-                                  type="button"
-                                  className="work-chat-emoji-opt"
-                                  onClick={() => {
-                                    handleToggleReaction(m.id, emoji);
-                                    setActiveEmojiPickerId(null);
-                                  }}
-                                >
-                                  {emoji}
-                                </button>
-                              ))}
-                            </div>
-                          ) : null}
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-                <div ref={bottomRef} />
-              </div>
-
-              {pendingFiles.length ? (
-                <div className="work-chat-pending-files">
-                  {pendingFiles.map((f, i) => (
-                    <PendingFileChip
-                      key={`${f.name}-${i}`}
-                      file={f}
-                      onRemove={() => setPendingFiles((p) => p.filter((_, j) => j !== i))}
-                    />
-                  ))}
-                </div>
-              ) : null}
-
-              <div className="work-chat-composer">
-                <label className="work-chat-attach-btn" title="Attach file">
-                  <Paperclip className="h-4 w-4" aria-hidden />
-                  <input
-                    type="file"
-                    className="sr-only"
-                    multiple
-                    onChange={(e) => {
-                      const selected = Array.from(e.target.files || []);
-                      if (selected.length) {
-                        const renamed = selected.map((f) => ensureFileHasName(f, "attachment"));
-                        setPendingFiles((p) => [...p, ...renamed]);
-                      }
-                      e.target.value = "";
-                    }}
-                  />
-                </label>
-                <textarea
-                  className="work-chat-composer__input"
-                  rows={1}
-                  value={composer}
-                  onChange={(e) => setComposer(e.target.value)}
-                  onKeyDown={onComposerKeyDown}
-                  onPaste={(e) => {
-                    const imageFile = fileFromClipboardEvent(e);
-                    if (!imageFile) return;
-                    e.preventDefault();
-                    setPendingFiles((p) => [...p, ensureFileHasName(imageFile, "pasted-image")]);
-                  }}
-                  placeholder="Write a message…"
-                  aria-label="Message"
-                />
-                <button
-                  type="button"
-                  className="work-chat-send"
-                  disabled={sending}
-                  onClick={handleSend}
-                  aria-label="Send message"
-                >
-                  {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                </button>
-              </div>
             </>
           )}
         </section>
@@ -1719,6 +2042,16 @@ export default function WorkChat() {
           currentTheme={chatTheme}
           onSelect={setChatTheme}
           onClose={() => setShowThemeModal(false)}
+        />
+      )}
+
+      {lockModal.open && (
+        <ChatLockModal
+          mode={lockModal.mode}
+          conversation={conversations.find((c) => c.id === lockModal.convId) || activeConv}
+          onClose={() => setLockModal({ open: false, mode: "set", convId: null })}
+          onLockSuccess={handleLockSuccess}
+          onUnlockSuccess={handleUnlockSuccess}
         />
       )}
     </ListPageShell>

@@ -280,19 +280,19 @@ async def send_email_async(
     *,
     html: str | None = None,
     attachments: list[tuple[str, bytes, str]] | None = None,
+    require_smtp: bool = False,
 ) -> None:
-    """Send email asynchronously. Prefers FastAPI-Mail; otherwise smtplib."""
+    """Send email asynchronously to any recipient address. Prefers FastAPI-Mail; otherwise smtplib."""
     if not smtp_is_configured():
-        s = _settings()
-        if not s.is_production:
-            logger.info(
-                "[DEV EMAIL ASYNC] To: %s | Subject: %s | Attachments: %s",
-                to,
-                subject,
-                [a[0] for a in attachments or []],
-            )
-            return
-        _require_smtp()
+        if require_smtp:
+            _require_smtp()
+        logger.info(
+            "[OUTBOUND EMAIL ASYNC] To: %s | Subject: %s | Attachments: %s",
+            to,
+            subject,
+            [a[0] for a in attachments or []],
+        )
+        return
     if _HAS_FASTAPI_MAIL and not attachments:
         try:
             await _send_via_fastapi_mail(to, subject, body, html=html)

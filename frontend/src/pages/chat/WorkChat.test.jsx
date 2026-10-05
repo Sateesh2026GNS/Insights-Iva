@@ -86,4 +86,17 @@ describe("WorkChat", () => {
     expect(await screen.findByText("Invoice_2026.pdf")).toBeInTheDocument();
     expect(screen.getByText("200.0 KB")).toBeInTheDocument();
   });
+
+  it("requires password when accessing a locked conversation", async () => {
+    localStorage.setItem("smrt-chat-locked-passwords", JSON.stringify({ 1: "secret123" }));
+
+    render(
+      <MemoryRouter initialEntries={["/chat?conversation=1"]}>
+        <WorkChat />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText("store is Locked")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Enter chat password...")).toBeInTheDocument();
+  });
 });

@@ -518,7 +518,7 @@ export default function Quotations() {
                         icon: <Edit2 className="h-4 w-4" />,
                         onClick: () => navigate(`/sales/quotations/${r.id}/edit`),
                       },
-                      (r.status || "").toLowerCase() !== "cancelled"
+                      !["accepted", "approved", "converted", "cancelled", "canceled"].includes((r.status || "").toLowerCase()) && !r.converted_to_so
                         ? {
                             label: "Convert to Sales Order",
                             icon: <CheckCircle className="h-4 w-4" />,
@@ -669,7 +669,7 @@ export default function Quotations() {
                               onClick: () => navigate(`/sales/quotations/${r.id}/edit`),
                             },
                             
-                            (r.status || "").toLowerCase() !== "cancelled"
+                            !["accepted", "approved", "converted", "cancelled", "canceled"].includes((r.status || "").toLowerCase()) && !r.converted_to_so
                               ? {
                                   label: "Convert to Sales Order",
                                   icon: <CheckCircle className="h-4 w-4" />,

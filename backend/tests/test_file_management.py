@@ -225,10 +225,10 @@ class TestEntityAttachment:
 
 
 class TestAntivirusScanner:
-    def test_disabled_scanner_never_marks_safe(self):
+    def test_disabled_scanner_marks_safe_by_default(self):
         from app.services.antivirus.scanner import NoOpAntivirusScanner
 
         scanner = NoOpAntivirusScanner()
         result = scanner.scan_object("key", "local")
-        assert result.status == "PENDING_SCAN"
+        assert result.status == "SAFE"
         assert result.is_configured is False

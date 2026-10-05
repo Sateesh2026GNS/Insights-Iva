@@ -22,6 +22,8 @@ export default function QuoteDetailModal({ quote, onClose, onStatusChange, onCon
 
   if (!quote) return null;
 
+  const canConvert = !["accepted", "approved", "converted", "cancelled", "canceled"].includes((quote.status || "").toLowerCase()) && !quote.converted_to_so;
+
   const amount = quote.amount ?? quote.total_amount;
 
   const handlePreview = () => {
@@ -230,42 +232,44 @@ export default function QuoteDetailModal({ quote, onClose, onStatusChange, onCon
             </span>
           </div>
 
-          <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-4 print:hidden">
-            <p className="mb-2 text-sm font-semibold text-slate-800">Convert to Sales Order</p>
-              <p className="mb-3 text-xs text-slate-500">
-              Creates a draft sales order with the selected quotation items. At least one item is required.
-            </p>
-            <div className="space-y-2">
-              {quoteItems.length ? quoteItems.map((item) => {
-                const checked = selectedItems.includes(item.key);
-                return (
-                  <div key={item.key} className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2">
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      onChange={(event) => setSelectedItems((current) => event.target.checked
-                        ? [...current, item.key]
-                        : current.filter((key) => key !== item.key))}
-                      aria-label={`Include ${item.description}`}
-                    />
-                    <span className="min-w-0 flex-1 text-sm text-slate-700">{item.description}</span>
-                    <span className="text-xs text-slate-500">{item.unit || "pcs"} · ₹{Number(item.rate || 0).toLocaleString("en-IN")}</span>
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      pattern="[0-9]*[.]?[0-9]*"
-                      value={quantities[item.key] ?? ""}
-                      onChange={(event) => setQuantities((current) => ({ ...current, [item.key]: event.target.value }))}
-                      className="w-24 rounded-lg border px-2 py-1.5 text-sm"
-                      aria-label={`Quantity for ${item.description}`}
-                      disabled={!checked}
-                    />
-                  </div>
-                );
-              }) : <p className="text-sm text-amber-700">{productsLoaded ? "This quotation has no saved line items. Add quotation items before converting." : "Loading quotation items…"}</p>}
+          {canConvert && (
+            <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-4 print:hidden">
+              <p className="mb-2 text-sm font-semibold text-slate-800">Convert to Sales Order</p>
+                <p className="mb-3 text-xs text-slate-500">
+                Creates a draft sales order with the selected quotation items. At least one item is required.
+              </p>
+              <div className="space-y-2">
+                {quoteItems.length ? quoteItems.map((item) => {
+                  const checked = selectedItems.includes(item.key);
+                  return (
+                    <div key={item.key} className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={(event) => setSelectedItems((current) => event.target.checked
+                          ? [...current, item.key]
+                          : current.filter((key) => key !== item.key))}
+                        aria-label={`Include ${item.description}`}
+                      />
+                      <span className="min-w-0 flex-1 text-sm text-slate-700">{item.description}</span>
+                      <span className="text-xs text-slate-500">{item.unit || "pcs"} · ₹{Number(item.rate || 0).toLocaleString("en-IN")}</span>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        pattern="[0-9]*[.]?[0-9]*"
+                        value={quantities[item.key] ?? ""}
+                        onChange={(event) => setQuantities((current) => ({ ...current, [item.key]: event.target.value }))}
+                        className="w-24 rounded-lg border px-2 py-1.5 text-sm"
+                        aria-label={`Quantity for ${item.description}`}
+                        disabled={!checked}
+                      />
+                    </div>
+                  );
+                }) : <p className="text-sm text-amber-700">{productsLoaded ? "This quotation has no saved line items. Add quotation items before converting." : "Loading quotation items…"}</p>}
+              </div>
+              {error && <p className="mt-2 text-sm text-rose-600">{error}</p>}
             </div>
-            {error && <p className="mt-2 text-sm text-rose-600">{error}</p>}
-          </div>
+          )}
         </div>
 
         <div className="flex flex-wrap gap-2 border-t px-5 py-4 print:hidden">
@@ -278,9 +282,11 @@ export default function QuoteDetailModal({ quote, onClose, onStatusChange, onCon
           <button type="button" onClick={handleSendEmail} className="inline-flex items-center gap-1 rounded-lg border px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
             <Mail className="h-4 w-4" /> Email
           </button>
-          <Button type="button" variant="primary" disabled={converting || !quoteItems.length || !selectedItems.length} loading={converting} onClick={handleConvert}>
-            {converting ? "Converting…" : "Convert to Sales Order"}
-          </Button>
+          {canConvert && (
+            <Button type="button" variant="primary" disabled={converting || !quoteItems.length || !selectedItems.length} loading={converting} onClick={handleConvert}>
+              {converting ? "Converting…" : "Convert to Sales Order"}
+            </Button>
+          )}
           {quote.status === "draft" && (
             <button
               type="button"

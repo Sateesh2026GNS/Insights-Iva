@@ -160,3 +160,38 @@ def update_company_settings(
         db.rollback()
         logger.exception("Failed to update company settings for tenant_id=%s: %s", user.tenant_id, exc)
         raise HTTPException(status_code=500, detail="Failed to update company settings") from exc
+
+
+class TestEmailRequest(BaseModel):
+    to_email: str = Field(..., max_length=255)
+
+
+@router.get("/smtp-status")
+def get_smtp_status_endpoint(
+    user: User = Depends(require_permission("admin")),
+) -> dict:
+    """Check SMTP configuration and test server connection (Admin only)."""
+    from app.services.smtp_diagnostics import verify_smtp_connection
+    return success_response("SMTP status retrieved", verify_smtp_connection())
+
+
+@router.post("/test-email")
+def send_test_email_endpoint(
+    payload: TestEmailRequest,
+    user: User = Depends(require_permission("admin")),
+) -> dict:
+    """Send a test email to any address to verify SMTP delivery (Admin only)."""
+    from app.services.email_service import EmailDeliveryError, send_email
+    try:
+        send_email(
+            payload.to_email,
+            "Insights Iva — Test Email",
+            "This is a test email sent from Insights Iva to verify outbound SMTP email delivery.",
+            require_smtp=True,
+        )
+        return success_response("Test email sent successfully", {"to": payload.to_email})
+    except EmailDeliveryError as exc:
+        raise HTTPException(status_code=400, detail=exc.public_message) from exc
+    except Exception as exc:
+        logger.exception("Failed to send test email to %s: %s", payload.to_email, exc)
+        raise HTTPException(status_code=500, detail=f"SMTP Send Failed: {exc}") from exc

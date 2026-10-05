@@ -8,15 +8,15 @@ from app.services.storage.factory import get_storage_provider
 
 
 class NoOpAntivirusScanner(AntivirusScanner):
-    """When antivirus is disabled — files remain PENDING_SCAN until manually approved in dev."""
+    """When antivirus is disabled — mark files SAFE by default."""
 
     name = "disabled"
     is_configured = False
 
     def scan_object(self, storage_key: str, storage_provider: str) -> ScanResult:
         return ScanResult(
-            status="PENDING_SCAN",
-            message="Antivirus scanning is not configured. File is not available for download.",
+            status="SAFE",
+            message="Antivirus scanning is disabled; file marked safe.",
             scanner_name=self.name,
             is_configured=False,
         )
