@@ -2,6 +2,15 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 
+const isStaticAsset = (url) =>
+  /\.(png|jpg|jpeg|gif|svg|webp|ico|css|js|woff2?|ttf|eot|json|map)$/i.test(url);
+
+const apiProxyBypass = (req) => {
+  if (req.headers.accept?.includes("text/html")) return "/index.html";
+  if (isStaticAsset(req.url)) return false;
+  return undefined;
+};
+
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
@@ -13,261 +22,263 @@ export default defineConfig({
       ignored: ["**/node_modules_bak_push/**", "**/dist/**", "**/.git/**"],
     },
     proxy: {
-      // Proxy API requests while bypassing HTML page navigations to SPA index.html
+      // Proxy API requests while bypassing HTML page navigations to SPA index.html and static assets
       "/auth": {
         target: "http://127.0.0.1:8000",
         changeOrigin: true,
-        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+        bypass: apiProxyBypass,
       },
       "/api": {
         target: "http://127.0.0.1:8000",
         changeOrigin: true,
+        bypass: apiProxyBypass,
       },
       "/biz": {
         target: "http://127.0.0.1:8000",
         changeOrigin: true,
+        bypass: apiProxyBypass,
       },
       "/ai": {
         target: "http://127.0.0.1:8000",
         changeOrigin: true,
-        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+        bypass: apiProxyBypass,
       },
       "/sales": {
         target: "http://127.0.0.1:8000",
         changeOrigin: true,
-        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+        bypass: apiProxyBypass,
       },
       "/manufacturing": {
         target: "http://127.0.0.1:8000",
         changeOrigin: true,
-        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+        bypass: apiProxyBypass,
       },
       "/accounts": {
         target: "http://127.0.0.1:8000",
         changeOrigin: true,
-        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+        bypass: apiProxyBypass,
       },
       "/inventory": {
         target: "http://127.0.0.1:8000",
         changeOrigin: true,
-        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+        bypass: apiProxyBypass,
       },
       "/procurement": {
         target: "http://127.0.0.1:8000",
         changeOrigin: true,
-        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+        bypass: apiProxyBypass,
       },
       "/production": {
         target: "http://127.0.0.1:8000",
         changeOrigin: true,
-        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+        bypass: apiProxyBypass,
       },
       "/quality": {
         target: "http://127.0.0.1:8000",
         changeOrigin: true,
-        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+        bypass: apiProxyBypass,
       },
       "/maintenance": {
         target: "http://127.0.0.1:8000",
         changeOrigin: true,
-        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+        bypass: apiProxyBypass,
       },
       "/analytics": {
         target: "http://127.0.0.1:8000",
         changeOrigin: true,
-        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+        bypass: apiProxyBypass,
       },
       "/departments": {
         target: "http://127.0.0.1:8000",
         changeOrigin: true,
-        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+        bypass: apiProxyBypass,
       },
       "/hr": {
         target: "http://127.0.0.1:8000",
         changeOrigin: true,
-        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+        bypass: apiProxyBypass,
       },
       "/alerts": {
         target: "http://127.0.0.1:8000",
         changeOrigin: true,
-        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+        bypass: apiProxyBypass,
       },
       "/admin": {
         target: "http://127.0.0.1:8000",
         changeOrigin: true,
-        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+        bypass: apiProxyBypass,
       },
       "/company-settings": {
         target: "http://127.0.0.1:8000",
         changeOrigin: true,
-        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+        bypass: apiProxyBypass,
       },
       "/settings": {
         target: "http://127.0.0.1:8000",
         changeOrigin: true,
-        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+        bypass: apiProxyBypass,
       },
       "/documents": {
         target: "http://127.0.0.1:8000",
         changeOrigin: true,
-        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+        bypass: apiProxyBypass,
       },
       "/dispatch": {
         target: "http://127.0.0.1:8000",
         changeOrigin: true,
-        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+        bypass: apiProxyBypass,
       },
       "/dispatch-addresses": {
         target: "http://127.0.0.1:8000",
         changeOrigin: true,
-        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+        bypass: apiProxyBypass,
       },
       "/meetings": {
         target: "http://127.0.0.1:8000",
         changeOrigin: true,
-        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+        bypass: apiProxyBypass,
       },
       "/work-chat": {
         target: "http://127.0.0.1:8000",
         changeOrigin: true,
-        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+        bypass: apiProxyBypass,
       },
       "/google-calendar": {
         target: "http://127.0.0.1:8000",
         changeOrigin: true,
-        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+        bypass: apiProxyBypass,
       },
       "/iot": {
         target: "http://127.0.0.1:8000",
         changeOrigin: true,
-        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+        bypass: apiProxyBypass,
       },
       "/audit": {
         target: "http://127.0.0.1:8000",
         changeOrigin: true,
-        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+        bypass: apiProxyBypass,
       },
       "/warehouse": {
         target: "http://127.0.0.1:8000",
         changeOrigin: true,
-        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+        bypass: apiProxyBypass,
       },
       "/supply-chain": {
         target: "http://127.0.0.1:8000",
         changeOrigin: true,
-        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+        bypass: apiProxyBypass,
       },
       "/notifications": {
         target: "http://127.0.0.1:8000",
         changeOrigin: true,
-        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+        bypass: apiProxyBypass,
       },
       "/operator": {
         target: "http://127.0.0.1:8000",
         changeOrigin: true,
-        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+        bypass: apiProxyBypass,
       },
       "/dashboard": {
         target: "http://127.0.0.1:8000",
         changeOrigin: true,
-        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+        bypass: apiProxyBypass,
       },
       "/masters": {
         target: "http://127.0.0.1:8000",
         changeOrigin: true,
-        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+        bypass: apiProxyBypass,
       },
       "/ai-assistant": {
         target: "http://127.0.0.1:8000",
         changeOrigin: true,
-        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+        bypass: apiProxyBypass,
       },
       "/tasks": {
         target: "http://127.0.0.1:8000",
         changeOrigin: true,
-        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+        bypass: apiProxyBypass,
       },
       "/sidebar": {
         target: "http://127.0.0.1:8000",
         changeOrigin: true,
-        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+        bypass: apiProxyBypass,
       },
       "/roles": {
         target: "http://127.0.0.1:8000",
         changeOrigin: true,
-        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+        bypass: apiProxyBypass,
       },
       "/permissions": {
         target: "http://127.0.0.1:8000",
         changeOrigin: true,
-        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+        bypass: apiProxyBypass,
       },
       "/users": {
         target: "http://127.0.0.1:8000",
         changeOrigin: true,
-        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+        bypass: apiProxyBypass,
       },
       "/team-directory": {
         target: "http://127.0.0.1:8000",
         changeOrigin: true,
-        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+        bypass: apiProxyBypass,
       },
       "/files": {
         target: "http://127.0.0.1:8000",
         changeOrigin: true,
-        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+        bypass: apiProxyBypass,
       },
       "/integrations": {
         target: "http://127.0.0.1:8000",
         changeOrigin: true,
-        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+        bypass: apiProxyBypass,
       },
       "/business-documents": {
         target: "http://127.0.0.1:8000",
         changeOrigin: true,
-        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+        bypass: apiProxyBypass,
       },
       "/login-history": {
         target: "http://127.0.0.1:8000",
         changeOrigin: true,
-        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+        bypass: apiProxyBypass,
       },
       "/factory-monitor": {
         target: "http://127.0.0.1:8000",
         changeOrigin: true,
-        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+        bypass: apiProxyBypass,
       },
       "/forecasting": {
         target: "http://127.0.0.1:8000",
         changeOrigin: true,
-        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+        bypass: apiProxyBypass,
       },
       "/integration": {
         target: "http://127.0.0.1:8000",
         changeOrigin: true,
-        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+        bypass: apiProxyBypass,
       },
       "/production-scheduling": {
         target: "http://127.0.0.1:8000",
         changeOrigin: true,
-        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+        bypass: apiProxyBypass,
       },
       "/audit-logs": {
         target: "http://127.0.0.1:8000",
         changeOrigin: true,
-        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+        bypass: apiProxyBypass,
       },
       "/rbac": {
         target: "http://127.0.0.1:8000",
         changeOrigin: true,
-        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+        bypass: apiProxyBypass,
       },
       "/platform": {
         target: "http://127.0.0.1:8000",
         changeOrigin: true,
-        bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
+        bypass: apiProxyBypass,
       },
-      "/health": { target: "http://127.0.0.1:8000", changeOrigin: true },
+      "/health": { target: "http://127.0.0.1:8000", changeOrigin: true, bypass: apiProxyBypass },
     },
   },
   test: {

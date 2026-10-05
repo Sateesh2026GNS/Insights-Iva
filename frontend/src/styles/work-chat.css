@@ -21,7 +21,7 @@
 
 .work-chat-layout {
   display: grid;
-  grid-template-columns: minmax(240px, 300px) minmax(0, 1fr) minmax(200px, 260px);
+  grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
   gap: 0;
   min-height: min(72vh, 720px);
   border: 1px solid var(--color-border);
@@ -515,7 +515,8 @@
 
 .work-chat-modal {
   width: 100%;
-  max-width: 420px;
+  max-width: 480px;
+  overflow: hidden;
 }
 
 /* Message Action Buttons (Forward & Emoji Reaction) */

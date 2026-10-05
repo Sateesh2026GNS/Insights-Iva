@@ -495,7 +495,6 @@ def on_startup():
                 )
                 if not inv_count:
                     seed_finance_data(db, tenant_id=t.id)
-                seed_hr_data(db, tenant_id=t.id)
         else:
             tenant_ids = list(db.scalars(select(Tenant.id)).all())
             for tid in tenant_ids:

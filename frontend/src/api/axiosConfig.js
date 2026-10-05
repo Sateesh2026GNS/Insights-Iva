@@ -171,7 +171,12 @@ api.interceptors.request.use((config) => {
       params._r = getPageRefreshGeneration();
       config.params = params;
     }
-  } else if (method === "get" && !config.skipCache) {
+  } else if (
+    method === "get" &&
+    !config.skipCache &&
+    config.responseType !== "blob" &&
+    config.responseType !== "arraybuffer"
+  ) {
     const cacheKey = buildApiCacheKey(config);
     const cached = apiCache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
@@ -245,7 +250,19 @@ api.interceptors.response.use(
       recordSessionActivity();
     }
 
-    if (method === "get" && response.status === 200 && response.data && typeof response.data === "object") {
+    const isBinaryData =
+      response.config?.responseType === "blob" ||
+      response.config?.responseType === "arraybuffer" ||
+      (typeof Blob !== "undefined" && response.data instanceof Blob) ||
+      (typeof ArrayBuffer !== "undefined" && response.data instanceof ArrayBuffer);
+
+    if (
+      method === "get" &&
+      response.status === 200 &&
+      response.data &&
+      typeof response.data === "object" &&
+      !isBinaryData
+    ) {
       const cacheKey = buildApiCacheKey(response.config);
       apiCache.set(cacheKey, {
         data: response.data,

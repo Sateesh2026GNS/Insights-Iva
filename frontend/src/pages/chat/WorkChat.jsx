@@ -224,21 +224,35 @@ function WorkChatFileAttachment({ attachment, own, onDownload }) {
   const sizeText = formatFileSize(attachment.file_size);
 
   return (
-    <div className={`work-chat-file-card ${own ? "work-chat-file-card--own" : ""}`}>
+    <div
+      className={`work-chat-file-card cursor-pointer hover:opacity-95 transition-opacity ${own ? "work-chat-file-card--own" : ""}`}
+      onClick={() => onDownload(attachment.file_id, attachment.filename)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onDownload(attachment.file_id, attachment.filename);
+        }
+      }}
+    >
       <div className="work-chat-file-icon">
         <Icon className="h-5 w-5" />
       </div>
-      <div className="work-chat-file-info">
-        <p className="work-chat-file-name" title={attachment.filename}>
+      <div className="work-chat-file-info min-w-0 flex-1">
+        <p className="work-chat-file-name truncate" title={attachment.filename}>
           {attachment.filename}
         </p>
         {sizeText ? <p className="work-chat-file-size">{sizeText}</p> : null}
       </div>
       <button
         type="button"
-        className="work-chat-file-download"
+        className="work-chat-file-download shrink-0"
         title="Download file"
-        onClick={() => onDownload(attachment.file_id, attachment.filename, attachment.download_url)}
+        onClick={(e) => {
+          e.stopPropagation();
+          onDownload(attachment.file_id, attachment.filename);
+        }}
       >
         <Download className="h-3.5 w-3.5" />
       </button>
@@ -452,9 +466,25 @@ function ForwardModal({ message, conversations, onClose, onForward }) {
       <div className="work-chat-modal ui-card">
         <div className="flex items-center justify-between border-b border-[var(--color-border)] px-4 py-3">
           <h3 className="font-bold text-sm text-[var(--color-text)]">Forward message</h3>
-          <button type="button" onClick={onClose} aria-label="Close">
-            <X className="h-5 w-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            {allTargets.length > 0 && (
+              <button
+                type="button"
+                className="px-2.5 py-1 text-xs font-semibold rounded border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-muted)] transition-colors"
+                onClick={toggleSelectAll}
+              >
+                {allSelected ? "Deselect All" : "Select All"}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close"
+              className="text-[var(--color-text-muted)] hover:text-[var(--color-text)] p-1 rounded transition-colors"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
         </div>
         <div className="p-4 space-y-3">
           <div className="p-2.5 rounded-lg bg-[var(--color-surface-muted)] text-xs border border-[var(--color-border-soft)]">
@@ -463,24 +493,15 @@ function ForwardModal({ message, conversations, onClose, onForward }) {
               {message.body || (message.attachments?.length ? "📎 Attachment" : "Message")}
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div>
             <SearchBar
               size="compact"
               value={query}
               onChange={setQuery}
               placeholder="Search users or conversations..."
-              className="flex-1"
+              className="w-full"
               aria-label="Search users or conversations to forward to"
             />
-            {allTargets.length > 0 && (
-              <button
-                type="button"
-                className="shrink-0 px-2.5 py-1 text-xs font-semibold rounded border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-muted)] transition-colors"
-                onClick={toggleSelectAll}
-              >
-                {allSelected ? "Deselect All" : "Select All"}
-              </button>
-            )}
           </div>
 
           <div className="max-h-60 overflow-y-auto space-y-3 pr-1">
@@ -829,15 +850,12 @@ export default function WorkChat() {
     setMobileView("chat");
   };
 
-  const handleDownloadFile = async (fileId, filename, initialUrl = null) => {
+  const handleDownloadFile = async (fileId, filename) => {
     let attempts = 0;
-    let urlToUse = initialUrl;
     while (attempts < 3) {
       try {
-        if (!urlToUse) {
-          const res = await getDownloadUrl(fileId);
-          urlToUse = res?.download_url;
-        }
+        const res = await getDownloadUrl(fileId);
+        const urlToUse = res?.download_url;
         if (!urlToUse) throw new Error("No download URL available");
 
         const isExternalCloud =
@@ -845,9 +863,9 @@ export default function WorkChat() {
           !urlToUse.includes("/api/files/");
 
         if (isExternalCloud) {
-          const res = await fetch(urlToUse);
-          if (!res.ok) throw new Error("Cloud download failed");
-          const blob = await res.blob();
+          const cloudRes = await fetch(urlToUse);
+          if (!cloudRes.ok) throw new Error("Cloud download failed");
+          const blob = await cloudRes.blob();
           const blobUrl = URL.createObjectURL(blob);
           const link = document.createElement("a");
           link.href = blobUrl;
@@ -859,38 +877,24 @@ export default function WorkChat() {
           return;
         }
 
-        // Internal API endpoint — attempt blob download via axios first
-        try {
-          const res = await api.get(urlToUse, { responseType: "blob", skipCache: true });
-          if (res.data && (res.data instanceof Blob || res.data.size !== undefined)) {
-            const blobUrl = URL.createObjectURL(res.data);
-            const link = document.createElement("a");
-            link.href = blobUrl;
-            link.download = filename || "download";
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            setTimeout(() => URL.revokeObjectURL(blobUrl), 2000);
-            return;
-          }
-        } catch (e) {
-          console.warn("Blob fetch failed, falling back to direct link download:", e);
+        // Internal API endpoint — attempt authenticated blob download via axios
+        const downloadRes = await api.get(urlToUse, { responseType: "blob", skipCache: true });
+        if (downloadRes.data && (downloadRes.data instanceof Blob || downloadRes.data.size !== undefined)) {
+          const blobUrl = URL.createObjectURL(downloadRes.data);
+          const link = document.createElement("a");
+          link.href = blobUrl;
+          link.download = filename || "download";
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          setTimeout(() => URL.revokeObjectURL(blobUrl), 2000);
+          return;
         }
 
-        // Failsafe fallback: Direct link download via presigned URL
-        const fullUrl = resolveUploadUrl(urlToUse);
-        const link = document.createElement("a");
-        link.href = fullUrl;
-        link.download = filename || "download";
-        link.target = "_blank";
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        return;
+        throw new Error("Invalid response received during file download");
       } catch (err) {
         console.error("File download attempt failed:", err);
         attempts += 1;
-        urlToUse = null; // Reset URL to request fresh download token on retry
         if (attempts >= 3) {
           addToast("Failed to download file.", "error");
           break;
@@ -1633,24 +1637,6 @@ export default function WorkChat() {
             </>
           )}
         </section>
-
-        <aside className="work-chat-panel work-chat-panel--details hidden lg:flex" aria-label="Conversation details">
-          {activeConv ? (
-            <div className="p-4">
-              <h3 className="text-sm font-bold text-[var(--color-text)] mb-3">Members</h3>
-              <ul className="space-y-2">
-                {(activeConv.members || []).map((m) => (
-                  <li key={m.id} className="flex items-center gap-2 text-sm">
-                    <span className="work-chat-avatar work-chat-avatar--sm">{initials(m.full_name)}</span>
-                    <span className="truncate">{m.full_name}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : (
-            <p className="p-4 text-sm text-[var(--color-text-muted)]">Conversation info</p>
-          )}
-        </aside>
       </div>
 
       {(showNewDirect || showNewGroup) && (
