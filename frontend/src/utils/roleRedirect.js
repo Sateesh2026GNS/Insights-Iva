@@ -4,6 +4,7 @@
  */
 
 import { isQualityTeam } from "../config/permissions";
+import { prefetchRouteChunk, prefetchRoleSidebarNeighbors } from "./routePrefetch";
 
 /** Canonical Accounts module home (must match AppRoutes + sidebar). */
 export const ACCOUNTS_DASHBOARD_PATH = "/accounts/dashboard";
@@ -101,4 +102,11 @@ export function getDashboardPathForRole(roleOrUser) {
   }
 
   return "/";
+}
+
+/** Warm the lazy chunk for the role's post-login dashboard (non-blocking). */
+export function prefetchDashboardForRole(roleOrUser) {
+  const path = getDashboardPathForRole(roleOrUser);
+  prefetchRouteChunk(path);
+  prefetchRoleSidebarNeighbors(path);
 }

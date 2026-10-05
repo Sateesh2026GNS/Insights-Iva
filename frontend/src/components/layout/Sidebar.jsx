@@ -69,6 +69,7 @@ import { STORE_MANAGER_NAV_ITEMS } from "../../config/storeManagerNavConfig";
 import { SALES_MANAGER_NAV_ITEMS } from "../../config/salesManagerNavConfig";
 import { PRODUCTION_MANAGER_NAV_ITEMS } from "../../config/productionManagerNavConfig";
 import { QUALITY_CONTROL_DASHBOARD_NAV_PATH, QUALITY_CONTROL_NAV_ITEMS } from "../../config/qualityControlNavConfig";
+import { prefetchRouteChunk } from "../../utils/routePrefetch";
 
 export function getRoleJobCardUrl(user) {
   if (isStoreManager(user)) return "/my-job-cards?dept=inventory";
@@ -644,6 +645,8 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
           key={itemKey}
           to={node.to}
           end={node.end}
+          onMouseEnter={() => prefetchRouteChunk(node.to)}
+          onFocus={() => prefetchRouteChunk(node.to)}
           onClick={() => onClose?.()}
           title={collapsed ? label : undefined}
           className={nestedLinkClass}
@@ -747,6 +750,8 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
                 key={section.key}
                 to={section.to}
                 end={section.end}
+                onMouseEnter={() => prefetchRouteChunk(section.to)}
+                onFocus={() => prefetchRouteChunk(section.to)}
                 onClick={() => onClose?.()}
                 title={collapsed ? label : undefined}
                 className={topLinkClass}
@@ -788,6 +793,8 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
                           key={`${section.key}-${child.to}-${child.label || child.key}`}
                           to={child.to}
                           end={child.end}
+                          onMouseEnter={() => prefetchRouteChunk(child.to)}
+                          onFocus={() => prefetchRouteChunk(child.to)}
                           onClick={() => onClose?.()}
                           className={childLinkClass}
                         >

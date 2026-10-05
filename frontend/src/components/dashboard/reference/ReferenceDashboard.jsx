@@ -971,25 +971,25 @@ export default function ReferenceDashboard() {
       ? getMyApprovalCounts()
       : Promise.resolve({ data: null });
 
-    Promise.allSettled([
-      getErpDashboard({ includeManufacturingWorkflow: false }),
-      getProductionOrders(),
-      getWorkOrders(),
-      approvalsFetch,
-    ]).then(([dashRes, prodRes, woRes, approvalsRes]) => {
-      if (dashRes.status === "fulfilled" && dashRes.value?.data) {
-        setApiData(dashRes.value.data);
-        setError(null);
-      } else {
+    getErpDashboard({ includeManufacturingWorkflow: false })
+      .then((dashRes) => {
+        if (dashRes?.data) {
+          setApiData(dashRes.data);
+          setError(null);
+        } else {
+          setApiData(DEFAULT_ERP_DASHBOARD);
+          setError("Unable to load dashboard.");
+        }
+        setLoading(false);
+      })
+      .catch((err) => {
         setApiData(DEFAULT_ERP_DASHBOARD);
-        setError(
-          dashRes.status === "rejected"
-            ? dashRes.reason?.message || "Unable to load dashboard."
-            : "Unable to load dashboard."
-        );
-      }
+        setError(err?.message || "Unable to load dashboard.");
+        setLoading(false);
+      });
 
-
+    Promise.allSettled([getProductionOrders(), getWorkOrders(), approvalsFetch]).then(
+      ([prodRes, woRes, approvalsRes]) => {
       let customOrders = [];
       try {
         customOrders = JSON.parse(localStorage.getItem("gns_custom_production_orders") || "[]");
@@ -1044,8 +1044,6 @@ export default function ReferenceDashboard() {
         pendingApprovalsCount: realPendingApprovalsCount,
         todayProdCount: todayProdCount > 0 ? todayProdCount : null,
       });
-    }).finally(() => {
-      setLoading(false);
       setQuickActionsRefreshKey((k) => k + 1);
     });
   }, [user]);
