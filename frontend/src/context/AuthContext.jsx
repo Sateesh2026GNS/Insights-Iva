@@ -262,6 +262,12 @@ export function AuthProvider({ children }) {
     }
     if (!token || token.startsWith("fast-session-")) return undefined;
 
+    const loginTime = Number(localStorage.getItem("smrt-login-time") || 0);
+    const freshLogin = loginTime > 0 && Date.now() - loginTime < 120_000;
+    if (freshLogin && user) {
+      return undefined;
+    }
+
     getCurrentUser()
       .then((data) => {
         if (cancelled || !data) return;

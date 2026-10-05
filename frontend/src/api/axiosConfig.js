@@ -97,7 +97,7 @@ function isPlatformRequest(config) {
 }
 
 const apiCache = new Map();
-const CACHE_TTL_MS = 5_000; // 5s short TTL so changes are immediately visible upon navigation.
+const CACHE_TTL_MS = 20_000; // Short TTL — faster back-navigation without stale writes.
 
 if (typeof window !== "undefined") {
   window.addEventListener("focus", clearApiCache);
@@ -184,6 +184,7 @@ api.interceptors.request.use((config) => {
           config,
           request: {},
         });
+      return config;
     }
   }
 

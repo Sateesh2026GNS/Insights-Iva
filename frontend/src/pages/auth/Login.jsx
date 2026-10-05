@@ -10,9 +10,13 @@ import BrandLogo from "../../components/common/BrandLogo";
 import Button from "../../components/common/Button";
 import LoginSuccessOverlay from "../../components/common/LoginSuccessOverlay";
 import { ROLES } from "../../config/permissions";
-import { getDashboardPathForRole, withLoginRole } from "../../utils/roleRedirect";
+import {
+  getDashboardPathForRole,
+  prefetchDashboardForRole,
+  withLoginRole,
+} from "../../utils/roleRedirect";
 
-const LOGIN_SUCCESS_MS = 20;
+const LOGIN_SUCCESS_MS = 0;
 const LOGIN_ROLES = ROLES.map((r) => r.name);
 
 const EnvelopeIcon = () => (
@@ -118,11 +122,15 @@ export default function Login() {
     });
     const path = getDashboardPathForRole(sessionUser ?? role);
     setRedirectPath(path);
+    prefetchDashboardForRole(sessionUser ?? role);
     setShowSuccess(true);
     setLoading(false);
-    redirectTimerRef.current = setTimeout(() => {
-      navigate(path, { replace: true });
-    }, LOGIN_SUCCESS_MS);
+    navigate(path, { replace: true });
+    if (LOGIN_SUCCESS_MS > 0) {
+      redirectTimerRef.current = setTimeout(() => {
+        navigate(path, { replace: true });
+      }, LOGIN_SUCCESS_MS);
+    }
   };
 
   const handleSubmit = async (e) => {
