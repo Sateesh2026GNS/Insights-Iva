@@ -509,6 +509,7 @@ def update_transfer_status(
                 reference=transfer.transfer_number,
             )
         )
+
         db.add(
             StockMovement(
                 tenant_id=tenant_id,
@@ -519,6 +520,12 @@ def update_transfer_status(
                 reference=transfer.transfer_number,
             )
         )
+
+        from app.services.inventory_service import _sync_cached_item_quantity
+
+        inventory_item = db.get(InventoryItem, transfer.item_id)
+        if inventory_item and inventory_item.tenant_id == tenant_id:
+            _sync_cached_item_quantity(db, inventory_item)
 
     try:
         db.commit()
@@ -656,6 +663,12 @@ def update_adjustment_status(
                 reference=f"ADJ-{adj.adjustment_date.isoformat() if adj.adjustment_date else date.today().isoformat()}",
             )
         )
+
+        from app.services.inventory_service import _sync_cached_item_quantity
+
+        inventory_item = db.get(InventoryItem, adj.item_id)
+        if inventory_item and inventory_item.tenant_id == tenant_id:
+            _sync_cached_item_quantity(db, inventory_item)
 
     db.commit()
     db.refresh(adj)
