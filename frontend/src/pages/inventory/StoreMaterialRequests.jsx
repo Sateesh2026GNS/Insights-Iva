@@ -23,7 +23,7 @@ import {
   MANUFACTURING_EVENTS,
   notifyManufacturingSpine,
 } from "../../utils/manufacturingEvents";
-import IssueMaterialsModal from "../../components/production/IssueMaterialsModal";
+import DirectStoreMaterialIssueModal from "../../components/inventory/DirectStoreMaterialIssueModal";
 import WorkflowNextStep from "../../components/manufacturing/WorkflowNextStep";
 import { getMaterialRequestQueueGuidance } from "../../utils/inventoryWorkflowUx";
 import { apiErrorMessage } from "../../utils/apiError";
@@ -221,9 +221,6 @@ export default function StoreMaterialRequests({ mode = "requests" }) {
                 <Button type="button" variant="danger" size="sm" disabled={busy} onClick={() => runAction(r.id, "reject")} leftIcon={<XCircle className="h-3 w-3" aria-hidden />}>
                   Reject
                 </Button>
-                <Button type="button" variant="primary" size="sm" disabled={busy} onClick={() => runAction(r.id, "issue")}>
-                  Issue
-                </Button>
               </>
             )}
             {r.status === "approved" && (
@@ -291,7 +288,7 @@ export default function StoreMaterialRequests({ mode = "requests" }) {
         <div className="flex gap-2">
           {issueMode ? (
             <Button variant="primary" type="button" onClick={() => setShowIssueModal(true)}>
-              <Plus className="h-4 w-4" /> Issue Materials Form
+              <Plus className="h-4 w-4" /> Record Direct Issue
             </Button>
           ) : (
             <Button variant="add" type="button" onClick={() => setShowForm((v) => !v)} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
@@ -394,7 +391,9 @@ export default function StoreMaterialRequests({ mode = "requests" }) {
       )}
 
       {showIssueModal && (
-        <IssueMaterialsModal
+        <DirectStoreMaterialIssueModal
+          items={items}
+          warehouses={warehouses}
           onClose={() => setShowIssueModal(false)}
           onSuccess={() => load()}
           addToast={addToast}

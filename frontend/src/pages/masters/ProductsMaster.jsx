@@ -3,9 +3,9 @@ import { useLocation, useNavigate } from "react-router-dom";
 import {
   ChevronLeft,
   ChevronRight,
+  Eye,
   Pencil,
   Plus,
-  Search,
   Trash2,
   Upload,
 } from "lucide-react";
@@ -18,7 +18,7 @@ import { SearchBar } from "../../components/common/SearchFilter";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
 import { useToast } from "../../context/ToastContext";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
-import { deleteProduct, getProducts } from "../../api/productsApi";
+import { deleteProduct, getProductDetail, getProductRelatedSection, getProducts } from "../../api/productsApi";
 import { PRODUCT_CATEGORIES, computeSummary, enrichApiProduct, getCategoryChartData } from "../../data/productsMasterData";
 import { runListExport } from "../../utils/listExport";
 import { apiErrorMessage } from "../../utils/apiError";
@@ -28,9 +28,9 @@ import { invalidateReferenceCache } from "../../utils/referenceDataCache";
 import EmptyState from "../../components/common/EmptyState";
 import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
 import RowActionMenu from "../../components/common/RowActionMenu";
-import { rowActionClass } from "../../design-system/classes";
 import Button from "../../components/common/Button";
 import ConfirmDialog from "../../components/admin/ConfirmDialog";
+import ProductDetailModal from "../../components/masters/ProductDetailModal";
 
 const PAGE_SIZES = [20, 50, 100];
 
@@ -70,6 +70,10 @@ export default function ProductsMaster() {
   const [pageSize, setPageSize] = useState(20);
   const [addOpen, setAddOpen] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [viewing, setViewing] = useState(null);
+  const [relatedData, setRelatedData] = useState({});
+  const [loadingSections, setLoadingSections] = useState({});
+  const [sectionErrors, setSectionErrors] = useState({});
   const [deleting, setDeleting] = useState(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [openMenu, setOpenMenu] = useState(null);
@@ -156,6 +160,44 @@ export default function ProductsMaster() {
       title: "Products",
     });
     addToast(format === "pdf" ? "Exported to PDF" : "Exported to Excel", "success");
+  };
+
+  const handleView = async (product) => {
+    setViewing(null);
+    setRelatedData({});
+    setLoadingSections({});
+    setSectionErrors({});
+    const id = Number(product?.id);
+    if (!Number.isFinite(id) || id <= 0) {
+      setViewing(product);
+      return;
+    }
+    try {
+      const res = await getProductDetail(id);
+      const detail = res?.data && typeof res.data === "object" ? res.data : {};
+      const merged = { ...product, ...detail };
+      if (Array.isArray(merged.bom)) {
+        merged.bom = merged.bom.length ? `${merged.bom.length} component(s)` : "No BOM configured";
+      }
+      setViewing(enrichApiProduct(merged));
+    } catch (err) {
+      addToast(apiErrorMessage(err, "Could not load product details."), "error");
+    }
+  };
+
+  const loadRelatedSection = async (section, product) => {
+    const id = Number(product?.id);
+    if (!Number.isFinite(id) || id <= 0 || relatedData[section] !== undefined || loadingSections[section]) return;
+    setLoadingSections((current) => ({ ...current, [section]: true }));
+    setSectionErrors((current) => ({ ...current, [section]: "" }));
+    try {
+      const res = await getProductRelatedSection(id, section);
+      setRelatedData((current) => ({ ...current, [section]: res?.data }));
+    } catch (err) {
+      setSectionErrors((current) => ({ ...current, [section]: apiErrorMessage(err, "Could not load this section.") }));
+    } finally {
+      setLoadingSections((current) => ({ ...current, [section]: false }));
+    }
   };
 
   const confirmDelete = async () => {
@@ -309,6 +351,12 @@ export default function ProductsMaster() {
                         setOpenMenu={setOpenMenu}
                         items={[
                           {
+                            label: "View",
+                            icon: <Eye className="h-4 w-4" />,
+                            onClick: () => handleView(p),
+                          },
+                          { divider: true },
+                          {
                             label: "Edit",
                             icon: <Pencil className="h-4 w-4" />,
                             onClick: () => {
@@ -414,6 +462,12 @@ export default function ProductsMaster() {
                               openMenu={openMenu}
                               setOpenMenu={setOpenMenu}
                               items={[
+                                {
+                                  label: "View",
+                                  icon: <Eye className="h-4 w-4" />,
+                                  onClick: () => handleView(p),
+                                },
+                                { divider: true },
                                 {
                                   label: "Edit",
                                   icon: <Pencil className="h-4 w-4" />,
@@ -555,6 +609,28 @@ export default function ProductsMaster() {
         categories={existingCategories}
         onClose={handleCloseModal}
         onSaved={handleSavedModal}
+      />
+      <ProductDetailModal
+        product={viewing}
+        relatedData={relatedData}
+        loadingSections={loadingSections}
+        sectionErrors={sectionErrors}
+        onLoadSection={loadRelatedSection}
+        onClose={() => setViewing(null)}
+        onEdit={(product) => {
+          setViewing(null);
+          setEditing(product);
+          setAddOpen(true);
+        }}
+        onDuplicate={(product) => {
+          setViewing(null);
+          setEditing({ ...product, id: null, sku: "", product_code: "" });
+          setAddOpen(true);
+        }}
+        onDelete={(product) => {
+          setViewing(null);
+          setDeleting(product);
+        }}
       />
       <ConfirmDialog
         open={Boolean(deleting)}

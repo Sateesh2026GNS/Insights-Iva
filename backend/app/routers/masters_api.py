@@ -2,7 +2,7 @@
 
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
@@ -66,14 +66,119 @@ def get_product(
     return success_response("Product retrieved", data)
 
 
-@router.post("/products")
-def create_product(
-    payload: ProductCreate,
+@router.get("/products/{product_id}/bom")
+def product_bom_history(
+    product_id: int,
+    user_tenant: tuple[User, int] = Depends(require_tenant("bom")),
+    db: Session = Depends(get_db),
+):
+    _, tenant_id = user_tenant
+    from app.services.product_related_service import list_product_bom
+
+    return success_response(
+        "Product BOM retrieved", list_product_bom(db, tenant_id, product_id)
+    )
+
+
+@router.get("/products/{product_id}/suppliers")
+def product_suppliers(
+    product_id: int,
+    user_tenant: tuple[User, int] = Depends(require_tenant("vendors")),
+    db: Session = Depends(get_db),
+):
+    _, tenant_id = user_tenant
+    from app.services.product_related_service import list_product_suppliers
+
+    return success_response(
+        "Product suppliers retrieved", list_product_suppliers(db, tenant_id, product_id)
+    )
+
+
+@router.get("/products/{product_id}/purchase-history")
+def product_purchase_history(
+    product_id: int,
+    user_tenant: tuple[User, int] = Depends(require_tenant("procurement")),
+    db: Session = Depends(get_db),
+):
+    _, tenant_id = user_tenant
+    from app.services.product_related_service import list_product_purchase_history
+
+    return success_response(
+        "Product purchase history retrieved",
+        list_product_purchase_history(db, tenant_id, product_id),
+    )
+
+
+@router.get("/products/{product_id}/sales-history")
+def product_sales_history(
+    product_id: int,
+    user_tenant: tuple[User, int] = Depends(require_tenant("sales")),
+    db: Session = Depends(get_db),
+):
+    _, tenant_id = user_tenant
+    from app.services.product_related_service import list_product_sales_history
+
+    return success_response(
+        "Product sales history retrieved",
+        list_product_sales_history(db, tenant_id, product_id),
+    )
+
+
+@router.get("/products/{product_id}/production-history")
+def product_production_history(
+    product_id: int,
+    user_tenant: tuple[User, int] = Depends(require_tenant("production")),
+    db: Session = Depends(get_db),
+):
+    _, tenant_id = user_tenant
+    from app.services.product_related_service import list_product_production_history
+
+    return success_response(
+        "Product production history retrieved",
+        list_product_production_history(db, tenant_id, product_id),
+    )
+
+
+@router.get("/products/{product_id}/audit-logs")
+def product_audit_logs(
+    product_id: int,
     user_tenant: tuple[User, int] = Depends(require_tenant("products")),
     db: Session = Depends(get_db),
 ):
     _, tenant_id = user_tenant
-    return success_response("Product created", _svc(db, tenant_id).create_product(payload))
+    from app.services.product_related_service import list_product_audit_logs
+
+    return success_response(
+        "Product audit logs retrieved",
+        list_product_audit_logs(db, tenant_id, product_id),
+    )
+
+
+@router.post("/products")
+def create_product(
+    payload: ProductCreate,
+    request: Request,
+    user_tenant: tuple[User, int] = Depends(require_tenant("products")),
+    db: Session = Depends(get_db),
+):
+    user, tenant_id = user_tenant
+    product = _svc(db, tenant_id).create_product(payload)
+    try:
+        from app.services.audit_log_service import AuditLogService
+
+        AuditLogService.log(
+            db=db,
+            request=request,
+            current_user=user,
+            action="create",
+            module_name="masters",
+            resource="product",
+            resource_id=product["id"],
+            details=f"Created product {product.get('name') or product.get('sku') or product['id']}.",
+        )
+    except Exception:
+        logger.exception("Failed to write audit event for product creation id=%s", product.get("id"))
+    return success_response("Product created", product)
 
 
 @router.put("/products/{product_id}")

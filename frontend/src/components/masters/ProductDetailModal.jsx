@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import {
   Barcode,
@@ -41,24 +42,80 @@ function TabPlaceholder({ title }) {
   );
 }
 
+function RelatedStatus({ loading, error, children, empty, emptyLabel }) {
+  if (loading) {
+    return <div className="rounded-xl bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">Loading related records…</div>;
+  }
+  if (error) {
+    return <div role="alert" className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-800">{error}</div>;
+  }
+  if (empty) {
+    return <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">{emptyLabel}</div>;
+  }
+  return children;
+}
+
+function RelatedTable({ columns, rows, rowKey = "id" }) {
+  return (
+    <div className="overflow-x-auto rounded-xl border border-slate-200">
+      <table className="w-full min-w-[620px] text-left text-sm">
+        <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+          <tr>{columns.map((column) => <th key={column.label} className="px-3 py-2.5 font-semibold">{column.label}</th>)}</tr>
+        </thead>
+        <tbody className="divide-y divide-slate-100">
+          {rows.map((row, index) => (
+            <tr key={row[rowKey] ?? index} className="text-slate-700">
+              {columns.map((column) => <td key={column.label} className="px-3 py-3">{column.render ? column.render(row) : (row[column.key] ?? "—")}</td>)}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function formatDateTime(value) {
+  if (!value) return "—";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+}
+
 export default function ProductDetailModal({
   product,
   onClose,
   onEdit,
   onDuplicate,
   onDelete,
+  relatedData = {},
+  loadingSections = {},
+  sectionErrors = {},
+  onLoadSection,
 }) {
   const [tab, setTab] = useState("general");
   if (!product) return null;
 
   const formatPrice = (n) => (n != null ? `₹${Number(n).toLocaleString("en-IN")}` : "—");
+  const sidebarWidth = typeof document !== "undefined"
+    ? document.getElementById("app-sidebar")?.getBoundingClientRect().width || 0
+    : 0;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center">
-      <div className="flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+  return createPortal((
+    <div
+      className="fixed inset-0 z-[120] flex items-center justify-center bg-black/40"
+      style={{
+        paddingLeft: `calc(${sidebarWidth}px + 1rem)`,
+        paddingRight: "1rem",
+        paddingTop: "calc(var(--navbar-height, 3.5rem) + 1rem)",
+        paddingBottom: "1rem",
+      }}
+    >
+      <div
+        className="flex w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
+        style={{ maxHeight: "calc(100dvh - var(--navbar-height, 3.5rem) - 2rem)" }}
+      >
         <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4">
           <div>
-            <p className="text-xs font-semibold text-[#2563EB]">{product.product_code}</p>
+            <p className="text-xs font-semibold text-[#2563EB]">{product.sku || "No SKU"}</p>
             <h2 className="text-xl font-bold text-slate-900">{product.name}</h2>
             <p className="text-sm text-slate-500">{product.category}</p>
           </div>
@@ -77,7 +134,12 @@ export default function ProductDetailModal({
             <button
               key={t.id}
               type="button"
-              onClick={() => setTab(t.id)}
+              onClick={() => {
+                setTab(t.id);
+                if (["bom", "suppliers", "purchase", "sales", "production", "audit"].includes(t.id)) {
+                  onLoadSection?.(t.id, product);
+                }
+              }}
               className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
                 tab === t.id
                   ? "bg-[var(--color-primary)] text-white"
@@ -93,33 +155,17 @@ export default function ProductDetailModal({
           {tab === "general" && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                <Field label="Product Code" value={product.product_code} />
+                <Field label="SKU" value={product.sku} />
                 <Field label="Product Name" value={product.name} />
                 <Field label="Category" value={product.category} />
-                <Field label="Product Type" value={product.product_type} />
-
-                <Field label="Barcode" value={product.barcode} />
-                <Field label="Brand" value={product.brand} />
                 <Field label="Unit" value={product.unit} />
                 <Field label="HSN Code" value={product.hsn_code} />
                 <Field label="Goods & Services Tax (GST) %" value={product.gst_percent != null ? `${product.gst_percent}%` : "—"} />
-                <Field label="Warehouse" value={product.warehouse} />
+                <Field label="Cess %" value={product.cess_percent != null ? `${product.cess_percent}%` : "—"} />
                 <Field label="Status" value={product.status} />
                 <Field label="Available for Sale" value={product.is_sellable ? "Yes" : "No"} />
               </div>
               <Field label="Description" value={product.description} />
-              <div>
-                <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-500">Manufacturing</p>
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                  <Field label="Bill of Materials" value={product.bom} />
-                  <Field label="Production Time" value={product.production_time} />
-                  <Field label="Machine Required" value={product.machine_required} />
-                  <Field label="Quality Standard" value={product.quality_standard} />
-                  <Field label="Batch Tracking" value={product.batch_tracking ? "Yes" : "No"} />
-                  <Field label="Serial Number" value={product.serial_number ? "Yes" : "No"} />
-                  <Field label="Expiry Date" value={product.expiry_date || "N/A"} />
-                </div>
-              </div>
             </div>
           )}
 
@@ -128,9 +174,7 @@ export default function ProductDetailModal({
               <Field label="Current Stock" value={product.current_stock} />
               <Field label="Minimum Stock" value={product.min_stock} />
               <Field label="Maximum Stock" value={product.max_stock} />
-              <Field label="Warehouse" value={product.warehouse} />
               <Field label="Unit" value={product.unit} />
-              <Field label="Stock Value" value={formatPrice(product.stock_value)} />
             </div>
           )}
 
@@ -138,52 +182,143 @@ export default function ProductDetailModal({
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               <Field label="Purchase Price" value={formatPrice(product.purchase_price)} />
               <Field label="Selling Price" value={formatPrice(product.selling_price)} />
+              <Field label="Wholesale Price" value={formatPrice(product.wholesale_price)} />
               <Field label="Goods & Services Tax (GST) %" value={product.gst_percent != null ? `${product.gst_percent}%` : "—"} />
+              <Field label="Cess %" value={product.cess_percent != null ? `${product.cess_percent}%` : "—"} />
               <Field label="HSN Code" value={product.hsn_code} />
-              <Field label="Margin" value={
-                product.selling_price && product.purchase_price
-                  ? formatPrice(product.selling_price - product.purchase_price)
-                  : "—"
-              } />
             </div>
           )}
 
-          {tab === "bom" && (
-            <div className="space-y-3">
-              <p className="text-sm text-slate-600">Bill of Materials (BOM) reference: <strong>{product.bom}</strong></p>
-              <Link to="/masters/bom" className="text-sm font-semibold text-[#2563EB] hover:underline">
-                Open Bill of Materials (BOM) Master →
-              </Link>
-            </div>
-          )}
+          {tab === "bom" && (() => {
+            const rows = relatedData.bom || [];
+            return (
+              <div className="space-y-4">
+                <RelatedStatus loading={loadingSections.bom} error={sectionErrors.bom} empty={!loadingSections.bom && !sectionErrors.bom && !rows.length} emptyLabel="No BOM components are linked to this product.">
+                  <RelatedTable columns={[
+                    { label: "Component", key: "component_name" },
+                    { label: "SKU", key: "component_sku" },
+                    { label: "Quantity", key: "quantity" },
+                    { label: "Unit", key: "unit" },
+                    { label: "Unit Cost", render: (row) => formatPrice(row.unit_cost) },
+                    { label: "Line Cost", render: (row) => formatPrice(row.total_cost) },
+                  ]} rows={rows} />
+                </RelatedStatus>
+                <Link to="/masters/bom" className="text-sm font-semibold text-[#2563EB] hover:underline">Open Bill of Materials (BOM) Master →</Link>
+              </div>
+            );
+          })()}
 
-          {tab === "suppliers" && <TabPlaceholder title="Suppliers" />}
-          {tab === "purchase" && (
-            <div className="space-y-2">
-              <TabPlaceholder title="Purchase History" />
-              <Link to="/procurement/purchase-orders" className="text-sm font-semibold text-[#2563EB] hover:underline">
-                View Purchase Orders →
-              </Link>
-            </div>
-          )}
-          {tab === "sales" && (
-            <div className="space-y-2">
-              <TabPlaceholder title="Sales History" />
-              <Link to="/sales/orders" className="text-sm font-semibold text-[#2563EB] hover:underline">
-                View Sales Orders →
-              </Link>
-            </div>
-          )}
-          {tab === "production" && (
-            <div className="space-y-2">
-              <TabPlaceholder title="Production History" />
-              <Link to="/production/work-orders" className="text-sm font-semibold text-[#2563EB] hover:underline">
-                View Work Orders →
-              </Link>
-            </div>
-          )}
+          {tab === "suppliers" && (() => {
+            const rows = relatedData.suppliers || [];
+            return (
+              <RelatedStatus loading={loadingSections.suppliers} error={sectionErrors.suppliers} empty={!loadingSections.suppliers && !sectionErrors.suppliers && !rows.length} emptyLabel="No suppliers are linked to this product yet.">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {rows.map((supplier) => (
+                    <div key={supplier.id} className="rounded-xl border border-slate-200 p-4">
+                      <p className="font-semibold text-slate-800">{supplier.name}</p>
+                      <p className="mt-1 text-xs text-slate-500">{supplier.vendor_code || "No vendor code"} · {supplier.status || "—"}</p>
+                      <p className="mt-3 text-sm text-slate-600">{supplier.contact || supplier.phone || supplier.email || "No contact details"}</p>
+                      {supplier.email && <p className="mt-1 text-xs text-slate-500">{supplier.email}</p>}
+                    </div>
+                  ))}
+                </div>
+              </RelatedStatus>
+            );
+          })()}
+
+          {tab === "purchase" && (() => {
+            const rows = relatedData.purchase || [];
+            return (
+              <div className="space-y-3">
+                <RelatedStatus loading={loadingSections.purchase} error={sectionErrors.purchase} empty={!loadingSections.purchase && !sectionErrors.purchase && !rows.length} emptyLabel="No purchase order lines are linked to this product.">
+                  <RelatedTable columns={[
+                    { label: "Purchase Order", key: "order_number" },
+                    { label: "Date", key: "order_date" },
+                    { label: "Supplier", key: "supplier_name" },
+                    { label: "Status", key: "status" },
+                    { label: "Quantity", render: (row) => `${row.quantity} ${row.unit || ""}` },
+                    { label: "Unit Price", render: (row) => formatPrice(row.unit_price) },
+                    { label: "Total", render: (row) => formatPrice(row.line_total) },
+                  ]} rows={rows} />
+                </RelatedStatus>
+                <Link to="/procurement/purchase-orders" className="text-sm font-semibold text-[#2563EB] hover:underline">View Purchase Orders →</Link>
+              </div>
+            );
+          })()}
+
+          {tab === "sales" && (() => {
+            const rows = relatedData.sales || [];
+            return (
+              <div className="space-y-3">
+                <RelatedStatus loading={loadingSections.sales} error={sectionErrors.sales} empty={!loadingSections.sales && !sectionErrors.sales && !rows.length} emptyLabel="No sales order lines are linked to this product.">
+                  <RelatedTable columns={[
+                    { label: "Sales Order", key: "order_number" },
+                    { label: "Date", key: "order_date" },
+                    { label: "Customer", key: "customer_name" },
+                    { label: "Status", key: "status" },
+                    { label: "Quantity", render: (row) => `${row.quantity} ${row.unit || ""}` },
+                    { label: "Unit Price", render: (row) => formatPrice(row.unit_price) },
+                    { label: "Total", render: (row) => formatPrice(row.line_total) },
+                  ]} rows={rows} />
+                </RelatedStatus>
+                <Link to="/sales/orders" className="text-sm font-semibold text-[#2563EB] hover:underline">View Sales Orders →</Link>
+              </div>
+            );
+          })()}
+
+          {tab === "production" && (() => {
+            const history = relatedData.production || {};
+            const orders = history.orders || [];
+            const reports = history.reports || [];
+            const empty = !orders.length && !reports.length;
+            return (
+              <div className="space-y-5">
+                <RelatedStatus loading={loadingSections.production} error={sectionErrors.production} empty={!loadingSections.production && !sectionErrors.production && empty} emptyLabel="No production orders or reports are linked to this product.">
+                  <>
+                    {orders.length > 0 && <section className="space-y-2"><h3 className="text-sm font-semibold text-slate-700">Production Orders</h3><RelatedTable columns={[
+                      { label: "Order", key: "order_number" },
+                      { label: "Status", key: "status" },
+                      { label: "Planned", key: "planned_quantity" },
+                      { label: "Produced", key: "actual_quantity" },
+                      { label: "Start", key: "start_date" },
+                      { label: "Due", key: "due_date" },
+                    ]} rows={orders} /></section>}
+                    {reports.length > 0 && <section className="space-y-2"><h3 className="text-sm font-semibold text-slate-700">Production Reports</h3><RelatedTable columns={[
+                      { label: "Report Date", key: "report_date" },
+                      { label: "Planned", key: "planned_quantity" },
+                      { label: "Produced", key: "produced_quantity" },
+                      { label: "Scrap", key: "scrap_quantity" },
+                      { label: "Notes", key: "notes" },
+                    ]} rows={reports} /></section>}
+                  </>
+                </RelatedStatus>
+                <Link to="/production/planning" className="text-sm font-semibold text-[#2563EB] hover:underline">View Production Planning →</Link>
+              </div>
+            );
+          })()}
           {tab === "documents" && <TabPlaceholder title="Documents" />}
-          {tab === "audit" && <TabPlaceholder title="Audit Logs" />}
+          {tab === "audit" && (() => {
+            const rows = relatedData.audit || [];
+            return (
+              <RelatedStatus
+                loading={loadingSections.audit}
+                error={sectionErrors.audit}
+                empty={!loadingSections.audit && !sectionErrors.audit && !rows.length}
+                emptyLabel="No audit events have been recorded for this product."
+              >
+                <RelatedTable
+                  columns={[
+                    { label: "Date & Time", render: (row) => formatDateTime(row.logged_at) },
+                    { label: "Action", key: "action" },
+                    { label: "User", key: "user" },
+                    { label: "Role", key: "role" },
+                    { label: "Details", key: "details" },
+                  ]}
+                  rows={rows}
+                />
+              </RelatedStatus>
+            );
+          })()}
         </div>
 
         <div className="flex flex-wrap gap-2 border-t border-slate-100 bg-slate-50 px-5 py-3">
@@ -208,7 +343,7 @@ export default function ProductDetailModal({
         </div>
       </div>
     </div>
-  );
+  ), document.body);
 }
 
 export function ProductFormModal({ product, onClose, onSave }) {

@@ -141,8 +141,8 @@ export function getMaterialRequestQueueGuidance(rows = [], issueMode = false) {
         tone: "info",
         title: "No material requests to issue",
         statusLabel: "Issue Queue",
-        message: "Production or operators raise material requests when they need stock from the store.",
-        nextStep: "When a request appears here, approve it if needed, then Issue Materials to deduct stock.",
+        message: "Production requests appear here for store approval and issue. You can also record a direct issue when stock needs to be issued immediately.",
+        nextStep: "Approve and issue queued requests, or use Record Direct Issue to create a request and deduct warehouse stock in one step.",
       };
     }
     return {
