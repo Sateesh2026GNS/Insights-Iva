@@ -1,5 +1,6 @@
 import logging
 from datetime import date
+from decimal import Decimal
 
 from fastapi import HTTPException, status
 from sqlalchemy import func, select
@@ -111,6 +112,8 @@ def create_item(db: Session, tenant_id: int, payload: InventoryItemV2Create) -> 
     if max_stk is not None and min_stk > max_stk:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="max_stock cannot be less than min_stock.")
 
+    stock = Decimal(str(payload.current_stock or 0))
+
     product = Product(
         tenant_id=tenant_id,
         sku=sku,
@@ -131,14 +134,24 @@ def create_item(db: Session, tenant_id: int, payload: InventoryItemV2Create) -> 
     try:
         db.add(product)
         db.flush()
+        from app.services.product_inventory_sync import (
+            ensure_product_inventory_item,
+            set_product_stock_in_primary_warehouse,
+        )
+
+        if stock:
+            set_product_stock_in_primary_warehouse(db, tenant_id, product, stock)
+        else:
+            ensure_product_inventory_item(db, tenant_id, product)
+        opening_quantity = Decimal(str(product.current_stock or 0))
         db.add(
             ProductStockEvent(
                 tenant_id=tenant_id,
                 product_id=product.id,
                 activity="First Stock",
                 subtitle="Opening Stock",
-                change_qty=stock,
-                final_qty=stock,
+                change_qty=opening_quantity,
+                final_qty=opening_quantity,
                 unit=product.unit,
                 event_date=_today_label(),
             )
@@ -188,6 +201,8 @@ def update_item(
         "selling_price": "unit_price",
     }
     for key, value in data.items():
+        if key == "current_stock":
+            continue
         attr = mapping.get(key, key)
         if key == "min_stock" and value is not None:
             value = int(value)
@@ -201,6 +216,44 @@ def update_item(
         db.rollback()
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="max_stock cannot be less than min_stock.")
     try:
+        from app.models.inventory import InventoryItem
+        from app.services.product_inventory_sync import ensure_product_inventory_item
+
+        inventory_item = ensure_product_inventory_item(db, tenant_id, product)
+        if "sku" in data:
+            collision = db.scalars(
+                select(InventoryItem).where(
+                    InventoryItem.tenant_id == tenant_id,
+                    InventoryItem.sku == data["sku"],
+                    InventoryItem.id != inventory_item.id,
+                )
+            ).first()
+            if collision:
+                db.rollback()
+                raise HTTPException(
+                    status_code=409,
+                    detail=f"Inventory SKU '{data['sku']}' is already in use by another item.",
+                )
+            inventory_item.sku = data["sku"]
+        for product_field, inventory_field in (
+            ("name", "name"),
+            ("description", "description"),
+            ("unit", "unit"),
+            ("purchase_price", "unit_cost"),
+            ("category", "category"),
+        ):
+            if product_field in data:
+                setattr(inventory_item, inventory_field, data[product_field])
+        if "current_stock" in data:
+            from app.services.product_inventory_sync import set_product_stock_target
+
+            set_product_stock_target(
+                db,
+                tenant_id,
+                product,
+                Decimal(str(data["current_stock"] or 0)),
+                reference="CATALOG-STOCK-EDIT",
+            )
         db.commit()
         db.refresh(product)
         return serialize_item(product)
@@ -294,6 +347,12 @@ def _adjust_stock(
     if not product:
         raise HTTPException(404, detail="Item not found")
 
+    from app.services.product_inventory_sync import (
+        change_product_stock,
+        ensure_product_inventory_item,
+    )
+
+    ensure_product_inventory_item(db, tenant_id, product)
     previous = _f(product.current_stock)
     qty = float(payload.quantity)
     if not adding and qty > previous:
@@ -302,7 +361,14 @@ def _adjust_stock(
     next_stock = previous + qty if adding else previous - qty
     if next_stock < 0:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Resulting stock quantity cannot be negative.")
-    product.current_stock = next_stock
+    change_product_stock(
+        db,
+        tenant_id,
+        product,
+        qty if adding else -qty,
+        reference="CATALOG-STOCK-ADJUSTMENT",
+    )
+    next_stock = _f(product.current_stock)
     entry = ProductStockEvent(
         tenant_id=tenant_id,
         product_id=product.id,

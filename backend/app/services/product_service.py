@@ -1,4 +1,5 @@
 from datetime import date
+from decimal import Decimal
 from fastapi import HTTPException
 from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
@@ -78,6 +79,8 @@ def create_product(db: Session, payload: ProductCreate) -> Product:
         db, payload.tenant_id, name=payload.name, sku=payload.sku
     )
     product = Product(**payload.model_dump())
+    opening_stock = product.current_stock or 0
+    has_existing_inventory = False
     db.add(product)
     db.flush()
     if product.sku:
@@ -109,6 +112,20 @@ def create_product(db: Session, payload: ProductCreate) -> Product:
                     detail=f"Inventory SKU '{product.sku}' is already linked to another product.",
                 )
             item.product_id = product.id
+            has_existing_inventory = True
+    from app.services.product_inventory_sync import (
+        ensure_product_inventory_item,
+        set_product_stock_in_primary_warehouse,
+        sync_product_stock_from_inventory_item,
+    )
+
+    inv_item = ensure_product_inventory_item(db, payload.tenant_id, product)
+    if opening_stock and not has_existing_inventory and not inv_item.stock_levels:
+        set_product_stock_in_primary_warehouse(
+            db, payload.tenant_id, product, opening_stock
+        )
+    else:
+        sync_product_stock_from_inventory_item(db, inv_item)
     db.commit()
     db.refresh(product)
     return product
@@ -142,6 +159,8 @@ def update_product(
         db, tenant_id, name=name, sku=sku, exclude_id=product_id
     )
     for field, value in data.items():
+        if field == "current_stock":
+            continue
         setattr(product, field, value)
     from app.models.inventory import InventoryItem
 
@@ -151,6 +170,27 @@ def update_product(
             InventoryItem.product_id == product.id,
         )
     ).first()
+    if "current_stock" in data:
+        from app.services.product_inventory_sync import set_product_stock_target
+
+        target_stock = Decimal(str(data["current_stock"] or 0))
+        set_product_stock_target(
+            db,
+            tenant_id,
+            product,
+            target_stock,
+            reference="CATALOG-STOCK-EDIT",
+        )
+        linked_item = db.scalars(
+            select(InventoryItem).where(
+                InventoryItem.tenant_id == tenant_id,
+                InventoryItem.product_id == product.id,
+            )
+        ).first()
+    elif linked_item:
+        from app.services.product_inventory_sync import sync_product_stock_from_inventory_item
+
+        sync_product_stock_from_inventory_item(db, linked_item)
     if linked_item:
         if "sku" in data:
             collision = db.scalars(

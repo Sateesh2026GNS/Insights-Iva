@@ -261,6 +261,11 @@ def create_inventory_item(
 
     db.commit()
     db.refresh(item)
+    if item.product_id:
+        from app.services.product_inventory_sync import sync_product_stock_from_inventory_item
+
+        sync_product_stock_from_inventory_item(db, item)
+        db.commit()
     return item
 
 
@@ -398,13 +403,19 @@ def get_total_stock(db: Session, item_id: int, tenant_id: int | None = None) -> 
 
 
 def _sync_cached_item_quantity(db: Session, item: InventoryItem) -> None:
-    """Keep the legacy aggregate cache aligned with warehouse stock levels."""
-    item.quantity = get_total_stock(db, item.id, item.tenant_id)
+    """Keep the item cache and linked catalog quantity aligned with warehouse stock."""
+    from app.services.product_inventory_sync import sync_product_stock_from_inventory_item
+
+    sync_product_stock_from_inventory_item(db, item)
 
 
 def create_stock_level(db: Session, payload: StockLevelCreate) -> StockLevel:
     sl = StockLevel(**payload.model_dump())
     db.add(sl)
+    db.flush()
+    item = db.get(InventoryItem, sl.item_id)
+    if item:
+        _sync_cached_item_quantity(db, item)
     db.commit()
     db.refresh(sl)
     return sl
@@ -419,6 +430,9 @@ def update_stock_level(
     sl = db.scalars(stmt).first()
     if sl:
         sl.quantity = quantity
+        item = db.get(InventoryItem, item_id)
+        if item:
+            _sync_cached_item_quantity(db, item)
         db.commit()
         db.refresh(sl)
         return sl
