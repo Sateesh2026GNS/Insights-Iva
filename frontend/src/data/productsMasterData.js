@@ -124,6 +124,7 @@ export function enrichApiProduct(apiRow) {
     cess_percent: apiRow.cess_percent != null ? Number(apiRow.cess_percent) : 0,
     quantity,
     unit_price: apiRow.unit_price != null ? Number(apiRow.unit_price) : totalCost,
+    wholesale_price: apiRow.wholesale_price != null ? Number(apiRow.wholesale_price) : null,
     price_per_unit: pricePerUnit,
     purchase_price: pricePerUnit,
     selling_price: apiRow.unit_price != null ? Number(apiRow.unit_price) : totalCost,
