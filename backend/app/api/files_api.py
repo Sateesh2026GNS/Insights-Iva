@@ -12,6 +12,7 @@ from app.api.deps import get_db
 from app.core.config import get_settings
 from app.core.permissions import require_any_permission, require_permission
 from app.models.user import User
+from app.services.audit_log_service import AuditLogService
 from app.schemas.file_storage import (
     AttachFileRequest,
     AttachFileResponse,
@@ -169,6 +170,7 @@ def download_url(
 def attach_file_endpoint(
     file_id: int,
     payload: AttachFileRequest,
+    request: Request,
     user: User = Depends(require_file_access),
     db: Session = Depends(get_db),
 ) -> AttachFileResponse:
@@ -180,6 +182,17 @@ def attach_file_endpoint(
         payload.entity_id,
         payload.label,
     )
+    if payload.entity_type.strip().lower() == "warehouse":
+        AuditLogService.log(
+            db=db,
+            request=request,
+            current_user=user,
+            action="document_attached",
+            module_name="Inventory",
+            resource="inventory.warehouses",
+            resource_id=payload.entity_id,
+            details=f"Attached file {file_id} to warehouse.",
+        )
     return AttachFileResponse(**result)
 
 

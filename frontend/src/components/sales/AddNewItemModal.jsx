@@ -14,10 +14,13 @@ import Button from "../common/Button";
 import ShorthandQuantityInput from "../common/ShorthandQuantityInput";
 import AddCustomFieldModal from "./AddCustomFieldModal";
 import { createProduct, getProducts, updateProduct } from "../../api/productsApi";
+import { getInventoryV2Item } from "../../api/inventoryV2Api";
+import InventoryItemPhoto from "../inventory/InventoryItemPhoto";
 import { PRODUCT_CATEGORIES, PRODUCT_UNITS } from "../../data/productsMasterData";
 import { useToast } from "../../context/ToastContext";
 import useTenantId from "../../hooks/useTenantId";
 import { apiErrorMessage } from "../../utils/apiError";
+import { uploadAndAttachItemPhoto } from "../../utils/inventoryItemPhoto";
 
 import { inputClass } from "../../design-system/classes";
 
@@ -288,6 +291,7 @@ export default function AddNewItemModal({
   const [saving, setSaving] = useState(false);
   const [barcodeOpen, setBarcodeOpen] = useState(false);
   const [existingProducts, setExistingProducts] = useState([]);
+  const [imageFile, setImageFile] = useState(null);
 
   const isGoods = form.item_type === "goods";
 
@@ -357,9 +361,11 @@ export default function AddNewItemModal({
         low_stock_alert: Number(item?.min_stock || 0) > 0,
         image_url: item?.image_url || "",
       });
+      setImageFile(null);
       setShowDesc(Boolean(cleanDesc));
     } else {
       setForm(EMPTY);
+      setImageFile(null);
       setShowDesc(false);
     }
     setOpenExtra(false);
@@ -387,7 +393,10 @@ export default function AddNewItemModal({
       return;
     }
     const reader = new FileReader();
-    reader.onload = () => setForm((f) => ({ ...f, image_url: String(reader.result || "") }));
+    reader.onload = () => {
+      setImageFile(file);
+      setForm((f) => ({ ...f, image_url: String(reader.result || "") }));
+    };
     reader.readAsDataURL(file);
     e.target.value = "";
   };
@@ -469,6 +478,7 @@ export default function AddNewItemModal({
     }
 
     setSaving(true);
+    let photoSaveWarning = null;
     try {
       const sku =
         form.barcode.trim() ||
@@ -524,6 +534,19 @@ export default function AddNewItemModal({
         product = res?.data || null;
       }
 
+      // Photos are stored as secured file attachments on the linked inventory
+      // record. The form preview alone is not persisted by the product API.
+      if (imageFile && product?.id) {
+        try {
+          const detailRes = await getInventoryV2Item(product.id);
+          const inventoryItemId = detailRes?.data?.inventory_item_id;
+          if (!inventoryItemId) throw new Error("The linked inventory record was not found.");
+          await uploadAndAttachItemPhoto(imageFile, inventoryItemId);
+        } catch (photoError) {
+          photoSaveWarning = apiErrorMessage(photoError, "upload failed");
+        }
+      }
+
       const line = {
         item_description: form.name.trim(),
         hsn: cleanHsn,
@@ -550,6 +573,9 @@ export default function AddNewItemModal({
             ? "Product added"
             : "Item added"
       );
+      if (photoSaveWarning) {
+        addToast(`Item saved, but its photo could not be saved: ${photoSaveWarning}`, "warning");
+      }
       onSaved?.(line, product, { isEdit: Boolean(item?.id), item });
       onClose?.();
     } catch (err) {
@@ -1129,6 +1155,13 @@ export default function AddNewItemModal({
                     src={form.image_url}
                     alt="Item"
                     className="h-full w-full rounded-xl object-cover"
+                  />
+                ) : item?.photo_file_id ? (
+                  <InventoryItemPhoto
+                    photoFileId={item.photo_file_id}
+                    alt="Item"
+                    className="h-full w-full rounded-xl object-cover"
+                    emptyClassName="text-[10px]"
                   />
                 ) : (
                   <ImagePlus className="h-7 w-7" />

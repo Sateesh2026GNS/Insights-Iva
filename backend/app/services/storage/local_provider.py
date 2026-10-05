@@ -44,7 +44,9 @@ class LocalStorageProvider(StorageProvider):
         entity_id: int | None,
         filename: str,
     ) -> str:
-        safe_name = _SAFE.sub("_", filename or "file")[:200]
+        # Keep the full Windows path below MAX_PATH for local development.
+        # The original filename remains in StoredFile metadata for display.
+        safe_name = _SAFE.sub("_", filename or "file")[:100]
         et = _SAFE.sub("_", (entity_type or "unlinked").lower())[:64]
         eid = entity_id or 0
         return f"companies/{tenant_id}/entities/{et}/{eid}/{file_id}/{safe_name}"

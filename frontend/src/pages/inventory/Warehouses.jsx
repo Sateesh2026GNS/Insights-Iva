@@ -44,6 +44,7 @@ import {
 } from "../../data/warehousesMasterData";
 import { asArray } from "../../utils/apiError";
 import { todayIso } from "../../utils/dateUtils";
+import { uploadAndAttachWarehouseDocument } from "../../utils/warehouseDocuments";
 
 function formatInrAmount(value) {
   return `₹ ${Number(value || 0).toLocaleString("en-IN")}`;
@@ -76,6 +77,8 @@ export default function Warehouses() {
   const [warehouses, setWarehouses] = useState([]);
   const [selected, setSelected] = useState(null);
   const [detail, setDetail] = useState(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState(false);
   const [formWarehouse, setFormWarehouse] = useState(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -154,13 +157,19 @@ export default function Warehouses() {
   const openWarehouse = async (wh) => {
     setSelected(wh);
     setDetail(null);
+    setDetailError(false);
     if (wh.live && typeof wh.id === "number") {
+      setDetailLoading(true);
       try {
         const res = await getWarehouseDetail(wh.id);
         setDetail(res.data);
       } catch {
-        /* use list data */
+        setDetailError(true);
+      } finally {
+        setDetailLoading(false);
       }
+    } else {
+      setDetailLoading(false);
     }
   };
 
@@ -193,21 +202,49 @@ export default function Warehouses() {
       is_primary: form.is_primary,
       status: form.status,
     };
+    let savedWarehouseId = null;
+    let savedRemotely = false;
     try {
       if (formWarehouse?.id && typeof formWarehouse.id === "number") {
-        await updateWarehouse(formWarehouse.id, payload);
-        addToast("Warehouse updated");
-        loadWarehouses();
-        setFormWarehouse(null);
-        return;
+        const response = await updateWarehouse(formWarehouse.id, payload);
+        savedWarehouseId = response?.data?.id ?? formWarehouse.id;
+      } else {
+        const response = await createWarehouseFull(payload);
+        savedWarehouseId = response?.data?.id;
       }
-      await createWarehouseFull(payload);
-      addToast("Warehouse created");
+      savedRemotely = Number.isInteger(Number(savedWarehouseId)) && Number(savedWarehouseId) > 0;
+    } catch {
+      /* Keep the existing local fallback when the warehouse API is unavailable. */
+    }
+
+    if (savedRemotely) {
+      const documents = Array.isArray(form.documents) ? form.documents : [];
+      const uploadErrors = [];
+      for (const file of documents) {
+        try {
+          await uploadAndAttachWarehouseDocument(file, Number(savedWarehouseId));
+        } catch (error) {
+          uploadErrors.push(`${file.name}: ${error?.message || "upload failed"}`);
+        }
+      }
+      addToast(formWarehouse?.id ? "Warehouse updated" : "Warehouse created");
+      if (documents.length && !uploadErrors.length) {
+        addToast(`${documents.length} document${documents.length === 1 ? "" : "s"} attached`);
+      } else if (uploadErrors.length) {
+        addToast(`Warehouse saved, but document upload failed: ${uploadErrors.join("; ")}`, "error");
+      }
       loadWarehouses();
+      if (selected?.id === Number(savedWarehouseId)) {
+        try {
+          const refreshed = await getWarehouseDetail(Number(savedWarehouseId));
+          setDetail(refreshed.data);
+          setDetailError(false);
+        } catch {
+          setDetailError(true);
+        }
+      }
       setFormWarehouse(null);
       return;
-    } catch {
-      /* local fallback */
     }
 
     if (formWarehouse?.id) {
@@ -242,6 +279,9 @@ export default function Warehouses() {
       };
       setWarehouses((prev) => [...prev, newW]);
       addToast("Warehouse added");
+    }
+    if (form.documents?.length) {
+      addToast("The warehouse is only saved locally, so its documents were not uploaded or attached.", "warning");
     }
     setFormWarehouse(null);
   };
@@ -518,9 +558,13 @@ export default function Warehouses() {
         <WarehouseDetailModal
           warehouse={selected}
           detail={detail}
+          detailLoading={detailLoading}
+          detailError={detailError}
           onClose={() => {
             setSelected(null);
             setDetail(null);
+            setDetailLoading(false);
+            setDetailError(false);
           }}
           onEdit={(w) => {
             setFormWarehouse(w);

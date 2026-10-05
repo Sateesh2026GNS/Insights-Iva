@@ -31,11 +31,11 @@ def _today_label() -> str:
     return f"{d.day:02d}-{d.month:02d}-{d.year}"
 
 
-def serialize_item(p: Product) -> dict:
+def serialize_item(p: Product, db: Session | None = None) -> dict:
     stock = _f(p.current_stock)
     sale = _f(p.unit_price)
     purchase = _f(p.unit_cost)
-    return {
+    data = {
         "id": p.id,
         "sku": p.sku,
         "product_code": p.sku,
@@ -56,6 +56,18 @@ def serialize_item(p: Product) -> dict:
         "current_stock": stock,
         "stock_value": round(stock * purchase, 3),
     }
+    if db is not None:
+        from app.services.inventory_item_photo import get_primary_photo_file_id
+        from app.services.product_inventory_sync import linked_inventory_item
+
+        inventory_item = linked_inventory_item(db, p.tenant_id, p.id)
+        data["inventory_item_id"] = inventory_item.id if inventory_item else None
+        data["photo_file_id"] = (
+            get_primary_photo_file_id(db, p.tenant_id, inventory_item.id)
+            if inventory_item
+            else None
+        )
+    return data
 
 
 def list_items(
@@ -85,7 +97,7 @@ def list_items(
         .limit(max(1, min(limit, 2000)))
     )
     rows = list(db.scalars(stmt).all())
-    return [serialize_item(p) for p in rows]
+    return [serialize_item(p, db) for p in rows]
 
 
 def get_item(db: Session, tenant_id: int, product_id: int) -> dict | None:
@@ -94,7 +106,7 @@ def get_item(db: Session, tenant_id: int, product_id: int) -> dict | None:
     ).first()
     if not p:
         return None
-    data = serialize_item(p)
+    data = serialize_item(p, db)
     data["timeline"] = list_timeline(db, tenant_id, product_id)
     return data
 
@@ -158,7 +170,7 @@ def create_item(db: Session, tenant_id: int, payload: InventoryItemV2Create) -> 
         )
         db.commit()
         db.refresh(product)
-        return serialize_item(product)
+        return serialize_item(product, db)
     except HTTPException:
         try:
             db.rollback()
@@ -256,7 +268,7 @@ def update_item(
             )
         db.commit()
         db.refresh(product)
-        return serialize_item(product)
+        return serialize_item(product, db)
     except HTTPException:
         try:
             db.rollback()
@@ -425,7 +437,7 @@ def _adjust_stock(
         "previous_stock": previous,
         "current_stock": next_stock,
         "change": qty if adding else -qty,
-        "item": serialize_item(product),
+        "item": serialize_item(product, db),
         "timeline_entry": timeline_entry,
     }
 

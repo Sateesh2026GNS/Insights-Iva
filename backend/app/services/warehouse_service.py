@@ -3,9 +3,21 @@
 from datetime import datetime, timezone
 
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, aliased
 
-from app.models.inventory import InventoryItem, StockLevel, StockMovement, Warehouse
+from app.models.file_storage import FileAttachment, StoredFile
+from app.models.inventory import (
+    InventoryItem,
+    StockLevel,
+    StockMovement,
+    StockTransfer,
+    StoreIssueRequest,
+    Warehouse,
+)
+from app.models.procurement import GoodsReceipt
+from app.models.sales import Customer, DispatchShipment, SalesOrder
+from app.models.security import AccessLog, AuditLog
+from app.models.user import User
 from app.schemas.warehouse import (
     WarehouseCreateExtended,
     WarehouseDetailRead,
@@ -222,10 +234,10 @@ def get_warehouse_detail(
             sku=r[1],
             name=r[2],
             item_type=r[3],
-            quantity=int(r[4] or 0),
+            quantity=float(r[4] or 0),
             unit_cost=float(r[5]) if r[5] else None,
-            stock_value=round(int(r[4] or 0) * float(r[5] or 0), 2),
-            below_reorder=bool(int(r[6] or 0) > 0 and int(r[4] or 0) <= int(r[6] or 0)),
+            stock_value=round(float(r[4] or 0) * float(r[5] or 0), 2),
+            below_reorder=bool(int(r[6] or 0) > 0 and float(r[4] or 0) <= int(r[6] or 0)),
         )
         for r in stock_rows
     ]
@@ -253,11 +265,228 @@ def get_warehouse_detail(
         WarehouseMovementRead(
             id=r[0],
             item_name=r[1],
-            quantity=int(r[2]),
+            quantity=float(r[2] or 0),
             movement_type=r[3],
             date=r[4].isoformat() if r[4] else None,
         )
         for r in movements
+    ]
+
+    from_warehouse = aliased(Warehouse)
+    to_warehouse = aliased(Warehouse)
+    transfer_rows = db.execute(
+        select(
+            StockTransfer.id,
+            StockTransfer.transfer_number,
+            StockTransfer.transfer_date,
+            from_warehouse.name,
+            to_warehouse.name,
+            InventoryItem.name,
+            StockTransfer.quantity,
+            StockTransfer.status,
+            StockTransfer.from_warehouse_id,
+        )
+        .join(InventoryItem, InventoryItem.id == StockTransfer.item_id)
+        .join(from_warehouse, from_warehouse.id == StockTransfer.from_warehouse_id)
+        .join(to_warehouse, to_warehouse.id == StockTransfer.to_warehouse_id)
+        .where(
+            StockTransfer.tenant_id == tenant_id,
+            (StockTransfer.from_warehouse_id == warehouse_id)
+            | (StockTransfer.to_warehouse_id == warehouse_id),
+        )
+        .order_by(StockTransfer.id.desc())
+        .limit(50)
+    ).all()
+    detail.transfers = [
+        {
+            "id": r[0],
+            "reference": r[1],
+            "date": r[2].isoformat() if r[2] else None,
+            "from_warehouse": r[3],
+            "to_warehouse": r[4],
+            "item": r[5],
+            "quantity": int(r[6] or 0),
+            "status": r[7],
+            "direction": "outgoing" if r[8] == warehouse_id else "incoming",
+        }
+        for r in transfer_rows
+    ]
+
+    receipt_rows = db.execute(
+        select(
+            GoodsReceipt.id,
+            GoodsReceipt.grn_number,
+            GoodsReceipt.receipt_date,
+            GoodsReceipt.status,
+            GoodsReceipt.qc_status,
+            GoodsReceipt.received_by,
+        )
+        .where(
+            GoodsReceipt.tenant_id == tenant_id,
+            GoodsReceipt.warehouse_id == warehouse_id,
+        )
+        .order_by(GoodsReceipt.receipt_date.desc(), GoodsReceipt.id.desc())
+        .limit(50)
+    ).all()
+    detail.purchase_receipts = [
+        {
+            "id": r[0],
+            "reference": r[1],
+            "date": r[2].isoformat() if r[2] else None,
+            "status": r[3],
+            "qc_status": r[4],
+            "received_by": r[5],
+        }
+        for r in receipt_rows
+    ]
+
+    production_rows = db.execute(
+        select(
+            StoreIssueRequest.id,
+            StoreIssueRequest.request_number,
+            StoreIssueRequest.status,
+            StoreIssueRequest.operator_name,
+            StoreIssueRequest.issued_qty,
+            StoreIssueRequest.quantity,
+            InventoryItem.name,
+            StoreIssueRequest.created_at,
+        )
+        .join(InventoryItem, InventoryItem.id == StoreIssueRequest.item_id)
+        .where(
+            StoreIssueRequest.tenant_id == tenant_id,
+            StoreIssueRequest.warehouse_id == warehouse_id,
+            InventoryItem.tenant_id == tenant_id,
+        )
+        .order_by(StoreIssueRequest.created_at.desc())
+        .limit(50)
+    ).all()
+    detail.production_issues = [
+        {
+            "id": r[0],
+            "reference": r[1],
+            "status": r[2],
+            "requested_by": r[3],
+            "quantity": int(r[4] if r[4] is not None else r[5] or 0),
+            "item": r[6],
+            "date": r[7].isoformat() if r[7] else None,
+        }
+        for r in production_rows
+    ]
+
+    dispatch_rows = db.execute(
+        select(
+            DispatchShipment.id,
+            DispatchShipment.dispatch_number,
+            DispatchShipment.dispatch_date,
+            DispatchShipment.status,
+            Customer.name,
+            DispatchShipment.courier,
+            DispatchShipment.vehicle_number,
+        )
+        .join(SalesOrder, SalesOrder.id == DispatchShipment.sales_order_id)
+        .join(Customer, Customer.id == DispatchShipment.customer_id)
+        .where(
+            DispatchShipment.tenant_id == tenant_id,
+            SalesOrder.tenant_id == tenant_id,
+            SalesOrder.warehouse_id == warehouse_id,
+        )
+        .order_by(DispatchShipment.dispatch_date.desc(), DispatchShipment.id.desc())
+        .limit(50)
+    ).all()
+    detail.dispatches = [
+        {
+            "id": r[0],
+            "reference": r[1],
+            "date": r[2].isoformat() if r[2] else None,
+            "status": r[3],
+            "customer": r[4],
+            "courier": r[5],
+            "vehicle": r[6],
+        }
+        for r in dispatch_rows
+    ]
+
+    document_rows = db.execute(
+        select(
+            StoredFile.id,
+            StoredFile.original_filename,
+            StoredFile.mime_type,
+            StoredFile.file_size,
+            StoredFile.upload_status,
+            FileAttachment.label,
+            FileAttachment.created_at,
+        )
+        .join(FileAttachment, FileAttachment.file_id == StoredFile.id)
+        .where(
+            FileAttachment.tenant_id == tenant_id,
+            FileAttachment.entity_type.in_(
+                ("warehouse", "Warehouse", "warehouses", "Warehouses")
+            ),
+            FileAttachment.entity_id == warehouse_id,
+            StoredFile.tenant_id == tenant_id,
+            StoredFile.deleted_at.is_(None),
+        )
+        .order_by(FileAttachment.created_at.desc())
+        .limit(50)
+    ).all()
+    detail.documents = [
+        {
+            "id": r[0],
+            "filename": r[1],
+            "mime_type": r[2],
+            "file_size": int(r[3] or 0),
+            "status": r[4],
+            "label": r[5],
+            "date": r[6].isoformat() if r[6] else None,
+        }
+        for r in document_rows
+    ]
+
+    audit_rows = db.execute(
+        select(
+            AccessLog.id,
+            AccessLog.action,
+            AccessLog.full_name,
+            AccessLog.email,
+            AccessLog.logged_at,
+            AccessLog.details,
+        )
+        .where(
+            AccessLog.tenant_id == tenant_id,
+            AccessLog.resource_id == warehouse_id,
+            func.lower(func.coalesce(AccessLog.resource, "")).contains("warehouse"),
+        )
+        .order_by(AccessLog.logged_at.desc())
+        .limit(50)
+    ).all()
+    if not audit_rows:
+        audit_rows = db.execute(
+            select(
+                AuditLog.id,
+                AuditLog.action,
+                User.full_name,
+                User.email,
+                AuditLog.created_at,
+                AuditLog.details,
+            )
+            .outerjoin(User, User.id == AuditLog.user_id)
+            .where(
+                AuditLog.tenant_id == tenant_id,
+                AuditLog.resource_id == warehouse_id,
+                func.lower(func.coalesce(AuditLog.resource, "")).contains("warehouse"),
+            )
+            .order_by(AuditLog.created_at.desc())
+            .limit(50)
+        ).all()
+    detail.audit_events = [
+        {
+            "id": r[0],
+            "action": r[1],
+            "user": r[2] or r[3] or "System",
+            "date": r[4].isoformat() if r[4] else None,
+            "details": r[5],
+        }
+        for r in audit_rows
     ]
 
     today_date = datetime.now(timezone.utc).date()

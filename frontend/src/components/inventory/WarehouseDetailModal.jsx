@@ -11,6 +11,7 @@ import {
 
 import Button from "../common/Button";
 import { inputClass as dsInput } from "../../design-system/classes";
+import { getDownloadUrl, resolveUploadUrl } from "../../api/filesApi";
 
 const inputClass = `${dsInput} mt-1`;
 const TABS = [
@@ -31,6 +32,32 @@ function Field({ label, value }) {
     <div className="rounded-lg bg-slate-50 px-3 py-2">
       <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">{label}</p>
       <p className="mt-0.5 text-sm font-medium text-slate-800">{value ?? "—"}</p>
+    </div>
+  );
+}
+
+function RecordsTable({ rows, columns, emptyMessage, loading, error }) {
+  if (loading) {
+    return <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">Loading warehouse records…</p>;
+  }
+  if (error) {
+    return <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-8 text-center text-sm text-amber-800">Warehouse records couldn’t be loaded. Close and reopen this warehouse to retry.</p>;
+  }
+  if (!rows?.length) {
+    return <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">{emptyMessage}</p>;
+  }
+  return (
+    <div className="overflow-x-auto rounded-xl border border-slate-200">
+      <table className="w-full min-w-[600px] text-left text-sm">
+        <thead className="ui-table-head"><tr>{columns.map((column) => <th key={column.key} className="px-3 py-2">{column.label}</th>)}</tr></thead>
+        <tbody>
+          {rows.map((row, index) => (
+            <tr key={row.id ?? `${row.reference ?? row.filename ?? "record"}-${index}`} className="border-t border-slate-100 odd:bg-white even:bg-slate-50">
+              {columns.map((column) => <td key={column.key} className="px-3 py-2 align-top">{column.render ? column.render(row[column.key], row) : (row[column.key] ?? "—")}</td>)}
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -94,9 +121,26 @@ function BinTree({ nodes, depth = 0 }) {
   );
 }
 
-export default function WarehouseDetailModal({ warehouse, detail, onClose, onEdit, onDeactivate }) {
+export default function WarehouseDetailModal({ warehouse, detail, detailLoading = false, detailError = false, onClose, onEdit, onDeactivate }) {
   const [tab, setTab] = useState("overview");
+  const [documentError, setDocumentError] = useState("");
   if (!warehouse) return null;
+
+  const downloadWarehouseDocument = async (fileId) => {
+    setDocumentError("");
+    const downloadTab = window.open("about:blank", "_blank");
+    if (downloadTab) downloadTab.opener = null;
+    try {
+      const response = await getDownloadUrl(fileId);
+      const url = resolveUploadUrl(response?.download_url);
+      if (!url) throw new Error("The download link was not returned.");
+      if (downloadTab) downloadTab.location.href = url;
+      else window.location.assign(url);
+    } catch (error) {
+      downloadTab?.close();
+      setDocumentError(error?.response?.data?.detail || error?.message || "This document is not ready to download yet.");
+    }
+  };
 
   const w = { ...warehouse, ...(detail || {}) };
   const rackCount = Number(w.rack_count) || 0;
@@ -227,7 +271,9 @@ export default function WarehouseDetailModal({ warehouse, detail, onClose, onEdi
           )}
 
           {tab === "inventory" && (
-            stockItems.length > 0 ? (
+            detailLoading || detailError ? (
+              <RecordsTable loading={detailLoading} error={detailError} rows={[]} columns={[]} />
+            ) : stockItems.length > 0 ? (
               <table className="w-full text-left text-sm">
                 <thead className="ui-table-head">
                   <tr>
@@ -258,33 +304,58 @@ export default function WarehouseDetailModal({ warehouse, detail, onClose, onEdi
           )}
 
           {tab === "ledger" && (
-            <Link to="/inventory/stock-ledger" className="text-sm font-semibold text-[#2563EB] hover:underline">
-              View full stock ledger →
-            </Link>
+            <div className="space-y-3">
+              <RecordsTable loading={detailLoading} error={detailError} rows={detail?.recent_movements} emptyMessage="No stock movements have been recorded for this warehouse." columns={[
+                { key: "date", label: "Date" }, { key: "item_name", label: "Item" },
+                { key: "movement_type", label: "Movement" }, { key: "quantity", label: "Quantity" },
+              ]} />
+              <Link to="/inventory/stock-ledger" className="inline-block text-sm font-semibold text-[#2563EB] hover:underline">Open full stock ledger →</Link>
+            </div>
           )}
 
           {tab === "transfers" && (
-            <Link to="/inventory/stock-transfer" className="text-sm font-semibold text-[#2563EB] hover:underline">
-              Create stock transfer →
-            </Link>
+            <div className="space-y-3">
+              <RecordsTable loading={detailLoading} error={detailError} rows={detail?.transfers} emptyMessage="No transfers involving this warehouse were found." columns={[
+                { key: "reference", label: "Transfer No." }, { key: "date", label: "Date" },
+                { key: "direction", label: "Direction" }, { key: "from_warehouse", label: "From" },
+                { key: "to_warehouse", label: "To" }, { key: "item", label: "Item" },
+                { key: "quantity", label: "Quantity" }, { key: "status", label: "Status" },
+              ]} />
+              <Link to="/inventory/stock-transfer" className="inline-block text-sm font-semibold text-[#2563EB] hover:underline">Create stock transfer →</Link>
+            </div>
           )}
 
           {tab === "receipts" && (
-            <Link to="/procurement/goods-receipt" className="text-sm font-semibold text-[#2563EB] hover:underline">
-              View Goods Receipt Notes (GRN) →
-            </Link>
+            <div className="space-y-3">
+              <RecordsTable loading={detailLoading} error={detailError} rows={detail?.purchase_receipts} emptyMessage="No purchase receipts have been recorded for this warehouse." columns={[
+                { key: "reference", label: "GRN No." }, { key: "date", label: "Receipt Date" },
+                { key: "status", label: "Status" }, { key: "qc_status", label: "QC Status" },
+                { key: "received_by", label: "Received By" },
+              ]} />
+              <Link to="/procurement/goods-receipt" className="inline-block text-sm font-semibold text-[#2563EB] hover:underline">Open Goods Receipt Notes →</Link>
+            </div>
           )}
 
           {tab === "production" && (
-            <Link to="/production/create" className="text-sm font-semibold text-[#2563EB] hover:underline">
-              Production material issue →
-            </Link>
+            <div className="space-y-3">
+              <RecordsTable loading={detailLoading} error={detailError} rows={detail?.production_issues} emptyMessage="No production material issue movements were found for this warehouse." columns={[
+                { key: "date", label: "Date" }, { key: "item", label: "Item" },
+                { key: "requested_by", label: "Requested By" }, { key: "quantity", label: "Issued Qty" },
+                { key: "reference", label: "Request No." }, { key: "status", label: "Status" },
+              ]} />
+              <Link to="/production/create" className="inline-block text-sm font-semibold text-[#2563EB] hover:underline">Open production →</Link>
+            </div>
           )}
 
           {tab === "dispatch" && (
-            <Link to="/sales/dispatch" className="text-sm font-semibold text-[#2563EB] hover:underline">
-              View dispatch →
-            </Link>
+            <div className="space-y-3">
+              <RecordsTable loading={detailLoading} error={detailError} rows={detail?.dispatches} emptyMessage="No dispatch stock movements have been recorded for this warehouse." columns={[
+                { key: "date", label: "Dispatch Date" }, { key: "reference", label: "Dispatch No." },
+                { key: "customer", label: "Customer" }, { key: "courier", label: "Courier" },
+                { key: "vehicle", label: "Vehicle" }, { key: "status", label: "Status" },
+              ]} />
+              <Link to="/sales/dispatch" className="inline-block text-sm font-semibold text-[#2563EB] hover:underline">Open dispatch →</Link>
+            </div>
           )}
 
           {tab === "bins" && (
@@ -318,15 +389,29 @@ export default function WarehouseDetailModal({ warehouse, detail, onClose, onEdi
           )}
 
           {tab === "documents" && (
-            <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
-              Warehouse documents — link from Document Management.
-            </p>
+            <div className="space-y-3">
+              {documentError && <p role="alert" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">{documentError}</p>}
+              <RecordsTable loading={detailLoading} error={detailError} rows={detail?.documents} emptyMessage="No documents are attached to this warehouse. Use Edit to upload warehouse documents." columns={[
+                { key: "filename", label: "File name", render: (value, row) => (
+                  <button type="button" onClick={() => downloadWarehouseDocument(row.id)} className="font-semibold text-[#2563EB] hover:underline">
+                    {value || `File ${row.id}`}
+                  </button>
+                ) },
+                { key: "label", label: "Description" }, { key: "mime_type", label: "Type" },
+                { key: "status", label: "Upload status" }, { key: "file_size", label: "Size (bytes)" },
+                { key: "date", label: "Added" },
+              ]} />
+            </div>
           )}
 
           {tab === "audit" && (
-            <Link to="/admin/access-logs" className="text-sm font-semibold text-[#2563EB] hover:underline">
-              View audit logs →
-            </Link>
+            <div className="space-y-3">
+              <RecordsTable loading={detailLoading} error={detailError} rows={detail?.audit_events} emptyMessage="No audit events linked to this warehouse were found." columns={[
+                { key: "date", label: "Date" }, { key: "action", label: "Action" },
+                { key: "user", label: "User" }, { key: "details", label: "Details" },
+              ]} />
+              <Link to="/admin/access-logs" className="inline-block text-sm font-semibold text-[#2563EB] hover:underline">Open all audit logs →</Link>
+            </div>
           )}
         </div>
 
@@ -375,6 +460,7 @@ export function WarehouseFormModal({ warehouse, onClose, onSave }) {
     bin_count: warehouse?.bin_count ?? "",
     is_primary: warehouse?.is_primary || false,
     status: warehouse?.status || "active",
+    documents: [],
   });
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
@@ -549,6 +635,25 @@ export function WarehouseFormModal({ warehouse, onClose, onSave }) {
                 className={inputClass}
               />
             </label>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+            <label className="block text-sm font-semibold text-slate-700" htmlFor="warehouse-documents">
+              Warehouse documents <span className="font-normal text-slate-500">(optional)</span>
+            </label>
+            <p className="mt-1 text-xs text-slate-500">Attach permits, layout plans, safety certificates, or other warehouse files. Select files now; they upload after the warehouse is saved.</p>
+            <input
+              id="warehouse-documents"
+              type="file"
+              multiple
+              accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,.txt,.csv,.doc,.docx,.xls,.xlsx,.zip"
+              onChange={(e) => set("documents", Array.from(e.target.files || []))}
+              className="mt-2 block w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-white file:px-3 file:py-2 file:font-semibold file:text-slate-700"
+            />
+            {form.documents?.length > 0 && (
+              <ul className="mt-2 space-y-1 text-xs text-slate-600">
+                {form.documents.map((file, index) => <li key={`${file.name}-${index}`}>{file.name} · {Math.max(1, Math.round(file.size / 1024))} KB</li>)}
+              </ul>
+            )}
           </div>
           <label className="flex items-center gap-2 text-sm pt-1">
             <input type="checkbox" checked={form.is_primary} onChange={(e) => set("is_primary", e.target.checked)} />

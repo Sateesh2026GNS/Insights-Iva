@@ -13,6 +13,7 @@ import {
 import AddNewItemModal from "../../components/sales/AddNewItemModal";
 import InventoryRowActionsMenu from "../../components/inventory/InventoryRowActionsMenu";
 import RecordDetailModal from "../../components/inventory/RecordDetailModal";
+import InventoryItemPhoto from "../../components/inventory/InventoryItemPhoto";
 import Loader from "../../components/common/Loader";
 import PageHeader from "../../components/common/PageHeader";
 import Button from "../../components/common/Button";
@@ -824,7 +825,16 @@ export default function InventoryV2() {
         subtitle={viewTarget?.sku || viewTarget?.product_code}
         fields={viewFields}
         onClose={() => setViewTarget(null)}
-      />
+      >
+        <section className="rounded-lg border bg-slate-50 p-4">
+          <h3 className="mb-3 text-sm font-semibold text-slate-700">Item Photo</h3>
+          <InventoryItemPhoto
+            photoFileId={viewTarget?.photo_file_id}
+            alt={`${viewTarget?.name || "Item"} photo`}
+            className="max-h-64 w-full rounded-lg object-contain"
+          />
+        </section>
+      </RecordDetailModal>
 
       {categoryModal
         ? createPortal(

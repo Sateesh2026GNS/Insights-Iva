@@ -75,7 +75,7 @@ class WarehouseStockItemRead(BaseModel):
     sku: str
     name: str
     item_type: str
-    quantity: int
+    quantity: float
     unit_cost: float | None = None
     stock_value: float = 0
     below_reorder: bool = False
@@ -84,7 +84,7 @@ class WarehouseStockItemRead(BaseModel):
 class WarehouseMovementRead(BaseModel):
     id: int
     item_name: str
-    quantity: int
+    quantity: float
     movement_type: str
     date: str | None = None
 
@@ -105,6 +105,12 @@ class WarehouseDetailRead(WarehouseListRead):
     overstock: int = 0
     stock_items: list[WarehouseStockItemRead] = Field(default_factory=list)
     recent_movements: list[WarehouseMovementRead] = Field(default_factory=list)
+    transfers: list[dict] = Field(default_factory=list)
+    purchase_receipts: list[dict] = Field(default_factory=list)
+    production_issues: list[dict] = Field(default_factory=list)
+    dispatches: list[dict] = Field(default_factory=list)
+    documents: list[dict] = Field(default_factory=list)
+    audit_events: list[dict] = Field(default_factory=list)
     daily_inward: int = 0
     daily_outward: int = 0
     fast_moving: int = 0

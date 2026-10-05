@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_db
 from app.core.permissions import require_any_permission, require_permission, tenant_scope, tenant_scope_any
 from app.models.user import User
+from app.services.audit_log_service import AuditLogService
 from app.schemas.inventory import (
     InventoryItemCreate,
     InventoryItemRead,
@@ -145,11 +146,22 @@ def create_warehouse_endpoint(
 @router.post("/warehouses/full", response_model=WarehouseListRead)
 def create_warehouse_full_endpoint(
     payload: WarehouseCreateExtended,
+    request: Request,
     user: User = Depends(require_permission(MODULE)),
     db: Session = Depends(get_db),
 ) -> WarehouseListRead:
     payload.tenant_id = user.tenant_id
     wh = create_warehouse_extended(db, payload)
+    AuditLogService.log(
+        db=db,
+        request=request,
+        current_user=user,
+        action="create",
+        module_name="Inventory",
+        resource="inventory.warehouses",
+        resource_id=wh.id,
+        details=f"Created warehouse {wh.code} — {wh.name}.",
+    )
     from app.services.warehouse_service import _to_list_read
     return _to_list_read(db, wh)
 
