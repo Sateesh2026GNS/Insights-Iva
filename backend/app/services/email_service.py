@@ -229,14 +229,37 @@ def _send_via_smtplib(
         maintype, _, subtype = (mime or "application/octet-stream").partition("/")
         msg.add_attachment(content, maintype=maintype, subtype=subtype or "octet-stream", filename=filename)
 
-    try:
-        with _smtp_session(s) as server:
-            _prepare_smtp_server(server, s)
-            _smtp_login_and_send(server, s, msg)
-    except EmailDeliveryError:
-        raise
-    except Exception as exc:
-        raise _classify_delivery_failure(exc) from exc
+    last_exc = None
+    configured_port = int(s.smtp_port)
+    ports_to_try = [configured_port]
+    for alt_port in (465, 587):
+        if alt_port not in ports_to_try:
+            ports_to_try.append(alt_port)
+
+    host = (s.smtp_host or "").strip()
+    for port in ports_to_try:
+        try:
+            use_ssl = (port == 465)
+            if use_ssl:
+                with smtplib.SMTP_SSL(host, port, timeout=15) as server:
+                    server.ehlo()
+                    _smtp_login_and_send(server, s, msg)
+                    return
+            else:
+                with smtplib.SMTP(host, port, timeout=15) as server:
+                    server.ehlo()
+                    server.starttls()
+                    server.ehlo()
+                    _smtp_login_and_send(server, s, msg)
+                    return
+        except EmailDeliveryError:
+            raise
+        except Exception as exc:
+            last_exc = exc
+            logger.warning("SMTP send failed on port %s for host %s: %s", port, host, exc)
+
+    if last_exc:
+        raise _classify_delivery_failure(last_exc)
 
 
 async def _send_via_fastapi_mail(
