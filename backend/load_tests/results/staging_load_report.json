@@ -1,0 +1,74 @@
+{
+  "environment": {
+    "type": "local_postgresql_load_host",
+    "api_host": "http://127.0.0.1:8001",
+    "database": "postgresql://localhost:5432/insights_iva",
+    "api_instances": 1,
+    "uvicorn_workers": 1,
+    "load_generator": "same_windows_host_as_api",
+    "rate_limit_staging_env": {
+      "RATE_LIMIT_DISTRIBUTED": "true",
+      "API_AUTHENTICATED_RATE_LIMIT": "200000",
+      "LOGIN_RATE_LIMIT": "5000",
+      "LOAD_TEST_ACCESS_TOKEN": "used (no per-user login storm)"
+    },
+    "remote_dedicated_staging": false,
+    "postgres_cpu_memory_metrics": "NOT VERIFIED",
+    "api_cpu_memory_metrics": "NOT VERIFIED"
+  },
+  "run_time_per_level": "120s",
+  "levels": {
+    "100": {
+      "classification": "PASS",
+      "total_requests": 5852,
+      "requests_per_sec": 49.26,
+      "error_pct": 0.0,
+      "timeout_pct": "NOT TRACKED",
+      "p50_ms": 190.0,
+      "p95_ms": 1500.0,
+      "p99_ms": 2600.0,
+      "pg_active_connections_before": 8,
+      "pg_active_connections_after": 36,
+      "pg_max_connections": 100,
+      "connection_pool_usage": "NOT EXPOSED (SQLAlchemy); pg_active 36/100",
+      "slowest_endpoint": "/api/erp/dashboard",
+      "slowest_avg_ms": 1289.98,
+      "bottleneck": "None at this level under single-instance local host"
+    },
+    "500": {
+      "classification": "FAIL",
+      "total_requests": 653,
+      "requests_per_sec": 6.56,
+      "error_pct": 23.124,
+      "timeout_pct": "NOT TRACKED",
+      "p50_ms": 2400.0,
+      "p95_ms": 91000.0,
+      "p99_ms": 96000.0,
+      "pg_active_connections_before": 28,
+      "pg_active_connections_after": 57,
+      "pg_max_connections": 100,
+      "connection_pool_usage": "pg_active 57/100; API connection refused / 500 errors",
+      "slowest_endpoint": "/sales/hub",
+      "slowest_avg_ms": 22650.17,
+      "bottleneck": "Single uvicorn process overwhelmed; connection refused (WinError 10061) and HTTP 500 during spawn"
+    },
+    "1000": {
+      "classification": "NOT TESTED",
+      "reason": "Suite aborted — API unreachable after 500-user test (login token fetch timeout)"
+    },
+    "2000": {
+      "classification": "NOT TESTED",
+      "reason": "Not reached"
+    }
+  },
+  "invalid_runs_excluded": [
+    {
+      "reason": "100 users without LOAD_TEST_ACCESS_TOKEN — 94% login 429",
+      "classification": "FAIL"
+    },
+    {
+      "reason": "100 users with token but default API_AUTHENTICATED_RATE_LIMIT — 63% 429 on ERP routes",
+      "classification": "FAIL"
+    }
+  ]
+}

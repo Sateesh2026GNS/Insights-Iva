@@ -105,6 +105,123 @@ def _is_store_manager(user: User) -> bool:
     )
 
 
+def _is_sales_manager(user: User) -> bool:
+    return any(
+        str(name).strip().lower().replace("_", " ") == "sales manager"
+        for name in get_role_names(user)
+    )
+
+
+def _is_accountant(user: User) -> bool:
+    return any(
+        str(name).strip().lower().replace("_", " ") == "accountant"
+        for name in get_role_names(user)
+    )
+
+
+def user_can_read_material_pricing(user: User) -> bool:
+    if user_is_admin(user):
+        return True
+    if _is_store_manager(user) or _is_sales_manager(user):
+        return True
+    if _is_accountant(user):
+        return True
+    if user_has_permission(user, "inventory") or user_has_permission(user, "accounts"):
+        return True
+    return False
+
+
+def user_can_write_material_pricing(user: User) -> bool:
+    if user_is_admin(user):
+        return True
+    if _is_accountant(user):
+        return False
+    if _is_store_manager(user) or _is_sales_manager(user):
+        return True
+    if user_has_permission(user, "inventory") and user_can_action(user, "inventory", "update"):
+        return True
+    return False
+
+
+def require_material_pricing_read():
+    def dependency(current_user: User = Depends(get_current_user)) -> User:
+        if not user_can_read_material_pricing(current_user):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=MODULE_FORBIDDEN_MESSAGE,
+            )
+        return current_user
+
+    return dependency
+
+
+def require_material_pricing_write():
+    def dependency(current_user: User = Depends(get_current_user)) -> User:
+        if not user_can_write_material_pricing(current_user):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=MODULE_FORBIDDEN_MESSAGE,
+            )
+        return current_user
+
+    return dependency
+
+
+def tenant_scope_material_pricing_read():
+    def dependency(current_user: User = Depends(require_material_pricing_read())) -> int:
+        return current_user.tenant_id
+
+    return dependency
+
+
+def user_can_write_product_master(user: User) -> bool:
+    if user_is_admin(user):
+        return True
+    if _is_accountant(user):
+        return False
+    if _is_store_manager(user) or _is_sales_manager(user):
+        return True
+    if user_has_permission(user, "masters") and user_can_action(user, "masters", "update"):
+        return True
+    if user_has_permission(user, "sales") and user_can_action(user, "sales", "update"):
+        return True
+    return False
+
+
+def require_product_master_write():
+    def dependency(current_user: User = Depends(get_current_user)) -> User:
+        if not user_can_write_product_master(current_user):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=MODULE_FORBIDDEN_MESSAGE,
+            )
+        return current_user
+
+    return dependency
+
+
+STORE_MANAGER_ACCOUNTS_PREF_KEYS = frozenset({"expense_categories_v1"})
+
+
+def user_has_accounts_expense_access(user: User) -> bool:
+    """Accounts module or Store Manager expense entry (not full accounts)."""
+    if user_has_permission(user, "accounts"):
+        return True
+    return _is_store_manager(user)
+
+
+def user_can_read_accounts_tenant_pref(user: User, key: str) -> bool:
+    if user_has_permission(user, "accounts"):
+        return True
+    return _is_store_manager(user) and key in STORE_MANAGER_ACCOUNTS_PREF_KEYS
+
+
+def user_can_write_accounts_tenant_pref(user: User, key: str) -> bool:
+    if user_can_action(user, "accounts", "update"):
+        return True
+    return _is_store_manager(user) and key in STORE_MANAGER_ACCOUNTS_PREF_KEYS
+
+
 def user_is_admin(user: User) -> bool:
     try:
         if ADMIN_ROLE in get_role_names(user):
@@ -255,6 +372,48 @@ def tenant_scope_action(module: str, action: str):
     """Tenant id for mutating endpoints — module access plus action-level RBAC."""
 
     def dependency(current_user: User = Depends(require_action(module, action))) -> int:
+        return current_user.tenant_id
+
+    return dependency
+
+
+def require_accounts_expense_access():
+    def dependency(current_user: User = Depends(get_current_user)) -> User:
+        if not user_has_accounts_expense_access(current_user):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=MODULE_FORBIDDEN_MESSAGE,
+            )
+        return current_user
+
+    return dependency
+
+
+def tenant_scope_accounts_expense():
+    def dependency(current_user: User = Depends(require_accounts_expense_access())) -> int:
+        return current_user.tenant_id
+
+    return dependency
+
+
+def require_accounts_expense_action(action: str):
+    def dependency(current_user: User = Depends(get_current_user)) -> User:
+        if user_is_admin(current_user):
+            return current_user
+        if user_can_action(current_user, "accounts", action):
+            return current_user
+        if _is_store_manager(current_user):
+            return current_user
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=MODULE_FORBIDDEN_MESSAGE,
+        )
+
+    return dependency
+
+
+def tenant_scope_accounts_expense_action(action: str):
+    def dependency(current_user: User = Depends(require_accounts_expense_action(action))) -> int:
         return current_user.tenant_id
 
     return dependency

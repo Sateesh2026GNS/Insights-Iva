@@ -1,6 +1,12 @@
 from types import SimpleNamespace
 
-from app.core.permissions import get_user_permissions, user_has_any_permission, user_has_permission
+from app.core.permissions import (
+    get_user_permissions,
+    user_can_read_accounts_tenant_pref,
+    user_has_accounts_expense_access,
+    user_has_any_permission,
+    user_has_permission,
+)
 
 
 def test_get_user_permissions_falls_back_to_canonical_role_matrix():
@@ -44,6 +50,17 @@ def test_production_manager_has_analytics_permission():
     assert "production" in perms
     assert "inventory" in perms
     assert user_has_permission(user, "analytics")
+
+
+def test_store_manager_expense_access_without_accounts_module():
+    store = SimpleNamespace(roles=[SimpleNamespace(name="Store Manager", permissions=[])])
+    accountant = SimpleNamespace(roles=[SimpleNamespace(name="Accountant", permissions=[])])
+
+    assert not user_has_permission(store, "accounts")
+    assert user_has_accounts_expense_access(store)
+    assert user_has_accounts_expense_access(accountant)
+    assert user_can_read_accounts_tenant_pref(store, "expense_categories_v1")
+    assert not user_can_read_accounts_tenant_pref(store, "bank_reconciliation_v1")
 
 
 

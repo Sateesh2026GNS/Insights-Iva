@@ -10,7 +10,17 @@ from app.repositories.bom_repository import BomRepository
 from app.repositories.machine_repository import MachineRepository
 from app.repositories.product_repository import ProductRepository
 from app.schemas.machine import MachineCreateExtended, MachineFullUpdate
-from app.schemas.product import BomItemCreate, ProductCreate, ProductUpdate
+from app.schemas.product import (
+    BomItemCreate,
+    ProductCreate,
+    ProductMasterUpdate,
+    ProductMasterWrite,
+    ProductUpdate,
+)
+from app.services.product_vendor_pricing_service import (
+    list_pricing_for_products,
+    upsert_product_vendor_pricing,
+)
 from app.schemas.vendor import VendorBulkImportRequest, VendorCreate, VendorUpdate
 from app.services.machine_service import (
     create_machine_extended,
@@ -71,10 +81,16 @@ class MastersService:
         }
 
     def list_products(self) -> list[dict]:
-        return [
-            self._serialize_product(p)
-            for p in list_products(self.db, self.tenant_id)
-        ]
+        rows = list_products(self.db, self.tenant_id)
+        pricing_map = list_pricing_for_products(
+            self.db, self.tenant_id, [p.id for p in rows]
+        )
+        out = []
+        for p in rows:
+            data = self._serialize_product(p)
+            data["vendor_pricing"] = pricing_map.get(p.id, [])
+            out.append(data)
+        return out
 
     def get_product(self, product_id: int) -> dict | None:
         p = get_product(self.db, self.tenant_id, product_id)
@@ -82,18 +98,31 @@ class MastersService:
             return None
         result = self._serialize_product(p)
         result["bom"] = [self.bom.enrich_item(b) for b in list_bom(self.db, self.tenant_id, p.id)]
+        pricing_map = list_pricing_for_products(self.db, self.tenant_id, [p.id])
+        result["vendor_pricing"] = pricing_map.get(p.id, [])
         return result
 
-    def create_product(self, payload: ProductCreate) -> dict:
-        payload.tenant_id = self.tenant_id
-        p = create_product(self.db, payload)
-        return self._serialize_product(p)
+    def create_product(self, payload: ProductMasterWrite, user) -> dict:
+        base = ProductCreate(**payload.model_dump(exclude={"vendor_pricing"}, exclude_none=False))
+        base.tenant_id = self.tenant_id
+        p = create_product(self.db, base)
+        if payload.vendor_pricing and payload.vendor_pricing.supplier_id:
+            upsert_product_vendor_pricing(
+                self.db, self.tenant_id, p.id, user, payload.vendor_pricing
+            )
+        return self.get_product(p.id) or self._serialize_product(p)
 
-    def update_product(self, product_id: int, payload: ProductUpdate) -> dict | None:
-        p = update_product(self.db, self.tenant_id, product_id, payload)
+    def update_product(self, product_id: int, payload: ProductMasterUpdate, user) -> dict | None:
+        base = ProductUpdate(**payload.model_dump(exclude={"vendor_pricing"}, exclude_unset=True))
+        p = update_product(self.db, self.tenant_id, product_id, base)
         if not p:
             return None
-        return self._serialize_product(p)
+        if payload.vendor_pricing and payload.vendor_pricing.supplier_id:
+            vp = payload.vendor_pricing
+            if not vp.id and vp.supplier_id:
+                pass
+            upsert_product_vendor_pricing(self.db, self.tenant_id, product_id, user, vp)
+        return self.get_product(product_id)
 
     def delete_product(self, product_id: int) -> bool:
         return delete_product(self.db, self.tenant_id, product_id)

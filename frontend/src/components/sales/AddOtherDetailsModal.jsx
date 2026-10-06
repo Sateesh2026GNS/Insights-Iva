@@ -71,6 +71,7 @@ export default function AddOtherDetailsModal({ open, onClose, initial, onSave })
 
   const handleSave = async (e) => {
     e.preventDefault();
+    e.stopPropagation();
     if (submitLock.current || submitting) return;
 
     const { ok, errors: nextErrors } = validateOtherDetails(form);
@@ -109,6 +110,7 @@ export default function AddOtherDetailsModal({ open, onClose, initial, onSave })
         onSubmit={handleSave}
         className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl"
         onMouseDown={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
         noValidate
       >
         <div className="flex items-center justify-between border-b border-[#ececf0] bg-white px-5 py-4">
@@ -227,7 +229,17 @@ export default function AddOtherDetailsModal({ open, onClose, initial, onSave })
           <Button type="button" variant="cancel" onClick={onClose} fullWidth disabled={submitting}>
             Cancel
           </Button>
-          <Button type="submit" variant="primary" fullWidth loading={submitting} disabled={submitting}>
+          <Button
+            type="button"
+            variant="primary"
+            fullWidth
+            loading={submitting}
+            disabled={submitting}
+            onClick={(ev) => {
+              ev.stopPropagation();
+              handleSave(ev);
+            }}
+          >
             {submitting ? "Saving…" : "Save"}
           </Button>
         </div>

@@ -1464,6 +1464,10 @@ export default function QuotationForm() {
     setItemSearch("");
   };
 
+  const addEmptyItemRow = () => {
+    setItems((prev) => [...prev, emptyItem()]);
+  };
+
   const filteredProducts = useMemo(() => {
     const q =
       itemSearch
@@ -1567,7 +1571,8 @@ export default function QuotationForm() {
     e
   ) => {
     e.preventDefault();
-
+    // Ignore submit events bubbled from portaled modals (still descendants in the React tree).
+    if (e.target !== e.currentTarget) return;
     if (!form.customer_id) {
       addToast(
         "Please select a buyer",
@@ -3369,11 +3374,7 @@ export default function QuotationForm() {
             <div className="flex flex-col gap-4 border-t border-[#d0d0d8] p-4 sm:flex-row sm:items-start sm:justify-between">
               <button
                 type="button"
-                onClick={() =>
-                  setAddItemOpen(
-                    true
-                  )
-                }
+                onClick={addEmptyItemRow}
                 className="inline-flex items-center justify-center rounded-lg border px-4 py-2 text-[13px] font-semibold"
                 style={{
                   borderColor:

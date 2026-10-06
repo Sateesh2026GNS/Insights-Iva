@@ -20,7 +20,14 @@ describe("salesManagerNavConfig", () => {
     expect(keys).not.toContain("analytics");
     expect(keys).not.toContain("myJobCards");
     expect(keys).not.toContain("payments");
-    expect(keys).not.toContain("masters");
+  });
+
+  it("exposes Masters → Products only (canonical route)", () => {
+    const masters = SALES_MANAGER_NAV_ITEMS.find((n) => n.key === "masters");
+    expect(masters?.label).toBe("Masters");
+    const children = masters?.children || [];
+    expect(children.map((c) => c.to)).toEqual(["/masters/products"]);
+    expect(children.map((c) => c.label)).toEqual(["Products"]);
   });
 
   it("includes sales workflow and order management links without work orders", () => {

@@ -24,6 +24,7 @@ from app.services.automation.summary_service import (
     build_daily_automation_summary_for_user,
     build_weekly_automation_summary,
 )
+from app.services.tenant_resources import require_tenant_row
 
 router = APIRouter(prefix="/api/automation", tags=["Automation"])
 
@@ -59,9 +60,9 @@ def toggle_automation_rule(
     db: Session = Depends(get_db),
 ):
     _require_admin(user)
-    rule = db.get(AutomationRule, rule_id)
-    if not rule or rule.tenant_id != user.tenant_id:
-        raise HTTPException(status_code=404, detail="Rule not found")
+    rule = require_tenant_row(
+        db, AutomationRule, rule_id, user.tenant_id, not_found_detail="Rule not found"
+    )
     rule.enabled = payload.enabled
     db.commit()
     db.refresh(rule)

@@ -1,12 +1,19 @@
 """Sidebar, roles, and permissions catalog APIs for RBAC."""
 
 from fastapi import APIRouter, Depends, Request
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.auth_deps import get_current_user
 from app.api.deps import get_db
-from app.core.permissions import get_role_names, require_admin, user_has_permission, user_is_admin
+from app.core.permissions import (
+    get_role_names,
+    require_admin,
+    require_permission,
+    user_has_permission,
+    user_is_admin,
+)
 from app.core.rbac_constants import (
     MODULE_CATALOG,
     OPERATOR_SETTINGS_SIDEBAR_PATHS,
@@ -303,6 +310,35 @@ def team_directory(
         for u in users
         if u.get("is_active", True)
     ]
+
+
+class TeamDirectorySalesExecutiveCreate(BaseModel):
+    full_name: str = Field(..., min_length=1, max_length=255)
+
+
+@router.post("/team-directory/sales-executives", status_code=201)
+def create_team_directory_sales_executive(
+    payload: TeamDirectorySalesExecutiveCreate,
+    current_user: User = Depends(require_permission("sales")),
+    db: Session = Depends(get_db),
+):
+    """Add a sales team member for lead assignment (tenant-scoped; sales module)."""
+    from app.services.rbac_service import create_sales_executive_by_name
+
+    created = create_sales_executive_by_name(
+        db, current_user.tenant_id, payload.full_name, current_user
+    )
+    return {
+        "id": created["id"],
+        "full_name": created.get("full_name"),
+        "email": created.get("email"),
+        "name": created.get("full_name") or created.get("email"),
+        "role": created.get("role"),
+        "designation": created.get("designation"),
+        "department": created.get("department"),
+        "employee_id": created.get("employee_id"),
+        "is_active": created.get("is_active", True),
+    }
 
 
 # ---------------------------------------------------------------------------

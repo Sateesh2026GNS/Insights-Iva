@@ -18,6 +18,7 @@ from app.models.business_documents import (
     EwaybillCredential,
 )
 from app.models.user import User
+from app.services.tenant_resources import require_tenant_row
 from app.schemas.business_documents import (
     BusinessDocumentCreate,
     BusinessDocumentListResponse,
@@ -148,9 +149,9 @@ def get_document(
     user: User = Depends(require_any_permission("sales", "procurement", "accounts")),
     db: Session = Depends(get_db),
 ):
-    row = db.get(BusinessDocument, doc_id)
-    if not row or row.tenant_id != user.tenant_id:
-        raise HTTPException(404, "Document not found")
+    row = require_tenant_row(
+        db, BusinessDocument, doc_id, user.tenant_id, not_found_detail="Document not found"
+    )
     return BusinessDocumentRead.model_validate(row)
 
 
@@ -162,8 +163,10 @@ def get_purchase_document_endpoint(
 ):
     from app.services.document_builder_service import build_purchase_document
 
-    row = db.get(BusinessDocument, doc_id)
-    if not row or row.tenant_id != user.tenant_id or row.doc_type != "purchase":
+    row = require_tenant_row(
+        db, BusinessDocument, doc_id, user.tenant_id, not_found_detail="Purchase document not found"
+    )
+    if row.doc_type != "purchase":
         raise HTTPException(404, "Purchase document not found")
     doc = build_purchase_document(db, user.tenant_id, doc_id)
     if not doc:
@@ -182,8 +185,10 @@ def download_purchase_pdf_endpoint(
     from app.services.document_builder_service import build_purchase_document
     from app.services.invoice_pdf_service import generate_invoice_pdf
 
-    row = db.get(BusinessDocument, doc_id)
-    if not row or row.tenant_id != user.tenant_id or row.doc_type != "purchase":
+    row = require_tenant_row(
+        db, BusinessDocument, doc_id, user.tenant_id, not_found_detail="Purchase document not found"
+    )
+    if row.doc_type != "purchase":
         raise HTTPException(404, "Purchase document not found")
     doc = build_purchase_document(db, user.tenant_id, doc_id)
     if not doc:
@@ -204,9 +209,9 @@ def update_document(
     user: User = Depends(require_any_permission("sales", "procurement", "accounts", "admin")),
     db: Session = Depends(get_db),
 ):
-    row = db.get(BusinessDocument, doc_id)
-    if not row or row.tenant_id != user.tenant_id:
-        raise HTTPException(404, "Document not found")
+    row = require_tenant_row(
+        db, BusinessDocument, doc_id, user.tenant_id, not_found_detail="Document not found"
+    )
     data = payload.model_dump(exclude_unset=True)
     if "meta" in data:
         meta = data.pop("meta")
@@ -224,9 +229,9 @@ def delete_document(
     user: User = Depends(require_any_permission("sales", "procurement", "accounts", "admin")),
     db: Session = Depends(get_db),
 ):
-    row = db.get(BusinessDocument, doc_id)
-    if not row or row.tenant_id != user.tenant_id:
-        raise HTTPException(404, "Document not found")
+    row = require_tenant_row(
+        db, BusinessDocument, doc_id, user.tenant_id, not_found_detail="Document not found"
+    )
     db.delete(row)
     db.commit()
     return {"ok": True}

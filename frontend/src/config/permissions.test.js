@@ -145,6 +145,14 @@ describe("Store Manager settings access", () => {
     expect(userCanAccessPath({ role: "Store Manager", permissions: [] }, "/reports")).toBe(false);
   });
 
+  it("allows Store Manager expense and ledger without full accounts module", () => {
+    const storeManager = { role: "Store Manager", permissions: [] };
+    expect(userCanAccessPath(storeManager, "/accounts/expenses")).toBe(true);
+    expect(userCanAccessPath(storeManager, "/accounts/expenses/settings")).toBe(true);
+    expect(userCanAccessPath(storeManager, "/accounts/ledger")).toBe(true);
+    expect(userCanAccessPath(storeManager, "/accounts/dashboard")).toBe(false);
+  });
+
   it("denies sales job card create/edit paths", () => {
     const storeManager = {
       role: "Store Manager",

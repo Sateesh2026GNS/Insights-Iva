@@ -129,6 +129,21 @@ The main ERP dashboard (`ReferenceDashboard`) loads from **`GET /api/erp/dashboa
 **RBAC config:** `frontend/src/config/permissions.js`, `salesManagerNavConfig.js`  
 **Hub service:** `backend/app/services/sales_extended_service.py`, `sales_person_scope.py`
 
+### Sales documents (quotations, invoices, challans)
+
+Create/edit flows such as **Create Quotation** (`frontend/src/pages/sales/QuotationForm.jsx`) wrap the page in a single `<form onSubmit={handleSubmit}>`. Child UI (buyer picker, company settings, party modals, custom fields) is often rendered with **`createPortal(..., document.body)`** but remains a **descendant in the React tree**, so a nested modal’s `submit` can **bubble** to the parent form’s `onSubmit`.
+
+| Symptom | Typical cause | Fix pattern |
+|---------|----------------|-------------|
+| **“Please select a buyer”** when saving Basic Details, Other Details, or Custom Field | Parent quotation `handleSubmit` runs on bubbled submit | Modal handlers: `e.preventDefault()` + `e.stopPropagation()`; section **Save** as `type="button"` with explicit save; parent guard: `if (e.target !== e.currentTarget) return` before full validation |
+| **Edit Company Details** save shows buyer or permission errors | Same bubbling; or `PUT /settings/company` RBAC | `EditCompanyDetailsModal.jsx` isolation; Sales/Procurement/Admin may update company settings (operators still blocked) |
+| **+ Add More Item** does nothing useful | Button wired to **Add New Item** modal instead of a new table row | **+ Add New Item** (header) → `AddNewItemModal`; **+ Add More Item** (below grid) → `addEmptyItemRow()` / append `emptyItem()` — see `TaxInvoiceForm.jsx`, `QuotationForm.jsx` |
+
+**Validation scope:** Section saves must only run section validators (`validateBasicDetails`, `validateOtherDetails`, `validateCustomField` in `frontend/src/utils/partyFormValidation.js`). **Buyer required** and **“Please select a buyer”** apply only on **final document Save/Submit**, not on nested modals.
+
+**Key components:** `AddBasicDetailsModal.jsx`, `AddOtherDetailsModal.jsx`, `AddCustomFieldModal.jsx`, `AddNewPartyModal.jsx`, `EditCompanyDetailsModal.jsx`  
+**Regression test:** `frontend/src/components/sales/partyModalSubmitIsolation.test.jsx`
+
 ---
 
 ## Quality Control module
@@ -273,6 +288,7 @@ Never commit `.env`. Never put secrets in `VITE_*` variables.
 | Migration errors | DB not on latest head | `alembic upgrade head` |
 | Email PDF / forgot password fails with “contact your administrator” | SMTP not set in `backend/.env` | Fill `SMTP_*` in `.env`, restart backend; check uvicorn log for `SMTP email service is configured` |
 | Pipeline / Quick Actions show `0` during load | Treating loading as zero | Use dashboard refresh; components show skeletons until `GET /api/erp/dashboard` completes |
+| Portaled modal **Save** triggers parent page submit (buyer toast, wrong API) | React submit bubbling to ancestor `<form>` | `stopPropagation` on modal submit; `type="button"` on section saves; parent `e.target === e.currentTarget` guard — see [Sales documents](#sales-documents-quotations-invoices-challans) |
 
 ---
 
@@ -426,6 +442,7 @@ cd frontend
 npm test -- --run
 npm test -- --run src/utils/manualSalesJobCard.test.js
 npm test -- --run src/utils/salesDashboardKpis.test.js
+npm test -- --run src/components/sales/partyModalSubmitIsolation.test.jsx
 ```
 
 ---

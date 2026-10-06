@@ -925,3 +925,8 @@ def store_inventory_history(
         date_from=date_from,
         date_to=date_to,
     )
+
+
+from app.api.material_pricing_api import router as material_pricing_router
+
+router.include_router(material_pricing_router)

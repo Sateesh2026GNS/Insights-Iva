@@ -16,6 +16,11 @@ import AddCustomFieldModal from "./AddCustomFieldModal";
 import { createProduct, getProducts, updateProduct } from "../../api/productsApi";
 import { getInventoryV2Item } from "../../api/inventoryV2Api";
 import InventoryItemPhoto from "../inventory/InventoryItemPhoto";
+import ProductVendorPricingFields, {
+  buildVendorPricingFromItem,
+  validateVendorPricingForm,
+  vendorPricingPayloadFromForm,
+} from "../masters/ProductVendorPricingFields";
 import { PRODUCT_CATEGORIES, PRODUCT_UNITS } from "../../data/productsMasterData";
 import { useToast } from "../../context/ToastContext";
 import useTenantId from "../../hooks/useTenantId";
@@ -276,6 +281,7 @@ export default function AddNewItemModal({
   item = null,
   entityName = "Item",
   title,
+  readOnly = false,
 }) {
   const isProduct = entityName === "Product";
   const tenantId = useTenantId();
@@ -292,6 +298,7 @@ export default function AddNewItemModal({
   const [barcodeOpen, setBarcodeOpen] = useState(false);
   const [existingProducts, setExistingProducts] = useState([]);
   const [imageFile, setImageFile] = useState(null);
+  const [vendorPricing, setVendorPricing] = useState(buildVendorPricingFromItem(null));
 
   const isGoods = form.item_type === "goods";
 
@@ -371,6 +378,7 @@ export default function AddNewItemModal({
     setCustomFields([]);
     setCustomOpen(false);
     setBarcodeOpen(false);
+    setVendorPricing(buildVendorPricingFromItem(item));
   }, [open, item]);
   
   useEffect(() => {
@@ -491,6 +499,15 @@ export default function AddNewItemModal({
       const baseDesc = form.description.trim();
       const fullDesc = [baseDesc, customFieldDesc].filter(Boolean).join(" | ") || null;
 
+      if (isProduct && vendorPricing.supplier_id) {
+        const pricingErr = validateVendorPricingForm(vendorPricing);
+        if (pricingErr) {
+          addToast(pricingErr, "error");
+          setSaving(false);
+          return;
+        }
+      }
+
       const payload = {
         tenant_id: tenantId,
         barcode: form.barcode.trim() || null,
@@ -518,6 +535,15 @@ export default function AddNewItemModal({
             ? 1
             : undefined,
       };
+
+      if (isProduct && vendorPricing.supplier_id) {
+        const vp = vendorPricingPayloadFromForm(vendorPricing);
+        payload.vendor_pricing = vp;
+        if (vp) {
+          payload.unit_cost = vp.purchase_price;
+          payload.unit_price = vp.selling_price;
+        }
+      }
 
       let product = null;
       if (item?.id) {
@@ -679,6 +705,22 @@ export default function AddNewItemModal({
                 />
               </label>
             )}
+
+            {isProduct ? (
+              <ProductVendorPricingFields
+                pricing={vendorPricing}
+                onChange={(next) => {
+                  setVendorPricing(next);
+                  if (next.selling_price !== "") {
+                    setForm((f) => ({ ...f, sale_price: String(next.selling_price) }));
+                  }
+                  if (next.purchase_price !== "") {
+                    setForm((f) => ({ ...f, purchase_price: String(next.purchase_price) }));
+                  }
+                }}
+                disabled={readOnly}
+              />
+            ) : null}
 
             <div className="grid grid-cols-2 gap-3">
               <label className="block">
@@ -1172,13 +1214,15 @@ export default function AddNewItemModal({
           </Accordion>
         </div>
 
-        <div className="grid shrink-0 grid-cols-2 gap-3 border-t border-[#ececf0] bg-white px-5 py-4">
+        <div className={`grid shrink-0 gap-3 border-t border-[#ececf0] bg-white px-5 py-4 ${readOnly ? "grid-cols-1" : "grid-cols-2"}`}>
           <Button type="button" variant="cancel" onClick={onClose} fullWidth>
-            Cancel
+            {readOnly ? "Close" : "Cancel"}
           </Button>
-          <Button type="submit" variant="primary" loading={saving} disabled={saving} fullWidth>
-            {saving ? "Saving…" : "Save"}
-          </Button>
+          {!readOnly ? (
+            <Button type="submit" variant="primary" loading={saving} disabled={saving} fullWidth>
+              {saving ? "Saving…" : "Save"}
+            </Button>
+          ) : null}
         </div>
       </form>
 

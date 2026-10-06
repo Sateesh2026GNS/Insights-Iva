@@ -6,6 +6,7 @@ from app.api.deps import get_db
 from app.core.permissions import require_any_permission
 from app.models.dispatch_address import DispatchAddress
 from app.models.user import User
+from app.services.tenant_resources import require_tenant_row
 from app.schemas.dispatch_address import (
     DispatchAddressCreate,
     DispatchAddressRead,
@@ -75,9 +76,9 @@ def update_dispatch_address(
     user: User = Depends(require_any_permission("sales", "settings")),
     db: Session = Depends(get_db),
 ):
-    row = db.get(DispatchAddress, address_id)
-    if not row or row.tenant_id != user.tenant_id:
-        raise HTTPException(404, "Address not found")
+    row = require_tenant_row(
+        db, DispatchAddress, address_id, user.tenant_id, not_found_detail="Address not found"
+    )
     data = payload.model_dump(exclude_unset=True)
     if data.get("is_default"):
         for other in db.scalars(
@@ -103,9 +104,9 @@ def delete_dispatch_address(
     user: User = Depends(require_any_permission("sales", "settings")),
     db: Session = Depends(get_db),
 ):
-    row = db.get(DispatchAddress, address_id)
-    if not row or row.tenant_id != user.tenant_id:
-        raise HTTPException(404, "Address not found")
+    row = require_tenant_row(
+        db, DispatchAddress, address_id, user.tenant_id, not_found_detail="Address not found"
+    )
     db.delete(row)
     db.commit()
     return {"ok": True}

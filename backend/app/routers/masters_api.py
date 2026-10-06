@@ -15,7 +15,8 @@ from app.models.user import User
 from app.models.role import Role
 from app.routers.operator_deps import deny_delete_for_operator, deny_operator_production_planning, require_tenant
 from app.schemas.machine import MachineCreateExtended, MachineFullUpdate
-from app.schemas.product import BomItemCreate, ProductCreate, ProductUpdate
+from app.core.permissions import require_product_master_write
+from app.schemas.product import BomItemCreate, ProductMasterUpdate, ProductMasterWrite
 from app.schemas.vendor import VendorBulkImportRequest, VendorCreate, VendorUpdate
 from app.schemas.production import MachineCreate, MachineStatusEventCreate, MachineUpdate
 from app.services.machine_service import get_machine_summary
@@ -156,13 +157,14 @@ def product_audit_logs(
 
 @router.post("/products")
 def create_product(
-    payload: ProductCreate,
+    payload: ProductMasterWrite,
     request: Request,
     user_tenant: tuple[User, int] = Depends(require_tenant("products")),
+    _write: User = Depends(require_product_master_write()),
     db: Session = Depends(get_db),
 ):
     user, tenant_id = user_tenant
-    product = _svc(db, tenant_id).create_product(payload)
+    product = _svc(db, tenant_id).create_product(payload, user)
     try:
         from app.services.audit_log_service import AuditLogService
 
@@ -184,12 +186,13 @@ def create_product(
 @router.put("/products/{product_id}")
 def update_product(
     product_id: int,
-    payload: ProductUpdate,
+    payload: ProductMasterUpdate,
     user_tenant: tuple[User, int] = Depends(require_tenant("products")),
+    _write: User = Depends(require_product_master_write()),
     db: Session = Depends(get_db),
 ):
-    _, tenant_id = user_tenant
-    data = _svc(db, tenant_id).update_product(product_id, payload)
+    user, tenant_id = user_tenant
+    data = _svc(db, tenant_id).update_product(product_id, payload, user)
     if not data:
         raise HTTPException(404, "Product not found")
     return success_response("Product updated", data)
@@ -199,6 +202,7 @@ def update_product(
 def delete_product(
     product_id: int,
     user_tenant: tuple[User, int] = Depends(require_tenant("products")),
+    _write: User = Depends(require_product_master_write()),
     _no_operator: User = Depends(deny_delete_for_operator),
     db: Session = Depends(get_db),
 ):

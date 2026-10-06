@@ -130,6 +130,7 @@ export default function EditCompanyDetailsModal({ open, onClose, onSaved }) {
 
   const onSubmit = async (e) => {
     e.preventDefault();
+    e.stopPropagation();
     if (!form.company_name.trim()) {
       addToast("Company Name is required", "error");
       return;
@@ -179,6 +180,7 @@ export default function EditCompanyDetailsModal({ open, onClose, onSaved }) {
         onSubmit={onSubmit}
         className="flex max-h-[92vh] w-full max-w-md flex-col rounded-2xl bg-white shadow-2xl"
         onMouseDown={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
       >
         <div className="flex shrink-0 items-center justify-between border-b border-[#ececf0] px-5 py-4">
           <h2 className="text-[17px] font-bold text-[#1a1a1f]">Edit Company Details</h2>
@@ -393,11 +395,15 @@ export default function EditCompanyDetailsModal({ open, onClose, onSaved }) {
             Cancel
           </Button>
           <Button
-            type="submit"
+            type="button"
             variant="primary"
             loading={saving}
             disabled={saving || loading}
             fullWidth
+            onClick={(e) => {
+              e.stopPropagation();
+              onSubmit(e);
+            }}
           >
             {saving ? "Saving…" : "Submit"}
           </Button>

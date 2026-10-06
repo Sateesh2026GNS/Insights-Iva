@@ -179,13 +179,30 @@ export default function ProductDetailModal({
           )}
 
           {tab === "pricing" && (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              <Field label="Purchase Price" value={formatPrice(product.purchase_price)} />
-              <Field label="Selling Price" value={formatPrice(product.selling_price)} />
-              <Field label="Wholesale Price" value={formatPrice(product.wholesale_price)} />
-              <Field label="Goods & Services Tax (GST) %" value={product.gst_percent != null ? `${product.gst_percent}%` : "—"} />
-              <Field label="Cess %" value={product.cess_percent != null ? `${product.cess_percent}%` : "—"} />
-              <Field label="HSN Code" value={product.hsn_code} />
+            <div className="space-y-4">
+              <div>
+                <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-500">Cost &amp; Pricing</p>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  <Field label="Vendor" value={product.vendor_name || "—"} />
+                  <Field label="Purchase Price" value={formatPrice(product.purchase_price ?? product.unit_cost)} />
+                  <Field label="Transport Cost" value={formatPrice(product.transport_cost)} />
+                  <Field label="Labour Cost" value={formatPrice(product.labour_cost)} />
+                  <Field label="Import Cost" value={formatPrice(product.import_cost)} />
+                  <Field label="Total / Landed Cost" value={formatPrice(product.total_landed_cost)} />
+                  <Field label="HSN Code" value={product.hsn_code} />
+                </div>
+              </div>
+              <div>
+                <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-500">Selling Price</p>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  <Field label="Minimum Price" value={formatPrice(product.minimum_price)} />
+                  <Field label="Maximum Price" value={formatPrice(product.maximum_price)} />
+                  <Field label="Company Selling Price" value={formatPrice(product.selling_price ?? product.unit_price)} />
+                  <Field label="Wholesale Price" value={formatPrice(product.wholesale_price)} />
+                  <Field label="Goods & Services Tax (GST) %" value={product.gst_percent != null ? `${product.gst_percent}%` : "—"} />
+                  <Field label="CESS %" value={product.cess_percent != null ? `${product.cess_percent}%` : "—"} />
+                </div>
+              </div>
             </div>
           )}
 
@@ -322,9 +339,11 @@ export default function ProductDetailModal({
         </div>
 
         <div className="flex flex-wrap gap-2 border-t border-slate-100 bg-slate-50 px-5 py-3">
-          <Button type="button" onClick={() => onEdit(product)} variant="primary" className="text-xs">
-            Edit
-          </Button>
+          {onEdit ? (
+            <Button type="button" onClick={() => onEdit(product)} variant="primary" className="text-xs">
+              Edit
+            </Button>
+          ) : null}
           <button type="button" onClick={() => onDuplicate(product)} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">
             <Copy className="h-3.5 w-3.5" /> Duplicate
           </button>

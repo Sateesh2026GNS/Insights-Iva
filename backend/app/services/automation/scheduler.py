@@ -23,7 +23,17 @@ def _interval_seconds() -> int:
 
 def _run_all_tenants() -> None:
     db = SessionLocal()
+    lock_held = False
     try:
+        from app.services.automation.scheduler_lock import (
+            release_scheduler_lock,
+            try_acquire_scheduler_lock,
+        )
+
+        if not try_acquire_scheduler_lock(db):
+            logger.info("automation_scheduler_skipped advisory_lock_not_acquired")
+            return
+        lock_held = True
         tenant_ids = list(db.scalars(select(Tenant.id)).all())
         from app.services.automation.engine import run_scheduled_automations_for_tenant
 
@@ -38,6 +48,10 @@ def _run_all_tenants() -> None:
 
             run_morning_summary_delivery(db)
     finally:
+        if lock_held:
+            from app.services.automation.scheduler_lock import release_scheduler_lock
+
+            release_scheduler_lock(db)
         db.close()
 
 

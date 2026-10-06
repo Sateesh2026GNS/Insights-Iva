@@ -1,7 +1,7 @@
 """Automation Phase 2 — real-time hooks, scheduler gating, summaries."""
 
 from datetime import date
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from sqlalchemy import select
 
@@ -30,6 +30,21 @@ def test_scheduler_disabled_by_default(monkeypatch):
         start_automation_scheduler()
         mock_thread.assert_not_called()
     get_settings.cache_clear()
+
+
+def test_scheduler_skips_tick_when_advisory_lock_busy(monkeypatch):
+    monkeypatch.setenv("AUTOMATION_SCHEDULER_ENABLED", "true")
+    from app.services.automation import scheduler as sched_mod
+
+    with patch.object(sched_mod, "SessionLocal") as mock_session_local:
+        db = MagicMock()
+        mock_session_local.return_value = db
+        with patch(
+            "app.services.automation.scheduler_lock.try_acquire_scheduler_lock",
+            return_value=False,
+        ):
+            sched_mod._run_all_tenants()
+        db.scalars.assert_not_called()
 
 
 def test_scheduler_starts_when_enabled(monkeypatch):

@@ -2139,6 +2139,9 @@ table > tbody > tr:first-child:has(th) {
 .inventory-table-scroll--warehouses table {
   min-width: 850px;
 }
+.inventory-table-scroll--material-pricing table {
+  min-width: 1280px;
+}
 .planning-table-panel {
   min-width: 0;
   width: 100%;
@@ -2866,6 +2869,21 @@ table > tbody > tr:first-child:has(th) {
   transform: translateY(-50%);
   width: 2.125rem;
   height: 3.375rem; /* ~54px */
+}
+
+/* Lift FAB cluster when a page renders a measured sticky footer (Material Pricing, etc.) */
+html.has-sticky-page-footer .app-shell-fab-stack {
+  bottom: calc(var(--app-sticky-page-footer-inset, 0px) + 1.25rem + env(safe-area-inset-bottom, 0px));
+}
+@media (max-width: 1023px) {
+  html.has-sticky-page-footer .app-shell-fab-stack {
+    bottom: calc(var(--app-sticky-page-footer-inset, 0px) + 4.75rem + env(safe-area-inset-bottom, 0px));
+  }
+}
+@media (min-width: 640px) {
+  html.has-sticky-page-footer .app-shell-fab-stack {
+    bottom: calc(var(--app-sticky-page-footer-inset, 0px) + 1.5rem + env(safe-area-inset-bottom, 0px));
+  }
 }
 
 /* App shell floating actions — AI assistant + page refresh (stacked cluster) */

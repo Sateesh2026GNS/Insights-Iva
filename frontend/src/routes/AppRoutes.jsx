@@ -259,6 +259,12 @@ export default function AppRoutes() {
         path="/inventory/stock-ledger"
         element={<P.StockLedger />}
       />
+      <Route path="/inventory/product-catalog" element={<Navigate to="/inventory" replace />} />
+      <Route path="/inventory/material-pricing" element={<Navigate to="/inventory" replace />} />
+      <Route
+        path="/sales/reports/material-pricing"
+        element={<Navigate to="/inventory" replace />}
+      />
       <Route
         path="/inventory/stock-movement"
         element={<P.StockMovement />}
@@ -821,6 +827,10 @@ export default function AppRoutes() {
         <Route path="documents/:legacySub" element={<Navigate to="/settings/documents" replace />} />
       </Route>
       <Route path="/masters/products" element={<ProtectedRoute><P.ProductsMaster /></ProtectedRoute>} />
+      <Route path="/inventory/products" element={<Navigate to="/masters/products" replace />} />
+      <Route path="/inventory/product-catalog" element={<Navigate to="/masters/products" replace />} />
+      <Route path="/inventory/material-pricing" element={<Navigate to="/masters/products" replace />} />
+      <Route path="/sales/reports/material-pricing" element={<Navigate to="/masters/products" replace />} />
       <Route path="/masters/products/bulk-import" element={<ProtectedRoute><P.BulkImportProduct /></ProtectedRoute>} />
       <Route path="/masters/products/create" element={<Navigate to="/masters/products?add=1" replace />} />
       <Route path="/masters/products/:id/edit" element={<ProtectedRoute><P.CreateProduct /></ProtectedRoute>} />

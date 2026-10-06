@@ -57,15 +57,17 @@ export default function SalesOrderReport() {
       {
         key: "status",
         label: "Status",
-        render: (v) => (
-          <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${statusColor(v)}`}>{v || "—"}</span>
+        render: (row) => (
+          <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${statusColor(row.status)}`}>
+            {row.status || "—"}
+          </span>
         ),
       },
       { key: "order_date", label: "Date", sortable: true },
       {
         key: "grand_total",
         label: "Amount",
-        render: (v) => formatInr(v),
+        render: (row) => formatInr(row.grand_total),
         sortable: true,
       },
       { key: "sales_person", label: "Sales Person", sortable: true },

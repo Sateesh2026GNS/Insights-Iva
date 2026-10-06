@@ -299,4 +299,75 @@ export function numberToWords(n) {
   return result.trim();
 }
 
+/**
+ * Normalize pasted/typed Indian or Western comma-separated currency input to a raw numeric string.
+ * Returns null if empty, invalid, or negative.
+ *
+ * @param {string|number} input
+ * @returns {string|null} Digits with optional decimal (max 2 places), e.g. "2500000" or "2500000.5"
+ */
+export function normalizeIndianCurrencyInput(input) {
+  if (input == null || input === "") return null;
+  const cleaned = String(input).trim().replace(/,/g, "");
+  if (!cleaned) return null;
+  if (cleaned.startsWith("-")) return null;
+  if (!/^\d+(\.\d{0,2})?$/.test(cleaned)) return null;
+  return cleaned;
+}
+
+/**
+ * Format a raw numeric currency string for Indian grouping in inputs (no ₹ symbol).
+ */
+export function formatIndianCurrencyField(value) {
+  if (value == null || value === "") return "";
+  const raw = String(value).replace(/,/g, "").trim();
+  if (!raw) return "";
+  const trailingDot = raw.endsWith(".") && raw.indexOf(".") === raw.length - 1;
+  const body = trailingDot ? raw.slice(0, -1) : raw;
+  const dot = body.indexOf(".");
+  const intPart = dot >= 0 ? body.slice(0, dot) : body;
+  const decPart = dot >= 0 ? body.slice(dot + 1).replace(/[^\d]/g, "").slice(0, 2) : null;
+  if (intPart !== "" && !/^\d+$/.test(intPart)) return String(value);
+  const formattedInt = intPart === "" ? "0" : formatNumber(intPart);
+  if (trailingDot) return `${formattedInt}.`;
+  if (decPart === null) return formattedInt;
+  return `${formattedInt}.${decPart}`;
+}
+
+/**
+ * Parse normalized currency string to a number rounded to 2 decimal places (for API payloads).
+ */
+export function parseIndianCurrencyToNumber(value) {
+  const normalized = normalizeIndianCurrencyInput(value);
+  if (normalized == null) return 0;
+  const n = Number(normalized);
+  if (Number.isNaN(n) || n < 0) return 0;
+  return Math.round(n * 100) / 100;
+}
+
+/**
+ * INR amount in words for forms, e.g. "Twenty Five Lakh Rupees Only".
+ * Empty for blank input; "Zero Rupees Only" for explicit zero.
+ */
+export function inrAmountToWords(value) {
+  const normalized = normalizeIndianCurrencyInput(value);
+  if (normalized == null) {
+    if (value != null && String(value).trim() === "0") return "Zero Rupees Only";
+    return "";
+  }
+  const num = Number(normalized);
+  if (Number.isNaN(num) || num < 0) return "";
+  if (num === 0) return "Zero Rupees Only";
+
+  const rupees = Math.floor(num);
+  const paise = Math.round((num - rupees) * 100);
+  const rupeeWords = numberToWords(rupees) || "Zero";
+  let result = `${rupeeWords} Rupees`;
+  if (paise > 0) {
+    const paiseWords = numberToWords(paise);
+    if (paiseWords) result += ` and ${paiseWords} Paise`;
+  }
+  return `${result} Only`;
+}
+
 
