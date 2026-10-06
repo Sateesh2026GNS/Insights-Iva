@@ -44,7 +44,7 @@ def verify_smtp_connection() -> dict[str, Any]:
     last_error = None
     for port in ports_to_try:
         try:
-            socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)
+            socket.getaddrinfo(host, port, family=socket.AF_INET, type=socket.SOCK_STREAM)
             result["dns"] = "ok"
         except OSError as exc:
             result["dns"] = "failed"
