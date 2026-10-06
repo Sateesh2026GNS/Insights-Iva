@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 import smtplib
 import socket
 from email.message import EmailMessage
@@ -155,7 +156,8 @@ def smtp_configuration_snapshot() -> dict:
 def email_delivery_http_detail(exc: EmailDeliveryError) -> dict[str, str]:
     code = EMAIL_ERROR_CODES.get(exc.reason, "smtp_send_failed")
     msg = exc.public_message
-    if exc.internal_detail and ("resend.com/domains" in exc.internal_detail or "verify a domain" in exc.internal_detail):
+    detail_lower = (exc.internal_detail or "").lower()
+    if "resend.com/domains" in detail_lower or "verify a domain" in detail_lower or "testing emails to your own" in detail_lower:
         msg = "Resend Testing Mode: Restricted to sending to account owner (admin@codeviasoftware.com). To send to any recipient, verify your domain at resend.com/domains."
     return {"message": msg, "code": code}
 

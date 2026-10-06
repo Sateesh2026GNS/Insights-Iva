@@ -121,3 +121,27 @@ def test_send_via_smtplib_gmail_port_465_prioritization():
         assert mock_ssl.call_args[0][1] == 465
         mock_server.login.assert_called_once_with("admin@codeviasoftware.com", "password")
 
+
+def test_send_via_resend_dispatches_http_request():
+    from app.services.email_service import _send_via_resend
+
+    with patch("urllib.request.urlopen") as mock_urlopen:
+        mock_resp = MagicMock()
+        mock_resp.read.return_value = b'{"id": "msg_123"}'
+        mock_urlopen.return_value.__enter__.return_value = mock_resp
+
+        _send_via_resend("re_mock_key", "admin@codeviasoftware.com", "Subject", "Body", attachments=[("report.pdf", b"%PDF", "application/pdf")])
+
+        mock_urlopen.assert_called_once()
+        req = mock_urlopen.call_args[0][0]
+        assert req.full_url == "https://api.resend.com/emails"
+        assert req.headers["Authorization"] == "Bearer re_mock_key"
+
+
+def test_generate_metric_report_pdf_handles_mixed_row_types():
+    from app.services.metric_report_pdf_service import generate_metric_report_pdf
+
+    pdf = generate_metric_report_pdf("Test Report", [{"k": "v"}, "string row", ["list", "item"], None])
+    assert pdf.startswith(b"%PDF")
+
+

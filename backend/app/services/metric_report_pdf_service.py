@@ -35,8 +35,13 @@ def generate_metric_report_pdf(
     c.drawString(20 * mm, y, " | ".join(str(h)[:24] for h in headers))
     y -= 6 * mm
     c.setFont("Helvetica", 8)
-    for row in rows[:500]:
-        line = " | ".join(str(row.get(k, ""))[:32] for k in keys)
+    for row in (rows or [])[:500]:
+        if isinstance(row, dict):
+            line = " | ".join(str(row.get(k, "") or "")[:32] for k in keys)
+        elif isinstance(row, (list, tuple)):
+            line = " | ".join(str(v or "")[:32] for v in row)
+        else:
+            line = str(row or "")[:130]
         c.drawString(20 * mm, y, line[:130])
         y -= 5 * mm
         if y < 20 * mm:
