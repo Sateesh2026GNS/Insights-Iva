@@ -32,7 +32,6 @@ import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
 import RowActionMenu from "../../components/common/RowActionMenu";
 import Button from "../../components/common/Button";
 import ConfirmDialog from "../../components/admin/ConfirmDialog";
-import ProductDetailModal from "../../components/masters/ProductDetailModal";
 
 const PAGE_SIZES = [20, 50, 100];
 
