@@ -87,16 +87,17 @@ def _settings():
 def smtp_missing_env_var_names() -> list[str]:
     """Names of unset SMTP settings (for server logs only — never log secret values)."""
     s = _settings()
-    if (getattr(s, "resend_api_key", "") or "").strip():
+    raw_resend = getattr(s, "resend_api_key", "")
+    if isinstance(raw_resend, str) and raw_resend.strip():
         return []
     missing = []
-    if not (s.smtp_host or "").strip():
+    if not str(getattr(s, "smtp_host", "") or "").strip():
         missing.append("SMTP_HOST")
-    if not (s.smtp_user or "").strip():
+    if not str(getattr(s, "smtp_user", "") or "").strip():
         missing.append("SMTP_USERNAME")
-    if not (s.smtp_password or "").strip():
+    if not str(getattr(s, "smtp_password", "") or "").strip():
         missing.append("SMTP_PASSWORD")
-    if not (s.smtp_from_email or "").strip():
+    if not str(getattr(s, "smtp_from_email", "") or "").strip():
         missing.append("SMTP_FROM_EMAIL")
     return missing
 
@@ -334,9 +335,9 @@ def _send_via_smtplib(
 ) -> None:
     _require_smtp()
     s = _settings()
-    resend_key = (getattr(s, "resend_api_key", "") or "").strip()
-    if resend_key:
-        _send_via_resend(resend_key, to, subject, body, html=html, attachments=attachments, from_email=s.smtp_from_email)
+    raw_resend = getattr(s, "resend_api_key", "")
+    if isinstance(raw_resend, str) and raw_resend.strip():
+        _send_via_resend(raw_resend.strip(), to, subject, body, html=html, attachments=attachments, from_email=s.smtp_from_email)
         return
 
     msg = EmailMessage()
