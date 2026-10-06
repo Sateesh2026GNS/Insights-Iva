@@ -67,6 +67,7 @@ export const SalesDashboard = lazy(() => import("../pages/sales/SalesDashboard")
 export const InvoiceDashboard = lazy(() => import("../pages/sales/InvoiceDashboard"));
 export const InvoiceCopyPage = lazy(() => import("../pages/sales/InvoiceCopyPage"));
 export const QuotationCopyPage = lazy(() => import("../pages/sales/QuotationCopyPage"));
+export const PublicEQuotationPage = lazy(() => import("../pages/sales/PublicEQuotationPage"));
 export const TaxInvoiceForm = lazy(() => import("../pages/sales/TaxInvoiceForm"));
 export const ExportInvoices = lazy(() => import("../pages/sales/ExportInvoices"));
 export const ExportInvoiceForm = lazy(() => import("../pages/sales/ExportInvoiceForm"));

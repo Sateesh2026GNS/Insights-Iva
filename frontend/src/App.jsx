@@ -33,7 +33,8 @@ function isShellLessRoute(pathname) {
     path === "/landing" ||
     path === "/forgot-password" ||
     path === "/reset-password" ||
-    path === "/verify-email"
+    path === "/verify-email" ||
+    path.startsWith("/e-quotation/")
   ) {
     return true;
   }

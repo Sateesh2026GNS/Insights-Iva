@@ -3240,7 +3240,12 @@ html.has-sticky-page-footer .app-shell-fab-stack {
 @media print {
   @page {
     margin: 10mm;
-    size: auto;
+    size: A4 portrait;
+  }
+
+  /* Never print the global navigation loading overlay (black screen + spinner). */
+  .brand-loading-screen {
+    display: none !important;
   }
 
   /* Hide all interactive UI elements: buttons, form inputs, navigation, sidebars, headers, search bars, pagination, toasts */
@@ -3271,6 +3276,9 @@ html.has-sticky-page-footer .app-shell-fab-stack {
   body,
   #root,
   main,
+  #main-content,
+  .app-shell,
+  .quotation-copy-page,
   .ui-page,
   .ui-card {
     background: #ffffff !important;
@@ -3327,12 +3335,87 @@ html.has-sticky-page-footer .app-shell-fab-stack {
     border: none !important;
     margin: 0 !important;
     padding: 0 !important;
+    display: block !important;
+    visibility: visible !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  .quotation-copy-page > *:not(.erp-doc) {
+    display: none !important;
+  }
+
+  .public-e-quotation-page {
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+  }
+
+  .public-e-quotation-page .erp-doc {
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+  }
+
+  /*
+   * Quotation print: the app shell uses a fixed sidebar grid track (15rem). Hiding
+   * <aside> does not remove that column, so the document renders in a narrow strip.
+   */
+  html:has(.quotation-copy-page),
+  body:has(.quotation-copy-page),
+  #root:has(.quotation-copy-page) {
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  body:has(.quotation-copy-page) .app-shell {
+    display: block !important;
+    grid-template-columns: none !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  body:has(.quotation-copy-page) .app-shell > aside,
+  body:has(.quotation-copy-page) #app-sidebar,
+  body:has(.quotation-copy-page) .app-shell-fab-stack,
+  body:has(.quotation-copy-page) .app-shell-bottom-bar {
+    display: none !important;
+  }
+
+  body:has(.quotation-copy-page) .app-shell > div,
+  body:has(.quotation-copy-page) #main-content,
+  body:has(.quotation-copy-page) .page-transition,
+  body:has(.quotation-copy-page) .quotation-copy-page {
+    display: block !important;
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    box-sizing: border-box !important;
+  }
+
+  body:has(.quotation-copy-page) .ui-page {
+    max-width: none !important;
+    padding: 0 !important;
   }
 
   .erp-doc table,
   .erp-doc th,
   .erp-doc td {
     page-break-inside: avoid;
+  }
+
+  .quotation-copy-page .erp-doc__items-table tr,
+  .quotation-copy-page .erp-doc__item-row {
+    page-break-inside: auto;
+    break-inside: auto;
   }
 
   /* ── Payslip-specific print overrides (must override generic rules above) ── */

@@ -92,10 +92,27 @@ def allocate_next_invoice_number(db: Session, tenant_id: int) -> tuple[str, str]
     )
 
 
-def _format_date(d: date | None) -> str:
-    if not d:
+def _format_date(d: date | str | None) -> str:
+    """Format dates for documents; accepts ORM date columns or ISO strings from meta_json."""
+    if d is None or d == "":
         return ""
-    return d.strftime("%d-%b-%y")
+    if isinstance(d, str):
+        raw = d.strip()
+        if not raw:
+            return ""
+        try:
+            if "T" in raw:
+                from datetime import datetime
+
+                parsed = datetime.fromisoformat(raw.replace("Z", "+00:00")).date()
+            else:
+                parsed = date.fromisoformat(raw[:10])
+            return parsed.strftime("%d-%b-%y")
+        except (ValueError, TypeError):
+            return raw
+    if hasattr(d, "strftime"):
+        return d.strftime("%d-%b-%y")
+    return str(d)
 
 
 def _address_parts(*parts: str | None) -> str:

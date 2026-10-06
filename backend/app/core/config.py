@@ -219,6 +219,17 @@ class Settings(BaseSettings):
     # Public self-registration (disabled for SaaS — companies created by Super Admin)
     allow_public_registration: bool = False
 
+    # Canonical frontend origin for e-Quotation QR links (no trailing slash).
+    frontend_public_base_url: str = Field(
+        default="",
+        validation_alias=AliasChoices(
+            "FRONTEND_PUBLIC_BASE_URL",
+            "PUBLIC_APP_URL",
+            "VITE_PUBLIC_APP_URL",
+            "frontend_public_base_url",
+        ),
+    )
+
     # GNS Super Admin (single platform administrator)
     super_admin_email: str = ""
     super_admin_password: str = ""

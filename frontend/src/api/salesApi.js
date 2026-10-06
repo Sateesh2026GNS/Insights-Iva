@@ -102,6 +102,9 @@ export const getQuotationSummary = (params = {}) =>
 export const getQuotationsEnriched = () => api.get("/sales/quotations/enriched");
 export const getQuotation = (quoteId) => api.get(`/sales/quotations/${quoteId}`);
 export const getQuotationDocument = (quoteId) => api.get(`/sales/quotations/${quoteId}/document`);
+/** Public e-Quotation view (no auth) — token from QR link. */
+export const getPublicQuotationDocument = (token) =>
+  api.get(`/public/e-quotations/${encodeURIComponent(token)}/document`);
 export const downloadQuotationPdf = (quoteId) =>
   api.get(`/sales/quotations/${quoteId}/pdf`, { responseType: "blob" });
 export const createQuotation = (payload) => api.post("/sales/quotations", payload);

@@ -1090,10 +1090,12 @@ def get_quotation_document_endpoint(
 ):
     from app.services.document_builder_service import build_quotation_document
 
+    from app.services.quotation_public_service import enrich_quotation_document_for_qr
+
     doc = build_quotation_document(db, tenant_id, quote_id)
     if not doc:
         raise HTTPException(404, "Quotation not found")
-    return doc
+    return enrich_quotation_document_for_qr(db, tenant_id, quote_id, doc)
 
 
 @router.get("/quotations/{quote_id}/pdf")
@@ -1105,9 +1107,12 @@ def download_quotation_pdf_endpoint(
     from app.services.document_builder_service import build_quotation_document
     from app.services.invoice_pdf_service import generate_invoice_pdf
 
+    from app.services.quotation_public_service import enrich_quotation_document_for_qr
+
     doc = build_quotation_document(db, tenant_id, quote_id)
     if not doc:
         raise HTTPException(404, "Quotation not found")
+    doc = enrich_quotation_document_for_qr(db, tenant_id, quote_id, doc)
     pdf_bytes = generate_invoice_pdf(doc)
     doc_no = doc.get("meta", {}).get("document_no", str(quote_id))
     return Response(

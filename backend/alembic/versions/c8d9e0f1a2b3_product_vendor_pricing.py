@@ -1,7 +1,7 @@
 """product vendor pricing on products master
 
 Revision ID: c8d9e0f1a2b3
-Revises: b6c7d8e9f0a1
+Revises: f2a3b4c5d6e7
 Create Date: 2026-10-06
 """
 
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision: str = "c8d9e0f1a2b3"
-down_revision: Union[str, None] = "b6c7d8e9f0a1"
+down_revision: Union[str, None] = "f2a3b4c5d6e7"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

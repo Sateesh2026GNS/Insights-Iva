@@ -1,3 +1,4 @@
+import json
 import re
 from datetime import date, datetime
 from typing import Any
@@ -556,7 +557,36 @@ class QuotationBase(BaseModel):
     status: str = "draft"
     total_amount: float = Field(0.0, ge=0.0)
     notes: str | None = None
+    sales_person: str | None = None
+    discount: float = Field(0.0, ge=0.0)
     meta_json: dict | str | None = None
+
+    @field_validator("meta_json", mode="before")
+    @classmethod
+    def parse_quotation_meta_json(cls, value: Any) -> dict | str | None:
+        if value is None or isinstance(value, dict):
+            return value
+        if isinstance(value, str):
+            raw = value.strip()
+            if not raw:
+                return None
+            try:
+                parsed = json.loads(raw)
+                return parsed if isinstance(parsed, dict) else value
+            except json.JSONDecodeError:
+                return value
+        return value
+
+    @field_validator("discount", mode="before")
+    @classmethod
+    def parse_quotation_discount(cls, value: Any) -> float:
+        if value is None:
+            return 0.0
+        try:
+            v = float(value)
+        except (TypeError, ValueError):
+            return 0.0
+        return max(0.0, v)
 
     @field_validator("total_amount", mode="before")
     @classmethod

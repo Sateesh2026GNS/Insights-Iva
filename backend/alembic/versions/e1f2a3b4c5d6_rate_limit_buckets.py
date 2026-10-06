@@ -1,7 +1,7 @@
 """distributed rate limit buckets for multi-instance auth/report limits
 
-Revision ID: a5b6c7d8e9f0
-Revises: z4a5b6c7d8e9
+Revision ID: e1f2a3b4c5d6
+Revises: b6c7d8e9f0a1
 Create Date: 2026-10-05
 """
 
@@ -10,8 +10,8 @@ from typing import Sequence, Union
 import sqlalchemy as sa
 from alembic import op
 
-revision: str = "a5b6c7d8e9f0"
-down_revision: Union[str, None] = "z4a5b6c7d8e9"
+revision: str = "e1f2a3b4c5d6"
+down_revision: Union[str, None] = "b6c7d8e9f0a1"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

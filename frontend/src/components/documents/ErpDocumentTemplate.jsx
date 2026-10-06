@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from "react";
 import QRCode from "qrcode";
 import { numberToWordsInr } from "../../utils/invoiceCopyData";
 import { getDocConfig } from "./documentTemplateConfig";
+import { applyQuotationPublicQrUrls } from "../../utils/publicAppUrl";
 import "./ErpDocumentTemplate.css";
 
 function QRCanvas({ value, size = 84 }) {
@@ -52,7 +53,11 @@ const DEFAULT_REJECTION = [
 /**
  * Unified A4 ERP document — pixel-matched to standard Indian GST Tax Invoice (STIC-ON reference layout).
  */
-export default function ErpDocumentTemplate({ data, docType = "invoice" }) {
+export default function ErpDocumentTemplate({ data: rawData, docType = "invoice" }) {
+  const data = useMemo(
+    () => (docType === "quotation" ? applyQuotationPublicQrUrls(rawData) : rawData),
+    [rawData, docType]
+  );
   if (!data) return null;
 
   const cfg = getDocConfig(docType);
@@ -128,12 +133,19 @@ export default function ErpDocumentTemplate({ data, docType = "invoice" }) {
   const invoiceId = data.id || data.invoice_id || data.document_id || "";
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const directUrl =
+    data.qr_url ||
     data.download_url ||
     data.pdf_url ||
-    data.qr_url ||
-    (docType === "quotation" ? (invoiceId ? `${origin}/sales/quotations/${invoiceId}/copy` : `${origin}/sales/quotations`) : ((invoiceId ? `${origin}/sales/invoices/${invoiceId}/copy` : "") || (docNo ? `${origin}/sales/invoices/${encodeURIComponent(docNo)}` : `${origin}/sales/invoices`)));
+    (docType === "quotation"
+      ? ""
+      : (invoiceId ? `${origin}/sales/invoices/${invoiceId}/copy` : "") ||
+        (docNo ? `${origin}/sales/invoices/${encodeURIComponent(docNo)}` : `${origin}/sales/invoices`));
 
-  const qrValue = data.qr_value || data.qrValue || (showEInvoice ? directUrl : (docType === "quotation" ? "e-quotation" : "e-invoice"));
+  const qrValue =
+    data.qr_url ||
+    data.qr_value ||
+    data.qrValue ||
+    (showEInvoice && directUrl ? directUrl : docType === "quotation" ? "" : "e-invoice");
 
   const rawTerms = (data.declaration || data.terms || data.termsAndConditions || "").split("\n").map((s) => s.trim()).filter(Boolean);
   const isShortDefault = rawTerms.length > 0 && rawTerms.length <= 2 && rawTerms[0].includes("electronically generated");
@@ -276,7 +288,7 @@ export default function ErpDocumentTemplate({ data, docType = "invoice" }) {
         </div>
 
         <div className="erp-doc__header-right">
-          {showEInvoice ? (
+          {showEInvoice && qrValue ? (
             <div className="erp-doc__einvoice-box">
               <div className="erp-doc__einvoice-text">{docType === "quotation" ? "e-Quotation" : (cfg.headerRightLabel || "e-Invoice")}</div>
               <div className="erp-doc__qr-wrapper">
