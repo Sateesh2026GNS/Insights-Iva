@@ -1918,10 +1918,10 @@ export default function WorkChat() {
                       type="button"
                       className="work-chat-scroll-bottom-btn"
                       title="Scroll to latest message"
+                      aria-label="Scroll to latest message"
                       onClick={() => bottomRef.current?.scrollIntoView({ behavior: "smooth" })}
                     >
-                      <ChevronDown className="h-4 w-4" />
-                      <span>Latest</span>
+                      <ChevronDown className="h-5 w-5 text-[#475569]" />
                     </button>
                   )}
 
