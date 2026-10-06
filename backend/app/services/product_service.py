@@ -57,6 +57,16 @@ def _assert_no_product_duplicates(
                 status_code=400,
                 detail=f"Product Name '{clean_name}' already exists. Duplicate product names are not allowed.",
             )
+    if sku and sku.strip():
+        clean_sku = sku.strip()
+        q = select(Product).where(
+            Product.tenant_id == tenant_id,
+            func.lower(Product.sku) == clean_sku.lower(),
+        )
+        if exclude_id:
+            q = q.where(Product.id != exclude_id)
+        if db.scalars(q).first():
+            raise HTTPException(status_code=409, detail=f"Product SKU '{clean_sku}' is already in use.")
 
 
 def create_product(db: Session, payload: ProductCreate) -> Product:
@@ -82,6 +92,10 @@ def create_product(db: Session, payload: ProductCreate) -> Product:
     opening_stock = product.current_stock or 0
     has_existing_inventory = False
     db.add(product)
+    db.flush()
+    from app.services.sku_service import assign_product_sku
+
+    assign_product_sku(db, product)
     db.flush()
     if product.sku:
         from app.models.inventory import InventoryItem
@@ -112,6 +126,8 @@ def create_product(db: Session, payload: ProductCreate) -> Product:
                     detail=f"Inventory SKU '{product.sku}' is already linked to another product.",
                 )
             item.product_id = product.id
+            if product.barcode is not None:
+                item.barcode = product.barcode
             has_existing_inventory = True
     from app.services.product_inventory_sync import (
         ensure_product_inventory_item,
@@ -213,6 +229,7 @@ def update_product(
             ("unit", "unit"),
             ("unit_cost", "unit_cost"),
             ("category", "category"),
+            ("barcode", "barcode"),
         ):
             if product_field in data:
                 setattr(linked_item, inventory_field, data[product_field])

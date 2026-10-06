@@ -12,6 +12,7 @@ class Product(Base, TimestampMixin):
         ForeignKey("tenants.id"), nullable=False, index=True
     )
     sku: Mapped[str | None] = mapped_column(String(64), nullable=True, default="")
+    barcode: Mapped[str | None] = mapped_column(String(128))
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(Text)
     category: Mapped[str | None] = mapped_column(String(128), default="Finished Goods")

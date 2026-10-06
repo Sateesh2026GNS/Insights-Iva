@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 class InventoryItemV2Base(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     sku: str | None = Field(None, max_length=64)
+    barcode: str | None = Field(None, max_length=128)
     description: str | None = None
     unit: str | None = Field("Pcs", max_length=32)
     hsn_code: str | None = Field(None, max_length=32)
@@ -64,6 +65,7 @@ class InventoryItemV2Create(InventoryItemV2Base):
 class InventoryItemV2Update(BaseModel):
     name: str | None = Field(None, min_length=1, max_length=255)
     sku: str | None = Field(None, max_length=64)
+    barcode: str | None = Field(None, max_length=128)
     description: str | None = None
     unit: str | None = Field(None, max_length=32)
     hsn_code: str | None = Field(None, max_length=32)
