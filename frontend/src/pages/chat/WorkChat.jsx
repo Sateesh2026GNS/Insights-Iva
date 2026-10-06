@@ -1451,7 +1451,7 @@ export default function WorkChat() {
   };
 
   return (
-    <ListPageShell stackClassName="work-chat-page pb-6">
+    <ListPageShell stackClassName="work-chat-page pb-2">
       <header className="work-chat-page__head">
         <div>
           <h1 className="work-chat-page__title">Work Chat</h1>
