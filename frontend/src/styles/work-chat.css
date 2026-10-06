@@ -63,6 +63,53 @@
   min-height: 0;
 }
 
+.work-chat-conv-list::-webkit-scrollbar,
+.work-chat-messages::-webkit-scrollbar {
+  width: 6px;
+}
+
+.work-chat-conv-list::-webkit-scrollbar-track,
+.work-chat-messages::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.work-chat-conv-list::-webkit-scrollbar-thumb,
+.work-chat-messages::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.4);
+  border-radius: 999px;
+}
+
+.work-chat-conv-list::-webkit-scrollbar-thumb:hover,
+.work-chat-messages::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.7);
+}
+
+.work-chat-scroll-bottom-btn {
+  position: absolute;
+  bottom: 4.5rem;
+  right: 1.25rem;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 999px;
+  background: var(--color-primary);
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease;
+  animation: fadeIn 0.15s ease-out;
+}
+
+.work-chat-scroll-bottom-btn:hover {
+  transform: translateY(-2px);
+  background: var(--color-primary-hover, #1d4ed8);
+}
+
 .work-chat-conv-item {
   display: flex;
   width: 100%;

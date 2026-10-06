@@ -4,6 +4,7 @@ import {
   Archive,
   BellOff,
   CheckSquare,
+  ChevronDown,
   Download,
   Eye,
   EyeOff,
@@ -945,8 +946,10 @@ export default function WorkChat() {
   }, [lockedPasswords]);
 
   const bottomRef = useRef(null);
+  const messagesContainerRef = useRef(null);
   const pollRef = useRef(null);
   const menuRef = useRef(null);
+  const [showScrollBottom, setShowScrollBottom] = useState(false);
 
   const activeConv = useMemo(
     () => conversations.find((c) => c.id === activeId) || null,
@@ -1046,6 +1049,13 @@ export default function WorkChat() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  const handleMessagesScroll = (e) => {
+    const el = e.target;
+    if (!el) return;
+    const isScrolledUp = el.scrollHeight - el.scrollTop - el.clientHeight > 120;
+    setShowScrollBottom(isScrolledUp);
+  };
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -1751,7 +1761,9 @@ export default function WorkChat() {
 
                   {/* Thread Messages List */}
                   <div
-                    className={`work-chat-messages work-chat-messages--${chatTheme}`}
+                    ref={messagesContainerRef}
+                    onScroll={handleMessagesScroll}
+                    className={`work-chat-messages work-chat-messages--${chatTheme} relative`}
                     role="log"
                     aria-live="polite"
                   >
@@ -1900,6 +1912,18 @@ export default function WorkChat() {
                     )}
                     <div ref={bottomRef} />
                   </div>
+
+                  {showScrollBottom && (
+                    <button
+                      type="button"
+                      className="work-chat-scroll-bottom-btn"
+                      title="Scroll to latest message"
+                      onClick={() => bottomRef.current?.scrollIntoView({ behavior: "smooth" })}
+                    >
+                      <ChevronDown className="h-4 w-4" />
+                      <span>Latest</span>
+                    </button>
+                  )}
 
                   {pendingFiles.length ? (
                     <div className="work-chat-pending-files">
