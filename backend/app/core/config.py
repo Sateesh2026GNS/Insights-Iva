@@ -165,6 +165,10 @@ class Settings(BaseSettings):
         default="",
         validation_alias=AliasChoices("SMTP_FROM_EMAIL", "SMTP_FROM", "smtp_from_email"),
     )
+    resend_api_key: str = Field(
+        default="",
+        validation_alias=AliasChoices("RESEND_API_KEY", "resend_api_key"),
+    )
 
     # Environment: "development" | "production"
     environment: str = "development"
