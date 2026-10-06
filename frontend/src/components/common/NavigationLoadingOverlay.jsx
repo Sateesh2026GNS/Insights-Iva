@@ -67,9 +67,11 @@ export default function NavigationLoadingOverlay() {
       const clickable = target.closest(
         "button, [role='button'], .cursor-pointer, input[type='button'], input[type='submit']"
       );
-      if (clickable) {
-        triggerLoader(true);
-      }
+      if (!clickable) return;
+      // Print / download / modal actions must not flash the full-screen loader (breaks window.print).
+      if (clickable.closest("[data-skip-nav-loader]")) return;
+      if (clickable.getAttribute("data-action") === "print") return;
+      triggerLoader(true);
     };
 
     window.addEventListener("click", handleGlobalClick, { capture: true });

@@ -81,6 +81,7 @@ export default function AppRoutes() {
       <Route path="/forgot-password" element={<P.ForgotPassword />} />
       <Route path="/reset-password" element={<P.ResetPassword />} />
       <Route path="/verify-email" element={<P.VerifyEmail />} />
+      <Route path="/e-quotation/:token" element={<P.PublicEQuotationPage />} />
       <Route
         path="/"
         element={

@@ -5,7 +5,7 @@
 export default function BrandLoadingScreen({ isFadingOut = false }) {
   return (
     <div
-      className={`pointer-events-auto fixed inset-0 z-[99999] flex items-center justify-center bg-black transition-opacity duration-100 ${
+      className={`brand-loading-screen pointer-events-auto fixed inset-0 z-[99999] flex items-center justify-center bg-black transition-opacity duration-100 ${
         isFadingOut ? "opacity-0" : "opacity-100"
       }`}
       role="status"

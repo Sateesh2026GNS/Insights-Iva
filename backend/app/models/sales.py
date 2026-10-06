@@ -77,6 +77,7 @@ class Quotation(Base, TimestampMixin):
     gst_amount: Mapped[float | None] = mapped_column(Numeric(12, 2))
     freight: Mapped[float | None] = mapped_column(Numeric(12, 2))
     meta_json: Mapped[str | None] = mapped_column(Text)
+    public_view_token: Mapped[str | None] = mapped_column(String(64), nullable=True, unique=True, index=True)
 
     customer = relationship("Customer")
     lead = relationship("Lead")

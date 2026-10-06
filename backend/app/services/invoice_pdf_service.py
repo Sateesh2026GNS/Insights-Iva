@@ -87,12 +87,14 @@ def generate_invoice_pdf(doc: dict[str, Any]) -> bytes:
     is_igst = (doc.get("tax_mode") or "cgst_sgst") == "igst"
     show_einvoice = bool(doc.get("e_invoice_enabled", True) or doc.get("irn"))
 
-    qr_value = "|".join(
+    is_quotation = doc.get("doc_type") == "quotation"
+
+    qr_pipe = "|".join(
         p
         for p in [
             f"Seller:{seller.get('name', '')}",
             f"GSTIN:{seller.get('gstin', '')}",
-            f"Doc:{meta.get('invoice_no', '')}",
+            f"Doc:{meta.get('invoice_no', '') or meta.get('document_no', '') or meta.get('quote_number', '')}",
             f"Date:{meta.get('date', '')}",
             f"Party:{buyer.get('name', '')}",
             f"Total:{summary.get('grand_total', 0)}",
@@ -100,8 +102,9 @@ def generate_invoice_pdf(doc: dict[str, Any]) -> bytes:
         ]
         if p.split(":", 1)[1]
     )
-
-    is_quotation = doc.get("doc_type") == "quotation"
+    qr_value = (doc.get("qr_url") or doc.get("qr_value") or "").strip() if is_quotation else qr_pipe
+    if not qr_value:
+        qr_value = qr_pipe
     doc_title = doc.get("title") or ("Quotation" if is_quotation else "Tax Invoice")
     doc_no = meta.get("document_no") or meta.get("quote_number") or meta.get("invoice_no") or ""
     doc_date = meta.get("date") or ""

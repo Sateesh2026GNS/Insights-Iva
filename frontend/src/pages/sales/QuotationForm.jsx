@@ -113,6 +113,23 @@ function saveCustomPrefixes(list) {
   }
 }
 
+/** API may return meta_json as a JSON string or object. */
+function parseQuotationMeta(metaJson) {
+  if (!metaJson) return {};
+  if (typeof metaJson === "object" && !Array.isArray(metaJson)) {
+    return metaJson;
+  }
+  if (typeof metaJson === "string") {
+    try {
+      const parsed = JSON.parse(metaJson);
+      return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+    } catch {
+      return {};
+    }
+  }
+  return {};
+}
+
 /*
  * API response helper.
  *
@@ -942,8 +959,7 @@ export default function QuotationForm() {
               /^([A-Za-z-]+)/
             );
 
-          const meta =
-            quote.meta_json || {};
+          const meta = parseQuotationMeta(quote.meta_json);
 
           const trans =
             meta.transportation ||
@@ -952,6 +968,20 @@ export default function QuotationForm() {
 
           const cons =
             meta.consignee || {};
+
+          if (meta.contact_person) {
+            setContactPerson(meta.contact_person);
+          }
+
+          if (Array.isArray(meta.custom_fields) && meta.custom_fields.length > 0) {
+            setCustomFields(meta.custom_fields);
+          }
+
+          const consName = (cons.name || "").trim();
+          const buyerLabel = (quote.customer_name || quote.customer?.name || "").trim();
+          if (consName && buyerLabel && consName !== buyerLabel) {
+            setSameAsBuyer(false);
+          }
 
           if (meta.tax_mode) {
             setTaxModeOverride(
@@ -971,8 +1001,9 @@ export default function QuotationForm() {
             ...f,
 
             customer_id:
-              quote.customer_id ||
-              "",
+              quote.customer_id != null && quote.customer_id !== ""
+                ? String(quote.customer_id)
+                : "",
 
             consignee_name:
               cons.name ||
@@ -2055,6 +2086,10 @@ export default function QuotationForm() {
 
           other_charge:
             otherCharge,
+
+          custom_fields: customFields,
+
+          contact_person: contactPerson || null,
         },
       };
 
