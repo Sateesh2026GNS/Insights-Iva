@@ -71,5 +71,8 @@ async def email_metric_report(
             exc.internal_detail,
         )
         raise HTTPException(status_code=503, detail=email_delivery_http_detail(exc)) from exc
+    except Exception as exc:
+        logger.exception("pdf_report_email_unexpected_failure tenant_id=%s: %s", user.tenant_id, exc)
+        raise HTTPException(status_code=500, detail={"message": "Failed to deliver email report. Please try again.", "code": "smtp_send_failed"}) from exc
 
     return {"ok": True, "to": str(payload.to_email)}
