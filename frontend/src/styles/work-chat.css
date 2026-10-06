@@ -215,12 +215,49 @@
 }
 
 .work-chat-bubble {
+  position: relative;
   max-width: min(85%, 520px);
-  padding: 0.55rem 0.75rem;
+  padding: 0.55rem 1.85rem 0.55rem 0.75rem;
   border-radius: 12px;
   background: var(--color-surface);
   border: 1px solid var(--color-border-soft);
   color: var(--color-text);
+}
+
+.work-chat-bubble-chevron {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.35rem;
+  display: grid;
+  place-items: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted, #64748b);
+  cursor: pointer;
+  border-radius: 6px;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.15s ease, background-color 0.15s ease, visibility 0.15s ease;
+}
+
+.work-chat-bubble:hover .work-chat-bubble-chevron,
+.work-chat-bubble-container:hover .work-chat-bubble-chevron {
+  opacity: 0.75;
+  visibility: visible;
+  pointer-events: auto;
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.work-chat-bubble-chevron:hover,
+.work-chat-bubble-chevron--active {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  background: rgba(0, 0, 0, 0.1);
+  color: var(--color-text, #1e293b);
 }
 
 .work-chat-bubble--own {
@@ -830,4 +867,50 @@
   .work-chat-panel--hidden-mobile {
     display: none;
   }
+}
+
+/* Message Dropdown Popover */
+.work-chat-msg-dropdown {
+  position: absolute;
+  top: 1.85rem;
+  right: 0.35rem;
+  z-index: 50;
+  min-width: 155px;
+  padding: 0.35rem;
+  background: var(--color-surface, #ffffff);
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 12px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  animation: fadeIn 0.12s ease-out;
+}
+
+.work-chat-msg-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.45rem 0.65rem;
+  font-size: 0.825rem;
+  font-weight: 500;
+  color: var(--color-text, #334155);
+  border-radius: 8px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.work-chat-msg-dropdown-item:hover {
+  background: var(--color-surface-muted, #f1f5f9);
+  color: var(--color-text, #0f172a);
+}
+
+.work-chat-msg-dropdown-item--danger {
+  color: #ef4444;
+}
+
+.work-chat-msg-dropdown-item--danger:hover {
+  background: #fef2f2;
+  color: #dc2626;
 }

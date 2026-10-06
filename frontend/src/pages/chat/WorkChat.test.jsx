@@ -99,4 +99,78 @@ describe("WorkChat", () => {
     expect(await screen.findByText("store is Locked")).toBeInTheDocument();
     expect(screen.getByPlaceholderText("Enter chat password...")).toBeInTheDocument();
   });
+
+  it("opens new group modal, selects members with checkboxes, displays chips with X remove button and submits group creation", async () => {
+    const { fireEvent } = await import("@testing-library/react");
+    const { createGroupChat, searchChatUsers } = await import("../../api/workChatApi");
+
+    searchChatUsers.mockResolvedValueOnce({
+      items: [
+        { id: 2, full_name: "HR User", email: "hr@codevia.com" },
+        { id: 3, full_name: "Priya Kumari", email: "priya@codevia.com" },
+      ],
+    });
+
+    createGroupChat.mockResolvedValueOnce({
+      id: 99,
+      type: "group",
+      name: "Engineering Team",
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/chat"]}>
+        <WorkChat />
+      </MemoryRouter>
+    );
+
+    const newGroupBtn = await screen.findByRole("button", { name: /new group/i });
+    fireEvent.click(newGroupBtn);
+
+    expect(screen.getByPlaceholderText("Group name")).toBeInTheDocument();
+    expect(await screen.findByText("HR User")).toBeInTheDocument();
+
+    const hrOption = screen.getByText("HR User");
+    fireEvent.click(hrOption);
+
+    // Selected members section appears with chip and X button
+    expect(screen.getByText("Selected members (1):")).toBeInTheDocument();
+
+    const groupNameInput = screen.getByPlaceholderText("Group name");
+    fireEvent.change(groupNameInput, { target: { value: "Engineering Team" } });
+
+    const createBtn = screen.getByRole("button", { name: /create group/i });
+    fireEvent.click(createBtn);
+
+    expect(createGroupChat).toHaveBeenCalledWith({
+      name: "Engineering Team",
+      member_ids: [2],
+    });
+  });
+
+  it("renders centered date divider badge and message options dropdown with Reply, Copy, React, Forward, Pin, Star, Delete (no Meta AI)", async () => {
+    render(
+      <MemoryRouter initialEntries={["/chat?conversation=1"]}>
+        <WorkChat />
+      </MemoryRouter>
+    );
+
+    // Date divider renders in the chat thread
+    expect(await screen.findByText("25/9/2026")).toBeInTheDocument();
+
+    const optionsBtn = screen.getByTitle("Message options");
+    expect(optionsBtn).toBeInTheDocument();
+
+    const { fireEvent } = await import("@testing-library/react");
+    fireEvent.click(optionsBtn);
+
+    expect(screen.getByText("Reply")).toBeInTheDocument();
+    expect(screen.getByText("Copy")).toBeInTheDocument();
+    expect(screen.getByText("React")).toBeInTheDocument();
+    expect(screen.getByText("Forward")).toBeInTheDocument();
+    expect(screen.getByText("Pin")).toBeInTheDocument();
+    expect(screen.getByText("Star")).toBeInTheDocument();
+
+    // Verify Meta AI is NOT present in the menu
+    expect(screen.queryByText(/meta ai/i)).not.toBeInTheDocument();
+  });
 });

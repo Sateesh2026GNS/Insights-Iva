@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
   Archive,
   BellOff,
   CheckSquare,
   ChevronDown,
+  Copy,
+  CornerUpLeft,
   Download,
   Eye,
   EyeOff,
@@ -23,10 +25,12 @@ import {
   MoreVertical,
   Palette,
   Paperclip,
+  Pin,
   Plus,
   Search,
   Send,
   Smile,
+  Star,
   Trash2,
   Users,
   X,
@@ -86,6 +90,29 @@ function formatTime(iso) {
   return sameDay
     ? d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
     : d.toLocaleDateString([], { month: "short", day: "numeric" });
+}
+
+function getFormattedDateDivider(dateStr) {
+  if (!dateStr) return "";
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return "";
+  const now = new Date();
+
+  const isToday =
+    d.getDate() === now.getDate() &&
+    d.getMonth() === now.getMonth() &&
+    d.getFullYear() === now.getFullYear();
+  if (isToday) return "Today";
+
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  const isYesterday =
+    d.getDate() === yesterday.getDate() &&
+    d.getMonth() === yesterday.getMonth() &&
+    d.getFullYear() === yesterday.getFullYear();
+  if (isYesterday) return "Yesterday";
+
+  return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`;
 }
 
 function isImageFile(filename, mimeType) {
@@ -914,6 +941,10 @@ export default function WorkChat() {
   const [lightbox, setLightbox] = useState(null);
   const [forwardingMsg, setForwardingMsg] = useState(null);
   const [activeEmojiPickerId, setActiveEmojiPickerId] = useState(null);
+  const [activeMsgMenuId, setActiveMsgMenuId] = useState(null);
+  const [replyingToMsg, setReplyingToMsg] = useState(null);
+  const [pinnedMsgIds, setPinnedMsgIds] = useState(new Set());
+  const [starredMsgIds, setStarredMsgIds] = useState(new Set());
   const [showMenu, setShowMenu] = useState(false);
   const [showInfoModal, setShowInfoModal] = useState(false);
   const [showThemeModal, setShowThemeModal] = useState(false);
@@ -949,12 +980,15 @@ export default function WorkChat() {
   const messagesContainerRef = useRef(null);
   const pollRef = useRef(null);
   const menuRef = useRef(null);
+  const msgMenuRef = useRef(null);
+  const groupNameInputRef = useRef(null);
   const isUserScrolledUpRef = useRef(false);
   const shouldScrollToBottomOnNextUpdateRef = useRef(true);
   const prevScrollHeightRef = useRef(0);
   const prevScrollTopRef = useRef(0);
   const isPrependingEarlierRef = useRef(false);
   const [showScrollBottom, setShowScrollBottom] = useState(false);
+  const [creatingGroup, setCreatingGroup] = useState(false);
 
   const activeConv = useMemo(
     () => conversations.find((c) => c.id === activeId) || null,
@@ -1100,6 +1134,9 @@ export default function WorkChat() {
       if (menuRef.current && !menuRef.current.contains(e.target)) {
         setShowMenu(false);
       }
+      if (msgMenuRef.current && !msgMenuRef.current.contains(e.target)) {
+        setActiveMsgMenuId(null);
+      }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
@@ -1124,20 +1161,25 @@ export default function WorkChat() {
   const handleDownloadFile = async (fileId, filename, initialUrl = null) => {
     const targetId = fileId;
     let attempts = 0;
-    let currentUrl = initialUrl;
+    let currentUrl = null;
 
     while (attempts < 3) {
       try {
         if (!currentUrl) {
-          if (!targetId) {
-            throw new Error("File ID is missing.");
+          if (targetId) {
+            try {
+              const res = await getDownloadUrl(targetId);
+              currentUrl = res?.download_url;
+            } catch {
+              currentUrl = initialUrl;
+            }
+          } else {
+            currentUrl = initialUrl;
           }
-          const res = await getDownloadUrl(targetId);
-          currentUrl = res?.download_url;
         }
 
         if (!currentUrl) {
-          throw new Error("No download URL available.");
+          throw new Error("No download URL available for this file.");
         }
 
         const isExternalCloud =
@@ -1207,15 +1249,18 @@ export default function WorkChat() {
         throw new Error("Invalid response received during file download.");
       } catch (err) {
         console.error("File download attempt failed:", err);
-        // If initialUrl or currentUrl failed, clear it so next attempt fetches a fresh token
         currentUrl = null;
         attempts += 1;
         if (attempts >= 3) {
-          const msg = apiErrorMessage(err, err?.message || "Failed to download file.");
+          const status = err?.response?.status;
+          let msg = apiErrorMessage(err, err?.message || "Failed to download file.");
+          if (status === 404 || msg.includes("404") || msg.includes("not found")) {
+            msg = "File not found on server. The file may have been uploaded in a local environment or removed.";
+          }
           addToast(msg, "error");
           break;
         }
-        await new Promise((r) => setTimeout(r, 400));
+        await new Promise((r) => setTimeout(r, 300));
       }
     }
   };
@@ -1445,9 +1490,11 @@ export default function WorkChat() {
       const msg = await sendMessage(activeId, {
         body: text,
         attachment_file_ids: fileIds,
+        reply_to_message_id: replyingToMsg ? replyingToMsg.id : undefined,
       });
       setComposer("");
       setPendingFiles([]);
+      setReplyingToMsg(null);
       isUserScrolledUpRef.current = false;
       shouldScrollToBottomOnNextUpdateRef.current = true;
       setMessages((prev) => [...prev, msg]);
@@ -1477,19 +1524,35 @@ export default function WorkChat() {
   };
 
   const submitGroup = async () => {
-    if (!groupName.trim()) return;
+    if (creatingGroup) return;
+    const name = groupName.trim();
+    if (!name) {
+      addToast("Please enter a group name.", "warning");
+      groupNameInputRef.current?.focus();
+      return;
+    }
+    if (!groupMembers.length) {
+      addToast("Please select at least one member for the group.", "warning");
+      return;
+    }
+    setCreatingGroup(true);
     try {
+      const memberIds = groupMembers.map((m) => Number(typeof m === "object" ? m.id : m));
       const conv = await createGroupChat({
-        name: groupName.trim(),
-        member_ids: groupMembers,
+        name,
+        member_ids: memberIds,
       });
       setShowNewGroup(false);
       setGroupName("");
       setGroupMembers([]);
+      setUserQuery("");
       await loadConversations();
       selectConversation(conv.id);
-    } catch {
-      addToast("Could not create group.", "error");
+      addToast(`Group "${conv.name || name}" created successfully.`, "success");
+    } catch (e) {
+      addToast(apiErrorMessage(e, "Could not create group."), "error");
+    } finally {
+      setCreatingGroup(false);
     }
   };
 
@@ -1822,132 +1885,303 @@ export default function WorkChat() {
                           {threadQuery ? "No matching messages found." : "No messages yet. Start the conversation."}
                         </p>
                       ) : (
-                        filteredMessages.map((m) => {
+                        filteredMessages.map((m, idx) => {
                           const own = m.sender?.id === user?.id;
                           const showPicker = activeEmojiPickerId === m.id;
+                          const showMsgMenu = activeMsgMenuId === m.id;
                           const isSelected = selectedMsgIds.has(m.id);
+                          const isPinned = pinnedMsgIds.has(m.id);
+                          const isStarred = starredMsgIds.has(m.id);
+
+                          const prevMsg = idx > 0 ? filteredMessages[idx - 1] : null;
+                          const currentDateDivider = getFormattedDateDivider(m.created_at);
+                          const prevDateDivider = prevMsg ? getFormattedDateDivider(prevMsg.created_at) : null;
+                          const showDateDivider = !prevMsg || (currentDateDivider && currentDateDivider !== prevDateDivider);
 
                           return (
-                            <div key={m.id} className={`work-chat-bubble-row ${own ? "work-chat-bubble-row--own" : ""}`}>
-                              {selectMode ? (
-                                <input
-                                  type="checkbox"
-                                  className="mr-2 self-center h-4 w-4 accent-[var(--color-primary)]"
-                                  checked={isSelected}
-                                  onChange={() => {
-                                    setSelectedMsgIds((prev) => {
-                                      const next = new Set(prev);
-                                      if (next.has(m.id)) next.delete(m.id);
-                                      else next.add(m.id);
-                                      return next;
-                                    });
-                                  }}
-                                />
+                            <React.Fragment key={m.id}>
+                              {showDateDivider && currentDateDivider ? (
+                                <div className="flex justify-center my-3">
+                                  <span className="px-3.5 py-1 text-xs font-semibold text-[var(--color-text-muted)] bg-[var(--color-surface)] border border-[var(--color-border-soft)] rounded-full shadow-xs tracking-wide">
+                                    {currentDateDivider}
+                                  </span>
+                                </div>
                               ) : null}
-                              <div className="work-chat-bubble-container">
-                                <div className={`work-chat-bubble ${own ? "work-chat-bubble--own" : ""}`}>
-                                  {!own ? (
-                                    <p className="text-[11px] font-semibold text-[var(--color-primary)] mb-0.5">
-                                      {m.sender?.full_name}
-                                    </p>
-                                  ) : null}
-                                  {m.reply_to ? (
-                                    <p className="work-chat-reply text-xs opacity-80 mb-1">{m.reply_to.body}</p>
-                                  ) : null}
-                                  {m.body ? (
-                                    <p className="text-sm whitespace-pre-wrap break-words">{m.body}</p>
-                                  ) : null}
-                                  {m.links?.length ? (
-                                    <div className="mt-2 flex flex-wrap gap-2">
-                                      {m.links.map((link) => (
-                                        <Link
-                                          key={`${link.entity_type}-${link.entity_id}`}
-                                          to={link.path || "#"}
-                                          className="work-chat-erp-link"
-                                        >
-                                          {link.label}
-                                        </Link>
-                                      ))}
-                                    </div>
-                                  ) : null}
-                                  {m.attachments?.length ? (
-                                    <div className="work-chat-attachments">
-                                      {m.attachments.map((a) => (
-                                        <WorkChatAttachmentItem
-                                          key={a.file_id}
-                                          attachment={a}
-                                          own={own}
-                                          onOpenLightbox={(url, filename, fileId) =>
-                                            setLightbox({ url, filename, fileId })
-                                          }
-                                          onDownload={handleDownloadFile}
-                                        />
-                                      ))}
-                                    </div>
-                                  ) : null}
-                                  {m.reactions?.length ? (
-                                    <div className="work-chat-reactions">
-                                      {m.reactions.map((r) => (
+                              <div className={`work-chat-bubble-row ${own ? "work-chat-bubble-row--own" : ""}`}>
+                                {selectMode ? (
+                                  <input
+                                    type="checkbox"
+                                    className="mr-2 self-center h-4 w-4 accent-[var(--color-primary)]"
+                                    checked={isSelected}
+                                    onChange={() => {
+                                      setSelectedMsgIds((prev) => {
+                                        const next = new Set(prev);
+                                        if (next.has(m.id)) next.delete(m.id);
+                                        else next.add(m.id);
+                                        return next;
+                                      });
+                                    }}
+                                  />
+                                ) : null}
+                                  <div className="work-chat-bubble-container relative">
+                                    <div className={`work-chat-bubble ${own ? "work-chat-bubble--own" : ""}`}>
+                                      {!m.is_deleted ? (
                                         <button
-                                          key={r.emoji}
                                           type="button"
-                                          className={`work-chat-reaction-badge ${
-                                            r.reacted ? "work-chat-reaction-badge--active" : ""
-                                          }`}
-                                          onClick={() => handleToggleReaction(m.id, r.emoji)}
-                                          title={`${r.count} reaction(s)`}
+                                          className={`work-chat-bubble-chevron ${showMsgMenu ? "work-chat-bubble-chevron--active" : ""}`}
+                                          title="Message options"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setActiveMsgMenuId((prev) => (prev === m.id ? null : m.id));
+                                          }}
                                         >
-                                          <span>{r.emoji}</span>
-                                          <span>{r.count}</span>
+                                          <ChevronDown className="h-3.5 w-3.5" />
+                                        </button>
+                                      ) : null}
+                                      <div className="flex items-center justify-between gap-2 pr-4">
+                                        {!own ? (
+                                          <p className="text-[11px] font-semibold text-[var(--color-primary)] mb-0.5">
+                                            {m.sender?.full_name}
+                                          </p>
+                                        ) : null}
+                                        {isPinned ? (
+                                          <span className="text-[10px] flex items-center gap-0.5 text-indigo-600 font-semibold ml-auto">
+                                            <Pin className="h-3 w-3 fill-indigo-600" /> Pinned
+                                          </span>
+                                        ) : null}
+                                      </div>
+                                      {m.reply_to ? (
+                                        <p className="work-chat-reply text-xs opacity-80 mb-1 border-l-2 border-[var(--color-primary)] pl-2 py-0.5 bg-[var(--color-surface-muted)]/50 rounded">
+                                          {m.reply_to.body || "Attachment"}
+                                        </p>
+                                      ) : null}
+                                      {m.body ? (
+                                        <p className="text-sm whitespace-pre-wrap break-words">{m.body}</p>
+                                      ) : null}
+                                      {m.links?.length ? (
+                                        <div className="mt-2 flex flex-wrap gap-2">
+                                          {m.links.map((link) => (
+                                            <Link
+                                              key={`${link.entity_type}-${link.entity_id}`}
+                                              to={link.path || "#"}
+                                              className="work-chat-erp-link"
+                                            >
+                                              {link.label}
+                                            </Link>
+                                          ))}
+                                        </div>
+                                      ) : null}
+                                      {m.attachments?.length ? (
+                                        <div className="work-chat-attachments">
+                                          {m.attachments.map((a) => (
+                                            <WorkChatAttachmentItem
+                                              key={a.file_id}
+                                              attachment={a}
+                                              own={own}
+                                              onOpenLightbox={(url, filename, fileId) =>
+                                                setLightbox({ url, filename, fileId })
+                                              }
+                                              onDownload={handleDownloadFile}
+                                            />
+                                          ))}
+                                        </div>
+                                      ) : null}
+                                      {m.reactions?.length ? (
+                                        <div className="work-chat-reactions">
+                                          {m.reactions.map((r) => (
+                                            <button
+                                              key={r.emoji}
+                                              type="button"
+                                              className={`work-chat-reaction-badge ${
+                                                r.reacted ? "work-chat-reaction-badge--active" : ""
+                                              }`}
+                                              onClick={() => handleToggleReaction(m.id, r.emoji)}
+                                              title={`${r.count} reaction(s)`}
+                                            >
+                                              <span>{r.emoji}</span>
+                                              <span>{r.count}</span>
+                                            </button>
+                                          ))}
+                                        </div>
+                                      ) : null}
+                                      <div className="mt-1 flex items-center justify-between gap-1 text-[10px] text-[var(--color-text-muted)]">
+                                        <span>{formatTime(m.created_at)}</span>
+                                        {isStarred ? <Star className="h-3 w-3 text-amber-500 fill-amber-500 inline" /> : null}
+                                      </div>
+
+                                      {/* Message Dropdown Popover anchored at top-right under chevron */}
+                                      {showMsgMenu ? (
+                                        <div
+                                          ref={msgMenuRef}
+                                          className="work-chat-msg-dropdown"
+                                          onClick={(e) => e.stopPropagation()}
+                                        >
+                                          <button
+                                            type="button"
+                                            className="work-chat-msg-dropdown-item"
+                                            onClick={() => {
+                                              setReplyingToMsg(m);
+                                              setActiveMsgMenuId(null);
+                                            }}
+                                          >
+                                            <CornerUpLeft className="h-4 w-4 text-[var(--color-primary)]" />
+                                            <span>Reply</span>
+                                          </button>
+
+                                          <button
+                                            type="button"
+                                            className="work-chat-msg-dropdown-item"
+                                            onClick={() => {
+                                              if (m.body) {
+                                                navigator.clipboard.writeText(m.body);
+                                                addToast("Message copied to clipboard.", "success");
+                                              }
+                                              setActiveMsgMenuId(null);
+                                            }}
+                                          >
+                                            <Copy className="h-4 w-4 text-slate-500" />
+                                            <span>Copy</span>
+                                          </button>
+
+                                          <button
+                                            type="button"
+                                            className="work-chat-msg-dropdown-item"
+                                            onClick={() => {
+                                              setActiveEmojiPickerId(m.id);
+                                              setActiveMsgMenuId(null);
+                                            }}
+                                          >
+                                            <Smile className="h-4 w-4 text-amber-500" />
+                                            <span>React</span>
+                                          </button>
+
+                                          <button
+                                            type="button"
+                                            className="work-chat-msg-dropdown-item"
+                                            onClick={() => {
+                                              setForwardingMsg(m);
+                                              setActiveMsgMenuId(null);
+                                            }}
+                                          >
+                                            <Forward className="h-4 w-4 text-blue-500" />
+                                            <span>Forward</span>
+                                          </button>
+
+                                          <button
+                                            type="button"
+                                            className="work-chat-msg-dropdown-item"
+                                            onClick={() => {
+                                              setPinnedMsgIds((prev) => {
+                                                const next = new Set(prev);
+                                                if (next.has(m.id)) {
+                                                  next.delete(m.id);
+                                                  addToast("Message unpinned.", "info");
+                                                } else {
+                                                  next.add(m.id);
+                                                  addToast("Message pinned.", "success");
+                                                }
+                                                return next;
+                                              });
+                                              setActiveMsgMenuId(null);
+                                            }}
+                                          >
+                                            <Pin className={`h-4 w-4 ${pinnedMsgIds.has(m.id) ? "text-indigo-600 fill-indigo-600" : "text-slate-500"}`} />
+                                            <span>{pinnedMsgIds.has(m.id) ? "Unpin" : "Pin"}</span>
+                                          </button>
+
+                                          <button
+                                            type="button"
+                                            className="work-chat-msg-dropdown-item"
+                                            onClick={() => {
+                                              setStarredMsgIds((prev) => {
+                                                const next = new Set(prev);
+                                                if (next.has(m.id)) {
+                                                  next.delete(m.id);
+                                                  addToast("Message unstarred.", "info");
+                                                } else {
+                                                  next.add(m.id);
+                                                  addToast("Message starred.", "success");
+                                                }
+                                                return next;
+                                              });
+                                              setActiveMsgMenuId(null);
+                                            }}
+                                          >
+                                            <Star className={`h-4 w-4 ${starredMsgIds.has(m.id) ? "text-amber-500 fill-amber-500" : "text-slate-500"}`} />
+                                            <span>{starredMsgIds.has(m.id) ? "Unstar" : "Star"}</span>
+                                          </button>
+
+                                          {own || user?.is_admin ? (
+                                            <>
+                                              <div className="my-1 border-t border-[var(--color-border-soft)]" />
+                                              <button
+                                                type="button"
+                                                className="work-chat-msg-dropdown-item work-chat-msg-dropdown-item--danger"
+                                                onClick={async () => {
+                                                  if (window.confirm("Are you sure you want to delete this message?")) {
+                                                    try {
+                                                      await deleteChatMessage(m.id);
+                                                      setMessages((prev) => prev.filter((msg) => msg.id !== m.id));
+                                                      addToast("Message deleted.", "info");
+                                                    } catch (e) {
+                                                      addToast(apiErrorMessage(e, "Could not delete message."), "error");
+                                                    }
+                                                  }
+                                                  setActiveMsgMenuId(null);
+                                                }}
+                                              >
+                                                <Trash2 className="h-4 w-4 text-red-500" />
+                                                <span>Delete</span>
+                                              </button>
+                                            </>
+                                          ) : null}
+                                        </div>
+                                      ) : null}
+                                    </div>
+
+                                    {/* Action Buttons matching reference style */}
+                                    {!m.is_deleted ? (
+                                      <div className={`work-chat-msg-actions ${showPicker ? "work-chat-msg-actions--active" : ""}`}>
+                                        <button
+                                          type="button"
+                                          className="work-chat-msg-action-btn"
+                                          title="Forward message"
+                                          onClick={() => setForwardingMsg(m)}
+                                        >
+                                          <Forward className="h-3.5 w-3.5" />
+                                        </button>
+                                        <button
+                                          type="button"
+                                          className="work-chat-msg-action-btn"
+                                          title="React with emoji"
+                                          onClick={() => setActiveEmojiPickerId(showPicker ? null : m.id)}
+                                        >
+                                          <Smile className="h-3.5 w-3.5" />
+                                        </button>
+                                      </div>
+                                    ) : null}
+
+                                  {/* Emoji Quick Picker Popover */}
+                                  {showPicker ? (
+                                    <div className="work-chat-emoji-popover">
+                                      {QUICK_EMOJIS.map((emoji) => (
+                                        <button
+                                          key={emoji}
+                                          type="button"
+                                          className="work-chat-emoji-opt"
+                                          onClick={() => {
+                                            handleToggleReaction(m.id, emoji);
+                                            setActiveEmojiPickerId(null);
+                                          }}
+                                        >
+                                          {emoji}
                                         </button>
                                       ))}
                                     </div>
                                   ) : null}
-                                  <p className="mt-1 text-[10px] text-[var(--color-text-muted)]">{formatTime(m.created_at)}</p>
                                 </div>
-
-                                {/* Action Buttons matching reference style */}
-                                {!m.is_deleted ? (
-                                  <div className={`work-chat-msg-actions ${showPicker ? "work-chat-msg-actions--active" : ""}`}>
-                                    <button
-                                      type="button"
-                                      className="work-chat-msg-action-btn"
-                                      title="Forward message"
-                                      onClick={() => setForwardingMsg(m)}
-                                    >
-                                      <Forward className="h-3.5 w-3.5" />
-                                    </button>
-                                    <button
-                                      type="button"
-                                      className="work-chat-msg-action-btn"
-                                      title="React with emoji"
-                                      onClick={() => setActiveEmojiPickerId(showPicker ? null : m.id)}
-                                    >
-                                      <Smile className="h-3.5 w-3.5" />
-                                    </button>
-                                  </div>
-                                ) : null}
-
-                                {/* Emoji Quick Picker Popover */}
-                                {showPicker ? (
-                                  <div className="work-chat-emoji-popover">
-                                    {QUICK_EMOJIS.map((emoji) => (
-                                      <button
-                                        key={emoji}
-                                        type="button"
-                                        className="work-chat-emoji-opt"
-                                        onClick={() => {
-                                          handleToggleReaction(m.id, emoji);
-                                          setActiveEmojiPickerId(null);
-                                        }}
-                                      >
-                                        {emoji}
-                                      </button>
-                                    ))}
-                                  </div>
-                                ) : null}
                               </div>
-                            </div>
+                            </React.Fragment>
                           );
                         })
                       )}
@@ -1980,6 +2214,28 @@ export default function WorkChat() {
                           onRemove={() => setPendingFiles((p) => p.filter((_, j) => j !== i))}
                         />
                       ))}
+                    </div>
+                  ) : null}
+
+                  {replyingToMsg ? (
+                    <div className="flex items-center justify-between px-3 py-2 bg-[var(--color-surface-muted)] border-t border-[var(--color-border-soft)] text-xs">
+                      <div className="flex items-center gap-2 truncate min-w-0">
+                        <CornerUpLeft className="h-3.5 w-3.5 text-[var(--color-primary)] shrink-0" />
+                        <span className="font-semibold text-[var(--color-primary)] shrink-0">
+                          Replying to {replyingToMsg.sender?.full_name || "User"}:
+                        </span>
+                        <span className="truncate text-[var(--color-text-muted)]">
+                          {replyingToMsg.body || "Attachment"}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        className="p-1 hover:bg-[var(--color-surface)] rounded text-[var(--color-text-muted)]"
+                        onClick={() => setReplyingToMsg(null)}
+                        title="Cancel reply"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
                     </div>
                   ) : null}
 
@@ -2034,22 +2290,44 @@ export default function WorkChat() {
 
       {(showNewDirect || showNewGroup) && (
         <div className="work-chat-modal-backdrop" role="dialog" aria-modal="true">
-          <div className="work-chat-modal ui-card">
+          <div className="work-chat-modal ui-card max-w-md w-full">
             <div className="flex items-center justify-between border-b border-[var(--color-border)] px-4 py-3">
-              <h3 className="font-bold">{showNewGroup ? "New group" : "New chat"}</h3>
-              <button type="button" onClick={() => { setShowNewDirect(false); setShowNewGroup(false); }} aria-label="Close">
+              <h3 className="font-bold text-base text-[var(--color-text)]">
+                {showNewGroup ? "New group" : "New chat"}
+              </h3>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowNewDirect(false);
+                  setShowNewGroup(false);
+                  setGroupName("");
+                  setGroupMembers([]);
+                  setUserQuery("");
+                }}
+                className="p-1 text-[var(--color-text-muted)] hover:text-[var(--color-text)] rounded-full hover:bg-[var(--color-surface-muted)] transition-colors"
+                aria-label="Close"
+              >
                 <X className="h-5 w-5" />
               </button>
             </div>
             <div className="p-4 space-y-3">
               {showNewGroup ? (
                 <input
+                  ref={groupNameInputRef}
                   className="ui-input w-full"
                   placeholder="Group name"
                   value={groupName}
                   onChange={(e) => setGroupName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      submitGroup();
+                    }
+                  }}
+                  autoFocus
                 />
               ) : null}
+
               <SearchBar
                 size="compact"
                 value={userQuery}
@@ -2058,28 +2336,95 @@ export default function WorkChat() {
                 className="w-full"
                 aria-label="Search users"
               />
-              <ul className="max-h-48 overflow-y-auto">
-                {userHits.map((u) => (
-                  <li key={u.id}>
-                    <button
-                      type="button"
-                      className="w-full px-2 py-2 text-left text-sm hover:bg-[var(--color-surface-muted)] rounded-lg"
-                      onClick={() => {
-                        if (showNewGroup) {
-                          setGroupMembers((ids) => (ids.includes(u.id) ? ids : [...ids, u.id]));
-                        } else {
-                          startDirect(u.id);
-                        }
-                      }}
-                    >
-                      {u.full_name} <span className="text-[var(--color-text-muted)]">({u.email})</span>
-                    </button>
-                  </li>
-                ))}
+
+              {showNewGroup && groupMembers.length > 0 ? (
+                <div className="space-y-1">
+                  <span className="text-xs font-semibold text-[var(--color-text-muted)]">
+                    Selected members ({groupMembers.length}):
+                  </span>
+                  <div className="flex flex-wrap gap-1.5 p-2 bg-[var(--color-surface-muted)] rounded-lg border border-[var(--color-border-soft)] max-h-24 overflow-y-auto">
+                    {groupMembers.map((u) => (
+                      <span
+                        key={u.id}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full bg-[var(--color-primary-soft)] text-[var(--color-primary)] border border-color-mix(in srgb, var(--color-primary) 25%, var(--color-border))"
+                      >
+                        <span>{u.full_name}</span>
+                        <button
+                          type="button"
+                          className="hover:bg-[var(--color-surface)] p-0.5 rounded-full transition-colors text-[var(--color-primary)]"
+                          onClick={() => setGroupMembers((prev) => prev.filter((m) => m.id !== u.id))}
+                          title={`Remove ${u.full_name}`}
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
+              <ul className="max-h-52 overflow-y-auto divide-y divide-[var(--color-border-soft)] border border-[var(--color-border-soft)] rounded-lg">
+                {userHits.length === 0 ? (
+                  <li className="p-3 text-center text-xs text-[var(--color-text-muted)]">No users found</li>
+                ) : (
+                  userHits.map((u) => {
+                    const isSelected = showNewGroup ? groupMembers.some((m) => m.id === u.id) : false;
+                    return (
+                      <li key={u.id}>
+                        <button
+                          type="button"
+                          className={`w-full px-3 py-2.5 flex items-center justify-between text-left text-sm hover:bg-[var(--color-surface-muted)] transition-colors ${
+                            isSelected ? "bg-[var(--color-primary-soft)]/50" : ""
+                          }`}
+                          onClick={() => {
+                            if (showNewGroup) {
+                              setGroupMembers((prev) =>
+                                prev.some((m) => m.id === u.id)
+                                  ? prev.filter((m) => m.id !== u.id)
+                                  : [...prev, u]
+                              );
+                            } else {
+                              startDirect(u.id);
+                            }
+                          }}
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            {showNewGroup ? (
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() => {}}
+                                className="h-4 w-4 rounded accent-[var(--color-primary)] shrink-0 cursor-pointer"
+                              />
+                            ) : null}
+                            <div className="truncate">
+                              <span className="font-medium text-[var(--color-text)]">{u.full_name}</span>
+                              <span className="ml-1.5 text-xs text-[var(--color-text-muted)]">({u.email})</span>
+                            </div>
+                          </div>
+                        </button>
+                      </li>
+                    );
+                  })
+                )}
               </ul>
+
               {showNewGroup ? (
-                <Button type="button" variant="primary" className="w-full" onClick={submitGroup}>
-                  Create group ({groupMembers.length + 1} members)
+                <Button
+                  type="button"
+                  variant="primary"
+                  className="w-full mt-2"
+                  onClick={submitGroup}
+                  disabled={creatingGroup}
+                >
+                  {creatingGroup ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin inline" />
+                      Creating group...
+                    </>
+                  ) : (
+                    `Create group (${groupMembers.length + 1} members)`
+                  )}
                 </Button>
               ) : null}
             </div>
