@@ -136,23 +136,56 @@ def email_delivery_http_detail(exc: EmailDeliveryError) -> dict[str, str]:
     return {"message": exc.public_message, "code": code}
 
 
-def _smtp_use_implicit_ssl(s) -> bool:
-    return int(s.smtp_port) == 465
+import ssl
+
+def _create_ssl_context(verify: bool = True) -> ssl.SSLContext:
+    try:
+        context = ssl.create_default_context()
+        if not verify:
+            context.check_hostname = False
+            context.verify_mode = ssl.CERT_NONE
+        return context
+    except Exception:
+        context = ssl._create_unverified_context()
+        return context
 
 
-def _smtp_session(s):
+def _smtp_use_implicit_ssl(s, port_override: int | None = None) -> bool:
+    port = port_override if port_override is not None else int(s.smtp_port)
+    return port == 465
+
+
+def _smtp_session(s, port_override: int | None = None):
     host = (s.smtp_host or "").strip()
-    port = int(s.smtp_port)
-    timeout = 15
-    if _smtp_use_implicit_ssl(s):
-        return smtplib.SMTP_SSL(host, port, timeout=timeout)
+    port = port_override if port_override is not None else int(s.smtp_port)
+    if "gmail.com" in host.lower() and port_override is None and port == 587:
+        port = 465
+    timeout = 6
+    if port == 465:
+        ctx = _create_ssl_context(verify=True)
+        try:
+            return smtplib.SMTP_SSL(host, port, timeout=timeout, context=ctx)
+        except Exception as ssl_err:
+            if "CERTIFICATE_VERIFY_FAILED" in str(ssl_err):
+                return smtplib.SMTP_SSL(host, port, timeout=timeout, context=_create_ssl_context(verify=False))
+            raise
     return smtplib.SMTP(host, port, timeout=timeout)
 
 
-def _prepare_smtp_server(server, s) -> None:
+def _prepare_smtp_server(server, s, port_override: int | None = None) -> None:
+    port = port_override if port_override is not None else int(s.smtp_port)
+    if "gmail.com" in (s.smtp_host or "").lower() and port_override is None and port == 587:
+        port = 465
     server.ehlo()
-    if not _smtp_use_implicit_ssl(s):
-        server.starttls()
+    if port != 465:
+        ctx = _create_ssl_context(verify=True)
+        try:
+            server.starttls(context=ctx)
+        except Exception as ssl_err:
+            if "CERTIFICATE_VERIFY_FAILED" in str(ssl_err):
+                server.starttls(context=_create_ssl_context(verify=False))
+            else:
+                raise
         server.ehlo()
 
 
@@ -231,24 +264,50 @@ def _send_via_smtplib(
 
     last_exc = None
     configured_port = int(s.smtp_port)
-    ports_to_try = [configured_port]
-    for alt_port in (465, 587):
-        if alt_port not in ports_to_try:
-            ports_to_try.append(alt_port)
-
     host = (s.smtp_host or "").strip()
+    is_gmail = "gmail.com" in host.lower()
+
+    if is_gmail:
+        # Gmail on cloud hosts (Render/AWS) frequently blocks/times out port 587 (STARTTLS).
+        # Port 465 (Implicit SSL) is direct TLS and works reliably on cloud environments.
+        ports_to_try = [465, 587]
+    else:
+        ports_to_try = [configured_port]
+        for alt_port in (465, 587):
+            if alt_port not in ports_to_try:
+                ports_to_try.append(alt_port)
+
+    socket_timeout = 6
     for port in ports_to_try:
+        use_ssl = (port == 465)
         try:
-            use_ssl = (port == 465)
             if use_ssl:
-                with smtplib.SMTP_SSL(host, port, timeout=15) as server:
-                    server.ehlo()
-                    _smtp_login_and_send(server, s, msg)
-                    return
+                ctx = _create_ssl_context(verify=True)
+                try:
+                    with smtplib.SMTP_SSL(host, port, timeout=socket_timeout, context=ctx) as server:
+                        server.ehlo()
+                        _smtp_login_and_send(server, s, msg)
+                        return
+                except Exception as ssl_err:
+                    if "CERTIFICATE_VERIFY_FAILED" in str(ssl_err):
+                        ctx_unverified = _create_ssl_context(verify=False)
+                        with smtplib.SMTP_SSL(host, port, timeout=socket_timeout, context=ctx_unverified) as server:
+                            server.ehlo()
+                            _smtp_login_and_send(server, s, msg)
+                            return
+                    raise
             else:
-                with smtplib.SMTP(host, port, timeout=15) as server:
+                with smtplib.SMTP(host, port, timeout=socket_timeout) as server:
                     server.ehlo()
-                    server.starttls()
+                    ctx = _create_ssl_context(verify=True)
+                    try:
+                        server.starttls(context=ctx)
+                    except Exception as ssl_err:
+                        if "CERTIFICATE_VERIFY_FAILED" in str(ssl_err):
+                            ctx_unverified = _create_ssl_context(verify=False)
+                            server.starttls(context=ctx_unverified)
+                        else:
+                            raise
                     server.ehlo()
                     _smtp_login_and_send(server, s, msg)
                     return

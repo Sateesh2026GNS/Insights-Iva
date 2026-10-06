@@ -95,3 +95,29 @@ def test_metric_report_email_smtp_not_configured_returns_503_safe_detail(
     assert exc.value.detail["code"] == "smtp_not_configured"
     assert exc.value.detail["message"] == PUBLIC_MSG_NOT_CONFIGURED
     assert "SMTP_PASSWORD" not in str(exc.value.detail)
+
+
+def test_send_via_smtplib_gmail_port_465_prioritization():
+    from app.services.email_service import _send_via_smtplib
+
+    mock_settings = MagicMock()
+    mock_settings.smtp_host = "smtp.gmail.com"
+    mock_settings.smtp_port = 587
+    mock_settings.smtp_user = "admin@codeviasoftware.com"
+    mock_settings.smtp_password = "password"
+    mock_settings.smtp_from_email = "admin@codeviasoftware.com"
+
+    with patch("app.services.email_service._settings", return_value=mock_settings), \
+         patch("app.services.email_service.smtp_is_configured", return_value=True), \
+         patch("smtplib.SMTP_SSL") as mock_ssl:
+
+        mock_server = MagicMock()
+        mock_ssl.return_value.__enter__.return_value = mock_server
+
+        _send_via_smtplib("test@example.com", "Test", "Body")
+
+        mock_ssl.assert_called_once()
+        assert mock_ssl.call_args[0][0] == "smtp.gmail.com"
+        assert mock_ssl.call_args[0][1] == 465
+        mock_server.login.assert_called_once_with("admin@codeviasoftware.com", "password")
+
