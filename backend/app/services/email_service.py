@@ -342,8 +342,15 @@ def _send_via_smtplib(
     s = _settings()
     raw_resend = getattr(s, "resend_api_key", "")
     if isinstance(raw_resend, str) and raw_resend.strip():
-        _send_via_resend(raw_resend.strip(), to, subject, body, html=html, attachments=attachments, from_email=s.smtp_from_email)
-        return
+        try:
+            _send_via_resend(raw_resend.strip(), to, subject, body, html=html, attachments=attachments, from_email=s.smtp_from_email)
+            return
+        except EmailDeliveryError as resend_err:
+            detail_lower = (resend_err.internal_detail or "").lower()
+            if ("resend.com/domains" in detail_lower or "verify a domain" in detail_lower or "testing emails to your own" in detail_lower) and s.smtp_user and s.smtp_password:
+                logger.warning("resend_testing_mode_restriction_detected falling_back_to_direct_smtp to=%s", to)
+            else:
+                raise
 
     msg = EmailMessage()
     msg["Subject"] = subject

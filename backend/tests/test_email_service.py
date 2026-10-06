@@ -145,3 +145,35 @@ def test_generate_metric_report_pdf_handles_mixed_row_types():
     assert pdf.startswith(b"%PDF")
 
 
+def test_resend_testing_mode_falls_back_to_direct_smtp():
+    from app.services.email_service import _send_via_smtplib, EmailDeliveryError
+
+    mock_settings = MagicMock()
+    mock_settings.resend_api_key = "re_mock_key"
+    mock_settings.smtp_host = "smtp.gmail.com"
+    mock_settings.smtp_port = 465
+    mock_settings.smtp_user = "admin@codeviasoftware.com"
+    mock_settings.smtp_password = "password"
+    mock_settings.smtp_from_email = "admin@codeviasoftware.com"
+
+    with patch("app.services.email_service._settings", return_value=mock_settings), \
+         patch("app.services.email_service.smtp_is_configured", return_value=True), \
+         patch("app.services.email_service._send_via_resend") as mock_resend, \
+         patch("smtplib.SMTP_SSL") as mock_ssl:
+
+        mock_resend.side_effect = EmailDeliveryError(
+            "Failed",
+            reason="delivery",
+            internal_detail="You can only send testing emails to your own email address (admin@codeviasoftware.com). To send emails to other recipients, please verify a domain at resend.com/domains",
+        )
+        mock_server = MagicMock()
+        mock_ssl.return_value.__enter__.return_value = mock_server
+
+        _send_via_smtplib("external@example.com", "Test", "Body")
+
+        mock_resend.assert_called_once()
+        mock_ssl.assert_called_once()
+        mock_server.login.assert_called_once_with("admin@codeviasoftware.com", "password")
+
+
+
