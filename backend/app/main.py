@@ -1,3 +1,21 @@
+import socket
+
+# Force IPv4-first DNS resolution globally for all outbound sockets.
+# Fixes '[Errno 101] Network is unreachable' on cloud hosting (Render/AWS containers)
+# where IPv6 DNS returns AAAA records first but IPv6 routing is unavailable.
+_orig_getaddrinfo = socket.getaddrinfo
+
+def _getaddrinfo_ipv4_first(host, port, family=0, type=0, proto=0, flags=0):
+    try:
+        res = _orig_getaddrinfo(host, port, family, type, proto, flags)
+        return sorted(res, key=lambda x: 0 if x[0] == socket.AF_INET else 1)
+    except Exception:
+        return _orig_getaddrinfo(host, port, family, type, proto, flags)
+
+if not getattr(socket, "_ipv4_patched", False):
+    socket.getaddrinfo = _getaddrinfo_ipv4_first
+    socket._ipv4_patched = True
+
 import time
 import uuid
 
