@@ -340,6 +340,7 @@ def _send_via_smtplib(
 ) -> None:
     _require_smtp()
     s = _settings()
+    resend_err_to_raise = None
     raw_resend = getattr(s, "resend_api_key", "")
     if isinstance(raw_resend, str) and raw_resend.strip():
         try:
@@ -349,6 +350,7 @@ def _send_via_smtplib(
             detail_lower = (resend_err.internal_detail or "").lower()
             if ("resend.com/domains" in detail_lower or "verify a domain" in detail_lower or "testing emails to your own" in detail_lower) and s.smtp_user and s.smtp_password:
                 logger.warning("resend_testing_mode_restriction_detected falling_back_to_direct_smtp to=%s", to)
+                resend_err_to_raise = resend_err
             else:
                 raise
 
@@ -417,6 +419,9 @@ def _send_via_smtplib(
         except Exception as exc:
             last_exc = exc
             logger.warning("SMTP send failed on port %s for host %s: %s", port, host, exc)
+
+    if resend_err_to_raise:
+        raise resend_err_to_raise
 
     if last_exc:
         raise _classify_delivery_failure(last_exc)
