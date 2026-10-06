@@ -18,11 +18,12 @@ from email.message import EmailMessage
 _orig_getaddrinfo = socket.getaddrinfo
 
 def _getaddrinfo_ipv4_first(host, port, family=0, type=0, proto=0, flags=0):
+    if family == 0 or family == socket.AF_UNSPEC:
+        family = socket.AF_INET
     try:
-        res = _orig_getaddrinfo(host, port, family, type, proto, flags)
-        return sorted(res, key=lambda x: 0 if x[0] == socket.AF_INET else 1)
-    except Exception:
         return _orig_getaddrinfo(host, port, family, type, proto, flags)
+    except Exception:
+        return _orig_getaddrinfo(host, port, 0, type, proto, flags)
 
 if not getattr(socket, "_ipv4_patched", False):
     socket.getaddrinfo = _getaddrinfo_ipv4_first
