@@ -284,11 +284,11 @@ def _send_via_resend(
         "User-Agent": "InsightsIva/1.0",
     }
     
-    sender = (from_email or "onboarding@resend.dev").strip()
-    if "@resend.dev" not in sender and "codeviasoftware.com" not in sender:
+    resend_from = (os.environ.get("RESEND_FROM_EMAIL") or "").strip()
+    if resend_from:
+        sender = resend_from
+    else:
         sender = "Insights Iva <onboarding@resend.dev>"
-    elif not sender.startswith("Insights Iva"):
-        sender = f"Insights Iva <{sender}>"
 
     payload = {
         "from": sender,
