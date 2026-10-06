@@ -208,6 +208,7 @@ def build_quotation_document(db: Session, tenant_id: int, quote_id: int) -> dict
             "date": _format_date(quote.quote_date),
             "valid_until": _format_date(quote.valid_until),
             "reference_no": dispatch_raw.get("reference_no") or meta_raw.get("reference_no") or "—",
+            "reference_date": _format_date(dispatch_raw.get("reference_date") or meta_raw.get("reference_date")) if (dispatch_raw.get("reference_date") or meta_raw.get("reference_date")) else "",
             "other_references": dispatch_raw.get("other_references") or meta_raw.get("other_references") or "—",
             "buyer_order_no": dispatch_raw.get("buyer_order_no") or dispatch_raw.get("buyers_order_no") or dispatch_raw.get("po_number") or meta_raw.get("buyer_order_no") or meta_raw.get("buyers_order_no") or meta_raw.get("po_number") or "—",
             "buyer_order_date": _format_date(dispatch_raw.get("buyer_order_date") or dispatch_raw.get("po_date") or meta_raw.get("buyer_order_date") or meta_raw.get("po_date")) if (dispatch_raw.get("buyer_order_date") or dispatch_raw.get("po_date") or meta_raw.get("buyer_order_date") or meta_raw.get("po_date")) else "—",
