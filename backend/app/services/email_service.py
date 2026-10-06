@@ -154,7 +154,10 @@ def smtp_configuration_snapshot() -> dict:
 
 def email_delivery_http_detail(exc: EmailDeliveryError) -> dict[str, str]:
     code = EMAIL_ERROR_CODES.get(exc.reason, "smtp_send_failed")
-    return {"message": exc.public_message, "code": code}
+    msg = exc.public_message
+    if exc.internal_detail and ("resend.com/domains" in exc.internal_detail or "verify a domain" in exc.internal_detail):
+        msg = "Resend Testing Mode: Restricted to sending to account owner (admin@codeviasoftware.com). To send to any recipient, verify your domain at resend.com/domains."
+    return {"message": msg, "code": code}
 
 
 import ssl
