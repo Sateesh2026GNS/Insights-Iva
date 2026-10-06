@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import SearchableSelect from "./SearchableSelect";
 
 describe("SearchableSelect", () => {
@@ -17,7 +17,33 @@ describe("SearchableSelect", () => {
 
     const menu = screen.getByRole("listbox");
     expect(menu).toBeInTheDocument();
-    expect(menu.parentElement).toHaveClass("top-full");
-    expect(menu.parentElement).not.toHaveClass("bottom-full");
+    const panel = menu.closest(".top-full");
+    expect(panel).toBeTruthy();
+    expect(panel).not.toHaveClass("bottom-full");
+  });
+
+  it("shows clear control and footer action", () => {
+    const onChange = vi.fn();
+    const onClear = vi.fn();
+    render(
+      <SearchableSelect
+        value="1"
+        onChange={onChange}
+        onClear={onClear}
+        clearable
+        clearAriaLabel="Clear assigned executive"
+        options={[{ value: "1", label: "Vikram Sharma" }]}
+        footerOptions={[{ value: "__add__", label: "+ Add New Name", ariaLabel: "Add new executive name" }]}
+        placeholder="Select executive"
+      />
+    );
+
+    fireEvent.click(screen.getByLabelText("Clear assigned executive"));
+    expect(onChange).toHaveBeenCalledWith("");
+    expect(onClear).toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: /vikram sharma/i }));
+    expect(screen.getByRole("group", { name: "Dropdown actions" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /add new executive name/i })).toBeInTheDocument();
   });
 });

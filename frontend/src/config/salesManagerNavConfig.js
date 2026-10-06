@@ -8,6 +8,8 @@ import {
   FileText,
   FolderOpen,
   LayoutDashboard,
+  Layers,
+  Package,
   Settings,
   ShoppingCart,
   Target,
@@ -100,6 +102,21 @@ export const SALES_MANAGER_NAV_ITEMS = [
     icon: MessageSquare,
     module: "chat",
     end: true,
+  },
+  {
+    key: "masters",
+    label: "Masters",
+    icon: Layers,
+    module: "masters",
+    children: [
+      {
+        key: "products",
+        label: "Products",
+        to: "/masters/products",
+        icon: Package,
+        module: "masters",
+      },
+    ],
   },
   {
     key: "reports",

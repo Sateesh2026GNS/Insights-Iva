@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Banknote, Bookmark, Building2, ChevronDown, MoreVertical, Pencil, Star, Trash2, CircleMinus } from "lucide-react";
+import { ArrowLeft, Banknote, Bookmark, Building2, ChevronDown, MoreVertical, Pencil } from "lucide-react";
 
 import Button from "../../components/common/Button";
 import ShorthandQuantityInput from "../../components/common/ShorthandQuantityInput";
+import SearchableSelect from "../../components/common/SearchableSelect";
 import { SearchBar } from "../../components/common/SearchFilter";
 import Loader from "../../components/common/Loader";
 import AddNewPartyModal from "../../components/sales/AddNewPartyModal";
@@ -23,7 +24,6 @@ import useTenantId from "../../hooks/useTenantId";
 import { useToast } from "../../context/ToastContext";
 import {
   fetchCustomersWithFallback,
-  filterCustomers,
   resolveCustomerId,
 } from "../../utils/customerOptions";
 import {
@@ -39,6 +39,7 @@ const PRIMARY_SOFT = "var(--color-primary-soft)";
 const ACCOUNTS_KEY = "gns_payment_accounts";
 const MODES_KEY = "gns_payment_modes";
 const PREFIX_KEY = "gns_receipt_prefixes";
+const ADD_BUYER_FOOTER_VALUE = "__add_buyer__";
 
 const DEFAULT_MODES = [
   { id: "cash", label: "Cash", icon: "cash" },
@@ -118,11 +119,8 @@ export default function PaymentReceiptForm() {
   const [saving, setSaving] = useState(false);
   const [customers, setCustomers] = useState([]);
   const [invoices, setInvoices] = useState([]);
-  const [buyerOpen, setBuyerOpen] = useState(false);
-  const [buyerSearch, setBuyerSearch] = useState("");
   const [addBuyerOpen, setAddBuyerOpen] = useState(false);
   const [editingBuyer, setEditingBuyer] = useState(null);
-  const [partyMenuId, setPartyMenuId] = useState(null);
   const [prefixModalOpen, setPrefixModalOpen] = useState(false);
   const [prefixes, setPrefixes] = useState(() => loadJson(PREFIX_KEY, []));
   const [modeModalOpen, setModeModalOpen] = useState(false);
@@ -269,9 +267,13 @@ export default function PaymentReceiptForm() {
     return () => document.removeEventListener("mousedown", onDoc);
   }, [accountOpen]);
 
-  const filteredBuyers = useMemo(
-    () => filterCustomers(customers, buyerSearch),
-    [customers, buyerSearch]
+  const buyerSelectOptions = useMemo(
+    () =>
+      customers.map((c) => ({
+        value: String(c.id),
+        label: c.name || c.company || `Customer #${c.id}`,
+      })),
+    [customers]
   );
 
   const selectedBuyer = customers.find((c) => String(c.id) === String(form.customer_id));
@@ -311,6 +313,21 @@ export default function PaymentReceiptForm() {
 
   const isAllSelected =
     buyerInvoices.length > 0 && buyerInvoices.every((inv) => settle[inv.id] != null);
+
+  const handleClearBuyer = () => {
+    setForm((f) => ({ ...f, customer_id: "" }));
+    setSettle({});
+  };
+
+  const handleBuyerSelect = (value) => {
+    if (value === ADD_BUYER_FOOTER_VALUE) return;
+    setForm((f) => ({ ...f, customer_id: value ? String(value) : "" }));
+    setSettle({});
+  };
+
+  const handleBuyerFooterPick = (opt) => {
+    if (opt?.value === ADD_BUYER_FOOTER_VALUE) setAddBuyerOpen(true);
+  };
 
   const handleToggleInvoice = (inv, isChecked) => {
     const totalAmt = round2(inv.amount ?? inv.grand_total ?? inv.total_amount ?? 0);
@@ -506,138 +523,27 @@ export default function PaymentReceiptForm() {
           <section className="rounded-xl border border-[#d0d0d8] bg-white p-4">
             <h2 className="mb-4 text-[15px] font-bold text-[#1a1a1f]">Buyer Details</h2>
             <div className="space-y-3">
-              <div className="relative">
+              <div>
                 <SoftLabel>Buyer Name</SoftLabel>
-                <button
-                  type="button"
-                  onClick={() => setBuyerOpen((v) => !v)}
-                  className={`${inputClass} flex items-center justify-between text-left`}
-                >
-                  <span className={selectedBuyer ? "text-[#1a1a1f]" : "text-[#a0a0ab]"}>
-                    {selectedBuyer?.name || "Select Buyer"}
-                  </span>
-                  <ChevronDown className="h-4 w-4 text-[#9a9aa5]" />
-                </button>
-                {buyerOpen ? (
-                  <div className="absolute left-0 right-0 z-30 mt-1 overflow-hidden rounded-xl border border-[#e4e4ea] bg-white shadow-xl">
-                    <div className="border-b border-[#ececf0] p-2">
-                      <SearchBar
-                        size="compact"
-                        value={buyerSearch}
-                        onChange={setBuyerSearch}
-                        placeholder="Search"
-                        autoFocus
-                       
-                      />
-                    </div>
-                    <div className="max-h-56 overflow-y-auto">
-                      {filteredBuyers.map((c) => (
-                        <div
-                          key={c.id}
-                          className="flex cursor-pointer items-start gap-2 border-b border-[#f3f3f6] px-3 py-2.5 hover:bg-[#fafafa]"
-                          onClick={() => {
-                            setForm((f) => ({ ...f, customer_id: c.id }));
-                            setBuyerOpen(false);
-                            setSettle({});
-                          }}
-                        >
-                          <div className="min-w-0 flex-1">
-                            <p className="text-[13px] font-semibold text-[#1a1a1f]">{c.name}</p>
-                            {(c.gstin || c.city) && (
-                              <p className="text-[11px] text-[#8a8a95]">
-                                {[c.gstin ? `GSTIN: ${c.gstin}` : null, c.city ? `City: ${c.city}` : null]
-                                  .filter(Boolean)
-                                  .join(" | ")}
-                              </p>
-                            )}
-                          </div>
-                          <Star
-                            className={`mt-0.5 h-4 w-4 ${c.favorite ? "fill-[var(--color-primary)] text-[var(--color-primary)]" : "text-[#c4c4cc]"}`}
-                          />
-                          <span className="rounded-full bg-[#e6f4ea] px-2 py-0.5 text-[11px] font-semibold text-[#166534]">
-                            ₹ 0
-                          </span>
-                          <div className="relative">
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setPartyMenuId((id) => (id === c.id ? null : c.id));
-                              }}
-                              className="rounded-full bg-[#f0f0f4] p-1"
-                            >
-                              <MoreVertical className="h-3.5 w-3.5" />
-                            </button>
-                            {partyMenuId === c.id ? (
-                              <div className="absolute right-0 z-40 mt-1 w-44 overflow-hidden rounded-xl border border-[#ececf0] bg-white py-1 shadow-lg">
-                                <button
-                                  type="button"
-                                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] hover:bg-[#f7f7f9]"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setPartyMenuId(null);
-                                    setEditingBuyer(c);
-                                    setAddBuyerOpen(true);
-                                  }}
-                                >
-                                  <Pencil className="h-3.5 w-3.5" /> Edit Party
-                                </button>
-                                <button
-                                  type="button"
-                                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-[#b45309] hover:bg-[#f7f7f9]"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setPartyMenuId(null);
-                                    setCustomers((rows) =>
-                                      rows.map((row) =>
-                                        row.id === c.id ? { ...row, status: "inactive", favorite: false } : row
-                                      )
-                                    );
-                                    if (String(form.customer_id) === String(c.id)) {
-                                      setForm((f) => ({ ...f, customer_id: "" }));
-                                    }
-                                    addToast(`${c.company || c.name || "Party"} marked inactive`, "success");
-                                  }}
-                                >
-                                  <CircleMinus className="h-3.5 w-3.5" /> Mark as inactive
-                                </button>
-                                <button
-                                  type="button"
-                                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-[#dc2626] hover:bg-[#f7f7f9]"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setPartyMenuId(null);
-                                    if (!window.confirm(`Delete ${c.company || c.name || "this party"} from the list?`)) {
-                                      return;
-                                    }
-                                    setCustomers((rows) => rows.filter((row) => row.id !== c.id));
-                                    if (String(form.customer_id) === String(c.id)) {
-                                      setForm((f) => ({ ...f, customer_id: "" }));
-                                    }
-                                    addToast("Party removed from list", "success");
-                                  }}
-                                >
-                                  <Trash2 className="h-3.5 w-3.5" /> Delete Party
-                                </button>
-                              </div>
-                            ) : null}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setBuyerOpen(false);
-                        setAddBuyerOpen(true);
-                      }}
-                      className="flex w-full items-center justify-center gap-1 border-t border-[#ececf0] py-3 text-[13px] font-semibold"
-                      style={{ background: PRIMARY_SOFT, color: PRIMARY }}
-                    >
-                      + Add Customer
-                    </button>
-                  </div>
-                ) : null}
+                <SearchableSelect
+                  value={form.customer_id ? String(form.customer_id) : ""}
+                  onChange={handleBuyerSelect}
+                  options={buyerSelectOptions}
+                  footerOptions={[
+                    {
+                      value: ADD_BUYER_FOOTER_VALUE,
+                      label: "+ Add Customer",
+                      ariaLabel: "Add new buyer",
+                    },
+                  ]}
+                  onFooterPick={handleBuyerFooterPick}
+                  stickyFooter
+                  placeholder="Select Buyer"
+                  searchPlaceholder="Search buyer…"
+                  clearable={Boolean(form.customer_id)}
+                  onClear={handleClearBuyer}
+                  clearAriaLabel="Clear buyer"
+                />
               </div>
 
               <div className="grid grid-cols-[1fr_1fr] gap-3">

@@ -101,8 +101,10 @@ def operator_safety_incident(
     if body.machine_id:
         from app.models.machine import Machine
 
-        m = db.get(Machine, body.machine_id)
-        if m and m.tenant_id == user.tenant_id:
+        from app.services.tenant_resources import get_tenant_row
+
+        m = get_tenant_row(db, Machine, body.machine_id, user.tenant_id)
+        if m:
             loc = loc or m.name or m.code
     payload = SafetyIncidentCreate(
         incident_code=code,

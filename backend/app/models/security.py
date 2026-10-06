@@ -61,6 +61,17 @@ class PasswordResetToken(Base, TimestampMixin):
     used: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
 
+class RateLimitBucket(Base):
+    """Fixed-window counters for distributed rate limiting (PostgreSQL)."""
+
+    __tablename__ = "rate_limit_buckets"
+
+    bucket_key: Mapped[str] = mapped_column(String(512), primary_key=True)
+    window_start_epoch: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    hit_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
 class LoginAttempt(Base, TimestampMixin):
     """Persistent record of login attempts for auditing and lockout analysis."""
 

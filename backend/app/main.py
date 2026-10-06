@@ -22,7 +22,12 @@ import uuid
 
 
 from sqlalchemy import Integer, text
-from sqlalchemy.exc import IntegrityError, OperationalError, SQLAlchemyError
+from sqlalchemy.exc import (
+    IntegrityError,
+    OperationalError,
+    SQLAlchemyError,
+    TimeoutError as DbPoolTimeoutError,
+)
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
@@ -341,6 +346,23 @@ async def integrity_error_handler(request: Request, exc: IntegrityError):
     return JSONResponse(
         status_code=409,
         content={"detail": message, "request_id": getattr(request.state, "request_id", None)},
+    )
+
+
+@app.exception_handler(DbPoolTimeoutError)
+async def database_pool_timeout_handler(request: Request, exc: DbPoolTimeoutError):
+    logger.warning(
+        "db_pool_timeout id=%s path=%s",
+        getattr(request.state, "request_id", None),
+        request.url.path,
+    )
+    return JSONResponse(
+        status_code=503,
+        headers={"Retry-After": "5"},
+        content={
+            "detail": "Database is busy. Please retry shortly.",
+            "request_id": getattr(request.state, "request_id", None),
+        },
     )
 
 

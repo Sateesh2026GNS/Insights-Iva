@@ -1,0 +1,73 @@
+{
+  "phase": 4,
+  "executed_on_agent_environment": false,
+  "blockers": [
+    "Docker not installed on current Windows workstation (cannot start api1/api2/nginx compose stack)",
+    "Phase 4 requires Locust on a separate host from API; current machine previously ran API+Locust+PostgreSQL together",
+    "No remote staging VM credentials or LOAD_TEST_HOST for multi-instance LB in this session"
+  ],
+  "infrastructure_prepared": {
+    "docker_compose": "backend/docker-compose.staging-load.yml",
+    "nginx_config": "backend/staging/nginx.conf",
+    "procedure": "backend/load_tests/STAGING_MULTI_INSTANCE.md",
+    "pool_report_script": "backend/load_tests/pool_capacity_report.py"
+  },
+  "prior_local_baseline_reference": {
+    "100": "PASS (single uvicorn, same host as Locust)",
+    "500": "FAIL (single host / connection refused — not ERP capacity proof)"
+  },
+  "multi_instance_results": {
+    "100": { "classification": "NOT TESTED", "reason": "Staging LB not deployed in this environment" },
+    "500": { "classification": "NOT TESTED" },
+    "1000": { "classification": "NOT TESTED" },
+    "2000": { "classification": "NOT TESTED" }
+  },
+  "capacity_table": [
+    {
+      "concurrent_users": 100,
+      "result": "NOT TESTED",
+      "rps": null,
+      "p50_ms": null,
+      "p95_ms": null,
+      "p99_ms": null,
+      "error_pct": null,
+      "db_connections": null,
+      "bottleneck": "Multi-instance staging not executed"
+    },
+    {
+      "concurrent_users": 500,
+      "result": "NOT TESTED",
+      "rps": null,
+      "p50_ms": null,
+      "p95_ms": null,
+      "p99_ms": null,
+      "error_pct": null,
+      "db_connections": null,
+      "bottleneck": null
+    },
+    {
+      "concurrent_users": 1000,
+      "result": "NOT TESTED",
+      "rps": null,
+      "p50_ms": null,
+      "p95_ms": null,
+      "p99_ms": null,
+      "error_pct": null,
+      "db_connections": null,
+      "bottleneck": null
+    },
+    {
+      "concurrent_users": 2000,
+      "result": "NOT TESTED",
+      "rps": null,
+      "p50_ms": null,
+      "p95_ms": null,
+      "p99_ms": null,
+      "error_pct": null,
+      "db_connections": null,
+      "bottleneck": null
+    }
+  ],
+  "readiness": "READY FOR STAGING (deploy compose on API VM, run Locust on separate VM, then re-run run_staging_suite.py)",
+  "two_thousand_concurrent_capacity": "NOT VERIFIED"
+}

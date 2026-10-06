@@ -2,6 +2,8 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from app.schemas.product_vendor_pricing import ProductVendorPricingPayload
+
 
 class ProductBase(BaseModel):
     tenant_id: int
@@ -208,3 +210,15 @@ class BomItemCreate(BomItemBase):
 class BomItemRead(BomItemBase):
     id: int
     model_config = ConfigDict(from_attributes=True)
+
+
+class ProductMasterWrite(ProductCreate):
+    """Product create with optional vendor pricing line."""
+
+    vendor_pricing: ProductVendorPricingPayload | None = None
+
+
+class ProductMasterUpdate(ProductUpdate):
+    """Product update with optional vendor pricing line."""
+
+    vendor_pricing: ProductVendorPricingPayload | None = None

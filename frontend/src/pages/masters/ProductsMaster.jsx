@@ -11,7 +11,9 @@ import {
 } from "lucide-react";
 
 import useAuth from "../../hooks/useAuth";
-import { isProductionManager } from "../../config/permissions";
+import { isProductionManager, userCanWriteProductMaster } from "../../config/permissions";
+import ProductDetailModal from "../../components/masters/ProductDetailModal";
+import { expandProductsToTableRows, formatProductInr } from "../../utils/productTableRows";
 import AddNewItemModal from "../../components/sales/AddNewItemModal";
 import Loader from "../../components/common/Loader";
 import { SearchBar } from "../../components/common/SearchFilter";
@@ -36,11 +38,20 @@ const PAGE_SIZES = [20, 50, 100];
 
 const PRODUCT_EXPORT_COLUMNS = [
   { key: "name", label: "Product Name" },
+  { key: "product_code", label: "Code" },
   { key: "category", label: "Category" },
   { key: "description", label: "Description" },
   { key: "hsn_code", label: "HSN" },
   { key: "unit", label: "Unit" },
-  { key: "selling_price", label: "Price" },
+  { key: "vendor_name", label: "Vendor" },
+  { key: "purchase_price", label: "Purchase Price" },
+  { key: "transport_cost", label: "Transport" },
+  { key: "labour_cost", label: "Labour" },
+  { key: "import_cost", label: "Import" },
+  { key: "total_landed_cost", label: "Landed Cost" },
+  { key: "minimum_price", label: "Min Price" },
+  { key: "maximum_price", label: "Max Price" },
+  { key: "selling_price", label: "Selling Price" },
   { key: "gst_percent", label: "GST Tax" },
   { key: "cess_percent", label: "CESS %" },
 ];
@@ -54,9 +65,36 @@ function blankOr(value) {
   return s;
 }
 
+function rowActionItems(row, { canWrite, isPM, onView, setEditing, setDeleting }) {
+  const items = [
+    {
+      label: "View",
+      onClick: () => onView(row),
+    },
+  ];
+  if (canWrite && !isPM) {
+    items.push({
+      label: "Edit",
+      icon: <Pencil className="h-4 w-4" />,
+      onClick: () => {
+        setEditing(row);
+      },
+    });
+    items.push({ divider: true });
+    items.push({
+      label: "Delete",
+      icon: <Trash2 className="h-4 w-4" />,
+      danger: true,
+      onClick: () => setDeleting(row),
+    });
+  }
+  return items;
+}
+
 export default function ProductsMaster() {
   const { user } = useAuth();
   const isPM = isProductionManager(user);
+  const canWrite = userCanWriteProductMaster(user);
   const { addToast } = useToast();
   const location = useLocation();
   const navigate = useNavigate();
@@ -117,17 +155,28 @@ export default function ProductsMaster() {
     loadProducts();
   }, [loadProducts]);
 
+  const tableRows = useMemo(() => expandProductsToTableRows(products), [products]);
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return products;
-    return products.filter((p) =>
-      [p.name, p.description, p.hsn_code, p.unit, p.category, p.sku]
+    if (!q) return tableRows;
+    return tableRows.filter((p) =>
+      [
+        p.name,
+        p.description,
+        p.hsn_code,
+        p.unit,
+        p.category,
+        p.sku,
+        p.product_code,
+        p.vendor_name,
+      ]
         .filter(Boolean)
         .join(" ")
         .toLowerCase()
         .includes(q)
     );
-  }, [products, query]);
+  }, [tableRows, query]);
 
   useEffect(() => {
     setPage(1);
@@ -277,7 +326,7 @@ export default function ProductsMaster() {
                 </Button>
               )}
               <ExportDownloadMenu disabled={!filtered.length} onExport={handleExport} />
-              {!isPM && (
+              {canWrite && !isPM && (
                 <Button
                   variant="add"
                   type="button"
@@ -406,16 +455,25 @@ export default function ProductsMaster() {
           </div>
 
           <div className="ui-table-wrap ui-table-wrap--scroll hidden md:block">
-              <table className="ui-table w-full min-w-[880px] border-collapse text-left text-[13px]">
+              <table className="ui-table w-full min-w-[1400px] border-collapse text-left text-[13px]">
                 <thead className="ui-table-head">
                   <tr>
                     <SerialNumberHeader />
                     <th className="px-4 py-3 font-medium">Product Name</th>
+                    <th className="px-4 py-3 font-medium">Code</th>
                     <th className="px-4 py-3 font-medium">Category</th>
                     <th className="px-4 py-3 font-medium">Description</th>
                     <th className="px-4 py-3 font-medium">HSN</th>
                     <th className="px-4 py-3 font-medium">Unit</th>
-                    <th className="px-4 py-3 text-right font-medium">Price</th>
+                    <th className="px-4 py-3 font-medium">Vendor</th>
+                    <th className="px-4 py-3 font-medium text-right">Purchase Price</th>
+                    <th className="px-4 py-3 font-medium text-right">Transport</th>
+                    <th className="px-4 py-3 font-medium text-right">Labour</th>
+                    <th className="px-4 py-3 font-medium text-right">Import</th>
+                    <th className="px-4 py-3 font-medium text-right">Landed Cost</th>
+                    <th className="px-4 py-3 font-medium text-right">Min Price</th>
+                    <th className="px-4 py-3 font-medium text-right">Max Price</th>
+                    <th className="px-4 py-3 font-medium text-right">Selling Price</th>
                     <th className="px-4 py-3 font-medium">GST Tax</th>
                     <th className="px-4 py-3 font-medium">CESS %</th>
                     <th className="px-4 py-3 text-right font-medium">Actions</th>
@@ -427,6 +485,7 @@ export default function ProductsMaster() {
                     const desc = blankOr(p.description);
                     const hsn = blankOr(p.hsn_code);
                     const unit = blankOr(p.unit);
+                    const code = blankOr(p.product_code || p.sku);
                     const gst =
                       p.gst_percent === null ||
                       p.gst_percent === undefined ||
@@ -439,51 +498,45 @@ export default function ProductsMaster() {
                         ? "0 %"
                         : `${p.cess_percent} %`;
                     return (
-                      <tr key={p.id}>
+                      <tr key={p.rowKey || p.id}>
                         <SerialNumberCell rowIndex={rowIndex} page={page} pageSize={pageSize} />
                         <td className="px-4 py-3.5 font-normal text-[var(--color-table-text)]">{p.name || ""}</td>
+                        <td className="px-4 py-3.5 ui-table-text-secondary whitespace-nowrap">{code}</td>
                         <td className="px-4 py-3.5">
                           <span className="inline-flex items-center rounded-full bg-[var(--color-surface-muted)] px-2.5 py-0.5 text-xs font-semibold text-[var(--color-table-text-secondary)]">
                             {category}
                           </span>
                         </td>
-                        <td className="px-4 py-3.5 ui-table-text-secondary">{desc}</td>
+                        <td className="px-4 py-3.5 ui-table-text-secondary max-w-[160px] truncate">{desc}</td>
                         <td className="px-4 py-3.5 ui-table-text-secondary">{hsn}</td>
                         <td className="px-4 py-3.5 ui-table-text-secondary">{unit}</td>
-                        <td className="whitespace-nowrap px-4 py-3.5 text-right tabular-nums text-[var(--color-table-text)]">
-                          ₹{Number(p.selling_price ?? p.unit_price ?? 0).toLocaleString("en-IN")}
-                        </td>
+                        <td className="px-4 py-3.5 ui-table-text-secondary">{p.vendor_name || "—"}</td>
+                        <td className="px-4 py-3.5 text-right tabular-nums">{formatProductInr(p.purchase_price)}</td>
+                        <td className="px-4 py-3.5 text-right tabular-nums">{formatProductInr(p.transport_cost)}</td>
+                        <td className="px-4 py-3.5 text-right tabular-nums">{formatProductInr(p.labour_cost)}</td>
+                        <td className="px-4 py-3.5 text-right tabular-nums">{formatProductInr(p.import_cost)}</td>
+                        <td className="px-4 py-3.5 text-right tabular-nums font-semibold">{formatProductInr(p.total_landed_cost)}</td>
+                        <td className="px-4 py-3.5 text-right tabular-nums">{formatProductInr(p.minimum_price)}</td>
+                        <td className="px-4 py-3.5 text-right tabular-nums">{formatProductInr(p.maximum_price)}</td>
+                        <td className="px-4 py-3.5 text-right tabular-nums">{formatProductInr(p.selling_price)}</td>
                         <td className="px-4 py-3.5 ui-table-text-secondary">{gst}</td>
                         <td className="px-4 py-3.5 ui-table-text-secondary">{cess}</td>
                         <td className="px-4 py-2" onClick={(e) => e.stopPropagation()}>
                           <div className="flex items-center justify-end">
                             <RowActionMenu
-                              rowId={p.id}
+                              rowId={p.rowKey || p.id}
                               openMenu={openMenu}
                               setOpenMenu={setOpenMenu}
-                              items={[
-                                {
-                                  label: "View",
-                                  icon: <Eye className="h-4 w-4" />,
-                                  onClick: () => handleView(p),
+                              items={rowActionItems(p, {
+                                canWrite,
+                                isPM,
+                                onView: handleView,
+                                setEditing: (row) => {
+                                  setEditing(row);
+                                  setAddOpen(true);
                                 },
-                                { divider: true },
-                                {
-                                  label: "Edit",
-                                  icon: <Pencil className="h-4 w-4" />,
-                                  onClick: () => {
-                                    setEditing(p);
-                                    setAddOpen(true);
-                                  },
-                                },
-                                { divider: true },
-                                {
-                                  label: "Delete",
-                                  icon: <Trash2 className="h-4 w-4" />,
-                                  danger: true,
-                                  onClick: () => setDeleting(p),
-                                },
-                              ]}
+                                setDeleting,
+                              })}
                             />
                           </div>
                         </td>
@@ -607,6 +660,7 @@ export default function ProductsMaster() {
         entityName="Product"
         item={editing}
         categories={existingCategories}
+        readOnly={!canWrite}
         onClose={handleCloseModal}
         onSaved={handleSavedModal}
       />
@@ -617,20 +671,32 @@ export default function ProductsMaster() {
         sectionErrors={sectionErrors}
         onLoadSection={loadRelatedSection}
         onClose={() => setViewing(null)}
-        onEdit={(product) => {
-          setViewing(null);
-          setEditing(product);
-          setAddOpen(true);
-        }}
-        onDuplicate={(product) => {
-          setViewing(null);
-          setEditing({ ...product, id: null, sku: "", product_code: "" });
-          setAddOpen(true);
-        }}
-        onDelete={(product) => {
-          setViewing(null);
-          setDeleting(product);
-        }}
+        onEdit={
+          canWrite && !isPM && viewing
+            ? (product) => {
+                setViewing(null);
+                setEditing(product);
+                setAddOpen(true);
+              }
+            : undefined
+        }
+        onDuplicate={
+          canWrite && !isPM && viewing
+            ? (product) => {
+                setViewing(null);
+                setEditing({ ...product, id: null, sku: "", product_code: "" });
+                setAddOpen(true);
+              }
+            : undefined
+        }
+        onDelete={
+          canWrite && !isPM && viewing
+            ? (product) => {
+                setViewing(null);
+                setDeleting(product);
+              }
+            : undefined
+        }
       />
       <ConfirmDialog
         open={Boolean(deleting)}

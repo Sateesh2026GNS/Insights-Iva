@@ -131,6 +131,20 @@ class Settings(BaseSettings):
         default=60,
         validation_alias=AliasChoices("AUTH_BACKOFF_WINDOW_SECONDS", "auth_backoff_window_seconds"),
     )
+    rate_limit_distributed: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("RATE_LIMIT_DISTRIBUTED", "rate_limit_distributed"),
+    )
+    app_instance_count: int = Field(
+        default=1,
+        ge=1,
+        validation_alias=AliasChoices("APP_INSTANCE_COUNT", "app_instance_count"),
+    )
+    postgres_max_connections: int = Field(
+        default=100,
+        ge=10,
+        validation_alias=AliasChoices("POSTGRES_MAX_CONNECTIONS", "postgres_max_connections"),
+    )
 
     # Email verification & password reset
     email_verification_expire_hours: int = 24

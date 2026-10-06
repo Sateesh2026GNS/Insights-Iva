@@ -596,27 +596,24 @@ def record_stock_movement(
 def get_inventory_dashboard(
     db: Session, tenant_id: int, item_type: str | None = None
 ) -> list[dict]:
-    """Items with total stock, reorder status, stock value (single aggregated stock query)."""
-    stmt = select(InventoryItem).where(
-        InventoryItem.tenant_id == tenant_id, InventoryItem.is_active
+    """Items with total stock, reorder status, stock value (single aggregated query)."""
+    total_qty = func.coalesce(func.sum(StockLevel.quantity), 0).label("total_quantity")
+    stmt = (
+        select(InventoryItem, total_qty)
+        .outerjoin(StockLevel, StockLevel.item_id == InventoryItem.id)
+        .where(InventoryItem.tenant_id == tenant_id, InventoryItem.is_active)
+        .group_by(InventoryItem.id)
     )
     if item_type:
         stmt = stmt.where(InventoryItem.item_type == item_type)
-    items = list(db.scalars(stmt).all())
-    if not items:
+
+    rows = db.execute(stmt).all()
+    if not rows:
         return []
 
-    item_ids = [item.id for item in items]
-    stock_rows = db.execute(
-        select(StockLevel.item_id, func.coalesce(func.sum(StockLevel.quantity), 0))
-        .where(StockLevel.item_id.in_(item_ids))
-        .group_by(StockLevel.item_id)
-    ).all()
-    stock_map = {int(item_id): int(total or 0) for item_id, total in stock_rows}
-
     result = []
-    for item in items:
-        total = stock_map.get(item.id, 0)
+    for item, total in rows:
+        total = int(total or 0)
         stock_value = (item.unit_cost or 0) * total if item.unit_cost else None
         needs_reorder = total < item.reorder_level if item.reorder_level else False
         result.append(

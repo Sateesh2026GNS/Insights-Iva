@@ -26,6 +26,7 @@ import app.models.file_storage  # noqa: F401
 import app.models.hr  # noqa: F401
 import app.models.hr_module  # noqa: F401
 import app.models.inventory  # noqa: F401
+import app.models.material_pricing  # noqa: F401
 import app.models.manufacturing_workflow  # noqa: F401
 import app.models.machine  # noqa: F401
 import app.models.maintenance  # noqa: F401
@@ -35,6 +36,7 @@ import app.models.permission  # noqa: F401
 import app.models.platform  # noqa: F401
 import app.models.procurement  # noqa: F401
 import app.models.product  # noqa: F401
+import app.models.product_vendor_pricing  # noqa: F401
 import app.models.production  # noqa: F401
 import app.models.quality  # noqa: F401
 import app.models.reporting  # noqa: F401

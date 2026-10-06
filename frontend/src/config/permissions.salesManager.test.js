@@ -35,6 +35,9 @@ describe("Sales Manager route guard (verification)", () => {
     "/meetings",
     "/settings",
     "/settings/my-account",
+    "/masters/products",
+    "/masters/products/bulk-import",
+    "/products",
   ];
 
   it.each(authorizedPaths)("allows sales workflow path %s", (path) => {
@@ -60,6 +63,7 @@ describe("Sales Manager route guard (verification)", () => {
     "/production/planning",
     "/production/work-orders",
     "/procurement/purchase-orders",
+    "/masters/bom",
     "/hr/attendance",
     "/hr/attendance/approval",
     "/hr/leave",

@@ -369,6 +369,26 @@ export function isSalesManager(user) {
   return hasRole(user, "Sales Manager");
 }
 
+/** Create New Lead → Assigned Executive → + Add New Name (matches POST /team-directory/sales-executives). */
+export function userCanAddLeadExecutiveName(user) {
+  if (!user) return false;
+  if (isAdmin(user)) return true;
+  if (isSalesManager(user)) return true;
+  if (userCanAction(user, "sales", "create")) return true;
+  return userHasModule(user, "sales");
+}
+
+/** Masters → Products write (pricing included). Accountants are view-only. */
+export function userCanWriteProductMaster(user) {
+  if (!user) return false;
+  if (isAccountant(user)) return false;
+  if (isAdmin(user)) return true;
+  if (isStoreManager(user) || isSalesManager(user)) return true;
+  if (userCanAction(user, "masters", "update")) return true;
+  if (userCanAction(user, "sales", "update")) return true;
+  return false;
+}
+
 export function isAccountant(user) {
   if (!user || isAdmin(user)) return false;
   if (hasRole(user, "Accountant")) return true;
@@ -421,6 +441,9 @@ export function salesManagerPathAllowed(pathname) {
   if (path.startsWith("/meetings")) return true;
   if (path.startsWith("/chat")) return true;
   if (path.startsWith("/settings")) return true;
+  if (path.startsWith("/masters/products")) return true;
+  if (path === "/products" || path.startsWith("/products/")) return true;
+  if (path.startsWith("/master/products")) return true;
   return false;
 }
 
@@ -434,6 +457,16 @@ export function isHrAttendanceLeavePath(pathname) {
     path === "/hr/leave" ||
     path === "/leave" ||
     path.startsWith("/hr/leave/")
+  );
+}
+
+/** Store Manager ledger/expense routes without granting full accounts module. */
+export function isStoreManagerLimitedAccountsPath(pathname) {
+  const path = (pathname || "").replace(/\/$/, "") || "/";
+  return (
+    path === "/ledger" ||
+    path.startsWith("/accounts/ledger") ||
+    path.startsWith("/accounts/expenses")
   );
 }
 
@@ -527,6 +560,9 @@ export function userCanAccessPath(user, pathname) {
   }
   if (isHrAttendanceLeavePath(pathname)) {
     return userCanAccessHrAttendanceLeavePath(user, pathname);
+  }
+  if (isStoreManager(user) && isStoreManagerLimitedAccountsPath(pathname)) {
+    return storeManagerPathAllowed(pathname);
   }
   if (isStoreManager(user) && isSalesJobCardAuthoringPath(pathname)) return false;
   if (path.startsWith("/chat")) return true;

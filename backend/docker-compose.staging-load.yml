@@ -1,0 +1,101 @@
+# Multi-instance STAGING stack (API tier + load balancer).
+# NOT for production. Do not point Locust at production.
+#
+# Recommended topology (3 hosts):
+#   Host A — PostgreSQL (managed RDS/VM or postgres service below on a DB-only VM)
+#   Host B — docker compose up api1 api2 nginx  (this file, without postgres)
+#   Host C — Locust (pip install locust; run_staging_suite.py against nginx URL)
+#
+# Single-compose lab (API+DB on one VM, Locust on another machine):
+#   1) Set STAGING_DATABASE_URL to Host A Postgres when using external DB.
+#   2) On Host B: docker compose -f docker-compose.staging-load.yml up api1 api2 nginx
+#   3) On Host C: LOAD_TEST_HOST=http://<Host-B>:8080 python load_tests/run_staging_suite.py
+#
+# Optional local postgres profile (DB on same compose — still run Locust elsewhere):
+#   docker compose -f docker-compose.staging-load.yml --profile db up -d
+
+name: insights-iva-staging-load
+
+x-api-env: &api_env
+  ENVIRONMENT: development
+  ALLOW_PUBLIC_REGISTRATION: "true"
+  RATE_LIMIT_DISTRIBUTED: "true"
+  APP_INSTANCE_COUNT: "2"
+  POSTGRES_MAX_CONNECTIONS: "200"
+  WEB_CONCURRENCY: "1"
+  DB_POOL_SIZE: "15"
+  DB_MAX_OVERFLOW: "20"
+  API_AUTHENTICATED_RATE_LIMIT: "200000"
+  API_AUTHENTICATED_RATE_WINDOW_SECONDS: "60"
+  API_PUBLIC_RATE_LIMIT: "20000"
+  LOGIN_RATE_LIMIT: "5000"
+  AUTOMATION_SCHEDULER_ENABLED: "true"
+  JWT_SECRET_KEY: ${JWT_SECRET_KEY:-staging-load-test-secret-change-me-32chars}
+  DATABASE_URL: ${STAGING_DATABASE_URL:-postgresql+psycopg://insights_user:insights_dev@postgres:5432/insights_iva}
+  STORAGE_PROVIDER: local
+  FILE_STORAGE_LOCAL_PATH: /app/data/uploads
+  CORS_ORIGINS: "*"
+  ALLOWED_HOSTS: "*"
+
+services:
+  postgres:
+    profiles: ["db"]
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-insights_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-insights_dev}
+      POSTGRES_DB: ${POSTGRES_DB:-insights_iva}
+    volumes:
+      - staging_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-insights_user} -d ${POSTGRES_DB:-insights_iva}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api1:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      <<: *api_env
+      PORT: "8000"
+    expose:
+      - "8000"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5)\""]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  api2:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      <<: *api_env
+      PORT: "8000"
+    expose:
+      - "8000"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5)\""]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  nginx:
+    image: nginx:1.27-alpine
+    ports:
+      - "${STAGING_LB_PORT:-8080}:80"
+    volumes:
+      - ./staging/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      api1:
+        condition: service_healthy
+      api2:
+        condition: service_healthy
+
+volumes:
+  staging_pgdata:

@@ -32,6 +32,12 @@ def clear_buckets() -> None:
     with _lock:
         _buckets.clear()
         _failure_buckets.clear()
+    try:
+        from app.services.distributed_rate_limit import clear_distributed_rate_limits
+
+        clear_distributed_rate_limits()
+    except Exception:
+        pass
 
 
 def clear_auth_backoff(request: Request, email: str | None = None) -> None:
@@ -78,7 +84,21 @@ def _enforce_bucket(
     max_requests: int,
     window_seconds: int,
     detail: str,
+    scope: str | None = None,
 ) -> None:
+    if scope:
+        from app.services.distributed_rate_limit import enforce_distributed_bucket, should_use_distributed
+
+        if should_use_distributed(scope):
+            retry_after = enforce_distributed_bucket(
+                key,
+                max_requests=max_requests,
+                window_seconds=window_seconds,
+            )
+            if retry_after:
+                _raise_rate_limited(detail, retry_after)
+            return
+
     now = time.time()
     with _lock:
         hits = [t for t in _buckets[key] if now - t < window_seconds]
@@ -126,6 +146,7 @@ def check_auth_backoff(request: Request, email: str | None = None) -> None:
         max_requests=reduced_limit,
         window_seconds=settings.login_rate_window_seconds,
         detail=MSG_LOGIN,
+        scope="login",
     )
 
 
@@ -186,6 +207,7 @@ def check_rate_limit(
             max_requests=max_requests,
             window_seconds=window_seconds,
             detail=detail,
+            scope=scope,
         )
         return
 
@@ -197,6 +219,7 @@ def check_rate_limit(
             max_requests=ip_limit,
             window_seconds=window_seconds,
             detail=detail,
+            scope=scope,
         )
         if email_part:
             _enforce_bucket(
@@ -204,6 +227,7 @@ def check_rate_limit(
                 max_requests=max_requests,
                 window_seconds=window_seconds,
                 detail=detail,
+                scope=scope,
             )
         return
 
@@ -214,6 +238,7 @@ def check_rate_limit(
             max_requests=max_requests,
             window_seconds=window_seconds,
             detail=detail,
+            scope=scope,
         )
         return
 
@@ -222,6 +247,7 @@ def check_rate_limit(
         max_requests=max_requests,
         window_seconds=window_seconds,
         detail=detail,
+        scope=scope,
     )
 
 
@@ -259,9 +285,12 @@ def rate_limit_json_response(exc: HTTPException) -> JSONResponse:
 class ApiRateLimitMiddleware(BaseHTTPMiddleware):
     """Global per-IP rate limiting for public and authenticated API traffic.
 
-    Uses in-memory buckets (per process). Safe for single-worker Render/gunicorn -w 1;
-    with multiple workers each process enforces its own cap. Use a shared store (e.g. Redis)
-    only if you scale workers and need a global limit.
+    DEV/TEST: in-memory buckets per process.
+    SINGLE INSTANCE: in-memory for navigation; high-risk scopes can use PostgreSQL when
+      RATE_LIMIT_DISTRIBUTED=true.
+    MULTI-INSTANCE: set RATE_LIMIT_DISTRIBUTED=true so login/register/OTP/reports/agent/upload
+      share counters across instances. Normal authenticated GET traffic stays in-memory per
+      instance to avoid DB overhead on every navigation request.
     """
 
     async def dispatch(self, request: Request, call_next) -> Response:

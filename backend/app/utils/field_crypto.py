@@ -4,6 +4,14 @@ Uses Fernet (symmetric). Set FIELD_ENCRYPTION_KEY in the environment
 (generate with: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())").
 
 When the key is unset, values are stored/returned as-is (development only).
+
+Sensitive-field inventory (application layer):
+- Encrypted when FIELD_ENCRYPTION_KEY is set: company_settings.bank_account_number,
+  company_settings.bank_ifsc (via company_settings_service).
+- Hashed: user passwords (bcrypt), refresh/reset/verification token hashes.
+- Plaintext in DB unless infra encrypts: most business ERP rows, SMTP env vars
+  (SMTP_PASSWORD in environment, not ORM).
+- Infrastructure: PostgreSQL disk encryption, backup encryption, TLS — not verifiable here.
 """
 
 from __future__ import annotations

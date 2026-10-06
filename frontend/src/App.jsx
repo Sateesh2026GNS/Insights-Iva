@@ -396,7 +396,7 @@ export default function App() {
         {user && !isInvoiceEditor && !isEInvoiceLogin ? <AppShellBottomActionBar /> : null}
         {!isInvoiceEditor ? (
           <div
-            className={`pointer-events-none fixed bottom-5 z-50 flex flex-col items-end gap-3 pb-[env(safe-area-inset-bottom,0px)] sm:bottom-6 max-lg:bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] ${
+            className={`app-shell-fab-stack pointer-events-none fixed bottom-5 z-50 flex flex-col items-end gap-3 pb-[env(safe-area-inset-bottom,0px)] sm:bottom-6 max-lg:bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] ${
               isSettings
                 ? "right-[var(--space-4)] sm:right-[var(--space-6)] lg:right-[var(--space-8)]"
                 : "right-5 sm:right-6"

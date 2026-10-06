@@ -210,6 +210,80 @@ def create_user(db: Session, tenant_id: int, payload: UserCreate) -> dict:
         raise HTTPException(status_code=500, detail="Failed to create user") from exc
 
 
+def create_sales_executive_by_name(
+    db: Session, tenant_id: int, full_name: str, actor: User
+) -> dict:
+    """Create a tenant sales user for lead assignment pickers (sales module access)."""
+    import re
+    import secrets
+    import time
+
+    from app.core.company_email import email_domain
+    from app.models.tenant import Tenant
+
+    trimmed = (full_name or "").strip()
+    if not trimmed:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Name is required.")
+    if not re.search(r"[a-zA-Z]", trimmed):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Name must contain at least one letter.",
+        )
+
+    existing = db.scalars(
+        select(User).where(
+            User.tenant_id == tenant_id,
+            func.lower(User.full_name) == trimmed.lower(),
+        )
+    ).first()
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="An executive with this name already exists.",
+        )
+
+    role_records = list_roles(db, tenant_id)
+    role_id = None
+    for preferred in ("sales manager", "sales executive"):
+        for r in role_records:
+            if (r.get("name") or "").strip().lower() == preferred:
+                role_id = r["id"]
+                break
+        if role_id:
+            break
+    if not role_id:
+        for r in role_records:
+            if "sales" in (r.get("name") or "").lower():
+                role_id = r["id"]
+                break
+    if not role_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No sales role is configured for this company.",
+        )
+
+    tenant = db.get(Tenant, tenant_id)
+    slug = re.sub(r"[^a-z0-9]+", ".", trimmed.lower())[:40].strip(".") or "executive"
+    domain = (
+        email_domain(getattr(tenant, "email", None) if tenant else None)
+        or email_domain(actor.email)
+        or "example.com"
+    )
+    email = f"{slug}.{int(time.time() * 1000)}@{domain}"
+    password = f"{secrets.token_urlsafe(10)}Aa1!"
+
+    payload = UserCreate(
+        email=email,
+        full_name=trimmed,
+        designation="Sales Executive",
+        department="Sales",
+        is_active=True,
+        role_ids=[role_id],
+        password=password,
+    )
+    return create_user(db, tenant_id, payload)
+
+
 def update_user(
     db: Session, tenant_id: int, user_id: int, payload: UserUpdate, acting_user: User
 ) -> dict:

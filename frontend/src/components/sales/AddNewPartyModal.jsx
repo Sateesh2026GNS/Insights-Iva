@@ -433,6 +433,7 @@ export default function AddNewPartyModal({
 
   const onSubmit = async (e) => {
     e.preventDefault();
+    e.stopPropagation();
     setFieldErrors({});
     if (!form.name.trim()) {
       setFieldErrors({ name: "Company Name is required" });
@@ -674,6 +675,7 @@ export default function AddNewPartyModal({
         onSubmit={onSubmit}
         className={PANEL_CLASS}
         onMouseDown={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
       >
         <div className="flex shrink-0 items-center justify-between border-b border-[#ececf0] px-5 py-3.5">
           <h2 className="text-[17px] font-bold text-[#1a1a1f]">
@@ -880,7 +882,17 @@ export default function AddNewPartyModal({
           <Button type="button" variant="cancel" onClick={onClose} fullWidth>
             Cancel
           </Button>
-          <Button type="submit" variant="primary" loading={saving} disabled={saving} fullWidth>
+          <Button
+            type="button"
+            variant="primary"
+            loading={saving}
+            disabled={saving}
+            fullWidth
+            onClick={(ev) => {
+              ev.stopPropagation();
+              onSubmit(ev);
+            }}
+          >
             {saving ? "Saving…" : "Submit"}
           </Button>
         </div>

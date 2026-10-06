@@ -8,8 +8,20 @@ from sqlalchemy.orm import Session, joinedload
 
 logger = logging.getLogger(__name__)
 
+from app.api.auth_deps import get_current_user
 from app.api.deps import get_db
-from app.core.permissions import require_action, require_permission, tenant_scope, tenant_scope_action, user_has_permission
+from app.core.permissions import (
+    require_accounts_expense_action,
+    require_action,
+    require_permission,
+    tenant_scope,
+    tenant_scope_accounts_expense,
+    tenant_scope_accounts_expense_action,
+    tenant_scope_action,
+    user_can_read_accounts_tenant_pref,
+    user_can_write_accounts_tenant_pref,
+    user_has_permission,
+)
 from app.models.accounts import FixedAsset, GLAccount, JournalEntry
 from app.models.user import User
 from app.schemas.accounts import (
@@ -137,7 +149,7 @@ def list_income_endpoint(
 @router.post("/expenses", response_model=ExpenseRead)
 def create_expense_endpoint(
     payload: ExpenseCreate,
-    user: User = Depends(require_action(MODULE, "create")),
+    user: User = Depends(require_accounts_expense_action("create")),
     db: Session = Depends(get_db),
 ):
     try:
@@ -163,7 +175,7 @@ def create_expense_endpoint(
 
 @router.get("/expenses", response_model=list[ExpenseRead])
 def list_expense_endpoint(
-    tenant_id: int = Depends(tenant_scope(MODULE)),
+    tenant_id: int = Depends(tenant_scope_accounts_expense()),
     year: int | None = Query(None),
     db: Session = Depends(get_db),
 ):
@@ -190,7 +202,7 @@ def list_expense_endpoint(
 @router.get("/expenses/{expense_id}", response_model=ExpenseRead)
 def get_expense_endpoint(
     expense_id: int,
-    tenant_id: int = Depends(tenant_scope(MODULE)),
+    tenant_id: int = Depends(tenant_scope_accounts_expense()),
     db: Session = Depends(get_db),
 ):
     try:
@@ -220,7 +232,7 @@ def get_expense_endpoint(
 def update_expense_endpoint(
     expense_id: int,
     payload: ExpenseUpdate,
-    tenant_id: int = Depends(tenant_scope_action(MODULE, "update")),
+    tenant_id: int = Depends(tenant_scope_accounts_expense_action("update")),
     db: Session = Depends(get_db),
 ):
     try:
@@ -251,7 +263,7 @@ def update_expense_endpoint(
 @router.delete("/expenses/{expense_id}")
 def delete_expense_endpoint(
     expense_id: int,
-    tenant_id: int = Depends(tenant_scope_action(MODULE, "delete")),
+    tenant_id: int = Depends(tenant_scope_accounts_expense_action("delete")),
     db: Session = Depends(get_db),
 ):
     try:
@@ -988,12 +1000,16 @@ def create_fixed_asset_endpoint(
 @router.get("/tenant-prefs/{key}")
 def get_tenant_pref(
     key: str,
-    tenant_id: int = Depends(tenant_scope(MODULE)),
+    user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     import json
 
     from app.models.business_documents import AppFeatureSetting
+
+    if not user_can_read_accounts_tenant_pref(user, key):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You do not have permission to access this module.")
+    tenant_id = user.tenant_id
 
     row = db.scalars(
         select(AppFeatureSetting).where(
@@ -1014,13 +1030,15 @@ def get_tenant_pref(
 def put_tenant_pref(
     key: str,
     payload: dict,
-    user: User = Depends(require_action(MODULE, "update")),
+    user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     import json
 
     from app.models.business_documents import AppFeatureSetting
 
+    if not user_can_write_accounts_tenant_pref(user, key):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You do not have permission to access this module.")
     value = payload.get("value") if isinstance(payload, dict) else payload
     raw = json.dumps(value) if value is not None else None
     row = db.scalars(

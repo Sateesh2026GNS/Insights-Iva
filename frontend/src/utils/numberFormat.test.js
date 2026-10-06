@@ -7,6 +7,10 @@ import {
   parseShorthandNumber,
   numberToWords,
   isPureNumericInput,
+  normalizeIndianCurrencyInput,
+  formatIndianCurrencyField,
+  parseIndianCurrencyToNumber,
+  inrAmountToWords,
 } from "./numberFormat";
 
 describe("numberFormat utility module", () => {
@@ -120,6 +124,43 @@ describe("numberFormat utility module", () => {
       expect(numberToWords(25000)).toBe("Twenty Five Thousand");
       expect(numberToWords(500)).toBe("Five Hundred");
       expect(numberToWords(10000000)).toBe("One Crore");
+    });
+  });
+
+  describe("Indian currency input helpers", () => {
+    it("formats amounts with Indian grouping", () => {
+      expect(formatIndianCurrencyField("1000")).toBe("1,000");
+      expect(formatIndianCurrencyField("10000")).toBe("10,000");
+      expect(formatIndianCurrencyField("100000")).toBe("1,00,000");
+      expect(formatIndianCurrencyField("2500000")).toBe("25,00,000");
+      expect(formatIndianCurrencyField("10000000")).toBe("1,00,00,000");
+      expect(formatIndianCurrencyField("12500000")).toBe("1,25,00,000");
+      expect(formatIndianCurrencyField("2500000.5")).toBe("25,00,000.5");
+    });
+
+    it("normalizes pasted comma-separated values", () => {
+      expect(normalizeIndianCurrencyInput("2500000")).toBe("2500000");
+      expect(normalizeIndianCurrencyInput("2,500,000")).toBe("2500000");
+      expect(normalizeIndianCurrencyInput("25,00,000")).toBe("2500000");
+      expect(normalizeIndianCurrencyInput("")).toBeNull();
+      expect(normalizeIndianCurrencyInput("-100")).toBeNull();
+    });
+
+    it("parses numeric API values without commas", () => {
+      expect(parseIndianCurrencyToNumber("25,00,000")).toBe(2500000);
+      expect(parseIndianCurrencyToNumber("")).toBe(0);
+      expect(parseIndianCurrencyToNumber("2500000.50")).toBe(2500000.5);
+    });
+
+    it("converts amounts to INR words for lead form", () => {
+      expect(inrAmountToWords("")).toBe("");
+      expect(inrAmountToWords("0")).toBe("Zero Rupees Only");
+      expect(inrAmountToWords("2")).toBe("Two Rupees Only");
+      expect(inrAmountToWords("25")).toBe("Twenty Five Rupees Only");
+      expect(inrAmountToWords("2500")).toBe("Two Thousand Five Hundred Rupees Only");
+      expect(inrAmountToWords("250000")).toBe("Two Lakh Fifty Thousand Rupees Only");
+      expect(inrAmountToWords("2500000")).toBe("Twenty Five Lakh Rupees Only");
+      expect(inrAmountToWords("12500000")).toBe("One Crore Twenty Five Lakh Rupees Only");
     });
   });
 });
