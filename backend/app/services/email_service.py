@@ -87,6 +87,8 @@ def _settings():
 def smtp_missing_env_var_names() -> list[str]:
     """Names of unset SMTP settings (for server logs only — never log secret values)."""
     s = _settings()
+    if (getattr(s, "resend_api_key", "") or "").strip():
+        return []
     missing = []
     if not (s.smtp_host or "").strip():
         missing.append("SMTP_HOST")
@@ -259,6 +261,69 @@ def _classify_delivery_failure(exc: Exception) -> EmailDeliveryError:
     )
 
 
+def _send_via_resend(
+    api_key: str,
+    to: str,
+    subject: str,
+    body: str,
+    *,
+    html: str | None = None,
+    attachments: list[tuple[str, bytes, str]] | None = None,
+    from_email: str | None = None,
+) -> None:
+    import base64
+    import json
+    import urllib.request
+    import urllib.error
+
+    url = "https://api.resend.com/emails"
+    headers = {
+        "Authorization": f"Bearer {api_key.strip()}",
+        "Content-Type": "application/json",
+        "User-Agent": "InsightsIva/1.0",
+    }
+    
+    sender = (from_email or "onboarding@resend.dev").strip()
+    if "@resend.dev" not in sender and "codeviasoftware.com" not in sender:
+        sender = "Insights Iva <onboarding@resend.dev>"
+    elif not sender.startswith("Insights Iva"):
+        sender = f"Insights Iva <{sender}>"
+
+    payload = {
+        "from": sender,
+        "to": [to],
+        "subject": subject,
+        "html": html or f"<div style='font-family:sans-serif;'>{body.replace(chr(10), '<br/>')}</div>",
+        "text": body,
+    }
+
+    if attachments:
+        payload["attachments"] = [
+            {
+                "filename": filename,
+                "content": base64.b64encode(content).decode("utf-8"),
+            }
+            for filename, content, mime in attachments
+        ]
+
+    req = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"), headers=headers, method="POST")
+    try:
+        with urllib.request.urlopen(req, timeout=12) as resp:
+            data = json.loads(resp.read().decode())
+            logger.info("email_sent_via_resend_api to=%s resend_id=%s", to, data.get("id"))
+    except urllib.error.HTTPError as exc:
+        err_body = exc.read().decode()
+        logger.error("resend_api_http_error code=%s body=%s", exc.code, err_body)
+        raise EmailDeliveryError(
+            PUBLIC_MSG_SEND_FAILED,
+            reason="delivery",
+            internal_detail=f"Resend API HTTP {exc.code}: {err_body}",
+        ) from exc
+    except Exception as exc:
+        logger.error("resend_api_failed: %s", exc)
+        raise _classify_delivery_failure(exc) from exc
+
+
 def _send_via_smtplib(
     to: str,
     subject: str,
@@ -269,6 +334,11 @@ def _send_via_smtplib(
 ) -> None:
     _require_smtp()
     s = _settings()
+    resend_key = (getattr(s, "resend_api_key", "") or "").strip()
+    if resend_key:
+        _send_via_resend(resend_key, to, subject, body, html=html, attachments=attachments, from_email=s.smtp_from_email)
+        return
+
     msg = EmailMessage()
     msg["Subject"] = subject
     msg["From"] = s.smtp_from_email
