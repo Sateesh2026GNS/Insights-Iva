@@ -707,6 +707,7 @@ export default function QuotationForm() {
     delivery_note_date: "",
 
     reference_no: "",
+    reference_date: "",
     other_references: "",
 
     po_number: "",
@@ -1071,6 +1072,11 @@ export default function QuotationForm() {
             reference_no:
               trans.reference_no ||
               meta.reference_no ||
+              "",
+
+            reference_date:
+              trans.reference_date ||
+              meta.reference_date ||
               "",
 
             other_references:
@@ -1816,6 +1822,10 @@ export default function QuotationForm() {
               form.reference_no ||
               "",
 
+            reference_date:
+              form.reference_date ||
+              "",
+
             other_references:
               form.other_references ||
               "",
@@ -1880,6 +1890,10 @@ export default function QuotationForm() {
 
             reference_no:
               form.reference_no ||
+              "",
+
+            reference_date:
+              form.reference_date ||
               "",
 
             other_references:
@@ -2002,6 +2016,10 @@ export default function QuotationForm() {
 
           reference_no:
             form.reference_no ||
+            "",
+
+          reference_date:
+            form.reference_date ||
             "",
 
           payment_terms:
@@ -3480,22 +3498,61 @@ export default function QuotationForm() {
             <p className="text-center text-[12px] font-bold uppercase tracking-[0.12em] text-[#6b6b76]">
               Optional Fields
             </p>
+            <section className="rounded-xl border border-[#d0d0d8] bg-white p-4">
+              <h3 className="mb-3 text-[14px] font-semibold text-[#1a1a1f]">
+                References and Order Details
+              </h3>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <label className="block">
+                  <FieldLabel>Reference No.</FieldLabel>
+                  <SoftInput placeholder="Enter reference number" value={form.reference_no} onChange={(e) => setForm((f) => ({ ...f, reference_no: e.target.value }))} />
+                </label>
+                <label className="block">
+                  <FieldLabel>Reference Date</FieldLabel>
+                  <SoftInput type="date" value={form.reference_date} onChange={(e) => setForm((f) => ({ ...f, reference_date: e.target.value }))} />
+                </label>
+                <label className="block">
+                  <FieldLabel>Other References</FieldLabel>
+                  <SoftInput placeholder="Enter other references" value={form.other_references} onChange={(e) => setForm((f) => ({ ...f, other_references: e.target.value }))} />
+                </label>
+                <label className="block">
+                  <FieldLabel>Buyer’s Order No.</FieldLabel>
+                  <SoftInput placeholder="Enter buyer order / PO number" value={form.po_number} onChange={(e) => setForm((f) => ({ ...f, po_number: e.target.value }))} />
+                </label>
+                <label className="block">
+                  <FieldLabel>Buyer’s Order Date</FieldLabel>
+                  <SoftInput type="date" value={form.po_date} onChange={(e) => setForm((f) => ({ ...f, po_date: e.target.value }))} />
+                </label>
+              </div>
+            </section>
 
-            {/*
-              Existing optional sections from your project
-              were already represented as a placeholder in
-              the code you pasted.
-
-              Keep your existing:
-              - Transportation
-              - Other Details
-              - Terms of Delivery
-              - GST Mode
-              - Declaration
-              - Notes
-              - Signature and Stamp
-              UI here.
-            */}
+            <section className="rounded-xl border border-[#d0d0d8] bg-white p-4">
+              <h3 className="mb-3 text-[14px] font-semibold text-[#1a1a1f]">
+                Transportation and Delivery
+              </h3>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <label className="block">
+                  <FieldLabel>Dispatch Document No.</FieldLabel>
+                  <SoftInput placeholder="Enter dispatch / LR number" value={form.dispatch_doc_no} onChange={(e) => setForm((f) => ({ ...f, dispatch_doc_no: e.target.value }))} />
+                </label>
+                <label className="block">
+                  <FieldLabel>Delivery Note Date</FieldLabel>
+                  <SoftInput type="date" value={form.delivery_note_date} onChange={(e) => setForm((f) => ({ ...f, delivery_note_date: e.target.value }))} />
+                </label>
+                <label className="block">
+                  <FieldLabel>Dispatched Through</FieldLabel>
+                  <SoftInput placeholder="Transporter or carrier" value={form.transporter_name} onChange={(e) => setForm((f) => ({ ...f, transporter_name: e.target.value }))} />
+                </label>
+                <label className="block">
+                  <FieldLabel>Destination</FieldLabel>
+                  <SoftInput placeholder="Enter destination city" value={form.destination} onChange={(e) => setForm((f) => ({ ...f, destination: e.target.value }))} />
+                </label>
+                <label className="block sm:col-span-2 lg:col-span-3">
+                  <FieldLabel>Terms of Delivery</FieldLabel>
+                  <SoftInput placeholder="Enter delivery terms" value={form.terms_of_delivery} onChange={(e) => setForm((f) => ({ ...f, terms_of_delivery: e.target.value }))} />
+                </label>
+              </div>
+            </section>
           </div>
         </div>
       </div>

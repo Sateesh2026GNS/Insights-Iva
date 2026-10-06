@@ -64,12 +64,30 @@ def get_or_create_inventory_item_for_product(
         )
     ).first()
     if linked:
+        product_sku = (product.sku or "").strip()
+        if product_sku and linked.sku != product_sku:
+            collision = db.scalars(
+                select(InventoryItem).where(
+                    InventoryItem.tenant_id == tenant_id,
+                    InventoryItem.sku == product_sku,
+                    InventoryItem.id != linked.id,
+                )
+            ).first()
+            if collision:
+                raise HTTPException(
+                    status_code=409,
+                    detail=f"Product SKU '{product_sku}' is already used by another inventory item.",
+                )
+            linked.sku = product_sku
+        if product.barcode is not None:
+            linked.barcode = product.barcode
         return linked
 
     sku = (product.sku or "").strip()
     if not sku:
-        sku = f"PRD{int(product.id):06d}"
-        product.sku = sku
+        from app.services.sku_service import assign_product_sku
+
+        sku = assign_product_sku(db, product)
         db.flush()
 
     legacy_matches = list(
@@ -96,6 +114,8 @@ def get_or_create_inventory_item_for_product(
                 detail=f"Inventory SKU '{sku}' is already linked to another product.",
             )
         item.product_id = product.id
+        if product.barcode is not None:
+            item.barcode = product.barcode
         db.flush()
         return item
 
@@ -103,6 +123,7 @@ def get_or_create_inventory_item_for_product(
         tenant_id=tenant_id,
         product_id=product.id,
         sku=sku,
+        barcode=product.barcode,
         name=product.name,
         description=product.description,
         unit=getattr(product, "unit", None) or "pcs",

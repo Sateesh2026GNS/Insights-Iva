@@ -26,16 +26,12 @@ import {
 
 /** Purchases sidebar pages — keep aligned with `sidebarNav.js` procurement section. */
 export const STORE_MANAGER_PURCHASE_PAGES = [
-  { key: "stockIn", label: "Stock In", to: "/inventory/stock-in", icon: PackagePlus },
   {
     key: "purchaseRequisitions",
     label: "Purchase Requisitions",
     to: "/procurement/material-requests",
     icon: ClipboardList,
   },
-  { key: "purchase", label: "Purchase", to: "/purchases", icon: FileText, end: true },
-  { key: "paymentsMade", label: "Payments Made", to: "/purchases/payments-made", icon: Wallet },
-  { key: "debitNote", label: "Debit Note", to: "/purchases/debit-notes", icon: Receipt },
   {
     key: "purchaseOrder",
     label: "Purchase Order",
@@ -43,6 +39,10 @@ export const STORE_MANAGER_PURCHASE_PAGES = [
     icon: ShoppingCart,
   },
   { key: "goodsReceipt", label: "Goods Receipt (GRN)", to: "/procurement/goods-receipt", icon: Truck },
+  { key: "stockIn", label: "Stock In", to: "/inventory/stock-in", icon: PackagePlus },
+  { key: "purchase", label: "Purchase", to: "/purchases", icon: FileText, end: true },
+  { key: "debitNote", label: "Debit Note", to: "/purchases/debit-notes", icon: Receipt },
+  { key: "paymentsMade", label: "Payments Made", to: "/purchases/payments-made", icon: Wallet },
   {
     key: "supplierPayments",
     label: "Supplier Payments",
@@ -96,11 +96,18 @@ export const STORE_MANAGER_NAV_ITEMS = [
         to: "/inventory/finished-goods",
         icon: Package,
       },
+      { key: "warehouses", label: "Warehouses", to: "/inventory/warehouses", icon: Warehouse },
       {
         key: "materialRequests",
         label: "Material Requests",
         to: "/inventory/material-requests",
         icon: ClipboardList,
+      },
+      {
+        key: "transfer",
+        label: "Stock Transfer",
+        to: "/inventory/stock-transfer",
+        icon: ArrowLeftRight,
       },
       {
         key: "issue",
@@ -110,19 +117,17 @@ export const STORE_MANAGER_NAV_ITEMS = [
       },
       { key: "return", label: "Stock Return", to: "/inventory/stock-return", icon: RotateCcw },
       {
-        key: "transfer",
-        label: "Stock Transfer",
-        to: "/inventory/stock-transfer",
-        icon: ArrowLeftRight,
-      },
-      {
         key: "stockAdjustment",
         label: "Stock Adjustment",
         to: "/inventory/stock-adjustment",
         icon: ClipboardList,
       },
-      { key: "warehouses", label: "Warehouses", to: "/inventory/warehouses", icon: Warehouse },
-      { key: "inventorySettings", label: "Inventory Settings", to: "/inventory/settings", icon: Settings },
+      {
+        key: "todaysStockOut",
+        label: "Today's Stock Out",
+        to: "/inventory/todays-stock-out",
+        icon: ArrowUpFromLine,
+      },
       { key: "lowStock", label: "Low Stock Items", to: "/inventory/low-stock", icon: AlertTriangle },
       { key: "outOfStock", label: "Out of Stock Items", to: "/inventory/out-of-stock", icon: PackageX },
       {
@@ -132,17 +137,12 @@ export const STORE_MANAGER_NAV_ITEMS = [
         icon: ClipboardList,
       },
       {
-        key: "todaysStockOut",
-        label: "Today's Stock Out",
-        to: "/inventory/todays-stock-out",
-        icon: ArrowUpFromLine,
-      },
-      {
         key: "stockLedger",
         label: "Stock Ledger",
         to: "/inventory/stock-ledger",
         icon: History,
       },
+      { key: "inventorySettings", label: "Inventory Settings", to: "/inventory/settings", icon: Settings },
     ],
   },
   {

@@ -26,7 +26,10 @@ def _fmt_qty(n: float) -> str:
 
 
 def _inr(n: float, digits: int = 3) -> str:
-    return f"₹ {float(n or 0):,.{digits}f}"
+    # ReportLab's built-in Helvetica font uses WinAnsi encoding and cannot
+    # encode the Indian rupee glyph (₹), which otherwise raises a 500 while
+    # building quotation and invoice PDFs. Keep the amount readable in the PDF.
+    return f"INR {float(n or 0):,.{digits}f}"
 
 
 def _words(n: float) -> str:
@@ -72,6 +75,7 @@ def generate_invoice_pdf(doc: dict[str, Any]) -> bytes:
     title_style = ParagraphStyle("InvTitle", parent=styles["Heading1"], fontName="Helvetica-Bold", fontSize=13, alignment=TA_CENTER, spaceAfter=1)
     right = ParagraphStyle("Right", parent=body, alignment=TA_RIGHT)
     center = ParagraphStyle("Center", parent=body, alignment=TA_CENTER)
+    outer_rows: list[list[Any]] = []
 
     seller = doc.get("seller") or {}
     meta = doc.get("meta") or {}
@@ -146,10 +150,13 @@ def generate_invoice_pdf(doc: dict[str, Any]) -> bytes:
         seller_text += f"<br/><b>E-Mail</b> : {seller.get('email', '')}"
 
     if is_quotation:
+        reference_value = meta.get("reference_no", "—")
+        if meta.get("reference_date"):
+            reference_value = f"{reference_value} / {meta['reference_date']}"
         meta_grid = [
             ["Quote No.", doc_no or "—", "Valid Till", meta.get("valid_until", "—")],
             ["Payment Terms", meta.get("payment_terms", "Net 30 Days"), "Quotation Date", doc_date or "—"],
-            ["Reference No. & Date.", meta.get("reference_no", "—"), "Other References", meta.get("other_references", "—")],
+            ["Reference No. & Date.", reference_value, "Other References", meta.get("other_references", "—")],
             ["Buyer's Order No.", meta.get("buyer_order_no", meta.get("buyers_order_no", "—")), "Dated", meta.get("buyer_order_date", "—")],
             ["Dispatch Doc No.", dispatch.get("dispatch_doc_no", "—"), "Delivery Note Date", dispatch.get("delivery_note_date", "—")],
             ["Dispatched through", dispatch.get("dispatched_through", dispatch.get("transporter_name", "DTDC")), "Destination", dispatch.get("destination", "—")],

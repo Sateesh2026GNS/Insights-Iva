@@ -949,6 +949,11 @@ export default function WorkChat() {
   const messagesContainerRef = useRef(null);
   const pollRef = useRef(null);
   const menuRef = useRef(null);
+  const isUserScrolledUpRef = useRef(false);
+  const shouldScrollToBottomOnNextUpdateRef = useRef(true);
+  const prevScrollHeightRef = useRef(0);
+  const prevScrollTopRef = useRef(0);
+  const isPrependingEarlierRef = useRef(false);
   const [showScrollBottom, setShowScrollBottom] = useState(false);
 
   const activeConv = useMemo(
@@ -992,6 +997,17 @@ export default function WorkChat() {
     []
   );
 
+  const handleLoadEarlier = useCallback(() => {
+    if (!activeId || !messages.length) return;
+    const container = messagesContainerRef.current;
+    if (container) {
+      prevScrollHeightRef.current = container.scrollHeight;
+      prevScrollTopRef.current = container.scrollTop;
+      isPrependingEarlierRef.current = true;
+    }
+    loadMessages(activeId, messages[0]?.id, true);
+  }, [activeId, messages, loadMessages]);
+
   useEffect(() => {
     loadConversations();
   }, [loadConversations]);
@@ -1019,6 +1035,8 @@ export default function WorkChat() {
     setShowSearchThread(false);
     setSelectMode(false);
     setSelectedMsgIds(new Set());
+    isUserScrolledUpRef.current = false;
+    shouldScrollToBottomOnNextUpdateRef.current = true;
 
     if (lockedConvs.has(activeId) && !unlockedConvs.has(activeId)) {
       setLockModal({ open: true, mode: "enter", convId: activeId });
@@ -1047,7 +1065,26 @@ export default function WorkChat() {
   }, [activeId, loadMessages, loadConversations, lockedConvs, unlockedConvs]);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    const container = messagesContainerRef.current;
+
+    if (isPrependingEarlierRef.current && container) {
+      const newScrollHeight = container.scrollHeight;
+      const heightDiff = newScrollHeight - prevScrollHeightRef.current;
+      container.scrollTop = prevScrollTopRef.current + heightDiff;
+      isPrependingEarlierRef.current = false;
+      return;
+    }
+
+    if (shouldScrollToBottomOnNextUpdateRef.current) {
+      bottomRef.current?.scrollIntoView({ behavior: "auto" });
+      shouldScrollToBottomOnNextUpdateRef.current = false;
+      isUserScrolledUpRef.current = false;
+      return;
+    }
+
+    if (!isUserScrolledUpRef.current) {
+      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
   }, [messages]);
 
   const handleMessagesScroll = (e) => {
@@ -1055,6 +1092,7 @@ export default function WorkChat() {
     if (!el) return;
     const isScrolledUp = el.scrollHeight - el.scrollTop - el.clientHeight > 120;
     setShowScrollBottom(isScrolledUp);
+    isUserScrolledUpRef.current = isScrolledUp;
   };
 
   useEffect(() => {
@@ -1410,6 +1448,8 @@ export default function WorkChat() {
       });
       setComposer("");
       setPendingFiles([]);
+      isUserScrolledUpRef.current = false;
+      shouldScrollToBottomOnNextUpdateRef.current = true;
       setMessages((prev) => [...prev, msg]);
       loadConversations();
     } catch (e) {
@@ -1760,170 +1800,176 @@ export default function WorkChat() {
                   )}
 
                   {/* Thread Messages List */}
-                  <div
-                    ref={messagesContainerRef}
-                    onScroll={handleMessagesScroll}
-                    className={`work-chat-messages work-chat-messages--${chatTheme} relative`}
-                    role="log"
-                    aria-live="polite"
-                  >
-                    {hasMore ? (
-                      <button
-                        type="button"
-                        className="work-chat-load-more"
-                        onClick={() => loadMessages(activeId, messages[0]?.id, true)}
-                      >
-                        Load earlier messages
-                      </button>
-                    ) : null}
-                    {filteredMessages.length === 0 ? (
-                      <p className="text-center text-sm text-[var(--color-text-muted)] py-8">
-                        {threadQuery ? "No matching messages found." : "No messages yet. Start the conversation."}
-                      </p>
-                    ) : (
-                      filteredMessages.map((m) => {
-                        const own = m.sender?.id === user?.id;
-                        const showPicker = activeEmojiPickerId === m.id;
-                        const isSelected = selectedMsgIds.has(m.id);
+                  <div className="work-chat-messages-wrapper">
+                    <div
+                      ref={messagesContainerRef}
+                      onScroll={handleMessagesScroll}
+                      className={`work-chat-messages work-chat-messages--${chatTheme}`}
+                      role="log"
+                      aria-live="polite"
+                    >
+                      {hasMore ? (
+                        <button
+                          type="button"
+                          className="work-chat-load-more"
+                          onClick={handleLoadEarlier}
+                        >
+                          Load earlier messages
+                        </button>
+                      ) : null}
+                      {filteredMessages.length === 0 ? (
+                        <p className="text-center text-sm text-[var(--color-text-muted)] py-8">
+                          {threadQuery ? "No matching messages found." : "No messages yet. Start the conversation."}
+                        </p>
+                      ) : (
+                        filteredMessages.map((m) => {
+                          const own = m.sender?.id === user?.id;
+                          const showPicker = activeEmojiPickerId === m.id;
+                          const isSelected = selectedMsgIds.has(m.id);
 
-                        return (
-                          <div key={m.id} className={`work-chat-bubble-row ${own ? "work-chat-bubble-row--own" : ""}`}>
-                            {selectMode ? (
-                              <input
-                                type="checkbox"
-                                className="mr-2 self-center h-4 w-4 accent-[var(--color-primary)]"
-                                checked={isSelected}
-                                onChange={() => {
-                                  setSelectedMsgIds((prev) => {
-                                    const next = new Set(prev);
-                                    if (next.has(m.id)) next.delete(m.id);
-                                    else next.add(m.id);
-                                    return next;
-                                  });
-                                }}
-                              />
-                            ) : null}
-                            <div className="work-chat-bubble-container">
-                              <div className={`work-chat-bubble ${own ? "work-chat-bubble--own" : ""}`}>
-                                {!own ? (
-                                  <p className="text-[11px] font-semibold text-[var(--color-primary)] mb-0.5">
-                                    {m.sender?.full_name}
-                                  </p>
-                                ) : null}
-                                {m.reply_to ? (
-                                  <p className="work-chat-reply text-xs opacity-80 mb-1">{m.reply_to.body}</p>
-                                ) : null}
-                                {m.body ? (
-                                  <p className="text-sm whitespace-pre-wrap break-words">{m.body}</p>
-                                ) : null}
-                                {m.links?.length ? (
-                                  <div className="mt-2 flex flex-wrap gap-2">
-                                    {m.links.map((link) => (
-                                      <Link
-                                        key={`${link.entity_type}-${link.entity_id}`}
-                                        to={link.path || "#"}
-                                        className="work-chat-erp-link"
-                                      >
-                                        {link.label}
-                                      </Link>
-                                    ))}
+                          return (
+                            <div key={m.id} className={`work-chat-bubble-row ${own ? "work-chat-bubble-row--own" : ""}`}>
+                              {selectMode ? (
+                                <input
+                                  type="checkbox"
+                                  className="mr-2 self-center h-4 w-4 accent-[var(--color-primary)]"
+                                  checked={isSelected}
+                                  onChange={() => {
+                                    setSelectedMsgIds((prev) => {
+                                      const next = new Set(prev);
+                                      if (next.has(m.id)) next.delete(m.id);
+                                      else next.add(m.id);
+                                      return next;
+                                    });
+                                  }}
+                                />
+                              ) : null}
+                              <div className="work-chat-bubble-container">
+                                <div className={`work-chat-bubble ${own ? "work-chat-bubble--own" : ""}`}>
+                                  {!own ? (
+                                    <p className="text-[11px] font-semibold text-[var(--color-primary)] mb-0.5">
+                                      {m.sender?.full_name}
+                                    </p>
+                                  ) : null}
+                                  {m.reply_to ? (
+                                    <p className="work-chat-reply text-xs opacity-80 mb-1">{m.reply_to.body}</p>
+                                  ) : null}
+                                  {m.body ? (
+                                    <p className="text-sm whitespace-pre-wrap break-words">{m.body}</p>
+                                  ) : null}
+                                  {m.links?.length ? (
+                                    <div className="mt-2 flex flex-wrap gap-2">
+                                      {m.links.map((link) => (
+                                        <Link
+                                          key={`${link.entity_type}-${link.entity_id}`}
+                                          to={link.path || "#"}
+                                          className="work-chat-erp-link"
+                                        >
+                                          {link.label}
+                                        </Link>
+                                      ))}
+                                    </div>
+                                  ) : null}
+                                  {m.attachments?.length ? (
+                                    <div className="work-chat-attachments">
+                                      {m.attachments.map((a) => (
+                                        <WorkChatAttachmentItem
+                                          key={a.file_id}
+                                          attachment={a}
+                                          own={own}
+                                          onOpenLightbox={(url, filename, fileId) =>
+                                            setLightbox({ url, filename, fileId })
+                                          }
+                                          onDownload={handleDownloadFile}
+                                        />
+                                      ))}
+                                    </div>
+                                  ) : null}
+                                  {m.reactions?.length ? (
+                                    <div className="work-chat-reactions">
+                                      {m.reactions.map((r) => (
+                                        <button
+                                          key={r.emoji}
+                                          type="button"
+                                          className={`work-chat-reaction-badge ${
+                                            r.reacted ? "work-chat-reaction-badge--active" : ""
+                                          }`}
+                                          onClick={() => handleToggleReaction(m.id, r.emoji)}
+                                          title={`${r.count} reaction(s)`}
+                                        >
+                                          <span>{r.emoji}</span>
+                                          <span>{r.count}</span>
+                                        </button>
+                                      ))}
+                                    </div>
+                                  ) : null}
+                                  <p className="mt-1 text-[10px] text-[var(--color-text-muted)]">{formatTime(m.created_at)}</p>
+                                </div>
+
+                                {/* Action Buttons matching reference style */}
+                                {!m.is_deleted ? (
+                                  <div className={`work-chat-msg-actions ${showPicker ? "work-chat-msg-actions--active" : ""}`}>
+                                    <button
+                                      type="button"
+                                      className="work-chat-msg-action-btn"
+                                      title="Forward message"
+                                      onClick={() => setForwardingMsg(m)}
+                                    >
+                                      <Forward className="h-3.5 w-3.5" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="work-chat-msg-action-btn"
+                                      title="React with emoji"
+                                      onClick={() => setActiveEmojiPickerId(showPicker ? null : m.id)}
+                                    >
+                                      <Smile className="h-3.5 w-3.5" />
+                                    </button>
                                   </div>
                                 ) : null}
-                                {m.attachments?.length ? (
-                                  <div className="work-chat-attachments">
-                                    {m.attachments.map((a) => (
-                                      <WorkChatAttachmentItem
-                                        key={a.file_id}
-                                        attachment={a}
-                                        own={own}
-                                        onOpenLightbox={(url, filename, fileId) =>
-                                          setLightbox({ url, filename, fileId })
-                                        }
-                                        onDownload={handleDownloadFile}
-                                      />
-                                    ))}
-                                  </div>
-                                ) : null}
-                                {m.reactions?.length ? (
-                                  <div className="work-chat-reactions">
-                                    {m.reactions.map((r) => (
+
+                                {/* Emoji Quick Picker Popover */}
+                                {showPicker ? (
+                                  <div className="work-chat-emoji-popover">
+                                    {QUICK_EMOJIS.map((emoji) => (
                                       <button
-                                        key={r.emoji}
+                                        key={emoji}
                                         type="button"
-                                        className={`work-chat-reaction-badge ${
-                                          r.reacted ? "work-chat-reaction-badge--active" : ""
-                                        }`}
-                                        onClick={() => handleToggleReaction(m.id, r.emoji)}
-                                        title={`${r.count} reaction(s)`}
+                                        className="work-chat-emoji-opt"
+                                        onClick={() => {
+                                          handleToggleReaction(m.id, emoji);
+                                          setActiveEmojiPickerId(null);
+                                        }}
                                       >
-                                        <span>{r.emoji}</span>
-                                        <span>{r.count}</span>
+                                        {emoji}
                                       </button>
                                     ))}
                                   </div>
                                 ) : null}
-                                <p className="mt-1 text-[10px] text-[var(--color-text-muted)]">{formatTime(m.created_at)}</p>
                               </div>
-
-                              {/* Action Buttons matching reference style */}
-                              {!m.is_deleted ? (
-                                <div className={`work-chat-msg-actions ${showPicker ? "work-chat-msg-actions--active" : ""}`}>
-                                  <button
-                                    type="button"
-                                    className="work-chat-msg-action-btn"
-                                    title="Forward message"
-                                    onClick={() => setForwardingMsg(m)}
-                                  >
-                                    <Forward className="h-3.5 w-3.5" />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    className="work-chat-msg-action-btn"
-                                    title="React with emoji"
-                                    onClick={() => setActiveEmojiPickerId(showPicker ? null : m.id)}
-                                  >
-                                    <Smile className="h-3.5 w-3.5" />
-                                  </button>
-                                </div>
-                              ) : null}
-
-                              {/* Emoji Quick Picker Popover */}
-                              {showPicker ? (
-                                <div className="work-chat-emoji-popover">
-                                  {QUICK_EMOJIS.map((emoji) => (
-                                    <button
-                                      key={emoji}
-                                      type="button"
-                                      className="work-chat-emoji-opt"
-                                      onClick={() => {
-                                        handleToggleReaction(m.id, emoji);
-                                        setActiveEmojiPickerId(null);
-                                      }}
-                                    >
-                                      {emoji}
-                                    </button>
-                                  ))}
-                                </div>
-                              ) : null}
                             </div>
-                          </div>
-                        );
-                      })
-                    )}
-                    <div ref={bottomRef} />
-                  </div>
+                          );
+                        })
+                      )}
+                      <div ref={bottomRef} />
+                    </div>
 
-                  {showScrollBottom && (
-                    <button
-                      type="button"
-                      className="work-chat-scroll-bottom-btn"
-                      title="Scroll to latest message"
-                      aria-label="Scroll to latest message"
-                      onClick={() => bottomRef.current?.scrollIntoView({ behavior: "smooth" })}
-                    >
-                      <ChevronDown className="h-5 w-5 text-[#475569]" />
-                    </button>
-                  )}
+                    {showScrollBottom && (
+                      <button
+                        type="button"
+                        className="work-chat-scroll-bottom-btn"
+                        title="Scroll to latest message"
+                        aria-label="Scroll to latest message"
+                        onClick={() => {
+                          isUserScrolledUpRef.current = false;
+                          shouldScrollToBottomOnNextUpdateRef.current = true;
+                          bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+                        }}
+                      >
+                        <ChevronDown className="h-5 w-5 text-[#475569]" />
+                      </button>
+                    )}
+                  </div>
 
                   {pendingFiles.length ? (
                     <div className="work-chat-pending-files">

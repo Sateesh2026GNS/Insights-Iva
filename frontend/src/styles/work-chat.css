@@ -84,9 +84,17 @@
   background: rgba(100, 116, 139, 0.7);
 }
 
+.work-chat-messages-wrapper {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
 .work-chat-scroll-bottom-btn {
   position: absolute;
-  bottom: 4.25rem;
+  bottom: 1.25rem;
   right: 1.25rem;
   z-index: 40;
   display: grid;

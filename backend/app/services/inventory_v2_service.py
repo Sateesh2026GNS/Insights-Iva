@@ -39,6 +39,7 @@ def serialize_item(p: Product, db: Session | None = None) -> dict:
         "id": p.id,
         "sku": p.sku,
         "product_code": p.sku,
+        "barcode": p.barcode,
         "name": p.name,
         "description": p.description or "",
         "unit": p.unit or "Pcs",
@@ -112,12 +113,11 @@ def get_item(db: Session, tenant_id: int, product_id: int) -> dict | None:
 
 
 def create_item(db: Session, tenant_id: int, payload: InventoryItemV2Create) -> dict:
-    sku = (payload.sku or "").strip() or f"PRD-{payload.name[:12].upper().replace(' ', '-')}"
-    existing = db.scalars(
+    sku = (payload.sku or "").strip() or None
+    if sku and db.scalars(
         select(Product).where(Product.tenant_id == tenant_id, Product.sku == sku)
-    ).first()
-    if existing:
-        raise HTTPException(400, detail="SKU already exists")
+    ).first():
+        raise HTTPException(status_code=409, detail="SKU already exists")
 
     min_stk = int(payload.min_stock or 0)
     max_stk = int(payload.max_stock) if payload.max_stock is not None else None
@@ -130,6 +130,7 @@ def create_item(db: Session, tenant_id: int, payload: InventoryItemV2Create) -> 
         tenant_id=tenant_id,
         sku=sku,
         name=payload.name.strip(),
+        barcode=payload.barcode,
         description=payload.description,
         unit=payload.unit or "Pcs",
         unit_cost=payload.purchase_price,
@@ -145,6 +146,10 @@ def create_item(db: Session, tenant_id: int, payload: InventoryItemV2Create) -> 
     )
     try:
         db.add(product)
+        db.flush()
+        from app.services.sku_service import assign_product_sku
+
+        sku = assign_product_sku(db, product)
         db.flush()
         from app.services.product_inventory_sync import (
             ensure_product_inventory_item,
@@ -253,6 +258,7 @@ def update_item(
             ("unit", "unit"),
             ("purchase_price", "unit_cost"),
             ("category", "category"),
+            ("barcode", "barcode"),
         ):
             if product_field in data:
                 setattr(inventory_item, inventory_field, data[product_field])

@@ -317,10 +317,7 @@ export default function AddNewItemModal({
       return;
     }
     if (item) {
-      const existingBarcode =
-        (item?.barcode && item.barcode !== "—" ? item.barcode : "") ||
-        item?.sku ||
-        "";
+      const existingBarcode = item?.barcode && item.barcode !== "—" ? item.barcode : "";
       const cleanHsn = (item?.hsn_code && item.hsn_code !== "—") ? item.hsn_code : "";
       const isService =
         item?.product_type === "Service" ||
@@ -480,9 +477,6 @@ export default function AddNewItemModal({
     setSaving(true);
     let photoSaveWarning = null;
     try {
-      const sku =
-        form.barcode.trim() ||
-        `SKU-${Date.now().toString().slice(-8)}`;
       const stockQty = Number(form.opening_stock);
       const minStockVal = Number(form.min_stock);
       const cleanHsn = form.hsn_sac.trim();
@@ -499,7 +493,7 @@ export default function AddNewItemModal({
 
       const payload = {
         tenant_id: tenantId,
-        sku,
+        barcode: form.barcode.trim() || null,
         name: form.name.trim(),
         category: form.category || "Finished Goods",
         ...(isProduct ? { status: form.status } : {}),
@@ -962,7 +956,7 @@ export default function AddNewItemModal({
                 {/* Barcode — full width card */}
                 <div className="rounded-xl border border-[#e8e8ee] bg-[#fafafa] p-3">
                   <div className="mb-2 flex items-center justify-between">
-                    <SoftLabel>{isProduct ? "Barcode / Product Code" : "Barcode / Item Code"}</SoftLabel>
+                    <SoftLabel>Barcode</SoftLabel>
                     {form.barcode.trim() ? (
                       <div className="flex items-center gap-2">
                         <button
