@@ -27,6 +27,7 @@ class MRListRead(BaseModel):
     status: str = "pending"
     approval_status: str = "pending"
     required_date: str | None = None
+    converted_to_po: bool = False
 
 
 class RFQSummaryRead(BaseModel):

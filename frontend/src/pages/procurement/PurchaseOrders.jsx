@@ -33,6 +33,7 @@ import { apiErrorMessage } from "../../utils/apiError";
 import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
 import { ListPageShell } from "../../components/common/ListPageShell";
 import { runListExport } from "../../utils/listExport";
+import ConfirmDialog from "../../components/admin/ConfirmDialog";
 
 const PAGE_SIZES = [10, 20, 50];
 
@@ -138,6 +139,8 @@ export default function PurchaseOrders() {
   const [pageSize, setPageSize] = useState(20);
   const [draftFilters, setDraftFilters] = useState(EMPTY_FILTERS);
   const [filters, setFilters] = useState(EMPTY_FILTERS);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
 
   const load = useCallback(async (isRefresh = false) => {
     if (!isRefresh) setLoading(true);
@@ -158,15 +161,18 @@ export default function PurchaseOrders() {
 
   useManufacturingRefresh(load);
 
-  const handleDelete = async (row) => {
-    if (!row?.id) return;
-    if (!window.confirm(`Delete purchase order ${row.po_number || row.id}?`)) return;
+  const confirmDelete = async () => {
+    if (!deleteTarget?.id || deleteBusy) return;
+    setDeleteBusy(true);
     try {
-      await deletePurchaseOrder(row.id);
+      await deletePurchaseOrder(deleteTarget.id);
       addToast("Purchase order deleted", "success");
+      setDeleteTarget(null);
       await load(true);
     } catch (err) {
       addToast(apiErrorMessage(err, "Failed to delete purchase order"), "error");
+    } finally {
+      setDeleteBusy(false);
     }
   };
 
@@ -481,7 +487,7 @@ export default function PurchaseOrders() {
                               label: "Delete",
                               icon: <Trash2 className="h-4 w-4" />,
                               danger: true,
-                              onClick: () => handleDelete(r),
+                              onClick: () => setDeleteTarget(r),
                             },
                           ]}
                         />
@@ -611,8 +617,7 @@ export default function PurchaseOrders() {
                 variant="primary"
                 className="flex-1"
                 onClick={() => {
-                  setFilters(draftFilters);
-                  setDraftFilters((f) => ({ ...f, vendor: "" }));
+                  setFilters({ ...draftFilters });
                   setShowFilters(false);
                 }}
               >
@@ -631,6 +636,18 @@ export default function PurchaseOrders() {
           onReject={(po) => handleStatus(po, "cancelled")}
         />
       ) : null}
+
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        title="Delete purchase order"
+        message={`Delete purchase order ${deleteTarget?.po_number || deleteTarget?.id}? This cannot be undone.`}
+        confirmLabel="Delete"
+        loading={deleteBusy}
+        onConfirm={confirmDelete}
+        onClose={() => {
+          if (!deleteBusy) setDeleteTarget(null);
+        }}
+      />
     </ListPageShell>
   );
 }

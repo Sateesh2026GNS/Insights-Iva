@@ -17,6 +17,7 @@ import { createBizDocument, getBizDocument, listBizDocuments, updateBizDocument 
 import { getVendors } from "../../api/procurementApi";
 import { useToast } from "../../context/ToastContext";
 import { apiErrorMessage } from "../../utils/apiError";
+import ConfirmDialog from "../../components/admin/ConfirmDialog";
 import { formatInr } from "../../data/salesMasterData";
 import { inputClass } from "../../design-system/classes";
 
@@ -75,7 +76,8 @@ export default function MakePaymentForm() {
   const location = useLocation();
   const { id: routeId } = useParams();
   const editId = routeId || location.state?.viewId || null;
-  const isEdit = Boolean(editId);
+  const readOnly = Boolean(location.state?.readOnly);
+  const isEdit = Boolean(editId) && !readOnly;
   const { addToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -85,6 +87,7 @@ export default function MakePaymentForm() {
   const [sellerSearch, setSellerSearch] = useState("");
   const [addSellerOpen, setAddSellerOpen] = useState(false);
   const [partyMenuId, setPartyMenuId] = useState(null);
+  const [removePartyTarget, setRemovePartyTarget] = useState(null);
   const [prefixModalOpen, setPrefixModalOpen] = useState(false);
   const [prefixes, setPrefixes] = useState(() => {
     const saved = loadJson(PREFIX_KEY, ["PM"]);
@@ -289,15 +292,22 @@ export default function MakePaymentForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex h-full min-h-0 flex-col bg-[#F5F5F5]">
+    <form
+      onSubmit={readOnly ? (e) => e.preventDefault() : handleSubmit}
+      className="flex h-full min-h-0 flex-col bg-[#F5F5F5]"
+    >
       <div className="flex shrink-0 items-center justify-between gap-3 border-b border-[#e4e4ea] bg-white px-5 py-3.5">
         <div className="flex items-center gap-2">
           <Button type="button" variant="secondary" onClick={() => navigate("/purchases/payments-made")}>
-            Cancel
+            {readOnly ? "Back" : "Cancel"}
           </Button>
-          <Button type="submit" variant="primary" loading={saving} disabled={saving}>
-            {saving ? "Saving…" : "Save"}
-          </Button>
+          {!readOnly ? (
+            <Button type="submit" variant="primary" loading={saving} disabled={saving}>
+              {saving ? "Saving…" : "Save"}
+            </Button>
+          ) : (
+            <span className="text-sm font-medium text-[#6b6b76]">View receipt (read-only)</span>
+          )}
         </div>
         </div>
 
@@ -414,14 +424,7 @@ export default function MakePaymentForm() {
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setPartyMenuId(null);
-                                    if (!window.confirm(`Remove ${c.name || "this seller"} from the list?`)) {
-                                      return;
-                                    }
-                                    setVendors((rows) => rows.filter((row) => row.id !== c.id));
-                                    if (String(form.vendor_id) === String(c.id)) {
-                                      setForm((f) => ({ ...f, vendor_id: "" }));
-                                    }
-                                    addToast("Seller removed from list", "success");
+                                    setRemovePartyTarget(c);
                                   }}
                                 >
                                   <Trash2 className="h-3.5 w-3.5" /> Delete Party
@@ -818,6 +821,23 @@ export default function MakePaymentForm() {
           });
           setForm((f) => ({ ...f, account_id: acc.id }));
         }}
+      />
+      <ConfirmDialog
+        open={Boolean(removePartyTarget)}
+        title="Remove seller"
+        message={`Remove ${removePartyTarget?.name || "this seller"} from the list?`}
+        confirmLabel="Remove"
+        onConfirm={() => {
+          const c = removePartyTarget;
+          if (!c) return;
+          setVendors((rows) => rows.filter((row) => row.id !== c.id));
+          if (String(form.vendor_id) === String(c.id)) {
+            setForm((f) => ({ ...f, vendor_id: "" }));
+          }
+          setRemovePartyTarget(null);
+          addToast("Seller removed from list", "success");
+        }}
+        onClose={() => setRemovePartyTarget(null)}
       />
     </form>
   );

@@ -5,6 +5,8 @@ export const getPurchaseOrders = () => api.get("/procurement/purchase-orders");
 export const getPurchaseOrdersEnriched = () => api.get("/procurement/purchase-orders/enriched");
 export const getPOSummary = () => api.get("/procurement/purchase-orders/summary");
 export const getPurchaseOrder = (poId) => api.get(`/procurement/purchase-orders/${poId}`);
+export const downloadPurchaseOrderPdf = (poId) =>
+  api.get(`/procurement/purchase-orders/${poId}/pdf`, { responseType: "blob" });
 export const createPurchaseOrder = (payload) => api.post("/procurement/purchase-orders", payload);
 export const updatePurchaseOrder = (poId, payload) =>
   api.put(`/procurement/purchase-orders/${poId}`, payload);

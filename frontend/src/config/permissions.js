@@ -46,10 +46,10 @@ export const ROLE_PERMISSIONS = {
   "Sales Manager": ["dashboard", "sales", "masters", "alerts", "documents", "meetings", "settings"],
   sales_manager: ["dashboard", "sales", "masters", "alerts", "documents", "meetings", "settings"],
   "Store Manager": [
-    "dashboard", "inventory", "procurement", "sales", "masters", "alerts", "documents", "settings", "analytics",
+    "dashboard", "inventory", "procurement", "sales", "masters", "alerts", "documents", "meetings", "settings", "analytics",
   ],
   store_manager: [
-    "dashboard", "inventory", "procurement", "sales", "masters", "alerts", "documents", "settings", "analytics",
+    "dashboard", "inventory", "procurement", "sales", "masters", "alerts", "documents", "meetings", "settings", "analytics",
   ],
   "Purchase Manager": [
     "dashboard", "procurement", "inventory", "masters", "accounts", "alerts", "documents", "analytics",
@@ -319,6 +319,7 @@ export const STORE_MANAGER_ALLOWED_PATHS = new Set([
   "/alerts/low-stock",
   "/documents",
   "/documents/purchase",
+  "/meetings",
   "/manufacturing/workflow",
   "/my-job-cards",
   "/hr/attendance",
@@ -506,6 +507,7 @@ export function storeManagerPathAllowed(pathname) {
   if (path.startsWith("/documents")) return true;
   if (path.startsWith("/manufacturing")) return true;
   if (path.startsWith("/chat")) return true;
+  if (path.startsWith("/meetings")) return true;
   return false;
 }
 

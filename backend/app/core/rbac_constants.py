@@ -100,6 +100,7 @@ PERMISSION_MATRIX = {
             "masters",
             "alerts",
             "documents",
+            "meetings",
             "settings",
             "analytics",
         ],

@@ -256,7 +256,7 @@ export default function InventoryDashboard() {
             meta="Job cards awaiting check"
           />
         </ClickableKpiCard>
-        <ClickableKpiCard to="/procurement/material-requests?status=pending" title="Pending material requests">
+        <ClickableKpiCard to="/procurement/material-requests?kpi=pending_approval" title="Pending material requests">
           <KpiCard
             label="Pending Material Requests"
             value={kpiValue(failed, dash?.pending_material_requests)}

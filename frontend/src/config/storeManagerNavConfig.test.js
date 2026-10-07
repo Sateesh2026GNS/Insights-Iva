@@ -14,6 +14,14 @@ function flattenChildren(nodes) {
   return labels;
 }
 
+describe("storeManagerNavConfig collaboration", () => {
+  it("includes Meetings alongside Work Chat", () => {
+    const meetings = STORE_MANAGER_NAV_ITEMS.find((n) => n.key === "meetings");
+    expect(meetings?.to).toBe("/meetings");
+    expect(meetings?.module).toBe("meetings");
+  });
+});
+
 describe("storeManagerNavConfig reports", () => {
   it("points Reports to the reports catalog, not stock ledger", () => {
     const reports = STORE_MANAGER_NAV_ITEMS.find((n) => n.key === "reports");

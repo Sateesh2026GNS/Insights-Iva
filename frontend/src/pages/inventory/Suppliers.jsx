@@ -23,16 +23,10 @@ export default function Suppliers() {
     setLoadError("");
     try {
       const res = await getSuppliers(tenantId);
-      const apiSuppliers = res.data || [];
-      const local = JSON.parse(localStorage.getItem("smrt_suppliers") || "[]");
-      const map = new Map();
-      apiSuppliers.forEach((s) => map.set(String(s.name).toLowerCase(), s));
-      local.forEach((s) => map.set(String(s.name).toLowerCase(), s));
-      setSuppliers(Array.from(map.values()));
+      setSuppliers(Array.isArray(res?.data) ? res.data : []);
     } catch (err) {
-      const local = JSON.parse(localStorage.getItem("smrt_suppliers") || "[]");
-      setSuppliers(local);
-      if (local.length === 0) setLoadError("Could not load suppliers. Is the API running?");
+      setSuppliers([]);
+      setLoadError("Could not load suppliers. Is the API running?");
       if (isRefresh) throw err;
     } finally {
       setLoading(false);

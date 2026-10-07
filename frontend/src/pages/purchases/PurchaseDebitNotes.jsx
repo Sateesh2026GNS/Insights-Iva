@@ -13,6 +13,7 @@ import { useToast } from "../../context/ToastContext";
 import { deleteBizDocument, downloadPurchasePdf, listBizDocuments } from "../../api/bizDocumentsApi";
 import { apiErrorMessage } from "../../utils/apiError";
 import { formatInr } from "../../data/salesMasterData";
+import ConfirmDialog from "../../components/admin/ConfirmDialog";
 
 const ACCENT = "var(--color-action-teal)"; /* #0F6D84 */
 const PAGE_BG = "var(--color-bg)";
@@ -147,6 +148,8 @@ export default function PurchaseDebitNotes() {
   const [pageSize, setPageSize] = useState(20);
   const [draftFilters, setDraftFilters] = useState(EMPTY_FILTERS);
   const [filters, setFilters] = useState(EMPTY_FILTERS);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
 
   const load = useCallback(async (isRefresh = false) => {
     if (!isRefresh) setLoading(true);
@@ -175,15 +178,18 @@ export default function PurchaseDebitNotes() {
     load();
   }, [load]);
 
-  const handleDelete = async (row) => {
-    if (!row?.id) return;
-    if (!window.confirm(`Delete debit note ${row.document_number}?`)) return;
+  const confirmDelete = async () => {
+    if (!deleteTarget?.id || deleteBusy) return;
+    setDeleteBusy(true);
     try {
-      await deleteBizDocument(row.id);
+      await deleteBizDocument(deleteTarget.id);
       addToast("Debit note deleted", "success");
+      setDeleteTarget(null);
       await load();
     } catch (err) {
       addToast(apiErrorMessage(err, "Failed to delete debit note"), "error");
+    } finally {
+      setDeleteBusy(false);
     }
   };
 
@@ -523,7 +529,7 @@ export default function PurchaseDebitNotes() {
                                 label: "Delete",
                                 icon: <Trash2 className="h-4 w-4" />,
                                 danger: true,
-                                onClick: () => handleDelete(r),
+                                onClick: () => setDeleteTarget(r),
                               },
                             ]}
                           />
@@ -673,7 +679,7 @@ export default function PurchaseDebitNotes() {
                 ))}
               </FilterSection>
             </div>
-            <div className="grid grid-cols-2 gap-3 border-t border-[var(--color-border)] px-5 py-4">
+            <div className="sticky bottom-0 z-10 grid shrink-0 grid-cols-2 gap-3 border-t border-[var(--color-border)] bg-[var(--color-surface)] px-5 py-4 shadow-[0_-4px_12px_rgba(0,0,0,0.06)]">
               <button
                 type="button"
                 onClick={() => {
@@ -700,6 +706,17 @@ export default function PurchaseDebitNotes() {
           </aside>
         </div>
       ) : null}
+
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        title="Delete debit note"
+        message={`Delete debit note ${deleteTarget?.document_number}? This cannot be undone.`}
+        loading={deleteBusy}
+        onConfirm={confirmDelete}
+        onClose={() => {
+          if (!deleteBusy) setDeleteTarget(null);
+        }}
+      />
     </div>
   );
 }

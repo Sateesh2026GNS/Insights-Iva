@@ -32,6 +32,7 @@ export default function SendMetricReportEmailModal({
   rows = [],
   columns,
   defaultRecipient = "",
+  purchaseOrderId,
   onSendCustom,
 }) {
   const { addToast } = useToast();
@@ -68,7 +69,7 @@ export default function SendMetricReportEmailModal({
 
   const onSend = async (e) => {
     e.preventDefault();
-    if (!validate()) return;
+    if (!validate() || sending) return;
     setSending(true);
     try {
       if (onSendCustom) {
@@ -79,7 +80,7 @@ export default function SendMetricReportEmailModal({
           message: message.trim(),
         });
       } else {
-        if (!rows?.length) {
+        if (!purchaseOrderId && !rows?.length) {
           addToast("No data available for the selected period.", "info");
           setSending(false);
           return;
@@ -92,7 +93,8 @@ export default function SendMetricReportEmailModal({
           title,
           filename,
           module,
-          rows,
+          rows: purchaseOrderId ? [] : rows,
+          purchase_order_id: purchaseOrderId || undefined,
           columns: exportColumns.map((c) => ({ key: c.key, label: c.label || c.key })),
         });
         addToast("Report emailed successfully.", "success");

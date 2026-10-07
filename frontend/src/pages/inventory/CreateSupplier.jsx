@@ -5,6 +5,7 @@ import { ArrowLeft, Calendar } from "lucide-react";
 import PageHeader from "../../components/common/PageHeader";
 import { createSupplier } from "../../api/inventoryApi";
 import useTenantId from "../../hooks/useTenantId";
+import { apiErrorMessage } from "../../utils/apiError";
 import { todayIso } from "../../utils/dateUtils";
 
 import Button from "../../components/common/Button";
@@ -29,25 +30,17 @@ export default function CreateSupplier() {
     setError("");
     if (!form.name.trim()) { setError("Supplier name is required."); return; }
     setSaving(true);
-
-    const newSupplier = {
-      id: `sup-${Date.now()}`,
-      ...form,
-      name: form.name.trim(),
-      created_at: form.date || todayIso(),
-    };
-
-    // Save to localStorage immediately — guaranteed to show in list
     try {
-      const existing = JSON.parse(localStorage.getItem("smrt_suppliers") || "[]");
-      localStorage.setItem("smrt_suppliers", JSON.stringify([newSupplier, ...existing]));
-    } catch { /* ignore */ }
-
-    // Fire API in background — don't block navigation
-    createSupplier(form).catch(() => null);
-
-    setSaving(false);
-    navigate("/inventory/suppliers");
+      await createSupplier({
+        ...form,
+        name: form.name.trim(),
+      });
+      navigate("/inventory/suppliers");
+    } catch (err) {
+      setError(apiErrorMessage(err, "Could not create supplier."));
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (

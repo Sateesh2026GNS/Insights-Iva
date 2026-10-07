@@ -12,6 +12,8 @@ import useTenantId from "../../hooks/useTenantId";
 import { useToast } from "../../context/ToastContext";
 import { todayIso } from "../../utils/dateUtils";
 import { apiErrorMessage } from "../../utils/apiError";
+import IndianCurrencyInput from "../../components/common/IndianCurrencyInput";
+import { parseIndianCurrencyToNumber } from "../../utils/numberFormat";
 
 const PAYMENT_METHODS = [
   { value: "bank", label: "Bank transfer" },
@@ -47,14 +49,16 @@ export default function CreateSupplierPayment() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.supplier_id || !form.amount) return;
+    if (saving) return;
+    const amount = parseIndianCurrencyToNumber(form.amount);
+    if (!form.supplier_id || !amount) return;
     setSaving(true);
     try {
       await createSupplierPayment({
         ...form,
         tenant_id: tenantId,
         supplier_id: Number(form.supplier_id),
-        amount: Number(form.amount),
+        amount,
         reference: form.reference.trim() || null,
         notes: form.notes.trim() || null,
       });
@@ -132,16 +136,17 @@ export default function CreateSupplierPayment() {
               onChange={(value) => setForm((f) => ({ ...f, payment_date: value }))}
               max={todayIso()}
             />
-            <Input
-              label="Amount"
-              type="number"
-              required
-              step="0.01"
-              min="0"
-              value={form.amount}
-              onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
-              placeholder="e.g. 5000.00"
-            />
+            <div>
+              <label className="mb-1 block text-sm font-medium text-[var(--color-text-secondary)]">
+                Amount <span className="text-[var(--color-danger)]">*</span>
+              </label>
+              <IndianCurrencyInput
+                value={form.amount}
+                onChange={(val) => setForm((f) => ({ ...f, amount: val }))}
+                placeholder="e.g. 90,000"
+                className="w-full"
+              />
+            </div>
           </FormRow>
 
           <Select

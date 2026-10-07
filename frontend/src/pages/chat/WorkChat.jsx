@@ -1674,10 +1674,6 @@ export default function WorkChat() {
   return (
     <ListPageShell stackClassName="work-chat-page pb-2">
       <header className="work-chat-page__head">
-        <div>
-          <h1 className="work-chat-page__title">Work Chat</h1>
-          <p className="work-chat-page__sub">Message your team without leaving the ERP.</p>
-        </div>
         <div className="flex flex-wrap gap-2">
           <Button type="button" variant="secondary" onClick={() => setShowNewDirect(true)}>
             <Plus className="mr-1 h-4 w-4" /> New chat

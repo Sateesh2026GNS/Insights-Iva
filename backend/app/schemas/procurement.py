@@ -54,9 +54,31 @@ class PurchaseOrderUpdate(BaseModel):
     line_items: list[PurchaseOrderLineCreate] | None = None
 
 
+class EntityAttachmentRead(BaseModel):
+    attachment_id: int
+    id: int
+    filename: str
+    mime_type: str | None = None
+    file_size: int = 0
+    upload_status: str | None = None
+    label: str | None = None
+    created_at: str | None = None
+
+
+class PurchaseOrderSupplierRead(BaseModel):
+    id: int
+    name: str | None = None
+    email: str | None = None
+    gstin: str | None = None
+    address: str | None = None
+    state: str | None = None
+
+
 class PurchaseOrderRead(PurchaseOrderBase):
     id: int
     line_items: list[PurchaseOrderLineRead] = []
+    attachments: list[EntityAttachmentRead] = []
+    supplier: PurchaseOrderSupplierRead | None = None
     model_config = ConfigDict(from_attributes=True)
 
 

@@ -115,6 +115,7 @@ export default function ProductsMaster() {
   const [deleting, setDeleting] = useState(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [openMenu, setOpenMenu] = useState(null);
+  const [categoryFilter, setCategoryFilter] = useState("");
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -155,7 +156,13 @@ export default function ProductsMaster() {
     loadProducts();
   }, [loadProducts]);
 
-  const tableRows = useMemo(() => expandProductsToTableRows(products), [products]);
+  const categoryScopedProducts = useMemo(() => {
+    if (!categoryFilter) return products;
+    const needle = categoryFilter.toLowerCase();
+    return products.filter((p) => String(p.category || "").toLowerCase() === needle);
+  }, [products, categoryFilter]);
+
+  const tableRows = useMemo(() => expandProductsToTableRows(categoryScopedProducts), [categoryScopedProducts]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -180,7 +187,7 @@ export default function ProductsMaster() {
 
   useEffect(() => {
     setPage(1);
-  }, [query, pageSize]);
+  }, [query, pageSize, categoryFilter]);
 
   const total = filtered.length;
   const totalPages = Math.max(1, Math.ceil(total / pageSize) || 1);
@@ -188,7 +195,7 @@ export default function ProductsMaster() {
   const from = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const to = Math.min(page * pageSize, total);
 
-  const summary = useMemo(() => computeSummary(products), [products]);
+  const summary = useMemo(() => computeSummary(categoryScopedProducts), [categoryScopedProducts]);
   const categoryChart = useMemo(() => getCategoryChartData(products), [products]);
 
   const existingCategories = useMemo(() => {
@@ -320,6 +327,18 @@ export default function ProductsMaster() {
           <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <SearchBar value={query} onChange={setQuery} placeholder="Search products..." aria-label="Search products" />
             <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto sm:justify-end">
+              {categoryFilter ? (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => {
+                    setCategoryFilter("");
+                    setPage(1);
+                  }}
+                >
+                  Clear Filter
+                </Button>
+              ) : null}
               {!isPM && (
                 <Button
                   variant="secondary"
@@ -649,10 +668,19 @@ export default function ProductsMaster() {
               <ul className="flex-1 space-y-2 text-xs">
                 {categoryChart.map((item) => (
                   <li key={item.name} className="flex items-center justify-between gap-3">
-                    <span className="flex items-center gap-2 text-[var(--color-text-secondary)]">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCategoryFilter(item.name);
+                        setPage(1);
+                      }}
+                      className={`flex flex-1 items-center gap-2 text-left text-[var(--color-text-secondary)] hover:text-[var(--color-primary)] ${
+                        categoryFilter === item.name ? "font-bold text-[var(--color-primary)]" : ""
+                      }`}
+                    >
                       <span className="h-3 w-3 rounded-full" style={{ backgroundColor: item.color }} />
                       <span className="font-medium">{item.name}</span>
-                    </span>
+                    </button>
                     <span className="font-bold text-[var(--color-text)]">{item.value}</span>
                   </li>
                 ))}

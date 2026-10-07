@@ -4,7 +4,9 @@ import usePageRefresh from "../../hooks/usePageRefresh";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import {
   ChevronDown,
+  Eye,
   ListFilter,
+  Pencil,
   Settings,
   Trash2,
   X,
@@ -12,10 +14,17 @@ import {
 
 import AddNewItemModal from "../../components/sales/AddNewItemModal";
 import InventoryRowActionsMenu from "../../components/inventory/InventoryRowActionsMenu";
+import RowActionMenu from "../../components/common/RowActionMenu";
+import useAuth from "../../hooks/useAuth";
+import { isProductionManager, userCanWriteProductMaster } from "../../config/permissions";
+import {
+  buildInventoryStockRowActionItems,
+  filterCategoryWiseItems,
+  normalizeCategoryName,
+} from "../../utils/inventoryCategoryWise";
 import RecordDetailModal from "../../components/inventory/RecordDetailModal";
 import InventoryItemPhoto from "../../components/inventory/InventoryItemPhoto";
 import Loader from "../../components/common/Loader";
-import PageHeader from "../../components/common/PageHeader";
 import Button from "../../components/common/Button";
 import ConfirmDialog from "../../components/admin/ConfirmDialog";
 import EmptyState from "../../components/common/EmptyState";
@@ -231,7 +240,21 @@ function stockFilterFromPath(pathname) {
   return null;
 }
 
+const CATEGORY_WISE_HEADERS = [
+  "HSN Code",
+  "Item Name",
+  "Category",
+  "Stock Value",
+  "Purchase Price",
+  "Sales Price",
+  "Stock In Hand",
+  "Action",
+];
+
 export default function InventoryV2() {
+  const { user } = useAuth();
+  const canWrite = userCanWriteProductMaster(user);
+  const isPM = isProductionManager(user);
   const { addToast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
@@ -257,6 +280,7 @@ export default function InventoryV2() {
   const [categories, setCategories] = useState([]);
   const [categoryToSelect, setCategoryToSelect] = useState("");
   const [openMenuId, setOpenMenuId] = useState(null);
+  const [categoryFilter, setCategoryFilter] = useState("all");
   const [viewTarget, setViewTarget] = useState(null);
   const [stockTarget, setStockTarget] = useState(null);
   const [stockMode, setStockMode] = useState(null);
@@ -295,7 +319,11 @@ export default function InventoryV2() {
 
   useEffect(() => {
     setPage(1);
-  }, [search, sort, stockFilter, pageSize, tab]);
+  }, [search, sort, stockFilter, pageSize, tab, categoryFilter]);
+
+  useEffect(() => {
+    setOpenMenuId(null);
+  }, [tab]);
 
   useEffect(() => {
   const handleOutsideClick = (e) => {
@@ -339,19 +367,21 @@ export default function InventoryV2() {
     return rows;
   }, [products, search, sort, stockFilter]);
 
-  const categoryRows = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return categories
-      .map((c) => ({
-        category: c.name,
-        stock: c.stock ?? products.filter((p) => (p.category || "No Category") === c.name).length,
-        id: c.id,
-      }))
-      .filter((r) => !q || r.category.toLowerCase().includes(q))
-      .sort((a, b) => a.category.localeCompare(b.category));
-  }, [products, categories, search]);
+  const categoryWiseItems = useMemo(
+    () => filterCategoryWiseItems(products, { search, categoryFilter, sort }),
+    [products, search, categoryFilter, sort]
+  );
 
-  const activeRows = tab === "items" ? filteredItems : categoryRows;
+  const categoryFilterOptions = useMemo(() => {
+    const names = new Set();
+    categories.forEach((c) => {
+      if (c?.name) names.add(c.name);
+    });
+    products.forEach((p) => names.add(normalizeCategoryName(p.category)));
+    return [...names].sort((a, b) => a.localeCompare(b));
+  }, [categories, products]);
+
+  const activeRows = tab === "items" ? filteredItems : categoryWiseItems;
   const total = activeRows.length;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const pageRows = activeRows.slice((page - 1) * pageSize, page * pageSize);
@@ -442,10 +472,6 @@ export default function InventoryV2() {
       addToast("Enter a valid quantity.", "error");
       return;
     }
-    if (String(stockTarget.id) === "demo-product") {
-      addToast("Add a real inventory item to adjust stock.", "error");
-      return;
-    }
     const available = Number(stockTarget.current_stock) || 0;
     if (stockMode === "remove" && qty > available) {
       addToast(`Cannot remove more than available stock (${available}).`, "error");
@@ -469,16 +495,37 @@ export default function InventoryV2() {
   };
 
   const handleView = async (row) => {
-    if (String(row.id) === "demo-product") {
-      setViewTarget(row);
-      return;
-    }
     try {
       const res = await getInventoryV2Item(row.id);
       setViewTarget(res.data || row);
     } catch (err) {
       addToast(apiErrorMessage(err, "Could not load item details."), "error");
     }
+  };
+
+  const handleEditRow = (row) => {
+    setEditing(row);
+    setCategoryToSelect(normalizeCategoryName(row.category));
+    setAddOpen(true);
+  };
+
+  const categoryWiseActionItems = (row) => {
+    const base = buildInventoryStockRowActionItems(row, {
+      canWrite,
+      isPM,
+      onView: handleView,
+      onEdit: handleEditRow,
+      onDelete: onDelete,
+    });
+    const iconFor = (label) => {
+      if (label === "View") return <Eye className="h-4 w-4" />;
+      if (label === "Edit") return <Pencil className="h-4 w-4" />;
+      if (label === "Delete") return <Trash2 className="h-4 w-4" />;
+      return null;
+    };
+    return base.map((item) =>
+      item.divider ? item : { ...item, icon: iconFor(item.label) }
+    );
   };
 
   const viewFields = viewTarget
@@ -499,9 +546,6 @@ export default function InventoryV2() {
     : [];
 
   const stockReportMeta = catalogStockReportMeta(stockFilter === "low" ? "low" : stockFilter === "out" ? "out" : null);
-  const pageTitle = stockReportMeta?.title || "Stock Summary";
-  const pageSubtitle =
-    stockReportMeta?.subtitle || "See how much stock is available for each item.";
   const emptyReportTitle = stockReportMeta?.emptyTitle;
   const emptyReportDescription = stockReportMeta?.emptyDescription;
 
@@ -517,7 +561,6 @@ export default function InventoryV2() {
 
   return (
     <InventoryPageShell className="space-y-5">
-      <PageHeader variant="inventory" title={pageTitle} subtitle={pageSubtitle} />
       {lockedStockFilter ? (
         <div className="flex items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900">
           <span>KPI filter active — showing {stockFilter === "low" ? "low stock" : "out of stock"} items only.</span>
@@ -632,9 +675,26 @@ export default function InventoryV2() {
                 />
               </div>
             ) : (
-              <InventoryAddButton type="button" onClick={() => setCategoryModal(true)}>
-                Add Category
-              </InventoryAddButton>
+              <div className="flex flex-wrap items-center gap-2">
+                <label className="flex items-center gap-2 text-[13px] text-[var(--color-text-muted)]">
+                  <span className="sr-only">Filter by category</span>
+                  <select
+                    value={categoryFilter}
+                    onChange={(e) => setCategoryFilter(e.target.value)}
+                    className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-[13px] text-[var(--color-text)]"
+                  >
+                    <option value="all">All Categories</option>
+                    {categoryFilterOptions.map((name) => (
+                      <option key={name} value={name}>
+                        {name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <InventoryAddButton type="button" onClick={() => setCategoryModal(true)}>
+                  Add Category
+                </InventoryAddButton>
+              </div>
             )}
           </div>
 
@@ -735,7 +795,7 @@ export default function InventoryV2() {
                   <thead className={inventoryTableHeadClass}>
                     <tr>
                       <SerialNumberHeader className={`${inventoryThClass} border-r`} />
-                      {["Category", "Stock", "Action"].map((h) => (
+                      {CATEGORY_WISE_HEADERS.map((h) => (
                         <th key={h} className={`${inventoryThClass} last:border-r-0`}>
                           {h}
                         </th>
@@ -745,17 +805,68 @@ export default function InventoryV2() {
                   <tbody>
                     {pageRows.length === 0 ? (
                       <tr>
-                        <td colSpan={4} className="px-4 py-12 text-center text-sm text-[var(--color-text-faint)]">
-                          No categories found.
+                        <td colSpan={CATEGORY_WISE_HEADERS.length + 1} className="p-0 border-none">
+                          <EmptyState
+                            icon="document"
+                            title="No stock items found."
+                            description={
+                              categoryFilter === "all"
+                                ? "Add items or adjust your search."
+                                : `No items in ${categoryFilter}.`
+                            }
+                            className="border-none bg-transparent py-12"
+                          />
                         </td>
                       </tr>
                     ) : (
                       pageRows.map((row, rowIndex) => (
-                        <tr key={row.category} className={inventoryRowClass}>
+                        <tr key={row.id} className={inventoryRowClass}>
                           <SerialNumberCell rowIndex={rowIndex} page={page} pageSize={pageSize} />
-                          <td className={`${inventoryTdClass} font-semibold`}>{row.category}</td>
-                          <td className={`${inventoryTdClass} tabular-nums`}>{row.stock}</td>
-                          <td className={`${inventoryTdClass} text-[var(--color-text-faint)]`}>NA</td>
+                          <td className={`${inventoryTdClass} text-[var(--color-text-muted)]`}>{row.hsn_code || "—"}</td>
+                          <td className={`${inventoryTdClass} font-semibold`}>
+                            <button
+                              type="button"
+                              className="text-left hover:underline"
+                              onClick={() => handleView(row)}
+                            >
+                              {row.name}
+                            </button>
+                          </td>
+                          <td className={inventoryTdClass}>{normalizeCategoryName(row.category)}</td>
+                          <td className={`${inventoryTdClass} tabular-nums`}>
+                            {Number(row.stock_value || 0).toLocaleString("en-IN", {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                            })}
+                          </td>
+                          <td className={`${inventoryTdClass} tabular-nums`}>
+                            {Number(row.purchase_price || 0).toLocaleString("en-IN", {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                            })}
+                          </td>
+                          <td className={`${inventoryTdClass} tabular-nums`}>
+                            {Number(row.selling_price || 0).toLocaleString("en-IN", {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                            })}
+                          </td>
+                          <td className={`${inventoryTdClass} tabular-nums`}>
+                            {Number(row.current_stock || 0).toLocaleString("en-IN")}
+                          </td>
+                          <td className={inventoryTdClass}>
+                            <div
+                              className="flex items-center justify-end whitespace-nowrap"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <RowActionMenu
+                                rowId={row.id}
+                                openMenu={openMenuId}
+                                setOpenMenu={setOpenMenuId}
+                                items={categoryWiseActionItems(row)}
+                              />
+                            </div>
+                          </td>
                         </tr>
                       ))
                     )}
@@ -812,8 +923,9 @@ export default function InventoryV2() {
 
       <ConfirmDialog
         open={Boolean(deleting)}
-        title="Delete"
-        message="Are you sure you want to delete this item?"
+        title="Delete Stock Item?"
+        message="Are you sure you want to delete this stock item?"
+        confirmLabel="Delete"
         loading={deleteBusy}
         onClose={() => !deleteBusy && setDeleting(null)}
         onConfirm={confirmDelete}

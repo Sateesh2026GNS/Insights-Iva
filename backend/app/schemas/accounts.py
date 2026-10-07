@@ -42,8 +42,20 @@ class ExpenseUpdate(BaseModel):
     description: str | None = None
 
 
+class ExpenseAttachmentRead(BaseModel):
+    attachment_id: int
+    id: int
+    filename: str
+    mime_type: str | None = None
+    file_size: int = 0
+    upload_status: str | None = None
+    label: str | None = None
+    created_at: str | None = None
+
+
 class ExpenseRead(ExpenseBase):
     id: int
+    attachments: list[ExpenseAttachmentRead] = []
     model_config = ConfigDict(from_attributes=True)
 
 

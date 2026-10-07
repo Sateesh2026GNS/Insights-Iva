@@ -339,21 +339,6 @@ export const REPORT_VIEWS = {
           { key: "stock_value", label: "Stock Value", align: "right", style: "bold" },
         ],
         searchKeys: ["hsn_code", "item_name", "stock_status"],
-        sampleRows: [
-          {
-            id: "demo-product",
-            hsn_code: "",
-            item_name: "Demo Product",
-            opening_stock: "0",
-            stock_in: "0",
-            stock_out: "0",
-            stock_in_hand: "0",
-            stock_status: "No Stock",
-            purchase_price: "0",
-            sales_price: "100",
-            stock_value: "₹ 0",
-          },
-        ],
       },
       {
         id: "batch-wise",

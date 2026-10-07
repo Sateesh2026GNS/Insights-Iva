@@ -153,8 +153,11 @@ def create_expense_endpoint(
     db: Session = Depends(get_db),
 ):
     try:
+        from app.services.expense_document_service import expense_to_read
+
         payload.tenant_id = user.tenant_id
-        return create_expense(db, payload)
+        row = create_expense(db, payload)
+        return expense_to_read(db, user.tenant_id, row)
     except HTTPException:
         raise
     except SQLAlchemyError as exc:
@@ -206,10 +209,12 @@ def get_expense_endpoint(
     db: Session = Depends(get_db),
 ):
     try:
+        from app.services.expense_document_service import expense_to_read
+
         row = get_expense(db, tenant_id, expense_id)
         if not row:
             raise HTTPException(404, "Expense not found")
-        return row
+        return expense_to_read(db, tenant_id, row)
     except HTTPException:
         raise
     except SQLAlchemyError as exc:
@@ -236,12 +241,14 @@ def update_expense_endpoint(
     db: Session = Depends(get_db),
 ):
     try:
+        from app.services.expense_document_service import expense_to_read
+
         row = update_expense(
             db, tenant_id, expense_id, payload.model_dump(exclude_unset=True)
         )
         if not row:
             raise HTTPException(404, "Expense not found")
-        return row
+        return expense_to_read(db, tenant_id, row)
     except HTTPException:
         raise
     except SQLAlchemyError as exc:

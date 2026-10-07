@@ -24,6 +24,7 @@ import { useToast } from "../../context/ToastContext";
 import { deleteBizDocument, listBizDocuments } from "../../api/bizDocumentsApi";
 import { apiErrorMessage } from "../../utils/apiError";
 import { formatInr } from "../../data/salesMasterData";
+import ConfirmDialog from "../../components/admin/ConfirmDialog";
 
 const PAGE_SIZES = [10, 20, 50];
 
@@ -117,6 +118,8 @@ export default function PaymentsMade() {
   const [sortId, setSortId] = useState("date_desc");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
 
   const load = useCallback(async (isRefresh = false) => {
     if (!isRefresh) setLoading(true);
@@ -158,15 +161,18 @@ export default function PaymentsMade() {
     load();
   }, [load]);
 
-  const handleDelete = async (row) => {
-    if (!row?.id) return;
-    if (!window.confirm(`Delete payment ${row.receipt_number}?`)) return;
+  const confirmDelete = async () => {
+    if (!deleteTarget?.id || deleteBusy) return;
+    setDeleteBusy(true);
     try {
-      await deleteBizDocument(row.id);
+      await deleteBizDocument(deleteTarget.id);
       addToast("Payment deleted", "success");
+      setDeleteTarget(null);
       await load();
     } catch (err) {
       addToast(apiErrorMessage(err, "Failed to delete payment"), "error");
+    } finally {
+      setDeleteBusy(false);
     }
   };
 
@@ -419,19 +425,25 @@ export default function PaymentsMade() {
                               {
                                 label: "View Receipt",
                                 icon: <Eye className="h-4 w-4" />,
-                                onClick: () => navigate(`/purchases/payments-made/${r.id}/edit`, { state: { viewId: r.id, payment: r } }),
+                                onClick: () =>
+                                  navigate(`/purchases/payments-made/${r.id}/edit`, {
+                                    state: { viewId: r.id, payment: r, readOnly: true },
+                                  }),
                               },
                               {
                                 label: "Edit",
                                 icon: <Edit2 className="h-4 w-4" />,
-                                onClick: () => navigate(`/purchases/payments-made/${r.id}/edit`, { state: { viewId: r.id, payment: r } }),
+                                onClick: () =>
+                                  navigate(`/purchases/payments-made/${r.id}/edit`, {
+                                    state: { viewId: r.id, payment: r, readOnly: false },
+                                  }),
                               },
                               { divider: true },
                               {
                                 label: "Delete",
                                 icon: <Trash2 className="h-4 w-4" />,
                                 danger: true,
-                                onClick: () => handleDelete(r),
+                                onClick: () => setDeleteTarget(r),
                               },
                             ]}
                           />
@@ -493,6 +505,16 @@ export default function PaymentsMade() {
           </div>
         </div>
       </div>
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        title="Delete payment"
+        message={`Delete payment ${deleteTarget?.receipt_number}? This cannot be undone.`}
+        loading={deleteBusy}
+        onConfirm={confirmDelete}
+        onClose={() => {
+          if (!deleteBusy) setDeleteTarget(null);
+        }}
+      />
     </div>
   );
 }
