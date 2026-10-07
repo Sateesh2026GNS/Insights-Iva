@@ -5,6 +5,8 @@ import { ArrowLeft } from "lucide-react";
 import PageHeader from "../../components/common/PageHeader";
 import InventoryLineItems from "../../components/common/InventoryLineItems";
 import { createMaterialRequest } from "../../api/procurementApi";
+import { useToast } from "../../context/ToastContext";
+import { apiErrorMessage } from "../../utils/apiError";
 import { getInventoryDashboard } from "../../api/inventoryApi";
 import useTenantId from "../../hooks/useTenantId";
 import { fetchProductsWithFallback } from "../../utils/productOptions";
@@ -21,6 +23,7 @@ const STATUSES = ["pending", "approved", "rejected", "fulfilled"];
 export default function CreateMaterialRequest() {
   const tenantId = useTenantId();
   const navigate = useNavigate();
+  const { addToast } = useToast();
   const [inventoryItems, setInventoryItems] = useState([]);
   const [lineItems, setLineItems] = useState([{ item_id: "", quantity: "", notes: "" }]);
   const [form, setForm] = useState({
@@ -66,10 +69,10 @@ export default function CreateMaterialRequest() {
       return;
     }
     setError("");
+    if (saving) return;
     setSaving(true);
 
-    const mrNo = form.mr_number?.trim() || `MR-${Date.now()}`;
-    let createdId = `mr-${Date.now()}`;
+    const mrNo = form.mr_number?.trim() || undefined;
 
     try {
       const res = await createMaterialRequest({
@@ -85,37 +88,19 @@ export default function CreateMaterialRequest() {
           notes: l.notes || null,
         })),
       });
-      if (res?.data?.id) createdId = res.data.id;
-    } catch {
-      /* local save handles fallback */
+      const createdId = res?.data?.id;
+      notifyManufacturingSpine(MANUFACTURING_EVENTS.MRP_RUN, {
+        mr_id: createdId,
+        created: true,
+      });
+      addToast("Material request created.", "success");
+      navigate("/procurement/material-requests");
+    } catch (err) {
+      setError(apiErrorMessage(err, "Failed to create material request."));
+      addToast(apiErrorMessage(err, "Failed to create material request."), "error");
+    } finally {
+      setSaving(false);
     }
-
-    const newMR = {
-      id: createdId,
-      mr_number: mrNo,
-      request_date: form.request_date || new Date().toISOString().slice(0, 10),
-      department: "Production",
-      requested_by: form.requested_by || "Production Team",
-      priority: "medium",
-      status: form.status || "pending",
-      approval_status: "pending",
-      item_count: validLines.length,
-      line_items: validLines,
-      notes: form.notes || "",
-      created_at: new Date().toISOString(),
-    };
-
-    const stored = localStorage.getItem("smrt_material_requests");
-    const localMRs = stored ? JSON.parse(stored) : [];
-    const updated = [newMR, ...localMRs.filter((m) => String(m.mr_number) !== String(mrNo))];
-    localStorage.setItem("smrt_material_requests", JSON.stringify(updated));
-
-    notifyManufacturingSpine(MANUFACTURING_EVENTS.MRP_RUN, {
-      mr_id: createdId,
-      created: true,
-    });
-    setSaving(false);
-    navigate("/procurement/material-requests");
   };
 
   return (

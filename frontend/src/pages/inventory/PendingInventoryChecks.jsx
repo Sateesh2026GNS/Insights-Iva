@@ -5,7 +5,6 @@ import { ClipboardCheck, ClipboardList, Eye } from "lucide-react";
 import Button from "../../components/common/Button";
 import EmptyState from "../../components/common/EmptyState";
 import Loader from "../../components/common/Loader";
-import PageHeader from "../../components/common/PageHeader";
 import Pagination from "../../components/common/Pagination";
 import RowActionMenu from "../../components/common/RowActionMenu";
 import { ListPageCard, ListPageShell } from "../../components/common/ListPageShell";
@@ -88,11 +87,6 @@ export default function PendingInventoryChecks() {
   return (
     <ListPageShell className="space-y-5 pb-4">
       <StoreManagerNav />
-      <PageHeader
-        variant="inventory"
-        title="Pending Inventory Checks"
-        subtitle="Confirmed sales orders awaiting store material verification (MATERIAL_CHECK_PENDING)."
-      />
 
       <ListPageCard>
         <div className="flex flex-col gap-3 border-b border-[var(--color-border-soft)] p-4 sm:flex-row sm:items-center sm:justify-between">

@@ -210,6 +210,11 @@ export default function StoreStockIn() {
   const [warehouseFilter, setWarehouseFilter] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [draftStatusFilter, setDraftStatusFilter] = useState("");
+  const [draftTypeFilter, setDraftTypeFilter] = useState("");
+  const [draftWarehouseFilter, setDraftWarehouseFilter] = useState("");
+  const [draftDateFrom, setDraftDateFrom] = useState("");
+  const [draftDateTo, setDraftDateTo] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [viewTarget, setViewTarget] = useState(null);
   const [confirm, setConfirm] = useState(null);
@@ -721,15 +726,31 @@ export default function StoreStockIn() {
                 inputClassName="pending-inventory-search-input"
               />
               
-              <Button variant="secondary" onClick={() => setShowFilters((v) => !v)}>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setShowFilters((v) => {
+                    const next = !v;
+                    if (next) {
+                      setDraftStatusFilter(statusFilter);
+                      setDraftTypeFilter(typeFilter);
+                      setDraftWarehouseFilter(warehouseFilter);
+                      setDraftDateFrom(dateFrom);
+                      setDraftDateTo(dateTo);
+                    }
+                    return next;
+                  });
+                }}
+              >
                 <Filter className="h-4 w-4" aria-hidden />
                 Filters
               </Button>
             </div>
             {showFilters ? (
-              <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+              <div className="mt-4 space-y-4">
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
                 <FormField label="Status">
-                  <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+                  <Select value={draftStatusFilter} onChange={(e) => setDraftStatusFilter(e.target.value)}>
                     <option value="">All</option>
                     {Object.entries(STATUS_LABEL).map(([k, v]) => (
                       <option key={k} value={k}>{v}</option>
@@ -737,7 +758,7 @@ export default function StoreStockIn() {
                   </Select>
                 </FormField>
                 <FormField label="Reference Type">
-                  <Select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
+                  <Select value={draftTypeFilter} onChange={(e) => setDraftTypeFilter(e.target.value)}>
                     <option value="">All</option>
                     {REFERENCE_TYPES.map((t) => (
                       <option key={t.value} value={t.value}>{t.label}</option>
@@ -745,7 +766,7 @@ export default function StoreStockIn() {
                   </Select>
                 </FormField>
                 <FormField label="Warehouse">
-                  <Select value={warehouseFilter} onChange={(e) => setWarehouseFilter(e.target.value)}>
+                  <Select value={draftWarehouseFilter} onChange={(e) => setDraftWarehouseFilter(e.target.value)}>
                     <option value="">All</option>
                     {warehouses.map((w) => (
                       <option key={w.id} value={w.id}>{w.name}</option>
@@ -753,9 +774,45 @@ export default function StoreStockIn() {
                   </Select>
                 </FormField>
                 <div className="grid grid-cols-2 gap-2 sm:col-span-2 lg:col-span-2">
-                  <DatePicker label="From" value={dateFrom} onChange={setDateFrom} />
-                  <DatePicker label="To" value={dateTo} onChange={setDateTo} />
+                  <DatePicker label="From" value={draftDateFrom} onChange={setDraftDateFrom} />
+                  <DatePicker label="To" value={draftDateTo} onChange={setDraftDateTo} />
                 </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => {
+                    setDraftStatusFilter("");
+                    setDraftTypeFilter("");
+                    setDraftWarehouseFilter("");
+                    setDraftDateFrom("");
+                    setDraftDateTo("");
+                    setStatusFilter("");
+                    setTypeFilter("");
+                    setWarehouseFilter("");
+                    setDateFrom("");
+                    setDateTo("");
+                    loadList(true);
+                  }}
+                >
+                  Clear Filters
+                </Button>
+                <Button
+                  type="button"
+                  variant="primary"
+                  onClick={() => {
+                    setStatusFilter(draftStatusFilter);
+                    setTypeFilter(draftTypeFilter);
+                    setWarehouseFilter(draftWarehouseFilter);
+                    setDateFrom(draftDateFrom);
+                    setDateTo(draftDateTo);
+                    loadList(true);
+                  }}
+                >
+                  Apply Filters
+                </Button>
+              </div>
               </div>
             ) : null}
           </div>

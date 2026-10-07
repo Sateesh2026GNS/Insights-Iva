@@ -8,7 +8,9 @@ from sqlalchemy.orm import Session
 from app.models.sales import Customer, SalesOrder
 from app.models.hr import Employee
 from app.models.document import Document
+from app.models.accounts import Expense
 from app.models.inventory import InventoryItem, Warehouse
+from app.models.procurement import PurchaseOrder
 
 
 ENTITY_MODELS = {
@@ -18,6 +20,8 @@ ENTITY_MODELS = {
     "document": Document,
     "inventory_item": InventoryItem,
     "warehouse": Warehouse,
+    "purchase_order": PurchaseOrder,
+    "expense": Expense,
 }
 
 

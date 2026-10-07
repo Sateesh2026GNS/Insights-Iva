@@ -1,6 +1,7 @@
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import Response
 
 logger = logging.getLogger(__name__)
 from sqlalchemy.orm import Session
@@ -169,7 +170,11 @@ def create_purchase_order_endpoint(
     db: Session = Depends(get_db),
 ) -> PurchaseOrderRead:
     payload.tenant_id = user.tenant_id
-    return create_purchase_order(db, payload)
+    from app.services.purchase_order_document_service import purchase_order_to_read
+
+    po = create_purchase_order(db, payload)
+    po = get_purchase_order(db, user.tenant_id, po.id)
+    return purchase_order_to_read(db, user.tenant_id, po)
 
 
 @router.get("/purchase-orders", response_model=list[PurchaseOrderListRead])
@@ -791,7 +796,29 @@ def get_purchase_order_endpoint(
     po = get_purchase_order(db, tenant_id, po_id)
     if not po:
         raise HTTPException(404, "Purchase order not found")
-    return po
+    from app.services.purchase_order_document_service import purchase_order_to_read
+
+    return purchase_order_to_read(db, tenant_id, po)
+
+
+@router.get("/purchase-orders/{po_id}/pdf")
+def download_purchase_order_pdf(
+    po_id: int,
+    tenant_id: int = Depends(tenant_scope(MODULE)),
+    db: Session = Depends(get_db),
+):
+    po = get_purchase_order(db, tenant_id, po_id)
+    if not po:
+        raise HTTPException(404, "Purchase order not found")
+    from app.services.purchase_order_document_service import build_purchase_order_pdf_bytes
+
+    pdf_bytes = build_purchase_order_pdf_bytes(db, tenant_id, po)
+    safe_no = (po.po_number or str(po_id)).replace("/", "-")
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="PO-{safe_no}.pdf"'},
+    )
 
 
 @router.put("/purchase-orders/{po_id}", response_model=PurchaseOrderRead)
@@ -814,7 +841,10 @@ def update_purchase_order_endpoint(
     )
     if not po:
         raise HTTPException(404, "Purchase order not found")
-    return po
+    from app.services.purchase_order_document_service import purchase_order_to_read
+
+    po = get_purchase_order(db, user.tenant_id, po_id)
+    return purchase_order_to_read(db, user.tenant_id, po)
 
 
 @router.delete("/purchase-orders/{po_id}")

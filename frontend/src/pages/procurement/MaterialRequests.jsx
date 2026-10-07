@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   ArrowRightCircle,
   CheckCircle2,
@@ -44,6 +44,11 @@ import {
   MANUFACTURING_EVENTS,
   notifyManufacturingSpine,
 } from "../../utils/manufacturingEvents";
+import ConfirmDialog from "../../components/admin/ConfirmDialog";
+import {
+  applyMaterialRequestFieldFilters,
+  filterMaterialRequestsByKpi,
+} from "../../utils/materialRequestKpi";
 
 
 function ConvertToPOModal({ row, onClose, onConverted }) {
@@ -71,6 +76,12 @@ function ConvertToPOModal({ row, onClose, onConverted }) {
         setDetail(dRes.data);
         if (dRes.data?.required_date) {
           setExpectedDate(String(dRes.data.required_date).slice(0, 10));
+        }
+        const linePrices = (dRes.data?.line_items || [])
+          .map((line) => Number(line.unit_price))
+          .filter((n) => Number.isFinite(n) && n > 0);
+        if (linePrices.length) {
+          setUnitPrice(String(linePrices[0]));
         }
       } catch (err) {
         addToast(err.response?.data?.detail || "Failed to load material request", "error");
@@ -123,10 +134,25 @@ function ConvertToPOModal({ row, onClose, onConverted }) {
   return (
     <div className="ui-modal-backdrop">
       <div className="ui-modal w-full max-w-lg">
-        <h2 className="text-lg font-bold text-[var(--color-text)]">Convert to Purchase Order</h2>
-        <p className="text-sm text-[var(--color-text-muted)]">
-          {row.mr_number} · {detail?.line_items?.length ?? row.item_count ?? 0} line(s)
-        </p>
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start gap-2">
+            <ArrowRightCircle className="mt-0.5 h-6 w-6 shrink-0 text-[var(--color-primary)]" aria-hidden />
+            <div>
+              <h2 className="text-lg font-bold text-[var(--color-text)]">Convert to Purchase Order</h2>
+              <p className="text-sm text-[var(--color-text-muted)]">
+                {row.mr_number} · {detail?.line_items?.length ?? row.item_count ?? 0} line(s)
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg p-2 text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)]"
+            aria-label="Close"
+          >
+            <XCircle className="h-5 w-5" />
+          </button>
+        </div>
         {loading ? (
           <p className="mt-4 text-sm text-[var(--color-text-muted)]">Loading…</p>
         ) : (
@@ -251,10 +277,22 @@ function MRDetailModal({ row, onClose, onConvert, onApproved }) {
   return (
     <div className="ui-modal-backdrop">
       <div className="ui-modal max-h-[85vh] w-full max-w-2xl overflow-y-auto">
-        <h2 className="text-lg font-bold text-[var(--color-text)]">{row.mr_number}</h2>
-        <p className="text-sm text-[var(--color-text-muted)]">
-          {row.department} · {row.requested_by}
-        </p>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-bold text-[var(--color-text)]">{row.mr_number}</h2>
+            <p className="text-sm text-[var(--color-text-muted)]">
+              {row.department} · {row.requested_by}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg p-2 text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)]"
+            aria-label="Close"
+          >
+            <XCircle className="h-5 w-5" />
+          </button>
+        </div>
         <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
           <div>
             <p className="text-xs text-[var(--color-text-muted)]">Priority</p>
@@ -369,7 +407,7 @@ function MRDetailModal({ row, onClose, onConvert, onApproved }) {
   );
 }
 
-const defaultFilters = { department: "", priority: "", status: "", requested_by: "" };
+const defaultFilters = { kpi: "", department: "", priority: "", status: "", requested_by: "" };
 const emptySummary = {
   total_requests: 0,
   pending_approval: 0,
@@ -381,15 +419,19 @@ const emptySummary = {
 
 export default function MaterialRequests() {
   const { addToast } = useToast();
+  const [searchParams] = useSearchParams();
   const tableRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState(emptySummary);
   const [rows, setRows] = useState([]);
-  const [filters, setFilters] = useState(defaultFilters);
+  const [draftFilters, setDraftFilters] = useState(defaultFilters);
+  const [appliedFilters, setAppliedFilters] = useState(defaultFilters);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [selected, setSelected] = useState(null);
   const [convertRow, setConvertRow] = useState(null);
   const [openMenu, setOpenMenu] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
 
   const scrollToTable = useCallback(() => {
     tableRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -397,23 +439,32 @@ export default function MaterialRequests() {
 
   const applyPreset = useCallback(
     (preset) => {
-      if (preset === "converted") return;
       setShowAdvanced(true);
-      if (preset === "all") {
-        setFilters(defaultFilters);
-      } else if (preset === "pending") {
-        setFilters({ ...defaultFilters, status: "pending" });
-      } else if (preset === "approved") {
-        setFilters({ ...defaultFilters, status: "approved" });
-      } else if (preset === "rejected") {
-        setFilters({ ...defaultFilters, status: "rejected" });
-      } else if (preset === "urgent") {
-        setFilters({ ...defaultFilters, priority: "urgent" });
-      }
+      let next = { ...defaultFilters };
+      if (preset === "pending") next = { ...defaultFilters, kpi: "pending_approval" };
+      else if (preset === "approved") next = { ...defaultFilters, kpi: "approved" };
+      else if (preset === "rejected") next = { ...defaultFilters, kpi: "rejected" };
+      else if (preset === "converted") next = { ...defaultFilters, kpi: "converted" };
+      else if (preset === "urgent") next = { ...defaultFilters, kpi: "urgent" };
+      setDraftFilters(next);
+      setAppliedFilters(next);
       scrollToTable();
     },
     [scrollToTable]
   );
+
+  useEffect(() => {
+    const kpi = searchParams.get("kpi") || searchParams.get("status");
+    if (!kpi) return;
+    const mapped =
+      kpi === "pending" || kpi === "pending_approval"
+        ? "pending_approval"
+        : kpi;
+    const next = { ...defaultFilters, kpi: mapped };
+    setDraftFilters(next);
+    setAppliedFilters(next);
+    setShowAdvanced(true);
+  }, [searchParams]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -424,22 +475,10 @@ export default function MaterialRequests() {
       } else {
         setSummary(emptySummary);
       }
-      const apiRows = listRes.status === "fulfilled" ? (listRes.value?.data || []) : [];
-      const stored = localStorage.getItem("smrt_material_requests");
-      const localRows = stored ? JSON.parse(stored) : [];
-
-      const mrMap = new Map();
-      [...localRows, ...apiRows].forEach((r) => {
-        const key = String(r.mr_number || r.id).trim().toLowerCase();
-        if (key && !mrMap.has(key)) {
-          mrMap.set(key, r);
-        }
-      });
-      setRows(Array.from(mrMap.values()));
+      setRows(listRes.status === "fulfilled" ? listRes.value?.data || [] : []);
     } catch {
-      const stored = localStorage.getItem("smrt_material_requests");
-      const localRows = stored ? JSON.parse(stored) : [];
-      setRows(localRows);
+      setRows([]);
+      addToast("Failed to load purchase requisitions", "error");
     } finally {
       setLoading(false);
     }
@@ -451,30 +490,25 @@ export default function MaterialRequests() {
 
   useManufacturingRefresh(load);
 
-  const handleDelete = async (row) => {
-    if (!row?.id || typeof row.id !== "number") return;
-    if (!window.confirm(`Delete material request ${row.mr_number || row.id}?`)) return;
+  const confirmDelete = async () => {
+    if (!deleteTarget?.id) return;
+    setDeleteBusy(true);
     try {
-      await deleteMaterialRequest(row.id);
+      await deleteMaterialRequest(deleteTarget.id);
       addToast("Material request deleted", "success");
+      setDeleteTarget(null);
       await load();
     } catch (err) {
       addToast(err.response?.data?.detail || "Failed to delete", "error");
+    } finally {
+      setDeleteBusy(false);
     }
   };
 
-  const filtered = useMemo(() => {
-    let list = rows;
-    if (filters.department) list = list.filter((r) => r.department === filters.department);
-    if (filters.priority) list = list.filter((r) => r.priority === filters.priority);
-    if (filters.status) list = list.filter((r) => r.status === filters.status);
-    if (filters.requested_by) {
-      list = list.filter((r) =>
-        r.requested_by?.toLowerCase().includes(filters.requested_by.toLowerCase())
-      );
-    }
-    return list;
-  }, [rows, filters]);
+  const filtered = useMemo(
+    () => applyMaterialRequestFieldFilters(rows, appliedFilters),
+    [rows, appliedFilters]
+  );
 
   const columns = [
     { key: "mr_number", label: "MR No" },
@@ -543,7 +577,7 @@ export default function MaterialRequests() {
                     label: "Delete",
                     icon: <Trash2 className="h-4 w-4" />,
                     danger: true,
-                    onClick: () => handleDelete(r),
+                    onClick: () => setDeleteTarget(r),
                   }
                 : null,
             ].filter(Boolean)}
@@ -609,11 +643,11 @@ export default function MaterialRequests() {
           onClick={() => applyPreset("rejected")}
         />
         <KpiCard
-          label="Converted"
+          label="Converted to PO"
           value={summary.converted_to_rfq}
           icon={ShoppingCart}
           tone="violet"
-          to="/procurement/purchase-orders"
+          onClick={() => applyPreset("converted")}
         />
         <KpiCard
           label="Urgent Requests"
@@ -634,49 +668,73 @@ export default function MaterialRequests() {
           <Filter className="h-4 w-4" /> Advanced Filters
         </button>
         {showAdvanced && (
-          <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <select
-              value={filters.department}
-              onChange={(e) => setFilters({ ...filters, department: e.target.value })}
-              className="ui-select w-full"
-            >
-              <option value="">All Departments</option>
-              {MR_DEPARTMENTS.map((d) => (
-                <option key={d} value={d}>
-                  {d}
-                </option>
-              ))}
-            </select>
-            <select
-              value={filters.priority}
-              onChange={(e) => setFilters({ ...filters, priority: e.target.value })}
-              className="ui-select w-full"
-            >
-              <option value="">All Priorities</option>
-              {MR_PRIORITIES.map((p) => (
-                <option key={p} value={p}>
-                  {p}
-                </option>
-              ))}
-            </select>
-            <select
-              value={filters.status}
-              onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-              className="ui-select w-full"
-            >
-              <option value="">All Status</option>
-              {["pending", "approved", "rejected", "converted"].map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
-            <input
-              value={filters.requested_by}
-              onChange={(e) => setFilters({ ...filters, requested_by: e.target.value })}
-              placeholder="Requested by"
-              className="ui-input w-full"
-            />
+          <div className="mb-4 space-y-3">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <select
+                value={draftFilters.department}
+                onChange={(e) => setDraftFilters({ ...draftFilters, department: e.target.value })}
+                className="ui-select w-full"
+              >
+                <option value="">All Departments</option>
+                {MR_DEPARTMENTS.map((d) => (
+                  <option key={d} value={d}>
+                    {d}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={draftFilters.priority}
+                onChange={(e) => setDraftFilters({ ...draftFilters, priority: e.target.value })}
+                className="ui-select w-full"
+              >
+                <option value="">All Priorities</option>
+                {MR_PRIORITIES.map((p) => (
+                  <option key={p} value={p}>
+                    {p}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={draftFilters.status}
+                onChange={(e) => setDraftFilters({ ...draftFilters, status: e.target.value })}
+                className="ui-select w-full"
+              >
+                <option value="">All Status</option>
+                {["pending", "approved", "rejected", "converted"].map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+              <input
+                value={draftFilters.requested_by}
+                onChange={(e) => setDraftFilters({ ...draftFilters, requested_by: e.target.value })}
+                placeholder="Requested by"
+                className="ui-input w-full"
+              />
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="primary"
+                onClick={() => {
+                  setAppliedFilters({ ...draftFilters });
+                  scrollToTable();
+                }}
+              >
+                Apply Filters
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => {
+                  setDraftFilters(defaultFilters);
+                  setAppliedFilters(defaultFilters);
+                }}
+              >
+                Clear Filters
+              </Button>
+            </div>
           </div>
         )}
         <DataTable
@@ -709,6 +767,20 @@ export default function MaterialRequests() {
           onConverted={() => load()}
         />
       )}
+
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        title="Delete material request?"
+        message={
+          deleteTarget
+            ? `Delete ${deleteTarget.mr_number || "this request"}? This cannot be undone.`
+            : ""
+        }
+        confirmLabel="Delete"
+        loading={deleteBusy}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={confirmDelete}
+      />
     </ListPageShell>
   );
 }

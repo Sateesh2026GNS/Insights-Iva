@@ -25,6 +25,7 @@ import { useToast } from "../../context/ToastContext";
 import { deleteBizDocument, listBizDocuments } from "../../api/bizDocumentsApi";
 import { apiErrorMessage } from "../../utils/apiError";
 import { formatInr } from "../../data/salesMasterData";
+import ConfirmDialog from "../../components/admin/ConfirmDialog";
 
 const PAGE_BG = "var(--color-bg)";
 const PAGE_SIZES = [10, 25, 50];
@@ -94,6 +95,8 @@ export default function Purchases() {
   const [pageSize, setPageSize] = useState(25);
   const [draftDocUpload, setDraftDocUpload] = useState("all");
   const [docUpload, setDocUpload] = useState("all");
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
 
   const load = useCallback(async (isRefresh = false) => {
     if (!isRefresh) setLoading(true);
@@ -122,15 +125,18 @@ export default function Purchases() {
     load();
   }, [load]);
 
-  const handleDelete = async (row) => {
-    if (!row?.id) return;
-    if (!window.confirm(`Delete purchase ${row.document_number}?`)) return;
+  const confirmDelete = async () => {
+    if (!deleteTarget?.id || deleteBusy) return;
+    setDeleteBusy(true);
     try {
-      await deleteBizDocument(row.id);
+      await deleteBizDocument(deleteTarget.id);
       addToast("Purchase deleted", "success");
+      setDeleteTarget(null);
       await load();
     } catch (err) {
       addToast(apiErrorMessage(err, "Failed to delete purchase"), "error");
+    } finally {
+      setDeleteBusy(false);
     }
   };
 
@@ -439,7 +445,7 @@ export default function Purchases() {
                                 label: "Delete",
                                 icon: <Trash2 className="h-4 w-4" />,
                                 danger: true,
-                                onClick: () => handleDelete(r),
+                                onClick: () => setDeleteTarget(r),
                               },
                             ]}
                           />
@@ -502,6 +508,16 @@ export default function Purchases() {
         </div>
       </div>
 
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        title="Delete purchase"
+        message={`Delete purchase ${deleteTarget?.document_number}? This cannot be undone.`}
+        loading={deleteBusy}
+        onConfirm={confirmDelete}
+        onClose={() => {
+          if (!deleteBusy) setDeleteTarget(null);
+        }}
+      />
     </div>
   );
 }

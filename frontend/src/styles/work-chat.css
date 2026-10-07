@@ -2,21 +2,9 @@
   display: flex;
   flex-wrap: wrap;
   align-items: flex-start;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 1rem;
   margin-bottom: 1rem;
-}
-
-.work-chat-page__title {
-  font-size: 1.35rem;
-  font-weight: 800;
-  color: var(--color-text);
-}
-
-.work-chat-page__sub {
-  margin-top: 0.25rem;
-  font-size: 0.875rem;
-  color: var(--color-text-muted);
 }
 
 .work-chat-layout {

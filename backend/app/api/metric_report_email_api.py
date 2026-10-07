@@ -4,7 +4,10 @@ import logging
 import re
 
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+
 from app.api.auth_deps import get_current_user
+from app.api.deps import get_db
 from app.core.permissions import MODULE_FORBIDDEN_MESSAGE, user_has_permission
 from app.models.user import User
 from app.schemas.metric_report_email import MetricReportEmailRequest
@@ -38,6 +41,7 @@ def _assert_module_access(user: User, module: str) -> None:
 async def email_metric_report(
     payload: MetricReportEmailRequest,
     user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
     _assert_module_access(user, payload.module)
 
@@ -46,7 +50,18 @@ async def email_metric_report(
         cols = [{"key": c.key, "label": c.label or c.key} for c in payload.columns]
 
     try:
-        pdf_bytes = generate_metric_report_pdf(payload.title, payload.rows, cols)
+        if payload.purchase_order_id:
+            from app.services.procurement_service import get_purchase_order
+            from app.services.purchase_order_document_service import build_purchase_order_pdf_bytes
+
+            po = get_purchase_order(db, user.tenant_id, payload.purchase_order_id)
+            if not po:
+                raise HTTPException(status_code=404, detail="Purchase order not found")
+            pdf_bytes = build_purchase_order_pdf_bytes(db, user.tenant_id, po)
+        else:
+            pdf_bytes = generate_metric_report_pdf(payload.title, payload.rows, cols)
+    except HTTPException:
+        raise
     except Exception as exc:
         logger.exception("metric report PDF failed tenant=%s: %s", user.tenant_id, exc)
         raise HTTPException(status_code=500, detail="Failed to generate report PDF.") from exc

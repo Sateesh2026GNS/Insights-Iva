@@ -1,10 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Camera, X } from "lucide-react";
 
 import Button from "../common/Button";
+import IndianCurrencyInput from "../common/IndianCurrencyInput";
 import { PAYMENT_MODES } from "../../data/expenseCategories";
 import { todayIso } from "../../utils/dateUtils";
+import { parseIndianCurrencyToNumber } from "../../utils/numberFormat";
 
 const input =
   "w-full rounded-lg border border-[#d0d0d8] bg-white px-3 py-2.5 text-[13px] text-[#1a1a1f] outline-none placeholder:text-[#9a9aa5] focus:border-[#2d2a4a]";
@@ -20,6 +22,10 @@ const EMPTY = {
 
 export default function AddExpenseModal({ open, onClose, onSave, categories = [], expense = null }) {
   const [form, setForm] = useState(EMPTY);
+  const [receiptFile, setReceiptFile] = useState(null);
+  const [receiptName, setReceiptName] = useState("");
+  const receiptInputRef = useRef(null);
+  const [submitting, setSubmitting] = useState(false);
   const isEdit = Boolean(expense?.id);
 
   useEffect(() => {
@@ -33,8 +39,12 @@ export default function AddExpenseModal({ open, onClose, onSave, categories = []
         note: expense.note || "",
         payment_mode: expense.payment_mode || "",
       });
+      setReceiptFile(null);
+      setReceiptName("");
     } else {
       setForm({ ...EMPTY, date: todayIso() });
+      setReceiptFile(null);
+      setReceiptName("");
     }
   }, [open, expense]);
 
@@ -42,25 +52,33 @@ export default function AddExpenseModal({ open, onClose, onSave, categories = []
 
   const set = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault();
-    if (!form.spend_for.trim() || !form.amount || !form.category_id || !form.payment_mode || !form.date) {
+    if (submitting) return;
+    const amount = parseIndianCurrencyToNumber(form.amount);
+    if (!form.spend_for.trim() || !amount || !form.category_id || !form.payment_mode || !form.date) {
       return;
     }
     const cat = categories.find((c) => c.id === form.category_id);
-    onSave?.({
-      id: expense?.id || `exp-${Date.now()}`,
-      spend_for: form.spend_for.trim(),
-      amount: Number(form.amount) || 0,
-      category_id: form.category_id,
-      category: cat?.name || "",
-      tag: cat?.name || "",
-      date: form.date,
-      note: form.note.trim(),
-      payment_mode: form.payment_mode,
-      created_at: new Date().toISOString(),
-    });
-    onClose?.();
+    setSubmitting(true);
+    try {
+      await onSave?.({
+        id: expense?.id,
+        spend_for: form.spend_for.trim(),
+        amount,
+        category_id: form.category_id,
+        category: cat?.name || "",
+        tag: cat?.name || "",
+        date: form.date,
+        note: form.note.trim(),
+        payment_mode: form.payment_mode,
+        receiptFile,
+        created_at: new Date().toISOString(),
+      });
+      onClose?.();
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return createPortal(
@@ -96,15 +114,12 @@ export default function AddExpenseModal({ open, onClose, onSave, categories = []
               </label>
               <label className="block text-[12px] font-medium text-[#6b6b76]">
                 Amount <span className="text-[#ef4444]">*</span>
-                <div className="relative mt-1">
-                  <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[#9a9aa5]">₹</span>
-                  <input
-                    className={`${input} !pl-9`}
-                    placeholder="Enter amount"
+                <div className="mt-1">
+                  <IndianCurrencyInput
                     value={form.amount}
-                    onChange={(e) => set("amount", e.target.value.replace(/[^\d.]/g, ""))}
-                    inputMode="decimal"
-                    required
+                    onChange={(val) => set("amount", val)}
+                    placeholder="e.g. 90,000"
+                    className="w-full"
                   />
                 </div>
               </label>
@@ -166,18 +181,26 @@ export default function AddExpenseModal({ open, onClose, onSave, categories = []
 
               <div>
                 <p className="mb-2 text-[12px] font-medium text-[#6b6b76]">Receipt / Bill Images</p>
-                <div className="grid grid-cols-3 gap-2">
-                  {[0, 1, 2].map((i) => (
-                    <button
-                      key={i}
-                      type="button"
-                      className="flex aspect-square flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-[#c4c4cc] bg-white text-[12px] text-[#6b6b76] hover:bg-[#fafafa]"
-                    >
-                      <Camera className="h-5 w-5" />
-                      Add
-                    </button>
-                  ))}
-                </div>
+                <button
+                  type="button"
+                  onClick={() => receiptInputRef.current?.click()}
+                  className="flex w-full flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-[#c4c4cc] bg-white px-4 py-6 text-[12px] text-[#6b6b76] hover:bg-[#fafafa]"
+                >
+                  <Camera className="h-5 w-5" />
+                  {receiptName || "Add receipt / bill"}
+                </button>
+                <input
+                  ref={receiptInputRef}
+                  type="file"
+                  accept="image/*,.pdf"
+                  className="sr-only"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    setReceiptFile(file || null);
+                    setReceiptName(file?.name || "");
+                    e.target.value = "";
+                  }}
+                />
               </div>
             </div>
           </div>
@@ -187,8 +210,8 @@ export default function AddExpenseModal({ open, onClose, onSave, categories = []
           <Button type="button" variant="cancel" onClick={onClose}>
             Cancel
           </Button>
-          <Button type="submit" variant="primary">
-            {isEdit ? "Save Changes" : "Add Expense"}
+          <Button type="submit" variant="primary" disabled={submitting}>
+            {submitting ? "Saving…" : isEdit ? "Save Changes" : "Add Expense"}
           </Button>
         </div>
       </form>

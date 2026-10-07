@@ -17,12 +17,16 @@ import {
 } from "../../api/procurementApi";
 import { apiErrorMessage } from "../../utils/apiError";
 import { runListExport } from "../../utils/listExport";
+import ConfirmDialog from "../../components/admin/ConfirmDialog";
+import { formatInr } from "../../data/salesMasterData";
 
 export default function SupplierPayments() {
   const { addToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [payments, setPayments] = useState([]);
   const [vendors, setVendors] = useState([]);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
 
   const load = useCallback(async (isRefresh = false) => {
     if (!isRefresh) setLoading(true);
@@ -51,15 +55,18 @@ export default function SupplierPayments() {
     return map;
   }, [vendors]);
 
-  const handleDelete = async (row) => {
-    if (!row?.id) return;
-    if (!window.confirm("Delete this supplier payment?")) return;
+  const confirmDelete = async () => {
+    if (!deleteTarget?.id || deleteBusy) return;
+    setDeleteBusy(true);
     try {
-      await deleteSupplierPayment(row.id);
+      await deleteSupplierPayment(deleteTarget.id);
       addToast("Payment deleted", "success");
+      setDeleteTarget(null);
       await load();
     } catch (err) {
       addToast(apiErrorMessage(err, "Failed to delete payment"), "error");
+    } finally {
+      setDeleteBusy(false);
     }
   };
 
@@ -73,7 +80,7 @@ export default function SupplierPayments() {
     {
       key: "amount",
       label: "Amount",
-      render: (r) => `₹${Number(r.amount).toLocaleString()}`,
+      render: (r) => formatInr(r.amount),
     },
     { key: "payment_method", label: "Method" },
     { key: "reference", label: "Reference" },
@@ -83,7 +90,7 @@ export default function SupplierPayments() {
       render: (r) => (
         <button
           type="button"
-          onClick={() => handleDelete(r)}
+          onClick={() => setDeleteTarget(r)}
           className="text-xs font-semibold text-[var(--color-danger)] hover:underline"
         >
           Delete
@@ -110,7 +117,7 @@ export default function SupplierPayments() {
     <ListPageShell>
       <PageHeader
         title="Supplier Payments"
-        subtitle={`Total paid: ₹${total.toLocaleString()}`}
+        subtitle={`Total paid: ${formatInr(total)}`}
         action={
           <div className="flex flex-wrap items-center gap-2">
             <ExportDownloadMenu disabled={!payments.length} onExport={handleExport} />
@@ -138,6 +145,16 @@ export default function SupplierPayments() {
         />
         </ListPageCardBody>
       </ListPageCard>
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        title="Delete supplier payment"
+        message="Delete this supplier payment? This cannot be undone."
+        loading={deleteBusy}
+        onConfirm={confirmDelete}
+        onClose={() => {
+          if (!deleteBusy) setDeleteTarget(null);
+        }}
+      />
     </ListPageShell>
   );
 }

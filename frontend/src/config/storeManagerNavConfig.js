@@ -4,6 +4,7 @@ import {
   ArrowUpFromLine,
   Boxes,
   Building2,
+  CalendarDays,
   ClipboardList,
   FileBarChart2,
   FileText,
@@ -76,6 +77,14 @@ export const STORE_MANAGER_NAV_ITEMS = [
     to: "/chat",
     icon: MessageSquare,
     module: "chat",
+    end: true,
+  },
+  {
+    key: "meetings",
+    label: "Meetings",
+    to: "/meetings",
+    icon: CalendarDays,
+    module: "meetings",
     end: true,
   },
   {

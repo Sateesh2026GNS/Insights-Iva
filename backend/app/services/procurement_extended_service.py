@@ -34,21 +34,57 @@ from app.schemas.procurement_extended import (
 )
 
 
-def get_mr_summary(db: Session, tenant_id: int) -> MRSummaryRead:
-    mrs = list(db.scalars(select(MaterialRequest).where(MaterialRequest.tenant_id == tenant_id)).all())
-    pending = sum(1 for m in mrs if m.approval_status == "pending" or m.status == "pending")
-    approved = sum(1 for m in mrs if m.approval_status == "approved" or m.status == "approved")
-    rejected = sum(1 for m in mrs if m.status == "rejected")
-    rfq_mr_ids = set(
-        db.scalars(
-            select(RFQ.material_request_id).where(
-                RFQ.tenant_id == tenant_id,
-                RFQ.material_request_id.isnot(None),
+def _mr_po_ids(db: Session, tenant_id: int) -> set[int]:
+    from app.models.procurement import PurchaseOrder
+
+    return {
+        int(mid)
+        for mid in db.scalars(
+            select(PurchaseOrder.material_request_id).where(
+                PurchaseOrder.tenant_id == tenant_id,
+                PurchaseOrder.material_request_id.isnot(None),
             )
         ).all()
+        if mid
+    }
+
+
+def _mr_is_converted(mr: MaterialRequest, po_mr_ids: set[int]) -> bool:
+    return (mr.status or "") == "converted" or mr.id in po_mr_ids
+
+
+def _mr_is_pending(mr: MaterialRequest) -> bool:
+    if (mr.status or "") in ("converted", "fulfilled", "cancelled", "rejected"):
+        return False
+    if (mr.approval_status or "") == "rejected" or (mr.status or "") == "rejected":
+        return False
+    return (mr.approval_status or "pending") == "pending" or (mr.status or "") == "pending"
+
+
+def _mr_is_approved(mr: MaterialRequest) -> bool:
+    if (mr.status or "") in ("converted", "fulfilled", "cancelled", "rejected"):
+        return False
+    if (mr.approval_status or "") == "rejected":
+        return False
+    return (mr.approval_status or "") == "approved"
+
+
+def get_mr_summary(db: Session, tenant_id: int) -> MRSummaryRead:
+    mrs = list(db.scalars(select(MaterialRequest).where(MaterialRequest.tenant_id == tenant_id)).all())
+    po_mr_ids = _mr_po_ids(db, tenant_id)
+    pending = sum(1 for m in mrs if _mr_is_pending(m))
+    approved = sum(1 for m in mrs if _mr_is_approved(m))
+    rejected = sum(
+        1
+        for m in mrs
+        if (m.status or "") == "rejected" or (m.approval_status or "") == "rejected"
     )
-    converted_count = sum(1 for m in mrs if m.status == "converted" or m.id in rfq_mr_ids)
-    urgent = sum(1 for m in mrs if getattr(m, "priority", "medium") == "high")
+    converted_count = sum(1 for m in mrs if _mr_is_converted(m, po_mr_ids))
+    urgent = sum(
+        1
+        for m in mrs
+        if getattr(m, "priority", "medium") in ("high", "urgent")
+    )
     return MRSummaryRead(
         total_requests=len(mrs),
         pending_approval=pending,
@@ -63,6 +99,7 @@ def list_mr_enriched(db: Session, tenant_id: int) -> list[MRListRead]:
     mrs = list(
         db.scalars(select(MaterialRequest).where(MaterialRequest.tenant_id == tenant_id).order_by(MaterialRequest.id.desc())).all()
     )
+    po_mr_ids = _mr_po_ids(db, tenant_id)
     result = []
     for mr in mrs:
         lines = int(
@@ -82,6 +119,7 @@ def list_mr_enriched(db: Session, tenant_id: int) -> list[MRListRead]:
                 status=mr.status,
                 approval_status=getattr(mr, "approval_status", mr.status) or "pending",
                 required_date=mr.required_date.isoformat() if mr.required_date else None,
+                converted_to_po=_mr_is_converted(mr, po_mr_ids),
             )
         )
     return result

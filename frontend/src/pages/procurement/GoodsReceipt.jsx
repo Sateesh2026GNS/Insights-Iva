@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { CheckCircle, Eye, Package, Pencil, Plus, Trash2, X } from "lucide-react";
 import KpiCard from "../../components/common/KpiCard";
 import PageHeader from "../../components/common/PageHeader";
@@ -19,6 +19,7 @@ import {
 } from "../../api/procurementApi";
 import { formatInr, statusColor } from "../../data/procurementMasterData";
 import useManufacturingRefresh from "../../hooks/useManufacturingRefresh";
+import { grnMatchesKpi } from "../../utils/grnKpiFilters";
 import {
   MANUFACTURING_EVENTS,
   notifyManufacturingSpine,
@@ -28,6 +29,7 @@ import { isStoreManager } from "../../config/permissions";
 import { runListExport } from "../../utils/listExport";
 
 import Button from "../../components/common/Button";
+import ConfirmDialog from "../../components/admin/ConfirmDialog";
 
 function GRNDetailModal({ row, onClose, onQC }) {
   if (!row) return null;
@@ -237,6 +239,9 @@ export default function GoodsReceipt() {
   const [openMenu, setOpenMenu] = useState(null);
   const [qcBusy, setQcBusy] = useState(false);
   const [editBusy, setEditBusy] = useState(false);
+  const [kpiFilter, setKpiFilter] = useState("all");
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -268,17 +273,26 @@ export default function GoodsReceipt() {
 
   useManufacturingRefresh(load);
 
-  const handleDelete = async (row) => {
-    if (!row?.id) return;
-    if (!window.confirm(`Delete GRN ${row.grn_number || row.id}?`)) return;
+  const confirmDelete = async () => {
+    if (!deleteTarget?.id) return;
+    setDeleteBusy(true);
     try {
-      await deleteGoodsReceipt(row.id);
+      await deleteGoodsReceipt(deleteTarget.id);
       addToast("Goods receipt deleted", "success");
+      setDeleteTarget(null);
       await load();
     } catch (err) {
       addToast(err.response?.data?.detail || "Failed to delete GRN", "error");
+    } finally {
+      setDeleteBusy(false);
     }
   };
+
+  const displayRows = useMemo(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    if (kpiFilter === "all") return rows;
+    return rows.filter((r) => grnMatchesKpi(r, kpiFilter, today));
+  }, [rows, kpiFilter]);
 
   const handleQC = async (row, result) => {
     if (qcBusy) return;
@@ -400,7 +414,7 @@ export default function GoodsReceipt() {
                 label: "Delete",
                 icon: <Trash2 className="h-4 w-4" />,
                 danger: true,
-                onClick: () => handleDelete(r),
+                onClick: () => setDeleteTarget(r),
               },
             ]}
           />
@@ -444,15 +458,40 @@ export default function GoodsReceipt() {
       />
 
       <div className="ui-grid-kpi">
-        <KpiCard label="Today's GRN" value={summary.todays_grn} icon={Package} color="bg-[var(--color-primary)]" />
-        <KpiCard label="Pending QC" value={summary.pending_qc} icon={Package} color="bg-amber-500" />
-        <KpiCard label="Received" value={summary.received} icon={CheckCircle} color="bg-green-600" />
-        <KpiCard label="Rejected" value={summary.rejected} icon={Package} color="bg-red-500" />
+        <KpiCard
+          label="Today's GRN"
+          value={summary.todays_grn}
+          icon={Package}
+          color="bg-[var(--color-primary)]"
+          onClick={() => setKpiFilter("today")}
+        />
+        <KpiCard
+          label="Pending QC"
+          value={summary.pending_qc}
+          icon={Package}
+          color="bg-amber-500"
+          onClick={() => setKpiFilter("pending_qc")}
+        />
+        <KpiCard
+          label="Received"
+          value={summary.received}
+          icon={CheckCircle}
+          color="bg-green-600"
+          onClick={() => setKpiFilter("received")}
+        />
+        <KpiCard
+          label="Rejected"
+          value={summary.rejected}
+          icon={Package}
+          color="bg-red-500"
+          onClick={() => setKpiFilter("rejected")}
+        />
         <KpiCard
           label="Total Value"
           value={formatInr(summary.total_value)}
           icon={Package}
           color="bg-indigo-600"
+          onClick={() => setKpiFilter("all")}
         />
       </div>
 
@@ -460,7 +499,7 @@ export default function GoodsReceipt() {
         <ListPageCardBody className="overflow-x-auto">
         <DataTable
           columns={columns}
-          data={rows}
+          data={displayRows}
           searchPlaceholder="Search"
           searchKeys={["grn_number", "po_number", "vendor_name"]}
           showResultsCount={false}
@@ -484,6 +523,20 @@ export default function GoodsReceipt() {
           onSave={handleEditSave}
         />
       )}
+
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        title="Delete GRN?"
+        message={
+          deleteTarget
+            ? `Delete ${deleteTarget.grn_number || "this goods receipt"}? This action cannot be undone.`
+            : ""
+        }
+        confirmLabel="Delete"
+        loading={deleteBusy}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={confirmDelete}
+      />
     </ListPageShell>
   );
 }

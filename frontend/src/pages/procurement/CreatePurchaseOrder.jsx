@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Building2, ChevronDown, FileText, Grid2x2, ImagePlus, Paperclip, MapPin, Package, PenLine, Plane, Plus, Ban, Search, Ship, TrainFront, Trash2, Truck, User, X } from "lucide-react";
 
 import Loader from "../../components/common/Loader";
@@ -40,6 +40,18 @@ import {
   SoftSelect,
   Pill,
 } from "../../design-system/erpFormControls";
+import {
+  joinPoNumber,
+  newPoLineRow,
+  splitPoNumber,
+  suggestClonedPoSuffix,
+} from "../../utils/purchaseOrderFormUtils";
+import FileUploader from "../../components/common/FileUploader";
+import {
+  openEntityFileDownload,
+  uploadAndAttachEntityDocument,
+} from "../../utils/entityDocuments";
+import { attachFile, mapFileUploadError } from "../../api/filesApi";
 
 const YELLOW = "var(--color-primary)";
 const PREFIX_STORAGE_KEY = "gns_purchase_order_prefixes";
@@ -64,19 +76,7 @@ function saveCustomPrefixes(prefixes) {
   }
 }
 
-const emptyItem = () => ({
-  item_id: null,
-  item_description: "",
-  hsn: "",
-  qty: "",
-  unit: "",
-  rate: "",
-  tax_type: "Exclusive",
-  discount: "",
-  discount_type: "₹",
-  gst_pct: "",
-  amount: 0,
-});
+const emptyItem = () => newPoLineRow();
 
 function money(n) {
   return Math.round((Number(n) || 0) * 100) / 100;
@@ -235,9 +235,12 @@ const INDIAN_STATES = [
 export default function CreatePurchaseOrder() {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const cloneSourceId = searchParams.get("clone");
   const { id: routeId } = useParams();
   const editId = routeId || location.state?.viewId || null;
   const isEdit = Boolean(editId);
+  const attachmentInputRef = useRef(null);
   const tenantId = useTenantId();
   const { addToast } = useToast();
   const [loading, setLoading] = useState(true);
@@ -280,7 +283,9 @@ export default function CreatePurchaseOrder() {
   const [showPurchaseDiscount, setShowPurchaseDiscount] = useState(false);
   const [purchaseDiscountVal, setPurchaseDiscountVal] = useState("");
   const [purchaseDiscountType, setPurchaseDiscountType] = useState("%");
-  const [attachmentName, setAttachmentName] = useState("");
+  const [poAttachments, setPoAttachments] = useState([]);
+  const [pendingPoFiles, setPendingPoFiles] = useState([]);
+  const [docUploadBusy, setDocUploadBusy] = useState(false);
   const [notesText, setNotesText] = useState("");
   const [noteModalOpen, setNoteModalOpen] = useState(false);
   const [paymentMode, setPaymentMode] = useState("");
@@ -338,6 +343,9 @@ export default function CreatePurchaseOrder() {
         setVendors(vendorRes.status === "fulfilled" ? vendorRes.value?.data || [] : []);
         const co = companyRes.status === "fulfilled" ? companyRes.value?.data || null : null;
         setCompany(co);
+        if (co?.po_prefix) {
+          setForm((f) => ({ ...f, po_prefix: f.po_prefix || co.po_prefix }));
+        }
         if (co) {
           if (co.stamp_url) {
             setStampDataUrl((prev) => prev || co.stamp_url);
@@ -364,18 +372,30 @@ export default function CreatePurchaseOrder() {
             : asArray(dash?.inventory_items);
         setCatalogItems(itemList);
 
-        if (editId) {
-          const po = location.state?.document || (await getPurchaseOrder(editId)).data;
+        const loadPoId = editId || cloneSourceId;
+        if (loadPoId) {
+          const po = location.state?.document || (await getPurchaseOrder(loadPoId)).data;
           if (!po) throw new Error("Purchase order not found");
-          const num = String(po.po_number || "");
-          const prefixMatch = num.match(/^([A-Za-z-]+)/);
+          const knownPrefixes = [
+            ...DEFAULT_PREFIXES,
+            ...loadCustomPrefixes(),
+            co?.po_prefix,
+            form.po_prefix,
+          ];
+          const { prefix, suffix } = splitPoNumber(po.po_number, knownPrefixes);
           setNotesText(po.notes || "");
           setForm((f) => ({
             ...f,
             supplier_id: po.supplier_id ? String(po.supplier_id) : "",
-            po_prefix: prefixMatch?.[1] || f.po_prefix,
-            po_number: num.replace(/^[A-Za-z-]+/, "") || num || f.po_number,
-            order_date: po.order_date ? String(po.order_date).slice(0, 10) : f.order_date,
+            po_prefix: prefix || f.po_prefix || co?.po_prefix || "PO",
+            po_number: editId
+              ? suffix || f.po_number
+              : suggestClonedPoSuffix(suffix || f.po_number),
+            order_date: editId
+              ? po.order_date
+                ? String(po.order_date).slice(0, 10)
+                : f.order_date
+              : new Date().toISOString().slice(0, 10),
             expected_date: po.expected_date ? String(po.expected_date).slice(0, 10) : "",
             notes: po.notes || f.notes,
           }));
@@ -384,17 +404,20 @@ export default function CreatePurchaseOrder() {
             lineItems.length
               ? lineItems.map((it) => {
                   const inv = itemList.find((i) => String(i.id || i.item_id) === String(it.item_id));
-                  return {
-                    ...emptyItem(),
+                  return newPoLineRow({
                     item_id: it.item_id,
                     item_description: inv?.name || inv?.item_name || `Item #${it.item_id}`,
                     qty: it.qty ?? it.quantity ?? "",
                     unit: inv?.unit || "pcs",
                     rate: it.rate ?? it.unit_price ?? "",
-                  };
+                  });
                 })
               : [emptyItem(), emptyItem(), emptyItem()]
           );
+          if (cloneSourceId) {
+            addToast("Purchase order cloned — review PO number before saving.", "info");
+          }
+          setPoAttachments(editId && Array.isArray(po.attachments) ? po.attachments : []);
         }
       } catch (err) {
         if (!cancelled) {
@@ -408,7 +431,7 @@ export default function CreatePurchaseOrder() {
     return () => {
       cancelled = true;
     };
-  }, [editId, addToast, navigate, location.state]);
+  }, [editId, cloneSourceId, addToast, navigate, location.state]);
 
   const filteredVendors = useMemo(
     () =>
@@ -440,16 +463,18 @@ export default function CreatePurchaseOrder() {
     setShowSellerPicker(false);
   };
 
-  const updateItem = (idx, field, val) => {
-    setItems((prev) => {
-      const next = [...prev];
-      next[idx] = { ...next[idx], [field]: val };
-      next[idx].amount = lineTotals(next[idx]).total;
-      return next;
-    });
+  const updateItem = (rowKey, field, val) => {
+    setItems((prev) =>
+      prev.map((row) => {
+        if (row._rowKey !== rowKey) return row;
+        const next = { ...row, [field]: val };
+        next.amount = lineTotals(next).total;
+        return next;
+      })
+    );
   };
 
-  const syncCatalogItem = (idx, label) => {
+  const syncCatalogItem = (rowKey, label) => {
     const name = String(label || "").trim().toLowerCase();
     if (!name) return;
     const match = catalogItems.find(
@@ -458,23 +483,28 @@ export default function CreatePurchaseOrder() {
     if (!match) return;
     const id = match.id || match.item_id;
     const price = match.unit_price ?? match.purchase_price ?? match.unit_cost ?? match.price ?? "";
-    setItems((prev) => {
-      const next = [...prev];
-      next[idx] = {
-        ...next[idx],
-        item_id: id,
-        item_description: match.name || match.item_name || match.product_name || next[idx].item_description,
-        hsn: match.hsn || match.hsn_sac || match.hsn_code || next[idx].hsn,
-        unit: match.unit || match.unit_of_measure || next[idx].unit || "pcs",
-        rate: price === null || price === undefined ? next[idx].rate : String(price),
-      };
-      next[idx].amount = lineTotals(next[idx]).total;
-      return next;
-    });
+    setItems((prev) =>
+      prev.map((row) => {
+        if (row._rowKey !== rowKey) return row;
+        const next = {
+          ...row,
+          item_id: id,
+          item_description: match.name || match.item_name || match.product_name || row.item_description,
+          hsn: match.hsn || match.hsn_sac || match.hsn_code || row.hsn,
+          unit: match.unit || match.unit_of_measure || row.unit || "pcs",
+          rate: price === null || price === undefined ? row.rate : String(price),
+        };
+        next.amount = lineTotals(next).total;
+        return next;
+      })
+    );
   };
 
-  const removeItem = (idx) => {
-    setItems((prev) => (prev.length <= 1 ? [emptyItem()] : prev.filter((_, i) => i !== idx)));
+  const removeItem = (rowKey) => {
+    setItems((prev) => {
+      const next = prev.filter((row) => row._rowKey !== rowKey);
+      return next.length ? next : [emptyItem()];
+    });
     addToast("Item Removed from List!", "alert");
   };
 
@@ -497,6 +527,7 @@ export default function CreatePurchaseOrder() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (saving) return;
     if (!form.supplier_id) {
       addToast("Please select a seller", "error");
       setShowSellerPicker(true);
@@ -524,7 +555,7 @@ export default function CreatePurchaseOrder() {
       const poPayload = {
         tenant_id: tenantId,
         supplier_id: Number(form.supplier_id),
-        po_number: [form.po_prefix, form.po_number].filter(Boolean).join("") || `PO-${Date.now()}`,
+        po_number: joinPoNumber(form.po_prefix, form.po_number) || `PO-${Date.now()}`,
         order_date: form.order_date,
         expected_date: form.expected_date || null,
         notes: metaNotes || null,
@@ -535,12 +566,31 @@ export default function CreatePurchaseOrder() {
           unit_price: i.rate === "" ? null : Number(i.rate),
         })),
       };
+      let poId = editId ? Number(editId) : null;
       if (isEdit) {
-        await updatePurchaseOrder(editId, poPayload);
+        const res = await updatePurchaseOrder(editId, poPayload);
+        poId = res?.data?.id ?? poId;
         addToast("Purchase order updated.", "success");
       } else {
-        await createPurchaseOrder(poPayload);
+        const res = await createPurchaseOrder(poPayload);
+        poId = res?.data?.id ?? poId;
         addToast("Purchase order created.", "success");
+      }
+      if (poId) {
+        const queue = [...pendingPoFiles];
+        if (queue.length) {
+          setDocUploadBusy(true);
+          try {
+            for (const file of queue) {
+              await uploadAndAttachEntityDocument(file, "purchase_order", poId, "po_document");
+            }
+            setPendingPoFiles([]);
+          } catch (uploadErr) {
+            addToast(mapFileUploadError(uploadErr).message || "Document upload failed.", "error");
+          } finally {
+            setDocUploadBusy(false);
+          }
+        }
       }
       navigate("/procurement/purchase-orders");
     } catch (err) {
@@ -587,7 +637,7 @@ export default function CreatePurchaseOrder() {
           </button>
           <button
             type="submit"
-            disabled={saving}
+            disabled={saving || docUploadBusy}
             className="rounded-lg px-5 py-2 text-[13px] font-semibold text-white shadow-sm disabled:opacity-60"
             style={{ background: YELLOW }}
           >
@@ -599,10 +649,10 @@ export default function CreatePurchaseOrder() {
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto w-full max-w-[1200px] space-y-4 p-5 pb-10">
           {/* Top: purchase type + company buyer — bordered two-column panel */}
-          <div className="grid overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] lg:grid-cols-[1fr_1.35fr]">
-          <section className="border-b border-[var(--color-border)] p-4 lg:border-b-0 lg:border-r">
+          <div className="grid overflow-visible rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] lg:grid-cols-[1fr_1.35fr]">
+          <section className="overflow-visible border-b border-[var(--color-border)] p-4 lg:border-b-0 lg:border-r">
             <div className="grid gap-3 sm:grid-cols-3">
-              <label className="block">
+              <label className="relative block overflow-visible">
                 <FieldLabel>Purchase Order Prefix</FieldLabel>
                 <PrefixDropdown
                   value={form.po_prefix}
@@ -799,23 +849,24 @@ export default function CreatePurchaseOrder() {
                   const t = lineTotals(row);
                   const hasDesc = Boolean(row.item_description?.trim());
                   const cell = "border-b border-r border-[var(--color-border)] px-2 py-2 last:border-r-0";
+                  const rowKey = row._rowKey;
                   return (
-                    <tr key={idx}>
+                    <tr key={rowKey}>
                       <td className={`${cell} text-[var(--color-text-faint)]`}>{idx + 1}</td>
                       <td className={cell}>
                         <div className="relative min-w-[160px]">
                           <SearchBar
                             size="compact"
-                            list={`po-item-options-${idx}`}
+                            list={`po-item-options-${rowKey}`}
                             value={row.item_description}
-                            onChange={(v) => updateItem(idx, "item_description", v)}
-                            onBlur={(e) => syncCatalogItem(idx, e.target.value)}
+                            onChange={(v) => updateItem(rowKey, "item_description", v)}
+                            onBlur={(e) => syncCatalogItem(rowKey, e.target.value)}
                             placeholder="Select Item"
                             clearable={false}
                             className="w-full"
                             inputClassName="pending-inventory-search-input"
                           />
-                          <datalist id={`po-item-options-${idx}`}>
+                          <datalist id={`po-item-options-${rowKey}`}>
                             {catalogItems.map((item) => (
                               <option
                                 key={item.id || item.item_id}
@@ -828,14 +879,14 @@ export default function CreatePurchaseOrder() {
                       <td className={cell}>
                         <input
                           value={row.hsn}
-                          onChange={(e) => updateItem(idx, "hsn", e.target.value)}
+                          onChange={(e) => updateItem(rowKey, "hsn", e.target.value)}
                           className="w-16 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-1.5 py-1.5"
                         />
                       </td>
                       <td className={cell}>
                         <ShorthandQuantityInput
                           value={row.qty}
-                          onChange={(val) => updateItem(idx, "qty", val)}
+                          onChange={(val) => updateItem(rowKey, "qty", val)}
                           placeholder="0"
                           className="w-24 text-[12px]"
                         />
@@ -843,7 +894,7 @@ export default function CreatePurchaseOrder() {
                       <td className={cell}>
                         <select
                           value={row.unit}
-                          onChange={(e) => updateItem(idx, "unit", e.target.value)}
+                          onChange={(e) => updateItem(rowKey, "unit", e.target.value)}
                           className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-1 py-1.5"
                         >
                           <option value="">Unit</option>
@@ -855,7 +906,7 @@ export default function CreatePurchaseOrder() {
                       <td className={cell}>
                         <ShorthandQuantityInput
                           value={row.rate}
-                          onChange={(val) => updateItem(idx, "rate", val)}
+                          onChange={(val) => updateItem(rowKey, "rate", val)}
                           prefix="₹"
                           placeholder="0"
                           className="w-24 text-[12px]"
@@ -864,7 +915,7 @@ export default function CreatePurchaseOrder() {
                       <td className={cell}>
                         <select
                           value={row.tax_type}
-                          onChange={(e) => updateItem(idx, "tax_type", e.target.value)}
+                          onChange={(e) => updateItem(rowKey, "tax_type", e.target.value)}
                           className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-1.5 py-1.5"
                         >
                           <option>Exclusive</option>
@@ -875,13 +926,13 @@ export default function CreatePurchaseOrder() {
                         <div className="flex gap-1">
                           <ShorthandQuantityInput
                             value={row.discount}
-                            onChange={(val) => updateItem(idx, "discount", val)}
+                            onChange={(val) => updateItem(rowKey, "discount", val)}
                             placeholder="0"
                             className="w-20 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-1.5 py-1.5 text-[12px]"
                           />
                           <select
                             value={row.discount_type}
-                            onChange={(e) => updateItem(idx, "discount_type", e.target.value)}
+                            onChange={(e) => updateItem(rowKey, "discount_type", e.target.value)}
                             className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-1 py-1.5"
                           >
                             <option value="₹">₹</option>
@@ -895,7 +946,7 @@ export default function CreatePurchaseOrder() {
                       <td className={cell}>
                         <select
                           value={row.gst_pct}
-                          onChange={(e) => updateItem(idx, "gst_pct", e.target.value)}
+                          onChange={(e) => updateItem(rowKey, "gst_pct", e.target.value)}
                           className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-1.5 py-1.5"
                         >
                           <option value="">—</option>
@@ -910,7 +961,7 @@ export default function CreatePurchaseOrder() {
                         {hasDesc ? t.total.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "—"}
                       </td>
                       <td className="border-b border-[var(--color-border)] px-2 py-2">
-                        <button type="button" onClick={() => removeItem(idx)} className="text-red-500 hover:text-red-700">
+                        <button type="button" onClick={() => removeItem(rowKey)} className="text-red-500 hover:text-red-700">
                           <Trash2 className="h-4 w-4" />
                         </button>
                       </td>
@@ -1366,11 +1417,74 @@ export default function CreatePurchaseOrder() {
 
           <section className="overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)]">
             <SectionHeader icon={Paperclip} title="Attach Document" />
-            <label className="m-4 flex min-h-24 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-[var(--color-border)] bg-[var(--color-surface-muted)] text-[13px] text-[var(--color-text-muted)] hover:bg-[var(--color-primary-soft)]">
-              <Paperclip className="mb-2 h-5 w-5 text-[var(--color-primary)]" />
-              {attachmentName || "Choose or drop a purchase document"}
-              <input type="file" className="sr-only" onChange={(e) => setAttachmentName(e.target.files?.[0]?.name || "")} />
-            </label>
+            <div className="space-y-3 p-4">
+              {poAttachments.length ? (
+                <ul className="space-y-2 text-[13px]">
+                  {poAttachments.map((att) => (
+                    <li key={att.attachment_id || att.id} className="flex items-center justify-between gap-2 rounded-lg border border-[var(--color-border)] px-3 py-2">
+                      <span className="truncate">{att.filename}</span>
+                      <button
+                        type="button"
+                        className="shrink-0 font-semibold text-[var(--color-primary)]"
+                        onClick={() => openEntityFileDownload(att.id)}
+                      >
+                        Download
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+              {pendingPoFiles.length ? (
+                <ul className="space-y-1 text-[12px] text-[var(--color-text-muted)]">
+                  {pendingPoFiles.map((file, i) => (
+                    <li key={`${file.name}-${i}`} className="flex justify-between gap-2">
+                      <span className="truncate">{file.name} (queued)</span>
+                      <button
+                        type="button"
+                        className="text-[var(--color-danger)]"
+                        onClick={() => setPendingPoFiles((prev) => prev.filter((_, idx) => idx !== i))}
+                      >
+                        Remove
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+              {isEdit && editId ? (
+                <FileUploader
+                  entityType="purchase_order"
+                  entityId={Number(editId)}
+                  onReady={async (status) => {
+                    if (!status?.id) return;
+                    try {
+                      await attachFile(status.id, "purchase_order", Number(editId), "po_document");
+                      const res = await getPurchaseOrder(editId);
+                      setPoAttachments(Array.isArray(res?.data?.attachments) ? res.data.attachments : []);
+                      addToast("Document attached.", "success");
+                    } catch (err) {
+                      addToast(mapFileUploadError(err).message || "Could not link document.", "error");
+                    }
+                  }}
+                  onError={(err) => addToast(err?.message || "Upload failed", "error")}
+                />
+              ) : (
+                <label className="flex min-h-24 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-[var(--color-border)] bg-[var(--color-surface-muted)] text-[13px] text-[var(--color-text-muted)] hover:bg-[var(--color-primary-soft)]">
+                  <Paperclip className="mb-2 h-5 w-5 text-[var(--color-primary)]" />
+                  Add document (uploads after save)
+                  <input
+                    ref={attachmentInputRef}
+                    type="file"
+                    className="sr-only"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) setPendingPoFiles((prev) => [...prev, file]);
+                      e.target.value = "";
+                    }}
+                  />
+                </label>
+              )}
+              {docUploadBusy ? <p className="text-[12px] text-[var(--color-text-muted)]">Uploading documents…</p> : null}
+            </div>
           </section>
 
           {/* Notes */}

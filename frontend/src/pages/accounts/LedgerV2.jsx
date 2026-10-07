@@ -866,12 +866,12 @@ export default function LedgerV2() {
             <div className="flex flex-wrap items-center gap-2">
               {tab === "debtors" ? (
                 <Button type="button" variant="add" onClick={() => setAddCustomerOpen(true)} leftIcon={<UserPlus className="h-4 w-4" aria-hidden />}>
-                  + Add Customer
+                  Add Customer
                 </Button>
               ) : null}
               {tab === "creditors" ? (
                 <Button type="button" variant="add" onClick={() => setAddVendorOpen(true)} leftIcon={<UserPlus className="h-4 w-4" aria-hidden />}>
-                  + Add Vendor
+                  Add Vendor
                 </Button>
               ) : null}
               {tab === "cash" ? (

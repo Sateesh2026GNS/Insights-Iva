@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import {
@@ -31,12 +32,15 @@ import Loader from "../../components/common/Loader";
 import EmptyState from "../../components/common/EmptyState";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
 import { fetchExpenseCategories } from "../../data/expenseCategories";
-import { createExpense, deleteExpense, listExpenses, updateExpense } from "../../api/accountsApi";
+import { createExpense, deleteExpense, getExpense, listExpenses, updateExpense } from "../../api/accountsApi";
+import { uploadAndAttachEntityDocument, openEntityFileDownload } from "../../utils/entityDocuments";
+import { mapFileUploadError } from "../../api/filesApi";
 import { exportToCsv, exportToExcel, exportToPdf } from "../../utils/exportUtils";
 import { useToast } from "../../context/ToastContext";
 import useTenantId from "../../hooks/useTenantId";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { apiErrorMessage, asArray } from "../../utils/apiError";
+import ConfirmDialog from "../../components/admin/ConfirmDialog";
 
 const EXPENSE_TABS = [
   { id: "all", label: "All Expenses" },
@@ -246,6 +250,10 @@ export default function ExpenseV2() {
   const [addOpen, setAddOpen] = useState(false);
   const [editExpense, setEditExpense] = useState(null);
   const [openMenu, setOpenMenu] = useState(null);
+  const [viewExpense, setViewExpense] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [expenseSaving, setExpenseSaving] = useState(false);
 
   const load = useCallback(async (isRefresh = false) => {
     if (!isRefresh) setLoading(true);
@@ -329,40 +337,59 @@ export default function ExpenseV2() {
   });
 
   const onSaveExpense = async (row) => {
+    if (expenseSaving) return;
+    setExpenseSaving(true);
+    const receiptFile = row.receiptFile;
     try {
+      let expenseId = row.id;
       if (row.id && editExpense?.id) {
-        await updateExpense(row.id, expensePayload(row));
+        const res = await updateExpense(row.id, expensePayload(row));
+        expenseId = res?.data?.id ?? row.id;
         addToast("Expense updated.", "success");
       } else {
-        await createExpense(expensePayload(row));
+        const res = await createExpense(expensePayload(row));
+        expenseId = res?.data?.id;
         addToast("Expense added.", "success");
       }
+      if (receiptFile && expenseId) {
+        try {
+          await uploadAndAttachEntityDocument(receiptFile, "expense", expenseId, "receipt");
+        } catch (uploadErr) {
+          addToast(mapFileUploadError(uploadErr).message || "Receipt upload failed.", "error");
+        }
+      }
       setEditExpense(null);
+      setAddOpen(false);
       await load();
     } catch (err) {
       addToast(apiErrorMessage(err, "Failed to save expense"), "error");
+    } finally {
+      setExpenseSaving(false);
     }
   };
 
-  const onDeleteExpense = async (row) => {
-    if (!row?.id) return;
-    if (!window.confirm(`Delete expense "${row.spend_for}"?`)) return;
+  const confirmDeleteExpense = async () => {
+    if (!deleteTarget?.id || deleteBusy) return;
+    setDeleteBusy(true);
     try {
-      await deleteExpense(row.id);
+      await deleteExpense(deleteTarget.id);
       addToast("Expense deleted", "success");
+      setDeleteTarget(null);
       await load();
     } catch (err) {
       addToast(apiErrorMessage(err, "Failed to delete expense"), "error");
+    } finally {
+      setDeleteBusy(false);
     }
   };
 
   const exportColsAll = [
     { key: "tag", label: "Tag" },
     { key: "category", label: "Category" },
-    { key: "date", label: "Date" },
+    { key: "date", label: "Date", pdfValue: (row) => formatDisplayDate(row.date) },
     { key: "spend_for", label: "Spend For" },
-    { key: "payment_mode", label: "Payment Mode" },
-    { key: "amount", label: "Amount" },
+    { key: "payment_mode", label: "Payment Mode", pdfValue: (row) => formatPaymentMode(row.payment_mode) },
+    { key: "amount", label: "Amount", pdfValue: (row) => formatAccountsInr(row.amount) },
   ];
 
   const onPdf = () => {
@@ -531,17 +558,19 @@ export default function ExpenseV2() {
                               rowId={row.id}
                               openMenu={openMenu}
                               setOpenMenu={setOpenMenu}
-                              onView={() =>
-                                addToast(
-                                  `${row.spend_for} · ${row.category} · ${formatAccountsInr(row.amount)} · ${formatPaymentMode(row.payment_mode)}${row.note ? ` · ${row.note}` : ""}`,
-                                  "info"
-                                )
-                              }
+                              onView={async () => {
+                                try {
+                                  const res = await getExpense(row.id);
+                                  setViewExpense({ ...row, attachments: res?.data?.attachments || [] });
+                                } catch {
+                                  setViewExpense(row);
+                                }
+                              }}
                               onEdit={() => {
                                 setEditExpense(row);
                                 setAddOpen(true);
                               }}
-                              onDelete={() => onDeleteExpense(row)}
+                              onDelete={() => setDeleteTarget(row)}
                             />
                           </td>
                         </tr>
@@ -642,6 +671,87 @@ export default function ExpenseV2() {
         }}
         categories={categories}
         onSave={onSaveExpense}
+      />
+
+      {viewExpense
+        ? createPortal(
+            <div
+              className="fixed inset-0 z-[90] flex items-center justify-center bg-black/40 p-4"
+              role="presentation"
+              onMouseDown={(e) => e.target === e.currentTarget && setViewExpense(null)}
+            >
+              <div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-2xl" role="dialog" aria-modal="true">
+                <div className="mb-4 flex items-start justify-between gap-3">
+                  <h2 className="text-lg font-bold text-[#17264A]">Expense details</h2>
+                  <button
+                    type="button"
+                    className="rounded p-1 text-[#64748B] hover:bg-[#F1F5F9]"
+                    aria-label="Close"
+                    onClick={() => setViewExpense(null)}
+                  >
+                    ×
+                  </button>
+                </div>
+                <dl className="space-y-3 text-sm">
+                  <div className="flex justify-between gap-4">
+                    <dt className="text-[#64748B]">Spend for</dt>
+                    <dd className="font-semibold text-[#17264A]">{viewExpense.spend_for}</dd>
+                  </div>
+                  <div className="flex justify-between gap-4">
+                    <dt className="text-[#64748B]">Category</dt>
+                    <dd className="font-medium text-[#17264A]">{viewExpense.category}</dd>
+                  </div>
+                  <div className="flex justify-between gap-4">
+                    <dt className="text-[#64748B]">Date</dt>
+                    <dd>{formatDisplayDate(viewExpense.date)}</dd>
+                  </div>
+                  <div className="flex justify-between gap-4">
+                    <dt className="text-[#64748B]">Amount</dt>
+                    <dd className="font-bold tabular-nums text-[#FF3B30]">{formatAccountsInr(viewExpense.amount)}</dd>
+                  </div>
+                  <div className="flex justify-between gap-4">
+                    <dt className="text-[#64748B]">Payment mode</dt>
+                    <dd>{formatPaymentMode(viewExpense.payment_mode)}</dd>
+                  </div>
+                  {viewExpense.note ? (
+                    <div>
+                      <dt className="mb-1 text-[#64748B]">Note</dt>
+                      <dd className="rounded-lg bg-[#F8FAFC] p-3 text-[#17264A]">{viewExpense.note}</dd>
+                    </div>
+                  ) : null}
+                  {viewExpense.attachments?.length ? (
+                    <div>
+                      <dt className="mb-1 text-[#64748B]">Receipt</dt>
+                      <dd className="space-y-2">
+                        {viewExpense.attachments.map((att) => (
+                          <button
+                            key={att.attachment_id || att.id}
+                            type="button"
+                            className="block text-left font-semibold text-[#2563EB] hover:underline"
+                            onClick={() => openEntityFileDownload(att.id)}
+                          >
+                            {att.filename}
+                          </button>
+                        ))}
+                      </dd>
+                    </div>
+                  ) : null}
+                </dl>
+              </div>
+            </div>,
+            document.body
+          )
+        : null}
+
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        title="Delete expense"
+        message={`Delete expense "${deleteTarget?.spend_for}"? This cannot be undone.`}
+        loading={deleteBusy}
+        onConfirm={confirmDeleteExpense}
+        onClose={() => {
+          if (!deleteBusy) setDeleteTarget(null);
+        }}
       />
     </AccountsPageShell>
   );
