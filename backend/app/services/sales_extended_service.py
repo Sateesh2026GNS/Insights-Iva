@@ -88,12 +88,27 @@ def list_leads_enriched(
     *,
     followup_from: date | None = None,
     followup_to: date | None = None,
+    created_from: date | None = None,
+    created_to: date | None = None,
+    open_only: bool = False,
+    followup_due: bool = False,
 ) -> list[LeadListRead]:
     stmt = select(Lead).where(Lead.tenant_id == tenant_id)
     if followup_from is not None:
         stmt = stmt.where(Lead.next_followup >= followup_from)
     if followup_to is not None:
         stmt = stmt.where(Lead.next_followup <= followup_to)
+    if created_from is not None:
+        stmt = stmt.where(Lead.created_at >= _dt_start(created_from))
+    if created_to is not None:
+        stmt = stmt.where(Lead.created_at <= _dt_end(created_to))
+    if open_only:
+        stmt = stmt.where(func.lower(Lead.status).notin_(("converted", "lost")))
+    if followup_due:
+        stmt = stmt.where(
+            Lead.next_followup.isnot(None),
+            Lead.next_followup <= _dt_end(date.today()),
+        )
     leads = list(db.scalars(stmt.order_by(Lead.id.desc())).all())
     return [
         LeadListRead(
@@ -129,6 +144,24 @@ def get_quotation_summary(
             for q in quotes
             if q.quote_date and period_start <= q.quote_date <= period_end
         ]
+    open_statuses = {"draft", "sent"}
+    open_quotes = [q for q in quotes if (q.status or "").lower() in open_statuses]
+    quote_numbers = [q.quote_number for q in quotes if q.quote_number]
+    converted_refs: set[str] = set()
+    if quote_numbers:
+        orders = list(
+            db.scalars(
+                select(SalesOrder.reference_number).where(
+                    SalesOrder.tenant_id == tenant_id,
+                    SalesOrder.reference_number.in_(quote_numbers),
+                )
+            ).all()
+        )
+        converted_refs = {r for r in orders if r}
+
+    pipeline_value = sum(float(q.total_amount or 0) for q in quotes if (q.status or "").lower() in open_statuses | {"accepted"})
+    converted_count = sum(1 for q in quotes if q.quote_number and q.quote_number in converted_refs)
+
     return QuotationSummaryRead(
         total_quotations=len(quotes),
         draft=sum(1 for q in quotes if q.status == "draft"),
@@ -136,13 +169,33 @@ def get_quotation_summary(
         accepted=sum(1 for q in quotes if q.status == "accepted"),
         rejected=sum(1 for q in quotes if q.status == "rejected"),
         expired=sum(1 for q in quotes if q.status == "expired"),
+        open_quotations=len(open_quotes),
+        pipeline_value=pipeline_value,
+        converted_to_sales_orders=converted_count,
     )
 
 
 def list_quotations_enriched(db: Session, tenant_id: int) -> list[QuotationListRead]:
+    from app.models.sales import SalesOrder
+
     quotes = list(
         db.scalars(select(Quotation).where(Quotation.tenant_id == tenant_id).order_by(Quotation.id.desc())).all()
     )
+    quote_numbers = [q.quote_number for q in quotes if q.quote_number]
+    so_by_ref: dict[str, str] = {}
+    if quote_numbers:
+        orders = list(
+            db.scalars(
+                select(SalesOrder).where(
+                    SalesOrder.tenant_id == tenant_id,
+                    SalesOrder.reference_number.in_(quote_numbers),
+                )
+            ).all()
+        )
+        for order in orders:
+            ref = order.reference_number
+            if ref and ref not in so_by_ref:
+                so_by_ref[ref] = order.order_number or ""
     return [
         QuotationListRead(
             id=q.id,
@@ -154,6 +207,8 @@ def list_quotations_enriched(db: Session, tenant_id: int) -> list[QuotationListR
             valid_until=q.valid_until.isoformat() if q.valid_until else None,
             status=q.status,
             converted_to_invoice=str(q.status or "").lower() in ("converted", "invoiced"),
+            converted_to_so=bool(q.quote_number and q.quote_number in so_by_ref),
+            converted_sales_order_number=so_by_ref.get(q.quote_number or ""),
         )
         for q in quotes
     ]

@@ -14,6 +14,8 @@ const EMPTY = {
   branch_name: "",
   upi_id: "",
   show_upi_qr: true,
+  iban: "",
+  swift: "",
   notes: "",
 };
 
@@ -28,7 +30,13 @@ function SoftLabel({ children, required }) {
   );
 }
 
-export default function AddBankAccountModal({ open, onClose, onSave, initial }) {
+export default function AddBankAccountModal({
+  open,
+  onClose,
+  onSave,
+  initial,
+  documentLabel = "Invoice",
+}) {
   const { addToast } = useToast();
   const [form, setForm] = useState(EMPTY);
   const [showAdditional, setShowAdditional] = useState(false);
@@ -44,9 +52,13 @@ export default function AddBankAccountModal({ open, onClose, onSave, initial }) 
       branch_name: initial?.branch_name || "",
       upi_id: initial?.upi_id || "",
       show_upi_qr: initial?.show_upi_qr !== false,
+      iban: initial?.iban || "",
+      swift: initial?.swift || "",
       notes: initial?.notes || "",
     });
-    setShowAdditional(Boolean(initial?.notes));
+    setShowAdditional(
+      Boolean(initial?.iban || initial?.swift || initial?.notes)
+    );
   }, [open, initial]);
 
   useEffect(() => {
@@ -95,6 +107,8 @@ export default function AddBankAccountModal({ open, onClose, onSave, initial }) 
       branch_name: form.branch_name.trim() || null,
       upi_id: form.upi_id.trim() || null,
       show_upi_qr: Boolean(form.show_upi_qr),
+      iban: form.iban.trim() || null,
+      swift: form.swift.trim().toUpperCase() || null,
       notes: form.notes.trim() || null,
     });
     onClose?.();
@@ -102,7 +116,7 @@ export default function AddBankAccountModal({ open, onClose, onSave, initial }) 
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4"
+      className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="add-bank-account-title"
@@ -231,7 +245,7 @@ export default function AddBankAccountModal({ open, onClose, onSave, initial }) 
                 checked={form.show_upi_qr}
                 onChange={(e) => setForm((f) => ({ ...f, show_upi_qr: e.target.checked }))}
               />
-              Show UPI QR Code in Invoice
+              Show UPI QR Code in {documentLabel}
             </label>
           </div>
 
@@ -249,16 +263,45 @@ export default function AddBankAccountModal({ open, onClose, onSave, initial }) 
               />
             </button>
             {showAdditional ? (
-              <label className="mt-3 block">
-                <SoftLabel>Notes</SoftLabel>
-                <textarea
-                  rows={2}
-                  value={form.notes}
-                  onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-                  placeholder="Enter additional notes"
-                  className={inputClass}
-                />
-              </label>
+              <div className="mt-3 space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <label className="block">
+                    <SoftLabel>IBAN Number</SoftLabel>
+                    <input
+                      value={form.iban}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, iban: e.target.value }))
+                      }
+                      placeholder="Enter IBAN Number"
+                      className={inputClass}
+                    />
+                  </label>
+                  <label className="block">
+                    <SoftLabel>Swift Code</SoftLabel>
+                    <input
+                      value={form.swift}
+                      onChange={(e) =>
+                        setForm((f) => ({
+                          ...f,
+                          swift: e.target.value.toUpperCase(),
+                        }))
+                      }
+                      placeholder="Enter Swift Code"
+                      className={inputClass}
+                    />
+                  </label>
+                </div>
+                <label className="block">
+                  <SoftLabel>Notes</SoftLabel>
+                  <textarea
+                    rows={2}
+                    value={form.notes}
+                    onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+                    placeholder="Enter additional notes"
+                    className={inputClass}
+                  />
+                </label>
+              </div>
             ) : null}
           </div>
         </div>

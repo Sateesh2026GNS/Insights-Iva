@@ -1,12 +1,21 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ChevronDown, X, Loader2 } from "lucide-react";
+import {
+  ChevronDown,
+  Loader2,
+  MoreVertical,
+  Pencil,
+  Trash2,
+  X,
+} from "lucide-react";
 
 import { SearchBar } from "../common/SearchFilter";
 
 import {
   createDispatchAddress,
+  deleteDispatchAddress,
   listDispatchAddresses,
+  updateDispatchAddress,
 } from "../../api/dispatchAddressApi";
 import { lookupIndianPincode, fetchCurrentLocationAddress } from "../../api/addressLookupApi";
 import { INDIAN_STATES } from "../../data/customersMasterData";
@@ -36,7 +45,27 @@ function SoftField({ label, children }) {
 
 import { inputClass } from "../../design-system/classes";
 
-export function AddDispatchAddressModal({ open, onClose, onSaved }) {
+export function formatDispatchAddressLine(row) {
+  if (!row) return "";
+  const country =
+    row.country && String(row.country).toUpperCase() !== "INDIA"
+      ? row.country
+      : row.country
+        ? "India"
+        : "India";
+  return [row.address, row.city, row.state, row.pincode, country]
+    .filter(Boolean)
+    .join(", ");
+}
+
+export function AddDispatchAddressModal({
+  open,
+  onClose,
+  onSaved,
+  initial,
+  editId,
+  title = "Add Dispatch Address",
+}) {
   const { addToast } = useToast();
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
@@ -46,12 +75,24 @@ export function AddDispatchAddressModal({ open, onClose, onSaved }) {
 
   useEffect(() => {
     if (!open) return;
-    setForm(EMPTY_FORM);
+    setForm(
+      initial
+        ? {
+            gstin: initial.gstin || "",
+            name: initial.name || "",
+            address: initial.address || "",
+            pincode: initial.pincode || "",
+            city: initial.city || "",
+            state: initial.state || "",
+            country: initial.country || "INDIA",
+          }
+        : EMPTY_FORM
+    );
     setCities([]);
     setSaving(false);
     setLocating(false);
     setLocatingError("");
-  }, [open]);
+  }, [open, initial]);
 
   const handleUseCurrentLocation = async () => {
     setLocating(true);
@@ -111,7 +152,7 @@ export function AddDispatchAddressModal({ open, onClose, onSaved }) {
     }
     setSaving(true);
     try {
-      const res = await createDispatchAddress({
+      const payload = {
         gstin: form.gstin.trim() || null,
         name: form.name.trim(),
         address: form.address.trim() || null,
@@ -119,8 +160,11 @@ export function AddDispatchAddressModal({ open, onClose, onSaved }) {
         city: form.city || null,
         state: form.state || null,
         country: form.country || "INDIA",
-      });
-      addToast("Dispatch address saved");
+      };
+      const res = editId
+        ? await updateDispatchAddress(editId, payload)
+        : await createDispatchAddress(payload);
+      addToast(editId ? "Address updated" : "Dispatch address saved");
       onSaved?.(res.data);
       onClose?.();
     } catch (err) {
@@ -132,7 +176,7 @@ export function AddDispatchAddressModal({ open, onClose, onSaved }) {
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4"
+      className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="add-dispatch-address-title"
@@ -149,7 +193,7 @@ export function AddDispatchAddressModal({ open, onClose, onSaved }) {
             id="add-dispatch-address-title"
             className="text-[17px] font-bold text-[#1a1a1f]"
           >
-            Add Dispatch Address
+            {title}
           </h2>
           <button
             type="button"
@@ -307,18 +351,158 @@ export function AddDispatchAddressModal({ open, onClose, onSaved }) {
   );
 }
 
+function AddressListPanel({
+  value,
+  onChange,
+  search,
+  onSearchChange,
+  rows,
+  loading,
+  footerLabel,
+  onAddClick,
+  showRowActions,
+  rowMenuId,
+  onRowMenuIdChange,
+  onEditRow,
+  onDeleteRow,
+  onSelectClose,
+  className = "",
+}) {
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return rows;
+    return rows.filter((r) =>
+      `${formatDispatchAddressLine(r)} ${r.name || ""} ${r.gstin || ""}`
+        .toLowerCase()
+        .includes(q)
+    );
+  }, [rows, search]);
+
+  return (
+    <div
+      className={`overflow-hidden rounded-xl border border-[#e4e4ea] bg-white shadow-sm ${className}`}
+    >
+      <div className="border-b border-[#ececf0] p-2.5">
+        <SearchBar
+          size="compact"
+          value={search}
+          onChange={onSearchChange}
+          placeholder="Search"
+          autoFocus
+          className="w-full"
+        />
+      </div>
+
+      <div className="max-h-48 overflow-y-auto">
+        {loading ? (
+          <p className="py-8 text-center text-[13px] text-[#8a8a95]">Loading…</p>
+        ) : filtered.length === 0 ? (
+          <p className="py-8 text-center text-[13px] text-[#8a8a95]">No Address found</p>
+        ) : (
+          filtered.map((row) => {
+            const selected = value?.id === row.id;
+            return (
+              <div
+                key={row.id}
+                className={`flex items-start gap-2 border-b border-[#f3f3f6] px-3 py-3 ${
+                  selected ? "bg-[#fff9e6]" : "hover:bg-[#fafafa]"
+                }`}
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    onChange?.(row);
+                    onSelectClose?.();
+                  }}
+                  className="min-w-0 flex-1 text-left text-[13px] leading-relaxed text-[#1a1a1f]"
+                >
+                  {formatDispatchAddressLine(row)}
+                </button>
+                {showRowActions ? (
+                  <div className="relative shrink-0">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onRowMenuIdChange?.(rowMenuId === row.id ? null : row.id);
+                      }}
+                      className="rounded-full bg-[#ececf0] p-1.5 text-[#6b6b76]"
+                      aria-label="Address actions"
+                    >
+                      <MoreVertical className="h-3.5 w-3.5" />
+                    </button>
+                    {rowMenuId === row.id ? (
+                      <div
+                        className="absolute right-0 z-40 mt-1 w-40 overflow-hidden rounded-xl border border-[#ececf0] bg-white py-1 shadow-lg"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <button
+                          type="button"
+                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] hover:bg-[#f7f7f9]"
+                          onClick={() => {
+                            onRowMenuIdChange?.(null);
+                            onEditRow?.(row);
+                          }}
+                        >
+                          <Pencil className="h-3.5 w-3.5" /> Edit Address
+                        </button>
+                        <button
+                          type="button"
+                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-[#dc2626] hover:bg-[#f7f7f9]"
+                          onClick={() => {
+                            onRowMenuIdChange?.(null);
+                            onDeleteRow?.(row);
+                          }}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" /> Delete Address
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      <button
+        type="button"
+        onClick={onAddClick}
+        className="flex w-full items-center justify-center border-t border-[#ececf0] py-3 text-[13px] font-bold"
+        style={{ background: PRIMARY_SOFT, color: PRIMARY }}
+      >
+        {footerLabel}
+      </button>
+    </div>
+  );
+}
+
 export default function DispatchAddressPicker({
   value,
   onChange,
   addLabel = "+ Add Dispatch Address (Consignor)",
+  footerLabel,
   showSelectButton = true,
+  embedded = false,
+  open: controlledOpen,
+  onOpenChange,
+  showRowActions = false,
 }) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
+  const [editRow, setEditRow] = useState(null);
+  const [rowMenuId, setRowMenuId] = useState(null);
   const [search, setSearch] = useState("");
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const rootRef = useRef(null);
+  const { addToast } = useToast();
+
+  const panelOpen = embedded ? Boolean(controlledOpen) : pickerOpen;
+  const addFooterText =
+    footerLabel ||
+    (addLabel.trim().startsWith("+") ? addLabel.trim() : `+ ${addLabel.trim()}`);
 
   const load = async (q = "") => {
     setLoading(true);
@@ -333,18 +517,18 @@ export default function DispatchAddressPicker({
   };
 
   useEffect(() => {
-    if (!pickerOpen) return;
+    if (!panelOpen) return;
     load(search);
-  }, [pickerOpen]);
+  }, [panelOpen]);
 
   useEffect(() => {
-    if (!pickerOpen) return;
+    if (!panelOpen) return;
     const t = setTimeout(() => load(search), 250);
     return () => clearTimeout(t);
-  }, [search, pickerOpen]);
+  }, [search, panelOpen]);
 
   useEffect(() => {
-    if (!pickerOpen) return;
+    if (embedded || !pickerOpen) return;
     const onDoc = (e) => {
       if (rootRef.current && !rootRef.current.contains(e.target)) {
         setPickerOpen(false);
@@ -352,27 +536,79 @@ export default function DispatchAddressPicker({
     };
     document.addEventListener("mousedown", onDoc);
     return () => document.removeEventListener("mousedown", onDoc);
-  }, [pickerOpen]);
+  }, [pickerOpen, embedded]);
 
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return rows;
-    return rows.filter((r) =>
-      `${r.name} ${r.gstin || ""} ${r.city || ""} ${r.address || ""}`.toLowerCase().includes(q)
-    );
-  }, [rows, search]);
+  const closePanel = () => {
+    if (embedded) onOpenChange?.(false);
+    else setPickerOpen(false);
+  };
 
-  const openModal = () => {
-    setPickerOpen(false);
+  const openModal = (row = null) => {
+    setEditRow(row);
+    closePanel();
     setModalOpen(true);
   };
+
+  const handleDeleteRow = async (row) => {
+    if (!row?.id) return;
+    if (!window.confirm("Delete this address?")) return;
+    try {
+      await deleteDispatchAddress(row.id);
+      setRows((prev) => prev.filter((r) => r.id !== row.id));
+      if (value?.id === row.id) onChange?.(null);
+      addToast("Address deleted", "success");
+    } catch (err) {
+      addToast(err.response?.data?.detail || "Could not delete address", "error");
+    }
+  };
+
+  const panelProps = {
+    value,
+    onChange,
+    search,
+    onSearchChange: setSearch,
+    rows,
+    loading,
+    footerLabel: addFooterText.startsWith("+") ? addFooterText : `+ ${addFooterText}`,
+    onAddClick: () => openModal(null),
+    showRowActions,
+    rowMenuId,
+    onRowMenuIdChange: setRowMenuId,
+    onEditRow: (row) => openModal(row),
+    onDeleteRow: handleDeleteRow,
+    onSelectClose: embedded ? undefined : closePanel,
+  };
+
+  if (embedded) {
+    if (!panelOpen) return null;
+    return (
+      <>
+        <AddressListPanel {...panelProps} className="mt-3 w-full" />
+        <AddDispatchAddressModal
+          open={modalOpen}
+          onClose={() => {
+            setModalOpen(false);
+            setEditRow(null);
+          }}
+          initial={editRow}
+          editId={editRow?.id}
+          title={editRow ? "Edit Shipping Address" : "Add Shipping Address"}
+          onSaved={(row) => {
+            onChange?.(row);
+            setRows((prev) => [row, ...prev.filter((r) => r.id !== row.id)]);
+            setEditRow(null);
+          }}
+        />
+      </>
+    );
+  }
 
   return (
     <div className="relative mt-3" ref={rootRef}>
       <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
-          onClick={openModal}
+          onClick={() => openModal(null)}
           className="inline-flex items-center rounded-full border px-3.5 py-1.5 text-[13px] font-semibold transition-colors hover:bg-[var(--color-primary-soft)]"
           style={{ borderColor: PRIMARY, color: PRIMARY }}
         >
@@ -395,63 +631,25 @@ export default function DispatchAddressPicker({
         ) : null}
       </div>
 
-      {pickerOpen && (
-        <div className="absolute left-0 z-30 mt-2 w-[320px] overflow-hidden rounded-xl border border-[#e4e4ea] bg-white shadow-[0_8px_30px_rgba(0,0,0,0.12)]">
-          <div className="p-2.5">
-            <SearchBar
-              size="compact"
-              value={search}
-              onChange={setSearch}
-              placeholder="Search"
-              autoFocus
-              className="w-full"
-            />
-          </div>
-
-          <div className="max-h-44 overflow-y-auto px-2 pb-2">
-            {loading ? (
-              <p className="py-8 text-center text-[13px] text-[#8a8a95]">Loading…</p>
-            ) : filtered.length === 0 ? (
-              <p className="py-8 text-center text-[13px] text-[#8a8a95]">No Address found</p>
-            ) : (
-              filtered.map((row) => (
-                <button
-                  key={row.id}
-                  type="button"
-                  onClick={() => {
-                    onChange?.(row);
-                    setPickerOpen(false);
-                  }}
-                  className={`mb-1 block w-full rounded-lg px-3 py-2 text-left text-[13px] hover:bg-[#f5f5f7] ${
-                    value?.id === row.id ? "bg-[#f5f5f7] font-semibold" : "text-[#3a3a42]"
-                  }`}
-                >
-                  <p className="font-medium text-[#1a1a1f]">{row.name}</p>
-                  <p className="truncate text-[12px] text-[#8a8a95]">
-                    {[row.gstin, row.city, row.state].filter(Boolean).join(" · ") || row.address}
-                  </p>
-                </button>
-              ))
-            )}
-          </div>
-
-          <button
-            type="button"
-            onClick={openModal}
-            className="flex w-full items-center justify-center border-t border-[#ececf0] bg-[var(--color-primary-soft)] py-3 text-[13px] font-bold"
-            style={{ color: PRIMARY }}
-          >
-            + Add Dispatch Address
-          </button>
+      {pickerOpen ? (
+        <div className="absolute left-0 z-30 mt-2 w-full min-w-[320px] max-w-lg">
+          <AddressListPanel {...panelProps} />
         </div>
-      )}
+      ) : null}
 
       <AddDispatchAddressModal
         open={modalOpen}
-        onClose={() => setModalOpen(false)}
+        onClose={() => {
+          setModalOpen(false);
+          setEditRow(null);
+        }}
+        initial={editRow}
+        editId={editRow?.id}
+        title={editRow ? "Edit Dispatch Address" : "Add Dispatch Address"}
         onSaved={(row) => {
           onChange?.(row);
           setRows((prev) => [row, ...prev.filter((r) => r.id !== row.id)]);
+          setEditRow(null);
         }}
       />
     </div>

@@ -97,10 +97,7 @@ export default function AccountsDashboard() {
     return (
       <div className="space-y-4 pb-6">
         <PageHeader title="Accounts Dashboard" subtitle="Accounting work control center" />
-        <ErrorState title="Dashboard unavailable" description={error} />
-        <Button type="button" variant="secondary" onClick={() => load()}>
-          Try again
-        </Button>
+        <ErrorState title="Dashboard unavailable" description={error} onRetry={() => load()} />
       </div>
     );
   }
@@ -274,8 +271,8 @@ export default function AccountsDashboard() {
         title="Accounts Dashboard"
         subtitle="Your accounting work control center — receivables, payables, cash, and what needs attention today."
         action={
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <span className="inline-flex items-center gap-1.5 rounded-lg bg-white/15 px-3 py-1.5 text-xs font-medium text-white backdrop-blur-sm border border-white/20 dark:bg-slate-800 dark:text-slate-200">
               <Calendar className="h-3.5 w-3.5" aria-hidden />
               FY {data?.financial_year || "—"}
               {data?.as_of_date ? ` · ${data.as_of_date}` : ""}

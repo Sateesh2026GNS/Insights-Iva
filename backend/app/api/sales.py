@@ -1005,17 +1005,33 @@ def leads_enriched(
     db: Session = Depends(get_db),
     followup_from: str | None = Query(None),
     followup_to: str | None = Query(None),
+    from_date: str | None = Query(None),
+    to_date: str | None = Query(None),
+    open_only: bool = Query(False),
+    followup_due: bool = Query(False),
 ):
-    fu_from = fu_to = None
-    if followup_from or followup_to:
-        from app.services.sales_extended_service import resolve_sales_hub_period
+    from app.services.sales_extended_service import list_leads_enriched, resolve_sales_hub_period
 
+    fu_from = fu_to = created_from = created_to = None
+    if followup_from or followup_to:
         try:
             fu_from, fu_to = resolve_sales_hub_period(followup_from, followup_to)
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if from_date or to_date:
+        try:
+            created_from, created_to = resolve_sales_hub_period(from_date, to_date)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
     return list_leads_enriched(
-        db, tenant_id, followup_from=fu_from, followup_to=fu_to
+        db,
+        tenant_id,
+        followup_from=fu_from,
+        followup_to=fu_to,
+        created_from=created_from,
+        created_to=created_to,
+        open_only=open_only,
+        followup_due=followup_due,
     )
 
 

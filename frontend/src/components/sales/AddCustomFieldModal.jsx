@@ -93,7 +93,7 @@ export default function AddCustomFieldModal({
           </button>
         </div>
 
-        <div className="space-y-4 bg-white px-5 py-5">
+        <div className="space-y-4 bg-[#f5f5f7] px-5 py-5">
           <div>
             <label className="mb-1.5 block text-[13px] font-medium text-[#8a8a95]">
               Field Name

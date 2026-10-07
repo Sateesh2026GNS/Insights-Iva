@@ -32,6 +32,8 @@ import { jobCardCreateUrl, jobCardDetailsUrl } from "../../utils/jobCardRoutes";
 
 import Button from "../../components/common/Button";
 import { SearchBar } from "../../components/common/SearchFilter";
+import { applyDraftListFilters, clearListFilters } from "../../utils/listFilterState";
+
 const defaultFilters = { customer: "", status: "", sales_person: "" };
 
 export default function SalesOrders() {
@@ -46,7 +48,8 @@ export default function SalesOrders() {
   const [loadError, setLoadError] = useState("");
   const [rows, setRows] = useState([]);
   const [searchParams] = useSearchParams();
-  const [filters, setFilters] = useState(defaultFilters);
+  const [draftFilters, setDraftFilters] = useState(defaultFilters);
+  const [appliedFilters, setAppliedFilters] = useState(defaultFilters);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [selected, setSelected] = useState(null);
   const [openMenu, setOpenMenu] = useState(null);
@@ -58,7 +61,10 @@ export default function SalesOrders() {
   useEffect(() => {
     const status = searchParams.get("status");
     if (status) {
-      setFilters((prev) => ({ ...prev, status }));
+      const next = { ...defaultFilters, status };
+      setDraftFilters(next);
+      setAppliedFilters(next);
+      setShowAdvanced(true);
     }
   }, [searchParams]);
 
@@ -97,14 +103,24 @@ export default function SalesOrders() {
 
   const filtered = useMemo(() => {
     let list = rows;
-    if (filters.customer) list = list.filter((r) => r.customer_name?.toLowerCase().includes(filters.customer.toLowerCase()));
-    if (filters.status) list = list.filter((r) => String(r.status || "").toLowerCase() === filters.status.toLowerCase());
-    if (filters.sales_person) list = list.filter((r) => r.sales_person?.toLowerCase().includes(filters.sales_person.toLowerCase()));
+    if (appliedFilters.customer) {
+      list = list.filter((r) =>
+        r.customer_name?.toLowerCase().includes(appliedFilters.customer.toLowerCase())
+      );
+    }
+    if (appliedFilters.status) {
+      list = list.filter((r) => String(r.status || "").toLowerCase() === appliedFilters.status.toLowerCase());
+    }
+    if (appliedFilters.sales_person) {
+      list = list.filter((r) =>
+        r.sales_person?.toLowerCase().includes(appliedFilters.sales_person.toLowerCase())
+      );
+    }
     return list;
-  }, [rows, filters]);
+  }, [rows, appliedFilters]);
 
   const hasAdvancedFilters = Boolean(
-    filters.customer || filters.status || filters.sales_person
+    appliedFilters.customer || appliedFilters.status || appliedFilters.sales_person
   );
 
   const handleDeleteConfirm = async () => {
@@ -283,14 +299,94 @@ export default function SalesOrders() {
       />
 
       <div className="ui-grid-kpi">
-        <KpiCard label="Total Orders" value={summary.total_orders ?? 0} icon={ShoppingCart} tone="teal" onClick={() => setFilters((f) => ({ ...f, status: "" }))} title="Show all orders" />
-        <KpiCard label="Pending" value={summary.pending ?? 0} icon={ShoppingCart} tone="warning" onClick={() => setFilters((f) => ({ ...f, status: "pending" }))} title="Filter pending orders" />
-        <KpiCard label="Confirmed" value={summary.confirmed ?? 0} icon={ShoppingCart} tone="teal" onClick={() => setFilters((f) => ({ ...f, status: "confirmed" }))} title="Filter confirmed orders" />
-        <KpiCard label="Packed" value={summary.packed ?? 0} icon={ShoppingCart} tone="neutral" onClick={() => setFilters((f) => ({ ...f, status: "packed" }))} title="Filter packed orders" />
-        <KpiCard label="Shipped" value={summary.shipped ?? 0} icon={Truck} tone="info" onClick={() => setFilters((f) => ({ ...f, status: "shipped" }))} title="Filter shipped orders" />
-        <KpiCard label="Delivered" value={summary.delivered ?? 0} icon={Truck} tone="teal" onClick={() => setFilters((f) => ({ ...f, status: "delivered" }))} title="Filter delivered orders" />
-        <KpiCard label="Cancelled" value={summary.cancelled ?? 0} icon={ShoppingCart} tone="danger" onClick={() => setFilters((f) => ({ ...f, status: "cancelled" }))} title="Filter cancelled orders" />
-        <KpiCard label="Revenue" value={formatInr(summary.revenue ?? 0)} icon={IndianRupee} tone="teal" onClick={() => setFilters((f) => ({ ...f, status: "" }))} title="Total orders revenue" />
+        <KpiCard
+          label="Total Orders"
+          value={summary.total_orders ?? 0}
+          icon={ShoppingCart}
+          tone="teal"
+          onClick={() => clearListFilters(defaultFilters, setDraftFilters, setAppliedFilters)}
+          title="Show all orders"
+        />
+        <KpiCard
+          label="Pending"
+          value={summary.pending ?? 0}
+          icon={ShoppingCart}
+          tone="warning"
+          onClick={() => {
+            const next = { ...defaultFilters, status: "pending" };
+            setDraftFilters(next);
+            setAppliedFilters(next);
+          }}
+          title="Filter pending orders"
+        />
+        <KpiCard
+          label="Confirmed"
+          value={summary.confirmed ?? 0}
+          icon={ShoppingCart}
+          tone="teal"
+          onClick={() => {
+            const next = { ...defaultFilters, status: "confirmed" };
+            setDraftFilters(next);
+            setAppliedFilters(next);
+          }}
+          title="Filter confirmed orders"
+        />
+        <KpiCard
+          label="Packed"
+          value={summary.packed ?? 0}
+          icon={ShoppingCart}
+          tone="neutral"
+          onClick={() => {
+            const next = { ...defaultFilters, status: "packed" };
+            setDraftFilters(next);
+            setAppliedFilters(next);
+          }}
+          title="Filter packed orders"
+        />
+        <KpiCard
+          label="Shipped"
+          value={summary.shipped ?? 0}
+          icon={Truck}
+          tone="info"
+          onClick={() => {
+            const next = { ...defaultFilters, status: "shipped" };
+            setDraftFilters(next);
+            setAppliedFilters(next);
+          }}
+          title="Filter shipped orders"
+        />
+        <KpiCard
+          label="Delivered"
+          value={summary.delivered ?? 0}
+          icon={Truck}
+          tone="teal"
+          onClick={() => {
+            const next = { ...defaultFilters, status: "delivered" };
+            setDraftFilters(next);
+            setAppliedFilters(next);
+          }}
+          title="Filter delivered orders"
+        />
+        <KpiCard
+          label="Cancelled"
+          value={summary.cancelled ?? 0}
+          icon={ShoppingCart}
+          tone="danger"
+          onClick={() => {
+            const next = { ...defaultFilters, status: "cancelled" };
+            setDraftFilters(next);
+            setAppliedFilters(next);
+          }}
+          title="Filter cancelled orders"
+        />
+        <KpiCard
+          label="Revenue"
+          value={formatInr(summary.revenue ?? 0)}
+          icon={IndianRupee}
+          tone="teal"
+          onClick={() => clearListFilters(defaultFilters, setDraftFilters, setAppliedFilters)}
+          title="Total orders revenue"
+        />
       </div>
 
       <ListPageCard>
@@ -298,11 +394,33 @@ export default function SalesOrders() {
         <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
           <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
             <SearchBar
-              value={filters.customer}
-              onChange={(v) => setFilters((f) => ({ ...f, customer: v }))}
+              value={draftFilters.customer}
+              onChange={(v) => setDraftFilters((f) => ({ ...f, customer: v }))}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  applyDraftListFilters(draftFilters, setAppliedFilters);
+                }
+              }}
               placeholder="Search sales orders..."
               aria-label="Search sales orders"
             />
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => clearListFilters(defaultFilters, setDraftFilters, setAppliedFilters)}
+            >
+              Clear Filters
+            </Button>
+            <Button
+              type="button"
+              variant="primary"
+              size="sm"
+              onClick={() => applyDraftListFilters(draftFilters, setAppliedFilters)}
+            >
+              Apply Filters
+            </Button>
             <button
               type="button"
               onClick={() => setShowAdvanced(!showAdvanced)}
@@ -311,21 +429,13 @@ export default function SalesOrders() {
               <Filter className="h-4 w-4" /> Filters
             </button>
           </div>
-          {hasAdvancedFilters ? (
-            <button
-              type="button"
-              onClick={() => setFilters(defaultFilters)}
-              className="ui-link-clear"
-            >
-              Clear filters
-            </button>
-          ) : null}
+          null
         </div>
         {showAdvanced && (
           <div className="mb-4 grid gap-3 sm:grid-cols-2">
             <select
-              value={filters.status}
-              onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+              value={draftFilters.status}
+              onChange={(e) => setDraftFilters({ ...draftFilters, status: e.target.value })}
               className="ui-select"
             >
               <option value="">All Status</option>
@@ -338,11 +448,29 @@ export default function SalesOrders() {
               )}
             </select>
             <input
-              value={filters.sales_person}
-              onChange={(e) => setFilters({ ...filters, sales_person: e.target.value })}
+              value={draftFilters.sales_person}
+              onChange={(e) => setDraftFilters({ ...draftFilters, sales_person: e.target.value })}
               placeholder="Sales Person"
               className="ui-input"
             />
+            <div className="col-span-full flex flex-wrap justify-end gap-2 sm:col-span-2">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => clearListFilters(defaultFilters, setDraftFilters, setAppliedFilters)}
+              >
+                Clear Filters
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                onClick={() => applyDraftListFilters(draftFilters, setAppliedFilters)}
+              >
+                Apply Filters
+              </Button>
+            </div>
           </div>
         )}
 
@@ -374,7 +502,7 @@ export default function SalesOrders() {
                   <NoResultsState
                     title="No sales orders match your filters"
                     description="Try clearing filters or adjusting your search."
-                    onClear={() => setFilters(defaultFilters)}
+                    onClear={() => clearListFilters(defaultFilters, setDraftFilters, setAppliedFilters)}
                     className="border-none bg-transparent py-12"
                   />
                 )
@@ -454,7 +582,7 @@ export default function SalesOrders() {
 
                     <div className="grid grid-cols-2 gap-2 text-xs border-t border-[var(--color-border-soft)] pt-2 text-[var(--color-text-secondary)]">
                       <div>
-                        <span className="text-[var(--color-text-muted)] text-[10px] block uppercase font-semibold">
+                        <span className="text-[var(--color-text-muted)] text-[11px] block font-medium">
                           Date
                         </span>
                         <span className="font-medium">
@@ -462,13 +590,13 @@ export default function SalesOrders() {
                         </span>
                       </div>
                       <div>
-                        <span className="text-[var(--color-text-muted)] text-[10px] block uppercase font-semibold">
+                        <span className="text-[var(--color-text-muted)] text-[11px] block font-medium">
                           Sales Person
                         </span>
                         <span className="font-medium truncate block">{r.sales_person || "—"}</span>
                       </div>
                       <div>
-                        <span className="text-[var(--color-text-muted)] text-[10px] block uppercase font-semibold">
+                        <span className="text-[var(--color-text-muted)] text-[11px] block font-medium">
                           Items
                         </span>
                         <span className="font-medium">
@@ -476,7 +604,7 @@ export default function SalesOrders() {
                         </span>
                       </div>
                       <div className="text-right">
-                        <span className="text-[var(--color-text-muted)] text-[10px] block uppercase font-semibold">
+                        <span className="text-[var(--color-text-muted)] text-[11px] block font-medium">
                           Total Amount
                         </span>
                         <span className="text-sm font-bold text-[var(--color-text)] tabular-nums">
@@ -536,7 +664,7 @@ export default function SalesOrders() {
                     <NoResultsState
                       title="No sales orders match your filters"
                       description="Try clearing filters or adjusting your search."
-                      onClear={() => setFilters(defaultFilters)}
+                      onClear={() => clearListFilters(defaultFilters, setDraftFilters, setAppliedFilters)}
                       className="border-none bg-transparent py-12"
                     />
                   )

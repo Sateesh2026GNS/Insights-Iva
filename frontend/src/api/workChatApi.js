@@ -33,6 +33,14 @@ export function markConversationRead(conversationId, messageId) {
   return api.post(`${BASE}/conversations/${conversationId}/read`, { message_id: messageId }).then(unwrap);
 }
 
+export function clearConversation(conversationId) {
+  return api.post(`${BASE}/conversations/${conversationId}/clear`).then(unwrap);
+}
+
+export function leaveConversation(conversationId) {
+  return api.post(`${BASE}/conversations/${conversationId}/leave`).then(unwrap);
+}
+
 export function editChatMessage(messageId, body) {
   return api.patch(`${BASE}/messages/${messageId}`, { body }).then(unwrap);
 }

@@ -83,8 +83,12 @@ def _conversation_title(db: Session, conv: WorkChatConversation, viewer_id: int)
     return other.full_name if other else "Direct chat"
 
 
+def _message_floor(member: WorkChatMember) -> int:
+    return int(member.cleared_before_message_id or 0)
+
+
 def _unread_count(db: Session, member: WorkChatMember, conv_id: int) -> int:
-    last_read = member.last_read_message_id or 0
+    last_read = max(member.last_read_message_id or 0, _message_floor(member))
     return db.scalar(
         select(func.count(WorkChatMessage.id)).where(
             WorkChatMessage.conversation_id == conv_id,
@@ -93,6 +97,25 @@ def _unread_count(db: Session, member: WorkChatMember, conv_id: int) -> int:
             WorkChatMessage.sender_id != member.user_id,
         )
     ) or 0
+
+
+def _preview_for_member(db: Session, member: WorkChatMember, conv: WorkChatConversation) -> str | None:
+    floor = _message_floor(member)
+    msg = db.scalar(
+        select(WorkChatMessage)
+        .where(
+            WorkChatMessage.conversation_id == conv.id,
+            WorkChatMessage.tenant_id == conv.tenant_id,
+            WorkChatMessage.id > floor,
+            WorkChatMessage.deleted_at.is_(None),
+        )
+        .order_by(WorkChatMessage.id.desc())
+        .limit(1)
+    )
+    if not msg:
+        return "No messages yet"
+    body = (msg.body or "").strip()
+    return body[:512] if body else "Attachment"
 
 
 def serialize_conversation(db: Session, conv: WorkChatConversation, member: WorkChatMember, viewer: User) -> dict:
@@ -114,7 +137,7 @@ def serialize_conversation(db: Session, conv: WorkChatConversation, member: Work
         "name": _conversation_title(db, conv, viewer.id),
         "description": conv.description,
         "last_message_at": _iso(conv.last_message_at),
-        "last_message_preview": conv.last_message_preview,
+        "last_message_preview": _preview_for_member(db, member, conv) or conv.last_message_preview,
         "unread_count": _unread_count(db, member, conv.id),
         "members": member_users,
         "created_at": _iso(conv.created_at),
@@ -219,16 +242,22 @@ def list_conversations(db: Session, user: User, search: str | None = None) -> di
         )
         .order_by(WorkChatConversation.last_message_at.desc().nullslast(), WorkChatConversation.id.desc())
     )
-    if search and search.strip():
-        term = f"%{search.strip().lower()}%"
-        q = q.where(
-            or_(
-                func.lower(WorkChatConversation.name).like(term),
-                func.lower(WorkChatConversation.last_message_preview).like(term),
-            )
-        )
     rows = db.execute(q).all()
     items = [serialize_conversation(db, conv, member, user) for conv, member in rows]
+    if search and search.strip():
+        s = search.strip().lower()
+
+        def _matches(item: dict) -> bool:
+            if s in (item.get("name") or "").lower():
+                return True
+            if s in (item.get("last_message_preview") or "").lower():
+                return True
+            for m in item.get("members") or []:
+                if s in (m.get("full_name") or "").lower() or s in (m.get("email") or "").lower():
+                    return True
+            return False
+
+        items = [i for i in items if _matches(i)]
     total_unread = sum(i["unread_count"] for i in items)
     return {"items": items, "total_unread": total_unread}
 
@@ -288,7 +317,19 @@ def get_or_create_direct(db: Session, user: User, other_user_id: int) -> dict:
             )
         db.commit()
         db.refresh(conv)
+    else:
+        membership = db.scalar(
+            select(WorkChatMember).where(
+                WorkChatMember.conversation_id == conv.id,
+                WorkChatMember.user_id == user.id,
+            )
+        )
+        if membership and membership.left_at is not None:
+            membership.left_at = None
+            db.commit()
     member = _active_member(db, user.tenant_id, conv.id, user.id)
+    if not member:
+        raise HTTPException(status_code=404, detail="Conversation not found.")
     return serialize_conversation(db, conv, member, user)
 
 
@@ -344,13 +385,15 @@ def list_messages(
     before_id: int | None = None,
     limit: int = MESSAGES_PAGE_SIZE,
 ) -> dict:
-    _require_member(db, user, conversation_id)
+    member = _require_member(db, user, conversation_id)
+    floor = _message_floor(member)
     limit = min(max(limit, 1), 100)
     q = (
         select(WorkChatMessage)
         .where(
             WorkChatMessage.conversation_id == conversation_id,
             WorkChatMessage.tenant_id == user.tenant_id,
+            WorkChatMessage.id > floor,
         )
         .options(
             joinedload(WorkChatMessage.attachments),
@@ -675,3 +718,23 @@ def forward_message(db: Session, user: User, message_id: int, target_conversatio
 
     db.commit()
     return {"ok": True, "forwarded_count": forwarded_count}
+
+
+def clear_conversation_for_user(db: Session, user: User, conversation_id: int) -> dict:
+    member = _require_member(db, user, conversation_id)
+    max_id = db.scalar(
+        select(func.max(WorkChatMessage.id)).where(
+            WorkChatMessage.conversation_id == conversation_id,
+            WorkChatMessage.tenant_id == user.tenant_id,
+        )
+    )
+    member.cleared_before_message_id = int(max_id or 0)
+    db.commit()
+    return {"ok": True, "cleared_before_message_id": member.cleared_before_message_id}
+
+
+def leave_conversation(db: Session, user: User, conversation_id: int) -> dict:
+    member = _require_member(db, user, conversation_id)
+    member.left_at = _utcnow()
+    db.commit()
+    return {"ok": True}

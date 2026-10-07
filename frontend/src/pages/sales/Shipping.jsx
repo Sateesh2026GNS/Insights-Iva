@@ -172,7 +172,7 @@ function ShipmentModal({ row, onClose, onPrintChallan, onShip }) {
 function Field({ label, value }) {
   return (
     <div className="rounded-lg bg-slate-50 px-3 py-2">
-      <p className="text-[10px] font-semibold uppercase text-slate-400">{label}</p>
+      <p className="text-[11px] font-medium text-slate-500">{label}</p>
       <p className="mt-0.5 text-sm font-medium text-slate-800">{value || "—"}</p>
     </div>
   );
@@ -186,9 +186,11 @@ export default function Shipping() {
   const [selected, setSelected] = useState(null);
   const [formOpen, setFormOpen] = useState(false);
   const [formRow, setFormRow] = useState(null);
-  const [search, setSearch] = useState("");
   const [searchParams] = useSearchParams();
-  const [statusFilter, setStatusFilter] = useState("");
+  const [draftSearch, setDraftSearch] = useState("");
+  const [draftStatus, setDraftStatus] = useState("");
+  const [appliedSearch, setAppliedSearch] = useState("");
+  const [appliedStatus, setAppliedStatus] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
@@ -216,7 +218,10 @@ export default function Shipping() {
 
   useEffect(() => {
     const status = searchParams.get("status");
-    if (status) setStatusFilter(status);
+    if (status) {
+      setDraftStatus(status);
+      setAppliedStatus(status);
+    }
   }, [searchParams]);
 
   useManufacturingRefresh(() => load(true));
@@ -233,9 +238,9 @@ export default function Shipping() {
   }, [rows]);
 
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
+    const q = appliedSearch.trim().toLowerCase();
     return rows.filter((r) => {
-      if (statusFilter && statusBucket(r) !== statusFilter) return false;
+      if (appliedStatus && statusBucket(r) !== appliedStatus) return false;
       if (!q) return true;
       const hay = [
         shipmentLabel(r),
@@ -249,7 +254,7 @@ export default function Shipping() {
         .toLowerCase();
       return hay.includes(q);
     });
-  }, [rows, search, statusFilter]);
+  }, [rows, appliedSearch, appliedStatus]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const safePage = Math.min(page, totalPages);
@@ -260,7 +265,7 @@ export default function Shipping() {
 
   useEffect(() => {
     setPage(1);
-  }, [search, statusFilter, pageSize]);
+  }, [appliedSearch, appliedStatus, pageSize]);
 
   const handleShip = async (row) => {
     const soId = row.sales_order_id || row.id;
@@ -324,15 +329,23 @@ export default function Shipping() {
       <div className="mt-5 flex flex-col gap-3 rounded-xl border border-[var(--color-border-soft)] bg-[var(--color-surface)] p-3 sm:flex-row sm:items-center sm:p-4">
         <div className="min-w-0 flex-1">
           <SearchBar
-            value={search}
-            onChange={setSearch}
+            value={draftSearch}
+            onChange={setDraftSearch}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                setAppliedSearch(draftSearch);
+                setAppliedStatus(draftStatus);
+                setPage(1);
+              }
+            }}
             placeholder="Search Shipment #, Sales Order, Customer…"
           />
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
+            value={draftStatus}
+            onChange={(e) => setDraftStatus(e.target.value)}
             className="ui-select w-full sm:w-52"
             aria-label="Shipment status filter"
           >
@@ -345,13 +358,29 @@ export default function Shipping() {
           <Button
             type="button"
             variant="secondary"
+            size="sm"
             onClick={() => {
-              setSearch("");
-              setStatusFilter("");
+              setDraftSearch("");
+              setDraftStatus("");
+              setAppliedSearch("");
+              setAppliedStatus("");
+              setPage(1);
             }}
             leftIcon={<X className="h-4 w-4" aria-hidden />}
           >
-            Clear
+            Clear Filters
+          </Button>
+          <Button
+            type="button"
+            variant="primary"
+            size="sm"
+            onClick={() => {
+              setAppliedSearch(draftSearch);
+              setAppliedStatus(draftStatus);
+              setPage(1);
+            }}
+          >
+            Apply Filters
           </Button>
         </div>
       </div>
@@ -397,7 +426,7 @@ export default function Shipping() {
 
                       <div className="grid grid-cols-2 gap-2 text-xs text-[var(--color-text-muted)] bg-[var(--color-surface-subtle)] p-2.5 rounded-lg border border-[var(--color-border-soft)]">
                         <div>
-                          <span className="block text-[10px] uppercase font-semibold text-[var(--color-text-subtle)]">Sales Order</span>
+                          <span className="block text-[11px] font-medium text-[var(--color-text-muted)]">Sales Order</span>
                           {row.so_number ? (
                             <Link
                               to={`/sales/orders/${soId}`}
@@ -410,11 +439,11 @@ export default function Shipping() {
                           )}
                         </div>
                         <div>
-                          <span className="block text-[10px] uppercase font-semibold text-[var(--color-text-subtle)]">Carrier</span>
+                          <span className="block text-[11px] font-medium text-[var(--color-text-muted)]">Carrier</span>
                           <span className="font-medium text-[var(--color-text)]">{row.courier || "—"}</span>
                         </div>
                         <div>
-                          <span className="block text-[10px] uppercase font-semibold text-[var(--color-text-subtle)]">Tracking #</span>
+                          <span className="block text-[11px] font-medium text-[var(--color-text-muted)]">Tracking No.</span>
                           <span className="font-medium text-[var(--color-text)] truncate block">{row.lr_number || "—"}</span>
                         </div>
                         <div>
@@ -464,14 +493,14 @@ export default function Shipping() {
                 <table className="ui-table w-full min-w-[880px] text-left">
                   <thead className="ui-table-head">
                     <tr>
-                      <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wide">Shipment #</th>
-                      <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wide">Sales Order</th>
-                      <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wide">Customer</th>
-                      <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wide">Carrier</th>
-                      <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wide">Tracking #</th>
-                      <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wide">Ship Date</th>
-                      <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wide">Status</th>
-                      <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wide">Actions</th>
+                      <th className="px-4 py-3 text-[11px] font-semibold text-[var(--color-text-muted)]">Shipment No.</th>
+                      <th className="px-4 py-3 text-[11px] font-semibold text-[var(--color-text-muted)]">Sales Order</th>
+                      <th className="px-4 py-3 text-[11px] font-semibold text-[var(--color-text-muted)]">Customer</th>
+                      <th className="px-4 py-3 text-[11px] font-semibold text-[var(--color-text-muted)]">Carrier</th>
+                      <th className="px-4 py-3 text-[11px] font-semibold text-[var(--color-text-muted)]">Tracking No.</th>
+                      <th className="px-4 py-3 text-[11px] font-semibold text-[var(--color-text-muted)]">Ship Date</th>
+                      <th className="px-4 py-3 text-[11px] font-semibold text-[var(--color-text-muted)]">Status</th>
+                      <th className="px-4 py-3 text-[11px] font-semibold text-[var(--color-text-muted)]">Actions</th>
                     </tr>
                   </thead>
                   <tbody>

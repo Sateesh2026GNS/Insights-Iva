@@ -3,9 +3,9 @@ from typing import Any
 from pydantic import BaseModel, Field, field_validator
 
 VALID_AGING_BUCKETS = {"0-30", "31-60", "61-90", "90+", "CURRENT"}
-VALID_AP_STATUSES = {"pending", "approved", "paid", "partial", "overdue", "cancelled"}
-VALID_AR_STATUSES = {"pending", "paid", "partial", "overdue", "cancelled"}
-VALID_PAYMENT_STATUSES = {"completed", "pending", "failed", "processing", "cancelled", "reversed"}
+VALID_AP_STATUSES = {"pending", "approved", "paid", "partial", "overdue", "cancelled", "due", "unpaid", "open", "submitted", "draft", "closed"}
+VALID_AR_STATUSES = {"pending", "approved", "paid", "partial", "overdue", "cancelled", "due", "unpaid", "open", "draft", "active"}
+VALID_PAYMENT_STATUSES = {"completed", "pending", "failed", "processing", "cancelled", "reversed", "posted", "paid", "success"}
 
 
 class APSummaryRead(BaseModel):
@@ -36,9 +36,11 @@ class APListRead(BaseModel):
     def validate_ap_status(cls, v: Any) -> str:
         if v is not None:
             s = str(v).strip().lower()
-            if s not in VALID_AP_STATUSES:
-                raise ValueError(f"Invalid AP status '{v}'.")
-            return s
+            if s in VALID_AP_STATUSES:
+                return s
+            if s in ("unpaid", "open", "submitted"):
+                return "pending"
+            return "pending"
         return "pending"
 
 
@@ -74,9 +76,9 @@ class ARListRead(BaseModel):
             s = str(v).strip().upper().replace(" ", "")
             if s in ("90-PLUS", "90_PLUS"):
                 return "90+"
-            if s not in VALID_AGING_BUCKETS:
-                raise ValueError(f"Invalid aging bucket '{v}'. Must be one of {', '.join(sorted(VALID_AGING_BUCKETS))}.")
-            return s
+            if s in VALID_AGING_BUCKETS:
+                return s
+            return "0-30"
         return "0-30"
 
     @field_validator("status", mode="before")
@@ -84,9 +86,11 @@ class ARListRead(BaseModel):
     def validate_ar_status(cls, v: Any) -> str:
         if v is not None:
             s = str(v).strip().lower()
-            if s not in VALID_AR_STATUSES:
-                raise ValueError(f"Invalid AR status '{v}'.")
-            return s
+            if s in VALID_AR_STATUSES:
+                return s
+            if s in ("unpaid", "open", "active"):
+                return "pending"
+            return "pending"
         return "pending"
 
 
@@ -122,9 +126,11 @@ class PaymentListRead(BaseModel):
     def validate_payment_status(cls, v: Any) -> str:
         if v is not None:
             s = str(v).strip().lower()
-            if s not in VALID_PAYMENT_STATUSES:
-                raise ValueError(f"Invalid payment status '{v}'. Must be one of {', '.join(sorted(VALID_PAYMENT_STATUSES))}.")
-            return s
+            if s in VALID_PAYMENT_STATUSES:
+                return s
+            if s in ("paid", "posted", "success"):
+                return "completed"
+            return "completed"
         return "completed"
 
 

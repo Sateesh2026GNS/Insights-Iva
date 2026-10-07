@@ -61,6 +61,7 @@ class WorkChatMember(Base, TimestampMixin):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
     member_role: Mapped[str] = mapped_column(String(16), nullable=False, default="member")
     last_read_message_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    cleared_before_message_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     joined_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     left_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 

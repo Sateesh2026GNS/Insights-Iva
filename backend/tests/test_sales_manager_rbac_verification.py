@@ -102,3 +102,30 @@ def test_sales_manager_cannot_read_other_tenant_customer_via_sales_api(client, r
         json={"name": "Hacked"},
     )
     assert mutate.status_code in (403, 404), mutate.text
+
+
+def test_sales_manager_cannot_access_other_tenant_lead_by_id(client, register_admin):
+    admin_a = register_admin()
+    admin_b = register_admin()
+    sales_a = _create_role_user(client, admin_a["user"]["tenant_id"], "Sales Manager")
+    admin_b_headers = {"Authorization": f"Bearer {admin_b['token']}"}
+
+    created = client.post(
+        "/sales/leads",
+        headers=admin_b_headers,
+        json={"name": "Tenant B Lead", "company": "B Co", "status": "new"},
+    )
+    assert created.status_code in (200, 201), created.text
+    lead_id = created.json()["id"]
+
+    foreign_list = client.get("/sales/leads/enriched", headers=sales_a)
+    assert foreign_list.status_code == 200, foreign_list.text
+    foreign_ids = {row["id"] for row in foreign_list.json()}
+    assert lead_id not in foreign_ids
+
+    patch = client.patch(
+        f"/sales/leads/{lead_id}/status",
+        headers=sales_a,
+        params={"status": "lost"},
+    )
+    assert patch.status_code in (403, 404), patch.text

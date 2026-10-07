@@ -553,6 +553,18 @@
   line-height: 1.4;
 }
 
+.erp-doc__bank-bar {
+  font-size: 7pt;
+  padding: 5px 6px;
+  word-break: break-word;
+  border-bottom: var(--border);
+  line-height: 1.35;
+}
+
+.erp-doc__bank-lines {
+  margin-top: 2px;
+}
+
 /* -- Declaration & Rejection Policy -- */
 .erp-doc__decl-section {
   display: flex;

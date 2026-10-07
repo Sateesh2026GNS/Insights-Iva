@@ -62,6 +62,18 @@ export function resolveSalesDashboardKpiLink(user, kpiKey, options = {}) {
     const qs = new URLSearchParams({ from: options.dateFrom, to: options.dateTo });
     return `${def.path}?${qs.toString()}`;
   }
+  if (kpiKey === "openLeads") {
+    const qs = new URLSearchParams({ open: "1" });
+    if (options.dateFrom && options.dateTo) {
+      qs.set("created_from", options.dateFrom);
+      qs.set("created_to", options.dateTo);
+    }
+    return `${def.path}?${qs.toString()}`;
+  }
+  if (kpiKey === "openQuotations" && options.dateFrom && options.dateTo) {
+    const qs = new URLSearchParams({ kpi: "pending", from: options.dateFrom, to: options.dateTo });
+    return `${def.path}?${qs.toString()}`;
+  }
   return `${def.path}${def.search || ""}`;
 }
 

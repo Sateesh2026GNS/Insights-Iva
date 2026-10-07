@@ -203,6 +203,7 @@ const PAGE_TITLE_OVERRIDES = {
   "/production/operator-jobs": "My Operator Jobs",
   "/production/dashboard": "Dashboard",
   "/production/planning": "Production Planning",
+  "/sales": "Dashboard",
 };
 
 const BREADCRUMB_TITLE_OVERRIDES = {
@@ -375,6 +376,13 @@ export function getBreadcrumbTrail(pathname) {
   }
   if (normalizedPath === "/production/dashboard") {
     return [{ label: "Dashboard", path: "/production/dashboard" }];
+  }
+
+  if (normalizedPath === "/sales") {
+    return [
+      { label: "Dashboard", path: "/" },
+      { label: "Dashboard", path: "/sales" },
+    ];
   }
 
   if (normalizedPath === "/production/planning") {

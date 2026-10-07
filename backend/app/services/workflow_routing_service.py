@@ -835,10 +835,12 @@ def filter_my_job_card_queue_items(
             elif int(row_cid or 0) != int(customer_id):
                 return False
         elif cust_name_q:
-            if str(row.get("customer_name") or "").strip() != cust_name_q:
+            hay = str(row.get("customer_name") or "").strip().lower()
+            if cust_name_q.lower() not in hay:
                 return False
         if so_q:
-            if str(row.get("order_number") or "").strip() != so_q:
+            order_no = str(row.get("order_number") or "").strip()
+            if so_q.lower() not in order_no.lower():
                 return False
         return True
 

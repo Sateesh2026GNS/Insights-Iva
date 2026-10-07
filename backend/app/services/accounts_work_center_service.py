@@ -194,13 +194,14 @@ def _recent_activity(db: Session, tenant_id: int, today: date) -> list[dict]:
     payments = list_payments_enriched(db, tenant_id)[:8]
     for p in payments:
         kind = "payment_received" if p.party_type == "customer" else "payment_made"
+        p_date = p.payment_date.isoformat() if hasattr(p.payment_date, "isoformat") else str(p.payment_date) if p.payment_date else None
         items.append(
             {
                 "kind": kind,
                 "label": p.party_name or p.invoice or p.payment_number,
                 "reference": p.payment_number,
                 "amount": float(p.amount or 0),
-                "date": p.payment_date,
+                "date": p_date,
                 "status": p.status,
             }
         )
@@ -245,7 +246,7 @@ def _recent_activity(db: Session, tenant_id: int, today: date) -> list[dict]:
             }
         )
 
-    items.sort(key=lambda x: x.get("date") or "", reverse=True)
+    items.sort(key=lambda x: str(x.get("date") or ""), reverse=True)
     return items[:15]
 
 

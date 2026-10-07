@@ -22,7 +22,8 @@ export default function QuoteDetailModal({ quote, onClose, onStatusChange, onCon
 
   if (!quote) return null;
 
-  const canConvert = !["accepted", "approved", "converted", "cancelled", "canceled"].includes((quote.status || "").toLowerCase()) && !quote.converted_to_so;
+  const canConvert =
+    ["accepted", "sent", "approved"].includes((quote.status || "").toLowerCase()) && !quote.converted_to_so;
 
   const amount = quote.amount ?? quote.total_amount;
 
@@ -139,24 +140,25 @@ export default function QuoteDetailModal({ quote, onClose, onStatusChange, onCon
   }, [quote?.id]);
 
   const handleConvert = async () => {
+    if (converting) return;
     if (typeof quote.id !== "number") {
       setError("Demo quotation cannot be converted.");
+      return;
+    }
+    if (!selectedItems.length) {
+      setError("Select at least one quotation item to continue.");
+      return;
+    }
+    const invalidQuantity = quoteItems.some((item) =>
+      selectedItems.includes(item.key) && (!Number.isFinite(Number(quantities[item.key])) || Number(quantities[item.key]) <= 0)
+    );
+    if (invalidQuantity) {
+      setError("Enter a quantity greater than zero for every selected item.");
       return;
     }
     setConverting(true);
     setError("");
     try {
-      if (!selectedItems.length) {
-        setError("Select at least one quotation item to continue.");
-        return;
-      }
-      const invalidQuantity = quoteItems.some((item) =>
-        selectedItems.includes(item.key) && (!Number.isFinite(Number(quantities[item.key])) || Number(quantities[item.key]) <= 0)
-      );
-      if (invalidQuantity) {
-        setError("Enter a quantity greater than zero for every selected item.");
-        return;
-      }
       const payload = {
         items: quoteItems.filter((item) => selectedItems.includes(item.key)).map((item) => {
           const product = products.find((p) => String(p.id) === String(item.productId));

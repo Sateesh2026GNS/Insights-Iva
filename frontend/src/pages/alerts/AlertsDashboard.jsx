@@ -42,6 +42,15 @@ import {
 
 const PAGE_SIZE = 10;
 
+const ALERT_FILTER_EMPTY = {
+  search: "",
+  severity: "",
+  module: "",
+  dateFrom: "",
+  dateTo: "",
+  assignedUser: "",
+};
+
 const STATUS_TABS = [
   { value: "", label: "All" },
   { value: "active", label: "Active" },
@@ -128,14 +137,15 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
   const [rows, setRows] = useState([]);
   const [assignees, setAssignees] = useState([]);
 
-  // Search & Filter state
-  const [search, setSearch] = useState("");
-  const [severity, setSeverity] = useState("");
   const [status, setStatus] = useState("");
-  const [module, setModule] = useState(initialAlertType || "");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
-  const [assignedUser, setAssignedUser] = useState("");
+  const [draftFilters, setDraftFilters] = useState(() => ({
+    ...ALERT_FILTER_EMPTY,
+    module: initialAlertType || "",
+  }));
+  const [appliedFilters, setAppliedFilters] = useState(() => ({
+    ...ALERT_FILTER_EMPTY,
+    module: initialAlertType || "",
+  }));
   const [showFilters, setShowFilters] = useState(false);
   const [openMenuId, setOpenMenuId] = useState(null);
   const [sortKey, setSortKey] = useState("triggered_at");
@@ -211,11 +221,27 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
   useEffect(() => registerRetry(load), [registerRetry, load]);
 
   useEffect(() => {
-    if (initialAlertType) setModule(initialAlertType);
+    if (initialAlertType) {
+      setDraftFilters((f) => ({ ...f, module: initialAlertType }));
+      setAppliedFilters((f) => ({ ...f, module: initialAlertType }));
+    }
   }, [initialAlertType]);
 
+  const applyAlertFilters = () => {
+    setAppliedFilters({ ...draftFilters });
+    setPage(1);
+  };
+
+  const clearAlertFilters = () => {
+    const cleared = { ...ALERT_FILTER_EMPTY, module: initialAlertType || "" };
+    setDraftFilters(cleared);
+    setAppliedFilters(cleared);
+    setPage(1);
+  };
+
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
+    const q = appliedFilters.search.trim().toLowerCase();
+    const { severity, module, dateFrom, dateTo, assignedUser } = appliedFilters;
     return rows.filter((r) => {
       if (initialAlertType && !isMatchingAlertType(r.alert_type, initialAlertType)) {
         return false;
@@ -242,7 +268,7 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
         .toLowerCase()
         .includes(q);
     });
-  }, [rows, search, severity, status, module, assignedUser, dateFrom, dateTo]);
+  }, [rows, appliedFilters, status, initialAlertType]);
 
   const sorted = useMemo(() => {
     const list = [...filtered];
@@ -268,7 +294,7 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
 
   useEffect(() => {
     setPage(1);
-  }, [search, severity, status, module, assignedUser, dateFrom, dateTo]);
+  }, [appliedFilters, status]);
 
   const runAction = async (id, action, label) => {
     setBusyId(id);
@@ -449,8 +475,7 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
           tone="primary"
           onClick={() => {
             setStatus("");
-            setSeverity("");
-            setPage(1);
+            clearAlertFilters();
           }}
           meta="Click to show all"
         />
@@ -471,8 +496,10 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
           icon={ShieldAlert}
           tone="warning"
           onClick={() => {
-            setSeverity("critical");
             setStatus("");
+            const next = { ...draftFilters, severity: "critical" };
+            setDraftFilters(next);
+            setAppliedFilters(next);
             setPage(1);
           }}
           meta="Highest priority"
@@ -494,14 +521,30 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
       <ListPageCard className="print:hidden">
         <ListPageCardBody>
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <SearchBar value={search} onChange={setSearch} placeholder="Search" />
+          <SearchBar
+            value={draftFilters.search}
+            onChange={(v) => setDraftFilters((f) => ({ ...f, search: v }))}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                applyAlertFilters();
+              }
+            }}
+            placeholder="Search"
+          />
           <div className="flex flex-wrap items-center gap-2">
+            <Button type="button" variant="secondary" size="sm" onClick={clearAlertFilters}>
+              Clear Filters
+            </Button>
+            <Button type="button" variant="primary" size="sm" onClick={applyAlertFilters}>
+              Apply Filters
+            </Button>
             <Button type="button" variant="secondary" onClick={() => setShowFilters((v) => !v)}>
               <Filter className="h-4 w-4" />
               Filters
-              {[severity, module, dateFrom, dateTo, assignedUser].filter(Boolean).length > 0 ? (
+              {[appliedFilters.severity, appliedFilters.module, appliedFilters.dateFrom, appliedFilters.dateTo, appliedFilters.assignedUser].filter(Boolean).length > 0 ? (
                 <span className="ml-1 rounded-full bg-[var(--color-primary)] px-1.5 py-0.5 text-[10px] font-bold text-white">
-                  {[severity, module, dateFrom, dateTo, assignedUser].filter(Boolean).length}
+                  {[appliedFilters.severity, appliedFilters.module, appliedFilters.dateFrom, appliedFilters.dateTo, appliedFilters.assignedUser].filter(Boolean).length}
                 </span>
               ) : null}
             </Button>
@@ -540,7 +583,11 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
               <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
                 Severity
               </label>
-              <select value={severity} onChange={(e) => setSeverity(e.target.value)} className="ui-select w-full">
+              <select
+                value={draftFilters.severity}
+                onChange={(e) => setDraftFilters((f) => ({ ...f, severity: e.target.value }))}
+                className="ui-select w-full"
+              >
                 {SEVERITY_OPTIONS.map((o) => (
                   <option key={o.value || "all"} value={o.value}>
                     {o.label}
@@ -552,7 +599,11 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
               <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
                 Module
               </label>
-              <select value={module} onChange={(e) => setModule(e.target.value)} className="ui-select w-full">
+              <select
+                value={draftFilters.module}
+                onChange={(e) => setDraftFilters((f) => ({ ...f, module: e.target.value }))}
+                className="ui-select w-full"
+              >
                 {MODULE_OPTIONS.map((o) => (
                   <option key={o.value || "all"} value={o.value}>
                     {o.label}
@@ -564,24 +615,42 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
               <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
                 From date
               </label>
-              <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="ui-input w-full" />
+              <input
+                type="date"
+                value={draftFilters.dateFrom}
+                onChange={(e) => setDraftFilters((f) => ({ ...f, dateFrom: e.target.value }))}
+                className="ui-input w-full"
+              />
             </div>
             <div>
               <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
                 To date
               </label>
-              <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="ui-input w-full" />
+              <input
+                type="date"
+                value={draftFilters.dateTo}
+                onChange={(e) => setDraftFilters((f) => ({ ...f, dateTo: e.target.value }))}
+                className="ui-input w-full"
+              />
             </div>
             <div>
               <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
                 Assigned to
               </label>
               <input
-                value={assignedUser}
-                onChange={(e) => setAssignedUser(e.target.value)}
+                value={draftFilters.assignedUser}
+                onChange={(e) => setDraftFilters((f) => ({ ...f, assignedUser: e.target.value }))}
                 placeholder="Name…"
                 className="ui-input w-full"
               />
+            </div>
+            <div className="col-span-full flex flex-wrap justify-end gap-2 border-t border-[var(--color-border-soft)] pt-3">
+              <Button type="button" variant="secondary" size="sm" onClick={clearAlertFilters}>
+                Clear Filters
+              </Button>
+              <Button type="button" variant="primary" size="sm" onClick={applyAlertFilters}>
+                Apply Filters
+              </Button>
             </div>
           </div>
         ) : null}

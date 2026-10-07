@@ -142,6 +142,31 @@ def _summary_from_items(items: list[dict], grand_total: float, discount: float =
     }
 
 
+def _quotation_payment_block(meta_raw: dict, company) -> dict[str, Any]:
+    bank_meta = meta_raw.get("bank_details") or meta_raw.get("bank") or {}
+    if isinstance(bank_meta, dict) and bank_meta.get("bank_name"):
+        return {
+            "terms": meta_raw.get("payment_terms") or company.payment_terms_note or "Net 30 Days",
+            "bank_name": bank_meta.get("bank_name") or "",
+            "account_number": bank_meta.get("account_number") or bank_meta.get("bank_account_number") or "",
+            "ifsc": bank_meta.get("ifsc") or bank_meta.get("bank_ifsc") or "",
+            "branch_name": bank_meta.get("branch_name") or bank_meta.get("bank_branch") or "",
+            "account_holder": bank_meta.get("account_holder") or "",
+            "upi_id": bank_meta.get("upi_id") or "",
+            "show_upi_qr": bank_meta.get("show_upi_qr", True),
+            "iban": bank_meta.get("iban") or "",
+            "swift": bank_meta.get("swift") or "",
+        }
+    return {
+        "terms": meta_raw.get("payment_terms") or company.payment_terms_note or "Net 30 Days",
+        "bank_name": company.bank_name or "",
+        "account_number": company.bank_account_number or "",
+        "ifsc": company.bank_ifsc or "",
+        "branch_name": company.bank_branch or "",
+        "account_holder": "",
+    }
+
+
 def build_quotation_document(db: Session, tenant_id: int, quote_id: int) -> dict[str, Any] | None:
     quote = db.scalars(
         select(Quotation).where(Quotation.id == quote_id, Quotation.tenant_id == tenant_id)
@@ -231,15 +256,20 @@ def build_quotation_document(db: Session, tenant_id: int, quote_id: int) -> dict
         "dispatch": dispatch_payload,
         "items": items,
         "summary": summary,
-        "payment": {
-            "terms": meta_raw.get("payment_terms") or company.payment_terms_note or "Net 30 Days",
-            "bank_name": company.bank_name or "",
-            "account_number": company.bank_account_number or "",
-            "ifsc": company.bank_ifsc or "",
-        },
+        "payment": _quotation_payment_block(meta_raw, company),
         "terms": meta_raw.get("terms") or quote.notes or "",
+        "declaration": meta_raw.get("declaration") or "",
+        "rejection_policy": (
+            meta_raw.get("rejection_policy")
+            or meta_raw.get("quotation_policy")
+            or ""
+        ),
         "remarks": meta_raw.get("remarks") or f"Being material sold vide Quotation No. : {quote.quote_number}",
-        "prepared_by": quote.sales_person or "",
+        "prepared_by": meta_raw.get("prepared_by") or quote.sales_person or "",
+        "checked_by": meta_raw.get("checked_by") or "",
+        "show_signature": meta_raw.get("show_signature", True),
+        "signature_url": meta_raw.get("signature_url") or company.signature_url or "",
+        "stamp_url": meta_raw.get("stamp_url") or company.stamp_url or "",
     }
 
 

@@ -204,7 +204,7 @@ export default function SalesDashboard() {
         const [hubRes, quoteRes, leadsRes, ordersRes] = await Promise.allSettled([
           getSalesHub(params),
           getQuotationSummary(params),
-          getLeadsEnriched(params),
+          getLeadsEnriched(),
           getSalesOrdersEnriched(params),
         ]);
         if (generation !== loadGenerationRef.current) return;
@@ -350,8 +350,8 @@ export default function SalesDashboard() {
       totalOrders: resolveSalesDashboardKpiLink(user, "totalOrders"),
       pendingOrders: resolveSalesDashboardKpiLink(user, "pendingOrders"),
       dispatchPending: resolveSalesDashboardKpiLink(user, "dispatchPending"),
-      openLeads: resolveSalesDashboardKpiLink(user, "openLeads"),
-      openQuotations: resolveSalesDashboardKpiLink(user, "openQuotations"),
+      openLeads: resolveSalesDashboardKpiLink(user, "openLeads", kpiRange),
+      openQuotations: resolveSalesDashboardKpiLink(user, "openQuotations", kpiRange),
       conversionRate: resolveSalesDashboardKpiLink(user, "conversionRate"),
       outstandingPayments: resolveSalesDashboardKpiLink(user, "outstandingPayments"),
     }),
@@ -402,8 +402,9 @@ export default function SalesDashboard() {
             title={`Sales Dashboard — ${periodMeta}`}
             filename="sales-dashboard"
             rows={dashboardExportRows}
-            disabled={loading}
+            disabled={loading || !dashboardExportRows.length}
             module="sales"
+            defaultRecipient={user?.email || ""}
           />
         </div>
       </div>
@@ -502,7 +503,10 @@ export default function SalesDashboard() {
             <div className="sales-dash-card">
               <div className="sales-dash-card__head">
                 <h3 className="sales-dash-card__title">Sales Pipeline</h3>
-                <Link to="/sales/leads" className="text-xs font-semibold text-[var(--color-primary)] hover:underline">
+                <Link
+                  to={kpiLinks.openLeads || "/sales/leads?open=1"}
+                  className="text-xs font-semibold text-[var(--color-primary)] hover:underline"
+                >
                   View Pipeline →
                 </Link>
               </div>
@@ -511,7 +515,13 @@ export default function SalesDashboard() {
                   {PIPELINE_STAGES.map((stage) => (
                     <Link
                       key={stage.key}
-                      to={stage.to}
+                      to={
+                        stage.key === "leads"
+                          ? kpiLinks.openLeads || stage.to
+                          : stage.key === "quotations"
+                            ? kpiLinks.openQuotations || stage.to
+                            : stage.to
+                      }
                       className={`sales-dash-pipeline__stage sales-dash-pipeline__stage--${stage.key} hover:opacity-90`}
                     >
                       <div className="sales-dash-pipeline__label">{stage.label}</div>
@@ -677,7 +687,7 @@ export default function SalesDashboard() {
             <div className="sales-dash-card">
               <div className="sales-dash-card__head">
                 <h3 className="sales-dash-card__title">Today&apos;s Follow-ups</h3>
-                <Link to="/sales/leads" className="text-xs font-semibold text-[var(--color-primary)]">View All →</Link>
+                <Link to="/sales/leads?followup=due" className="text-xs font-semibold text-[var(--color-primary)]">View All →</Link>
               </div>
               <div className="sales-dash-card__body overflow-x-auto">
                 {followups.length === 0 ? (
@@ -710,7 +720,10 @@ export default function SalesDashboard() {
                               </span>
                             </td>
                             <td>
-                              <Link to="/sales/leads" className="text-[11px] font-semibold text-[var(--color-primary)] hover:underline">
+                              <Link
+                                to={row.id ? `/sales/leads?lead=${row.id}` : "/sales/leads?followup=due"}
+                                className="text-[11px] font-semibold text-[var(--color-primary)] hover:underline"
+                              >
                                 Follow up
                               </Link>
                             </td>
@@ -726,7 +739,12 @@ export default function SalesDashboard() {
             <div className="sales-dash-card">
               <div className="sales-dash-card__head">
                 <h3 className="sales-dash-card__title">Quotation Overview</h3>
-                <Link to="/sales/quotations" className="text-xs font-semibold text-[var(--color-primary)]">View All →</Link>
+                <Link
+                  to={kpiLinks.openQuotations || "/sales/quotations?kpi=pending"}
+                  className="text-xs font-semibold text-[var(--color-primary)]"
+                >
+                  View All →
+                </Link>
               </div>
               <div className="sales-dash-card__body">
                 <div className="sales-dash-quote-grid">
@@ -752,7 +770,7 @@ export default function SalesDashboard() {
                   <table className="sales-dash-table">
                     <thead>
                       <tr>
-                        <th>#</th>
+                        <th>Order No.</th>
                         <th>Customer</th>
                         <th>Date</th>
                         <th>Amount</th>
@@ -773,7 +791,10 @@ export default function SalesDashboard() {
                             </span>
                           </td>
                           <td>
-                            <Link to={`/sales/orders`} className="text-[11px] font-semibold text-[var(--color-primary)] hover:underline">
+                            <Link
+                              to={o.id ? `/sales/orders/${o.id}` : "/sales/orders"}
+                              className="text-[11px] font-semibold text-[var(--color-primary)] hover:underline"
+                            >
                               View
                             </Link>
                           </td>

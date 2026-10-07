@@ -14,12 +14,20 @@ import { asArray } from "../../../utils/apiError";
 import { runListExport } from "../../../utils/listExport";
 
 const EXPORT_COLUMNS = [
-  { key: "quotation_number", label: "Quotation #" },
+  { key: "quote_number", label: "Quotation #" },
   { key: "customer_name", label: "Customer" },
   { key: "status", label: "Status" },
   { key: "valid_until", label: "Valid until" },
-  { key: "grand_total", label: "Amount" },
+  { key: "amount", label: "Amount" },
 ];
+
+function reportRows(raw) {
+  return (raw || []).map((r) => ({
+    ...r,
+    quote_number: r.quote_number || r.quotation_number,
+    amount: r.amount ?? r.grand_total ?? 0,
+  }));
+}
 
 export default function QuotationReport() {
   const { addToast } = useToast();
@@ -34,7 +42,7 @@ export default function QuotationReport() {
         getQuotationsEnriched(),
         getQuotationSummary(),
       ]);
-      setRows(asArray(quotesRes.data));
+      setRows(reportRows(asArray(quotesRes.data)));
       setSummary(summaryRes.data || null);
     } catch {
       setRows([]);
@@ -51,7 +59,7 @@ export default function QuotationReport() {
 
   const columns = useMemo(
     () => [
-      { key: "quotation_number", label: "Quotation #", sortable: true },
+      { key: "quote_number", label: "Quotation #", sortable: true },
       { key: "customer_name", label: "Customer", sortable: true },
       {
         key: "status",
@@ -64,9 +72,9 @@ export default function QuotationReport() {
       },
       { key: "valid_until", label: "Valid until", sortable: true },
       {
-        key: "grand_total",
+        key: "amount",
         label: "Amount",
-        render: (row) => formatInr(row.grand_total),
+        render: (row) => formatInr(row.amount),
         sortable: true,
       },
     ],
@@ -82,17 +90,37 @@ export default function QuotationReport() {
         actions={
           <ExportDownloadMenu
             disabled={!rows.length}
-            onExportExcel={() => runListExport(rows, EXPORT_COLUMNS, "quotation-report", "excel")}
-            onExportPdf={() => runListExport(rows, EXPORT_COLUMNS, "quotation-report", "pdf")}
+            onExportExcel={() =>
+              runListExport("excel", {
+                data: rows,
+                columns: EXPORT_COLUMNS,
+                filename: "quotation-report",
+                title: "Quotation Report",
+              })
+            }
+            onExportPdf={() =>
+              runListExport("pdf", {
+                data: rows,
+                columns: EXPORT_COLUMNS,
+                filename: "quotation-report",
+                title: "Quotation Report",
+              })
+            }
           />
         }
       />
       {summary && (
         <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <KpiCard label="Total quotations" value={summary.total ?? rows.length} />
-          <KpiCard label="Open" value={summary.open ?? "—"} />
-          <KpiCard label="Pipeline value" value={formatInr(summary.pipeline_value ?? summary.total_value)} />
-          <KpiCard label="Won / converted" value={summary.converted ?? "—"} />
+          <KpiCard label="Total quotations" value={summary.total_quotations ?? rows.length} />
+          <KpiCard
+            label="Open quotations"
+            value={summary.open_quotations ?? (Number(summary.draft || 0) + Number(summary.sent || 0))}
+          />
+          <KpiCard label="Pipeline value" value={formatInr(summary.pipeline_value)} />
+          <KpiCard
+            label="Converted to sales order"
+            value={summary.converted_to_sales_orders ?? summary.accepted ?? "—"}
+          />
         </div>
       )}
       <ListPageCard>

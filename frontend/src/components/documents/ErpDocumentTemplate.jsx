@@ -147,28 +147,56 @@ export default function ErpDocumentTemplate({ data: rawData, docType = "invoice"
     data.qrValue ||
     (showEInvoice && directUrl ? directUrl : docType === "quotation" ? "" : "e-invoice");
 
-  const rawTerms = (data.declaration || data.terms || data.termsAndConditions || "").split("\n").map((s) => s.trim()).filter(Boolean);
-  const isShortDefault = rawTerms.length > 0 && rawTerms.length <= 2 && rawTerms[0].includes("electronically generated");
-  const declItems = isShortDefault ? [] : rawTerms;
+  const declSource =
+    docType === "quotation"
+      ? data.declaration || ""
+      : data.declaration || data.terms || data.termsAndConditions || "";
+  const rawTerms = String(declSource || "")
+    .split("\n")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const isShortDefault =
+    rawTerms.length > 0 &&
+    rawTerms.length <= 2 &&
+    rawTerms[0].includes("electronically generated");
+  let declItems = isShortDefault ? [] : rawTerms;
+  if (!declItems.length && (docType === "quotation" || docType === "invoice")) {
+    declItems = DEFAULT_DECLARATION;
+  }
 
-  const rawRejection = (data.rejection_policy || data.rejectionPolicy || "").split("\n").map((s) => s.trim()).filter(Boolean);
-  const rejectionPolicy = rawRejection;
+  const rawRejection = (data.rejection_policy || data.rejectionPolicy || "")
+    .split("\n")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  let rejectionPolicy = rawRejection;
+  if (!rejectionPolicy.length && docType === "quotation") {
+    rejectionPolicy = DEFAULT_REJECTION;
+  }
 
-  const stampSrc =
-    data.stamp_url ||
-    data.stamp ||
-    data.stamp_image ||
-    data.seller?.stamp ||
-    data.seller?.stamp_url ||
-    (typeof window !== "undefined" ? localStorage.getItem("gns_invoice_stamp_data") : null);
+  const bankName = payment.bank_name || data.bank_name || seller.bank_name || "";
+  const bankAccount = payment.account_number || data.bank_account_number || "";
+  const bankIfsc = payment.ifsc || data.bank_ifsc || "";
+  const bankBranch = payment.branch_name || data.bank_branch || "";
+  const showBankBlock = Boolean(bankName || bankAccount || bankIfsc);
 
-  const signatureSrc =
-    data.signature_url ||
-    data.signature ||
-    data.signature_image ||
-    data.seller?.signature ||
-    data.seller?.signature_url ||
-    (typeof window !== "undefined" ? localStorage.getItem("gns_invoice_signature_data") : null);
+  const showSignature = data.show_signature !== false;
+
+  const stampSrc = showSignature
+    ? data.stamp_url ||
+      data.stamp ||
+      data.stamp_image ||
+      data.seller?.stamp ||
+      data.seller?.stamp_url ||
+      (typeof window !== "undefined" ? localStorage.getItem("gns_invoice_stamp_data") : null)
+    : null;
+  const signatureSrc = showSignature
+    ? data.signature_url ||
+      data.signature ||
+      data.signature_image ||
+      data.seller?.signature ||
+      data.seller?.signature_url ||
+      (typeof window !== "undefined" ? localStorage.getItem("gns_invoice_signature_data") : null)
+    : null;
 
   // Group HSN summary rows by HSN and Tax Rate
   const hsnSummaryRows = useMemo(() => {
@@ -849,6 +877,18 @@ export default function ErpDocumentTemplate({ data: rawData, docType = "invoice"
             <div className="erp-doc__auth-sign">Authorised Signatory</div>
           </div>
         </div>
+
+        {showBankBlock ? (
+          <div className="erp-doc__bank-bar">
+            <div className="erp-doc__decl-heading">Bank Details</div>
+            <div className="erp-doc__bank-lines">
+              {bankName ? <div>Bank : <strong>{bankName}</strong></div> : null}
+              {bankAccount ? <div>A/C No. : <strong>{bankAccount}</strong></div> : null}
+              {bankIfsc ? <div>IFSC : <strong>{bankIfsc}</strong></div> : null}
+              {bankBranch ? <div>Branch : <strong>{bankBranch}</strong></div> : null}
+            </div>
+          </div>
+        ) : null}
       </div>
 
       {/* 3. Footer Outside the Main Box */}

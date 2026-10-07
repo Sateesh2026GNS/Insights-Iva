@@ -4,13 +4,17 @@ import {
   ArrowLeft,
   Building2,
   ChevronDown,
+  FileText,
+  Grid2x2,
   ImagePlus,
-  MapPin,
   Package,
   PenLine,
+  Pencil,
   Plus,
   Ban,
   Search,
+  RotateCcw,
+  X,
   Share2,
   Ship,
   TrainFront,
@@ -20,6 +24,7 @@ import {
   Plane,
 } from "lucide-react";
 
+import ConfirmDialog from "../../components/admin/ConfirmDialog";
 import Loader from "../../components/common/Loader";
 import { SearchBar } from "../../components/common/SearchFilter";
 import ShorthandQuantityInput from "../../components/common/ShorthandQuantityInput";
@@ -40,11 +45,15 @@ import DispatchAddressPicker from "../../components/sales/DispatchAddressPicker"
 import EditCompanyDetailsModal from "../../components/sales/EditCompanyDetailsModal";
 import ShareToSalesTeamModal from "../../components/sales/ShareToSalesTeamModal";
 import TermsAndConditionsPicker from "../../components/sales/TermsAndConditionsPicker";
+import SignatureAndStampPanel from "../../components/sales/SignatureAndStampPanel";
+import QuotationBuyerSelectPanel from "../../components/sales/QuotationBuyerSelectPanel";
 
 import {
   createQuotation,
+  deleteCustomer,
   getQuotation,
   getQuotations,
+  updateCustomer,
   updateQuotation,
 } from "../../api/salesApi";
 
@@ -65,6 +74,10 @@ import {
   filterCustomers,
   resolveCustomerId,
 } from "../../utils/customerOptions";
+import {
+  clearQuotationBuyerSelection,
+  quotationBuyerActionVisibility,
+} from "../../utils/quotationBuyerSectionUi";
 
 import {
   MANUFACTURING_EVENTS,
@@ -80,6 +93,44 @@ import {
 } from "../../design-system/erpFormControls";
 
 const YELLOW = "var(--color-primary)";
+
+const CUSTOMER_FAVORITES_KEY = "gns_quotation_customer_favorites";
+
+function loadCustomerFavoriteIds() {
+  try {
+    const raw = localStorage.getItem(CUSTOMER_FAVORITES_KEY);
+    const list = raw ? JSON.parse(raw) : [];
+    return new Set(
+      Array.isArray(list) ? list.map((id) => String(id)) : []
+    );
+  } catch {
+    return new Set();
+  }
+}
+
+function dispatchAddressToConsignee(row) {
+  if (!row) return {};
+  return {
+    consignee_name: row.name || "",
+    consignee_address1: row.address || "",
+    consignee_address2: [row.city, row.pincode].filter(Boolean).join(", "),
+    consignee_state: row.state || "",
+    consignee_gstin: row.gstin || "",
+  };
+}
+
+function formatBuyerAddress(customer, form) {
+  const line = [
+    customer?.address_line1 || customer?.address || form.consignee_address1,
+    customer?.address_line2 || form.consignee_address2,
+    customer?.city,
+    customer?.state,
+    customer?.pincode,
+  ]
+    .filter(Boolean)
+    .join(", ");
+  return line || "—";
+}
 
 const PREFIX_STORAGE_KEY = "gns_quotation_prefixes";
 const DEFAULT_PREFIXES = ["QUO-"];
@@ -457,7 +508,9 @@ export default function QuotationForm() {
   const isEdit = Boolean(editId);
 
   const { addToast } = useToast();
-  const { isAdmin } = usePermissions();
+  const { isAdmin, canAction, can } = usePermissions();
+  const canEditBuyer =
+    isAdmin || canAction("sales", "update") || can("sales");
   const [searchParams] = useSearchParams();
 
   const [loading, setLoading] =
@@ -492,6 +545,26 @@ export default function QuotationForm() {
   ] = useState(false);
 
   const [
+    buyerPartyMenuId,
+    setBuyerPartyMenuId,
+  ] = useState(null);
+
+  const [
+    customerFavorites,
+    setCustomerFavorites,
+  ] = useState(loadCustomerFavoriteIds);
+
+  const [
+    shippingConsigneeAddress,
+    setShippingConsigneeAddress,
+  ] = useState(null);
+
+  const [
+    showShippingPicker,
+    setShowShippingPicker,
+  ] = useState(false);
+
+  const [
     dispatchAddress,
     setDispatchAddress,
   ] = useState(null);
@@ -504,6 +577,16 @@ export default function QuotationForm() {
   const [
     addBuyerOpen,
     setAddBuyerOpen,
+  ] = useState(false);
+
+  const [
+    editingBuyer,
+    setEditingBuyer,
+  ] = useState(null);
+
+  const [
+    removeBuyerConfirmOpen,
+    setRemoveBuyerConfirmOpen,
   ] = useState(false);
 
   const [
@@ -532,21 +615,6 @@ export default function QuotationForm() {
   ] = useState(null);
 
   const [
-    sameAsBuyer,
-    setSameAsBuyer,
-  ] = useState(true);
-
-  const [
-    showConsigneePicker,
-    setShowConsigneePicker,
-  ] = useState(false);
-
-  const [
-    consigneeSearch,
-    setConsigneeSearch,
-  ] = useState("");
-
-  const [
     taxModeOverride,
     setTaxModeOverride,
   ] = useState("auto");
@@ -562,7 +630,7 @@ export default function QuotationForm() {
   const [
     otherDetailsOpen,
     setOtherDetailsOpen,
-  ] = useState(true);
+  ] = useState(false);
 
   const [termsOpen, setTermsOpen] =
     useState(false);
@@ -737,11 +805,15 @@ export default function QuotationForm() {
     destination: "",
 
     ewaybill_number: "",
+    challan_number: "",
 
     declaration: "",
     rejection_policy: "",
 
     sales_person: "",
+
+    remarks: "",
+    checked_by: "",
 
     reverse_charge: false,
 
@@ -977,10 +1049,28 @@ export default function QuotationForm() {
             setCustomFields(meta.custom_fields);
           }
 
-          const consName = (cons.name || "").trim();
-          const buyerLabel = (quote.customer_name || quote.customer?.name || "").trim();
-          if (consName && buyerLabel && consName !== buyerLabel) {
-            setSameAsBuyer(false);
+          const bankMeta = meta.bank_details || meta.bank;
+          if (bankMeta?.bank_name) {
+            setBankAccount({
+              bank_name: bankMeta.bank_name || "",
+              account_number:
+                bankMeta.account_number ||
+                bankMeta.bank_account_number ||
+                "",
+              ifsc: bankMeta.ifsc || bankMeta.bank_ifsc || "",
+              branch_name:
+                bankMeta.branch_name || bankMeta.bank_branch || "",
+              account_holder: bankMeta.account_holder || "",
+              upi_id: bankMeta.upi_id || "",
+              show_upi_qr: bankMeta.show_upi_qr !== false,
+              iban: bankMeta.iban || "",
+              swift: bankMeta.swift || "",
+              notes: bankMeta.notes || null,
+            });
+          }
+
+          if (meta.show_signature === false) {
+            setSignatureOn(false);
           }
 
           if (meta.tax_mode) {
@@ -1159,6 +1249,13 @@ export default function QuotationForm() {
               trans.ewaybill_number ||
               "",
 
+            challan_number:
+              trans.challan_number ||
+              meta.challan_number ||
+              trans.delivery_note ||
+              meta.delivery_note ||
+              "",
+
             declaration:
               meta.declaration || "",
 
@@ -1166,6 +1263,10 @@ export default function QuotationForm() {
               meta.rejection_policy ||
               meta.quotation_policy ||
               "",
+
+            remarks: meta.remarks || "",
+
+            checked_by: meta.checked_by || "",
 
             payment_terms:
               meta.payment_terms ||
@@ -1315,24 +1416,21 @@ export default function QuotationForm() {
     ]
   );
 
-  const filteredConsignees = useMemo(
-    () =>
-      filterCustomers(
-        customers,
-        consigneeSearch
-      ),
-    [
-      customers,
-      consigneeSearch,
-    ]
-  );
-
   const selectedBuyer =
     customers.find(
       (c) =>
         String(c.id) ===
         String(form.customer_id)
     );
+
+  const buyerActions = useMemo(
+    () =>
+      quotationBuyerActionVisibility({
+        hasBuyer: Boolean(selectedBuyer),
+        canEditBuyer,
+      }),
+    [selectedBuyer, canEditBuyer]
+  );
 
   const prefixOptions = useMemo(() => {
     const set = new Set([
@@ -1369,33 +1467,184 @@ export default function QuotationForm() {
           String(customerId)
       );
 
+    setShippingConsigneeAddress(null);
+    setShowShippingPicker(false);
+
     setForm((f) => ({
       ...f,
 
       customer_id:
         customerId,
 
-      ...(sameAsBuyer
-        ? customerToConsigneeFields(
-            customer
-          )
-        : {}),
+      ...customerToConsigneeFields(customer),
 
       consignee_phone:
-        sameAsBuyer
-          ? customer?.phone ||
-            customer?.mobile ||
-            ""
-          : f.consignee_phone,
+        customer?.phone ||
+        customer?.mobile ||
+        "",
 
-      consignee_email:
-        sameAsBuyer
-          ? customer?.email ||
-            ""
-          : f.consignee_email,
+      consignee_email: customer?.email || "",
     }));
 
     setShowBuyerPicker(false);
+    setBuyerPartyMenuId(null);
+  };
+
+  const handleSelectBuyerFromList = (customerId) => {
+    const customer = customers.find(
+      (c) => String(c.id) === String(customerId)
+    );
+    const inactive =
+      customer?.is_active === false ||
+      String(customer?.status || "").toLowerCase() === "inactive";
+    if (inactive) {
+      addToast(
+        "This party is inactive. Mark as active to use on new quotations.",
+        "warning"
+      );
+    }
+    handleCustomerChange(customerId);
+  };
+
+  const persistCustomerFavorites = (nextSet) => {
+    setCustomerFavorites(nextSet);
+    try {
+      localStorage.setItem(
+        CUSTOMER_FAVORITES_KEY,
+        JSON.stringify([...nextSet])
+      );
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const handleToggleCustomerFavorite = (customerId) => {
+    const id = String(customerId);
+    const next = new Set(customerFavorites);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    persistCustomerFavorites(next);
+  };
+
+  const patchCustomerInList = (customerId, patch) => {
+    setCustomers((rows) =>
+      rows.map((row) =>
+        String(row.id) === String(customerId) ? { ...row, ...patch } : row
+      )
+    );
+  };
+
+  const handleEditPartyFromList = (customer) => {
+    if (!customer) return;
+    setEditingBuyer(customer);
+    setAddBuyerOpen(true);
+    setShowBuyerPicker(false);
+  };
+
+  const handleMarkCustomerInactive = async (customer) => {
+    if (!customer?.id) return;
+    try {
+      await updateCustomer(customer.id, {
+        status: "inactive",
+      });
+      patchCustomerInList(customer.id, {
+        status: "inactive",
+        is_active: false,
+      });
+      const nextFav = new Set(customerFavorites);
+      nextFav.delete(String(customer.id));
+      persistCustomerFavorites(nextFav);
+      if (String(form.customer_id) === String(customer.id)) {
+        setForm((f) => clearQuotationBuyerSelection(f, true));
+        setShippingConsigneeAddress(null);
+      }
+      addToast("Party is marked as Inactive", "success");
+    } catch (err) {
+      addToast(apiErrorMessage(err, "Could not update party"), "error");
+    }
+  };
+
+  const handleMarkCustomerActive = async (customer) => {
+    if (!customer?.id) return;
+    try {
+      await updateCustomer(customer.id, {
+        status: "active",
+      });
+      patchCustomerInList(customer.id, {
+        status: "active",
+        is_active: true,
+      });
+      addToast("Party is marked as Active", "success");
+    } catch (err) {
+      addToast(apiErrorMessage(err, "Could not update party"), "error");
+    }
+  };
+
+  const handleDeleteCustomerParty = async (customer) => {
+    if (!customer?.id) return;
+    if (
+      !window.confirm(
+        `Delete ${customer.name || "this party"}? This cannot be undone.`
+      )
+    ) {
+      return;
+    }
+    try {
+      await deleteCustomer(customer.id);
+      setCustomers((rows) =>
+        rows.filter((row) => String(row.id) !== String(customer.id))
+      );
+      if (String(form.customer_id) === String(customer.id)) {
+        setForm((f) => clearQuotationBuyerSelection(f, true));
+        setShippingConsigneeAddress(null);
+      }
+      addToast("Party deleted", "success");
+    } catch (err) {
+      addToast(apiErrorMessage(err, "Could not delete party"), "error");
+    }
+  };
+
+  const applyShippingConsignee = (row) => {
+    setShippingConsigneeAddress(row);
+    setShowShippingPicker(false);
+    setForm((f) => ({
+      ...f,
+      ...dispatchAddressToConsignee(row),
+    }));
+  };
+
+  const clearShippingConsignee = () => {
+    setShippingConsigneeAddress(null);
+    setShowShippingPicker(false);
+    if (selectedBuyer) {
+      setForm((f) => ({
+        ...f,
+        ...customerToConsigneeFields(selectedBuyer),
+        consignee_phone:
+          selectedBuyer.phone || selectedBuyer.mobile || "",
+        consignee_email: selectedBuyer.email || "",
+      }));
+    }
+  };
+
+  const handleEditBuyer = () => {
+    if (!selectedBuyer) return;
+    setEditingBuyer(selectedBuyer);
+    setAddBuyerOpen(true);
+  };
+
+  const handleOpenAddBuyer = () => {
+    setEditingBuyer(null);
+    setAddBuyerOpen(true);
+  };
+
+  const handleConfirmRemoveBuyer = () => {
+    setForm((f) =>
+      clearQuotationBuyerSelection(f, true)
+    );
+    setShippingConsigneeAddress(null);
+    setShowBuyerPicker(false);
+    setRemoveBuyerConfirmOpen(false);
   };
 
   /* ------------------------------------------------------------------------ */
@@ -1602,6 +1851,7 @@ export default function QuotationForm() {
     e
   ) => {
     e.preventDefault();
+    if (saving) return;
     // Ignore submit events bubbled from portaled modals (still descendants in the React tree).
     if (e.target !== e.currentTarget) return;
     if (!form.customer_id) {
@@ -1977,53 +2227,34 @@ export default function QuotationForm() {
           },
 
           consignee: {
-            name:
-              (sameAsBuyer
-                ? buyer?.name
-                : form.consignee_name) ||
-              "",
+            name: buyer?.name || form.consignee_name || "",
 
             address:
-              (sameAsBuyer
-                ? [
-                    buyer?.address_line1,
-                    buyer?.address_line2,
-                    buyer?.city,
-                    buyer?.state,
-                    buyer?.pincode,
-                  ]
-                    .filter(Boolean)
-                    .join(", ")
-                : [
-                    form.consignee_address1,
-                    form.consignee_address2,
-                  ]
-                    .filter(Boolean)
-                    .join(", ")) ||
+              [
+                buyer?.address_line1,
+                buyer?.address_line2,
+                buyer?.city,
+                buyer?.state,
+                buyer?.pincode,
+              ]
+                .filter(Boolean)
+                .join(", ") ||
+              [form.consignee_address1, form.consignee_address2]
+                .filter(Boolean)
+                .join(", ") ||
               "",
 
-            state:
-              (sameAsBuyer
-                ? buyer?.state
-                : form.consignee_state) ||
-              "",
+            state: buyer?.state || form.consignee_state || "",
 
             state_code:
-              (sameAsBuyer
-                ? buyer?.state_code
-                : form.consignee_state_code) ||
-              "",
+              buyer?.state_code || form.consignee_state_code || "",
 
-            gstin:
-              (sameAsBuyer
-                ? buyer?.gstin
-                : form.consignee_gstin) ||
-              "",
+            gstin: buyer?.gstin || form.consignee_gstin || "",
 
             phone:
-              (sameAsBuyer
-                ? buyer?.phone
-                : form.consignee_phone) ||
+              buyer?.phone ||
+              buyer?.mobile ||
+              form.consignee_phone ||
               "",
           },
 
@@ -2090,6 +2321,29 @@ export default function QuotationForm() {
           custom_fields: customFields,
 
           contact_person: contactPerson || null,
+
+          remarks: form.remarks || null,
+
+          checked_by: form.checked_by || null,
+
+          prepared_by: form.sales_person || null,
+
+          show_signature: signatureOn,
+
+          bank_details: bankAccount
+            ? {
+                bank_name: bankAccount.bank_name || "",
+                account_number: bankAccount.account_number || "",
+                ifsc: bankAccount.ifsc || "",
+                branch_name: bankAccount.branch_name || "",
+                account_holder: bankAccount.account_holder || "",
+                upi_id: bankAccount.upi_id || "",
+                show_upi_qr: Boolean(bankAccount.show_upi_qr),
+                iban: bankAccount.iban || "",
+                swift: bankAccount.swift || "",
+                notes: bankAccount.notes || "",
+              }
+            : null,
         },
       };
 
@@ -2501,448 +2755,211 @@ export default function QuotationForm() {
                 </>
               }
             >
-              <button
-                type="button"
-                onClick={() =>
-                  setShowBuyerPicker(
-                    (v) => !v
-                  )
-                }
-                className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] font-semibold text-white"
-                style={{
-                  background:
-                    ERP_PRIMARY,
-                }}
-              >
-                <User className="h-3.5 w-3.5" />
-                Select Buyer
-              </button>
+              {buyerActions.showRemoveBuyer ? (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setRemoveBuyerConfirmOpen(
+                      true
+                    )
+                  }
+                  className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-[13px] font-semibold text-white"
+                  style={{ background: ERP_PRIMARY }}
+                >
+                  <X className="h-3.5 w-3.5" />
+                  Remove
+                </button>
+              ) : null}
 
-              <button
-                type="button"
-                onClick={() =>
-                  setAddBuyerOpen(true)
-                }
-                className="inline-flex items-center gap-1 rounded-lg border border-[#d0d0d8] bg-white px-3 py-1.5 text-[13px] font-semibold text-[#4a4a55]"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                Add New Buyer
-              </button>
+              {buyerActions.showSelectBuyer ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBuyerPartyMenuId(null);
+                    setShowBuyerPicker((v) => !v);
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] font-semibold text-white"
+                  style={{ background: ERP_PRIMARY }}
+                >
+                  <User className="h-3.5 w-3.5" />
+                  Select Buyer
+                </button>
+              ) : null}
+
+              {buyerActions.showAddNewBuyer ? (
+                <button
+                  type="button"
+                  onClick={handleOpenAddBuyer}
+                  className="inline-flex items-center gap-1 rounded-lg border border-[#d0d0d8] bg-white px-3 py-1.5 text-[13px] font-semibold text-[#4a4a55]"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Add New Buyer
+                </button>
+              ) : null}
             </SectionHeader>
 
             <div className="min-h-[88px] border-t-0 p-4">
-              {showBuyerPicker && (
-                <div className="mb-3 rounded-lg border border-[#e4e4ea] bg-[#fafafa] p-3">
-                  <SearchBar
-                    size="compact"
-                    value={
-                      customerSearch
-                    }
-                    onChange={
-                      setCustomerSearch
-                    }
-                    placeholder="Search"
-                    className="mb-2 w-full"
-                  />
+              {showBuyerPicker ? (
+                <QuotationBuyerSelectPanel
+                  search={customerSearch}
+                  onSearchChange={setCustomerSearch}
+                  customers={filteredCustomers}
+                  selectedCustomerId={form.customer_id}
+                  onSelect={handleSelectBuyerFromList}
+                  onAddNew={() => {
+                    setShowBuyerPicker(false);
+                    handleOpenAddBuyer();
+                  }}
+                  partyMenuId={buyerPartyMenuId}
+                  onPartyMenuIdChange={setBuyerPartyMenuId}
+                  favoriteIds={customerFavorites}
+                  onToggleFavorite={handleToggleCustomerFavorite}
+                  onEditParty={handleEditPartyFromList}
+                  onMarkInactive={handleMarkCustomerInactive}
+                  onMarkActive={handleMarkCustomerActive}
+                  onDeleteParty={handleDeleteCustomerParty}
+                />
+              ) : null}
 
-                  <div className="max-h-44 overflow-y-auto">
-                    {filteredCustomers.length ===
-                    0 ? (
-                      <p className="p-2 text-[13px] text-[#8a8a95]">
-                        No buyers found.{" "}
+              {selectedBuyer ? (
+                <div className="space-y-4 text-[13px]">
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p
+                        className="text-[16px] font-bold"
+                        style={{ color: ERP_PRIMARY }}
+                      >
+                        {selectedBuyer.name}
+                      </p>
+                      {buyerActions.showEditBuyerLink ? (
+                        <button
+                          type="button"
+                          onClick={handleEditBuyer}
+                          className="inline-flex items-center gap-1 text-[13px] font-semibold text-[var(--color-primary)] hover:underline"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                          Edit Buyer Details
+                        </button>
+                      ) : null}
+                    </div>
+
+                    <div className="mt-3 grid gap-x-8 gap-y-2 sm:grid-cols-2">
+                      <div>
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-[#9a9aa5]">
+                          GSTIN
+                        </p>
+                        <p className="text-[#1a1a1f]">
+                          {selectedBuyer.gstin ||
+                            form.consignee_gstin ||
+                            "—"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-[#9a9aa5]">
+                          Address
+                        </p>
+                        <p className="text-[#4a4a55]">
+                          {formatBuyerAddress(selectedBuyer, form)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-[#9a9aa5]">
+                          City
+                        </p>
+                        <p className="text-[#4a4a55]">
+                          {selectedBuyer.city || "—"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-[#9a9aa5]">
+                          State
+                        </p>
+                        <p className="text-[#4a4a55]">
+                          {selectedBuyer.state ||
+                            form.consignee_state ||
+                            "—"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-[#9a9aa5]">
+                          Pincode
+                        </p>
+                        <p className="text-[#4a4a55]">
+                          {selectedBuyer.pincode || "—"}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg border border-[#e4e4ea] bg-[#f5f5f7] px-4 py-3">
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-[13px] font-semibold text-[#1a1a1f]">
+                          Shipping Address (Consignee)
+                        </span>
                         <button
                           type="button"
                           onClick={() =>
-                            setAddBuyerOpen(
-                              true
-                            )
+                            setShowShippingPicker((v) => !v)
                           }
-                          className="font-medium"
-                          style={{
-                            color:
-                              ERP_PRIMARY,
-                          }}
+                          className="inline-flex items-center gap-1 text-[13px] font-semibold text-[var(--color-primary)] hover:underline"
                         >
-                          Add a buyer
+                          <RotateCcw className="h-3.5 w-3.5" />
+                          Change Consignee
                         </button>
-                      </p>
-                    ) : (
-                      filteredCustomers.map(
-                        (c) => (
-                          <button
-                            key={c.id}
-                            type="button"
-                            onClick={() =>
-                              handleCustomerChange(
-                                c.id
-                              )
-                            }
-                            className={`block w-full rounded-md px-3 py-2 text-left text-[13px] hover:bg-white ${
-                              String(
-                                form.customer_id
-                              ) ===
-                              String(
-                                c.id
-                              )
-                                ? "bg-white font-semibold"
-                                : ""
-                            }`}
-                          >
-                            {c.name}
+                      </div>
+                      {shippingConsigneeAddress ? (
+                        <button
+                          type="button"
+                          onClick={clearShippingConsignee}
+                          className="rounded p-1 text-[#9a9aa5] hover:bg-white hover:text-[#6b6b76]"
+                          aria-label="Clear shipping address"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      ) : null}
+                    </div>
 
-                            {c.gstin
-                              ? ` · ${c.gstin}`
-                              : ""}
+                    <DispatchAddressPicker
+                      embedded
+                      open={showShippingPicker}
+                      onOpenChange={setShowShippingPicker}
+                      value={shippingConsigneeAddress}
+                      onChange={(row) => {
+                        if (!row) {
+                          clearShippingConsignee();
+                          return;
+                        }
+                        applyShippingConsignee(row);
+                      }}
+                      footerLabel="+ Add Shipping Address"
+                      showRowActions
+                    />
 
-                            {c.state
-                              ? ` · ${c.state}`
-                              : ""}
-                          </button>
-                        )
-                      )
-                    )}
+                    <p className="mt-2 text-[13px] leading-relaxed text-[#4a4a55]">
+                      <span className="font-semibold text-[#1a1a1f]">
+                        {shippingConsigneeAddress?.name ||
+                          form.consignee_name ||
+                          selectedBuyer.name}
+                      </span>
+                      <br />
+                      {shippingConsigneeAddress
+                        ? [
+                            shippingConsigneeAddress.address,
+                            shippingConsigneeAddress.city,
+                            shippingConsigneeAddress.state,
+                            shippingConsigneeAddress.pincode,
+                          ]
+                            .filter(Boolean)
+                            .join(", ")
+                        : formatBuyerAddress(selectedBuyer, form)}
+                    </p>
                   </div>
-                </div>
-              )}
-
-              {selectedBuyer ? (
-                <div className="grid gap-1 text-[13px] sm:grid-cols-2">
-                  <p className="font-semibold text-[#1a1a1f]">
-                    {
-                      selectedBuyer.name
-                    }
-                  </p>
-
-                  <p className="text-[#6b6b76]">
-                    {selectedBuyer.gstin ||
-                      "—"}
-                  </p>
-
-                  <p className="text-[#6b6b76] sm:col-span-2">
-                    {[
-                      form.consignee_address1,
-                      form.consignee_address2,
-                      form.consignee_state,
-                    ]
-                      .filter(Boolean)
-                      .join(", ") ||
-                      "—"}
-                  </p>
                 </div>
               ) : (
                 <p className="py-4 text-center text-[13px] text-[#a0a0ab]">
-                  Select a buyer to
-                  continue
+                  Select a buyer to continue
                 </p>
-              )}
-            </div>
-          </section>
-
-          {/* ---------------------------------------------------------------- */}
-          {/* Consignee                                                        */}
-          {/* ---------------------------------------------------------------- */}
-
-          <section className="overflow-hidden rounded-xl border border-[#d0d0d8] bg-white">
-            <SectionHeader
-              icon={MapPin}
-              title="Consignee Details (Ship to)"
-            >
-              <div className="flex items-center gap-3">
-                <label className="inline-flex cursor-pointer items-center gap-1.5 text-[12px] font-semibold text-[#4a4a55]">
-                  <input
-                    type="checkbox"
-                    checked={
-                      sameAsBuyer
-                    }
-                    onChange={(e) => {
-                      const checked =
-                        e.target
-                          .checked;
-
-                      setSameAsBuyer(
-                        checked
-                      );
-
-                      if (
-                        checked &&
-                        selectedBuyer
-                      ) {
-                        setForm(
-                          (f) => ({
-                            ...f,
-
-                            ...customerToConsigneeFields(
-                              selectedBuyer
-                            ),
-
-                            consignee_phone:
-                              selectedBuyer.phone ||
-                              selectedBuyer.mobile ||
-                              "",
-
-                            consignee_email:
-                              selectedBuyer.email ||
-                              "",
-                          })
-                        );
-                      }
-                    }}
-                    className="h-4 w-4 rounded border-[#c4c4cc] text-[var(--color-primary)] focus:ring-[var(--color-primary)]"
-                  />
-
-                  Same as Buyer (Bill to)
-                </label>
-
-                {!sameAsBuyer && (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setShowConsigneePicker(
-                        (v) => !v
-                      )
-                    }
-                    className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[12px] font-semibold text-white"
-                    style={{
-                      background:
-                        ERP_PRIMARY,
-                    }}
-                  >
-                    <User className="h-3.5 w-3.5" />
-                    Select Consignee
-                  </button>
-                )}
-              </div>
-            </SectionHeader>
-
-            <div className="p-4">
-              {showConsigneePicker &&
-              !sameAsBuyer ? (
-                <div className="mb-3 rounded-lg border border-[#e4e4ea] bg-[#fafafa] p-3">
-                  <div className="relative mb-2">
-                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9a9aa5]" />
-
-                    <input
-                      type="search"
-                      placeholder="Search Consignee..."
-                      value={
-                        consigneeSearch
-                      }
-                      onChange={(e) =>
-                        setConsigneeSearch(
-                          e.target.value
-                        )
-                      }
-                      className="w-full rounded-lg border border-[#e4e4ea] bg-white py-2 pl-9 pr-3 text-[13px]"
-                    />
-                  </div>
-
-                  <div className="max-h-44 overflow-y-auto">
-                    {filteredConsignees.map(
-                      (c) => (
-                        <button
-                          key={c.id}
-                          type="button"
-                          onClick={() => {
-                            setForm(
-                              (f) => ({
-                                ...f,
-
-                                consignee_name:
-                                  c.name ||
-                                  c.company ||
-                                  "",
-
-                                consignee_address1:
-                                  c.address_line1 ||
-                                  c.address ||
-                                  "",
-
-                                consignee_address2:
-                                  c.address_line2 ||
-                                  [
-                                    c.city,
-                                    c.pincode,
-                                  ]
-                                    .filter(
-                                      Boolean
-                                    )
-                                    .join(
-                                      " - "
-                                    ) ||
-                                  "",
-
-                                consignee_state:
-                                  c.state ||
-                                  "",
-
-                                consignee_state_code:
-                                  c.state_code ||
-                                  "",
-
-                                consignee_gstin:
-                                  c.gstin ||
-                                  "",
-
-                                consignee_phone:
-                                  c.phone ||
-                                  c.mobile ||
-                                  "",
-
-                                consignee_email:
-                                  c.email ||
-                                  "",
-                              })
-                            );
-
-                            setShowConsigneePicker(
-                              false
-                            );
-                          }}
-                          className="block w-full rounded-md px-3 py-2 text-left text-[13px] hover:bg-white"
-                        >
-                          {c.name ||
-                            c.company}
-                        </button>
-                      )
-                    )}
-                  </div>
-                </div>
-              ) : null}
-
-              {sameAsBuyer ? (
-                <div className="rounded-lg border border-[#e4e4ea] bg-[#fafafa] p-4 text-[13px] text-[#6b6b76]">
-                  <p className="font-semibold text-[#1a1a1f]">
-                    Ship to is set to same
-                    as Buyer:
-                  </p>
-
-                  <p className="mt-0.5">
-                    {selectedBuyer?.name
-                      ? `${selectedBuyer.name} — ${[
-                          selectedBuyer.address_line1,
-                          selectedBuyer.city,
-                          selectedBuyer.state,
-                        ]
-                          .filter(Boolean)
-                          .join(", ")}`
-                      : "—"}
-                  </p>
-
-                  <p className="mt-1 text-[11px] text-[#9a9aa5]">
-                    Uncheck "Same as
-                    Buyer" above if goods
-                    need to be shipped to a
-                    different party, site, or
-                    warehouse.
-                  </p>
-                </div>
-              ) : (
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <label className="block">
-                    <FieldLabel>
-                      Consignee Name
-                    </FieldLabel>
-
-                    <SoftInput
-                      placeholder="Enter Consignee Name"
-                      value={
-                        form.consignee_name
-                      }
-                      onChange={(e) =>
-                        setForm((f) => ({
-                          ...f,
-                          consignee_name:
-                            e.target
-                              .value,
-                        }))
-                      }
-                    />
-                  </label>
-
-                  <label className="block">
-                    <FieldLabel>
-                      GSTIN
-                    </FieldLabel>
-
-                    <SoftInput
-                      placeholder="Enter Consignee GSTIN"
-                      value={
-                        form.consignee_gstin
-                      }
-                      onChange={(e) =>
-                        setForm((f) => ({
-                          ...f,
-                          consignee_gstin:
-                            e.target
-                              .value,
-                        }))
-                      }
-                    />
-                  </label>
-
-                  <label className="block sm:col-span-2">
-                    <FieldLabel>
-                      Address Line 1
-                    </FieldLabel>
-
-                    <SoftInput
-                      placeholder="Enter Address"
-                      value={
-                        form.consignee_address1
-                      }
-                      onChange={(e) =>
-                        setForm((f) => ({
-                          ...f,
-                          consignee_address1:
-                            e.target
-                              .value,
-                        }))
-                      }
-                    />
-                  </label>
-
-                  <label className="block">
-                    <FieldLabel>
-                      Address Line 2
-                    </FieldLabel>
-
-                    <SoftInput
-                      placeholder="City, Pincode"
-                      value={
-                        form.consignee_address2
-                      }
-                      onChange={(e) =>
-                        setForm((f) => ({
-                          ...f,
-                          consignee_address2:
-                            e.target
-                              .value,
-                        }))
-                      }
-                    />
-                  </label>
-
-                  <label className="block">
-                    <FieldLabel>
-                      State
-                    </FieldLabel>
-
-                    <SoftInput
-                      placeholder="State"
-                      value={
-                        form.consignee_state
-                      }
-                      onChange={(e) =>
-                        setForm((f) => ({
-                          ...f,
-                          consignee_state:
-                            e.target
-                              .value,
-                        }))
-                      }
-                    />
-                  </label>
-                </div>
               )}
             </div>
           </section>
@@ -3527,69 +3544,272 @@ export default function QuotationForm() {
           </section>
 
           {/* ---------------------------------------------------------------- */}
-          {/* Optional Fields                                                  */}
+          {/* Optional fields                                                  */}
           {/* ---------------------------------------------------------------- */}
 
           <div className="space-y-3">
             <p className="text-center text-[12px] font-bold uppercase tracking-[0.12em] text-[#6b6b76]">
               Optional Fields
             </p>
-            <section className="rounded-xl border border-[#d0d0d8] bg-white p-4">
-              <h3 className="mb-3 text-[14px] font-semibold text-[#1a1a1f]">
-                References and Order Details
-              </h3>
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                <label className="block">
-                  <FieldLabel>Reference No.</FieldLabel>
-                  <SoftInput placeholder="Enter reference number" value={form.reference_no} onChange={(e) => setForm((f) => ({ ...f, reference_no: e.target.value }))} />
-                </label>
-                <label className="block">
-                  <FieldLabel>Reference Date</FieldLabel>
-                  <SoftInput type="date" value={form.reference_date} onChange={(e) => setForm((f) => ({ ...f, reference_date: e.target.value }))} />
-                </label>
-                <label className="block">
-                  <FieldLabel>Other References</FieldLabel>
-                  <SoftInput placeholder="Enter other references" value={form.other_references} onChange={(e) => setForm((f) => ({ ...f, other_references: e.target.value }))} />
-                </label>
-                <label className="block">
-                  <FieldLabel>Buyer’s Order No.</FieldLabel>
-                  <SoftInput placeholder="Enter buyer order / PO number" value={form.po_number} onChange={(e) => setForm((f) => ({ ...f, po_number: e.target.value }))} />
-                </label>
-                <label className="block">
-                  <FieldLabel>Buyer’s Order Date</FieldLabel>
-                  <SoftInput type="date" value={form.po_date} onChange={(e) => setForm((f) => ({ ...f, po_date: e.target.value }))} />
-                </label>
-              </div>
+
+            <section className="overflow-hidden rounded-xl border border-[#d0d0d8] bg-white">
+              <SectionHeader
+                icon={Grid2x2}
+                title="Other Details"
+                collapsible
+                open={otherDetailsOpen}
+                onToggle={() =>
+                  setOtherDetailsOpen((v) => !v)
+                }
+              />
+              {otherDetailsOpen ? (
+                <div className="space-y-3 p-4">
+                  {customFields.map((field) => (
+                    <div
+                      key={field.id}
+                      className="flex items-start justify-between gap-3 rounded-lg border border-[#e8e8ee] bg-[#fafafa] px-3 py-2.5"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate text-[13px] font-semibold text-[#1a1a1f]">
+                          {field.label}
+                        </p>
+                        {field.value ? (
+                          <p className="mt-0.5 truncate text-[12px] text-[#6b6b76]">
+                            {field.value}
+                          </p>
+                        ) : null}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setCustomFields((rows) =>
+                            rows.filter((x) => x.id !== field.id)
+                          )
+                        }
+                        className="rounded p-1 text-[#9a9aa5] hover:bg-[#f0f0f4] hover:text-[#e11d48]"
+                        aria-label={`Remove ${field.label}`}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
+
+                  <div className="rounded-lg border border-[#e4e4ea] bg-white p-4">
+                    <button
+                      type="button"
+                      onClick={() => setCustomFieldOpen(true)}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-[var(--color-primary)] bg-white px-4 py-2 text-[13px] font-semibold text-[var(--color-primary)] hover:bg-[var(--color-primary-soft)] transition-colors"
+                    >
+                      <Plus className="h-4 w-4" strokeWidth={2.5} />
+                      Add Custom Field
+                    </button>
+                  </div>
+                </div>
+              ) : null}
             </section>
 
-            <section className="rounded-xl border border-[#d0d0d8] bg-white p-4">
-              <h3 className="mb-3 text-[14px] font-semibold text-[#1a1a1f]">
-                Transportation and Delivery
-              </h3>
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                <label className="block">
-                  <FieldLabel>Dispatch Document No.</FieldLabel>
-                  <SoftInput placeholder="Enter dispatch / LR number" value={form.dispatch_doc_no} onChange={(e) => setForm((f) => ({ ...f, dispatch_doc_no: e.target.value }))} />
-                </label>
-                <label className="block">
-                  <FieldLabel>Delivery Note Date</FieldLabel>
-                  <SoftInput type="date" value={form.delivery_note_date} onChange={(e) => setForm((f) => ({ ...f, delivery_note_date: e.target.value }))} />
-                </label>
-                <label className="block">
-                  <FieldLabel>Dispatched Through</FieldLabel>
-                  <SoftInput placeholder="Transporter or carrier" value={form.transporter_name} onChange={(e) => setForm((f) => ({ ...f, transporter_name: e.target.value }))} />
-                </label>
-                <label className="block">
-                  <FieldLabel>Destination</FieldLabel>
-                  <SoftInput placeholder="Enter destination city" value={form.destination} onChange={(e) => setForm((f) => ({ ...f, destination: e.target.value }))} />
-                </label>
-                <label className="block sm:col-span-2 lg:col-span-3">
-                  <FieldLabel>Terms of Delivery</FieldLabel>
-                  <SoftInput placeholder="Enter delivery terms" value={form.terms_of_delivery} onChange={(e) => setForm((f) => ({ ...f, terms_of_delivery: e.target.value }))} />
-                </label>
-              </div>
+            <section className="overflow-hidden rounded-xl border border-[#d0d0d8] bg-white">
+              <SectionHeader
+                icon={Building2}
+                title="Bank / Payment Details (Optional)"
+              >
+                <button
+                  type="button"
+                  onClick={() => setBankModalOpen(true)}
+                  className="rounded-lg border border-[#d8d8e0] bg-white px-3 py-1.5 text-[12px] font-semibold text-[#4a4a55] hover:bg-[#f5f5f7]"
+                >
+                  {bankAccount
+                    ? "Edit Bank Details"
+                    : "+ Add New Bank Details"}
+                </button>
+              </SectionHeader>
+              {bankAccount ? (
+                <div className="space-y-1 border-t border-[#ececf0] p-4 text-[13px] text-[#4a4a55]">
+                  <p className="font-semibold text-[#1a1a1f]">
+                    {bankAccount.bank_name}
+                  </p>
+                  {bankAccount.account_holder ? (
+                    <p>{bankAccount.account_holder}</p>
+                  ) : null}
+                  {bankAccount.account_number ? (
+                    <p className="tabular-nums">
+                      A/C: {bankAccount.account_number}
+                    </p>
+                  ) : null}
+                  <p>
+                    {[bankAccount.ifsc, bankAccount.branch_name]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </p>
+                  {bankAccount.upi_id ? (
+                    <p>
+                      UPI: {bankAccount.upi_id}
+                      {bankAccount.show_upi_qr
+                        ? " · QR on quotation"
+                        : ""}
+                    </p>
+                  ) : null}
+                  {bankAccount.iban ? (
+                    <p className="tabular-nums">
+                      IBAN: {bankAccount.iban}
+                    </p>
+                  ) : null}
+                  {bankAccount.swift ? (
+                    <p className="tabular-nums">
+                      Swift: {bankAccount.swift}
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
+            </section>
+
+            <section className="overflow-hidden rounded-xl border border-[#d0d0d8] bg-white">
+              <SectionHeader
+                icon={User}
+                title="Contact Person Details"
+              >
+                <button
+                  type="button"
+                  onClick={() => setContactOpen(true)}
+                  className="rounded-lg border border-[#d8d8e0] bg-white px-3 py-1.5 text-[12px] font-semibold text-[#4a4a55] hover:bg-[#f5f5f7]"
+                >
+                  {contactPerson
+                    ? "Edit Contact"
+                    : "+ Add New Contact"}
+                </button>
+              </SectionHeader>
+              {contactPerson ? (
+                <div className="space-y-1 border-t border-[#ececf0] p-4 text-[13px] text-[#4a4a55]">
+                  <p className="font-semibold text-[#1a1a1f]">
+                    {contactPerson.name}
+                  </p>
+                  {contactPerson.phone ? (
+                    <p>{contactPerson.phone}</p>
+                  ) : null}
+                  {contactPerson.email ? (
+                    <p>{contactPerson.email}</p>
+                  ) : null}
+                </div>
+              ) : null}
+            </section>
+
+            <section className="overflow-hidden rounded-xl border border-[#d0d0d8] bg-white">
+              <SectionHeader
+                icon={FileText}
+                title="Terms and Conditions"
+                collapsible
+                open={termsOpen}
+                onToggle={() => setTermsOpen((v) => !v)}
+              >
+                {termsAttached ? (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setTermsAttached(false);
+                      setForm((f) => ({ ...f, notes: "" }));
+                    }}
+                    className="inline-flex items-center gap-1 rounded-full px-3.5 py-1.5 text-[12px] font-semibold text-white"
+                    style={{ background: ERP_PRIMARY }}
+                  >
+                    <X className="h-3.5 w-3.5" /> Remove
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setTermsPickerOpen(true);
+                  }}
+                  className="inline-flex items-center gap-1 rounded-full px-3.5 py-1.5 text-[12px] font-semibold text-white"
+                  style={{ background: ERP_PRIMARY }}
+                >
+                  <User className="h-3.5 w-3.5" /> Select Terms and
+                  Conditions
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setTermsAddOpen(true);
+                  }}
+                  className="rounded-full border border-[#d8d8e0] bg-white px-3.5 py-1.5 text-[12px] font-semibold text-[#4a4a55] hover:bg-[#f5f5f7]"
+                >
+                  + Add New Terms and Conditions
+                </button>
+              </SectionHeader>
+              {termsOpen && termsAttached && form.notes ? (
+                <div className="p-4">
+                  <textarea
+                    rows={3}
+                    value={form.notes}
+                    onChange={(e) =>
+                      setForm((f) => ({
+                        ...f,
+                        notes: e.target.value,
+                      }))
+                    }
+                    className="w-full rounded-lg border border-[#e4e4ea] bg-white px-3 py-2.5 text-[13px] leading-relaxed text-[#1a1a1f] focus:border-[var(--color-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]"
+                  />
+                </div>
+              ) : null}
+            </section>
+
+            <section className="overflow-hidden rounded-xl border border-[#d0d0d8] bg-white">
+              <SectionHeader icon={FileText} title="Notes">
+                <button
+                  type="button"
+                  onClick={() => setNoteOpen(true)}
+                  className="rounded-full border border-[#d8d8e0] bg-white px-3.5 py-1.5 text-[12px] font-semibold"
+                  style={{
+                    color: ERP_PRIMARY,
+                    borderColor: ERP_PRIMARY,
+                  }}
+                >
+                  + Add New Note
+                </button>
+              </SectionHeader>
+              {extraNote ? (
+                <div className="border-t border-[#ececf0] p-4 text-[13px] leading-relaxed text-[#4a4a55] whitespace-pre-wrap">
+                  {extraNote}
+                </div>
+              ) : null}
+            </section>
+
+            <section className="overflow-hidden rounded-xl border border-[#d0d0d8] bg-white">
+              <SectionHeader icon={User} title="Signature and Stamp">
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={signatureOn}
+                  onClick={() => setSignatureOn((v) => !v)}
+                  className={`relative h-6 w-11 rounded-full transition ${
+                    signatureOn
+                      ? "bg-[var(--color-primary)]"
+                      : "bg-[#d4d4d8]"
+                  }`}
+                >
+                  <span
+                    className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition ${
+                      signatureOn ? "left-[22px]" : "left-0.5"
+                    }`}
+                  />
+                </button>
+              </SectionHeader>
+              <SignatureAndStampPanel
+                companyName={companyName}
+                enabled={signatureOn}
+                signatureDataUrl={signatureDataUrl}
+                stampDataUrl={stampDataUrl}
+                onSignatureChange={setSignatureDataUrl}
+                onStampChange={setStampDataUrl}
+              />
             </section>
           </div>
+
         </div>
       </div>
 
@@ -3609,10 +3829,12 @@ export default function QuotationForm() {
 
       <AddNewPartyModal
         open={addBuyerOpen}
-        onClose={() =>
-          setAddBuyerOpen(false)
-        }
-        onSaved={(buyer) => {
+        customer={editingBuyer}
+        onClose={() => {
+          setAddBuyerOpen(false);
+          setEditingBuyer(null);
+        }}
+        onSaved={(buyer, meta) => {
           if (!buyer) {
             return;
           }
@@ -3626,21 +3848,49 @@ export default function QuotationForm() {
             ),
           ]);
 
-          setForm((f) => ({
-            ...f,
+          setForm((f) => {
+            const next = {
+              ...f,
+              customer_id: buyer.id,
+            };
 
-            customer_id:
-              buyer.id,
+            const consigneeFromBuyer = {
+              ...customerToConsigneeFields(
+                buyer
+              ),
+              consignee_phone:
+                buyer.phone ||
+                buyer.mobile ||
+                "",
+              consignee_email:
+                buyer.email || "",
+            };
 
-            ...customerToConsigneeFields(
-              buyer
-            ),
-          }));
+            Object.assign(next, consigneeFromBuyer);
 
+            return next;
+          });
+
+          setEditingBuyer(null);
           setShowBuyerPicker(
             false
           );
         }}
+      />
+
+      <ConfirmDialog
+        open={removeBuyerConfirmOpen}
+        title="Remove Buyer?"
+        message="Are you sure you want to remove the selected buyer from this quotation?"
+        confirmLabel="Remove Buyer"
+        cancelLabel="Cancel"
+        destructive={false}
+        onClose={() =>
+          setRemoveBuyerConfirmOpen(
+            false
+          )
+        }
+        onConfirm={handleConfirmRemoveBuyer}
       />
 
       <AddNewItemModal
@@ -3776,6 +4026,7 @@ export default function QuotationForm() {
             false
           )
         }
+        existingFields={customFields}
         onSave={(field) =>
           setCustomFields(
             (rows) => [
@@ -3788,6 +4039,7 @@ export default function QuotationForm() {
 
       <AddBankAccountModal
         open={bankModalOpen}
+        documentLabel="Quotation"
         onClose={() =>
           setBankModalOpen(
             false

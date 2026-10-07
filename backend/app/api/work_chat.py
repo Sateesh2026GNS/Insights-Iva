@@ -109,6 +109,26 @@ def mark_read(
     return chat.mark_read(db, current_user, conversation_id, payload.message_id)
 
 
+@router.post("/conversations/{conversation_id}/clear")
+def clear_conversation(
+    conversation_id: int,
+    tenant_id: int = Depends(tenant_scope(MODULE)),
+    current_user: User = Depends(require_permission(MODULE)),
+    db: Session = Depends(get_db),
+):
+    return chat.clear_conversation_for_user(db, current_user, conversation_id)
+
+
+@router.post("/conversations/{conversation_id}/leave")
+def leave_conversation(
+    conversation_id: int,
+    tenant_id: int = Depends(tenant_scope(MODULE)),
+    current_user: User = Depends(require_permission(MODULE)),
+    db: Session = Depends(get_db),
+):
+    return chat.leave_conversation(db, current_user, conversation_id)
+
+
 @router.patch("/messages/{message_id}")
 def edit_message(
     message_id: int,

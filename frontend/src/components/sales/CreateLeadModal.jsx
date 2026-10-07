@@ -222,6 +222,7 @@ export default function CreateLeadModal({ isOpen, onClose, onSuccess, leadToEdit
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (saving) return;
     if (!form.name.trim() || !form.company.trim()) {
       setError("Contact Person and Company Name are required.");
       return;
@@ -276,9 +277,8 @@ export default function CreateLeadModal({ isOpen, onClose, onSuccess, leadToEdit
       onClose();
       setForm(emptyLeadForm());
     } catch (err) {
-      const message = apiErrorMessage(err, "Failed to create lead.");
+      const message = apiErrorMessage(err, isEdit ? "Failed to update lead." : "Failed to create lead.");
       setError(message);
-      addToast?.(message, "error");
     } finally {
       setSaving(false);
     }
