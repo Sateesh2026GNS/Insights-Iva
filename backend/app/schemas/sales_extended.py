@@ -48,6 +48,9 @@ class QuotationSummaryRead(BaseModel):
     accepted: int = 0
     rejected: int = 0
     expired: int = 0
+    open_quotations: int = 0
+    pipeline_value: float = Field(0.0, ge=0.0)
+    converted_to_sales_orders: int = 0
 
 
 class QuotationListRead(BaseModel):
@@ -60,6 +63,8 @@ class QuotationListRead(BaseModel):
     valid_until: str | None = None
     status: str = "draft"
     converted_to_invoice: bool = False
+    converted_to_so: bool = False
+    converted_sales_order_number: str | None = None
 
     @field_validator("amount", mode="before")
     @classmethod

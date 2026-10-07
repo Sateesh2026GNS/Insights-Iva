@@ -483,7 +483,7 @@ export default function Customers() {
 
                       <div className="grid grid-cols-2 gap-2 text-xs text-[var(--color-text-secondary)] border-t border-[var(--color-border-soft)] pt-2">
                         <div>
-                          <span className="text-[var(--color-text-muted)] block text-[10px] uppercase font-semibold">
+                          <span className="text-[var(--color-text-muted)] block text-[11px] font-medium">
                             Phone
                           </span>
                           <span className="font-medium truncate block">
@@ -493,7 +493,7 @@ export default function Customers() {
                         </div>
 
                         <div>
-                          <span className="text-[var(--color-text-muted)] block text-[10px] uppercase font-semibold">
+                          <span className="text-[var(--color-text-muted)] block text-[11px] font-medium">
                             GSTIN
                           </span>
                           <span className="font-medium font-mono text-[11px] truncate block">
@@ -503,7 +503,7 @@ export default function Customers() {
                         </div>
 
                         <div>
-                          <span className="text-[var(--color-text-muted)] block text-[10px] uppercase font-semibold">
+                          <span className="text-[var(--color-text-muted)] block text-[11px] font-medium">
                             City
                           </span>
                           <span className="font-medium truncate block">
@@ -513,7 +513,7 @@ export default function Customers() {
                         </div>
 
                         <div>
-                          <span className="text-[var(--color-text-muted)] block text-[10px] uppercase font-semibold">
+                          <span className="text-[var(--color-text-muted)] block text-[11px] font-medium">
                             State
                           </span>
                           <span className="font-medium truncate block">

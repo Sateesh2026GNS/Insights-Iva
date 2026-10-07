@@ -32,6 +32,13 @@ def test_filter_customer_and_sales_order_and():
     assert len(out) == 1
 
 
+def test_filter_customer_partial_match():
+    items = [_row(), _row(customer_name="Other Co")]
+    out = filter_my_job_card_queue_items(items, customer_name="ABC")
+    assert len(out) == 1
+    assert "ABC" in out[0]["customer_name"]
+
+
 def test_filter_no_criteria_returns_all():
     items = [_row(), _row(job_card_no="JC-2")]
     assert filter_my_job_card_queue_items(items) == items

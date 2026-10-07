@@ -29,6 +29,15 @@ import { inputClass } from "../../design-system/classes";
 const PANEL_CLASS =
   "flex max-h-[90vh] w-full max-w-[440px] flex-col overflow-hidden rounded-l-xl bg-white shadow-2xl animate-[slideInRight_0.28s_ease-out]";
 
+function cleanPartyCustomFields(fields) {
+  return (fields || [])
+    .map((f) => ({
+      label: String(f.label || "").trim(),
+      value: String(f.value ?? "").trim(),
+    }))
+    .filter((f) => f.label && f.value);
+}
+
 const EMPTY = {
   gstin: "",
   name: "",
@@ -434,6 +443,7 @@ export default function AddNewPartyModal({
   const onSubmit = async (e) => {
     e.preventDefault();
     e.stopPropagation();
+    if (saving) return;
     setFieldErrors({});
     if (!form.name.trim()) {
       setFieldErrors({ name: "Company Name is required" });
@@ -566,10 +576,7 @@ export default function AddNewPartyModal({
           ...(otherDetails ? { party_other_details: otherDetails } : {}),
           ...(customFields.length
             ? {
-                party_custom_fields: customFields.map((f) => ({
-                  label: f.label,
-                  value: f.value,
-                })),
+                party_custom_fields: cleanPartyCustomFields(customFields),
               }
             : {}),
         };
@@ -615,10 +622,7 @@ export default function AddNewPartyModal({
         ...(otherDetails ? { party_other_details: otherDetails } : {}),
         ...(customFields.length
           ? {
-              party_custom_fields: customFields.map((f) => ({
-                label: f.label,
-                value: f.value,
-              })),
+              party_custom_fields: cleanPartyCustomFields(customFields),
             }
           : {}),
       };

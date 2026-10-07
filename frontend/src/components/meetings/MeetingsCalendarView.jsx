@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ChevronLeft,
   ChevronRight,
@@ -16,9 +16,17 @@ import DataTable from "../common/DataTable";
 import { SearchBar } from "../common/SearchFilter";
 import EmptyState from "../common/EmptyState";
 import StatusBadge from "../common/StatusBadge";
+import { useToast } from "../../context/ToastContext";
 import CreateDropdown from "./CreateDropdown";
 import GoogleCalendarSetupPanel from "./GoogleCalendarSetupPanel";
 import "./meetingsCalendar.css";
+
+const RAIL_QUICK_LINKS = [
+  { label: "Google Keep", url: "https://keep.google.com", letter: "K", color: "#fbbc04" },
+  { label: "Google Tasks", url: "https://tasks.google.com", letter: "✓", color: "#4285f4" },
+  { label: "Google Contacts", url: "https://contacts.google.com", letter: "👤", color: "#4285f4" },
+  { label: "Google Maps", url: "https://maps.google.com", letter: "📍", color: "#34a853" },
+];
 
 const HOUR_START = 8;
 const HOUR_END = 20;
@@ -182,14 +190,64 @@ export default function MeetingsCalendarView({
   openMenuId,
   setOpenMenuId,
 }) {
+  const { addToast } = useToast();
   const [viewMode, setViewMode] = useState("week");
   const [weekStart, setWeekStart] = useState(() => startOfWeekSunday(new Date()));
   const [selectedDate, setSelectedDate] = useState(() => toIsoDate(new Date()));
   const [miniMonth, setMiniMonth] = useState(() => new Date());
   const [meetQuery, setMeetQuery] = useState("");
+  const [toolbarSearchOpen, setToolbarSearchOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const sidebarSearchRef = useRef(null);
+  const settingsPanelRef = useRef(null);
+  const toolbarSearchInputRef = useRef(null);
+  const settingsMenuRef = useRef(null);
+  const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
   const [enabledLayers, setEnabledLayers] = useState(() =>
     Object.fromEntries(CALENDAR_LAYERS.map((l) => [l.id, true]))
   );
+
+  const focusMeetingSearch = () => {
+    requestAnimationFrame(() => {
+      const input =
+        toolbarSearchInputRef.current?.querySelector("input") ||
+        sidebarSearchRef.current?.querySelector("input");
+      input?.focus();
+      input?.select();
+    });
+  };
+
+  const toggleToolbarSearch = () => {
+    setToolbarSearchOpen((open) => {
+      const next = !open;
+      if (next) {
+        focusMeetingSearch();
+      } else if (!meetQuery.trim()) {
+        setMeetQuery("");
+      }
+      return next;
+    });
+  };
+
+  const openCalendarSettings = () => {
+    setSettingsMenuOpen((open) => !open);
+    setSettingsOpen(true);
+  };
+
+  useEffect(() => {
+    if (!settingsMenuOpen) return undefined;
+    const onDocClick = (e) => {
+      if (settingsMenuRef.current && !settingsMenuRef.current.contains(e.target)) {
+        setSettingsMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, [settingsMenuOpen]);
+
+  useEffect(() => {
+    if (toolbarSearchOpen) focusMeetingSearch();
+  }, [toolbarSearchOpen]);
 
   const weekDays = useMemo(
     () => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)),
@@ -275,15 +333,122 @@ export default function MeetingsCalendarView({
           <span className="meetings-cal__month-label">{monthLabel}</span>
         </div>
         <div className="meetings-cal__toolbar-right">
-          <button type="button" className="meetings-cal__btn meetings-cal__btn--icon" aria-label="Search">
+          {toolbarSearchOpen ? (
+            <div className="meetings-cal__toolbar-search" ref={toolbarSearchInputRef}>
+              <SearchBar
+                size="compact"
+                value={meetQuery}
+                onChange={setMeetQuery}
+                onClear={() => {
+                  setMeetQuery("");
+                  setToolbarSearchOpen(false);
+                }}
+                placeholder="Search meetings…"
+                aria-label="Search meetings"
+                autoFocus
+                className="meetings-cal__toolbar-search-field"
+              />
+            </div>
+          ) : null}
+          <button
+            type="button"
+            className={`meetings-cal__btn meetings-cal__btn--icon ${toolbarSearchOpen ? "is-active" : ""}`}
+            aria-label="Search meetings"
+            aria-pressed={toolbarSearchOpen}
+            onClick={toggleToolbarSearch}
+          >
             <Search className="h-4 w-4" />
           </button>
-          <button type="button" className="meetings-cal__btn meetings-cal__btn--icon" aria-label="Help">
+          <button
+            type="button"
+            className="meetings-cal__btn meetings-cal__btn--icon"
+            aria-label="Calendar help"
+            onClick={() => {
+              window.open("https://support.google.com/calendar", "_blank", "noopener,noreferrer");
+              addToast("Opened Google Calendar help.", "info");
+            }}
+          >
             <HelpCircle className="h-4 w-4" />
           </button>
-          <button type="button" className="meetings-cal__btn meetings-cal__btn--icon" onClick={onRefresh} aria-label="Refresh">
-            <Settings className="h-4 w-4" />
-          </button>
+          <div className="meetings-cal__settings-wrap" ref={settingsMenuRef}>
+            <button
+              type="button"
+              className={`meetings-cal__btn meetings-cal__btn--icon ${settingsMenuOpen ? "is-active" : ""}`}
+              onClick={openCalendarSettings}
+              aria-label="Calendar settings"
+              aria-expanded={settingsMenuOpen}
+              aria-haspopup="menu"
+            >
+              <Settings className="h-4 w-4" />
+            </button>
+            {settingsMenuOpen ? (
+              <div className="meetings-cal__settings-menu" role="menu">
+                <button
+                  type="button"
+                  className="meetings-cal__settings-item"
+                  role="menuitem"
+                  onClick={() => {
+                    setSettingsMenuOpen(false);
+                    onRefresh?.();
+                    addToast("Refreshing meetings…", "info");
+                  }}
+                >
+                  Refresh meetings
+                </button>
+                {googleStatus?.connected ? (
+                  <>
+                    <a
+                      className="meetings-cal__settings-item meetings-cal__settings-item--link"
+                      href="https://calendar.google.com"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={() => setSettingsMenuOpen(false)}
+                    >
+                      Open Google Calendar
+                    </a>
+                    <button
+                      type="button"
+                      className="meetings-cal__settings-item meetings-cal__settings-item--danger"
+                      role="menuitem"
+                      onClick={() => {
+                        setSettingsMenuOpen(false);
+                        onDisconnectGoogle?.();
+                      }}
+                    >
+                      Disconnect Google Calendar
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    className="meetings-cal__settings-item"
+                    role="menuitem"
+                    disabled={connecting}
+                    onClick={() => {
+                      setSettingsMenuOpen(false);
+                      onConnectGoogle?.();
+                    }}
+                  >
+                    {connecting ? "Connecting…" : "Connect Google Calendar"}
+                  </button>
+                )}
+                <p className="meetings-cal__settings-heading">Visible calendars</p>
+                {CALENDAR_LAYERS.map((layer) => (
+                  <label key={layer.id} className="meetings-cal__settings-check">
+                    <input
+                      type="checkbox"
+                      checked={enabledLayers[layer.id]}
+                      onChange={(e) =>
+                        setEnabledLayers((s) => ({ ...s, [layer.id]: e.target.checked }))
+                      }
+                    />
+                    <span className="meetings-cal__cal-dot" style={{ background: layer.color }} />
+                    {layer.id === "primary" ? primaryName : layer.label}
+                  </label>
+                ))}
+              </div>
+            ) : null}
+          </div>
           <select
             className="meetings-cal__select"
             value={viewMode}
@@ -320,7 +485,7 @@ export default function MeetingsCalendarView({
         </div>
       ) : null}
 
-      <div className="meetings-cal__body">
+      <div className="meetings-cal__body meetings-cal__body--relative">
         <aside className="meetings-cal__sidebar">
           <CreateDropdown
             onSelect={(kind) => onCreateKind?.(kind, selectedDate) ?? onCreate?.(selectedDate)}
@@ -335,13 +500,17 @@ export default function MeetingsCalendarView({
             }
           />
 
-          <div className="meetings-cal__meet-with-search">
+          <div className="meetings-cal__meet-with-search" ref={sidebarSearchRef}>
             <SearchBar
               size="compact"
               value={meetQuery}
-              onChange={setMeetQuery}
-              placeholder="Search"
+              onChange={(v) => {
+                setMeetQuery(v);
+                if (v.trim()) setToolbarSearchOpen(true);
+              }}
+              placeholder="Search meetings, organizer, participants"
               className="w-full"
+              aria-label="Search meetings"
             />
           </div>
 
@@ -435,7 +604,9 @@ export default function MeetingsCalendarView({
               </>
             )}
 
-            <GoogleCalendarSetupPanel googleStatus={googleStatus} defaultOpen={false} />
+            <div ref={settingsPanelRef}>
+              <GoogleCalendarSetupPanel googleStatus={googleStatus} defaultOpen={settingsOpen} />
+            </div>
           </div>
         </aside>
 
@@ -541,27 +712,35 @@ export default function MeetingsCalendarView({
         </div>
 
         <aside className="meetings-cal__rail" aria-label="Quick apps">
-          {[
-            { label: "Keep", color: "#fbbc04", letter: "K" },
-            { label: "Tasks", color: "#4285f4", letter: "✓" },
-            { label: "Contacts", color: "#4285f4", letter: "👤" },
-            { label: "Maps", color: "#34a853", letter: "📍" },
-          ].map((item) => (
-            <button key={item.label} type="button" className="meetings-cal__rail-btn" title={item.label}>
+          {RAIL_QUICK_LINKS.map((item) => (
+            <button
+              key={item.label}
+              type="button"
+              className="meetings-cal__rail-btn"
+              title={item.label}
+              aria-label={item.label}
+              onClick={() => window.open(item.url, "_blank", "noopener,noreferrer")}
+            >
               <span style={{ color: item.color, fontSize: 16 }}>{item.letter}</span>
             </button>
           ))}
-          <button type="button" className="meetings-cal__rail-btn" title="Add">
+          <button
+            type="button"
+            className="meetings-cal__rail-btn"
+            title="Create meeting"
+            aria-label="Create meeting"
+            onClick={() => onCreateKind?.("meeting", selectedDate) ?? onCreate?.(selectedDate)}
+          >
             <Plus className="h-5 w-5" />
           </button>
         </aside>
-      </div>
 
-      {loading ? (
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-white/60 text-sm text-[var(--gcal-muted)]">
-          Loading…
-        </div>
-      ) : null}
+        {loading ? (
+          <div className="meetings-cal__loading-overlay" aria-live="polite">
+            Loading…
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }

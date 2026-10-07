@@ -109,15 +109,15 @@ const REPORT_EMAIL_CODE_MESSAGES = {
 function reportEmailDetailMessage(detail, fallback) {
   if (detail == null || detail === "") return null;
   if (typeof detail === "object" && !Array.isArray(detail)) {
+    const code = detail.code;
+    if (code && REPORT_EMAIL_CODE_MESSAGES[code]) {
+      return REPORT_EMAIL_CODE_MESSAGES[code];
+    }
     const message = detail.message;
     if (typeof message === "string" && message.trim() && message !== "Email service is temporarily unavailable. Please try again later.") {
       if (!EMAIL_SERVICE_LEAK_PATTERN.test(message)) {
         return message;
       }
-    }
-    const code = detail.code;
-    if (code && REPORT_EMAIL_CODE_MESSAGES[code]) {
-      return REPORT_EMAIL_CODE_MESSAGES[code];
     }
     if (typeof message === "string" && message.trim()) {
       if (EMAIL_SERVICE_LEAK_PATTERN.test(message)) {

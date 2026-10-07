@@ -84,17 +84,31 @@ export default function SalesOrderReport() {
         actions={
           <ExportDownloadMenu
             disabled={!rows.length}
-            onExportExcel={() => runListExport(rows, EXPORT_COLUMNS, "sales-order-report", "excel")}
-            onExportPdf={() => runListExport(rows, EXPORT_COLUMNS, "sales-order-report", "pdf")}
+            onExportExcel={() =>
+              runListExport("excel", {
+                data: rows,
+                columns: EXPORT_COLUMNS,
+                filename: "sales-order-report",
+                title: "Sales Order Report",
+              })
+            }
+            onExportPdf={() =>
+              runListExport("pdf", {
+                data: rows,
+                columns: EXPORT_COLUMNS,
+                filename: "sales-order-report",
+                title: "Sales Order Report",
+              })
+            }
           />
         }
       />
       {summary && (
         <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <KpiCard label="Total orders" value={summary.total ?? rows.length} />
-          <KpiCard label="Open" value={summary.open ?? "—"} />
-          <KpiCard label="Revenue (period)" value={formatInr(summary.revenue ?? summary.total_value)} />
-          <KpiCard label="Pending dispatch" value={summary.pending_dispatch ?? "—"} />
+          <KpiCard label="Total orders" value={summary.total_orders ?? rows.length} />
+          <KpiCard label="Pending orders" value={summary.pending ?? 0} />
+          <KpiCard label="Total order value" value={formatInr(summary.revenue)} />
+          <KpiCard label="Cancelled orders" value={summary.cancelled ?? 0} />
         </div>
       )}
       <ListPageCard>

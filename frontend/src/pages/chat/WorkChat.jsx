@@ -54,7 +54,10 @@ import {
   searchChatUsers,
   sendMessage,
   toggleChatMessageReaction,
+  clearConversation,
+  leaveConversation,
 } from "../../api/workChatApi";
+import ConfirmDialog from "../../components/admin/ConfirmDialog";
 import {
   getDownloadUrl,
   resolveUploadUrl,
@@ -964,6 +967,9 @@ export default function WorkChat() {
   const [unlockedConvs, setUnlockedConvs] = useState(new Set());
   const [lockModal, setLockModal] = useState({ open: false, mode: "set", convId: null });
   const [favConvs, setFavConvs] = useState(new Set());
+  const [confirmAction, setConfirmAction] = useState(null);
+  const [confirmBusy, setConfirmBusy] = useState(false);
+  const [appliedConvSearch, setAppliedConvSearch] = useState("");
 
   const saveLockedPasswords = (newPasswords) => {
     setLockedPasswords(newPasswords);
@@ -1005,14 +1011,14 @@ export default function WorkChat() {
 
   const loadConversations = useCallback(async () => {
     try {
-      const data = await listConversations({ search: convSearch || undefined });
+      const data = await listConversations({ search: appliedConvSearch || undefined });
       setConversations(data?.items || []);
     } catch {
       addToast("Could not load conversations.", "error");
     } finally {
       setLoading(false);
     }
-  }, [convSearch, addToast]);
+  }, [appliedConvSearch, addToast]);
 
   const loadMessages = useCallback(
     async (conversationId, beforeId = null, append = false) => {
@@ -1526,22 +1532,49 @@ export default function WorkChat() {
   };
 
   const handleClearChat = () => {
-    if (window.confirm("Are you sure you want to clear all messages in this conversation?")) {
-      setMessages([]);
-      setShowMenu(false);
-      addToast("Chat cleared.", "info");
-    }
+    setShowMenu(false);
+    setConfirmAction({ type: "clear", conversationId: activeId });
   };
 
   const handleDeleteOrExitChat = () => {
     const isGroup = activeConv?.type === "group";
-    const title = isGroup ? "Exit group" : "Delete chat";
-    if (window.confirm(`Are you sure you want to ${title.toLowerCase()}?`)) {
-      setConversations((prev) => prev.filter((c) => c.id !== activeId));
-      setActiveId(null);
-      setMobileView("list");
-      setShowMenu(false);
-      addToast(`${title} completed.`, "info");
+    setShowMenu(false);
+    setConfirmAction({
+      type: isGroup ? "leave" : "leave",
+      conversationId: activeId,
+      title: isGroup ? "Exit group" : "Delete chat",
+      message: isGroup
+        ? "You will leave this group. Other members can still use it."
+        : "This chat will be removed from your list. You can start it again later.",
+    });
+  };
+
+  const runConfirmedChatAction = async () => {
+    if (!confirmAction?.conversationId) return;
+    setConfirmBusy(true);
+    const cid = confirmAction.conversationId;
+    try {
+      if (confirmAction.type === "clear") {
+        await clearConversation(cid);
+        setMessages([]);
+        await loadConversations();
+        if (activeId === cid) {
+          await loadMessages(cid);
+        }
+        addToast("Chat cleared for you.", "success");
+      } else {
+        await leaveConversation(cid);
+        setConversations((prev) => prev.filter((c) => c.id !== cid));
+        setActiveId(null);
+        setMessages([]);
+        setMobileView("list");
+        addToast(confirmAction.title === "Exit group" ? "You left the group." : "Chat removed.", "success");
+      }
+      setConfirmAction(null);
+    } catch (err) {
+      addToast(apiErrorMessage(err, "Could not complete this action."), "error");
+    } finally {
+      setConfirmBusy(false);
     }
   };
 
@@ -1662,13 +1695,30 @@ export default function WorkChat() {
           }`}
           aria-label="Conversations"
         >
-          <div className="work-chat-panel__search">
+          <div className="work-chat-panel__search flex gap-2 items-center">
             <SearchBar
               value={convSearch}
               onChange={setConvSearch}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  setAppliedConvSearch(convSearch.trim());
+                }
+              }}
+              onClear={() => setAppliedConvSearch("")}
               placeholder="Search conversations..."
               aria-label="Search conversations"
+              className="flex-1"
             />
+            <button
+              type="button"
+              className="work-chat-header-btn shrink-0"
+              aria-label="Search conversations"
+              title="Search"
+              onClick={() => setAppliedConvSearch(convSearch.trim())}
+            >
+              <Search className="h-5 w-5" />
+            </button>
           </div>
           {loading ? (
             <div className="p-6"><Loader /></div>
@@ -2544,6 +2594,25 @@ export default function WorkChat() {
           onUnlockSuccess={handleUnlockSuccess}
         />
       )}
+
+      <ConfirmDialog
+        open={Boolean(confirmAction)}
+        title={
+          confirmAction?.title ||
+          (confirmAction?.type === "clear" ? "Clear chat?" : "Leave conversation?")
+        }
+        message={
+          confirmAction?.message ||
+          (confirmAction?.type === "clear"
+            ? "Messages will be hidden for you only. Other participants are not affected."
+            : "Are you sure?")
+        }
+        confirmLabel={confirmAction?.type === "clear" ? "Clear chat" : "Confirm"}
+        danger={confirmAction?.type !== "clear"}
+        busy={confirmBusy}
+        onCancel={() => setConfirmAction(null)}
+        onConfirm={runConfirmedChatAction}
+      />
     </ListPageShell>
   );
 }

@@ -41,6 +41,7 @@ import {
   statusColor,
 } from "../../data/salesMasterData";
 import { runListExport } from "../../utils/listExport";
+import { applyDraftListFilters, clearListFilters } from "../../utils/listFilterState";
 
 const LEAD_EXPORT_COLUMNS = [
   { key: "lead_id", label: "Lead ID" },
@@ -76,7 +77,21 @@ export default function Leads() {
   const [summaryState, setSummaryState] = useState(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const openPipelineOnly = searchParams.get("open") === "1";
-  const [filters, setFilters] = useState(defaultFilters);
+  const followupDueOnly = searchParams.get("followup") === "due";
+  const leadQueryParams = useMemo(() => {
+    const params = {};
+    if (openPipelineOnly) params.open_only = true;
+    if (followupDueOnly) params.followup_due = true;
+    const createdFrom = searchParams.get("created_from");
+    const createdTo = searchParams.get("created_to");
+    if (createdFrom && createdTo) {
+      params.from_date = createdFrom;
+      params.to_date = createdTo;
+    }
+    return params;
+  }, [openPipelineOnly, followupDueOnly, searchParams]);
+  const [draftFilters, setDraftFilters] = useState(defaultFilters);
+  const [appliedFilters, setAppliedFilters] = useState(defaultFilters);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [tableSearch, setTableSearch] = useState("");
   const [view, setView] = useState("table");
@@ -92,6 +107,16 @@ export default function Leads() {
   const canEditLeads = isAdmin || canAction("sales", "update") || can("sales");
   const canDeleteLeads = isAdmin || canAction("sales", "delete");
   const canCreateQuotation = isAdmin || canAction("sales", "create") || can("sales");
+
+  useEffect(() => {
+    const status = searchParams.get("status");
+    if (status) {
+      const next = { ...defaultFilters, status };
+      setDraftFilters(next);
+      setAppliedFilters(next);
+      setShowAdvanced(true);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (searchParams.get("create") !== "1") return;
@@ -116,7 +141,10 @@ export default function Leads() {
   const load = useCallback(async (isRefresh = false) => {
     if (!isRefresh) setLoading(true);
     try {
-      const [summaryRes, listRes] = await Promise.allSettled([getLeadSummary(), getLeadsEnriched()]);
+      const [summaryRes, listRes] = await Promise.allSettled([
+        getLeadSummary(),
+        getLeadsEnriched(leadQueryParams),
+      ]);
 
       const rawRows = listRes.status === "fulfilled" && Array.isArray(listRes.value?.data)
         ? listRes.value.data
@@ -144,7 +172,7 @@ export default function Leads() {
     } finally {
       setLoading(false);
     }
-  }, [addToast]);
+  }, [addToast, leadQueryParams]);
 
   usePageRefresh(() => load(true));
 
@@ -173,19 +201,19 @@ export default function Leads() {
   }, [rows, summaryState]);
 
   const hasAdvancedFilters = useMemo(
-    () => Object.values(filters).some((v) => Boolean(v)),
-    [filters]
+    () => Object.values(appliedFilters).some((v) => Boolean(v)),
+    [appliedFilters]
   );
 
   const filtered = useMemo(() => {
     let list = rows;
-    if (openPipelineOnly) {
+    if (openPipelineOnly && !leadQueryParams.open_only) {
       list = list.filter((r) => {
         const s = String(r.status || "").toLowerCase();
         return s !== "converted" && s !== "lost" && s !== "won";
       });
     }
-    Object.entries(filters).forEach(([k, v]) => {
+    Object.entries(appliedFilters).forEach(([k, v]) => {
       if (!v) return;
       list = list.filter((r) => String(r[k] || "").toLowerCase().includes(v.toLowerCase()));
     });
@@ -193,7 +221,7 @@ export default function Leads() {
       list = list.filter((r) => leadMatchesSearch(r, tableSearch));
     }
     return list;
-  }, [rows, filters, tableSearch, openPipelineOnly]);
+  }, [rows, appliedFilters, tableSearch, openPipelineOnly, leadQueryParams]);
 
   const handleStatus = async (lead, status) => {
     if (typeof lead.id === "number") {
@@ -389,11 +417,62 @@ export default function Leads() {
       />
 
       <div className="ui-grid-kpi">
-        <KpiCard label="Total Leads" value={summary.total_leads} icon={Users} tone="teal" onClick={() => setFilters((f) => ({ ...f, sales_executive: "", source: "", industry: "", region: "" }))} title="View all leads" />
-        <KpiCard label="New Leads" value={summary.new_leads} icon={UserPlus} tone="teal" onClick={() => setFilters((f) => ({ ...f, source: "" }))} title="View new leads" />
-        <KpiCard label="Contacted" value={summary.contacted_leads} icon={PhoneCall} tone="info" onClick={() => setFilters((f) => ({ ...f, source: "" }))} title="View contacted leads" />
-        <KpiCard label="Qualified" value={summary.qualified_leads} icon={Target} tone="neutral" onClick={() => setFilters((f) => ({ ...f, source: "" }))} title="View qualified leads" />
-        <KpiCard label="Lost Leads" value={summary.lost_leads} icon={XCircle} tone="danger" onClick={() => setFilters((f) => ({ ...f, source: "" }))} title="View lost leads" />
+        <KpiCard
+          label="Total Leads"
+          value={summary.total_leads}
+          icon={Users}
+          tone="teal"
+          onClick={() => clearListFilters(defaultFilters, setDraftFilters, setAppliedFilters)}
+          title="View all leads"
+        />
+        <KpiCard
+          label="New Leads"
+          value={summary.new_leads}
+          icon={UserPlus}
+          tone="teal"
+          onClick={() => {
+            const next = { ...defaultFilters, status: "new" };
+            setDraftFilters(next);
+            setAppliedFilters(next);
+          }}
+          title="View new leads"
+        />
+        <KpiCard
+          label="Contacted"
+          value={summary.contacted_leads}
+          icon={PhoneCall}
+          tone="info"
+          onClick={() => {
+            const next = { ...defaultFilters, status: "contacted" };
+            setDraftFilters(next);
+            setAppliedFilters(next);
+          }}
+          title="View contacted leads"
+        />
+        <KpiCard
+          label="Qualified"
+          value={summary.qualified_leads}
+          icon={Target}
+          tone="neutral"
+          onClick={() => {
+            const next = { ...defaultFilters, status: "qualified" };
+            setDraftFilters(next);
+            setAppliedFilters(next);
+          }}
+          title="View qualified leads"
+        />
+        <KpiCard
+          label="Lost Leads"
+          value={summary.lost_leads}
+          icon={XCircle}
+          tone="danger"
+          onClick={() => {
+            const next = { ...defaultFilters, status: "lost" };
+            setDraftFilters(next);
+            setAppliedFilters(next);
+          }}
+          title="View lost leads"
+        />
         <KpiCard label="Conversion Rate" value={summary.conversion_rate} suffix="%" icon={TrendingUp} tone="success" title="Overall conversion rate" />
       </div>
 
@@ -466,14 +545,14 @@ export default function Leads() {
           {showAdvanced && (
             <div className="mb-4 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
               <input
-                value={filters.sales_executive}
-                onChange={(e) => setFilters({ ...filters, sales_executive: e.target.value })}
+                value={draftFilters.sales_executive}
+                onChange={(e) => setDraftFilters({ ...draftFilters, sales_executive: e.target.value })}
                 placeholder="Sales Executive"
                 className="ui-input"
               />
               <select
-                value={filters.source}
-                onChange={(e) => setFilters({ ...filters, source: e.target.value })}
+                value={draftFilters.source}
+                onChange={(e) => setDraftFilters({ ...draftFilters, source: e.target.value })}
                 className="ui-select"
               >
                 <option value="">All Sources</option>
@@ -484,8 +563,8 @@ export default function Leads() {
                 ))}
               </select>
               <select
-                value={filters.industry}
-                onChange={(e) => setFilters({ ...filters, industry: e.target.value })}
+                value={draftFilters.industry}
+                onChange={(e) => setDraftFilters({ ...draftFilters, industry: e.target.value })}
                 className="ui-select"
               >
                 <option value="">All Industries</option>
@@ -496,8 +575,8 @@ export default function Leads() {
                 ))}
               </select>
               <select
-                value={filters.region}
-                onChange={(e) => setFilters({ ...filters, region: e.target.value })}
+                value={draftFilters.region}
+                onChange={(e) => setDraftFilters({ ...draftFilters, region: e.target.value })}
                 className="ui-select"
               >
                 <option value="">All Regions</option>
@@ -508,8 +587,8 @@ export default function Leads() {
                 ))}
               </select>
               <select
-                value={filters.status}
-                onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+                value={draftFilters.status}
+                onChange={(e) => setDraftFilters({ ...draftFilters, status: e.target.value })}
                 className="ui-select"
               >
                 <option value="">All Status</option>
@@ -520,8 +599,8 @@ export default function Leads() {
                 ))}
               </select>
               <select
-                value={filters.priority}
-                onChange={(e) => setFilters({ ...filters, priority: e.target.value })}
+                value={draftFilters.priority}
+                onChange={(e) => setDraftFilters({ ...draftFilters, priority: e.target.value })}
                 className="ui-select"
               >
                 <option value="">All Priority</option>
@@ -531,6 +610,24 @@ export default function Leads() {
                   </option>
                 ))}
               </select>
+              <div className="col-span-full flex flex-wrap justify-end gap-2 border-t border-[var(--color-border-soft)] pt-3">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => clearListFilters(defaultFilters, setDraftFilters, setAppliedFilters)}
+                >
+                  Clear Filters
+                </Button>
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="sm"
+                  onClick={() => applyDraftListFilters(draftFilters, setAppliedFilters)}
+                >
+                  Apply Filters
+                </Button>
+              </div>
             </div>
           )}
 
@@ -576,20 +673,20 @@ export default function Leads() {
 
                         <div className={`grid grid-cols-2 gap-2 text-xs border-t border-[var(--color-border-soft)] pt-2 ${salesListTextSecondary}`}>
                           <div>
-                            <span className={`${salesListTextMuted} block text-[10px] uppercase font-semibold`}>Contact</span>
+                            <span className={`${salesListTextMuted} block text-[11px] font-medium`}>Contact</span>
                             <span className="font-medium truncate block">{r.contact || "—"}</span>
                           </div>
                           <div>
-                            <span className={`${salesListTextMuted} block text-[10px] uppercase font-semibold`}>Sales Exec</span>
+                            <span className={`${salesListTextMuted} block text-[11px] font-medium`}>Sales Exec</span>
                             <span className="font-medium truncate block">{r.sales_executive || "—"}</span>
                           </div>
                           <div>
-                            <span className={`${salesListTextMuted} block text-[10px] uppercase font-semibold`}>Next Follow-up</span>
+                            <span className={`${salesListTextMuted} block text-[11px] font-medium`}>Next Follow-up</span>
                             <span className="font-medium">{String(r.next_followup || "").slice(0, 10) || "—"}</span>
                           </div>
                           {(r.opportunity_value || r.estimated_value) && (
                             <div>
-                              <span className={`${salesListTextMuted} block text-[10px] uppercase font-semibold`}>Value</span>
+                              <span className={`${salesListTextMuted} block text-[11px] font-medium`}>Value</span>
                               <span className="font-bold text-[var(--color-success)]">{formatInr(r.opportunity_value || r.estimated_value)}</span>
                             </div>
                           )}
@@ -629,7 +726,7 @@ export default function Leads() {
                   className={`min-w-[260px] max-w-[280px] shrink-0 snap-center rounded-lg border p-3 sm:min-w-0 sm:max-w-none ${col.color}`}
                 >
                   <div className="flex items-center justify-between mb-2">
-                    <p className={`text-xs font-bold uppercase tracking-wider ${salesListTextPrimary}`}>{col.label}</p>
+                    <p className={`text-xs font-semibold ${salesListTextPrimary}`}>{col.label}</p>
                     <span className={`rounded-full bg-[var(--color-surface)]/80 px-2 py-0.5 text-[10px] font-bold ${salesListTextPrimary}`}>
                       {
                         filtered.filter(

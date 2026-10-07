@@ -55,10 +55,11 @@ import {
   listDocumentVersions,
   listDocuments,
   uploadDocumentVersion,
+  updateDocumentStatus,
 } from "../../api/documentsV1Api";
 import { getApiBaseURL } from "../../api/axiosConfig";
 import { apiErrorMessage, classifyApiError } from "../../utils/apiError";
-import { isAdmin } from "../../config/permissions";
+import { isAdmin, userCanAction } from "../../config/permissions";
 import { exportToExcel, exportToPdf } from "../../utils/exportUtils";
 import { formatDocDate, formatFileSize } from "../../utils/documentUtils";
 import "../../styles/documents-library.css";
@@ -199,9 +200,12 @@ export default function DocumentsLibrary({ initialDocType = null, title, subtitl
   const [previewMeta, setPreviewMeta] = useState(null);
   const [busyId, setBusyId] = useState(null);
   const [openMenu, setOpenMenu] = useState(null);
+  const [statusEditDoc, setStatusEditDoc] = useState(null);
+  const [statusEditValue, setStatusEditValue] = useState("draft");
 
   const canHr = userCanHr(user);
   const canDelete = userCanDelete(user);
+  const canUpdateStatus = isAdmin(user) || userCanAction(user, "documents", "update");
   const categoryOptions = CATEGORIES.filter((c) => c.value !== "hr" || canHr);
 
   const setFilters = useCallback(
@@ -454,6 +458,21 @@ export default function DocumentsLibrary({ initialDocType = null, title, subtitl
       setVersionModal({ doc, versions: res.data || [] });
     } catch (e) {
       addToast(apiErrorMessage(e), "error");
+    }
+  };
+
+  const handleStatusSave = async () => {
+    if (!statusEditDoc?.id) return;
+    setBusyId(statusEditDoc.id);
+    try {
+      await updateDocumentStatus(statusEditDoc.id, { status: statusEditValue });
+      addToast("Document status updated", "success");
+      setStatusEditDoc(null);
+      await load();
+    } catch (e) {
+      addToast(apiErrorMessage(e), "error");
+    } finally {
+      setBusyId(null);
     }
   };
 
@@ -744,7 +763,16 @@ export default function DocumentsLibrary({ initialDocType = null, title, subtitl
                               setOpenMenu={setOpenMenu}
                               viewLabel="Preview"
                               onView={() => handlePreview(doc)}
-                              showEdit={false}
+                              showEdit={canUpdateStatus}
+                              onEdit={
+                                canUpdateStatus
+                                  ? () => {
+                                      setStatusEditDoc(doc);
+                                      setStatusEditValue(doc.status || "draft");
+                                    }
+                                  : undefined
+                              }
+                              editLabel="Update status"
                               extraItems={[
                                 {
                                   label: "Download",
@@ -872,6 +900,32 @@ export default function DocumentsLibrary({ initialDocType = null, title, subtitl
         </div>
       )}
 
+      {statusEditDoc && (
+        <div className="ui-modal-backdrop">
+          <div className="ui-modal max-w-md space-y-4">
+            <h2 className="font-bold">Update document status</h2>
+            <p className="text-sm text-[var(--color-text-muted)]">{statusEditDoc.name}</p>
+            <select
+              className="ui-select w-full"
+              value={statusEditValue}
+              onChange={(e) => setStatusEditValue(e.target.value)}
+            >
+              {STATUS_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="secondary" onClick={() => setStatusEditDoc(null)}>
+                Cancel
+              </Button>
+              <Button type="button" variant="primary" onClick={handleStatusSave} disabled={busyId === statusEditDoc.id}>
+                Save
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {versionModal && (
         <div className="ui-modal-backdrop">
           <div className="ui-modal max-w-lg space-y-3">
@@ -896,7 +950,12 @@ export default function DocumentsLibrary({ initialDocType = null, title, subtitl
                     <p className="text-xs text-[var(--color-text-muted)]">{v.uploaded_by_name} · {formatDocDate(v.created_at)}</p>
                     {v.upload_note && <p className="text-xs">{v.upload_note}</p>}
                   </div>
-                  <Button type="button" size="sm" variant="secondary" onClick={() => handleDownload(versionModal.doc, v.version_number)}>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => handleDownload(versionModal.doc, Number(v.version_number))}
+                  >
                     Download
                   </Button>
                 </li>

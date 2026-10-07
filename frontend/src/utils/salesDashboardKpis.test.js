@@ -26,6 +26,12 @@ describe("salesDashboardKpis", () => {
       "/sales/orders?status=pending"
     );
     expect(resolveSalesDashboardKpiLink(salesManager, "openLeads")).toBe("/sales/leads?open=1");
+    expect(
+      resolveSalesDashboardKpiLink(salesManager, "openLeads", {
+        dateFrom: "2026-09-01",
+        dateTo: "2026-09-23",
+      })
+    ).toBe("/sales/leads?open=1&created_from=2026-09-01&created_to=2026-09-23");
     expect(resolveSalesDashboardKpiLink(salesManager, "conversionRate")).toBe("/sales/reports/sales");
     expect(
       resolveSalesDashboardKpiLink(salesManager, "monthlyRevenue", {

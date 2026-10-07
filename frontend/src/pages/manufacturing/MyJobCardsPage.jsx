@@ -69,7 +69,11 @@ function buildQueueSearchParams(filters) {
   const jc = String(filters?.search || "").trim();
   const cust = String(filters?.customer || "").trim();
   const so = String(filters?.salesOrderNo || "").trim();
-  if (jc) params.job_card_no = jc;
+  if (jc) {
+    if (/^SO-/i.test(jc)) params.sales_order_no = jc;
+    else if (/^JC-/i.test(jc)) params.job_card_no = jc;
+    else params.customer_name = jc;
+  }
   if (cust) {
     if (/^\d+$/.test(cust)) params.customer_id = Number(cust);
     else params.customer_name = cust;

@@ -68,6 +68,7 @@ function rowActionItems(row, { canWrite, isPM, onView, setEditing, setDeleting }
   const items = [
     {
       label: "View",
+      icon: <Eye className="h-4 w-4" />,
       onClick: () => onView(row),
     },
   ];
@@ -201,11 +202,19 @@ export default function ProductsMaster() {
   }, [products]);
 
   const handleExport = (format) => {
+    const exportCols = PRODUCT_EXPORT_COLUMNS.map((c) => {
+      if (!String(c.key).includes("price") && c.key !== "total_landed_cost") return c;
+      return {
+        ...c,
+        pdfValue: (row) => formatProductInr(row[c.key]),
+      };
+    });
     runListExport(format, {
       data: filtered,
-      columns: PRODUCT_EXPORT_COLUMNS,
+      columns: exportCols,
       filename: "products",
       title: "Products",
+      pdfOptions: { landscape: true },
     });
     addToast(format === "pdf" ? "Exported to PDF" : "Exported to Excel", "success");
   };

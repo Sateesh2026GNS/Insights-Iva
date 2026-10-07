@@ -79,6 +79,101 @@
   background: #f1f3f4;
 }
 
+.meetings-cal__btn.is-active {
+  background: var(--gcal-blue-soft);
+  border-color: var(--gcal-blue);
+  color: var(--gcal-blue);
+}
+
+.meetings-cal__toolbar-search {
+  min-width: min(280px, 42vw);
+  max-width: 360px;
+}
+
+.meetings-cal__toolbar-search-field {
+  width: 100%;
+}
+
+.meetings-cal__settings-wrap {
+  position: relative;
+}
+
+.meetings-cal__settings-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 40;
+  min-width: 240px;
+  max-width: min(320px, 90vw);
+  padding: 8px 0;
+  border-radius: 8px;
+  background: #fff;
+  border: 1px solid var(--gcal-border);
+  box-shadow:
+    0 1px 2px rgba(60, 64, 67, 0.3),
+    0 2px 6px 2px rgba(60, 64, 67, 0.15);
+}
+
+.meetings-cal__settings-item {
+  display: block;
+  width: 100%;
+  border: none;
+  background: transparent;
+  padding: 10px 16px;
+  text-align: left;
+  font-size: 14px;
+  font-family: inherit;
+  color: var(--gcal-text);
+  cursor: pointer;
+}
+
+.meetings-cal__settings-item:hover:not(:disabled) {
+  background: #f1f3f4;
+}
+
+.meetings-cal__settings-item--link {
+  text-decoration: none;
+}
+
+.meetings-cal__settings-item--danger {
+  color: #c5221f;
+}
+
+.meetings-cal__settings-heading {
+  margin: 8px 16px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--gcal-muted);
+}
+
+.meetings-cal__settings-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.meetings-cal__body--relative {
+  position: relative;
+}
+
+.meetings-cal__loading-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.55);
+  font-size: 14px;
+  color: var(--gcal-muted);
+}
+
 .meetings-cal__btn--today {
   min-width: 72px;
   justify-content: center;
@@ -601,6 +696,16 @@
 }
 .dark .meetings-cal__btn:hover {
   background: var(--color-surface-hover);
+}
+.dark .meetings-cal__settings-menu {
+  background: var(--gcal-surface);
+  border-color: var(--gcal-border);
+}
+.dark .meetings-cal__settings-item:hover:not(:disabled) {
+  background: var(--color-surface-hover);
+}
+.dark .meetings-cal__loading-overlay {
+  background: rgba(26, 29, 36, 0.65);
 }
 .dark .meetings-cal__select {
   background: var(--color-surface-muted);

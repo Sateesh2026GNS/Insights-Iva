@@ -79,8 +79,12 @@ export const getLeadSummary = () => api.get("/sales/leads/summary");
 export const getLeadsEnriched = (params = {}) =>
   api.get("/sales/leads/enriched", {
     params: {
-      ...(params.from_date ? { followup_from: params.from_date } : {}),
-      ...(params.to_date ? { followup_to: params.to_date } : {}),
+      ...(params.from_date ? { from_date: params.from_date } : {}),
+      ...(params.to_date ? { to_date: params.to_date } : {}),
+      ...(params.followup_from ? { followup_from: params.followup_from } : {}),
+      ...(params.followup_to ? { followup_to: params.followup_to } : {}),
+      ...(params.open_only ? { open_only: true } : {}),
+      ...(params.followup_due ? { followup_due: true } : {}),
     },
   });
 export const createLead = (payload) => api.post("/sales/leads", payload);

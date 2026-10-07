@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 
 import Loader from "../../components/common/Loader";
+import { canConvertQuotationToSalesOrder } from "../../utils/quotationWorkflow";
 import PageHeader from "../../components/common/PageHeader";
 import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
 import ConfirmationDialog from "../../components/common/ConfirmationDialog";
@@ -202,6 +203,10 @@ export default function Quotations() {
   useEffect(() => {
     const kpi = searchParams.get("kpi");
     if (kpi === "pending") setKpiFilter("pending");
+    const from = searchParams.get("from");
+    const to = searchParams.get("to");
+    if (from) setDateFrom(from);
+    if (to) setDateTo(to);
   }, [searchParams]);
 
   useEffect(() => {
@@ -518,13 +523,18 @@ export default function Quotations() {
                         icon: <Edit2 className="h-4 w-4" />,
                         onClick: () => navigate(`/sales/quotations/${r.id}/edit`),
                       },
-                      !["accepted", "approved", "converted", "cancelled", "canceled"].includes((r.status || "").toLowerCase()) && !r.converted_to_so
+                      canConvertQuotationToSalesOrder(r)
                         ? {
                             label: "Convert to Sales Order",
                             icon: <CheckCircle className="h-4 w-4" />,
                             onClick: () => setSelected(r),
                           }
-                        : null,
+                        : r.converted_to_so && r.converted_sales_order_number
+                          ? {
+                              label: `Converted — ${r.converted_sales_order_number}`,
+                              disabled: true,
+                            }
+                          : null,
                       (r.status || "").toLowerCase() === "draft"
                         ? {
                             label: "Mark as Sent",
@@ -568,11 +578,11 @@ export default function Quotations() {
 
               <div className="flex items-center justify-between border-t border-[var(--color-border-soft)] pt-2 text-xs">
                 <div>
-                  <span className={`${salesListTextMuted} text-[10px] block uppercase font-semibold`}>Date</span>
+                  <span className={`${salesListTextMuted} text-[11px] block font-medium`}>Date</span>
                   <span className={`${salesListTextSecondary} font-medium`}>{fmtDate(r.quote_date)}</span>
                 </div>
                 <div className="text-right">
-                  <span className={`${salesListTextMuted} text-[10px] block uppercase font-semibold`}>Amount</span>
+                  <span className={`${salesListTextMuted} text-[11px] block font-medium`}>Amount</span>
                   <span className={`text-sm font-bold tabular-nums ${salesListTextPrimary}`}>{formatQuotationInr(r.amount)}</span>
                 </div>
               </div>
@@ -669,13 +679,18 @@ export default function Quotations() {
                               onClick: () => navigate(`/sales/quotations/${r.id}/edit`),
                             },
                             
-                            !["accepted", "approved", "converted", "cancelled", "canceled"].includes((r.status || "").toLowerCase()) && !r.converted_to_so
+                            canConvertQuotationToSalesOrder(r)
                               ? {
                                   label: "Convert to Sales Order",
                                   icon: <CheckCircle className="h-4 w-4" />,
                                   onClick: () => setSelected(r),
                                 }
-                              : null,
+                              : r.converted_to_so && r.converted_sales_order_number
+                                ? {
+                                    label: `Converted — ${r.converted_sales_order_number}`,
+                                    disabled: true,
+                                  }
+                                : null,
                             (r.status || "").toLowerCase() === "draft"
                               ? {
                                   label: "Mark as Sent",

@@ -25,6 +25,7 @@ export default function AddExecutiveNameModal({ open, onClose, onSuccess }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (saving) return;
     const trimmed = name.trim();
     if (!trimmed) {
       setError("Name is required.");

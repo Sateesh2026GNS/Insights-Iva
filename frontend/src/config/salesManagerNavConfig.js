@@ -41,7 +41,7 @@ export const SALES_MANAGER_NAV_ITEMS = [
       { key: "quotations", label: "Quotations", to: "/sales/quotations", icon: FileText, module: "sales" },
       { key: "orders", label: "Sales Orders", to: "/sales/orders", icon: ClipboardList, module: "sales" },
       { key: "customers", label: "Customers", to: "/sales/customers", icon: Users, module: "sales" },
-      { key: "followUps", label: "Follow-ups", to: "/sales/leads", icon: CalendarDays, module: "sales" },
+      { key: "followUps", label: "Follow-ups", to: "/sales/leads?followup=due", icon: CalendarDays, module: "sales" },
     ],
   },
   {
@@ -67,7 +67,7 @@ export const SALES_MANAGER_NAV_ITEMS = [
     module: "alerts",
     children: [
       { key: "allAlerts", label: "All Alerts", to: "/alerts", icon: Bell, module: "alerts", end: true },
-      { key: "followUpsDue", label: "Follow-ups Due", to: "/sales/leads", icon: Target, module: "sales" },
+      { key: "followUpsDue", label: "Follow-ups Due", to: "/sales/leads?followup=due", icon: Target, module: "sales" },
       {
         key: "orderDelays",
         label: "Order Delays",

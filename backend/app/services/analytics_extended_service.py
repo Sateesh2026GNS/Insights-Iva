@@ -438,24 +438,32 @@ def get_sales_analytics(db: Session, tenant_id: int, year=None) -> SalesAnalytic
     y  = year or date.today().year
     ms = _months_short()
 
-    # Core totals from SalesHub (real user data)
-    revenue, orders, pending, customers, top_cust_raw = 0, 0, 0, 0, []
+    from app.services.sales_extended_service import get_dispatch_summary, get_sales_hub, get_so_summary
+
+    so = get_so_summary(db, tenant_id)
+    revenue = float(so.revenue or 0)
+    orders = int(so.total_orders or 0)
+    pending = int(so.pending or 0)
+    customers = int(
+        db.scalar(select(func.count(Customer.id)).where(Customer.tenant_id == tenant_id)) or 0
+    )
+    top_cust_raw: list = []
     dispatch_perf = 0.0
     try:
-        from app.services.sales_extended_service import get_dispatch_summary, get_sales_hub, get_so_summary
         hub = get_sales_hub(db, tenant_id)
-        so  = get_so_summary(db, tenant_id)
-        revenue      = hub.monthly_revenue or so.revenue
-        orders       = hub.total_orders    or so.total_orders
-        pending      = hub.pending_orders  or so.pending
-        customers    = hub.new_customers
+        if hub.new_customers:
+            customers = int(hub.new_customers)
         top_cust_raw = hub.top_customers or []
-        dsum         = get_dispatch_summary(db, tenant_id)
-        shipped      = dsum.in_transit + dsum.delivered
-        total_d      = dsum.ready_to_dispatch + dsum.packed + shipped
+        if hub.total_orders:
+            orders = int(hub.total_orders)
+        if hub.pending_orders is not None:
+            pending = int(hub.pending_orders)
+        dsum = get_dispatch_summary(db, tenant_id)
+        shipped = dsum.in_transit + dsum.delivered
+        total_d = dsum.ready_to_dispatch + dsum.packed + shipped
         dispatch_perf = round(shipped / total_d * 100, 1) if total_d else 0.0
     except Exception:
-        pass
+        logger.exception("get_sales_analytics hub metrics failed for tenant %s", tenant_id)
 
     aov = round(revenue / max(1, orders)) if orders else 0
 

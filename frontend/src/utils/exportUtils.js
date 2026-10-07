@@ -26,7 +26,14 @@ export async function exportToExcel(data, columns, filename = "report") {
 /**
  * Export data to PDF (dynamically loads jspdf only when user clicks export)
  */
-export async function exportToPdf(data, columns, title = "Report", filename = "report") {
+function formatPdfCell(row, col) {
+  const val = row[col.key];
+  if (col.pdfValue && typeof col.pdfValue === "function") return String(col.pdfValue(row) ?? "");
+  if (col.render && typeof col.render === "function") return String(col.render(row) ?? "");
+  return String(val ?? "");
+}
+
+export async function exportToPdf(data, columns, title = "Report", filename = "report", options = {}) {
   const [{ jsPDF }, autoTableModule] = await Promise.all([
     import("jspdf"),
     import("jspdf-autotable"),
@@ -34,27 +41,47 @@ export async function exportToPdf(data, columns, title = "Report", filename = "r
   const autoTable = autoTableModule.default || autoTableModule;
 
   const rowsData = Array.isArray(data) ? data : [];
-  const doc = new jsPDF();
-  doc.setFontSize(16);
-  doc.text(title, 14, 20);
-  doc.setFontSize(10);
-  doc.text(`Exported: ${new Date().toLocaleString()}`, 14, 28);
+  const colCount = columns.length;
+  const landscape = options.landscape ?? colCount > 7;
+  const doc = new jsPDF({
+    orientation: landscape ? "landscape" : "portrait",
+    unit: "mm",
+    format: "a4",
+  });
+  const marginX = 10;
+  doc.setFontSize(14);
+  doc.text(title, marginX, 16);
+  doc.setFontSize(9);
+  doc.text(`Exported: ${new Date().toLocaleString("en-IN")}`, marginX, 22);
 
   const headers = columns.map((c) => (typeof c.label === "string" ? c.label : c.key));
-  const rows = rowsData.map((row) =>
-    columns.map((c) => {
-      const val = row[c.key];
-      if (c.render && typeof c.render === "function") return String(c.render(row) ?? "");
-      return String(val ?? "");
-    })
-  );
+  const rows = rowsData.map((row) => columns.map((c) => formatPdfCell(row, c)));
+
+  const wideKeys = new Set(["name", "description", "product_name", "customer_name"]);
+  const columnStyles = {};
+  columns.forEach((c, i) => {
+    if (wideKeys.has(c.key)) columnStyles[i] = { cellWidth: landscape ? 42 : 36 };
+    else if (String(c.key).includes("price") || String(c.key).includes("total") || c.key === "amount") {
+      columnStyles[i] = { cellWidth: 22, halign: "right" };
+    }
+  });
 
   autoTable(doc, {
     head: [headers],
     body: rows,
-    startY: 34,
-    styles: { fontSize: 8 },
-    headStyles: { fillColor: [45, 42, 74] },
+    startY: 28,
+    margin: { left: marginX, right: marginX },
+    styles: {
+      fontSize: landscape && colCount > 10 ? 7 : 8,
+      cellPadding: 2,
+      overflow: "linebreak",
+      valign: "top",
+    },
+    headStyles: { fillColor: [45, 42, 74], fontSize: 8, textColor: 255 },
+    columnStyles,
+    showHead: "everyPage",
+    rowPageBreak: "auto",
+    tableWidth: "auto",
   });
 
   doc.save(`${filename}_${new Date().toISOString().slice(0, 10)}.pdf`);

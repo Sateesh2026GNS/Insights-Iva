@@ -142,14 +142,14 @@ export function buildCustomerPayload(form, { tenantId, party = null }) {
     ...(form.custom_fields || []).map((f) => ({ label: f.label, value: f.value })),
     { label: "_shipping_address", value: JSON.stringify(form.shipping) },
     { label: "_contact_persons", value: JSON.stringify(form.contact_persons) },
-    { label: "_remarks", value: form.remarks || "" },
-    { label: "_customer_type", value: form.customer_type },
-    { label: "_language", value: form.language },
+    ...(form.remarks?.trim() ? [{ label: "_remarks", value: form.remarks.trim() }] : []),
+    { label: "_customer_type", value: form.customer_type || "business" },
+    { label: "_language", value: form.language || "en" },
     { label: "_portal_enabled", value: form.other.portal_enabled ? "true" : "false" },
-  ];
+  ].filter((f) => String(f.label || "").trim() && String(f.value ?? "").trim());
 
-  if (form.other.pan) metaFields.push({ label: "PAN", value: form.other.pan });
-  if (form.other.website) metaFields.push({ label: "Website", value: form.other.website });
+  if (form.other.pan?.trim()) metaFields.push({ label: "PAN", value: form.other.pan.trim() });
+  if (form.other.website?.trim()) metaFields.push({ label: "Website", value: form.other.website.trim() });
 
   return {
     tenant_id: tenantId,
