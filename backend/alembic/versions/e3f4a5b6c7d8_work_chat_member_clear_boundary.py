@@ -1,6 +1,6 @@
 """Work chat per-member clear boundary.
 
-Revision ID: e1f2a3b4c5d6
+Revision ID: e3f4a5b6c7d8
 Revises: d0e1f2a3b4c5
 """
 
@@ -9,7 +9,7 @@ from typing import Sequence, Union
 import sqlalchemy as sa
 from alembic import op
 
-revision: str = "e1f2a3b4c5d6"
+revision: str = "e3f4a5b6c7d8"
 down_revision: Union[str, Sequence[str], None] = "d0e1f2a3b4c5"
 branch_labels = None
 depends_on = None
