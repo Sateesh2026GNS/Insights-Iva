@@ -54,33 +54,13 @@ export function getApiBaseURL() {
       // If VITE_API_BASE_URL points to localhost but the site is loaded from a global/remote host,
       // override localhost so the browser doesn't attempt to connect to 127.0.0.1 on the remote visitor's device.
       if (!isLocalhost && (raw.includes("localhost") || raw.includes("127.0.0.1"))) {
-        if (
-          hostname.includes("web.app") ||
-          hostname.includes("firebaseapp.com") ||
-          hostname.includes("insightsiva.com") ||
-          hostname.includes("vercel.app") ||
-          hostname.includes("netlify.app") ||
-          hostname.includes("onrender.com")
-        ) {
-          return "https://insights-iva-api.onrender.com";
-        }
-        return ""; // Same-origin relative path for proxied hostings
+        return "https://insights-iva-api.onrender.com";
       }
       return raw;
     }
 
     if (!isLocalhost) {
-      if (
-        hostname.includes("web.app") ||
-        hostname.includes("firebaseapp.com") ||
-        hostname.includes("insightsiva.com") ||
-        hostname.includes("vercel.app") ||
-        hostname.includes("netlify.app") ||
-        (hostname.includes("onrender.com") && !hostname.includes("insights-iva-api"))
-      ) {
-        return "https://insights-iva-api.onrender.com";
-      }
-      return "";
+      return "https://insights-iva-api.onrender.com";
     }
   }
 

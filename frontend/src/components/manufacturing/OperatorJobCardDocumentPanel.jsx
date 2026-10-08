@@ -184,7 +184,7 @@ export default function OperatorJobCardDocumentPanel({
     const w = window.open("", "_blank", "noopener,noreferrer");
     if (!w) return;
     w.document.write(`<!DOCTYPE html><html><head><title>Operator Job Card</title>
-      <link rel="stylesheet" href="${window.location.origin}/assets/index.css" />
+      ${Array.from(document.querySelectorAll('link[rel="stylesheet"], style')).map((node) => node.outerHTML).join('\n')}
       <style>body{margin:0;padding:12px;} @page{size:landscape;margin:10mm;}</style>
       </head><body>${el.outerHTML}</body></html>`);
     w.document.close();

@@ -86,7 +86,7 @@ export default function ReceiptDetailModal({ receipt, onClose, onDelete }) {
             table { width: 100%; border-collapse: collapse; }
             th, td { border-color: #000 !important; }
           </style>
-          <link rel="stylesheet" href="${window.location.origin}/src/index.css" />
+          ${Array.from(document.querySelectorAll('link[rel="stylesheet"], style')).map((node) => node.outerHTML).join('\n')}
         </head>
         <body>
           ${docEl.outerHTML}
