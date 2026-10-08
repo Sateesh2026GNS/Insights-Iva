@@ -1548,15 +1548,39 @@ def list_quotations(
     if status:
         stmt = stmt.where(Quotation.status == status)
     stmt = stmt.order_by(Quotation.quote_date.desc())
-    return list(db.scalars(stmt).all())
+    quotes = list(db.scalars(stmt).all())
+    _attach_quotation_conversion_flags(db, tenant_id, quotes)
+    return quotes
+
+
+def _attach_quotation_conversion_flags(
+    db: Session, tenant_id: int, quotes: list[Quotation]
+) -> None:
+    """Expose whether an SO already exists without changing quotation status."""
+    if not quotes:
+        return
+    references = {quote.quote_number for quote in quotes if quote.quote_number}
+    converted_references = set(
+        db.scalars(
+            select(SalesOrder.reference_number).where(
+                SalesOrder.tenant_id == tenant_id,
+                SalesOrder.reference_number.in_(references),
+            )
+        ).all()
+    ) if references else set()
+    for quote in quotes:
+        quote.converted_to_so = quote.quote_number in converted_references
 
 
 def get_quotation(db: Session, tenant_id: int, quote_id: int) -> Quotation | None:
-    return db.scalars(
+    quote = db.scalars(
         select(Quotation)
         .options(joinedload(Quotation.customer), joinedload(Quotation.lead))
         .where(Quotation.id == quote_id, Quotation.tenant_id == tenant_id)
     ).first()
+    if quote:
+        _attach_quotation_conversion_flags(db, tenant_id, [quote])
+    return quote
 
 
 def update_quotation(

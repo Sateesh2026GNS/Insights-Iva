@@ -704,6 +704,7 @@ class QuotationUpdate(BaseModel):
 
 class QuotationRead(QuotationBase):
     id: int
+    converted_to_so: bool = False
     model_config = ConfigDict(from_attributes=True)
 
 
