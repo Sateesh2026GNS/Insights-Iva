@@ -7,6 +7,7 @@ import { getProducts } from "../../api/productionApi";
 import { formatQuotationInr, statusColor } from "../../data/salesMasterData";
 import { useToast } from "../../context/ToastContext";
 import { exportToPdf } from "../../utils/exportUtils";
+import { canConvertQuotationToSalesOrder } from "../../utils/quotationWorkflow";
 import Button from "../common/Button";
 
 export default function QuoteDetailModal({ quote, onClose, onStatusChange, onConverted }) {
@@ -22,8 +23,7 @@ export default function QuoteDetailModal({ quote, onClose, onStatusChange, onCon
 
   if (!quote) return null;
 
-  const canConvert =
-    ["accepted", "sent", "approved"].includes((quote.status || "").toLowerCase()) && !quote.converted_to_so;
+  const canConvert = canConvertQuotationToSalesOrder(quote);
 
   const amount = quote.amount ?? quote.total_amount;
 
