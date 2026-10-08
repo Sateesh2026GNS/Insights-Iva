@@ -62,10 +62,6 @@ vi.mock("../../api/salesApi", () => ({
   ),
 }));
 
-vi.mock("../../components/sales/CreateLeadModal", () => ({
-  default: () => null,
-}));
-
 describe("SalesDashboard smoke", () => {
   it("renders without throwing", async () => {
     render(
@@ -118,5 +114,18 @@ describe("SalesDashboard smoke", () => {
       expect(screen.getByTestId("my-work-activity-date-modal")).toBeTruthy();
     });
     expect(screen.getByText("Select Activity Date")).toBeTruthy();
+  });
+
+  it("routes New Lead to the create-lead page instead of opening the modal", async () => {
+    render(
+      <MemoryRouter initialEntries={["/sales"]}>
+        <SalesDashboard />
+      </MemoryRouter>
+    );
+    await screen.findByText("My Work");
+    const links = screen.getAllByRole("link", { name: /new lead/i });
+    expect(links.length).toBeGreaterThan(0);
+    expect(links.every((link) => link.getAttribute("href") === "/sales/leads/new")).toBe(true);
+    expect(screen.queryByText("Create New Lead")).toBeNull();
   });
 });

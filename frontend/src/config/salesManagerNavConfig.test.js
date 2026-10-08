@@ -22,12 +22,16 @@ describe("salesManagerNavConfig", () => {
     expect(keys).not.toContain("payments");
   });
 
-  it("exposes Masters → Products only (canonical route)", () => {
+  it("exposes Masters → Customers, Vendors, Products", () => {
     const masters = SALES_MANAGER_NAV_ITEMS.find((n) => n.key === "masters");
     expect(masters?.label).toBe("Masters");
     const children = masters?.children || [];
-    expect(children.map((c) => c.to)).toEqual(["/masters/products"]);
-    expect(children.map((c) => c.label)).toEqual(["Products"]);
+    expect(children.map((c) => c.to)).toEqual([
+      "/sales/customers",
+      "/procurement/vendors",
+      "/masters/products",
+    ]);
+    expect(children.map((c) => c.label)).toEqual(["Customers", "Vendors", "Products"]);
   });
 
   it("includes sales workflow and order management links without work orders", () => {
@@ -37,6 +41,7 @@ describe("salesManagerNavConfig", () => {
     expect(salesPaths).toContain("/sales/leads");
     expect(salesPaths).toContain("/sales/quotations");
     expect(salesPaths).toContain("/sales/orders");
+    expect(salesPaths).not.toContain("/sales/customers");
 
     const orderPaths = (SALES_MANAGER_NAV_ITEMS.find((n) => n.key === "orderManagement")?.children || []).map(
       (c) => c.to?.split("?")[0]

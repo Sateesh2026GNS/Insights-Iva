@@ -24,10 +24,6 @@ vi.mock("../../hooks/useManufacturingRefresh", () => ({
   default: () => {},
 }));
 
-vi.mock("../../components/sales/CreateLeadModal", () => ({
-  default: () => null,
-}));
-
 vi.mock("../../components/sales/SalesDashboardMyWork", () => ({
   default: () => <div>My Work</div>,
 }));

@@ -22,10 +22,15 @@ MODULE = "inventory"
 @router.get("/items")
 def list_inventory_v2_items(
     q: str | None = Query(None),
+    category: str | None = Query(None),
+    category_id: int | None = Query(None),
     tenant_id: int = Depends(tenant_scope(MODULE)),
     db: Session = Depends(get_db),
 ):
-    return success_response("Inventory items retrieved", svc.list_items(db, tenant_id, q))
+    return success_response(
+        "Inventory items retrieved",
+        svc.list_items(db, tenant_id, q, category=category, category_id=category_id),
+    )
 
 
 @router.get("/items/{product_id}")

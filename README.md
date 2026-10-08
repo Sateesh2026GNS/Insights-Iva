@@ -20,6 +20,7 @@ Insights Iva is a full-stack **manufacturing ERP** and business intelligence pla
 - [Features](#features)
 - [Admin dashboard](#admin-dashboard)
 - [Sales module](#sales-module)
+- [Create New Lead](#create-new-lead)
 - [Quality Control module](#quality-control-module)
 - [Quick start](#quick-start)
 - [Development](#development)
@@ -55,6 +56,7 @@ Insights Iva is a full-stack **manufacturing ERP** and business intelligence pla
 ### Sales & billing
 
 - **Sales dashboard** (`/sales`) — KPIs (orders, leads, quotations, conversion, outstanding payments, **monthly revenue** scoped by role/rep via `GET /sales/hub`)
+- **Leads CRM** — list (`/sales/leads`), **Create New Lead** page (`/sales/leads/new`), detail (`/sales/leads/:id`), edit (`/sales/leads/:id/edit`)
 - Sales orders, quotations, tax invoices, proforma/export invoices, delivery challans, credit/debit notes
 - **Sales reports** under `/sales/reports/*` (sales analytics, order/quotation/customer reports) — sales RBAC, not separate analytics module
 - Payment receipts, refund vouchers, e-Invoice helpers, GST billing (SGST/CGST/IGST)
@@ -120,14 +122,55 @@ The main ERP dashboard (`ReferenceDashboard`) loads from **`GET /api/erp/dashboa
 
 | Area | Route / API | Notes |
 |------|-------------|--------|
-| Dashboard | `/sales`, `/sales/dashboard` | Hub KPIs from `GET /sales/hub`; drill-down links respect `userCanAccessPath` |
+| Dashboard | `/sales`, `/sales/dashboard` | Hub KPIs from `GET /sales/hub`; **New Lead** and Quick Actions go to `/sales/leads/new` (full page, not a modal) |
 | Monthly revenue | Hub field `monthly_revenue` | Calendar month; invoice totals with SO fallback; **rep-scoped** for sales users (not Admin / Sales Manager / Accountant) |
+| Leads list | `/sales/leads` | Pipeline, follow-ups (`?followup=due`), open leads (`?open=1`); **New Lead** → create page |
+| Create / edit lead | `/sales/leads/new`, `/sales/leads/:id/edit` | Canonical CRM form — see [Create New Lead](#create-new-lead) |
+| Lead detail | `/sales/leads/:id` | Read-only record; **Edit** → edit page |
 | Sales report | `/sales/reports/sales` | `SalesAnalytics` with `useSalesModuleApi` → `GET /sales/reports/summary` |
 | Job card create | `/sales/job-cards/create` | `ManualSalesJobCardForm` — masters via `useManualJobCardMasters` |
 | My Job Cards | `/my-job-cards?dept=sales` | Queue, Send, edit, workflow read-only when with Store |
 
 **RBAC config:** `frontend/src/config/permissions.js`, `salesManagerNavConfig.js`  
 **Hub service:** `backend/app/services/sales_extended_service.py`, `sales_person_scope.py`
+
+## Create New Lead
+
+Canonical create/edit UI is a **page**, not a popup. Sales Dashboard, Leads list, sidebar **Create Lead**, and the global create action all navigate to `/sales/leads/new`.
+
+| Item | Path |
+|------|------|
+| Create | `/sales/leads/new` → `CreateLeadPage.jsx` |
+| Edit | `/sales/leads/:id/edit` → same page, loaded via `GET /sales/leads/{id}` |
+| Detail | `/sales/leads/:id` → `LeadDetailPage.jsx` |
+| Product picker | `LeadProductSelectModal.jsx` — product **master** (`getProducts`), not inventory v2 |
+| Assigned executive | `SearchableSelect` + `AddExecutiveNameModal` (permission `userCanAddLeadExecutiveName`) |
+
+### What is saved
+
+Creates and updates go through **`POST /sales/leads`** and **`PATCH /sales/leads/{id}`**. Data is tenant-scoped. There is no localStorage fallback and no dummy catalog.
+
+| Field | Notes |
+|-------|--------|
+| Company, contact, phone, email, city, state | Contact block; Indian mobile/landline and GSTIN validated when present |
+| Address, PIN | Persist on `leads.address` / `leads.pincode` (6-digit Indian PIN `^[1-9][0-9]{5}$`) |
+| Product | Store/product master by **`product_id`** (active, same tenant). Category-first picker |
+| Quantity, estimated value, expected close | Optional; value via `IndianCurrencyInput` |
+| Source, priority, status | Source required on create; status defaults to New |
+| Assigned executive | Required on create; `assigned_user_id` must be a tenant user |
+| Next follow-up, notes / requirements | Optional; follow-up date cannot be in the past |
+| Discussions | Stored as `LeadActivity` type **Discussion**; shown on detail |
+| Attachments | Chosen on the form, uploaded **after** the lead exists via `POST /sales/leads/{id}/attachments` |
+
+**Create lead** requires company, contact person, phone, product, source, and assigned executive. **Save as draft** requires company name only (`is_draft: true`, status `draft`). Duplicate check: `GET /sales/leads/check-duplicate`. Next number preview: `GET /sales/leads/next-id` (not allocated until a non-draft create).
+
+Footer actions: **Cancel** (leave/stay confirm), **Save as draft**, **Create lead** / save. The form uses `noValidate` plus in-page `FieldError` toasts — not the browser’s native “Please fill in this field”.
+
+**Apply schema:** `alembic upgrade head` (includes lead extended fields and address/PIN).
+
+**Key backend:** `backend/app/schemas/lead_form.py`, `backend/app/services/lead_form_service.py`, `backend/app/api/sales.py`, `backend/app/models/sales.py`  
+**Key frontend:** `frontend/src/pages/sales/CreateLeadPage.jsx`, `LeadDetailPage.jsx`, `Leads.jsx`, `frontend/src/components/sales/LeadProductSelectModal.jsx`  
+**i18n:** `frontend/src/locales/en.json` (`sales.leads.create.*`)
 
 ### Sales documents (quotations, invoices, challans)
 
@@ -319,9 +362,9 @@ Insights Iva/
 │   ├── src/
 │   │   ├── api/                 # axiosConfig, salesApi, dashboardApi, workflowApi, …
 │   │   ├── components/          # layout/, manufacturing/, dashboard/, common/, …
-│   │   ├── pages/               # Lazy-loaded via lazyPages.jsx
+│   │   ├── pages/               # Lazy-loaded via lazyPages.jsx (sales/CreateLeadPage, LeadDetailPage, …)
 │   │   ├── routes/              # AppRoutes.jsx
-│   │   ├── config/              # permissions, sidebarNav, *ManagerNavConfig, qualityControlNavConfig
+│   │   ├── config/              # permissions, sidebarNav, *ManagerNavConfig, qualityControlNavConfig, globalCreateActions
 │   │   ├── design-system/       # date controls, shared UI tokens
 │   │   └── utils/               # apiError, manualSalesJobCard, salesDashboardKpis, …
 │   ├── vite.config.js
@@ -388,7 +431,7 @@ Enforced on API (`require_permission`, `tenant_scope`, `require_tenant`) and fro
 | `/api/erp/dashboard` | ERP dashboard metrics, production pipeline, quick actions |
 | `/api/admin/approvals/*` | Approval queue, counts, decide endpoints |
 | `/api/*` | Notifications, production, masters, reports |
-| `/sales` | Customers, orders, invoices, quotations, **hub**, reports summary |
+| `/sales` | Customers, **leads** (create/detail/attachments/activities), orders, invoices, quotations, **hub**, reports summary |
 | `/manufacturing` | Workflow, job cards, material checks |
 | `/inventory` | Items, warehouses, stock movements |
 | `/procurement` | Vendors, POs, GRN |
@@ -419,7 +462,7 @@ Tokens: `frontend/src/index.css`. Barrel: `frontend/src/design-system/index.js`.
 
 Use `Button`, `KpiCard`, `SearchableSelect`, `FormField` from `components/common/`.
 
-**UI states:** loading, empty, error, permission denied — `frontend/src/components/common/states/` (`AsyncPageBody`, `LoadingState`, `ErrorState`).
+**UI states:** loading, empty, error, permission denied — `frontend/src/components/common/states/` (`AsyncPageBody`, `LoadingState`, `ErrorState`). **Coverage:** Sales **Create Lead** (`/sales/leads/new`) uses `AsyncPageBody`, `PermissionDeniedState`, `FieldError`, and network/error retry via `classifyApiError` / `applyBackendFieldErrors`.
 
 **App shell:** `App.jsx` — desktop sidebar collapse (`Sidebar.jsx`, `app-sidebar__collapse-btn`), mobile drawer, navbar, global refresh / AI FAB cluster.
 
@@ -435,11 +478,15 @@ pytest
 # Focused examples
 pytest tests/test_production_pipeline.py -v
 pytest tests/test_sales_hub_monthly_revenue.py -v
+pytest tests/test_lead_create_v2.py -v
 pytest tests/test_tenant_isolation_security.py -v
 
 # Frontend
 cd frontend
 npm test -- --run
+npm test -- --run src/pages/sales/CreateLeadPage.test.jsx
+npm test -- --run src/components/sales/LeadProductSelectModal.test.jsx
+npm test -- --run src/pages/sales/SalesDashboard.smoke.test.jsx
 npm test -- --run src/utils/manualSalesJobCard.test.js
 npm test -- --run src/utils/salesDashboardKpis.test.js
 npm test -- --run src/components/sales/partyModalSubmitIsolation.test.jsx

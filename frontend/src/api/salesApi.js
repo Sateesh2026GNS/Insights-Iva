@@ -88,6 +88,20 @@ export const getLeadsEnriched = (params = {}) =>
     },
   });
 export const createLead = (payload) => api.post("/sales/leads", payload);
+export const getLeadNextId = () => api.get("/sales/leads/next-id");
+export const checkLeadDuplicate = (params) => api.get("/sales/leads/check-duplicate", { params });
+export const getLeadDetail = (leadId) => api.get(`/sales/leads/${leadId}`);
+export const uploadLeadAttachments = (leadId, files) => {
+  const form = new FormData();
+  files.forEach((f) => form.append("files", f));
+  return api.post(`/sales/leads/${leadId}/attachments`, form, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+};
+export const downloadLeadAttachment = (leadId, attachmentId) =>
+  api.get(`/sales/leads/${leadId}/attachments/${attachmentId}`, { responseType: "blob" });
+export const deleteLeadAttachment = (leadId, attachmentId) =>
+  api.delete(`/sales/leads/${leadId}/attachments/${attachmentId}`);
 export const updateLeadStatus = (leadId, status) =>
   api.patch(`/sales/leads/${leadId}/status`, null, { params: { status } });
 export const updateLead = (leadId, payload) => api.patch(`/sales/leads/${leadId}`, payload);

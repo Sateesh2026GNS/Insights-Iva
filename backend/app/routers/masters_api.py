@@ -49,9 +49,18 @@ def _dump(obj):
 
 
 @router.get("/products")
-def list_products(user_tenant: tuple[User, int] = Depends(require_tenant("products")), db: Session = Depends(get_db)):
+def list_products(
+    category: str | None = None,
+    category_id: int | None = None,
+    q: str | None = None,
+    user_tenant: tuple[User, int] = Depends(require_tenant("products")),
+    db: Session = Depends(get_db),
+):
     _, tenant_id = user_tenant
-    return success_response("Products retrieved", _svc(db, tenant_id).list_products())
+    return success_response(
+        "Products retrieved",
+        _svc(db, tenant_id).list_products(category=category, category_id=category_id, q=q),
+    )
 
 
 @router.get("/products/{product_id}")

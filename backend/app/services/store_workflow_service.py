@@ -17,6 +17,7 @@ from app.models.inventory import (
     StoreIssueRequest,
     Warehouse,
 )
+from app.models.product import Product, ProductStockEvent
 from app.models.procurement import MaterialRequest, MaterialRequestLine
 from app.schemas.inventory import StockMovementCreate
 from app.schemas.store_workflow import (
@@ -44,6 +45,39 @@ _PENDING_TRANSFER_STATUSES = ("draft", "pending", "pending_approval", "in_transi
 _STOCK_IN_TYPES = ("in", "return", "purchase")
 _STOCK_OUT_TYPES = ("out", "issue", "material_issue")
 _MR_CLOSED_STATUSES = ("cancelled", "converted", "fulfilled", "rejected")
+
+
+def _load_recent_stock_activity(
+    db: Session, tenant_id: int, limit: int = 8
+) -> list[StoreDashboardActivityRow]:
+    """Recent activity from catalog stock events (Inventory V2) — not legacy orphan movements."""
+    events = list(
+        db.scalars(
+            select(ProductStockEvent)
+            .where(ProductStockEvent.tenant_id == tenant_id)
+            .order_by(ProductStockEvent.id.desc())
+            .limit(limit)
+        ).all()
+    )
+    if not events:
+        return []
+    product_ids = {e.product_id for e in events}
+    name_map: dict[int, str] = {}
+    for product in db.scalars(
+        select(Product).where(Product.tenant_id == tenant_id, Product.id.in_(product_ids))
+    ).all():
+        name_map[product.id] = product.name
+    return [
+        StoreDashboardActivityRow(
+            id=event.id,
+            occurred_at=event.created_at,
+            activity_label=(event.activity or "Stock Activity").strip(),
+            item_name=name_map.get(event.product_id, "—"),
+            quantity=abs(float(event.change_qty or 0)),
+            movement_type="",
+        )
+        for event in events
+    ]
 
 
 def _movement_activity_label(movement_type: str | None) -> str:
@@ -740,35 +774,7 @@ def get_store_dashboard(db: Session, tenant_id: int) -> StoreDashboardRead:
         for t in transfer_rows_db
     ]
 
-    recent_moves = list(
-        db.scalars(
-            select(StockMovement)
-            .where(StockMovement.tenant_id == tenant_id)
-            .order_by(StockMovement.id.desc())
-            .limit(8)
-        ).all()
-    )
-    item_name_map: dict[int, str] = {}
-    if recent_moves:
-        move_item_ids = {m.item_id for m in recent_moves}
-        for inv in db.scalars(
-            select(InventoryItem).where(
-                InventoryItem.tenant_id == tenant_id,
-                InventoryItem.id.in_(move_item_ids),
-            )
-        ).all():
-            item_name_map[inv.id] = inv.name
-    recent_stock_activity = [
-        StoreDashboardActivityRow(
-            id=m.id,
-            occurred_at=m.created_at,
-            activity_label=_movement_activity_label(m.movement_type),
-            item_name=item_name_map.get(m.item_id, "—"),
-            quantity=float(m.quantity or 0),
-            movement_type=m.movement_type or "",
-        )
-        for m in recent_moves
-    ]
+    recent_stock_activity = _load_recent_stock_activity(db, tenant_id)
 
     warehouses = list(db.scalars(select(Warehouse).where(Warehouse.tenant_id == tenant_id)).all())
     util = 0.0

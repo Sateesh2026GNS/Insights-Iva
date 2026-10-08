@@ -8,15 +8,26 @@ from app.models.base import Base, TimestampMixin
 
 class Lead(Base, TimestampMixin):
     __tablename__ = "leads"
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "lead_no", name="uq_leads_tenant_lead_no"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     tenant_id: Mapped[int] = mapped_column(
         ForeignKey("tenants.id"), nullable=False, index=True
     )
+    lead_no: Mapped[str | None] = mapped_column(String(32), index=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     company: Mapped[str | None] = mapped_column(String(255))
+    company_name: Mapped[str | None] = mapped_column(String(255))
+    contact_person: Mapped[str | None] = mapped_column(String(255))
     email: Mapped[str | None] = mapped_column(String(255))
     phone: Mapped[str | None] = mapped_column(String(64))
+    city: Mapped[str | None] = mapped_column(String(128))
+    state: Mapped[str | None] = mapped_column(String(128))
+    address: Mapped[str | None] = mapped_column(Text)
+    pincode: Mapped[str | None] = mapped_column(String(16))
+    gst_number: Mapped[str | None] = mapped_column(String(32))
     source: Mapped[str | None] = mapped_column(String(128))
     status: Mapped[str] = mapped_column(String(32), default="new", nullable=False)
     notes: Mapped[str | None] = mapped_column(Text)
@@ -26,6 +37,14 @@ class Lead(Base, TimestampMixin):
     priority: Mapped[str] = mapped_column(String(16), default="medium", nullable=False)
     next_followup: Mapped[date | None] = mapped_column(Date)
     opportunity_value: Mapped[float | None] = mapped_column(Numeric(12, 2))
+    product_id: Mapped[int | None] = mapped_column(ForeignKey("products.id"), index=True)
+    quantity: Mapped[float | None] = mapped_column(Numeric(14, 3))
+    expected_value: Mapped[float | None] = mapped_column(Numeric(14, 2))
+    expected_close_date: Mapped[date | None] = mapped_column(Date)
+    requirement_details: Mapped[str | None] = mapped_column(Text)
+    assigned_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), index=True)
+    is_draft: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
 
     activities = relationship(
         "LeadActivity",
@@ -33,6 +52,30 @@ class Lead(Base, TimestampMixin):
         cascade="all, delete-orphan",
         order_by="LeadActivity.id.desc()",
     )
+    attachments = relationship(
+        "LeadAttachment",
+        back_populates="lead",
+        cascade="all, delete-orphan",
+        order_by="LeadAttachment.id.desc()",
+    )
+
+
+class LeadAttachment(Base, TimestampMixin):
+    __tablename__ = "lead_attachments"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tenant_id: Mapped[int] = mapped_column(
+        ForeignKey("tenants.id"), nullable=False, index=True
+    )
+    lead_id: Mapped[int] = mapped_column(
+        ForeignKey("leads.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    file_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    file_path: Mapped[str] = mapped_column(String(512), nullable=False)
+    size: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    uploaded_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+
+    lead = relationship("Lead", back_populates="attachments")
 
 
 class LeadActivity(Base, TimestampMixin):

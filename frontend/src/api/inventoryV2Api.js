@@ -9,8 +9,17 @@ function unwrap(res) {
 }
 
 /** Inventory V2 — product items list */
-export const listInventoryV2Items = async (q) =>
-  unwrap(await api.get("/inventory/v2/items", { params: q ? { q } : undefined }));
+export const listInventoryV2Items = async (params = {}) => {
+  const query = {};
+  if (typeof params === "string") {
+    if (params) query.q = params;
+  } else if (params && typeof params === "object") {
+    if (params.q) query.q = params.q;
+    if (params.category) query.category = params.category;
+    if (params.categoryId != null && params.categoryId !== "") query.category_id = params.categoryId;
+  }
+  return unwrap(await api.get("/inventory/v2/items", { params: Object.keys(query).length ? query : undefined }));
+};
 
 export const getInventoryV2Item = async (id) =>
   unwrap(await api.get(`/inventory/v2/items/${id}`));

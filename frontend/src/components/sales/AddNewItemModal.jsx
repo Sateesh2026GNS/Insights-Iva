@@ -278,6 +278,8 @@ export default function AddNewItemModal({
   categories,
   onAddCategory,
   categoryToSelect,
+  requireCategory = false,
+  lockCategory = false,
   item = null,
   entityName = "Item",
   title,
@@ -438,6 +440,10 @@ export default function AddNewItemModal({
       addToast(`${isProduct ? "Product" : "Item"} Name "${form.name.trim()}" already exists.`, "error");
       return;
     }
+    if (isProduct && requireCategory && !String(form.category || "").trim()) {
+      addToast("Please select a category.", "error");
+      return;
+    }
     if (!form.sale_price && form.sale_price !== "0") {
       addToast("Sale Price is required", "error");
       return;
@@ -512,7 +518,9 @@ export default function AddNewItemModal({
         tenant_id: tenantId,
         barcode: form.barcode.trim() || null,
         name: form.name.trim(),
-        category: form.category || "Finished Goods",
+        category:
+          String(form.category || "").trim() ||
+          (requireCategory ? "" : "Finished Goods"),
         ...(isProduct ? { status: form.status } : {}),
         // Items created from a sales document are intentionally saleable;
         // product-master entries require an explicit user choice.
@@ -608,6 +616,51 @@ export default function AddNewItemModal({
   if (!open) return null;
 
   const categoryOptions = categories?.length ? categories : [...PRODUCT_CATEGORIES, "Services"];
+  const categorySelectDisabled = readOnly || (isProduct && lockCategory);
+
+  const renderCategoryField = () => (
+    <label className="block">
+      <SoftLabel required={requireCategory || isProduct}>Category</SoftLabel>
+      <select
+        value={form.category}
+        onChange={(e) => {
+          if (e.target.value === "__add_category__") {
+            onAddCategory?.();
+            return;
+          }
+          setForm((f) => ({ ...f, category: e.target.value }));
+        }}
+        disabled={categorySelectDisabled}
+        required={requireCategory || isProduct}
+        className={inputClass}
+      >
+        <option value="">Select Category</option>
+        {categoryOptions.map((c) => (
+          <option key={c} value={c}>
+            {c}
+          </option>
+        ))}
+        {onAddCategory && !categorySelectDisabled ? (
+          <option
+            value="__add_category__"
+            className="add-new-option text-[#036f71] font-semibold bg-[#e6f4f4] dark:text-[#2dd4bf] dark:bg-[#0d3d38]"
+            style={{ color: "#036f71", fontWeight: "600" }}
+          >
+            + Add New Category
+          </option>
+        ) : null}
+      </select>
+      {onAddCategory && !categorySelectDisabled ? (
+        <button
+          type="button"
+          onClick={() => onAddCategory()}
+          className="mt-1.5 text-[12px] font-semibold text-[var(--color-action-teal)] hover:underline"
+        >
+          + Add New Category
+        </button>
+      ) : null}
+    </label>
+  );
   const isDrawer = placement === "drawer";
 
   return createPortal(
@@ -645,6 +698,8 @@ export default function AddNewItemModal({
 
         <div className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
           <div className="space-y-3.5 rounded-xl bg-white p-4 shadow-sm">
+            {isProduct ? renderCategoryField() : null}
+
             <div className="grid grid-cols-2 gap-2">
               {[
                 { id: "goods", label: "Goods" },
@@ -874,45 +929,7 @@ export default function AddNewItemModal({
                   </select>
                 </div>
               </label>
-              <label className="block">
-                <SoftLabel>Category</SoftLabel>
-                <select
-                  value={form.category}
-                  onChange={(e) => {
-                    if (e.target.value === "__add_category__") {
-                      onAddCategory?.();
-                      return;
-                    }
-                    setForm((f) => ({ ...f, category: e.target.value }));
-                  }}
-                  className={inputClass}
-                >
-                  <option value="">Select Category</option>
-                  {categoryOptions.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                  {onAddCategory ? (
-                    <option
-                      value="__add_category__"
-                      className="add-new-option text-[#036f71] font-semibold bg-[#e6f4f4] dark:text-[#2dd4bf] dark:bg-[#0d3d38]"
-                      style={{ color: "#036f71", fontWeight: "600" }}
-                    >
-                      + Add New Category
-                    </option>
-                  ) : null}
-                </select>
-                {onAddCategory ? (
-                  <button
-                    type="button"
-                    onClick={() => onAddCategory()}
-                    className="mt-1.5 text-[12px] font-semibold text-[var(--color-action-teal)] hover:underline"
-                  >
-                    + Add New Category
-                  </button>
-                ) : null}
-              </label>
+              {!isProduct ? renderCategoryField() : null}
             </div>
 
             {customFields.map((field) => (

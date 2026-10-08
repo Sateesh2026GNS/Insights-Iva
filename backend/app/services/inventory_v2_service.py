@@ -76,22 +76,19 @@ def list_items(
     tenant_id: int,
     q: str | None = None,
     *,
+    category: str | None = None,
+    category_id: int | None = None,
     limit: int = 500,
     offset: int = 0,
 ) -> list[dict]:
     from sqlalchemy import or_
 
+    from app.services.product_service import _apply_product_list_filters
+
     stmt = select(Product).where(Product.tenant_id == tenant_id)
-    if q and q.strip():
-        needle = f"%{q.strip()}%"
-        stmt = stmt.where(
-            or_(
-                Product.name.ilike(needle),
-                Product.sku.ilike(needle),
-                Product.hsn_code.ilike(needle),
-                Product.category.ilike(needle),
-            )
-        )
+    stmt = _apply_product_list_filters(
+        stmt, db, tenant_id, category=category, category_id=category_id, q=q
+    )
     stmt = (
         stmt.order_by(Product.name)
         .offset(max(0, offset))
@@ -321,22 +318,7 @@ def list_timeline(db: Session, tenant_id: int, product_id: int) -> list[dict]:
         ).all()
     )
     if not rows:
-        product = db.scalars(
-            select(Product).where(Product.id == product_id, Product.tenant_id == tenant_id)
-        ).first()
-        stock = _f(product.current_stock) if product else 0.0
-        unit = (product.unit if product else None) or "PCS"
-        return [
-            {
-                "id": "opening",
-                "activity": "First Stock",
-                "subtitle": "Opening Stock",
-                "date": _today_label(),
-                "change": stock,
-                "final": stock,
-                "unit": unit,
-            }
-        ]
+        return []
     return [
         {
             "id": r.id,

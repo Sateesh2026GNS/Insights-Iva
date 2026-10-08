@@ -24,6 +24,8 @@ MODULE_CATALOG = [
 
 VALID_MODULES = {m["code"] for m in MODULE_CATALOG}
 
+LEADS_CREATE_PERMISSION = "leads:create"
+
 VALID_ACTIONS = frozenset({
     "read",
     "create",
@@ -65,6 +67,7 @@ PERMISSION_MATRIX = {
             "meetings",
             "settings",
         ],
+        "actions": ["leads:create"],
         "description": (
             "Leads, quotations, sales orders, customers, dispatch follow-up, and sales reporting."
         ),
@@ -275,6 +278,8 @@ def store_manager_path_allowed(path: str | None) -> bool:
     if normalized.startswith("/purchases"):
         return True
     if normalized.startswith("/sales/dispatch"):
+        return True
+    if normalized.startswith("/sales/customers"):
         return True
     if normalized.startswith("/settings"):
         return True

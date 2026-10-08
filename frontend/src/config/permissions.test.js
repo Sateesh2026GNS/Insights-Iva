@@ -179,6 +179,9 @@ describe("Work Chat — authenticated common feature", () => {
     const accountant = { role: "Accountant", permissions: [] };
     expect(userCanAccessPath(storeManager, "/chat")).toBe(true);
     expect(userCanAccessPath(storeManager, "/meetings")).toBe(true);
+    expect(userCanAccessPath(storeManager, "/sales/customers")).toBe(true);
+    expect(userCanAccessPath(storeManager, "/procurement/vendors")).toBe(true);
+    expect(userCanAccessPath(storeManager, "/masters/products")).toBe(true);
     expect(userCanAccessPath(operator, "/chat")).toBe(true);
     expect(userCanAccessPath(accountant, "/chat")).toBe(true);
     expect(userCanAccessPath(null, "/chat")).toBe(false);

@@ -21,7 +21,7 @@ export const GLOBAL_CREATE_ACTIONS = [
   {
     id: "lead",
     label: "New Lead",
-    path: "/sales/leads?create=1",
+    path: "/sales/leads/new",
     module: "sales",
     action: "create",
   },

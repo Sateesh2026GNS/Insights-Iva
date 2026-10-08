@@ -25,6 +25,8 @@ import {
   Warehouse,
 } from "lucide-react";
 
+import { ROLE_MASTERS_NAV_CHILDREN } from "./roleMastersNav";
+
 /** Purchases sidebar pages — keep aligned with `sidebarNav.js` procurement section. */
 export const STORE_MANAGER_PURCHASE_PAGES = [
   {
@@ -170,16 +172,8 @@ export const STORE_MANAGER_NAV_ITEMS = [
     key: "masters",
     label: "Masters",
     icon: Layers,
-    children: [
-      { key: "products", label: "Product Catalog", to: "/masters/products", icon: Package },
-      { key: "vendorsMaster", label: "Vendors", to: "/procurement/vendors", icon: Building2 },
-      {
-        key: "warehousesMaster",
-        label: "Warehouses",
-        to: "/inventory/warehouses",
-        icon: Warehouse,
-      },
-    ],
+    module: "masters",
+    children: ROLE_MASTERS_NAV_CHILDREN.map((c) => ({ ...c })),
   },
   {
     key: "reports",

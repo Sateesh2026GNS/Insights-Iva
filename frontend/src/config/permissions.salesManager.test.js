@@ -37,6 +37,7 @@ describe("Sales Manager route guard (verification)", () => {
     "/settings/my-account",
     "/masters/products",
     "/masters/products/bulk-import",
+    "/procurement/vendors",
     "/products",
   ];
 

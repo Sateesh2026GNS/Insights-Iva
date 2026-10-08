@@ -1,7 +1,7 @@
 from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from fastapi.responses import Response
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
+from fastapi.responses import FileResponse, Response
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -9,10 +9,28 @@ from app.api.deps import get_db
 from app.core.idempotency import get_idempotency_key_header
 from app.core.permissions import (
     require_any_permission,
+    require_lead_create,
     require_permission,
     tenant_scope,
     tenant_scope_action,
     tenant_scope_any,
+)
+from app.schemas.lead_form import (
+    LeadDetailRead,
+    LeadDuplicateCheckResponse,
+    LeadFormCreate,
+    LeadNextIdResponse,
+)
+from app.services.lead_form_service import (
+    _attachment_disk_path,
+    check_lead_duplicates,
+    create_lead_from_form,
+    delete_lead_attachment,
+    get_lead_attachment,
+    get_lead_detail,
+    peek_next_lead_no,
+    save_lead_attachments,
+    serialize_lead_detail,
 )
 from app.models.sales import Customer
 from app.models.user import User
@@ -148,16 +166,88 @@ def delete_customer_endpoint(
     return {"ok": True, "id": customer.id, "status": customer.status}
 
 
-@router.post("/leads", response_model=LeadRead)
+@router.get("/leads/next-id", response_model=LeadNextIdResponse)
+def lead_next_id_endpoint(
+    tenant_id: int = Depends(tenant_scope(MODULE)),
+    db: Session = Depends(get_db),
+):
+    return LeadNextIdResponse(lead_no=peek_next_lead_no(db, tenant_id))
+
+
+@router.get("/leads/check-duplicate", response_model=LeadDuplicateCheckResponse)
+def lead_check_duplicate_endpoint(
+    phone: str | None = Query(None),
+    gst_number: str | None = Query(None),
+    tenant_id: int = Depends(tenant_scope(MODULE)),
+    db: Session = Depends(get_db),
+):
+    matches = check_lead_duplicates(db, tenant_id, phone=phone, gst_number=gst_number)
+    return LeadDuplicateCheckResponse(matches=matches)
+
+
+@router.post("/leads", response_model=LeadDetailRead)
 def create_lead_endpoint(
-    payload: LeadCreate,
-    user: User = Depends(require_permission(MODULE)),
+    payload: LeadFormCreate,
+    user: User = Depends(require_lead_create()),
     db: Session = Depends(get_db),
 ):
     payload.tenant_id = user.tenant_id
     if not (payload.sales_executive or "").strip():
         payload.sales_executive = (user.full_name or user.email or "").strip() or None
-    return create_lead(db, payload)
+    try:
+        lead = create_lead_from_form(db, user.tenant_id, user, payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    lead = get_lead_detail(db, user.tenant_id, lead.id) or lead
+    return serialize_lead_detail(lead, db)
+
+
+@router.get("/leads/{lead_id}", response_model=LeadDetailRead)
+def get_lead_endpoint(
+    lead_id: int,
+    tenant_id: int = Depends(tenant_scope(MODULE)),
+    db: Session = Depends(get_db),
+):
+    lead = get_lead_detail(db, tenant_id, lead_id)
+    if not lead:
+        raise HTTPException(404, "Lead not found")
+    return serialize_lead_detail(lead, db)
+
+
+@router.post("/leads/{lead_id}/attachments")
+async def upload_lead_attachments_endpoint(
+    lead_id: int,
+    files: list[UploadFile] = File(...),
+    user: User = Depends(require_lead_create()),
+    db: Session = Depends(get_db),
+):
+    saved = await save_lead_attachments(db, user.tenant_id, lead_id, user.id, files)
+    return {"items": [{"id": f.id, "file_name": f.file_name, "size": f.size} for f in saved]}
+
+
+@router.get("/leads/{lead_id}/attachments/{attachment_id}")
+def download_lead_attachment_endpoint(
+    lead_id: int,
+    attachment_id: int,
+    tenant_id: int = Depends(tenant_scope(MODULE)),
+    db: Session = Depends(get_db),
+):
+    row = get_lead_attachment(db, tenant_id, lead_id, attachment_id)
+    disk = _attachment_disk_path(row)
+    if not disk.is_file():
+        raise HTTPException(404, "Attachment file not found")
+    return FileResponse(path=disk, filename=row.file_name, media_type="application/octet-stream")
+
+
+@router.delete("/leads/{lead_id}/attachments/{attachment_id}")
+def delete_lead_attachment_endpoint(
+    lead_id: int,
+    attachment_id: int,
+    user: User = Depends(require_lead_create()),
+    db: Session = Depends(get_db),
+):
+    delete_lead_attachment(db, user.tenant_id, lead_id, attachment_id)
+    return {"ok": True, "id": attachment_id}
 
 
 @router.get("/leads", response_model=list[LeadRead])
@@ -199,7 +289,7 @@ def update_lead_status_endpoint(
     return lead
 
 
-@router.patch("/leads/{lead_id}", response_model=LeadRead)
+@router.patch("/leads/{lead_id}", response_model=LeadDetailRead)
 def update_lead_endpoint(
     lead_id: int,
     payload: LeadUpdate,
@@ -209,7 +299,8 @@ def update_lead_endpoint(
     lead = update_lead(db, user.tenant_id, lead_id, payload)
     if not lead:
         raise HTTPException(404, "Lead not found")
-    return lead
+    lead = get_lead_detail(db, user.tenant_id, lead.id) or lead
+    return serialize_lead_detail(lead, db)
 
 
 @router.delete("/leads/{lead_id}")

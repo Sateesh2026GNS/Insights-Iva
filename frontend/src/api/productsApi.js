@@ -8,7 +8,13 @@ function unwrap(res) {
   return res;
 }
 
-export const getProducts = async () => unwrap(await api.get("/api/masters/products"));
+export const getProducts = async (params = {}) => {
+  const query = {};
+  if (params.category) query.category = params.category;
+  if (params.categoryId != null && params.categoryId !== "") query.category_id = params.categoryId;
+  if (params.q) query.q = params.q;
+  return unwrap(await api.get("/api/masters/products", { params: query }));
+};
 
 export const getProductDetail = async (id) => unwrap(await api.get(`/api/masters/products/${id}`));
 
