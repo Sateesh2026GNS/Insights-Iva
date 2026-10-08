@@ -16,5 +16,5 @@ RUN mkdir -p /app/data
 EXPOSE 8000 10000
 
 # Run DB migrations then serve via gunicorn with uvicorn workers.
-CMD ["sh", "-c", "alembic upgrade head && gunicorn app.main:app -k uvicorn.workers.UvicornWorker -w ${WEB_CONCURRENCY:-2} -b 0.0.0.0:${PORT:-8000}"]
+CMD ["sh", "-c", "alembic upgrade heads && gunicorn app.main:app -k uvicorn.workers.UvicornWorker -w ${WEB_CONCURRENCY:-2} -b 0.0.0.0:${PORT:-8000}"]
 

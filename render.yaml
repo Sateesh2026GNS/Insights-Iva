@@ -3,7 +3,7 @@ services:
     name: insights-iva-api
     runtime: python
     rootDir: backend
-    buildCommand: "pip install --upgrade pip && pip install -r requirements.txt && alembic upgrade head"
+    buildCommand: "pip install --upgrade pip && pip install -r requirements.txt && alembic upgrade heads"
     startCommand: "gunicorn app.main:app -k uvicorn.workers.UvicornWorker -w 1 -b 0.0.0.0:$PORT"
     envVars:
       - key: PYTHON_VERSION
