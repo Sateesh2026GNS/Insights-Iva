@@ -384,7 +384,7 @@ export default function CustomerForm({ initialForm, customer = null, onCancel })
                   <ShorthandQuantityInput
                     value={form.other.opening_balance}
                     onChange={(val) => patch("other.opening_balance", val)}
-                    placeholder="e.g. 50,000 or 1 Lakh"
+                    placeholder="e.g. 50,000"
                   />
                 </div>
               </FormRow>

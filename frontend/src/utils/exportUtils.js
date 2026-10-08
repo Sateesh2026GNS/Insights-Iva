@@ -26,11 +26,16 @@ export async function exportToExcel(data, columns, filename = "report") {
 /**
  * Export data to PDF (dynamically loads jspdf only when user clicks export)
  */
+function sanitizePdfText(val) {
+  if (val == null) return "";
+  return String(val).replace(/[\u20B9₹]\s*/g, "Rs. ");
+}
+
 function formatPdfCell(row, col) {
-  const val = row[col.key];
-  if (col.pdfValue && typeof col.pdfValue === "function") return String(col.pdfValue(row) ?? "");
-  if (col.render && typeof col.render === "function") return String(col.render(row) ?? "");
-  return String(val ?? "");
+  let val = row[col.key];
+  if (col.pdfValue && typeof col.pdfValue === "function") val = col.pdfValue(row);
+  else if (col.render && typeof col.render === "function") val = col.render(row);
+  return sanitizePdfText(val ?? "");
 }
 
 export async function exportToPdf(data, columns, title = "Report", filename = "report", options = {}) {
@@ -50,11 +55,11 @@ export async function exportToPdf(data, columns, title = "Report", filename = "r
   });
   const marginX = 10;
   doc.setFontSize(14);
-  doc.text(title, marginX, 16);
+  doc.text(sanitizePdfText(title), marginX, 16);
   doc.setFontSize(9);
   doc.text(`Exported: ${new Date().toLocaleString("en-IN")}`, marginX, 22);
 
-  const headers = columns.map((c) => (typeof c.label === "string" ? c.label : c.key));
+  const headers = columns.map((c) => sanitizePdfText(typeof c.label === "string" ? c.label : c.key));
   const rows = rowsData.map((row) => columns.map((c) => formatPdfCell(row, c)));
 
   const wideKeys = new Set(["name", "description", "product_name", "customer_name"]);

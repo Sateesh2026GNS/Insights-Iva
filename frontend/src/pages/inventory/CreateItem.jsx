@@ -648,7 +648,7 @@ export default function CreateItem() {
                 <ShorthandQuantityInput
                   value={form.purchase_price}
                   onChange={(val) => set("purchase_price", val)}
-                  placeholder="e.g. 500 (or 1 Lakh, 50k)"
+                  placeholder="e.g. 500"
                 />
               </Field>
 
@@ -656,7 +656,7 @@ export default function CreateItem() {
                 <ShorthandQuantityInput
                   value={form.standard_cost}
                   onChange={(val) => set("standard_cost", val)}
-                  placeholder="e.g. 500 (or 1 Lakh, 50k)"
+                  placeholder="e.g. 500"
                 />
               </Field>
 
@@ -666,7 +666,7 @@ export default function CreateItem() {
                     <ShorthandQuantityInput
                       value={form.sales_price}
                       onChange={(val) => set("sales_price", val)}
-                      placeholder="e.g. 500 (or 1 Lakh, 50k)"
+                      placeholder="e.g. 500"
                     />
                   </Field>
 
@@ -674,7 +674,7 @@ export default function CreateItem() {
                     <ShorthandQuantityInput
                       value={form.mrp}
                       onChange={(val) => set("mrp", val)}
-                      placeholder="e.g. 500 (or 1 Lakh, 50k)"
+                      placeholder="e.g. 500"
                     />
                   </Field>
                 </>
@@ -739,7 +739,7 @@ export default function CreateItem() {
                 <ShorthandQuantityInput
                   value={form.available_qty}
                   onChange={(val) => set("available_qty", val)}
-                  placeholder="e.g. 500 (or 1 Lakh, 50k)"
+                  placeholder="e.g. 500"
                 />
               </Field>
 
@@ -747,7 +747,7 @@ export default function CreateItem() {
                 <ShorthandQuantityInput
                   value={form.reorder_level}
                   onChange={(val) => set("reorder_level", val)}
-                  placeholder="e.g. 500 (or 1 Lakh, 50k)"
+                  placeholder="e.g. 500"
                 />
               </Field>
 
@@ -755,7 +755,7 @@ export default function CreateItem() {
                 <ShorthandQuantityInput
                   value={form.reorder_qty}
                   onChange={(val) => set("reorder_qty", val)}
-                  placeholder="e.g. 500 (or 1 Lakh, 50k)"
+                  placeholder="e.g. 500"
                 />
               </Field>
 
@@ -763,7 +763,7 @@ export default function CreateItem() {
                 <ShorthandQuantityInput
                   value={form.reserved_qty}
                   onChange={(val) => set("reserved_qty", val)}
-                  placeholder="e.g. 500 (or 1 Lakh, 50k)"
+                  placeholder="e.g. 500"
                 />
               </Field>
             </div>

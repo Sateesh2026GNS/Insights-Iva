@@ -71,7 +71,7 @@ export default function ReportExportToolbar({
 
   return (
     <div
-      className={`report-export-toolbar flex flex-wrap items-center gap-2 md:flex-nowrap ${className}`.trim()}
+      className={`report-export-toolbar flex flex-wrap items-center gap-2 ${className}`.trim()}
       data-testid={testId}
     >
       <ReportFormatDropdown

@@ -573,7 +573,7 @@ export default function CreateEmployee() {
               <ShorthandQuantityInput
                 value={salary}
                 onChange={setSalary}
-                placeholder="e.g. 50,000 or 1 Lakh"
+                placeholder="e.g. 50,000"
               />
             </Field>
           </div>

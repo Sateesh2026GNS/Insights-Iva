@@ -713,7 +713,7 @@ export default function StockTransfer() {
                     <ShorthandQuantityInput
                       value={form.quantity}
                       onChange={(val) => setForm((f) => ({ ...f, quantity: val }))}
-                      placeholder="e.g. 50,000, 1 Lakh"
+                      placeholder="e.g. 500"
                     />
                   </label>
                   <label className="text-sm">

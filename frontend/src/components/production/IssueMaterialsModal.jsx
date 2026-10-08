@@ -195,7 +195,7 @@ export default function IssueMaterialsModal({ workOrder, onClose, onSuccess, add
               <ShorthandQuantityInput
                 value={form.quantity}
                 onChange={(val) => setForm((prev) => ({ ...prev, quantity: val }))}
-                placeholder="e.g. 100 (or 1 Lakh, 50k)"
+                placeholder="e.g. 100"
               />
             </div>
           </div>

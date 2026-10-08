@@ -677,8 +677,8 @@ export default function AddNewItemModal({
         onSubmit={onSubmit}
         className={`flex max-h-[100vh] flex-col overflow-hidden bg-[#f3f3f6] shadow-2xl ${
           isDrawer
-            ? "h-full w-full max-w-lg animate-[slideInRight_0.28s_ease-out]"
-            : "max-h-[96vh] sm:max-h-[92vh] w-full max-w-lg rounded-xl sm:rounded-2xl"
+            ? "h-full w-full max-w-xl sm:max-w-2xl animate-[slideInRight_0.28s_ease-out]"
+            : "max-h-[96vh] sm:max-h-[92vh] w-full max-w-xl sm:max-w-2xl lg:max-w-3xl rounded-xl sm:rounded-2xl"
         }`}
         onMouseDown={(e) => e.stopPropagation()}
       >
@@ -696,10 +696,9 @@ export default function AddNewItemModal({
           </button>
         </div>
 
-        <div className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
-          <div className="space-y-3.5 rounded-xl bg-white p-4 shadow-sm">
+        <div className="flex-1 space-y-3 overflow-y-auto px-4 py-4 sm:px-6">
+          <div className="space-y-4 rounded-xl bg-white p-4 sm:p-5 shadow-sm">
             {isProduct ? renderCategoryField() : null}
-
             <div className="grid grid-cols-2 gap-2">
               {[
                 { id: "goods", label: "Goods" },
@@ -777,21 +776,22 @@ export default function AddNewItemModal({
               />
             ) : null}
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               <label className="block">
                 <SoftLabel required>Sale Price</SoftLabel>
-                <div className="flex items-center gap-1.5">
-                  <div className="flex-1">
+                <div className="flex overflow-hidden rounded-xl border border-[#e4e4ea] bg-[#f8f8fa] focus-within:border-[var(--color-primary)] focus-within:ring-1 focus-within:ring-[var(--color-primary)] transition-all">
+                  <div className="min-w-0 flex-1">
                     <ShorthandQuantityInput
                       value={form.sale_price}
                       onChange={(val) => setForm((f) => ({ ...f, sale_price: val }))}
-                      placeholder="e.g. 500 (or 1 Lakh, 50k)"
+                      placeholder="e.g. 500"
+                      className="!border-0 !bg-transparent !shadow-none focus:!border-0 focus:!ring-0 focus-visible:!ring-0 focus:!outline-none"
                     />
                   </div>
                   <select
                     value={form.tax_type}
                     onChange={(e) => setForm((f) => ({ ...f, tax_type: e.target.value }))}
-                    className="border border-[var(--color-border-soft)] rounded-lg bg-[var(--color-surface-muted)] px-2 py-2.5 text-[12px] text-[#1a1a1f]"
+                    className="shrink-0 border-0 border-l border-[#e4e4ea] bg-[#f8f8fa] px-3 text-[13px] font-medium text-[#1a1a1f] cursor-pointer outline-none focus:ring-0 focus:outline-none transition-colors hover:bg-[#efefe5] dark:hover:bg-slate-800"
                   >
                     {TAX_TYPES.map((t) => (
                       <option key={t} value={t}>
@@ -844,7 +844,7 @@ export default function AddNewItemModal({
               </div>
             ) : null}
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               <label className="block">
                 <SoftLabel>GST %</SoftLabel>
                 <select
@@ -901,10 +901,10 @@ export default function AddNewItemModal({
               ))}
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               <label className="block">
                 <SoftLabel>CESS (Applied on Tax Value)</SoftLabel>
-                <div className="flex overflow-hidden rounded-lg border border-[var(--color-border-soft)] bg-[var(--color-surface-muted)] focus-within:border-[var(--color-primary)] focus-within:ring-1 focus-within:ring-[var(--color-primary)]">
+                <div className="flex overflow-hidden rounded-xl border border-[#e4e4ea] bg-[#f8f8fa] focus-within:border-[var(--color-primary)] focus-within:ring-1 focus-within:ring-[var(--color-primary)] transition-all">
                   <span className="flex items-center pl-3 text-[13px] text-[#6b6b76] select-none pointer-events-none">%</span>
                   <input
                     value={form.cess}
@@ -919,7 +919,7 @@ export default function AddNewItemModal({
                   <select
                     value={form.cess_mode}
                     onChange={(e) => setForm((f) => ({ ...f, cess_mode: e.target.value }))}
-                    className="border-0 border-l border-[var(--color-border-soft)] bg-[var(--color-surface-muted)] px-2 text-[12px] text-[#1a1a1f] !outline-none focus:border-0 focus:!outline-none focus:ring-0 focus-visible:!outline-none focus-visible:ring-0 shadow-none"
+                    className="shrink-0 border-0 border-l border-[#e4e4ea] bg-[#f8f8fa] px-3 text-[13px] font-medium text-[#1a1a1f] cursor-pointer outline-none focus:ring-0 focus:outline-none transition-colors hover:bg-[#efefe5] dark:hover:bg-slate-800"
                   >
                     {CESS_MODES.map((m) => (
                       <option key={m} value={m}>
@@ -963,12 +963,13 @@ export default function AddNewItemModal({
               >
                 <label className="block">
                   <SoftLabel>Purchase Price</SoftLabel>
-                  <div className="flex items-center gap-1.5">
-                    <div className="flex-1">
+                  <div className="flex overflow-hidden rounded-xl border border-[#e4e4ea] bg-[#f8f8fa] focus-within:border-[var(--color-primary)] focus-within:ring-1 focus-within:ring-[var(--color-primary)] transition-all">
+                    <div className="min-w-0 flex-1">
                       <ShorthandQuantityInput
                         value={form.purchase_price}
                         onChange={(val) => setForm((f) => ({ ...f, purchase_price: val }))}
-                        placeholder="e.g. 500 (or 1 Lakh, 50k)"
+                        placeholder="e.g. 500"
+                        className="!border-0 !bg-transparent !shadow-none focus:!border-0 focus:!ring-0 focus-visible:!ring-0 focus:!outline-none"
                       />
                     </div>
                     <select
@@ -976,7 +977,7 @@ export default function AddNewItemModal({
                       onChange={(e) =>
                         setForm((f) => ({ ...f, purchase_tax_type: e.target.value }))
                       }
-                      className="border border-[var(--color-border-soft)] rounded-lg bg-[var(--color-surface-muted)] px-2 py-2.5 text-[12px] text-[#1a1a1f]"
+                      className="shrink-0 border-0 border-l border-[#e4e4ea] bg-[#f8f8fa] px-3 text-[13px] font-medium text-[#1a1a1f] cursor-pointer outline-none focus:ring-0 focus:outline-none transition-colors hover:bg-[#efefe5] dark:hover:bg-slate-800"
                     >
                       {TAX_TYPES.map((t) => (
                         <option key={t} value={t}>
@@ -999,7 +1000,7 @@ export default function AddNewItemModal({
                     <ShorthandQuantityInput
                       value={form.opening_stock}
                       onChange={(val) => setForm((f) => ({ ...f, opening_stock: val }))}
-                      placeholder="e.g. 500 (or 1 Lakh, 50k)"
+                      placeholder="e.g. 500"
                     />
                   </label>
                   <label className="block">
@@ -1007,7 +1008,7 @@ export default function AddNewItemModal({
                     <ShorthandQuantityInput
                       value={form.min_stock}
                       onChange={(val) => setForm((f) => ({ ...f, min_stock: val }))}
-                      placeholder="e.g. 500 (or 1 Lakh, 50k)"
+                      placeholder="e.g. 500"
                     />
                   </label>
                 </div>

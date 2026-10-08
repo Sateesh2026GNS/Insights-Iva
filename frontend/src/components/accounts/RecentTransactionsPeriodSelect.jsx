@@ -16,6 +16,8 @@ export default function RecentTransactionsPeriodSelect({
   onRangeApplied,
   className = "",
   id = "recent-transactions-period",
+  hideLabel = false,
+  label = "Recent Transactions",
 }) {
   const selectRef = useRef(null);
   const [customOpen, setCustomOpen] = useState(false);
@@ -53,7 +55,9 @@ export default function RecentTransactionsPeriodSelect({
   return (
     <>
       <label className={`block min-w-[12rem] ${className}`.trim()}>
-        <span className="mb-1 block text-[12px] font-medium text-[#6b6b76]">Recent Transactions</span>
+        {!hideLabel ? (
+          <span className="mb-1 block text-[12px] font-medium text-[#6b6b76]">{label}</span>
+        ) : null}
         <select
           ref={selectRef}
           id={id}

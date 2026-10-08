@@ -52,6 +52,7 @@ describe("SalesDashboard reporting period", () => {
     vi.spyOn(salesApi, "getQuotationSummary").mockResolvedValue({ data: { total_quotations: 0 } });
     vi.spyOn(salesApi, "getLeadsEnriched").mockResolvedValue({ data: [] });
     vi.spyOn(salesApi, "getSalesOrdersEnriched").mockResolvedValue({ data: [] });
+    vi.spyOn(salesApi, "getInvoicesEnriched").mockResolvedValue({ data: [] });
   });
 
   it("loads hub with default this-month params", async () => {

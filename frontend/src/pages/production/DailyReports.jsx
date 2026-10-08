@@ -247,7 +247,7 @@ function NewReportModal({ onClose, onSuccess }) {
                   name="produced_quantity"
                   value={form.produced_quantity}
                   onChange={(val) => setForm((f) => ({ ...f, produced_quantity: val }))}
-                  placeholder="e.g. 50,000, 1 Lakh"
+                  placeholder="e.g. 500"
                 />
               </div>
               <div>

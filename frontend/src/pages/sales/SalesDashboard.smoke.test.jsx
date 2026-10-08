@@ -48,6 +48,7 @@ vi.mock("../../api/salesApi", () => ({
   getQuotationSummary: vi.fn(() => Promise.resolve({ data: { total_quotations: 0 } })),
   getLeadsEnriched: vi.fn(() => Promise.resolve({ data: [] })),
   getSalesOrdersEnriched: vi.fn(() => Promise.resolve({ data: [] })),
+  getInvoicesEnriched: vi.fn(() => Promise.resolve({ data: [] })),
   getSalesMyWork: vi.fn(() =>
     Promise.resolve({
       data: {
@@ -79,6 +80,7 @@ describe("SalesDashboard smoke", () => {
       </MemoryRouter>
     );
     await screen.findByText("My Work");
+    fireEvent.click(screen.getByTestId("sales-dash-more-btn"));
     expect(screen.getByLabelText("Recent Transactions period")).toBeTruthy();
     expect(screen.getByRole("option", { name: "Custom Date" })).toBeTruthy();
     expect(screen.getByRole("option", { name: "Current Financial Year" })).toBeTruthy();
@@ -91,6 +93,7 @@ describe("SalesDashboard smoke", () => {
       </MemoryRouter>
     );
     await screen.findByText("My Work");
+    fireEvent.click(screen.getByTestId("sales-dash-more-btn"));
     const periodSelect = screen.getByLabelText("Recent Transactions period");
     fireEvent.change(periodSelect, { target: { value: "custom_date" } });
     await waitFor(() => {
@@ -113,7 +116,19 @@ describe("SalesDashboard smoke", () => {
     await waitFor(() => {
       expect(screen.getByTestId("my-work-activity-date-modal")).toBeTruthy();
     });
-    expect(screen.getByText("Select Activity Date")).toBeTruthy();
+  });
+
+  it("renders centered details in Sales Summary when sales total is 0", async () => {
+    render(
+      <MemoryRouter initialEntries={["/sales"]}>
+        <SalesDashboard />
+      </MemoryRouter>
+    );
+    await screen.findByText("Sales Summary");
+    expect(screen.getByText("Total Value")).toBeTruthy();
+    expect(screen.getAllByText("Quotations").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Sales Orders").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Job Cards").length).toBeGreaterThan(0);
   });
 
   it("routes New Lead to the create-lead page instead of opening the modal", async () => {

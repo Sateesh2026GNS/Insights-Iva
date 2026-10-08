@@ -603,7 +603,7 @@ export default function CreateProductionOrderModal({
               <ShorthandQuantityInput
                 value={form.planned_quantity}
                 onChange={(val) => handleChange("planned_quantity", val)}
-                placeholder="e.g. 500 (or 1 Lakh, 50k)"
+                placeholder="e.g. 500"
                 error={Boolean(errors.planned_quantity)}
               />
               {errors.planned_quantity ? (

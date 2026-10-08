@@ -335,7 +335,7 @@ export default function QuickWorkOrderModal({ order, onClose, onSuccess, addToas
               <ShorthandQuantityInput
                 value={form.planned_quantity}
                 onChange={(val) => setForm((prev) => ({ ...prev, planned_quantity: val }))}
-                placeholder="e.g. 500 (or 1 Lakh, 50k)"
+                placeholder="e.g. 500"
               />
             </label>
             <label className="block space-y-1">

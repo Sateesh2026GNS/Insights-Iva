@@ -288,7 +288,7 @@ export default function CreateSalaryBreakup() {
                 <ShorthandQuantityInput
                   value={grossAmount}
                   onChange={(val) => setGrossAmount(val)}
-                  placeholder="e.g. 50,000 or 1 Lakh"
+                  placeholder="e.g. 50,000"
                 />
               </div>
               <div className="hr-create-salary-breakup__input-actions">

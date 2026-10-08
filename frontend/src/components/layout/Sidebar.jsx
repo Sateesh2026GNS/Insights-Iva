@@ -668,8 +668,56 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
       );
     });
 
+  const renderFlyoutNestedNav = (nodes, sectionKey) =>
+    (nodes || []).map((node) => {
+      const itemKey = `flyout-${sectionKey}:${node.key || node.label}`;
+      const label = childLabel(node);
+
+      if (node.children?.length) {
+        return (
+          <div key={itemKey} className="pt-2 pb-0.5">
+            <div className="px-3 pb-1 text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+              {label}
+            </div>
+            <div className="space-y-0.5">
+              {renderFlyoutNestedNav(node.children, sectionKey)}
+            </div>
+          </div>
+        );
+      }
+
+      if (!node.to) return null;
+
+      return (
+        <NavLink
+          key={itemKey}
+          to={node.to}
+          end={node.end}
+          onMouseEnter={() => prefetchRouteChunk(node.to)}
+          onFocus={() => prefetchRouteChunk(node.to)}
+          onClick={() => onClose?.()}
+          className={({ isActive }) =>
+            `flex items-center justify-between rounded-xl px-3 py-2 text-sm font-medium transition-colors ${
+              isActive
+                ? "bg-slate-100 font-semibold text-[var(--color-primary,#3157d5)] dark:bg-slate-800 dark:text-indigo-400"
+                : "text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-white"
+            }`
+          }
+        >
+          {({ isActive }) => (
+            <>
+              <span className="truncate">{label}</span>
+              {isActive && (
+                <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-primary,#3157d5)]" />
+              )}
+            </>
+          )}
+        </NavLink>
+      );
+    });
+
   return (
-    <div className="relative flex h-full min-h-0 w-full flex-col bg-[var(--color-nav-bg)] text-white">
+    <div className={`relative flex h-full min-h-0 w-full flex-col bg-[var(--color-nav-bg)] text-white ${collapsed ? "overflow-visible" : ""}`}>
       {typeof onToggleCollapse === "function" && !isMobile ? (
         <button
           type="button"
@@ -687,7 +735,7 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
           )}
         </button>
       ) : null}
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <div className={`flex min-h-0 flex-1 flex-col ${collapsed ? "overflow-visible" : "overflow-hidden"}`}>
       <div className={`shrink-0 border-b border-white/10 ${collapsed ? "p-3" : "px-4 py-4 sm:py-5"} flex items-center justify-between`}>
         <Link
           to={
@@ -726,21 +774,44 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
         ) : null}
       </div>
 
-      <nav className={`sidebar-scroll flex-1 space-y-0.5 overflow-y-auto py-4 ${collapsed ? "px-2" : "px-3"}`}>
-        {visibleNav.map((section) => {
+      <nav className={`sidebar-scroll flex-1 space-y-0.5 py-4 ${collapsed ? "px-2 overflow-visible" : "px-3 overflow-y-auto"}`}>
+        {visibleNav.map((section, sectionIdx) => {
+          const isLowerHalf = sectionIdx > 4;
+
           if (section.action === "logout") {
             const Icon = section.icon || LayoutDashboard;
+            const label = section.label;
             return (
-              <button
-                key={section.key}
-                type="button"
-                title={collapsed ? section.label : undefined}
-                onClick={() => setLogoutOpen(true)}
-                className={actionButtonClass}
-              >
-                <Icon className="h-[18px] w-[18px] shrink-0" strokeWidth={1.75} />
-                {!collapsed && <span className="truncate">{section.label}</span>}
-              </button>
+              <div key={section.key} className="relative group/nav-flyout">
+                <button
+                  type="button"
+                  title={collapsed ? label : undefined}
+                  onClick={() => setLogoutOpen(true)}
+                  className={actionButtonClass}
+                >
+                  <Icon className="h-[18px] w-[18px] shrink-0" strokeWidth={1.75} />
+                  {!collapsed && <span className="truncate">{label}</span>}
+                </button>
+
+                {collapsed && (
+                  <div
+                    className={`pointer-events-none absolute left-full ${
+                      isLowerHalf ? "bottom-0" : "top-0"
+                    } pl-3 z-[100] opacity-0 invisible group-hover/nav-flyout:pointer-events-auto group-hover/nav-flyout:opacity-100 group-hover/nav-flyout:visible transition-all duration-150 ease-out translate-x-1 group-hover/nav-flyout:translate-x-0`}
+                  >
+                    <div className="w-52 rounded-2xl bg-white text-slate-800 shadow-2xl border border-slate-200/90 p-2 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800">
+                      <button
+                        type="button"
+                        onClick={() => setLogoutOpen(true)}
+                        className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors"
+                      >
+                        <Icon className="h-4 w-4 shrink-0 text-red-500" strokeWidth={2} />
+                        <span className="truncate">{label}</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             );
           }
 
@@ -748,19 +819,48 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
             const Icon = section.icon || LayoutDashboard;
             const label = sectionLabel(section);
             return (
-              <NavLink
-                key={section.key}
-                to={section.to}
-                end={section.end}
-                onMouseEnter={() => prefetchRouteChunk(section.to)}
-                onFocus={() => prefetchRouteChunk(section.to)}
-                onClick={() => onClose?.()}
-                title={collapsed ? label : undefined}
-                className={topLinkClass}
-              >
-                <Icon className="h-[18px] w-[18px] shrink-0" strokeWidth={1.75} />
-                {!collapsed && <span className="truncate">{label}</span>}
-              </NavLink>
+              <div key={section.key} className="relative group/nav-flyout">
+                <NavLink
+                  to={section.to}
+                  end={section.end}
+                  onMouseEnter={() => prefetchRouteChunk(section.to)}
+                  onFocus={() => prefetchRouteChunk(section.to)}
+                  onClick={() => onClose?.()}
+                  title={collapsed ? label : undefined}
+                  className={topLinkClass}
+                >
+                  <Icon className="h-[18px] w-[18px] shrink-0" strokeWidth={1.75} />
+                  {!collapsed && <span className="truncate">{label}</span>}
+                </NavLink>
+
+                {collapsed && (
+                  <div
+                    className={`pointer-events-none absolute left-full ${
+                      isLowerHalf ? "bottom-0" : "top-0"
+                    } pl-3 z-[100] opacity-0 invisible group-hover/nav-flyout:pointer-events-auto group-hover/nav-flyout:opacity-100 group-hover/nav-flyout:visible transition-all duration-150 ease-out translate-x-1 group-hover/nav-flyout:translate-x-0`}
+                  >
+                    <div className="w-56 rounded-2xl bg-white text-slate-800 shadow-2xl border border-slate-200/90 p-2 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800">
+                      <NavLink
+                        to={section.to}
+                        end={section.end}
+                        onMouseEnter={() => prefetchRouteChunk(section.to)}
+                        onFocus={() => prefetchRouteChunk(section.to)}
+                        onClick={() => onClose?.()}
+                        className={({ isActive }) =>
+                          `flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-semibold transition-colors ${
+                            isActive
+                              ? "bg-slate-100 text-[var(--color-primary,#3157d5)] dark:bg-slate-800 dark:text-indigo-400"
+                              : "text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white"
+                          }`
+                        }
+                      >
+                        <Icon className="h-4 w-4 shrink-0 text-[var(--color-primary,#3157d5)]" strokeWidth={2} />
+                        <span className="truncate">{label}</span>
+                      </NavLink>
+                    </div>
+                  </div>
+                )}
+              </div>
             );
           }
 
@@ -770,7 +870,7 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
           const label = sectionLabel(section);
 
           return (
-            <div key={section.key} className="space-y-0.5">
+            <div key={section.key} className="relative group/nav-flyout space-y-0.5">
               <button
                 type="button"
                 onClick={() => toggleSection(section.key)}
@@ -803,6 +903,57 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
                           {({ isActive }) => renderChildLabel(child, isActive)}
                         </NavLink>
                       ))}
+                </div>
+              )}
+
+              {collapsed && section.children?.length > 0 && (
+                <div
+                  className={`pointer-events-none absolute left-full ${
+                    isLowerHalf ? "bottom-0" : "top-0"
+                  } pl-3 z-[100] opacity-0 invisible group-hover/nav-flyout:pointer-events-auto group-hover/nav-flyout:opacity-100 group-hover/nav-flyout:visible transition-all duration-150 ease-out translate-x-1 group-hover/nav-flyout:translate-x-0`}
+                >
+                  <div className="w-60 min-w-[210px] max-w-[280px] max-h-[calc(100vh-3rem)] overflow-y-auto rounded-2xl bg-white text-slate-800 shadow-2xl border border-slate-200/90 p-2.5 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800">
+                    <div className="px-3 py-2 mb-1.5 border-b border-slate-100 dark:border-slate-800/80 flex items-center gap-2">
+                      <Icon className="h-4 w-4 shrink-0 text-[var(--color-primary,#3157d5)]" strokeWidth={2} />
+                      <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                        {label}
+                      </span>
+                    </div>
+
+                    <div className="space-y-0.5">
+                      {section.nestedNav
+                        ? renderFlyoutNestedNav(section.children, section.key)
+                        : section.children.map((child) => {
+                            const cLabel = childLabel(child);
+                            return (
+                              <NavLink
+                                key={`flyout-${section.key}-${child.to}-${child.label || child.key}`}
+                                to={child.to}
+                                end={child.end}
+                                onMouseEnter={() => prefetchRouteChunk(child.to)}
+                                onFocus={() => prefetchRouteChunk(child.to)}
+                                onClick={() => onClose?.()}
+                                className={({ isActive }) =>
+                                  `group/flyout-item flex items-center justify-between rounded-xl px-3 py-2 text-sm font-medium transition-colors ${
+                                    isActive
+                                      ? "bg-slate-100 font-semibold text-[var(--color-primary,#3157d5)] dark:bg-slate-800/90 dark:text-indigo-400"
+                                      : "text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-white"
+                                  }`
+                                }
+                              >
+                                {({ isActive }) => (
+                                  <>
+                                    <span className="truncate">{cLabel}</span>
+                                    {isActive && (
+                                      <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-primary,#3157d5)]" />
+                                    )}
+                                  </>
+                                )}
+                              </NavLink>
+                            );
+                          })}
+                    </div>
+                  </div>
                 </div>
               )}
             </div>

@@ -51,7 +51,7 @@ export default function ReportFormatDropdown({
   }, [open, options, activeIndex, onChange, selectedIndex]);
 
   return (
-    <div ref={rootRef} className={`relative w-[9rem] max-w-full shrink-0 ${className}`.trim()}>
+    <div ref={rootRef} className={`relative w-28 max-w-full shrink-0 ${className}`.trim()}>
       <button
         type="button"
         disabled={disabled || !options.length}

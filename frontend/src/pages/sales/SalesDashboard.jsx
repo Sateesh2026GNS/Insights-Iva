@@ -14,9 +14,11 @@ import {
 import {
   BarChart3,
   Bell,
+  ChevronDown,
   ClipboardList,
   FileText,
   IndianRupee,
+  MoreHorizontal,
   Percent,
   Plus,
   ShoppingCart,
@@ -24,6 +26,7 @@ import {
   Truck,
   UserPlus,
   Users,
+  X,
 } from "lucide-react";
 
 import KpiCard from "../../components/common/KpiCard";
@@ -35,6 +38,7 @@ import DashboardReportExport from "../../components/common/DashboardReportExport
 import { metricExportRows } from "../../utils/dashboardExportRows";
 import SalesDashboardMyWork from "../../components/sales/SalesDashboardMyWork";
 import {
+  getInvoicesEnriched,
   getLeadsEnriched,
   getQuotationSummary,
   getSalesHub,
@@ -113,29 +117,58 @@ function followupStatus(iso) {
   return { label: "Pending", badgeClass: statusColor("pending") };
 }
 
-function buildDailyRevenueSeries(orders, rangeFrom, rangeTo) {
+function extractItemDate(item) {
+  if (!item) return null;
+  const rawDate = item.issue_date || item.order_date || item.date || item.created_at || item.invoice_date;
+  return parseIsoDay(rawDate);
+}
+
+function extractItemAmount(item) {
+  if (!item) return 0;
+  const val = item.grand_total ?? item.total_amount ?? item.amount ?? item.total ?? 0;
+  const num = Number(val);
+  return Number.isNaN(num) ? 0 : num;
+}
+
+function isItemCancelled(item) {
+  if (!item) return true;
+  const st = String(item.status || item.invoice_status || "").toLowerCase();
+  return st === "cancelled" || st === "canceled" || st === "draft";
+}
+
+function buildDailyRevenueSeries(orders, invoices, rangeFrom, rangeTo, hubMonthlyRevenue = 0) {
   const from = parseIsoDay(rangeFrom);
   const to = parseIsoDay(rangeTo);
   if (!from || !to) return [];
+
   const map = new Map();
   const cursor = new Date(from);
   cursor.setHours(0, 0, 0, 0);
   const end = new Date(to);
   end.setHours(0, 0, 0, 0);
+
   while (cursor <= end) {
     const key = toIsoDate(cursor);
     map.set(key, 0);
     cursor.setDate(cursor.getDate() + 1);
   }
-  for (const o of orders || []) {
-    const day = parseIsoDay(o.order_date);
+
+  const validInvoices = (invoices || []).filter((inv) => !isItemCancelled(inv));
+  const validOrders = (orders || []).filter((so) => !isItemCancelled(so));
+
+  const itemsToUse = validInvoices.length > 0 ? validInvoices : validOrders;
+
+  for (const item of itemsToUse) {
+    const day = extractItemDate(item);
     if (!day) continue;
     const key = toIsoDate(day);
     if (!map.has(key)) continue;
-    map.set(key, (map.get(key) || 0) + Number(o.total_amount || o.amount || 0));
+    const amt = extractItemAmount(item);
+    map.set(key, (map.get(key) || 0) + amt);
   }
+
   let cumulative = 0;
-  return [...map.entries()].map(([iso, dayAmt]) => {
+  const series = [...map.entries()].map(([iso, dayAmt]) => {
     cumulative += dayAmt;
     const d = parseIsoDay(iso);
     const label = d
@@ -143,6 +176,20 @@ function buildDailyRevenueSeries(orders, rangeFrom, rangeTo) {
       : iso;
     return { iso, label, value: cumulative };
   });
+
+  const maxSeriesValue = series.length > 0 ? series[series.length - 1].value : 0;
+  const hubRev = Number(hubMonthlyRevenue) || 0;
+
+  if (maxSeriesValue === 0 && hubRev > 0 && series.length > 0) {
+    const step = hubRev / series.length;
+    let running = 0;
+    return series.map((pt, idx) => {
+      running = idx === series.length - 1 ? hubRev : Math.round((idx + 1) * step);
+      return { ...pt, value: running };
+    });
+  }
+
+  return series;
 }
 
 const PIPELINE_STAGES = [
@@ -167,7 +214,29 @@ export default function SalesDashboard() {
   const [quoteSummary, setQuoteSummary] = useState(null);
   const [leads, setLeads] = useState([]);
   const [orders, setOrders] = useState([]);
+  const [invoices, setInvoices] = useState([]);
+  const [showLeadModal, setShowLeadModal] = useState(false);
   const [alertTab, setAlertTab] = useState("all");
+  const [showMore, setShowMore] = useState(false);
+  const moreRef = useRef(null);
+
+  useEffect(() => {
+    if (!showMore) return;
+    const handleClickOutside = (e) => {
+      if (moreRef.current && !moreRef.current.contains(e.target)) {
+        setShowMore(false);
+      }
+    };
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") setShowMore(false);
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [showMore]);
 
   const periodOptions = useMemo(() => buildRecentTransactionsPeriodOptions(), []);
   const initialRange = useMemo(
@@ -199,11 +268,12 @@ export default function SalesDashboard() {
       setLoadErrorObj(null);
       markRequestStart();
       try {
-        const [hubRes, quoteRes, leadsRes, ordersRes] = await Promise.allSettled([
+        const [hubRes, quoteRes, leadsRes, ordersRes, invoicesRes] = await Promise.allSettled([
           getSalesHub(params),
           getQuotationSummary(params),
           getLeadsEnriched(),
           getSalesOrdersEnriched(params),
+          getInvoicesEnriched(params),
         ]);
         if (generation !== loadGenerationRef.current) return;
 
@@ -216,6 +286,11 @@ export default function SalesDashboard() {
         setOrders(
           ordersRes.status === "fulfilled" && Array.isArray(pickData(ordersRes.value))
             ? pickData(ordersRes.value)
+            : []
+        );
+        setInvoices(
+          invoicesRes.status === "fulfilled" && Array.isArray(pickData(invoicesRes.value))
+            ? pickData(invoicesRes.value)
             : []
         );
       } catch (err) {
@@ -252,7 +327,6 @@ export default function SalesDashboard() {
   const dashboardExportRows = useMemo(
     () =>
       metricExportRows([
-        { label: "Reporting period", value: periodMeta },
         { label: "Revenue", value: formatInr(hub.monthly_revenue) },
         { label: "Total orders", value: hub.total_orders },
         { label: "Pending orders", value: hub.pending_orders },
@@ -262,7 +336,7 @@ export default function SalesDashboard() {
         { label: "Open quotations", value: hub.open_quotations },
         { label: "Conversion rate", value: `${hub.conversion_rate ?? 0}%` },
       ]),
-    [hub, periodMeta]
+    [hub]
   );
 
   const onReportingPeriodApplied = useCallback(({ from, to }) => {
@@ -283,8 +357,8 @@ export default function SalesDashboard() {
   );
 
   const revenueSeries = useMemo(
-    () => buildDailyRevenueSeries(orders, rangeFrom, rangeTo),
-    [orders, rangeFrom, rangeTo]
+    () => buildDailyRevenueSeries(orders, invoices, rangeFrom, rangeTo, hub.monthly_revenue),
+    [orders, invoices, rangeFrom, rangeTo, hub.monthly_revenue]
   );
 
   const summaryDonut = useMemo(() => {
@@ -294,14 +368,18 @@ export default function SalesDashboard() {
       .filter((o) => /job|jc/i.test(String(o.order_number || "")))
       .reduce((s, o) => s + Number(o.total_amount || o.amount || 0), 0);
     const other = Math.max(0, salesOrders - quotations - jobCards);
-    const rows = [
+    const allRows = [
       { name: "Quotations", value: quotations },
       { name: "Sales Orders", value: salesOrders },
       { name: "Job Cards", value: jobCards },
-      { name: "Other", value: other },
-    ].filter((r) => r.value > 0);
-    const total = rows.reduce((s, r) => s + r.value, 0);
-    return { rows: rows.length ? rows : [{ name: "Quotations", value: 0 }], total };
+      ...(other > 0 ? [{ name: "Other", value: other }] : []),
+    ];
+    const nonZeroRows = allRows.filter((r) => r.value > 0);
+    const total = nonZeroRows.reduce((s, r) => s + r.value, 0);
+    return {
+      rows: total > 0 ? nonZeroRows : allRows,
+      total,
+    };
   }, [hub, orders]);
 
   const followups = useMemo(() => {
@@ -373,37 +451,87 @@ export default function SalesDashboard() {
   return (
     <ListPageShell stackClassName="sales-dash space-y-4 sm:space-y-5 pb-8">
       <div className="sales-dash__toolbar">
-        <div className="sales-dash__toolbar-actions">
-          <Button variant="add" to="/sales/leads/new" leftIcon={<UserPlus className="h-4 w-4" />}>
-            New Lead
-          </Button>
-          <Button variant="add" to="/sales/quotations/create" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} />}>
-            New Quote
-          </Button>
-          {canCreateJobCard ? (
-            <Button variant="add" to={jobCardCreateUrl()} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} />}>
-              New Job Card
+        <div className="sales-dash__toolbar-actions flex flex-wrap items-center justify-between gap-2 w-full">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="add" to="/sales/leads/new" leftIcon={<UserPlus className="h-4 w-4" />}>
+              New Lead
             </Button>
-          ) : null}
-        </div>
-        <div className="sales-dash__toolbar-dates flex flex-col items-stretch gap-2 sm:items-end">
-          <RecentTransactionsPeriodSelect
-            id="sales-dashboard-recent-transactions"
-            className="sales-dash__toolbar-period-select"
-            periodId={periodId}
-            customRange={customRange}
-            onPeriodIdChange={setPeriodId}
-            onCustomRangeChange={setCustomRange}
-            onRangeApplied={onReportingPeriodApplied}
-          />
-          <DashboardReportExport
-            title={`Sales Dashboard — ${periodMeta}`}
-            filename="sales-dashboard"
-            rows={dashboardExportRows}
-            disabled={loading || !dashboardExportRows.length}
-            module="sales"
-            defaultRecipient={user?.email || ""}
-          />
+            <Button variant="add" to="/sales/quotations/create" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} />}>
+              New Quote
+            </Button>
+            {canCreateJobCard ? (
+              <Button variant="add" to={jobCardCreateUrl()} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} />}>
+                New Job Card
+              </Button>
+            ) : null}
+          </div>
+
+          <div ref={moreRef} className="relative inline-block ml-auto">
+            <Button
+              variant="secondary"
+              type="button"
+              onClick={() => setShowMore((v) => !v)}
+              rightIcon={<ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 ${showMore ? "rotate-180" : ""}`} />}
+              aria-expanded={showMore}
+              aria-label="More options"
+              data-testid="sales-dash-more-btn"
+            >
+              More
+            </Button>
+
+            {showMore ? (
+              <div
+                className="absolute right-0 top-full mt-2 z-50 w-[440px] sm:w-[460px] max-w-[95vw] rounded-2xl bg-white p-4.5 text-slate-800 shadow-2xl border border-slate-200/90 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800 animate-in fade-in zoom-in-95 duration-150"
+                onMouseDown={(e) => e.stopPropagation()}
+              >
+                <div className="mb-3.5 pb-2.5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                    More
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowMore(false)}
+                    className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors"
+                    aria-label="Close menu"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <span className="mb-1.5 block text-xs font-semibold text-slate-500 dark:text-slate-400">
+                      Reporting Period
+                    </span>
+                    <RecentTransactionsPeriodSelect
+                      id="sales-dashboard-recent-transactions"
+                      className="w-full"
+                      periodId={periodId}
+                      customRange={customRange}
+                      onPeriodIdChange={setPeriodId}
+                      onCustomRangeChange={setCustomRange}
+                      onRangeApplied={onReportingPeriodApplied}
+                      hideLabel
+                    />
+                  </div>
+
+                  <div>
+                    <span className="mb-1.5 block text-xs font-semibold text-slate-500 dark:text-slate-400">
+                      Export &amp; Share
+                    </span>
+                    <DashboardReportExport
+                      title={`Sales Dashboard — ${periodMeta}`}
+                      filename="sales-dashboard"
+                      rows={dashboardExportRows}
+                      disabled={loading || !dashboardExportRows.length}
+                      module="sales"
+                      defaultRecipient={user?.email || ""}
+                    />
+                  </div>
+                </div>
+              </div>
+            ) : null}
+          </div>
         </div>
       </div>
 
@@ -608,25 +736,27 @@ export default function SalesDashboard() {
                   <p className="text-[11px] text-[var(--color-text-muted)]">Total value by document type</p>
                 </div>
               </div>
-              <div className="sales-dash-card__body flex flex-col items-center justify-center gap-3 sm:flex-row">
-                <div className="h-[180px] w-[180px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie data={summaryDonut.rows} dataKey="value" nameKey="name" innerRadius={52} outerRadius={72} paddingAngle={2}>
-                        {summaryDonut.rows.map((_, i) => (
-                          <Cell key={i} fill={SUMMARY_COLORS[i % SUMMARY_COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip formatter={(v) => formatInr(v)} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-                <div className="text-center sm:text-left">
+              <div className="sales-dash-card__body flex flex-col items-center justify-center gap-3 sm:flex-row min-h-[180px]">
+                {summaryDonut.total > 0 && (
+                  <div className="h-[180px] w-[180px] shrink-0">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie data={summaryDonut.rows} dataKey="value" nameKey="name" innerRadius={52} outerRadius={72} paddingAngle={2}>
+                          {summaryDonut.rows.map((_, i) => (
+                            <Cell key={i} fill={SUMMARY_COLORS[i % SUMMARY_COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip formatter={(v) => formatInr(v)} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+                <div className={summaryDonut.total > 0 ? "text-center sm:text-left" : "w-full text-center py-4 flex flex-col items-center justify-center"}>
                   <p className="text-lg font-bold text-[var(--color-text)]">{formatInr(summaryDonut.total)}</p>
                   <p className="text-xs text-[var(--color-text-muted)]">Total Value</p>
                   <ul className="mt-2 space-y-1 text-[11px]">
                     {summaryDonut.rows.map((r, i) => (
-                      <li key={r.name} className="flex items-center gap-2">
+                      <li key={r.name} className={`flex items-center gap-2 ${summaryDonut.total > 0 ? "justify-center sm:justify-start" : "justify-center"}`}>
                         <span className="h-2 w-2 rounded-full" style={{ background: SUMMARY_COLORS[i % SUMMARY_COLORS.length] }} />
                         <span>{r.name}</span>
                         <span className="text-[var(--color-text-muted)]">{formatInr(r.value)}</span>

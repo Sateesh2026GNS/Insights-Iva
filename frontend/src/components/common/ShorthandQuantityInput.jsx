@@ -9,7 +9,7 @@ import { formatNumber, parseShorthandNumber, numberToWords, isPureNumericInput }
 export default function ShorthandQuantityInput({
   value,
   onChange,
-  placeholder = "e.g. 5,000 or 1 Lakh",
+  placeholder = "e.g. 500",
   className = "",
   error = false,
   id,
@@ -128,7 +128,7 @@ export default function ShorthandQuantityInput({
       ? isWordsMode
         ? `Click to convert to Digits: ${formattedNum}`
         : `Click to convert to Words: ${words || formattedNum}`
-      : "Type amount or shorthand (e.g. 50,000 or 1 Lakh)";
+      : "Type amount (e.g. 500)";
 
   return (
     <div className="relative w-full min-w-[72px] flex items-center">

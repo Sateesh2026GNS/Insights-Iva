@@ -111,21 +111,16 @@ function SummaryTab({ label, count, amount, active, onClick }) {
       role="tab"
       aria-selected={active}
       onClick={onClick}
-      className={`min-w-[130px] flex-1 shrink-0 rounded-t-lg border-2 border-b-[3px] px-3.5 py-2.5 sm:px-5 sm:py-3.5 text-left transition duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-1 ${
+      className={`min-w-[125px] flex-1 shrink-0 border-b-[3px] px-4 py-2.5 sm:px-5 sm:py-3 text-left transition duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] ${
         active
-          ? "border-[var(--color-primary)] border-b-[var(--color-primary)] bg-[var(--color-primary-soft)] text-[var(--color-primary)] shadow-sm"
-          : "border-transparent border-b-transparent bg-[var(--color-surface-muted)] text-[var(--color-text-muted)] hover:border-[var(--color-border)] hover:bg-[var(--color-surface)] hover:text-[var(--color-primary)]"
+          ? "border-[var(--color-primary)] bg-[var(--color-surface,#ffffff)] text-[var(--color-text,#0f172a)] shadow-sm"
+          : "border-transparent bg-[var(--color-surface-muted,#f8fafc)] text-[var(--color-text-muted,#64748b)] hover:bg-[var(--color-surface,#ffffff)]"
       }`}
     >
-      <p className={`text-xs sm:text-[13px] transition-colors ${active ? "font-semibold" : "font-medium"}`}>
-        {label}{" "}
-        <span className={active ? salesListTextMuted : "text-[var(--color-text-faint)]"}>({count})</span>
+      <p className={`text-xs sm:text-[13px] ${active ? "font-semibold text-indigo-900 dark:text-indigo-300" : "font-medium text-slate-600 dark:text-slate-400"}`}>
+        {label} <span className="text-slate-400 font-normal">({count})</span>
       </p>
-      <p
-        className={`mt-0.5 sm:mt-1 text-base sm:text-[18px] font-bold tabular-nums transition-colors ${
-          active ? "text-[var(--color-primary)]" : salesListTextPrimary
-        }`}
-      >
+      <p className={`mt-0.5 text-base sm:text-[17px] font-bold tabular-nums ${active ? "text-slate-900 dark:text-white" : "text-slate-700 dark:text-slate-300"}`}>
         {amount}
       </p>
     </button>
@@ -355,72 +350,69 @@ export default function Quotations() {
 
   return (
     <ListPageShell stackClassName="space-y-4">
-      <PageHeader
-        title="Quotations"
-        subtitle="Create, track, and convert quotations into sales orders."
-        action={
-          <div className="flex flex-wrap items-center gap-2">
-            <ExportDownloadMenu disabled={!filteredSorted.length} onExport={handleExport} />
-            <Button variant="add" to="/sales/quotations/create" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
-              Create Quotation
-            </Button>
+      <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+        <div className="overflow-hidden rounded-xl border border-[var(--color-table-border)] bg-[var(--color-surface-muted)] flex-1 max-w-2xl">
+          <div className="flex overflow-x-auto scrollbar-none" role="tablist" aria-label="Quotation status">
+            <SummaryTab
+              label="All Quotations"
+              count={tabStats.all.count}
+              amount={formatQuotationInr(tabStats.all.amount)}
+              active={kpiFilter === "all"}
+              onClick={() => setKpiFilter("all")}
+            />
+            <SummaryTab
+              label="Pending"
+              count={tabStats.pending.count}
+              amount={formatQuotationInr(tabStats.pending.amount)}
+              active={kpiFilter === "pending"}
+              onClick={() => setKpiFilter("pending")}
+            />
+            <SummaryTab
+              label="Accepted"
+              count={tabStats.accepted.count}
+              amount={formatQuotationInr(tabStats.accepted.amount)}
+              active={kpiFilter === "accepted"}
+              onClick={() => setKpiFilter("accepted")}
+            />
+            <SummaryTab
+              label="Cancelled"
+              count={tabStats.cancelled.count}
+              amount={formatQuotationInr(tabStats.cancelled.amount)}
+              active={kpiFilter === "cancelled"}
+              onClick={() => setKpiFilter("cancelled")}
+            />
           </div>
-        }
-      />
-
-      <div className="overflow-hidden rounded-xl border border-[var(--color-table-border)] bg-[var(--color-surface-muted)]">
-        <div className="flex overflow-x-auto scrollbar-none" role="tablist" aria-label="Quotation status">
-          <SummaryTab
-            label="All Quotations"
-            count={tabStats.all.count}
-            amount={formatQuotationInr(tabStats.all.amount)}
-            active={kpiFilter === "all"}
-            onClick={() => setKpiFilter("all")}
-          />
-          <SummaryTab
-            label="Pending"
-            count={tabStats.pending.count}
-            amount={formatQuotationInr(tabStats.pending.amount)}
-            active={kpiFilter === "pending"}
-            onClick={() => setKpiFilter("pending")}
-          />
-          <SummaryTab
-            label="Accepted"
-            count={tabStats.accepted.count}
-            amount={formatQuotationInr(tabStats.accepted.amount)}
-            active={kpiFilter === "accepted"}
-            onClick={() => setKpiFilter("accepted")}
-          />
-          <SummaryTab
-            label="Cancelled"
-            count={tabStats.cancelled.count}
-            amount={formatQuotationInr(tabStats.cancelled.amount)}
-            active={kpiFilter === "cancelled"}
-            onClick={() => setKpiFilter("cancelled")}
-          />
         </div>
-      </div>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <InlineNativeDateRange
-          from={dateFrom}
-          to={dateTo}
-          fromId="quotation-from-date"
-          toId="quotation-to-date"
-          onFromChange={(value) => {
-            setDateFrom(value);
-            setPage(1);
-          }}
-          onToChange={(value) => {
-            setDateTo(value);
-            setPage(1);
-          }}
-        />
+        <div className="flex flex-wrap items-center gap-3 shrink-0">
+          <InlineNativeDateRange
+            from={dateFrom}
+            to={dateTo}
+            fromId="quotation-from-date"
+            toId="quotation-to-date"
+            onFromChange={(value) => {
+              setDateFrom(value);
+              setPage(1);
+            }}
+            onToChange={(value) => {
+              setDateTo(value);
+              setPage(1);
+            }}
+          />
+          <Link
+            to="/sales/quotations/create"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--color-primary,#2563eb)] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:ring-offset-2"
+          >
+            <Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />
+            Create Quotation
+          </Link>
+        </div>
       </div>
 
       <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
         <SearchBar value={search} onChange={setSearch} placeholder="Search quotations..." />
         <div className="flex items-center gap-2 shrink-0">
+          <ExportDownloadMenu disabled={!filteredSorted.length} onExport={handleExport} />
           <Button
             type="button"
             variant="secondary"

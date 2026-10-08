@@ -590,7 +590,7 @@ export default function PaymentReceiptForm() {
                 <ShorthandQuantityInput
                   value={form.amount}
                   onChange={(val) => setForm((f) => ({ ...f, amount: val }))}
-                  placeholder="Amount (e.g. 50,000 or 1 Lakh)"
+                  placeholder="Amount (e.g. 50,000)"
                 />
               </label>
 

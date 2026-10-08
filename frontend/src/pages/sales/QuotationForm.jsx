@@ -7,6 +7,7 @@ import {
   FileText,
   Grid2x2,
   ImagePlus,
+  Info,
   Package,
   PenLine,
   Pencil,
@@ -33,6 +34,8 @@ import AddContactPersonModal from "../../components/sales/AddContactPersonModal"
 import AddCustomFieldModal from "../../components/sales/AddCustomFieldModal";
 import AddInvoiceDiscountModal from "../../components/sales/AddInvoiceDiscountModal";
 import AddNewItemModal from "../../components/sales/AddNewItemModal";
+import ProductDetailModal from "../../components/masters/ProductDetailModal";
+import ItemSelectionModal from "../../components/sales/ItemSelectionModal";
 import AddNewPartyModal from "../../components/sales/AddNewPartyModal";
 import AddNoteModal from "../../components/sales/AddNoteModal";
 import AddOtherChargesModal, {
@@ -824,6 +827,9 @@ export default function QuotationForm() {
 
   const [products, setProducts] =
     useState([]);
+
+  const [selectedDetailProduct, setSelectedDetailProduct] = useState(null);
+  const [itemModalTargetIdx, setItemModalTargetIdx] = useState(null);
 
   const [
     itemPickerIdx,
@@ -1784,6 +1790,40 @@ export default function QuotationForm() {
       )
       .slice(0, 40);
   }, [products, itemSearch]);
+
+  const getProductForRow = (row) => {
+    if (!row) return null;
+    if (row.product_id) {
+      const found = products.find((p) => p.id === row.product_id || String(p.id) === String(row.product_id));
+      if (found) return found;
+    }
+    if (row.item_description) {
+      const descLower = String(row.item_description).trim().toLowerCase();
+      const found = products.find(
+        (p) =>
+          (p.name && String(p.name).trim().toLowerCase() === descLower) ||
+          (p.sku && String(p.sku).trim().toLowerCase() === descLower)
+      );
+      if (found) return found;
+    }
+    if (row.item_description || row.hsn || row.rate) {
+      return {
+        id: row.product_id || 999,
+        name: row.item_description || "Custom Item",
+        sku: row.product_id ? `ITEM-${row.product_id}` : "N/A",
+        category: "Sales Item",
+        unit_price: row.rate != null && row.rate !== "" ? Number(row.rate) : 0,
+        hsn_code: row.hsn || "—",
+        gst_percent: row.gst_pct != null ? Number(row.gst_pct) : 18,
+        unit: row.unit || "pcs",
+        current_stock: row.stock != null ? Number(row.stock) : null,
+        description: row.item_description || "Item added to quotation",
+        status: "active",
+        is_sellable: true,
+      };
+    }
+    return null;
+  };
 
   const removeItem = (idx) => {
     setItems((prev) =>
@@ -3043,152 +3083,141 @@ export default function QuotationForm() {
                             {idx + 1}
                           </td>
 
-                          <td className="border-b border-r border-[#d0d0d8] px-2 py-2">
-                            <div className="relative min-w-[180px]">
-                              <SearchBar
-                                size="compact"
-                                value={
-                                  itemPickerIdx ===
-                                  idx
-                                    ? itemSearch
-                                    : row.item_description
-                                }
-                                onFocus={() => {
-                                  setItemPickerIdx(
-                                    idx
-                                  );
+                          <td className="border-b border-r border-[#d0d0d8] px-2.5 py-2 min-w-[220px]">
+                            {row.product_id || (row.item_description && itemPickerIdx !== idx) ? (
+                              <div className="py-0.5">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span
+                                    className="font-bold text-[#111827] dark:text-slate-100 text-[13px] leading-tight cursor-pointer hover:text-indigo-600 transition"
+                                    title="Click to re-select or change item"
+                                    onClick={() => {
+                                      updateItem(idx, "product_id", null);
+                                      updateItem(idx, "item_description", "");
+                                      setItemPickerIdx(idx);
+                                      setItemSearch("");
+                                    }}
+                                  >
+                                    {row.item_description || "Selected Item"}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    title="View item details"
+                                    onClick={() => {
+                                      const p = getProductForRow(row);
+                                      if (p) setSelectedDetailProduct(p);
+                                    }}
+                                    className="inline-flex items-center justify-center p-0.5 text-slate-400 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-300 transition cursor-pointer"
+                                  >
+                                    <Info className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
 
-                                  setItemSearch(
-                                    row.item_description ||
-                                      ""
-                                  );
-                                }}
-                                onChange={(
-                                  v
-                                ) => {
-                                  setItemPickerIdx(
-                                    idx
-                                  );
+                                {row.showDescription || row.long_description ? (
+                                  <div className="mt-1">
+                                    <textarea
+                                      rows={2}
+                                      value={row.long_description || ""}
+                                      onChange={(e) => updateItem(idx, "long_description", e.target.value)}
+                                      placeholder="Enter line item description..."
+                                      className="w-full rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 focus:border-indigo-500 focus:outline-none"
+                                    />
+                                  </div>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => updateItem(idx, "showDescription", true)}
+                                    className="mt-0.5 inline-flex items-center gap-0.5 text-xs font-medium text-indigo-600 hover:text-indigo-700 hover:underline dark:text-indigo-400 cursor-pointer"
+                                  >
+                                    <Plus className="h-3.5 w-3.5" />
+                                    Add Description
+                                  </button>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="relative min-w-[190px]">
+                                <div className="group relative flex items-center rounded-full border border-blue-300 bg-white px-3 py-1 text-xs shadow-sm focus-within:ring-2 focus-within:ring-blue-200 focus-within:border-blue-400 transition-all">
+                                  <Search className="h-3.5 w-3.5 text-slate-400 shrink-0 mr-1.5" />
+                                  <input
+                                    type="text"
+                                    value={
+                                      itemPickerIdx === idx
+                                        ? itemSearch
+                                        : row.item_description || ""
+                                    }
+                                    onFocus={() => {
+                                      setItemPickerIdx(idx);
+                                      setItemSearch(row.item_description || "");
+                                    }}
+                                    onChange={(e) => {
+                                      const v = e.target.value;
+                                      setItemPickerIdx(idx);
+                                      setItemSearch(v);
+                                      updateItem(idx, "item_description", v);
+                                    }}
+                                    onBlur={() => {
+                                      setTimeout(() => {
+                                        setItemPickerIdx((cur) => (cur === idx ? null : cur));
+                                      }, 200);
+                                    }}
+                                    placeholder="Select Item"
+                                    className="w-full bg-transparent border-0 outline-none text-xs text-slate-800 placeholder-slate-400 p-0 focus:ring-0"
+                                  />
+                                  <button
+                                    type="button"
+                                    onMouseDown={(e) => e.preventDefault()}
+                                    onClick={() => {
+                                      setItemPickerIdx(null);
+                                      setItemModalTargetIdx(idx);
+                                    }}
+                                    title="Browse & select all items in popup modal"
+                                    className="ml-1 shrink-0 p-0.5 text-blue-500 hover:text-blue-700 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity cursor-pointer"
+                                  >
+                                    <Grid2x2 className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
 
-                                  setItemSearch(
-                                    v
-                                  );
-
-                                  updateItem(
-                                    idx,
-                                    "item_description",
-                                    v
-                                  );
-                                }}
-                                onBlur={() => {
-                                  setTimeout(
-                                    () => {
-                                      setItemPickerIdx(
-                                        (
-                                          cur
-                                        ) =>
-                                          cur ===
-                                          idx
-                                            ? null
-                                            : cur
-                                      );
-                                    },
-                                    180
-                                  );
-                                }}
-                                placeholder="Select Item"
-                                clearable={
-                                  false
-                                }
-                                className="w-full"
-                              />
-
-                              {itemPickerIdx ===
-                              idx ? (
-                                <div className="absolute left-0 right-0 z-30 mt-1 max-h-48 overflow-y-auto rounded-md border border-[#d0d0d8] bg-white shadow-lg">
-                                  {filteredProducts.length ===
-                                  0 ? (
-                                    <p className="px-3 py-2 text-[12px] text-[#8a8a95]">
-                                      No products
-                                      found.{" "}
-                                      <button
-                                        type="button"
-                                        className="font-semibold"
-                                        style={{
-                                          color:
-                                            ERP_PRIMARY,
-                                        }}
-                                        onMouseDown={(
-                                          e
-                                        ) =>
-                                          e.preventDefault()
-                                        }
-                                        onClick={() =>
-                                          setAddItemOpen(
-                                            true
-                                          )
-                                        }
-                                      >
-                                        Add New
-                                        Item
-                                      </button>
-                                    </p>
-                                  ) : (
-                                    filteredProducts.map(
-                                      (
-                                        p
-                                      ) => (
+                                {itemPickerIdx === idx ? (
+                                  <div className="absolute left-0 right-0 top-full z-30 mt-1 max-h-56 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl transition-all">
+                                    {filteredProducts.length === 0 ? (
+                                      <p className="px-3 py-2.5 text-[12px] text-slate-500">
+                                        No products found.{" "}
                                         <button
-                                          key={
-                                            p.id
-                                          }
                                           type="button"
-                                          className="block w-full px-3 py-2 text-left text-[12px] hover:bg-[#f7f7f9]"
-                                          onMouseDown={(
-                                            e
-                                          ) =>
-                                            e.preventDefault()
-                                          }
-                                          onClick={() =>
-                                            selectProductForRow(
-                                              idx,
-                                              p
-                                            )
-                                          }
+                                          className="font-semibold text-indigo-600 hover:underline"
+                                          onMouseDown={(e) => e.preventDefault()}
+                                          onClick={() => setAddItemOpen(true)}
                                         >
-                                          <span className="font-semibold text-[#1a1a1f]">
-                                            {
-                                              p.name
-                                            }
+                                          + Add New Item
+                                        </button>
+                                      </p>
+                                    ) : (
+                                      filteredProducts.map((p) => (
+                                        <button
+                                          key={p.id}
+                                          type="button"
+                                          className="block w-full rounded-xl px-3 py-2 text-left text-[12px] hover:bg-slate-50 transition"
+                                          onMouseDown={(e) => e.preventDefault()}
+                                          onClick={() => selectProductForRow(idx, p)}
+                                        >
+                                          <span className="font-bold text-[#111827] dark:text-slate-100 text-[13px] block leading-tight">
+                                            {p.name || p.sku}
                                           </span>
-
-                                          <span className="mt-0.5 block text-[11px] text-[#8a8a95]">
+                                          <span className="mt-0.5 block text-[11px] text-[#6b7280]">
                                             {[
                                               p.sku,
-
-                                              p.hsn_code
-                                                ? `HSN ${p.hsn_code}`
-                                                : null,
-
-                                              p.current_stock !=
-                                              null
-                                                ? `Stock ${p.current_stock}`
-                                                : null,
+                                              p.hsn_code ? `HSN ${p.hsn_code}` : null,
+                                              p.current_stock != null ? `Stock ${p.current_stock}` : null,
                                             ]
-                                              .filter(
-                                                Boolean
-                                              )
-                                              .join(
-                                                " · "
-                                              )}
+                                              .filter(Boolean)
+                                              .join(" · ")}
                                           </span>
                                         </button>
-                                      )
-                                    )
-                                  )}
-                                </div>
-                              ) : null}
-                            </div>
+                                      ))
+                                    )}
+                                  </div>
+                                ) : null}
+                              </div>
+                            )}
                           </td>
 
                           <td className="border-b border-r border-[#d0d0d8] px-2 py-2">
@@ -4251,6 +4280,27 @@ export default function QuotationForm() {
           grandTotal={
             finalAmount
           }
+        />
+      )}
+      {selectedDetailProduct && (
+        <ProductDetailModal
+          product={selectedDetailProduct}
+          onClose={() => setSelectedDetailProduct(null)}
+        />
+      )}
+      {itemModalTargetIdx !== null && (
+        <ItemSelectionModal
+          isOpen={itemModalTargetIdx !== null}
+          products={products}
+          onSelect={(product) => {
+            selectProductForRow(itemModalTargetIdx, product);
+            setItemModalTargetIdx(null);
+          }}
+          onClose={() => setItemModalTargetIdx(null)}
+          onAddNew={() => {
+            setItemModalTargetIdx(null);
+            setAddItemOpen(true);
+          }}
         />
       )}
     </form>
