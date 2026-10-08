@@ -406,18 +406,26 @@ class Settings(BaseSettings):
             return None
         return normalize_openai_base_url(value)
 
-    @field_validator("database_url")
+    @field_validator("database_url", mode="before")
     @classmethod
     def validate_database_url(cls, value: str, info: ValidationInfo) -> str:
+        if not isinstance(value, str):
+            value = ""
         url = value.strip()
         if not url:
             raise ValueError(
                 "DATABASE_URL is required. Example: "
                 "postgresql+psycopg://USER:PASSWORD@localhost:5432/insights_iva"
             )
+        # Convert postgres:// or postgresql:// to postgresql+psycopg:// for cloud host compatibility (Render, Heroku, etc.)
+        if url.startswith("postgres://"):
+            url = "postgresql+psycopg://" + url[len("postgres://"):]
+        elif url.startswith("postgresql://"):
+            url = "postgresql+psycopg://" + url[len("postgresql://"):]
+
         lowered = url.lower()
         if lowered.startswith("sqlite:"):
-            allowed = _sqlite_runtime_allowed() or info.data.get("allow_sqlite_runtime", False)
+            allowed = _sqlite_runtime_allowed() or (info.data and info.data.get("allow_sqlite_runtime", False))
             if not allowed:
                 raise ValueError(
                     "SQLite is not supported as the runtime database. "
