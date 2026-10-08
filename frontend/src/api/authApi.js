@@ -1,7 +1,7 @@
 import api from "./axiosConfig";
 import { triggerServerWakeup, isServerWakeupOrTransientError } from "../utils/serverWakeup";
 
-const LOGIN_WARMUP_WAIT_MS = 2_000;
+const LOGIN_WARMUP_WAIT_MS = 200;
 
 function waitForLoginWarmup() {
   return Promise.race([
@@ -14,7 +14,7 @@ function waitForLoginWarmup() {
  * Executes an auth request with automatic retry if the server is waking up
  * from a cold sleep (Render / Cloudflare 502/503/504, ECONNABORTED, ERR_NETWORK).
  */
-async function withAuthRetry(requestFn, { maxRetries = 2, baseDelayMs = 2000 } = {}) {
+async function withAuthRetry(requestFn, { maxRetries = 2, baseDelayMs = 400 } = {}) {
   let lastError;
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {

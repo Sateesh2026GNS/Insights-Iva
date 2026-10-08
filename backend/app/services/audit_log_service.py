@@ -343,6 +343,7 @@ class AuditLogService:
         request: Request,
         user: User,
         role: str | None = None,
+        commit: bool = True,
     ) -> AccessLog | None:
         now = _utcnow()
         # Close any prior open active login sessions for this user before starting new session
@@ -357,16 +358,14 @@ class AuditLogService:
                 )
                 .values(logout_at=now)
             )
-            db.commit()
+            if commit:
+                db.commit()
+            else:
+                db.flush()
         except Exception:
             pass
 
         sid = str(uuid.uuid4())
-        # Ensure relationships loaded
-        try:
-            db.refresh(user, ["roles", "tenant"])
-        except Exception:
-            pass
         row = cls.log(
             db=db,
             request=request,
@@ -379,10 +378,14 @@ class AuditLogService:
             session_id=sid,
             login_at=now,
             email_override=user.email,
+            commit=commit,
         )
         if row is not None and role:
             row.role = role
-            db.commit()
+            if commit:
+                db.commit()
+            else:
+                db.flush()
         return row
 
     @classmethod

@@ -122,14 +122,16 @@ def login(req: LoginRequest, request: Request, db: Session = Depends(get_db)):
                 headers={"Retry-After": str(remaining_seconds)},
             )
 
-        if not db.scalar(select(func.count(User.id))):
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="No user accounts found. Please contact your administrator.",
-            )
+        if not user:
+            # Check if database has any users at all only on non-matching email
+            if not db.scalar(select(func.count(User.id))):
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="No user accounts found. Please contact your administrator.",
+                )
 
         try:
-            authenticated = login_user(db, email, req.password)
+            authenticated = login_user(db, email, req.password, user=user)
         except HTTPException as exc:
             if exc.status_code == status.HTTP_401_UNAUTHORIZED:
                 if user:
@@ -161,7 +163,6 @@ def login(req: LoginRequest, request: Request, db: Session = Depends(get_db)):
                 ) from exc
             raise
 
-        db.refresh(authenticated, ["roles", "tenant"])
         try:
             actual_role = assert_user_has_role(authenticated, req.role)
         except HTTPException as exc:
@@ -205,6 +206,7 @@ def login(req: LoginRequest, request: Request, db: Session = Depends(get_db)):
             user_id=authenticated.id,
             ip_address=ip_address,
             user_agent=user_agent,
+            commit=False,
         )
         record_login_history(
             db,
@@ -214,25 +216,30 @@ def login(req: LoginRequest, request: Request, db: Session = Depends(get_db)):
             ip_address=ip_address,
             user_agent=user_agent,
             role=actual_role,
+            commit=False,
         )
         AuditLogService.log_login_success(
             db,
             request=request,
             user=authenticated,
             role=actual_role,
+            commit=False,
         )
         try:
             from app.middleware.security import clear_auth_backoff
             clear_auth_backoff(request, email=email)
         except Exception:
             pass
+
         data = issue_auth_response_data(
             db,
             authenticated,
             ip_address=ip_address,
             user_agent=user_agent,
             role_name=actual_role,
+            commit=False,
         )
+        db.commit()
         return AuthResponse(**data)
     except HTTPException:
         raise

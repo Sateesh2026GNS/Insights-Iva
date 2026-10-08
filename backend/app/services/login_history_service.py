@@ -72,6 +72,7 @@ def record_login_history(
     ip_address: str | None = None,
     user_agent: str | None = None,
     role: str | None = None,
+    commit: bool = True,
 ) -> LoginHistory:
     """Insert a login_history row for success or failure."""
     try:
@@ -115,8 +116,11 @@ def record_login_history(
             user_agent=(user_agent or "")[:512] or None,
         )
         db.add(row)
-        db.commit()
-        db.refresh(row)
+        if commit:
+            db.commit()
+            db.refresh(row)
+        else:
+            db.flush()
         logger.info(
             "login_history_recorded status=%s email=%s user_id=%s company_id=%s",
             row.login_status,

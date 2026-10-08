@@ -44,6 +44,7 @@ def record_login_attempt(
     ip_address: str | None = None,
     user_agent: str | None = None,
     failure_reason: str | None = None,
+    commit: bool = True,
 ) -> None:
     try:
         db.add(
@@ -56,7 +57,10 @@ def record_login_attempt(
                 failure_reason=failure_reason,
             )
         )
-        db.commit()
+        if commit:
+            db.commit()
+        else:
+            db.flush()
     except SQLAlchemyError as exc:
         logger.exception("record_login_attempt database error for email %s: %s", email, exc)
         db.rollback()
@@ -146,12 +150,15 @@ def register_failed_login(db: Session, user: User | None, email: str) -> None:
         logger.exception("Failed to emit login_failure alert for email %s: %s", email, exc)
 
 
-def clear_login_failures(db: Session, user: User) -> None:
+def clear_login_failures(db: Session, user: User, commit: bool = True) -> None:
     user.failed_login_attempts = 0
     user.locked_until = None
     user.last_failed_login_at = None
     user.last_activity_at = _utcnow()
-    db.commit()
+    if commit:
+        db.commit()
+    else:
+        db.flush()
 
 
 def check_session_active(user: User) -> bool:
@@ -180,7 +187,7 @@ def touch_user_activity(db: Session, user: User) -> None:
 
 
 def create_refresh_token(
-    db: Session, user: User, *, ip_address: str | None = None, user_agent: str | None = None
+    db: Session, user: User, *, ip_address: str | None = None, user_agent: str | None = None, commit: bool = True
 ) -> str:
     raw = generate_token()
     db.add(
@@ -192,7 +199,10 @@ def create_refresh_token(
             user_agent=user_agent,
         )
     )
-    db.commit()
+    if commit:
+        db.commit()
+    else:
+        db.flush()
     return raw
 
 

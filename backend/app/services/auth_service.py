@@ -148,6 +148,15 @@ def find_user_by_email(db: Session, email: str) -> User | None:
     if not email:
         return None
     normalized = email.strip().lower()
+    # Fast path: direct indexed B-tree query
+    user = db.scalars(
+        select(User)
+        .where(User.email == normalized)
+        .options(selectinload(User.roles), selectinload(User.tenant))
+    ).first()
+    if user:
+        return user
+    # Fallback for un-normalized legacy records
     return db.scalars(
         select(User)
         .where(func.lower(func.trim(User.email)) == normalized)
@@ -155,7 +164,7 @@ def find_user_by_email(db: Session, email: str) -> User | None:
     ).first()
 
 
-def login_user(db: Session, email: str, password: str) -> User:
+def login_user(db: Session, email: str, password: str, user: User | None = None) -> User:
     """
     Validate credentials. Raises 401 with a generic message for any auth failure
     so callers cannot distinguish unknown email, wrong password, or inactive account.
@@ -168,7 +177,8 @@ def login_user(db: Session, email: str, password: str) -> User:
     dummy_hash = "$2b$12$LQv3c1yqBWVHxkd0LHA0COYz6TtxMQJqpNfWXlFbW.6B1Lx3KvQ6e"
 
     email = (email or "").strip().lower()
-    user = find_user_by_email(db, email)
+    if user is None:
+        user = find_user_by_email(db, email)
 
     if not user:
         verify_password(password, dummy_hash)
@@ -258,17 +268,20 @@ def issue_auth_response_data(
     ip_address: str | None = None,
     user_agent: str | None = None,
     role_name: str | None = None,
+    commit: bool = True,
 ) -> dict:
     from app.services.security_service import clear_login_failures, create_refresh_token
 
-    clear_login_failures(db, user)
+    clear_login_failures(db, user, commit=commit)
     now = datetime.now(timezone.utc)
     user.last_login_at = now
     user.tokens_revoked_at = now
-    db.commit()
-    db.refresh(user, ["roles", "tenant"])
+    if commit:
+        db.commit()
+    else:
+        db.flush()
     access = build_access_token_for_user(user, role_name=role_name)
-    refresh = create_refresh_token(db, user, ip_address=ip_address, user_agent=user_agent)
+    refresh = create_refresh_token(db, user, ip_address=ip_address, user_agent=user_agent, commit=commit)
     user_data = get_user_with_role(db, user, preferred_role=role_name)
     return {
         "access_token": access,
@@ -304,16 +317,19 @@ def _permissions_for_role_record(role) -> list[str]:
 def get_user_with_role(db: Session, user: User, *, preferred_role: str | None = None) -> dict:
     from app.models.platform import CompanyLicense
 
-    db.refresh(user, ["roles", "tenant"])
-    role_names = [r.name for r in user.roles]
+    roles = getattr(user, "roles", None)
+    if not roles:
+        db.refresh(user, ["roles", "tenant"])
+        roles = user.roles
+    role_names = [r.name for r in roles]
     primary = None
     if preferred_role:
-        primary = next((r for r in user.roles if r.name == preferred_role), None)
+        primary = next((r for r in roles if r.name == preferred_role), None)
     if primary is None:
-        primary = user.roles[0] if user.roles else None
+        primary = roles[0] if roles else None
     role_name = primary.name if primary else "Operator"
     permissions = _permissions_for_role_record(primary) if primary else []
-    tenant = user.tenant
+    tenant = getattr(user, "tenant", None)
     tenant_name = tenant.name if tenant else None
 
     license_row = None
