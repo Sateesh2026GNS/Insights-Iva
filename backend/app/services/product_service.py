@@ -13,11 +13,72 @@ from app.models.sales import SalesOrder, SalesOrderLine
 from app.schemas.product import BomItemCreate, ProductCreate, ProductUpdate
 
 
-def list_products(db: Session, tenant_id: int, *, limit: int = 500, offset: int = 0) -> list[Product]:
+def _apply_product_list_filters(
+    stmt,
+    db: Session,
+    tenant_id: int,
+    *,
+    category: str | None = None,
+    category_id: int | None = None,
+    q: str | None = None,
+):
+    from app.models.product import InventoryCategory
+
+    resolved_category = (category or "").strip()
+    if category_id is not None and category_id > 0:
+        cat_row = db.scalars(
+            select(InventoryCategory).where(
+                InventoryCategory.id == category_id,
+                InventoryCategory.tenant_id == tenant_id,
+            )
+        ).first()
+        if cat_row:
+            resolved_category = cat_row.name
+    elif category_id == 0:
+        resolved_category = "No Category"
+
+    if resolved_category:
+        if resolved_category.lower() == "no category":
+            stmt = stmt.where(
+                or_(
+                    Product.category == "No Category",
+                    Product.category == "",
+                    Product.category.is_(None),
+                )
+            )
+        else:
+            stmt = stmt.where(func.lower(Product.category) == resolved_category.lower())
+
+    if q and q.strip():
+        needle = f"%{q.strip()}%"
+        stmt = stmt.where(
+            or_(
+                Product.name.ilike(needle),
+                Product.sku.ilike(needle),
+                Product.description.ilike(needle),
+                Product.hsn_code.ilike(needle),
+                Product.category.ilike(needle),
+            )
+        )
+    return stmt
+
+
+def list_products(
+    db: Session,
+    tenant_id: int,
+    *,
+    category: str | None = None,
+    category_id: int | None = None,
+    q: str | None = None,
+    limit: int = 500,
+    offset: int = 0,
+) -> list[Product]:
+    stmt = select(Product).where(Product.tenant_id == tenant_id)
+    stmt = _apply_product_list_filters(
+        stmt, db, tenant_id, category=category, category_id=category_id, q=q
+    )
     stmt = (
-        select(Product)
-        .where(Product.tenant_id == tenant_id)
-        .order_by(Product.id.desc())
+        stmt.order_by(Product.id.desc())
         .offset(max(0, offset))
         .limit(max(1, min(limit, 2000)))
     )

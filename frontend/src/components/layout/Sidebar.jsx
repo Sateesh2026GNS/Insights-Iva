@@ -213,16 +213,18 @@ function buildStoreManagerSidebarNav() {
       };
     }
     if (item.children?.length) {
+      const sectionModule =
+        item.module || (item.key === "masters" ? "masters" : item.key === "purchases" ? "procurement" : "inventory");
       return {
         key: item.key,
         label: item.label,
         icon: item.icon,
-        module: "inventory",
+        module: sectionModule,
         children: item.children.map((c) => ({
           key: c.key,
           label: c.label,
           to: c.to,
-          module: "inventory",
+          module: c.module || sectionModule,
           end: c.end,
         })),
       };

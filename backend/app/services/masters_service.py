@@ -80,8 +80,20 @@ class MastersService:
             "created_at": p.created_at.isoformat() if getattr(p, "created_at", None) else None,
         }
 
-    def list_products(self) -> list[dict]:
-        rows = list_products(self.db, self.tenant_id)
+    def list_products(
+        self,
+        *,
+        category: str | None = None,
+        category_id: int | None = None,
+        q: str | None = None,
+    ) -> list[dict]:
+        rows = list_products(
+            self.db,
+            self.tenant_id,
+            category=category,
+            category_id=category_id,
+            q=q,
+        )
         pricing_map = list_pricing_for_products(
             self.db, self.tenant_id, [p.id for p in rows]
         )

@@ -510,8 +510,15 @@ class LeadCreate(LeadBase):
 class LeadUpdate(BaseModel):
     name: str | None = None
     company: str | None = None
+    company_name: str | None = None
+    contact_person: str | None = None
     email: str | None = None
     phone: str | None = None
+    city: str | None = None
+    state: str | None = None
+    address: str | None = None
+    pincode: str | None = None
+    gst_number: str | None = None
     source: str | None = None
     status: str | None = None
     notes: str | None = None
@@ -520,12 +527,46 @@ class LeadUpdate(BaseModel):
     region: str | None = None
     priority: str | None = None
     next_followup: date | None = None
+    next_follow_up: date | None = None
     opportunity_value: float | None = Field(None, ge=0.0)
+    product_id: int | None = None
+    quantity: float | None = None
+    expected_value: float | None = None
+    expected_close_date: date | None = None
+    requirement_details: str | None = None
+    assigned_user_id: int | None = None
+    is_draft: bool | None = None
+
+    @field_validator("pincode")
+    @classmethod
+    def pincode_valid(cls, value: str | None) -> str | None:
+        if value is None or str(value).strip() == "":
+            return None
+        import re
+
+        from app.schemas.lead_form import PINCODE_RE
+
+        clean = re.sub(r"\D", "", str(value).strip())
+        if not PINCODE_RE.match(clean):
+            raise ValueError("Enter a valid 6-digit Indian PIN code.")
+        return clean
 
 
 class LeadRead(LeadBase):
     id: int
     tenant_id: int
+    lead_no: str | None = None
+    company_name: str | None = None
+    contact_person: str | None = None
+    city: str | None = None
+    state: str | None = None
+    address: str | None = None
+    pincode: str | None = None
+    gst_number: str | None = None
+    product_id: int | None = None
+    quantity: float | None = None
+    expected_value: float | None = None
+    assigned_user_id: int | None = None
 
     model_config = ConfigDict(from_attributes=True)
 

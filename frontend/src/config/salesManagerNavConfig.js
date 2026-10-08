@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 
 import { SALES_DASHBOARD_PATH } from "../utils/roleRedirect";
+import { ROLE_MASTERS_NAV_CHILDREN } from "./roleMastersNav";
 
 /**
  * Sales Manager sidebar — workflow-focused navigation (single dashboard, no duplicate Sales Dashboard).
@@ -38,9 +39,9 @@ export const SALES_MANAGER_NAV_ITEMS = [
     module: "sales",
     children: [
       { key: "leads", label: "Leads / Enquiries", to: "/sales/leads", icon: Target, module: "sales" },
+      { key: "createLead", label: "Create Lead", to: "/sales/leads/new", icon: Target, module: "sales" },
       { key: "quotations", label: "Quotations", to: "/sales/quotations", icon: FileText, module: "sales" },
       { key: "orders", label: "Sales Orders", to: "/sales/orders", icon: ClipboardList, module: "sales" },
-      { key: "customers", label: "Customers", to: "/sales/customers", icon: Users, module: "sales" },
       { key: "followUps", label: "Follow-ups", to: "/sales/leads?followup=due", icon: CalendarDays, module: "sales" },
     ],
   },
@@ -108,15 +109,7 @@ export const SALES_MANAGER_NAV_ITEMS = [
     label: "Masters",
     icon: Layers,
     module: "masters",
-    children: [
-      {
-        key: "products",
-        label: "Products",
-        to: "/masters/products",
-        icon: Package,
-        module: "masters",
-      },
-    ],
+    children: ROLE_MASTERS_NAV_CHILDREN.map((c) => ({ ...c })),
   },
   {
     key: "reports",

@@ -16,7 +16,6 @@ import {
   salesListTextPrimary,
   salesListTextSecondary,
 } from "../../components/sales/salesListDesignSystem";
-import CreateLeadModal from "../../components/sales/CreateLeadModal";
 import LeadDetailModal from "../../components/sales/LeadDetailModal";
 import LeadRowActionsMenu from "../../components/sales/LeadRowActionsMenu";
 import ConfirmationDialog from "../../components/common/ConfirmationDialog";
@@ -96,8 +95,6 @@ export default function Leads() {
   const [tableSearch, setTableSearch] = useState("");
   const [view, setView] = useState("table");
   const [selected, setSelected] = useState(null);
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [editingLead, setEditingLead] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [openMenu, setOpenMenu] = useState(null);
@@ -120,11 +117,8 @@ export default function Leads() {
 
   useEffect(() => {
     if (searchParams.get("create") !== "1") return;
-    setShowCreateModal(true);
-    const next = new URLSearchParams(searchParams);
-    next.delete("create");
-    setSearchParams(next, { replace: true });
-  }, [searchParams, setSearchParams]);
+    navigate("/sales/leads/new");
+  }, [navigate, searchParams]);
 
   useEffect(() => {
     const leadId = searchParams.get("lead");
@@ -265,7 +259,7 @@ export default function Leads() {
       addToast("This lead must be saved on the server before it can be edited.", "error");
       return;
     }
-    setEditingLead(lead);
+    navigate(`/sales/leads/${lead.id}/edit`);
   };
 
   const handleDeleteLead = (lead) => {
@@ -314,29 +308,6 @@ export default function Leads() {
     } finally {
       setConvertingLeadId(null);
     }
-  };
-
-  const handleLeadSaved = (saved) => {
-    if (!saved) {
-      load(true);
-      return;
-    }
-    setRows((prev) => {
-      const idx = prev.findIndex((l) => l.id === saved.id);
-      const normalized = {
-        ...saved,
-        customer_name: saved.customer_name ?? saved.name,
-        contact: saved.contact ?? saved.phone,
-      };
-      if (idx >= 0) {
-        const next = [...prev];
-        next[idx] = { ...next[idx], ...normalized };
-        return next;
-      }
-      return [normalized, ...prev];
-    });
-    setEditingLead(null);
-    load(true);
   };
 
   const leadActionMenuProps = {
@@ -407,7 +378,7 @@ export default function Leads() {
             <Button
               variant="add"
               type="button"
-              onClick={() => setShowCreateModal(true)}
+              onClick={() => navigate("/sales/leads/new")}
               leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}
             >
               New Lead
@@ -787,13 +758,6 @@ export default function Leads() {
           onConvertToQuotation={handleCreateQuotationFromLead}
         />
       )}
-      <CreateLeadModal isOpen={showCreateModal} onClose={() => setShowCreateModal(false)} onSuccess={() => load(true)} />
-      <CreateLeadModal
-        isOpen={Boolean(editingLead)}
-        leadToEdit={editingLead}
-        onClose={() => setEditingLead(null)}
-        onSuccess={handleLeadSaved}
-      />
       <ConfirmationDialog
         open={Boolean(deleteTarget)}
         title="Delete Lead?"

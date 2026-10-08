@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 
-import { FormField, Input } from "../common/FormField";
 import SearchableSelect from "../common/SearchableSelect";
 import { getVendors } from "../../api/procurementApi";
+import { inputClass } from "../../design-system/classes";
 import { computeLandedCost } from "../../utils/materialPricingFormCalc";
 
 const PRICING_EMPTY = {
@@ -16,6 +16,19 @@ const PRICING_EMPTY = {
   selling_price: "",
   pricing_id: null,
 };
+
+/** Matches Add Product modal field labels (SoftLabel). */
+const FIELD_LABEL_CLASS = "mb-1.5 block text-[12px] font-semibold text-[#6b6b76]";
+const SECTION_TITLE_CLASS = "mb-2.5 text-[17px] font-semibold leading-6 text-[#1a1a1f]";
+
+function PricingField({ label, className = "", children }) {
+  return (
+    <div className={className}>
+      <span className={FIELD_LABEL_CLASS}>{label}</span>
+      {children}
+    </div>
+  );
+}
 
 export function buildVendorPricingFromItem(item) {
   if (!item) return { ...PRICING_EMPTY };
@@ -102,12 +115,20 @@ export default function ProductVendorPricingFields({ pricing, onChange, disabled
 
   const set = (key, value) => onChange({ ...pricing, [key]: value });
 
+  const currencyInputProps = {
+    type: "number",
+    min: "0",
+    step: "any",
+    disabled,
+    className: inputClass,
+  };
+
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <div>
-        <h3 className="mb-3 text-sm font-bold text-[var(--color-text)]">Cost &amp; Pricing</h3>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <FormField label="Vendor">
+        <h3 className={SECTION_TITLE_CLASS}>Cost &amp; Pricing</h3>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <PricingField label="Vendor">
             <SearchableSelect
               value={pricing.supplier_id}
               onChange={(v) => set("supplier_id", v)}
@@ -116,95 +137,74 @@ export default function ProductVendorPricingFields({ pricing, onChange, disabled
               disabled={disabled}
               emptyListMessage="No vendors found. Add vendors under Purchases."
             />
-          </FormField>
-          <div className="hidden sm:block" />
-          <FormField label="Purchase Price">
-            <Input
-              type="number"
-              min="0"
-              step="any"
+          </PricingField>
+          <div className="hidden sm:block" aria-hidden />
+          <PricingField label="Purchase Price">
+            <input
+              {...currencyInputProps}
               value={pricing.purchase_price}
               onChange={(e) => set("purchase_price", e.target.value)}
-              disabled={disabled}
               placeholder="₹"
             />
-          </FormField>
-          <FormField label="Transport Cost">
-            <Input
-              type="number"
-              min="0"
-              step="any"
+          </PricingField>
+          <PricingField label="Transport Cost">
+            <input
+              {...currencyInputProps}
               value={pricing.transport_cost}
               onChange={(e) => set("transport_cost", e.target.value)}
-              disabled={disabled}
               placeholder="₹"
             />
-          </FormField>
-          <FormField label="Labour Cost">
-            <Input
-              type="number"
-              min="0"
-              step="any"
+          </PricingField>
+          <PricingField label="Labour Cost">
+            <input
+              {...currencyInputProps}
               value={pricing.labour_cost}
               onChange={(e) => set("labour_cost", e.target.value)}
-              disabled={disabled}
               placeholder="₹"
             />
-          </FormField>
-          <FormField label="Import Cost">
-            <Input
-              type="number"
-              min="0"
-              step="any"
+          </PricingField>
+          <PricingField label="Import Cost">
+            <input
+              {...currencyInputProps}
               value={pricing.import_cost}
               onChange={(e) => set("import_cost", e.target.value)}
-              disabled={disabled}
               placeholder="₹"
             />
-          </FormField>
+          </PricingField>
         </div>
-        <p className="mt-3 text-sm text-[var(--color-text-muted)]">
+        <p className="mt-2.5 text-[14px] font-normal leading-5 text-[#6b6b76]">
           Total / Landed Cost:{" "}
-          <span className="font-semibold tabular-nums text-[var(--color-text)]">
+          <span className="font-semibold tabular-nums text-[#1a1a1f]">
             ₹{landed.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </span>
-          <span className="ml-1 text-xs">(auto calculated)</span>
+          <span className="ml-1 text-[12px] text-[#9a9aa5]">(auto calculated)</span>
         </p>
       </div>
 
       <div>
-        <h3 className="mb-3 text-sm font-bold text-[var(--color-text)]">Selling Price</h3>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <FormField label="Minimum Price">
-            <Input
-              type="number"
-              min="0"
-              step="any"
+        <h3 className={SECTION_TITLE_CLASS}>Selling Price</h3>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <PricingField label="Minimum Price">
+            <input
+              {...currencyInputProps}
               value={pricing.minimum_price}
               onChange={(e) => set("minimum_price", e.target.value)}
-              disabled={disabled}
             />
-          </FormField>
-          <FormField label="Maximum Price">
-            <Input
-              type="number"
-              min="0"
-              step="any"
+          </PricingField>
+          <PricingField label="Maximum Price">
+            <input
+              {...currencyInputProps}
               value={pricing.maximum_price}
               onChange={(e) => set("maximum_price", e.target.value)}
-              disabled={disabled}
             />
-          </FormField>
-          <FormField label="Company Selling Price" className="sm:col-span-2">
-            <Input
-              type="number"
-              min="0"
-              step="any"
+          </PricingField>
+          <PricingField label="Company Selling Price" className="sm:col-span-2">
+            <input
+              {...currencyInputProps}
               value={pricing.selling_price}
               onChange={(e) => set("selling_price", e.target.value)}
-              disabled={disabled}
             />
-          </FormField>
+          </PricingField>
         </div>
       </div>
     </div>

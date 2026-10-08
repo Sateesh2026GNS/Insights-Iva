@@ -1321,14 +1321,32 @@ def update_lead_status(
 
 
 def update_lead(db: Session, tenant_id: int, lead_id: int, payload) -> Lead | None:
+    from app.services.lead_form_service import assert_lead_assignee, assert_lead_product
+
     lead = db.scalars(
         select(Lead).where(Lead.id == lead_id, Lead.tenant_id == tenant_id)
     ).first()
     if not lead:
         return None
     data = payload.model_dump(exclude_unset=True)
+    data.pop("discussions", None)
+    if "next_follow_up" in data:
+        data["next_followup"] = data.pop("next_follow_up")
+    if "product_id" in data:
+        assert_lead_product(db, tenant_id, data["product_id"])
+    if "assigned_user_id" in data:
+        assert_lead_assignee(db, tenant_id, data["assigned_user_id"])
+    if "status" in data and data["status"]:
+        data["status"] = str(data["status"]).strip().lower()
+    if "priority" in data and data["priority"]:
+        data["priority"] = str(data["priority"]).strip().lower()
     for key, value in data.items():
-        setattr(lead, key, value)
+        if hasattr(lead, key):
+            setattr(lead, key, value)
+    if "contact_person" in data and data["contact_person"]:
+        lead.name = data["contact_person"]
+    if "company_name" in data:
+        lead.company = data["company_name"]
     db.commit()
     db.refresh(lead)
     return lead

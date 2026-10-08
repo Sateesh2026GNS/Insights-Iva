@@ -314,6 +314,7 @@ export const STORE_MANAGER_ALLOWED_PATHS = new Set([
   "/purchases/debit-notes",
   "/masters/vendors",
   "/masters/products",
+  "/sales/customers",
   "/settings",
   "/settings/my-account",
   "/alerts/low-stock",
@@ -371,6 +372,13 @@ export function isSalesManager(user) {
 }
 
 /** Create New Lead → Assigned Executive → + Add New Name (matches POST /team-directory/sales-executives). */
+export function userCanCreateLead(user) {
+  if (isAdmin(user)) return true;
+  if (isSalesManager(user)) return true;
+  if (userCanAction(user, "leads", "create")) return true;
+  return userCanAction(user, "sales", "create");
+}
+
 export function userCanAddLeadExecutiveName(user) {
   if (!user) return false;
   if (isAdmin(user)) return true;
@@ -443,6 +451,8 @@ export function salesManagerPathAllowed(pathname) {
   if (path.startsWith("/chat")) return true;
   if (path.startsWith("/settings")) return true;
   if (path.startsWith("/masters/products")) return true;
+  if (path.startsWith("/procurement/vendors")) return true;
+  if (path.startsWith("/masters/vendors")) return true;
   if (path === "/products" || path.startsWith("/products/")) return true;
   if (path.startsWith("/master/products")) return true;
   return false;
@@ -508,6 +518,7 @@ export function storeManagerPathAllowed(pathname) {
   if (path.startsWith("/manufacturing")) return true;
   if (path.startsWith("/chat")) return true;
   if (path.startsWith("/meetings")) return true;
+  if (path.startsWith("/sales/customers")) return true;
   return false;
 }
 

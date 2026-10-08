@@ -12,12 +12,17 @@ ADMIN_ROLE = "Admin"
 RESTRICTED_ACTION_ROLES = frozenset({"Operator"})
 
 
+EXTRA_PERMISSION_MODULES = frozenset({"leads"})
+
+
 def is_valid_permission(code: str) -> bool:
     if code in VALID_MODULES or code in ("admin", "*"):
         return True
     if ":" not in code:
         return False
     module, action = code.split(":", 1)
+    if module in EXTRA_PERMISSION_MODULES and action in VALID_ACTIONS:
+        return True
     return module in VALID_MODULES and action in VALID_ACTIONS
 
 
@@ -260,6 +265,34 @@ def user_has_any_permission(user: User, *modules: str) -> bool:
     return any(m in perms for m in modules)
 
 
+def user_can_create_lead(user: User) -> bool:
+    if user_is_admin(user):
+        return True
+    if _is_sales_manager(user):
+        return True
+    perms = get_user_permissions(user)
+    if "leads:create" in perms:
+        return True
+    return user_can_action(user, "sales", "create")
+
+
+def require_lead_create():
+    def dependency(current_user: User = Depends(get_current_user)) -> User:
+        if not user_has_permission(current_user, "sales"):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=MODULE_FORBIDDEN_MESSAGE,
+            )
+        if not user_can_create_lead(current_user):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=MODULE_FORBIDDEN_MESSAGE,
+            )
+        return current_user
+
+    return dependency
+
+
 def user_can_action(user: User, module: str, action: str) -> bool:
     if module in ("meetings", "chat"):
         return True
@@ -269,6 +302,8 @@ def user_can_action(user: User, module: str, action: str) -> bool:
     if "admin" in perms or "*" in perms or f"{module}:*" in perms:
         return True
     if f"{module}:{action}" in perms:
+        return True
+    if module == "leads" and f"leads:{action}" in perms:
         return True
     role_names = set(get_role_names(user))
     if role_names.intersection(RESTRICTED_ACTION_ROLES):

@@ -55,6 +55,8 @@ export const CreateItem = lazy(() => import("../pages/inventory/CreateItem"));
 export const CreateWarehouse = lazy(() => import("../pages/inventory/CreateWarehouse"));
 export const CreateSupplier = lazy(() => import("../pages/inventory/CreateSupplier"));
 export const Leads = lazy(() => import("../pages/sales/Leads"));
+export const CreateLeadPage = lazy(() => import("../pages/sales/CreateLeadPage"));
+export const LeadDetailPage = lazy(() => import("../pages/sales/LeadDetailPage"));
 export const Quotations = lazy(() => import("../pages/sales/Quotations"));
 export const QuotationForm = lazy(() => import("../pages/sales/QuotationForm"));
 export const PaymentReceipts = lazy(() => import("../pages/sales/PaymentReceipts"));

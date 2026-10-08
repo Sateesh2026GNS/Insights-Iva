@@ -33,7 +33,6 @@ import { AsyncPageBody, EmptyState } from "../../components/common/states";
 import RecentTransactionsPeriodSelect from "../../components/accounts/RecentTransactionsPeriodSelect";
 import DashboardReportExport from "../../components/common/DashboardReportExport";
 import { metricExportRows } from "../../utils/dashboardExportRows";
-import CreateLeadModal from "../../components/sales/CreateLeadModal";
 import SalesDashboardMyWork from "../../components/sales/SalesDashboardMyWork";
 import {
   getLeadsEnriched,
@@ -168,7 +167,6 @@ export default function SalesDashboard() {
   const [quoteSummary, setQuoteSummary] = useState(null);
   const [leads, setLeads] = useState([]);
   const [orders, setOrders] = useState([]);
-  const [showLeadModal, setShowLeadModal] = useState(false);
   const [alertTab, setAlertTab] = useState("all");
 
   const periodOptions = useMemo(() => buildRecentTransactionsPeriodOptions(), []);
@@ -376,7 +374,7 @@ export default function SalesDashboard() {
     <ListPageShell stackClassName="sales-dash space-y-4 sm:space-y-5 pb-8">
       <div className="sales-dash__toolbar">
         <div className="sales-dash__toolbar-actions">
-          <Button variant="add" type="button" leftIcon={<UserPlus className="h-4 w-4" />} onClick={() => setShowLeadModal(true)}>
+          <Button variant="add" to="/sales/leads/new" leftIcon={<UserPlus className="h-4 w-4" />}>
             New Lead
           </Button>
           <Button variant="add" to="/sales/quotations/create" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} />}>
@@ -410,8 +408,6 @@ export default function SalesDashboard() {
       </div>
 
       <SalesDashboardMyWork />
-
-      <CreateLeadModal isOpen={showLeadModal} onClose={() => setShowLeadModal(false)} onSuccess={() => load(true)} />
 
       <AsyncPageBody
         loading={loading}
@@ -538,10 +534,10 @@ export default function SalesDashboard() {
               </div>
               <div className="sales-dash-card__body">
                 <div className="sales-dash-quick">
-                  <button type="button" className="sales-dash-quick__btn" onClick={() => setShowLeadModal(true)}>
+                  <Link to="/sales/leads/new" className="sales-dash-quick__btn">
                     <span className="sales-dash-quick__icon"><UserPlus className="h-4 w-4" /></span>
                     New Lead
-                  </button>
+                  </Link>
                   <Link to="/sales/quotations/create" className="sales-dash-quick__btn">
                     <span className="sales-dash-quick__icon"><FileText className="h-4 w-4" /></span>
                     New Quote

@@ -5,7 +5,7 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.sales import Customer, SalesOrder
+from app.models.sales import Customer, Lead, SalesOrder
 from app.models.hr import Employee
 from app.models.document import Document
 from app.models.accounts import Expense
@@ -22,6 +22,7 @@ ENTITY_MODELS = {
     "warehouse": Warehouse,
     "purchase_order": PurchaseOrder,
     "expense": Expense,
+    "lead": Lead,
 }
 
 

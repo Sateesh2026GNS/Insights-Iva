@@ -380,6 +380,30 @@ export default function AppRoutes() {
         }
       />
       <Route
+        path="/sales/leads/new"
+        element={
+          <ProtectedRoute>
+            <P.CreateLeadPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/sales/leads/:id/edit"
+        element={
+          <ProtectedRoute>
+            <P.CreateLeadPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/sales/leads/:id"
+        element={
+          <ProtectedRoute>
+            <P.LeadDetailPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/sales/quotations"
         element={
           <ProtectedRoute>

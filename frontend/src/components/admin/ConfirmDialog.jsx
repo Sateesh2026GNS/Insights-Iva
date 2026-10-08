@@ -38,6 +38,7 @@ export default function ConfirmDialog({
   return createPortal(
     <div
       className="erp-confirm-dialog-backdrop"
+      data-skip-nav-loader
       role="presentation"
       onMouseDown={(e) => {
         if (!loading && e.target === e.currentTarget) onClose?.();

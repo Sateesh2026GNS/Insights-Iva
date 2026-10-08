@@ -20,8 +20,13 @@ import { SearchBar } from "../../components/common/SearchFilter";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
 import { useToast } from "../../context/ToastContext";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
+import {
+  createInventoryV2Category,
+  listInventoryV2Categories,
+} from "../../api/inventoryV2Api";
 import { deleteProduct, getProductDetail, getProductRelatedSection, getProducts } from "../../api/productsApi";
-import { PRODUCT_CATEGORIES, computeSummary, enrichApiProduct, getCategoryChartData } from "../../data/productsMasterData";
+import AddInventoryCategoryModal from "../../components/inventory/AddInventoryCategoryModal";
+import { computeSummary, enrichApiProduct } from "../../data/productsMasterData";
 import { runListExport } from "../../utils/listExport";
 import { apiErrorMessage } from "../../utils/apiError";
 import { removeLocalProducts } from "../../utils/localProductCache";
@@ -115,7 +120,18 @@ export default function ProductsMaster() {
   const [deleting, setDeleting] = useState(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [openMenu, setOpenMenu] = useState(null);
-  const [categoryFilter, setCategoryFilter] = useState("");
+  const [categories, setCategories] = useState([]);
+  const [selectedCategoryId, setSelectedCategoryId] = useState("");
+  const [categoryModalOpen, setCategoryModalOpen] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [categoryBusy, setCategoryBusy] = useState(false);
+  const [categoryToSelect, setCategoryToSelect] = useState("");
+
+  const selectedCategory = useMemo(
+    () => categories.find((c) => String(c.id) === String(selectedCategoryId)),
+    [categories, selectedCategoryId]
+  );
+  const selectedCategoryName = selectedCategory?.name || "";
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -136,13 +152,37 @@ export default function ProductsMaster() {
 
   const handleSavedModal = () => {
     handleCloseModal();
+    setCategoryToSelect("");
+    loadCategories();
     loadProducts();
   };
 
+  const loadCategories = useCallback(async () => {
+    try {
+      const res = await listInventoryV2Categories();
+      const rows = Array.isArray(res.data) ? res.data : [];
+      const filtered = rows.filter((c) => c?.name && c.name !== "No Category");
+      setCategories(filtered);
+      return filtered;
+    } catch {
+      setCategories([]);
+      return [];
+    }
+  }, []);
+
   const loadProducts = useCallback(async () => {
+    if (!selectedCategoryName) {
+      setProducts([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
-      const res = await getProducts();
+      const res = await getProducts({
+        category: selectedCategoryName,
+        categoryId: selectedCategory?.id,
+        q: query.trim() || undefined,
+      });
       const rows = Array.isArray(res.data) ? res.data : [];
       setProducts(rows.map((row) => enrichApiProduct(row)));
     } catch {
@@ -150,44 +190,22 @@ export default function ProductsMaster() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [query, selectedCategory?.id, selectedCategoryName]);
+
+  useEffect(() => {
+    loadCategories();
+  }, [loadCategories]);
 
   useEffect(() => {
     loadProducts();
   }, [loadProducts]);
 
-  const categoryScopedProducts = useMemo(() => {
-    if (!categoryFilter) return products;
-    const needle = categoryFilter.toLowerCase();
-    return products.filter((p) => String(p.category || "").toLowerCase() === needle);
-  }, [products, categoryFilter]);
-
-  const tableRows = useMemo(() => expandProductsToTableRows(categoryScopedProducts), [categoryScopedProducts]);
-
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return tableRows;
-    return tableRows.filter((p) =>
-      [
-        p.name,
-        p.description,
-        p.hsn_code,
-        p.unit,
-        p.category,
-        p.sku,
-        p.product_code,
-        p.vendor_name,
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase()
-        .includes(q)
-    );
-  }, [tableRows, query]);
+  const tableRows = useMemo(() => expandProductsToTableRows(products), [products]);
+  const filtered = tableRows;
 
   useEffect(() => {
     setPage(1);
-  }, [query, pageSize, categoryFilter]);
+  }, [query, pageSize, selectedCategoryId]);
 
   const total = filtered.length;
   const totalPages = Math.max(1, Math.ceil(total / pageSize) || 1);
@@ -195,18 +213,52 @@ export default function ProductsMaster() {
   const from = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const to = Math.min(page * pageSize, total);
 
-  const summary = useMemo(() => computeSummary(categoryScopedProducts), [categoryScopedProducts]);
-  const categoryChart = useMemo(() => getCategoryChartData(products), [products]);
+  const summary = useMemo(() => computeSummary(products), [products]);
+  const categoryChart = useMemo(() => {
+    const palette = ["#22C55E", "#3B82F6", "#F97316", "#A855F7", "#64748B", "#EC4899", "#14B8A6"];
+    return categories
+      .filter((c) => (Number(c.stock) || 0) > 0)
+      .map((c, i) => ({
+        name: c.name,
+        value: Number(c.stock) || 0,
+        color: palette[i % palette.length],
+      }));
+  }, [categories]);
 
-  const existingCategories = useMemo(() => {
-    const cats = new Set(PRODUCT_CATEGORIES);
-    products.forEach((p) => {
-      if (p.category && p.category !== "—" && p.category !== "No Category") {
-        cats.add(p.category);
-      }
-    });
-    return Array.from(cats);
-  }, [products]);
+  const categoryNames = useMemo(() => categories.map((c) => c.name), [categories]);
+
+  const handleCreateCategory = async () => {
+    const name = newCategoryName.trim();
+    if (!name) {
+      addToast("Enter a category name.", "error");
+      return;
+    }
+    setCategoryBusy(true);
+    try {
+      await createInventoryV2Category(name);
+      const updated = await loadCategories();
+      setNewCategoryName("");
+      setCategoryModalOpen(false);
+      const match = updated.find((c) => c.name.toLowerCase() === name.toLowerCase());
+      if (match) setSelectedCategoryId(String(match.id));
+      if (addOpen) setCategoryToSelect(name);
+      addToast("Category created.", "success");
+    } catch (err) {
+      addToast(apiErrorMessage(err, "Could not create category."), "error");
+    } finally {
+      setCategoryBusy(false);
+    }
+  };
+
+  const openAddProduct = () => {
+    if (!selectedCategoryName) {
+      addToast("Please select a category first.", "error");
+      return;
+    }
+    setEditing(null);
+    setCategoryToSelect(selectedCategoryName);
+    setAddOpen(true);
+  };
 
   const handleExport = (format) => {
     const exportCols = PRODUCT_EXPORT_COLUMNS.map((c) => {
@@ -297,11 +349,53 @@ export default function ProductsMaster() {
     }
   };
 
-  if (loading) return <Loader label="Loading products..." />;
+  if (loading && selectedCategoryName) return <Loader label="Loading products..." />;
 
   return (
     <div className="min-h-full bg-[var(--color-bg)]">
       <div className="ui-page mx-auto max-w-[1400px]">
+
+        <div className="ui-card mb-5 p-4 sm:p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <label className="block min-w-0 flex-1 sm:max-w-md">
+              <span className="mb-1.5 block text-[12px] font-semibold text-[#6b6b76]">
+                Category <span className="text-[#e11d48]">*</span>
+              </span>
+              <select
+                value={selectedCategoryId}
+                onChange={(e) => {
+                  setSelectedCategoryId(e.target.value);
+                  setPage(1);
+                }}
+                className="ui-select w-full"
+              >
+                <option value="">Select Category</option>
+                {categories.map((c) => (
+                  <option key={c.id} value={String(c.id)}>
+                    {c.name}
+                    {typeof c.stock === "number" ? ` (${c.stock})` : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {canWrite && !isPM ? (
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => {
+                  setNewCategoryName("");
+                  setCategoryModalOpen(true);
+                }}
+                leftIcon={<Plus className="h-4 w-4" />}
+              >
+                Add New Category
+              </Button>
+            ) : null}
+          </div>
+          {!categories.length ? (
+            <p className="mt-3 text-sm text-[var(--color-text-muted)]">No categories found.</p>
+          ) : null}
+        </div>
 
         {/* Summary Cards */}
         <div className="mb-5 grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-4">
@@ -325,18 +419,29 @@ export default function ProductsMaster() {
 
         <div className="ui-card p-4 sm:p-5">
           <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <SearchBar value={query} onChange={setQuery} placeholder="Search products..." aria-label="Search products" />
+            <SearchBar
+              value={query}
+              onChange={setQuery}
+              placeholder={
+                selectedCategoryName
+                  ? `Search in ${selectedCategoryName}...`
+                  : "Select a category to search products..."
+              }
+              aria-label="Search products"
+              disabled={!selectedCategoryName}
+            />
             <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto sm:justify-end">
-              {categoryFilter ? (
+              {selectedCategoryId ? (
                 <Button
                   type="button"
                   variant="secondary"
                   onClick={() => {
-                    setCategoryFilter("");
+                    setSelectedCategoryId("");
+                    setQuery("");
                     setPage(1);
                   }}
                 >
-                  Clear Filter
+                  Clear Category
                 </Button>
               ) : null}
               {!isPM && (
@@ -357,10 +462,7 @@ export default function ProductsMaster() {
                 <Button
                   variant="add"
                   type="button"
-                  onClick={() => {
-                    setEditing(null);
-                    setAddOpen(true);
-                  }}
+                  onClick={openAddProduct}
                   leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}
                 >
                   Add Product
@@ -369,6 +471,24 @@ export default function ProductsMaster() {
             </div>
           </div>
 
+          {!selectedCategoryName ? (
+            <EmptyState
+              title="Select a category"
+              description="Please select a category to view products."
+              actionLabel={canWrite && !isPM ? "Add New Category" : undefined}
+              onAction={canWrite && !isPM ? () => setCategoryModalOpen(true) : undefined}
+            />
+          ) : filtered.length === 0 && !loading ? (
+            <EmptyState
+              title="No products found in this category"
+              description={`There are no products under ${selectedCategoryName} yet.`}
+              actionLabel={canWrite && !isPM ? "Add Product" : undefined}
+              onAction={canWrite && !isPM ? openAddProduct : undefined}
+            />
+          ) : null}
+
+          {selectedCategoryName && filtered.length > 0 ? (
+          <>
           {/* Mobile Products Cards */}
           <div className="space-y-3 md:hidden">
             {rows.map((p) => {
@@ -627,6 +747,8 @@ export default function ProductsMaster() {
               </button>
             </div>
           </div>
+          </>
+          ) : null}
         </div>
 
         {/* Product Categories Chart */}
@@ -671,11 +793,12 @@ export default function ProductsMaster() {
                     <button
                       type="button"
                       onClick={() => {
-                        setCategoryFilter(item.name);
+                        const match = categories.find((c) => c.name === item.name);
+                        if (match) setSelectedCategoryId(String(match.id));
                         setPage(1);
                       }}
                       className={`flex flex-1 items-center gap-2 text-left text-[var(--color-text-secondary)] hover:text-[var(--color-primary)] ${
-                        categoryFilter === item.name ? "font-bold text-[var(--color-primary)]" : ""
+                        selectedCategoryName === item.name ? "font-bold text-[var(--color-primary)]" : ""
                       }`}
                     >
                       <span className="h-3 w-3 rounded-full" style={{ backgroundColor: item.color }} />
@@ -695,10 +818,25 @@ export default function ProductsMaster() {
         placement="drawer"
         entityName="Product"
         item={editing}
-        categories={existingCategories}
+        categories={categoryNames}
+        requireCategory
+        lockCategory={Boolean(editing) || Boolean(selectedCategoryName)}
+        categoryToSelect={!editing ? categoryToSelect || selectedCategoryName : undefined}
+        onAddCategory={() => setCategoryModalOpen(true)}
         readOnly={!canWrite}
-        onClose={handleCloseModal}
+        onClose={() => {
+          setCategoryToSelect("");
+          handleCloseModal();
+        }}
         onSaved={handleSavedModal}
+      />
+      <AddInventoryCategoryModal
+        open={categoryModalOpen}
+        name={newCategoryName}
+        busy={categoryBusy}
+        onNameChange={setNewCategoryName}
+        onClose={() => !categoryBusy && setCategoryModalOpen(false)}
+        onSubmit={handleCreateCategory}
       />
       <ProductDetailModal
         product={viewing}
@@ -736,8 +874,12 @@ export default function ProductsMaster() {
       />
       <ConfirmDialog
         open={Boolean(deleting)}
-        title="Delete"
-        message="Are you sure you want to delete this Product?"
+        title="Delete Product?"
+        message={
+          deleting?.name
+            ? `Are you sure you want to delete "${deleting.name}"?`
+            : "Are you sure you want to delete this product?"
+        }
         loading={deleteBusy}
         onClose={() => !deleteBusy && setDeleting(null)}
         onConfirm={confirmDelete}
