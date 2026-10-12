@@ -314,7 +314,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         else:
             formatted_errors.append(msg)
 
-    first_detail = formatted_errors[0] if formatted_errors else "Validation error"
+    first_detail = "Enter valid inputs"
 
     if request.url.path.startswith("/api/"):
         from app.utils.api_response import error_response

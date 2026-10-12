@@ -164,7 +164,7 @@ export default function AddLedgerCustomerModal({ open, onClose, onSaved, custome
     const phoneCheck = validateIndianMobile(form.phone, t);
     if (!phoneCheck.ok) {
       setFieldErrors({ phone: phoneCheck.message });
-      addToast(t("validation.fixHighlightedFields"), "error");
+      addToast("Enter valid inputs", "error");
       return;
     }
     const emailVal = form.email.trim();

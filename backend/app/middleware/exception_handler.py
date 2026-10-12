@@ -28,9 +28,9 @@ def register_exception_handlers(app: FastAPI) -> None:
         if request.url.path.startswith("/api/"):
             return JSONResponse(
                 status_code=422,
-                content=error_response("Validation failed", errors=errors),
+                content=error_response("Enter valid inputs", errors=errors),
             )
-        return JSONResponse(status_code=422, content={"detail": exc.errors()})
+        return JSONResponse(status_code=422, content={"detail": "Enter valid inputs", "errors": errors})
 
     @app.exception_handler(Exception)
     async def unhandled_exception_handler(request: Request, exc: Exception):

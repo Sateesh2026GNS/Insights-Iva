@@ -12,7 +12,39 @@ function normalizeToastMessage(message) {
 }
 
 export function formatSimpleToastMessage(text, isError, type = "success") {
-  if (isError) return String(text || "").trim() || "Something went wrong.";
+  if (isError) {
+    const raw = String(text || "").trim();
+    if (!raw) return "Something went wrong.";
+    const lower = raw.toLowerCase();
+    if (
+      lower.includes("value error") ||
+      lower.includes("validation error") ||
+      lower.includes("validation failed") ||
+      lower.includes("enter valid") ||
+      lower.includes("valid input") ||
+      lower.includes("valid digit") ||
+      lower.includes("cannot start with") ||
+      lower.includes("must begin with") ||
+      lower.includes("must contain only numeric") ||
+      lower.includes("must be exactly 10 digits") ||
+      lower.includes("must start with 6") ||
+      lower.includes("invalid gstin") ||
+      lower.includes("valid gstin") ||
+      lower.includes("valid email") ||
+      lower.includes("valid quantity") ||
+      lower.includes("valid amount") ||
+      lower.includes("valid phone") ||
+      lower.includes("valid mobile") ||
+      lower.includes("valid number") ||
+      lower.includes("check your input") ||
+      lower.includes("check the highlighted field errors") ||
+      lower.includes("invalid input") ||
+      /^[a-z0-9_]+(\.[a-z0-9_]+)*:\s*value error/i.test(raw)
+    ) {
+      return "Enter valid inputs";
+    }
+    return raw;
+  }
 
   const raw = String(text || "").trim();
   if (!raw) return "Something went wrong.";

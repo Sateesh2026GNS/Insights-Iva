@@ -3,11 +3,13 @@ import { createContext, useCallback, useEffect, useMemo, useState } from "react"
 import { getCurrentUser, logout as logoutApi, removeProfileAvatar, updateProfileAvatar } from "../api/authApi";
 import { AUTH_TOKEN_UPDATED_EVENT, ensureCsrfCookie, setUnauthorizedHandler } from "../api/axiosConfig";
 import {
+  clearAuthTokens,
   clearBrowserSessionMarkers,
   clearLegacyAuthTokens,
   isBrowserSessionMarked,
   isFastOfflineSessionToken,
   markBrowserSessionActive,
+  setStoredTokens,
 } from "../utils/authSession";
 import { invalidateReferenceCache } from "../utils/referenceDataCache";
 import {
@@ -301,6 +303,7 @@ export function AuthProvider({ children }) {
     let u;
     if (typeof authData === "object" && authData !== null) {
       const token = authData.access_token ?? authData.token;
+      const refresh = authData.refresh_token;
       const userPayload = authData.user ?? authData;
       const rest = { ...userPayload };
       delete rest.access_token;
@@ -311,8 +314,10 @@ export function AuthProvider({ children }) {
           localStorage.setItem("smrt-offline-fast-session", token);
         } catch {}
       } else {
+        if (token || refresh) {
+          setStoredTokens(token, refresh);
+        }
         markBrowserSessionActive();
-        clearLegacyAuthTokens();
       }
     } else {
       u = { name: String(authData), role: "Operator" };

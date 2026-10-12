@@ -222,7 +222,7 @@ function AddressModal({ open, onClose, initial, onSave }) {
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[160] flex items-center justify-center bg-black/40 p-4"
+      className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 p-4"
       onMouseDown={(e) => e.target === e.currentTarget && onClose?.()}
       role="presentation"
     >
@@ -466,10 +466,10 @@ export default function AddNewPartyModal({
     const phoneCheck = validateIndianMobile(form.phone, t, { required: isVendor });
     if (!phoneCheck.ok) {
       setFieldErrors((prev) => ({ ...prev, phone: phoneCheck.message }));
-      addToast(t("validation.fixHighlightedFields"), "error");
+      addToast("Enter valid inputs", "error");
       return;
     }
-    const phoneVal = phoneCheck.value || "";
+    const phoneVal = phoneCheck.value || form.phone.trim() || "";
     if (phoneCheck.ok && phoneCheck.value) {
       setForm((f) => ({ ...f, phone: phoneCheck.value }));
     }

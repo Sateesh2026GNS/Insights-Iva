@@ -1,30 +1,61 @@
 /**
- * Browser session markers — not secrets. Auth tokens live in HttpOnly cookies only.
+ * Browser session markers and client auth token management.
+ * Dual mode: Supports Bearer tokens in headers + HttpOnly cookies.
  */
 
 export const SESSION_ACTIVE_KEY = "smrt-session-active";
-const LEGACY_TOKEN_KEYS = ["smrt-token", "smrt-refresh-token"];
+export const AUTH_TOKEN_KEY = "smrt-token";
+export const REFRESH_TOKEN_KEY = "smrt-refresh-token";
+
+export function setStoredTokens(accessToken, refreshToken) {
+  try {
+    if (accessToken) {
+      localStorage.setItem(AUTH_TOKEN_KEY, String(accessToken));
+    }
+    if (refreshToken) {
+      localStorage.setItem(REFRESH_TOKEN_KEY, String(refreshToken));
+    }
+  } catch {}
+}
+
+export function getStoredAccessToken() {
+  try {
+    return localStorage.getItem(AUTH_TOKEN_KEY) || null;
+  } catch {
+    return null;
+  }
+}
+
+export function getStoredRefreshToken() {
+  try {
+    return localStorage.getItem(REFRESH_TOKEN_KEY) || null;
+  } catch {
+    return null;
+  }
+}
+
+export function clearAuthTokens() {
+  try {
+    localStorage.removeItem(AUTH_TOKEN_KEY);
+    localStorage.removeItem(REFRESH_TOKEN_KEY);
+  } catch {}
+}
 
 export function markBrowserSessionActive() {
   try {
     localStorage.setItem(SESSION_ACTIVE_KEY, "1");
-    clearLegacyAuthTokens();
   } catch {}
 }
 
 export function clearBrowserSessionMarkers() {
   try {
     localStorage.removeItem(SESSION_ACTIVE_KEY);
-    clearLegacyAuthTokens();
+    clearAuthTokens();
   } catch {}
 }
 
 export function clearLegacyAuthTokens() {
-  try {
-    for (const key of LEGACY_TOKEN_KEYS) {
-      localStorage.removeItem(key);
-    }
-  } catch {}
+  clearAuthTokens();
 }
 
 export function isBrowserSessionMarked() {

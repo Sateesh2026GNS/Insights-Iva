@@ -51,7 +51,7 @@ class Settings(BaseSettings):
 
     # Browser auth: off | dual (cookies + JSON tokens) | cookie (HttpOnly only)
     auth_cookie_mode: str = Field(
-        default="cookie",
+        default="dual",
         validation_alias=AliasChoices("AUTH_COOKIE_MODE", "auth_cookie_mode"),
     )
     auth_cookie_samesite: str = Field(
