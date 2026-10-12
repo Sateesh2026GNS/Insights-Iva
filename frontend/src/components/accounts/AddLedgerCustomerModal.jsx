@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
@@ -8,7 +9,9 @@ import { createCustomer, updateCustomer } from "../../api/salesApi";
 import { INDIAN_STATES, INDIAN_STATE_CODES } from "../../data/indiaLocations";
 import { useToast } from "../../context/ToastContext";
 import useTenantId from "../../hooks/useTenantId";
-import { apiErrorMessage } from "../../utils/apiError";
+import IndianMobilePhoneInput from "../common/IndianMobilePhoneInput";
+import { apiErrorMessage, applyBackendFieldErrors } from "../../utils/apiError";
+import { validateIndianMobile } from "../../utils/indianPhoneValidation";
 import { todayIso } from "../../utils/dateUtils";
 
 const GST_TREATMENTS = [
@@ -121,7 +124,9 @@ export default function AddLedgerCustomerModal({ open, onClose, onSaved, custome
   const tenantId = useTenantId();
   const { addToast } = useToast();
   const [form, setForm] = useState(EMPTY);
+  const [fieldErrors, setFieldErrors] = useState({});
   const [saving, setSaving] = useState(false);
+  const { t } = useTranslation();
   const isEdit = Boolean(customer?.id || customer?.sourceId);
 
   useEffect(() => {
@@ -156,16 +161,11 @@ export default function AddLedgerCustomerModal({ open, onClose, onSaved, custome
         return;
       }
     }
-    const phoneVal = form.phone.trim();
-    if (phoneVal) {
-      if (/\D/.test(phoneVal)) {
-        addToast("Mobile No. must contain only numeric digits (0-9)", "error");
-        return;
-      }
-      if (phoneVal.length !== 10) {
-        addToast("Mobile No. must be exactly 10 digits", "error");
-        return;
-      }
+    const phoneCheck = validateIndianMobile(form.phone, t);
+    if (!phoneCheck.ok) {
+      setFieldErrors({ phone: phoneCheck.message });
+      addToast(t("validation.fixHighlightedFields"), "error");
+      return;
     }
     const emailVal = form.email.trim();
     if (emailVal) {
@@ -182,7 +182,7 @@ export default function AddLedgerCustomerModal({ open, onClose, onSaved, custome
         name: form.name.trim(),
         contact_name: form.contact_name.trim() || form.display_name.trim() || null,
         gstin: form.gstin.trim() || null,
-        phone: form.phone.trim() || null,
+        phone: phoneCheck.value || null,
         email: form.email.trim() || null,
         address_line1: form.address.trim() || null,
         address_line2: buildAddressLine2(form) || null,
@@ -208,8 +208,11 @@ export default function AddLedgerCustomerModal({ open, onClose, onSaved, custome
       onSaved?.(res.data);
       onClose?.();
     } catch (err) {
+      const mapped = applyBackendFieldErrors(err, setFieldErrors, { phone: "phone" }, { t });
       addToast(
-        apiErrorMessage(err, isEdit ? "Failed to update customer" : "Failed to add customer"),
+        mapped
+          ? t("validation.fixHighlightedFields")
+          : apiErrorMessage(err, isEdit ? "Failed to update customer" : "Failed to add customer"),
         "error"
       );
     } finally {
@@ -293,11 +296,15 @@ export default function AddLedgerCustomerModal({ open, onClose, onSaved, custome
               </select>
             </OutlinedField>
             <OutlinedField label="Contact Phone Number">
-              <input
-                className={field}
-                placeholder="Enter Contact Phone No."
+              <IndianMobilePhoneInput
                 value={form.phone}
-                onChange={(e) => set("phone", e.target.value.replace(/\D/g, "").slice(0, 10))}
+                onChange={(v) => set("phone", v)}
+                error={fieldErrors.phone}
+                setError={(msg) => setFieldErrors((prev) => ({ ...prev, phone: msg }))}
+                placeholder="Enter Contact Phone No."
+                inputClassName={field}
+                showCountryCode={false}
+                aria-label="Phone"
               />
             </OutlinedField>
             <OutlinedField label="Contact Email Id" className="sm:col-span-2">

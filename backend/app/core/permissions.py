@@ -110,6 +110,12 @@ def _is_store_manager(user: User) -> bool:
     )
 
 
+def user_can_delete_inventory_item(user: User) -> bool:
+    if user_is_admin(user):
+        return True
+    return _is_store_manager(user)
+
+
 def _is_sales_manager(user: User) -> bool:
     return any(
         str(name).strip().lower().replace("_", " ") == "sales manager"

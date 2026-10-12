@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import {
   ArrowLeft,
   Building2,
@@ -14,6 +15,9 @@ import {
 } from "lucide-react";
 
 import CompanyAddressFields from "../../components/common/CompanyAddressFields";
+import IndianMobilePhoneInput from "../../components/common/IndianMobilePhoneInput";
+import { applyBackendFieldErrors } from "../../utils/apiError";
+import { validateIndianMobile } from "../../utils/indianPhoneValidation";
 import { SearchBar } from "../../components/common/SearchFilter";
 import { createDocument } from "../../api/documentsApi";
 import { getProducts } from "../../api/productsApi";
@@ -90,14 +94,12 @@ function formatApiError(detail) {
   return "Failed to save vendor.";
 }
 
-function clientValidate(form) {
+function clientValidate(form, t) {
   const errors = {};
   if (!form.name.trim()) errors.name = "Company Name is required.";
   if (!form.contact.trim()) errors.contact = "Contact Person is required.";
-  const mobile = form.phone.replace(/\D/g, "");
-  if (mobile.length !== 10 || !/^[6-9]/.test(mobile)) {
-    errors.phone = "Mobile must be a valid 10-digit Indian number.";
-  }
+  const phoneCheck = validateIndianMobile(form.phone, t, { required: true });
+  if (!phoneCheck.ok) errors.phone = phoneCheck.message;
   if (!form.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
     errors.email = "Valid email is required.";
   }
@@ -192,6 +194,7 @@ export default function CreateVendor() {
   const tenantId = useTenantId();
   const navigate = useNavigate();
   const { addToast } = useToast();
+  const { t } = useTranslation();
   const { user, isAdmin } = usePermissions();
   const roles =
     Array.isArray(user?.roles) && user.roles.length
@@ -492,7 +495,7 @@ export default function CreateVendor() {
     e.preventDefault();
     setError("");
     setFieldErrors({});
-    const localErrors = clientValidate(form);
+    const localErrors = clientValidate(form, t);
     if (!bankVerified || bankLookupLoading) {
       localErrors.account_number =
         localErrors.account_number ||
@@ -502,7 +505,7 @@ export default function CreateVendor() {
     }
     if (Object.keys(localErrors).length) {
       setFieldErrors(localErrors);
-      setError(localErrors._form || "Please fix the highlighted fields.");
+      setError(localErrors._form || t("validation.fixHighlightedFields"));
       return;
     }
     setLoading(true);
@@ -522,16 +525,8 @@ export default function CreateVendor() {
       }
       navigate(savedId ? `/procurement/vendors/${savedId}` : "/procurement/vendors");
     } catch (err) {
-      const detail = err.response?.data?.detail;
-      setError(formatApiError(detail));
-      if (Array.isArray(detail)) {
-        const mapped = {};
-        detail.forEach((item) => {
-          const key = Array.isArray(item.loc) ? item.loc[item.loc.length - 1] : null;
-          if (typeof key === "string") mapped[key] = item.msg || "Invalid";
-        });
-        setFieldErrors(mapped);
-      }
+      const mapped = applyBackendFieldErrors(err, setFieldErrors, { phone: "phone" }, { t });
+      setError(mapped ? t("validation.fixHighlightedFields") : formatApiError(err.response?.data?.detail));
     } finally {
       setLoading(false);
     }
@@ -587,7 +582,18 @@ export default function CreateVendor() {
                 <input className={inputClass} value={form.contact} onChange={set("contact")} disabled={loading} />
               </Field>
               <Field label="Mobile Number" required error={fieldErrors.phone}>
-                <input className={inputClass} value={form.phone} onChange={set("phone")} placeholder="9876543210" disabled={loading} />
+                <IndianMobilePhoneInput
+                  value={form.phone}
+                  onChange={(v) => setForm((f) => ({ ...f, phone: v }))}
+                  error={fieldErrors.phone}
+                  setError={(msg) => setFieldErrors((prev) => ({ ...prev, phone: msg }))}
+                  inputClassName={inputClass}
+                  showCountryCode={false}
+                  showInlineError={false}
+                  disabled={loading}
+                  placeholder="9876543210"
+                  aria-label="Mobile Number"
+                />
               </Field>
               <Field label="Email" required error={fieldErrors.email}>
                 <input type="email" className={inputClass} value={form.email} onChange={set("email")} disabled={loading} />

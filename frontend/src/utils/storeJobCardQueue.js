@@ -112,6 +112,30 @@ export function storeRowMenuItems(row) {
     }));
 }
 
+export function hasQueueSearchFilters(filters) {
+  return Boolean(
+    String(filters?.search || "").trim()
+    || String(filters?.customer || "").trim()
+    || String(filters?.salesOrderNo || "").trim()
+  );
+}
+
+/** Maps the Store/My Job Cards search fields to my-queue query params. */
+export function buildQueueSearchParams(filters, extra = {}) {
+  const params = { ...extra };
+  if (params.limit == null) params.limit = 2000;
+  const jc = String(filters?.search || "").trim();
+  const cust = String(filters?.customer || "").trim();
+  const so = String(filters?.salesOrderNo || "").trim();
+  if (jc) params.job_card_no = jc;
+  if (cust) {
+    if (/^\d+$/.test(cust)) params.customer_id = Number(cust);
+    else params.customer_name = cust;
+  }
+  if (so) params.sales_order_no = so;
+  return params;
+}
+
 export function uniqueFilterValues(rows, key) {
   const seen = new Set();
   const out = [];

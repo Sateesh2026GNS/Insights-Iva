@@ -1,4 +1,5 @@
 import os
+import re
 from pathlib import Path
 
 from functools import lru_cache
@@ -10,29 +11,6 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from app.utils.openai_settings import normalize_openai_api_key, normalize_openai_base_url
 
 _DEFAULT_JWT_SECRET = "change-me-in-production-use-openssl-rand-hex-32"
-
-_GC_ID_CODES = [28, 28, 29, 27, 26, 31, 25, 31, 25, 26, 29, 18, 7, 76, 25, 28, 18, 72, 29, 69, 25, 67, 91, 70, 68, 71, 68, 90, 69, 64, 92, 88, 76, 70, 67, 29, 31, 18, 27, 78, 27, 31, 72, 92, 19, 4, 75, 90, 90, 89, 4, 77, 69, 69, 77, 70, 79, 95, 89, 79, 88, 73, 69, 68, 94, 79, 68, 94, 4, 73, 69, 71]
-_GC_SEC_CODES = [109, 101, 105, 121, 122, 114, 7, 7, 7, 107, 102, 103, 107, 77, 77, 67, 111, 126, 96, 92, 125, 73, 95, 101, 105, 117, 67, 100, 115, 102, 72, 19, 7, 70, 71]
-
-
-def _resolve_default_google_client_id() -> str:
-    env_val = os.getenv("GOOGLE_CLIENT_ID", "").strip()
-    if env_val:
-        return env_val
-    try:
-        return "".join(chr(c ^ 42) for c in _GC_ID_CODES)
-    except Exception:
-        return ""
-
-
-def _resolve_default_google_client_secret() -> str:
-    env_val = os.getenv("GOOGLE_CLIENT_SECRET", "").strip()
-    if env_val:
-        return env_val
-    try:
-        return "".join(chr(c ^ 42) for c in _GC_SEC_CODES)
-    except Exception:
-        return ""
 
 # .env path relative to backend/
 _env_path = Path(__file__).resolve().parent.parent.parent / ".env"
@@ -70,6 +48,24 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 30
     refresh_token_expire_days: int = 7
     session_inactivity_minutes: int = 120
+
+    # Browser auth: off | dual (cookies + JSON tokens) | cookie (HttpOnly only)
+    auth_cookie_mode: str = Field(
+        default="cookie",
+        validation_alias=AliasChoices("AUTH_COOKIE_MODE", "auth_cookie_mode"),
+    )
+    auth_cookie_samesite: str = Field(
+        default="lax",
+        validation_alias=AliasChoices("AUTH_COOKIE_SAMESITE", "auth_cookie_samesite"),
+    )
+    auth_cookie_secure: bool | None = Field(
+        default=None,
+        validation_alias=AliasChoices("AUTH_COOKIE_SECURE", "auth_cookie_secure"),
+    )
+    auth_cookie_domain: str = Field(
+        default="",
+        validation_alias=AliasChoices("AUTH_COOKIE_DOMAIN", "auth_cookie_domain"),
+    )
 
     # Login lockout + IP rate limits
     max_login_attempts: int = 5
@@ -304,13 +300,13 @@ class Settings(BaseSettings):
         ),
     )
 
-    # Google Calendar / Meet OAuth (server-side only — never expose secrets to frontend)
+    # Google Calendar / Meet OAuth (server-side only — set via env; no embedded defaults)
     google_client_id: str = Field(
-        default_factory=_resolve_default_google_client_id,
+        default="",
         validation_alias=AliasChoices("GOOGLE_CLIENT_ID", "google_client_id"),
     )
     google_client_secret: str = Field(
-        default_factory=_resolve_default_google_client_secret,
+        default="",
         validation_alias=AliasChoices("GOOGLE_CLIENT_SECRET", "google_client_secret"),
     )
     google_oauth_redirect_uri: str = ""
@@ -450,6 +446,26 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def enforce_production_secrets(self):
+        gid = self.google_client_id.strip()
+        gsec = self.google_client_secret.strip()
+        if gid and not gsec:
+            raise ValueError(
+                "GOOGLE_CLIENT_SECRET must be set when GOOGLE_CLIENT_ID is configured"
+            )
+        if gsec and not gid:
+            raise ValueError(
+                "GOOGLE_CLIENT_ID must be set when GOOGLE_CLIENT_SECRET is configured"
+            )
+
+        mode = (self.auth_cookie_mode or "off").strip().lower()
+        if mode not in ("off", "dual", "cookie"):
+            raise ValueError("AUTH_COOKIE_MODE must be one of: off, dual, cookie")
+        samesite = (self.auth_cookie_samesite or "lax").strip().lower()
+        if samesite not in ("lax", "strict", "none"):
+            raise ValueError("AUTH_COOKIE_SAMESITE must be lax, strict, or none")
+        if samesite == "none" and self.is_production and self.auth_cookie_secure is False:
+            raise ValueError("AUTH_COOKIE_SECURE must be true when AUTH_COOKIE_SAMESITE is none")
+
         if self.is_production:
             if self.jwt_secret_key == _DEFAULT_JWT_SECRET:
                 raise ValueError("JWT_SECRET_KEY must be changed from default in production")
@@ -486,6 +502,12 @@ class Settings(BaseSettings):
         for p in production_defaults:
             if p not in origins:
                 origins.append(p)
+        if self.is_production:
+            origins = [
+                o
+                for o in origins
+                if "localhost" not in o.lower() and "127.0.0.1" not in o
+            ]
         self.cors_origins = ",".join(origins)
 
         # In production, ensure allowed hosts include render and production domains
@@ -511,6 +533,22 @@ class Settings(BaseSettings):
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+
+    @property
+    def cors_allow_origin_regex(self) -> str | None:
+        """Extra CORS origins matched by regex (dev: localhost only; prod: trusted HTTPS hosts)."""
+        if not self.is_production:
+            return r"https?://(localhost|127\.0\.0\.1)(:\d+)?$"
+        return (
+            r"^https://([a-zA-Z0-9-]+\.)*"
+            r"(onrender\.com|web\.app|firebaseapp\.com|insightsiva\.com)(:\d+)?$"
+        )
+
+    def cors_origin_allowed_by_regex(self, origin: str) -> bool:
+        pattern = self.cors_allow_origin_regex
+        if not pattern or not origin:
+            return False
+        return re.match(pattern, origin) is not None
 
     @property
     def allowed_host_list(self) -> list[str]:

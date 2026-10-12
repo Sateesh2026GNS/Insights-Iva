@@ -59,7 +59,7 @@ def test_customer_phone_validation():
             name="Valid Company",
             phone="0000000000",
         )
-    assert "Mobile No. cannot start with 0" in str(exc_info.value)
+    assert "Mobile number must start with 6, 7, 8 or 9." in str(exc_info.value)
 
     # Phone starting with 1 (1234567890) rejected
     with pytest.raises(ValidationError) as exc_info:
@@ -68,7 +68,7 @@ def test_customer_phone_validation():
             name="Mobile Test 2",
             phone="1234567890",
         )
-    assert "Mobile No. cannot start with 1" in str(exc_info.value)
+    assert "Mobile number must start with 6, 7, 8 or 9." in str(exc_info.value)
 
     # Phone starting with 09... rejected
     with pytest.raises(ValidationError) as exc_info:
@@ -77,16 +77,16 @@ def test_customer_phone_validation():
             name="Valid Company",
             phone="0987654321",
         )
-    assert "Mobile No. cannot start with 0" in str(exc_info.value)
+    assert "Mobile number must start with 6, 7, 8 or 9." in str(exc_info.value)
 
-    # Less than 7 digits phone rejected
+    # Less than 10 digits phone rejected
     with pytest.raises(ValidationError) as exc_info:
         CustomerCreate(
             tenant_id=1,
             name="Valid Company",
             phone="12345",
         )
-    assert "Phone number must be between 7 and 15 numeric digits" in str(exc_info.value)
+    assert "Mobile number must be 10 digits." in str(exc_info.value)
 
     # Non-numeric phone rejected
     with pytest.raises(ValidationError) as exc_info:
@@ -95,7 +95,15 @@ def test_customer_phone_validation():
             name="Valid Company",
             phone="123456789A",
         )
-    assert "Phone field must accept only numeric digits (0-9)" in str(exc_info.value)
+    assert "Use digits only." in str(exc_info.value)
+
+    # +91 prefix normalized
+    customer = CustomerCreate(
+        tenant_id=1,
+        name="Valid Company",
+        phone="+91 98765-43210",
+    )
+    assert customer.phone == "9876543210"
 
     # Whitespace-only phone coerced to None
     customer = CustomerCreate(

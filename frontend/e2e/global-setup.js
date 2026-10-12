@@ -27,11 +27,12 @@ async function loadE2eEnvFile() {
   }
 }
 
-async function apiJson(url, body) {
+async function apiJson(url, body, { method = "POST" } = {}) {
   const res = await fetch(url, {
-    method: "POST",
+    method,
+    credentials: "include",
     headers: { "Content-Type": "application/json", Accept: "application/json" },
-    body: JSON.stringify(body),
+    body: body ? JSON.stringify(body) : undefined,
   });
   const text = await res.text();
   let data;
@@ -44,7 +45,9 @@ async function apiJson(url, body) {
 }
 
 async function loginUser(email, password, role) {
-  const login = await apiJson(`${API_BASE}/auth/login`, { email, password, role });
+  const authBase = WEB_BASE;
+  await apiJson(`${authBase}/auth/csrf`, null, { method: "GET" });
+  const login = await apiJson(`${authBase}/auth/login`, { email, password, role });
   if (!login.ok) {
     throw new Error(`Login failed for ${role} (${email}): ${login.status} ${login.text.slice(0, 200)}`);
   }
@@ -52,8 +55,6 @@ async function loginUser(email, password, role) {
     email,
     password,
     role,
-    access_token: login.data.access_token,
-    refresh_token: login.data.refresh_token,
     user: login.data.user,
   };
 }
@@ -88,17 +89,28 @@ async function saveStorageState(account, outFile) {
   const browser = await chromium.launch();
   const context = await browser.newContext();
   const page = await context.newPage();
-  await page.goto(`${WEB_BASE}/login`);
-  await page.evaluate(
-    ({ access_token, refresh_token, user }) => {
-      localStorage.setItem("smrt-token", access_token);
-      if (refresh_token) localStorage.setItem("smrt-refresh-token", refresh_token);
-      localStorage.setItem("smrt-user", JSON.stringify(user));
-      localStorage.setItem("smrt-login-time", String(Date.now()));
-      localStorage.setItem("smrt-primary-heartbeat", String(Date.now()));
+  await page.request.get(`${WEB_BASE}/auth/csrf`);
+  const loginRes = await page.request.post(`${WEB_BASE}/auth/login`, {
+    data: {
+      email: account.email,
+      password: account.password,
+      role: account.role,
     },
-    account
-  );
+  });
+  if (!loginRes.ok()) {
+    throw new Error(`Playwright login failed: ${loginRes.status()} ${await loginRes.text()}`);
+  }
+  const loginBody = await loginRes.json();
+  const user = loginBody.user || account.user;
+  await page.goto(`${WEB_BASE}/login`);
+  await page.evaluate((u) => {
+    localStorage.setItem("smrt-session-active", "1");
+    localStorage.setItem("smrt-user", JSON.stringify(u));
+    localStorage.setItem("smrt-login-time", String(Date.now()));
+    localStorage.setItem("smrt-primary-heartbeat", String(Date.now()));
+    localStorage.removeItem("smrt-token");
+    localStorage.removeItem("smrt-refresh-token");
+  }, user);
   await context.storageState({ path: outFile });
   await browser.close();
 }

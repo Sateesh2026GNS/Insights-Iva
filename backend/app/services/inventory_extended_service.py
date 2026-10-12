@@ -414,7 +414,30 @@ def list_transfers(db: Session, tenant_id: int) -> list[StockTransferRead]:
     return result
 
 
+def assert_transfer_warehouse_access(
+    db: Session, tenant_id: int, user, from_warehouse_id: int, to_warehouse_id: int
+) -> None:
+    from app.services.reports.scope import resolve_accessible_warehouse_ids
+
+    allowed = set(resolve_accessible_warehouse_ids(db, tenant_id, user, None))
+    if from_warehouse_id not in allowed:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have access to the source warehouse.",
+        )
+    if to_warehouse_id not in allowed:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have access to the destination warehouse.",
+        )
+
+
 def create_transfer(db: Session, tenant_id: int, payload: StockTransferCreate) -> StockTransfer:
+    if payload.from_warehouse_id == payload.to_warehouse_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Source and destination warehouse must be different.",
+        )
     count = int(
         db.scalar(select(func.count(StockTransfer.id)).where(StockTransfer.tenant_id == tenant_id)) or 0
     )
@@ -460,6 +483,22 @@ def update_transfer_status(
         return None
 
     previous_status = transfer.status
+
+    if new_status in ["completed", "received"] and previous_status not in ["completed", "received"]:
+        from_sl = db.scalars(
+            select(StockLevel).where(
+                StockLevel.warehouse_id == transfer.from_warehouse_id,
+                StockLevel.item_id == transfer.item_id,
+            )
+        ).first()
+        available_qty = from_sl.quantity if from_sl else 0
+        if available_qty < transfer.quantity:
+            db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Only {available_qty} available in source warehouse. Transfer requires {transfer.quantity}.",
+            )
+
     transfer.status = new_status
     if approved_by:
         transfer.approved_by = approved_by
@@ -473,12 +512,6 @@ def update_transfer_status(
                 StockLevel.item_id == transfer.item_id,
             )
         ).first()
-        available_qty = from_sl.quantity if from_sl else 0
-        if available_qty < transfer.quantity:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Insufficient source stock for transfer. Required: {transfer.quantity}, Available: {available_qty}.",
-            )
 
         from_sl.quantity -= transfer.quantity
 

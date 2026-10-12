@@ -19,6 +19,7 @@ import ConfirmDialog from "../../components/admin/ConfirmDialog";
 import AdminModal from "../../components/admin/AdminModal";
 import Button from "../../components/common/Button";
 import IndianCurrencyInput from "../../components/common/IndianCurrencyInput";
+import IndianMobilePhoneInput from "../../components/common/IndianMobilePhoneInput";
 import SearchableSelect from "../../components/common/SearchableSelect";
 import {
   AsyncPageBody,
@@ -42,6 +43,7 @@ import {
   filterLeadExecutiveCandidates,
   findExecutiveById,
 } from "../../utils/salesExecutiveDirectory";
+import { validateIndianMobile } from "../../utils/indianPhoneValidation";
 
 const SOURCE_OPTIONS = ["Website", "Referral", "Exhibition", "Cold call", "Other"];
 const STATUS_OPTIONS = ["New", "Contacted", "Qualified"];
@@ -275,7 +277,12 @@ export default function CreateLeadPage() {
     }
     if (!form.company_name.trim()) errs.company_name = t("sales.leads.create.errors.companyRequired");
     if (!form.contact_person.trim()) errs.contact_person = t("sales.leads.create.errors.contactRequired");
-    if (!form.phone.trim()) errs.phone = t("sales.leads.create.errors.phoneRequired");
+    if (!form.phone.trim()) {
+      errs.phone = t("sales.leads.create.errors.phoneRequired");
+    } else {
+      const phoneCheck = validateIndianMobile(form.phone, t, { required: true });
+      if (!phoneCheck.ok) errs.phone = phoneCheck.message;
+    }
     if (!form.product_id) errs.product_id = t("sales.leads.create.errors.productRequired");
     if (!form.source) errs.source = t("sales.leads.create.errors.sourceRequired");
     if (!form.assigned_user_id) errs.assigned_user_id = t("sales.leads.create.errors.assigneeRequired");
@@ -398,9 +405,13 @@ export default function CreateLeadPage() {
       );
       navigate(`/sales/leads/${leadId}`);
     } catch (err) {
-      applyBackendFieldErrors(err, setFieldErrors);
-      const classified = classifyApiError(err, t("sales.leads.create.saveFailed"));
-      addToast(classified.message, "error");
+      const mapped = applyBackendFieldErrors(err, setFieldErrors, { phone: "phone" }, { t });
+      if (mapped) {
+        addToast(t("validation.fixHighlightedFields"), "error");
+      } else {
+        const classified = classifyApiError(err, t("sales.leads.create.saveFailed"));
+        addToast(classified.message, "error");
+      }
       scrollToFirstError();
     } finally {
       savingRef.current = false;
@@ -515,11 +526,16 @@ export default function CreateLeadPage() {
               <input className={inputClass} value={form.contact_person} onChange={(e) => set("contact_person", e.target.value)} />
             </Field>
             <Field label={t("sales.leads.create.phone")} required error={fieldErrors.phone}>
-              <input
-                className={inputClass}
+              <IndianMobilePhoneInput
                 value={form.phone}
-                onChange={(e) => set("phone", e.target.value)}
+                onChange={(v) => set("phone", v)}
+                error={fieldErrors.phone}
+                setError={(msg) => setFieldErrors((prev) => ({ ...prev, phone: msg }))}
+                inputClassName={inputClass}
+                showCountryCode={false}
+                showInlineError={false}
                 onBlur={() => checkDuplicate("phone")}
+                aria-label={t("sales.leads.create.phone")}
               />
             </Field>
             <Field label={t("sales.leads.create.email")} error={fieldErrors.email}>

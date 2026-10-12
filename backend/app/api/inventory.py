@@ -2,7 +2,14 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db
-from app.core.permissions import require_any_permission, require_permission, tenant_scope, tenant_scope_any
+from app.core.permissions import (
+    MODULE_FORBIDDEN_MESSAGE,
+    require_any_permission,
+    require_permission,
+    tenant_scope,
+    tenant_scope_any,
+    user_can_delete_inventory_item,
+)
 from app.models.user import User
 from app.services.audit_log_service import AuditLogService
 from app.schemas.inventory import (
@@ -311,9 +318,12 @@ def update_item_endpoint(
 @router.delete("/items/{item_id}")
 def delete_item_endpoint(
     item_id: int,
+    user: User = Depends(require_permission(MODULE)),
     tenant_id: int = Depends(tenant_scope(MODULE)),
     db: Session = Depends(get_db),
 ):
+    if not user_can_delete_inventory_item(user):
+        raise HTTPException(status_code=403, detail=MODULE_FORBIDDEN_MESSAGE)
     if not delete_inventory_item(db, tenant_id, item_id):
         raise HTTPException(404, "Item not found")
     return {"ok": True, "id": item_id}
@@ -450,9 +460,15 @@ def transfers_list(
 @router.post("/transfers", response_model=StockTransferRead)
 def create_transfer_endpoint(
     payload: StockTransferCreate,
+    user: User = Depends(require_permission(MODULE)),
     tenant_id: int = Depends(tenant_scope(MODULE)),
     db: Session = Depends(get_db),
 ):
+    from app.services.inventory_extended_service import assert_transfer_warehouse_access
+
+    assert_transfer_warehouse_access(
+        db, tenant_id, user, payload.from_warehouse_id, payload.to_warehouse_id
+    )
     t = create_transfer(db, tenant_id, payload)
     rows = list_transfers(db, tenant_id)
     match = next((r for r in rows if r.id == t.id), None)
@@ -465,9 +481,22 @@ def create_transfer_endpoint(
 def update_transfer_status_endpoint(
     transfer_id: int,
     payload: StockTransferStatusUpdate,
+    user: User = Depends(require_permission(MODULE)),
     tenant_id: int = Depends(tenant_scope(MODULE)),
     db: Session = Depends(get_db),
 ):
+    from app.models.inventory import StockTransfer
+    from app.services.inventory_extended_service import assert_transfer_warehouse_access
+
+    existing = db.get(StockTransfer, transfer_id)
+    if existing and existing.tenant_id == tenant_id:
+        assert_transfer_warehouse_access(
+            db,
+            tenant_id,
+            user,
+            existing.from_warehouse_id,
+            existing.to_warehouse_id,
+        )
     t = update_transfer_status(db, tenant_id, transfer_id, payload.status, payload.approved_by)
     if not t:
         raise HTTPException(404, "Stock transfer not found")
@@ -756,25 +785,28 @@ def _user_label(user: User) -> str:
 
 @router.get("/store/dashboard", response_model=StoreDashboardRead)
 def store_dashboard(
-    tenant_id: int = Depends(tenant_scope(MODULE)), db: Session = Depends(get_db)
+    user: User = Depends(require_permission(MODULE)),
+    db: Session = Depends(get_db),
 ):
-    return store_wf.get_store_dashboard(db, tenant_id)
+    return store_wf.get_store_dashboard(db, user.tenant_id, user)
 
 
 @router.get("/store/pending-inventory-checks", response_model=PendingInventoryChecksListRead)
 def store_pending_inventory_checks(
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
-    tenant_id: int = Depends(tenant_scope(MODULE)),
+    user: User = Depends(require_permission(MODULE)),
     db: Session = Depends(get_db),
 ):
-    from app.schemas.store_workflow import PendingInventoryCheckOrder
+    from app.services.store_workflow_service import _as_pending_inventory_order
     from app.services.workflow_team_service import list_pending_inventory_checks
 
-    total, rows = list_pending_inventory_checks(db, tenant_id, limit=limit, offset=offset)
+    total, rows = list_pending_inventory_checks(
+        db, user.tenant_id, limit=limit, offset=offset, user=user
+    )
     return PendingInventoryChecksListRead(
         total=total,
-        items=[PendingInventoryCheckOrder(**row) for row in rows],
+        items=[_as_pending_inventory_order(row) for row in rows],
     )
 
 

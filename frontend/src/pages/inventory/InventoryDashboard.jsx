@@ -22,8 +22,19 @@ import LoadingState from "../../components/common/states/LoadingState";
 import { getStoreDashboard } from "../../api/inventoryApi";
 import useManufacturingRefresh from "../../hooks/useManufacturingRefresh";
 import { apiErrorMessage, asArray } from "../../utils/apiError";
-import { jobCardDetailsUrl } from "../../utils/jobCardRoutes";
 import { todayIso } from "../../utils/dateUtils";
+
+function pendingMaterialCheckHref(row) {
+  const jcId = row?.job_card_id;
+  const orderId = row?.sales_order_id;
+  if (jcId && (row?.is_manual || !orderId)) {
+    return `/my-job-cards?dept=inventory&bucket=store_pending&jc=${jcId}`;
+  }
+  if (orderId) {
+    return `/my-job-cards?dept=inventory&bucket=store_pending&order=${orderId}`;
+  }
+  return "/my-job-cards?dept=inventory&bucket=store_pending";
+}
 
 const TRANSFER_TONE = {
   draft: "neutral",
@@ -186,7 +197,7 @@ export default function InventoryDashboard() {
     { label: "Total items", value: kpiValue(failed, totalItems) },
     { label: "Low stock items", value: kpiValue(failed, lowStock) },
     { label: "Out of stock", value: kpiValue(failed, outOfStock) },
-    { label: "Pending material checks", value: kpiValue(failed, dash?.pending_inventory_checks) },
+    { label: "Pending job cards", value: kpiValue(failed, dash?.store_pending ?? dash?.pending_inventory_checks) },
     { label: "Pending material requests", value: kpiValue(failed, dash?.pending_material_requests) },
     { label: "Stock in today", value: kpiValue(failed, movement.stock_in) },
     { label: "Stock out today", value: kpiValue(failed, movement.stock_out) },
@@ -247,13 +258,13 @@ export default function InventoryDashboard() {
             meta="Zero available stock"
           />
         </ClickableKpiCard>
-        <ClickableKpiCard to="/inventory/pending-inventory-checks" title="Pending material checks">
+        <ClickableKpiCard to="/my-job-cards?dept=inventory&bucket=store_pending" title="Pending job cards">
           <KpiCard
-            label="Pending Material Checks"
-            value={kpiValue(failed, dash?.pending_inventory_checks)}
+            label="Pending Job Cards"
+            value={kpiValue(failed, dash?.store_pending ?? dash?.pending_inventory_checks)}
             icon={ClipboardList}
             tone="warning"
-            meta="Job cards awaiting check"
+            meta="Job cards awaiting store review"
           />
         </ClickableKpiCard>
         <ClickableKpiCard to="/procurement/material-requests?kpi=pending_approval" title="Pending material requests">
@@ -334,7 +345,7 @@ export default function InventoryDashboard() {
         </div>
       </section>
 
-      <SectionCard title="Pending Material Checks" viewAllTo="/inventory/pending-inventory-checks">
+      <SectionCard title="Pending Material Checks" viewAllTo="/my-job-cards?dept=inventory&bucket=store_pending">
         {materialChecks.length === 0 ? (
           <EmptyState className="py-6" title="No pending material checks" description="Sales job cards awaiting store verification will appear here." />
         ) : (
@@ -353,13 +364,16 @@ export default function InventoryDashboard() {
             </thead>
             <tbody>
               {materialChecks.map((row) => (
-                <tr key={row.sales_order_id} className="border-t border-[var(--color-border-soft)]">
+                <tr
+                  key={row.job_card_id || row.sales_order_id || row.job_card_no}
+                  className="border-t border-[var(--color-border-soft)]"
+                >
                   <td className={tdClass}>
                     <Link
-                      to={jobCardDetailsUrl(row.sales_order_id)}
+                      to={pendingMaterialCheckHref(row)}
                       className="font-medium text-[var(--color-action-teal)] hover:underline"
                     >
-                      {row.job_card_no || `SO #${row.sales_order_id}`}
+                      {row.job_card_no || (row.sales_order_id ? `SO #${row.sales_order_id}` : "Job Card")}
                     </Link>
                   </td>
                   <td className={`${tdClass} truncate !text-center text-[var(--color-text-secondary)]`} title={row.required_items_summary}>

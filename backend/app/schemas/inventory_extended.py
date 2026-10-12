@@ -95,7 +95,17 @@ class StockTransferCreate(BaseModel):
         return self
 
 
-VALID_TRANSFER_STATUSES = {"pending", "in_transit", "completed", "cancelled", "approved", "rejected"}
+VALID_TRANSFER_STATUSES = {
+    "pending",
+    "pending_approval",
+    "draft",
+    "in_transit",
+    "completed",
+    "cancelled",
+    "approved",
+    "rejected",
+    "received",
+}
 VALID_ADJUSTMENT_STATUSES = {"pending", "approved", "rejected", "completed", "cancelled"}
 
 

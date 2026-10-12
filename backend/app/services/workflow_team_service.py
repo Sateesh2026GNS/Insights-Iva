@@ -181,12 +181,20 @@ def refresh_pending_material_check_stock(
         item_id = ln.inventory_item_id
         if item_id:
             on_hand = float(get_total_stock(db, int(item_id), tenant_id))
-            item = db.get(InventoryItem, int(item_id))
+            item = db.scalars(
+                select(InventoryItem).where(
+                    InventoryItem.id == int(item_id),
+                    InventoryItem.tenant_id == tenant_id,
+                )
+            ).first()
             reserved = float(item.reserved or 0) if item else 0.0
             sl = db.execute(
                 select(StockLevel.warehouse_id, StockLevel.quantity, Warehouse.name)
                 .join(Warehouse, StockLevel.warehouse_id == Warehouse.id)
-                .where(StockLevel.item_id == int(item_id))
+                .where(
+                    StockLevel.item_id == int(item_id),
+                    Warehouse.tenant_id == tenant_id,
+                )
                 .order_by(StockLevel.quantity.desc())
                 .limit(1)
             ).first()
@@ -248,6 +256,8 @@ def create_material_check_for_order(
             # Raw materials and other inventory products may be sold directly;
             # check their own stock instead of requiring a BOM to exist.
             product = db.get(Product, so_line.product_id)
+            if product and product.tenant_id != tenant_id:
+                continue
             if _product_requires_bom(product):
                 raise HTTPException(
                     status_code=400,
@@ -508,67 +518,20 @@ def _serialize_queue_order(
 
 
 def list_pending_inventory_checks(
-    db: Session, tenant_id: int, *, limit: int = 10, offset: int = 0
+    db: Session,
+    tenant_id: int,
+    *,
+    limit: int = 10,
+    offset: int = 0,
+    user: User | None = None,
 ) -> tuple[int, list[dict[str, Any]]]:
-    """Count and list sales orders awaiting store inventory verification."""
+    """Count and list store-pending job cards (same filter as Store Pending KPI)."""
     repair_confirmed_orders_missing_workflow(db, tenant_id)
-    from sqlalchemy import func
+    from app.services.workflow_routing_service import get_store_pending_page
 
-    count = int(
-        db.scalar(
-            select(func.count(SalesOrder.id)).where(
-                SalesOrder.tenant_id == tenant_id,
-                SalesOrder.workflow_status == "MATERIAL_CHECK_PENDING",
-            )
-        )
-        or 0
+    return get_store_pending_page(
+        db, tenant_id, user=user, limit=limit, offset=offset
     )
-    orders = list(
-        db.scalars(
-            select(SalesOrder)
-            .options(selectinload(SalesOrder.line_items), selectinload(SalesOrder.customer))
-            .where(
-                SalesOrder.tenant_id == tenant_id,
-                SalesOrder.workflow_status == "MATERIAL_CHECK_PENDING",
-            )
-            .order_by(SalesOrder.id.asc())
-            .offset(max(0, offset))
-            .limit(limit)
-        ).all()
-    )
-    order_ids = [o.id for o in orders]
-    jc_map: dict[int, SalesJobCard] = {}
-    mc_map: dict[int, SalesOrderMaterialCheck] = {}
-    if order_ids:
-        jcs = list(
-            db.scalars(
-                select(SalesJobCard).where(
-                    SalesJobCard.tenant_id == tenant_id,
-                    SalesJobCard.sales_order_id.in_(order_ids),
-                )
-            ).all()
-        )
-        jc_map = {jc.sales_order_id: jc for jc in jcs}
-        mcs = list(
-            db.scalars(
-                select(SalesOrderMaterialCheck)
-                .options(selectinload(SalesOrderMaterialCheck.lines))
-                .where(
-                    SalesOrderMaterialCheck.tenant_id == tenant_id,
-                    SalesOrderMaterialCheck.sales_order_id.in_(order_ids),
-                )
-            ).all()
-        )
-        mc_map = {mc.sales_order_id: mc for mc in mcs}
-    return count, [
-        _serialize_queue_order(
-            db,
-            so,
-            job_card=jc_map.get(so.id),
-            material_check=mc_map.get(so.id),
-        )
-        for so in orders
-    ]
 
 
 def confirm_sales_order_with_workflow(
@@ -739,16 +702,14 @@ def submit_material_check(
             detail=f"Order not awaiting material check (status={so.workflow_status})",
         )
 
-    refresh_pending_material_check_stock(db, tenant_id, mc, force=rechecking)
+    refresh_pending_material_check_stock(db, tenant_id, mc, force=True)
 
-    if line_updates and not rechecking:
+    if line_updates:
         line_map = {ln.id: ln for ln in mc.lines}
         for upd in line_updates:
             ln = line_map.get(upd.get("id"))
             if not ln:
                 continue
-            if upd.get("available_qty") is not None:
-                ln.available_qty = float(upd["available_qty"])
             if "stock_location" in upd and upd.get("stock_location") is not None:
                 ln.stock_location = upd["stock_location"]
             reserved = float(getattr(ln, "_reserved_qty", 0) or 0)

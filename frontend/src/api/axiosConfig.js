@@ -1,6 +1,12 @@
 import axios from "axios";
 
 import {
+  clearLegacyAuthTokens,
+  isFastOfflineSessionToken,
+  markBrowserSessionActive,
+} from "../utils/authSession";
+import { getCsrfTokenFromCookie } from "../utils/csrf";
+import {
   getPageRefreshGeneration,
   isPageRefreshInProgress,
 } from "../utils/pageRefresh";
@@ -14,20 +20,24 @@ import { triggerServerWakeup } from "../utils/serverWakeup";
 
 export const AUTH_TOKEN_UPDATED_EVENT = "smrt-auth-token-updated";
 
-function persistAuthTokens(accessToken, refreshToken) {
-  if (accessToken) {
-    localStorage.setItem("smrt-token", accessToken);
-  }
-  if (refreshToken) {
-    localStorage.setItem("smrt-refresh-token", refreshToken);
-  }
+function notifyAuthSessionUpdated() {
   try {
-    window.dispatchEvent(
-      new CustomEvent(AUTH_TOKEN_UPDATED_EVENT, {
-        detail: { accessToken, refreshToken },
-      })
-    );
+    window.dispatchEvent(new CustomEvent(AUTH_TOKEN_UPDATED_EVENT, { detail: {} }));
   } catch {}
+}
+
+function applyLoginAuthPayload(data) {
+  if (!data || typeof data !== "object") return;
+  const access = data.access_token ?? data.token;
+  const refresh = data.refresh_token;
+  if (access || refresh) {
+    if (access && isFastOfflineSessionToken(access)) {
+      return;
+    }
+  }
+  markBrowserSessionActive();
+  clearLegacyAuthTokens();
+  notifyAuthSessionUpdated();
 }
 
 function isDefinitiveSessionExpiry(reason) {
@@ -107,7 +117,35 @@ export function clearApiCache() {
 const api = axios.create({
   baseURL: getApiBaseURL(),
   timeout: 90_000,
+  withCredentials: true,
 });
+
+const rawAxios = axios.create({
+  baseURL: getApiBaseURL(),
+  timeout: 90_000,
+  withCredentials: true,
+});
+
+function attachCsrfHeader(config) {
+  const method = String(config.method || "get").toLowerCase();
+  if (method === "get" || method === "head" || method === "options") {
+    return config;
+  }
+  const csrf = getCsrfTokenFromCookie();
+  if (csrf) {
+    config.headers = config.headers || {};
+    config.headers["X-CSRF-Token"] = csrf;
+  }
+  return config;
+}
+
+export async function ensureCsrfCookie() {
+  try {
+    await rawAxios.get("/auth/csrf", { skipGlobalError: true });
+  } catch {
+    /* non-fatal before login */
+  }
+}
 
 api.interceptors.request.use((config) => {
   try {
@@ -124,12 +162,7 @@ api.interceptors.request.use((config) => {
         err.response = { status: 401, data: { message: "Session expired", reason: sessionStatus.reason } };
         return Promise.reject(err);
       }
-
-      const token = localStorage.getItem("smrt-token");
-      if (token) {
-        config.headers = config.headers || {};
-        config.headers.Authorization = `Bearer ${token}`;
-      }
+      attachCsrfHeader(config);
     }
   } catch {}
 
@@ -190,19 +223,21 @@ export function setApiErrorHandler(handler) {
 
 let refreshPromise = null;
 
-async function refreshAccessToken(refreshToken) {
+async function refreshAccessToken() {
   const baseURL = getApiBaseURL();
-  const { data } = await axios.post(`${baseURL}/auth/refresh`, {
-    refresh_token: refreshToken,
-  });
+  const headers = {};
+  const csrf = getCsrfTokenFromCookie();
+  if (csrf) headers["X-CSRF-Token"] = csrf;
+  const { data } = await rawAxios.post(`${baseURL}/auth/refresh`, {}, { headers });
+  applyLoginAuthPayload(data);
   return data;
 }
 
 function clearAuthStorage() {
   try {
-    localStorage.removeItem("smrt-token");
-    localStorage.removeItem("smrt-refresh-token");
+    clearLegacyAuthTokens();
     localStorage.removeItem("smrt-user");
+    localStorage.removeItem("smrt-session-active");
   } catch {}
 }
 
@@ -289,7 +324,7 @@ api.interceptors.response.use(
       }
     }
 
-    if (isTimeout || isNetworkErr || isGatewayError) {
+    if (!error.response && (isTimeout || isNetworkErr || isGatewayError)) {
       if (typeof navigator !== "undefined" && !navigator.onLine) {
         error.message = "Network error: You appear to be offline. Check your internet connection.";
       } else if (isGatewayError) {
@@ -319,25 +354,20 @@ api.interceptors.response.use(
         return Promise.reject(error);
       }
 
-      const refreshToken = localStorage.getItem("smrt-refresh-token");
-      if (refreshToken) {
-        original._retry = true;
-        try {
-          if (!refreshPromise) {
-            refreshPromise = refreshAccessToken(refreshToken).finally(() => {
-              refreshPromise = null;
-            });
-          }
-          const data = await refreshPromise;
-          persistAuthTokens(data.access_token, data.refresh_token);
-          original.headers = original.headers || {};
-          original.headers.Authorization = `Bearer ${data.access_token}`;
-          return api(original);
-        } catch (refreshErr) {
-          const refreshStatus = refreshErr?.response?.status;
-          if (refreshStatus === 401 || refreshStatus === 403) {
-            clearAuthStorage();
-          }
+      original._retry = true;
+      try {
+        if (!refreshPromise) {
+          refreshPromise = refreshAccessToken().finally(() => {
+            refreshPromise = null;
+          });
+        }
+        await refreshPromise;
+        attachCsrfHeader(original);
+        return api(original);
+      } catch (refreshErr) {
+        const refreshStatus = refreshErr?.response?.status;
+        if (refreshStatus === 401 || refreshStatus === 403) {
+          clearAuthStorage();
         }
       }
     }
@@ -372,5 +402,10 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+export function handleAuthLoginResponse(data) {
+  applyLoginAuthPayload(data);
+  return data;
+}
 
 export default api;

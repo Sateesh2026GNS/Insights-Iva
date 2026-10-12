@@ -59,7 +59,7 @@ class InventoryItemV2Base(BaseModel):
 
 
 class InventoryItemV2Create(InventoryItemV2Base):
-    pass
+    category_id: int | None = Field(None, ge=1)
 
 
 class InventoryItemV2Update(BaseModel):
@@ -70,6 +70,7 @@ class InventoryItemV2Update(BaseModel):
     unit: str | None = Field(None, max_length=32)
     hsn_code: str | None = Field(None, max_length=32)
     category: str | None = Field(None, max_length=128)
+    category_id: int | None = Field(None, ge=1)
     purchase_price: float | None = Field(None, ge=0)
     selling_price: float | None = Field(None, ge=0)
     wholesale_price: float | None = Field(None, ge=0)

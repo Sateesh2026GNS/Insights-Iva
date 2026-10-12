@@ -1,7 +1,14 @@
 import { createContext, useCallback, useEffect, useMemo, useState } from "react";
 
 import { getCurrentUser, logout as logoutApi, removeProfileAvatar, updateProfileAvatar } from "../api/authApi";
-import { AUTH_TOKEN_UPDATED_EVENT, setUnauthorizedHandler } from "../api/axiosConfig";
+import { AUTH_TOKEN_UPDATED_EVENT, ensureCsrfCookie, setUnauthorizedHandler } from "../api/axiosConfig";
+import {
+  clearBrowserSessionMarkers,
+  clearLegacyAuthTokens,
+  isBrowserSessionMarked,
+  isFastOfflineSessionToken,
+  markBrowserSessionActive,
+} from "../utils/authSession";
 import { invalidateReferenceCache } from "../utils/referenceDataCache";
 import {
   checkSessionStatus,
@@ -85,18 +92,17 @@ function normalizeUser(raw) {
 
 function readStoredUser() {
   try {
+    clearLegacyAuthTokens();
     const status = checkSessionStatus();
     if (status.expired) {
       if (status.reason === "primary_9hr_timeout" || !isPrimaryTabAlive()) {
         clearTenantDataCaches();
-        localStorage.removeItem("smrt-token");
-        localStorage.removeItem("smrt-refresh-token");
+        clearBrowserSessionMarkers();
         localStorage.removeItem("smrt-user");
       }
       return null;
     }
-    const token = localStorage.getItem("smrt-token");
-    if (!token) return null;
+    if (!isBrowserSessionMarked()) return null;
     const stored = localStorage.getItem("smrt-user");
     if (stored) return normalizeUser(JSON.parse(stored));
   } catch {}
@@ -115,8 +121,7 @@ function clearTenantDataCaches() {
           k.startsWith("smrt-company-"))
       ) {
         if (
-          !k.startsWith("smrt-token") &&
-          !k.startsWith("smrt-refresh") &&
+          !k.startsWith("smrt-session") &&
           !k.startsWith("smrt-user") &&
           !k.startsWith("smrt-language") &&
           !k.startsWith("smrt-avatar") &&
@@ -138,9 +143,8 @@ export function AuthProvider({ children }) {
 
   const logout = useCallback(async ({ allDevices = false } = {}) => {
     try {
-      const refreshToken = localStorage.getItem("smrt-refresh-token");
-      if (refreshToken) {
-        await logoutApi(refreshToken, { allDevices }).catch(() => {});
+      if (isBrowserSessionMarked()) {
+        await logoutApi({ allDevices }).catch(() => {});
       }
     } catch {
       /* ignore network errors — still clear local session */
@@ -152,8 +156,7 @@ export function AuthProvider({ children }) {
       try {
         clearTenantDataCaches();
         localStorage.removeItem("smrt-user");
-        localStorage.removeItem("smrt-token");
-        localStorage.removeItem("smrt-refresh-token");
+        clearBrowserSessionMarkers();
       } catch {
         /* ignore */
       }
@@ -162,9 +165,9 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     setUnauthorizedHandler(() => {
-      const token = localStorage.getItem("smrt-token");
-      if (token && token.startsWith("fast-session-")) {
-        return; // Fast offline session is valid locally
+      const offline = localStorage.getItem("smrt-offline-fast-session");
+      if (offline && isFastOfflineSessionToken(offline)) {
+        return;
       }
       const loginTime = Number(localStorage.getItem("smrt-login-time") || 0);
       if (Date.now() - loginTime < 60_000) {
@@ -186,8 +189,7 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     try {
-      const token = localStorage.getItem("smrt-token");
-      if (!token && user) {
+      if (!isBrowserSessionMarked() && user) {
         setUser(null);
         localStorage.removeItem("smrt-user");
       }
@@ -203,8 +205,9 @@ export function AuthProvider({ children }) {
         sendPrimaryHeartbeat();
       }
 
-      const token = localStorage.getItem("smrt-token");
-      if (!token || token.startsWith("fast-session-")) return;
+      if (!isBrowserSessionMarked()) return;
+      const offline = localStorage.getItem("smrt-offline-fast-session");
+      if (offline && isFastOfflineSessionToken(offline)) return;
 
       const status = checkSessionStatus();
       if (status.expired) {
@@ -225,7 +228,7 @@ export function AuthProvider({ children }) {
     const interval = setInterval(checkAndEnforceSession, 2000);
 
     const onStorageChange = (e) => {
-      if (e.key === "smrt-token" && !e.newValue) {
+      if (e.key === "smrt-session-active" && !e.newValue) {
         setUser(null);
       }
     };
@@ -254,13 +257,9 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     let cancelled = false;
-    let token = null;
-    try {
-      token = localStorage.getItem("smrt-token");
-    } catch {
-      return undefined;
-    }
-    if (!token || token.startsWith("fast-session-")) return undefined;
+    if (!isBrowserSessionMarked()) return undefined;
+    const offline = localStorage.getItem("smrt-offline-fast-session");
+    if (offline && isFastOfflineSessionToken(offline)) return undefined;
 
     const loginTime = Number(localStorage.getItem("smrt-login-time") || 0);
     const freshLogin = loginTime > 0 && Date.now() - loginTime < 120_000;
@@ -268,7 +267,8 @@ export function AuthProvider({ children }) {
       return undefined;
     }
 
-    getCurrentUser()
+    ensureCsrfCookie().finally(() => {
+      getCurrentUser()
       .then((data) => {
         if (cancelled || !data) return;
         const u = normalizeUser(data);
@@ -280,6 +280,7 @@ export function AuthProvider({ children }) {
       .catch(() => {
         /* 401 refresh/logout handled by axios interceptors; keep cached user until then */
       });
+    });
     return () => {
       cancelled = true;
     };
@@ -293,21 +294,18 @@ export function AuthProvider({ children }) {
     let u;
     if (typeof authData === "object" && authData !== null) {
       const token = authData.access_token ?? authData.token;
-      const refreshToken = authData.refresh_token;
       const userPayload = authData.user ?? authData;
       const rest = { ...userPayload };
       delete rest.access_token;
       delete rest.refresh_token;
       u = normalizeUser(rest);
-      if (token) {
+      if (token && isFastOfflineSessionToken(token)) {
         try {
-          localStorage.setItem("smrt-token", token);
+          localStorage.setItem("smrt-offline-fast-session", token);
         } catch {}
-      }
-      if (refreshToken) {
-        try {
-          localStorage.setItem("smrt-refresh-token", refreshToken);
-        } catch {}
+      } else {
+        markBrowserSessionActive();
+        clearLegacyAuthTokens();
       }
     } else {
       u = { name: String(authData), role: "Operator" };
@@ -323,8 +321,7 @@ export function AuthProvider({ children }) {
 
   const refreshUser = useCallback(async () => {
     try {
-      const token = localStorage.getItem("smrt-token");
-      if (!token) return;
+      if (!isBrowserSessionMarked()) return;
       const data = await getCurrentUser();
       const u = normalizeUser(data);
       setUser(u);
@@ -375,13 +372,19 @@ export function AuthProvider({ children }) {
   }, []);
 
   const value = useMemo(() => {
-    let hasToken = false;
-    try {
-      hasToken = Boolean(localStorage.getItem("smrt-token"));
-    } catch {}
+    const sessionActive = isBrowserSessionMarked();
+    const offline = (() => {
+      try {
+        return localStorage.getItem("smrt-offline-fast-session");
+      } catch {
+        return null;
+      }
+    })();
+    const hasSession =
+      sessionActive || (offline && isFastOfflineSessionToken(offline));
     return {
       user,
-      isAuthenticated: Boolean(user && hasToken),
+      isAuthenticated: Boolean(user && hasSession),
       sessionExpired,
       sessionExpiryReason,
       clearSessionExpired,

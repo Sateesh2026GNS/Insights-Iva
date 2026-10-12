@@ -30,6 +30,7 @@ describe("InventoryDashboard", () => {
         catalog_low_stock_count: 2,
         catalog_out_of_stock_count: 1,
         pending_inventory_checks: 0,
+        store_pending: 0,
         pending_material_requests: 0,
         pending_transfers: 0,
         today_movement: {
@@ -53,8 +54,18 @@ describe("InventoryDashboard", () => {
     );
 
     await waitFor(() => {
+      expect(screen.getByText("Pending Job Cards")).toBeInTheDocument();
       expect(screen.getAllByText("Pending Material Checks").length).toBeGreaterThan(0);
     });
+    expect(screen.getByTitle("Pending job cards")).toHaveAttribute(
+      "href",
+      "/my-job-cards?dept=inventory&bucket=store_pending"
+    );
+    const pendingSection = screen.getByRole("heading", { name: "Pending Material Checks" }).closest("section");
+    expect(pendingSection.querySelector("a")).toHaveAttribute(
+      "href",
+      "/my-job-cards?dept=inventory&bucket=store_pending"
+    );
     expect(screen.getByText("Today's Stock Movement")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Low Stock Items" })).toBeInTheDocument();
     expect(screen.getByText("No pending material checks")).toBeInTheDocument();

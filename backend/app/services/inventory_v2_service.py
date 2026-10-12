@@ -16,6 +16,46 @@ from app.schemas.inventory_v2 import (
     StockAdjustRequest,
 )
 
+CATEGORY_REQUIRED_DETAIL = "Please select or create a category before adding an item."
+
+
+def require_tenant_inventory_category(
+    db: Session,
+    tenant_id: int,
+    *,
+    category_id: int | None = None,
+    category_name: str | None = None,
+) -> InventoryCategory:
+    """Resolve a tenant-owned inventory category. Rejects missing/cross-tenant ids."""
+    if category_id is not None:
+        try:
+            cid = int(category_id)
+        except (TypeError, ValueError):
+            cid = 0
+        if cid <= 0:
+            raise HTTPException(status_code=400, detail=CATEGORY_REQUIRED_DETAIL)
+        row = db.scalars(
+            select(InventoryCategory).where(
+                InventoryCategory.id == cid,
+                InventoryCategory.tenant_id == tenant_id,
+            )
+        ).first()
+        if not row:
+            raise HTTPException(status_code=400, detail="Category not found.")
+        return row
+    name = (category_name or "").strip()
+    if not name or name.lower() == "no category":
+        raise HTTPException(status_code=400, detail=CATEGORY_REQUIRED_DETAIL)
+    row = db.scalars(
+        select(InventoryCategory).where(
+            InventoryCategory.tenant_id == tenant_id,
+            func.lower(InventoryCategory.name) == name.lower(),
+        )
+    ).first()
+    if not row:
+        raise HTTPException(status_code=400, detail=CATEGORY_REQUIRED_DETAIL)
+    return row
+
 
 def _f(value, default: float = 0.0) -> float:
     if value is None:
@@ -121,6 +161,13 @@ def create_item(db: Session, tenant_id: int, payload: InventoryItemV2Create) -> 
     if max_stk is not None and min_stk > max_stk:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="max_stock cannot be less than min_stock.")
 
+    category_row = require_tenant_inventory_category(
+        db,
+        tenant_id,
+        category_id=getattr(payload, "category_id", None),
+        category_name=payload.category,
+    )
+
     stock = Decimal(str(payload.current_stock or 0))
 
     product = Product(
@@ -134,7 +181,7 @@ def create_item(db: Session, tenant_id: int, payload: InventoryItemV2Create) -> 
         unit_price=payload.selling_price,
         wholesale_price=payload.wholesale_price,
         hsn_code=payload.hsn_code,
-        category=payload.category or "No Category",
+        category=category_row.name,
         gst_percent=payload.gst_percent or 0,
         cess_percent=payload.cess_percent or 0,
         min_stock=min_stk,
@@ -210,6 +257,15 @@ def update_item(
     if not product:
         return None
     data = payload.model_dump(exclude_unset=True)
+    if "category_id" in data or "category" in data:
+        category_row = require_tenant_inventory_category(
+            db,
+            tenant_id,
+            category_id=data.get("category_id"),
+            category_name=data.get("category"),
+        )
+        data["category"] = category_row.name
+        data.pop("category_id", None)
     mapping = {
         "purchase_price": "unit_cost",
         "selling_price": "unit_price",

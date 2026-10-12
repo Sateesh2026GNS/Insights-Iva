@@ -1,5 +1,6 @@
 import Button from "../components/common/Button";
 import BrandLogo from "../components/common/BrandLogo";
+import { AUTH_LOGIN_SLIDE_1_URL } from "../utils/authSlideAssets";
 
 const features = [
   { icon: "🏭", title: "Production Management", desc: "Work orders, batch tracking, machine status in real-time." },
@@ -33,7 +34,7 @@ export default function Landing() {
       {/* Hero */}
       <section
         className="relative pt-32 pb-20 px-6 bg-cover bg-center"
-        style={{ backgroundImage: "url(/auth/slide-1.png)" }}
+        style={{ backgroundImage: `url(${AUTH_LOGIN_SLIDE_1_URL})` }}
       >
         <div className="absolute inset-0 bg-white/85" aria-hidden />
         <div className="relative mx-auto max-w-4xl text-center">

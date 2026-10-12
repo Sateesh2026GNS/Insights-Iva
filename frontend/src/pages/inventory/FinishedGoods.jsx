@@ -27,6 +27,14 @@ import MaterialDetailModal from "../../components/inventory/MaterialDetailModal"
 import MaterialFormModal from "../../components/inventory/MaterialFormModal";
 import { useToast } from "../../context/ToastContext";
 import useTenantId from "../../hooks/useTenantId";
+import useAuth from "../../hooks/useAuth";
+import { userCanDeleteInventoryItem } from "../../config/permissions";
+import {
+  formatInventoryQuantity,
+  pickDefaultWarehouse,
+  singleUomInRows,
+  summarizeQuantitiesByUom,
+} from "../../utils/inventoryUomFormat";
 import {
   deleteInventoryItem,
   getFinishedGoods,
@@ -36,7 +44,7 @@ import {
 } from "../../api/inventoryApi";
 import { stockStatusLabel, stockStatusTone } from "../../data/inventoryMasterData";
 import useManufacturingRefresh from "../../hooks/useManufacturingRefresh";
-import { asArray } from "../../utils/apiError";
+import { asArray, apiErrorMessage } from "../../utils/apiError";
 import { todayIso } from "../../utils/dateUtils";
 import { exportToExcel, exportToPdf } from "../../utils/exportUtils";
 
@@ -65,11 +73,8 @@ function formatInrAmount(value) {
   return `₹ ${Number(value || 0).toLocaleString("en-IN")}`;
 }
 
-function formatQty(value) {
-  return Number(value || 0).toLocaleString("en-IN", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
+function formatQty(value, unit) {
+  return formatInventoryQuantity(value, unit);
 }
 
 function formatUpdated(value) {
@@ -116,6 +121,8 @@ function ClickableKpiCard({ onClick, title, children }) {
 
 export default function FinishedGoods() {
   const tenantId = useTenantId();
+  const { user } = useAuth();
+  const canDeleteInventory = userCanDeleteInventoryItem(user);
   const { addToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState({});
@@ -129,7 +136,6 @@ export default function FinishedGoods() {
   const [selectedDate, setSelectedDate] = useState(() => todayIso());
   const dateInputRef = useRef(null);
   const [headerWarehouse, setHeaderWarehouse] = useState("");
-  const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [selected, setSelected] = useState(null);
   const [openMenuId, setOpenMenuId] = useState(null);
   const [formModal, setFormModal] = useState({ open: false, mode: "add", material: null });
@@ -162,7 +168,12 @@ export default function FinishedGoods() {
 
   useEffect(() => {
     if (!headerWarehouse && warehousesApi.length) {
-      setHeaderWarehouse(String(warehousesApi[0].id));
+      setHeaderWarehouse(
+        pickDefaultWarehouse(warehousesApi, {
+          preferTypes: ["finished", "finished_good"],
+          nameIncludes: ["finished good", "finished goods", "fg"],
+        })
+      );
     }
   }, [warehousesApi, headerWarehouse]);
 
@@ -205,12 +216,16 @@ export default function FinishedGoods() {
         stockValue += p.stock_value != null ? Number(p.stock_value) : q * cost;
       }
     });
+    const onlyUom = singleUomInRows(rows);
     return {
       total_products: summary.total_products ?? rows.length,
       stock_value: stockValue,
       low_stock: summary.low_stock ?? low,
       out_of_stock: summary.out_of_stock ?? out,
-      total_quantity: totalQty,
+      total_quantity: onlyUom ? totalQty : null,
+      total_quantity_label: onlyUom
+        ? formatInventoryQuantity(totalQty, onlyUom)
+        : summarizeQuantitiesByUom(rows, "available"),
     };
   }, [rows, summary]);
 
@@ -287,8 +302,8 @@ export default function FinishedGoods() {
       setDeleteTarget(null);
       notifyManufacturingSpine(MANUFACTURING_EVENTS.INVENTORY_CHANGED, { item_id: itemId });
       await load({ background: true });
-    } catch {
-      addToast("Could not delete finished good", "error");
+    } catch (err) {
+      addToast(apiErrorMessage(err, "Could not delete finished good"), "error");
     } finally {
       setDeleting(false);
     }
@@ -305,30 +320,7 @@ export default function FinishedGoods() {
     warehousesApi[0]?.name ||
     "Main Warehouse";
 
-  const toggleRow = (id) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
   const columns = [
-    {
-      key: "_check",
-      label: "",
-      sortable: false,
-      render: (r) => (
-        <input
-          type="checkbox"
-          checked={selectedIds.has(r.id)}
-          onChange={() => toggleRow(r.id)}
-          className="h-4 w-4 rounded border-[var(--color-border)] accent-[var(--color-action-teal)]"
-          aria-label={`Select ${r.name}`}
-        />
-      ),
-    },
     {
       key: "name",
       label: "Product Name",
@@ -367,7 +359,7 @@ export default function FinishedGoods() {
       key: "available",
       label: "Available Qty",
       render: (r) => (
-        <span className="tabular-nums text-[13px] font-semibold text-[var(--color-text)]">{formatQty(r.available)}</span>
+        <span className="tabular-nums text-[13px] font-semibold text-[var(--color-text)]">{formatQty(r.available, r.unit)}</span>
       ),
     },
     {
@@ -422,6 +414,7 @@ export default function FinishedGoods() {
             onEdit={() => handleEdit(r)}
             onAdd={handleAdd}
             onDelete={() => handleDeleteRequest(r)}
+            showDelete={canDeleteInventory}
           />
         </div>
       ),
@@ -504,7 +497,13 @@ export default function FinishedGoods() {
           title="View total quantity"
           tone="info"
         >
-          <KpiCard label="Total Quantity" value={formatQty(kpis.total_quantity)} icon={ArrowDownToLine} tone="info" meta="Across all products" />
+          <KpiCard
+            label="Total Quantity"
+            value={kpis.total_quantity_label}
+            icon={ArrowDownToLine}
+            tone="info"
+            meta={kpis.total_quantity != null ? `All products (${singleUomInRows(rows) || ""})` : "By unit of measure"}
+          />
         </ClickableKpiCard>
       </div>
 

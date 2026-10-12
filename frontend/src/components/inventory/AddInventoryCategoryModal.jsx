@@ -1,6 +1,7 @@
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
+import Button from "../common/Button";
 import { inputClass } from "../../design-system/classes";
 
 function OutlinedField({ label, children }) {
@@ -52,27 +53,17 @@ export default function AddInventoryCategoryModal({ open, name, onNameChange, on
             value={name}
             disabled={busy}
             onChange={(e) => onNameChange(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && onSubmit?.()}
+            onKeyDown={(e) => e.key === "Enter" && !busy && onSubmit?.()}
           />
         </OutlinedField>
 
         <div className="mt-6 flex gap-2">
-          <button
-            type="button"
-            disabled={busy}
-            onClick={onClose}
-            className="flex-1 rounded-lg border border-[#cfcfd6] py-3 text-[14px] font-semibold text-[#1a1a1f] hover:bg-[#f5f5f7] disabled:opacity-50"
-          >
+          <Button type="button" variant="cancel" className="flex-1" disabled={busy} onClick={onClose}>
             Cancel
-          </button>
-          <button
-            type="button"
-            disabled={busy}
-            onClick={onSubmit}
-            className="flex-1 rounded-lg bg-[var(--color-primary)] py-3 text-[14px] font-bold text-white hover:opacity-90 disabled:opacity-50"
-          >
-            Save
-          </button>
+          </Button>
+          <Button type="button" variant="primary" className="flex-1" disabled={busy} loading={busy} onClick={onSubmit}>
+            {busy ? "Creating Category..." : "Save"}
+          </Button>
         </div>
       </div>
     </div>,

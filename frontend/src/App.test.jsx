@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { shouldShowChatbot } from "./App";
+import { resolveErpAiAssistantMode } from "./utils/erpAiAssistant";
+
+/** Same contract as App.jsx without importing the full application shell. */
+function shouldShowChatbot(user, pathname) {
+  return resolveErpAiAssistantMode(user, pathname) === "shared";
+}
 
 describe("shouldShowChatbot", () => {
   it("shows the shared assistant for operator users on allowed routes", () => {

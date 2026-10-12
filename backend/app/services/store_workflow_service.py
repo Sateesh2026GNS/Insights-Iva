@@ -18,6 +18,7 @@ from app.models.inventory import (
     Warehouse,
 )
 from app.models.product import Product, ProductStockEvent
+from app.models.user import User
 from app.models.procurement import MaterialRequest, MaterialRequestLine
 from app.schemas.inventory import StockMovementCreate
 from app.schemas.store_workflow import (
@@ -96,6 +97,26 @@ def _movement_activity_label(movement_type: str | None) -> str:
         "scrap": "Stock Out",
     }
     return labels.get(mt, mt.replace("_", " ").title() if mt else "Activity")
+
+
+def _as_pending_inventory_order(row: dict) -> PendingInventoryCheckOrder:
+    """Map a store_pending queue row onto the pending-checks schema."""
+    return PendingInventoryCheckOrder(
+        sales_order_id=row.get("sales_order_id"),
+        job_card_id=row.get("job_card_id"),
+        is_manual=bool(row.get("is_manual")),
+        job_card_no=row.get("job_card_no"),
+        order_number=row.get("order_number") or "",
+        customer_name=row.get("customer_name"),
+        product_name=row.get("product_name"),
+        quantity=row.get("quantity"),
+        delivery_date=row.get("delivery_date"),
+        priority=str(row.get("priority") or "medium"),
+        sales_person=row.get("sales_person") or row.get("created_by"),
+        order_date=row.get("order_date"),
+        status=row.get("status") or row.get("status_label") or "Awaiting Inventory Check",
+        workflow_status=row.get("workflow_status") or "MATERIAL_CHECK_PENDING",
+    )
 
 
 def _material_check_summary(row: dict) -> str:
@@ -638,7 +659,7 @@ def create_stock_return(
                 raise
 
 
-def get_store_dashboard(db: Session, tenant_id: int) -> StoreDashboardRead:
+def get_store_dashboard(db: Session, tenant_id: int, user: User | None = None) -> StoreDashboardRead:
     items = list(
         db.scalars(
             select(InventoryItem).where(
@@ -822,13 +843,17 @@ def get_store_dashboard(db: Session, tenant_id: int) -> StoreDashboardRead:
         row for _, row in sorted(catalog_low_stock_rows, key=lambda x: x[0])[:8]
     ]
 
-    pending_count, pending_orders = list_pending_inventory_checks(db, tenant_id, limit=8)
+    pending_count, pending_orders = list_pending_inventory_checks(
+        db, tenant_id, limit=8, user=user
+    )
     sales_jc_pending = count_manual_sales_job_cards_pending(db, tenant_id)
-    store_kpi = _store_kpi_counts(db, tenant_id)
+    store_kpi = _store_kpi_counts(db, tenant_id, user=user)
+    store_pending_total = pending_count
 
     material_check_queue = [
         StoreDashboardMaterialCheckRow(
-            sales_order_id=int(row["sales_order_id"]),
+            sales_order_id=row.get("sales_order_id"),
+            job_card_id=row.get("job_card_id"),
             job_card_no=row.get("job_card_no"),
             required_items_summary=_material_check_summary(row),
             status_label=row.get("status_label") or row.get("status") or "Pending check",
@@ -859,13 +884,11 @@ def get_store_dashboard(db: Session, tenant_id: int) -> StoreDashboardRead:
         pending_material_requests=pending_mr_count,
         pending_purchase_requisitions=pending_mr_count,
         warehouse_utilization_pct=util,
-        pending_inventory_checks=pending_count,
+        pending_inventory_checks=store_pending_total,
         sales_job_cards_pending=sales_jc_pending,
-        store_pending=int(store_kpi.get("store_pending") or 0),
+        store_pending=store_pending_total,
         store_actionable_total=int(store_kpi.get("total_job_cards") or 0),
-        pending_inventory_orders=[
-            PendingInventoryCheckOrder(**row) for row in pending_orders
-        ],
+        pending_inventory_orders=[_as_pending_inventory_order(row) for row in pending_orders],
         pending_transfers=pending_transfers_count,
         today_movement=StoreDashboardTodayMovement(
             stock_in_count=todays_in,

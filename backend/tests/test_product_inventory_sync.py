@@ -4,7 +4,7 @@ from sqlalchemy import select
 
 from app.core.database import SessionLocal
 from app.models.inventory import InventoryItem, StockLevel, Warehouse
-from app.models.product import Product
+from app.models.product import InventoryCategory, Product
 from app.models.tenant import Tenant
 from app.schemas.inventory import StockLevelCreate, StockMovementCreate
 from app.schemas.inventory_v2 import InventoryItemV2Create, StockAdjustRequest
@@ -85,10 +85,18 @@ def test_catalog_and_warehouse_stock_stay_synchronized():
         )
         assert sum(float(level.quantity) for level in levels) == float(product.current_stock)
 
+        cat = InventoryCategory(tenant_id=tenant.id, name="Sync Category")
+        db.add(cat)
+        db.flush()
         created = create_item(
             db,
             tenant.id,
-            InventoryItemV2Create(name="V2 Opening Item", sku="SKU-V2-SYNC", current_stock=3),
+            InventoryItemV2Create(
+                name="V2 Opening Item",
+                sku="SKU-V2-SYNC",
+                current_stock=3,
+                category_id=cat.id,
+            ),
         )
         v2_product = db.scalars(
             select(Product).where(Product.tenant_id == tenant.id, Product.sku == "SKU-V2-SYNC")

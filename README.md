@@ -30,6 +30,7 @@ Insights Iva is a full-stack **manufacturing ERP** and business intelligence pla
 - [API overview](#api-overview)
 - [UI design system](#ui-design-system)
 - [Testing](#testing)
+- [Production Manager QA verification](#production-manager-qa-verification)
 - [Continuous integration](#continuous-integration)
 - [Branding](#branding)
 - [Production deployment](#production-deployment)
@@ -267,7 +268,7 @@ alembic current   # confirm head revision
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-**Outbound email (optional in dev, required for password reset and Email PDF):** copy SMTP settings from `backend/.env.example` into `backend/.env` (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM_EMAIL`). `SMTP_PASSWORD` must be a non-empty app password (Gmail requires a Google App Password, not your login password). Use port **587** with STARTTLS (default) or **465** with SSL. Verify without sending mail: `python scripts/check_smtp.py` from `backend/`. **Stop and restart uvicorn** after changing `.env`.
+**Outbound email (optional in dev, required for password reset and Email PDF):** copy SMTP settings from `backend/.env.example` into `backend/.env` (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM_EMAIL`). `SMTP_FROM_EMAIL` must use a **verified sending domain** at your provider (for Resend, add the domain in the dashboard and publish SPF/DKIM DNS records before emailing arbitrary recipients). `SMTP_PASSWORD` must be a non-empty app password (Gmail requires a Google App Password, not your login password). Use port **587** with STARTTLS (default) or **465** with SSL. Verify without sending mail: `python scripts/check_smtp.py` from `backend/`. **Stop and restart uvicorn** after changing `.env`.
 
 - **API docs:** http://localhost:8000/docs  
 - **Health:** http://localhost:8000/health
@@ -310,7 +311,7 @@ Password minimum: **12 characters**. Demo seed accounts may be created on startu
 | Backend | Tests | `pytest` |
 | Frontend | Dev server | `npm run dev` |
 | Frontend | Build | `npm run build` |
-| Frontend | Unit tests | `npm test -- --run` |
+| Frontend | Unit tests | `npm test` (Vitest; see [Testing](#testing)) |
 | Frontend | E2E (optional) | `npm run test:e2e` |
 
 ### Environment files
@@ -473,7 +474,7 @@ Use `Button`, `KpiCard`, `SearchableSelect`, `FormField` from `components/common
 ```bash
 # Backend (full suite — SQLite when ALLOW_SQLITE_RUNTIME=1 in CI)
 cd backend
-pytest
+python -m pytest -q
 
 # Focused examples
 pytest tests/test_production_pipeline.py -v
@@ -481,16 +482,98 @@ pytest tests/test_sales_hub_monthly_revenue.py -v
 pytest tests/test_lead_create_v2.py -v
 pytest tests/test_tenant_isolation_security.py -v
 
-# Frontend
+# PM / materials verification (see section below)
+python -m pytest tests/test_inventory_finished_good_create.py \
+  tests/test_stock_transfer_integrity.py \
+  tests/test_role_regression_actions.py \
+  tests/test_production_manager_materials_quality.py -q
+
+# Frontend (Vitest — forks pool, 8GB heap, single worker; see vite.config.js)
 cd frontend
-npm test -- --run
-npm test -- --run src/pages/sales/CreateLeadPage.test.jsx
-npm test -- --run src/components/sales/LeadProductSelectModal.test.jsx
-npm test -- --run src/pages/sales/SalesDashboard.smoke.test.jsx
-npm test -- --run src/utils/manualSalesJobCard.test.js
-npm test -- --run src/utils/salesDashboardKpis.test.js
-npm test -- --run src/components/sales/partyModalSubmitIsolation.test.jsx
+npm test
+npm test src/pages/sales/CreateLeadPage.test.jsx
+npm test src/components/sales/LeadProductSelectModal.test.jsx
+npm test src/pages/sales/SalesDashboard.smoke.test.jsx
+npm test src/utils/manualSalesJobCard.test.js
+npm test src/utils/salesDashboardKpis.test.js
+npm test src/components/sales/partyModalSubmitIsolation.test.jsx
 ```
+
+**Vitest memory:** `frontend/package.json` runs Vitest with `NODE_OPTIONS=--max-old-space-size=8192`, `--pool=forks`, and `--maxWorkers=1`. Child workers get the same heap via `test.poolOptions.forks.execArgv` in `vite.config.js`. `App.test.jsx` imports `resolveErpAiAssistantMode` from `utils/erpAiAssistant.js` instead of `./App.jsx` so the full shell is not loaded during unit tests (avoids worker OOM).
+
+**E2E (optional):** `cd frontend && npm run test:e2e` — seed users with `npm run test:e2e:seed` when needed.
+
+---
+
+## Production Manager QA verification
+
+Post–18-bug pass **verification** (no new product features): root-cause fixes, integration tests, and dev seed data for Batch Quality / Machine History.
+
+### Production Manager navigation
+
+Paths are allow-listed in `frontend/src/config/rbacNavFilters.js` (materials under `/inventory/items/*`, quality under `/quality/*`, maintenance under `/maintenance/*`). Sidebar: `frontend/src/config/productionManagerNavConfig.js`.
+
+| Area | Typical routes |
+|------|----------------|
+| Materials | Raw materials, finished goods (`/inventory/items/...`) |
+| Quality | Inspections, in-process/final QC, batch reports |
+| Maintenance | Preventive, breakdowns, machine history, spare parts |
+
+### Bug 5 — Add Finished Good (Production Manager)
+
+| Item | Detail |
+|------|--------|
+| **Symptom** | Create finished good (e.g. Steel Rod, SKU `FG-*`, unit KG, qty at warehouse) failed or showed a generic network error |
+| **Root cause** | `create_inventory_item` in `inventory_service.py` queried and constructed `StockLevel` with a non-existent `tenant_id` column on the `stock_levels` table (tenant is implied via `warehouse_id`) |
+| **API** | `POST /inventory/items` with `item_type: finished_good`, `warehouse_name`, and `quantity` |
+| **Secondary** | Duplicate SKU in tenant → **409** (expected; not a connectivity error) |
+| **Tests** | `backend/tests/test_inventory_finished_good_create.py` — PM create + stock level **200**, duplicate SKU **409** |
+
+### Bug 7 — Stock transfer integrity
+
+| Item | Detail |
+|------|--------|
+| **Root cause** | New transfers use status `pending_approval`, but `StockTransferRead` in `inventory_extended.py` did not allow that status → Pydantic failure on create/list response |
+| **Access** | `assert_transfer_warehouse_access()` in `inventory_extended_service.py` — Store Manager limited to assigned warehouses |
+| **Tests** | `backend/tests/test_stock_transfer_integrity.py` — success (stock + ledger + status), insufficient stock (4xx, no side effects), same source/destination rejected, rollback on mid-flight failure, warehouse scope **403** |
+
+### Role regression (inventory delete RBAC)
+
+`backend/tests/test_role_regression_actions.py` exercises **Admin**, **Store Manager**, **Production Manager**, and **Operator** on inventory create/delete, quality create/list, and maintenance create/list. Intended contract:
+
+| Action | Admin | Store Manager | Production Manager | Operator |
+|--------|-------|---------------|------------------|----------|
+| Inventory create | 200 | 200 | 200 | 403 |
+| Inventory delete | 200 | 200 | **403** | 403 |
+| Quality create / list | 200 | per RBAC | 200 | per RBAC |
+| Maintenance create / list | 200 | per RBAC | 200 | per RBAC |
+
+Inventory delete is restricted in `backend/app/core/permissions.py` (`user_can_delete_inventory_item` — Admin and Store Manager only).
+
+### Dev seed — Batch Quality & Machine History
+
+Seed script (no hardcoded UI data):
+
+```bash
+cd backend
+python scripts/seed_pm_verification_data.py --tenant-id <YOUR_TENANT_ID>
+```
+
+Creates a **maintenance record** for machine history when missing. **Batch quality report** rows are added only if the tenant already has a `WorkOrder` (and derived `Batch`) — the script does not invent production orders (FK integrity).
+
+### Maintenance UI (Breakdown Reports)
+
+`frontend/src/pages/maintenance/BreakdownReports.jsx` uses tenant-scoped APIs (`createBreakdown`, machine list from masters), not local-only fake rows. Re-check other maintenance sidebar pages in the browser after backend is up (load, create + refresh, filters).
+
+### Verification status (summary)
+
+| # | Item | Result |
+|---|------|--------|
+| 1 | Bug 5 finished-good create | **PASS** — fixed + backend tests |
+| 2 | Bug 7 stock transfer tests | **PASS** — five scenarios in `test_stock_transfer_integrity.py` |
+| 3 | Full backend `pytest -q` | **Mixed** — targeted PM/regression tests pass; some legacy suites fail on CSRF cookie login (`/api/auth/login` without CSRF token), dashboard envelope `KeyError: 'data'`, and related auth/file tests. Treat CI job `backend` as the canonical gate; fix or update those tests separately if they block release. |
+| 4 | Frontend `npm test` (443 tests) | **Improved** — heap/worker limits + lighter `App.test.jsx` import; run a single Vitest process (avoid parallel `npm test` invocations on Windows). If a worker still exits, run suspect files in isolation. |
+| 5 | Maintenance pages + seeded KPIs | **Partial** — seed script + Breakdown wiring done; browser PASS/FAIL per maintenance sub-page and Batch/Machine History KPI smoke not automated in CI |
 
 ---
 
@@ -503,7 +586,7 @@ Workflow: [`.github/workflows/ci.yml`](./.github/workflows/ci.yml)
 | `backend` | `pytest` with SQLite-friendly env |
 | `backend-migrations` | `alembic upgrade head` on Postgres 16 |
 | `backend-postgres-critical` | Security/RBAC/tenant/workflow subset on Postgres |
-| `frontend` | `npm ci`, `npm run build`, `npm test -- --run` |
+| `frontend` | `npm ci`, `npm run build`, `npm test` |
 
 ---
 
@@ -512,7 +595,7 @@ Workflow: [`.github/workflows/ci.yml`](./.github/workflows/ci.yml)
 | Item | Location |
 |------|----------|
 | Logo | `frontend/public/logo.png` |
-| Auth slides | `frontend/public/auth/slide-*.png` |
+| Auth slides | `frontend/src/assets/auth/slide-*.png` (bundled in login UI) |
 | Component | `frontend/src/components/common/BrandLogo.jsx` |
 | Tagline | `frontend/src/locales/en.json` → `nav.tagline` |
 

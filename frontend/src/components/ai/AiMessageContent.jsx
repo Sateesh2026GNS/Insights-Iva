@@ -1,22 +1,6 @@
 /** Lightweight, robust markdown renderer for AI messages (bold, code, lists, headings, callouts). */
 
-function escapeHtml(text) {
-  return String(text || "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-}
-
-function formatInline(text) {
-  if (!text) return "";
-  let html = escapeHtml(text);
-  // Bold: **text** or __text__
-  html = html.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
-  html = html.replace(/__(.+?)__/g, "<strong>$1</strong>");
-  // Inline code: `code`
-  html = html.replace(/`([^`]+)`/g, '<code class="rounded bg-slate-200/70 px-1.5 py-0.5 text-xs font-mono text-slate-800">$1</code>');
-  return html;
-}
+import { formatAiMessageInline } from "../../utils/aiMessageFormat";
 
 export default function AiMessageContent({ content, contentRef }) {
   if (!content) return null;
@@ -89,7 +73,7 @@ export default function AiMessageContent({ content, contentRef }) {
             <h1
               key={idx}
               className="text-base font-bold text-slate-900 mt-2 mb-1"
-              dangerouslySetInnerHTML={{ __html: formatInline(block.text) }}
+              dangerouslySetInnerHTML={{ __html: formatAiMessageInline(block.text) }}
             />
           );
         }
@@ -98,7 +82,7 @@ export default function AiMessageContent({ content, contentRef }) {
             <h2
               key={idx}
               className="text-sm font-bold text-slate-900 mt-2 mb-1"
-              dangerouslySetInnerHTML={{ __html: formatInline(block.text) }}
+              dangerouslySetInnerHTML={{ __html: formatAiMessageInline(block.text) }}
             />
           );
         }
@@ -107,7 +91,7 @@ export default function AiMessageContent({ content, contentRef }) {
             <h3
               key={idx}
               className="text-sm font-bold text-slate-900 mt-1.5 mb-1 flex items-center gap-1.5"
-              dangerouslySetInnerHTML={{ __html: formatInline(block.text) }}
+              dangerouslySetInnerHTML={{ __html: formatAiMessageInline(block.text) }}
             />
           );
         }
@@ -116,7 +100,7 @@ export default function AiMessageContent({ content, contentRef }) {
             <p
               key={idx}
               className="text-xs font-semibold uppercase tracking-wider text-slate-500 mt-2 mb-1"
-              dangerouslySetInnerHTML={{ __html: formatInline(block.text) }}
+              dangerouslySetInnerHTML={{ __html: formatAiMessageInline(block.text) }}
             />
           );
         }
@@ -128,7 +112,7 @@ export default function AiMessageContent({ content, contentRef }) {
                   <li
                     key={itemIdx}
                     className="text-xs sm:text-sm leading-relaxed text-slate-700 flex items-start gap-1.5"
-                    dangerouslySetInnerHTML={{ __html: formatInline(item) }}
+                    dangerouslySetInnerHTML={{ __html: formatAiMessageInline(item) }}
                   />
                 ))}
               </ul>
@@ -140,7 +124,7 @@ export default function AiMessageContent({ content, contentRef }) {
             <div
               key={idx}
               className="my-2 rounded-lg border border-red-200 bg-red-50/80 px-3 py-2 text-xs font-medium text-red-900"
-              dangerouslySetInnerHTML={{ __html: formatInline(block.text) }}
+              dangerouslySetInnerHTML={{ __html: formatAiMessageInline(block.text) }}
             />
           );
         }
@@ -151,7 +135,7 @@ export default function AiMessageContent({ content, contentRef }) {
           <p
             key={idx}
             className="text-xs sm:text-sm leading-relaxed text-slate-700"
-            dangerouslySetInnerHTML={{ __html: formatInline(block.text) }}
+            dangerouslySetInnerHTML={{ __html: formatAiMessageInline(block.text) }}
           />
         );
       })}

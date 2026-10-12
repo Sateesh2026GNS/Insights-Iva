@@ -349,6 +349,13 @@ export function isStoreManager(user) {
   return hasRole(user, "Store Manager");
 }
 
+/** Inventory item delete — Admin and Store Manager only (not Production Manager). */
+export function userCanDeleteInventoryItem(user) {
+  if (!user) return false;
+  if (isAdmin(user)) return true;
+  return isStoreManager(user);
+}
+
 /** Manual Sales Job Card create/edit — sales team only (not Store Manager). */
 export function isSalesJobCardAuthoringPath(pathname) {
   const path = (pathname || "").replace(/\/$/, "") || "/";

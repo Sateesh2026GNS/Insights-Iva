@@ -22,6 +22,8 @@ else:
     os.environ.pop("ALLOW_SQLITE_RUNTIME", None)
 os.environ["JWT_SECRET_KEY"] = "test-secret-key-not-for-production"
 os.environ["ENVIRONMENT"] = "development"
+# Default dual mode so existing tests can read Bearer tokens from login JSON.
+os.environ["AUTH_COOKIE_MODE"] = os.environ.get("AUTH_COOKIE_MODE", "dual")
 # Allow /auth/register in tests (disabled in SaaS production).
 os.environ["ALLOW_PUBLIC_REGISTRATION"] = "true"
 os.environ["STORAGE_PROVIDER"] = "local"
@@ -86,6 +88,15 @@ def _unique_email(prefix="user"):
     return f"{prefix}-{uuid.uuid4().hex[:8]}@example.com"
 
 
+def auth_test_headers(client, bearer_token: str) -> dict:
+    """Bearer auth plus CSRF when cookie session is active (dual/cookie modes)."""
+    headers = {"Authorization": f"Bearer {bearer_token}"}
+    csrf = client.cookies.get("iva_csrf")
+    if csrf:
+        headers["X-CSRF-Token"] = csrf
+    return headers
+
+
 @pytest.fixture()
 def register_admin(client):
     """Register a brand new tenant + admin user, then log in (JWT only after login)."""
@@ -120,7 +131,7 @@ def register_admin(client):
             "user": data["user"],
             "email": email,
             "password": password,
-            "headers": {"Authorization": f"Bearer {data['access_token']}"},
+            "headers": auth_test_headers(client, data["access_token"]),
         }
 
     return _register
@@ -168,6 +179,6 @@ def make_restricted_user(client):
         )
         assert resp.status_code == 200, resp.text
         token = resp.json()["access_token"]
-        return {"headers": {"Authorization": f"Bearer {token}"}, "email": email}
+        return {"headers": auth_test_headers(client, token), "email": email}
 
     return _make

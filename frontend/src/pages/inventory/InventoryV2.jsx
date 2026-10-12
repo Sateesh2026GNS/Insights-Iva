@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import {
@@ -13,6 +12,8 @@ import {
 } from "lucide-react";
 
 import AddNewItemModal from "../../components/sales/AddNewItemModal";
+import AddInventoryCategoryModal from "../../components/inventory/AddInventoryCategoryModal";
+import SelectStockItemCategoryModal from "../../components/inventory/SelectStockItemCategoryModal";
 import InventoryRowActionsMenu from "../../components/inventory/InventoryRowActionsMenu";
 import RowActionMenu from "../../components/common/RowActionMenu";
 import useAuth from "../../hooks/useAuth";
@@ -21,6 +22,7 @@ import {
   buildInventoryStockRowActionItems,
   filterCategoryWiseItems,
   normalizeCategoryName,
+  selectableInventoryCategories,
 } from "../../utils/inventoryCategoryWise";
 import RecordDetailModal from "../../components/inventory/RecordDetailModal";
 import InventoryItemPhoto from "../../components/inventory/InventoryItemPhoto";
@@ -80,17 +82,6 @@ const STOCK_FILTERS = [
 function todayLabel() {
   const d = new Date();
   return `${String(d.getDate()).padStart(2, "0")}-${String(d.getMonth() + 1).padStart(2, "0")}-${d.getFullYear()}`;
-}
-
-function OutlinedField({ label, children }) {
-  return (
-    <label className="relative block">
-      <span className="absolute -top-2 left-3 z-10 bg-white px-1 text-[11px] font-medium text-[#6b6b76]">
-        {label}
-      </span>
-      {children}
-    </label>
-  );
 }
 
 function DropdownMenu({ open, children, className = "" }) {
@@ -274,11 +265,16 @@ export default function InventoryV2() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [addOpen, setAddOpen] = useState(false);
+  const [categoryPickOpen, setCategoryPickOpen] = useState(false);
+  const [pickedCategoryId, setPickedCategoryId] = useState("");
+  const [categoryPickError, setCategoryPickError] = useState("");
   const [editing, setEditing] = useState(null);
   const [categoryModal, setCategoryModal] = useState(false);
   const [categoryName, setCategoryName] = useState("");
+  const [categoryBusy, setCategoryBusy] = useState(false);
   const [categories, setCategories] = useState([]);
   const [categoryToSelect, setCategoryToSelect] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState(null);
   const [openMenuId, setOpenMenuId] = useState(null);
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [viewTarget, setViewTarget] = useState(null);
@@ -381,6 +377,24 @@ export default function InventoryV2() {
     return [...names].sort((a, b) => a.localeCompare(b));
   }, [categories, products]);
 
+  const selectableCategories = useMemo(
+    () => selectableInventoryCategories(categories),
+    [categories]
+  );
+
+  const itemFormCategories = useMemo(() => {
+    const list = [...selectableCategories];
+    const existingName = String(editing?.category || "").trim();
+    if (
+      existingName &&
+      existingName.toLowerCase() !== "no category" &&
+      !list.some((c) => String(c.name).toLowerCase() === existingName.toLowerCase())
+    ) {
+      list.push({ id: null, name: existingName });
+    }
+    return list;
+  }, [selectableCategories, editing]);
+
   const activeRows = tab === "items" ? filteredItems : categoryWiseItems;
   const total = activeRows.length;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
@@ -436,36 +450,76 @@ export default function InventoryV2() {
   };
 
   const createCategory = async () => {
-  const name = categoryName.trim();
-
-  if (!name) {
-    addToast("Enter a category name.", "error");
-    return;
-  }
-
-  try {
-    await createInventoryV2Category(name);
-
-    setCategoryName("");
-    setCategoryModal(false);
-
-    // Refresh categories so the new category appears
-    await load();
-
-    // If Add Category was opened from Add New Item,
-    // automatically select the newly created category.
-    if (addOpen) {
-      setCategoryToSelect(name);
+    const name = categoryName.trim();
+    if (!name) {
+      addToast("Enter a category name.", "error");
+      return;
     }
+    if (categoryBusy) return;
+    setCategoryBusy(true);
+    const fromAddFlow = categoryPickOpen || addOpen;
+    try {
+      const res = await createInventoryV2Category(name);
+      const created = res?.data;
+      setCategoryName("");
+      setCategoryModal(false);
+      await load();
+      if (fromAddFlow && created?.id && created?.name) {
+        setSelectedCategory({ id: created.id, name: created.name });
+        setPickedCategoryId(String(created.id));
+        setCategoryToSelect(created.name);
+        setCategoryPickError("");
+        setCategoryPickOpen(false);
+        if (!editing) {
+          setAddOpen(true);
+        }
+      }
+      addToast("Category created.");
+    } catch (err) {
+      addToast(apiErrorMessage(err, "Could not create category."), "error");
+    } finally {
+      setCategoryBusy(false);
+    }
+  };
 
-    addToast("Category created.");
-  } catch (err) {
-    addToast(
-      apiErrorMessage(err, "Could not create category."),
-      "error"
-    );
-  }
-};
+  const closeCategoryPick = () => {
+    setCategoryPickOpen(false);
+    setCategoryPickError("");
+    setPickedCategoryId("");
+    setSelectedCategory(null);
+    setCategoryToSelect("");
+  };
+
+  const openAddItem = () => {
+    setEditing(null);
+    setAddOpen(false);
+    setSelectedCategory(null);
+    setCategoryToSelect("");
+    setPickedCategoryId("");
+    setCategoryPickError("");
+    setCategoryPickOpen(true);
+  };
+
+  const continueFromCategory = (cat) => {
+    if (!cat?.id || Number(cat.id) <= 0 || !String(cat.name || "").trim()) {
+      setCategoryPickError("Please select or create a category before adding an item.");
+      return;
+    }
+    setSelectedCategory(cat);
+    setCategoryToSelect(cat.name);
+    setCategoryPickError("");
+    setCategoryPickOpen(false);
+    setEditing(null);
+    setAddOpen(true);
+  };
+
+  const closeItemForm = () => {
+    setAddOpen(false);
+    setEditing(null);
+    setSelectedCategory(null);
+    setCategoryToSelect("");
+    setPickedCategoryId("");
+  };
 
   const onStockAdjust = async ({ qty, remark, unit }) => {
     if (!stockTarget || !qty || qty <= 0) {
@@ -504,8 +558,11 @@ export default function InventoryV2() {
   };
 
   const handleEditRow = (row) => {
+    setCategoryPickOpen(false);
     setEditing(row);
-    setCategoryToSelect(normalizeCategoryName(row.category));
+    const existing = String(row.category || "").trim();
+    setCategoryToSelect(existing && existing.toLowerCase() !== "no category" ? existing : "");
+    setSelectedCategory(null);
     setAddOpen(true);
   };
 
@@ -660,13 +717,7 @@ export default function InventoryV2() {
                   </DropdownMenu>
                 </div>
 
-                <InventoryAddButton
-                  onClick={() => {
-                    setEditing(null);
-                    setCategoryToSelect("");
-                    setAddOpen(true);
-                  }}
-                >
+                <InventoryAddButton onClick={openAddItem}>
                   Add Items
                 </InventoryAddButton>
                 <ExportDownloadMenu
@@ -769,10 +820,7 @@ export default function InventoryV2() {
                                 showRemoveStock
                                 menuWidth={176}
                                 onView={() => handleView(row)}
-                                onEdit={() => {
-                                  setEditing(row);
-                                  setAddOpen(true);
-                                }}
+                                onEdit={() => handleEditRow(row)}
                                 onAddStock={() => {
                                   setStockTarget(row);
                                   setStockMode("add");
@@ -889,22 +937,40 @@ export default function InventoryV2() {
         </div>
       </InventoryPageCard>
 
+      <SelectStockItemCategoryModal
+        open={categoryPickOpen}
+        categories={selectableCategories}
+        selectedId={pickedCategoryId}
+        error={categoryPickError}
+        onSelect={(cat) => {
+          setPickedCategoryId(cat?.id != null ? String(cat.id) : "");
+          setSelectedCategory(cat || null);
+          setCategoryPickError("");
+        }}
+        onAddCategory={() => {
+          setCategoryName("");
+          setCategoryModal(true);
+        }}
+        onContinue={continueFromCategory}
+        onClose={closeCategoryPick}
+      />
+
       <AddNewItemModal
         open={addOpen}
         placement="drawer"
         item={editing}
-        categories={categories.map((c) => c.name || c)}
+        categories={itemFormCategories}
         categoryToSelect={categoryToSelect}
+        requireCategory={!editing}
+        lockCategory={Boolean(!editing && selectedCategory)}
+        saveAsInventoryItem
         onAddCategory={() => {
+          setCategoryName("");
           setCategoryModal(true);
         }}
-        onClose={() => {
-          setAddOpen(false);
-          setEditing(null);
-        }}      
+        onClose={closeItemForm}
         onSaved={() => {
-          setAddOpen(false);
-          setEditing(null);
+          closeItemForm();
           load();
         }}
       />
@@ -948,60 +1014,14 @@ export default function InventoryV2() {
         </section>
       </RecordDetailModal>
 
-      {categoryModal
-        ? createPortal(
-            <div
-              className="fixed inset-0 z-[13000] flex items-center justify-center bg-black/45 p-4"
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="add-category-title"
-              onMouseDown={(e) => {
-                if (e.target === e.currentTarget) {
-                  setCategoryModal(false);
-                }
-              }}
-            >
-              <div
-                className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl"
-                onMouseDown={(e) => e.stopPropagation()}
-              >
-                <div className="mb-5 flex items-center justify-between">
-                  <h3 id="add-category-title" className="text-[17px] font-bold text-[#1a1a1f]">
-                    Add Category
-                  </h3>
-                  <button
-                    type="button"
-                    aria-label="Close"
-                    onClick={() => setCategoryModal(false)}
-                    className="grid h-8 w-8 place-items-center rounded-full bg-[#f0f0f4] text-[#1a1a1f]"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-
-                <OutlinedField label="Category name">
-                  <input
-                    autoFocus
-                    className="w-full rounded-lg border border-[#cfcfd6] bg-white px-3 py-3 text-sm outline-none focus:border-[#0f6d84]"
-                    placeholder="Category name"
-                    value={categoryName}
-                    onChange={(e) => setCategoryName(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && createCategory()}
-                  />
-                </OutlinedField>
-
-                <button
-                  type="button"
-                  onClick={createCategory}
-                  className="mt-6 w-full rounded-lg bg-[#6b6b76] py-3 text-[14px] font-bold text-white hover:bg-[#4a4a55]"
-                >
-                  Create
-                </button>
-              </div>
-            </div>,
-            document.body
-          )
-        : null}
+      <AddInventoryCategoryModal
+        open={categoryModal}
+        name={categoryName}
+        busy={categoryBusy}
+        onNameChange={setCategoryName}
+        onClose={() => !categoryBusy && setCategoryModal(false)}
+        onSubmit={createCategory}
+      />
     </InventoryPageShell>
   );
 }

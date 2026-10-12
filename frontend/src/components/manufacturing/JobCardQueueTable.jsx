@@ -154,7 +154,7 @@ function buildRowMenuItems({
           onClick: () => onIssueMaterials?.(row),
         }
       : null,
-    canEdit && onEdit
+    canEdit && onEdit && !storeMode
       ? {
           label: "Edit",
           icon: <Pencil className="h-4 w-4" />,

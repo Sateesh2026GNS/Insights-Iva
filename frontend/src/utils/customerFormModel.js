@@ -1,5 +1,14 @@
 /** Customer full-page form state, hydration, and API payload helpers. */
 
+import { PHONE_ERROR_KEYS, validateIndianMobile } from "./indianPhoneValidation";
+
+const englishPhoneT = (key) =>
+  ({
+    [PHONE_ERROR_KEYS.digitsOnly]: "Use digits only.",
+    [PHONE_ERROR_KEYS.tenDigits]: "Mobile number must be 10 digits.",
+    [PHONE_ERROR_KEYS.startDigit]: "Mobile number must start with 6, 7, 8 or 9.",
+  })[key] || key;
+
 export const CUSTOMER_FORM_TABS = [
   { id: "other", label: "Other Details" },
   { id: "address", label: "Address" },
@@ -200,8 +209,8 @@ export function validateCustomerForm(form) {
 
   const mobile = form.mobile.trim();
   if (mobile) {
-    if (!/^\d{10}$/.test(mobile)) errors.mobile = "Mobile No. must be exactly 10 digits";
-    else if (!/^[6-9]/.test(mobile)) errors.mobile = "Mobile No. must start with 6, 7, 8, or 9";
+    const check = validateIndianMobile(mobile, englishPhoneT);
+    if (!check.ok) errors.mobile = check.message;
   }
 
   const gstin = form.gstin.trim().toUpperCase();

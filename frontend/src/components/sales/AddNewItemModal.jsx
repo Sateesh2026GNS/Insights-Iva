@@ -14,7 +14,11 @@ import Button from "../common/Button";
 import ShorthandQuantityInput from "../common/ShorthandQuantityInput";
 import AddCustomFieldModal from "./AddCustomFieldModal";
 import { createProduct, getProducts, updateProduct } from "../../api/productsApi";
-import { getInventoryV2Item } from "../../api/inventoryV2Api";
+import {
+  createInventoryV2Item,
+  getInventoryV2Item,
+  updateInventoryV2Item,
+} from "../../api/inventoryV2Api";
 import InventoryItemPhoto from "../inventory/InventoryItemPhoto";
 import ProductVendorPricingFields, {
   buildVendorPricingFromItem,
@@ -22,6 +26,11 @@ import ProductVendorPricingFields, {
   vendorPricingPayloadFromForm,
 } from "../masters/ProductVendorPricingFields";
 import { PRODUCT_CATEGORIES, PRODUCT_UNITS } from "../../data/productsMasterData";
+import {
+  inventoryCategoryOptionNames,
+  isMissingStockItemCategory,
+  resolveSelectableCategoryId,
+} from "../../utils/inventoryCategoryWise";
 import { useToast } from "../../context/ToastContext";
 import useTenantId from "../../hooks/useTenantId";
 import { apiErrorMessage } from "../../utils/apiError";
@@ -280,6 +289,7 @@ export default function AddNewItemModal({
   categoryToSelect,
   requireCategory = false,
   lockCategory = false,
+  saveAsInventoryItem = false,
   item = null,
   entityName = "Item",
   title,
@@ -421,6 +431,7 @@ export default function AddNewItemModal({
   const onSubmit = async (e) => {
     e.preventDefault();
     e.stopPropagation();
+    if (saving || readOnly) return;
     if (!form.name.trim()) {
       addToast(`${isProduct ? "Product Name" : "Item Name"} is required`, "error");
       return;
@@ -440,8 +451,8 @@ export default function AddNewItemModal({
       addToast(`${isProduct ? "Product" : "Item"} Name "${form.name.trim()}" already exists.`, "error");
       return;
     }
-    if (isProduct && requireCategory && !String(form.category || "").trim()) {
-      addToast("Please select a category.", "error");
+    if (requireCategory && isMissingStockItemCategory(form.category)) {
+      addToast("Please select or create a category before adding an item.", "error");
       return;
     }
     if (!form.sale_price && form.sale_price !== "0") {
@@ -514,18 +525,24 @@ export default function AddNewItemModal({
         }
       }
 
+      const categoryName = String(form.category || "").trim();
+      const categoryId = resolveSelectableCategoryId(categories, categoryName);
+      if (saveAsInventoryItem && !item?.id && !categoryId) {
+        addToast("Please select or create a category before adding an item.", "error");
+        setSaving(false);
+        return;
+      }
+
       const payload = {
         tenant_id: tenantId,
         barcode: form.barcode.trim() || null,
         name: form.name.trim(),
-        category:
-          String(form.category || "").trim() ||
-          (requireCategory ? "" : "Finished Goods"),
+        category: categoryName || (requireCategory || saveAsInventoryItem ? "" : "Finished Goods"),
         ...(isProduct ? { status: form.status } : {}),
         // Items created from a sales document are intentionally saleable;
         // product-master entries require an explicit user choice.
         is_sellable: isProduct ? Boolean(form.is_sellable) : true,
-        product_type: form.item_type === "services" ? "Service" : (form.category || "Finished Goods"),
+        product_type: form.item_type === "services" ? "Service" : (categoryName || "Finished Goods"),
         description: fullDesc,
         hsn_code: cleanHsn || null,
         gst_percent: gstVal,
@@ -554,7 +571,31 @@ export default function AddNewItemModal({
       }
 
       let product = null;
-      if (item?.id) {
+      if (saveAsInventoryItem) {
+        const v2Payload = {
+          name: payload.name,
+          barcode: payload.barcode,
+          description: payload.description,
+          unit: payload.unit,
+          hsn_code: payload.hsn_code,
+          purchase_price: payload.unit_cost,
+          selling_price: payload.unit_price,
+          gst_percent: payload.gst_percent,
+          cess_percent: payload.cess_percent,
+          min_stock: payload.min_stock,
+        };
+        if (categoryId) {
+          v2Payload.category_id = categoryId;
+          v2Payload.category = categoryName;
+        }
+        if (!item?.id) {
+          v2Payload.current_stock = payload.current_stock;
+        }
+        const res = item?.id
+          ? await updateInventoryV2Item(item.id, v2Payload)
+          : await createInventoryV2Item(v2Payload);
+        product = res?.data || null;
+      } else if (item?.id) {
         const res = await updateProduct(item.id, payload);
         product = res?.data || null;
       } else {
@@ -615,8 +656,10 @@ export default function AddNewItemModal({
 
   if (!open) return null;
 
-  const categoryOptions = categories?.length ? categories : [...PRODUCT_CATEGORIES, "Services"];
-  const categorySelectDisabled = readOnly || (isProduct && lockCategory);
+  const namedCategories = inventoryCategoryOptionNames(categories);
+  const categoryOptions = namedCategories !== null ? namedCategories : [...PRODUCT_CATEGORIES, "Services"];
+  const categorySelectDisabled = readOnly || lockCategory;
+  const showCategoryFirst = requireCategory || isProduct || saveAsInventoryItem;
 
   const renderCategoryField = () => (
     <label className="block">
@@ -631,7 +674,6 @@ export default function AddNewItemModal({
           setForm((f) => ({ ...f, category: e.target.value }));
         }}
         disabled={categorySelectDisabled}
-        required={requireCategory || isProduct}
         className={inputClass}
       >
         <option value="">Select Category</option>
@@ -698,7 +740,16 @@ export default function AddNewItemModal({
 
         <div className="flex-1 space-y-3 overflow-y-auto px-4 py-4 sm:px-6">
           <div className="space-y-4 rounded-xl bg-white p-4 sm:p-5 shadow-sm">
-            {isProduct ? renderCategoryField() : null}
+            {showCategoryFirst ? (
+              <>
+                {requireCategory && !item?.id ? (
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
+                    Step 2 – Item Details
+                  </p>
+                ) : null}
+                {renderCategoryField()}
+              </>
+            ) : null}
             <div className="grid grid-cols-2 gap-2">
               {[
                 { id: "goods", label: "Goods" },
@@ -929,7 +980,7 @@ export default function AddNewItemModal({
                   </select>
                 </div>
               </label>
-              {!isProduct ? renderCategoryField() : null}
+              {!showCategoryFirst ? renderCategoryField() : null}
             </div>
 
             {customFields.map((field) => (

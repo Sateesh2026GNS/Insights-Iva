@@ -39,6 +39,7 @@ import {
   normalizeBatchStatus,
 } from "../../data/qualityMasterData";
 import { exportToExcel, exportToPdf } from "../../utils/exportUtils";
+import { asArray } from "../../utils/apiError";
 
 const PAGE_SIZES = [10, 25, 50];
 
@@ -257,15 +258,16 @@ export default function BatchQualityReports() {
   const [pageSize, setPageSize] = useState(10);
   const [openMenuId, setOpenMenuId] = useState(null);
   const [viewRow, setViewRow] = useState(null);
+  const [kpiFilter, setKpiFilter] = useState("");
 
   const load = useCallback(async (isRefresh = false) => {
     if (!isRefresh) setLoading(true);
     try {
       const [sumRes, listRes] = await Promise.allSettled([getBatchSummary(), getBatchEnriched()]);
       let list = [];
-      if (listRes.status === "fulfilled" && Array.isArray(listRes.value?.data) && listRes.value.data.length > 0) {
-        list = listRes.value.data.map(mapBatchRow);
-      } 
+      if (listRes.status === "fulfilled") {
+        list = asArray(listRes.value?.data).map(mapBatchRow);
+      }
       setRows(list);
       const apiSummary = sumRes.status === "fulfilled" ? sumRes.value?.data || {} : {};
       setSummary(mergeBatchSummary(apiSummary, list));
@@ -297,6 +299,9 @@ export default function BatchQualityReports() {
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return rows.filter((r) => {
+      if (kpiFilter === "passed" && normalizeBatchStatus(r) !== "completed") return false;
+      if (kpiFilter === "failed" && (batchResultLabel(r) || "").toLowerCase() !== "failed") return false;
+      if (kpiFilter === "in_progress" && normalizeBatchStatus(r) !== "in_progress") return false;
       if (selectedProducts.length > 0 && !selectedProducts.includes(r.product_name)) return false;
       const process = r.process_operation || r.process;
       if (selectedProcesses.length > 0 && !selectedProcesses.includes(process)) return false;
@@ -319,7 +324,7 @@ export default function BatchQualityReports() {
         r.inspector,
       ].some((v) => String(v || "").toLowerCase().includes(q));
     });
-  }, [rows, search, selectedProducts, selectedProcesses, selectedStatuses, selectedResults, dateFrom, dateTo]);
+  }, [rows, search, kpiFilter, selectedProducts, selectedProcesses, selectedStatuses, selectedResults, dateFrom, dateTo]);
 
   useEffect(() => {
     setPage(1);
@@ -376,7 +381,8 @@ export default function BatchQualityReports() {
             <Button
               type="button"
               variant="primary"
-              onClick={() => addToast("Batch quality report generation started", "success")}
+              disabled={!exportRows.length}
+              onClick={() => handleExport("pdf")}
             >
               <LineChart className="h-4 w-4" /> Generate Report
             </Button>
@@ -385,34 +391,42 @@ export default function BatchQualityReports() {
       />
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
+        <button type="button" className="text-left" onClick={() => setKpiFilter("")} title="Click to clear KPI filter">
         <KpiCard
           label="Total Batches"
           value={summary.total_batches}
           icon={Layers}
           tone="primary"
-          meta={`↑ ${summary.total_trend_pct ?? 10}% vs last 14 days`}
+          meta={kpiFilter ? "Click to show all" : "All batches"}
         />
+        </button>
+        <button type="button" className="text-left" onClick={() => setKpiFilter("passed")} title="Click to filter passed">
         <KpiCard
           label="Passed Batches"
           value={summary.passed}
           icon={CheckCircle}
           tone="success"
-          meta={`${passedPct}% of total`}
+          meta={`${passedPct}% of total · Click to filter`}
         />
+        </button>
+        <button type="button" className="text-left" onClick={() => setKpiFilter("failed")} title="Click to filter failed">
         <KpiCard
           label="Failed Batches"
           value={summary.failed}
           icon={XCircle}
           tone="danger"
-          meta={`${failedPct}% of total`}
+          meta={`${failedPct}% of total · Click to filter`}
         />
+        </button>
+        <button type="button" className="text-left" onClick={() => setKpiFilter("in_progress")} title="Click to filter in progress">
         <KpiCard
           label="In Progress"
           value={summary.in_progress}
           icon={Clock}
           tone="warning"
-          meta={`${inProgressPct}% of total`}
+          meta={`${inProgressPct}% of total · Click to filter`}
         />
+        </button>
         <KpiCard
           label="Overall Pass Rate"
           value={summary.overall_pass_rate ?? summary.yield_pct}
@@ -467,8 +481,8 @@ export default function BatchQualityReports() {
           </div>
         </div>
 
-        {/* Filter dropdowns row */}
-        <div className="flex flex-wrap items-center gap-3 border-t border-[var(--color-border-soft)] pt-3">
+        {showFilters ? (
+        <div className="grid grid-cols-1 gap-3 border-t border-[var(--color-border-soft)] pt-3 sm:grid-cols-2 lg:grid-cols-[repeat(auto-fit,minmax(180px,1fr))]">
           <MultiSelectDropdown
             label="Products"
             options={products}
@@ -526,6 +540,7 @@ export default function BatchQualityReports() {
             </Button>
           )}
         </div>
+        ) : null}
       </div>
 
       <div className="ui-card overflow-hidden">

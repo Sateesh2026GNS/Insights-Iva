@@ -38,6 +38,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.core.config import get_settings
+from app.middleware.csrf_middleware import CsrfMiddleware
 from app.core.logging_config import get_logger, setup_logging
 
 from app.api.accounts import router as accounts_router
@@ -169,13 +170,11 @@ _cors_kwargs = {
     "allow_methods": ["*"],
     "allow_headers": ["*"],
 }
-if not settings.is_production:
-    _cors_kwargs["allow_origin_regex"] = r"https?://(localhost|127\.0\.0\.1)(:\d+)?$"
-else:
-    _cors_kwargs["allow_origin_regex"] = (
-        r"^(https://([a-zA-Z0-9-]+\.)*(onrender\.com|web\.app|firebaseapp\.com|insightsiva\.com)|http://localhost(:\d+)?|http://127\.0\.0\.1(:\d+)?)$"
-    )
+_cors_regex = settings.cors_allow_origin_regex
+if _cors_regex:
+    _cors_kwargs["allow_origin_regex"] = _cors_regex
 app.add_middleware(CORSMiddleware, **_cors_kwargs)
+app.add_middleware(CsrfMiddleware)
 
 
 @app.middleware("http")

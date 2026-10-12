@@ -3,7 +3,10 @@ import { describe, expect, it, vi } from "vitest";
 import {
   buildInventoryStockRowActionItems,
   filterCategoryWiseItems,
+  isMissingStockItemCategory,
   normalizeCategoryName,
+  resolveSelectableCategoryId,
+  selectableInventoryCategories,
 } from "./inventoryCategoryWise";
 
 describe("inventoryCategoryWise", () => {
@@ -60,5 +63,26 @@ describe("inventoryCategoryWise", () => {
 
   it("normalizes empty category", () => {
     expect(normalizeCategoryName("")).toBe("No Category");
+  });
+
+  it("selectableInventoryCategories drops synthetic No Category and invalid ids", () => {
+    const rows = selectableInventoryCategories([
+      { id: 0, name: "No Category" },
+      { id: 4, name: "Paper" },
+      { id: 5, name: "Film" },
+      { id: 6, name: "No Category" },
+    ]);
+    expect(rows.map((c) => c.name)).toEqual(["Paper", "Film"]);
+  });
+
+  it("resolveSelectableCategoryId uses the currently selected name", () => {
+    const cats = [
+      { id: 4, name: "Paper" },
+      { id: 5, name: "Film" },
+    ];
+    expect(resolveSelectableCategoryId(cats, "Paper")).toBe(4);
+    expect(resolveSelectableCategoryId(cats, "Film")).toBe(5);
+    expect(resolveSelectableCategoryId(cats, "No Category")).toBeNull();
+    expect(isMissingStockItemCategory("")).toBe(true);
   });
 });

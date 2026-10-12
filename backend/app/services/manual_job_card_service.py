@@ -575,6 +575,9 @@ def build_manual_bom_material_lines(
 
         product_id = _resolve_product_id_from_line(db, tenant_id, pl)
         product = db.get(Product, product_id) if product_id else None
+        if product and product.tenant_id != tenant_id:
+            product = None
+            product_id = None
 
         bom_reqs = get_bom_requirements(db, tenant_id, product_id, order_qty) if product_id else []
         if not bom_reqs:
@@ -760,21 +763,6 @@ def submit_manual_material_check(
         if upd:
             if upd.get("remarks"):
                 ln["remarks"] = _trim(upd.get("remarks"), 500)
-            if "available_qty" in upd and upd["available_qty"] is not None:
-                try:
-                    avail = max(0.0, float(upd["available_qty"]))
-                    req = float(ln.get("required_qty") or 0.0)
-                    ln["available_qty"] = avail
-                    shortage = max(0.0, req - avail)
-                    ln["shortage_qty"] = shortage
-                    if shortage <= 0:
-                        ln["availability_status"] = "available"
-                    elif avail > 0:
-                        ln["availability_status"] = "partially_available"
-                    else:
-                        ln["availability_status"] = "not_available"
-                except (ValueError, TypeError):
-                    pass
 
     materials_available = payload.get("materials_available")
     reason = _trim(payload.get("reason"), 2000)

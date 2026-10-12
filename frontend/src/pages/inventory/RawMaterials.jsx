@@ -28,6 +28,14 @@ import InventoryHeaderControls from "../../components/inventory/InventoryHeaderC
 import MaterialDetailModal from "../../components/inventory/MaterialDetailModal";
 import { useToast } from "../../context/ToastContext";
 import useTenantId from "../../hooks/useTenantId";
+import useAuth from "../../hooks/useAuth";
+import { userCanDeleteInventoryItem } from "../../config/permissions";
+import {
+  formatInventoryQuantity,
+  pickDefaultWarehouse,
+  singleUomInRows,
+  summarizeQuantitiesByUom,
+} from "../../utils/inventoryUomFormat";
 import {
   deleteInventoryItem,
   getRawMaterialDetail,
@@ -72,11 +80,8 @@ function formatInrAmount(value) {
   return `₹ ${Number(value || 0).toLocaleString("en-IN")}`;
 }
 
-function formatQty(value) {
-  return Number(value || 0).toLocaleString("en-IN", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
+function formatQty(value, unit) {
+  return formatInventoryQuantity(value, unit);
 }
 
 function formatUpdated(value) {
@@ -121,6 +126,8 @@ function ClickableKpiCard({ onClick, title, children }) {
 
 export default function RawMaterials() {
   const tenantId = useTenantId();
+  const { user } = useAuth();
+  const canDeleteInventory = userCanDeleteInventoryItem(user);
   const navigate = useNavigate();
   const { addToast } = useToast();
   const [initialLoading, setInitialLoading] = useState(true);
@@ -136,7 +143,6 @@ export default function RawMaterials() {
   const [selectedDate, setSelectedDate] = useState(() => todayIso());
   const [headerWarehouse, setHeaderWarehouse] = useState("");
   const [selected, setSelected] = useState(null);
-  const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [openMenuId, setOpenMenuId] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
@@ -188,7 +194,12 @@ export default function RawMaterials() {
 
   useEffect(() => {
     if (!headerWarehouse && warehousesApi.length) {
-      setHeaderWarehouse(String(warehousesApi[0].id));
+      setHeaderWarehouse(
+        pickDefaultWarehouse(warehousesApi, {
+          preferTypes: ["raw", "raw_material"],
+          nameIncludes: ["raw material", "raw-material", "raw"],
+        })
+      );
     }
   }, [warehousesApi, headerWarehouse]);
 
@@ -231,12 +242,16 @@ export default function RawMaterials() {
         stockValue += m.stock_value != null ? Number(m.stock_value) : q * cost;
       }
     });
+    const onlyUom = singleUomInRows(rows);
     return {
       total_items: summary.total_items ?? rows.length,
       stock_value: stockValue,
       low_stock: summary.low_stock ?? low,
       out_of_stock: summary.out_of_stock ?? out,
-      total_quantity: totalQty,
+      total_quantity: onlyUom ? totalQty : null,
+      total_quantity_label: onlyUom
+        ? formatInventoryQuantity(totalQty, onlyUom)
+        : summarizeQuantitiesByUom(rows, "available"),
     };
   }, [rows, summary]);
 
@@ -339,30 +354,7 @@ export default function RawMaterials() {
     }
   };
 
-  const toggleRow = (id) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
   const columns = [
-    {
-      key: "_check",
-      label: "",
-      sortable: false,
-      render: (r) => (
-        <input
-          type="checkbox"
-          checked={selectedIds.has(r.id)}
-          onChange={() => toggleRow(r.id)}
-          className="h-4 w-4 rounded border-[var(--color-border)] accent-[var(--color-action-teal)]"
-          aria-label={`Select ${r.name}`}
-        />
-      ),
-    },
     {
       key: "name",
       label: "Item Name",
@@ -401,7 +393,7 @@ export default function RawMaterials() {
       key: "available",
       label: "Available Qty",
       render: (r) => (
-        <span className="tabular-nums text-[13px] font-semibold text-[var(--color-text)]">{formatQty(r.available)}</span>
+        <span className="tabular-nums text-[13px] font-semibold text-[var(--color-text)]">{formatQty(r.available, r.unit)}</span>
       ),
     },
     {
@@ -456,6 +448,7 @@ export default function RawMaterials() {
             onEdit={() => handleEdit(r)}
             onAdd={handleAdd}
             onDelete={() => handleDeleteRequest(r)}
+            showDelete={canDeleteInventory}
           />
         </div>
       ),
@@ -547,7 +540,13 @@ export default function RawMaterials() {
               title="View total quantity"
               tone="info"
             >
-              <KpiCard label="Total Quantity" value={formatQty(kpis.total_quantity)} icon={ArrowDownToLine} tone="info" meta="Across all items" />
+              <KpiCard
+                label="Total Quantity"
+                value={kpis.total_quantity_label}
+                icon={ArrowDownToLine}
+                tone="info"
+                meta={kpis.total_quantity != null ? `All items (${singleUomInRows(rows) || ""})` : "By unit of measure"}
+              />
             </ClickableKpiCard>
           </>
         )}

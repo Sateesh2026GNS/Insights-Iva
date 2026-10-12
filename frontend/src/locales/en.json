@@ -791,5 +791,14 @@
         "noAttachments": "No attachments yet."
       }
     }
+  },
+  "validation": {
+    "fixHighlightedFields": "Please fix the highlighted fields.",
+    "mobile": {
+      "digitsOnly": "Use digits only.",
+      "tenDigits": "Mobile number must be 10 digits.",
+      "startDigit": "Mobile number must start with 6, 7, 8 or 9.",
+      "combined": "Enter a 10-digit mobile number starting with 6, 7, 8 or 9."
+    }
   }
 }

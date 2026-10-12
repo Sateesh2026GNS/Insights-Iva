@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Request, Response, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sqlalchemy import select, func
@@ -10,9 +10,16 @@ from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
 
-from app.api.auth_deps import get_current_user
+from app.api.auth_deps import get_current_user, http_bearer, resolve_access_token
+from fastapi.security import HTTPAuthorizationCredentials
 from app.api.deps import get_db
+from app.core.auth_cookies import (
+    apply_auth_response_cookies,
+    clear_auth_cookies,
+    resolve_refresh_token,
+)
 from app.core.config import get_settings
+from app.core.csrf import set_csrf_cookie
 from app.models.user import User
 from app.schemas.auth import (
     AuthResponse,
@@ -81,8 +88,19 @@ def _client_ip(request: Request) -> str | None:
     return request.client.host if request.client else None
 
 
+@router.get("/csrf")
+def issue_csrf_token(request: Request, response: Response):
+    set_csrf_cookie(response, request)
+    return {"ok": True}
+
+
 @router.post("/login", response_model=AuthResponse)
-def login(req: LoginRequest, request: Request, db: Session = Depends(get_db)):
+def login(
+    req: LoginRequest,
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db),
+):
     from app.middleware.security import check_auth_backoff, check_rate_limit, record_auth_failure
 
     try:
@@ -240,7 +258,8 @@ def login(req: LoginRequest, request: Request, db: Session = Depends(get_db)):
             commit=False,
         )
         db.commit()
-        return AuthResponse(**data)
+        payload = apply_auth_response_cookies(response, request, data)
+        return AuthResponse(**payload)
     except HTTPException:
         raise
     except SQLAlchemyError as exc:
@@ -260,7 +279,12 @@ def login(req: LoginRequest, request: Request, db: Session = Depends(get_db)):
 
 
 @router.post("/phone-login", response_model=AuthResponse)
-def phone_login(req: PhoneLoginRequest, request: Request, db: Session = Depends(get_db)):
+def phone_login(
+    req: PhoneLoginRequest,
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db),
+):
     from app.middleware.security import check_rate_limit
 
     try:
@@ -322,7 +346,8 @@ def phone_login(req: PhoneLoginRequest, request: Request, db: Session = Depends(
             user_agent=user_agent,
             role_name=actual_role,
         )
-        return AuthResponse(**data)
+        payload = apply_auth_response_cookies(response, request, data)
+        return AuthResponse(**payload)
     except HTTPException:
         raise
     except Exception as exc:
@@ -337,13 +362,14 @@ def phone_login(req: PhoneLoginRequest, request: Request, db: Session = Depends(
 @router.get("/me", response_model=UserResponse)
 def get_me(
     request: Request,
+    creds: HTTPAuthorizationCredentials | None = Depends(http_bearer),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> UserResponse:
     role_from_token = None
-    auth_header = request.headers.get("Authorization") or ""
-    if auth_header.startswith("Bearer "):
-        payload = decode_access_token(auth_header[7:])
+    token = resolve_access_token(request, creds)
+    if token:
+        payload = decode_access_token(token)
         if payload:
             role_from_token = payload.get("role") or payload.get("role_name")
     user_data = get_user_with_role(db, current_user, preferred_role=role_from_token)
@@ -580,10 +606,21 @@ def reset_password(req: ResetPasswordRequest, request: Request, db: Session = De
 
 
 @router.post("/refresh", response_model=AuthResponse)
-def refresh_tokens(req: RefreshRequest, request: Request, db: Session = Depends(get_db)):
+def refresh_tokens(
+    request: Request,
+    response: Response,
+    req: RefreshRequest = Body(default_factory=RefreshRequest),
+    db: Session = Depends(get_db),
+):
     ip_address = _client_ip(request)
     user_agent = request.headers.get("User-Agent")
-    user = validate_refresh_token(db, req.refresh_token)
+    refresh_raw = resolve_refresh_token(request, req.refresh_token)
+    if not refresh_raw:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=GENERIC_LOGIN_ERROR,
+        )
+    user = validate_refresh_token(db, refresh_raw)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -592,39 +629,46 @@ def refresh_tokens(req: RefreshRequest, request: Request, db: Session = Depends(
     db.refresh(user, ["roles"])
     touch_user_activity(db, user)
     role_from_token = None
-    auth_header = request.headers.get("Authorization") or ""
-    if auth_header.startswith("Bearer "):
-        old_payload = decode_access_token(auth_header[7:])
+    creds_header = request.headers.get("Authorization") or ""
+    if creds_header.startswith("Bearer "):
+        old_payload = decode_access_token(creds_header[7:])
         if old_payload:
             role_from_token = old_payload.get("role_name") or old_payload.get("role")
+    if not role_from_token:
+        access_cookie = resolve_access_token(request, None)
+        if access_cookie:
+            old_payload = decode_access_token(access_cookie)
+            if old_payload:
+                role_from_token = old_payload.get("role_name") or old_payload.get("role")
     new_refresh = rotate_refresh_token(
-        db, req.refresh_token, user, ip_address=ip_address, user_agent=user_agent
+        db, refresh_raw, user, ip_address=ip_address, user_agent=user_agent
     )
     access = build_access_token_for_user(user, role_name=role_from_token)
     user_data = get_user_with_role(db, user, preferred_role=role_from_token)
     user_data["email_verified"] = user.email_verified
-    return AuthResponse(
-        access_token=access,
-        refresh_token=new_refresh,
-        user=UserResponse(**user_data),
-    )
+    data = {
+        "access_token": access,
+        "refresh_token": new_refresh,
+        "token_type": "bearer",
+        "user": user_data,
+    }
+    payload = apply_auth_response_cookies(response, request, data)
+    return AuthResponse(**payload)
 
 
 @router.post("/logout", response_model=MessageResponse)
 def logout(
-    req: RefreshRequest,
     request: Request,
+    response: Response,
+    req: RefreshRequest = Body(default_factory=RefreshRequest),
+    creds: HTTPAuthorizationCredentials | None = Depends(http_bearer),
     db: Session = Depends(get_db),
 ):
     try:
-        auth_header = request.headers.get("Authorization") or ""
-        access_token = (
-            auth_header.split(" ", 1)[1].strip()
-            if auth_header.lower().startswith("bearer ")
-            else None
-        )
+        access_token = resolve_access_token(request, creds)
+        refresh_raw = resolve_refresh_token(request, req.refresh_token)
 
-        user = validate_refresh_token(db, req.refresh_token)
+        user = validate_refresh_token(db, refresh_raw) if refresh_raw else None
         if not user and access_token:
             payload = decode_access_token(access_token) or {}
             sub = payload.get("sub") or payload.get("user_id")
@@ -638,8 +682,8 @@ def logout(
             from app.services.security_service import revoke_all_refresh_tokens_for_user
 
             revoke_all_refresh_tokens_for_user(db, user.id)
-        else:
-            revoke_refresh_token(db, req.refresh_token)
+        elif refresh_raw:
+            revoke_refresh_token(db, refresh_raw)
 
         if access_token:
             revoke_access_token(db, access_token, user_id=user.id if user else None)
@@ -656,6 +700,7 @@ def logout(
             )
             AuditLogService.log_logout(db, request=request, user=user)
 
+        clear_auth_cookies(response, request)
         return MessageResponse(message="Logged out successfully.")
     except SQLAlchemyError:
         logger.exception("logout endpoint database error")

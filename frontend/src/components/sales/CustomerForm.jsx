@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { Globe, Mail, Plus, Upload, X } from "lucide-react";
 
@@ -11,6 +12,7 @@ import { lookupIndianPincode } from "../../api/addressLookupApi";
 import { createCustomer, getCustomers, updateCustomer } from "../../api/salesApi";
 import { useToast } from "../../context/ToastContext";
 import useTenantId from "../../hooks/useTenantId";
+import IndianMobilePhoneInput from "../common/IndianMobilePhoneInput";
 import { apiErrorMessage, applyBackendFieldErrors } from "../../utils/apiError";
 import {
   buildCustomerPayload,
@@ -130,6 +132,7 @@ export default function CustomerForm({ initialForm, customer = null, onCancel })
   const tenantId = useTenantId();
   const navigate = useNavigate();
   const { addToast } = useToast();
+  const { t } = useTranslation();
   const [form, setForm] = useState(initialForm);
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
@@ -180,7 +183,7 @@ export default function CustomerForm({ initialForm, customer = null, onCancel })
     const check = validateCustomerForm(form);
     setErrors(check.errors);
     if (!check.ok) {
-      addToast(Object.values(check.errors)[0], "error");
+      addToast(t("validation.fixHighlightedFields"), "error");
       return;
     }
 
@@ -207,13 +210,21 @@ export default function CustomerForm({ initialForm, customer = null, onCancel })
       }
       navigate("/sales/customers");
     } catch (err) {
-      applyBackendFieldErrors(err, setErrors, {
-        name: "display_name",
-        phone: "mobile",
-        gstin: "gstin",
-        email: "email",
-      });
-      addToast(apiErrorMessage(err, "Failed to save customer"), "error");
+      const mapped = applyBackendFieldErrors(
+        err,
+        setErrors,
+        {
+          name: "display_name",
+          phone: "mobile",
+          gstin: "gstin",
+          email: "email",
+        },
+        { t }
+      );
+      addToast(
+        mapped ? t("validation.fixHighlightedFields") : apiErrorMessage(err, "Failed to save customer"),
+        "error"
+      );
     } finally {
       setSaving(false);
     }
@@ -324,16 +335,16 @@ export default function CustomerForm({ initialForm, customer = null, onCancel })
                 </div>
               </div>
               <div>
-                <div className="customer-form__phone-row">
-                  <select className="customer-form__select" disabled><option>+91</option></select>
-                  <input
-                    className={`customer-form__input${errors.mobile ? " customer-form__input--error" : ""}`}
-                    placeholder="Mobile"
-                    value={form.mobile}
-                    onChange={(e) => patch("mobile", e.target.value.replace(/\D/g, "").slice(0, 10))}
-                  />
-                </div>
-                {errors.mobile ? <p className="customer-form__error" role="alert">{errors.mobile}</p> : null}
+                <IndianMobilePhoneInput
+                  aria-label="Phone"
+                  placeholder="Mobile"
+                  value={form.mobile}
+                  onChange={(v) => patch("mobile", v)}
+                  error={errors.mobile}
+                  setError={(msg) => setErrors((prev) => ({ ...prev, mobile: msg }))}
+                  inputClassName={`customer-form__input flex-1${errors.mobile ? " customer-form__input--error" : ""}`}
+                  className="customer-form__phone-row flex-1"
+                />
               </div>
             </div>
           </FormRow>

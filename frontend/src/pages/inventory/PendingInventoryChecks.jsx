@@ -138,14 +138,15 @@ export default function PendingInventoryChecks() {
               <tbody>
                 {pageRows.map((row, idx) => {
                   const orderId = row.sales_order_id;
-                  const listUrl = orderId
-                    ? `/my-job-cards?dept=inventory&order=${orderId}`
-                    : "/my-job-cards?dept=inventory";
-                  const checkUrl = orderId
-                    ? `${listUrl}&focus=material-check`
-                    : listUrl;
+                  const jobCardId = row.job_card_id;
+                  const listUrl = jobCardId && (row.is_manual || !orderId)
+                    ? `/my-job-cards?dept=inventory&bucket=store_pending&jc=${jobCardId}`
+                    : orderId
+                      ? `/my-job-cards?dept=inventory&bucket=store_pending&order=${orderId}`
+                      : "/my-job-cards?dept=inventory&bucket=store_pending";
+                  const checkUrl = `${listUrl}${listUrl.includes("?") ? "&" : "?"}focus=material-check`;
                   return (
-                    <tr key={orderId || idx} className="ui-table-row">
+                    <tr key={jobCardId || orderId || idx} className="ui-table-row">
                       <td className="px-3 py-2 text-[var(--color-text-muted)]">
                         {(page - 1) * pageSize + idx + 1}
                       </td>

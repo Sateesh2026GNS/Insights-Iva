@@ -39,6 +39,26 @@ export default defineConfig({
       },
       testMatch: /accounts-operator\.spec\.js/,
     },
+    {
+      name: "auth-cookies",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: /auth-session-cookies\.spec\.js/,
+    },
+    {
+      name: "auth-advanced",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: /auth-session-advanced\.spec\.js/,
+    },
+    {
+      name: "auth-staging",
+      use: {
+        ...devices["Desktop Chrome"],
+        trace: "off",
+        screenshot: "off",
+        video: "off",
+      },
+      testMatch: /auth-staging-topology\.spec\.js/,
+    },
   ],
   webServer: process.env.E2E_SKIP_WEB_SERVER
     ? undefined

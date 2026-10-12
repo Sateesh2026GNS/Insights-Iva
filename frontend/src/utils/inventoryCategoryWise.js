@@ -7,6 +7,42 @@ export function normalizeCategoryName(category) {
   return name || "No Category";
 }
 
+/** Real tenant categories for new Stock Item creation — excludes the synthetic "No Category" row. */
+export function selectableInventoryCategories(categories) {
+  return (categories || []).filter((c) => {
+    const name = String(c?.name || "").trim();
+    if (!name || name.toLowerCase() === "no category") return false;
+    const id = Number(c?.id);
+    return Number.isFinite(id) && id > 0;
+  });
+}
+
+export function isMissingStockItemCategory(name) {
+  const n = String(name || "").trim();
+  return !n || n.toLowerCase() === "no category";
+}
+
+/** Names for a category <select>. Returns null when `categories` was omitted (caller may use a fallback). */
+export function inventoryCategoryOptionNames(categories) {
+  if (!Array.isArray(categories)) return null;
+  return categories
+    .map((c) => (typeof c === "string" ? c : c?.name))
+    .map((n) => String(n || "").trim())
+    .filter(Boolean);
+}
+
+export function resolveSelectableCategoryId(categories, name) {
+  if (!Array.isArray(categories) || isMissingStockItemCategory(name)) return null;
+  const needle = String(name).trim().toLowerCase();
+  for (const c of categories) {
+    if (typeof c === "string") continue;
+    if (String(c?.name || "").trim().toLowerCase() !== needle) continue;
+    const id = Number(c.id);
+    if (Number.isFinite(id) && id > 0) return id;
+  }
+  return null;
+}
+
 export function filterCategoryWiseItems(products, { search = "", categoryFilter = "all", sort = "name-asc" } = {}) {
   const q = String(search || "").trim().toLowerCase();
   let rows = (products || []).filter((p) => {

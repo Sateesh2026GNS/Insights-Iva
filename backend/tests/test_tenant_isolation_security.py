@@ -1,6 +1,6 @@
 """Tenant isolation and IDOR security tests."""
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 import pytest
 from sqlalchemy import select
@@ -8,7 +8,8 @@ from sqlalchemy import select
 from app.core.database import SessionLocal
 from app.models.alert import Alert
 from app.models.inventory import InventoryItem, Warehouse
-from app.models.sales import Customer
+from app.models.product import Product
+from app.models.sales import Customer, Quotation
 
 
 @pytest.fixture()
@@ -139,3 +140,124 @@ def test_invoice_rejects_foreign_customer(client, two_tenant_context):
         headers=ctx["headers1"],
     )
     assert resp.status_code in (404, 400, 422)
+
+
+def test_cross_tenant_product_get_blocked(client, two_tenant_context):
+    ctx = two_tenant_context
+    db = SessionLocal()
+    try:
+        product = Product(
+            tenant_id=ctx["tenant2_id"],
+            name="Tenant B Product",
+            sku="SKU-TB-001",
+        )
+        db.add(product)
+        db.commit()
+        db.refresh(product)
+        product_id = product.id
+    finally:
+        db.close()
+
+    resp = client.get(
+        f"/api/masters/products/{product_id}",
+        headers=ctx["headers1"],
+    )
+    assert resp.status_code in (404, 403)
+
+
+def test_same_tenant_product_get_allowed(client, two_tenant_context):
+    ctx = two_tenant_context
+    db = SessionLocal()
+    try:
+        product = Product(
+            tenant_id=ctx["tenant1_id"],
+            name="Tenant A Product",
+            sku="SKU-TA-001",
+        )
+        db.add(product)
+        db.commit()
+        db.refresh(product)
+        product_id = product.id
+    finally:
+        db.close()
+
+    resp = client.get(
+        f"/api/masters/products/{product_id}",
+        headers=ctx["headers1"],
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    payload = body.get("data") or body
+    assert payload.get("id") == product_id or payload.get("name") == "Tenant A Product"
+
+
+def test_cross_tenant_customer_update_blocked(client, two_tenant_context):
+    ctx = two_tenant_context
+    db = SessionLocal()
+    try:
+        customer = Customer(
+            tenant_id=ctx["tenant2_id"],
+            name="Protected Customer",
+            email="protected-b@example.com",
+        )
+        db.add(customer)
+        db.commit()
+        db.refresh(customer)
+        customer_id = customer.id
+    finally:
+        db.close()
+
+    resp = client.put(
+        f"/sales/customers/{customer_id}",
+        json={"name": "Hijacked"},
+        headers=ctx["headers1"],
+    )
+    assert resp.status_code in (404, 403)
+
+
+def test_cross_tenant_inventory_v2_item_blocked(client, two_tenant_context):
+    ctx = two_tenant_context
+    db = SessionLocal()
+    try:
+        product = Product(
+            tenant_id=ctx["tenant2_id"],
+            name="Inv B Item",
+            sku="INV-B-001",
+        )
+        db.add(product)
+        db.commit()
+        db.refresh(product)
+        product_id = product.id
+    finally:
+        db.close()
+
+    resp = client.get(
+        f"/api/inventory/v2/items/{product_id}",
+        headers=ctx["headers1"],
+    )
+    assert resp.status_code in (404, 403)
+
+
+def test_cross_tenant_quotation_get_blocked(client, two_tenant_context):
+    ctx = two_tenant_context
+    db = SessionLocal()
+    try:
+        quote = Quotation(
+            tenant_id=ctx["tenant2_id"],
+            quote_number=f"Q-B-{ctx['tenant2_id']}",
+            quote_date=date(2026, 1, 1),
+            status="draft",
+            total_amount=0,
+        )
+        db.add(quote)
+        db.commit()
+        db.refresh(quote)
+        quote_id = quote.id
+    finally:
+        db.close()
+
+    resp = client.get(
+        f"/sales/quotations/{quote_id}",
+        headers=ctx["headers1"],
+    )
+    assert resp.status_code in (404, 403)

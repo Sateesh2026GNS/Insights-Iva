@@ -19,6 +19,8 @@ describe("JobCardQueueFilters erpLayout", () => {
     );
     expect(screen.getByText("Search Job Cards")).toBeInTheDocument();
     expect(screen.getByLabelText("Job Card No.")).toBeInTheDocument();
+    expect(screen.getByLabelText("Customer Name")).toBeInTheDocument();
+    expect(screen.getByLabelText("Sales Order No.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Search" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Reset" })).toBeInTheDocument();
     expect(screen.queryByLabelText("Filter by product")).not.toBeInTheDocument();

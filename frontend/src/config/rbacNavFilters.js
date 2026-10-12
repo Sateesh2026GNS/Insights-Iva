@@ -35,6 +35,9 @@ export const PRODUCTION_MANAGER_ALLOWED_CHILDREN = new Set([
   "/quality/in-process",
   "/quality/final",
   "/quality/batch-reports",
+  "/quality/inspection",
+
+  "/inventory/items/create",
 
   "/maintenance",
   "/maintenance/equipment",
@@ -194,12 +197,14 @@ export function productionManagerPathAllowed(pathname) {
   if (path.startsWith("/inventory/finished-goods")) return true;
   if (path.startsWith("/inventory/stock-transfer")) return true;
   if (path.startsWith("/inventory/pending-inventory-checks")) return true;
+  if (path === "/inventory/items/create" || path.startsWith("/inventory/items/")) return true;
   if (path.startsWith("/quality/")) {
     return (
       path === "/quality" ||
       path.startsWith("/quality/in-process") ||
       path.startsWith("/quality/final") ||
-      path.startsWith("/quality/batch-reports")
+      path.startsWith("/quality/batch-reports") ||
+      path.startsWith("/quality/inspection")
     );
   }
   if (path.startsWith("/maintenance/")) return true;

@@ -40,6 +40,7 @@ import {
   mntStatusColor,
 } from "../../data/maintenanceMasterData";
 import { exportToExcel, exportToPdf } from "../../utils/exportUtils";
+import { asArray } from "../../utils/apiError";
 
 const PAGE_SIZE = 8;
 
@@ -224,7 +225,7 @@ export default function MachineHistory() {
     if (retryCount === 0) setError(null);
     try {
       const res = await getMachineHistory();
-      setRows(Array.isArray(res.data) ? res.data : []);
+      setRows(asArray(res.data));
       setError(null);
     } catch (e) {
       if (retryCount < 2) {
@@ -403,8 +404,8 @@ export default function MachineHistory() {
       </div>
 
       <div className="ui-card ui-card--padded">
-        <div className="grid gap-3 lg:grid-cols-12 lg:items-end">
-          <div className="lg:col-span-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] lg:items-end">
+          <div className="sm:col-span-2 lg:col-span-2">
             <SearchBar
               value={search}
               onChange={(v) => { setSearch(v); setPage(1); }}
@@ -412,7 +413,7 @@ export default function MachineHistory() {
               className="w-full"
             />
           </div>
-          <div className="lg:col-span-2">
+          <div>
             <label className="ui-label mb-1 block">All Machines</label>
             <select value={machineFilter} onChange={(e) => { setMachineFilter(e.target.value); setPage(1); }} className={filterSelectClass}>
               <option value="">All Machines</option>
@@ -421,7 +422,7 @@ export default function MachineHistory() {
               ))}
             </select>
           </div>
-          <div className="lg:col-span-2">
+          <div>
             <label className="ui-label mb-1 block">All Activity Types</label>
             <select value={activityFilter} onChange={(e) => { setActivityFilter(e.target.value); setPage(1); }} className={filterSelectClass}>
               <option value="">All Activity Types</option>
@@ -432,7 +433,7 @@ export default function MachineHistory() {
               <option value="parts">Parts Replaced</option>
             </select>
           </div>
-          <div className="lg:col-span-2">
+          <div>
             <label className="ui-label mb-1 block">All Status</label>
             <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }} className={filterSelectClass}>
               <option value="">All Status</option>
@@ -442,17 +443,17 @@ export default function MachineHistory() {
               <option value="reported">Reported</option>
             </select>
           </div>
-          <div className="lg:col-span-3">
+          <div className="sm:col-span-2">
             <label className="ui-label mb-1 block">Date Range</label>
-            <div className="flex items-center gap-2">
-              <div className="relative min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="relative min-w-[9.5rem] flex-1">
                 <Calendar className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]" />
-                <input type="date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); setPage(1); }} className={`${filterSelectClass} pl-9`} />
+                <input type="date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); setPage(1); }} className={`${filterSelectClass} min-w-[9rem] pl-9`} />
               </div>
               <span className="text-[var(--color-text-muted)]">–</span>
-              <div className="relative min-w-0 flex-1">
+              <div className="relative min-w-[9.5rem] flex-1">
                 <Calendar className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]" />
-                <input type="date" value={dateTo} onChange={(e) => { setDateTo(e.target.value); setPage(1); }} className={`${filterSelectClass} pl-9`} />
+                <input type="date" value={dateTo} onChange={(e) => { setDateTo(e.target.value); setPage(1); }} className={`${filterSelectClass} min-w-[9rem] pl-9`} />
               </div>
             </div>
           </div>

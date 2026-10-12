@@ -27,12 +27,21 @@ import {
   updateBreakdownStatus,
 } from "../../api/maintenanceApi";
 import { useToast } from "../../context/ToastContext";
-import {
-  DEMO_BREAKDOWN_SUMMARY,
-  mntStatusColor,
-  priorityColor,
-} from "../../data/maintenanceMasterData";
+import { mntStatusColor, priorityColor } from "../../data/maintenanceMasterData";
 import { exportToExcel, exportToPdf } from "../../utils/exportUtils";
+import { asArray, apiErrorMessage } from "../../utils/apiError";
+import useTenantId from "../../hooks/useTenantId";
+import { getMachines } from "../../api/productionApi";
+import EmptyState from "../../components/common/EmptyState";
+
+const EMPTY_BREAKDOWN_SUMMARY = {
+  active_breakdowns: 0,
+  total_downtime_hours: 0,
+  avg_repair_time_mttr: 0,
+  machine_availability_pct: 0,
+  pending_repairs: 0,
+  emergency_breakdowns: 0,
+};
 
 const inputClass = "ui-input w-full";
 const selectClass = "ui-select w-full";
@@ -60,11 +69,13 @@ const STATUS_NEXT = {
 };
 
 export default function BreakdownReports() {
+  const tenantId = useTenantId();
   const { addToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [summary, setSummary] = useState(DEMO_BREAKDOWN_SUMMARY);
+  const [summary, setSummary] = useState(EMPTY_BREAKDOWN_SUMMARY);
   const [rows, setRows] = useState([]);
+  const [machines, setMachines] = useState([]);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [severityFilter, setSeverityFilter] = useState("");
@@ -72,6 +83,7 @@ export default function BreakdownReports() {
   const [saving, setSaving] = useState(false);
 
   const [formData, setFormData] = useState({
+    machine_id: "",
     machine_name: "",
     department: "Machining",
     reported_by: "",
@@ -85,27 +97,33 @@ export default function BreakdownReports() {
     if (!isRefresh && retryCount === 0) setLoading(true);
     if (retryCount === 0) setError(null);
     try {
-      const [sumRes, listRes] = await Promise.allSettled([
+      const [sumRes, listRes, machRes] = await Promise.allSettled([
         getBreakdownSummary(),
         getBreakdownsEnriched(),
+        getMachines(),
       ]);
 
       if (sumRes.status === "fulfilled" && sumRes.value?.data) {
-        setSummary({ ...DEMO_BREAKDOWN_SUMMARY, ...sumRes.value.data });
+        setSummary({ ...EMPTY_BREAKDOWN_SUMMARY, ...sumRes.value.data });
       } else {
-        setSummary(DEMO_BREAKDOWN_SUMMARY);
+        setSummary(EMPTY_BREAKDOWN_SUMMARY);
       }
-      if (listRes.status === "fulfilled" && Array.isArray(listRes.value?.data)) {
-        setRows(listRes.value.data);
+      if (listRes.status === "fulfilled") {
+        setRows(asArray(listRes.value?.data));
       } else {
         setRows([]);
+      }
+      if (machRes.status === "fulfilled") {
+        setMachines(asArray(machRes.value?.data));
+      } else {
+        setMachines([]);
       }
       setError(null);
     } catch (e) {
       if (isRefresh) throw e;
-      setSummary(DEMO_BREAKDOWN_SUMMARY);
+      setSummary(EMPTY_BREAKDOWN_SUMMARY);
       setRows([]);
-      setError(null);
+      setError(e);
     } finally {
       if (retryCount === 0) setLoading(false);
     }
@@ -133,40 +151,30 @@ export default function BreakdownReports() {
 
   const handleCreateBreakdown = async (e) => {
     e.preventDefault();
-    if (!formData.machine_name.trim() || !formData.cause.trim()) {
-      addToast("Please provide Machine Name and Breakdown Cause", "error");
+    if (!formData.machine_id || !formData.cause.trim()) {
+      addToast("Select a machine and enter a breakdown cause", "error");
+      return;
+    }
+    const machineId = Number(formData.machine_id);
+    if (!machineId) {
+      addToast("Select a machine", "error");
       return;
     }
     setSaving(true);
     try {
       const payload = {
-        tenant_id: 1,
-        machine_id: 1,
+        tenant_id: Number(tenantId) || 1,
+        machine_id: machineId,
         reported_at: new Date().toISOString(),
-        description: `${formData.cause} - ${formData.machine_name}`,
+        description: formData.cause.trim(),
         downtime_minutes: Number(formData.estimated_downtime) * 60 || 120,
         status: "reported",
       };
-      await createBreakdown(payload).catch(() => null);
-
-      const newReport = {
-        id: Date.now(),
-        breakdown_number: `BD-${Date.now().toString().slice(-4)}`,
-        machine_name: formData.machine_name.trim(),
-        department: formData.department,
-        reported_by: formData.reported_by.trim() || "Operator",
-        reported_time: new Date().toISOString(),
-        cause: formData.cause.trim(),
-        severity: formData.severity.toLowerCase(),
-        priority: formData.severity.toLowerCase(),
-        engineer: formData.engineer.trim() || "Unassigned",
-        status: "reported",
-      };
-
-      setRows((prev) => [newReport, ...prev]);
-      addToast(`Breakdown report ${newReport.breakdown_number} logged successfully`, "success");
+      await createBreakdown(payload);
+      addToast("Breakdown report logged successfully", "success");
       setShowModal(false);
       setFormData({
+        machine_id: "",
         machine_name: "",
         department: "Machining",
         reported_by: "",
@@ -175,8 +183,9 @@ export default function BreakdownReports() {
         engineer: "",
         estimated_downtime: "2",
       });
-    } catch {
-      addToast("Failed to log breakdown report", "error");
+      await load(true);
+    } catch (err) {
+      addToast(apiErrorMessage(err, "Failed to log breakdown report"), "error");
     } finally {
       setSaving(false);
     }
@@ -409,16 +418,29 @@ export default function BreakdownReports() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="ui-label mb-1 block">
-                    Machine Name / ID <span className="text-[var(--color-danger)]">*</span>
+                    Machine <span className="text-[var(--color-danger)]">*</span>
                   </label>
-                  <input
-                    type="text"
+                  <select
                     required
-                    placeholder="e.g. CNC Milling Machine 01"
-                    value={formData.machine_name}
-                    onChange={(e) => setFormData({ ...formData, machine_name: e.target.value })}
-                    className={inputClass}
-                  />
+                    value={formData.machine_id}
+                    onChange={(e) => {
+                      const id = e.target.value;
+                      const machine = machines.find((m) => String(m.id) === String(id));
+                      setFormData({
+                        ...formData,
+                        machine_id: id,
+                        machine_name: machine?.name || "",
+                      });
+                    }}
+                    className={selectClass}
+                  >
+                    <option value="">Select machine</option>
+                    {machines.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.name || m.code || `Machine ${m.id}`}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label className="ui-label mb-1 block">Department</label>

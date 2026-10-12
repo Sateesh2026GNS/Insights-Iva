@@ -156,7 +156,11 @@ def test_confirmed_order_only_in_store_manager_my_queue(client):
 
     order_id = _create_and_confirm_order(client, sales_headers, customer_id, product_id)
 
-    store_queue = client.get("/manufacturing/workflow/my-queue", headers=store_headers)
+    store_queue = client.get(
+        "/manufacturing/workflow/my-queue",
+        headers=store_headers,
+        params={"limit": 2000},
+    )
     assert store_queue.status_code == 200, store_queue.text
     store_body = store_queue.json()
     assert any(row["sales_order_id"] == order_id for row in store_body["items"])
@@ -184,18 +188,22 @@ def test_material_check_routes_away_from_store_strict_queue(client):
     )
     assert mat.status_code == 200, mat.text
     lines = mat.json().get("material_check", {}).get("lines") or []
+    from tests.test_sales_order_store_workflow import _stock_material_check_lines
+
+    _stock_material_check_lines(tenant_id, lines)
     submit = client.post(
         f"/manufacturing/workflow/sales-orders/{order_id}/material-check",
         headers=store_headers,
-        json={
-            "lines": [{"id": ln["id"], "available_qty": ln["required_qty"]} for ln in lines if ln.get("id")],
-            "notes": "All available",
-        },
+        json={"notes": "All available"},
     )
     assert submit.status_code == 200, submit.text
     assert submit.json()["workflow_status"] == "STORE_ISSUE_PENDING"
 
-    strict_store = client.get("/manufacturing/workflow/my-queue", headers=store_headers)
+    strict_store = client.get(
+        "/manufacturing/workflow/my-queue",
+        headers=store_headers,
+        params={"limit": 2000},
+    )
     assert strict_store.status_code == 200
     statuses = {r["workflow_status"] for r in strict_store.json()["items"] if r["sales_order_id"] == order_id}
     assert "MATERIAL_CHECK_PENDING" not in statuses

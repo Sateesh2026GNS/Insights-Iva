@@ -29,15 +29,30 @@ import MaintenanceFilters from "../../components/maintenance/MaintenanceFilters"
 import Loader from "../../components/common/Loader";
 import { useToast } from "../../context/ToastContext";
 import { createPreventive, getPreventiveEnriched, getPreventiveSummary } from "../../api/maintenanceApi";
-import { DEMO_PREVENTIVE_SUMMARY, mntStatusColor } from "../../data/maintenanceMasterData";
+import { getMachines } from "../../api/productionApi";
+import { mntStatusColor } from "../../data/maintenanceMasterData";
 import { exportToExcel, exportToPdf } from "../../utils/exportUtils";
+import { asArray, apiErrorMessage } from "../../utils/apiError";
+import useTenantId from "../../hooks/useTenantId";
+import EmptyState from "../../components/common/EmptyState";
+
+const EMPTY_PREVENTIVE_SUMMARY = {
+  total_machines: 0,
+  scheduled_today: 0,
+  overdue_tasks: 0,
+  completed_this_month: 0,
+  upcoming_maintenance: 0,
+  machine_availability_pct: 0,
+};
 
 export default function PreventiveMaintenance() {
+  const tenantId = useTenantId();
   const { addToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [summary, setSummary] = useState(DEMO_PREVENTIVE_SUMMARY);
+  const [summary, setSummary] = useState(EMPTY_PREVENTIVE_SUMMARY);
   const [rows, setRows] = useState([]);
+  const [machines, setMachines] = useState([]);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [showModal, setShowModal] = useState(false);
@@ -46,6 +61,7 @@ export default function PreventiveMaintenance() {
   const moreMenuRef = useRef(null);
 
   const [formData, setFormData] = useState({
+    machine_id: "",
     machine_name: "",
     department: "",
     maintenance_type: "Preventive",
@@ -72,24 +88,33 @@ export default function PreventiveMaintenance() {
     if (!isRefresh && retryCount === 0) setLoading(true);
     if (retryCount === 0) setError(null);
     try {
-      const [sumRes, listRes] = await Promise.allSettled([getPreventiveSummary(), getPreventiveEnriched()]);
+      const [sumRes, listRes, machRes] = await Promise.allSettled([
+        getPreventiveSummary(),
+        getPreventiveEnriched(),
+        getMachines(),
+      ]);
 
       if (sumRes.status === "fulfilled" && sumRes.value?.data) {
-        setSummary({ ...DEMO_PREVENTIVE_SUMMARY, ...sumRes.value.data });
+        setSummary({ ...EMPTY_PREVENTIVE_SUMMARY, ...sumRes.value.data });
       } else {
-        setSummary(DEMO_PREVENTIVE_SUMMARY);
+        setSummary(EMPTY_PREVENTIVE_SUMMARY);
       }
-      if (listRes.status === "fulfilled" && Array.isArray(listRes.value?.data)) {
-        setRows(listRes.value.data);
+      if (listRes.status === "fulfilled") {
+        setRows(asArray(listRes.value?.data));
       } else {
         setRows([]);
+      }
+      if (machRes.status === "fulfilled") {
+        setMachines(asArray(machRes.value?.data));
+      } else {
+        setMachines([]);
       }
       setError(null);
     } catch (e) {
       if (isRefresh) throw e;
-      setSummary(DEMO_PREVENTIVE_SUMMARY);
+      setSummary(EMPTY_PREVENTIVE_SUMMARY);
       setRows([]);
-      setError(null);
+      setError(e);
     } finally {
       if (retryCount === 0) setLoading(false);
     }
@@ -131,17 +156,18 @@ export default function PreventiveMaintenance() {
 
   const handleCreateTask = async (e) => {
     e.preventDefault();
-    if (!formData.machine_name || !formData.task_description) {
-      addToast("Please fill in Machine Name and Task Description", "error");
+    const machineId = Number(formData.machine_id);
+    if (!machineId || !formData.task_description?.trim()) {
+      addToast("Select a machine and enter a task description", "error");
       return;
     }
     setSaving(true);
     try {
       const payload = {
-        tenant_id: 1,
-        machine_id: 1,
+        tenant_id: Number(tenantId) || 1,
+        machine_id: machineId,
         schedule_date: formData.scheduled_date,
-        task_description: formData.task_description,
+        task_description: formData.task_description.trim(),
         frequency: formData.frequency,
         status: "scheduled",
       };
@@ -149,6 +175,7 @@ export default function PreventiveMaintenance() {
       addToast("Preventive maintenance task scheduled successfully", "success");
       setShowModal(false);
       setFormData({
+        machine_id: "",
         machine_name: "",
         department: "",
         maintenance_type: "Preventive",
@@ -158,25 +185,9 @@ export default function PreventiveMaintenance() {
         frequency: "monthly",
         task_description: "",
       });
-      load(true);
-    } catch {
-      // Fallback add locally
-      const newTask = {
-        id: Date.now(),
-        machine_id: "MCH-01",
-        machine_name: formData.machine_name,
-        department: formData.department || "Production",
-        maintenance_type: formData.maintenance_type,
-        scheduled_date: formData.scheduled_date,
-        assigned_engineer: formData.assigned_engineer || "Unassigned",
-        estimated_duration: formData.estimated_duration,
-        status: "scheduled",
-        next_due_date: formData.scheduled_date,
-        task_description: formData.task_description,
-      };
-      setRows((prev) => [newTask, ...prev]);
-      addToast("Preventive maintenance task created", "success");
-      setShowModal(false);
+      await load(true);
+    } catch (err) {
+      addToast(apiErrorMessage(err, "Could not save maintenance task"), "error");
     } finally {
       setSaving(false);
     }
@@ -302,7 +313,21 @@ export default function PreventiveMaintenance() {
 
       <ListPageCard>
         <ListPageCardBody className="overflow-x-auto">
-        <DataTable columns={columns} data={filtered} searchPlaceholder="" searchKeys={[]} />
+        <DataTable
+          columns={columns}
+          data={filtered}
+          searchPlaceholder=""
+          searchKeys={[]}
+          emptyState={
+            <EmptyState
+              icon="document"
+              title="No maintenance tasks scheduled"
+              description="Add a preventive maintenance task to see it here after refresh."
+              actionLabel="New Maintenance Task"
+              onAction={() => setShowModal(true)}
+            />
+          }
+        />
         </ListPageCardBody>
       </ListPageCard>
 
@@ -330,16 +355,30 @@ export default function PreventiveMaintenance() {
             <form onSubmit={handleCreateTask} className="mt-4 space-y-4">
               <div>
                 <label className="ui-label">
-                  Machine Name <span className="text-red-500">*</span>
+                  Machine <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="text"
+                <select
                   required
-                  placeholder="e.g. CNC Milling Machine #01"
-                  value={formData.machine_name}
-                  onChange={(e) => setFormData({ ...formData, machine_name: e.target.value })}
-                  className="ui-input w-full"
-                />
+                  value={formData.machine_id}
+                  onChange={(e) => {
+                    const id = e.target.value;
+                    const machine = machines.find((m) => String(m.id) === String(id));
+                    setFormData({
+                      ...formData,
+                      machine_id: id,
+                      machine_name: machine?.name || "",
+                      department: formData.department || machine?.department || "",
+                    });
+                  }}
+                  className="ui-select w-full"
+                >
+                  <option value="">Select machine</option>
+                  {machines.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name || m.code || `Machine ${m.id}`}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div className="grid grid-cols-2 gap-3">

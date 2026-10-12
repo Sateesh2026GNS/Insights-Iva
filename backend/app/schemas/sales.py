@@ -86,18 +86,12 @@ def _validate_customer_name(value: Any, *, required: bool) -> str | None:
 
 
 def _validate_customer_phone(value: Any) -> str | None:
+    from app.utils.indian_phone import validate_indian_mobile_optional
+
     val_str = _optional_text(value)
     if val_str is None:
         return None
-    if not val_str.isdigit():
-        raise ValueError("Phone field must accept only numeric digits (0-9)")
-    if len(val_str) > 15 or len(val_str) < 7:
-        raise ValueError("Phone number must be between 7 and 15 numeric digits")
-    if val_str[0] not in "6789":
-        raise ValueError(
-            f"Mobile No. cannot start with {val_str[0]} and must begin with a valid digit (6, 7, 8, or 9)"
-        )
-    return val_str
+    return validate_indian_mobile_optional(val_str)
 
 
 def _validate_gstin(value: Any) -> str | None:

@@ -2,12 +2,14 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 
+import { authProxyBypass } from "./src/utils/authProxyBypass.js";
+
 const isStaticAsset = (url) =>
   /\.(png|jpg|jpeg|gif|svg|webp|ico|css|js|woff2?|ttf|eot|json|map)$/i.test(url);
 
 const apiProxyBypass = (req) => {
   if (req.headers.accept?.includes("text/html")) return "/index.html";
-  if (isStaticAsset(req.url)) return false;
+  if (isStaticAsset(req.url)) return req.url;
   return undefined;
 };
 
@@ -26,7 +28,7 @@ export default defineConfig({
       "/auth": {
         target: "http://127.0.0.1:8000",
         changeOrigin: true,
-        bypass: apiProxyBypass,
+        bypass: authProxyBypass,
       },
       "/api": {
         target: "http://127.0.0.1:8000",
@@ -287,8 +289,19 @@ export default defineConfig({
     setupFiles: "./src/test/setup.js",
     css: false,
     exclude: ["**/node_modules/**", "**/dist/**", "e2e/**"],
+    pool: "forks",
+    maxWorkers: 1,
+    fileParallelism: false,
+    poolOptions: {
+      forks: {
+        // Child workers default to ~2GB heap; pass the same limit as the npm test script.
+        execArgv: ["--max-old-space-size=8192"],
+      },
+    },
   },
   build: {
+    // Do not publish browser source maps in production artifacts
+    sourcemap: false,
     // Faster minification; esbuild is default in Vite 5 – keep explicit for clarity
     minify: "esbuild",
     // Smaller initial load: split heavy vendors so they cache and load in parallel

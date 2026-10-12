@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { markBrowserSessionActive } from "./authSession";
 import {
   PRIMARY_SESSION_TIMEOUT_MS,
   NEW_TAB_TIMEOUT_MS,
@@ -38,7 +39,7 @@ describe("sessionManager", () => {
   });
 
   it("detects 9-hour expiration on primary tab", () => {
-    localStorage.setItem("smrt-token", "fake-token");
+    markBrowserSessionActive();
     markAsPrimaryTab();
 
     // Just after login
@@ -56,11 +57,11 @@ describe("sessionManager", () => {
   });
 
   it("keeps new tab valid while primary tab heartbeat is active", () => {
-    localStorage.setItem("smrt-token", "fake-token");
+    markBrowserSessionActive();
     markAsPrimaryTab();
 
     sessionStorage.clear();
-    localStorage.setItem("smrt-token", "fake-token");
+    markBrowserSessionActive();
     initTabSession();
 
     vi.advanceTimersByTime(NEW_TAB_TIMEOUT_MS + 5000);
@@ -69,7 +70,7 @@ describe("sessionManager", () => {
   });
 
   it("expires new tab after 10 minutes when primary tab is closed", () => {
-    localStorage.setItem("smrt-token", "fake-token");
+    markBrowserSessionActive();
     initTabSession();
 
     expect(getTabType()).toBe("new_tab");
@@ -92,7 +93,7 @@ describe("sessionManager", () => {
   });
 
   it("marks a specific tab as expired", () => {
-    localStorage.setItem("smrt-token", "fake-token");
+    markBrowserSessionActive();
     markTabExpired("new_tab_10min_timeout");
     const status = checkSessionStatus();
     expect(status.expired).toBe(true);
@@ -100,7 +101,7 @@ describe("sessionManager", () => {
   });
 
   it("recordSessionActivity refreshes primary heartbeat", () => {
-    localStorage.setItem("smrt-token", "fake-token");
+    markBrowserSessionActive();
     markAsPrimaryTab();
     vi.advanceTimersByTime(50_000);
     expect(isPrimaryTabAlive()).toBe(false);
@@ -109,7 +110,7 @@ describe("sessionManager", () => {
   });
 
   it("promotes a new tab to primary upon login", () => {
-    localStorage.setItem("smrt-token", "fake-token");
+    markBrowserSessionActive();
     initTabSession();
     expect(getTabType()).toBe("new_tab");
 

@@ -158,7 +158,7 @@ def email_delivery_http_detail(exc: EmailDeliveryError) -> dict[str, str]:
     msg = exc.public_message
     detail_lower = (exc.internal_detail or "").lower()
     if "resend.com/domains" in detail_lower or "verify a domain" in detail_lower or "testing emails to your own" in detail_lower:
-        msg = "Resend Testing Mode: Restricted to sending to account owner (admin@codeviasoftware.com). To send to any recipient, verify your domain at resend.com/domains."
+        msg = "Email isn't set up to send to this address yet. Please contact your administrator."
     return {"message": msg, "code": code}
 
 

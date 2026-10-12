@@ -124,30 +124,24 @@ export default function JobCardQueueFilters({
           </div>
           <div>
             <FilterLabel erp>Customer Name</FilterLabel>
-            <SearchableSelect
+            <Input
               value={customer}
-              onChange={(v) => onCustomerChange?.(v)}
-              options={customerSelectOptions.length ? customerSelectOptions : customerOptions.map((name) => ({ value: name, label: name }))}
-              placeholder="Select Customer"
-              searchPlaceholder="Search customers"
-              searchable={false}
+              onChange={(e) => onCustomerChange?.(e.target.value)}
+              onKeyDown={onSearchKeyDown}
+              placeholder="ABC Industries"
               className="w-full"
+              aria-label="Customer Name"
             />
           </div>
           <div>
             <FilterLabel erp>Sales Order No.</FilterLabel>
-            <SearchableSelect
+            <Input
               value={salesOrderNo}
-              onChange={(v) => onSalesOrderNoChange?.(v)}
-              options={
-                salesOrderSelectOptions.length
-                  ? salesOrderSelectOptions
-                  : salesOrderOptions.map((no) => ({ value: no, label: no }))
-              }
-              placeholder="Select Sales Order"
-              searchPlaceholder="Search sales orders"
-              searchable={false}
+              onChange={(e) => onSalesOrderNoChange?.(e.target.value)}
+              onKeyDown={onSearchKeyDown}
+              placeholder="SO-2026-012"
               className="w-full"
+              aria-label="Sales Order No."
             />
           </div>
           <div className="my-job-cards-filters__simple-actions">

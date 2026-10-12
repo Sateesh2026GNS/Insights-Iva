@@ -1,3 +1,5 @@
+import { translateBackendPhoneMessage } from "./indianPhoneValidation";
+
 /** Normalize FastAPI / Axios error payloads for toast and form display. */
 export function formatApiError(detail, fallback = "Something went wrong.") {
   if (detail == null || detail === "") return fallback;
@@ -47,10 +49,20 @@ export function apiErrorMessage(err, fallback = "Something went wrong.") {
     return formatApiError(detail, fallback);
   }
   const status = err?.response?.status;
-  if (status === 409) {
-    return "This action conflicts with the current state. Please refresh and try again.";
+  if (status) {
+    return httpStatusMessage(err, fallback);
   }
-  return err?.message || fallback;
+  if (isNetworkError(err)) {
+    return httpStatusMessage(err, fallback);
+  }
+  const msg = err?.message || "";
+  if (/^Request failed with status code \d+$/i.test(msg)) {
+    return fallback;
+  }
+  if (msg.includes("Unable to connect to server")) {
+    return fallback;
+  }
+  return msg || fallback;
 }
 
 /** User-friendly message for common HTTP status codes. */
@@ -240,7 +252,8 @@ export function mapValidationErrorsToFields(err) {
       ? item.loc.filter((p) => p !== "body" && p !== "query" && p !== "path")
       : [];
     const key = loc.length ? loc[loc.length - 1] : "form";
-    const msg = item?.msg || item?.message || "Invalid value";
+    let msg = item?.msg || item?.message || "Invalid value";
+    msg = String(msg).replace(/^Value error,\s*/i, "").trim();
     if (!fields[key]) fields[key] = msg;
   });
   return fields;
@@ -294,14 +307,21 @@ export function classifyApiError(err, fallback = "Something went wrong.") {
   return { type: "unknown", message, fields: {} };
 }
 
+const PHONE_FIELD_KEYS = new Set(["phone", "mobile", "alternate_phone", "manager_mobile"]);
+
 /** Merge backend field errors into an existing client-side errors object. */
-export function applyBackendFieldErrors(err, setFieldErrors, fieldMap = {}) {
+export function applyBackendFieldErrors(err, setFieldErrors, fieldMap = {}, options = {}) {
+  const { t } = options;
   const { fields } = classifyApiError(err);
   if (!fields || !Object.keys(fields).length) return false;
   const mapped = {};
   Object.entries(fields).forEach(([key, msg]) => {
     const target = fieldMap[key] || key;
-    mapped[target] = msg;
+    let text = msg;
+    if (t && PHONE_FIELD_KEYS.has(String(target))) {
+      text = translateBackendPhoneMessage(msg, t);
+    }
+    mapped[target] = text;
   });
   setFieldErrors((prev) => ({ ...prev, ...mapped }));
   return true;

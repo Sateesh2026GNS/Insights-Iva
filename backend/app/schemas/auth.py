@@ -151,14 +151,18 @@ class ValidateResetTokenResponse(BaseModel):
 
 
 class RefreshRequest(BaseModel):
-    refresh_token: str = Field(..., min_length=16, max_length=512)
+    refresh_token: str | None = Field(default=None, max_length=512)
     all_devices: bool = False
 
     @field_validator("refresh_token")
     @classmethod
-    def validate_refresh_token_format(cls, value: str) -> str:
+    def validate_refresh_token_format(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
         s = value.strip()
-        if not s or not TOKEN_REGEX.match(s):
+        if not s:
+            return None
+        if not TOKEN_REGEX.match(s):
             raise ValueError("Invalid refresh token format")
         return s
 
@@ -257,7 +261,7 @@ VALID_TOKEN_TYPES = {"bearer"}
 
 
 class AuthResponse(BaseModel):
-    access_token: str
+    access_token: str | None = None
     refresh_token: str | None = None
     token_type: str = "bearer"
     user: UserResponse

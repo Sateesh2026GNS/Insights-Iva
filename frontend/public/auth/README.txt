@@ -2,9 +2,8 @@ Auth image slider assets
 =========================
 
 The Sign In / Sign Up slider (src/components/auth/AuthSlider.jsx) looks for:
-  - /auth/slide-1.png  (Production)
-  - /auth/slide-2.png  (Analytics)
-  - /auth/slide-3.png  (Inventory)
+  Login carousel images are bundled from frontend/src/assets/auth/slide-*.png
+  (see AuthSlider.jsx). Legacy copies may remain here for dev-only direct URLs.
 
 If these files are missing, the slider automatically falls back to themed
 gradient slides, so the pages still work.

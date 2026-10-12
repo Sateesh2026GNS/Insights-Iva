@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes, useParams, useSearchParams } from "react-router-dom";
 
+import AuthenticatedRoute from "../components/layout/AuthenticatedRoute";
 import ProtectedRoute from "../components/layout/ProtectedRoute";
 import useAuth from "../hooks/useAuth";
 import { isStoreManager } from "../config/permissions";
@@ -955,7 +956,8 @@ export default function AppRoutes() {
       {HR_PLACEHOLDER_PATHS.map((path) => (
         <Route key={path} path={path} element={<ProtectedRoute><P.HRPlaceholders /></ProtectedRoute>} />
       ))}
-      <Route path="*" element={<ProtectedRoute><P.NotFound /></ProtectedRoute>} />
+      <Route path="/auth/slide-:slideNum.png" element={<Navigate to="/login" replace />} />
+      <Route path="*" element={<AuthenticatedRoute><P.NotFound /></AuthenticatedRoute>} />
     </Routes>
   );
 }

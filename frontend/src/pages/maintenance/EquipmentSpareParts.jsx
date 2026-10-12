@@ -763,7 +763,7 @@ export default function EquipmentSpareParts() {
 
       <ListPageCard>
         <ListPageCardBody>
-        <div className="grid gap-3 lg:grid-cols-12 lg:items-end">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] lg:items-end">
           <div className="lg:col-span-3">
             <SearchBar
               value={search}

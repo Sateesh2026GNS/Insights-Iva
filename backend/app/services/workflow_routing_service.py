@@ -10,7 +10,7 @@ import re
 from typing import Any
 
 from fastapi import HTTPException
-from sqlalchemy import func, or_, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.permissions import get_role_names, user_is_admin
@@ -36,7 +36,7 @@ from app.models.manufacturing_workflow import (
 )
 from app.models.product import Product
 from app.models.production import ProductionOrder, WorkOrder
-from app.models.sales import SalesOrder
+from app.models.sales import Customer, SalesOrder, SalesOrderLine
 from app.models.user import User
 
 # User-facing synonyms → canonical workflow_status (documentation + normalization)
@@ -170,8 +170,8 @@ STORE_KPI_BUCKETS: dict[str, frozenset[str]] = {
     "partially_issued": frozenset({"STORE_ISSUE_PARTIAL", "MATERIAL_PARTIAL"}),
 }
 
-# Store Manager my-queue: fetch/sort cap (pagination is client-side on the full set).
-STORE_QUEUE_MAX_FETCH = 2000
+# Legacy cap for non-paginated role queues (store queue uses offset/limit).
+STORE_QUEUE_PAGE_MAX = 2000
 
 
 def _store_queue_sort_key(row: dict[str, Any]) -> tuple[int, str, str, int]:
@@ -510,9 +510,254 @@ def _load_product_inventory_map(
     return result
 
 
-def _store_kpi_counts(db: Session, tenant_id: int) -> dict[str, int]:
-    from app.services.manual_job_card_service import count_manual_sales_job_cards_pending
+def _store_queue_statuses(*, status_filter: str | None = None, bucket: str | None = None) -> set[str]:
+    statuses = set(ACTIONABLE_STATUSES_BY_TEAM[TEAM_INVENTORY])
+    if bucket:
+        key = str(bucket).strip().lower()
+        if key in STORE_KPI_BUCKETS:
+            statuses = set(STORE_KPI_BUCKETS[key])
+        elif key:
+            statuses = {key.upper()}
+    if status_filter:
+        sf = normalize_workflow_status(status_filter) or status_filter.upper()
+        statuses = {sf} if sf in statuses or not bucket else {sf}
+    return statuses
 
+
+def _apply_so_search_filters(
+    stmt,
+    *,
+    job_card_no: str | None = None,
+    customer_id: int | None = None,
+    customer_name: str | None = None,
+    sales_order_no: str | None = None,
+):
+    jc_q = (job_card_no or "").strip()
+    cust_q = (customer_name or "").strip()
+    so_q = (sales_order_no or "").strip()
+    if jc_q:
+        like = f"%{jc_q}%"
+        stmt = stmt.where(
+            or_(
+                SalesJobCard.job_card_no.ilike(like),
+                SalesOrder.order_number.ilike(like),
+            )
+        )
+    if customer_id is not None:
+        stmt = stmt.where(SalesOrder.customer_id == int(customer_id))
+    elif cust_q:
+        stmt = stmt.where(Customer.name.ilike(f"%{cust_q}%"))
+    if so_q:
+        stmt = stmt.where(SalesOrder.order_number.ilike(f"%{so_q}%"))
+    return stmt
+
+
+def _collect_store_queue_keys(
+    db: Session,
+    tenant_id: int,
+    user: User | None,
+    *,
+    statuses: set[str],
+    job_card_no: str | None = None,
+    customer_id: int | None = None,
+    customer_name: str | None = None,
+    sales_order_no: str | None = None,
+) -> list[dict[str, Any]]:
+    so_stmt = (
+        select(
+            SalesOrder.id,
+            SalesJobCard.id,
+            SalesJobCard.job_card_no,
+            SalesOrder.order_number,
+            SalesJobCard.created_at,
+            SalesOrder.order_date,
+        )
+        .select_from(SalesOrder)
+        .outerjoin(
+            SalesJobCard,
+            and_(
+                SalesJobCard.sales_order_id == SalesOrder.id,
+                SalesJobCard.tenant_id == tenant_id,
+            ),
+        )
+        .outerjoin(Customer, Customer.id == SalesOrder.customer_id)
+        .where(
+            SalesOrder.tenant_id == tenant_id,
+            SalesOrder.workflow_status.in_(list(statuses)),
+        )
+    )
+    so_stmt = _apply_so_search_filters(
+        so_stmt,
+        job_card_no=job_card_no,
+        customer_id=customer_id,
+        customer_name=customer_name,
+        sales_order_no=sales_order_no,
+    )
+    keys: list[dict[str, Any]] = []
+    seen_so: set[int] = set()
+    for so_id, jc_id, jc_no, order_no, jc_created, order_date in db.execute(so_stmt).all():
+        if so_id in seen_so:
+            continue
+        seen_so.add(so_id)
+        recv = ""
+        if jc_created is not None:
+            recv = jc_created.isoformat() if hasattr(jc_created, "isoformat") else str(jc_created)
+        elif order_date is not None:
+            recv = order_date.isoformat() if hasattr(order_date, "isoformat") else str(order_date)
+        keys.append(
+            {
+                "kind": "so",
+                "sales_order_id": so_id,
+                "job_card_id": jc_id,
+                "job_card_no": jc_no or order_no or "",
+                "received_at": recv,
+            }
+        )
+
+    from app.services.manual_job_card_service import (
+        _manual_visible_to_recipient,
+        parse_details_json,
+        serialize_manual_queue_item,
+    )
+
+    manual_q = select(SalesJobCard).where(
+        SalesJobCard.tenant_id == tenant_id,
+        SalesJobCard.sales_order_id.is_(None),
+        SalesJobCard.workflow_stage.in_(list(statuses)),
+    )
+    jc_q = (job_card_no or "").strip()
+    if jc_q:
+        manual_q = manual_q.where(SalesJobCard.job_card_no.ilike(f"%{jc_q}%"))
+    manuals = list(db.scalars(manual_q.order_by(SalesJobCard.id.asc())).all())
+    is_admin = bool(user and user_is_admin(user))
+    for jc in manuals:
+        details = parse_details_json(jc.details_json)
+        if user and not is_admin and not _manual_visible_to_recipient(
+            details, user.id, dept="inventory"
+        ):
+            continue
+        row = serialize_manual_queue_item(db, jc, user=user, store_queue=True)
+        filtered = filter_my_job_card_queue_items(
+            [row],
+            job_card_no=job_card_no,
+            customer_id=customer_id,
+            customer_name=customer_name,
+            sales_order_no=sales_order_no,
+        )
+        if not filtered:
+            continue
+        keys.append(
+            {
+                "kind": "manual",
+                "sales_order_id": None,
+                "job_card_id": jc.id,
+                "job_card_no": jc.job_card_no or "",
+                "received_at": str(filtered[0].get("received_at") or ""),
+                "row": filtered[0],
+            }
+        )
+
+    keys.sort(key=_store_queue_sort_key)
+    return keys
+
+
+def count_manual_store_pending(db: Session, tenant_id: int, user: User | None = None) -> int:
+    keys = _collect_store_queue_keys(
+        db,
+        tenant_id,
+        user,
+        statuses=set(STORE_KPI_BUCKETS["store_pending"]),
+    )
+    return sum(1 for k in keys if k.get("kind") == "manual")
+
+
+def count_store_pending_job_cards(db: Session, tenant_id: int, user: User | None = None) -> int:
+    return len(
+        _collect_store_queue_keys(
+            db,
+            tenant_id,
+            user,
+            statuses=set(STORE_KPI_BUCKETS["store_pending"]),
+        )
+    )
+
+
+def get_store_pending_page(
+    db: Session,
+    tenant_id: int,
+    user: User | None = None,
+    *,
+    limit: int = 8,
+    offset: int = 0,
+) -> tuple[int, list[dict[str, Any]]]:
+    return paginate_store_job_card_queue(
+        db,
+        tenant_id,
+        user,
+        statuses=set(STORE_KPI_BUCKETS["store_pending"]),
+        limit=limit,
+        offset=offset,
+    )
+
+
+def paginate_store_job_card_queue(
+    db: Session,
+    tenant_id: int,
+    user: User | None,
+    *,
+    statuses: set[str],
+    limit: int = 10,
+    offset: int = 0,
+    job_card_no: str | None = None,
+    customer_id: int | None = None,
+    customer_name: str | None = None,
+    sales_order_no: str | None = None,
+) -> tuple[int, list[dict[str, Any]]]:
+    keys = _collect_store_queue_keys(
+        db,
+        tenant_id,
+        user,
+        statuses=statuses,
+        job_card_no=job_card_no,
+        customer_id=customer_id,
+        customer_name=customer_name,
+        sales_order_no=sales_order_no,
+    )
+    total = len(keys)
+    limit = max(1, min(int(limit or 10), STORE_QUEUE_PAGE_MAX))
+    offset = max(0, int(offset or 0))
+    page_keys = keys[offset : offset + limit]
+    if not page_keys:
+        return total, []
+
+    so_ids = [k["sales_order_id"] for k in page_keys if k.get("kind") == "so"]
+    so_items_by_id: dict[int, dict[str, Any]] = {}
+    if so_ids:
+        orders = list(
+            db.scalars(
+                select(SalesOrder)
+                .options(
+                    selectinload(SalesOrder.line_items).selectinload(SalesOrderLine.product),
+                    selectinload(SalesOrder.customer),
+                )
+                .where(SalesOrder.tenant_id == tenant_id, SalesOrder.id.in_(so_ids))
+            ).all()
+        )
+        for item in _enrich_queue_orders(db, tenant_id, orders):
+            so_items_by_id[int(item["sales_order_id"])] = item
+
+    items: list[dict[str, Any]] = []
+    for key in page_keys:
+        if key.get("kind") == "manual":
+            items.append(key["row"])
+        else:
+            item = so_items_by_id.get(int(key["sales_order_id"]))
+            if item:
+                items.append(item)
+    return total, items
+
+
+def _store_kpi_counts(db: Session, tenant_id: int, user: User | None = None) -> dict[str, int]:
     rows = db.execute(
         select(SalesOrder.workflow_status, func.count())
         .where(
@@ -522,12 +767,11 @@ def _store_kpi_counts(db: Session, tenant_id: int) -> dict[str, int]:
         .group_by(SalesOrder.workflow_status)
     ).all()
     by_status = {(status or "").upper(): int(cnt) for status, cnt in rows if status}
-    store_pending = sum(by_status.get(s, 0) for s in STORE_KPI_BUCKETS["store_pending"])
     ready_to_issue = sum(by_status.get(s, 0) for s in STORE_KPI_BUCKETS["ready_to_issue"])
     partially_issued = sum(by_status.get(s, 0) for s in STORE_KPI_BUCKETS["partially_issued"])
     completed = sum(by_status.get(s, 0) for s in POST_STORE_STATUSES)
-    sales_jc_pending = count_manual_sales_job_cards_pending(db, tenant_id)
-    store_pending += sales_jc_pending
+    store_pending = count_store_pending_job_cards(db, tenant_id, user=user)
+    sales_jc_pending = count_manual_store_pending(db, tenant_id, user=user)
     total = store_pending + ready_to_issue + partially_issued
     return {
         "total_job_cards": total,
@@ -537,6 +781,21 @@ def _store_kpi_counts(db: Session, tenant_id: int) -> dict[str, int]:
         "completed": completed,
         "sales_job_cards_pending": sales_jc_pending,
     }
+
+
+def _tenant_product(
+    product: Product | None,
+    tenant_id: int,
+    *,
+    products_by_id: dict[int, Product] | None = None,
+    product_id: int | None = None,
+) -> Product | None:
+    p = product
+    if p is None and product_id and products_by_id is not None:
+        p = products_by_id.get(product_id)
+    if p is None or p.tenant_id != tenant_id:
+        return None
+    return p
 
 
 def serialize_queue_order(
@@ -549,9 +808,13 @@ def serialize_queue_order(
     received_at: str | None = None,
     work_order_id: int | None = None,
     inventory: dict[str, Any] | None = None,
+    products_by_id: dict[int, Product] | None = None,
+    users_by_id: dict[int, User] | None = None,
 ) -> dict[str, Any]:
     from app.services.workflow_team_service import _material_stock_status
 
+    products_by_id = products_by_id or {}
+    users_by_id = users_by_id or {}
     product_name = None
     product_code = None
     qty = None
@@ -563,18 +826,27 @@ def serialize_queue_order(
         product_name = ln.item_description
         unit = ln.unit or "Nos"
         product_id = ln.product_id
-        if ln.product_id:
-            p = db.get(Product, ln.product_id)
-            if p:
-                product_name = p.name or product_name
-                product_code = getattr(p, "sku", None) or getattr(p, "code", None)
+        p = _tenant_product(
+            getattr(ln, "product", None),
+            so.tenant_id,
+            products_by_id=products_by_id,
+            product_id=ln.product_id,
+        )
+        if p:
+            product_name = p.name or product_name
+            product_code = getattr(p, "sku", None) or getattr(p, "code", None)
 
     if job_card:
         qty = float(job_card.quantity or qty or 0)
         unit = job_card.unit or unit or "Nos"
         if job_card.product_id:
             product_id = job_card.product_id
-            p = db.get(Product, job_card.product_id)
+            p = _tenant_product(
+                None,
+                so.tenant_id,
+                products_by_id=products_by_id,
+                product_id=job_card.product_id,
+            )
             if p:
                 product_name = p.name or product_name
                 product_code = getattr(p, "sku", None) or getattr(p, "code", None)
@@ -609,7 +881,7 @@ def serialize_queue_order(
 
         queue_prod = queue_fields_from_details(parse_details_json(job_card.details_json))
         if job_card.created_by_user_id:
-            creator = db.get(User, job_card.created_by_user_id)
+            creator = users_by_id.get(job_card.created_by_user_id)
             created_by_name = creator.full_name if creator else None
 
     return {
@@ -854,6 +1126,8 @@ def get_my_job_card_queue(
     *,
     status_filter: str | None = None,
     limit: int = 50,
+    offset: int = 0,
+    bucket: str | None = None,
     strict: bool = True,
     include_completed: bool = True,
     job_card_no: str | None = None,
@@ -871,12 +1145,46 @@ def get_my_job_card_queue(
         and TEAM_INVENTORY in teams
         and TEAM_SALES not in teams
     )
-    effective_limit = STORE_QUEUE_MAX_FETCH if is_store_queue else limit
+    effective_limit = limit
 
     # Always ensure confirmed sales orders are linked to workflow
     repair_confirmed_orders_missing_workflow(db, tenant_id, user=user)
 
     metadata = get_queue_metadata_for_user(user)
+
+    if is_store_queue:
+        statuses = _store_queue_statuses(status_filter=status_filter, bucket=bucket)
+        if status_filter:
+            sf = normalize_workflow_status(status_filter) or status_filter.upper()
+            allowed_store = get_actionable_statuses_for_user(user, strict=True)
+            if sf not in allowed_store:
+                raise HTTPException(status_code=403, detail="Status not visible to your role")
+        total, items = paginate_store_job_card_queue(
+            db,
+            tenant_id,
+            user,
+            statuses=statuses,
+            limit=limit,
+            offset=offset,
+            job_card_no=job_card_no,
+            customer_id=customer_id,
+            customer_name=customer_name,
+            sales_order_no=sales_order_no,
+        )
+        metadata = dict(metadata)
+        metadata["counts"] = _store_kpi_counts(db, tenant_id, user=user)
+        counts = dict(metadata.get("counts") or {})
+        counts["actionable_queue_total"] = total
+        metadata["counts"] = counts
+        return {
+            "items": items,
+            "meta": metadata,
+            "total": total,
+            "limit": max(1, min(int(limit or 10), STORE_QUEUE_PAGE_MAX)),
+            "offset": max(0, int(offset or 0)),
+            "truncated": False,
+        }
+
     allowed = get_actionable_statuses_for_user(user, strict=strict) if not is_admin else set()
 
     if not strict and not is_admin:
@@ -905,7 +1213,10 @@ def get_my_job_card_queue(
     if is_admin and not status_filter:
         q = (
             select(SalesOrder)
-            .options(selectinload(SalesOrder.line_items), selectinload(SalesOrder.customer))
+            .options(
+                selectinload(SalesOrder.line_items).selectinload(SalesOrderLine.product),
+                selectinload(SalesOrder.customer),
+            )
             .where(SalesOrder.tenant_id == tenant_id)
         )
         if not include_completed:
@@ -921,7 +1232,10 @@ def get_my_job_card_queue(
         if TEAM_SALES in teams and not status_filter:
             draft_q = (
                 select(SalesOrder)
-                .options(selectinload(SalesOrder.line_items), selectinload(SalesOrder.customer))
+                .options(
+                    selectinload(SalesOrder.line_items).selectinload(SalesOrderLine.product),
+                    selectinload(SalesOrder.customer),
+                )
                 .where(
                     SalesOrder.tenant_id == tenant_id,
                     SalesOrder.status.in_(["draft", "pending"]),
@@ -938,7 +1252,10 @@ def get_my_job_card_queue(
         if allowed:
             wf_q = (
                 select(SalesOrder)
-                .options(selectinload(SalesOrder.line_items), selectinload(SalesOrder.customer))
+                .options(
+                    selectinload(SalesOrder.line_items).selectinload(SalesOrderLine.product),
+                    selectinload(SalesOrder.customer),
+                )
                 .where(
                     SalesOrder.tenant_id == tenant_id,
                     SalesOrder.workflow_status.in_(list(allowed)),
@@ -1042,7 +1359,7 @@ def get_my_job_card_queue(
 
     metadata = dict(metadata)
     if TEAM_INVENTORY in teams or is_admin:
-        metadata["counts"] = _store_kpi_counts(db, tenant_id)
+        metadata["counts"] = _store_kpi_counts(db, tenant_id, user=user)
     if is_store_queue:
         counts = dict(metadata.get("counts") or {})
         counts["actionable_queue_total"] = total
@@ -1074,7 +1391,10 @@ def _operator_my_queue(
         select(WorkOrder, SalesOrder, ProductionOrder)
         .join(ProductionOrder, WorkOrder.production_order_id == ProductionOrder.id)
         .join(SalesOrder, ProductionOrder.sales_order_id == SalesOrder.id)
-        .options(selectinload(SalesOrder.customer), selectinload(SalesOrder.line_items))
+        .options(
+            selectinload(SalesOrder.customer),
+            selectinload(SalesOrder.line_items).selectinload(SalesOrderLine.product),
+        )
         .where(
             WorkOrder.tenant_id == tenant_id,
             WorkOrder.assigned_user_id == user.id,
@@ -1163,15 +1483,42 @@ def _enrich_queue_orders(
     received_map = _load_received_at_map(db, tenant_id, order_ids)
 
     product_ids: set[int] = set()
+    creator_ids: set[int] = set()
     for so in orders:
         jc = jc_map.get(so.id)
         if jc and jc.product_id:
             product_ids.add(jc.product_id)
-        elif so.line_items:
+        if jc and jc.created_by_user_id:
+            creator_ids.add(jc.created_by_user_id)
+        if so.line_items:
             pid = so.line_items[0].product_id
             if pid:
                 product_ids.add(pid)
+            loaded = getattr(so.line_items[0], "product", None)
+            if loaded is not None and loaded.tenant_id == tenant_id:
+                product_ids.add(loaded.id)
     inv_map = _load_product_inventory_map(db, tenant_id, product_ids)
+    products_by_id: dict[int, Product] = {}
+    for so in orders:
+        if so.line_items:
+            loaded = getattr(so.line_items[0], "product", None)
+            if loaded is not None and loaded.tenant_id == tenant_id:
+                products_by_id[loaded.id] = loaded
+    missing_product_ids = [pid for pid in product_ids if pid not in products_by_id]
+    if missing_product_ids:
+        for p in db.scalars(
+            select(Product).where(
+                Product.tenant_id == tenant_id,
+                Product.id.in_(missing_product_ids),
+            )
+        ).all():
+            products_by_id[p.id] = p
+    users_by_id: dict[int, User] = {}
+    if creator_ids:
+        users_by_id = {
+            u.id: u
+            for u in db.scalars(select(User).where(User.id.in_(list(creator_ids)))).all()
+        }
 
     result = []
     for so in orders:
@@ -1188,6 +1535,8 @@ def _enrich_queue_orders(
                 assigned_to=assign_map.get(so.id),
                 received_at=received_map.get(so.id),
                 inventory=inv_map.get(pid) if pid else None,
+                products_by_id=products_by_id,
+                users_by_id=users_by_id,
             )
         )
     return result

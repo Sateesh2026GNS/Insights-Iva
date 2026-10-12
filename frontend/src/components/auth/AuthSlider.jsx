@@ -1,5 +1,9 @@
 import { useEffect, useState } from "react";
 
+import slide1 from "../../assets/auth/slide-1.png";
+import slide2 from "../../assets/auth/slide-2.png";
+import slide3 from "../../assets/auth/slide-3.png";
+
 const RobotArmIcon = (props) => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.4} {...props}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M4 21h16M7 21v-4m10 4v-6M7 17l3.5-7 6 3" />
@@ -27,21 +31,21 @@ const WarehouseIcon = (props) => (
 
 const SLIDES = [
   {
-    image: "/auth/slide-1.png",
+    image: slide1,
     badge: "Insights Iva",
     text: "Business Intelligence • Analytics • AI — production, inventory, and manufacturing insights in one platform.",
     gradient: "from-teal-500 via-teal-600 to-emerald-700",
     Icon: RobotArmIcon,
   },
   {
-    image: "/auth/slide-2.png",
+    image: slide2,
     badge: "Analytics",
     text: "Turn real-time data into decisions with dashboards built for the shop floor.",
     gradient: "from-cyan-600 via-teal-600 to-teal-800",
     Icon: AnalyticsIcon,
   },
   {
-    image: "/auth/slide-3.png",
+    image: slide3,
     badge: "Inventory",
     text: "Stay ahead of demand with smart stock control and warehouse visibility.",
     gradient: "from-emerald-600 via-teal-700 to-slate-800",

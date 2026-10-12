@@ -101,9 +101,11 @@ class StoreReturnRead(BaseModel):
 
 
 class PendingInventoryCheckOrder(BaseModel):
-    sales_order_id: int
+    sales_order_id: int | None = None
+    job_card_id: int | None = None
+    is_manual: bool = False
     job_card_no: str | None = None
-    order_number: str
+    order_number: str = ""
     customer_name: str | None = None
     product_name: str | None = None
     quantity: float | None = None
@@ -136,7 +138,8 @@ class StoreDashboardLowStockItem(BaseModel):
 
 
 class StoreDashboardMaterialCheckRow(BaseModel):
-    sales_order_id: int
+    sales_order_id: int | None = None
+    job_card_id: int | None = None
     job_card_no: str | None = None
     required_items_summary: str
     status_label: str

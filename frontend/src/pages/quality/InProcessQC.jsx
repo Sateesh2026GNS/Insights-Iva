@@ -400,13 +400,13 @@ export default function InProcessQC() {
             aria-label="Search in-process QC records"
           />
           <div className="flex flex-wrap items-center gap-2.5">
-            <div className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border-soft)] bg-[var(--color-surface)] px-3 py-1.5 text-[13px] shadow-xs">
+            <div className="inline-flex min-w-[10.5rem] items-center gap-2 rounded-lg border border-[var(--color-border-soft)] bg-[var(--color-surface)] px-3 py-1.5 text-[13px] shadow-xs">
               <CalendarDays className="h-4 w-4 shrink-0 text-[var(--color-text-muted)]" />
               <input
                 type="date"
                 value={dateFilter}
                 onChange={(e) => setDateFilter(e.target.value)}
-                className="border-0 bg-transparent p-0 text-[13px] text-[var(--color-text)] focus:outline-none"
+                className="min-w-[8.5rem] flex-1 border-0 bg-transparent p-0 text-[13px] text-[var(--color-text)] focus:outline-none"
                 aria-label="Select date"
               />
             </div>
@@ -426,7 +426,8 @@ export default function InProcessQC() {
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 border-t border-[var(--color-border-soft)] pt-3">
+        {showFilters ? (
+        <div className="grid grid-cols-1 gap-3 border-t border-[var(--color-border-soft)] pt-3 sm:grid-cols-2 lg:grid-cols-[repeat(auto-fit,minmax(180px,1fr))]">
           <MultiSelectDropdown
             label="Work Orders"
             options={workOrders}
@@ -472,6 +473,7 @@ export default function InProcessQC() {
             </Button>
           )}
         </div>
+        ) : null}
       </div>
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">

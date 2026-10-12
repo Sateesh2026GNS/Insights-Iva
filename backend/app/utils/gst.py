@@ -47,12 +47,9 @@ def validate_gstin(value: str | None, *, required: bool = False) -> str | None:
 
 
 def normalize_indian_mobile(value: str) -> str:
-    digits = re.sub(r"\D", "", value or "")
-    if digits.startswith("91") and len(digits) == 12:
-        digits = digits[2:]
-    if len(digits) != 10 or digits[0] not in "6789":
-        raise ValueError("Mobile Number must be a valid 10-digit Indian number")
-    return digits
+    from app.utils.indian_phone import validate_indian_mobile_required
+
+    return validate_indian_mobile_required(value)
 
 
 def normalize_indian_pin(value: str) -> str:

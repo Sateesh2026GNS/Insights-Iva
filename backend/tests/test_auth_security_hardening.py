@@ -209,6 +209,8 @@ def test_admin_role_login(client, register_admin):
 
 
 def test_logout(client, register_admin):
+    from conftest import auth_test_headers
+
     ctx = register_admin()
     login = client.post(
         "/auth/login",
@@ -218,7 +220,7 @@ def test_logout(client, register_admin):
     out = client.post(
         "/auth/logout",
         json={"refresh_token": body["refresh_token"]},
-        headers={"Authorization": f"Bearer {body['access_token']}"},
+        headers=auth_test_headers(client, body["access_token"]),
     )
     assert out.status_code == 200
 

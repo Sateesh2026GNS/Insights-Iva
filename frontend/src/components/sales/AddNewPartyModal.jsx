@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { createPortal } from "react-dom";
 import { Check, Loader2, MoreVertical, Pencil, Plus, Trash2, X } from "lucide-react";
 
@@ -17,7 +18,9 @@ import { lookupIndianPincode, fetchCurrentLocationAddress } from "../../api/addr
 import { INDIAN_STATES, CITIES_BY_STATE } from "../../data/indiaLocations";
 import { useToast } from "../../context/ToastContext";
 import useTenantId from "../../hooks/useTenantId";
+import IndianMobilePhoneInput from "../common/IndianMobilePhoneInput";
 import { apiErrorMessage, applyBackendFieldErrors } from "../../utils/apiError";
+import { validateIndianMobile } from "../../utils/indianPhoneValidation";
 import {
   validateBasicDetails,
   validateOtherDetails,
@@ -373,6 +376,7 @@ export default function AddNewPartyModal({
 }) {
   const tenantId = useTenantId();
   const { addToast } = useToast();
+  const { t } = useTranslation();
   const party = variant === "vendor" ? vendor : customer;
   const isVendor = variant === "vendor";
   const [form, setForm] = useState(EMPTY);
@@ -458,20 +462,15 @@ export default function AddNewPartyModal({
       addToast("Company Name must contain at least one letter", "error");
       return;
     }
-    const phoneVal = form.phone.trim();
-    if (phoneVal) {
-      if (/\D/.test(phoneVal)) {
-        addToast("Mobile No. must contain only numeric digits (0-9)", "error");
-        return;
-      }
-      if (phoneVal.length !== 10) {
-        addToast("Mobile No. must be exactly 10 digits", "error");
-        return;
-      }
-      if (!/^[6-9]/.test(phoneVal)) {
-        addToast(`Mobile No. cannot start with ${phoneVal[0]} and must begin with a valid digit (6, 7, 8, or 9)`, "error");
-        return;
-      }
+    const phoneCheck = validateIndianMobile(form.phone, t, { required: isVendor });
+    if (!phoneCheck.ok) {
+      setFieldErrors((prev) => ({ ...prev, phone: phoneCheck.message }));
+      addToast(t("validation.fixHighlightedFields"), "error");
+      return;
+    }
+    const phoneVal = phoneCheck.value || "";
+    if (phoneCheck.ok && phoneCheck.value) {
+      setForm((f) => ({ ...f, phone: phoneCheck.value }));
     }
     const gstinCheck = validateGstinField(form.gstin);
     if (!gstinCheck.ok) {
@@ -515,7 +514,8 @@ export default function AddNewPartyModal({
     if (isVendor) {
       const email = basicDetails?.email?.trim() || party?.email || "";
       if (!phoneVal) {
-        addToast("Mobile No. is required for vendors", "error");
+        setFieldErrors((prev) => ({ ...prev, phone: t("validation.mobile.tenDigits") }));
+        addToast(t("validation.fixHighlightedFields"), "error");
         return;
       }
       if (!email) {
@@ -646,13 +646,20 @@ export default function AddNewPartyModal({
       onSaved?.(saved, { isEdit, customer: party });
       onClose?.();
     } catch (err) {
-      applyBackendFieldErrors(err, setFieldErrors, {
-        name: "name",
-        phone: "phone",
-        gstin: "gstin",
-        email: "email",
-      });
-      const raw = apiErrorMessage(err, isVendor ? "Failed to save vendor" : "Failed to save customer");
+      const hasFieldErrors = applyBackendFieldErrors(
+        err,
+        setFieldErrors,
+        {
+          name: "name",
+          phone: "phone",
+          gstin: "gstin",
+          email: "email",
+        },
+        { t }
+      );
+      const raw = hasFieldErrors
+        ? t("validation.fixHighlightedFields")
+        : apiErrorMessage(err, isVendor ? "Failed to save vendor" : "Failed to save customer");
       const isGst =
         String(raw).toLowerCase().includes("gst") ||
         String(err?.response?.data?.detail || "")
@@ -738,23 +745,17 @@ export default function AddNewPartyModal({
                   <p className="mt-1 text-[11px] font-medium text-[#e11d48]" role="alert">{fieldErrors.name}</p>
                 ) : null}
               </SoftField>
-              <SoftField label="Mobile No.">
-                <input
+              <SoftField label="Phone">
+                <IndianMobilePhoneInput
                   value={form.phone}
-                  onChange={(e) => {
-                    setForm((f) => ({
-                      ...f,
-                      phone: e.target.value.replace(/\D/g, "").slice(0, 10),
-                    }));
-                    if (fieldErrors.phone) setFieldErrors((prev) => ({ ...prev, phone: "" }));
-                  }}
-                  placeholder="Enter Mobile No."
-                  className={`${inputClass}${fieldErrors.phone ? " border-[#e11d48]" : ""}`}
-                  aria-invalid={Boolean(fieldErrors.phone)}
+                  onChange={(v) => setForm((f) => ({ ...f, phone: v }))}
+                  error={fieldErrors.phone}
+                  setError={(msg) => setFieldErrors((prev) => ({ ...prev, phone: msg }))}
+                  placeholder="Enter phone number"
+                  inputClassName={`${inputClass}${fieldErrors.phone ? " border-[#e11d48]" : ""}`}
+                  showCountryCode={false}
+                  aria-label="Phone"
                 />
-                {fieldErrors.phone ? (
-                  <p className="mt-1 text-[11px] font-medium text-[#e11d48]" role="alert">{fieldErrors.phone}</p>
-                ) : null}
               </SoftField>
             </div>
 

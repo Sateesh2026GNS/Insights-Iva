@@ -190,6 +190,8 @@ def workflow_team_queue(
 def my_job_card_queue(
     status: str | None = Query(None),
     limit: int = Query(50, ge=1, le=2000),
+    offset: int = Query(0, ge=0),
+    bucket: str | None = Query(None, max_length=40),
     include_completed: bool = Query(True),
     job_card_no: str | None = Query(None, max_length=80),
     customer_id: int | None = Query(None, ge=1),
@@ -205,6 +207,8 @@ def my_job_card_queue(
         user,
         status_filter=status,
         limit=limit,
+        offset=offset,
+        bucket=bucket,
         strict=True,
         include_completed=include_completed,
         job_card_no=job_card_no,

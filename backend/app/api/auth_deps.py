@@ -1,11 +1,12 @@
 """JWT auth dependencies for protected routes."""
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from app.api.deps import get_db
+from app.core.auth_cookies import cookie_auth_enabled, read_access_token
 from app.models.user import User
 from app.services.auth_service import decode_access_token
 from app.services.security_service import check_session_active, is_access_token_revoked, touch_user_activity
@@ -13,22 +14,35 @@ from app.services.security_service import check_session_active, is_access_token_
 http_bearer = HTTPBearer(auto_error=False)
 
 
+def resolve_access_token(
+    request: Request,
+    creds: HTTPAuthorizationCredentials | None,
+) -> str | None:
+    if creds and creds.credentials:
+        return creds.credentials.strip()
+    if cookie_auth_enabled():
+        return read_access_token(request)
+    return None
+
+
 def get_current_user(
+    request: Request,
     creds: HTTPAuthorizationCredentials | None = Depends(http_bearer),
     db: Session = Depends(get_db),
 ) -> User:
-    if not creds or not creds.credentials:
+    token = resolve_access_token(request, creds)
+    if not token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Not authenticated",
         )
-    payload = decode_access_token(creds.credentials)
+    payload = decode_access_token(token)
     if not payload:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired token",
         )
-    if is_access_token_revoked(db, creds.credentials, payload):
+    if is_access_token_revoked(db, token, payload):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token has been revoked",

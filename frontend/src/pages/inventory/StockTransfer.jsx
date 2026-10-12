@@ -28,6 +28,7 @@ import ConfirmDialog from "../../components/admin/ConfirmDialog";
 import InventoryRowActionsMenu from "../../components/inventory/InventoryRowActionsMenu";
 import RecordDetailModal from "../../components/inventory/RecordDetailModal";
 import { useToast } from "../../context/ToastContext";
+import { apiErrorMessage } from "../../utils/apiError";
 import {
   createStockTransfer,
   getInventoryDashboard,
@@ -391,8 +392,8 @@ export default function StockTransfer() {
       resetForm();
       setShowForm(false);
       load();
-    } catch {
-      addToast("Transfer failed", "error");
+    } catch (err) {
+      addToast(apiErrorMessage(err, "Transfer failed"), "error");
     } finally {
       setSubmitting(false);
     }
@@ -832,23 +833,24 @@ export default function StockTransfer() {
 
       <ListPageCard>
         <ListPageCardBody>
-        <div className="mb-4 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-          <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-center xl:gap-5">
-            <h2 className="shrink-0 text-sm font-semibold text-[var(--color-text)]">Recent Transfers</h2>
+        <div className="mb-4 flex flex-col gap-3">
+          <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-center">
+            <h2 className="shrink-0 text-sm font-semibold text-[var(--color-text)] lg:w-full xl:w-auto">Recent Transfers</h2>
             <SearchBar
               value={search}
               onChange={setSearch}
               placeholder="Search transfers"
-              className="w-full min-w-0 max-w-none flex-1 sm:min-w-[18rem]"
+              className="w-full min-w-[12rem] flex-1 lg:min-w-[16rem]"
             />
+            <div className="flex shrink-0 flex-wrap items-center gap-2">
+              <ExportDownloadMenu disabled={!exportRows.length} onExport={handleExport} />
+              <Button type="button" variant="secondary" onClick={() => setShowFilters((v) => !v)}>
+                <Filter className="h-4 w-4" /> Filters
+              </Button>
+            </div>
           </div>
-          <div className="flex flex-wrap items-center gap-2 xl:shrink-0">
-            <ExportDownloadMenu disabled={!exportRows.length} onExport={handleExport} />
-            <Button type="button" variant="secondary" onClick={() => setShowFilters((v) => !v)}>
-              <Filter className="h-4 w-4" /> Filters
-            </Button>
-            {showFilters ? (
-              <>
+          {showFilters ? (
+            <div className="flex flex-wrap items-center gap-3 border-t border-[var(--color-border-soft)] pt-3">
                 <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="ui-select !w-auto min-w-[8.5rem]">
                   <option value="">Status</option>
                   <option value="draft">Draft</option>
@@ -861,8 +863,9 @@ export default function StockTransfer() {
                 <Button type="button" variant="ghost" onClick={() => { setSearch(""); setStatusFilter(""); }}>
                   <RefreshCw className="h-4 w-4" /> Clear
                 </Button>
-              </>
-            ) : null}
+            </div>
+          ) : null}
+          <div className="flex justify-end">
             <Button
               type="button"
               variant="add"

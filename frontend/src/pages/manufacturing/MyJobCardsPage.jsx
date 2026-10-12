@@ -36,8 +36,8 @@ import { useToast } from "../../context/ToastContext";
 import { classifyApiError } from "../../utils/apiError";
 import { salesOrderDeleteErrorMessage } from "../../utils/salesOrderDelete";
 import {
-  compareStoreQueueRows,
-  matchesStoreStatusBucket,
+  buildQueueSearchParams,
+  hasQueueSearchFilters,
   STORE_ACTIONABLE_STATUSES,
 } from "../../utils/storeJobCardQueue";
 import {
@@ -55,32 +55,6 @@ import "../../styles/workflow-next-step.css";
 
 const PAGE_SIZES = [10, 20, 50, 100];
 const FETCH_LIMIT = 2000;
-
-function hasQueueSearchFilters(filters) {
-  return Boolean(
-    String(filters?.search || "").trim()
-    || String(filters?.customer || "").trim()
-    || String(filters?.salesOrderNo || "").trim()
-  );
-}
-
-function buildQueueSearchParams(filters) {
-  const params = { limit: FETCH_LIMIT };
-  const jc = String(filters?.search || "").trim();
-  const cust = String(filters?.customer || "").trim();
-  const so = String(filters?.salesOrderNo || "").trim();
-  if (jc) {
-    if (/^SO-/i.test(jc)) params.sales_order_no = jc;
-    else if (/^JC-/i.test(jc)) params.job_card_no = jc;
-    else params.customer_name = jc;
-  }
-  if (cust) {
-    if (/^\d+$/.test(cust)) params.customer_id = Number(cust);
-    else params.customer_name = cust;
-  }
-  if (so) params.sales_order_no = so;
-  return params;
-}
 
 const EMPTY_FILTERS = {
   search: "",
@@ -155,6 +129,7 @@ export default function MyJobCardsPage() {
   const [loadErrorObj, setLoadErrorObj] = useState(null);
   const [partialWarning, setPartialWarning] = useState("");
   const [rows, setRows] = useState([]);
+  const [queueTotal, setQueueTotal] = useState(0);
   const [queueMeta, setQueueMeta] = useState(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const deptParam = searchParams.get("dept");
@@ -173,14 +148,12 @@ export default function MyJobCardsPage() {
   const [salesOrderSelectOptions, setSalesOrderSelectOptions] = useState([]);
   const [sendTarget, setSendTarget] = useState(null);
   const deleteInFlight = useRef(false);
-  const searchInFlight = useRef(false);
 
   const canCreate = userCanCreateSalesJobCard(user);
   const canUpdate = userCanAction(user, "sales", "update") || canCreate;
-  const canDelete =
+  const canDeleteSalesDocument =
     userCanAction(user, "sales", "delete") ||
     userCanAction(user, "production", "delete") ||
-    userCanAction(user, "inventory", "delete") ||
     userCanCreateSalesJobCard(user) ||
     isAdmin(user);
   const effectiveTeam =
@@ -258,9 +231,17 @@ export default function MyJobCardsPage() {
       setPartialWarning("");
       markRequestStart();
       try {
-        const params = searchFilters && hasQueueSearchFilters(searchFilters)
-          ? buildQueueSearchParams(searchFilters)
+        const extra = storeMode
+          ? {
+              limit: pageSize,
+              offset: Math.max(0, (Math.max(1, page) - 1) * pageSize),
+              ...(bucketFromUrl ? { bucket: bucketFromUrl } : {}),
+            }
           : { limit: FETCH_LIMIT };
+        const params =
+          searchFilters && hasQueueSearchFilters(searchFilters)
+            ? buildQueueSearchParams(searchFilters, extra)
+            : { ...extra };
         let metaWarning = "";
         const [queueRes, metaRes] = await Promise.all([
           getMyJobCardQueue(params),
@@ -272,19 +253,22 @@ export default function MyJobCardsPage() {
         const body = queueRes?.data ?? queueRes;
         const items = Array.isArray(body?.items) ? body.items.map(normalizeItem).filter(Boolean) : [];
         setRows(items);
+        setQueueTotal(Number(body?.total) || items.length);
         setQueueMeta(body?.meta ?? metaRes?.data?.meta ?? metaRes?.data ?? null);
         if (metaWarning) setPartialWarning(metaWarning);
       } catch (err) {
         setRows([]);
+        setQueueTotal(0);
         const classified = classifyApiError(err, "Could not load job cards.");
         setLoadError(classified.message);
         setLoadErrorObj(err);
       } finally {
         markRequestEnd();
         setLoading(false);
+        setSearching(false);
       }
     },
-    [markRequestStart, markRequestEnd]
+    [markRequestStart, markRequestEnd, storeMode, page, pageSize, bucketFromUrl]
   );
 
   const reloadQueue = useCallback(
@@ -292,10 +276,13 @@ export default function MyJobCardsPage() {
     [load, serverSearchActive, appliedFilters]
   );
 
+  const initialQueueLoad = useRef(true);
   usePageRefresh(reloadQueue);
   useEffect(() => {
-    load();
-  }, [load]);
+    const silent = !initialQueueLoad.current;
+    initialQueueLoad.current = false;
+    load(silent, serverSearchActive ? appliedFilters : null);
+  }, [load, serverSearchActive, appliedFilters]);
   useEffect(() => registerRetry(() => load(true, serverSearchActive ? appliedFilters : null)), [registerRetry, load, serverSearchActive, appliedFilters]);
 
   useEffect(() => {
@@ -372,6 +359,7 @@ export default function MyJobCardsPage() {
   }, [searchParams]);
 
   const filtered = useMemo(() => {
+    if (storeMode) return rows;
     let list = rows;
     const f = appliedFilters;
     if (!serverSearchActive) {
@@ -403,16 +391,22 @@ export default function MyJobCardsPage() {
     }
     if (!serverSearchActive) {
       if (f.customer) {
-        const custLabel =
-          customerSelectOptions.find((o) => o.value === f.customer)?.label || f.customer;
+        const custQ = String(f.customer).trim().toLowerCase();
+        const custLabel = (
+          customerSelectOptions.find((o) => o.value === f.customer)?.label || f.customer
+        )
+          .toString()
+          .toLowerCase();
         list = list.filter(
           (r) =>
             String(r.customer_id || "") === String(f.customer)
-            || String(r.customer_name || "") === custLabel
+            || String(r.customer_name || "").toLowerCase().includes(custQ)
+            || String(r.customer_name || "").toLowerCase().includes(custLabel)
         );
       }
       if (f.salesOrderNo.trim()) {
-        list = list.filter((r) => String(r.order_number || "") === f.salesOrderNo);
+        const soQ = f.salesOrderNo.trim().toLowerCase();
+        list = list.filter((r) => String(r.order_number || "").toLowerCase().includes(soQ));
       }
     }
     if (f.product) {
@@ -421,14 +415,8 @@ export default function MyJobCardsPage() {
     if (f.dateFrom || f.dateTo) {
       list = list.filter((r) => inDateRange(r.order_date || r.received_at, f.dateFrom, f.dateTo));
     }
-    if (storeMode && bucketFromUrl) {
-      list = list.filter((r) => matchesStoreStatusBucket(r, bucketFromUrl));
-    }
-    if (storeMode) {
-      list = [...list].sort(compareStoreQueueRows);
-    }
     return list;
-  }, [rows, appliedFilters, showStockFilter, effectiveTeam, storeMode, bucketFromUrl, serverSearchActive, customerSelectOptions]);
+  }, [rows, appliedFilters, showStockFilter, effectiveTeam, storeMode, serverSearchActive, customerSelectOptions]);
 
   useEffect(() => {
     if (!isSalesListMode) return;
@@ -445,7 +433,7 @@ export default function MyJobCardsPage() {
   }, [isSalesListMode, activeOrderId, activeJobCardId, setSearchParams]);
 
   useEffect(() => {
-    if (isSalesListMode) return;
+    if (isSalesListMode || storeMode) return;
     if (loading || activeOrderId || activeJobCardId || filtered.length === 0) return;
     const first = filtered[0];
     const manualId = resolveManualJobCardId(first);
@@ -472,7 +460,7 @@ export default function MyJobCardsPage() {
       },
       { replace: true }
     );
-  }, [isSalesListMode, loading, filtered, activeOrderId, activeJobCardId, setSearchParams]);
+  }, [isSalesListMode, storeMode, loading, filtered, activeOrderId, activeJobCardId, setSearchParams]);
 
   const activeRow = useMemo(() => {
     if (activeJobCardId) {
@@ -560,10 +548,11 @@ export default function MyJobCardsPage() {
 
   const manualDocumentView = Boolean(activeJobCardId) && !activeOrderId;
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const listTotal = storeMode ? queueTotal : filtered.length;
+  const totalPages = Math.max(1, Math.ceil(listTotal / pageSize) || 1);
   const safePage = Math.min(page, totalPages);
   const from = (safePage - 1) * pageSize;
-  const pageRows = filtered.slice(from, from + pageSize);
+  const pageRows = storeMode ? filtered : filtered.slice(from, from + pageSize);
 
   useEffect(() => {
     if (page > totalPages) setPage(totalPages);
@@ -571,38 +560,21 @@ export default function MyJobCardsPage() {
 
   const hasAppliedFilters = useMemo(() => hasQueueSearchFilters(appliedFilters), [appliedFilters]);
 
-  const handleApplyFilters = async () => {
-    if (searchInFlight.current) return;
-    searchInFlight.current = true;
-    setSearching(true);
+  const handleApplyFilters = () => {
     const next = { ...draftFilters };
+    setSearching(true);
     setAppliedFilters(next);
     setPage(1);
-    const active = hasQueueSearchFilters(next);
-    setServerSearchActive(active);
-    try {
-      await load(true, active ? next : null);
-    } finally {
-      searchInFlight.current = false;
-      setSearching(false);
-    }
+    setServerSearchActive(hasQueueSearchFilters(next));
   };
 
-  const clearFilters = async () => {
-    if (searchInFlight.current) return;
+  const clearFilters = () => {
     const cleared = { ...EMPTY_FILTERS };
+    setSearching(true);
     setDraftFilters(cleared);
     setAppliedFilters(cleared);
     setServerSearchActive(false);
     setPage(1);
-    searchInFlight.current = true;
-    setSearching(true);
-    try {
-      await load(true, null);
-    } finally {
-      searchInFlight.current = false;
-      setSearching(false);
-    }
   };
 
   const handleSearchKeyDown = (e) => {
@@ -757,7 +729,7 @@ export default function MyJobCardsPage() {
             {sectionHint ? <p className="my-job-cards-page__section-hint">{sectionHint}</p> : null}
           </div>
           <div className="my-job-cards-page__section-actions">
-            <span className="my-job-cards-page__section-total">Total: {filtered.length}</span>
+            <span className="my-job-cards-page__section-total">Total: {listTotal}</span>
             {canCreate && !storeMode && !billingMode && !operatorMode && !qualityMode ? (
               <Button
                 variant="add"
@@ -809,7 +781,7 @@ export default function MyJobCardsPage() {
           error={loadError}
           errorObj={loadErrorObj}
           online={online}
-          onRetry={() => load()}
+          onRetry={() => load(false, serverSearchActive ? appliedFilters : null)}
           loadingVariant="skeleton"
           skeletonRows={8}
           skeletonCols={11}
@@ -832,23 +804,27 @@ export default function MyJobCardsPage() {
             snoOffset={from}
             storeMode={storeMode}
             erpLayout
-            onDelete={(row) => {
-              setDeleteError("");
-              setDeleteTarget(row);
-            }}
-            onEdit={canUpdate ? handleEditRow : undefined}
-            canEdit={canUpdate}
-            canDelete={canDelete}
+            onDelete={
+              storeMode
+                ? undefined
+                : (row) => {
+                    setDeleteError("");
+                    setDeleteTarget(row);
+                  }
+            }
+            onEdit={!storeMode && canUpdate ? handleEditRow : undefined}
+            canEdit={!storeMode && canUpdate}
+            canDelete={!storeMode && canDeleteSalesDocument}
             onSend={(row) => setSendTarget(row)}
             canSend={canSendManual}
           />
 
-          {filtered.length > 0 ? (
+          {listTotal > 0 ? (
             <div className="my-job-cards-page__pagination">
               <Pagination
                 page={safePage}
                 pageSize={pageSize}
-                total={filtered.length}
+                total={listTotal}
                 onPageChange={setPage}
                 onPageSizeChange={(n) => {
                   setPageSize(n);
@@ -856,7 +832,7 @@ export default function MyJobCardsPage() {
                 }}
                 pageSizes={PAGE_SIZES}
                 summaryMode="entries"
-                showPageSize={false}
+                showPageSize
               />
             </div>
           ) : null}

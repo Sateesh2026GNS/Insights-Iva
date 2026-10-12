@@ -38,6 +38,58 @@ Copy `backend/.env.example` → `backend/.env` and set **at minimum**:
 
 SQLite (`smrt.db`) is **migration source only**. Do not set `DATABASE_URL` to SQLite in production.
 
+### HttpOnly cookie authentication rollout
+
+| Variable | Production guidance |
+| -------- | ------------------- |
+| `AUTH_COOKIE_MODE` | `cookie` for browser ERP (see `render.yaml`) |
+| `AUTH_COOKIE_SAMESITE` | `none` for Firebase Hosting → Render API (cross-site) |
+| `AUTH_COOKIE_SECURE` | `true` (required when `SameSite=None`) |
+| `AUTH_COOKIE_DOMAIN` | Optional; set only when a parent domain must receive cookies |
+| `CORS_ORIGINS` | Approved HTTPS frontend origins only — **no localhost** (dev uses `backend/.env`) |
+
+**Render + Firebase (template in repo `render.yaml`):**
+
+| Variable | Value |
+| -------- | ----- |
+| `CORS_ORIGINS` | `https://insights-734ee.web.app`, `https://insights-734ee.firebaseapp.com`, `https://www.insightsiva.com`, `https://insightsiva.com`, `https://insights-iva-api.onrender.com` |
+| `AUTH_COOKIE_MODE` | `cookie` |
+| `AUTH_COOKIE_SAMESITE` | `none` |
+| `AUTH_COOKIE_SECURE` | `true` |
+
+At runtime, `Settings` strips any `localhost` / `127.0.0.1` entries from `CORS_ORIGINS` when `ENVIRONMENT=production` (defense in depth if misconfigured in the dashboard).
+
+**Staging browser verification:** `frontend/e2e/auth-staging-topology.spec.js` with `E2E_STAGING_*` in `frontend/e2e/.env.e2e` (gitignored). Set `E2E_STAGING_ACK_NON_PRODUCTION=1` after confirming a dedicated test tenant. Run: `E2E_SKIP_WEB_SERVER=true npx playwright test --project=auth-staging`. Skipped tests are not passes.
+
+**PostgreSQL regression:** `backend/tests/POSTGRES_TESTS.md` (`USE_POSTGRES_TESTS=1`, database `insights_iva_test`).
+
+**Rollout:** Deploy API with `AUTH_COOKIE_MODE=dual`, deploy UI that uses `withCredentials` and clears legacy `smrt-token` keys, verify login/refresh/logout and CSRF on staging, then switch API to `cookie`.
+
+**Rollback:** Set `AUTH_COOKIE_MODE=dual` or `off` and redeploy; users with only cookie sessions must log in again.
+
+**Legacy sessions:** Tokens in `localStorage` are ignored after UI deploy; users should sign out and back in once.
+
+### Authentication contracts (ERP vs platform vs operator API)
+
+| Surface | Path | Client | Auth mechanism |
+| ------- | ---- | ------ | -------------- |
+| Tenant ERP (browser) | `/auth/login`, `/auth/refresh`, `/auth/logout` | React SPA | HttpOnly `iva_at` / `iva_rt` + CSRF (`iva_csrf` / `X-CSRF-Token`) when `AUTH_COOKIE_MODE=cookie` |
+| GNS Super Admin | `/platform/auth/*` | `/gns-admin/*` UI | Bearer JWT in `localStorage` (`gns-platform-token`); `token_type=platform_admin`; OTP challenge — **not** ERP cookies |
+| Operator integration API | `POST /api/auth/login` | Mobile/kiosk/integrations (tests, external) | JSON `data.access_token` / `data.refresh_token` in wrapped response — **not** the browser ERP login path |
+
+The main ERP login UI uses `/auth/login` only. Do not store operator API tokens in browser `localStorage`. Cross-site production: Firebase Hosting → Render API requires `AUTH_COOKIE_SAMESITE=none`, `AUTH_COOKIE_SECURE=true`, and explicit `CORS_ORIGINS`.
+
+### Rotating Google OAuth credentials (if previously embedded or exposed)
+
+If Google Calendar OAuth client credentials may have been exposed (for example via an old application build or repository history):
+
+1. In [Google Cloud Console](https://console.cloud.google.com/) → **APIs & Services** → **Credentials**, open the OAuth 2.0 client used for Calendar/Meet.
+2. **Rotate the client secret** (create a new secret or regenerate) and update `GOOGLE_CLIENT_SECRET` in your hosting provider (Render, etc.). Never commit values to git.
+3. Confirm **Authorized redirect URIs** match production (`GOOGLE_OAUTH_REDIRECT_URI` or the default `https://<api-host>/integrations/google/calendar/callback`).
+4. Redeploy the API so `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` load from environment only (no code defaults).
+5. Revoke active user Calendar connections if needed (users reconnect via **Integrations** in the app).
+6. Audit OAuth consent screen and restrict test users if the client was in testing mode.
+
 ---
 
 

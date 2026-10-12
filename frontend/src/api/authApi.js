@@ -1,4 +1,4 @@
-import api from "./axiosConfig";
+import api, { ensureCsrfCookie, handleAuthLoginResponse } from "./axiosConfig";
 import { triggerServerWakeup, isServerWakeupOrTransientError } from "../utils/serverWakeup";
 
 const LOGIN_WARMUP_WAIT_MS = 200;
@@ -59,12 +59,13 @@ export async function login(email, password, role) {
   triggerServerWakeup();
   try {
     return await withAuthRetry(async () => {
+      await ensureCsrfCookie();
       const { data } = await api.post(
         "/auth/login",
         { email, password, role },
         { timeout: 15_000 }
       );
-      return data;
+      return handleAuthLoginResponse(data);
     });
   } catch (err) {
     if (err?.code === "ERR_NETWORK" || err?.code === "ECONNABORTED" || !err?.response) {
@@ -79,6 +80,7 @@ export async function phoneLogin(phone, role, idToken = null) {
   triggerServerWakeup();
   try {
     return await withAuthRetry(async () => {
+      await ensureCsrfCookie();
       const { data } = await api.post(
         "/auth/phone-login",
         {
@@ -88,7 +90,7 @@ export async function phoneLogin(phone, role, idToken = null) {
         },
         { timeout: 15_000 }
       );
-      return data;
+      return handleAuthLoginResponse(data);
     });
   } catch (err) {
     if (err?.code === "ERR_NETWORK" || err?.code === "ECONNABORTED" || !err?.response) {
@@ -180,14 +182,13 @@ export async function getTenantRoles() {
   return data;
 }
 
-export async function refreshTokens(refreshToken) {
-  const { data } = await api.post("/auth/refresh", { refresh_token: refreshToken }, { timeout: 45_000 });
-  return data;
+export async function refreshTokens() {
+  const { data } = await api.post("/auth/refresh", {}, { timeout: 45_000 });
+  return handleAuthLoginResponse(data);
 }
 
-export async function logout(refreshToken, { allDevices = false } = {}) {
+export async function logout({ allDevices = false } = {}) {
   const { data } = await api.post("/auth/logout", {
-    refresh_token: refreshToken,
     all_devices: allDevices,
   });
   return data;

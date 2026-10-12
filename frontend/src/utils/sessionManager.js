@@ -1,3 +1,5 @@
+import { isBrowserSessionMarked, isFastOfflineSessionToken } from "./authSession";
+
 /**
  * Session Lifecycle & Multi-Tab Manager
  *
@@ -84,8 +86,7 @@ export function markAsPrimaryTab() {
  */
 export function initTabSession() {
   try {
-    const token = localStorage.getItem("smrt-token");
-    if (!token) return;
+    if (!isBrowserSessionMarked()) return;
 
     const tabType = getTabType();
     if (tabType === "primary") {
@@ -122,7 +123,7 @@ export function sendPrimaryHeartbeat() {
  */
 export function recordSessionActivity() {
   try {
-    if (!localStorage.getItem("smrt-token")) return;
+    if (!isBrowserSessionMarked()) return;
     if (getTabType() === "primary") {
       sendPrimaryHeartbeat();
       return;
@@ -151,8 +152,11 @@ export function isPrimaryTabAlive() {
  */
 export function checkSessionStatus() {
   try {
-    const token = localStorage.getItem("smrt-token");
-    if (!token) return { expired: false, reason: null };
+    const offline = localStorage.getItem("smrt-offline-fast-session");
+    if (offline && isFastOfflineSessionToken(offline)) {
+      return { expired: false, reason: null };
+    }
+    if (!isBrowserSessionMarked()) return { expired: false, reason: null };
 
     // Check if this tab is specifically marked expired
     if (sessionStorage.getItem("smrt-tab-expired") === "true") {

@@ -95,6 +95,35 @@ class TestProductionConfig:
         assert "insights-iva-api.onrender.com" in s.allowed_hosts
         assert "*.onrender.com" in s.allowed_hosts
 
+    def test_google_oauth_empty_without_env(self, monkeypatch):
+        monkeypatch.delenv("GOOGLE_CLIENT_ID", raising=False)
+        monkeypatch.delenv("GOOGLE_CLIENT_SECRET", raising=False)
+        s = Settings(
+            database_url="postgresql+psycopg://u:p@localhost:5432/db",
+            environment="development",
+            jwt_secret_key="a" * 32,
+            google_client_id="",
+            google_client_secret="",
+        )
+        assert s.google_client_id == ""
+        assert s.google_client_secret == ""
+        assert s.google_calendar_configured is False
+
+    def test_google_oauth_rejects_partial_config(self, monkeypatch):
+        base = {
+            "database_url": "postgresql+psycopg://u:p@localhost:5432/db",
+            "environment": "development",
+            "jwt_secret_key": "a" * 32,
+        }
+        monkeypatch.setenv("GOOGLE_CLIENT_ID", "client-id-only.apps.googleusercontent.com")
+        monkeypatch.setenv("GOOGLE_CLIENT_SECRET", "")
+        with pytest.raises(ValidationError, match="GOOGLE_CLIENT_SECRET"):
+            Settings(**base)
+        monkeypatch.setenv("GOOGLE_CLIENT_ID", "")
+        monkeypatch.setenv("GOOGLE_CLIENT_SECRET", "secret-only")
+        with pytest.raises(ValidationError, match="GOOGLE_CLIENT_ID"):
+            Settings(**base)
+
 
 class TestRateLimiting:
     def test_register_rate_limit_429(self, client):
