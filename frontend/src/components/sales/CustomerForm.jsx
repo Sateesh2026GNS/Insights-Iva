@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import { Globe, Mail, Plus, Upload, X } from "lucide-react";
+import { ChevronDown, Globe, Mail, Pencil, Plus, Upload, X } from "lucide-react";
 
 import Button from "../common/Button";
 import SearchableSelect from "../common/SearchableSelect";
@@ -138,6 +138,7 @@ export default function CustomerForm({ initialForm, customer = null, onCancel })
   const [saving, setSaving] = useState(false);
   const [gstOpen, setGstOpen] = useState(false);
   const [existingCustomers, setExistingCustomers] = useState([]);
+  const [isCustomDisplayName, setIsCustomDisplayName] = useState(false);
 
   const isEdit = Boolean(customer?.id);
 
@@ -301,15 +302,54 @@ export default function CustomerForm({ initialForm, customer = null, onCancel })
           ) : null}
 
           <FormRow label="Display Name" required>
-            <SearchableSelect
-              value={form.display_name}
-              onChange={(v) => patch("display_name", v)}
-              options={displayNameOptions}
-              placeholder="Select or type to add"
-              allowCustom
-              error={Boolean(errors.display_name)}
-              className="w-full"
-            />
+            <div className="flex items-center gap-2 w-full">
+              {isCustomDisplayName ? (
+                <div className="relative flex-1">
+                  <input
+                    type="text"
+                    className={`customer-form__input w-full${errors.display_name ? " customer-form__input--error" : ""}`}
+                    placeholder="Enter display name"
+                    value={form.display_name}
+                    onChange={(e) => patch("display_name", e.target.value)}
+                    maxLength={100}
+                    autoFocus
+                  />
+                </div>
+              ) : (
+                <div className="flex-1 min-w-0">
+                  <SearchableSelect
+                    value={form.display_name}
+                    onChange={(v) => patch("display_name", v)}
+                    options={displayNameOptions}
+                    placeholder="Select or type to add"
+                    allowCustom
+                    error={Boolean(errors.display_name)}
+                    className="w-full"
+                    footerOptions={[{ value: "__custom_edit", label: "+ Edit / Type Custom Name" }]}
+                    onFooterPick={() => setIsCustomDisplayName(true)}
+                  />
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={() => setIsCustomDisplayName((prev) => !prev)}
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2.5 text-xs font-semibold text-[var(--color-primary)] hover:bg-[var(--color-primary-soft)] transition focus:outline-none"
+                title={isCustomDisplayName ? "Select from list" : "Edit display name"}
+                aria-label={isCustomDisplayName ? "Select from list" : "Edit display name"}
+              >
+                {isCustomDisplayName ? (
+                  <>
+                    <ChevronDown className="h-3.5 w-3.5" />
+                    <span>Select from list</span>
+                  </>
+                ) : (
+                  <>
+                    <Pencil className="h-3.5 w-3.5" />
+                    <span>Edit</span>
+                  </>
+                )}
+              </button>
+            </div>
             {errors.display_name ? <p className="customer-form__error" role="alert">{errors.display_name}</p> : null}
           </FormRow>
 
