@@ -96,7 +96,7 @@ export default function QuickWorkOrderModal({ order, onClose, onSuccess, addToas
     setLoadingOptions(true);
     Promise.all([
       getMachines().catch(() => ({ data: [] })),
-      fetchFinishedGoodsWithFallback().catch(() => []),
+      fetchFinishedGoodsWithFallback({ force: true }).catch(() => []),
       fetchCustomersWithFallback().catch(() => []),
       getOperators().catch(() => ({ data: [] })),
     ])
@@ -557,7 +557,7 @@ export default function QuickWorkOrderModal({ order, onClose, onSuccess, addToas
         onSaved={async (line, product) => {
           setShowAddProductModal(false);
           try {
-            const refreshed = await fetchFinishedGoodsWithFallback();
+            const refreshed = await fetchFinishedGoodsWithFallback({ force: true });
             setProducts(Array.isArray(refreshed) ? refreshed : []);
             const newId = String(product?.id || line?.product_id || "");
             if (newId) {

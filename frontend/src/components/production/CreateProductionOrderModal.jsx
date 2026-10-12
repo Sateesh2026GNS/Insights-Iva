@@ -6,7 +6,7 @@ import { createProductionOrder, getMachines, getOperators, updateProductionOrder
 import useTenantId from "../../hooks/useTenantId";
 import { useToast } from "../../context/ToastContext";
 import { apiErrorMessage } from "../../utils/apiError";
-import { fetchFinishedGoodsWithFallback } from "../../utils/productOptions";
+import { fetchProductsWithFallback } from "../../utils/productOptions";
 import AddNewItemModal from "../sales/AddNewItemModal";
 import CreateMachineModal from "./CreateMachineModal";
 import AddUserModal from "../admin/AddUserModal";
@@ -130,7 +130,7 @@ export default function CreateProductionOrderModal({
 
     const loadProducts = hasProducts
       ? Promise.resolve(productsList)
-      : fetchFinishedGoodsWithFallback().catch(() => []);
+      : fetchProductsWithFallback({ force: true }).catch(() => []);
 
     const loadOperators = getOperators()
       .then((res) => (Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : []))
@@ -374,7 +374,12 @@ export default function CreateProductionOrderModal({
                     if (e.target.value === "__custom__" || e.target.value === "__add_product__") {
                       setShowAddProductModal(true);
                     } else {
-                      handleChange("product_id", e.target.value);
+                      const selId = e.target.value;
+                      handleChange("product_id", selId);
+                      const selProduct = products.find((p) => String(p.id) === String(selId));
+                      if (selProduct) {
+                        handleChange("product_name", selProduct.name || selProduct.sku || "");
+                      }
                     }
                   }}
                   disabled={loadingOptions}
@@ -716,7 +721,7 @@ export default function CreateProductionOrderModal({
         onSaved={async (line, product) => {
           setShowAddProductModal(false);
           try {
-            const refreshed = await fetchFinishedGoodsWithFallback();
+            const refreshed = await fetchProductsWithFallback({ force: true });
             setProducts(Array.isArray(refreshed) ? refreshed : []);
             const newId = String(product?.id || line?.product_id || "");
             if (newId) {

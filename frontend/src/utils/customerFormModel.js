@@ -103,6 +103,21 @@ export function customerToForm(customer) {
   const base = emptyCustomerForm();
   const name = customer.company || customer.name || "";
   const contact = customer.contact_person && customer.contact_person !== "—" ? customer.contact_person : "";
+  const savedWorkPhone = parseMetaField(customer._party_custom_fields, "_work_phone");
+  const savedAltPhone =
+    parseMetaField(customer._party_custom_fields, "_alternate_phone") ||
+    (customer.alternate_phone && customer.alternate_phone !== "—" ? customer.alternate_phone : "");
+  const rawPhone = customer.phone && customer.phone !== "—" ? customer.phone : "";
+
+  let workPhone = "";
+  let mobile = "";
+
+  if (savedWorkPhone || savedAltPhone) {
+    workPhone = savedWorkPhone != null ? String(savedWorkPhone) : "";
+    mobile = savedAltPhone != null ? String(savedAltPhone) : "";
+  } else {
+    workPhone = rawPhone != null ? String(rawPhone) : "";
+  }
 
   return {
     ...base,
@@ -111,7 +126,8 @@ export function customerToForm(customer) {
     first_name: contact.split(" ")[0] || "",
     last_name: contact.split(" ").slice(1).join(" ") || "",
     email: customer.email && customer.email !== "—" ? customer.email : "",
-    mobile: customer.phone && customer.phone !== "—" ? customer.phone : "",
+    work_phone: workPhone,
+    mobile: mobile,
     gstin: customer.gstin && customer.gstin !== "—" ? customer.gstin : "",
     other: {
       ...base.other,
@@ -146,6 +162,7 @@ export function buildCustomerPayload(form, { tenantId, party = null }) {
 
   const paymentDays = paymentTermsDays(form.other.payment_terms);
   const opening = form.other.opening_balance ? Number(form.other.opening_balance) : 0;
+  const primaryPhone = form.work_phone.trim() || form.mobile.trim() || null;
 
   const metaFields = [
     ...(form.custom_fields || []).map((f) => ({ label: f.label, value: f.value })),
@@ -155,6 +172,8 @@ export function buildCustomerPayload(form, { tenantId, party = null }) {
     { label: "_customer_type", value: form.customer_type || "business" },
     { label: "_language", value: form.language || "en" },
     { label: "_portal_enabled", value: form.other.portal_enabled ? "true" : "false" },
+    ...(form.work_phone?.trim() ? [{ label: "_work_phone", value: form.work_phone.trim() }] : []),
+    ...(form.mobile?.trim() ? [{ label: "_alternate_phone", value: form.mobile.trim() }] : []),
   ].filter((f) => String(f.label || "").trim() && String(f.value ?? "").trim());
 
   if (form.other.pan?.trim()) metaFields.push({ label: "PAN", value: form.other.pan.trim() });
@@ -165,7 +184,7 @@ export function buildCustomerPayload(form, { tenantId, party = null }) {
     name: displayName,
     contact_name: [form.salutation, form.first_name, form.last_name].filter(Boolean).join(" ").trim() || null,
     gstin: form.gstin.trim().toUpperCase() || null,
-    phone: form.mobile.trim() || form.work_phone.trim() || null,
+    phone: primaryPhone,
     email: form.email.trim() || null,
     address_line1: form.billing.street1 || null,
     address_line2: [form.billing.street2, form.billing.attention].filter(Boolean).join(", ") || null,
@@ -207,10 +226,20 @@ export function validateCustomerForm(form) {
     errors.display_name = "Display Name must contain at least one letter";
   }
 
-  const mobile = form.mobile.trim();
+  const workPhone = (form.work_phone || "").trim();
+  if (workPhone) {
+    const check = validateIndianMobile(workPhone, englishPhoneT);
+    if (!check.ok) errors.work_phone = check.message;
+  }
+
+  const mobile = (form.mobile || "").trim();
   if (mobile) {
     const check = validateIndianMobile(mobile, englishPhoneT);
     if (!check.ok) errors.mobile = check.message;
+  }
+
+  if (workPhone && mobile && workPhone === mobile) {
+    errors.mobile = "Alternate phone number must be different from primary phone number";
   }
 
   const gstin = form.gstin.trim().toUpperCase();

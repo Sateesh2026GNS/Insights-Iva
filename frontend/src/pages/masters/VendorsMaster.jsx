@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   ChevronLeft,
   ChevronRight,
+  Eye,
   Pencil,
   Plus,
   Trash2,
@@ -19,11 +20,13 @@ import Loader from "../../components/common/Loader";
 import EmptyState from "../../components/common/EmptyState";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
 import AddNewPartyModal from "../../components/sales/AddNewPartyModal";
+import VendorDetailModal from "../../components/procurement/VendorDetailModal";
 import { useToast } from "../../context/ToastContext";
 import {
   bulkImportMastersVendors,
   createMastersVendor,
   deleteMastersVendor,
+  getMastersVendor,
   listMastersVendors,
 } from "../../api/mastersVendorsApi";
 import { enrichApiVendor } from "../../data/vendorsMasterData";
@@ -62,7 +65,25 @@ export default function VendorsMaster() {
   const [editing, setEditing] = useState(null);
   const [deleting, setDeleting] = useState(null);
   const [deletingBusy, setDeletingBusy] = useState(false);
+  const [viewing, setViewing] = useState(null);
+  const [viewDetail, setViewDetail] = useState(null);
   const [openMenu, setOpenMenu] = useState(null);
+
+  const handleView = useCallback(async (vendor) => {
+    if (!vendor) return;
+    setViewing(vendor);
+    setViewDetail(null);
+    if (vendor.id) {
+      try {
+        const res = await getMastersVendor(vendor.id);
+        if (res?.data) {
+          setViewDetail(res.data);
+        }
+      } catch {
+        /* fallback to row data */
+      }
+    }
+  }, []);
 
   const loadVendors = useCallback(async (isManualRetry = false) => {
     setLoading(true);
@@ -219,7 +240,13 @@ export default function VendorsMaster() {
                   {rows.map((v, rowIndex) => (
                     <tr key={v.id}>
                       <SerialNumberCell rowIndex={rowIndex} page={page} pageSize={pageSize} />
-                      <td className="px-4 py-3.5 font-medium text-[var(--color-text)]">{v.name || ""}</td>
+                      <td
+                        className="px-4 py-3.5 font-medium text-[var(--color-text)] hover:text-[var(--color-primary)] cursor-pointer transition-colors"
+                        onClick={() => handleView(v)}
+                        title={`View ${v.name || "vendor"}`}
+                      >
+                        {v.name || ""}
+                      </td>
                       <td className="px-4 py-3.5 text-[var(--color-text-secondary)]">{blankOr(v.email)}</td>
                       <td className="px-4 py-3.5 text-[var(--color-text-secondary)]">{blankOr(v.gstin)}</td>
                       <td className="px-4 py-3.5 text-[var(--color-text-secondary)]">{blankOr(v.phone)}</td>
@@ -235,7 +262,13 @@ export default function VendorsMaster() {
                             rowId={v.id}
                             openMenu={openMenu}
                             setOpenMenu={setOpenMenu}
+                            ariaLabel={`Actions for ${v.name || "vendor"}`}
                             items={[
+                              {
+                                label: "View",
+                                icon: <Eye className="h-4 w-4" />,
+                                onClick: () => handleView(v),
+                              },
                               {
                                 label: "Edit",
                                 icon: <Pencil className="h-4 w-4" />,
@@ -342,6 +375,36 @@ export default function VendorsMaster() {
         onClose={() => !deletingBusy && setDeleting(null)}
         onConfirm={confirmDelete}
       />
+
+      {viewing ? (
+        <VendorDetailModal
+          vendor={viewing}
+          detail={viewDetail}
+          onClose={() => {
+            setViewing(null);
+            setViewDetail(null);
+          }}
+          onEdit={(vendorToEdit) => {
+            setViewing(null);
+            setViewDetail(null);
+            setEditing(vendorToEdit);
+            setPartyOpen(true);
+          }}
+          onDelete={(vendorToDelete) => {
+            setViewing(null);
+            setViewDetail(null);
+            setDeleting(vendorToDelete);
+          }}
+          onVendorUpdated={(updated) => {
+            setVendors((prev) =>
+              prev.map((item) =>
+                item.id === updated.id ? { ...item, ...updated } : item
+              )
+            );
+            setViewing((prev) => (prev ? { ...prev, ...updated } : prev));
+          }}
+        />
+      ) : null}
     </ListPageShell>
   );
 }

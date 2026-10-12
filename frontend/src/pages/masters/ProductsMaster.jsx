@@ -171,16 +171,11 @@ export default function ProductsMaster() {
   }, []);
 
   const loadProducts = useCallback(async () => {
-    if (!selectedCategoryName) {
-      setProducts([]);
-      setLoading(false);
-      return;
-    }
     setLoading(true);
     try {
       const res = await getProducts({
-        category: selectedCategoryName,
-        categoryId: selectedCategory?.id,
+        category: selectedCategoryName || undefined,
+        categoryId: selectedCategory?.id || undefined,
         q: query.trim() || undefined,
       });
       const rows = Array.isArray(res.data) ? res.data : [];
@@ -251,12 +246,8 @@ export default function ProductsMaster() {
   };
 
   const openAddProduct = () => {
-    if (!selectedCategoryName) {
-      addToast("Please select a category first.", "error");
-      return;
-    }
     setEditing(null);
-    setCategoryToSelect(selectedCategoryName);
+    setCategoryToSelect(selectedCategoryName || "");
     setAddOpen(true);
   };
 
@@ -349,7 +340,7 @@ export default function ProductsMaster() {
     }
   };
 
-  if (loading && selectedCategoryName) return <Loader label="Loading products..." />;
+  if (loading && !products.length && !categories.length) return <Loader label="Loading products..." />;
 
   return (
     <div className="min-h-full bg-[var(--color-bg)]">
@@ -359,7 +350,7 @@ export default function ProductsMaster() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <label className="block min-w-0 flex-1 sm:max-w-md">
               <span className="mb-1.5 block text-[12px] font-semibold text-[#6b6b76]">
-                Category <span className="text-[#e11d48]">*</span>
+                Category
               </span>
               <select
                 value={selectedCategoryId}
@@ -369,7 +360,7 @@ export default function ProductsMaster() {
                 }}
                 className="ui-select w-full"
               >
-                <option value="">Select Category</option>
+                <option value="">All Categories</option>
                 {categories.map((c) => (
                   <option key={c.id} value={String(c.id)}>
                     {c.name}
@@ -405,7 +396,9 @@ export default function ProductsMaster() {
           </div>
           <div className="ui-card p-3.5 sm:p-4">
             <p className="text-[11px] sm:text-[12px] font-semibold text-[var(--color-text-muted)] truncate">Categories</p>
-            <p className="mt-1 text-xl sm:text-2xl font-bold text-[var(--color-text)]">{summary.categories}</p>
+            <p className="mt-1 text-xl sm:text-2xl font-bold text-[var(--color-text)]">
+              {selectedCategoryId ? summary.categories : (categories.length || summary.categories)}
+            </p>
           </div>
           <div className="ui-card p-3.5 sm:p-4">
             <p className="text-[11px] sm:text-[12px] font-semibold text-[var(--color-text-muted)] truncate">Active Products</p>
@@ -424,7 +417,6 @@ export default function ProductsMaster() {
               onChange={setQuery}
               placeholder="Search"
               aria-label="Search products"
-              disabled={!selectedCategoryName}
             />
             <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto sm:justify-end">
               {selectedCategoryId ? (
@@ -467,23 +459,20 @@ export default function ProductsMaster() {
             </div>
           </div>
 
-          {!selectedCategoryName ? (
+          {filtered.length === 0 && !loading ? (
             <EmptyState
-              title="Select a category"
-              description="Please select a category to view products."
-              actionLabel={canWrite && !isPM ? "Add New Category" : undefined}
-              onAction={canWrite && !isPM ? () => setCategoryModalOpen(true) : undefined}
-            />
-          ) : filtered.length === 0 && !loading ? (
-            <EmptyState
-              title="No products found in this category"
-              description={`There are no products under ${selectedCategoryName} yet.`}
+              title={selectedCategoryName ? "No products found in this category" : "No products found"}
+              description={
+                selectedCategoryName
+                  ? `There are no products under ${selectedCategoryName} yet.`
+                  : "No products found in the catalog."
+              }
               actionLabel={canWrite && !isPM ? "Add Product" : undefined}
               onAction={canWrite && !isPM ? openAddProduct : undefined}
             />
           ) : null}
 
-          {selectedCategoryName && filtered.length > 0 ? (
+          {filtered.length > 0 ? (
           <>
           {/* Mobile Products Cards */}
           <div className="space-y-3 md:hidden">

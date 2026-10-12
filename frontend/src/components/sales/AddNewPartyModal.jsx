@@ -522,6 +522,8 @@ export default function AddNewPartyModal({
 
       if (isVendor) {
         const email = basicDetails?.email?.trim() || party?.email || null;
+        const creditDays = Number(basicDetails?.payment_terms_days) || (party?.credit_days ? Number(party.credit_days) : null);
+        const paymentTerms = creditDays ? `Net ${creditDays}` : (party?.payment_terms || null);
         const vendorPayload = {
           tenant_id: tenantId,
           name: form.name.trim(),
@@ -535,9 +537,12 @@ export default function AddNewPartyModal({
           state: address.state || null,
           pincode: address.pincode || null,
           country: address.country || "India",
-          vendor_type: "Raw Material Supplier",
+          vendor_type: null,
           status: "active",
+          credit_days: creditDays,
+          payment_terms: paymentTerms,
           credit_limit: Number(party?.credit_limit || 0),
+          outstanding: opening,
           ...(basicDetails
             ? {
                 party_basic_details: {

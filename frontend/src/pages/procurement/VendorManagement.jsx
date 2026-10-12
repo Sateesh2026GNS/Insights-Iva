@@ -578,6 +578,16 @@ export default function VendorManagement() {
           onEdit={(v) => { setFormVendor(v); setSelected(null); }}
           onDeactivate={handleDeactivate}
           onApprove={isAdmin ? handleApprove : undefined}
+          onVendorUpdated={(updated) => {
+            setVendors((prev) =>
+              Array.isArray(prev)
+                ? prev.map((item) =>
+                    item.id === updated.id ? { ...item, ...updated } : item
+                  )
+                : prev
+            );
+            setSelected((prev) => (prev ? { ...prev, ...updated } : prev));
+          }}
         />
       )}
 

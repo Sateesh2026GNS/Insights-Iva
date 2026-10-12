@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import { ChevronDown, Globe, Mail, Pencil, Plus, Upload, X } from "lucide-react";
+import { Globe, Mail, Plus, Upload, X } from "lucide-react";
 
 import Button from "../common/Button";
 import SearchableSelect from "../common/SearchableSelect";
@@ -138,7 +138,6 @@ export default function CustomerForm({ initialForm, customer = null, onCancel })
   const [saving, setSaving] = useState(false);
   const [gstOpen, setGstOpen] = useState(false);
   const [existingCustomers, setExistingCustomers] = useState([]);
-  const [isCustomDisplayName, setIsCustomDisplayName] = useState(false);
 
   const isEdit = Boolean(customer?.id);
 
@@ -154,11 +153,39 @@ export default function CustomerForm({ initialForm, customer = null, onCancel })
 
   const displayNameOptions = useMemo(() => {
     const opts = [];
-    if (form.company_name.trim()) opts.push({ value: form.company_name.trim(), label: form.company_name.trim() });
-    const person = [form.first_name, form.last_name].filter(Boolean).join(" ").trim();
-    if (person) opts.push({ value: person, label: person });
+    const first = form.first_name?.trim() || "";
+    const last = form.last_name?.trim() || "";
+    const salut = form.salutation?.trim() || "";
+
+    const candidates = [];
+    if (first && last) {
+      candidates.push(`${first} ${last}`);
+      candidates.push(`${last} ${first}`);
+      candidates.push(`${last}, ${first}`);
+    } else if (first) {
+      candidates.push(first);
+    } else if (last) {
+      candidates.push(last);
+    }
+
+    if (salut) {
+      if (first && last) {
+        candidates.push(`${salut} ${first} ${last}`);
+        candidates.push(`${salut} ${last} ${first}`);
+      } else if (first) {
+        candidates.push(`${salut} ${first}`);
+      } else if (last) {
+        candidates.push(`${salut} ${last}`);
+      }
+    }
+
+    const unique = Array.from(new Set(candidates.filter(Boolean)));
+    unique.forEach((name) => {
+      opts.push({ value: name, label: name });
+    });
+
     return opts;
-  }, [form.company_name, form.first_name, form.last_name]);
+  }, [form.salutation, form.first_name, form.last_name]);
 
   const patch = (path, value) => {
     setForm((prev) => {
@@ -170,6 +197,25 @@ export default function CustomerForm({ initialForm, customer = null, onCancel })
         cursor = cursor[parts[i]];
       }
       cursor[parts[parts.length - 1]] = value;
+
+      // When user updates contact name, if display_name was empty or
+      // was matching the old auto-generated person name, keep display_name in sync
+      if (!isEdit && (path === "first_name" || path === "last_name" || path === "salutation")) {
+        const oldAutoPerson = [prev.first_name, prev.last_name].filter(Boolean).join(" ").trim();
+        const currentDisplay = (prev.display_name || "").trim();
+
+        const wasAutoOrEmpty =
+          !currentDisplay ||
+          currentDisplay === oldAutoPerson;
+
+        if (wasAutoOrEmpty) {
+          const newPerson = [next.first_name, next.last_name].filter(Boolean).join(" ").trim();
+          if (newPerson) {
+            next.display_name = newPerson;
+          }
+        }
+      }
+
       return next;
     });
   };
@@ -216,7 +262,7 @@ export default function CustomerForm({ initialForm, customer = null, onCancel })
         setErrors,
         {
           name: "display_name",
-          phone: "mobile",
+          phone: form.work_phone?.trim() ? "work_phone" : "mobile",
           gstin: "gstin",
           email: "email",
         },
@@ -302,54 +348,15 @@ export default function CustomerForm({ initialForm, customer = null, onCancel })
           ) : null}
 
           <FormRow label="Display Name" required>
-            <div className="flex items-center gap-2 w-full">
-              {isCustomDisplayName ? (
-                <div className="relative flex-1">
-                  <input
-                    type="text"
-                    className={`customer-form__input w-full${errors.display_name ? " customer-form__input--error" : ""}`}
-                    placeholder="Enter display name"
-                    value={form.display_name}
-                    onChange={(e) => patch("display_name", e.target.value)}
-                    maxLength={100}
-                    autoFocus
-                  />
-                </div>
-              ) : (
-                <div className="flex-1 min-w-0">
-                  <SearchableSelect
-                    value={form.display_name}
-                    onChange={(v) => patch("display_name", v)}
-                    options={displayNameOptions}
-                    placeholder="Select or type to add"
-                    allowCustom
-                    error={Boolean(errors.display_name)}
-                    className="w-full"
-                    footerOptions={[{ value: "__custom_edit", label: "+ Edit / Type Custom Name" }]}
-                    onFooterPick={() => setIsCustomDisplayName(true)}
-                  />
-                </div>
-              )}
-              <button
-                type="button"
-                onClick={() => setIsCustomDisplayName((prev) => !prev)}
-                className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2.5 text-xs font-semibold text-[var(--color-primary)] hover:bg-[var(--color-primary-soft)] transition focus:outline-none"
-                title={isCustomDisplayName ? "Select from list" : "Edit display name"}
-                aria-label={isCustomDisplayName ? "Select from list" : "Edit display name"}
-              >
-                {isCustomDisplayName ? (
-                  <>
-                    <ChevronDown className="h-3.5 w-3.5" />
-                    <span>Select from list</span>
-                  </>
-                ) : (
-                  <>
-                    <Pencil className="h-3.5 w-3.5" />
-                    <span>Edit</span>
-                  </>
-                )}
-              </button>
-            </div>
+            <SearchableSelect
+              value={form.display_name}
+              onChange={(v) => patch("display_name", v)}
+              options={displayNameOptions}
+              placeholder="Select or type to add"
+              allowCustom
+              error={Boolean(errors.display_name)}
+              className="w-full"
+            />
             {errors.display_name ? <p className="customer-form__error" role="alert">{errors.display_name}</p> : null}
           </FormRow>
 
@@ -370,21 +377,50 @@ export default function CustomerForm({ initialForm, customer = null, onCancel })
             <div className="customer-form__phone-stack">
               <div>
                 <div className="customer-form__phone-row">
-                  <select className="customer-form__select" disabled><option>+91</option></select>
-                  <input className="customer-form__input" placeholder="Work Phone" value={form.work_phone} onChange={(e) => patch("work_phone", e.target.value.replace(/\D/g, "").slice(0, 10))} />
+                  <select className="customer-form__select" disabled aria-label="Country Code">
+                    <option>+91</option>
+                  </select>
+                  <IndianMobilePhoneInput
+                    id="customer-work-phone"
+                    aria-label="Work Phone"
+                    placeholder="Work Phone"
+                    value={form.work_phone}
+                    onChange={(v) => patch("work_phone", v)}
+                    error={errors.work_phone}
+                    setError={(msg) => setErrors((prev) => ({ ...prev, work_phone: msg }))}
+                    className="w-full min-w-0"
+                    inputClassName={`customer-form__input w-full${errors.work_phone ? " customer-form__input--error" : ""}`}
+                    showCountryCode={false}
+                    showInlineError={false}
+                  />
                 </div>
+                {errors.work_phone ? (
+                  <p className="customer-form__error" role="alert">{errors.work_phone}</p>
+                ) : null}
               </div>
+
               <div>
-                <IndianMobilePhoneInput
-                  aria-label="Phone"
-                  placeholder="Mobile"
-                  value={form.mobile}
-                  onChange={(v) => patch("mobile", v)}
-                  error={errors.mobile}
-                  setError={(msg) => setErrors((prev) => ({ ...prev, mobile: msg }))}
-                  inputClassName={`customer-form__input flex-1${errors.mobile ? " customer-form__input--error" : ""}`}
-                  className="customer-form__phone-row flex-1"
-                />
+                <div className="customer-form__phone-row">
+                  <select className="customer-form__select" disabled aria-label="Country Code">
+                    <option>+91</option>
+                  </select>
+                  <IndianMobilePhoneInput
+                    id="customer-mobile-phone"
+                    aria-label="Mobile"
+                    placeholder="Mobile"
+                    value={form.mobile}
+                    onChange={(v) => patch("mobile", v)}
+                    error={errors.mobile}
+                    setError={(msg) => setErrors((prev) => ({ ...prev, mobile: msg }))}
+                    className="w-full min-w-0"
+                    inputClassName={`customer-form__input w-full${errors.mobile ? " customer-form__input--error" : ""}`}
+                    showCountryCode={false}
+                    showInlineError={false}
+                  />
+                </div>
+                {errors.mobile ? (
+                  <p className="customer-form__error" role="alert">{errors.mobile}</p>
+                ) : null}
               </div>
             </div>
           </FormRow>

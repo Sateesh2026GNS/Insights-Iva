@@ -35,7 +35,10 @@ export function enrichApiCustomer(row, index = 0) {
     industry: "Manufacturing",
     pan: row.gstin ? row.gstin.slice(2, 12) : "—",
     website: null,
-    alternate_phone: null,
+    alternate_phone:
+      (row._party_custom_fields || row.party_custom_fields || []).find?.((f) => f.label === "_alternate_phone")?.value ||
+      row.alternate_phone ||
+      null,
     designation: "Contact",
     billing_address: row.address_line1 || "",
     shipping_address: row.address_line1 || "",

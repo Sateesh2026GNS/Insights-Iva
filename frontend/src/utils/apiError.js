@@ -324,7 +324,7 @@ export function classifyApiError(err, fallback = "Something went wrong.") {
   return { type: "unknown", message, fields: {} };
 }
 
-const PHONE_FIELD_KEYS = new Set(["phone", "mobile", "alternate_phone", "manager_mobile"]);
+const PHONE_FIELD_KEYS = new Set(["phone", "mobile", "work_phone", "alternate_phone", "manager_mobile"]);
 
 /** Merge backend field errors into an existing client-side errors object. */
 export function applyBackendFieldErrors(err, setFieldErrors, fieldMap = {}, options = {}) {

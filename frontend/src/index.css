@@ -3,6 +3,15 @@
 
 @variant dark (&:where(.dark, .dark *));
 
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+
 /* ========== Insights Iva Design System ==========
  * Single source of truth for typography, spacing, color, and shared UI.
  * Apply these tokens/classes across pages — avoid page-specific one-offs.
