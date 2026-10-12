@@ -233,8 +233,11 @@ def _materials_for_wo(db: Session, tenant_id: int, wo: WorkOrder, po: Production
         issued = required if issued_flag else 0.0
         materials.append(
             WorkOrderMaterialRead(
+                item_id=req["item_id"],
+                sku=req.get("sku"),
                 component_name=req["component_name"],
                 required_qty=round(required, 2),
+                available_qty=round(float(req["available_qty"]), 2),
                 issued_qty=round(issued, 2),
                 balance_qty=round(max(required - issued, 0), 2),
                 unit=req["unit"],

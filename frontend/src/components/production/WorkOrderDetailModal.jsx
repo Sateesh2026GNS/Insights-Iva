@@ -319,6 +319,7 @@ export default function WorkOrderDetailModal({
               stage_hint: `Current stage: ${currentStage?.label || "—"}`,
             }}
             embedded
+            showStageSummary={false}
           />
         </div>
 

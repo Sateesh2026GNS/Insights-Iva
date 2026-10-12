@@ -45,6 +45,7 @@ ALERT_AUDIENCE: dict[str, list[str]] = {
     # Procurement
     "purchase_request": ["Store Manager"],
     "material_request": ["Store Manager"],
+    "purchase_requisition_received": ["Purchase Manager", "Store Manager"],
     "purchase_order_approved": ["Store Manager", "Accountant"],
     "purchase_order_created": ["Store Manager"],
     "vendor_delivery_delayed": ["Store Manager"],
@@ -88,6 +89,7 @@ _ALERT_TO_NOTIF_TYPE: dict[str, str] = {
     "rework_required": "quality",
     "purchase_request": "inventory",
     "material_request": "inventory",
+    "purchase_requisition_received": "inventory",
     "purchase_order_approved": "inventory",
     "purchase_order_created": "inventory",
     "vendor_delivery_delayed": "inventory",
@@ -162,6 +164,7 @@ DEFAULT_LINKS: dict[str, str] = {
     "rework_required": "/quality/defects",
     "purchase_request": "/procurement/material-requests",
     "material_request": "/procurement/material-requests",
+    "purchase_requisition_received": "/procurement/material-requests",
     "purchase_order_approved": "/procurement/purchase-orders",
     "purchase_order_created": "/procurement/purchase-orders",
     "vendor_delivery_delayed": "/procurement/goods-receipt",

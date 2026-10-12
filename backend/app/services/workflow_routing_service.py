@@ -1023,7 +1023,7 @@ def build_store_queue_context(
     from app.services.workflow_team_service import refresh_pending_material_check_stock
 
     mc = material_check
-    if mc and refresh_stock:
+    if mc and refresh_stock and not mc.verified_at:
         refresh_pending_material_check_stock(db, tenant_id, mc)
 
     product_id = job_card.product_id if job_card and job_card.product_id else None

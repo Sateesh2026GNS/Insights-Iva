@@ -341,7 +341,12 @@ export default function ProductionDashboard() {
         <div className="flex flex-wrap items-center gap-2">
           {HUB_FLOW.map((step, i) => (
             <span key={step} className="flex items-center gap-2 text-xs text-[var(--color-text-secondary)]">
-              <span className="rounded-md bg-[var(--color-surface)] px-2 py-1 font-semibold text-[var(--color-success)] ring-1 ring-[var(--color-border)]">{step}</span>
+              <Link
+                to={HUB_MODULES.find((module) => module.label === step)?.to || "/production/planning"}
+                className="rounded-md bg-[var(--color-surface)] px-2 py-1 font-semibold text-[var(--color-success)] no-underline ring-1 ring-[var(--color-border)] hover:ring-[var(--color-success)]"
+              >
+                {step}
+              </Link>
               {i < HUB_FLOW.length - 1 ? <ArrowRight className="h-3 w-3 text-[var(--color-text-faint)]" aria-hidden /> : null}
             </span>
           ))}

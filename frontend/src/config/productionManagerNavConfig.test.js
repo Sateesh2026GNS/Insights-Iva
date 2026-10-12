@@ -26,9 +26,28 @@ describe("productionManagerNavConfig", () => {
     expect(keys).not.toContain("myJobCards");
   });
 
-  it("includes Production Queue under Production", () => {
+  it("shows the production modules in the requested flow order", () => {
     const production = PRODUCTION_MANAGER_NAV_ITEMS.find((n) => n.key === "production");
-    const queue = production?.children?.find((c) => c.key === "productionQueue");
+    expect(production?.label).toBe("Production Flow");
+    expect(production?.children?.map((item) => item.label)).toEqual([
+      "Production Planning",
+      "Work Orders",
+      "Production Schedule",
+      "Machine Allocation",
+      "Production Entry",
+      "Batch Tracking",
+      "Quality Control",
+      "Finished Goods Inventory",
+    ]);
+  });
+
+  it("keeps the job card queue and reports available as production support", () => {
+    const tools = PRODUCTION_MANAGER_NAV_ITEMS.find((n) => n.key === "productionTools");
+    expect(tools?.children?.map((item) => item.key)).toEqual([
+      "productionQueue",
+      "dailyReports",
+    ]);
+    const queue = tools?.children?.find((c) => c.key === "productionQueue");
     expect(queue?.to).toContain("/my-job-cards");
     expect(queue?.to).toContain("dept=production");
   });
@@ -60,6 +79,7 @@ describe("productionManagerNavConfig", () => {
     expect(keys).toEqual([
       "dashboard",
       "production",
+      "productionTools",
       "materials",
       "masters",
       "quality",

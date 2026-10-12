@@ -328,6 +328,7 @@ export default function StoreManagerJobCardDocumentPanel({
               storeContext={storeContext}
               materialCheck={materialCheck}
               companyProfile={profile}
+              productLines={isManual ? manualProductLines : productLines}
             />
           ) : null}
 

@@ -20,6 +20,7 @@ import {
 import Loader from "../../components/common/Loader";
 import Button from "../../components/common/Button";
 import EmptyState from "../../components/common/EmptyState";
+import StatusBadge from "../../components/common/StatusBadge";
 import { SearchBar } from "../../components/common/SearchFilter";
 import RowActionMenu from "../../components/common/RowActionMenu";
 import PODetailModal from "../../components/procurement/PODetailModal";
@@ -455,7 +456,7 @@ export default function PurchaseOrders() {
             <table className="min-w-full border-collapse text-left text-[13px]">
               <thead className="ui-table-head">
                 <tr>
-                  {["PO No.", "Date", "Seller Name", "PO Amount", "Actions"].map((h) => (
+                  {["PO No.", "Date", "Seller Name", "PO Amount", "Status", "Actions"].map((h) => (
                     <th
                       key={h}
                       className="border-b border-r border-[var(--color-table-border)] px-4 py-3 last:border-r-0"
@@ -468,7 +469,7 @@ export default function PurchaseOrders() {
               <tbody>
                 {pageRows.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="border-none p-0">
+                    <td colSpan={6} className="border-none p-0">
                       <EmptyState
                         icon="document"
                         title="No records found."
@@ -491,6 +492,11 @@ export default function PurchaseOrders() {
                       </td>
                       <td className="border-t border-r border-[var(--color-table-border)] px-4 py-3 tabular-nums font-medium">
                         {r.total_amount != null ? formatInr(r.total_amount) : "—"}
+                      </td>
+                      <td className="border-t border-r border-[var(--color-table-border)] px-4 py-3">
+                        <StatusBadge status={r.status}>
+                          {String(r.status || "unknown").replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase())}
+                        </StatusBadge>
                       </td>
                       <td className="border-t border-[var(--color-table-border)] px-4 py-3">
                         <RowActionMenu
@@ -611,6 +617,7 @@ export default function PurchaseOrders() {
                   { id: "draft", label: "Draft" },
                   { id: "pending", label: "Pending" },
                   { id: "approved", label: "Approved" },
+                  { id: "rejected", label: "Rejected" },
                   { id: "received", label: "Received" },
                   { id: "delivered", label: "Delivered" },
                   { id: "cancelled", label: "Cancelled" },
@@ -671,7 +678,7 @@ export default function PurchaseOrders() {
           po={selected}
           onClose={() => setSelected(null)}
           onApprove={(po) => handleStatus(po, "approved")}
-          onReject={(po) => handleStatus(po, "cancelled")}
+          onReject={(po) => handleStatus(po, "rejected")}
         />
       ) : null}
 

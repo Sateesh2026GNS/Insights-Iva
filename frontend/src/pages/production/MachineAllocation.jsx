@@ -25,6 +25,7 @@ import {
   getAllocationMachines,
   getAllocationSummary,
   getAllocations,
+  getWorkOrders,
 } from "../../api/productionApi";
 import {
   DEMO_ALLOC_SUMMARY,
@@ -197,10 +198,35 @@ export default function MachineAllocation() {
         setSummary({ ...DEMO_ALLOC_SUMMARY, ...sumRes.value.data });
       }
 
-      const apiList =
+      let apiList =
         listRes.status === "fulfilled" && Array.isArray(listRes.value?.data)
           ? listRes.value.data
           : [];
+
+      // The allocation endpoint can return an empty list while the work-order
+      // endpoint still has assigned orders (for example, after an assignment
+      // was saved through the workflow). Keep this page's list in sync with
+      // the work orders shown by the rest of Production.
+      if (apiList.length === 0) {
+        try {
+          const workOrderRes = await getWorkOrders();
+          const workOrders = Array.isArray(workOrderRes?.data) ? workOrderRes.data : [];
+          apiList = workOrders.map((workOrder) => ({
+            work_order_id: workOrder.id,
+            work_order_number: workOrder.work_order_number,
+            product_name: workOrder.product_name || "—",
+            machine_id: workOrder.machine_id || null,
+            machine_name: workOrder.machine_name || null,
+            operator_name: workOrder.operator_name || "—",
+            shift: workOrder.shift || "General",
+            capacity_pct: Number(workOrder.progress_pct || 0),
+            status: workOrder.machine_id ? workOrder.status || "planned" : "unassigned",
+            priority: workOrder.priority || "medium",
+          }));
+        } catch {
+          // Leave the allocation list empty if both sources are unavailable.
+        }
+      }
       const combined = [...localAllocations, ...apiList];
       const seen = new Set();
       const uniqueList = combined.filter((item) => {

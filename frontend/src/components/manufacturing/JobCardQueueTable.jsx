@@ -407,7 +407,7 @@ export default function JobCardQueueTable({
                 <th className="whitespace-nowrap px-3 py-2 font-semibold">Status</th>
                 <th className="whitespace-nowrap px-2 py-2 font-semibold">Priority</th>
                 <th className="whitespace-nowrap px-3 py-2 font-semibold">Created By</th>
-                <th className="whitespace-nowrap px-3 py-2 font-semibold">Created Date</th>
+                <th className="whitespace-nowrap px-3 py-2 font-semibold">Received Date</th>
                 <th className="my-job-cards-table__actions-col whitespace-nowrap px-2 py-2 font-semibold">Actions</th>
               </tr>
             </thead>
@@ -503,7 +503,7 @@ export default function JobCardQueueTable({
                       <TruncateCell value={row.created_by} />
                     </td>
                     <td className="whitespace-nowrap px-3 py-2.5 text-[var(--color-text-secondary)]">
-                      {fmtErpDate(row.received_at || row.job_card_date || row.order_date)}
+                      {fmtErpDate(row.received_at)}
                     </td>
                     <td className="my-job-cards-table__actions-col px-2 py-2.5" onClick={(e) => e.stopPropagation()}>
                       <div className="my-job-cards-table__actions-wrap">

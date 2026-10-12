@@ -78,6 +78,7 @@ export default function SalesOrderMaterialCheckPanel({
   const isCompleted = Boolean(checkMeta?.verified_at) || !isPending;
   const canEdit = isPending && (actions.has("check_stock") || actions.size === 0);
   const canRecheck = isCompleted && ["MATERIAL_SHORTAGE", "MATERIAL_PARTIAL"].includes(ws);
+  const hasCurrentShortage = lines.some((line) => Number(line.shortage_qty || 0) > 0);
 
   const load = useCallback(async () => {
     if (!orderId) return;
@@ -410,14 +411,18 @@ export default function SalesOrderMaterialCheckPanel({
           {checkMeta.notes ? <p><strong>Notes:</strong> {checkMeta.notes}</p> : null}
           {canRecheck ? (
             <div className="store-manual-jc-actions__toolbar mt-3">
-              <Button variant="primary" size="sm" loading={savingAction === "request"} disabled={saving} onClick={handleCreatePurchaseRequest}>
-                {savingAction === "request" ? "Creating Purchase Requisition…" : "Create Purchase Requisition"}
-              </Button>
+              {hasCurrentShortage ? (
+                <Button variant="primary" size="sm" loading={savingAction === "request"} disabled={saving} onClick={handleCreatePurchaseRequest}>
+                  {savingAction === "request" ? "Creating Purchase Requisition…" : "Create Purchase Requisition"}
+                </Button>
+              ) : null}
               <Button variant="secondary" size="sm" loading={savingAction === "recheck"} disabled={saving} onClick={handleRecheck}>
                 {savingAction === "recheck" ? "Rechecking Stock…" : "Recheck Stock"}
               </Button>
               <p className="store-manual-jc-actions__hint" role="note">
-                Create a requisition for the shortage, or recheck availability after materials are received.
+                {hasCurrentShortage
+                  ? "Create a requisition for the shortage, or recheck availability after materials are received."
+                  : "Current stock covers the requirement. Recheck stock to update the workflow and continue."}
               </p>
             </div>
           ) : null}

@@ -109,8 +109,11 @@ export const submitQualityCheck = (inspectionId, payload) =>
 export const completePacking = (orderId, payload) =>
   api.post(`/manufacturing/workflow/packing/${orderId}/complete`, payload);
 
-export const getStageJobCard = (orderId, stage) =>
-  api.get(`/manufacturing/workflow/sales-orders/${orderId}/stage/${stage}`, { skipCache: true });
+export const getStageJobCard = (orderId, stage, productionOrderId) =>
+  api.get(`/manufacturing/workflow/sales-orders/${orderId}/stage/${stage}`, {
+    skipCache: true,
+    params: productionOrderId ? { production_order_id: productionOrderId } : undefined,
+  });
 
 export const submitStoreIssue = (orderId, payload) =>
   api.post(`/manufacturing/workflow/sales-orders/${orderId}/store-issue`, payload);

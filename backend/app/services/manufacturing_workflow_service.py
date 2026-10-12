@@ -593,11 +593,15 @@ def complete_work_order_integrated(
     if not wo:
         return WorkOrderActionResponse(success=False, message="Work order not found")
     if wo.status in {"completed", "closed", "done"}:
+        qty = float(wo.actual_quantity or wo.planned_quantity or 0)
+        batch = _ensure_production_batch(db, tenant_id, wo, qty) if qty > 0 else None
+        if batch:
+            db.commit()
         return WorkOrderActionResponse(
             success=True,
             work_order=_to_list_read(db, tenant_id, wo),
             message="Work order already completed",
-            steps=["Already completed"],
+            steps=["Already completed"] + ([f"Batch available: {batch.batch_code}"] if batch else []),
         )
 
     po = db.get(ProductionOrder, wo.production_order_id)
@@ -623,6 +627,7 @@ def complete_work_order_integrated(
             qi.packing_status = "ready_for_pack"
             steps.append("Packing released (ready_for_pack)")
 
+        finished_good_item_id = None
         if product:
             fg = receive_finished_goods(
                 db,
@@ -636,14 +641,19 @@ def complete_work_order_integrated(
                 steps.append(
                     f"Finished goods posted: {fg['sku']} +{fg['quantity']} to warehouse #{fg['warehouse_id']}"
                 )
-                batch = _ensure_production_batch(db, tenant_id, wo, qty)
-                if batch:
-                    steps.append(f"Batch generated: {batch.batch_code}")
-                    _ensure_item_barcode(db, fg.get("item_id"), batch.batch_code)
+                finished_good_item_id = fg.get("item_id")
             else:
                 steps.append("Finished goods: nothing to post")
         else:
             steps.append("Finished goods skipped (product missing)")
+
+        # Batch traceability represents completed production. It must not rely
+        # on inventory receiving succeeding, because that is a separate step.
+        if qty > 0:
+            batch = _ensure_production_batch(db, tenant_id, wo, qty)
+            if batch:
+                steps.append(f"Batch generated: {batch.batch_code}")
+                _ensure_item_barcode(db, finished_good_item_id, batch.batch_code)
 
         wo.actual_quantity = qty
         wo.status = "completed"

@@ -54,8 +54,11 @@ class WorkOrderSummaryRead(BaseModel):
 
 
 class WorkOrderMaterialRead(BaseModel):
+    item_id: int | None = None
+    sku: str | None = None
     component_name: str
     required_qty: float
+    available_qty: float = 0
     issued_qty: float = 0
     balance_qty: float = 0
     unit: str = "pcs"
