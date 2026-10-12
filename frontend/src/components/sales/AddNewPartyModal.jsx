@@ -18,7 +18,6 @@ import { lookupIndianPincode, fetchCurrentLocationAddress } from "../../api/addr
 import { INDIAN_STATES, CITIES_BY_STATE } from "../../data/indiaLocations";
 import { useToast } from "../../context/ToastContext";
 import useTenantId from "../../hooks/useTenantId";
-import IndianMobilePhoneInput from "../common/IndianMobilePhoneInput";
 import { apiErrorMessage, applyBackendFieldErrors } from "../../utils/apiError";
 import { validateIndianMobile } from "../../utils/indianPhoneValidation";
 import {
@@ -463,65 +462,52 @@ export default function AddNewPartyModal({
       addToast("Company Name must contain at least one letter", "error");
       return;
     }
-    const phoneCheck = validateIndianMobile(form.phone, t, { required: isVendor });
-    if (!phoneCheck.ok) {
-      setFieldErrors((prev) => ({ ...prev, phone: phoneCheck.message }));
-      addToast("Enter valid inputs", "error");
-      return;
-    }
-    const phoneVal = phoneCheck.value || form.phone.trim() || "";
-    if (phoneCheck.ok && phoneCheck.value) {
-      setForm((f) => ({ ...f, phone: phoneCheck.value }));
-    }
-    const gstinCheck = validateGstinField(form.gstin);
-    if (!gstinCheck.ok) {
-      setFieldErrors({ gstin: gstinCheck.error });
-      addToast(gstinCheck.error, "error");
-      return;
-    }
-    const normalizedGstin = gstinCheck.value;
-    if (normalizedGstin) {
-      const dup = existingParties.find(
-        (p) =>
-          String(p.id) !== String(party?.id) &&
-          p.gstin &&
-          String(p.gstin).trim().toUpperCase() === normalizedGstin
-      );
-      if (dup) {
-        addToast(
-          `A ${isVendor ? "vendor" : "customer"} with GSTIN "${normalizedGstin}" already exists.`,
-          "error"
-        );
+    let phoneVal = form.phone ? form.phone.trim() : "";
+    if (phoneVal) {
+      const phoneCheck = validateIndianMobile(phoneVal, t, { required: false });
+      if (!phoneCheck.ok) {
+        setFieldErrors((prev) => ({ ...prev, phone: phoneCheck.message }));
+        addToast(phoneCheck.message || "Enter valid inputs", "error");
         return;
+      }
+      phoneVal = phoneCheck.value || phoneVal;
+    }
+    let normalizedGstin = null;
+    if (form.gstin && form.gstin.trim()) {
+      const gstinCheck = validateGstinField(form.gstin);
+      if (!gstinCheck.ok) {
+        setFieldErrors({ gstin: gstinCheck.error });
+        addToast(gstinCheck.error, "error");
+        return;
+      }
+      normalizedGstin = gstinCheck.value;
+      if (normalizedGstin) {
+        const dup = existingParties.find(
+          (p) =>
+            String(p.id) !== String(party?.id) &&
+            p.gstin &&
+            String(p.gstin).trim().toUpperCase() === normalizedGstin
+        );
+        if (dup) {
+          addToast(
+            `A ${isVendor ? "vendor" : "customer"} with GSTIN "${normalizedGstin}" already exists.`,
+            "error"
+          );
+          return;
+        }
       }
     }
     if (basicDetails) {
-      const basicCheck = validateBasicDetails(basicDetails, { emailRequired: isVendor });
+      const basicCheck = validateBasicDetails(basicDetails, { emailRequired: false });
       if (!basicCheck.ok) {
         addToast(Object.values(basicCheck.errors)[0], "error");
         return;
       }
-    } else if (isVendor) {
-      addToast("Add email in Basic Details for vendors", "error");
-      return;
     }
     if (otherDetails) {
       const otherCheck = validateOtherDetails(otherDetails);
       if (!otherCheck.ok) {
         addToast(Object.values(otherCheck.errors)[0], "error");
-        return;
-      }
-    }
-    if (isVendor) {
-      const email = basicDetails?.email?.trim() || party?.email || "";
-      if (!phoneVal) {
-        setFieldErrors((prev) => ({ ...prev, phone: t("validation.mobile.tenDigits") }));
-        addToast(t("validation.fixHighlightedFields"), "error");
-        return;
-      }
-      if (!email) {
-        addToast("Add email in Basic Details for vendors", "error");
-        setBasicOpen(true);
         return;
       }
     }
@@ -532,14 +518,14 @@ export default function AddNewPartyModal({
         : Number(party?.outstanding || 0);
 
       if (isVendor) {
-        const email = basicDetails?.email?.trim() || party?.email || "";
+        const email = basicDetails?.email?.trim() || party?.email || null;
         const vendorPayload = {
           tenant_id: tenantId,
           name: form.name.trim(),
           contact: form.name.trim(),
-          gstin: normalizedGstin,
-          phone: form.phone.trim(),
-          email,
+          gstin: normalizedGstin || null,
+          phone: phoneVal || null,
+          email: email || null,
           address_line1: address.address_line1 || null,
           address_line2: null,
           city: address.city || null,
@@ -552,10 +538,10 @@ export default function AddNewPartyModal({
           ...(basicDetails
             ? {
                 party_basic_details: {
-                  payment_terms_days: Number(basicDetails.payment_terms_days),
-                  opening_balance: Number(basicDetails.opening_balance),
-                  balance_type: basicDetails.balance_type,
-                  email,
+                  payment_terms_days: Number(basicDetails.payment_terms_days) || 0,
+                  opening_balance: Number(basicDetails.opening_balance) || 0,
+                  balance_type: basicDetails.balance_type || "to_receive",
+                  email: email || null,
                 },
               }
             : {}),
@@ -569,7 +555,7 @@ export default function AddNewPartyModal({
         let response = null;
         if (isEdit && typeof party?.id === "number") {
           response = await updateMastersVendor(party.id, vendorPayload);
-          addToast("Vendor updated");
+          addToast("Vendor updated successfully");
         } else {
           response = await createMastersVendor(vendorPayload);
           addToast("Vendor added successfully");
@@ -731,17 +717,23 @@ export default function AddNewPartyModal({
                   <p className="mt-1 text-[11px] font-medium text-[#e11d48]" role="alert">{fieldErrors.name}</p>
                 ) : null}
               </SoftField>
-              <SoftField label="Phone">
-                <IndianMobilePhoneInput
+              <SoftField label="Mobile No.">
+                <input
                   value={form.phone}
-                  onChange={(v) => setForm((f) => ({ ...f, phone: v }))}
-                  error={fieldErrors.phone}
-                  setError={(msg) => setFieldErrors((prev) => ({ ...prev, phone: msg }))}
-                  placeholder="Enter phone number"
-                  inputClassName={`${inputClass}${fieldErrors.phone ? " border-[#e11d48]" : ""}`}
-                  showCountryCode={false}
-                  aria-label="Phone"
+                  onChange={(e) => {
+                    setForm((f) => ({
+                      ...f,
+                      phone: e.target.value.replace(/\D/g, "").slice(0, 10),
+                    }));
+                    if (fieldErrors.phone) setFieldErrors((prev) => ({ ...prev, phone: "" }));
+                  }}
+                  placeholder="Enter Mobile No."
+                  className={`${inputClass}${fieldErrors.phone ? " border-[#e11d48]" : ""}`}
+                  aria-invalid={Boolean(fieldErrors.phone)}
                 />
+                {fieldErrors.phone ? (
+                  <p className="mt-1 text-[11px] font-medium text-[#e11d48]" role="alert">{fieldErrors.phone}</p>
+                ) : null}
               </SoftField>
             </div>
 
@@ -900,7 +892,7 @@ export default function AddNewPartyModal({
         onClose={() => setBasicOpen(false)}
         initial={basicDetails || EMPTY_BASIC}
         onSave={setBasicDetails}
-        emailRequired={isVendor}
+        emailRequired={false}
       />
       <AddOtherDetailsModal
         open={otherOpen}
