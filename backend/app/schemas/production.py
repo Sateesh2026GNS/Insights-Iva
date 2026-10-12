@@ -171,6 +171,8 @@ class WorkOrderUpdate(BaseModel):
 
 class WorkOrderQuickCreate(BaseModel):
     tenant_id: int | None = Field(None, ge=1)
+    plant_code: str | None = None
+    department: str | None = None
     production_order_id: int | None = Field(None, ge=1)
     product_id: int | None = Field(None, ge=1)
     product_name: str | None = None

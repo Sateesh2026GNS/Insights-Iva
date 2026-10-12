@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   Boxes,
   CheckCircle2,
@@ -30,27 +30,8 @@ import useTenantId from "../../hooks/useTenantId";
 import useJobCardDetails from "../../hooks/useJobCardDetails";
 import { PermissionDeniedState } from "../../components/common/states";
 import CompletedJobCardAllStagesReport from "../../components/manufacturing/CompletedJobCardAllStagesReport";
-import { getTeamDirectory, getUsers } from "../../api/adminApi";
-import { getMachines } from "../../api/productionApi";
+import { getMachines, getOperators } from "../../api/productionApi";
 
-function extractOperators(usersList) {
-  if (!Array.isArray(usersList) || usersList.length === 0) return [];
-  const matched = usersList.filter((u) => {
-    if (!u) return false;
-    const roleStr = String(u.role || u.role_name || u.designation || u.department || "").toLowerCase();
-    if (roleStr.includes("operator") || roleStr.includes("machinist") || roleStr.includes("technician")) {
-      return true;
-    }
-    const rolesList = Array.isArray(u.roles) ? u.roles : [];
-    return rolesList.some((r) => {
-      const name = String(typeof r === "string" ? r : r?.name || r?.role_name || "").toLowerCase();
-      return name.includes("operator") || name.includes("machinist") || name.includes("technician");
-    });
-  });
-
-  if (matched.length > 0) return matched;
-  return usersList.filter((u) => u && u.is_active !== false);
-}
 import {
   assignOperator,
   completePacking,
@@ -93,6 +74,7 @@ function formFromStageCard(card) {
 
 export default function StageJobCardPage() {
   const { orderId, stage: routeStage } = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
   const { addToast } = useToast();
   const { user } = useAuth();
@@ -142,6 +124,7 @@ export default function StageJobCardPage() {
     addRawMaterial,
     removeRawMaterial,
     handleSaveDetailsOnly,
+    hasUnsavedDetailChanges,
     saving: savingDetails,
   } = useJobCardDetails(orderId, tenantId);
 
@@ -150,13 +133,31 @@ export default function StageJobCardPage() {
     setLoading(true);
     setPermissionDenied(false);
     try {
-      const res = await getStageJobCard(orderId, stage);
+      const productionOrderId = new URLSearchParams(location.search).get("production_order_id")
+        || location.state?.productionOrderId;
+      const res = await getStageJobCard(
+        orderId,
+        stage,
+        stage === "production_manager" ? productionOrderId : undefined,
+      );
       const data = res?.data ?? res;
       setCard(data);
       if (data.materials) setMaterialLines(data.materials.map((m) => ({ ...m })));
       if (data.material_issue_lines) setIssueLines(data.material_issue_lines.map((m) => ({ ...m })));
-      if (data.summary_panel?.order_quantity) {
+      if (stage === "production_manager") {
+        const plan = data.production_plan || {};
+        setAssignForm((f) => ({
+          ...f,
+          planned_quantity: String(plan.planned_quantity ?? data.summary_panel?.order_quantity ?? f.planned_quantity ?? ""),
+          operator_user_id: plan.assigned_operator_id != null
+            ? String(plan.assigned_operator_id)
+            : f.operator_user_id,
+          machine_id: plan.machine_id != null ? String(plan.machine_id) : f.machine_id,
+        }));
+      } else if (data.summary_panel?.order_quantity) {
         setAssignForm((f) => ({ ...f, planned_quantity: String(data.summary_panel.order_quantity) }));
+      }
+      if (data.summary_panel?.order_quantity) {
         setPackingForm((f) => ({ ...f, packed_quantity: String(data.summary_panel.order_quantity) }));
       }
       if (stage === "operator" && data.execution) {
@@ -182,21 +183,28 @@ export default function StageJobCardPage() {
     } finally {
       setLoading(false);
     }
-  }, [orderId, stage, addToast]);
+  }, [orderId, stage, addToast, location.search, location.state?.productionOrderId]);
 
   useEffect(() => {
     load();
     loadDetails();
   }, [load, loadDetails]);
 
+  useEffect(() => {
+    if (loading || !card || !location.state?.focusStageAction || stage !== "production_manager") return;
+    const frame = window.requestAnimationFrame(() => {
+      document.getElementById("stage-action-panel")?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [loading, card, location.state, stage]);
+
   const loadOperators = useCallback(async () => {
     try {
-      const rawUsers = await getTeamDirectory()
-        .then((r) => r?.data?.items ?? r?.data ?? r ?? [])
-        .catch(() => getUsers().then((r) => r?.data?.items ?? r?.data ?? r ?? []))
-        .catch(() => []);
-      const usersList = Array.isArray(rawUsers) ? rawUsers : [];
-      const ops = extractOperators(usersList);
+      // Keep this list limited to real production operators. Falling back to
+      // every active user makes non-operator IDs look selectable and fail later.
+      const response = await getOperators();
+      const rawOperators = response?.data?.items ?? response?.data ?? response ?? [];
+      const ops = Array.isArray(rawOperators) ? rawOperators : [];
       setOperators(ops);
       return ops;
     } catch {
@@ -371,10 +379,26 @@ export default function StageJobCardPage() {
           await holdWorkflowOrder(orderId, { reason: "Store hold" });
           addToast("Order placed on hold by Store Manager", "success");
         }
-      } else if (stage === "production_manager" && woId) {
+      } else if (stage === "production_manager") {
         if (action === "assign_operator" || action === "send_to_operator") {
+          if (!woId) {
+            addToast("No work order is linked to this job card. Ask Store to complete the production handoff first.", "error");
+            return;
+          }
+          const selectedOperator = operators.find(
+            (operator) => String(operator.id) === String(assignForm.operator_user_id)
+          );
+          if (!selectedOperator) {
+            addToast(
+              operators.length
+                ? "Select a valid production operator before assigning this work order."
+                : "No active production operators are available. Add or activate an operator, then try again.",
+              "error"
+            );
+            return;
+          }
           await assignOperator(woId, {
-            operator_user_id: Number(assignForm.operator_user_id),
+            operator_user_id: Number(selectedOperator.id),
             machine_id: assignForm.machine_id ? Number(assignForm.machine_id) : undefined,
             planned_quantity: assignForm.planned_quantity ? Number(assignForm.planned_quantity) : undefined,
           });
@@ -565,8 +589,9 @@ export default function StageJobCardPage() {
     }
     if (stage === "production_manager") {
       const plan = card?.production_plan || {};
+      const canAssignOperator = (card?.allowed_actions || []).includes("assign_operator");
       return (
-        <article className="ui-card overflow-hidden">
+        <article id="stage-action-panel" className="ui-card overflow-hidden">
           <CardSectionHeader title="Production Planning" />
           <div className="grid gap-4 p-4 sm:grid-cols-2">
             <FormField label="Work Order">
@@ -577,7 +602,7 @@ export default function StageJobCardPage() {
                 type="number"
                 value={assignForm.planned_quantity}
                 onChange={(e) => setAssignForm((f) => ({ ...f, planned_quantity: e.target.value }))}
-                disabled={!card?.editable}
+                disabled={!card?.editable || !canAssignOperator}
               />
             </FormField>
             <FormField label="Assign Operator">
@@ -590,7 +615,7 @@ export default function StageJobCardPage() {
                   }
                   setAssignForm((f) => ({ ...f, operator_user_id: e.target.value }));
                 }}
-                disabled={!card?.editable}
+                disabled={!card?.editable || !canAssignOperator}
               >
                 <option value="">Select operator</option>
                 {isAdmin ? (
@@ -617,7 +642,7 @@ export default function StageJobCardPage() {
                   }
                   setAssignForm((f) => ({ ...f, machine_id: e.target.value }));
                 }}
-                disabled={!card?.editable}
+                disabled={!card?.editable || !canAssignOperator}
               >
                 <option value="">Select Machine</option>
                 {isAdmin ? (
@@ -631,7 +656,14 @@ export default function StageJobCardPage() {
               </Select>
             </FormField>
           </div>
-          <JobCardActions actions={card?.allowed_actions} loading={submitting} onAction={runAction} />
+          <JobCardActions
+            actions={card?.allowed_actions}
+            loading={submitting}
+            onAction={runAction}
+            labels={card?.workflow_status === "PRODUCTION_ASSIGNED"
+              ? { assign_operator: "Save Reassignment", send_to_operator: "Save Reassignment" }
+              : undefined}
+          />
         </article>
       );
     }
@@ -820,6 +852,7 @@ export default function StageJobCardPage() {
         productionDetailsEditable={stage === "store" && editableSections.length > 0}
         onSaveProductionDetails={handleSaveDetailsOnly}
         savingProductionDetails={savingDetails}
+        hasUnsavedProductionDetails={hasUnsavedDetailChanges}
         details={details}
         machines={detailMachines}
         operators={detailOperators}

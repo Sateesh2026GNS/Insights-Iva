@@ -872,9 +872,11 @@ export default function WorkOrders() {
     {
       key: "work_order_number",
       label: "Work Order",
+      width: "15rem",
+      minWidth: "15rem",
       render: (r) => (
         <div className="min-w-[7.5rem]">
-          <p className="text-[13px] font-semibold tabular-nums text-[var(--color-text)]">{r.work_order_number || "—"}</p>
+          <p className="whitespace-nowrap text-[13px] font-semibold tabular-nums text-[var(--color-text)]" title={r.work_order_number || "—"}>{r.work_order_number || "—"}</p>
           <p className="mt-0.5 truncate text-[11px] text-[var(--color-text-muted)]" title={r.production_order_number || undefined}>
             {r.production_order_number ? `PO ${r.production_order_number}` : "No production order"}
           </p>
@@ -893,6 +895,8 @@ export default function WorkOrders() {
     {
       key: "product_name",
       label: "Product",
+      width: "15rem",
+      minWidth: "15rem",
       render: (r) => {
         const product = cleanProductLabel(r.product_name);
         const machine =
@@ -915,12 +919,15 @@ export default function WorkOrders() {
     {
       key: "planned_quantity",
       label: "Qty",
+      align: "center",
+      width: "9rem",
+      minWidth: "9rem",
       render: (r) => {
         const planned = Number(r.planned_quantity || 0);
         const produced = Number(r.produced_quantity ?? r.actual_quantity ?? 0);
         const remaining = r.remaining_quantity ?? Math.max(planned - produced, 0);
         return (
-          <div className="tabular-nums">
+          <div className="whitespace-nowrap text-center tabular-nums">
             <p className="text-[13px] font-semibold text-[var(--color-text)]">{planned}</p>
             <p className="text-[11px] text-[var(--color-text-muted)]">
               {produced} done · {remaining} left
@@ -932,17 +939,23 @@ export default function WorkOrders() {
     {
       key: "priority",
       label: "Priority",
+      width: "8rem",
+      minWidth: "8rem",
       render: (r) => <PriorityPill priority={r.priority} />,
     },
     {
       key: "progress",
       label: "Progress",
       sortable: false,
+      width: "9rem",
+      minWidth: "9rem",
       render: (r) => <ProgressCell row={r} />,
     },
     {
       key: "status",
       label: "Status",
+      width: "9rem",
+      minWidth: "9rem",
       render: (r) => (
         <div className="flex flex-col items-start gap-1">
           <StatusBadge tone={woStatusTone(r)}>
@@ -957,6 +970,8 @@ export default function WorkOrders() {
     {
       key: "planned_end",
       label: "Due",
+      width: "7rem",
+      minWidth: "7rem",
       render: (r) => (
         <span className="whitespace-nowrap text-[12px] tabular-nums text-[var(--color-text-secondary)]">
           {formatDate(r.planned_end || r.planned_start)}
@@ -968,6 +983,8 @@ export default function WorkOrders() {
       label: "Actions",
       sortable: false,
       printHidden: true,
+      width: "7rem",
+      minWidth: "7rem",
       render: (r) => (
         <WoRowActions
           row={r}

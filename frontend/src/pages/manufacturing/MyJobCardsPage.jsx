@@ -48,6 +48,7 @@ import {
   myJobCardsManualViewUrl,
   myJobCardsViewUrl,
 } from "../../utils/jobCardRoutes";
+import { stageJobCardUrl } from "../../utils/workflowStageRoutes";
 import { resolveManualJobCardId, scrollToJobCardDocumentPanel } from "../../utils/manualSalesJobCard";
 import "../../styles/my-job-cards-page.css";
 import "../../styles/workflow-next-step.css";
@@ -169,6 +170,7 @@ export default function MyJobCardsPage() {
   const billingMode = effectiveTeam === "billing";
   const operatorMode = effectiveTeam === "operator" || (isOperator(user) && effectiveTeam === "production");
   const qualityMode = effectiveTeam === "quality";
+  const productionQueueMode = effectiveTeam === "production" && !operatorMode;
   const showStockFilter = storeMode;
   const storeKpiCounts = queueMeta?.counts || {};
   const storePendingCount = Number(storeKpiCounts.store_pending || 0);
@@ -473,6 +475,11 @@ export default function MyJobCardsPage() {
     (row) => {
       if (!row) return;
       const manualId = resolveManualJobCardId(row);
+      if (productionQueueMode) {
+        const orderId = row.sales_order_id ?? row.id;
+        if (orderId) navigate(stageJobCardUrl(orderId, row.workflow_status));
+        return;
+      }
       if (isSalesListMode) {
         if (manualId != null) {
           navigate(jobCardManualViewUrl(manualId));
@@ -508,7 +515,7 @@ export default function MyJobCardsPage() {
       );
       scrollToJobCardDocumentPanel({ storeMode });
     },
-    [isSalesListMode, navigate, setSearchParams, storeMode]
+    [isSalesListMode, navigate, productionQueueMode, setSearchParams, storeMode]
   );
 
   const handleEditRow = (row) => {
@@ -532,9 +539,10 @@ export default function MyJobCardsPage() {
       }
       const orderId = row?.sales_order_id ?? row?.id;
       if (!orderId) return null;
+      if (productionQueueMode) return stageJobCardUrl(orderId, row?.workflow_status);
       return isSalesListMode ? jobCardDetailsUrl(orderId) : myJobCardsViewUrl(orderId, searchParams);
     },
-    [isSalesListMode, searchParams]
+    [isSalesListMode, productionQueueMode, searchParams]
   );
 
   const manualDocumentView = Boolean(activeJobCardId) && !activeOrderId;

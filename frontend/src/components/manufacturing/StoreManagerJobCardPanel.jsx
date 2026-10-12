@@ -39,6 +39,7 @@ export default function StoreManagerJobCardPanel({
   summary = {},
   form = {},
   productCode = "",
+  productLines = [],
   onRefresh,
   refreshing = false,
 }) {
@@ -87,6 +88,13 @@ export default function StoreManagerJobCardPanel({
   };
 
   const priorityLabel = String(storeContext.priority || summary.priority || "medium").replace(/^./, (c) => c.toUpperCase());
+  const products = (Array.isArray(productLines) ? productLines : [])
+    .filter((line) => line?.product_name || line?.product_id)
+    .map((line) => ({
+      name: line.product_name || `Product #${line.product_id}`,
+      quantity: line.quantity,
+      unit: line.unit || line.uom || "Nos",
+    }));
 
   return (
     <div className="space-y-4">
@@ -123,14 +131,42 @@ export default function StoreManagerJobCardPanel({
 
       <article className="ui-card overflow-hidden">
         <div className="border-b border-[var(--color-border-soft)] px-4 py-3">
-          <h2 className="text-sm font-bold uppercase tracking-wide text-[var(--color-text-muted)]">Product</h2>
+          <h2 className="text-sm font-bold uppercase tracking-wide text-[var(--color-text-muted)]">
+            {products.length > 1 ? "Products" : "Product"}
+          </h2>
         </div>
-        <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4">
-          <DetailField label="Product" value={storeContext.product_name || form.product_name} />
-          <DetailField label="Product Code" value={storeContext.product_code || productCode} />
-          <DetailField label="Quantity" value={fmtQty(storeContext.quantity || summary.order_quantity, storeContext.unit)} />
-          <DetailField label="Unit" value={storeContext.unit || summary.uom || "Nos"} />
-        </div>
+        {products.length > 1 ? (
+          <div className="overflow-x-auto">
+            <table className="ui-table w-full text-left text-sm">
+              <thead className="ui-table-head">
+                <tr>
+                  <th className="px-4 py-2">Product</th>
+                  <th className="px-4 py-2 text-right">Quantity</th>
+                  <th className="px-4 py-2">Unit</th>
+                </tr>
+              </thead>
+              <tbody>
+                {products.map((product, index) => (
+                  <tr key={`${product.name}-${index}`}>
+                    <td className="px-4 py-3">{product.name}</td>
+                    <td className="px-4 py-3 text-right tabular-nums">{fmtQty(product.quantity)}</td>
+                    <td className="px-4 py-3">{product.unit}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4">
+            <DetailField label="Product" value={products[0]?.name || storeContext.product_name || form.product_name} />
+            <DetailField label="Product Code" value={storeContext.product_code || productCode} />
+            <DetailField
+              label="Quantity"
+              value={fmtQty(products[0]?.quantity ?? storeContext.quantity ?? summary.order_quantity)}
+            />
+            <DetailField label="Unit" value={products[0]?.unit || storeContext.unit || summary.uom || "Nos"} />
+          </div>
+        )}
       </article>
 
       <article className="ui-card overflow-hidden">

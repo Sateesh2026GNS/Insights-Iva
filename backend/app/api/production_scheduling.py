@@ -152,6 +152,7 @@ def get_enhanced_timeline(
         if work_order.machine_id not in wo_by_machine:
             wo_by_machine[work_order.machine_id] = (work_order, prod_order, product)
 
+    rows = []
     for m in machines:
         wo = wo_by_machine.get(m.id)
         if wo:

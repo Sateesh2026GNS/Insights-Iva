@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 import { getTeamDirectory } from "../api/adminApi";
 import { getMachines } from "../api/productionApi";
@@ -52,6 +52,7 @@ export function useJobCardDetails(orderId, tenantId) {
   const [form, setForm] = useState(null);
   const [details, setDetails] = useState(() => emptyProductionDetails());
   const [dirtyDetailSections, setDirtyDetailSections] = useState(() => new Set());
+  const savedDetailsRef = useRef(serializeDetailsForApi(emptyProductionDetails()));
   const [salesOrder, setSalesOrder] = useState(null);
   const [customer, setCustomer] = useState(null);
   const [productLines, setProductLines] = useState([]);
@@ -86,7 +87,9 @@ export function useJobCardDetails(orderId, tenantId) {
         const data = cardRes?.data ?? cardRes;
         setCard(data);
         setForm({ ...(data?.form || {}), notes: data?.form?.notes || "" });
-        setDetails(mergeProductionDetails(null, data?.details || data?.form?.details || {}));
+        const loadedDetails = mergeProductionDetails(null, data?.details || data?.form?.details || {});
+        setDetails(loadedDetails);
+        savedDetailsRef.current = serializeDetailsForApi(loadedDetails);
         setDirtyDetailSections(new Set());
 
         const soData = soRes?.data ?? soRes;
@@ -99,7 +102,9 @@ export function useJobCardDetails(orderId, tenantId) {
       } else {
         setCard(null);
         setForm(null);
-        setDetails(emptyProductionDetails());
+        const emptyDetails = emptyProductionDetails();
+        setDetails(emptyDetails);
+        savedDetailsRef.current = serializeDetailsForApi(emptyDetails);
         setDirtyDetailSections(new Set());
         setSalesOrder(null);
         setCustomer(null);
@@ -212,7 +217,9 @@ export function useJobCardDetails(orderId, tenantId) {
   const applySavedCard = (data) => {
     setCard(data);
     setForm({ ...(data?.form || {}), notes: data?.form?.notes || "" });
-    setDetails(mergeProductionDetails(null, data?.details || data?.form?.details || {}));
+    const savedDetails = mergeProductionDetails(null, data?.details || data?.form?.details || {});
+    setDetails(savedDetails);
+    savedDetailsRef.current = serializeDetailsForApi(savedDetails);
     setDirtyDetailSections(new Set());
   };
 
@@ -224,8 +231,12 @@ export function useJobCardDetails(orderId, tenantId) {
       output: "quality",
       approval: "sales",
     };
-    const dirtySections = [...dirtyDetailSections];
+    const serialized = serializeDetailsForApi(details);
+    const dirtySections = [...dirtyDetailSections].filter(
+      (section) => JSON.stringify(serialized[section]) !== JSON.stringify(savedDetailsRef.current[section])
+    );
     if (!dirtySections.length) {
+      setDirtyDetailSections(new Set());
       addToast("No production job card changes to save.", "info");
       return false;
     }
@@ -249,7 +260,6 @@ export function useJobCardDetails(orderId, tenantId) {
 
     setSaving(true);
     try {
-      const serialized = serializeDetailsForApi(details);
       const detailsPatch = Object.fromEntries(
         dirtySections.map((section) => [section, serialized[section]])
       );
@@ -350,6 +360,11 @@ export function useJobCardDetails(orderId, tenantId) {
   const editableSections = card?.editable_sections || [];
   const canEditDetails = editableSections.length > 0;
 
+  const serializedDetails = serializeDetailsForApi(details);
+  const hasUnsavedDetailChanges = [...dirtyDetailSections].some(
+    (section) => JSON.stringify(serializedDetails[section]) !== JSON.stringify(savedDetailsRef.current[section])
+  );
+
   return {
     loading,
     saving,
@@ -368,6 +383,7 @@ export function useJobCardDetails(orderId, tenantId) {
     isCreated,
     editableSections,
     canEditDetails,
+    hasUnsavedDetailChanges,
     load,
     patchField,
     patchDetailsSection,

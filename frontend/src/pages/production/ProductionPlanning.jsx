@@ -24,6 +24,7 @@ import {
   Target,
   Trash2,
   Upload,
+  UserRoundPlus,
   X,
 } from "lucide-react";
 
@@ -80,8 +81,7 @@ import {
 import { exportToExcel, exportToPdf } from "../../utils/exportUtils";
 import { cleanProductLabel } from "../../utils/productLabel";
 import QuickWorkOrderModal from "../../components/production/QuickWorkOrderModal";
-import IssueMaterialsModal from "../../components/production/IssueMaterialsModal";
-import { jobCardDetailsUrl } from "../../utils/jobCardRoutes";
+import { stageJobCardUrl } from "../../utils/workflowStageRoutes";
 
 const PLANNING_EXPORT_COLUMNS = [
   { key: "order_number", label: "Order Number" },
@@ -157,6 +157,7 @@ function OrderActions({
   onStart,
   onPause,
   onWorkOrder,
+  onAssignOperator,
   onDelete,
   canEdit,
   canDelete = true,
@@ -178,6 +179,13 @@ function OrderActions({
           label: "Edit",
           icon: <Pencil className="h-3.5 w-3.5 text-blue-600" />,
           onClick: () => onEdit(row),
+        }
+      : null,
+    canEdit && row.sales_order_id && ["planned", "machine_assigned"].includes(String(row.status || "").toLowerCase())
+      ? {
+          label: "Assign Operator",
+          icon: <UserRoundPlus className="h-3.5 w-3.5 text-blue-600" />,
+          onClick: () => onAssignOperator(row),
         }
       : null,
     canStart(row.status)
@@ -431,7 +439,6 @@ export default function ProductionPlanning() {
   const [createOrderModalOpen, setCreateOrderModalOpen] = useState(false);
   const [editModalOrder, setEditModalOrder] = useState(null);
   const [quickWoOrder, setQuickWoOrder] = useState(null);
-  const [issueModalOrder, setIssueModalOrder] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
@@ -820,13 +827,40 @@ export default function ProductionPlanning() {
       }
     }
     if (salesOrderId) {
-      navigate(jobCardDetailsUrl(salesOrderId), {
+      // Production Planning's "View job card" should open the active production
+      // stage directly instead of stopping at the read-only Sales Job Card.
+      navigate(stageJobCardUrl(salesOrderId, "READY_FOR_PRODUCTION"), {
         state: { from: "/production/planning", productionOrderId: order.id },
       });
       return;
     }
     addToast("No linked sales order found for this production order.", "warning");
     openOrder(order);
+  };
+
+  const assignOperator = async (order) => {
+    let salesOrderId = order?.sales_order_id;
+    if (!salesOrderId && typeof order?.id === "number") {
+      try {
+        const res = await getProductionOrderDetail(order.id);
+        salesOrderId = enrichApiOrder(res.data)?.sales_order_id;
+      } catch {
+        /* show a useful warning below */
+      }
+    }
+    if (!salesOrderId) {
+      addToast("This production order is not linked to a sales job card, so operator assignment is unavailable here.", "warning");
+      return;
+    }
+    const target = stageJobCardUrl(salesOrderId, "READY_FOR_PRODUCTION");
+    const separator = target.includes("?") ? "&" : "?";
+    navigate(`${target}${separator}production_order_id=${encodeURIComponent(order.id)}`, {
+      state: {
+        from: "/production/planning",
+        productionOrderId: order.id,
+        focusStageAction: true,
+      },
+    });
   };
 
   const handlePriorityChange = async (orderId, newPriority) => {
@@ -1191,6 +1225,7 @@ export default function ProductionPlanning() {
           canEdit={!isOperator(user)}
           canDelete={!isOperator(user)}
           onView={viewJobCard}
+          onAssignOperator={assignOperator}
           onEdit={(order) => {
             setEditModalOrder(order);
             setCreateOrderModalOpen(true);
@@ -1198,7 +1233,7 @@ export default function ProductionPlanning() {
           onPrint={handleIndividualPrint}
           onStart={handleStartClick}
           onPause={handlePause}
-          onWorkOrder={(order) => setIssueModalOrder(order)}
+          onWorkOrder={(order) => setQuickWoOrder(order)}
           onDelete={(order) => setDeleteTarget(order)}
         />
       ),
@@ -1727,15 +1762,6 @@ export default function ProductionPlanning() {
         <QuickWorkOrderModal
           order={quickWoOrder}
           onClose={() => setQuickWoOrder(null)}
-          onSuccess={() => load()}
-          addToast={addToast}
-        />
-      )}
-
-      {issueModalOrder && (
-        <IssueMaterialsModal
-          workOrder={issueModalOrder}
-          onClose={() => setIssueModalOrder(null)}
           onSuccess={() => load()}
           addToast={addToast}
         />

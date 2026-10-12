@@ -66,12 +66,14 @@ def _page_meta(total: int, page: int, page_size: int) -> dict:
         page = total_pages
     return {"page": page, "page_size": page_size, "total": total, "total_pages": total_pages}
 
-# Job card workflow stages (Production Manager summary)
-JC_PENDING_STAGES = (
-    "SAVED",
-    "RETURNED_TO_SALES",
+# Keep the Production Manager dashboard's pending KPI aligned with the
+# Production team's actionable queue. Saved/returned cards still need Sales
+# attention, while PRODUCTION_ASSIGNED cards belong in the operator queue.
+JC_PRODUCTION_QUEUE_STAGES = (
+    "BOM_PENDING",
     "READY_FOR_PRODUCTION",
-    "PRODUCTION_ASSIGNED",
+    "PRODUCTION_REWORK",
+    "QUALITY_REJECTED",
 )
 JC_IN_PROGRESS_STAGES = ("PRODUCTION_IN_PROGRESS", "PRODUCTION_REWORK")
 JC_QC_PENDING_STAGES = ("QUALITY_CHECK_PENDING", "QUALITY_ON_HOLD", "PRODUCTION_COMPLETED")
@@ -173,16 +175,18 @@ def list_pipeline_work_orders(
 
 def get_production_manager_summary(db: Session, tenant_id: int, today: date) -> dict[str, int | float]:
     """Operational KPIs for the Production Manager dashboard."""
-    jc_base = SalesJobCard.tenant_id == tenant_id
-
-    job_cards_pending = _count_job_cards(
-        db,
-        tenant_id,
-        or_(
-            SalesJobCard.workflow_stage.in_(JC_PENDING_STAGES),
-            SalesJobCard.workflow_stage.is_(None),
-            SalesJobCard.workflow_stage == "",
-        ),
+    # The manager's queue is sourced from SalesOrder.workflow_status. Counting
+    # SalesJobCard.workflow_stage here included stale/non-production stages,
+    # making the dashboard count larger than the queue. Count the same
+    # production-actionable order statuses instead (one order per job card).
+    job_cards_pending = int(
+        db.scalar(
+            select(func.count(SalesOrder.id)).where(
+                SalesOrder.tenant_id == tenant_id,
+                SalesOrder.workflow_status.in_(JC_PRODUCTION_QUEUE_STAGES),
+            )
+        )
+        or 0
     )
     job_cards_in_progress = _count_job_cards(
         db,
