@@ -422,11 +422,7 @@ export default function ProductsMaster() {
             <SearchBar
               value={query}
               onChange={setQuery}
-              placeholder={
-                selectedCategoryName
-                  ? `Search in ${selectedCategoryName}...`
-                  : "Select a category to search products..."
-              }
+              placeholder="Search"
               aria-label="Search products"
               disabled={!selectedCategoryName}
             />
