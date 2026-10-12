@@ -24,6 +24,7 @@ import {
 } from "../../utils/partyFormValidation";
 import { validateGstinField } from "../../utils/gstin";
 import { customerRecordFromApiResponse } from "../../utils/partySavedCustomer";
+import { invalidateReferenceCache } from "../../utils/referenceDataCache";
 import { inputClass } from "../../design-system/classes";
 
 const PANEL_CLASS =
@@ -218,7 +219,7 @@ function AddressModal({ open, onClose, initial, onSave }) {
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[120] flex items-center justify-center bg-black/40 p-4"
+      className="fixed inset-0 z-[160] flex items-center justify-center bg-black/40 p-4"
       onMouseDown={(e) => e.target === e.currentTarget && onClose?.()}
       role="presentation"
     >
@@ -520,6 +521,7 @@ export default function AddNewPartyModal({
       }
       if (!email) {
         addToast("Add email in Basic Details for vendors", "error");
+        setBasicOpen(true);
         return;
       }
     }
@@ -572,6 +574,7 @@ export default function AddNewPartyModal({
           response = await createMastersVendor(vendorPayload);
           addToast("Vendor added successfully");
         }
+        invalidateReferenceCache("vendors");
         onSaved?.(response?.data || vendorPayload, { isEdit, vendor: party });
         onClose?.();
         return;
@@ -617,6 +620,7 @@ export default function AddNewPartyModal({
         response = await createCustomer(payload);
         addToast("Buyer added successfully");
       }
+      invalidateReferenceCache("customers");
       const saved = customerRecordFromApiResponse(response?.data, form, address, basicDetails);
       if (!saved?.id) {
         addToast(
@@ -653,7 +657,7 @@ export default function AddNewPartyModal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[110] flex items-center justify-end bg-black/40"
+      className="fixed inset-0 z-[150] flex items-center justify-end bg-black/40"
       role="presentation"
       onMouseDown={(e) => e.target === e.currentTarget && onClose?.()}
     >

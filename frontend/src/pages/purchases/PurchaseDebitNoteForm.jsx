@@ -7,6 +7,7 @@ import { SearchBar } from "../../components/common/SearchFilter";
 import ShorthandQuantityInput from "../../components/common/ShorthandQuantityInput";
 import AddCustomFieldModal from "../../components/sales/AddCustomFieldModal";
 import AddNewItemModal from "../../components/sales/AddNewItemModal";
+import AddNewPartyModal from "../../components/sales/AddNewPartyModal";
 import AddOtherChargesModal, {
   computeOtherChargeTotal,
 } from "../../components/sales/AddOtherChargesModal";
@@ -230,6 +231,7 @@ export default function PurchaseDebitNoteForm() {
   const { addToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [vendors, setVendors] = useState([]);
+  const [addSellerOpen, setAddSellerOpen] = useState(false);
   const [company, setCompany] = useState(null);
   const [vendorSearch, setVendorSearch] = useState("");
   const [showSellerPicker, setShowSellerPicker] = useState(false);
@@ -714,7 +716,7 @@ export default function PurchaseDebitNoteForm() {
             </button>
             <button
               type="button"
-              onClick={() => navigate("/procurement/vendors/create")}
+              onClick={() => setAddSellerOpen(true)}
               className="inline-flex items-center gap-1 rounded-lg border border-[#6b4eff] bg-white px-3 py-1.5 text-[13px] font-semibold text-[#6b4eff]"
             >
               <Plus className="h-3.5 w-3.5" />
@@ -739,7 +741,7 @@ export default function PurchaseDebitNoteForm() {
                       No sellers found.{" "}
                       <button
                         type="button"
-                        onClick={() => navigate("/procurement/vendors/create")}
+                        onClick={() => setAddSellerOpen(true)}
                         className="font-medium"
                         style={{ color: ERP_PRIMARY }}
                       >
@@ -1568,6 +1570,21 @@ export default function PurchaseDebitNoteForm() {
         onClose={() => setNoteModalOpen(false)}
         initial={notesText}
         onSave={(text) => setNotesText(text)}
+      />
+      <AddNewPartyModal
+        open={addSellerOpen}
+        variant="vendor"
+        onClose={() => setAddSellerOpen(false)}
+        onSaved={(party) => {
+          if (!party) return;
+          const vendor = {
+            ...party,
+            name: party.name || party.vendor_name || "Unnamed seller",
+          };
+          setVendors((rows) => [vendor, ...rows.filter((row) => row.id !== vendor.id)]);
+          handleVendorChange(vendor.id);
+          setShowSellerPicker(false);
+        }}
       />
     </form>
   );
