@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ClipboardCheck, Download, Eye, PackageCheck, Pencil, Printer, Send, Trash2 } from "lucide-react";
 
@@ -257,7 +257,6 @@ function QueueRowCard({
     storeMode,
     user,
   });
-  const rowCanSend = Boolean(onSend) && canSend && manualJobCardCanSend(row);
 
   return (
     <article
@@ -303,11 +302,6 @@ function QueueRowCard({
       <div className="mt-3 flex items-center justify-between gap-2">
         <PriorityBadge priority={row.priority || "medium"} showDot={false} />
         <div className="inline-flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-          {rowCanSend && onSend ? (
-            <Button variant="primary" size="sm" onClick={() => onSend(row)}>
-              Send
-            </Button>
-          ) : null}
           {onViewDetails ? (
             <Button
               variant={actionVariantForRow(row)}
@@ -361,8 +355,15 @@ export default function JobCardQueueTable({
   const { user } = useAuth();
   const navigate = useNavigate();
   const [openMenu, setOpenMenu] = useState(null);
+  const erpTableWrapRef = useRef(null);
   const location = useLocation();
   const linkState = { from: location.pathname };
+  useEffect(() => {
+    if (erpLayout && erpTableWrapRef.current) {
+      erpTableWrapRef.current.scrollLeft = 0;
+    }
+  }, [erpLayout, selectedOrderId]);
+
   const onIssueMaterials = (row) => {
     const url = storeActionUrl(row, "issue_materials");
     if (url) navigate(url);
@@ -386,7 +387,10 @@ export default function JobCardQueueTable({
   if (erpLayout) {
     return (
       <>
-        <div className="my-job-cards-table ui-table-wrap ui-table-wrap--scroll hidden md:block">
+        <div
+          ref={erpTableWrapRef}
+          className="my-job-cards-table ui-table-wrap ui-table-wrap--scroll hidden md:block"
+        >
           <table className="ui-table min-w-full text-left">
             <thead className="ui-table-head">
               <tr>
@@ -428,8 +432,6 @@ export default function JobCardQueueTable({
                   storeMode,
                   user,
                 });
-                const rowCanSend = Boolean(onSend) && canSend && manualJobCardCanSend(row);
-
                 return (
                   <tr
                     key={rowKey}
@@ -443,7 +445,13 @@ export default function JobCardQueueTable({
                       {jobCardLinkForRow && row.job_card_no ? (
                         <Link
                           to={jobCardLinkForRow(row)}
-                          onClick={(e) => e.stopPropagation()}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (onViewDetails) {
+                              e.preventDefault();
+                              onViewDetails(row);
+                            }
+                          }}
                           className="text-[var(--color-primary)] underline-offset-2 hover:underline"
                         >
                           {row.job_card_no}
@@ -499,11 +507,6 @@ export default function JobCardQueueTable({
                     </td>
                     <td className="my-job-cards-table__actions-col px-2 py-2.5" onClick={(e) => e.stopPropagation()}>
                       <div className="my-job-cards-table__actions-wrap">
-                        {rowCanSend && onSend ? (
-                          <Button variant="primary" size="sm" onClick={() => onSend(row)}>
-                            Send
-                          </Button>
-                        ) : null}
                         <RowActionMenu rowId={String(rowKey)} openMenu={openMenu} setOpenMenu={setOpenMenu} items={menuItems} />
                       </div>
                     </td>

@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
+import { Plus } from "lucide-react";
 
 import SearchableSelect from "../common/SearchableSelect";
+import AddNewPartyModal from "../sales/AddNewPartyModal";
 import { getVendors } from "../../api/procurementApi";
+import { invalidateReferenceCache } from "../../utils/referenceDataCache";
 import { inputClass } from "../../design-system/classes";
 import { computeLandedCost } from "../../utils/materialPricingFormCalc";
 
@@ -86,20 +89,32 @@ export function validateVendorPricingForm(pricing) {
 
 export default function ProductVendorPricingFields({ pricing, onChange, disabled }) {
   const [vendorOptions, setVendorOptions] = useState([]);
+  const [addVendorOpen, setAddVendorOpen] = useState(false);
+
+  const loadVendors = async (autoSelectId = null) => {
+    try {
+      invalidateReferenceCache("vendors");
+      const res = await getVendors({ force: true });
+      const items = res.data?.items || res.data || [];
+      const list = Array.isArray(items) ? items : [];
+      setVendorOptions(
+        list.map((v) => ({
+          value: String(v.id),
+          label: v.vendor_code ? `${v.name} (${v.vendor_code})` : v.name || `Vendor ${v.id}`,
+        }))
+      );
+      if (autoSelectId != null) {
+        set("supplier_id", String(autoSelectId));
+      }
+      return list;
+    } catch {
+      setVendorOptions([]);
+      return [];
+    }
+  };
 
   useEffect(() => {
-    getVendors()
-      .then((res) => {
-        const items = res.data?.items || res.data || [];
-        const list = Array.isArray(items) ? items : [];
-        setVendorOptions(
-          list.map((v) => ({
-            value: String(v.id),
-            label: v.vendor_code ? `${v.name} (${v.vendor_code})` : v.name || `Vendor ${v.id}`,
-          }))
-        );
-      })
-      .catch(() => setVendorOptions([]));
+    loadVendors();
   }, []);
 
   const landed = useMemo(
@@ -131,11 +146,37 @@ export default function ProductVendorPricingFields({ pricing, onChange, disabled
           <PricingField label="Vendor">
             <SearchableSelect
               value={pricing.supplier_id}
-              onChange={(v) => set("supplier_id", v)}
+              onChange={(v) => {
+                if (v === "__create_vendor") {
+                  setAddVendorOpen(true);
+                } else {
+                  set("supplier_id", v);
+                }
+              }}
               options={vendorOptions}
+              footerOptions={[{ value: "__create_vendor", label: "+ Add Vendor" }]}
+              onFooterPick={() => setAddVendorOpen(true)}
               placeholder="Select vendor"
               disabled={disabled}
-              emptyListMessage="No vendors found. Add vendors under Purchases."
+              emptyListMessage={
+                <div className="flex flex-col items-center justify-center gap-2 py-1 text-center">
+                  <span className="text-xs font-medium text-[var(--color-text-muted)]">
+                    No vendors found. Add vendors under Purchases.
+                  </span>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setAddVendorOpen(true);
+                    }}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--color-primary)] px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:opacity-90 active:scale-[0.98]"
+                  >
+                    <Plus className="h-3.5 w-3.5" aria-hidden />
+                    Create Vendor
+                  </button>
+                </div>
+              }
             />
           </PricingField>
           <div className="hidden sm:block" aria-hidden />
@@ -207,6 +248,19 @@ export default function ProductVendorPricingFields({ pricing, onChange, disabled
           </PricingField>
         </div>
       </div>
+
+      {addVendorOpen ? (
+        <AddNewPartyModal
+          open={addVendorOpen}
+          variant="vendor"
+          onClose={() => setAddVendorOpen(false)}
+          onSaved={async (savedVendor) => {
+            setAddVendorOpen(false);
+            const savedId = savedVendor?.id || savedVendor?.data?.id;
+            await loadVendors(savedId);
+          }}
+        />
+      ) : null}
     </div>
   );
 }

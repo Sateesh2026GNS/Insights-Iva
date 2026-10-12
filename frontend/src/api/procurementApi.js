@@ -15,10 +15,11 @@ export const updatePurchaseOrderStatus = (poId, status) =>
   api.patch(`/procurement/purchase-orders/${poId}/status`, null, { params: { status } });
 
 export const getVendors = (params = {}) => {
-  const filtered = params && Object.keys(params).length > 0;
-  if (filtered) return api.get("/procurement/vendors", { params });
+  const { force, ...restParams } = params || {};
+  const filtered = restParams && Object.keys(restParams).length > 0;
+  if (filtered) return api.get("/procurement/vendors", { params: restParams });
   return getCachedReference("vendors", () => api.get("/procurement/vendors"), {
-    force: params.force === true,
+    force: force === true,
   });
 };
 export const getVendorSummary = () => api.get("/procurement/vendors/summary");

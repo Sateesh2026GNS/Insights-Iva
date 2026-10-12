@@ -6,6 +6,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ClipboardList,
+  Download,
   Edit2,
   Eye,
   Filter,
@@ -23,8 +24,10 @@ import { SearchBar } from "../../components/common/SearchFilter";
 import RowActionMenu from "../../components/common/RowActionMenu";
 import PODetailModal from "../../components/procurement/PODetailModal";
 import { useToast } from "../../context/ToastContext";
+import { filterPurchaseOrdersByStatus } from "../../data/procurementMasterData";
 import {
   deletePurchaseOrder,
+  downloadPurchaseOrderPdf,
   getPurchaseOrdersEnriched,
   updatePurchaseOrderStatus,
 } from "../../api/procurementApi";
@@ -102,17 +105,17 @@ function SummaryTab({ label, count, amount, active, onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className={`min-w-0 flex-1 border-b-[3px] px-2.5 sm:px-5 py-2 sm:py-3.5 text-left transition duration-150 cursor-pointer ${
+      className={`min-w-0 flex-1 border-b-[3px] px-2 sm:px-4 py-2 sm:py-3.5 text-left transition duration-150 cursor-pointer ${
         active
           ? "border-[var(--color-primary)] bg-[var(--color-surface)] text-[var(--color-primary)]"
           : "border-transparent bg-transparent text-[var(--color-text-muted)] hover:bg-[var(--color-surface)]/80 hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
       }`}
     >
-      <p className={`text-[11px] sm:text-[13px] font-medium truncate transition-colors ${active ? "text-[var(--color-primary)]" : "text-[var(--color-text-muted)]"}`}>
+      <p className={`text-[11px] sm:text-[13px] font-medium whitespace-nowrap transition-colors ${active ? "text-[var(--color-primary)]" : "text-[var(--color-text-muted)]"}`}>
         {label}{" "}
         <span className={active ? "opacity-70" : "text-[var(--color-text-muted)]"}>({count})</span>
       </p>
-      <p className={`mt-0.5 sm:mt-1 text-[13px] sm:text-[18px] font-bold tabular-nums truncate transition-colors ${active ? "text-[var(--color-primary)]" : "text-[var(--color-text)]"}`}>
+      <p className={`mt-0.5 sm:mt-1 text-xs sm:text-[15px] lg:text-[17px] font-bold tabular-nums whitespace-nowrap transition-colors ${active ? "text-[var(--color-primary)]" : "text-[var(--color-text)]"}`}>
         {amount}
       </p>
     </button>
@@ -185,7 +188,7 @@ export default function PurchaseOrders() {
       await updatePurchaseOrderStatus(po.id, status);
       addToast(`PO marked as ${status}`, "success");
       setSelected(null);
-      load(true);
+      await load(true);
     } catch (err) {
       addToast(apiErrorMessage(err, "Update failed"), "error");
     }
@@ -197,10 +200,11 @@ export default function PurchaseOrders() {
 
   const tabStats = useMemo(() => {
     const sum = (arr) => arr.reduce((s, r) => s + (Number(r.total_amount) || 0), 0);
+    const active = filterPurchaseOrdersByStatus(rows);
     const pending = rows.filter(isPendingPurchase);
     const purchased = rows.filter(isPurchased);
     return {
-      all: { count: rows.length, amount: sum(rows) },
+      all: { count: active.length, amount: sum(active) },
       pending: { count: pending.length, amount: sum(pending) },
       purchased: { count: purchased.length, amount: sum(purchased) },
     };
@@ -208,7 +212,7 @@ export default function PurchaseOrders() {
 
   const filteredSorted = useMemo(() => {
     const q = search.trim().toLowerCase();
-    let list = rows.filter((r) => {
+    let list = filterPurchaseOrdersByStatus(rows, filters.status).filter((r) => {
       if (kpiFilter === "pending" && !isPendingPurchase(r)) return false;
       if (kpiFilter === "purchased" && !isPurchased(r)) return false;
 
@@ -221,7 +225,6 @@ export default function PurchaseOrders() {
         if (!hay.includes(q)) return false;
       }
 
-      if (filters.status && String(r.status).toLowerCase() !== filters.status) return false;
       if (filters.vendor) {
         const vendor = (r.vendor_name || "").toLowerCase();
         if (!vendor.includes(filters.vendor.toLowerCase())) return false;
@@ -246,12 +249,42 @@ export default function PurchaseOrders() {
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const pageRows = filteredSorted.slice((page - 1) * pageSize, page * pageSize);
 
-  const exportColumns = [
-    { key: "po_number", label: "PO No." },
-    { key: "order_date", label: "Date" },
-    { key: "vendor_name", label: "Seller Name" },
-    { key: "total_amount", label: "PO Amount" },
-  ];
+  const handleDownloadPoPdf = async (po) => {
+    if (!po?.id) return;
+    try {
+      const res = await downloadPurchaseOrderPdf(po.id);
+      const blob = new Blob([res.data], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${po.po_number || `PO-${po.id}`}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+      addToast("Purchase order PDF downloaded.", "success");
+    } catch (err) {
+      addToast(apiErrorMessage(err, "Could not download purchase order PDF."), "error");
+    }
+  };
+
+  const exportColumns = useMemo(
+    () => [
+      { key: "po_number", label: "PO No." },
+      {
+        key: "order_date",
+        label: "Date",
+        render: (r) => fmtDate(r.order_date),
+        pdfValue: (r) => fmtDate(r.order_date),
+      },
+      { key: "vendor_name", label: "Seller Name" },
+      {
+        key: "total_amount",
+        label: "PO Amount",
+        render: (r) => (r.total_amount != null ? formatInr(r.total_amount) : "—"),
+        pdfValue: (r) => (r.total_amount != null ? formatInr(r.total_amount) : "—"),
+      },
+    ],
+    []
+  );
 
   const handleExport = (format) => {
     runListExport(format, {
@@ -276,7 +309,7 @@ export default function PurchaseOrders() {
   return (
     <ListPageShell className="space-y-4">
       <div className="overflow-hidden rounded-xl border border-[var(--color-table-border)] bg-[var(--color-primary-soft)]">
-        <div className="flex flex-col lg:flex-row lg:items-stretch">
+        <div className="flex flex-col xl:flex-row xl:items-stretch justify-between">
           <div className="grid grid-cols-3 min-w-0 flex-1 divide-x divide-[var(--color-table-border)]">
             <SummaryTab
               label="All"
@@ -300,7 +333,7 @@ export default function PurchaseOrders() {
               onClick={() => setKpiFilter("purchased")}
             />
           </div>
-          <div className="flex flex-wrap items-center gap-2 border-t border-[var(--color-border)] px-3 sm:px-4 py-2.5 sm:py-3 lg:border-l lg:border-t-0">
+          <div className="flex flex-wrap items-center gap-2 border-t border-[var(--color-border)] px-3 sm:px-4 py-2.5 sm:py-3 xl:border-l xl:border-t-0 shrink-0">
             <div className="inline-flex items-center gap-1.5 sm:gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-[13px] text-[var(--color-text-secondary)]">
               <button
                 type="button"
@@ -474,6 +507,11 @@ export default function PurchaseOrders() {
                               label: "Edit",
                               icon: <Edit2 className="h-4 w-4" />,
                               onClick: () => navigate(`/procurement/purchase-orders/${r.id}/edit`),
+                            },
+                            {
+                              label: "Download PDF",
+                              icon: <Download className="h-4 w-4" />,
+                              onClick: () => handleDownloadPoPdf(r),
                             },
                             ...( ["approved", "partially_received", "received"].includes(String(r.status || "").toLowerCase()) &&
                               (r.line_items || []).some((line) => Number(line.remaining_quantity ?? line.quantity ?? 0) > 0.000001)

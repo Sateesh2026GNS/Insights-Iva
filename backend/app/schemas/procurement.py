@@ -72,6 +72,7 @@ class PurchaseOrderSupplierRead(BaseModel):
     gstin: str | None = None
     address: str | None = None
     state: str | None = None
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PurchaseOrderRead(PurchaseOrderBase):
@@ -88,7 +89,8 @@ class MaterialRequestConvertToPORequest(BaseModel):
     supplier_id: int = Field(..., ge=1)
     expected_date: date | None = None
     notes: str | None = None
-    unit_price: float | None = Field(0.0, ge=0.0)
+    unit_price: float | None = Field(None, ge=0.0)
+    line_item_prices: dict[int, float] | None = None
     po_number: str | None = None
     status: str = "draft"
 
@@ -113,6 +115,7 @@ class MaterialRequestLineRead(MaterialRequestLineBase):
     item_name: str | None = None
     item_sku: str | None = None
     item_unit: str | None = None
+    item_unit_cost: float | None = None
     model_config = ConfigDict(from_attributes=True)
 
 
