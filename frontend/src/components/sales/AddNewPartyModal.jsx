@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { createPortal } from "react-dom";
-import { Check, Loader2, MoreVertical, Pencil, Plus, Trash2, X } from "lucide-react";
+import { Check, Loader2, Pencil, Plus, Trash2, X } from "lucide-react";
 
 import AddBasicDetailsModal from "./AddBasicDetailsModal";
 import AddCustomFieldModal from "./AddCustomFieldModal";
@@ -463,15 +463,18 @@ export default function AddNewPartyModal({
       return;
     }
     let phoneVal = form.phone ? form.phone.trim() : "";
-    if (phoneVal) {
-      const phoneCheck = validateIndianMobile(phoneVal, t, { required: false });
-      if (!phoneCheck.ok) {
-        setFieldErrors((prev) => ({ ...prev, phone: phoneCheck.message }));
-        addToast(phoneCheck.message || "Enter valid inputs", "error");
-        return;
-      }
-      phoneVal = phoneCheck.value || phoneVal;
+    if (!phoneVal) {
+      setFieldErrors((prev) => ({ ...prev, phone: "Mobile No. is required" }));
+      addToast("Mobile No. is required", "error");
+      return;
     }
+    const phoneCheck = validateIndianMobile(phoneVal, t, { required: true });
+    if (!phoneCheck.ok) {
+      setFieldErrors((prev) => ({ ...prev, phone: phoneCheck.message }));
+      addToast(phoneCheck.message || "Enter valid inputs", "error");
+      return;
+    }
+    phoneVal = phoneCheck.value || phoneVal;
     let normalizedGstin = null;
     if (form.gstin && form.gstin.trim()) {
       const gstinCheck = validateGstinField(form.gstin);
@@ -655,6 +658,7 @@ export default function AddNewPartyModal({
       onMouseDown={(e) => e.target === e.currentTarget && onClose?.()}
     >
       <form
+        noValidate
         onSubmit={onSubmit}
         className={PANEL_CLASS}
         onMouseDown={(e) => e.stopPropagation()}
@@ -717,7 +721,7 @@ export default function AddNewPartyModal({
                   <p className="mt-1 text-[11px] font-medium text-[#e11d48]" role="alert">{fieldErrors.name}</p>
                 ) : null}
               </SoftField>
-              <SoftField label="Mobile No.">
+              <SoftField label="Mobile No." required>
                 <input
                   value={form.phone}
                   onChange={(e) => {
@@ -728,6 +732,7 @@ export default function AddNewPartyModal({
                     if (fieldErrors.phone) setFieldErrors((prev) => ({ ...prev, phone: "" }));
                   }}
                   placeholder="Enter Mobile No."
+                  required
                   className={`${inputClass}${fieldErrors.phone ? " border-[#e11d48]" : ""}`}
                   aria-invalid={Boolean(fieldErrors.phone)}
                 />
@@ -743,11 +748,8 @@ export default function AddNewPartyModal({
                 <div className="flex items-start justify-between gap-3">
                   <p className="text-[13px] text-[#4a4a55]">{addressText}</p>
                   <div className="flex items-center gap-3 text-[#1a1a1f]">
-                    <button type="button" onClick={() => setAddressOpen(true)}>
+                    <button type="button" onClick={() => setAddressOpen(true)} aria-label="Edit billing address">
                       <Pencil className="h-4 w-4 text-[var(--color-action-teal)]" />
-                    </button>
-                    <button type="button">
-                      <MoreVertical className="h-4 w-4" />
                     </button>
                   </div>
                 </div>
@@ -866,7 +868,7 @@ export default function AddNewPartyModal({
             Cancel
           </Button>
           <Button
-            type="button"
+            type="submit"
             variant="primary"
             loading={saving}
             disabled={saving}
