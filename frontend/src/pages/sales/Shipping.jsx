@@ -339,7 +339,7 @@ export default function Shipping() {
                 setPage(1);
               }
             }}
-            placeholder="Search Shipment #, Sales Order, Customer…"
+            placeholder="Search"
           />
         </div>
         <div className="flex flex-wrap items-center gap-2">

@@ -539,7 +539,7 @@ export default function PaymentReceiptForm() {
                   onFooterPick={handleBuyerFooterPick}
                   stickyFooter
                   placeholder="Select Buyer"
-                  searchPlaceholder="Search buyer…"
+                  searchPlaceholder="Search"
                   clearable={Boolean(form.customer_id)}
                   onClear={handleClearBuyer}
                   clearAriaLabel="Clear buyer"

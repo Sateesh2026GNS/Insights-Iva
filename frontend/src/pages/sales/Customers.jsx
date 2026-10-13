@@ -384,7 +384,7 @@ export default function Customers() {
                     <SearchBar
                       value={query}
                       onChange={setQuery}
-                      placeholder="Search customers by name, phone, GSTIN..."
+                      placeholder="Search"
                       className="w-full max-w-md"
                       aria-label="Search customers"
                     />

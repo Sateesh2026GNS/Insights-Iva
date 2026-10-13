@@ -396,7 +396,7 @@ export default function InProcessQC() {
           <SearchBar
             value={search}
             onChange={setSearch}
-            placeholder="Search by QC no, work order, operation, product..."
+            placeholder="Search"
             aria-label="Search in-process QC records"
           />
           <div className="flex flex-wrap items-center gap-2.5">

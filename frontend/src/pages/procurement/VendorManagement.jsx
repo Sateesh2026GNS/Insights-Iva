@@ -407,7 +407,7 @@ export default function VendorManagement() {
             <SearchBar
               value={filters.name}
               onChange={(v) => setFilters((f) => ({ ...f, name: v }))}
-              placeholder="Search vendors..."
+              placeholder="Search"
             />
             <button
               type="button"

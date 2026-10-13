@@ -410,7 +410,7 @@ export default function Quotations() {
       </div>
 
       <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
-        <SearchBar value={search} onChange={setSearch} placeholder="Search quotations..." />
+        <SearchBar value={search} onChange={setSearch} placeholder="Search" />
         <div className="flex items-center gap-2 shrink-0">
           <ExportDownloadMenu disabled={!filteredSorted.length} onExport={handleExport} />
           <Button
