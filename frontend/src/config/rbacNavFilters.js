@@ -85,6 +85,7 @@ export const OPERATOR_BLOCKED_CHILDREN = new Set([
 
 export const OPERATOR_ALLOWED_PATHS = new Set([
   "/",
+  "/dashboard",
   "/manufacturing/workflow",
   "/my-job-cards",
   "/production",

@@ -8,7 +8,7 @@ import {
   markBrowserSessionActive,
   setStoredTokens,
 } from "../utils/authSession";
-import { getCsrfTokenFromCookie } from "../utils/csrf";
+import { getCsrfTokenFromCookie, setCsrfToken } from "../utils/csrf";
 import {
   getPageRefreshGeneration,
   isPageRefreshInProgress,
@@ -33,6 +33,9 @@ function applyLoginAuthPayload(data) {
   if (!data || typeof data !== "object") return;
   const access = data.access_token ?? data.token;
   const refresh = data.refresh_token;
+  if (data.csrf_token) {
+    setCsrfToken(data.csrf_token);
+  }
   if (access || refresh) {
     if (access && isFastOfflineSessionToken(access)) {
       return;
@@ -136,9 +139,10 @@ function attachCsrfHeader(config) {
   if (method === "get" || method === "head" || method === "options") {
     return config;
   }
+  config.headers = config.headers || {};
+  config.headers["X-Requested-With"] = "InsightsIva";
   const csrf = getCsrfTokenFromCookie();
   if (csrf) {
-    config.headers = config.headers || {};
     config.headers["X-CSRF-Token"] = csrf;
   }
   return config;
@@ -166,7 +170,10 @@ rawAxios.interceptors.request.use((config) => {
 
 export async function ensureCsrfCookie() {
   try {
-    await rawAxios.get("/auth/csrf", { skipGlobalError: true });
+    const { data } = await rawAxios.get("/auth/csrf", { skipGlobalError: true });
+    if (data?.csrf_token) {
+      setCsrfToken(data.csrf_token);
+    }
   } catch {
     /* non-fatal before login */
   }
@@ -250,7 +257,7 @@ let refreshPromise = null;
 
 async function refreshAccessToken() {
   const baseURL = getApiBaseURL();
-  const headers = {};
+  const headers = { "X-Requested-With": "InsightsIva" };
   const csrf = getCsrfTokenFromCookie();
   if (csrf) headers["X-CSRF-Token"] = csrf;
   const storedRefresh = getStoredRefreshToken();

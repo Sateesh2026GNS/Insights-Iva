@@ -3,7 +3,7 @@
 from sqlalchemy import select
 
 from app.core.database import SessionLocal
-from app.models.production import ProductionEntry, WorkOrder
+from app.models.production import Batch, ProductionEntry, ProductionOrder, WorkOrder
 
 from tests.test_rbac_roles import (
     _assign_work_order_to_operator,
@@ -142,10 +142,53 @@ def test_production_entry_success_and_today_list(client, register_admin):
     assert body["quantity_produced"] == 10
     assert body["work_order_id"] == wo_id
 
+    db = SessionLocal()
+    try:
+        wo = db.get(WorkOrder, wo_id)
+        order = db.get(ProductionOrder, wo.production_order_id)
+        batch = db.scalars(select(Batch).where(Batch.work_order_id == wo_id)).one()
+        assert float(wo.actual_quantity) == 10
+        assert wo.status in {"running", "in_progress"}
+        assert float(order.actual_quantity) == 10
+        assert order.status == "in_progress"
+        assert float(batch.quantity) == 10
+        assert batch.status == "in_process"
+    finally:
+        db.close()
+
     listed = client.get("/api/production-entries/my", headers=headers)
     assert listed.status_code == 200
     ids = [e["id"] for e in listed.json()["items"]]
     assert body["id"] in ids
+
+
+def test_production_entry_target_quantity_waits_for_quality_check(client, register_admin):
+    admin = register_admin()
+    tenant_id = admin["user"]["tenant_id"]
+    operator = _create_role_user(client, tenant_id, "Operator")
+    _assign_work_order_to_operator(tenant_id, operator["user"]["id"])
+    wo_id, planned, actual = _work_order_id(tenant_id)
+    headers = {"Authorization": f"Bearer {operator['access_token']}"}
+
+    res = client.post(
+        "/api/production-entries",
+        headers=headers,
+        json={
+            "work_order_id": wo_id,
+            "quantity_produced": planned - actual,
+            "quantity_rejected": 0,
+        },
+    )
+    assert res.status_code == 200, res.text
+
+    db = SessionLocal()
+    try:
+        wo = db.get(WorkOrder, wo_id)
+        batch = db.scalars(select(Batch).where(Batch.work_order_id == wo_id)).one()
+        assert wo.status == "quality_check"
+        assert batch.status == "in_process"
+    finally:
+        db.close()
 
 
 def test_production_entry_duplicate_window(client, register_admin):

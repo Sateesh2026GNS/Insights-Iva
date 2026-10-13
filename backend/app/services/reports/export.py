@@ -5,7 +5,6 @@ import io
 import secrets
 import time
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 from typing import Any
 
 from fastapi import HTTPException
@@ -14,36 +13,47 @@ from sqlalchemy.orm import Session
 from app.models.user import User
 from app.services.reports.engine import run_report
 from app.services.reports.filters import ReportFilters
+from app.services.storage.object_store import (
+    FILE_UNAVAILABLE_MESSAGE,
+    build_tenant_storage_key,
+    get_bytes,
+    put_bytes,
+)
 
 EXPORT_ROW_CAP = 100_000
-_EXPORT_TOKENS: dict[str, tuple[float, Path, str, int]] = {}
+_EXPORT_TOKENS: dict[str, tuple[float, str, str, int, str]] = {}
 _TOKEN_TTL_SEC = 3600
 
 
-def _export_dir(tenant_id: int) -> Path:
-    base = Path(__file__).resolve().parents[3] / "uploads" / "report_exports" / str(tenant_id)
-    base.mkdir(parents=True, exist_ok=True)
-    return base
-
-
-def _register_download(path: Path, content_type: str, tenant_id: int) -> tuple[str, str]:
+def _register_download(
+    storage_key: str, content_type: str, tenant_id: int, filename: str
+) -> tuple[str, str]:
     token = secrets.token_urlsafe(24)
     expires = datetime.now(timezone.utc) + timedelta(seconds=_TOKEN_TTL_SEC)
-    _EXPORT_TOKENS[token] = (time.time() + _TOKEN_TTL_SEC, path, content_type, tenant_id)
+    _EXPORT_TOKENS[token] = (time.time() + _TOKEN_TTL_SEC, storage_key, content_type, tenant_id, filename)
     return f"/api/reports/exports/{token}", expires.isoformat()
 
 
-def resolve_export_token(token: str, user: User) -> tuple[Path, str]:
+def resolve_export_token(token: str, user: User) -> tuple[bytes, str, str]:
     entry = _EXPORT_TOKENS.get(token)
     if not entry:
         raise HTTPException(status_code=404, detail="Export not found or expired")
-    expires_at, path, content_type, tenant_id = entry
+    expires_at, storage_key, content_type, tenant_id, filename = entry
     if time.time() > expires_at:
         _EXPORT_TOKENS.pop(token, None)
         raise HTTPException(status_code=404, detail="Export expired")
     if user.tenant_id != tenant_id:
         raise HTTPException(status_code=403, detail="You do not have access to this export.")
-    return path, content_type
+    from app.services.storage.object_store import assert_tenant_owns_key
+
+    assert_tenant_owns_key(storage_key, user.tenant_id)
+    try:
+        data = get_bytes(storage_key)
+    except HTTPException as exc:
+        if exc.status_code == 404:
+            raise HTTPException(status_code=404, detail=FILE_UNAVAILABLE_MESSAGE) from exc
+        raise
+    return data, content_type, filename
 
 
 def export_report(
@@ -70,19 +80,24 @@ def export_report(
     headers = [c["label"] for c in columns]
     keys = [c["key"] for c in columns]
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-    out_dir = _export_dir(user.tenant_id)
     safe_key = report_key.replace("/", "_")
+    export_id = secrets.token_hex(8)
 
     if fmt == "csv":
-        path = out_dir / f"{safe_key}_{stamp}.csv"
-        with path.open("w", newline="", encoding="utf-8") as f:
-            writer = csv.writer(f)
-            writer.writerow([f"Report: {data['title']}"])
-            writer.writerow([f"Generated: {data['generated_at']}"])
-            writer.writerow(headers)
-            for row in rows:
-                writer.writerow([row.get(k) for k in keys])
-        url, expires = _register_download(path, "text/csv", user.tenant_id)
+        buf = io.StringIO()
+        writer = csv.writer(buf)
+        writer.writerow([f"Report: {data['title']}"])
+        writer.writerow([f"Generated: {data['generated_at']}"])
+        writer.writerow(headers)
+        for row in rows:
+            writer.writerow([row.get(k) for k in keys])
+        payload = buf.getvalue().encode("utf-8")
+        filename = f"{safe_key}_{stamp}.csv"
+        storage_key = build_tenant_storage_key(
+            user.tenant_id, "report_exports", export_id, filename
+        )
+        put_bytes(storage_key, payload, "text/csv")
+        url, expires = _register_download(storage_key, "text/csv", user.tenant_id, filename)
         return {"download_url": url, "expires_at": expires}
 
     if fmt == "xlsx":
@@ -94,7 +109,6 @@ def export_report(
                 status_code=501,
                 detail="XLSX export requires openpyxl on the server.",
             )
-        path = out_dir / f"{safe_key}_{stamp}.xlsx"
         wb = Workbook()
         ws = wb.active
         ws.title = "Report"
@@ -108,12 +122,16 @@ def export_report(
         for row in rows:
             ws.append([row.get(k) for k in keys])
         ws.freeze_panes = "A6"
-        wb.save(path)
-        url, expires = _register_download(
-            path,
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            user.tenant_id,
+        out = io.BytesIO()
+        wb.save(out)
+        payload = out.getvalue()
+        filename = f"{safe_key}_{stamp}.xlsx"
+        storage_key = build_tenant_storage_key(
+            user.tenant_id, "report_exports", export_id, filename
         )
+        content_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        put_bytes(storage_key, payload, content_type)
+        url, expires = _register_download(storage_key, content_type, user.tenant_id, filename)
         return {"download_url": url, "expires_at": expires}
 
     if fmt == "pdf":
@@ -121,8 +139,8 @@ def export_report(
         from reportlab.lib.units import mm
         from reportlab.pdfgen import canvas
 
-        path = out_dir / f"{safe_key}_{stamp}.pdf"
-        c = canvas.Canvas(str(path), pagesize=A4)
+        out = io.BytesIO()
+        c = canvas.Canvas(out, pagesize=A4)
         width, height = A4
         y = height - 20 * mm
         c.setFont("Helvetica-Bold", 14)
@@ -145,7 +163,13 @@ def export_report(
                 c.showPage()
                 y = height - 20 * mm
         c.save()
-        url, expires = _register_download(path, "application/pdf", user.tenant_id)
+        payload = out.getvalue()
+        filename = f"{safe_key}_{stamp}.pdf"
+        storage_key = build_tenant_storage_key(
+            user.tenant_id, "report_exports", export_id, filename
+        )
+        put_bytes(storage_key, payload, "application/pdf")
+        url, expires = _register_download(storage_key, "application/pdf", user.tenant_id, filename)
         return {"download_url": url, "expires_at": expires}
 
     raise HTTPException(status_code=400, detail="Unsupported export format")

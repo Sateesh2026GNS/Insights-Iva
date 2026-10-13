@@ -181,6 +181,12 @@ def google_calendar_connect_endpoint(
     tenant_id = getattr(current_user, "tenant_id", None) or 1
     try:
         url = gcal.build_authorization_url(user_id=current_user.id, tenant_id=tenant_id)
+    except gcal.GoogleCalendarNotConfiguredError:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Google Calendar is not connected for this workspace. "
+            "Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET on the server.",
+        )
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

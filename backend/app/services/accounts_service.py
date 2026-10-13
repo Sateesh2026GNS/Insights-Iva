@@ -287,12 +287,17 @@ def get_profit_loss(db: Session, tenant_id: int, year: int, ytd_through_month: i
 
 
 
-def get_accounts_dashboard(db: Session, tenant_id: int) -> dict:
+def get_accounts_dashboard(
+    db: Session,
+    tenant_id: int,
+    date_from: str | None = None,
+    date_to: str | None = None,
+) -> dict:
     """Accounts work-control dashboard (single consolidated payload)."""
     from app.services.accounts_work_center_service import get_accounts_work_center
 
     try:
-        return get_accounts_work_center(db, tenant_id)
+        return get_accounts_work_center(db, tenant_id, date_from=date_from, date_to=date_to)
     except HTTPException:
         raise
     except SQLAlchemyError as exc:

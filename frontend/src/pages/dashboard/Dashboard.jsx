@@ -2,7 +2,11 @@ import { Navigate } from "react-router-dom";
 
 import ReferenceDashboard from "../../components/dashboard/reference/ReferenceDashboard";
 import useAuth from "../../hooks/useAuth";
-import { getDashboardPathForRole, QUALITY_CONTROL_LANDING_PATH } from "../../utils/roleRedirect";
+import {
+  ACCOUNTS_DASHBOARD_PATH,
+  getDashboardPathForRole,
+  QUALITY_CONTROL_LANDING_PATH,
+} from "../../utils/roleRedirect";
 import { getActiveRoleName, isOperator, isQualityTeam } from "../../config/permissions";
 import QualityDashboard from "../quality/QualityDashboard";
 
@@ -16,7 +20,7 @@ export default function Dashboard() {
   const role = getActiveRoleName(user);
 
   if (isAdminRole(role)) {
-    return <ReferenceDashboard />;
+    return <Navigate to={ACCOUNTS_DASHBOARD_PATH} replace />;
   }
 
   // Sidebar "Dashboard" is `/` for all roles. Operators have a dedicated post-login home

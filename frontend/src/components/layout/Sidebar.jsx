@@ -40,6 +40,7 @@ import {
   isOperator,
   isHRManager,
   isAccountant,
+  isAdmin,
   isSalesManager,
   isQualityTeam,
   storeManagerPathAllowed,
@@ -296,6 +297,7 @@ export function filterStaticNav(user) {
     if (isAcct && !ACCOUNTANT_ALLOWED_SECTIONS.has(section.key)) return null;
     if (isOp && OPERATOR_BLOCKED_SECTIONS.has(section.key)) return null;
     if (section.to) {
+      if (!isOp && section.operatorOnly) return null;
       if (!userCanAccess(user, section.module)) return null;
       if (storeMgr && !storeManagerPathAllowed(section.to)) return null;
       return section;
@@ -467,7 +469,7 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
           to: roleJobCardUrl,
         };
       }
-      if (section.key === "dashboard" && isAccountant(user) && section.to) {
+      if (section.key === "dashboard" && (isAccountant(user) || isAdmin(user)) && section.to) {
         return {
           ...section,
           to: ACCOUNTS_DASHBOARD_PATH,

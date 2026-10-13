@@ -90,8 +90,14 @@ def download_export(
     token: str,
     user: User = Depends(get_current_user),
 ):
-    path, media_type = resolve_export_token(token, user)
-    return FileResponse(path, media_type=media_type, filename=path.name)
+    from fastapi.responses import Response
+
+    data, media_type, filename = resolve_export_token(token, user)
+    return Response(
+        content=data,
+        media_type=media_type,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.get("/saved-views", response_model=list[ReportSavedViewRead])

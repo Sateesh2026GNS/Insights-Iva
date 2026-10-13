@@ -188,19 +188,19 @@ function WoRowActions({
           to: operatorJobCardUrl(row),
         }
       : null,
-    canWoStart(row.status)
-      ? {
-          label: "Start",
-          icon: <Play className="h-3.5 w-3.5 text-teal-600" />,
-          onClick: () => onStart(row),
-        }
-      : null,
     canIssue(row)
       ? {
           label: issuing ? "Issuing…" : "Issue Materials",
           icon: <Boxes className="h-3.5 w-3.5 text-blue-600" />,
           onClick: () => onIssue(row),
           disabled: issuing,
+        }
+      : null,
+    canWoStart(row.status)
+      ? {
+          label: "Start",
+          icon: <Play className="h-3.5 w-3.5 text-teal-600" />,
+          onClick: () => onStart(row),
         }
       : null,
     canWoPause(row.status)
@@ -411,6 +411,7 @@ export default function WorkOrders() {
   const [issuingId, setIssuingId] = useState(null);
   const [showQuickModal, setShowQuickModal] = useState(false);
   const [issueModalOrder, setIssueModalOrder] = useState(null);
+  const resumeStartAfterIssue = useRef(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
@@ -811,6 +812,26 @@ export default function WorkOrders() {
 
   const handleIssueMaterials = (wo) => {
     setIssueModalOrder(wo);
+  };
+
+  const handleIssueMaterialsFromStart = (wo) => {
+    resumeStartAfterIssue.current = wo;
+    setStartModal(null);
+    setIssueModalOrder(wo);
+  };
+
+  const handleIssueMaterialsSuccess = async (wo) => {
+    await load();
+    const resumeOrder = resumeStartAfterIssue.current;
+    if (!resumeOrder || resumeOrder.id !== wo?.id) return;
+    resumeStartAfterIssue.current = null;
+    try {
+      const res = await getWorkOrderStartChecks(wo.id);
+      setStartChecks(res.data || []);
+      setStartModal(resumeOrder);
+    } catch {
+      addToast("Materials were issued, but start checks could not be refreshed. Reopen Start to continue.", "error");
+    }
   };
 
   const handleComplete = async (wo) => {
@@ -1540,7 +1561,14 @@ export default function WorkOrders() {
       )}
 
       {startModal && (
-        <WorkOrderStartModal workOrder={startModal} checks={startChecks} onClose={() => setStartModal(null)} onConfirm={confirmStart} loading={startLoading} />
+        <WorkOrderStartModal
+          workOrder={startModal}
+          checks={startChecks}
+          onClose={() => setStartModal(null)}
+          onConfirm={confirmStart}
+          onIssueMaterials={handleIssueMaterialsFromStart}
+          loading={startLoading}
+        />
       )}
 
       {completeModal && (
@@ -1559,7 +1587,7 @@ export default function WorkOrders() {
         <IssueMaterialsModal
           workOrder={issueModalOrder}
           onClose={() => setIssueModalOrder(null)}
-          onSuccess={() => load()}
+          onSuccess={handleIssueMaterialsSuccess}
           addToast={addToast}
         />
       )}

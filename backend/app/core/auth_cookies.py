@@ -134,12 +134,17 @@ def apply_auth_response_cookies(
             refresh_token=refresh,
             settings=settings,
         )
-        set_csrf_cookie(response, request, settings=settings)
+        csrf_token = set_csrf_cookie(response, request, settings=settings)
+    else:
+        csrf_token = None
 
     if not tokens_in_json_response(settings):
-        return {
+        out = {
             **data,
             "access_token": None,
             "refresh_token": None,
         }
+        if csrf_token:
+            out["csrf_token"] = csrf_token
+        return out
     return data

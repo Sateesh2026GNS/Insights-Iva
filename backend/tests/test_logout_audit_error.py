@@ -48,9 +48,16 @@ def test_logout_endpoint_handles_db_error():
     mock_db = MagicMock()
     mock_request = MagicMock()
 
-    with patch("app.api.auth.validate_refresh_token", side_effect=SQLAlchemyError("DB offline")):
-        with pytest.raises(HTTPException) as exc_info:
-            logout(req=RefreshRequest(refresh_token="invalid-refresh-token-123456"), request=mock_request, db=mock_db)
+    with patch("app.api.auth.resolve_refresh_token", return_value="invalid-refresh-token-123456"):
+        with patch("app.api.auth.validate_refresh_token", side_effect=SQLAlchemyError("DB offline")):
+            with pytest.raises(HTTPException) as exc_info:
+                logout(
+                    req=RefreshRequest(refresh_token="invalid-refresh-token-123456"),
+                    request=mock_request,
+                    response=MagicMock(),
+                    creds=None,
+                    db=mock_db,
+                )
 
     assert exc_info.value.status_code == 503
     assert "Logout failed due to a database error" in exc_info.value.detail
@@ -62,9 +69,16 @@ def test_logout_endpoint_handles_unexpected_error():
     mock_db = MagicMock()
     mock_request = MagicMock()
 
-    with patch("app.api.auth.validate_refresh_token", side_effect=RuntimeError("Unexpected error")):
-        with pytest.raises(HTTPException) as exc_info:
-            logout(req=RefreshRequest(refresh_token="invalid-refresh-token-123456"), request=mock_request, db=mock_db)
+    with patch("app.api.auth.resolve_refresh_token", return_value="invalid-refresh-token-123456"):
+        with patch("app.api.auth.validate_refresh_token", side_effect=RuntimeError("Unexpected error")):
+            with pytest.raises(HTTPException) as exc_info:
+                logout(
+                    req=RefreshRequest(refresh_token="invalid-refresh-token-123456"),
+                    request=mock_request,
+                    response=MagicMock(),
+                    creds=None,
+                    db=mock_db,
+                )
 
     assert exc_info.value.status_code == 500
     assert "An unexpected error occurred during logout" in exc_info.value.detail
@@ -80,12 +94,20 @@ def test_logout_endpoint_handles_audit_log_db_error():
     mock_user.id = 42
     mock_user.email = "test@example.com"
 
-    with patch("app.api.auth.validate_refresh_token", return_value=mock_user), \
+    with patch("app.api.auth.resolve_access_token", return_value=None), \
+         patch("app.api.auth.resolve_refresh_token", return_value="valid-refresh-token-123456"), \
+         patch("app.api.auth.validate_refresh_token", return_value=mock_user), \
          patch("app.api.auth.revoke_refresh_token"), \
          patch("app.api.auth.mark_logout"), \
          patch("app.api.auth.AuditLogService.log_logout", side_effect=SQLAlchemyError("DB audit write failure")):
         with pytest.raises(HTTPException) as exc_info:
-            logout(req=RefreshRequest(refresh_token="valid-refresh-token-123456"), request=mock_request, db=mock_db)
+            logout(
+                req=RefreshRequest(refresh_token="valid-refresh-token-123456"),
+                request=mock_request,
+                response=MagicMock(),
+                creds=None,
+                db=mock_db,
+            )
 
     assert exc_info.value.status_code == 503
     assert "Logout failed due to a database error" in exc_info.value.detail

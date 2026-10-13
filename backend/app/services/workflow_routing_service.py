@@ -122,6 +122,10 @@ ACTIONABLE_STATUSES_BY_TEAM: dict[str, frozenset[str]] = {
     TEAM_PRODUCTION: frozenset({
         "BOM_PENDING",
         "READY_FOR_PRODUCTION",
+        # Keep assigned and running work visible to Production Managers for
+        # reassignment, hold, and execution oversight after the handoff.
+        "PRODUCTION_ASSIGNED",
+        "PRODUCTION_IN_PROGRESS",
         "PRODUCTION_REWORK",
         "QUALITY_REJECTED",
     }),

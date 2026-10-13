@@ -498,7 +498,7 @@
 .inventory-form-modal {
   --color-primary: var(--erp-primary);
   --color-primary-hover: var(--erp-primary-hover);
-  font-family: Arial, Helvetica, "Segoe UI", sans-serif;
+  font-family: var(--font-sans);
 }
 
 .erp-form-modal .ui-modal,

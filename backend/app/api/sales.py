@@ -22,7 +22,7 @@ from app.schemas.lead_form import (
     LeadNextIdResponse,
 )
 from app.services.lead_form_service import (
-    _attachment_disk_path,
+    read_lead_attachment_bytes,
     check_lead_duplicates,
     create_lead_from_form,
     delete_lead_attachment,
@@ -273,11 +273,15 @@ def download_lead_attachment_endpoint(
     tenant_id: int = Depends(tenant_scope(MODULE)),
     db: Session = Depends(get_db),
 ):
+    from fastapi.responses import Response
+
     row = get_lead_attachment(db, tenant_id, lead_id, attachment_id)
-    disk = _attachment_disk_path(row)
-    if not disk.is_file():
-        raise HTTPException(404, "Attachment file not found")
-    return FileResponse(path=disk, filename=row.file_name, media_type="application/octet-stream")
+    data = read_lead_attachment_bytes(row)
+    return Response(
+        content=data,
+        media_type="application/octet-stream",
+        headers={"Content-Disposition": f'attachment; filename="{row.file_name}"'},
+    )
 
 
 @router.delete("/leads/{lead_id}/attachments/{attachment_id}")

@@ -463,13 +463,24 @@ def test_material_check_recomputes_live_stock_when_shortage_status_is_stale(clie
 
         item = db.get(InventoryItem, int(mc.lines[0].inventory_item_id))
         assert item is not None
+        warehouse = db.scalars(
+            select(Warehouse).where(Warehouse.tenant_id == tenant_id)
+        ).first()
+        if not warehouse:
+            warehouse = Warehouse(
+                tenant_id=tenant_id,
+                name=f"Stale Stock WH {uuid.uuid4().hex[:6]}",
+                code=f"SS-{uuid.uuid4().hex[:6]}",
+            )
+            db.add(warehouse)
+            db.flush()
         db.commit()
 
         record_stock_movement(
             db,
             StockMovementCreate(
                 tenant_id=tenant_id,
-                warehouse_id=1,
+                warehouse_id=warehouse.id,
                 item_id=item.id,
                 quantity=float(mc.lines[0].required_qty or 0),
                 movement_type="in",

@@ -325,6 +325,7 @@ function QueueRowCard({
             openMenu={openMenu}
             setOpenMenu={setOpenMenu}
             items={menuItems}
+            allowOperator
           />
         </div>
       </div>
@@ -507,7 +508,7 @@ export default function JobCardQueueTable({
                     </td>
                     <td className="my-job-cards-table__actions-col px-2 py-2.5" onClick={(e) => e.stopPropagation()}>
                       <div className="my-job-cards-table__actions-wrap">
-                        <RowActionMenu rowId={String(rowKey)} openMenu={openMenu} setOpenMenu={setOpenMenu} items={menuItems} />
+                        <RowActionMenu rowId={String(rowKey)} openMenu={openMenu} setOpenMenu={setOpenMenu} items={menuItems} allowOperator />
                       </div>
                     </td>
                   </tr>
@@ -695,6 +696,7 @@ export default function JobCardQueueTable({
                         rowId={orderId}
                         openMenu={openMenu}
                         setOpenMenu={setOpenMenu}
+                        allowOperator
                         items={[
                           {
                             label: "View",

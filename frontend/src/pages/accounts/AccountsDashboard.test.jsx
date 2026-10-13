@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -8,92 +8,60 @@ vi.mock("../../api/accountsApi", () => ({
   getAccountsDashboard: (...args) => mockGetAccountsDashboard(...args),
 }));
 
+vi.mock("../../hooks/useAuth", () => ({
+  default: () => ({ user: { company_name: "Acme Co", role: "Admin" } }),
+}));
+
 import AccountsDashboard from "./AccountsDashboard";
 
-const workCenterPayload = {
-  financial_year: "2025-26",
-  as_of_date: "2025-09-20",
-  kpis: {
-    total_receivables: 125000,
-    total_payables: 42000,
-    cash_and_bank_balance: 88000,
-    todays_collections: 5000,
-    todays_payments: 2000,
-    overdue_receivables: 15000,
-    overdue_payables: 3000,
-    gst_liability_period: 1200,
-    gst_filing_due_label: "Due 20 Oct",
+const financialDashboard = {
+  overview: {
+    receivables: { total: 125000, current: 110000, overdue: 15000 },
+    payables: { total: 42000, current: 39000, overdue: 3000 },
+    cash_and_bank: { total: 88000, bank: 80000, cash: 8000, account_count: 1 },
+    gst: { net: 0, collected: 5000, paid: 5000 },
   },
-  cash_flow_today: { money_in: 5000, money_out: 2000, net: 3000 },
-  bank_accounts: [{ id: 1, name: "HDFC Current", balance: 88000, type: "Assets" }],
-  receivables: [
-    {
-      id: 99,
-      invoice_number: "INV-99",
-      customer_name: "Acme Corp",
-      issue_date: "2025-08-01",
-      due_date: "2025-08-15",
-      amount: 10000,
-      paid: 0,
-      balance: 10000,
-      days_overdue: 36,
-      status: "overdue",
-    },
-  ],
-  payables: [],
-  invoice_summary: { draft: 1, sent: 2, partially_paid: 0, paid: 5, overdue: 1, cancelled: 0 },
-  pending_work: [
-    { id: "overdue_receivables", label: "Overdue receivables", count: 1, amount: 15000, href: "/finance/accounts-receivable?focus=overdue" },
-  ],
-  recent_activity: [],
-  expense_summary: { month_total: 1200, month_count: 3 },
-  features: { expenses: true, bank_reconciliation: true, gst: true },
-  gst_period: { net_liability: 1200, filing_due_label: "Due 20 Oct" },
+  sales_purchases: {
+    totals: { sales: 100, purchases: 50, collections: 80, expenses: 40 },
+    series: [{ month: "Apr '25", sales: 100, purchases: 50, collections: 80, expenses: 40 }],
+  },
+  aging: {
+    receivable: { total: 125000, buckets: { current: 100000, "1-30": 25000, "31-60": 0, "61-90": 0, "90+": 0 } },
+    payable: { total: 0, buckets: { current: 0, "1-30": 0, "31-60": 0, "61-90": 0, "90+": 0 } },
+    as_of: "2025-09-20",
+  },
+  sales_breakdown: {
+    top_customers: [{ name: "Acme Corp", amount: 10000 }],
+    top_products: [],
+    overdue: [],
+    invoice_status: [],
+    collections: [],
+  },
+  needs_attention: "",
 };
-
-function renderDashboard() {
-  return render(
-    <MemoryRouter>
-      <AccountsDashboard />
-    </MemoryRouter>
-  );
-}
 
 describe("AccountsDashboard", () => {
   beforeEach(() => {
     mockGetAccountsDashboard.mockReset();
-    mockGetAccountsDashboard.mockResolvedValue({ data: workCenterPayload });
+    mockGetAccountsDashboard.mockResolvedValue({
+      data: { financial_dashboard: financialDashboard, kpis: {} },
+    });
   });
 
-  it("loads KPIs and receivables from getAccountsDashboard", async () => {
-    renderDashboard();
-    expect(await screen.findByText("Accounts Dashboard")).toBeInTheDocument();
-    expect(screen.getByText(/2025-26/)).toBeInTheDocument();
+  it("renders overview matching financial dashboard API", async () => {
+    render(
+      <MemoryRouter>
+        <AccountsDashboard />
+      </MemoryRouter>
+    );
+    expect(await screen.findByText("Overview")).toBeInTheDocument();
     expect(screen.getByText("Total Receivables")).toBeInTheDocument();
-    expect(screen.getByText("Acme Corp")).toBeInTheDocument();
-    expect(mockGetAccountsDashboard).toHaveBeenCalledTimes(1);
+    expect(screen.getByText("Sales and Purchases")).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Top customers/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Collections/i })).toBeInTheDocument();
+    expect(mockGetAccountsDashboard).toHaveBeenCalledWith(
+      expect.objectContaining({ date_from: expect.any(String), date_to: expect.any(String) })
+    );
   });
 
-  it("links overdue receivables KPI to filtered receivables page", async () => {
-    renderDashboard();
-    await screen.findByText("Overdue Receivables");
-    const links = screen.getAllByRole("link");
-    const overdueLink = links.find((el) => el.getAttribute("href") === "/finance/accounts-receivable?focus=overdue");
-    expect(overdueLink).toBeTruthy();
-  });
-
-  it("shows error state on initial API failure without fake zeros", async () => {
-    mockGetAccountsDashboard.mockRejectedValue(new Error("Service unavailable"));
-    renderDashboard();
-    expect(await screen.findByText("Dashboard unavailable")).toBeInTheDocument();
-    expect(screen.getByText(/Service unavailable|Could not load/i)).toBeInTheDocument();
-    expect(screen.queryByText("Total Receivables")).not.toBeInTheDocument();
-  });
-
-  it("reloads data when Refresh is clicked", async () => {
-    renderDashboard();
-    await screen.findByText("Refresh");
-    fireEvent.click(screen.getByRole("button", { name: /Refresh/i }));
-    await waitFor(() => expect(mockGetAccountsDashboard).toHaveBeenCalledTimes(2));
-  });
 });

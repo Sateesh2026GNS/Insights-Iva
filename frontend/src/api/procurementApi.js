@@ -30,10 +30,14 @@ export const getVendorProducts = (vendorId) =>
   api.get(`/procurement/vendors/${vendorId}/products`);
 export const exportVendors = (params = {}) =>
   api.get("/procurement/vendors/export", { params });
-export const lookupVendorBank = (ifsc, accountNumber) =>
-  api.get("/procurement/vendors/bank-lookup", {
-    params: { ifsc, account_number: accountNumber },
-  });
+export const lookupVendorBank = (ifsc, accountNumber) => {
+  const params = { ifsc };
+  const acct = String(accountNumber ?? "").replace(/\D/g, "");
+  if (acct.length >= 9) {
+    params.account_number = acct;
+  }
+  return api.get("/procurement/vendors/bank-lookup", { params });
+};
 export const createVendor = (payload) => api.post("/procurement/vendors", payload);
 export const updateVendor = (vendorId, payload) =>
   api.put(`/procurement/vendors/${vendorId}`, payload);

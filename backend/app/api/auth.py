@@ -90,8 +90,8 @@ def _client_ip(request: Request) -> str | None:
 
 @router.get("/csrf")
 def issue_csrf_token(request: Request, response: Response):
-    set_csrf_cookie(response, request)
-    return {"ok": True}
+    token = set_csrf_cookie(response, request)
+    return {"ok": True, "csrf_token": token}
 
 
 @router.post("/login", response_model=AuthResponse)

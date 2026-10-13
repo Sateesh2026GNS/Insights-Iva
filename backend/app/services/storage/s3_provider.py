@@ -163,3 +163,15 @@ class S3StorageProvider(StorageProvider):
             return resp["Body"].read()
         except Exception:
             return b""
+
+    def put_object(self, storage_key: str, data: bytes, content_type: str = "application/octet-stream") -> None:
+        self._client.put_object(
+            Bucket=self.bucket,
+            Key=storage_key,
+            Body=data,
+            ContentType=content_type,
+        )
+
+    def get_object_bytes(self, storage_key: str) -> bytes:
+        resp = self._client.get_object(Bucket=self.bucket, Key=storage_key)
+        return resp["Body"].read()

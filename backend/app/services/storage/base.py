@@ -93,3 +93,11 @@ class StorageProvider(ABC):
     def read_object_header(self, storage_key: str, max_bytes: int = 512) -> bytes:
         """Read the first bytes of an object for content validation."""
         raise NotImplementedError
+
+    def put_object(self, storage_key: str, data: bytes, content_type: str = "application/octet-stream") -> None:
+        """Server-side upload (multipart form, generated exports, etc.)."""
+        raise NotImplementedError
+
+    def get_object_bytes(self, storage_key: str) -> bytes:
+        """Read full object bytes (for streaming downloads in-app)."""
+        raise NotImplementedError

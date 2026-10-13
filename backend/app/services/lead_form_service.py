@@ -24,7 +24,6 @@ from app.schemas.lead_form import (
 
 DISCUSSION_TYPE = "Discussion"
 
-UPLOAD_ROOT = Path(__file__).resolve().parents[2] / "uploads" / "leads"
 ALLOWED_EXT = {".pdf", ".png", ".jpg", ".jpeg", ".dxf", ".xlsx"}
 MAX_BYTES = 10 * 1024 * 1024
 
@@ -301,7 +300,8 @@ async def save_lead_attachments(
     lead = get_lead_detail(db, tenant_id, lead_id)
     if not lead:
         raise HTTPException(404, "Lead not found")
-    UPLOAD_ROOT.mkdir(parents=True, exist_ok=True)
+    from app.services.storage.object_store import build_tenant_storage_key, put_bytes
+
     saved: list[LeadAttachment] = []
     for upload in files:
         if not upload.filename:
@@ -313,16 +313,13 @@ async def save_lead_attachments(
         if len(data) > MAX_BYTES:
             raise HTTPException(400, "Each attachment must be 10 MB or smaller.")
         safe_name = f"{uuid.uuid4().hex}{ext}"
-        rel_path = f"leads/{tenant_id}/{lead_id}/{safe_name}"
-        dest = UPLOAD_ROOT / str(tenant_id) / str(lead_id)
-        dest.mkdir(parents=True, exist_ok=True)
-        full = dest / safe_name
-        full.write_bytes(data)
+        storage_key = build_tenant_storage_key(tenant_id, "leads", str(lead_id), safe_name)
+        put_bytes(storage_key, data, "application/octet-stream")
         row = LeadAttachment(
             tenant_id=tenant_id,
             lead_id=lead_id,
             file_name=upload.filename,
-            file_path=rel_path,
+            file_path=storage_key,
             size=len(data),
             uploaded_by=user_id,
         )
@@ -335,8 +332,10 @@ async def save_lead_attachments(
     return saved
 
 
-def _attachment_disk_path(row: LeadAttachment) -> Path:
-    return UPLOAD_ROOT / str(row.tenant_id) / str(row.lead_id) / Path(row.file_path).name
+def read_lead_attachment_bytes(row: LeadAttachment) -> bytes:
+    from app.services.storage.object_store import get_bytes
+
+    return get_bytes(row.file_path)
 
 
 def get_lead_attachment(
@@ -354,12 +353,13 @@ def get_lead_attachment(
 def delete_lead_attachment(
     db: Session, tenant_id: int, lead_id: int, attachment_id: int
 ) -> None:
+    from app.services.storage.object_store import delete_storage_object
+
     row = get_lead_attachment(db, tenant_id, lead_id, attachment_id)
-    disk = _attachment_disk_path(row)
+    storage_key = row.file_path
     db.delete(row)
     db.commit()
     try:
-        if disk.is_file():
-            disk.unlink()
+        delete_storage_object(storage_key)
     except OSError:
         pass

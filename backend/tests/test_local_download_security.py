@@ -53,6 +53,7 @@ class TestLocalDownloadSecurity:
         admin, file_id = _upload_ready_file(client, register_admin)
         dl = client.get(f"/api/files/{file_id}/download-url", headers=admin["headers"])
         url = dl.json()["download_url"]
+        client.cookies.clear()
         assert client.get(url).status_code == 401
 
     def test_wrong_user_cannot_use_token(self, client, register_admin, make_restricted_user):

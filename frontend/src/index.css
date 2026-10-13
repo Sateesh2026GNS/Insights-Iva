@@ -169,10 +169,10 @@
   --space-10: 2.5rem;   /* 40 */
   --space-12: 3rem;     /* 48 */
 
-  /* Typography — clean sans-serif (Arial family) */
-  --font-sans: Arial, Helvetica, "Segoe UI", ui-sans-serif, system-ui, -apple-system, Roboto, sans-serif;
-  /* Digits / money / KPIs — IBM Plex has clearer figures than Inter at display weights */
-  --font-numeric: "IBM Plex Sans", Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  /* Typography — matches index.html webfonts (avoid Arial-first jagged figures) */
+  --font-sans: "IBM Plex Sans", Inter, "Segoe UI", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  /* Digits / money / KPIs — Inter tabular figures read cleaner at card sizes */
+  --font-numeric: Inter, "IBM Plex Sans", "Segoe UI", ui-sans-serif, system-ui, -apple-system, sans-serif;
   --text-xs: 0.75rem;      /* 12 */
   --text-sm: 0.8125rem;    /* 13 */
   --text-md: 0.875rem;     /* 14 */
@@ -1784,11 +1784,14 @@ input.pl-8 {
   font-family: var(--font-numeric);
   font-size: var(--kpi-value-size);
   font-weight: 600;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
   line-height: 1.2;
   color: var(--color-text);
   font-variant-numeric: tabular-nums lining-nums;
   font-feature-settings: "tnum" 1, "lnum" 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
   margin-top: 0.125rem;
   margin-bottom: 0.125rem;
   word-break: break-word;
@@ -1802,10 +1805,13 @@ input.pl-8 {
 
 /* Shared numeric styling for tables, money, qty columns */
 .ui-num,
-.tabular-nums {
+.tabular-nums,
+.font-numeric {
   font-family: var(--font-numeric);
   font-variant-numeric: tabular-nums lining-nums;
   font-feature-settings: "tnum" 1, "lnum" 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* Modal shell (common/Modal.jsx) */
@@ -2261,6 +2267,9 @@ table > tbody > tr:first-child:has(th) {
   border: 1px solid var(--color-table-border);
   background: var(--color-surface);
   color: var(--color-text-secondary);
+  font-family: var(--font-numeric);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: "tnum" 1, "lnum" 1;
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;

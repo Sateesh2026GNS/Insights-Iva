@@ -3,8 +3,8 @@
 import { cleanProductLabel } from "../utils/productLabel";
 
 export const ORDER_STATUSES = [
-  "draft", "planned", "material_ready", "machine_assigned",
-  "in_progress", "quality_check", "completed", "closed", "delayed", "cancelled",
+  "draft", "planned", "assigned", "material_ready", "machine_assigned",
+  "in_progress", "quality_check", "paused", "completed", "closed", "delayed", "cancelled",
 ];
 
 export const PRIORITIES = ["high", "medium", "low"];
@@ -18,6 +18,8 @@ export const PRIORITY_COLORS = {
 export const STATUS_COLORS = {
   draft: "bg-slate-100 text-slate-600",
   planned: "bg-blue-100 text-blue-800",
+  assigned: "bg-blue-100 text-blue-800",
+  paused: "bg-amber-100 text-amber-800",
   material_ready: "bg-cyan-100 text-cyan-800",
   machine_assigned: "bg-indigo-100 text-indigo-800",
   in_progress: "bg-amber-100 text-amber-800",
@@ -90,32 +92,7 @@ export function calculateProgressPct(row) {
     }
   }
 
-  const isStarted = ["in_progress", "running", "quality_check"].includes(row.status);
-  if (!isStarted && produced <= 0) {
-    return 0;
-  }
-
   const qtyPct = planned > 0 ? (produced / planned) * 100 : 0;
-
-  if (row.progress_pct != null && Number(row.progress_pct) > 0 && isStarted) {
-    return Math.min(100, Math.max(0, Math.round(Math.max(Number(row.progress_pct), qtyPct))));
-  }
-
-  if (isStarted) {
-    const now = Date.now();
-    const startRaw = row.start_date || row.planned_start;
-    const dueRaw = row.due_date || row.planned_end;
-
-    const start = startRaw ? new Date(startRaw).getTime() : null;
-    const due = dueRaw ? new Date(dueRaw).getTime() : null;
-
-    let timePct = 0;
-    if (start && due && !isNaN(start) && !isNaN(due) && due > start && now > start) {
-      timePct = ((now - start) / (due - start)) * 100;
-    }
-    const calcPct = Math.max(qtyPct, timePct);
-    return Math.min(100, Math.max(0, Math.round(calcPct)));
-  }
 
   return Math.min(100, Math.max(0, Math.round(qtyPct)));
 }
@@ -162,11 +139,8 @@ export function enrichApiOrder(row, index = 0) {
   const progress = calculateProgressPct({ ...row, produced_quantity: rawProduced, status });
 
   let produced = rawProduced;
-  if (status === "completed" || status === "closed" || status === "done" || progress >= 100 || (planned > 0 && produced >= planned)) {
+  if (status === "completed" || status === "closed" || status === "done") {
     status = "completed";
-    produced = Math.max(rawProduced, planned);
-  } else if (rawProduced <= 0 && progress > 0 && planned > 0) {
-    produced = Math.round((planned * progress) / 100);
   }
 
   const finalProgress = status === "completed" ? 100 : progress;
@@ -215,8 +189,8 @@ export function computePlanningSummary(orders) {
     const s = o.status;
     if (s === "cancelled") counts.cancelled += 1;
     else if (["completed", "closed", "done"].includes(s)) counts.completed += 1;
-    else if (["in_progress", "running", "quality_check"].includes(s)) counts.in_progress += 1;
-    else if (["draft", "planned", "pending", "material_ready", "machine_assigned"].includes(s)) counts.planned += 1;
+    else if (["in_progress", "running", "quality_check", "paused"].includes(s)) counts.in_progress += 1;
+    else if (["draft", "planned", "pending", "assigned", "material_ready", "machine_assigned"].includes(s)) counts.planned += 1;
     if (o.is_delayed || s === "delayed") counts.delayed += 1;
     todaysProduction += Number(o.produced_quantity || 0);
   });
@@ -243,7 +217,7 @@ export function statusLabel(status) {
 }
 
 export function canStart(status) {
-  return ["draft", "planned", "pending", "material_ready", "machine_assigned"].includes(status);
+  return ["draft", "planned", "pending", "assigned", "material_ready", "machine_assigned", "paused"].includes(status);
 }
 
 export function canPause(status) {
