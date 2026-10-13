@@ -40,6 +40,7 @@ import {
   isOperator,
   isHRManager,
   isAccountant,
+  isAdmin,
   isSalesManager,
   isQualityTeam,
   storeManagerPathAllowed,
@@ -467,7 +468,7 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
           to: roleJobCardUrl,
         };
       }
-      if (section.key === "dashboard" && isAccountant(user) && section.to) {
+      if (section.key === "dashboard" && (isAccountant(user) || isAdmin(user)) && section.to) {
         return {
           ...section,
           to: ACCOUNTS_DASHBOARD_PATH,
