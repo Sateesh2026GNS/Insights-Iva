@@ -106,10 +106,36 @@ function statusTone(row) {
   const s = String(row?.status || "").toLowerCase();
   if (s === "completed" || s === "closed" || s === "done") return "success";
   if (s === "in_progress" || s === "running" || s === "started") return "progress";
+  const workflowStatus = String(row?.workflow_status || "").toUpperCase();
+  if (workflowStatus === "PRODUCTION_COMPLETED" || workflowStatus === "QUALITY_APPROVED" || workflowStatus === "COMPLETED") return "success";
+  if (workflowStatus === "PRODUCTION_IN_PROGRESS") return "progress";
+  if (workflowStatus === "READY_FOR_PRODUCTION" || workflowStatus === "PRODUCTION_ASSIGNED") return "pending";
   if (s === "planned" || s === "pending") return "pending";
   if (s === "cancelled" || s === "canceled") return "neutral";
   if (s === "paused" || s === "on_hold") return "warning";
   return "info";
+}
+
+function planningStatusLabel(row) {
+  const internal = String(row?.status || "").toLowerCase();
+  if (["completed", "closed", "done"].includes(internal)) return statusLabel(row.status);
+  if (["in_progress", "running", "started"].includes(internal)) return statusLabel(row.status);
+  const workflowLabels = {
+    READY_FOR_PRODUCTION: "Production Pending",
+    PRODUCTION_ASSIGNED: "Assigned to Operator",
+    PRODUCTION_IN_PROGRESS: "In Production",
+    PRODUCTION_COMPLETED: "Production Completed",
+    QUALITY_CHECK_PENDING: "Quality Pending",
+    QUALITY_APPROVED: "Quality Approved",
+    PACKING_PENDING: "Packing Pending",
+    PACKING_IN_PROGRESS: "Packing In Progress",
+    PACKED: "Packed",
+    BILLING_PENDING: "Billing Pending",
+    INVOICED: "Invoiced",
+    COMPLETED: "Completed",
+  };
+  const workflowStatus = String(row?.workflow_status || "").toUpperCase();
+  return workflowLabels[workflowStatus] || statusLabel(row?.status);
 }
 
 function PriorityPill({ priority }) {
@@ -126,11 +152,7 @@ function ProgressCell({ row }) {
   const pct = calculateProgressPct(row);
   const planned = Number(row.planned_quantity || 0);
   const rawProduced = Number(row.produced_quantity ?? row.actual_quantity ?? 0);
-  const produced = (row.status === "completed" || row.status === "closed" || row.status === "done")
-    ? Math.max(rawProduced, planned)
-    : rawProduced > 0
-    ? rawProduced
-    : Math.round((planned * pct) / 100);
+  const produced = rawProduced;
   return (
     <div className="min-w-[88px] max-w-[120px]">
       <div className="mb-1 flex justify-between text-[11px] tabular-nums text-[var(--color-text-secondary)]">
@@ -165,7 +187,9 @@ function OrderActions({
   const menuBtnRef = useRef(null);
   const menuRef = useRef(null);
   const [menuPos, setMenuPos] = useState({ top: 0, left: 0 });
-  const needsMachine = !row.machine_name || row.machine_name === "—" || row.machine_name === "Unassigned";
+  const hasWorkOrder = Boolean(row.work_order_number);
+  const status = String(row.status || "").toLowerCase();
+  const needsWorkOrder = !hasWorkOrder && !["completed", "closed", "done", "cancelled", "canceled"].includes(status);
 
   const menuItems = [
     {
@@ -199,7 +223,7 @@ function OrderActions({
       icon: <Printer className="h-3.5 w-3.5 text-[var(--color-text-muted)]" />,
       onClick: () => onPrint(row),
     },
-    needsMachine
+    needsWorkOrder
       ? {
           label: "Create Work Order",
           icon: <ClipboardList className="h-3.5 w-3.5 text-indigo-600" />,
@@ -330,8 +354,8 @@ function formatDate(val) {
   return isNaN(d.getTime()) ? String(val).slice(0, 10) : d.toLocaleDateString(undefined, { dateStyle: "short" });
 }
 
-const PLANNED_STATUSES = ["draft", "planned", "pending", "material_ready", "machine_assigned"];
-const IN_PROGRESS_STATUSES = ["in_progress", "running", "quality_check"];
+const PLANNED_STATUSES = ["draft", "planned", "pending", "assigned", "material_ready", "machine_assigned"];
+const IN_PROGRESS_STATUSES = ["in_progress", "running", "quality_check", "paused"];
 const COMPLETED_STATUSES = ["completed", "closed", "done"];
 
 function ClickableKpiCard({ onClick, title, children }) {
@@ -561,6 +585,7 @@ export default function ProductionPlanning() {
           o.shift,
           o.priority,
           o.status,
+          o.workflow_status,
           ...(Array.isArray(o.work_orders)
             ? o.work_orders.flatMap((w) => [w.work_order_number, w.machine_name, w.operator_name])
             : []),
@@ -643,6 +668,7 @@ export default function ProductionPlanning() {
       }
 
       const status = String(o.status || "").toLowerCase();
+      if (appliedFilters.preset === "production_pending" && String(o.workflow_status || "").toUpperCase() !== "READY_FOR_PRODUCTION") return false;
       if (appliedFilters.preset === "planned" && !PLANNED_STATUSES.includes(status)) return false;
       if (appliedFilters.preset === "in_progress" && !IN_PROGRESS_STATUSES.includes(status)) return false;
       if (appliedFilters.preset === "completed" && !COMPLETED_STATUSES.includes(status)) return false;
@@ -733,6 +759,7 @@ export default function ProductionPlanning() {
     if (apiSummary && !filtersActive) {
       return {
         total_orders: apiSummary.total_orders ?? computed.total_orders,
+        production_pending_orders: apiSummary.production_pending_orders ?? filteredOrders.filter((order) => String(order.workflow_status || "").toUpperCase() === "READY_FOR_PRODUCTION").length,
         planned_orders: apiSummary.planned_orders ?? computed.planned_orders,
         in_progress_orders: apiSummary.in_progress_orders ?? computed.in_progress_orders,
         completed_orders: apiSummary.completed_orders ?? computed.completed_orders,
@@ -742,7 +769,10 @@ export default function ProductionPlanning() {
         todays_production: apiSummary.todays_production ?? computed.todays_production,
       };
     }
-    return computed;
+    return {
+      ...computed,
+      production_pending_orders: filteredOrders.filter((order) => String(order.workflow_status || "").toUpperCase() === "READY_FOR_PRODUCTION").length,
+    };
   }, [apiSummary, filteredOrders, appliedFilters]);
 
   const showTodayStartOrders = () => {
@@ -1167,7 +1197,7 @@ export default function ProductionPlanning() {
       label: "Status",
       render: (r) => (
         <StatusBadge tone={statusTone(r)}>
-          {r.is_delayed ? "Delayed" : statusLabel(r.status)}
+          {r.is_delayed ? "Delayed" : planningStatusLabel(r)}
         </StatusBadge>
       ),
     },
@@ -1256,8 +1286,8 @@ export default function ProductionPlanning() {
             <ClickableKpiCard onClick={() => applyPlanningPreset("all")} title="Show all production orders" tone="primary">
               <KpiCard label="Total Orders" value={summary.total_orders ?? 0} icon={ClipboardList} tone="primary" meta="Click to filter" />
             </ClickableKpiCard>
-            <ClickableKpiCard onClick={() => applyPlanningPreset("planned")} title="Show planned orders" tone="yellow">
-              <KpiCard label="Planned" value={summary.planned_orders ?? 0} icon={FileText} tone="yellow" meta="Click to filter" />
+            <ClickableKpiCard onClick={() => applyPlanningPreset("production_pending")} title="Show orders Store has released to Production" tone="yellow">
+              <KpiCard label="Production Pending" value={summary.production_pending_orders ?? 0} icon={FileText} tone="yellow" meta="Ready from Store · click to filter" />
             </ClickableKpiCard>
             <ClickableKpiCard onClick={() => applyPlanningPreset("in_progress")} title="Show in-progress orders" tone="warning">
               <KpiCard label="In Progress" value={summary.in_progress_orders ?? 0} icon={Play} tone="warning" meta="Click to filter" />
@@ -1611,7 +1641,7 @@ export default function ProductionPlanning() {
                   </td>
                   <td className="p-2.5 font-semibold text-slate-700 bg-slate-50 border border-slate-300">Status</td>
                   <td className="p-2.5 border border-slate-300">
-                    <span className="font-bold capitalize text-slate-900">{printDetailOrder.is_delayed ? "Delayed" : statusLabel(printDetailOrder.status)}</span>
+                    <span className="font-bold capitalize text-slate-900">{printDetailOrder.is_delayed ? "Delayed" : planningStatusLabel(printDetailOrder)}</span>
                   </td>
                 </tr>
               </tbody>

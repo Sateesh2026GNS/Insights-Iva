@@ -492,7 +492,14 @@ export default function MyJobCardsPage() {
           },
           { replace: false }
         );
-        scrollToJobCardDocumentPanel({ storeMode });
+        scrollToJobCardDocumentPanel({
+          storeMode,
+          panelId: qualityMode || operatorMode
+            ? "sales-job-card-panel"
+            : billingMode
+              ? "accountant-job-card-panel"
+              : undefined,
+        });
         return;
       }
       const orderId = row.sales_order_id ?? row.id;
@@ -506,9 +513,18 @@ export default function MyJobCardsPage() {
         },
         { replace: false }
       );
-      scrollToJobCardDocumentPanel({ storeMode });
+      scrollToJobCardDocumentPanel({
+        storeMode,
+        panelId: operatorMode
+          ? "operator-job-card-panel"
+          : qualityMode
+            ? "quality-control-job-card-panel"
+            : billingMode
+              ? "accountant-job-card-panel"
+              : undefined,
+      });
     },
-    [isSalesListMode, navigate, setSearchParams, storeMode]
+    [billingMode, isSalesListMode, navigate, operatorMode, qualityMode, setSearchParams, storeMode]
   );
 
   const handleEditRow = (row) => {

@@ -274,8 +274,8 @@ def production_plan_start(
     user_tenant: tuple[User, int] = Depends(require_tenant("production")),
     db: Session = Depends(get_db),
 ):
-    _, tenant_id = user_tenant
-    return success_response("Production plan started", _dump(start_production_order(db, tenant_id, plan_id)))
+    user, tenant_id = user_tenant
+    return success_response("Production plan started", _dump(start_production_order(db, tenant_id, plan_id, user=user)))
 
 
 @router.post("/planning/{plan_id}/complete")
@@ -655,6 +655,7 @@ def work_order_stop(
 def work_order_issue_materials(
     work_order_id: int,
     warehouse_id: int | None = Query(None),
+    store_sales_order_id: int | None = Query(None),
     user_tenant: tuple[User, int] = Depends(require_tenant("workorders")),
     db: Session = Depends(get_db),
 ):
@@ -662,7 +663,11 @@ def work_order_issue_materials(
 
     _, tenant_id = user_tenant
     result = issue_materials_for_work_order(
-        db, tenant_id, work_order_id, warehouse_id=warehouse_id
+        db,
+        tenant_id,
+        work_order_id,
+        warehouse_id=warehouse_id,
+        store_sales_order_id=store_sales_order_id,
     )
     return success_response(result.get("message") or "Materials issued", result)
 

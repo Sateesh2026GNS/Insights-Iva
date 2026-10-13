@@ -200,6 +200,7 @@ VALID_WORK_ORDER_STATUSES = {
 VALID_PRODUCTION_ORDER_STATUSES = {
     "draft",
     "planned",
+    "assigned",
     "running",
     "in_progress",
     "paused",
@@ -576,6 +577,11 @@ def quick_create_work_order(db: Session, payload: WorkOrderQuickCreate) -> WorkO
                 db.commit()
                 db.refresh(existing_wo)
                 return existing_wo
+
+        # A work order linked to an incoming production order must use that
+        # order's product and target quantity as the source of truth.
+        payload.product_id = prod_order.product_id
+        payload.planned_quantity = float(prod_order.planned_quantity or 0)
 
     if not prod_order:
         if not payload.product_id:

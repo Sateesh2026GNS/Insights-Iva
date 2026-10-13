@@ -623,12 +623,12 @@ def operator_start_endpoint(
     user: User = Depends(require_permission("production")),
     db: Session = Depends(get_db),
 ):
-    from app.core.workflow_constants import TEAM_OPERATOR, user_teams
+    from app.core.workflow_constants import TEAM_OPERATOR, TEAM_PRODUCTION, user_teams
     from app.core.permissions import get_role_names
 
     teams = user_teams(get_role_names(user))
-    if TEAM_OPERATOR not in teams and not user_is_admin(user):
-        raise HTTPException(status_code=403, detail="Operator role required")
+    if TEAM_OPERATOR not in teams and TEAM_PRODUCTION not in teams and not user_is_admin(user):
+        raise HTTPException(status_code=403, detail="Operator or Production Manager role required")
     return operator_start_production(db, user.tenant_id, work_order_id, user)
 
 
@@ -639,12 +639,12 @@ def operator_progress_endpoint(
     user: User = Depends(require_permission("production")),
     db: Session = Depends(get_db),
 ):
-    from app.core.workflow_constants import TEAM_OPERATOR, user_teams
+    from app.core.workflow_constants import TEAM_OPERATOR, TEAM_PRODUCTION, user_teams
     from app.core.permissions import get_role_names
 
     teams = user_teams(get_role_names(user))
-    if TEAM_OPERATOR not in teams and not user_is_admin(user):
-        raise HTTPException(status_code=403, detail="Operator role required")
+    if TEAM_OPERATOR not in teams and TEAM_PRODUCTION not in teams and not user_is_admin(user):
+        raise HTTPException(status_code=403, detail="Operator or Production Manager role required")
     return operator_update_production(
         db,
         user.tenant_id,
@@ -665,12 +665,12 @@ def operator_pause_endpoint(
     user: User = Depends(require_permission("production")),
     db: Session = Depends(get_db),
 ):
-    from app.core.workflow_constants import TEAM_OPERATOR, user_teams
+    from app.core.workflow_constants import TEAM_OPERATOR, TEAM_PRODUCTION, user_teams
     from app.core.permissions import get_role_names
 
     teams = user_teams(get_role_names(user))
-    if TEAM_OPERATOR not in teams and not user_is_admin(user):
-        raise HTTPException(status_code=403, detail="Operator role required")
+    if TEAM_OPERATOR not in teams and TEAM_PRODUCTION not in teams and not user_is_admin(user):
+        raise HTTPException(status_code=403, detail="Operator or Production Manager role required")
     return operator_pause_production(db, user.tenant_id, work_order_id, user)
 
 
@@ -680,12 +680,12 @@ def operator_resume_endpoint(
     user: User = Depends(require_permission("production")),
     db: Session = Depends(get_db),
 ):
-    from app.core.workflow_constants import TEAM_OPERATOR, user_teams
+    from app.core.workflow_constants import TEAM_OPERATOR, TEAM_PRODUCTION, user_teams
     from app.core.permissions import get_role_names
 
     teams = user_teams(get_role_names(user))
-    if TEAM_OPERATOR not in teams and not user_is_admin(user):
-        raise HTTPException(status_code=403, detail="Operator role required")
+    if TEAM_OPERATOR not in teams and TEAM_PRODUCTION not in teams and not user_is_admin(user):
+        raise HTTPException(status_code=403, detail="Operator or Production Manager role required")
     return operator_resume_production(db, user.tenant_id, work_order_id, user)
 
 
@@ -696,12 +696,12 @@ def operator_complete_endpoint(
     user: User = Depends(require_permission("production")),
     db: Session = Depends(get_db),
 ):
-    from app.core.workflow_constants import TEAM_OPERATOR, user_teams
+    from app.core.workflow_constants import TEAM_OPERATOR, TEAM_PRODUCTION, user_teams
     from app.core.permissions import get_role_names
 
     teams = user_teams(get_role_names(user))
-    if TEAM_OPERATOR not in teams and not user_is_admin(user):
-        raise HTTPException(status_code=403, detail="Operator role required")
+    if TEAM_OPERATOR not in teams and TEAM_PRODUCTION not in teams and not user_is_admin(user):
+        raise HTTPException(status_code=403, detail="Operator or Production Manager role required")
     p = payload or OperatorProgressPayload()
     return operator_complete_production(
         db,

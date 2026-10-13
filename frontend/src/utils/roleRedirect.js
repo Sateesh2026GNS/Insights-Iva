@@ -12,6 +12,9 @@ export const ACCOUNTS_DASHBOARD_PATH = "/accounts/dashboard";
 /** Role-aware dashboard route for Quality Control (renders the quality module dashboard). */
 export const QUALITY_CONTROL_LANDING_PATH = "/dashboard";
 
+/** Operators land on the dashboard; assigned work remains available from My Job Cards. */
+export const OPERATOR_DASHBOARD_PATH = "/dashboard";
+
 /** Canonical Sales module home (must match AppRoutes + sidebar). */
 export const SALES_DASHBOARD_PATH = "/sales";
 
@@ -91,7 +94,7 @@ export function getDashboardPathForRole(roleOrUser) {
     return "/procurement";
   }
   if (names.some((n) => n === "operator")) {
-    return "/my-job-cards";
+    return OPERATOR_DASHBOARD_PATH;
   }
   if (names.some((n) => n.includes("production"))) {
     return PRODUCTION_DASHBOARD_PATH;

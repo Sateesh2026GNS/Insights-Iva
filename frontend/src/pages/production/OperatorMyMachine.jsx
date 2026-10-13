@@ -49,7 +49,7 @@ export default function OperatorMyMachine() {
         {items.length === 0 ? (
           <ListPageCard>
             <ListPageCardBody className="py-12 text-center text-sm text-[var(--color-text-muted)]">
-              No machine is assigned to your account yet. Contact your supervisor.
+              No machine is assigned to your account or active work orders yet. Ask your supervisor to assign a machine to your work order.
             </ListPageCardBody>
           </ListPageCard>
         ) : (

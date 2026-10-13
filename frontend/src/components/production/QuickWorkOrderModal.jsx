@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { CalendarDays, Cpu, User as UserIcon, X } from "lucide-react";
 
 import { SHIFTS } from "../../data/productionPlanningMasterData";
-import { getMachines, getOperators, quickCreateWorkOrder } from "../../api/productionApi";
+import { getMachines, getOperators, getProductionOrders, quickCreateWorkOrder } from "../../api/productionApi";
 import { fetchFinishedGoodsWithFallback } from "../../utils/productOptions";
 import { fetchCustomersWithFallback } from "../../utils/customerOptions";
 import { apiErrorMessage } from "../../utils/apiError";
@@ -62,6 +62,8 @@ export default function QuickWorkOrderModal({ order, onClose, onSuccess, addToas
   const [products, setProducts] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [operators, setOperators] = useState([]);
+  const [productionOrders, setProductionOrders] = useState([]);
+  const [selectedProductionOrder, setSelectedProductionOrder] = useState(order || null);
   const [customCustomerMode, setCustomCustomerMode] = useState(false);
   const [customProductMode, setCustomProductMode] = useState(false);
   const [customOperatorMode, setCustomOperatorMode] = useState(false);
@@ -80,7 +82,7 @@ export default function QuickWorkOrderModal({ order, onClose, onSuccess, addToas
     work_order_number: initialWoNumber,
     product_name: order?.product_name || "",
     product_id: order?.product_id ? String(order.product_id) : "",
-    planned_quantity: order?.planned_quantity || 100,
+    planned_quantity: order?.planned_quantity ?? order?.quantity ?? "",
     customer_id: order?.customer_id ? String(order.customer_id) : "",
     customer_name: order?.buyer_company || order?.customer_name || "",
     machine_id: order?.machine_id ? String(order.machine_id) : "",
@@ -99,8 +101,9 @@ export default function QuickWorkOrderModal({ order, onClose, onSuccess, addToas
       fetchFinishedGoodsWithFallback().catch(() => []),
       fetchCustomersWithFallback().catch(() => []),
       getOperators().catch(() => ({ data: [] })),
+      getProductionOrders().catch(() => ({ data: [] })),
     ])
-      .then(([mRes, pRes, cRes, opRes]) => {
+      .then(([mRes, pRes, cRes, opRes, poRes]) => {
         if (cancelled) return;
         setMachines(Array.isArray(mRes?.data) ? mRes.data : []);
         const prods = Array.isArray(pRes) ? pRes : [];
@@ -109,6 +112,25 @@ export default function QuickWorkOrderModal({ order, onClose, onSuccess, addToas
         setCustomers(custs);
         const ops = Array.isArray(opRes?.data) ? opRes.data : Array.isArray(opRes) ? opRes : [];
         setOperators(ops);
+        const pos = Array.isArray(poRes?.data) ? poRes.data : [];
+        setProductionOrders(pos);
+        if (order?.id) {
+          const linkedOrder = pos.find((item) => String(item.id) === String(order.id)) || order;
+          setSelectedProductionOrder(linkedOrder);
+          setForm((prev) => ({
+            ...prev,
+            planned_quantity: linkedOrder.planned_quantity ?? linkedOrder.quantity ?? prev.planned_quantity,
+            product_id: linkedOrder.product_id ? String(linkedOrder.product_id) : prev.product_id,
+            product_name: linkedOrder.product_name || prev.product_name,
+            customer_name: linkedOrder.customer_name || prev.customer_name,
+            priority: linkedOrder.priority || prev.priority,
+            machine_id: linkedOrder.machine_id ? String(linkedOrder.machine_id) : prev.machine_id,
+            operator_name: linkedOrder.operator_name || prev.operator_name,
+            shift: linkedOrder.shift || prev.shift,
+            start_date: toDateTimeLocal(linkedOrder.start_date) || prev.start_date,
+            due_date: toDateTimeLocal(linkedOrder.due_date) || prev.due_date,
+          }));
+        }
 
         if (order?.product_id) {
           const selected = prods.find((p) => String(p.id) === String(order.product_id));
@@ -168,6 +190,43 @@ export default function QuickWorkOrderModal({ order, onClose, onSuccess, addToas
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
+  const handleProductionOrderChange = (event) => {
+    const id = event.target.value;
+    const selected = productionOrders.find((item) => String(item.id) === id) || null;
+    setSelectedProductionOrder(selected);
+    if (!selected) {
+      setForm((prev) => ({
+        ...prev,
+        work_order_number: `WO-${Date.now().toString().slice(-6)}`,
+        product_id: "",
+        product_name: "",
+        planned_quantity: "",
+        customer_name: "",
+        machine_id: "",
+        operator_name: "",
+        priority: "medium",
+        start_date: "",
+        due_date: "",
+      }));
+      return;
+    }
+    const product = products.find((item) => String(item.id) === String(selected.product_id));
+    setForm((prev) => ({
+      ...prev,
+      work_order_number: selected.work_order_number || `WO-${selected.order_number || selected.id}`,
+      product_id: selected.product_id ? String(selected.product_id) : "",
+      product_name: product?.name || selected.product_name || "",
+      planned_quantity: selected.planned_quantity ?? selected.quantity ?? "",
+      customer_name: selected.customer_name || "",
+      machine_id: selected.machine_id ? String(selected.machine_id) : "",
+      operator_name: selected.operator_name || "",
+      shift: typeof selected.shift === "object" ? selected.shift?.id || "General" : selected.shift || "General",
+      priority: selected.priority || "medium",
+      start_date: toDateTimeLocal(selected.start_date),
+      due_date: toDateTimeLocal(selected.due_date),
+    }));
+  };
+
   const handleCustomerChange = (e) => {
     const val = e.target.value;
     if (val === "__custom__" || val === "__add_customer__") {
@@ -213,6 +272,11 @@ export default function QuickWorkOrderModal({ order, onClose, onSuccess, addToas
       addToast?.("Select a product to create the work order", "error");
       return;
     }
+    const plannedQuantity = Number(form.planned_quantity);
+    if (!Number.isFinite(plannedQuantity) || plannedQuantity <= 0) {
+      addToast?.("Enter a planned quantity greater than zero", "error");
+      return;
+    }
     setSaving(true);
     const woNum = form.work_order_number?.trim() || `WO-${Date.now().toString().slice(-6)}`;
     const shiftVal =
@@ -220,10 +284,10 @@ export default function QuickWorkOrderModal({ order, onClose, onSuccess, addToas
 
     try {
       const res = await quickCreateWorkOrder({
-        production_order_id: order?.id ? Number(order.id) : null,
+        production_order_id: selectedProductionOrder?.id ? Number(selectedProductionOrder.id) : null,
         work_order_number: woNum,
         product_id: Number(form.product_id),
-        planned_quantity: Number(form.planned_quantity || 0),
+        planned_quantity: plannedQuantity,
         customer_name: form.customer_name || null,
         machine_id: form.machine_id ? Number(form.machine_id) : null,
         shift: shiftVal,
@@ -233,7 +297,10 @@ export default function QuickWorkOrderModal({ order, onClose, onSuccess, addToas
         planned_end: form.due_date || null,
       });
       const created = res?.data || {};
-      addToast?.(`Work Order ${created.work_order_number || woNum} created successfully`, "success");
+      addToast?.(
+        `Work Order ${created.work_order_number || woNum} ${selectedProductionOrder?.work_order_number ? "updated" : "created"} successfully`,
+        "success"
+      );
       onSuccess?.({
         id: created.id,
         work_order_number: created.work_order_number || woNum,
@@ -261,7 +328,7 @@ export default function QuickWorkOrderModal({ order, onClose, onSuccess, addToas
               <Cpu className="h-5 w-5" />
             </div>
             <h3 id="quick-wo-title" className="text-base font-bold text-[var(--color-text)]">
-              New Work Order
+              {selectedProductionOrder?.work_order_number ? "Update Work Order" : "New Work Order"}
             </h3>
           </div>
           <button
@@ -274,6 +341,28 @@ export default function QuickWorkOrderModal({ order, onClose, onSuccess, addToas
           </button>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4 overflow-y-auto p-6">
+          <label className="block space-y-1">
+            <span className="ui-label">Incoming Production Order</span>
+            <select
+              value={selectedProductionOrder?.id ? String(selectedProductionOrder.id) : ""}
+              onChange={handleProductionOrderChange}
+              disabled={Boolean(order?.id) || loadingOptions}
+              className="ui-select"
+            >
+              <option value="">Create standalone work order</option>
+              {productionOrders
+                .filter((item) => !["completed", "closed", "cancelled", "done"].includes(String(item.status || "").toLowerCase()))
+                .map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.order_number} · {item.product_name || "Product"} · Qty {item.planned_quantity}
+                    {item.sales_order_number ? ` · SO ${item.sales_order_number}` : ""}
+                  </option>
+                ))}
+            </select>
+            <span className="block text-xs text-[var(--color-text-muted)]">
+              Select an incoming order to fill its product, target quantity, and schedule details.
+            </span>
+          </label>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <label className="block space-y-1">
               <span className="ui-label">Work Order Number</span>
@@ -282,12 +371,13 @@ export default function QuickWorkOrderModal({ order, onClose, onSuccess, addToas
                 value={form.work_order_number}
                 onChange={handleChange}
                 required
+                readOnly={Boolean(selectedProductionOrder?.work_order_number)}
                 className="ui-input"
               />
             </label>
             <label className="block space-y-1">
               <span className="ui-label">Product</span>
-              {order?.product_id ? (
+              {selectedProductionOrder?.product_id ? (
                 <input value={form.product_name} readOnly className="ui-input bg-[var(--color-surface-muted)]" />
               ) : customProductMode ? (
                 <div className="flex gap-1.5">
@@ -342,6 +432,7 @@ export default function QuickWorkOrderModal({ order, onClose, onSuccess, addToas
               <ShorthandQuantityInput
                 value={form.planned_quantity}
                 onChange={(val) => setForm((prev) => ({ ...prev, planned_quantity: val }))}
+                disabled={Boolean(selectedProductionOrder?.id)}
                 placeholder="e.g. 500"
               />
             </label>
@@ -390,7 +481,9 @@ export default function QuickWorkOrderModal({ order, onClose, onSuccess, addToas
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <label className="block space-y-1">
               <span className="ui-label">Customer</span>
-              {order?.customer_name && order?.customer_id ? (
+              {selectedProductionOrder?.customer_name ? (
+                <input value={form.customer_name} readOnly className="ui-input bg-[var(--color-surface-muted)]" />
+              ) : order?.customer_name && order?.customer_id ? (
                 <input value={form.customer_name} readOnly className="ui-input bg-[var(--color-surface-muted)]" />
               ) : customCustomerMode ? (
                 <div className="flex gap-1.5">
@@ -539,7 +632,9 @@ export default function QuickWorkOrderModal({ order, onClose, onSuccess, addToas
               Cancel
             </Button>
             <Button variant="success" type="submit" disabled={saving || loadingOptions}>
-              {saving ? "Creating…" : "Create Work Order"}
+              {saving
+                ? selectedProductionOrder?.work_order_number ? "Updating…" : "Creating…"
+                : selectedProductionOrder?.work_order_number ? "Update Work Order" : "Create Work Order"}
             </Button>
           </div>
         </form>

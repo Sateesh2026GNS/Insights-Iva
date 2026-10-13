@@ -784,11 +784,13 @@ export default function ProductionSchedule() {
     }
     try {
       // 1. Fetch core primary data first for instant page availability
-      const [dashRes, timelineRes] = await Promise.allSettled(
+      const primaryResults = await Promise.allSettled(
         operatorMode
-          ? [getMyProductionSchedule(), getMyProductionSchedule()]
+          ? [getMyProductionSchedule()]
           : [getScheduleDashboard(), getScheduleTimeline()],
       );
+      const dashRes = primaryResults[0];
+      const timelineRes = operatorMode ? primaryResults[0] : primaryResults[1];
 
       if (!isMountedRef.current) return;
 
@@ -821,6 +823,18 @@ export default function ProductionSchedule() {
 
       // Unblock page loading as soon as core view data is ready
       setLoading(false);
+
+      if (operatorMode) {
+        // Operator schedule data is already scoped by /production-schedule/my.
+        // Do not load manager-wide machine, queue, material, or conflict widgets.
+        setShifts([]);
+        setLiveMachines([]);
+        setQueue([]);
+        setMaterials([]);
+        setConflicts([]);
+        setCalendarEvents([]);
+        return;
+      }
 
       // 2. Fetch secondary panel widget data concurrently in background
       const [
@@ -1032,7 +1046,7 @@ export default function ProductionSchedule() {
   const openCreate = !operatorMode ? () => setShowNewModal(true) : undefined;
   const runningMachines = liveMachines.filter((m) => String(m.status).toLowerCase() === "running").length;
   const showFloorStrip =
-    liveMachines.length > 0 || queue.length > 0 || shifts.length > 0 || materials.length > 0;
+    !operatorMode && (liveMachines.length > 0 || queue.length > 0 || shifts.length > 0 || materials.length > 0);
 
   if (loading) return <Loader label="Loading production schedule…" />;
 

@@ -20,6 +20,7 @@ class ProductionOrderListRead(BaseModel):
     bom_version: str | None = None
     sales_order_id: int | None = Field(None, ge=1)
     sales_order_number: str | None = None
+    workflow_status: str | None = None
     department: str | None = None
     shift: str | None = None
     product_name: str | None = None
@@ -51,6 +52,7 @@ class ProductionOrderListRead(BaseModel):
 
 class ProductionPlanningSummaryRead(BaseModel):
     total_orders: int = 0
+    production_pending_orders: int = 0
     planned_orders: int = 0
     in_progress_orders: int = 0
     completed_orders: int = 0

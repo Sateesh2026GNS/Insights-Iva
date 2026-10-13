@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from sqlalchemy import Select, or_, select
+from sqlalchemy import Select, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.core.permissions import get_role_names, user_is_admin
@@ -21,7 +21,7 @@ def user_is_operator_role(user: User) -> bool:
 
 
 def resolve_operator_machine_ids(db: Session, user: User) -> list[int]:
-    """Machines assigned to this operator (user FK + legacy user.assigned_machine_id)."""
+    """Machines assigned directly or through an active work order for this operator."""
     ids: set[int] = set()
     if user.assigned_machine_id:
         ids.add(int(user.assigned_machine_id))
@@ -33,6 +33,16 @@ def resolve_operator_machine_ids(db: Session, user: User) -> list[int]:
         )
     ).all()
     ids.update(int(i) for i in rows)
+
+    work_order_machine_ids = db.scalars(
+        select(WorkOrder.machine_id).where(
+            WorkOrder.tenant_id == user.tenant_id,
+            WorkOrder.assigned_user_id == user.id,
+            WorkOrder.machine_id.is_not(None),
+            func.lower(WorkOrder.status).notin_(("completed", "closed", "done", "cancelled", "canceled")),
+        )
+    ).all()
+    ids.update(int(i) for i in work_order_machine_ids if i is not None)
     return sorted(ids)
 
 

@@ -359,12 +359,16 @@ def _stage_editable(stage: str, ws: str, user: User | None) -> bool:
         "inventory_check": "inventory",
         "store": "inventory",
         "production_manager": "production",
-        "operator": "operator",
+        # Production managers supervise shop-floor execution and need to be
+        # able to start/update the assigned work order from the workflow page.
+        "operator": ("operator", "production"),
         "quality": "quality",
         "packing": "packing",
         "billing": "billing",
     }
     required = stage_team.get(stage)
+    if isinstance(required, tuple):
+        return any(team in teams for team in required)
     return bool(required and required in teams)
 
 

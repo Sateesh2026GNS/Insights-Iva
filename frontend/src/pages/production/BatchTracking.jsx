@@ -49,6 +49,7 @@ export default function BatchTracking() {
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState(DEMO_BATCH_SUMMARY);
   const [batches, setBatches] = useState([]);
+  const [loadError, setLoadError] = useState("");
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState(null);
 
@@ -60,18 +61,28 @@ export default function BatchTracking() {
         getBatchesEnriched(),
       ]);
 
+      const errors = [];
       if (sumRes.status === "fulfilled" && sumRes.value?.data) {
         setSummary({ ...DEMO_BATCH_SUMMARY, ...sumRes.value.data });
+      } else {
+        errors.push("batch summary");
       }
-      if (listRes.status === "fulfilled" && listRes.value?.data?.length) {
-        setBatches(listRes.value.data);
+      if (listRes.status === "fulfilled") {
+        // An empty array is authoritative: clear rows left over from a prior
+        // refresh rather than keeping stale batches on screen.
+        setBatches(Array.isArray(listRes.value?.data) ? listRes.value.data : []);
+      } else {
+        errors.push("batch list");
       }
-    } catch {
-      /* keep demo fallback */
+      const message = errors.length
+        ? `Could not refresh ${errors.join(" and ")}. Showing the last available data.`
+        : "";
+      setLoadError(message);
+      if (message) addToast(message, "error");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [addToast]);
 
   usePageRefresh(() => load(true));
 
@@ -161,6 +172,11 @@ export default function BatchTracking() {
 
       <ListPageCard>
         <ListPageCardBody>
+          {loadError && (
+            <div role="alert" className="mb-4 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              {loadError} <button type="button" onClick={() => load()} className="ml-2 font-semibold underline">Retry</button>
+            </div>
+          )}
           <div className="mb-4 print:hidden">
             <SearchBar value={search} onChange={setSearch} placeholder="Search batches..." aria-label="Search batches" />
           </div>

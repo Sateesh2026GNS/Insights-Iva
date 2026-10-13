@@ -368,6 +368,25 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.op-doc__triple-columns > .sjc-doc__panel {
+  min-width: 0;
+}
+
+.op-doc .op-doc__quality-table,
+.op-doc .op-doc__slitting-table {
+  width: 100%;
+  min-width: 0;
+  table-layout: fixed;
+}
+
+.op-doc .op-doc__quality-table th,
+.op-doc .op-doc__quality-table td,
+.op-doc .op-doc__slitting-table th,
+.op-doc .op-doc__slitting-table td {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
 @media (max-width: 900px) {
   .op-doc__triple-columns {
     grid-template-columns: 1fr;

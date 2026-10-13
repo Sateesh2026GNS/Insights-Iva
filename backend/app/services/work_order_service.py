@@ -171,7 +171,8 @@ def _to_list_read(db: Session, tenant_id: int, wo: WorkOrder) -> WorkOrderListRe
         operator_name=wo.operator_name or (operator.full_name if operator else None),
         progress_pct=ctx["progress"],
         is_delayed=_is_delayed(wo),
-        materials_issued=bool(getattr(wo, "materials_issued", False)),
+        materials_issued=bool(getattr(wo, "materials_issued", False))
+        or store_materials_issued_for_work_order(db, tenant_id, wo, po),
         job_card_number=stage_card.card_number if stage_card else None,
         job_card_stage=stage_card.stage if stage_card else None,
         workflow_stage_job_card_id=stage_card.id if stage_card else None,
@@ -226,7 +227,9 @@ def _materials_for_wo(db: Session, tenant_id: int, wo: WorkOrder, po: Production
     requirements = get_bom_requirements(
         db, tenant_id, po.product_id, float(wo.planned_quantity or 0)
     )
-    issued_flag = bool(getattr(wo, "materials_issued", False))
+    issued_flag = bool(getattr(wo, "materials_issued", False)) or store_materials_issued_for_work_order(
+        db, tenant_id, wo, po
+    )
     materials = []
     for req in requirements:
         required = float(req["required_qty"])
@@ -241,6 +244,40 @@ def _materials_for_wo(db: Session, tenant_id: int, wo: WorkOrder, po: Production
             )
         )
     return materials
+
+
+def store_materials_issued_for_work_order(
+    db: Session, tenant_id: int, wo: WorkOrder, po: ProductionOrder | None = None
+) -> bool:
+    """Use the Store stage as the source of truth for material issue readiness."""
+    if not po and wo.production_order_id:
+        po = db.scalars(
+            select(ProductionOrder).where(
+                ProductionOrder.id == wo.production_order_id,
+                ProductionOrder.tenant_id == tenant_id,
+            )
+        ).first()
+    if not po:
+        return False
+    sales_order_id = po.sales_order_id
+    if not sales_order_id and po.sales_order_number:
+        sales_order = db.scalars(
+            select(SalesOrder).where(
+                SalesOrder.tenant_id == tenant_id,
+                SalesOrder.order_number == po.sales_order_number,
+            )
+        ).first()
+        sales_order_id = sales_order.id if sales_order else None
+    if not sales_order_id:
+        return False
+    store_card = db.scalars(
+        select(WorkflowStageJobCard).where(
+            WorkflowStageJobCard.tenant_id == tenant_id,
+            WorkflowStageJobCard.sales_order_id == sales_order_id,
+            WorkflowStageJobCard.stage == "store",
+        )
+    ).first()
+    return bool(store_card and (store_card.status or "").strip().lower() == "completed")
 
 
 def get_work_order_detail(
@@ -298,7 +335,9 @@ def _start_checks(db: Session, tenant_id: int, wo: WorkOrder) -> list[WorkOrderS
     ctx = _wo_context(db, tenant_id, wo)
     po = ctx["po"]
     materials = _materials_for_wo(db, tenant_id, wo, po)
-    issued = bool(getattr(wo, "materials_issued", False))
+    issued = bool(getattr(wo, "materials_issued", False)) or store_materials_issued_for_work_order(
+        db, tenant_id, wo, po
+    )
     if materials:
         material_ok = issued and all(m.issued_qty >= m.required_qty for m in materials)
     else:
@@ -348,15 +387,33 @@ def start_work_order(
     wo = db.scalars(select(WorkOrder).where(WorkOrder.id == work_order_id, WorkOrder.tenant_id == tenant_id)).first()
     if not wo:
         return WorkOrderActionResponse(success=False, message="Work order not found")
+    if wo.status in COMPLETED_STATUSES | {"cancelled", "canceled"}:
+        return WorkOrderActionResponse(
+            success=False,
+            message="A completed or cancelled work order cannot be started",
+        )
+    po = None
+    if wo.production_order_id:
+        po = db.scalars(
+            select(ProductionOrder).where(
+                ProductionOrder.id == wo.production_order_id,
+                ProductionOrder.tenant_id == tenant_id,
+            )
+        ).first()
+        if po and po.status in {"completed", "closed", "done", "cancelled"}:
+            return WorkOrderActionResponse(
+                success=False,
+                message=f"Cannot start a work order whose production order is {po.status}",
+            )
+    if store_materials_issued_for_work_order(db, tenant_id, wo, po):
+        wo.materials_issued = True
     checks = _start_checks(db, tenant_id, wo)
     if not all(c.ready for c in checks):
         return WorkOrderActionResponse(success=False, checks=checks, message="Pre-start checks failed")
     
     # Auto-start parent Production Order if it hasn't been started yet
-    if wo.production_order_id:
-        po = db.scalars(select(ProductionOrder).where(ProductionOrder.id == wo.production_order_id, ProductionOrder.tenant_id == tenant_id)).first()
-        if po and po.status in ("draft", "planned", "pending", "material_ready", "machine_assigned"):
-            po.status = "in_progress"
+    if po:
+        po.status = "in_progress"
 
     wo.status = "running"
     if not wo.planned_start:
@@ -377,6 +434,20 @@ def pause_work_order(db: Session, tenant_id: int, work_order_id: int) -> WorkOrd
         return WorkOrderActionResponse(success=False, message="Work order not found")
     if wo.status in RUNNING_STATUSES:
         wo.status = "paused"
+        po = db.scalars(
+            select(ProductionOrder).where(
+                ProductionOrder.id == wo.production_order_id,
+                ProductionOrder.tenant_id == tenant_id,
+            )
+        ).first()
+        if po and po.status in RUNNING_STATUSES | {"in_progress"}:
+            po.status = "paused"
+        if po and po.sales_order_id:
+            from app.services.stage_job_card_service import get_stage_card
+
+            operator_card = get_stage_card(db, tenant_id, po.sales_order_id, "operator")
+            if operator_card and operator_card.status in {"assigned", "in_progress"}:
+                operator_card.status = "on_hold"
         db.commit()
         db.refresh(wo)
     return WorkOrderActionResponse(success=True, work_order=_to_list_read(db, tenant_id, wo), message="Work order paused")
@@ -386,7 +457,20 @@ def stop_work_order(db: Session, tenant_id: int, work_order_id: int) -> WorkOrde
     wo = db.scalars(select(WorkOrder).where(WorkOrder.id == work_order_id, WorkOrder.tenant_id == tenant_id)).first()
     if not wo:
         return WorkOrderActionResponse(success=False, message="Work order not found")
+    if wo.status in COMPLETED_STATUSES | {"cancelled", "canceled"}:
+        return WorkOrderActionResponse(
+            success=False,
+            message="A completed or cancelled work order cannot be reset to planned",
+        )
     wo.status = "planned"
+    po = db.scalars(
+        select(ProductionOrder).where(
+            ProductionOrder.id == wo.production_order_id,
+            ProductionOrder.tenant_id == tenant_id,
+        )
+    ).first()
+    if po and po.status in RUNNING_STATUSES | {"paused", "in_progress"}:
+        po.status = "assigned" if wo.assigned_user_id else "planned"
     db.commit()
     db.refresh(wo)
     return WorkOrderActionResponse(success=True, work_order=_to_list_read(db, tenant_id, wo), message="Work order stopped")

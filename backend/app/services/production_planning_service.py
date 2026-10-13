@@ -14,6 +14,7 @@ from app.models.production import (
     ProductionOrder,
     WorkOrder,
 )
+from app.models.sales import SalesOrder
 from app.models.user import User
 from app.schemas.production_planning import (
     ProductionCompleteResponse,
@@ -27,11 +28,10 @@ from app.schemas.production_planning import (
 )
 from app.services.production_service import (
     list_production_orders,
-    update_production_order_status,
 )
 
 
-PLANNED_STATUSES = {"draft", "planned", "pending", "material_ready", "machine_assigned"}
+PLANNED_STATUSES = {"draft", "planned", "pending", "assigned", "material_ready", "machine_assigned"}
 IN_PROGRESS_STATUSES = {"in_progress", "running", "quality_check"}
 COMPLETED_STATUSES = {"completed", "closed", "done"}
 
@@ -61,7 +61,10 @@ def _order_context(db: Session, tenant_id: int, order: ProductionOrder) -> dict:
             .order_by(WorkOrder.id.desc())
         ).all()
     )
-    active_wo = work_orders[0] if work_orders else None
+    active_wo = next(
+        (wo for wo in work_orders if wo.status not in {"completed", "closed", "done"}),
+        work_orders[0] if work_orders else None,
+    )
     m_id = active_wo.machine_id if (active_wo and active_wo.machine_id) else getattr(order, "machine_id", None)
     machine = (
         db.scalars(select(Machine).where(Machine.id == m_id, Machine.tenant_id == tenant_id)).first()
@@ -91,38 +94,10 @@ def _order_context(db: Session, tenant_id: int, order: ProductionOrder) -> dict:
             ) or 0
         )
     planned = float(order.planned_quantity or 0)
-    now = datetime.now(timezone.utc)
-    time_progress = 0.0
     if order.status in ("completed", "closed", "done"):
         progress = 100.0
-        produced = max(produced, planned)
-    elif order.status in ("in_progress", "running", "quality_check"):
-        qty_progress = round(produced / planned * 100, 1) if planned else 0.0
-        if order.due_date and (order.due_date if order.due_date.tzinfo else order.due_date.replace(tzinfo=timezone.utc)) <= now:
-            time_progress = 100.0
-        elif order.start_date and order.due_date:
-            s_dt = order.start_date if order.start_date.tzinfo else order.start_date.replace(tzinfo=timezone.utc)
-            d_dt = order.due_date if order.due_date.tzinfo else order.due_date.replace(tzinfo=timezone.utc)
-            tot_sec = (d_dt - s_dt).total_seconds()
-            elap_sec = (now - s_dt).total_seconds()
-            if tot_sec > 0 and elap_sec > 0:
-                time_progress = round(min(100.0, (elap_sec / tot_sec) * 100.0), 1)
-        progress = round(max(qty_progress, time_progress), 1)
-        if produced <= 0 and progress > 0 and planned > 0:
-            produced = float(round((planned * progress) / 100.0, 1))
-
-        if progress >= 100.0 or (planned > 0 and produced >= planned):
-            order.status = "completed"
-            db.commit()
-            progress = 100.0
-            produced = max(produced, planned)
     else:
         progress = round(produced / planned * 100, 1) if (planned and produced > 0) else 0.0
-        if progress >= 100.0 or (planned > 0 and produced >= planned):
-            order.status = "completed"
-            db.commit()
-            progress = 100.0
-            produced = max(produced, planned)
 
     balance = max(planned - produced, 0)
 
@@ -152,6 +127,29 @@ def _to_list_read(db: Session, tenant_id: int, order: ProductionOrder) -> Produc
     product = ctx["product"]
     wo = ctx["active_wo"]
     machine = ctx["machine"]
+    sales_order = (
+        db.scalars(
+            select(SalesOrder).where(
+                SalesOrder.id == order.sales_order_id,
+                SalesOrder.tenant_id == tenant_id,
+            )
+        ).first()
+        if order.sales_order_id
+        else None
+    )
+    workflow_status = sales_order.workflow_status if sales_order else None
+    if sales_order and ctx["work_orders"]:
+        child_statuses = [str(child.status or "").strip().lower() for child in ctx["work_orders"]]
+        if all(child_status in COMPLETED_STATUSES for child_status in child_statuses):
+            # Production Planning should show the production stage from its
+            # work orders, even when the linked sales workflow value is stale.
+            workflow_status = "PRODUCTION_COMPLETED"
+        elif any(child_status == "quality_check" for child_status in child_statuses):
+            workflow_status = "QUALITY_CHECK_PENDING"
+        elif any(child_status in IN_PROGRESS_STATUSES or child_status == "paused" for child_status in child_statuses):
+            workflow_status = "PRODUCTION_IN_PROGRESS"
+        elif any(child_status == "assigned" for child_status in child_statuses):
+            workflow_status = "PRODUCTION_ASSIGNED"
 
     op_name = getattr(order, "operator_name", None) or (wo.operator_name if wo else None)
     if not op_name and wo and wo.assigned_user_id:
@@ -179,11 +177,15 @@ def _to_list_read(db: Session, tenant_id: int, order: ProductionOrder) -> Produc
         start_date=order.start_date,
         due_date=order.due_date,
         status=order.status,
-        customer_name=order.customer_name,
+        customer_name=(
+            order.customer_name
+            or (sales_order.customer.name if sales_order and sales_order.customer else None)
+        ),
         priority=order.priority or "medium",
         bom_version=order.bom_version,
         sales_order_id=order.sales_order_id,
         sales_order_number=order.sales_order_number,
+        workflow_status=workflow_status,
         department=order.department,
         shift=order.shift,
         product_name=product.name if product else None,
@@ -210,6 +212,17 @@ def get_production_planning_summary(
     db: Session, tenant_id: int
 ) -> ProductionPlanningSummaryRead:
     orders = list_production_orders(db, tenant_id)
+    production_pending = int(
+        db.scalar(
+            select(func.count(ProductionOrder.id))
+            .join(SalesOrder, SalesOrder.id == ProductionOrder.sales_order_id)
+            .where(
+                ProductionOrder.tenant_id == tenant_id,
+                SalesOrder.tenant_id == tenant_id,
+                SalesOrder.workflow_status == "READY_FOR_PRODUCTION",
+            )
+        ) or 0
+    )
     counts = {
         "planned": 0,
         "in_progress": 0,
@@ -224,6 +237,8 @@ def get_production_planning_summary(
             counts["completed"] += 1
         elif o.status in IN_PROGRESS_STATUSES:
             counts["in_progress"] += 1
+        elif o.status == "paused":
+            counts["in_progress"] += 1
         elif o.status in PLANNED_STATUSES:
             counts["planned"] += 1
         if _is_delayed(o):
@@ -234,7 +249,7 @@ def get_production_planning_summary(
         db.scalar(
             select(func.coalesce(func.sum(ProductionOrder.planned_quantity), 0)).where(
                 ProductionOrder.tenant_id == tenant_id,
-                ProductionOrder.status.in_(tuple(IN_PROGRESS_STATUSES | PLANNED_STATUSES)),
+                ProductionOrder.status.in_(tuple(IN_PROGRESS_STATUSES | PLANNED_STATUSES | {"paused"})),
             )
         ) or 0
     )
@@ -250,6 +265,7 @@ def get_production_planning_summary(
 
     return ProductionPlanningSummaryRead(
         total_orders=len(orders),
+        production_pending_orders=production_pending,
         planned_orders=counts["planned"],
         in_progress_orders=counts["in_progress"],
         completed_orders=counts["completed"],
@@ -394,11 +410,48 @@ def _run_start_checks(
             ).order_by(MaterialRequest.id.desc())
         ).first()
 
-    material_ok = has_sufficient_stock or (mr is not None)
-    if has_sufficient_stock:
+    # A request is not an issue. Orders linked to a sales/job card may start
+    # only after Store has fully issued materials. Validate issue lines as well
+    # as the work-order flag so historical partial issues cannot pass readiness.
+    work_order_materials_issued = any(bool(getattr(wo, "materials_issued", False)) for wo in ctx["work_orders"])
+    materials_issued = work_order_materials_issued
+    linked_to_store_flow = bool(order.sales_order_id)
+    if linked_to_store_flow:
+        from app.models.manufacturing_workflow import WorkflowStageJobCard
+        from sqlalchemy.orm import selectinload
+
+        store_card = db.scalars(
+            select(WorkflowStageJobCard)
+            .options(selectinload(WorkflowStageJobCard.issue_lines))
+            .where(
+                WorkflowStageJobCard.tenant_id == tenant_id,
+                WorkflowStageJobCard.sales_order_id == order.sales_order_id,
+                WorkflowStageJobCard.stage == "store",
+            )
+        ).first()
+        if store_card:
+            if store_card.issue_lines:
+                materials_issued = bool(
+                    store_card.status == "completed"
+                    and all(
+                        line.issue_status == "issued"
+                        and float(line.remaining_qty or 0) <= 0
+                        for line in store_card.issue_lines
+                    )
+                )
+            else:
+                materials_issued = bool(store_card.status == "completed" and work_order_materials_issued)
+    material_ok = materials_issued or (not linked_to_store_flow and has_sufficient_stock)
+    if materials_issued:
+        mat_message = "Materials issued by Store"
+    elif linked_to_store_flow and mr:
+        mat_message = f"Material request raised ({mr.mr_number}) — waiting for Store to issue"
+    elif linked_to_store_flow:
+        mat_message = "Waiting for Store to issue materials"
+    elif has_sufficient_stock:
         mat_message = "All required materials available"
     elif mr:
-        mat_message = f"Material request raised ({mr.mr_number}) — store will issue"
+        mat_message = f"Material request raised ({mr.mr_number}) — waiting for materials"
     else:
         mat_message = "Insufficient material stock — material request required"
 
@@ -418,18 +471,39 @@ def _run_start_checks(
     if not op_name and machine and getattr(machine, "assigned_operator", None):
         op_name = machine.assigned_operator
 
-    operator_ok = bool(
-        (op_name and op_name.strip() and op_name.strip() != "—")
-        or getattr(order, "operator_id", None)
-        or (wo and (wo.assigned_user_id or wo.operator_name))
+    # Store-flow orders must have a real user assignment. A machine's display
+    # name alone cannot put the job into that operator's scoped queue.
+    operator_ok = (
+        bool(wo and wo.assigned_user_id)
+        if linked_to_store_flow
+        else bool(
+            (op_name and op_name.strip() and op_name.strip() != "—")
+            or getattr(order, "operator_id", None)
+            or (wo and (wo.assigned_user_id or wo.operator_name))
+        )
     )
     op_message = (
         f"Operator ready ({op_name})"
-        if op_name
-        else ("Operator assigned" if operator_ok else "No operator assigned")
+        if operator_ok and op_name
+        else "Operator assigned"
+        if operator_ok
+        else "Assign an operator to this work order"
     )
 
     return [
+        ProductionStartCheckRead(
+            check_type="work_order",
+            label="Work Order",
+            ready=bool(
+                ctx["active_wo"]
+                and ctx["active_wo"].status not in {"completed", "closed", "done"}
+            ),
+            message=(
+                f"Work order ready ({ctx['active_wo'].work_order_number})"
+                if ctx["active_wo"]
+                else "Create a work order before starting production"
+            ),
+        ),
         ProductionStartCheckRead(
             check_type="material",
             label="Material Availability",
@@ -465,7 +539,7 @@ def preview_start_checks(
 
 
 def start_production_order(
-    db: Session, tenant_id: int, order_id: int
+    db: Session, tenant_id: int, order_id: int, user: User | None = None
 ) -> ProductionStartResponse:
     order = db.scalars(
         select(ProductionOrder).where(
@@ -477,6 +551,28 @@ def start_production_order(
             success=False, checks=[], message="Production order not found"
         )
 
+    if order.status in COMPLETED_STATUSES or order.status == "cancelled":
+        return ProductionStartResponse(
+            success=False,
+            checks=[],
+            message=f"Cannot start a {order.status} production order",
+        )
+
+    # Older/manual production orders may predate work-order generation. Create
+    # the linked work order before checks so the manager can assign its machine
+    # and operator even when the first start attempt is blocked by readiness.
+    from app.services.manufacturing_workflow_service import ensure_work_order_for_production_order
+
+    if not db.scalars(
+        select(WorkOrder).where(
+            WorkOrder.tenant_id == tenant_id,
+            WorkOrder.production_order_id == order.id,
+        )
+    ).first():
+        ensure_work_order_for_production_order(db, tenant_id, order)
+        db.commit()
+        db.refresh(order)
+
     checks = _run_start_checks(db, tenant_id, order)
     if not all(c.ready for c in checks):
         failed_reasons = [c.message for c in checks if not c.ready]
@@ -486,14 +582,25 @@ def start_production_order(
             message="Pre-start checks failed. " + "; ".join(failed_reasons),
         )
 
-    if order.status in PLANNED_STATUSES:
-        order.status = "in_progress"
-        db.commit()
-        db.refresh(order)
-        ctx = _order_context(db, tenant_id, order)
-        if ctx["active_wo"] and ctx["active_wo"].status == "planned":
-            ctx["active_wo"].status = "in_progress"
-            db.commit()
+    order.status = "in_progress"
+    ctx = _order_context(db, tenant_id, order)
+    for work_order in ctx["work_orders"]:
+        if work_order.status not in COMPLETED_STATUSES:
+            work_order.status = "running"
+            if not work_order.planned_start:
+                work_order.planned_start = datetime.now(timezone.utc)
+
+    # Keep the sales/job-card stage in step with the production and work
+    # orders when Production Planning is the screen used to start work.
+    from app.services.workflow_team_service import sync_sales_workflow_on_work_order_start
+
+    for work_order in ctx["work_orders"]:
+        if work_order.status in {"running", "in_progress"}:
+            sync_sales_workflow_on_work_order_start(
+                db, tenant_id, work_order, user=user
+            )
+    db.commit()
+    db.refresh(order)
 
     return ProductionStartResponse(
         success=True,
@@ -530,6 +637,12 @@ def complete_production_order(
     work_orders = list(
         db.scalars(select(WorkOrder).where(WorkOrder.production_order_id == order.id)).all()
     )
+    if not work_orders:
+        return ProductionCompleteResponse(
+            success=False,
+            steps=[],
+            message="Cannot complete production: this production order has no linked work order.",
+        )
     if work_orders:
         for wo in work_orders:
             if wo.status not in {"completed", "closed", "done"}:
@@ -541,13 +654,17 @@ def complete_production_order(
                         message=result.message or "Work order completion failed",
                     )
                 steps.extend(result.steps or [])
-    else:
-        order.status = "completed"
-        update_production_order_status(db, order_id, tenant_id, "completed")
-        steps.append("Quality inspection recorded")
-        steps.append("Finished goods posted to inventory")
-        steps.append("Order marked completed")
-
+        refreshed_statuses = list(
+            db.scalars(
+                select(WorkOrder.status).where(
+                    WorkOrder.production_order_id == order.id,
+                    WorkOrder.tenant_id == tenant_id,
+                )
+            ).all()
+        )
+        if refreshed_statuses and all(status in {"completed", "closed", "done"} for status in refreshed_statuses):
+            order.status = "completed"
+            db.commit()
     order = db.scalars(
         select(ProductionOrder).where(
             ProductionOrder.id == order_id, ProductionOrder.tenant_id == tenant_id
@@ -572,8 +689,25 @@ def pause_production_order(
     ).first()
     if not order:
         return None
-    if order.status == "in_progress":
-        order.status = "planned"
+    if order.status in IN_PROGRESS_STATUSES:
+        order.status = "paused"
+        work_orders = list(
+            db.scalars(
+                select(WorkOrder).where(
+                    WorkOrder.production_order_id == order.id,
+                    WorkOrder.tenant_id == tenant_id,
+                )
+            ).all()
+        )
+        for work_order in work_orders:
+            if work_order.status in {"running", "in_progress"}:
+                work_order.status = "paused"
+        if order.sales_order_id:
+            from app.services.stage_job_card_service import get_stage_card
+
+            operator_card = get_stage_card(db, tenant_id, order.sales_order_id, "operator")
+            if operator_card and operator_card.status in {"assigned", "in_progress"}:
+                operator_card.status = "on_hold"
         db.commit()
         db.refresh(order)
     return _to_list_read(db, tenant_id, order)

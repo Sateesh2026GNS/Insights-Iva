@@ -12,7 +12,7 @@ from datetime import date, datetime, timezone
 from typing import Any
 
 from fastapi import HTTPException
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
@@ -327,6 +327,7 @@ def issue_materials_for_work_order(
     work_order_id: int,
     *,
     warehouse_id: int | None = None,
+    store_sales_order_id: int | None = None,
     force: bool = False,
     commit: bool = True,
 ) -> dict[str, Any]:
@@ -352,6 +353,70 @@ def issue_materials_for_work_order(
     po = db.get(ProductionOrder, wo.production_order_id)
     if not po:
         raise HTTPException(status_code=400, detail="Production order missing")
+
+    if store_sales_order_id:
+        store_sales_order = db.scalars(
+            select(SalesOrder).where(
+                SalesOrder.id == store_sales_order_id,
+                SalesOrder.tenant_id == tenant_id,
+            )
+        ).first()
+        if not store_sales_order:
+            raise HTTPException(status_code=404, detail="Sales order not found")
+        matching_lines = list(
+            db.scalars(
+                select(SalesOrderLine).where(
+                    SalesOrderLine.sales_order_id == store_sales_order.id,
+                    SalesOrderLine.product_id == po.product_id,
+                )
+            ).all()
+        )
+        line_quantity = sum(float(line.quantity or 0) for line in matching_lines)
+        if not matching_lines or line_quantity < float(wo.planned_quantity or 0):
+            raise HTTPException(
+                status_code=409,
+                detail="Selected sales order does not contain enough quantity of this work order's product.",
+            )
+        from app.models.manufacturing_workflow import WorkflowStageJobCard
+
+        store_card = db.scalars(
+            select(WorkflowStageJobCard).where(
+                WorkflowStageJobCard.tenant_id == tenant_id,
+                WorkflowStageJobCard.sales_order_id == store_sales_order.id,
+                WorkflowStageJobCard.stage == "store",
+            )
+        ).first()
+        if not store_card or (store_card.status or "").strip().lower() != "completed":
+            raise HTTPException(
+                status_code=409,
+                detail="The selected sales order has not completed Store material issue.",
+            )
+        po.sales_order_id = store_sales_order.id
+        po.sales_order_number = store_sales_order.order_number
+        if not po.customer_name and store_sales_order.customer:
+            po.customer_name = store_sales_order.customer.name
+
+    # Store issues materials against the sales-order workflow. Reconcile that
+    # completed issue to this work order before attempting another inventory OUT.
+    from app.services.work_order_service import store_materials_issued_for_work_order
+
+    if store_materials_issued_for_work_order(db, tenant_id, wo, po):
+        wo.materials_issued = True
+        if wo.status in {"draft", "planned", "pending", "released"}:
+            wo.status = "material_ready"
+        if commit:
+            db.commit()
+            db.refresh(wo)
+        else:
+            db.flush()
+        return {
+            "success": True,
+            "already_issued": True,
+            "issued_by": "store",
+            "work_order_id": wo.id,
+            "movements": [],
+            "message": "Store already issued these materials; linked to work order without a duplicate inventory issue.",
+        }
 
     warehouse = None
     if warehouse_id:
@@ -599,6 +664,11 @@ def complete_work_order_integrated(
             message="Work order already completed",
             steps=["Already completed"],
         )
+    if wo.status not in {"running", "in_progress", "paused", "quality_check"}:
+        return WorkOrderActionResponse(
+            success=False,
+            message="Start the work order and record production before completing it.",
+        )
 
     po = db.get(ProductionOrder, wo.production_order_id)
     if not po:
@@ -662,6 +732,10 @@ def complete_work_order_integrated(
         ):
             po.status = "completed"
             steps.append(f"Production order {po.order_number} completed")
+        if sibling_wos:
+            po.actual_quantity = sum(
+                float(w.actual_quantity or 0) for w in sibling_wos
+            )
 
         try:
             from app.services.audit_service import log_audit
@@ -738,8 +812,28 @@ def _emit_wo_completed(db, tenant_id: int, wo) -> None:
 def _ensure_production_batch(
     db: Session, tenant_id: int, wo: WorkOrder, qty: float
 ):
-    """Create a production batch for FG traceability (idempotent per WO)."""
-    from app.models.production import Batch
+    """Keep one traceable production batch per work order in sync with its output."""
+    return _sync_work_order_batch(db, tenant_id, wo, qty, status="completed")
+
+
+def _sync_work_order_batch(
+    db: Session, tenant_id: int, wo: WorkOrder, qty: float, *, status: str = "in_process"
+):
+    """Upsert the work order's batch so partial output is traceable too."""
+    from app.models.production import Batch, ProductionEntry
+
+    recorded_total = db.scalar(
+        select(
+            func.coalesce(
+                func.sum(ProductionEntry.quantity_produced + ProductionEntry.quantity_rejected),
+                0,
+            )
+        ).where(
+            ProductionEntry.tenant_id == tenant_id,
+            ProductionEntry.work_order_id == wo.id,
+        )
+    )
+    batch_qty = float(recorded_total or qty or 0)
 
     existing = db.scalars(
         select(Batch).where(
@@ -748,15 +842,18 @@ def _ensure_production_batch(
         )
     ).first()
     if existing:
+        existing.quantity = batch_qty
+        if status == "completed" or (existing.status or "").lower() != "completed":
+            existing.status = status
         return existing
     ts = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
     batch = Batch(
         tenant_id=tenant_id,
         work_order_id=wo.id,
         batch_code=f"BATCH-{wo.work_order_number}-{ts[-6:]}",
-        quantity=float(qty or 0),
+        quantity=batch_qty,
         produced_at=datetime.now(timezone.utc),
-        status="completed",
+        status=status,
     )
     db.add(batch)
     db.flush()
@@ -791,6 +888,8 @@ def ensure_work_order_for_production_order(
         tenant_id=tenant_id,
         production_order_id=po.id,
         machine_id=po.machine_id,
+        assigned_user_id=getattr(po, "operator_user_id", None),
+        operator_name=getattr(po, "operator_name", None),
         work_order_number=f"WO-{po.order_number}-{ts[-4:]}",
         planned_quantity=float(po.planned_quantity or 0),
         status="planned",

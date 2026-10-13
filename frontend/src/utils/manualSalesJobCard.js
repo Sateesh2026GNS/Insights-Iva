@@ -29,8 +29,8 @@ export function resolveManualJobCardId(row) {
   return id;
 }
 
-export function scrollToJobCardDocumentPanel({ storeMode = false } = {}) {
-  const panelId = storeMode ? "store-manager-job-card-panel" : "sales-job-card-panel";
+export function scrollToJobCardDocumentPanel({ storeMode = false, panelId: requestedPanelId } = {}) {
+  const panelId = requestedPanelId || (storeMode ? "store-manager-job-card-panel" : "sales-job-card-panel");
   requestAnimationFrame(() => {
     document.getElementById(panelId)?.scrollIntoView({ behavior: "smooth", block: "start" });
   });
