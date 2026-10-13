@@ -263,7 +263,7 @@ pip install -r requirements.txt
 cp .env.example .env
 # Set DATABASE_URL to PostgreSQL (see .env.example)
 alembic upgrade head
-alembic current   # confirm head revision
+alembic current   # confirm head revision (e.g. c9d0e1f2a3b4)
 
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
@@ -272,6 +272,8 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 - **API docs:** http://localhost:8000/docs  
 - **Health:** http://localhost:8000/health
+
+**Google Calendar / Meet (optional):** set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `GOOGLE_OAUTH_REDIRECT_URI` in `backend/.env` (see `.env.example`). If unset, the Meetings module reports that Google Calendar is not connected for the workspace instead of failing with a server error.
 
 ### 3. Frontend
 
