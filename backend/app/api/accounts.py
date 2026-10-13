@@ -308,10 +308,13 @@ def delete_expense_endpoint(
 
 @router.get("/dashboard")
 def accounts_dashboard_endpoint(
-    tenant_id: int = Depends(tenant_scope(MODULE)), db: Session = Depends(get_db)
+    tenant_id: int = Depends(tenant_scope(MODULE)),
+    db: Session = Depends(get_db),
+    date_from: str | None = Query(None),
+    date_to: str | None = Query(None),
 ):
     try:
-        return get_accounts_dashboard(db, tenant_id)
+        return get_accounts_dashboard(db, tenant_id, date_from=date_from, date_to=date_to)
     except HTTPException:
         raise
     except SQLAlchemyError as exc:

@@ -1,6 +1,6 @@
 import api from "./axiosConfig";
 
-export const getAccountsDashboard = () => api.get("/accounts/dashboard");
+export const getAccountsDashboard = (params) => api.get("/accounts/dashboard", { params });
 
 export const getFinanceHub = () => api.get("/accounts/hub");
 

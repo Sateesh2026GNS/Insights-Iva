@@ -18,6 +18,8 @@ def test_work_center_returns_kpis(register_admin, client):
     assert "financial_year" in body
     assert isinstance(body.get("receivables"), list)
     assert isinstance(body.get("payables"), list)
+    assert "financial_dashboard" in body
+    assert "overview" in body["financial_dashboard"]
 
 
 def test_work_center_tenant_isolated(register_admin, client):

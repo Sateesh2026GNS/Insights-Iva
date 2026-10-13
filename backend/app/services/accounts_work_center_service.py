@@ -250,7 +250,12 @@ def _recent_activity(db: Session, tenant_id: int, today: date) -> list[dict]:
     return items[:15]
 
 
-def get_accounts_work_center(db: Session, tenant_id: int) -> dict:
+def get_accounts_work_center(
+    db: Session,
+    tenant_id: int,
+    date_from: str | None = None,
+    date_to: str | None = None,
+) -> dict:
     today = date.today()
     ar_sum = get_ar_summary(db, tenant_id)
     ap_sum = get_ap_summary(db, tenant_id)
@@ -382,4 +387,10 @@ def get_accounts_work_center(db: Session, tenant_id: int) -> dict:
         },
         gst_period=gst_kpi,
     )
-    return payload.model_dump()
+    result = payload.model_dump()
+    from app.services.accounts_financial_dashboard_service import build_financial_dashboard_block
+
+    result["financial_dashboard"] = build_financial_dashboard_block(
+        db, tenant_id, date_from=date_from, date_to=date_to
+    )
+    return result
