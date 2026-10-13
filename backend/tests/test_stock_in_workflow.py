@@ -154,7 +154,8 @@ def test_fractional_stock_movement_updates_warehouse_balance(register_admin):
         dashboard = get_store_dashboard(db, tenant_id)
         assert float(dashboard.current_inventory_qty) == 0.5
         assert float(dashboard.today_movement.stock_in_quantity) == 0.5
-        assert dashboard.recent_stock_activity == []
+        assert len(dashboard.recent_stock_activity) >= 1
+        assert any(a.movement_type == "in" for a in dashboard.recent_stock_activity)
 
         ledger = list_ledger_entries(db, tenant_id)
         item_entry = next(row for row in ledger if row.item_name == item.name)

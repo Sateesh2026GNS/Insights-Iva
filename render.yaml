@@ -15,9 +15,15 @@ services:
       - key: JWT_SECRET_KEY
         generateValue: true
       - key: STORAGE_PROVIDER
-        value: local
-      - key: ALLOW_LOCAL_STORAGE_IN_PRODUCTION
-        value: "true"
+        value: s3
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_REGION
+        sync: false
+      - key: S3_ACCESS_KEY_ID
+        sync: false
+      - key: S3_SECRET_ACCESS_KEY
+        sync: false
       - key: CORS_ORIGINS
         value: "https://insights-734ee.web.app,https://insights-734ee.firebaseapp.com,https://www.insightsiva.com,https://insightsiva.com,https://insights-iva-api.onrender.com"
       - key: AUTH_COOKIE_MODE

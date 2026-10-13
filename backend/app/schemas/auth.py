@@ -263,6 +263,7 @@ VALID_TOKEN_TYPES = {"bearer"}
 class AuthResponse(BaseModel):
     access_token: str | None = None
     refresh_token: str | None = None
+    csrf_token: str | None = None
     token_type: str = "bearer"
     user: UserResponse
 

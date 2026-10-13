@@ -470,18 +470,10 @@ class Settings(BaseSettings):
             if self.jwt_secret_key == _DEFAULT_JWT_SECRET:
                 raise ValueError("JWT_SECRET_KEY must be changed from default in production")
             if (self.storage_provider or "").strip().lower() == "local":
-                render_or_cloud_detected = bool(
-                    os.environ.get("RENDER")
-                    or os.environ.get("RENDER_EXTERNAL_HOSTNAME")
-                    or os.environ.get("RENDER_SERVICE_ID")
-                    or str(os.environ.get("ALLOW_LOCAL_STORAGE_IN_PRODUCTION", "")).lower() in ("true", "1", "yes")
-                    or self.allow_local_storage_in_production
+                raise ValueError(
+                    "STORAGE_PROVIDER cannot be 'local' in production. "
+                    "Use s3 (recommended) or gcs and configure bucket credentials in the environment."
                 )
-                if not render_or_cloud_detected:
-                    raise ValueError(
-                        "STORAGE_PROVIDER cannot be 'local' in production. "
-                        "Use s3 or gcs, or set ALLOW_LOCAL_STORAGE_IN_PRODUCTION=true."
-                    )
 
         if (self.smtp_user or "").strip() and not (self.smtp_from_email or "").strip():
             self.smtp_from_email = self.smtp_user.strip()

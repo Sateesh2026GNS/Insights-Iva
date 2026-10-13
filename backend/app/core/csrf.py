@@ -20,11 +20,17 @@ CSRF_EXEMPT_PREFIXES = (
     "/auth/login",
     "/auth/register",
     "/auth/phone-login",
+    "/auth/refresh",
+    "/auth/logout",
     "/auth/forgot-password",
     "/auth/reset-password",
     "/auth/verify-email",
     "/auth/validate-reset-token",
     "/auth/csrf",
+    "/api/auth/login",
+    "/api/auth/register",
+    "/api/auth/refresh",
+    "/api/auth/logout",
     "/health",
     "/docs",
     "/openapi.json",
@@ -119,6 +125,32 @@ def validate_trusted_origin(request: Request, settings: Settings | None = None) 
     if origin in settings.cors_origin_list:
         return True
     return settings.cors_origin_allowed_by_regex(origin)
+
+
+ORIGIN_GUARD_PREFIXES = (
+    "/auth/refresh",
+    "/auth/logout",
+    "/api/auth/refresh",
+    "/api/auth/logout",
+)
+
+STATE_CHANGE_HEADER = "X-Requested-With"
+STATE_CHANGE_HEADER_VALUE = "InsightsIva"
+
+
+def origin_guard_required(request: Request) -> bool:
+    if request.method in ("GET", "HEAD", "OPTIONS"):
+        return False
+    p = (request.url.path or "").rstrip("/") or "/"
+    for prefix in ORIGIN_GUARD_PREFIXES:
+        if p == prefix.rstrip("/") or p.startswith(prefix):
+            return True
+    return False
+
+
+def validate_state_change_header(request: Request) -> bool:
+    val = (request.headers.get(STATE_CHANGE_HEADER) or "").strip()
+    return val == STATE_CHANGE_HEADER_VALUE
 
 
 def csrf_required_for_request(request: Request, settings: Settings | None = None) -> bool:

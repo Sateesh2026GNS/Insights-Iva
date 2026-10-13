@@ -12,6 +12,20 @@ jobs:
     defaults:
       run:
         working-directory: backend
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: insights_user
+          POSTGRES_PASSWORD: insights_dev
+          POSTGRES_DB: insights_iva
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -23,12 +37,15 @@ jobs:
             backend/requirements-dev.txt
       - name: Install dependencies
         run: pip install -r requirements-dev.txt
-      - name: Run tests
+      - name: Run tests (PostgreSQL)
         env:
-          ALLOW_SQLITE_RUNTIME: "1"
+          USE_POSTGRES_TESTS: "1"
+          DATABASE_URL: postgresql+psycopg://insights_user:insights_dev@localhost:5432/insights_iva
           JWT_SECRET_KEY: ci-test-secret-key-not-for-production-32chars
           ENVIRONMENT: development
           ALLOW_PUBLIC_REGISTRATION: "true"
+          STORAGE_PROVIDER: local
+          FILE_STORAGE_LOCAL_PATH: /tmp/insights_ci_uploads
         run: pytest -q --tb=short
 
   backend-migrations:
@@ -59,6 +76,11 @@ jobs:
           cache-dependency-path: backend/requirements-dev.txt
       - name: Install dependencies
         run: pip install -r requirements-dev.txt
+      - name: Alembic check (non-blocking drift report)
+        continue-on-error: true
+        env:
+          DATABASE_URL: postgresql+psycopg://insights_user:insights_dev@localhost:5432/insights_iva
+        run: alembic check || true
       - name: Alembic upgrade head (PostgreSQL)
         env:
           DATABASE_URL: postgresql+psycopg://insights_user:insights_dev@localhost:5432/insights_iva
