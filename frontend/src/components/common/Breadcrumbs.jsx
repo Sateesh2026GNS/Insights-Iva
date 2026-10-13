@@ -161,7 +161,7 @@ const pathLabels = {
 /** Exact pathname → navbar title (inventory and other routes where segment labels are ambiguous). */
 const PAGE_TITLE_OVERRIDES = {
   "/my-job-cards": "My Job Cards",
-  "/sales/job-cards/create": "Create Job Card",
+  "/sales/job-cards/create": "Sales Job Card",
   "/accounts/gst": "GST",
   "/reports": "Reports",
   "/accounts/reports": "Reports",
@@ -434,7 +434,7 @@ export function getPageTitle(pathname, user = null) {
     return "Job Card Details";
   }
   if (/^\/sales\/job-cards\/\d+\/edit$/i.test(path)) {
-    return "Edit Job Card";
+    return "Sales Job Card";
   }
   const stageMatch = path.match(/^\/manufacturing\/workflow\/order\/\d+\/([a-z0-9_-]+)$/i);
   if (stageMatch && stageMatch[1]) {

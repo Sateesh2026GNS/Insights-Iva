@@ -298,6 +298,7 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
         phone: customer.phone || prev.customer.phone,
         email: customer.email || prev.customer.email,
         billing_address: formatCustomerAddress(customer) || prev.customer.billing_address,
+        company_address: formatCustomerAddress(customer) || prev.customer.company_address,
         dispatch_address:
           customer.shipping_address || customer.dispatch_address || prev.customer.dispatch_address,
       },
@@ -724,7 +725,7 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
         <header className="manual-sjc-page__toolbar">
           <div className="manual-sjc-page__toolbar-text">
             <h1 className="manual-sjc-page__toolbar-title">
-              {isEdit ? "Edit Sales Job Card" : "Create Sales Job Card"}
+              Sales Job Card
             </h1>
             {!isEdit ? (
               <div className="manual-sjc-page__company">
@@ -743,7 +744,7 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
                   onClick={() => setEditCompanyOpen(true)}
                 >
                   <PenLine className="h-3.5 w-3.5" aria-hidden />
-                  Edit Company Details
+                  Edit
                 </button>
               </div>
             ) : null}
@@ -786,9 +787,14 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
                     ) : null}
                     {tagline ? <span className="manual-sjc__company-strip-tagline">{tagline}</span> : null}
                   </div>
-                  {form.job_card_no ? (
-                    <span className="manual-sjc__company-strip-jc">{form.job_card_no}</span>
-                  ) : null}
+                  <button
+                    type="button"
+                    className="manual-sjc-page__company-edit"
+                    onClick={() => setEditCompanyOpen(true)}
+                  >
+                    <PenLine className="h-3.5 w-3.5" aria-hidden />
+                    Edit
+                  </button>
                 </div>
               ) : null}
 
@@ -1085,9 +1091,15 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
                     />
                   </FormGridField>
                   <FormGridField label="Company Address">
-                    <div className="sjc-doc__input manual-sjc__company-address-value">
-                      {companyAddress || "Company address from settings"}
-                    </div>
+                    <Textarea
+                      rows={2}
+                      wrap="soft"
+                      value={form.customer.company_address}
+                      onChange={(e) => patch("customer.company_address", e.target.value)}
+                      className="sjc-doc__input manual-sjc__textarea"
+                      placeholder="Customer company address"
+                      disabled={!canEditCard}
+                    />
                   </FormGridField>
                 </div>
               </section>
@@ -1321,7 +1333,6 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
                       <th>Prepared By</th>
                       <th>Checked By</th>
                       <th>Approved By</th>
-                      <th>Date</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1345,13 +1356,6 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
                           value={form.approval.approved_by}
                           onChange={(e) => patch("approval.approved_by", e.target.value)}
                           className="sjc-doc__input"
-                        />
-                      </td>
-                      <td>
-                        <DatePicker
-                          compact
-                          value={form.approval.prepared_date}
-                          onChange={(v) => patch("approval.prepared_date", v)}
                         />
                       </td>
                     </tr>
@@ -1381,7 +1385,7 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
                         ? "Saving…"
                         : "Creating…"
                       : isEdit
-                        ? "Save Job Card"
+                        ? "Save"
                         : "Create Job Card"}
                   </Button>
                 </div>

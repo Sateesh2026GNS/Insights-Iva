@@ -1,4 +1,4 @@
-import { ChevronDown, RefreshCw, SlidersHorizontal, X } from "lucide-react";
+import { ChevronDown, SlidersHorizontal, X } from "lucide-react";
 import { useState } from "react";
 
 import Button from "../common/Button";
@@ -153,16 +153,6 @@ export default function JobCardQueueFilters({
               disabled={searching}
             >
               {searching ? "Searching…" : "Search"}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className="my-job-cards-filters__reset-btn"
-              onClick={onClear}
-              disabled={searching}
-              leftIcon={<RefreshCw className="h-4 w-4" aria-hidden />}
-            >
-              Reset
             </Button>
           </div>
         </div>

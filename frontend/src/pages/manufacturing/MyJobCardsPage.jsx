@@ -82,6 +82,17 @@ function normalizeItem(item) {
   };
 }
 
+function canDeleteUnsentJobCard(row) {
+  const workflowStatus = String(row?.workflow_status || "").trim().toUpperCase();
+  const displayStatus = String(
+    row?.queue_status_label || row?.status_label || row?.status || ""
+  ).trim().toLowerCase();
+  return (
+    ["DRAFT", "SAVED", "MANUAL_DRAFT"].includes(workflowStatus) ||
+    ["draft", "saved"].includes(displayStatus)
+  );
+}
+
 function matchesStockFilter(row, stockStatus) {
   if (!stockStatus) return true;
   const stock = String(row.material_stock_status || "").toLowerCase();
@@ -141,6 +152,7 @@ export default function MyJobCardsPage() {
   const [pageSize, setPageSize] = useState(10);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteError, setDeleteError] = useState("");
+  const deleteTargetCanBeDeleted = deleteTarget ? canDeleteUnsentJobCard(deleteTarget) : false;
   const [deleting, setDeleting] = useState(false);
   const [searching, setSearching] = useState(false);
   const [serverSearchActive, setServerSearchActive] = useState(false);
@@ -847,16 +859,17 @@ export default function MyJobCardsPage() {
 
       <ConfirmDialog
         open={Boolean(deleteTarget)}
-        title="Delete Job Card?"
-        message={`Are you sure you want to delete Job Card ${
-          deleteTarget?.job_card_no || deleteTarget?.order_number || ""
-        }? This action cannot be undone.`}
+        title={deleteTargetCanBeDeleted ? "Delete saved job card?" : "Job card can't be deleted"}
+        message={deleteTargetCanBeDeleted
+          ? `Delete ${deleteTarget?.job_card_no || deleteTarget?.order_number || "this job card"}? This can't be undone.`
+          : "This job card has already been sent and can't be deleted."}
         error={deleteError}
-        confirmLabel={deleting ? "Deleting Job Card…" : "Delete Job Card"}
-        cancelLabel="Cancel"
-        destructive
+        confirmLabel={deleting ? "Deleting…" : "Delete"}
+        cancelLabel={deleteTargetCanBeDeleted ? "Cancel" : "Close"}
+        destructive={deleteTargetCanBeDeleted}
         loading={deleting}
-        loadingLabel="Deleting Job Card…"
+        loadingLabel="Deleting…"
+        showConfirm={deleteTargetCanBeDeleted}
         onConfirm={handleDeleteConfirm}
         onClose={() => {
           if (!deleting) {

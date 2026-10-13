@@ -875,3 +875,253 @@
     padding-top: 0;
   }
 }
+
+/* Themed polish for the Sales Job Card workspace. */
+.manual-sjc-page {
+  max-width: 76rem;
+  padding-top: 1rem;
+  padding-bottom: 1.75rem;
+  background: var(--color-bg);
+}
+
+.manual-sjc-page__card {
+  overflow: hidden;
+  border-color: var(--color-border);
+  border-radius: 1.125rem;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card, 0 4px 18px rgba(15, 23, 42, 0.06));
+}
+
+.manual-sjc-page__toolbar {
+  padding: 1.35rem 1.75rem;
+  border-bottom-color: var(--color-border);
+  background: linear-gradient(115deg, var(--color-primary-soft), var(--color-surface) 66%);
+}
+
+.manual-sjc-page__toolbar-title {
+  font-size: clamp(1.35rem, 1.8vw, 1.65rem);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  color: var(--color-text);
+}
+
+.manual-sjc-page__toolbar-meta {
+  margin-top: 0.55rem;
+  gap: 0.65rem;
+  color: var(--color-text-secondary);
+}
+
+.manual-sjc__status-pill {
+  padding: 0.25rem 0.7rem;
+  color: var(--color-success, #15803d);
+  background: var(--color-success-soft, #dcfce7);
+  border: 1px solid color-mix(in srgb, var(--color-success, #16a34a) 22%, transparent);
+}
+
+.manual-sjc-page__body,
+.manual-sjc-page .manual-sjc-form,
+.manual-sjc-page .manual-sjc-form .sjc-doc__paper {
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.manual-sjc-page .manual-sjc-form .sjc-doc__paper {
+  padding: 1.5rem 1.75rem 1.75rem;
+}
+
+.manual-sjc__company-strip {
+  gap: 0.85rem 1.1rem;
+  padding: 0.35rem 0 1rem;
+  margin-bottom: 1.15rem;
+  border-bottom-color: var(--color-border);
+}
+
+.manual-sjc__company-strip-logo {
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0.2rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.75rem;
+  background: var(--color-surface);
+}
+
+.manual-sjc__company-strip-name {
+  font-size: var(--text-md, 0.875rem);
+  color: var(--color-text);
+}
+
+.manual-sjc__company-strip-address,
+.manual-sjc__company-strip-tagline {
+  color: var(--color-text-muted);
+}
+
+.manual-sjc-page__company-edit {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--color-primary) 28%, var(--color-border));
+  border-radius: 0.625rem;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  transition: background-color 140ms ease, border-color 140ms ease, transform 140ms ease;
+}
+
+.manual-sjc-page__company-edit:hover {
+  border-color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 13%, var(--color-surface));
+  text-decoration: none;
+}
+
+.manual-sjc__section--block {
+  padding: 1.25rem 1.4rem;
+  border-color: var(--color-border);
+  border-radius: 0.9rem;
+  background: var(--color-surface);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--color-text) 4%, transparent);
+}
+
+.manual-sjc__section--block + .manual-sjc__section--block {
+  margin-top: 1rem;
+}
+
+.manual-sjc__section-title {
+  font-size: 0.82rem;
+  letter-spacing: 0.065em;
+  color: var(--color-text-secondary);
+}
+
+.manual-sjc__section-hint {
+  color: var(--color-text-muted);
+}
+
+.manual-sjc__detail-tabs {
+  gap: 0.35rem;
+  margin-top: 1rem;
+  padding: 0.3rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.8rem;
+  background: var(--color-surface-muted);
+}
+
+.manual-sjc__detail-tab {
+  padding: 0.65rem 0.95rem;
+  border: 0;
+  border-radius: 0.55rem;
+  margin: 0;
+  color: var(--color-text-muted);
+  font-weight: 600;
+  transition: color 140ms ease, background-color 140ms ease, box-shadow 140ms ease;
+}
+
+.manual-sjc__detail-tab:hover {
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.manual-sjc__detail-tab.is-active {
+  background: var(--color-surface);
+  color: var(--color-primary);
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--color-text) 12%, transparent);
+}
+
+.manual-sjc__section--lines,
+.manual-sjc__section--approval {
+  padding: 0.5rem 0.1rem 0;
+}
+
+.manual-sjc-form input.sjc-doc__input,
+.manual-sjc-form select.sjc-doc__input,
+.manual-sjc-form button.manual-sjc__select,
+.manual-sjc-form textarea.sjc-doc__input,
+.manual-sjc-form .ui-date-compact {
+  border-color: var(--color-border-strong);
+  border-radius: 0.7rem;
+  background: var(--color-surface);
+  color: var(--color-text);
+  transition: border-color 140ms ease, box-shadow 140ms ease, background-color 140ms ease;
+}
+
+.manual-sjc-form input.sjc-doc__input:hover,
+.manual-sjc-form select.sjc-doc__input:hover,
+.manual-sjc-form button.manual-sjc__select:hover,
+.manual-sjc-form textarea.sjc-doc__input:hover,
+.manual-sjc-form .ui-date-compact:hover {
+  border-color: color-mix(in srgb, var(--color-primary) 45%, var(--color-border-strong));
+}
+
+.manual-sjc-form input.sjc-doc__input:focus,
+.manual-sjc-form select.sjc-doc__input:focus,
+.manual-sjc-form textarea.sjc-doc__input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 16%, transparent);
+  outline: 0;
+}
+
+.manual-sjc__grid-label {
+  color: var(--color-text-secondary);
+  font-weight: 600;
+}
+
+.manual-sjc-form .manual-sjc__primary-grid,
+.manual-sjc-form .manual-sjc__address-grid {
+  width: min(100%, 68rem);
+}
+
+.manual-sjc__pricing-table-wrap {
+  border: 1px solid var(--color-border);
+  border-radius: 0.8rem;
+  background: var(--color-surface);
+}
+
+.manual-sjc__pricing-table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.manual-sjc-page .sjc-doc__table th {
+  background: var(--color-primary-soft);
+  color: var(--color-text);
+  border-color: var(--color-border);
+  font-weight: 700;
+}
+
+.manual-sjc-page .sjc-doc__table td {
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+
+.manual-sjc__pricing-table tbody tr:hover td {
+  background: var(--color-surface-muted);
+}
+
+.manual-sjc__line-summary {
+  border-color: var(--color-border);
+  border-radius: 0.8rem;
+  background: var(--color-surface-muted);
+}
+
+.manual-sjc__form-actions {
+  margin-top: 1.25rem;
+  padding-top: 1.1rem;
+  border-color: var(--color-border);
+}
+
+@media (max-width: 639px) {
+  .manual-sjc-page {
+    padding: 0.5rem 0.5rem 1rem;
+  }
+
+  .manual-sjc-page__toolbar {
+    padding: 1rem;
+  }
+
+  .manual-sjc-page .manual-sjc-form .sjc-doc__paper {
+    padding: 1rem;
+  }
+
+  .manual-sjc__section--block {
+    padding: 1rem;
+  }
+
+  .manual-sjc__detail-tabs {
+    overflow-x: auto;
+  }
+}

@@ -195,8 +195,8 @@ export default function JobCardDetailsShell({
     ? stageTitle
     : isEdit
     ? isCreated
-      ? "Edit Job Card"
-      : "Create Sales Job Card"
+      ? "Sales Job Card"
+      : "Sales Job Card"
     : "Sales Job Card";
 
   const headerSubtitle = stageActions

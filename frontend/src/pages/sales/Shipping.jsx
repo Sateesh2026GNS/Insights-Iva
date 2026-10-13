@@ -37,6 +37,7 @@ import {
 } from "../../utils/manufacturingEvents";
 import { escapeHtml } from "../../utils/htmlEscape";
 import { apiErrorMessage } from "../../utils/apiError";
+import "../../styles/shipping-page.css";
 
 const PAGE_SIZES = [10, 25, 50];
 
@@ -296,7 +297,7 @@ export default function Shipping() {
   if (loading) return <Loader label="Loading shipping…" />;
 
   return (
-    <ListPageShell>
+    <ListPageShell className="shipping-page">
       <PageHeader
         title="Shipping"
         subtitle={`${rows.length} total shipment${rows.length === 1 ? "" : "s"}`}
@@ -315,7 +316,7 @@ export default function Shipping() {
         }
       />
 
-      <div className="ui-grid-kpi mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div className="shipping-page__kpis ui-grid-kpi mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
         <KpiCard
           label="Ready to Ship"
           value={summary.ready_to_dispatch}
@@ -326,7 +327,7 @@ export default function Shipping() {
         <KpiCard label="Shipped This Month" value={shippedThisMonth} icon={Truck} tone="success" />
       </div>
 
-      <div className="mt-5 flex flex-col gap-3 rounded-xl border border-[var(--color-border-soft)] bg-[var(--color-surface)] p-3 sm:flex-row sm:items-center sm:p-4">
+      <div className="shipping-page__filters mt-5 flex flex-col gap-3 rounded-xl border border-[var(--color-border-soft)] bg-[var(--color-surface)] p-3 sm:flex-row sm:items-center sm:p-4">
         <div className="min-w-0 flex-1">
           <SearchBar
             value={draftSearch}
@@ -342,7 +343,7 @@ export default function Shipping() {
             placeholder="Search"
           />
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="shipping-page__filter-controls flex flex-wrap items-center gap-2">
           <select
             value={draftStatus}
             onChange={(e) => setDraftStatus(e.target.value)}
@@ -385,9 +386,9 @@ export default function Shipping() {
         </div>
       </div>
 
-      <ListPageCard className="mt-5">
+      <ListPageCard className="shipping-page__log mt-5">
         <ListPageCardBody className="!p-0">
-          <div className="border-b border-[var(--color-border-soft)] px-4 py-3 sm:px-5">
+          <div className="shipping-page__log-heading border-b border-[var(--color-border-soft)] px-4 py-3 sm:px-5">
             <h2 className="text-sm font-semibold text-[var(--color-text)]">Shipment Log</h2>
           </div>
 
@@ -537,7 +538,7 @@ export default function Shipping() {
                             </span>
                           </td>
                           <td className="px-4 py-3">
-                            <div className="flex flex-wrap gap-2">
+                            <div className="shipping-page__row-actions flex flex-wrap gap-2">
                               <Button
                                 type="button"
                                 variant="view"
