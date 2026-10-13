@@ -255,17 +255,18 @@ def export_vendors_endpoint(
 
 def _vendor_bank_lookup_handler(
     ifsc: str,
-    account_number: str,
+    account_number: str | None,
     user: User,
 ):
-    """Validate account + IFSC and return bank name / branch."""
+    """Validate IFSC (and optional account) and return bank name / branch."""
     from fastapi import HTTPException, status
 
     from app.services.bank_lookup_service import lookup_bank_details
 
     _require_vendor_access(user)
+    acct = (account_number or "").strip() or None
     try:
-        return lookup_bank_details(ifsc=ifsc, account_number=account_number)
+        return lookup_bank_details(ifsc=ifsc, account_number=acct)
     except HTTPException:
         raise
     except Exception as exc:
@@ -281,7 +282,12 @@ def _vendor_bank_lookup_handler(
 @router.get("/vendors/bank-lookup")
 def vendor_bank_lookup_endpoint(
     ifsc: str = Query(..., min_length=11, max_length=11),
-    account_number: str = Query(..., min_length=9, max_length=18),
+    account_number: str | None = Query(
+        None,
+        min_length=9,
+        max_length=18,
+        description="Optional; when omitted only IFSC registry details are returned",
+    ),
     user: User = Depends(require_permission(MODULE)),
 ):
     return _vendor_bank_lookup_handler(ifsc=ifsc, account_number=account_number, user=user)
@@ -290,7 +296,7 @@ def vendor_bank_lookup_endpoint(
 @router.get("/vendors/verify-bank-details")
 def vendor_verify_bank_details_endpoint(
     ifsc: str = Query(..., min_length=11, max_length=11),
-    account_number: str = Query(..., min_length=9, max_length=18),
+    account_number: str | None = Query(None, min_length=9, max_length=18),
     user: User = Depends(require_permission(MODULE)),
 ):
     """Compatibility alias for bank verification."""
