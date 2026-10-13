@@ -92,6 +92,8 @@ export default function BulkImportBuyer() {
             await createCustomer({
               tenant_id: tenantId,
               name,
+              company_name: name,
+              company: name,
               gstin: pick(row, "gstin") || null,
               address_line1: pick(row, "address") || null,
               state: pick(row, "state") || null,

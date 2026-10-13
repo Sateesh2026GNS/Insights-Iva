@@ -387,7 +387,7 @@ export function isoDateOnly(value) {
 export function customerFieldsFromMaster(customer) {
   if (!customer) return null;
   return {
-    customer_name: customer.name || customer.company || customer.customer_name || "",
+    customer_name: customer.company_name || customer.company || customer.name || customer.customer_name || "",
     contact_person: customer.contact_name || customer.contact_person || "",
     phone: customer.phone || "",
     email: customer.email || "",

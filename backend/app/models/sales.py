@@ -133,7 +133,8 @@ class Customer(Base, TimestampMixin):
     tenant_id: Mapped[int] = mapped_column(
         ForeignKey("tenants.id"), nullable=False, index=True
     )
-    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    company_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     contact_name: Mapped[str | None] = mapped_column(String(255))
     address_line1: Mapped[str | None] = mapped_column(String(512))
     address_line2: Mapped[str | None] = mapped_column(String(512))

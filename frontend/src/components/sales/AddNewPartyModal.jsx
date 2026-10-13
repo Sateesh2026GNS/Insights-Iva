@@ -577,6 +577,8 @@ export default function AddNewPartyModal({
       const payload = {
         tenant_id: tenantId,
         name: form.name.trim(),
+        company_name: form.name.trim(),
+        company: form.name.trim(),
         gstin: normalizedGstin,
         phone: form.phone.trim() || null,
         email: basicDetails?.email?.trim() || party?.email || null,

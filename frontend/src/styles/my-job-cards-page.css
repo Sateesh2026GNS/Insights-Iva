@@ -238,6 +238,31 @@
   line-height: 1.4;
 }
 
+.my-job-cards-page__section .erp-section-header--no-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 2.75rem;
+  padding: 0.5rem 1rem;
+}
+
+@media (max-width: 640px) {
+  .my-job-cards-page__section .erp-section-header--no-title.erp-section-header--row {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .my-job-cards-page__section .erp-section-header--no-title .my-job-cards-page__section-actions {
+    width: auto;
+    justify-content: flex-end;
+  }
+
+  .my-job-cards-page__section .erp-section-header--no-title .my-job-cards-page__section-actions .ui-btn {
+    flex: 0 0 auto;
+  }
+}
+
 .my-job-cards-page__store-panels {
   display: flex;
   flex-direction: column;

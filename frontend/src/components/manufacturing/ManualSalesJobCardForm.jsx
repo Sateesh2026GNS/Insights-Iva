@@ -151,16 +151,25 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
 
   const customerOptions = useMemo(
     () =>
-      customers.map((c) => ({
-        value: String(c.id),
-        label: c.name || c.company || c.customer_name || `Customer #${c.id}`,
-      })),
+      customers
+        .map((c) => {
+          const compName = (c.company_name || c.company || "").trim();
+          if (!compName) return null;
+          return {
+            value: String(c.id),
+            label: compName,
+          };
+        })
+        .filter(Boolean),
     [customers]
   );
 
-  const customerFooterOptions = useMemo(
-    () => (canAddCustomer ? [{ value: ADD_CUSTOMER_VALUE, label: "Add Company" }] : []),
-    [canAddCustomer]
+  const customerSelectOptions = useMemo(
+    () => [
+      ...(canAddCustomer ? [{ value: ADD_CUSTOMER_VALUE, label: "+ Add Company" }] : []),
+      ...customerOptions,
+    ],
+    [canAddCustomer, customerOptions]
   );
 
   const productOptions = useMemo(
@@ -210,7 +219,7 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
     if (!customer) return salesOrders;
     const customerId = String(customer.id);
     const customerNames = new Set(
-      [customer.name, customer.company, customer.customer_name]
+      [customer.company_name, customer.company, customer.name, customer.customer_name, customer.contact_name, customer.contact_person]
         .map((name) => String(name || "").trim().replace(/\s+/g, " ").toLowerCase())
         .filter(Boolean)
     );
@@ -242,7 +251,9 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
     const name = form.customer.customer_name?.trim();
     if (!name) return "";
     const match = customers.find(
-      (c) => String(c.name || c.company || "").toLowerCase() === name.toLowerCase()
+      (c) =>
+        String(c.company_name || c.company || "").toLowerCase() === name.toLowerCase() ||
+        String(c.name || "").toLowerCase() === name.toLowerCase()
     );
     return match ? String(match.id) : name;
   }, [selectedCustomerId, form.customer.customer_name, customers]);
@@ -289,11 +300,12 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
     if (!customer) return;
     setDirty(true);
     setSelectedCustomerId(String(customer.id));
+    const compName = (customer.company_name || customer.company || "").trim();
     setForm((prev) => ({
       ...prev,
       customer: {
         ...prev.customer,
-        customer_name: customer.name || customer.company || customer.customer_name || "",
+        customer_name: compName || customer.name || customer.customer_name || "",
         contact_person: customer.contact_name || customer.contact_person || prev.customer.contact_person,
         phone: customer.phone || prev.customer.phone,
         email: customer.email || prev.customer.email,
@@ -337,7 +349,9 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
       const name = String(order?.customer_name || detail?.customer_name || "").trim().toLowerCase();
       if (!name) return null;
       return customers.find(
-        (c) => String(c.name || c.company || "").toLowerCase() === name
+        (c) =>
+          String(c.company_name || c.company || "").toLowerCase() === name ||
+          String(c.name || "").toLowerCase() === name
       );
     },
     [customers]
@@ -722,11 +736,8 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
       />
 
       <div className="ui-card manual-sjc-page__card">
-        <header className="manual-sjc-page__toolbar">
+        <header className="manual-sjc-page__toolbar" aria-label="Job card header">
           <div className="manual-sjc-page__toolbar-text">
-            <h1 className="manual-sjc-page__toolbar-title">
-              Sales Job Card
-            </h1>
             {!isEdit ? (
               <div className="manual-sjc-page__company">
                 {companyName || companyAddress || logoUrl ? (
@@ -737,7 +748,9 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
                       {companyAddress ? <span className="manual-sjc-page__company-address">{companyAddress}</span> : null}
                     </div>
                   </>
-                ) : null}
+                ) : (
+                  <span className="manual-sjc-page__company-name">Company Details</span>
+                )}
                 <button
                   type="button"
                   className="manual-sjc-page__company-edit"
@@ -748,9 +761,9 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
                 </button>
               </div>
             ) : null}
-            {isEdit && form.job_card_no ? (
+            {isEdit ? (
               <p className="manual-sjc-page__toolbar-meta">
-                {form.job_card_no}
+                {form.job_card_no || "Job Card"}
                 <span className="manual-sjc__status-pill">{statusDisplay}</span>
               </p>
             ) : null}
@@ -828,8 +841,7 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
                       <SearchableSelect
                         value={customerSelectValue}
                         onChange={handleCustomerSelect}
-                        options={customerOptions}
-                        footerOptions={customerFooterOptions}
+                        options={customerSelectOptions}
                         placeholder={mastersLoading ? "Loading companies…" : customerEmptyLabel}
                         searchPlaceholder="Search companies…"
                         allowCustom

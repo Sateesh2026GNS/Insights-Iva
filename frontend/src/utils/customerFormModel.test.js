@@ -3,15 +3,16 @@ import {
   buildCustomerPayload,
   customerToForm,
   emptyCustomerForm,
+  getCustomerDisplayNameCandidates,
   validateCustomerForm,
 } from "./customerFormModel";
 
 describe("customerFormModel", () => {
-  it("requires a display name", () => {
+  it("requires a customer name", () => {
     const form = emptyCustomerForm();
     const result = validateCustomerForm(form);
     expect(result.ok).toBe(false);
-    expect(result.errors.display_name).toBeTruthy();
+    expect(result.errors.display_name).toBe("Customer Name is required");
   });
 
   it("validates phone numbers format and duplicate numbers", () => {
@@ -79,5 +80,78 @@ describe("customerFormModel", () => {
     expect(form.display_name).toBe("Acme Traders");
     expect(form.work_phone).toBe("9110721034");
     expect(form.mobile).toBe("9876543210");
+  });
+
+  it("handles different company_name and display_name correctly", () => {
+    const form = {
+      ...emptyCustomerForm(),
+      company_name: "Tata Motors Limited",
+      display_name: "Tata Motors",
+    };
+    const payload = buildCustomerPayload(form, { tenantId: 1 });
+    expect(payload.name).toBe("Tata Motors");
+    expect(payload.company_name).toBe("Tata Motors Limited");
+    expect(payload.company).toBe("Tata Motors Limited");
+    expect(
+      payload.party_custom_fields.find((f) => f.label === "_company_name")?.value
+    ).toBe("Tata Motors Limited");
+
+    // Hydration with company_name on customer object
+    const customer = {
+      name: "Tata Motors",
+      company_name: "Tata Motors Limited",
+    };
+    const hydrated = customerToForm(customer);
+    expect(hydrated.company_name).toBe("Tata Motors Limited");
+    expect(hydrated.display_name).toBe("Tata Motors");
+
+    // Hydration with _company_name in meta fields
+    const customerWithMeta = {
+      name: "Tata Motors",
+      _party_custom_fields: [{ label: "_company_name", value: "Tata Motors Limited" }],
+    };
+    const hydratedMeta = customerToForm(customerWithMeta);
+    expect(hydratedMeta.company_name).toBe("Tata Motors Limited");
+    expect(hydratedMeta.display_name).toBe("Tata Motors");
+  });
+
+  it("returns customer display name candidates strictly from first and last name", () => {
+    // Both first and last name provided
+    const candidates = getCustomerDisplayNameCandidates({
+      first_name: "Tejaswi",
+      last_name: "Munthalalakshmi",
+    });
+    expect(candidates).toEqual([
+      "Tejaswi Munthalalakshmi",
+      "Munthalalakshmi Tejaswi",
+      "Munthalalakshmi, Tejaswi",
+    ]);
+
+    // Only first name
+    expect(getCustomerDisplayNameCandidates({ first_name: "Tejaswi" })).toEqual(["Tejaswi"]);
+
+    // Only last name
+    expect(getCustomerDisplayNameCandidates({ last_name: "Munthalalakshmi" })).toEqual([
+      "Munthalalakshmi",
+    ]);
+
+    // Empty
+    expect(getCustomerDisplayNameCandidates({})).toEqual([]);
+  });
+
+  it("prioritizes contact person name over company name when display_name is omitted", () => {
+    const form = {
+      ...emptyCustomerForm(),
+      first_name: "Tejaswi",
+      last_name: "Munthalalakshmi",
+      company_name: "Codevia",
+      display_name: "",
+    };
+    const payload = buildCustomerPayload(form, { tenantId: 1 });
+    expect(payload.name).toBe("Tejaswi Munthalalakshmi");
+    expect(payload.company_name).toBe("Codevia");
+
+    const result = validateCustomerForm(form);
+    expect(result.ok).toBe(true);
   });
 });

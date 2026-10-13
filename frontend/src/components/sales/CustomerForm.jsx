@@ -19,6 +19,7 @@ import {
   CUSTOMER_FORM_TABS,
   EMPTY_ADDRESS,
   EMPTY_CONTACT,
+  getCustomerDisplayNameCandidates,
   PAYMENT_TERMS,
   SALUTATIONS,
   validateCustomerForm,
@@ -152,40 +153,11 @@ export default function CustomerForm({ initialForm, customer = null, onCancel })
   }, []);
 
   const displayNameOptions = useMemo(() => {
-    const opts = [];
-    const first = form.first_name?.trim() || "";
-    const last = form.last_name?.trim() || "";
-    const salut = form.salutation?.trim() || "";
-
-    const candidates = [];
-    if (first && last) {
-      candidates.push(`${first} ${last}`);
-      candidates.push(`${last} ${first}`);
-      candidates.push(`${last}, ${first}`);
-    } else if (first) {
-      candidates.push(first);
-    } else if (last) {
-      candidates.push(last);
-    }
-
-    if (salut) {
-      if (first && last) {
-        candidates.push(`${salut} ${first} ${last}`);
-        candidates.push(`${salut} ${last} ${first}`);
-      } else if (first) {
-        candidates.push(`${salut} ${first}`);
-      } else if (last) {
-        candidates.push(`${salut} ${last}`);
-      }
-    }
-
-    const unique = Array.from(new Set(candidates.filter(Boolean)));
-    unique.forEach((name) => {
-      opts.push({ value: name, label: name });
-    });
-
-    return opts;
-  }, [form.salutation, form.first_name, form.last_name]);
+    return getCustomerDisplayNameCandidates({
+      first_name: form.first_name,
+      last_name: form.last_name,
+    }).map((name) => ({ value: name, label: name }));
+  }, [form.first_name, form.last_name]);
 
   const patch = (path, value) => {
     setForm((prev) => {
@@ -200,7 +172,7 @@ export default function CustomerForm({ initialForm, customer = null, onCancel })
 
       // When user updates contact name, if display_name was empty or
       // was matching the old auto-generated person name, keep display_name in sync
-      if (!isEdit && (path === "first_name" || path === "last_name" || path === "salutation")) {
+      if (!isEdit && (path === "first_name" || path === "last_name")) {
         const oldAutoPerson = [prev.first_name, prev.last_name].filter(Boolean).join(" ").trim();
         const currentDisplay = (prev.display_name || "").trim();
 
@@ -262,6 +234,7 @@ export default function CustomerForm({ initialForm, customer = null, onCancel })
         setErrors,
         {
           name: "display_name",
+          company_name: "company_name",
           phone: form.work_phone?.trim() ? "work_phone" : "mobile",
           gstin: "gstin",
           email: "email",
@@ -342,12 +315,19 @@ export default function CustomerForm({ initialForm, customer = null, onCancel })
           </FormRow>
 
           {form.customer_type === "business" ? (
-            <FormRow label="Company Name">
-              <input className="customer-form__input" value={form.company_name} onChange={(e) => patch("company_name", e.target.value)} maxLength={100} />
+            <FormRow label="Company Name" required>
+              <input
+                className={`customer-form__input${errors.company_name ? " customer-form__input--error" : ""}`}
+                value={form.company_name}
+                onChange={(e) => patch("company_name", e.target.value)}
+                maxLength={100}
+                placeholder="Enter Company Name"
+              />
+              {errors.company_name ? <p className="customer-form__error" role="alert">{errors.company_name}</p> : null}
             </FormRow>
           ) : null}
 
-          <FormRow label="Display Name" required>
+          <FormRow label="Customer Name" required={form.customer_type !== "business"}>
             <SearchableSelect
               value={form.display_name}
               onChange={(v) => patch("display_name", v)}

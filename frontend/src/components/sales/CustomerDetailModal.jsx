@@ -152,8 +152,16 @@ export default function CustomerDetailModal({ customer, onClose, onEdit, onDelet
               )}
             </div>
             <h2 id="customer-detail-title" className="mt-1 truncate text-xl font-bold text-slate-900">
-              {customer.company || customer.name || "Customer Details"}
+              {customer.company_name || customer.company || customer.name || customer.display_name || "Customer Details"}
             </h2>
+            {customer.company_name &&
+              customer.name &&
+              customer.name !== "—" &&
+              customer.name.trim().toLowerCase() !== customer.company_name.trim().toLowerCase() && (
+                <p className="text-xs font-medium text-slate-500">
+                  Customer Name: <span className="text-slate-700">{customer.name}</span>
+                </p>
+            )}
             <p className="mt-0.5 truncate text-xs sm:text-sm text-slate-500">
               {[
                 customer.contact_person,
@@ -221,7 +229,18 @@ export default function CustomerDetailModal({ customer, onClose, onEdit, onDelet
                 <h3 className="mb-3 text-sm font-bold text-slate-800">General Information</h3>
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                   <Field label="Customer Code" value={customer.customer_code} />
-                  <Field label="Company Name" value={customer.company} />
+                  <Field label="Company Name" value={customer.company_name || customer.company} />
+                  <Field
+                    label="Customer Name"
+                    value={
+                      (() => {
+                        const comp = String(customer.company_name || customer.company || "").trim().toLowerCase();
+                        const raw = String(customer.name || customer.display_name || "").trim();
+                        if (!raw || raw === "—" || raw.toLowerCase() === comp) return "";
+                        return raw;
+                      })()
+                    }
+                  />
                   <Field label="Customer Type" value={customer.customer_type} />
                   <Field label="Industry" value={customer.industry} />
                   <Field label="GST Number" value={customer.gstin} />
@@ -367,7 +386,7 @@ export function CustomerFormModal({ customer, onClose, onSave }) {
 
   const [form, setForm] = useState({
     customer_code: customer?.customer_code || "",
-    company: customer?.company || customer?.name || "",
+    company: customer?.company_name || customer?.company || customer?.name || "",
     contact_person: customer?.contact_person || customer?.contact_name || "",
     phone: customer?.phone || "",
     email: customer?.email || "",

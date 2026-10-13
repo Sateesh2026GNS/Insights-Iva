@@ -91,6 +91,10 @@ describe("numberFormat utility module", () => {
       expect(parseShorthandNumber("one lakh fifty thousand")).toBe(150000);
       expect(parseShorthandNumber("two thousand five hundred")).toBe(2500);
       expect(parseShorthandNumber("fifty thousand")).toBe(50000);
+      expect(parseShorthandNumber("Eight Hundred Rupees Only")).toBe(800);
+      expect(parseShorthandNumber("Two Lakh Rupees Only")).toBe(200000);
+      expect(parseShorthandNumber("₹800")).toBe(800);
+      expect(parseShorthandNumber("500 rs")).toBe(500);
     });
 
     it("parses raw digits and comma-separated numeric strings", () => {

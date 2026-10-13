@@ -145,7 +145,22 @@ export default function CreateLeadPage() {
   const [discussionOpen, setDiscussionOpen] = useState(false);
   const [discussionDraft, setDiscussionDraft] = useState({ discussed_with: "", role: "", details: "" });
   const [discussionError, setDiscussionError] = useState("");
+  const discussionTextareaRef = useRef(null);
   const initialAssigned = useRef(false);
+
+  const adjustDiscussionTextarea = useCallback((el) => {
+    if (!el) return;
+    el.style.height = "auto";
+    const nextHeight = Math.min(Math.max(el.scrollHeight, 76), 260);
+    el.style.height = `${nextHeight}px`;
+    el.style.overflowY = el.scrollHeight > 260 ? "auto" : "hidden";
+  }, []);
+
+  useEffect(() => {
+    if (discussionOpen && discussionTextareaRef.current) {
+      adjustDiscussionTextarea(discussionTextareaRef.current);
+    }
+  }, [discussionOpen, discussionDraft.details, adjustDiscussionTextarea]);
 
   useEffect(() => {
     if (!dirty || saving) return undefined;
@@ -831,7 +846,7 @@ export default function CreateLeadPage() {
         title={t("sales.leads.create.addDiscussion")}
         maxWidth="max-w-md"
       >
-        <div className="space-y-3 p-5">
+        <div className="space-y-4">
           <Field label={t("sales.leads.create.discussedWith")} required error={discussionError && !discussionDraft.discussed_with ? discussionError : ""}>
             <SearchableSelect
               value={
@@ -853,19 +868,24 @@ export default function CreateLeadPage() {
               allowCustom
             />
           </Field>
-          <Field label={t("sales.leads.create.discussionDetails")} required>
+          <Field
+            label={t("sales.leads.create.discussionDetails")}
+            required
+            error={discussionError && discussionDraft.discussed_with && !discussionDraft.details ? discussionError : ""}
+          >
             <textarea
-              className={textareaClass}
-              rows={4}
+              ref={discussionTextareaRef}
+              className={`${textareaClass} resize-none min-h-[76px] transition-[height] duration-75`}
+              rows={3}
               value={discussionDraft.details}
               onChange={(e) => {
                 setDiscussionDraft((d) => ({ ...d, details: e.target.value }));
                 setDiscussionError("");
+                adjustDiscussionTextarea(e.target);
               }}
             />
-            {discussionError && discussionDraft.discussed_with ? <FieldError message={discussionError} /> : null}
           </Field>
-          <div className="flex justify-end gap-2">
+          <div className="flex justify-end gap-2 pt-3 border-t border-slate-200 dark:border-slate-700">
             <Button type="button" variant="secondary" onClick={() => setDiscussionOpen(false)}>
               {t("sales.leads.create.cancel")}
             </Button>

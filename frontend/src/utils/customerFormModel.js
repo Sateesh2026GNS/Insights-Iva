@@ -88,6 +88,26 @@ export function emptyCustomerForm() {
   };
 }
 
+/**
+ * Returns candidate customer display names based strictly on first name and last name.
+ * Does not include company name or salutations.
+ */
+export function getCustomerDisplayNameCandidates({ first_name = "", last_name = "" } = {}) {
+  const first = (first_name || "").trim();
+  const last = (last_name || "").trim();
+  const candidates = [];
+  if (first && last) {
+    candidates.push(`${first} ${last}`);
+    candidates.push(`${last} ${first}`);
+    candidates.push(`${last}, ${first}`);
+  } else if (first) {
+    candidates.push(first);
+  } else if (last) {
+    candidates.push(last);
+  }
+  return Array.from(new Set(candidates.filter(Boolean)));
+}
+
 function parseMetaField(customFields, key) {
   const row = (customFields || []).find((f) => f.label === key);
   if (!row?.value) return null;
@@ -101,11 +121,28 @@ function parseMetaField(customFields, key) {
 export function customerToForm(customer) {
   if (!customer) return emptyCustomerForm();
   const base = emptyCustomerForm();
-  const name = customer.company || customer.name || "";
+  const metaFields = customer._party_custom_fields || customer.party_custom_fields;
+  const savedCompanyName =
+    (customer.company_name && customer.company_name !== "—" ? customer.company_name : "") ||
+    parseMetaField(metaFields, "_company_name") ||
+    "";
+  const rawDisplayName =
+    (customer.display_name && customer.display_name !== "—" ? customer.display_name : "") ||
+    (customer.name && customer.name !== "—" ? customer.name : "") ||
+    "";
+  const rawCompany =
+    (customer.company && customer.company !== "—" ? customer.company : "") ||
+    "";
+
+  const companyName = savedCompanyName || rawCompany;
+  const displayName =
+    rawDisplayName && rawDisplayName.toLowerCase() !== companyName.toLowerCase()
+      ? rawDisplayName
+      : (!companyName ? rawDisplayName : "");
   const contact = customer.contact_person && customer.contact_person !== "—" ? customer.contact_person : "";
-  const savedWorkPhone = parseMetaField(customer._party_custom_fields, "_work_phone");
+  const savedWorkPhone = parseMetaField(metaFields, "_work_phone");
   const savedAltPhone =
-    parseMetaField(customer._party_custom_fields, "_alternate_phone") ||
+    parseMetaField(metaFields, "_alternate_phone") ||
     (customer.alternate_phone && customer.alternate_phone !== "—" ? customer.alternate_phone : "");
   const rawPhone = customer.phone && customer.phone !== "—" ? customer.phone : "";
 
@@ -121,8 +158,8 @@ export function customerToForm(customer) {
 
   return {
     ...base,
-    company_name: name,
-    display_name: name,
+    company_name: companyName,
+    display_name: displayName,
     first_name: contact.split(" ")[0] || "",
     last_name: contact.split(" ").slice(1).join(" ") || "",
     email: customer.email && customer.email !== "—" ? customer.email : "",
@@ -155,9 +192,9 @@ function paymentTermsDays(code) {
 }
 
 export function buildCustomerPayload(form, { tenantId, party = null }) {
+  const companyName = (form.company_name || "").trim();
   const displayName =
     form.display_name.trim() ||
-    form.company_name.trim() ||
     [form.first_name, form.last_name].filter(Boolean).join(" ").trim();
 
   const paymentDays = paymentTermsDays(form.other.payment_terms);
@@ -172,6 +209,7 @@ export function buildCustomerPayload(form, { tenantId, party = null }) {
     { label: "_customer_type", value: form.customer_type || "business" },
     { label: "_language", value: form.language || "en" },
     { label: "_portal_enabled", value: form.other.portal_enabled ? "true" : "false" },
+    ...(companyName ? [{ label: "_company_name", value: companyName }] : []),
     ...(form.work_phone?.trim() ? [{ label: "_work_phone", value: form.work_phone.trim() }] : []),
     ...(form.mobile?.trim() ? [{ label: "_alternate_phone", value: form.mobile.trim() }] : []),
   ].filter((f) => String(f.label || "").trim() && String(f.value ?? "").trim());
@@ -181,7 +219,9 @@ export function buildCustomerPayload(form, { tenantId, party = null }) {
 
   return {
     tenant_id: tenantId,
-    name: displayName,
+    name: displayName || null,
+    company_name: companyName || null,
+    company: companyName || null,
     contact_name: [form.salutation, form.first_name, form.last_name].filter(Boolean).join(" ").trim() || null,
     gstin: form.gstin.trim().toUpperCase() || null,
     phone: primaryPhone,
@@ -213,17 +253,36 @@ export function buildCustomerPayload(form, { tenantId, party = null }) {
 
 export function validateCustomerForm(form) {
   const errors = {};
-  const displayName =
-    form.display_name.trim() ||
-    form.company_name.trim() ||
-    [form.first_name, form.last_name].filter(Boolean).join(" ").trim();
+  const companyName = (form.company_name || "").trim();
+  const displayName = (form.display_name || "").trim();
+  const contactPerson = [form.first_name, form.last_name].filter(Boolean).join(" ").trim();
+  const effectiveDisplayName = displayName || contactPerson;
 
-  if (!displayName) {
-    errors.display_name = "Display Name is required";
-  } else if (displayName.length > 100) {
-    errors.display_name = "Display Name cannot exceed 100 characters";
-  } else if (!/[a-zA-Z]/.test(displayName)) {
-    errors.display_name = "Display Name must contain at least one letter";
+  if (form.customer_type === "business") {
+    if (!companyName && !effectiveDisplayName) {
+      errors.company_name = "Company Name is required";
+      errors.display_name = "Customer Name is required";
+    }
+  } else {
+    if (!effectiveDisplayName) {
+      errors.display_name = "Customer Name is required";
+    }
+  }
+
+  if (effectiveDisplayName) {
+    if (effectiveDisplayName.length > 100) {
+      errors.display_name = "Customer Name cannot exceed 100 characters";
+    } else if (!/[a-zA-Z]/.test(effectiveDisplayName)) {
+      errors.display_name = "Customer Name must contain at least one letter";
+    }
+  }
+
+  if (companyName) {
+    if (companyName.length > 100) {
+      errors.company_name = "Company Name cannot exceed 100 characters";
+    } else if (!/[a-zA-Z]/.test(companyName)) {
+      errors.company_name = "Company Name must contain at least one letter";
+    }
   }
 
   const workPhone = (form.work_phone || "").trim();

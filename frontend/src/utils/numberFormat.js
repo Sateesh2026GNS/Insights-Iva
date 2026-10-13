@@ -160,6 +160,8 @@ const SCALE_VALUES = {
   m: 1000000,
 };
 
+const IGNORED_TOKENS = new Set(["rupee", "rupees", "rs", "inr", "only", "and", "/-"]);
+
 /**
  * Checks if input contains only numeric digits, commas, spaces, or decimals (no shorthand letters/words).
  *
@@ -184,7 +186,7 @@ export function parseShorthandNumber(input) {
   if (input == null || input === "") return null;
   if (typeof input === "number") return Number.isNaN(input) ? null : input;
 
-  let str = String(input).trim().toLowerCase().replace(/,/g, "");
+  let str = String(input).trim().toLowerCase().replace(/,/g, "").replace(/[₹$]/g, "");
   if (!str) return null;
 
   // Direct numeric match
@@ -204,6 +206,10 @@ export function parseShorthandNumber(input) {
 
   for (let i = 0; i < tokens.length; i++) {
     const token = tokens[i];
+
+    if (IGNORED_TOKENS.has(token)) {
+      continue;
+    }
 
     // Check direct numeric token
     const num = Number(token);

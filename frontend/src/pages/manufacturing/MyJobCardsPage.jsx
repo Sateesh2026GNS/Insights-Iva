@@ -631,7 +631,7 @@ export default function MyJobCardsPage() {
         ? "Production Assignments"
         : qualityMode
           ? "Quality Inspection Queue"
-          : "My Job Cards";
+          : "";
   const sectionHint = storeMode
     ? "Review customer order details, acknowledge receipt, and continue material planning."
     : billingMode
@@ -734,24 +734,36 @@ export default function MyJobCardsPage() {
       ) : null}
 
       <div className="ui-card my-job-cards-page__section">
-        <div className="erp-section-header erp-section-header--row">
-          <div>
-            <h2 className="erp-section-header__title">{sectionTitle}</h2>
-            {sectionHint ? <p className="my-job-cards-page__section-hint">{sectionHint}</p> : null}
-          </div>
-          <div className="my-job-cards-page__section-actions">
+        <div
+          className={`erp-section-header erp-section-header--row ${
+            !sectionTitle ? "erp-section-header--no-title" : ""
+          }`}
+        >
+          {sectionTitle ? (
+            <div>
+              <h2 className="erp-section-header__title">{sectionTitle}</h2>
+              {sectionHint ? <p className="my-job-cards-page__section-hint">{sectionHint}</p> : null}
+            </div>
+          ) : (
             <span className="my-job-cards-page__section-total">Total: {listTotal}</span>
-            {canCreate && !storeMode && !billingMode && !operatorMode && !qualityMode ? (
-              <Button
-                variant="add"
-                size="sm"
-                onClick={() => navigate(jobCardCreateUrl())}
-                leftIcon={<Plus className="h-4 w-4" aria-hidden />}
-              >
-                Create Job Card
-              </Button>
-            ) : null}
-          </div>
+          )}
+          {sectionTitle || (canCreate && !storeMode && !billingMode && !operatorMode && !qualityMode) ? (
+            <div className="my-job-cards-page__section-actions">
+              {sectionTitle ? (
+                <span className="my-job-cards-page__section-total">Total: {listTotal}</span>
+              ) : null}
+              {canCreate && !storeMode && !billingMode && !operatorMode && !qualityMode ? (
+                <Button
+                  variant="add"
+                  size="sm"
+                  onClick={() => navigate(jobCardCreateUrl())}
+                  leftIcon={<Plus className="h-4 w-4" aria-hidden />}
+                >
+                  Create Job Card
+                </Button>
+              ) : null}
+            </div>
+          ) : null}
         </div>
 
         <div id="my-job-cards-filters-panel" className="my-job-cards-page__filters-panel">

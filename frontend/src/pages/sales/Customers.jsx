@@ -65,6 +65,33 @@ function blankOr(value) {
   return !s || s === "—" ? "" : s;
 }
 
+export function getCustomerPersonName(customer) {
+  if (!customer) return "";
+  const company = String(customer.company_name || customer.company || "").trim().toLowerCase();
+  const enteredName =
+    (customer.name && customer.name !== "—" ? customer.name : "") ||
+    (customer.display_name && customer.display_name !== "—" ? customer.display_name : "") ||
+    (customer.customer_name && customer.customer_name !== "—" ? customer.customer_name : "");
+  if (enteredName && enteredName.toLowerCase() !== company) return enteredName;
+  const contact =
+    (customer.contact_name && customer.contact_name !== "—" ? customer.contact_name : "") ||
+    (customer.contact_person && customer.contact_person !== "—" ? customer.contact_person : "");
+  if (contact && contact.toLowerCase() !== company) return contact;
+  return "";
+}
+
+export function getCustomerCompanyName(customer) {
+  if (!customer) return "—";
+  return customer.company_name || customer.company || "—";
+}
+
+export function getCustomerDisplayName(customer) {
+  if (!customer) return "—";
+  const person = getCustomerPersonName(customer);
+  if (person) return person;
+  return getCustomerCompanyName(customer);
+}
+
 export default function Customers() {
   const { addToast } = useToast();
 
@@ -230,6 +257,10 @@ export default function Customers() {
 
     return viewFiltered.filter((customer) =>
       [
+        customer.contact_name,
+        customer.contact_person,
+        customer.customer_name,
+        customer.company_name,
         customer.company,
         customer.name,
         customer.gstin,
@@ -277,8 +308,10 @@ export default function Customers() {
       filtered.map((customer) => ({
         ...customer,
         company:
-          customer.company ||
           customer.name ||
+          customer.display_name ||
+          customer.company_name ||
+          customer.company ||
           "",
         address_line1:
           customer.address_line1 ||
@@ -433,10 +466,15 @@ export default function Customers() {
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
                           <h3 className="font-bold text-sm text-[var(--color-text)] truncate">
-                            {customer.company ||
-                              customer.name ||
-                              "—"}
+                            {getCustomerCompanyName(customer) !== "—"
+                              ? getCustomerCompanyName(customer)
+                              : getCustomerPersonName(customer) || "—"}
                           </h3>
+                          {getCustomerCompanyName(customer) !== "—" && getCustomerPersonName(customer) ? (
+                            <p className="text-xs text-[var(--color-text-secondary)] truncate">
+                              {getCustomerPersonName(customer)}
+                            </p>
+                          ) : null}
 
                           {customer.email && (
                             <p className="text-xs text-[var(--color-text-muted)] truncate">
@@ -534,6 +572,10 @@ export default function Customers() {
                         <SerialNumberHeader />
 
                         <th className="px-4 py-3 font-medium">
+                          Company Name
+                        </th>
+
+                        <th className="px-4 py-3 font-medium">
                           Customer Name
                         </th>
 
@@ -581,16 +623,21 @@ export default function Customers() {
                           />
 
                           <td
-                            className="max-w-[220px] truncate px-4 py-3.5 font-medium text-[var(--color-text)]"
-                            title={
-                              customer.company ||
-                              customer.name ||
-                              ""
-                            }
+                            className="max-w-[200px] truncate px-4 py-3.5 font-medium text-[var(--color-text)]"
+                            title={getCustomerCompanyName(customer)}
                           >
-                            {customer.company ||
-                              customer.name ||
-                              ""}
+                            <span className="font-semibold block truncate">
+                              {getCustomerCompanyName(customer)}
+                            </span>
+                          </td>
+
+                          <td
+                            className="max-w-[180px] truncate px-4 py-3.5 text-[var(--color-text)]"
+                            title={getCustomerPersonName(customer)}
+                          >
+                            <span className="block truncate">
+                              {getCustomerPersonName(customer) || "—"}
+                            </span>
                           </td>
 
                           <td className="px-4 py-3.5 text-[var(--color-text-secondary)]">
