@@ -31,6 +31,9 @@ CSRF_EXEMPT_PREFIXES = (
     "/api/auth/register",
     "/api/auth/refresh",
     "/api/auth/logout",
+    # Upload-token PUTs are authenticated by the token in the path, not the session.
+    "/api/files/local-upload",
+    "/api/files/local-upload-part",
     "/health",
     "/docs",
     "/openapi.json",
