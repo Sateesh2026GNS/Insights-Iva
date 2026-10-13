@@ -159,6 +159,7 @@ def test_preview_file_requires_auth_and_user_binding(register_admin, client, mak
     url = preview.json()["url"]
     assert "/preview-file/" in url
 
+    client.cookies.clear()
     unauth = client.get(url)
     assert unauth.status_code == 401
 

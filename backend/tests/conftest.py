@@ -50,6 +50,12 @@ def _clear_login_rate_limits():
     from app.services.file_rate_limiter import clear_rate_limits
     from app.services.storage.token_store import clear_token_store
 
+    from app.core.config import get_settings
+    from app.services.storage.factory import get_storage_provider
+
+    os.environ["STORAGE_PROVIDER"] = "local"
+    get_settings.cache_clear()
+    get_storage_provider.cache_clear()
     clear_buckets()
     clear_rate_limits()
     clear_token_store()

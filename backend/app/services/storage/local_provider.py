@@ -167,3 +167,9 @@ class LocalStorageProvider(StorageProvider):
 
     def read_bytes(self, storage_key: str) -> bytes:
         return self._path_for_key(storage_key).read_bytes()
+
+    def put_object(self, storage_key: str, data: bytes, content_type: str = "application/octet-stream") -> None:
+        self.write_bytes(storage_key, data)
+
+    def get_object_bytes(self, storage_key: str) -> bytes:
+        return self.read_bytes(storage_key)

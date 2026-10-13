@@ -1,8 +1,9 @@
 import logging
 from datetime import date
+from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from sqlalchemy.orm import Session
 
 from app.api.auth_deps import get_current_user
@@ -29,9 +30,9 @@ from app.services.documents.registry_service import (
     transition_status,
 )
 from app.services.documents.storage import (
+    get_document_bytes,
     media_type_for,
     register_preview_token,
-    resolve_file_path,
 )
 
 logger = logging.getLogger(__name__)
@@ -168,10 +169,16 @@ def preview_endpoint(
     db: Session = Depends(get_db),
 ):
     ver = get_version_for_download(db, user, document_id, version)
-    path = resolve_file_path(ver.file_path)
     if ver.file_type not in ("pdf", "image"):
         raise HTTPException(status_code=400, detail="Preview not available for this file type")
-    token = register_preview_token(path, ver.file_type, True, user.id, user.tenant_id)
+    token = register_preview_token(
+        ver.file_path,
+        ver.file_type,
+        True,
+        user.id,
+        user.tenant_id,
+        ver.original_filename or "preview",
+    )
     return {"url": f"/api/document-library/preview-file/{token}", "expires_in": 300}
 
 
@@ -182,12 +189,12 @@ def preview_file_endpoint(
 ):
     from app.services.documents.storage import consume_preview_token
 
-    path, file_type, _inline = consume_preview_token(token, user.id, user.tenant_id)
-    return FileResponse(
-        path,
-        media_type=media_type_for(file_type, path),
-        content_disposition_type="inline",
-        filename=path.name,
+    storage_key, file_type, _inline, filename = consume_preview_token(token, user.id, user.tenant_id)
+    data = get_document_bytes(storage_key)
+    return Response(
+        content=data,
+        media_type=media_type_for(file_type, Path(filename)),
+        headers={"Content-Disposition": f'inline; filename="{filename}"'},
     )
 
 
@@ -199,12 +206,12 @@ def download_endpoint(
     db: Session = Depends(get_db),
 ):
     ver = get_version_for_download(db, user, document_id, version)
-    path = resolve_file_path(ver.file_path)
-    return FileResponse(
-        path,
-        media_type=media_type_for(ver.file_type, path),
-        content_disposition_type="attachment",
-        filename=ver.original_filename,
+    data = get_document_bytes(ver.file_path)
+    fname = ver.original_filename or "download"
+    return Response(
+        content=data,
+        media_type=media_type_for(ver.file_type, Path(fname)),
+        headers={"Content-Disposition": f'attachment; filename="{fname}"'},
     )
 
 
