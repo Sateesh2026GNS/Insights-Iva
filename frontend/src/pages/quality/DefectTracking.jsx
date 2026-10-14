@@ -283,7 +283,7 @@ export default function DefectTracking() {
             <SearchBar
               value={search}
               onChange={setSearch}
-              placeholder="Search by rejection no, batch, material, reason..."
+              placeholder="Search"
               aria-label="Search defect tracking records"
             />
             <div className="flex flex-wrap items-center gap-2.5">

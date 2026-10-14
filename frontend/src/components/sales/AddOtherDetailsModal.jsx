@@ -100,7 +100,7 @@ export default function AddOtherDetailsModal({ open, onClose, initial, onSave })
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[120] flex items-center justify-center bg-black/40 p-4"
+      className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="add-other-details-title"

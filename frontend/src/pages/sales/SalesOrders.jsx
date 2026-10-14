@@ -452,7 +452,7 @@ export default function SalesOrders() {
                   applyDraftListFilters(draftFilters, setAppliedFilters);
                 }
               }}
-              placeholder="Search sales orders..."
+              placeholder="Search"
               aria-label="Search sales orders"
             />
             <Button

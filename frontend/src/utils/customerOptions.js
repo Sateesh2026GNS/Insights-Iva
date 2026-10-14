@@ -5,10 +5,10 @@ import { getCachedReference, invalidateReferenceCache } from "./referenceDataCac
 export { invalidateReferenceCache };
 
 export const DEFAULT_FALLBACK_CUSTOMERS = [
-  { id: "cust-1", customer_code: "CUS001", name: "Acme Industrial Suppliers", company: "Acme Industrial Suppliers", gstin: "29AAAAA0000A1Z5", phone: "+91 9876543210", city: "Bengaluru", state: "Karnataka" },
-  { id: "cust-2", customer_code: "CUS002", name: "Apex Engineering Pvt Ltd", company: "Apex Engineering Pvt Ltd", gstin: "27BBBBA1111B1Z2", phone: "+91 9812345678", city: "Mumbai", state: "Maharashtra" },
-  { id: "cust-3", customer_code: "CUS003", name: "Bharat Manufacturing Corp", company: "Bharat Manufacturing Corp", gstin: "36CCCCB2222C1Z3", phone: "+91 9898989898", city: "Hyderabad", state: "Telangana" },
-  { id: "cust-4", customer_code: "CUS004", name: "Precision Components Ltd", company: "Precision Components Ltd", gstin: "24DDDDD3333D1Z4", phone: "+91 9765432109", city: "Ahmedabad", state: "Gujarat" },
+  { id: "cust-1", customer_code: "CUS001", name: "Acme Industrial Suppliers", company: "Acme Industrial Suppliers", company_name: "Acme Industrial Suppliers", gstin: "29AAAAA0000A1Z5", phone: "+91 9876543210", city: "Bengaluru", state: "Karnataka" },
+  { id: "cust-2", customer_code: "CUS002", name: "Apex Engineering Pvt Ltd", company: "Apex Engineering Pvt Ltd", company_name: "Apex Engineering Pvt Ltd", gstin: "27BBBBA1111B1Z2", phone: "+91 9812345678", city: "Mumbai", state: "Maharashtra" },
+  { id: "cust-3", customer_code: "CUS003", name: "Bharat Manufacturing Corp", company: "Bharat Manufacturing Corp", company_name: "Bharat Manufacturing Corp", gstin: "36CCCCB2222C1Z3", phone: "+91 9898989898", city: "Hyderabad", state: "Telangana" },
+  { id: "cust-4", customer_code: "CUS004", name: "Precision Components Ltd", company: "Precision Components Ltd", company_name: "Precision Components Ltd", gstin: "24DDDDD3333D1Z4", phone: "+91 9765432109", city: "Ahmedabad", state: "Gujarat" },
 ];
 
 const STATE_CODES = {
@@ -45,22 +45,44 @@ export async function fetchCustomersWithFallback(options = {}) {
         id: l.lead_id || l.id || l.customer_name || l.company,
         name: l.company || l.customer_name,
         company: l.company || l.customer_name,
+        company_name: l.company || l.company_name || "",
         email: l.email,
         phone: l.contact,
       }));
 
     const custMap = new Map();
     [...apiCusts, ...localCusts, ...convertedLeads].forEach((c) => {
-      const displayName = c.company || c.name || c.customer_name || c.company_name;
-      const cleanName = String(displayName || "").trim();
-      const lower = cleanName.toLowerCase();
+      const metaFields = c._party_custom_fields || c.party_custom_fields || [];
+      const metaCompanyName = metaFields.find?.((f) => f.label === "_company_name")?.value || "";
+      const rawCompany = String(c.company_name || metaCompanyName || c.company || "").trim();
+      const rawContact = String(c.contact_name || c.contact_person || "").replace(/^—$/, "").trim();
+      const rawName = String(c.name || c.customer_name || c.display_name || "").trim();
+
+      const companyName =
+        rawCompany ||
+        (rawContact && rawName.toLowerCase() === rawContact.toLowerCase() ? "" : rawName);
+      const customerName =
+        rawContact ||
+        (rawName && rawName.toLowerCase() !== companyName.toLowerCase() ? rawName : "");
+
+      const cleanName = companyName || customerName;
+      const lower = String(c.id || c.customer_code || cleanName).trim().toLowerCase();
       const idStr = String(c.id || c.customer_code || cleanName).trim().toLowerCase();
 
-      if (deletedIds.includes(lower) || deletedIds.includes(idStr)) return;
+      if (deletedIds.includes(lower) || deletedIds.includes(idStr) || deletedIds.includes(cleanName.toLowerCase())) return;
 
       if (cleanName && cleanName.length >= 2) {
         const id = c.id || cleanName;
-        custMap.set(lower, { ...c, id, name: cleanName, company: cleanName });
+        custMap.set(lower, {
+          ...c,
+          id,
+          name: customerName,
+          customer_name: customerName,
+          company: companyName,
+          company_name: companyName,
+          contact_name: rawContact,
+          contact_person: rawContact,
+        });
       }
     });
 
@@ -75,16 +97,37 @@ export async function fetchCustomersWithFallback(options = {}) {
 
     const custMap = new Map();
     localCusts.forEach((c) => {
-      const displayName = c.company || c.name || c.customer_name || c.company_name;
-      const cleanName = String(displayName || "").trim();
-      const lower = cleanName.toLowerCase();
+      const metaFields = c._party_custom_fields || c.party_custom_fields || [];
+      const metaCompanyName = metaFields.find?.((f) => f.label === "_company_name")?.value || "";
+      const rawCompany = String(c.company_name || metaCompanyName || c.company || "").trim();
+      const rawContact = String(c.contact_name || c.contact_person || "").replace(/^—$/, "").trim();
+      const rawName = String(c.name || c.customer_name || c.display_name || "").trim();
+
+      const companyName =
+        rawCompany ||
+        (rawContact && rawName.toLowerCase() === rawContact.toLowerCase() ? "" : rawName);
+      const customerName =
+        rawContact ||
+        (rawName && rawName.toLowerCase() !== companyName.toLowerCase() ? rawName : "");
+
+      const cleanName = companyName || customerName;
+      const lower = String(c.id || c.customer_code || cleanName).trim().toLowerCase();
       const idStr = String(c.id || c.customer_code || cleanName).trim().toLowerCase();
 
-      if (deletedIds.includes(lower) || deletedIds.includes(idStr)) return;
+      if (deletedIds.includes(lower) || deletedIds.includes(idStr) || deletedIds.includes(cleanName.toLowerCase())) return;
 
       if (cleanName && cleanName.length >= 2) {
         const id = c.id || cleanName;
-        custMap.set(lower, { ...c, id, name: cleanName, company: cleanName });
+        custMap.set(lower, {
+          ...c,
+          id,
+          name: customerName,
+          customer_name: customerName,
+          company: companyName,
+          company_name: companyName,
+          contact_name: rawContact,
+          contact_person: rawContact,
+        });
       }
     });
     const result = Array.from(custMap.values());
@@ -96,7 +139,7 @@ export async function fetchCustomersWithFallback(options = {}) {
 export function customerToConsigneeFields(customer) {
   if (!customer) return {};
   return {
-    consignee_name: customer.name || customer.customer_name || "",
+    consignee_name: customer.company_name || customer.company || customer.name || customer.customer_name || "",
     consignee_address1: customer.address_line1 || "",
     consignee_address2: customer.address_line2 || "",
     consignee_state: customer.state || "",
@@ -146,6 +189,8 @@ export function filterCustomers(customers, query) {
   if (!q) return customers;
   return customers.filter(
     (c) =>
+      c.company_name?.toLowerCase().includes(q) ||
+      c.company?.toLowerCase().includes(q) ||
       c.name?.toLowerCase().includes(q) ||
       c.contact_name?.toLowerCase().includes(q) ||
       c.gstin?.toLowerCase().includes(q) ||

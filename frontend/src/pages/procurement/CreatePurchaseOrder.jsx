@@ -7,6 +7,8 @@ import { SearchBar } from "../../components/common/SearchFilter";
 import ShorthandQuantityInput from "../../components/common/ShorthandQuantityInput";
 import AddCustomFieldModal from "../../components/sales/AddCustomFieldModal";
 import AddNewItemModal from "../../components/sales/AddNewItemModal";
+import ItemPickerDropdown from "../../components/sales/ItemPickerDropdown";
+import ItemSelectionModal from "../../components/sales/ItemSelectionModal";
 import AddOtherChargesModal, {
   computeOtherChargeTotal,
 } from "../../components/sales/AddOtherChargesModal";
@@ -22,6 +24,7 @@ import TermsAndConditionsPicker, {
   DEFAULT_TERMS_BODY,
 } from "../../components/sales/TermsAndConditionsPicker";
 import { getInventoryDashboard } from "../../api/inventoryApi";
+import { getProducts } from "../../api/productsApi";
 import {
   createPurchaseOrder,
   getPurchaseOrder,
@@ -273,6 +276,12 @@ export default function CreatePurchaseOrder() {
     try { return localStorage.getItem("gns_invoice_stamp_data") || null; } catch { return null; }
   });
   const [catalogItems, setCatalogItems] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [itemPickerRowKey, setItemPickerRowKey] = useState(null);
+  const [itemSearch, setItemSearch] = useState("");
+  const [highlightedIdx, setHighlightedIdx] = useState(0);
+  const [itemToEdit, setItemToEdit] = useState(null);
+  const [itemModalTargetRowKey, setItemModalTargetRowKey] = useState(null);
   const [showGstTds, setShowGstTds] = useState(false);
   const [showTaxType, setShowTaxType] = useState(false);
   const [taxType, setTaxType] = useState("tcs");
@@ -335,10 +344,11 @@ export default function CreatePurchaseOrder() {
     (async () => {
       setLoading(true);
       try {
-        const [vendorRes, companyRes, itemRes] = await Promise.allSettled([
+        const [vendorRes, companyRes, itemRes, productsRes] = await Promise.allSettled([
           getVendors(),
           getCompanySettings(),
           getInventoryDashboard(),
+          getProducts(),
         ]);
         if (cancelled) return;
         setVendors(vendorRes.status === "fulfilled" ? vendorRes.value?.data || [] : []);
@@ -371,7 +381,17 @@ export default function CreatePurchaseOrder() {
           : asArray(dash?.items).length
             ? asArray(dash.items)
             : asArray(dash?.inventory_items);
-        setCatalogItems(itemList);
+        const pList =
+          productsRes.status === "fulfilled"
+            ? Array.isArray(productsRes.value?.data)
+              ? productsRes.value.data
+              : Array.isArray(productsRes.value)
+              ? productsRes.value
+              : []
+            : [];
+        const combined = pList.length ? pList : itemList;
+        setCatalogItems(combined);
+        setProducts(combined);
 
         const loadPoId = editId || cloneSourceId;
         if (loadPoId) {
@@ -475,30 +495,79 @@ export default function CreatePurchaseOrder() {
     );
   };
 
-  const syncCatalogItem = (rowKey, label) => {
-    const name = String(label || "").trim().toLowerCase();
-    if (!name) return;
-    const match = catalogItems.find(
-      (i) => String(i.name || i.item_name || i.product_name || "").trim().toLowerCase() === name
-    );
-    if (!match) return;
-    const id = match.id || match.item_id;
-    const price = match.unit_price ?? match.purchase_price ?? match.unit_cost ?? match.price ?? "";
+  const selectProductForRow = (rowKey, product) => {
+    if (!product) return;
+    const gstPct =
+      Number(
+        product.gst_percent ??
+          product.gst_pct ??
+          company?.default_gst_pct ??
+          18
+      ) || 0;
+    const price =
+      product.purchase_price ??
+      product.unit_cost ??
+      product.cost_price ??
+      product.unit_price ??
+      product.price ??
+      product.rate ??
+      "";
+
     setItems((prev) =>
       prev.map((row) => {
         if (row._rowKey !== rowKey) return row;
         const next = {
           ...row,
-          item_id: id,
-          item_description: match.name || match.item_name || match.product_name || row.item_description,
-          hsn: match.hsn || match.hsn_sac || match.hsn_code || row.hsn,
-          unit: match.unit || match.unit_of_measure || row.unit || "pcs",
-          rate: price === null || price === undefined ? row.rate : String(price),
+          item_id: product.id || product.item_id || null,
+          item_description:
+            product.name || product.item_name || product.product_name || product.sku || "",
+          hsn: product.hsn_code || product.hsn || product.hsn_sac || row.hsn || "",
+          qty: row.qty && Number(row.qty) > 0 ? row.qty : "1",
+          unit: product.unit || product.unit_of_measure || row.unit || "pcs",
+          rate: price !== "" && price !== null && price !== undefined ? String(price) : row.rate || "",
+          tax_type: row.tax_type || "Exclusive",
+          gst_pct: gstPct !== undefined && gstPct !== null ? gstPct : row.gst_pct,
         };
         next.amount = lineTotals(next).total;
         return next;
       })
     );
+
+    setItemPickerRowKey(null);
+    setItemSearch("");
+    setHighlightedIdx(0);
+  };
+
+  const filteredProducts = useMemo(() => {
+    const q = itemSearch.trim().toLowerCase();
+    const curRow = items.find((r) => r._rowKey === itemPickerRowKey);
+    const curDesc = (curRow?.item_description || "").trim().toLowerCase();
+    if (!q || (itemPickerRowKey !== null && q === curDesc)) {
+      return products.slice(0, 40);
+    }
+    return products
+      .filter((p) =>
+        [p.name, p.sku, p.hsn_code, p.product_code, p.category, p.description]
+          .filter(Boolean)
+          .some((v) => String(v).toLowerCase().includes(q))
+      )
+      .slice(0, 40);
+  }, [products, itemSearch, itemPickerRowKey, items]);
+
+  const syncCatalogItem = (rowKey, label) => {
+    const name = String(label || "").trim().toLowerCase();
+    if (!name) return;
+    const match =
+      products.find(
+        (i) =>
+          String(i.name || i.item_name || i.product_name || i.sku || "").trim().toLowerCase() === name
+      ) ||
+      catalogItems.find(
+        (i) =>
+          String(i.name || i.item_name || i.product_name || i.sku || "").trim().toLowerCase() === name
+      );
+    if (!match) return;
+    selectProductForRow(rowKey, match);
   };
 
   const removeItem = (rowKey) => {
@@ -886,32 +955,100 @@ export default function CreatePurchaseOrder() {
                         </div>
                       </td>
                       <td className={cell}>
-                        <div className="relative min-w-[160px]">
-                          <SearchBar
-                            size="compact"
-                            list={`po-item-options-${rowKey}`}
-                            value={row.item_description}
-                            onChange={(v) => updateItem(rowKey, "item_description", v)}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                e.preventDefault();
-                                e.stopPropagation();
+                        <div className="relative min-w-[200px] flex items-center gap-1">
+                          <div className="relative flex-1">
+                            <SearchBar
+                              size="compact"
+                              value={
+                                itemPickerRowKey === rowKey
+                                  ? itemSearch
+                                  : row.item_description
                               }
-                            }}
-                            onBlur={(e) => syncCatalogItem(rowKey, e.target.value)}
-                            placeholder="Select Item"
-                            clearable={false}
-                            className="w-full"
-                            inputClassName="pending-inventory-search-input"
-                          />
-                          <datalist id={`po-item-options-${rowKey}`}>
-                            {catalogItems.map((item) => (
-                              <option
-                                key={item.id || item.item_id}
-                                value={item.name || item.item_name || item.product_name || ""}
+                              onFocus={(e) => {
+                                setItemPickerRowKey(rowKey);
+                                setItemSearch(row.item_description || "");
+                                setHighlightedIdx(0);
+                                e?.target?.select?.();
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  if (filteredProducts.length > 0) {
+                                    const selected =
+                                      filteredProducts[highlightedIdx] || filteredProducts[0];
+                                    if (selected) {
+                                      selectProductForRow(rowKey, selected);
+                                    }
+                                  }
+                                } else if (e.key === "ArrowDown") {
+                                  e.preventDefault();
+                                  setHighlightedIdx((prev) =>
+                                    Math.min(prev + 1, Math.max(0, filteredProducts.length - 1))
+                                  );
+                                } else if (e.key === "ArrowUp") {
+                                  e.preventDefault();
+                                  setHighlightedIdx((prev) => Math.max(prev - 1, 0));
+                                } else if (e.key === "Escape") {
+                                  setItemPickerRowKey(null);
+                                }
+                              }}
+                              onChange={(v) => {
+                                setItemPickerRowKey(rowKey);
+                                setItemSearch(v);
+                                setHighlightedIdx(0);
+                                updateItem(rowKey, "item_description", v);
+                              }}
+                              onBlur={() => {
+                                setTimeout(() => {
+                                  setItemPickerRowKey((cur) => (cur === rowKey ? null : cur));
+                                }, 200);
+                              }}
+                              placeholder="Select Item"
+                              clearable={false}
+                              className="w-full"
+                              inputClassName="pending-inventory-search-input"
+                            />
+                            {itemPickerRowKey === rowKey ? (
+                              <ItemPickerDropdown
+                                products={filteredProducts}
+                                selectedIndex={highlightedIdx}
+                                onSelectProduct={(p) => selectProductForRow(rowKey, p)}
+                                onAddNewItem={() => {
+                                  setItemToEdit(null);
+                                  setAddItemOpen(true);
+                                }}
+                                onEditItem={(p) => {
+                                  setItemToEdit(p);
+                                  setAddItemOpen(true);
+                                }}
+                                onToggleInactive={(p) => {
+                                  setProducts((prev) =>
+                                    prev.map((item) =>
+                                      item.id === p.id
+                                        ? { ...item, status: item.status === "inactive" ? "active" : "inactive" }
+                                        : item
+                                    )
+                                  );
+                                }}
+                                onDeleteItem={(p) => {
+                                  setProducts((prev) => prev.filter((item) => item.id !== p.id));
+                                }}
                               />
-                            ))}
-                          </datalist>
+                            ) : null}
+                          </div>
+                          <button
+                            type="button"
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => {
+                              setItemPickerRowKey(null);
+                              setItemModalTargetRowKey(rowKey);
+                            }}
+                            title="Browse & select all items in popup modal"
+                            className="shrink-0 p-1 text-blue-500 hover:text-blue-700 transition-colors cursor-pointer"
+                          >
+                            <Grid2x2 className="h-4 w-4" />
+                          </button>
                         </div>
                       </td>
                       <td className={cell}>
@@ -1617,24 +1754,67 @@ export default function CreatePurchaseOrder() {
       />
       <AddNewItemModal
         open={addItemOpen}
-        onClose={() => setAddItemOpen(false)}
+        onClose={() => {
+          setAddItemOpen(false);
+          setItemToEdit(null);
+        }}
+        initialData={itemToEdit}
         onSaved={(line, product) => {
-          if (!line) return;
-          const withAmount = {
-            ...emptyItem(),
-            ...line,
-            item_id: product?.id || line?.item_id || null,
-            amount: lineTotals(line).total,
-          };
-          setItems((prev) => {
-            const blankIdx = prev.findIndex((r) => !r.item_description?.trim());
-            if (blankIdx >= 0) {
-              const next = [...prev];
-              next[blankIdx] = withAmount;
-              return next;
-            }
-            return [...prev, withAmount];
-          });
+          if (!line && !product) return;
+          const pObj = product || line;
+          if (pObj && pObj.id) {
+            setProducts((prev) => {
+              const existingIdx = prev.findIndex((p) => p.id === pObj.id);
+              if (existingIdx >= 0) {
+                const next = [...prev];
+                next[existingIdx] = { ...next[existingIdx], ...pObj };
+                return next;
+              }
+              return [pObj, ...prev];
+            });
+            setCatalogItems((prev) => {
+              const existingIdx = prev.findIndex((p) => (p.id || p.item_id) === (pObj.id || pObj.item_id));
+              if (existingIdx >= 0) {
+                const next = [...prev];
+                next[existingIdx] = { ...next[existingIdx], ...pObj };
+                return next;
+              }
+              return [pObj, ...prev];
+            });
+          }
+          if (line) {
+            const withAmount = {
+              ...emptyItem(),
+              ...line,
+              item_id: product?.id || line?.item_id || null,
+              amount: lineTotals(line).total,
+            };
+            setItems((prev) => {
+              const blankIdx = prev.findIndex((r) => !r.item_description?.trim());
+              if (blankIdx >= 0) {
+                const next = [...prev];
+                next[blankIdx] = withAmount;
+                return next;
+              }
+              return [...prev, withAmount];
+            });
+          }
+          setItemToEdit(null);
+        }}
+      />
+      <ItemSelectionModal
+        isOpen={Boolean(itemModalTargetRowKey)}
+        products={products}
+        onClose={() => setItemModalTargetRowKey(null)}
+        onSelect={(product) => {
+          if (itemModalTargetRowKey) {
+            selectProductForRow(itemModalTargetRowKey, product);
+          }
+          setItemModalTargetRowKey(null);
+        }}
+        onAddNew={() => {
+          setItemToEdit(null);
+          setAddItemOpen(true);
         }}
       />
       <AddOtherChargesModal

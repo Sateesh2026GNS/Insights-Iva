@@ -63,8 +63,10 @@ export async function fetchProductsWithFallback(options = {}) {
   return productsList;
 }
 
-/** Finished goods only — for Production Order / Work Order product selects. */
-export async function fetchFinishedGoodsWithFallback() {
-  const all = await fetchProductsWithFallback();
-  return all.filter(isFinishedGoodProduct);
+/**
+ * Load products for Production Planning / Work Order product selects.
+ * Returns all products from masters -> Product Catalog.
+ */
+export async function fetchFinishedGoodsWithFallback(options = {}) {
+  return fetchProductsWithFallback(options);
 }

@@ -30,7 +30,7 @@ export const PRODUCTION_MANAGER_NAV_ITEMS = [
   },
   {
     key: "production",
-    label: "Production",
+    label: "Production Flow",
     icon: Factory,
     module: "production",
     children: [
@@ -44,13 +44,25 @@ export const PRODUCTION_MANAGER_NAV_ITEMS = [
       { key: "workOrders", label: "Work Orders", to: "/production/work-orders", module: "production" },
       { key: "schedule", label: "Production Schedule", to: "/production/schedule", module: "production" },
       { key: "machineAllocation", label: "Machine Allocation", to: "/production/tasks", module: "production" },
-      { key: "dailyReports", label: "Daily Production Reports", to: "/production/reports", module: "production" },
+      { key: "productionEntry", label: "Production Entry", to: "/production/my-entry", module: "production" },
+      { key: "batchTracking", label: "Batch Tracking", to: "/production/batch-tracking", module: "production" },
+      { key: "qualityControl", label: "Quality Control", to: "/quality/final", module: "quality" },
+      { key: "finishedGoods", label: "Finished Goods Inventory", to: "/inventory/finished-goods", module: "inventory" },
+    ],
+  },
+  {
+    key: "productionTools",
+    label: "Production Support",
+    icon: Wrench,
+    module: "production",
+    children: [
       {
         key: "productionQueue",
-        label: "Production Queue",
+        label: "Job Card Queue (Review & Assign)",
         to: "/my-job-cards?dept=production",
         module: "production",
       },
+      { key: "dailyReports", label: "Production Reports", to: "/production/reports", module: "production" },
     ],
   },
   {
@@ -60,7 +72,6 @@ export const PRODUCTION_MANAGER_NAV_ITEMS = [
     module: "inventory",
     children: [
       { key: "rawMaterials", label: "Raw Materials", to: "/inventory/raw-materials", module: "inventory" },
-      { key: "finishedGoods", label: "Finished Goods", to: "/inventory/finished-goods", module: "inventory" },
       {
         key: "materialAvailability",
         label: "Material Availability",
@@ -87,7 +98,6 @@ export const PRODUCTION_MANAGER_NAV_ITEMS = [
     children: [
       { key: "qualityDashboard", label: "Quality Dashboard", to: "/quality", module: "quality" },
       { key: "inProcessQc", label: "In-Process QC", to: "/quality/in-process", module: "quality" },
-      { key: "finalQc", label: "Final QC", to: "/quality/final", module: "quality" },
       { key: "batchReports", label: "Batch Reports", to: "/quality/batch-reports", module: "quality" },
     ],
   },

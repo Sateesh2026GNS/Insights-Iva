@@ -71,7 +71,9 @@ export function SearchBar({
   "aria-label": ariaLabel,
 }) {
   const { t } = useTranslation();
-  const resolvedPlaceholder = placeholder ?? t("common.search", { defaultValue: "Search" });
+  const rawPlaceholder = placeholder ?? t("common.search", { defaultValue: "Search" });
+  const resolvedPlaceholder =
+    typeof rawPlaceholder === "string" ? rawPlaceholder.replace(/[.…]+$/, "").trim() : rawPlaceholder;
   const hasValue = String(value ?? "").length > 0;
   const preset = SIZE_PRESETS[size] ?? SIZE_PRESETS.default;
   const wrapLayoutClass =

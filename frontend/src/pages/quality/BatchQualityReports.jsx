@@ -443,7 +443,7 @@ export default function BatchQualityReports() {
           <SearchBar
             value={search}
             onChange={setSearch}
-            placeholder="Search by batch no, product, work order..."
+            placeholder="Search"
             aria-label="Search batch quality reports"
           />
           <div className="flex flex-wrap items-center gap-2.5">

@@ -200,6 +200,7 @@ VALID_WORK_ORDER_STATUSES = {
 VALID_PRODUCTION_ORDER_STATUSES = {
     "draft",
     "planned",
+    "assigned",
     "running",
     "in_progress",
     "paused",
@@ -554,28 +555,35 @@ def quick_create_work_order(db: Session, payload: WorkOrderQuickCreate) -> WorkO
         if payload.customer_name:
             prod_order.customer_name = payload.customer_name
 
-            # Check if a work order already exists for this production order
-            existing_wo = db.scalars(
-                select(WorkOrder).where(
-                    WorkOrder.production_order_id == prod_order.id,
-                    WorkOrder.tenant_id == payload.tenant_id,
-                )
-            ).first()
+        # Reuse and update the work order linked to this production order.
+        existing_wo = db.scalars(
+            select(WorkOrder).where(
+                WorkOrder.production_order_id == prod_order.id,
+                WorkOrder.tenant_id == payload.tenant_id,
+            )
+        ).first()
 
-            if existing_wo:
-                if payload.machine_id:
-                    existing_wo.machine_id = payload.machine_id
-                if payload.operator_name:
-                    existing_wo.operator_name = payload.operator_name
-                if payload.shift:
-                    existing_wo.shift = payload.shift
-                if payload.customer_name:
-                    existing_wo.customer_name = payload.customer_name
-                if payload.priority:
-                    existing_wo.priority = payload.priority
-                db.commit()
-                db.refresh(existing_wo)
-                return existing_wo
+        if existing_wo:
+            if payload.machine_id:
+                existing_wo.machine_id = payload.machine_id
+            if payload.operator_name:
+                existing_wo.operator_name = payload.operator_name
+            if payload.shift:
+                existing_wo.shift = payload.shift
+            if payload.customer_name:
+                existing_wo.customer_name = payload.customer_name
+            if payload.priority:
+                existing_wo.priority = payload.priority
+            existing_wo.plant_code = payload.plant_code or existing_wo.plant_code
+            existing_wo.department = payload.department or prod_order.department or existing_wo.department
+            db.commit()
+            db.refresh(existing_wo)
+            return existing_wo
+
+        # A work order linked to an incoming production order must use that
+        # order's product and target quantity as the source of truth.
+        payload.product_id = prod_order.product_id
+        payload.planned_quantity = float(prod_order.planned_quantity or 0)
 
     if not prod_order:
         if not payload.product_id:
@@ -632,7 +640,8 @@ def quick_create_work_order(db: Session, payload: WorkOrderQuickCreate) -> WorkO
         planned_start=payload.planned_start,
         planned_end=payload.planned_end,
         status=status_val,
-        plant_code=getattr(payload, "plant_code", None),
+        plant_code=payload.plant_code,
+        department=payload.department or prod_order.department,
     )
     db.add(work_order)
     db.commit()

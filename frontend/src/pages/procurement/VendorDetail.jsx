@@ -13,11 +13,12 @@ import {
 } from "lucide-react";
 
 import { deleteDocument } from "../../api/documentsApi";
-import { getVendorDetail } from "../../api/procurementApi";
+import { getVendorDetail, updateVendor } from "../../api/procurementApi";
 import usePermissions from "../../hooks/usePermissions";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { starRating } from "../../data/vendorsMasterData";
 import { useToast } from "../../context/ToastContext";
+import { InteractiveStarRating } from "../../components/procurement/VendorDetailModal";
 
 import Button from "../../components/common/Button";
 import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
@@ -63,6 +64,21 @@ export default function VendorDetail() {
   const [vendor, setVendor] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [ratingSaving, setRatingSaving] = useState(false);
+
+  const handleRate = async (newRating) => {
+    if (!vendorId || ratingSaving || viewOnly) return;
+    setRatingSaving(true);
+    try {
+      await updateVendor(vendorId, { rating: Number(newRating) });
+      setVendor((prev) => (prev ? { ...prev, rating: newRating } : prev));
+      addToast(`Vendor rating updated to ${newRating} ★`, "success");
+    } catch {
+      addToast("Failed to update rating", "error");
+    } finally {
+      setRatingSaving(false);
+    }
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -204,6 +220,27 @@ export default function VendorDetail() {
         <ListPageCardBody className="sm:p-6">
         {tab === "overview" && (
           <div className="space-y-5 pb-4">
+            <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50/80 via-orange-50/50 to-amber-50/80 p-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <Star className="h-4 w-4 fill-amber-500 text-amber-500" />
+                  <h3 className="text-sm font-bold text-amber-900">Vendor Star Rating</h3>
+                </div>
+                <p className="mt-0.5 text-xs text-amber-700">
+                  Click any star to update vendor performance rating
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                <InteractiveStarRating
+                  rating={v.rating}
+                  onRate={handleRate}
+                  size="md"
+                  showLabel={true}
+                  disabled={ratingSaving || viewOnly}
+                />
+                {ratingSaving && <Loader2 className="h-4 w-4 animate-spin text-amber-600" />}
+              </div>
+            </div>
             <div>
               <h3 className="mb-3 text-sm font-bold text-[var(--color-text)]">General</h3>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

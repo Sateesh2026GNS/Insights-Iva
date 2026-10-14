@@ -147,25 +147,42 @@ export function woStatusLabel(status) {
   return (status || "planned").replace(/_/g, " ");
 }
 
+function normalizeWoStatus(status) {
+  return String(status || "planned").trim().toLowerCase().replace(/[\s-]+/g, "_");
+}
+
 export function canWoStart(status) {
-  return ["draft", "released", "planned", "material_ready", "machine_ready", "pending", "paused"].includes(status);
+  return [
+    "draft",
+    "released",
+    "planned",
+    "pending",
+    "assigned",
+    "material_ready",
+    "machine_ready",
+    "paused",
+    "on_hold",
+    "hold",
+  ].includes(normalizeWoStatus(status));
 }
 
 export function canWoIssueMaterials(status, materialsIssued) {
   if (materialsIssued) return false;
-  return ["draft", "released", "planned", "pending", "machine_ready", "material_ready"].includes(status);
+  return ["draft", "released", "planned", "pending", "assigned", "machine_ready", "material_ready"].includes(
+    normalizeWoStatus(status),
+  );
 }
 
 export function canWoPause(status) {
-  return ["running", "in_progress"].includes(status);
+  return ["running", "in_progress"].includes(normalizeWoStatus(status));
 }
 
 export function canWoStop(status) {
-  return ["running", "in_progress", "paused"].includes(status);
+  return ["running", "in_progress", "paused"].includes(normalizeWoStatus(status));
 }
 
 export function canWoComplete(status) {
-  return ["running", "in_progress", "paused", "quality_check", "material_ready", "machine_ready", "planned"].includes(status);
+  return ["running", "in_progress", "paused", "quality_check"].includes(normalizeWoStatus(status));
 }
 
 export function priorityBadge(priority) {

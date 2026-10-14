@@ -309,7 +309,7 @@ export default function PreventiveMaintenance() {
         <KpiCard label="Machine Availability" value={summary.machine_availability_pct} suffix="%" icon={Wrench} color="bg-teal-600" />
       </div>
 
-      <MaintenanceFilters search={search} onSearchChange={setSearch} statusFilter={statusFilter} onStatusFilterChange={setStatusFilter} searchPlaceholder="Search tasks, machines..." />
+      <MaintenanceFilters search={search} onSearchChange={setSearch} statusFilter={statusFilter} onStatusFilterChange={setStatusFilter} searchPlaceholder="Search" />
 
       <ListPageCard>
         <ListPageCardBody className="overflow-x-auto">

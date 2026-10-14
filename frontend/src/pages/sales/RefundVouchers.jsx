@@ -347,7 +347,7 @@ function CreateEditRefundVoucherModal({
                     size="compact"
                     value={partySearch}
                     onChange={setPartySearch}
-                    placeholder="Search party by name or company..."
+                    placeholder="Search"
                     autoFocus
                    
                   />
@@ -1452,7 +1452,7 @@ export default function RefundVouchers() {
         <SearchBar
           value={search}
           onChange={setSearch}
-          placeholder="Search voucher #, buyer name, mode, reference..."
+          placeholder="Search"
          
         />
 

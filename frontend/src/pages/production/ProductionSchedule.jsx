@@ -100,7 +100,7 @@ function StatusDot({ status }) {
 function ViewTabs({ view, onChange }) {
   return (
     <div
-      className="inline-flex flex-wrap rounded-full border border-[var(--color-border)] bg-[var(--color-surface-muted)] p-1"
+      className="inline-flex max-w-full flex-nowrap overflow-x-auto rounded-full border border-[var(--color-border)] bg-[var(--color-surface-muted)] p-1"
       role="tablist"
       aria-label="Schedule views"
     >
@@ -114,7 +114,7 @@ function ViewTabs({ view, onChange }) {
             role="tab"
             aria-selected={active}
             onClick={() => onChange(v.id)}
-            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
+            className={`inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
               active
                 ? "bg-[var(--color-surface)] text-[var(--color-text)] shadow-sm"
                 : "text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
@@ -784,11 +784,13 @@ export default function ProductionSchedule() {
     }
     try {
       // 1. Fetch core primary data first for instant page availability
-      const [dashRes, timelineRes] = await Promise.allSettled(
+      const primaryResults = await Promise.allSettled(
         operatorMode
-          ? [getMyProductionSchedule(), getMyProductionSchedule()]
+          ? [getMyProductionSchedule()]
           : [getScheduleDashboard(), getScheduleTimeline()],
       );
+      const dashRes = primaryResults[0];
+      const timelineRes = operatorMode ? primaryResults[0] : primaryResults[1];
 
       if (!isMountedRef.current) return;
 
@@ -821,6 +823,18 @@ export default function ProductionSchedule() {
 
       // Unblock page loading as soon as core view data is ready
       setLoading(false);
+
+      if (operatorMode) {
+        // Operator schedule data is already scoped by /production-schedule/my.
+        // Do not load manager-wide machine, queue, material, or conflict widgets.
+        setShifts([]);
+        setLiveMachines([]);
+        setQueue([]);
+        setMaterials([]);
+        setConflicts([]);
+        setCalendarEvents([]);
+        return;
+      }
 
       // 2. Fetch secondary panel widget data concurrently in background
       const [
@@ -1032,7 +1046,7 @@ export default function ProductionSchedule() {
   const openCreate = !operatorMode ? () => setShowNewModal(true) : undefined;
   const runningMachines = liveMachines.filter((m) => String(m.status).toLowerCase() === "running").length;
   const showFloorStrip =
-    liveMachines.length > 0 || queue.length > 0 || shifts.length > 0 || materials.length > 0;
+    !operatorMode && (liveMachines.length > 0 || queue.length > 0 || shifts.length > 0 || materials.length > 0);
 
   if (loading) return <Loader label="Loading production schedule…" />;
 
@@ -1040,13 +1054,13 @@ export default function ProductionSchedule() {
     <ListPageShell>
       <div className="ui-grid-kpi">
         <ClickableKpiCard onClick={() => applySchedulePreset("all")} title="Show all production targets" tone="primary">
-          <KpiCard label="Target" value={(dashboard.production_target ?? 0).toLocaleString()} icon={Target} tone="primary" meta="Click to filter" />
+          <KpiCard label="Target Quantity" value={(dashboard.production_target ?? 0).toLocaleString()} icon={Target} tone="primary" meta="Click to filter" />
         </ClickableKpiCard>
         <ClickableKpiCard onClick={() => applySchedulePreset("completed")} title="Show completed orders" tone="success">
-          <KpiCard label="Completed" value={(dashboard.completed ?? 0).toLocaleString()} icon={CheckCircle2} tone="success" meta="Click to filter" />
+          <KpiCard label="Completed Orders" value={(dashboard.completed ?? 0).toLocaleString()} icon={CheckCircle2} tone="success" meta="Click to filter" />
         </ClickableKpiCard>
         <ClickableKpiCard onClick={() => applySchedulePreset("pending")} title="Show pending orders" tone="warning">
-          <KpiCard label="Pending" value={(dashboard.pending ?? 0).toLocaleString()} icon={ClipboardList} tone="warning" meta="Click to filter" />
+          <KpiCard label="Pending Orders" value={(dashboard.pending ?? 0).toLocaleString()} icon={ClipboardList} tone="warning" meta="Click to filter" />
         </ClickableKpiCard>
         <ClickableKpiCard onClick={() => applySchedulePreset("delayed")} title="Show delayed orders" tone="danger">
           <KpiCard label="Delayed" value={dashboard.delayed_orders ?? 0} icon={AlertTriangle} tone="danger" meta="Click to filter" />
@@ -1070,16 +1084,16 @@ export default function ProductionSchedule() {
 
       <ListPageCard>
         <ListPageCardBody>
-        <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+        <div className="mb-4 grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-center">
+          <div className="flex min-w-0 flex-wrap items-center gap-2 sm:gap-4">
             <ViewTabs view={view} onChange={setView} />
-            <p className="text-xs text-[var(--color-text-muted)]">
+            <p className="whitespace-nowrap text-xs text-[var(--color-text-muted)]">
               Today · {formatScheduleDate(dashboard.today)}
               {dashboard.machine_utilization_pct != null ? ` · ${dashboard.machine_utilization_pct}% util.` : ""}
               {runningMachines ? ` · ${runningMachines} running` : ""}
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-nowrap items-center justify-start gap-2 xl:justify-end">
             <ExportDownloadMenu
               disabled={!(filteredTable.length ? filteredTable : tableRows).length}
               onExport={handleExport}

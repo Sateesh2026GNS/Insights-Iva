@@ -35,6 +35,7 @@ import { useToast } from "../../context/ToastContext";
 import useTenantId from "../../hooks/useTenantId";
 import { apiErrorMessage } from "../../utils/apiError";
 import { uploadAndAttachItemPhoto } from "../../utils/inventoryItemPhoto";
+import { invalidateReferenceCache } from "../../utils/referenceDataCache";
 
 import { inputClass } from "../../design-system/classes";
 
@@ -645,6 +646,8 @@ export default function AddNewItemModal({
       if (photoSaveWarning) {
         addToast(`Item saved, but its photo could not be saved: ${photoSaveWarning}`, "warning");
       }
+      invalidateReferenceCache("products");
+      invalidateReferenceCache("raw_materials_options");
       onSaved?.(line, product, { isEdit: Boolean(item?.id), item });
       onClose?.();
     } catch (err) {
@@ -692,15 +695,6 @@ export default function AddNewItemModal({
           </option>
         ) : null}
       </select>
-      {onAddCategory && !categorySelectDisabled ? (
-        <button
-          type="button"
-          onClick={() => onAddCategory()}
-          className="mt-1.5 text-[12px] font-semibold text-[var(--color-action-teal)] hover:underline"
-        >
-          + Add New Category
-        </button>
-      ) : null}
     </label>
   );
   const isDrawer = placement === "drawer";

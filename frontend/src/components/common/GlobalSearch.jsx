@@ -412,7 +412,7 @@ export default function GlobalSearch({
           }
         }}
         inputRef={inputRef}
-        placeholder={t(placeholderKey, { defaultValue: "Search pages…" })}
+        placeholder={t(placeholderKey, { defaultValue: "Search" })}
         className={NAVBAR_SEARCH_WRAP_CLASS}
         inputClassName={NAVBAR_SEARCH_INPUT_CLASS}
         role="combobox"

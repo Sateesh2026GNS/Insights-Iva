@@ -3,22 +3,33 @@ import { translateBackendPhoneMessage } from "./indianPhoneValidation";
 /** Normalize FastAPI / Axios error payloads for toast and form display. */
 export function formatApiError(detail, fallback = "Something went wrong.") {
   if (detail == null || detail === "") return fallback;
-  if (typeof detail === "string") return detail;
+  if (typeof detail === "string") {
+    if (
+      detail.toLowerCase().includes("value error") ||
+      detail.toLowerCase().includes("validation error") ||
+      detail.toLowerCase().includes("validation failed") ||
+      detail.toLowerCase().includes("invalid input")
+    ) {
+      return "Enter valid inputs";
+    }
+    return detail;
+  }
   if (Array.isArray(detail)) {
-    const parts = detail.map((item) => {
-      if (typeof item === "string") return item;
-      const loc = Array.isArray(item?.loc)
-        ? item.loc.filter((p) => p !== "body" && p !== "query" && p !== "path").join(".")
-        : "";
-      const msg = item?.msg || item?.message || JSON.stringify(item);
-      return loc ? `${loc}: ${msg}` : msg;
-    });
-    return parts.filter(Boolean).join(" · ") || fallback;
+    return "Enter valid inputs";
   }
   if (typeof detail === "object") {
-    if (typeof detail.msg === "string") return detail.msg;
-    if (typeof detail.message === "string") return detail.message;
-    if (typeof detail.detail === "string") return detail.detail;
+    const msg = detail.msg || detail.message || detail.detail;
+    if (typeof msg === "string") {
+      if (
+        msg.toLowerCase().includes("value error") ||
+        msg.toLowerCase().includes("validation error") ||
+        msg.toLowerCase().includes("validation failed") ||
+        msg.toLowerCase().includes("invalid input")
+      ) {
+        return "Enter valid inputs";
+      }
+      return msg;
+    }
     try {
       return JSON.stringify(detail);
     } catch {
@@ -44,11 +55,14 @@ export function extractApiErrorDetail(err) {
 }
 
 export function apiErrorMessage(err, fallback = "Something went wrong.") {
+  const status = err?.response?.status;
+  if (status === 422) {
+    return "Enter valid inputs";
+  }
   const detail = extractApiErrorDetail(err);
   if (detail != null && detail !== "") {
     return formatApiError(detail, fallback);
   }
-  const status = err?.response?.status;
   if (status) {
     return httpStatusMessage(err, fallback);
   }
@@ -68,6 +82,9 @@ export function apiErrorMessage(err, fallback = "Something went wrong.") {
 /** User-friendly message for common HTTP status codes. */
 export function httpStatusMessage(err, fallback = "Something went wrong.") {
   const status = err?.response?.status;
+  if (status === 422) {
+    return "Enter valid inputs";
+  }
   const detail = extractApiErrorDetail(err);
   if (detail != null && detail !== "") {
     return formatApiError(detail, fallback);
@@ -307,7 +324,7 @@ export function classifyApiError(err, fallback = "Something went wrong.") {
   return { type: "unknown", message, fields: {} };
 }
 
-const PHONE_FIELD_KEYS = new Set(["phone", "mobile", "alternate_phone", "manager_mobile"]);
+const PHONE_FIELD_KEYS = new Set(["phone", "mobile", "work_phone", "alternate_phone", "manager_mobile"]);
 
 /** Merge backend field errors into an existing client-side errors object. */
 export function applyBackendFieldErrors(err, setFieldErrors, fieldMap = {}, options = {}) {

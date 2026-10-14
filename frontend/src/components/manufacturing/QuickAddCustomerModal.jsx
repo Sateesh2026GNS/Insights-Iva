@@ -51,16 +51,27 @@ export default function QuickAddCustomerModal({ open, onClose, onSaved }) {
     try {
       const res = await createCustomer({
         tenant_id: tenantId,
-        name: name.trim(),
-        contact_name: name.trim(),
+        name: null,
+        company_name: name.trim(),
+        company: name.trim(),
+        contact_name: null,
         phone: phoneVal || null,
         email: emailVal || null,
         status: "active",
         credit_limit: 0,
       });
       const created = res?.data ?? res;
+      const normalizedCreated = {
+        ...created,
+        name: created?.name || "",
+        customer_name: "",
+        company_name: created?.company_name || name.trim(),
+        company: created?.company || name.trim(),
+        contact_name: created?.contact_name || "",
+        contact_person: created?.contact_person || "",
+      };
       addToast("Company added successfully.", "success");
-      onSaved?.(created);
+      onSaved?.(normalizedCreated);
       reset();
       onClose?.();
     } catch (err) {

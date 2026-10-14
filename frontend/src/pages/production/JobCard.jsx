@@ -3437,7 +3437,8 @@ export default function JobCard() {
     card.materials_issued;
   const showComplete =
     (roles.operator || roles.production || roles.admin) &&
-    (card.can_complete_production || canWoComplete(status));
+    canWoComplete(status) &&
+    card.can_complete_production !== false;
   const progressPct = Math.min(100, Math.max(0, Number(summary.progress_pct || 0)));
   const priority = priorityBadge(card.priority);
   const view = operatorMode ? "form" : viewParam;

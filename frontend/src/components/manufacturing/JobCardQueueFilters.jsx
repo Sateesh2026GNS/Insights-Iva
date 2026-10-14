@@ -154,15 +154,6 @@ export default function JobCardQueueFilters({
             >
               {searching ? "Searching…" : "Search"}
             </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className="my-job-cards-filters__reset-btn"
-              onClick={onClear}
-              disabled={searching}
-            >
-              Reset
-            </Button>
           </div>
         </div>
       </div>

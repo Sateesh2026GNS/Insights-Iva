@@ -122,6 +122,10 @@ ACTIONABLE_STATUSES_BY_TEAM: dict[str, frozenset[str]] = {
     TEAM_PRODUCTION: frozenset({
         "BOM_PENDING",
         "READY_FOR_PRODUCTION",
+        # Keep assigned and running work visible to Production Managers for
+        # reassignment, hold, and execution oversight after the handoff.
+        "PRODUCTION_ASSIGNED",
+        "PRODUCTION_IN_PROGRESS",
         "PRODUCTION_REWORK",
         "QUALITY_REJECTED",
     }),
@@ -1023,7 +1027,7 @@ def build_store_queue_context(
     from app.services.workflow_team_service import refresh_pending_material_check_stock
 
     mc = material_check
-    if mc and refresh_stock:
+    if mc and refresh_stock and not mc.verified_at:
         refresh_pending_material_check_stock(db, tenant_id, mc)
 
     product_id = job_card.product_id if job_card and job_card.product_id else None

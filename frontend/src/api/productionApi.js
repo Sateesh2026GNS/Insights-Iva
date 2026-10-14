@@ -160,9 +160,12 @@ export const completeWorkOrder = (workOrderId) =>
 export const deleteWorkOrder = (workOrderId) =>
   apiDelete(`/api/production/work-orders/${workOrderId}`);
 
-export const issueWorkOrderMaterials = (workOrderId, warehouseId) =>
+export const issueWorkOrderMaterials = (workOrderId, warehouseId, storeSalesOrderId) =>
   apiPost(`/api/production/work-orders/${workOrderId}/issue-materials`, null, {
-    params: warehouseId ? { warehouse_id: warehouseId } : {},
+    params: {
+      ...(warehouseId ? { warehouse_id: warehouseId } : {}),
+      ...(storeSalesOrderId ? { store_sales_order_id: storeSalesOrderId } : {}),
+    },
   });
 
 export const runMrp = (productId, quantity, createPurchaseRequest = true) =>

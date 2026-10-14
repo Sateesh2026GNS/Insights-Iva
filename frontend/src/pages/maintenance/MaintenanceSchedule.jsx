@@ -314,7 +314,7 @@ export default function MaintenanceSchedule() {
             <SearchBar
               value={search}
               onChange={setSearch}
-              placeholder="Search by task, machine, or assigned engineer..."
+              placeholder="Search"
              
             />
           </div>

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   ACCOUNTS_DASHBOARD_PATH,
+  OPERATOR_DASHBOARD_PATH,
   PRODUCTION_DASHBOARD_PATH,
   QUALITY_CONTROL_LANDING_PATH,
   getDashboardPathForRole,
@@ -20,6 +21,12 @@ describe("roleRedirect", () => {
     expect(getDashboardPathForRole({ role_name: "Finance Manager" })).toBe("/accounts/dashboard");
   });
 
+  it("routes admin to root ERP dashboard", () => {
+    expect(getDashboardPathForRole("Admin")).toBe("/");
+    expect(getDashboardPathForRole("Administrator")).toBe("/");
+    expect(getDashboardPathForRole({ role: "Admin" })).toBe("/");
+  });
+
   it("does not send sales manager to accounts dashboard", () => {
     expect(getDashboardPathForRole("Sales Manager")).toBe("/sales");
   });
@@ -29,6 +36,12 @@ describe("roleRedirect", () => {
     expect(getDashboardPathForRole("Production Manager")).toBe("/production/dashboard");
     expect(getDashboardPathForRole({ role_name: "Production Manager" })).toBe("/production/dashboard");
     expect(getDashboardPathForRole({ role: "production_manager" })).toBe("/production/dashboard");
+  });
+
+  it("routes operators to the dashboard after login", () => {
+    expect(OPERATOR_DASHBOARD_PATH).toBe("/dashboard");
+    expect(getDashboardPathForRole("Operator")).toBe(OPERATOR_DASHBOARD_PATH);
+    expect(getDashboardPathForRole("operator")).toBe(OPERATOR_DASHBOARD_PATH);
   });
 
   it("routes quality control to the role-aware dashboard", () => {

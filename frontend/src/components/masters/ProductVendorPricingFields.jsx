@@ -154,7 +154,7 @@ export default function ProductVendorPricingFields({ pricing, onChange, disabled
                 }
               }}
               options={vendorOptions}
-              footerOptions={[{ value: "__create_vendor", label: "+ Add Vendor" }]}
+              footerOptions={[{ value: "__create_vendor", label: "Add Vendor" }]}
               onFooterPick={() => setAddVendorOpen(true)}
               placeholder="Select vendor"
               disabled={disabled}

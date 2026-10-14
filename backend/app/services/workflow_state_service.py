@@ -16,6 +16,8 @@ from app.core.permissions import get_role_names, user_is_admin
 from app.core.workflow_constants import (
     STATUS_NOTIFY_ROLES,
     TEAM_ADMIN,
+    TEAM_OPERATOR,
+    TEAM_PRODUCTION,
     WORKFLOW_STATUSES,
     normalize_priority,
     required_team_for_transition,
@@ -39,7 +41,12 @@ def _assert_team_access(user: User, required_team: str) -> None:
     if user_is_admin(user):
         return
     teams = user_teams(get_role_names(user))
-    if TEAM_ADMIN in teams or required_team in teams:
+    # Production managers supervise operator execution and are allowed to
+    # perform the operator-stage transitions while retaining their own user
+    # identity in the workflow audit record.
+    if TEAM_ADMIN in teams or required_team in teams or (
+        required_team == TEAM_OPERATOR and TEAM_PRODUCTION in teams
+    ):
         return
     raise HTTPException(
         status_code=403,

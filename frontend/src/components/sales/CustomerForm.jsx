@@ -19,6 +19,7 @@ import {
   CUSTOMER_FORM_TABS,
   EMPTY_ADDRESS,
   EMPTY_CONTACT,
+  getCustomerDisplayNameCandidates,
   PAYMENT_TERMS,
   SALUTATIONS,
   validateCustomerForm,
@@ -152,12 +153,11 @@ export default function CustomerForm({ initialForm, customer = null, onCancel })
   }, []);
 
   const displayNameOptions = useMemo(() => {
-    const opts = [];
-    if (form.company_name.trim()) opts.push({ value: form.company_name.trim(), label: form.company_name.trim() });
-    const person = [form.first_name, form.last_name].filter(Boolean).join(" ").trim();
-    if (person) opts.push({ value: person, label: person });
-    return opts;
-  }, [form.company_name, form.first_name, form.last_name]);
+    return getCustomerDisplayNameCandidates({
+      first_name: form.first_name,
+      last_name: form.last_name,
+    }).map((name) => ({ value: name, label: name }));
+  }, [form.first_name, form.last_name]);
 
   const patch = (path, value) => {
     setForm((prev) => {
@@ -169,6 +169,25 @@ export default function CustomerForm({ initialForm, customer = null, onCancel })
         cursor = cursor[parts[i]];
       }
       cursor[parts[parts.length - 1]] = value;
+
+      // When user updates contact name, if display_name was empty or
+      // was matching the old auto-generated person name, keep display_name in sync
+      if (!isEdit && (path === "first_name" || path === "last_name")) {
+        const oldAutoPerson = [prev.first_name, prev.last_name].filter(Boolean).join(" ").trim();
+        const currentDisplay = (prev.display_name || "").trim();
+
+        const wasAutoOrEmpty =
+          !currentDisplay ||
+          currentDisplay === oldAutoPerson;
+
+        if (wasAutoOrEmpty) {
+          const newPerson = [next.first_name, next.last_name].filter(Boolean).join(" ").trim();
+          if (newPerson) {
+            next.display_name = newPerson;
+          }
+        }
+      }
+
       return next;
     });
   };
@@ -215,7 +234,8 @@ export default function CustomerForm({ initialForm, customer = null, onCancel })
         setErrors,
         {
           name: "display_name",
-          phone: "mobile",
+          company_name: "company_name",
+          phone: form.work_phone?.trim() ? "work_phone" : "mobile",
           gstin: "gstin",
           email: "email",
         },
@@ -295,12 +315,19 @@ export default function CustomerForm({ initialForm, customer = null, onCancel })
           </FormRow>
 
           {form.customer_type === "business" ? (
-            <FormRow label="Company Name">
-              <input className="customer-form__input" value={form.company_name} onChange={(e) => patch("company_name", e.target.value)} maxLength={100} />
+            <FormRow label="Company Name" required>
+              <input
+                className={`customer-form__input${errors.company_name ? " customer-form__input--error" : ""}`}
+                value={form.company_name}
+                onChange={(e) => patch("company_name", e.target.value)}
+                maxLength={100}
+                placeholder="Enter Company Name"
+              />
+              {errors.company_name ? <p className="customer-form__error" role="alert">{errors.company_name}</p> : null}
             </FormRow>
           ) : null}
 
-          <FormRow label="Display Name" required>
+          <FormRow label="Customer Name" required={form.customer_type !== "business"}>
             <SearchableSelect
               value={form.display_name}
               onChange={(v) => patch("display_name", v)}
@@ -330,21 +357,50 @@ export default function CustomerForm({ initialForm, customer = null, onCancel })
             <div className="customer-form__phone-stack">
               <div>
                 <div className="customer-form__phone-row">
-                  <select className="customer-form__select" disabled><option>+91</option></select>
-                  <input className="customer-form__input" placeholder="Work Phone" value={form.work_phone} onChange={(e) => patch("work_phone", e.target.value.replace(/\D/g, "").slice(0, 10))} />
+                  <select className="customer-form__select" disabled aria-label="Country Code">
+                    <option>+91</option>
+                  </select>
+                  <IndianMobilePhoneInput
+                    id="customer-work-phone"
+                    aria-label="Work Phone"
+                    placeholder="Work Phone"
+                    value={form.work_phone}
+                    onChange={(v) => patch("work_phone", v)}
+                    error={errors.work_phone}
+                    setError={(msg) => setErrors((prev) => ({ ...prev, work_phone: msg }))}
+                    className="w-full min-w-0"
+                    inputClassName={`customer-form__input w-full${errors.work_phone ? " customer-form__input--error" : ""}`}
+                    showCountryCode={false}
+                    showInlineError={false}
+                  />
                 </div>
+                {errors.work_phone ? (
+                  <p className="customer-form__error" role="alert">{errors.work_phone}</p>
+                ) : null}
               </div>
+
               <div>
-                <IndianMobilePhoneInput
-                  aria-label="Phone"
-                  placeholder="Mobile"
-                  value={form.mobile}
-                  onChange={(v) => patch("mobile", v)}
-                  error={errors.mobile}
-                  setError={(msg) => setErrors((prev) => ({ ...prev, mobile: msg }))}
-                  inputClassName={`customer-form__input flex-1${errors.mobile ? " customer-form__input--error" : ""}`}
-                  className="customer-form__phone-row flex-1"
-                />
+                <div className="customer-form__phone-row">
+                  <select className="customer-form__select" disabled aria-label="Country Code">
+                    <option>+91</option>
+                  </select>
+                  <IndianMobilePhoneInput
+                    id="customer-mobile-phone"
+                    aria-label="Mobile"
+                    placeholder="Mobile"
+                    value={form.mobile}
+                    onChange={(v) => patch("mobile", v)}
+                    error={errors.mobile}
+                    setError={(msg) => setErrors((prev) => ({ ...prev, mobile: msg }))}
+                    className="w-full min-w-0"
+                    inputClassName={`customer-form__input w-full${errors.mobile ? " customer-form__input--error" : ""}`}
+                    showCountryCode={false}
+                    showInlineError={false}
+                  />
+                </div>
+                {errors.mobile ? (
+                  <p className="customer-form__error" role="alert">{errors.mobile}</p>
+                ) : null}
               </div>
             </div>
           </FormRow>

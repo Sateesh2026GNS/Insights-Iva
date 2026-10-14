@@ -570,7 +570,10 @@ def get_material_check(
     ).first()
     if not mc:
         mc = create_material_check_for_order(db, user.tenant_id, so, commit=True)
-    refresh_pending_material_check_stock(db, user.tenant_id, mc, force=True)
+    # Keep completed checks as the verified snapshot until Store explicitly rechecks.
+    # Only an unverified check should pick up live stock while it is being reviewed.
+    if not mc.verified_at:
+        refresh_pending_material_check_stock(db, user.tenant_id, mc, force=True)
     db.commit()
     return {
         "sales_order_id": so.id,
@@ -623,12 +626,12 @@ def operator_start_endpoint(
     user: User = Depends(require_permission("production")),
     db: Session = Depends(get_db),
 ):
-    from app.core.workflow_constants import TEAM_OPERATOR, user_teams
+    from app.core.workflow_constants import TEAM_OPERATOR, TEAM_PRODUCTION, user_teams
     from app.core.permissions import get_role_names
 
     teams = user_teams(get_role_names(user))
-    if TEAM_OPERATOR not in teams and not user_is_admin(user):
-        raise HTTPException(status_code=403, detail="Operator role required")
+    if TEAM_OPERATOR not in teams and TEAM_PRODUCTION not in teams and not user_is_admin(user):
+        raise HTTPException(status_code=403, detail="Operator or Production Manager role required")
     return operator_start_production(db, user.tenant_id, work_order_id, user)
 
 
@@ -639,12 +642,12 @@ def operator_progress_endpoint(
     user: User = Depends(require_permission("production")),
     db: Session = Depends(get_db),
 ):
-    from app.core.workflow_constants import TEAM_OPERATOR, user_teams
+    from app.core.workflow_constants import TEAM_OPERATOR, TEAM_PRODUCTION, user_teams
     from app.core.permissions import get_role_names
 
     teams = user_teams(get_role_names(user))
-    if TEAM_OPERATOR not in teams and not user_is_admin(user):
-        raise HTTPException(status_code=403, detail="Operator role required")
+    if TEAM_OPERATOR not in teams and TEAM_PRODUCTION not in teams and not user_is_admin(user):
+        raise HTTPException(status_code=403, detail="Operator or Production Manager role required")
     return operator_update_production(
         db,
         user.tenant_id,
@@ -665,12 +668,12 @@ def operator_pause_endpoint(
     user: User = Depends(require_permission("production")),
     db: Session = Depends(get_db),
 ):
-    from app.core.workflow_constants import TEAM_OPERATOR, user_teams
+    from app.core.workflow_constants import TEAM_OPERATOR, TEAM_PRODUCTION, user_teams
     from app.core.permissions import get_role_names
 
     teams = user_teams(get_role_names(user))
-    if TEAM_OPERATOR not in teams and not user_is_admin(user):
-        raise HTTPException(status_code=403, detail="Operator role required")
+    if TEAM_OPERATOR not in teams and TEAM_PRODUCTION not in teams and not user_is_admin(user):
+        raise HTTPException(status_code=403, detail="Operator or Production Manager role required")
     return operator_pause_production(db, user.tenant_id, work_order_id, user)
 
 
@@ -680,12 +683,12 @@ def operator_resume_endpoint(
     user: User = Depends(require_permission("production")),
     db: Session = Depends(get_db),
 ):
-    from app.core.workflow_constants import TEAM_OPERATOR, user_teams
+    from app.core.workflow_constants import TEAM_OPERATOR, TEAM_PRODUCTION, user_teams
     from app.core.permissions import get_role_names
 
     teams = user_teams(get_role_names(user))
-    if TEAM_OPERATOR not in teams and not user_is_admin(user):
-        raise HTTPException(status_code=403, detail="Operator role required")
+    if TEAM_OPERATOR not in teams and TEAM_PRODUCTION not in teams and not user_is_admin(user):
+        raise HTTPException(status_code=403, detail="Operator or Production Manager role required")
     return operator_resume_production(db, user.tenant_id, work_order_id, user)
 
 
@@ -696,12 +699,12 @@ def operator_complete_endpoint(
     user: User = Depends(require_permission("production")),
     db: Session = Depends(get_db),
 ):
-    from app.core.workflow_constants import TEAM_OPERATOR, user_teams
+    from app.core.workflow_constants import TEAM_OPERATOR, TEAM_PRODUCTION, user_teams
     from app.core.permissions import get_role_names
 
     teams = user_teams(get_role_names(user))
-    if TEAM_OPERATOR not in teams and not user_is_admin(user):
-        raise HTTPException(status_code=403, detail="Operator role required")
+    if TEAM_OPERATOR not in teams and TEAM_PRODUCTION not in teams and not user_is_admin(user):
+        raise HTTPException(status_code=403, detail="Operator or Production Manager role required")
     p = payload or OperatorProgressPayload()
     return operator_complete_production(
         db,
@@ -825,6 +828,7 @@ class MaterialRequestPayload(BaseModel):
 def get_stage_job_card_endpoint(
     order_id: int,
     stage: str,
+    production_order_id: int | None = None,
     user: User = Depends(require_any_permission(*WORKFLOW_MODULES)),
     db: Session = Depends(get_db),
 ):
@@ -864,7 +868,10 @@ def get_stage_job_card_endpoint(
             }
         if not allowed_to_view:
             raise HTTPException(status_code=403, detail="Not authorized for this stage")
-    result = build_stage_job_card(db, user.tenant_id, order_id, stage, user=user)
+    result = build_stage_job_card(
+        db, user.tenant_id, order_id, stage, user=user,
+        production_order_id=production_order_id,
+    )
     # The Store stage lazily backfills issue lines from the verified material check.
     # Persist those lines here so the first page load can display and issue them.
     if stage == "store" and result.get("material_issue_lines"):

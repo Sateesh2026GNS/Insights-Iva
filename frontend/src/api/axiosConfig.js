@@ -1,9 +1,12 @@
 import axios from "axios";
 
 import {
-  clearLegacyAuthTokens,
+  clearAuthTokens,
+  getStoredAccessToken,
+  getStoredRefreshToken,
   isFastOfflineSessionToken,
   markBrowserSessionActive,
+  setStoredTokens,
 } from "../utils/authSession";
 import { getCsrfTokenFromCookie, setCsrfToken } from "../utils/csrf";
 import {
@@ -37,9 +40,9 @@ function applyLoginAuthPayload(data) {
     if (access && isFastOfflineSessionToken(access)) {
       return;
     }
+    setStoredTokens(access, refresh);
   }
   markBrowserSessionActive();
-  clearLegacyAuthTokens();
   notifyAuthSessionUpdated();
 }
 
@@ -61,8 +64,10 @@ export function getApiBaseURL() {
     const envUrl = String(import.meta.env.VITE_API_BASE_URL || "").trim();
     if (envUrl) {
       let raw = envUrl.replace(/\/+$/, "");
-      if (raw === "http://localhost:8000") {
-        raw = "http://127.0.0.1:8000";
+      if (hostname === "localhost" && raw.includes("127.0.0.1:8000")) {
+        raw = raw.replace("127.0.0.1:8000", "localhost:8000");
+      } else if (hostname === "127.0.0.1" && raw.includes("localhost:8000")) {
+        raw = raw.replace("localhost:8000", "127.0.0.1:8000");
       }
       // If VITE_API_BASE_URL points to localhost but the site is loaded from a global/remote host,
       // override localhost so the browser doesn't attempt to connect to 127.0.0.1 on the remote visitor's device.
@@ -143,6 +148,26 @@ function attachCsrfHeader(config) {
   return config;
 }
 
+function attachAuthHeaders(config) {
+  const token = getStoredAccessToken();
+  if (token && !isFastOfflineSessionToken(token)) {
+    config.headers = config.headers || {};
+    if (!config.headers.Authorization) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+  }
+  return attachCsrfHeader(config);
+}
+
+rawAxios.interceptors.request.use((config) => {
+  const token = getStoredAccessToken();
+  if (token && !isFastOfflineSessionToken(token) && !config.headers?.Authorization) {
+    config.headers = config.headers || {};
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
 export async function ensureCsrfCookie() {
   try {
     const { data } = await rawAxios.get("/auth/csrf", { skipGlobalError: true });
@@ -169,7 +194,7 @@ api.interceptors.request.use((config) => {
         err.response = { status: 401, data: { message: "Session expired", reason: sessionStatus.reason } };
         return Promise.reject(err);
       }
-      attachCsrfHeader(config);
+      attachAuthHeaders(config);
     }
   } catch {}
 
@@ -235,14 +260,16 @@ async function refreshAccessToken() {
   const headers = { "X-Requested-With": "InsightsIva" };
   const csrf = getCsrfTokenFromCookie();
   if (csrf) headers["X-CSRF-Token"] = csrf;
-  const { data } = await rawAxios.post(`${baseURL}/auth/refresh`, {}, { headers });
+  const storedRefresh = getStoredRefreshToken();
+  const payload = storedRefresh ? { refresh_token: storedRefresh } : {};
+  const { data } = await rawAxios.post(`${baseURL}/auth/refresh`, payload, { headers });
   applyLoginAuthPayload(data);
   return data;
 }
 
 function clearAuthStorage() {
   try {
-    clearLegacyAuthTokens();
+    clearAuthTokens();
     localStorage.removeItem("smrt-user");
     localStorage.removeItem("smrt-session-active");
   } catch {}
@@ -369,6 +396,11 @@ api.interceptors.response.use(
           });
         }
         await refreshPromise;
+        const newToken = getStoredAccessToken();
+        if (newToken) {
+          original.headers = original.headers || {};
+          original.headers.Authorization = `Bearer ${newToken}`;
+        }
         attachCsrfHeader(original);
         return api(original);
       } catch (refreshErr) {

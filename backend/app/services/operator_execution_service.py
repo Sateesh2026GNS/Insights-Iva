@@ -61,12 +61,14 @@ def list_operator_shifts(db: Session, user: User) -> list[dict]:
 def my_production_schedule(db: Session, user: User) -> dict:
     machine_ids = set(resolve_operator_machine_ids(db, user))
     timeline = get_enhanced_timeline(db, user.tenant_id)
-    if machine_ids:
-        timeline = [row for row in timeline if row.machine_id in machine_ids]
 
     stmt = select(WorkOrder).where(WorkOrder.tenant_id == user.tenant_id)
     stmt = scope_work_orders_for_operator(stmt, user, db)
     work_orders = list(db.scalars(stmt).all())
+    assigned_work_order_ids = {wo.id for wo in work_orders}
+    # The shared timeline is tenant-wide. Operators should only see rows for
+    # work orders in their own server-scoped queue, even if no machine is assigned.
+    timeline = [row for row in timeline if row.work_order_id in assigned_work_order_ids]
     return {
         "timeline": [t.model_dump(mode="json") if hasattr(t, "model_dump") else dict(t) for t in timeline],
         "work_orders": [_to_list_read(db, user.tenant_id, wo).model_dump(mode="json") for wo in work_orders],
@@ -222,12 +224,20 @@ def create_production_entry(
     elif st not in RUNNING_STATUSES and st not in COMPLETED_STATUSES and produced > 0:
         wo.status = "in_progress"
     if planned > 0 and Decimal(str(wo.actual_quantity or 0)) >= planned:
-        wo.status = "completed"
+        # Production quantity is complete, but the order still needs final QC
+        # and the manager's completion action before inventory is received.
+        wo.status = "quality_check"
 
+    po = None
     if float(produced) > 0 or float(rejected) > 0:
         from app.models.production import ProductionOrder
 
-        po = db.get(ProductionOrder, wo.production_order_id)
+        po = db.scalars(
+            select(ProductionOrder).where(
+                ProductionOrder.id == wo.production_order_id,
+                ProductionOrder.tenant_id == user.tenant_id,
+            )
+        ).first()
         product_id = po.product_id if po and po.product_id else None
         if product_id:
             report = DailyProductionReport(
@@ -242,6 +252,48 @@ def create_production_entry(
                 created_by_user_id=user.id,
             )
             db.add(report)
+
+        # The production-order rollup drives Production Planning. Keep it in
+        # sync with its child work orders rather than leaving the old planned
+        # quantity/status behind after shop-floor entries are recorded.
+        db.flush()
+        sibling_orders = list(
+            db.scalars(
+                select(WorkOrder).where(
+                    WorkOrder.tenant_id == user.tenant_id,
+                    WorkOrder.production_order_id == wo.production_order_id,
+                )
+            ).all()
+        )
+        if po and sibling_orders:
+            total_produced = sum(float(item.actual_quantity or 0) for item in sibling_orders)
+            po.actual_quantity = total_produced
+            all_completed = all(
+                normalize_status(item.status) in COMPLETED_STATUSES
+                for item in sibling_orders
+            )
+            if all_completed:
+                po.status = "completed"
+            elif total_produced > 0:
+                po.status = "in_progress"
+
+        # Batch Tracking follows live production output. Final completion will
+        # advance this same batch to completed after quality checks pass.
+        if produced > 0:
+            from app.services.manufacturing_workflow_service import _sync_work_order_batch
+
+            _sync_work_order_batch(
+                db,
+                user.tenant_id,
+                wo,
+                float(wo.actual_quantity or 0),
+                status="in_process",
+            )
+
+        if produced > 0:
+            from app.services.workflow_team_service import sync_sales_workflow_on_work_order_start
+
+            sync_sales_workflow_on_work_order_start(db, user.tenant_id, wo, user=user)
 
     try:
         db.commit()

@@ -39,10 +39,13 @@ function OptionButton({ opt, active, onPick }) {
 
 function FooterActionButton({ opt, onPick }) {
   const isAdd =
-    String(opt.label || "").startsWith("+") ||
-    /add new|create new/i.test(String(opt.label || "")) ||
+    String(opt.label || "").trim().startsWith("+") ||
+    /\b(add|create|new)\b/i.test(String(opt.label || "")) ||
     String(opt.value || "").startsWith("__add") ||
-    String(opt.value || "").startsWith("__new");
+    String(opt.value || "").startsWith("__new") ||
+    String(opt.value || "").startsWith("__create");
+
+  const displayLabel = String(opt.label || "").replace(/^\+\s*/, "").trim();
 
   return (
     <button
@@ -56,7 +59,7 @@ function FooterActionButton({ opt, onPick }) {
       }`}
     >
       {isAdd ? <Plus className="h-4 w-4 shrink-0" aria-hidden /> : null}
-      <span className="truncate">{opt.label}</span>
+      <span className="truncate">{displayLabel}</span>
     </button>
   );
 }

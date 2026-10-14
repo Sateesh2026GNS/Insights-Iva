@@ -115,6 +115,7 @@
   display: grid;
   grid-template-columns: 88px 1fr;
   gap: 0.5rem;
+  align-items: center;
 }
 
 .customer-form__phone-stack {

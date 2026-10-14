@@ -86,11 +86,24 @@ function DetailField({ label, value }) {
   );
 }
 
-function ProgressSection({ produced, planned, remaining, pct }) {
+function progressBarClass(status) {
+  const normalized = String(status || "").toLowerCase();
+  if (["completed", "closed", "done"].includes(normalized)) {
+    return { bar: "bg-[var(--color-success)]", text: "text-[var(--color-success)]" };
+  }
+  if (["paused", "on_hold", "hold"].includes(normalized)) {
+    return { bar: "bg-[var(--color-warning)]", text: "text-[var(--color-warning)]" };
+  }
+  return { bar: "bg-[var(--color-primary)]", text: "text-[var(--color-primary)]" };
+}
+
+function ProgressSection({ produced, planned, remaining, pct, status }) {
   const p = Number(pct ?? (planned ? Math.round((produced / planned) * 100) : 0));
+  const safePct = Number.isFinite(p) ? Math.min(100, Math.max(0, p)) : 0;
   const safePlanned = Number(planned || 0);
   const safeProduced = Number(produced || 0);
   const safeRemaining = remaining != null ? Number(remaining) : Math.max(safePlanned - safeProduced, 0);
+  const barColor = progressBarClass(status);
 
   return (
     <div className="rounded-xl border border-[var(--color-border-muted)] bg-[var(--color-surface-muted)]/40 p-4">
@@ -103,12 +116,19 @@ function ProgressSection({ produced, planned, remaining, pct }) {
           </p>
           <p className="text-xs text-[var(--color-text-muted)]">Completed / Total quantity</p>
         </div>
-        <p className="text-xl font-bold tabular-nums text-[var(--color-primary)]">{Math.min(100, Math.max(0, p))}%</p>
+        <p className={`text-xl font-bold tabular-nums ${barColor.text}`}>{safePct}%</p>
       </div>
-      <div className="h-2 overflow-hidden rounded-full bg-[var(--color-border-muted)]">
+      <div
+        className="h-2.5 overflow-hidden rounded-full bg-[var(--color-border-muted)]"
+        role="progressbar"
+        aria-label="Production quantity completion"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={safePct}
+      >
         <div
-          className="h-full rounded-full bg-[var(--color-primary)] transition-[width]"
-          style={{ width: `${Math.min(p, 100)}%` }}
+          className={`h-full rounded-full transition-[width] duration-500 ease-out ${barColor.bar}`}
+          style={{ width: `${safePct}%` }}
         />
       </div>
       <p className="mt-2 text-xs text-[var(--color-text-muted)]">
@@ -127,7 +147,7 @@ function woStatusTone(row) {
   return "pending";
 }
 
-export function WorkOrderStartModal({ workOrder, checks, onClose, onConfirm, loading }) {
+export function WorkOrderStartModal({ workOrder, checks, onClose, onConfirm, onIssueMaterials, loading }) {
   if (!workOrder) return null;
   const allReady = checks?.every((c) => c.ready);
   return createPortal(
@@ -147,6 +167,16 @@ export function WorkOrderStartModal({ workOrder, checks, onClose, onConfirm, loa
             >
               <p className="font-semibold">{c.label}</p>
               <p className="text-xs opacity-90">{c.message}</p>
+              {!c.ready && c.check_type === "material" && onIssueMaterials ? (
+                <Button
+                  variant="secondary"
+                  type="button"
+                  className="mt-2"
+                  onClick={() => onIssueMaterials(workOrder)}
+                >
+                  Issue Materials
+                </Button>
+              ) : null}
             </li>
           ))}
         </ul>
@@ -203,7 +233,9 @@ export default function WorkOrderDetailModal({
   const planned = Number(w.planned_quantity || 0);
   const produced = Number(w.produced_quantity ?? w.actual_quantity ?? 0);
   const remaining = w.remaining_quantity != null ? Number(w.remaining_quantity) : Math.max(planned - produced, 0);
-  const progressPct = Number(w.progress_pct ?? (planned ? Math.round((produced / planned) * 100) : 0));
+  const rawProgressPct = Number(w.progress_pct ?? (planned ? Math.round((produced / planned) * 100) : 0));
+  const progressPct = Number.isFinite(rawProgressPct) ? Math.min(100, Math.max(0, rawProgressPct)) : 0;
+  const progressColor = progressBarClass(w.status);
   const priority = priorityBadge(w.priority || "medium");
   const productLabel = cleanProductLabel(w.product_name);
 
@@ -285,15 +317,22 @@ export default function WorkOrderDetailModal({
               {" · "}
               Qty {planned}
             </p>
-            <div className="mt-3 max-w-md">
+            <div className="mt-3 w-full">
               <div className="mb-1 flex justify-between text-[11px] tabular-nums text-[var(--color-text-muted)]">
-                <span>{produced} / {planned}</span>
-                <span className="font-semibold text-[var(--color-text)]">{progressPct}%</span>
+                <span>Produced <strong className="font-semibold text-[var(--color-text)]">{produced} / {planned}</strong></span>
+                <span className={`font-semibold ${progressColor.text}`}>{progressPct}% complete</span>
               </div>
-              <div className="h-1.5 overflow-hidden rounded-full bg-[var(--color-border-muted)]">
+              <div
+                className="h-2 overflow-hidden rounded-full bg-[var(--color-border-muted)]"
+                role="progressbar"
+                aria-label="Production quantity completion"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={progressPct}
+              >
                 <div
-                  className="h-full rounded-full bg-[var(--color-primary)]"
-                  style={{ width: `${Math.min(progressPct, 100)}%` }}
+                  className={`h-full rounded-full transition-[width] duration-500 ease-out ${progressColor.bar}`}
+                  style={{ width: `${progressPct}%` }}
                 />
               </div>
             </div>
@@ -319,6 +358,7 @@ export default function WorkOrderDetailModal({
               stage_hint: `Current stage: ${currentStage?.label || "—"}`,
             }}
             embedded
+            showStageSummary={false}
           />
         </div>
 
@@ -361,6 +401,7 @@ export default function WorkOrderDetailModal({
                 planned={planned}
                 remaining={remaining}
                 pct={progressPct}
+                status={w.status}
               />
 
               <section>

@@ -39,7 +39,8 @@ export const SIDEBAR_NAV = [
     label: "My Job Cards",
     to: "/my-job-cards",
     icon: ClipboardList,
-    module: "sales",
+    module: "production",
+    operatorOnly: true,
     end: false,
   },
   {

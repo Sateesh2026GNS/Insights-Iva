@@ -29,6 +29,7 @@ CSRF_EXEMPT_PREFIXES = (
     "/auth/csrf",
     "/api/auth/login",
     "/api/auth/register",
+    "/platform/auth/login",
     "/api/auth/refresh",
     "/api/auth/logout",
     # Upload-token PUTs are authenticated by the token in the path, not the session.

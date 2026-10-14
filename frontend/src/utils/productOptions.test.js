@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
-import { fetchProductsWithFallback } from "./productOptions";
+import { fetchProductsWithFallback, fetchFinishedGoodsWithFallback } from "./productOptions";
 
 vi.mock("../api/productsApi", () => ({
   getProducts: vi.fn(),
@@ -51,4 +51,18 @@ describe("fetchProductsWithFallback", () => {
     expect(list[0].id).toBe(9);
     expect(list[0].name).toBe("Real Item");
   });
+
+  it("fetchFinishedGoodsWithFallback returns all products from masters catalog", async () => {
+    getProducts.mockResolvedValue({
+      data: [
+        { id: 149, name: "Steel rod", sku: "FG-000149", category: "Finished Goods" },
+        { id: 162, name: "Cold Rolled Steel Sheet", sku: "RAW-000162", category: "Raw Material" },
+      ],
+    });
+    getRawMaterials.mockResolvedValue({ data: [] });
+    const list = await fetchFinishedGoodsWithFallback();
+    expect(list).toHaveLength(2);
+    expect(list.map((p) => p.id)).toEqual([149, 162]);
+  });
 });
+

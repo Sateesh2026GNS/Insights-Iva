@@ -194,13 +194,13 @@ def list_purchase_orders_endpoint(
 @router.patch("/purchase-orders/{po_id}/status", response_model=PurchaseOrderRead)
 def update_purchase_order_status_endpoint(
     po_id: int,
-    status: str = Query(..., description="e.g. draft, approved, received, cancelled"),
+    status: str = Query(..., description="e.g. draft, approved, rejected, received, cancelled"),
     user: User = Depends(require_permission(MODULE)),
     db: Session = Depends(get_db),
 ) -> PurchaseOrderRead:
     requested_status = status.strip().lower()
     approval_roles = {"Purchase Manager"}
-    if requested_status in {"approved", "cancelled"} and not (
+    if requested_status in {"approved", "rejected", "cancelled"} and not (
         user_is_admin(user) or approval_roles.intersection(get_role_names(user))
     ):
         raise HTTPException(

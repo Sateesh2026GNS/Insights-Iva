@@ -84,9 +84,9 @@ function customerToForm(customer) {
   return {
     ...EMPTY,
     gstin: customer.gstin || "",
-    name: customer.name || customer.company_name || "",
+    name: customer.company_name || customer.name || customer.company || "",
     contact_name: customer.contact_name || "",
-    display_name: extra.display_name || "",
+    display_name: extra.display_name || (customer.company_name && customer.name && customer.name !== customer.company_name ? customer.name : ""),
     gst_treatment: extra.gst_treatment || gstFromType || "",
     phone: customer.phone || customer.mobile || "",
     email: customer.email || "",
@@ -164,7 +164,7 @@ export default function AddLedgerCustomerModal({ open, onClose, onSaved, custome
     const phoneCheck = validateIndianMobile(form.phone, t);
     if (!phoneCheck.ok) {
       setFieldErrors({ phone: phoneCheck.message });
-      addToast(t("validation.fixHighlightedFields"), "error");
+      addToast("Enter valid inputs", "error");
       return;
     }
     const emailVal = form.email.trim();
@@ -179,7 +179,9 @@ export default function AddLedgerCustomerModal({ open, onClose, onSaved, custome
     try {
       const opening = form.opening_balance ? Number(form.opening_balance) : 0;
       const payload = {
-        name: form.name.trim(),
+        name: form.display_name.trim() || form.name.trim(),
+        company_name: form.name.trim(),
+        company: form.name.trim(),
         contact_name: form.contact_name.trim() || form.display_name.trim() || null,
         gstin: form.gstin.trim() || null,
         phone: phoneCheck.value || null,

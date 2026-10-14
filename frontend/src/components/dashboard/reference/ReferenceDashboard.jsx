@@ -1014,7 +1014,11 @@ export default function ReferenceDashboard() {
       })
       .catch((err) => {
         setApiData(EMPTY_ERP_DASHBOARD);
-        setError(err?.message || "Unable to load dashboard.");
+        const status = err?.response?.status;
+        const msg = status === 401
+          ? "Your session has expired. Please log in again to continue."
+          : err?.response?.data?.message || err?.message || "Unable to load dashboard.";
+        setError(msg);
         setLoading(false);
       });
 
@@ -1187,6 +1191,7 @@ export default function ReferenceDashboard() {
   if (loading) return <DashboardSkeleton />;
 
   if (error) {
+    const isAuthErr = error?.toLowerCase().includes("session") || error?.includes("401");
     return (
       <div className="min-h-full bg-[var(--color-bg)]">
         <div className="ui-page mx-auto max-w-[var(--page-max)]">
@@ -1194,14 +1199,20 @@ export default function ReferenceDashboard() {
             className="rounded-xl border border-[#fde8e8] bg-white px-6 py-10 text-center text-sm text-[#ef4444] shadow-sm"
             role="alert"
           >
-            {error}
+            <p className="font-medium">{error}</p>
             <button
               type="button"
-              onClick={() => load(false)}
+              onClick={() => {
+                if (isAuthErr) {
+                  window.location.assign("/login");
+                } else {
+                  load(false);
+                }
+              }}
               className="mt-4 inline-flex items-center justify-center rounded-lg px-4 py-2 text-[13px] font-semibold text-white shadow-sm transition hover:opacity-90"
               style={{ background: YELLOW }}
             >
-              {t("common.retry", "Retry")}
+              {isAuthErr ? "Go to Login" : t("common.retry", "Retry")}
             </button>
           </div>
         </div>

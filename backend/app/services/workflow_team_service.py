@@ -34,7 +34,10 @@ from app.models.quality import QualityInspection
 from app.models.sales import DispatchShipment, Invoice, SalesOrder, SalesOrderLine
 from app.models.user import User
 from app.services.inventory_service import get_total_stock
-from app.services.procurement_service import next_material_request_number
+from app.services.procurement_service import (
+    emit_purchase_requisition_received_alert,
+    next_material_request_number,
+)
 from app.services.manufacturing_workflow_service import (
     create_gst_invoice_from_sales_order,
     ensure_work_order_for_production_order,
@@ -898,6 +901,7 @@ def raise_material_request(
             .order_by(MaterialRequest.id.desc())
         ).first()
     warehouse = get_default_warehouse(db, tenant_id)
+    created_new = not existing
     if not existing:
         mr_number = next_material_request_number(db, tenant_id)
         existing = MaterialRequest(
@@ -934,6 +938,8 @@ def raise_material_request(
         already.add(item_id)
         added += 1
     db.commit()
+    if created_new:
+        emit_purchase_requisition_received_alert(db, existing)
     return {
         "sales_order_id": so.id,
         "material_request_number": mr_number,
@@ -1081,11 +1087,11 @@ def submit_store_material_issue(
     all_issued = all(ln.issue_status == "issued" for ln in store_card.issue_lines) if store_card.issue_lines else False
     any_issued = any(float(ln.issued_qty or 0) > 0 for ln in store_card.issue_lines)
 
-    if send_to_production and not all_issued and not partial:
+    if send_to_production and not all_issued:
         raise HTTPException(status_code=400, detail="All materials must be issued before sending to production")
 
     production_orders = []
-    if send_to_production and (all_issued or (partial and any_issued)):
+    if send_to_production and all_issued:
         complete_stage_card(db, store_card, user, status="completed")
         production_orders = _create_production_for_order(db, tenant_id, so, user)
         wo_id = production_orders[0]["work_order_id"] if production_orders else None
@@ -2075,6 +2081,25 @@ def sync_sales_workflow_on_work_order_complete(
     so = _so_for_work_order(db, tenant_id, wo)
     if not so:
         return
+
+    # A sales order can fan out to several production orders/work orders (one
+    # per line or operation). Keep its workflow at Production until every
+    # linked work order is complete; finishing one line must not send the whole
+    # sales order to Quality while other operators are still producing it.
+    unfinished_work_order_id = db.scalar(
+        select(WorkOrder.id)
+        .join(ProductionOrder, ProductionOrder.id == WorkOrder.production_order_id)
+        .where(
+            WorkOrder.tenant_id == tenant_id,
+            ProductionOrder.tenant_id == tenant_id,
+            ProductionOrder.sales_order_id == so.id,
+            WorkOrder.status.notin_(("completed", "closed", "done")),
+        )
+        .limit(1)
+    )
+    if unfinished_work_order_id is not None:
+        return
+
     current = (so.workflow_status or "").upper()
     if current in {
         "QUALITY_CHECK_PENDING",

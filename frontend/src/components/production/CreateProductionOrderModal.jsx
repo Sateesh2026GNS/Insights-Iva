@@ -6,7 +6,7 @@ import { createProductionOrder, getMachines, getOperators, updateProductionOrder
 import useTenantId from "../../hooks/useTenantId";
 import { useToast } from "../../context/ToastContext";
 import { apiErrorMessage } from "../../utils/apiError";
-import { fetchFinishedGoodsWithFallback } from "../../utils/productOptions";
+import { fetchProductsWithFallback } from "../../utils/productOptions";
 import AddNewItemModal from "../sales/AddNewItemModal";
 import CreateMachineModal from "./CreateMachineModal";
 import AddUserModal from "../admin/AddUserModal";
@@ -30,10 +30,6 @@ const PRIORITY_OPTIONS = [
 const STATUS_OPTIONS = [
   { id: "planned", label: "Planned" },
   { id: "draft", label: "Draft" },
-  { id: "in_progress", label: "In Progress" },
-  { id: "on_hold", label: "On Hold" },
-  { id: "completed", label: "Completed" },
-  { id: "cancelled", label: "Cancelled" },
 ];
 
 const EMPTY_FORM = {
@@ -115,6 +111,7 @@ export default function CreateProductionOrderModal({
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [errors, setErrors] = useState({});
+  const workflowManaged = Boolean(initialOrder?.sales_order_id);
 
   // Load options once when the modal opens (not on every parent re-render).
   useEffect(() => {
@@ -133,7 +130,7 @@ export default function CreateProductionOrderModal({
 
     const loadProducts = hasProducts
       ? Promise.resolve(productsList)
-      : fetchFinishedGoodsWithFallback().catch(() => []);
+      : fetchProductsWithFallback({ force: true }).catch(() => []);
 
     const loadOperators = getOperators()
       .then((res) => (Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : []))
@@ -377,7 +374,12 @@ export default function CreateProductionOrderModal({
                     if (e.target.value === "__custom__" || e.target.value === "__add_product__") {
                       setShowAddProductModal(true);
                     } else {
-                      handleChange("product_id", e.target.value);
+                      const selId = e.target.value;
+                      handleChange("product_id", selId);
+                      const selProduct = products.find((p) => String(p.id) === String(selId));
+                      if (selProduct) {
+                        handleChange("product_name", selProduct.name || selProduct.sku || "");
+                      }
                     }
                   }}
                   disabled={loadingOptions}
@@ -421,11 +423,13 @@ export default function CreateProductionOrderModal({
                     value={form.machine_name || ""}
                     onChange={(e) => handleChange("machine_name", e.target.value)}
                     placeholder="Enter machine name"
+                    disabled={workflowManaged}
                     autoFocus
                     className="ui-input flex-1"
                   />
                   <button
                     type="button"
+                      disabled={workflowManaged}
                     onClick={() => {
                       setCustomMachineMode(false);
                       handleChange("machine_name", "");
@@ -456,7 +460,7 @@ export default function CreateProductionOrderModal({
                         }
                       }
                     }}
-                    disabled={loadingOptions}
+                    disabled={loadingOptions || workflowManaged}
                     className="ui-select pl-10 w-full"
                   >
                     <option value="">Select Machine</option>
@@ -491,11 +495,13 @@ export default function CreateProductionOrderModal({
                     value={form.operator_name || ""}
                     onChange={(e) => handleChange("operator_name", e.target.value)}
                     placeholder="Enter operator name"
+                    disabled={workflowManaged}
                     autoFocus
                     className="ui-input flex-1"
                   />
                   <button
                     type="button"
+                      disabled={workflowManaged}
                     onClick={() => {
                       setCustomOperatorMode(false);
                       handleChange("operator_name", "");
@@ -536,7 +542,7 @@ export default function CreateProductionOrderModal({
                         }
                       }
                     }}
-                    disabled={loadingOptions}
+                    disabled={loadingOptions || workflowManaged}
                     className="ui-select pl-10 w-full"
                   >
                     <option value="">Select Operator</option>
@@ -577,8 +583,14 @@ export default function CreateProductionOrderModal({
                 value={form.operator_id}
                 onChange={(e) => handleChange("operator_id", e.target.value)}
                 placeholder="e.g. OP-104"
+                disabled={workflowManaged}
                 className="ui-input w-full"
               />
+              {workflowManaged ? (
+                <p className="mt-1 text-xs text-[var(--color-text-muted)] md:col-span-2">
+                  Assign operators from the workflow using the row action menu’s “Assign Operator” option.
+                </p>
+              ) : null}
             </label>
 
             <label className="block space-y-1.5">
@@ -639,17 +651,28 @@ export default function CreateProductionOrderModal({
 
             <label className="block space-y-1.5 md:col-span-2">
               <span className="ui-label">Status</span>
-              <select
-                value={form.status}
-                onChange={(e) => handleChange("status", e.target.value)}
-                className="ui-select w-full"
-              >
-                {STATUS_OPTIONS.map((st) => (
-                  <option key={st.id} value={st.id}>
-                    {st.label}
-                  </option>
-                ))}
-              </select>
+              {initialOrder ? (
+                <div>
+                  <div className="ui-input flex items-center capitalize" aria-readonly="true">
+                    {String(form.status || "planned").replace(/_/g, " ")}
+                  </div>
+                  <p className="mt-1 text-xs text-[var(--color-text-muted)]">
+                    Use the workflow actions to assign, start, hold, or complete this order.
+                  </p>
+                </div>
+              ) : (
+                <select
+                  value={form.status}
+                  onChange={(e) => handleChange("status", e.target.value)}
+                  className="ui-select w-full"
+                >
+                  {STATUS_OPTIONS.map((st) => (
+                    <option key={st.id} value={st.id}>
+                      {st.label}
+                    </option>
+                  ))}
+                </select>
+              )}
             </label>
 
             <label className="block space-y-1.5">
@@ -698,7 +721,7 @@ export default function CreateProductionOrderModal({
         onSaved={async (line, product) => {
           setShowAddProductModal(false);
           try {
-            const refreshed = await fetchFinishedGoodsWithFallback();
+            const refreshed = await fetchProductsWithFallback({ force: true });
             setProducts(Array.isArray(refreshed) ? refreshed : []);
             const newId = String(product?.id || line?.product_id || "");
             if (newId) {

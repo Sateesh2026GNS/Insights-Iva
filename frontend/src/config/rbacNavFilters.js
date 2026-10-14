@@ -2,6 +2,7 @@
 export const PRODUCTION_MANAGER_ALLOWED_SECTIONS = new Set([
   "dashboard",
   "production",
+  "productionTools",
   "materials",
   "masters",
   "quality",
@@ -22,6 +23,8 @@ export const PRODUCTION_MANAGER_ALLOWED_CHILDREN = new Set([
   "/production/work-orders",
   "/production/schedule",
   "/production/tasks",
+  "/production/my-entry",
+  "/production/batch-tracking",
   "/production/reports",
   "/my-job-cards",
   "/masters/bom",
@@ -82,6 +85,7 @@ export const OPERATOR_BLOCKED_CHILDREN = new Set([
 
 export const OPERATOR_ALLOWED_PATHS = new Set([
   "/",
+  "/dashboard",
   "/manufacturing/workflow",
   "/my-job-cards",
   "/production",

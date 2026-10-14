@@ -71,6 +71,7 @@ export default function JobCardDetailsShell({
   productionDetailsEditable = false,
   onSaveProductionDetails = null,
   savingProductionDetails = false,
+  hasUnsavedProductionDetails = false,
   audit = null,
 }) {
   const navigate = useNavigate();
@@ -190,13 +191,17 @@ export default function JobCardDetailsShell({
   const salesEditable = isEdit && !isCreated && canEditSales && !readOnly;
   const statusLabel = card?.sales_document?.header?.status || (isCreated ? "Created" : "Draft");
 
-  const headerTitle = isEdit
+  const headerTitle = stageActions && stageTitle
+    ? stageTitle
+    : isEdit
     ? isCreated
-      ? "Edit Job Card"
-      : "Create Sales Job Card"
+      ? "Sales Job Card"
+      : "Sales Job Card"
     : "Sales Job Card";
 
-  const headerSubtitle = isEdit
+  const headerSubtitle = stageActions
+    ? "Complete this step, then continue the job through its workflow."
+    : isEdit
     ? "Complete sales job card details and confirm to release to store."
     : "View sales job card document and workflow status.";
 
@@ -310,22 +315,52 @@ export default function JobCardDetailsShell({
           </div>
         ) : null}
 
-        <SalesJobCardDocument
-          card={card}
-          form={form}
-          salesOrder={salesOrder}
-          customer={customer}
-          productLines={productLines}
-          products={products}
-          customers={customers}
-          details={details || card?.details}
-          companyProfile={companyProfile}
-          errors={errors}
-          editable={salesEditable}
-          onPatchField={onPatchField}
-        />
+        {stageActions ? (
+          <div className="border-b border-[var(--color-border-soft)] p-4 sm:p-5 print:hidden">
+            {stageActions}
+          </div>
+        ) : null}
 
-        {isCreated ? (
+        {stageActions ? (
+          <details className="border-b border-[var(--color-border-soft)] px-4 py-3 sm:px-5 print:hidden">
+            <summary className="cursor-pointer text-sm font-semibold text-[var(--color-primary)]">
+              Sales Job Card Reference (read only)
+            </summary>
+            <div className="mt-3">
+              <SalesJobCardDocument
+                card={card}
+                form={form}
+                salesOrder={salesOrder}
+                customer={customer}
+                productLines={productLines}
+                products={products}
+                customers={customers}
+                details={details || card?.details}
+                companyProfile={companyProfile}
+                errors={errors}
+                editable={false}
+                onPatchField={onPatchField}
+              />
+            </div>
+          </details>
+        ) : (
+          <SalesJobCardDocument
+            card={card}
+            form={form}
+            salesOrder={salesOrder}
+            customer={customer}
+            productLines={productLines}
+            products={products}
+            customers={customers}
+            details={details || card?.details}
+            companyProfile={companyProfile}
+            errors={errors}
+            editable={salesEditable}
+            onPatchField={onPatchField}
+          />
+        )}
+
+        {isCreated && (!stageActions || productionDetailsEditable) ? (
           <div className="sjc-doc__production-toggle px-4 pb-4 print:hidden">
             <button
               type="button"
@@ -364,6 +399,7 @@ export default function JobCardDetailsShell({
                     <Button
                       variant="add"
                       size="sm"
+                      disabled={!hasUnsavedProductionDetails || savingProductionDetails}
                       loading={savingProductionDetails}
                       onClick={onSaveProductionDetails}
                     >
@@ -388,7 +424,6 @@ export default function JobCardDetailsShell({
 
         <div className="print:hidden">{footer}</div>
 
-        {stageActions ? <div className="border-t border-[var(--color-border-soft)] p-4 sm:p-5 print:hidden">{stageActions}</div> : null}
       </div>
 
       {!isEdit && !stageActions && (String(ws || "").toUpperCase() === "COMPLETED" || card?.workflow_status === "completed" || form?.workflow_status === "completed") ? (
@@ -410,6 +445,7 @@ export default function JobCardDetailsShell({
             summary={summary}
             form={form}
             productCode={productCode}
+            productLines={productLines}
             onRefresh={onRefreshStoreContext}
             refreshing={refreshingStoreContext}
           />

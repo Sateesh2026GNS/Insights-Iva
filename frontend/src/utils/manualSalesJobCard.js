@@ -29,8 +29,8 @@ export function resolveManualJobCardId(row) {
   return id;
 }
 
-export function scrollToJobCardDocumentPanel({ storeMode = false } = {}) {
-  const panelId = storeMode ? "store-manager-job-card-panel" : "sales-job-card-panel";
+export function scrollToJobCardDocumentPanel({ storeMode = false, panelId: requestedPanelId } = {}) {
+  const panelId = requestedPanelId || (storeMode ? "store-manager-job-card-panel" : "sales-job-card-panel");
   requestAnimationFrame(() => {
     document.getElementById(panelId)?.scrollIntoView({ behavior: "smooth", block: "start" });
   });
@@ -169,6 +169,7 @@ export function emptyManualForm(preparedBy = "") {
       email: "",
       billing_address: "",
       dispatch_address: "",
+      company_address: "",
     },
     order: {
       sales_order_date: "",
@@ -245,6 +246,7 @@ export function mergeManualApiDocuments(manualDoc, salesDoc) {
       email: pickDocValue(manualCustomer.email, salesCustomer.email),
       billing_address: pickDocValue(manualCustomer.billing_address, salesCustomer.billing_address),
       dispatch_address: pickDocValue(manualCustomer.dispatch_address, salesCustomer.dispatch_address),
+      company_address: pickDocValue(manualCustomer.company_address, salesCustomer.company_address),
     },
     order: {
       ...salesOrder,
@@ -294,6 +296,7 @@ export function manualFormFromApi(data) {
       email: customer.email || "",
       billing_address: customer.billing_address || "",
       dispatch_address: customer.dispatch_address || "",
+      company_address: customer.company_address || customer.billing_address || "",
     },
     order: {
       sales_order_date: (order.sales_order_date || "").slice(0, 10),
@@ -384,12 +387,13 @@ export function isoDateOnly(value) {
 export function customerFieldsFromMaster(customer) {
   if (!customer) return null;
   return {
-    customer_name: customer.name || customer.company || customer.customer_name || "",
+    customer_name: customer.company_name || customer.company || customer.name || customer.customer_name || "",
     contact_person: customer.contact_name || customer.contact_person || "",
     phone: customer.phone || "",
     email: customer.email || "",
     billing_address: formatCustomerAddress(customer) || "",
     dispatch_address: customer.shipping_address || customer.dispatch_address || "",
+    company_address: formatCustomerAddress(customer) || "",
   };
 }
 

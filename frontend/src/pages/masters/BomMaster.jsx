@@ -30,6 +30,15 @@ import {
 } from "../../data/bomMasterData";
 import { exportToExcel, exportToPdf } from "../../utils/exportUtils";
 
+const DEFAULT_FILTERS = {
+  bom_number: "",
+  category: "",
+  version: "",
+  status: "",
+  warehouse: "",
+  created_by: "",
+};
+
 const KPI_COLOR_THEMES = {
   "bg-[var(--color-primary)]": {
     hoverBorder: "hover:border-blue-600 hover:ring-2 hover:ring-blue-600/20",
@@ -61,7 +70,8 @@ const KPI_COLOR_THEMES = {
   },
 };
 
-function SummaryCard({ label, value, icon: Icon, color, onClick, isActive }) {
+function SummaryCard({ label, value, icon: Icon, color, onClick, isActive, active }) {
+  const isCardActive = isActive ?? active;
   const theme = KPI_COLOR_THEMES[color] || {
     hoverBorder: "hover:border-slate-300 hover:ring-2 hover:ring-slate-400/20",
     activeBorder: "border-slate-400 ring-2 ring-slate-400/20 bg-slate-50/30",
@@ -71,7 +81,7 @@ function SummaryCard({ label, value, icon: Icon, color, onClick, isActive }) {
     <div
       onClick={onClick}
       className={`group relative flex h-full min-w-0 flex-col justify-between rounded-2xl border bg-white p-4 shadow-sm transition-all duration-200 ${
-        isActive ? `${theme.activeBorder} shadow-sm` : "border-slate-200"
+        isCardActive ? `${theme.activeBorder} shadow-sm` : "border-slate-200"
       } ${
         onClick ? `cursor-pointer ${theme.hoverBorder} hover:shadow-md hover:-translate-y-0.5` : ""
       }`}
@@ -113,14 +123,8 @@ export default function BomMaster() {
   const [totalProducts, setTotalProducts] = useState(0);
   const [selected, setSelected] = useState(null);
   const [formBom, setFormBom] = useState(null);
-  const [filters, setFilters] = useState({
-    bom_number: "",
-    category: "",
-    version: "",
-    status: "",
-    warehouse: "",
-    created_by: "",
-  });
+  const [filters, setFilters] = useState(DEFAULT_FILTERS);
+  const [appliedFilters, setAppliedFilters] = useState(DEFAULT_FILTERS);
 
   const getCustomBomsFromStorage = useCallback(() => {
     try {
@@ -213,19 +217,19 @@ export default function BomMaster() {
 
   const filteredBoms = useMemo(() => {
     return boms.filter((b) => {
-      const query = String(filters.bom_number || "").trim().toLowerCase();
+      const query = String(appliedFilters.bom_number || "").trim().toLowerCase();
       if (query && ![b.bom_number, b.product_name, b.product, b.product_code, b.description]
         .some((value) => String(value || "").toLowerCase().includes(query))) return false;
-      if (filters.category && b.category !== filters.category) return false;
-      if (filters.version && b.version !== filters.version) return false;
-      if (filters.status && b.status !== filters.status) return false;
-      if (filters.warehouse && b.warehouse !== filters.warehouse) return false;
-      if (filters.created_by && !String(b.created_by || "").toLowerCase().includes(filters.created_by.toLowerCase())) return false;
+      if (appliedFilters.category && b.category !== appliedFilters.category) return false;
+      if (appliedFilters.version && b.version !== appliedFilters.version) return false;
+      if (appliedFilters.status && b.status !== appliedFilters.status) return false;
+      if (appliedFilters.warehouse && b.warehouse !== appliedFilters.warehouse) return false;
+      if (appliedFilters.created_by && !String(b.created_by || "").toLowerCase().includes(appliedFilters.created_by.toLowerCase())) return false;
       return true;
     });
-  }, [boms, filters]);
+  }, [boms, appliedFilters]);
 
-  const summary = useMemo(() => computeBomSummary(filteredBoms, totalProducts), [filteredBoms, totalProducts]);
+  const summary = useMemo(() => computeBomSummary(boms, totalProducts), [boms, totalProducts]);
 
   const warehouses = useMemo(() => [...new Set(boms.map((b) => b.warehouse).filter(Boolean))], [boms]);
   const creators = useMemo(() => [...new Set(boms.map((b) => b.created_by).filter(Boolean))], [boms]);
@@ -393,8 +397,22 @@ export default function BomMaster() {
     addToast("BOM saved successfully");
   };
 
-  const clearFilters = () =>
-    setFilters({ bom_number: "", category: "", version: "", status: "", warehouse: "", created_by: "" });
+  const handleApplyFilters = useCallback(() => {
+    setAppliedFilters({ ...filters });
+  }, [filters]);
+
+  const handleClearFilters = useCallback(() => {
+    setFilters(DEFAULT_FILTERS);
+    setAppliedFilters(DEFAULT_FILTERS);
+  }, []);
+
+  const handleFilterKeyDown = (e) => {
+    if (e.key === "Enter") {
+      handleApplyFilters();
+    }
+  };
+
+  const clearFilters = handleClearFilters;
 
   const columns = [
     { key: "bom_number", label: "BOM No", width: "10%" },
@@ -447,32 +465,51 @@ export default function BomMaster() {
           value={summary.total}
           icon={Layers}
           color="bg-[var(--color-primary)]"
-          onClick={() => setFilters((f) => ({ ...f, status: "" }))}
-          active={!filters.status}
+          onClick={() => {
+            const next = { ...filters, status: "" };
+            setFilters(next);
+            setAppliedFilters(next);
+          }}
+          isActive={!appliedFilters.status}
         />
         <SummaryCard
           label="Active Bill of Materials (BOM)"
           value={summary.active}
           icon={CheckCircle2}
           color="bg-green-500"
-          onClick={() => setFilters((f) => ({ ...f, status: f.status === "active" ? "" : "active" }))}
-          active={filters.status === "active"}
+          onClick={() => {
+            const nextStatus = appliedFilters.status === "active" ? "" : "active";
+            const next = { ...filters, status: nextStatus };
+            setFilters(next);
+            setAppliedFilters(next);
+          }}
+          isActive={appliedFilters.status === "active"}
         />
         <SummaryCard
           label="Draft Bill of Materials (BOM)"
           value={summary.draft}
           icon={ClipboardList}
           color="bg-amber-500"
-          onClick={() => setFilters((f) => ({ ...f, status: f.status === "draft" ? "" : "draft" }))}
-          active={filters.status === "draft"}
+          onClick={() => {
+            const nextStatus = appliedFilters.status === "draft" ? "" : "draft";
+            const next = { ...filters, status: nextStatus };
+            setFilters(next);
+            setAppliedFilters(next);
+          }}
+          isActive={appliedFilters.status === "draft"}
         />
         <SummaryCard
           label="Inactive Bill of Materials (BOM)"
           value={summary.inactive}
           icon={FileText}
           color="bg-slate-500"
-          onClick={() => setFilters((f) => ({ ...f, status: f.status === "inactive" ? "" : "inactive" }))}
-          active={filters.status === "inactive"}
+          onClick={() => {
+            const nextStatus = appliedFilters.status === "inactive" ? "" : "inactive";
+            const next = { ...filters, status: nextStatus };
+            setFilters(next);
+            setAppliedFilters(next);
+          }}
+          isActive={appliedFilters.status === "inactive"}
         />
         <SummaryCard
           label="Products Without Bill of Materials (BOM)"
@@ -485,8 +522,16 @@ export default function BomMaster() {
           value={summary.pendingApproval}
           icon={AlertTriangle}
           color="bg-purple-500"
-          onClick={() => setFilters((f) => ({ ...f, status: f.status === "pending" ? "" : "pending" }))}
-          active={filters.status === "pending"}
+          onClick={() => {
+            const nextStatus =
+              appliedFilters.status === "pending_approval" || appliedFilters.status === "pending"
+                ? ""
+                : "pending_approval";
+            const next = { ...filters, status: nextStatus };
+            setFilters(next);
+            setAppliedFilters(next);
+          }}
+          isActive={appliedFilters.status === "pending_approval" || appliedFilters.status === "pending"}
         />
       </div>
 
@@ -494,9 +539,13 @@ export default function BomMaster() {
         <div className="mb-4 flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <SearchBar
             value={filters.bom_number}
-            onChange={(v) => setFilters((f) => ({ ...f, bom_number: v }))}
+            onChange={(v) => {
+              setFilters((f) => ({ ...f, bom_number: v }));
+              setAppliedFilters((f) => ({ ...f, bom_number: v }));
+            }}
             placeholder="Search BOM, product, or code"
             className="min-w-0 w-full lg:max-w-md"
+            onKeyDown={handleFilterKeyDown}
           />
           <div className="flex min-w-0 flex-wrap items-center gap-2">
             <button type="button" onClick={handleExport} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
@@ -508,30 +557,68 @@ export default function BomMaster() {
           </div>
         </div>
 
-        <div className="mb-4 grid min-w-0 grid-cols-2 gap-3 md:grid-cols-3 2xl:grid-cols-6">
-          <select value={filters.category} onChange={(e) => setFilters((f) => ({ ...f, category: e.target.value }))} className="min-w-0 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm">
+        <div className="mb-4 grid min-w-0 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 2xl:grid-cols-6 gap-3">
+          <select
+            value={filters.category}
+            onChange={(e) => setFilters((f) => ({ ...f, category: e.target.value }))}
+            onKeyDown={handleFilterKeyDown}
+            className="min-w-0 w-full h-10 rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white"
+          >
             <option value="">All categories</option>
             {PRODUCT_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
-          <select value={filters.status} onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value }))} className="min-w-0 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm">
+          <select
+            value={filters.status}
+            onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value }))}
+            onKeyDown={handleFilterKeyDown}
+            className="min-w-0 w-full h-10 rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white"
+          >
             <option value="">All statuses</option>
             {BOM_STATUSES.map((s) => <option key={s} value={s}>{s.replace(/_/g, " ")}</option>)}
           </select>
-          <select value={filters.version} onChange={(e) => setFilters((f) => ({ ...f, version: e.target.value }))} className="min-w-0 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm">
+          <select
+            value={filters.version}
+            onChange={(e) => setFilters((f) => ({ ...f, version: e.target.value }))}
+            onKeyDown={handleFilterKeyDown}
+            className="min-w-0 w-full h-10 rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white"
+          >
             <option value="">All versions</option>
             {BOM_VERSIONS.map((v) => <option key={v} value={v}>{v}</option>)}
           </select>
-          <select value={filters.warehouse} onChange={(e) => setFilters((f) => ({ ...f, warehouse: e.target.value }))} className="min-w-0 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm">
+          <select
+            value={filters.warehouse}
+            onChange={(e) => setFilters((f) => ({ ...f, warehouse: e.target.value }))}
+            onKeyDown={handleFilterKeyDown}
+            className="min-w-0 w-full h-10 rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white"
+          >
             <option value="">All warehouses</option>
             {warehouses.map((w) => <option key={w} value={w}>{w}</option>)}
           </select>
-          <select value={filters.created_by} onChange={(e) => setFilters((f) => ({ ...f, created_by: e.target.value }))} className="min-w-0 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm">
+          <select
+            value={filters.created_by}
+            onChange={(e) => setFilters((f) => ({ ...f, created_by: e.target.value }))}
+            onKeyDown={handleFilterKeyDown}
+            className="min-w-0 w-full h-10 rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white"
+          >
             <option value="">All creators</option>
             {creators.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
-          <button type="button" onClick={clearFilters} className="rounded-lg px-3 py-2 text-left text-sm font-semibold text-[#2563EB] hover:bg-blue-50">
-            Clear filters
-          </button>
+          <div className="flex items-center gap-2.5 min-w-0">
+            <button
+              type="button"
+              onClick={handleApplyFilters}
+              className="flex-1 min-w-0 h-10 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 sm:px-5 text-xs sm:text-sm transition-all shadow-sm active:scale-95 cursor-pointer whitespace-nowrap text-center justify-center flex items-center"
+            >
+              Apply Filters
+            </button>
+            <button
+              type="button"
+              onClick={handleClearFilters}
+              className="min-w-0 h-10 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-800 font-bold px-4 sm:px-5 text-xs sm:text-sm transition-all shadow-sm active:scale-95 cursor-pointer whitespace-nowrap text-center justify-center flex items-center"
+            >
+              Clear
+            </button>
+          </div>
         </div>
 
         <div className="mb-3 text-sm text-slate-500">Showing {filteredBoms.length} of {boms.length} BOMs</div>

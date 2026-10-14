@@ -22,7 +22,7 @@ describe("JobCardQueueFilters erpLayout", () => {
     expect(screen.getByLabelText("Customer Name")).toBeInTheDocument();
     expect(screen.getByLabelText("Sales Order No.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Search" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Reset" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Reset" })).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Filter by product")).not.toBeInTheDocument();
     expect(screen.queryByText("Apply")).not.toBeInTheDocument();
   });
