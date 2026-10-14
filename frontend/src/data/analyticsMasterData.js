@@ -21,9 +21,26 @@ export function formatInr(v) {
 export function formatKpiValue(kpi) {
   if (!kpi) return "—";
   const v = kpi.value;
+  if (v == null || v === "") return "—";
+  if (typeof v === "string" && Number.isNaN(Number(v))) {
+    return kpi.unit ? `${v} ${kpi.unit}` : v;
+  }
   if (kpi.format === "currency") return formatInr(v);
   if (kpi.format === "percent") return `${v}${kpi.unit || "%"}`;
   return `${Number(v).toLocaleString("en-IN")}${kpi.unit ? ` ${kpi.unit}` : ""}`;
+}
+
+/** "2026-27" → 2026 (Indian FY start year) for APIs that accept `year`. */
+export function fiscalYearToYear(fy) {
+  const match = String(fy || "").match(/^(\d{4})/);
+  return match ? Number(match[1]) : undefined;
+}
+
+/** Current Indian FY label, e.g. "2026-27". */
+export function currentFiscalYearLabel(date = new Date()) {
+  const y = date.getFullYear();
+  const start = date.getMonth() >= 3 ? y : y - 1;
+  return `${start}-${String(start + 1).slice(-2)}`;
 }
 
 export function changeColor(pct) {

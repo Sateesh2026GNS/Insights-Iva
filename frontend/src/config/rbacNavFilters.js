@@ -157,6 +157,7 @@ export const ACCOUNTANT_ALLOWED_CHILDREN = new Set([
   "/my-job-cards",
   "/alerts",
   "/alerts/general",
+  "/analytics",
   "/analytics/finance",
   "/analytics/executive",
   "/hr/attendance",
@@ -175,6 +176,16 @@ export const ACCOUNTANT_ALLOWED_CHILDREN = new Set([
   "/hr/leave/create",
   "/leave",
 ]);
+
+/** Accountant may open Executive + Finance KPI only (not Live / Production / Inventory / Sales). */
+export function accountantAnalyticsPathAllowed(pathname) {
+  if (!pathname) return false;
+  const path = pathname.replace(/\/$/, "") || "/";
+  if (path === "/analytics" || path === "/analytics/executive") return true;
+  if (path.startsWith("/analytics/executive/")) return true;
+  if (path === "/analytics/finance" || path.startsWith("/analytics/finance/")) return true;
+  return false;
+}
 
 /** Sidebar sections hidden for Operator regardless of module grant. */
 export const OPERATOR_BLOCKED_SECTIONS = new Set([

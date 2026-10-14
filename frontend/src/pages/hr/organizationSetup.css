@@ -112,7 +112,7 @@
 .hr-org-setup__panel-header h2 {
   margin: 0;
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--os-title);
 }
 
@@ -283,7 +283,7 @@
 
 .hr-org-setup__paid {
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.04em;
   color: var(--os-title);
 }
@@ -413,7 +413,7 @@
 .hr-org-setup__empty-text {
   margin: 0;
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--os-title);
 }
 

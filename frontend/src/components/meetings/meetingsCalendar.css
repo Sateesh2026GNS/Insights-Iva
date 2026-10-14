@@ -9,7 +9,7 @@
   --gcal-muted: #70757a;
   --gcal-surface: #fff;
   --gcal-hour-h: 48px;
-  font-family: "Google Sans", "IBM Plex Sans", Inter, Roboto, Arial, sans-serif;
+  font-family: var(--font-sans);
   color: var(--gcal-text);
   background: var(--gcal-surface);
   border: 1px solid var(--gcal-border);
@@ -57,7 +57,7 @@
   place-items: center;
   color: #fff;
   font-size: 18px;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .meetings-cal__btn {
@@ -355,7 +355,7 @@
 
 .meetings-cal__mini-grid button.is-today:not(.is-selected) {
   color: var(--gcal-blue);
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .meetings-cal__meet-with-search {

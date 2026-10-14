@@ -12,8 +12,6 @@ export default function ChartExportMenu({ chartId, title, data = [], dataKeys = 
     exportCsv(title?.replace(/\s+/g, "_") || "chart", rows, headers);
   };
 
-  const handleExcel = () => handleCsv();
-
   const handlePrint = () => window.print();
 
   const handlePng = () => {
@@ -37,16 +35,15 @@ export default function ChartExportMenu({ chartId, title, data = [], dataKeys = 
     img.src = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svgData)))}`;
   };
 
-  const btn = "inline-flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-semibold hover:bg-slate-100 dark:hover:bg-slate-700";
+  const btn = "inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/30";
 
   return (
-    <div className="flex flex-wrap items-center gap-1">
-      <span className="mr-1 text-[10px] text-slate-400"><Download className="inline h-3 w-3" /></span>
-      <button type="button" onClick={handleExcel} className={`${btn} text-emerald-700`}><FileSpreadsheet className="h-3 w-3" /> Excel</button>
-      <button type="button" onClick={handleCsv} className={`${btn} text-blue-700`}><FileText className="h-3 w-3" /> CSV</button>
-      <button type="button" onClick={handlePng} className={`${btn} text-purple-700`}><Image className="h-3 w-3" /> PNG</button>
-      <button type="button" onClick={handlePrint} className={`${btn} text-slate-600`}><Printer className="h-3 w-3" /> Print</button>
-      <button type="button" onClick={handlePrint} className={`${btn} text-rose-700`}><FileText className="h-3 w-3" /> PDF</button>
+    <div className="flex flex-wrap items-center gap-0.5" role="group" aria-label={`Export ${title || "chart"}`}>
+      <Download className="mr-1 h-3 w-3 text-[var(--color-text-faint)]" aria-hidden />
+      <button type="button" onClick={handleCsv} className={btn}><FileSpreadsheet className="h-3 w-3" aria-hidden /> Excel</button>
+      <button type="button" onClick={handleCsv} className={btn}><FileText className="h-3 w-3" aria-hidden /> CSV</button>
+      <button type="button" onClick={handlePng} className={btn}><Image className="h-3 w-3" aria-hidden /> PNG</button>
+      <button type="button" onClick={handlePrint} className={btn}><Printer className="h-3 w-3" aria-hidden /> Print</button>
     </div>
   );
 }

@@ -90,7 +90,7 @@
 .hr-my-expenses__chart-title {
   margin: 0 0 12px;
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--me-title);
 }
 
@@ -111,7 +111,7 @@
 
 .hr-my-expenses__donut-amount {
   font-size: 22px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--me-accent);
 }
 
@@ -144,7 +144,7 @@
 .hr-my-expenses__table-toolbar h2 {
   margin: 0;
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--me-title);
 }
 
@@ -453,7 +453,7 @@
 .hr-my-expenses__drawer-title {
   margin: 0 0 18px;
   font-size: 18px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--me-title);
 }
 

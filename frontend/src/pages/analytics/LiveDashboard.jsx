@@ -1,18 +1,22 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  Activity, AlertTriangle, Cog, Package, Sparkles, Truck, Zap,
+  Activity, AlertTriangle, Cog, Package, Truck, Zap,
 } from "lucide-react";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
-import Loader from "../../components/common/Loader";
 import AnalyticsAlertsBanner from "../../components/analytics/AnalyticsAlertsBanner";
+import AnalyticsChartCard from "../../components/analytics/AnalyticsChartCard";
 import AnalyticsDashboardHeader from "../../components/analytics/AnalyticsDashboardHeader";
+import AnalyticsInsightsPanel from "../../components/analytics/AnalyticsInsightsPanel";
 import AnalyticsKpiCard from "../../components/analytics/AnalyticsKpiCard";
+import AnalyticsPageShell from "../../components/analytics/AnalyticsPageShell";
+import { ANALYTICS_AXIS, ANALYTICS_GRID, ANALYTICS_TOOLTIP } from "../../components/analytics/analyticsChartTheme";
 import { useToast } from "../../context/ToastContext";
 import { getLiveDashboard } from "../../api/analyticsApi";
 import { CHART_COLORS } from "../../data/analyticsMasterData";
 import useManufacturingRefresh from "../../hooks/useManufacturingRefresh";
+import { apiErrorMessage } from "../../utils/apiError";
 
 const emptyData = {
   current_production: 0,
@@ -30,11 +34,13 @@ const emptyData = {
 export default function LiveDashboard() {
   const { addToast } = useToast();
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [data, setData] = useState(emptyData);
   const [autoRefresh, setAutoRefresh] = useState(true);
 
   const load = useCallback(async (isRefresh = false) => {
     if (!isRefresh) setLoading(true);
+    setError(null);
     try {
       const res = await getLiveDashboard();
       if (res.data) setData({ ...emptyData, ...res.data });
@@ -42,7 +48,9 @@ export default function LiveDashboard() {
     } catch (err) {
       if (isRefresh) throw err;
       setData(emptyData);
-      addToast("Failed to load live dashboard", "error");
+      const message = apiErrorMessage(err, "Failed to load live dashboard");
+      setError(message);
+      addToast(message, "error");
     } finally {
       setLoading(false);
     }
@@ -56,21 +64,27 @@ export default function LiveDashboard() {
     return () => clearInterval(t);
   }, [autoRefresh, load]);
 
-  if (loading && !data.production_pulse?.length) return <Loader label="Loading live dashboard..." />;
+  if (loading && !data.production_pulse?.length && data.current_production === 0) {
+    return <AnalyticsPageShell loading kpiCount={6} chartCount={1} />;
+  }
+  if (error && data.current_production === 0 && !data.production_pulse?.length) {
+    return <AnalyticsPageShell error={error} onRetry={() => load()} />;
+  }
 
   const liveKpis = [
-    { key: "prod", label: "Current Production", value: data.current_production, change_pct: 4.2, unit: "units/hr", format: "number" },
-    { key: "machines", label: "Active Machines", value: `${data.active_machines}/${data.total_machines}`, format: "number" },
-    { key: "orders", label: "Today's Orders", value: data.todays_orders, change_pct: 8.0, format: "number" },
-    { key: "dispatch", label: "Dispatches Today", value: data.dispatches_today, change_pct: 12.0, format: "number" },
-    { key: "breakdown", label: "Breakdown Alerts", value: data.breakdown_alerts, change_pct: -25, format: "number" },
-    { key: "oee", label: "Live OEE", value: data.live_oee, change_pct: 1.5, unit: "%", format: "percent" },
+    { key: "prod", label: "Current production", value: data.current_production, unit: "units/hr", format: "number" },
+    { key: "machines", label: "Active machines", value: `${data.active_machines ?? 0}/${data.total_machines ?? 0}` },
+    { key: "orders", label: "Today's orders", value: data.todays_orders, format: "number" },
+    { key: "dispatch", label: "Dispatches today", value: data.dispatches_today, format: "number" },
+    { key: "breakdown", label: "Breakdown alerts", value: data.breakdown_alerts, format: "number" },
+    { key: "oee", label: "Live OEE", value: data.live_oee, unit: "%", format: "percent" },
   ];
 
   const icons = { prod: Activity, machines: Cog, orders: Package, dispatch: Truck, breakdown: AlertTriangle, oee: Zap };
+  const tones = { prod: "primary", machines: "info", orders: "violet", dispatch: "teal", breakdown: "danger", oee: "success" };
 
   return (
-    <div className="space-y-6 bg-slate-950 p-4 text-slate-100 sm:p-6">
+    <AnalyticsPageShell>
       <AnalyticsDashboardHeader
         title="Live Dashboard"
         subtitle="Real-time production, machines, orders, dispatches, and OEE."
@@ -78,50 +92,43 @@ export default function LiveDashboard() {
         onRefresh={load}
         autoRefresh={autoRefresh}
         onAutoRefreshChange={setAutoRefresh}
+        autoRefreshLabel="Auto refresh (30s)"
         loading={loading}
-        dark={true}
       />
 
-      <Link to="/analytics/executive" className="inline-block text-xs font-semibold text-blue-400 hover:underline">← Back to CEO Dashboard</Link>
+      <Link
+        to="/analytics/executive"
+        className="text-xs font-medium text-[var(--color-primary)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/30"
+      >
+        ← Executive Dashboard
+      </Link>
 
       <AnalyticsAlertsBanner alerts={data.alerts} />
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+      <div className="ui-kpi-strip ui-kpi-strip--6">
         {liveKpis.map((kpi) => (
-          <div key={kpi.key} className="[&_.rounded-2xl]:border-slate-700 [&_.rounded-2xl]:bg-slate-900">
-            <AnalyticsKpiCard kpi={kpi} icon={icons[kpi.key]} />
-          </div>
+          <AnalyticsKpiCard key={kpi.key} kpi={kpi} icon={icons[kpi.key]} tone={tones[kpi.key]} />
         ))}
       </div>
 
-      <div className="rounded-2xl border border-slate-700 bg-slate-900 p-5">
-        <h3 className="mb-4 text-sm font-semibold">Production Pulse (Today)</h3>
+      <AnalyticsChartCard
+        id="live-pulse"
+        title="Production pulse (today)"
+        data={data.production_pulse}
+        dataKeys={["label", "value"]}
+      >
         <ResponsiveContainer width="100%" height={280}>
           <AreaChart data={data.production_pulse}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-            <XAxis dataKey="label" stroke="#94a3b8" fontSize={11} />
-            <YAxis stroke="#94a3b8" fontSize={11} />
-            <Tooltip contentStyle={{ background: "#0f172a", border: "none" }} />
-            <Area type="monotone" dataKey="value" stroke={CHART_COLORS[0]} fill={CHART_COLORS[0]} fillOpacity={0.25} name="Units/hr" />
+            <CartesianGrid {...ANALYTICS_GRID} />
+            <XAxis dataKey="label" {...ANALYTICS_AXIS} />
+            <YAxis {...ANALYTICS_AXIS} />
+            <Tooltip {...ANALYTICS_TOOLTIP} />
+            <Area type="monotone" dataKey="value" stroke={CHART_COLORS[0]} fill={CHART_COLORS[0]} fillOpacity={0.18} name="Units/hr" />
           </AreaChart>
         </ResponsiveContainer>
-      </div>
+      </AnalyticsChartCard>
 
-      <div className="rounded-2xl border border-emerald-500/30 bg-emerald-950/30 p-5">
-        <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-emerald-200">
-          <Sparkles className="h-4 w-4" /> AI Insights
-        </h3>
-        <div className="grid gap-3 sm:grid-cols-2">
-          {(data.ai_insights || []).map((insight, i) => (
-            <div key={i} className="rounded-xl border border-emerald-500/20 bg-slate-900/60 p-3 text-sm text-emerald-100">
-              {insight.message}
-              {insight.confidence != null && (
-                <p className="mt-1 text-xs text-emerald-400">{Math.round(insight.confidence * 100)}% confidence</p>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
+      <AnalyticsInsightsPanel insights={data.ai_insights} title="Insights" />
+    </AnalyticsPageShell>
   );
 }

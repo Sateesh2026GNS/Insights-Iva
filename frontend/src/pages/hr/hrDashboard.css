@@ -65,7 +65,7 @@
 .hr-dash-welcome-title {
   margin: 0;
   font-size: 1.65rem;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--hd-welcome);
   line-height: 1.25;
 }
@@ -73,7 +73,7 @@
 .hr-dash-checkin-title {
   margin: 0;
   font-size: 17px;
-  font-weight: 700;
+  font-weight: 600;
   color: #0f172a;
 }
 
@@ -188,7 +188,7 @@
 
 .hr-dash-stat__value {
   font-size: 20px;
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1.1;
   color: #1e293b;
   font-variant-numeric: tabular-nums;

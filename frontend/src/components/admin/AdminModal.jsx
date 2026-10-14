@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
-export default function AdminModal({ title, subtitle, open, onClose, children, maxWidth = "max-w-lg" }) {
+export default function AdminModal({ title, subtitle, open, onClose, children, maxWidth = "max-w-lg", headerActions = null }) {
   useEffect(() => {
     if (!open) return undefined;
     const onKey = (e) => e.key === "Escape" && onClose?.();
@@ -29,14 +29,17 @@ export default function AdminModal({ title, subtitle, open, onClose, children, m
               <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">{subtitle}</p>
             )}
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700"
-            aria-label="Close"
-          >
-            <X className="h-5 w-5" />
-          </button>
+          <div className="flex shrink-0 items-center gap-2">
+            {headerActions}
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700"
+              aria-label="Close"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
         </div>
         <div className="overflow-y-auto px-6 py-5">{children}</div>
       </div>

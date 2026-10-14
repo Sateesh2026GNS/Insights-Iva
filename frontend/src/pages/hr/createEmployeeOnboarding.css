@@ -17,7 +17,7 @@
 .hr-create-employee__title {
   margin: 0 0 20px;
   font-size: 18px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--ce-title);
 }
 
@@ -35,7 +35,7 @@
   padding-bottom: 10px;
   border-bottom: 1px solid var(--ce-border);
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--ce-title);
 }
 
@@ -51,7 +51,7 @@
 .hr-create-employee__section-header h2 {
   margin: 0;
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--ce-title);
 }
 
@@ -427,7 +427,7 @@
 .hr-create-employee__modal-title {
   margin: 0;
   font-size: 16px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--ce-title);
 }
 
@@ -489,7 +489,7 @@
   border-radius: 4px;
   background: var(--ce-surface);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
   cursor: pointer;
 }
 

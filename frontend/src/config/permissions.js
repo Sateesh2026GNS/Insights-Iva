@@ -4,6 +4,7 @@
  */
 
 import {
+  accountantAnalyticsPathAllowed,
   operatorPathAllowed,
   productionManagerPathAllowed,
   qualityControlPathAllowed,
@@ -567,6 +568,49 @@ export function userCanAccessApprovalQueue(user) {
   );
 }
 
+/**
+ * Extra domain module required in addition to `analytics` for each Analytics child route.
+ * `null` means analytics-module access is sufficient (Executive Dashboard / alias).
+ */
+export const ANALYTICS_CHILD_DOMAIN_MODULE = {
+  "/analytics": null,
+  "/analytics/executive": null,
+  "/analytics/forecasting": null,
+  "/analytics/live": "production",
+  "/analytics/production": "production",
+  "/analytics/machine-efficiency": "production",
+  "/analytics/inventory": "inventory",
+  "/analytics/sales": "sales",
+  "/analytics/finance": "accounts",
+  "/analytics/profit": "accounts",
+};
+
+export function getAnalyticsDomainModule(pathname) {
+  const path = (pathname || "").replace(/\/$/, "") || "/";
+  if (path !== "/analytics" && !path.startsWith("/analytics/")) return undefined;
+  const keys = Object.keys(ANALYTICS_CHILD_DOMAIN_MODULE).sort((a, b) => b.length - a.length);
+  for (const prefix of keys) {
+    if (path === prefix || path.startsWith(`${prefix}/`)) {
+      return ANALYTICS_CHILD_DOMAIN_MODULE[prefix];
+    }
+  }
+  return null;
+}
+
+/**
+ * Analytics child routes require the analytics module plus the mapped domain module.
+ * Accountant is further limited to Executive + Finance KPI (they also have `sales`).
+ */
+export function userCanAccessAnalyticsPath(user, pathname) {
+  if (!user) return false;
+  if (isAdmin(user)) return true;
+  if (!userCanAccess(user, "analytics")) return false;
+  const domain = getAnalyticsDomainModule(pathname);
+  if (domain && !userCanAccess(user, domain)) return false;
+  if (isAccountant(user)) return accountantAnalyticsPathAllowed(pathname);
+  return true;
+}
+
 export function userCanAccessPath(user, pathname) {
   if (!user) return false;
   if (isMySubscriptionSettingsPath(pathname)) {
@@ -612,6 +656,9 @@ export function userCanAccessPath(user, pathname) {
   if (path === "/masters/bom" && userCanAccess(user, "production")) return true;
   const module = getModuleForPath(pathname);
   if (!userCanAccess(user, module)) return false;
+  if (path === "/analytics" || path.startsWith("/analytics/")) {
+    if (!userCanAccessAnalyticsPath(user, path)) return false;
+  }
   const settingsSection = getSettingsSectionIdFromPath(path);
   if (settingsSection && !userCanAccessSettingsSection(user, settingsSection)) return false;
   if (isStoreManager(user) && !storeManagerPathAllowed(pathname)) return false;

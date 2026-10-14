@@ -133,7 +133,7 @@
   background: var(--color-primary);
   color: #fff;
   font-size: 0.7rem;
-  font-weight: 700;
+  font-weight: 600;
   flex-shrink: 0;
 }
 
@@ -150,7 +150,7 @@
   background: var(--color-primary);
   color: #fff;
   font-size: 0.65rem;
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1.25rem;
   text-align: center;
 }

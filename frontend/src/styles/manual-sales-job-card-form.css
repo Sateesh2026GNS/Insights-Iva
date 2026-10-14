@@ -78,7 +78,7 @@
 .manual-sjc-page__company-name {
   color: #3158c9;
   font-size: var(--text-sm, 0.8125rem);
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1.35;
 }
 
@@ -486,7 +486,7 @@
   margin-top: 0.25rem;
   padding-top: 0.45rem;
   border-top: 1px solid var(--color-border-soft, #e2e8f0);
-  font-weight: 700;
+  font-weight: 600;
   color: var(--color-text, #1e293b);
 }
 
@@ -627,7 +627,7 @@
 .manual-sjc__section-title {
   margin: 0;
   font-size: 0.8125rem;
-  font-weight: 700;
+  font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--color-text-secondary, #475569);

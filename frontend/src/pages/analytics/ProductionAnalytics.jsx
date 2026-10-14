@@ -8,17 +8,19 @@ import {
   Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Area, AreaChart,
 } from "recharts";
 
-import Loader from "../../components/common/Loader";
-import SkeletonCard, { SkeletonChart } from "../../components/common/SkeletonCard";
 import AnalyticsAlertsBanner from "../../components/analytics/AnalyticsAlertsBanner";
+import AnalyticsBenchmarkCards from "../../components/analytics/AnalyticsBenchmarkCards";
 import AnalyticsChartCard from "../../components/analytics/AnalyticsChartCard";
 import AnalyticsDashboardHeader from "../../components/analytics/AnalyticsDashboardHeader";
 import AnalyticsFilterBar from "../../components/analytics/AnalyticsFilterBar";
 import AnalyticsKpiCard from "../../components/analytics/AnalyticsKpiCard";
+import AnalyticsPageShell from "../../components/analytics/AnalyticsPageShell";
+import { ANALYTICS_AXIS, ANALYTICS_GRID, ANALYTICS_LEGEND, ANALYTICS_TOOLTIP } from "../../components/analytics/analyticsChartTheme";
 import { useToast } from "../../context/ToastContext";
 import { getProductionAnalytics } from "../../api/analyticsApi";
-import { CHART_COLORS, SOURCE_LINKS } from "../../data/analyticsMasterData";
+import { CHART_COLORS, currentFiscalYearLabel, fiscalYearToYear, SOURCE_LINKS } from "../../data/analyticsMasterData";
 import useManufacturingRefresh from "../../hooks/useManufacturingRefresh";
+import { apiErrorMessage } from "../../utils/apiError";
 
 const KPI_ICONS = {
   planned: Target, actual: Factory, efficiency: Gauge, oee: Activity,
@@ -58,11 +60,12 @@ const normalizeChartData = (rows = []) => {
 export default function ProductionAnalytics() {
   const { addToast } = useToast();
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [data, setData] = useState(emptyData);
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [activeKpi, setActiveKpi] = useState(null);
   const [filters, setFilters] = useState({
-    fiscalYear: "2025-26", month: "All Months", quarter: "All Quarters",
+    fiscalYear: currentFiscalYearLabel(), month: "All Months", quarter: "All Quarters",
     plant: "All Plants", department: "All Departments", warehouse: "All Warehouses",
     product: "All Products", customer: "All Customers", machine: "All Machines",
     dateFrom: "", dateTo: "",
@@ -70,18 +73,21 @@ export default function ProductionAnalytics() {
 
   const load = useCallback(async (isRefresh = false) => {
     if (!isRefresh) setLoading(true);
+    setError(null);
     try {
-      const res = await getProductionAnalytics();
+      const res = await getProductionAnalytics(fiscalYearToYear(filters.fiscalYear));
       if (res.data) setData({ ...emptyData, ...res.data });
       else if (!isRefresh) setData(emptyData);
     } catch (err) {
       if (isRefresh) throw err;
       setData(emptyData);
-      addToast("Failed to load production analytics", "error");
+      const message = apiErrorMessage(err, "Failed to load production analytics");
+      setError(message);
+      addToast(message, "error");
     } finally {
       setLoading(false);
     }
-  }, [addToast]);
+  }, [addToast, filters.fiscalYear]);
 
   useEffect(() => { load(); }, [load]);
   useManufacturingRefresh(() => load(true));
@@ -92,17 +98,10 @@ export default function ProductionAnalytics() {
   }, [autoRefresh, load]);
 
   if (loading && !data.kpis?.length) {
-    return (
-      <div className="space-y-6 bg-slate-50 p-4 dark:bg-slate-900 sm:p-6">
-        <div className="h-16 animate-pulse rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800" />
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, index) => (<SkeletonCard key={index} />))}
-        </div>
-        <div className="grid gap-6 lg:grid-cols-2">
-          {Array.from({ length: 8 }).map((_, index) => (<SkeletonChart key={index} />))}
-        </div>
-      </div>
-    );
+    return <AnalyticsPageShell loading kpiCount={4} chartCount={6} />;
+  }
+  if (error && !data.kpis?.length) {
+    return <AnalyticsPageShell error={error} onRetry={() => load()} />;
   }
 
   const setF = (k) => (v) => setFilters((f) => ({ ...f, [k]: v }));
@@ -117,7 +116,7 @@ export default function ProductionAnalytics() {
   const downtimeAnalysis = normalizeChartData(data.downtime_analysis);
 
   return (
-    <div className="space-y-6 bg-slate-50 p-4 dark:bg-slate-900 sm:p-6">
+    <AnalyticsPageShell>
       <AnalyticsDashboardHeader
         title="Production KPI"
         subtitle="Planned vs actual, OEE, machine utilization, downtime, and operator performance."
@@ -144,7 +143,7 @@ export default function ProductionAnalytics() {
         dateTo={filters.dateTo} onDateToChange={setF("dateTo")}
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <div className="ui-kpi-strip">
         {(data.kpis || []).map((kpi) => (
           <AnalyticsKpiCard
             key={kpi.key}
@@ -156,30 +155,17 @@ export default function ProductionAnalytics() {
         ))}
       </div>
 
-      {data.benchmarks?.length > 0 && (
-        <div className="grid gap-4 sm:grid-cols-3">
-          {data.benchmarks.map((b) => (
-            <div key={b.label} className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
-              <p className="text-xs font-medium text-slate-500">{b.label}</p>
-              <div className="mt-2 flex items-end gap-4">
-                <div><p className="text-2xl font-bold text-blue-600">{b.current}%</p><p className="text-[10px] text-slate-400">Current</p></div>
-                <div><p className="text-lg font-semibold text-slate-600">{b.target}%</p><p className="text-[10px] text-slate-400">Target</p></div>
-                <div><p className="text-lg font-semibold text-emerald-600">{b.industry}%</p><p className="text-[10px] text-slate-400">Industry</p></div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+      <AnalyticsBenchmarkCards benchmarks={data.benchmarks} />
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-2">
         <AnalyticsChartCard id="chart-monthly-prod" title="Monthly Production" subtitle="Planned vs Actual" data={data.monthly_production} dataKeys={["label", "value", "value2"]} sourceLink={SOURCE_LINKS.production} sourceLabel="Production">
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={monthlyProduction}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis dataKey="label" fontSize={11} />
-              <YAxis fontSize={11} />
-              <Tooltip formatter={fmtTooltip} />
-              <Legend />
+              <CartesianGrid {...ANALYTICS_GRID} />
+              <XAxis dataKey="label" {...ANALYTICS_AXIS} />
+              <YAxis {...ANALYTICS_AXIS} />
+              <Tooltip {...ANALYTICS_TOOLTIP} formatter={fmtTooltip} />
+              <Legend {...ANALYTICS_LEGEND} />
               <Bar dataKey="value" name="Actual" fill={CHART_COLORS[0]} radius={[4, 4, 0, 0]} />
               <Bar dataKey="value2" name="Planned" fill={CHART_COLORS[1]} radius={[4, 4, 0, 0]} />
             </BarChart>
@@ -189,10 +175,10 @@ export default function ProductionAnalytics() {
         <AnalyticsChartCard id="chart-prod-trend" title="Production Trend" data={data.production_trend} sourceLink={SOURCE_LINKS.production} sourceLabel="Production">
           <ResponsiveContainer width="100%" height={300}>
             <AreaChart data={productionTrend}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="label" fontSize={11} />
-              <YAxis fontSize={11} />
-              <Tooltip formatter={fmtTooltip} />
+              <CartesianGrid {...ANALYTICS_GRID} />
+              <XAxis dataKey="label" {...ANALYTICS_AXIS} />
+              <YAxis {...ANALYTICS_AXIS} />
+              <Tooltip {...ANALYTICS_TOOLTIP} formatter={fmtTooltip} />
               <Area type="monotone" dataKey="value" stroke={CHART_COLORS[0]} fill={CHART_COLORS[0]} fillOpacity={0.2} name="Output" />
             </AreaChart>
           </ResponsiveContainer>
@@ -201,10 +187,10 @@ export default function ProductionAnalytics() {
         <AnalyticsChartCard id="chart-daily" title="Daily Output" data={data.daily_output} sourceLink={SOURCE_LINKS.production} sourceLabel="Production">
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={dailyOutput}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="label" fontSize={10} interval={4} />
-              <YAxis fontSize={11} />
-              <Tooltip formatter={fmtTooltip} />
+              <CartesianGrid {...ANALYTICS_GRID} />
+              <XAxis dataKey="label" {...ANALYTICS_AXIS} interval={4} />
+              <YAxis {...ANALYTICS_AXIS} />
+              <Tooltip {...ANALYTICS_TOOLTIP} formatter={fmtTooltip} />
               <Line type="monotone" dataKey="value" stroke={CHART_COLORS[2]} strokeWidth={2} dot={false} name="Units" />
             </LineChart>
           </ResponsiveContainer>
@@ -213,10 +199,10 @@ export default function ProductionAnalytics() {
         <AnalyticsChartCard id="chart-shift" title="Shift Wise Production" data={data.shift_wise} sourceLink={SOURCE_LINKS.production} sourceLabel="Production">
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={shiftWise}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="label" fontSize={11} />
-              <YAxis fontSize={11} />
-              <Tooltip formatter={fmtTooltip} />
+              <CartesianGrid {...ANALYTICS_GRID} />
+              <XAxis dataKey="label" {...ANALYTICS_AXIS} />
+              <YAxis {...ANALYTICS_AXIS} />
+              <Tooltip {...ANALYTICS_TOOLTIP} formatter={fmtTooltip} />
               <Bar dataKey="value" name="Units" radius={[6, 6, 0, 0]}>
                 {data.shift_wise.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
               </Bar>
@@ -227,10 +213,10 @@ export default function ProductionAnalytics() {
         <AnalyticsChartCard id="chart-machine" title="Machine Wise Production" data={data.machine_wise} sourceLink={SOURCE_LINKS.production} sourceLabel="Production">
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={machineWise} layout="vertical">
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis type="number" fontSize={11} />
-              <YAxis dataKey="label" type="category" width={80} fontSize={11} />
-              <Tooltip formatter={fmtTooltip} />
+              <CartesianGrid {...ANALYTICS_GRID} />
+              <XAxis type="number" {...ANALYTICS_AXIS} />
+              <YAxis dataKey="label" type="category" width={80} {...ANALYTICS_AXIS} />
+              <Tooltip {...ANALYTICS_TOOLTIP} formatter={fmtTooltip} />
               <Bar dataKey="value" fill={CHART_COLORS[3]} name="Efficiency %" radius={[0, 4, 4, 0]} />
             </BarChart>
           </ResponsiveContainer>
@@ -242,8 +228,8 @@ export default function ProductionAnalytics() {
               <Pie data={productWise} dataKey="value" nameKey="label" cx="50%" cy="50%" outerRadius={100} label>
                 {productWise.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
               </Pie>
-              <Tooltip formatter={fmtTooltip} />
-              <Legend />
+              <Tooltip {...ANALYTICS_TOOLTIP} formatter={fmtTooltip} />
+              <Legend {...ANALYTICS_LEGEND} />
             </PieChart>
           </ResponsiveContainer>
         </AnalyticsChartCard>
@@ -251,10 +237,10 @@ export default function ProductionAnalytics() {
         <AnalyticsChartCard id="chart-operator" title="Operator Performance" data={data.operator_performance} sourceLink={SOURCE_LINKS.production} sourceLabel="Production">
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={operatorPerformance}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="label" fontSize={10} />
-              <YAxis fontSize={11} domain={[0, 100]} />
-              <Tooltip formatter={fmtTooltip} />
+              <CartesianGrid {...ANALYTICS_GRID} />
+              <XAxis dataKey="label" {...ANALYTICS_AXIS} />
+              <YAxis {...ANALYTICS_AXIS} domain={[0, 100]} />
+              <Tooltip {...ANALYTICS_TOOLTIP} formatter={fmtTooltip} />
               <Bar dataKey="value" fill={CHART_COLORS[4]} name="Score %" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
@@ -263,15 +249,15 @@ export default function ProductionAnalytics() {
         <AnalyticsChartCard id="chart-downtime" title="Downtime Analysis" data={data.downtime_analysis} sourceLink="/maintenance" sourceLabel="Maintenance">
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={downtimeAnalysis}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="label" fontSize={10} />
-              <YAxis fontSize={11} />
-              <Tooltip formatter={(v) => [`${v} h`, "Downtime"]} />
+              <CartesianGrid {...ANALYTICS_GRID} />
+              <XAxis dataKey="label" {...ANALYTICS_AXIS} />
+              <YAxis {...ANALYTICS_AXIS} />
+              <Tooltip {...ANALYTICS_TOOLTIP} formatter={(v) => [`${v} h`, "Downtime"]} />
               <Bar dataKey="value" fill="#ef4444" name="Hours" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </AnalyticsChartCard>
       </div>
-    </div>
+    </AnalyticsPageShell>
   );
 }

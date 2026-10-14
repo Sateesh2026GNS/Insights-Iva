@@ -61,6 +61,7 @@ const pathLabels = {
   quality: "Quality",
   analytics: "Analytics",
   executive: "Executive Dashboard",
+  live: "Live Dashboard",
   forecasting: "Forecasting",
   alerts: "Alerts",
   "low-stock": "Low Stock",
@@ -204,6 +205,13 @@ const PAGE_TITLE_OVERRIDES = {
   "/production/dashboard": "Dashboard",
   "/production/planning": "Production Planning",
   "/sales": "Dashboard",
+  "/analytics": "Executive Dashboard",
+  "/analytics/executive": "Executive Dashboard",
+  "/analytics/live": "Live Dashboard",
+  "/analytics/production": "Production KPI",
+  "/analytics/inventory": "Inventory KPI",
+  "/analytics/sales": "Sales KPI",
+  "/analytics/finance": "Finance KPI",
 };
 
 const BREADCRUMB_TITLE_OVERRIDES = {

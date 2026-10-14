@@ -100,7 +100,6 @@ export function SettingsHero({ title = "Settings", subtitle, actions, children }
       <div className="settings-hero relative px-5 py-4 sm:px-6 sm:py-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-0.5">
-            <p className="ui-eyebrow">Workspace</p>
             <h2 className="ui-page-title">{title}</h2>
             {subtitle ? <p className="ui-subtitle max-w-xl">{subtitle}</p> : null}
           </div>

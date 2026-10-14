@@ -1,24 +1,27 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import {
-  Activity, BarChart3, Box, CheckCircle, Cog, Factory, IndianRupee,
-  Sparkles, Star, TrendingUp, Users,
+  Activity, BarChart3, Box, CheckCircle, Cog, Factory, IndianRupee, Star, TrendingUp, Users,
 } from "lucide-react";
 import {
-  Bar, BarChart, CartesianGrid, Legend, Line, LineChart,
+  Bar, BarChart, CartesianGrid, Line, LineChart,
   ResponsiveContainer, Tooltip, XAxis, YAxis, Area, AreaChart,
 } from "recharts";
 
-import Loader from "../../components/common/Loader";
-import SkeletonCard, { SkeletonChart } from "../../components/common/SkeletonCard";
 import AnalyticsAlertsBanner from "../../components/analytics/AnalyticsAlertsBanner";
+import AnalyticsBenchmarkCards from "../../components/analytics/AnalyticsBenchmarkCards";
 import AnalyticsChartCard from "../../components/analytics/AnalyticsChartCard";
 import AnalyticsDashboardHeader from "../../components/analytics/AnalyticsDashboardHeader";
+import AnalyticsFilterBar from "../../components/analytics/AnalyticsFilterBar";
+import AnalyticsInsightsPanel from "../../components/analytics/AnalyticsInsightsPanel";
 import AnalyticsKpiCard from "../../components/analytics/AnalyticsKpiCard";
+import AnalyticsPageShell from "../../components/analytics/AnalyticsPageShell";
+import AnalyticsQuickNav from "../../components/analytics/AnalyticsQuickNav";
+import { ANALYTICS_AXIS, ANALYTICS_GRID, ANALYTICS_TOOLTIP } from "../../components/analytics/analyticsChartTheme";
 import { useToast } from "../../context/ToastContext";
 import { getExecutiveHub } from "../../api/analyticsApi";
-import { CHART_COLORS, formatInr } from "../../data/analyticsMasterData";
+import { CHART_COLORS, currentFiscalYearLabel, fiscalYearToYear, formatInr } from "../../data/analyticsMasterData";
 import useManufacturingRefresh from "../../hooks/useManufacturingRefresh";
+import { apiErrorMessage } from "../../utils/apiError";
 
 const KPI_ICONS = {
   revenue: IndianRupee, profit: TrendingUp, production: Factory, inventory: Box,
@@ -57,23 +60,35 @@ const normalizeChartData = (rows = []) => {
 export default function ExecutiveDashboard() {
   const { addToast } = useToast();
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [data, setData] = useState(emptyData);
   const [autoRefresh, setAutoRefresh] = useState(false);
+  const [filters, setFilters] = useState({
+    fiscalYear: currentFiscalYearLabel(),
+    month: "All Months",
+    quarter: "All Quarters",
+    plant: "All Plants",
+    dateFrom: "",
+    dateTo: "",
+  });
 
   const load = useCallback(async (isRefresh = false) => {
     if (!isRefresh) setLoading(true);
+    setError(null);
     try {
-      const res = await getExecutiveHub();
+      const res = await getExecutiveHub(fiscalYearToYear(filters.fiscalYear));
       if (res.data) setData({ ...emptyData, ...res.data });
       else if (!isRefresh) setData(emptyData);
     } catch (err) {
       if (isRefresh) throw err;
       setData(emptyData);
-      addToast("Failed to load executive hub", "error");
+      const message = apiErrorMessage(err, "Failed to load executive hub");
+      setError(message);
+      addToast(message, "error");
     } finally {
       setLoading(false);
     }
-  }, [addToast]);
+  }, [addToast, filters.fiscalYear]);
 
   useEffect(() => { load(); }, [load]);
   useManufacturingRefresh(() => load(true));
@@ -83,18 +98,13 @@ export default function ExecutiveDashboard() {
     return () => clearInterval(t);
   }, [autoRefresh, load]);
 
+  const setF = (k) => (v) => setFilters((f) => ({ ...f, [k]: v }));
+
   if (loading && !data.kpis?.length) {
-    return (
-      <div className="space-y-6 bg-gradient-to-b from-slate-900 to-slate-800 p-4 text-slate-100 sm:p-6">
-        <div className="h-16 animate-pulse rounded-2xl border border-slate-700 bg-slate-800/80" />
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-          {Array.from({ length: 5 }).map((_, index) => (<SkeletonCard key={index} />))}
-        </div>
-        <div className="grid gap-6 lg:grid-cols-2">
-          {Array.from({ length: 4 }).map((_, index) => (<SkeletonChart key={index} />))}
-        </div>
-      </div>
-    );
+    return <AnalyticsPageShell loading kpiCount={5} chartCount={4} />;
+  }
+  if (error && !data.kpis?.length) {
+    return <AnalyticsPageShell error={error} onRetry={() => load()} />;
   }
 
   const revenueTrend = normalizeChartData(data.revenue_trend);
@@ -103,120 +113,89 @@ export default function ExecutiveDashboard() {
   const machineHealth = normalizeChartData(data.machine_health);
 
   return (
-    <div className="space-y-6 bg-gradient-to-b from-slate-900 to-slate-800 p-4 text-slate-100 sm:p-6">
+    <AnalyticsPageShell>
       <AnalyticsDashboardHeader
-        title="CEO Dashboard"
-        subtitle="Executive view — revenue, profit, production, inventory, quality on one screen."
+        title="Executive Dashboard"
+        subtitle="Revenue, profit, production, inventory, and quality in one view."
         lastUpdated={data.last_updated}
         onRefresh={load}
         autoRefresh={autoRefresh}
         onAutoRefreshChange={setAutoRefresh}
         loading={loading}
-        dark={true}
       />
 
-      <div className="flex flex-wrap gap-2">
-        <Link to="/analytics/live" className="rounded-lg bg-[var(--color-success)] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[var(--color-success-hover)]">Live Dashboard</Link>
-        <Link to="/analytics/production" className="rounded-lg border border-slate-600 px-3 py-1.5 text-xs font-semibold hover:bg-slate-700">Production</Link>
-        <Link to="/analytics/inventory" className="rounded-lg border border-slate-600 px-3 py-1.5 text-xs font-semibold hover:bg-slate-700">Inventory</Link>
-        <Link to="/analytics/sales" className="rounded-lg border border-slate-600 px-3 py-1.5 text-xs font-semibold hover:bg-slate-700">Sales</Link>
-        <Link to="/analytics/finance" className="rounded-lg border border-slate-600 px-3 py-1.5 text-xs font-semibold hover:bg-slate-700">Finance</Link>
-      </div>
-
+      <AnalyticsQuickNav />
       <AnalyticsAlertsBanner alerts={data.alerts} />
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+      <AnalyticsFilterBar
+        fiscalYear={filters.fiscalYear} onFiscalYearChange={setF("fiscalYear")}
+        month={filters.month} onMonthChange={setF("month")}
+        quarter={filters.quarter} onQuarterChange={setF("quarter")}
+        plant={filters.plant} onPlantChange={setF("plant")}
+        dateFrom={filters.dateFrom} onDateFromChange={setF("dateFrom")}
+        dateTo={filters.dateTo} onDateToChange={setF("dateTo")}
+        showAll={false}
+      />
+
+      <div className="ui-kpi-strip ui-kpi-strip--5">
         {(data.kpis || []).map((kpi) => (
-          <div key={kpi.key} className="[&_.rounded-2xl]:border-slate-600 [&_.rounded-2xl]:bg-slate-800 [&_p]:text-slate-300">
-            <AnalyticsKpiCard kpi={kpi} icon={KPI_ICONS[kpi.key] || Activity} />
-          </div>
+          <AnalyticsKpiCard key={kpi.key} kpi={kpi} icon={KPI_ICONS[kpi.key] || Activity} />
         ))}
       </div>
 
-      {data.benchmarks?.length > 0 && (
-        <div className="grid gap-4 sm:grid-cols-3">
-          {data.benchmarks.map((b) => (
-            <div key={b.label} className="rounded-2xl border border-slate-600 bg-slate-800/80 p-4">
-              <p className="text-xs font-medium text-slate-400">{b.label} — Industry Benchmark</p>
-              <div className="mt-2 flex items-end gap-4">
-                <div><p className="text-2xl font-bold text-blue-400">{b.current}%</p><p className="text-[10px] text-slate-500">Current</p></div>
-                <div><p className="text-lg font-semibold text-slate-300">{b.target}%</p><p className="text-[10px] text-slate-500">Target</p></div>
-                <div><p className="text-lg font-semibold text-emerald-400">{b.industry}%</p><p className="text-[10px] text-slate-500">Industry</p></div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+      <AnalyticsBenchmarkCards benchmarks={data.benchmarks} />
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <div className="rounded-2xl border border-slate-600 bg-slate-800/80 p-5">
-          <h3 className="mb-4 text-sm font-semibold">Revenue Trend</h3>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <AnalyticsChartCard id="exec-revenue" title="Revenue trend" data={revenueTrend} dataKeys={["label", "value"]}>
           <ResponsiveContainer width="100%" height={260}>
             <AreaChart data={revenueTrend}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-              <XAxis dataKey="label" stroke="#94a3b8" fontSize={11} />
-              <YAxis stroke="#94a3b8" tickFormatter={(v) => formatInr(v)} fontSize={11} />
-              <Tooltip formatter={(v) => [formatInr(v), "Revenue"]} contentStyle={{ background: "#1e293b", border: "none" }} />
-              <Area type="monotone" dataKey="value" stroke={CHART_COLORS[0]} fill={CHART_COLORS[0]} fillOpacity={0.2} />
+              <CartesianGrid {...ANALYTICS_GRID} />
+              <XAxis dataKey="label" {...ANALYTICS_AXIS} />
+              <YAxis {...ANALYTICS_AXIS} tickFormatter={(v) => formatInr(v)} />
+              <Tooltip {...ANALYTICS_TOOLTIP} formatter={(v) => [formatInr(v), "Revenue"]} />
+              <Area type="monotone" dataKey="value" stroke={CHART_COLORS[0]} fill={CHART_COLORS[0]} fillOpacity={0.15} />
             </AreaChart>
           </ResponsiveContainer>
-        </div>
+        </AnalyticsChartCard>
 
-        <div className="rounded-2xl border border-slate-600 bg-slate-800/80 p-5">
-          <h3 className="mb-4 text-sm font-semibold">Production Trend</h3>
+        <AnalyticsChartCard id="exec-production" title="Production trend" data={productionTrend} dataKeys={["label", "value"]}>
           <ResponsiveContainer width="100%" height={260}>
             <LineChart data={productionTrend}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-              <XAxis dataKey="label" stroke="#94a3b8" fontSize={11} />
-              <YAxis stroke="#94a3b8" fontSize={11} />
-              <Tooltip contentStyle={{ background: "#1e293b", border: "none" }} />
-              <Line type="monotone" dataKey="value" stroke={CHART_COLORS[1]} strokeWidth={2} />
+              <CartesianGrid {...ANALYTICS_GRID} />
+              <XAxis dataKey="label" {...ANALYTICS_AXIS} />
+              <YAxis {...ANALYTICS_AXIS} />
+              <Tooltip {...ANALYTICS_TOOLTIP} />
+              <Line type="monotone" dataKey="value" stroke={CHART_COLORS[1]} strokeWidth={2} dot={false} />
             </LineChart>
           </ResponsiveContainer>
-        </div>
+        </AnalyticsChartCard>
 
-        <div className="rounded-2xl border border-slate-600 bg-slate-800/80 p-5">
-          <h3 className="mb-4 text-sm font-semibold">Inventory Value</h3>
+        <AnalyticsChartCard id="exec-inventory" title="Inventory value" data={inventoryValueTrend} dataKeys={["label", "value"]}>
           <ResponsiveContainer width="100%" height={260}>
             <AreaChart data={inventoryValueTrend}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-              <XAxis dataKey="label" stroke="#94a3b8" fontSize={11} />
-              <YAxis stroke="#94a3b8" tickFormatter={(v) => formatInr(v)} fontSize={11} />
-              <Tooltip formatter={(v) => [formatInr(v), "Value"]} contentStyle={{ background: "#1e293b", border: "none" }} />
-              <Area type="monotone" dataKey="value" stroke={CHART_COLORS[2]} fill={CHART_COLORS[2]} fillOpacity={0.2} />
+              <CartesianGrid {...ANALYTICS_GRID} />
+              <XAxis dataKey="label" {...ANALYTICS_AXIS} />
+              <YAxis {...ANALYTICS_AXIS} tickFormatter={(v) => formatInr(v)} />
+              <Tooltip {...ANALYTICS_TOOLTIP} formatter={(v) => [formatInr(v), "Value"]} />
+              <Area type="monotone" dataKey="value" stroke={CHART_COLORS[2]} fill={CHART_COLORS[2]} fillOpacity={0.15} />
             </AreaChart>
           </ResponsiveContainer>
-        </div>
+        </AnalyticsChartCard>
 
-        <div className="rounded-2xl border border-slate-600 bg-slate-800/80 p-5">
-          <h3 className="mb-4 text-sm font-semibold">Machine Health</h3>
+        <AnalyticsChartCard id="exec-machines" title="Machine health" data={machineHealth} dataKeys={["label", "value"]}>
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={machineHealth}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-              <XAxis dataKey="label" stroke="#94a3b8" fontSize={10} />
-              <YAxis stroke="#94a3b8" domain={[0, 100]} fontSize={11} />
-              <Tooltip contentStyle={{ background: "#1e293b", border: "none" }} />
+              <CartesianGrid {...ANALYTICS_GRID} />
+              <XAxis dataKey="label" {...ANALYTICS_AXIS} />
+              <YAxis {...ANALYTICS_AXIS} domain={[0, 100]} />
+              <Tooltip {...ANALYTICS_TOOLTIP} />
               <Bar dataKey="value" fill={CHART_COLORS[3]} radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
-        </div>
+        </AnalyticsChartCard>
       </div>
 
-      <div className="rounded-2xl border border-violet-500/30 bg-violet-950/40 p-5">
-        <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-violet-200">
-          <Sparkles className="h-4 w-4" /> AI Insights (Preview)
-        </h3>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {(data.ai_insights || []).map((insight, i) => (
-            <div key={i} className="rounded-xl border border-violet-500/20 bg-slate-900/60 p-3 text-sm">
-              <p className="text-violet-100">{insight.message}</p>
-              {insight.confidence != null && (
-                <p className="mt-1 text-xs text-violet-400">Confidence: {Math.round(insight.confidence * 100)}%</p>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
+      <AnalyticsInsightsPanel insights={data.ai_insights} title="Insights" />
+    </AnalyticsPageShell>
   );
 }

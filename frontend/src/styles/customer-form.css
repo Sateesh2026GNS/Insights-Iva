@@ -12,7 +12,7 @@
 .customer-form-page__title {
   margin: 0 0 1rem;
   font-size: var(--text-xl, 1.25rem);
-  font-weight: 700;
+  font-weight: 600;
   color: var(--color-text, #1e293b);
 }
 

@@ -402,6 +402,71 @@ def tenant_scope(module: str):
     return dependency
 
 
+# Analytics child dashboards require `analytics` plus a domain module.
+# Accountant is further limited to Executive + Finance (they also have `sales`).
+ANALYTICS_CHILD_DOMAIN_MODULE = {
+    "executive": None,
+    "live": "production",
+    "production": "production",
+    "machine-efficiency": "production",
+    "production-trend": "production",
+    "worker-performance": "production",
+    "inventory": "inventory",
+    "inventory-turnover": "inventory",
+    "sales": "sales",
+    "finance": "accounts",
+    "profit": "accounts",
+    "forecasting": None,
+    "dashboard": None,
+}
+
+ACCOUNTANT_ANALYTICS_ALLOWED_CHILDREN = frozenset({"executive", "finance"})
+
+
+def analytics_child_key_from_path(path: str | None) -> str | None:
+    if not path:
+        return None
+    normalized = str(path).split("?")[0].rstrip("/") or "/"
+    if normalized == "/analytics":
+        return "executive"
+    if not normalized.startswith("/analytics/"):
+        return None
+    parts = normalized.split("/")
+    return parts[2] if len(parts) > 2 else None
+
+
+def user_can_access_analytics_child(user: User, child_key: str) -> bool:
+    if not user_has_permission(user, "analytics"):
+        return False
+    if user_is_admin(user):
+        return True
+    domain = ANALYTICS_CHILD_DOMAIN_MODULE.get(child_key)
+    if domain and not user_has_permission(user, domain):
+        return False
+    if _is_accountant(user):
+        return child_key in ACCOUNTANT_ANALYTICS_ALLOWED_CHILDREN
+    return True
+
+
+def require_analytics_child(child_key: str):
+    def dependency(current_user: User = Depends(get_current_user)) -> User:
+        if not user_can_access_analytics_child(current_user, child_key):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=MODULE_FORBIDDEN_MESSAGE,
+            )
+        return current_user
+
+    return dependency
+
+
+def tenant_scope_analytics_child(child_key: str):
+    def dependency(current_user: User = Depends(require_analytics_child(child_key))) -> int:
+        return current_user.tenant_id
+
+    return dependency
+
+
 def tenant_scope_any(*modules: str):
     def dependency(current_user: User = Depends(require_any_permission(*modules))) -> int:
         return current_user.tenant_id

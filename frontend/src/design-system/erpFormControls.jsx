@@ -6,11 +6,7 @@ export const ERP_PRIMARY_SOFT = "var(--color-primary-soft)";
 
 export function FieldLabel({ children, accent }) {
   return (
-    <span
-      className={`ui-label mb-1.5 block text-[12px] font-medium ${
-        accent ? "text-[var(--color-primary)]" : "text-[var(--color-text-muted)]"
-      }`}
-    >
+    <span className={`ui-label mb-1.5 block${accent ? " ui-label--accent" : ""}`}>
       {children}
     </span>
   );

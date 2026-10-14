@@ -36,7 +36,7 @@
 .workflow-next-step__title {
   margin: 0;
   font-size: 0.9375rem;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--color-text, #1e293b);
   line-height: 1.35;
 }
@@ -57,7 +57,7 @@
 .workflow-next-step__next-label {
   display: block;
   font-size: 0.6875rem;
-  font-weight: 700;
+  font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--color-text-muted, #64748b);

@@ -5,7 +5,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db
-from app.core.permissions import require_permission, tenant_scope
+from app.core.permissions import require_analytics_child, tenant_scope_analytics_child
 from app.models.user import User
 from app.services.analytics_extended_service import (
     get_executive_hub,
@@ -24,14 +24,12 @@ from app.services.analytics_service import (
 )
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
-
-MODULE = "analytics"
 logger = logging.getLogger(__name__)
 
 
 @router.get("/production-trend")
 def production_trend_endpoint(
-    tenant_id: int = Depends(tenant_scope(MODULE)),
+    tenant_id: int = Depends(tenant_scope_analytics_child("production")),
     year: int = Query(...),
     db: Session = Depends(get_db),
 ):
@@ -54,7 +52,7 @@ def production_trend_endpoint(
 
 @router.get("/machine-efficiency")
 def machine_efficiency_endpoint(
-    tenant_id: int = Depends(tenant_scope(MODULE)),
+    tenant_id: int = Depends(tenant_scope_analytics_child("machine-efficiency")),
     db: Session = Depends(get_db),
 ):
     try:
@@ -76,7 +74,7 @@ def machine_efficiency_endpoint(
 
 @router.get("/inventory-turnover")
 def inventory_turnover_endpoint(
-    tenant_id: int = Depends(tenant_scope(MODULE)),
+    tenant_id: int = Depends(tenant_scope_analytics_child("inventory")),
     db: Session = Depends(get_db),
 ):
     try:
@@ -98,7 +96,7 @@ def inventory_turnover_endpoint(
 
 @router.get("/worker-performance")
 def worker_performance_endpoint(
-    tenant_id: int = Depends(tenant_scope(MODULE)),
+    tenant_id: int = Depends(tenant_scope_analytics_child("worker-performance")),
     db: Session = Depends(get_db),
 ):
     try:
@@ -120,7 +118,7 @@ def worker_performance_endpoint(
 
 @router.get("/profit")
 def profit_analysis_endpoint(
-    tenant_id: int = Depends(tenant_scope(MODULE)),
+    tenant_id: int = Depends(tenant_scope_analytics_child("profit")),
     year: int = Query(...),
     db: Session = Depends(get_db),
 ):
@@ -143,7 +141,7 @@ def profit_analysis_endpoint(
 
 @router.get("/dashboard")
 def analytics_dashboard_endpoint(
-    tenant_id: int = Depends(tenant_scope(MODULE)),
+    tenant_id: int = Depends(tenant_scope_analytics_child("dashboard")),
     year: int = Query(None),
     db: Session = Depends(get_db),
 ):
@@ -160,7 +158,7 @@ def analytics_dashboard_endpoint(
 
 @router.get("/production/summary")
 def production_analytics_endpoint(
-    current_user: User = Depends(require_permission(MODULE)),
+    current_user: User = Depends(require_analytics_child("production")),
     year: int = Query(None),
     db: Session = Depends(get_db),
 ):
@@ -183,7 +181,7 @@ def production_analytics_endpoint(
 
 @router.get("/inventory/summary")
 def inventory_analytics_endpoint(
-    tenant_id: int = Depends(tenant_scope(MODULE)),
+    tenant_id: int = Depends(tenant_scope_analytics_child("inventory")),
     db: Session = Depends(get_db),
 ):
     try:
@@ -205,7 +203,7 @@ def inventory_analytics_endpoint(
 
 @router.get("/sales/summary")
 def sales_analytics_endpoint(
-    tenant_id: int = Depends(tenant_scope(MODULE)),
+    tenant_id: int = Depends(tenant_scope_analytics_child("sales")),
     year: int = Query(None),
     db: Session = Depends(get_db),
 ):
@@ -228,7 +226,7 @@ def sales_analytics_endpoint(
 
 @router.get("/finance/summary")
 def finance_analytics_endpoint(
-    tenant_id: int = Depends(tenant_scope(MODULE)),
+    tenant_id: int = Depends(tenant_scope_analytics_child("finance")),
     year: int = Query(None),
     db: Session = Depends(get_db),
 ):
@@ -251,7 +249,7 @@ def finance_analytics_endpoint(
 
 @router.get("/executive/hub")
 def executive_hub_endpoint(
-    tenant_id: int = Depends(tenant_scope(MODULE)),
+    tenant_id: int = Depends(tenant_scope_analytics_child("executive")),
     year: int = Query(None),
     db: Session = Depends(get_db),
 ):
@@ -274,7 +272,7 @@ def executive_hub_endpoint(
 
 @router.get("/live/hub")
 def live_dashboard_endpoint(
-    tenant_id: int = Depends(tenant_scope(MODULE)),
+    tenant_id: int = Depends(tenant_scope_analytics_child("live")),
     db: Session = Depends(get_db),
 ):
     try:

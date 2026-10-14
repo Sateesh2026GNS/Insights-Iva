@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Check, CheckCircle2, Eye, RefreshCw, Search, XCircle } from "lucide-react";
+import { Check, CheckCircle2, Eye, Search, XCircle } from "lucide-react";
 
 import PageHeader from "../../components/common/PageHeader";
 import AccessDenied from "../../components/admin/AccessDenied";
@@ -365,14 +365,6 @@ export default function PendingApprovals() {
           </button>
           <button type="button" className="ui-btn ui-btn-secondary text-xs" onClick={resetFilters}>
             Reset
-          </button>
-          <button
-            type="button"
-            className="ui-btn ui-btn-ghost p-2"
-            title="Refresh"
-            onClick={() => load()}
-          >
-            <RefreshCw className="h-4 w-4" />
           </button>
         </div>
       </div>

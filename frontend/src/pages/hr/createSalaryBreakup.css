@@ -309,7 +309,7 @@
   place-items: center;
   border-radius: 9999px;
   font-size: 16px;
-  font-weight: 700;
+  font-weight: 600;
   color: #ffffff;
 }
 
@@ -328,7 +328,7 @@
 
 .hr-create-salary-breakup__metric-value {
   font-size: 18px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--csb-title);
 }
 

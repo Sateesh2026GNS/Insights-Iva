@@ -1,0 +1,261 @@
+{
+  "startedAt": "2026-10-14T06:22:32.598Z",
+  "base": "http://127.0.0.1:5173",
+  "admin": {
+    "menus": [
+      "Dashboard",
+      "My Job Cards",
+      "Work Chat",
+      "Executive Dashboard",
+      "Live Dashboard",
+      "Production KPI",
+      "Inventory KPI",
+      "Sales KPI",
+      "Finance KPI",
+      "Settings",
+      "Accounts",
+      "Accounts"
+    ],
+    "hasAllSix": true,
+    "analyticsHeading": {
+      "tag": "BUTTON",
+      "text": "Analytics",
+      "fontWeight": "500",
+      "fontFamily": "\"IBM Plex Sans\", Inter, \"Segoe UI\", ui-sans-serif, system-ui, -apple-system, sans-serif",
+      "fontSize": "13px"
+    },
+    "execFocusOutline": {
+      "outline": "oklch(0.869 0.022 252.894) none 3px",
+      "boxShadow": "none",
+      "fontWeight": "400"
+    },
+    "activeClass": "group relative flex w-full items-center rounded-md px-2.5 py-2 min-h-[36px] text-[13px] font-normal transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/35 text-slate-300 hover:bg-white/10 hover:text-white",
+    "pages": [
+      {
+        "id": "executive",
+        "path": "/analytics/executive",
+        "url": "http://127.0.0.1:5173/analytics/executive",
+        "titleVisible": true,
+        "subtitleVisible": true,
+        "kpiCount": 9,
+        "chartCount": 2,
+        "hasFilters": true,
+        "fiscalYear": "2026-27",
+        "presets": [
+          "This month",
+          "This quarter",
+          "FY to date",
+          "Last 30 days"
+        ],
+        "exportButtons": [
+          "Excel",
+          "CSV",
+          "PNG",
+          "Print",
+          "Excel",
+          "CSV",
+          "PNG",
+          "Print"
+        ],
+        "emptyCharts": 2,
+        "hardcodedLiveDeltas": false,
+        "fontFamily": "\"IBM Plex Sans\", Inter, \"Segoe UI\", ui-sans-serif, system-ui, -apple-system, sans-serif",
+        "errors": [],
+        "fontWeight": "600",
+        "activeFontWeight": "400",
+        "activeBg": "rgb(49, 87, 213)"
+      },
+      {
+        "id": "live",
+        "path": "/analytics/live",
+        "url": "http://127.0.0.1:5173/analytics/live",
+        "titleVisible": true,
+        "subtitleVisible": true,
+        "kpiCount": 6,
+        "chartCount": 0,
+        "hasFilters": false,
+        "fiscalYear": null,
+        "presets": [],
+        "exportButtons": [],
+        "emptyCharts": 1,
+        "hardcodedLiveDeltas": false,
+        "fontFamily": "\"IBM Plex Sans\", Inter, \"Segoe UI\", ui-sans-serif, system-ui, -apple-system, sans-serif",
+        "errors": [],
+        "fontWeight": "600",
+        "activeFontWeight": "400",
+        "activeBg": "rgb(49, 87, 213)"
+      },
+      {
+        "id": "production",
+        "path": "/analytics/production",
+        "url": "http://127.0.0.1:5173/analytics/production",
+        "titleVisible": true,
+        "subtitleVisible": true,
+        "kpiCount": 12,
+        "chartCount": 5,
+        "hasFilters": true,
+        "fiscalYear": "2026-27",
+        "presets": [
+          "This month",
+          "This quarter",
+          "FY to date",
+          "Last 30 days"
+        ],
+        "exportButtons": [
+          "Excel",
+          "CSV",
+          "PNG",
+          "Print",
+          "Excel",
+          "CSV",
+          "PNG",
+          "Print",
+          "Excel",
+          "CSV",
+          "PNG",
+          "Print"
+        ],
+        "emptyCharts": 3,
+        "hardcodedLiveDeltas": false,
+        "fontFamily": "\"IBM Plex Sans\", Inter, \"Segoe UI\", ui-sans-serif, system-ui, -apple-system, sans-serif",
+        "errors": [],
+        "fontWeight": "600",
+        "activeFontWeight": "400",
+        "activeBg": "rgb(49, 87, 213)"
+      },
+      {
+        "id": "inventory",
+        "path": "/analytics/inventory",
+        "url": "http://127.0.0.1:5173/analytics/inventory",
+        "titleVisible": true,
+        "subtitleVisible": true,
+        "kpiCount": 10,
+        "chartCount": 1,
+        "hasFilters": true,
+        "fiscalYear": "2026-27",
+        "presets": [
+          "This month",
+          "This quarter",
+          "FY to date",
+          "Last 30 days"
+        ],
+        "exportButtons": [
+          "Excel",
+          "CSV",
+          "PNG",
+          "Print"
+        ],
+        "emptyCharts": 5,
+        "hardcodedLiveDeltas": false,
+        "fontFamily": "\"IBM Plex Sans\", Inter, \"Segoe UI\", ui-sans-serif, system-ui, -apple-system, sans-serif",
+        "errors": [],
+        "fontWeight": "600",
+        "activeFontWeight": "400",
+        "activeBg": "rgb(49, 87, 213)"
+      },
+      {
+        "id": "sales",
+        "path": "/analytics/sales",
+        "url": "http://127.0.0.1:5173/analytics/sales",
+        "titleVisible": true,
+        "subtitleVisible": true,
+        "kpiCount": 8,
+        "chartCount": 5,
+        "hasFilters": true,
+        "fiscalYear": "2026-27",
+        "presets": [
+          "This month",
+          "This quarter",
+          "FY to date",
+          "Last 30 days"
+        ],
+        "exportButtons": [
+          "Excel",
+          "CSV",
+          "PNG",
+          "Print",
+          "Excel",
+          "CSV",
+          "PNG",
+          "Print",
+          "Excel",
+          "CSV",
+          "PNG",
+          "Print"
+        ],
+        "emptyCharts": 1,
+        "hardcodedLiveDeltas": false,
+        "fontFamily": "\"IBM Plex Sans\", Inter, \"Segoe UI\", ui-sans-serif, system-ui, -apple-system, sans-serif",
+        "errors": [],
+        "fontWeight": "600",
+        "activeFontWeight": "400",
+        "activeBg": "rgb(49, 87, 213)"
+      },
+      {
+        "id": "finance",
+        "path": "/analytics/finance",
+        "url": "http://127.0.0.1:5173/analytics/finance",
+        "titleVisible": true,
+        "subtitleVisible": true,
+        "kpiCount": 12,
+        "chartCount": 5,
+        "hasFilters": true,
+        "fiscalYear": "2026-27",
+        "presets": [
+          "This month",
+          "This quarter",
+          "FY to date",
+          "Last 30 days"
+        ],
+        "exportButtons": [
+          "Excel",
+          "CSV",
+          "PNG",
+          "Print",
+          "Excel",
+          "CSV",
+          "PNG",
+          "Print",
+          "Excel",
+          "CSV",
+          "PNG",
+          "Print"
+        ],
+        "emptyCharts": 1,
+        "hardcodedLiveDeltas": false,
+        "fontFamily": "\"IBM Plex Sans\", Inter, \"Segoe UI\", ui-sans-serif, system-ui, -apple-system, sans-serif",
+        "errors": [],
+        "fontWeight": "600",
+        "activeFontWeight": "400",
+        "activeBg": "rgb(49, 87, 213)"
+      }
+    ],
+    "collapsedFlyoutVisible": false,
+    "mobileOverflowX": false,
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  "accountant": {
+    "menus": [
+      "Dashboard",
+      "My Job Cards",
+      "Work Chat",
+      "Executive Dashboard",
+      "Finance KPI",
+      "Accounts",
+      "Accounts"
+    ],
+    "analyticsItems": [
+      "Executive Dashboard",
+      "Finance KPI"
+    ],
+    "hiddenAsExpected": true,
+    "visibleAsExpected": true,
+    "financeTitle": "Finance KPI",
+    "productionUrl": "http://127.0.0.1:5173/analytics/production",
+    "productionBlocked": false,
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  "issues": []
+}
