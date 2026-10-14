@@ -1176,6 +1176,9 @@ def _create_production_for_order(
             )
             db.add(po)
             db.flush()
+            from app.services.bom.bom_requirements import snapshot_bom_version_on_order
+
+            snapshot_bom_version_on_order(db, po)
         wo = ensure_work_order_for_production_order(db, tenant_id, po)
         wo.materials_issued = True
         created.append(

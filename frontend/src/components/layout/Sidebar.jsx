@@ -36,6 +36,8 @@ import {
   userCanAccess,
   userCanAccessApprovalQueue,
   userCanAccessPath,
+  userCanAccessMyJobCards,
+  userCanViewBom,
   isStoreManager,
   isProductionManager,
   isOperator,
@@ -297,7 +299,13 @@ export function filterStaticNav(user) {
     if (isAcct && !ACCOUNTANT_ALLOWED_SECTIONS.has(section.key)) return null;
     if (isOp && OPERATOR_BLOCKED_SECTIONS.has(section.key)) return null;
     if (section.to) {
-      if (!isOp && section.operatorOnly) return null;
+      if (section.operatorOnly) {
+        if (section.key === "myJobCards") {
+          if (!userCanAccessMyJobCards(user)) return null;
+        } else if (!isOp) {
+          return null;
+        }
+      }
       if (!userCanAccess(user, section.module)) return null;
       if (storeMgr && !storeManagerPathAllowed(section.to)) return null;
       return section;
@@ -321,6 +329,11 @@ export function filterStaticNav(user) {
         }
       }
       if (!isOp && node.operatorOnly) return false;
+      if (node.bomViewOnly && !userCanViewBom(user)) return false;
+      if (isAcct && section.key === "production" && node.to) {
+        const pathOnly = (node.to || "").split("?")[0];
+        if (!ACCOUNTANT_ALLOWED_CHILDREN.has(node.to) && !ACCOUNTANT_ALLOWED_CHILDREN.has(pathOnly)) return false;
+      }
       if (node.approvalQueue) {
         if (!userCanAccessApprovalQueue(user)) return false;
       } else if (!userCanAccess(user, node.module)) return false;

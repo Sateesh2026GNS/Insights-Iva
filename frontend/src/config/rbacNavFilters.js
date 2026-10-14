@@ -28,6 +28,8 @@ export const PRODUCTION_MANAGER_ALLOWED_CHILDREN = new Set([
   "/production/reports",
   "/my-job-cards",
   "/masters/bom",
+  "/production/bom",
+  "/production/bom/new",
 
   "/inventory/raw-materials",
   "/inventory/finished-goods",
@@ -149,6 +151,7 @@ export const ACCOUNTANT_ALLOWED_SECTIONS = new Set([
   "myJobCards",
   "finance",
   "masters",
+  "production",
   "documents",
   "alerts",
   "analytics",
@@ -179,6 +182,7 @@ export const ACCOUNTANT_ALLOWED_CHILDREN = new Set([
   "/hr/leave/plans/create",
   "/hr/leave/create",
   "/leave",
+  "/production/bom",
 ]);
 
 /** Accountant may open Executive + Finance KPI only (not Live / Production / Inventory / Sales). */

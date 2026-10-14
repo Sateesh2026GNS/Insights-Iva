@@ -138,11 +138,7 @@ export default function SearchableSelect({
     onQueryChange?.(query);
   }, [query, onQueryChange]);
 
-  const baseClass = `flex w-full items-center justify-between gap-2 rounded-xl border bg-[var(--color-surface)] px-3.5 py-2.5 text-left text-sm shadow-sm transition focus:outline-none focus:ring-2 disabled:cursor-not-allowed disabled:bg-[var(--color-surface-muted)] disabled:text-[var(--color-text-muted)] ${
-    error
-      ? "border-red-400 focus:ring-red-400/30"
-      : "border-[var(--color-border-soft)] focus:border-[var(--color-primary)] focus:ring-[var(--color-primary)]/20"
-  } ${className}`;
+  const baseClass = `ui-searchable-select ${error ? "is-error" : ""} ${className}`.trim();
 
   const pick = (opt) => {
     onChange?.(opt.value);
@@ -201,7 +197,10 @@ export default function SearchableSelect({
               <X className="h-3.5 w-3.5" aria-hidden />
             </span>
           ) : null}
-          <ChevronDown className={`h-4 w-4 text-[var(--color-text-icon)] transition ${open ? "rotate-180" : ""}`} aria-hidden />
+          <ChevronDown
+            className={`h-[1.0625rem] w-[1.0625rem] shrink-0 text-[var(--color-text-icon)] transition ${open ? "rotate-180" : ""}`}
+            aria-hidden
+          />
         </span>
       </button>
 

@@ -201,6 +201,13 @@ def _ensure_store_issue_lines(
             prod = db.get(Product, ln.product_id)
             material_code = prod.sku if prod else None
         required = float(ln.required_qty or 0)
+        if store_card.work_order_id and ln.product_id:
+            from app.services.bom.bom_requirements import expected_consumption
+
+            for exp in expected_consumption(db, store_card.work_order_id):
+                if int(exp.get("component_product_id") or 0) == int(ln.product_id):
+                    required = float(exp["expected_gross_qty"])
+                    break
         available = float(ln.available_qty or 0)
         store_card.issue_lines.append(
             WorkflowMaterialIssueLine(

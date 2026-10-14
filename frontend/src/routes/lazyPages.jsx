@@ -28,6 +28,9 @@ export const DailyReports = lazy(() => import("../pages/production/DailyReports"
 export const OperatorMyMachine = lazy(() => import("../pages/production/OperatorMyMachine"));
 export const OperatorProductionEntry = lazy(() => import("../pages/production/OperatorProductionEntry"));
 export const CreateProduction = lazy(() => import("../pages/production/CreateProduction"));
+export const BomListPage = lazy(() => import("../pages/production/bom/BomListPage"));
+export const BomDetailPage = lazy(() => import("../pages/production/bom/BomDetailPage"));
+export const BomFormPage = lazy(() => import("../pages/production/bom/BomFormPage"));
 export const TaskManagement = lazy(() => import("../pages/production/TaskManagement"));
 export const InventoryDashboard = lazy(() => import("../pages/inventory/InventoryDashboard"));
 export const InventoryV2 = lazy(() => import("../pages/inventory/InventoryV2"));

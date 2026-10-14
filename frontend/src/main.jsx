@@ -62,7 +62,8 @@ function SessionGate({ children }) {
   );
 }
 
-ReactDOM.createRoot(document.getElementById("root")).render(
+const rootElement = document.getElementById("root");
+const appTree = (
   <React.StrictMode>
     <ErrorBoundary>
       <SettingsProvider>
@@ -83,3 +84,15 @@ ReactDOM.createRoot(document.getElementById("root")).render(
     </ErrorBoundary>
   </React.StrictMode>
 );
+
+/** Reuse root on Vite HMR so createRoot is not called twice on #root. */
+const root =
+  rootElement.__ivaReactRoot ?? (rootElement.__ivaReactRoot = ReactDOM.createRoot(rootElement));
+root.render(appTree);
+
+if (import.meta.hot) {
+  import.meta.hot.dispose(() => {
+    root.unmount();
+    delete rootElement.__ivaReactRoot;
+  });
+}

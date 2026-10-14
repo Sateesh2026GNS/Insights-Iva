@@ -149,6 +149,10 @@ def create_production_order(db: Session, payload: ProductionOrderCreate) -> Prod
     db.add(order)
     db.flush()
 
+    from app.services.bom.bom_requirements import snapshot_bom_version_on_order
+
+    snapshot_bom_version_on_order(db, order)
+
     wo = WorkOrder(
         tenant_id=order.tenant_id,
         production_order_id=order.id,
@@ -625,6 +629,9 @@ def quick_create_work_order(db: Session, payload: WorkOrderQuickCreate) -> WorkO
         )
         db.add(prod_order)
         db.flush()
+        from app.services.bom.bom_requirements import snapshot_bom_version_on_order
+
+        snapshot_bom_version_on_order(db, prod_order)
 
     work_order = WorkOrder(
         tenant_id=payload.tenant_id,

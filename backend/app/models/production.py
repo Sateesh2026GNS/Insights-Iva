@@ -23,6 +23,9 @@ class ProductionOrder(Base, TimestampMixin):
     customer_name: Mapped[str | None] = mapped_column(String(255))
     priority: Mapped[str] = mapped_column(String(16), default="medium", nullable=False)
     bom_version: Mapped[str | None] = mapped_column(String(64))
+    bom_version_id: Mapped[int | None] = mapped_column(
+        ForeignKey("bom_version.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     sales_order_number: Mapped[str | None] = mapped_column(String(64))
     sales_order_id: Mapped[int | None] = mapped_column(
         ForeignKey("sales_orders.id"), index=True

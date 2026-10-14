@@ -14,7 +14,10 @@ describe("SearchableSelect", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /select state/i }));
+    const trigger = screen.getByRole("button", { name: /select state/i });
+    expect(trigger).toHaveClass("ui-searchable-select");
+
+    fireEvent.click(trigger);
 
     const menu = screen.getByRole("listbox");
     expect(menu).toBeInTheDocument();

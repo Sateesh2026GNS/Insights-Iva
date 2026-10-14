@@ -263,6 +263,12 @@ export function isValidationError(err) {
 export function mapValidationErrorsToFields(err) {
   const detail = extractApiErrorDetail(err);
   const fields = {};
+  if (detail && typeof detail === "object" && !Array.isArray(detail)) {
+    Object.entries(detail).forEach(([key, value]) => {
+      if (typeof value === "string" && value.trim()) fields[key] = value.trim();
+    });
+    if (Object.keys(fields).length) return fields;
+  }
   if (!Array.isArray(detail)) return fields;
   detail.forEach((item) => {
     const loc = Array.isArray(item?.loc)

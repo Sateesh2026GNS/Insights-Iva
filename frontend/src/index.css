@@ -206,10 +206,13 @@
   --label-color: var(--color-text-muted);
   --label-line-height: var(--leading-snug);
 
-  /* Controls */
+  /* Controls — standard ERP fields (~40–44px tall) */
   --control-h-sm: 2rem;
-  --control-h: 2.5rem;
-  --control-h-lg: 2.75rem;
+  --control-h: 2.625rem;
+  --control-h-lg: 2.625rem;
+  --control-padding-y: 0.5rem;
+  --control-padding-x: 0.875rem;
+  --control-radius: 0.5625rem;
   --icon-sm: 1rem;
   --icon-md: 1.125rem;
   --icon-lg: 1.25rem;
@@ -1031,16 +1034,107 @@ textarea {
 .ui-select,
 .ui-textarea {
   width: 100%;
-  min-height: var(--control-h-lg);
-  border-radius: var(--radius-md);
+  min-height: var(--control-h);
+  border-radius: var(--control-radius);
   border: 1px solid var(--color-border-soft);
   background: var(--color-surface-muted);
-  padding: 0.625rem 0.875rem;
+  padding: var(--control-padding-y) var(--control-padding-x);
   font-family: var(--font-sans);
   font-size: var(--text-sm);
   line-height: var(--leading-normal);
   color: var(--color-text);
   transition: border-color var(--transition-fast), background-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.ui-select,
+select.ui-input {
+  min-height: var(--control-h);
+  padding-right: 2.25rem;
+}
+
+/* SearchableSelect trigger — match .ui-input height */
+.ui-searchable-select {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-height: var(--control-h);
+  height: var(--control-h);
+  padding: 0 var(--control-padding-x);
+  border-radius: var(--control-radius);
+  border: 1px solid var(--color-border-soft);
+  background: var(--color-surface);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+  color: var(--color-text);
+  text-align: left;
+  box-shadow: none;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast), background-color var(--transition-fast);
+}
+
+.ui-searchable-select:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--color-primary) 35%, var(--color-border-soft));
+}
+
+.ui-searchable-select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 16%, transparent);
+}
+
+.ui-searchable-select:focus-visible {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 16%, transparent);
+}
+
+.ui-searchable-select.is-error {
+  border-color: var(--color-danger);
+}
+
+.ui-searchable-select.is-error:focus,
+.ui-searchable-select.is-error:focus-visible {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-danger) 18%, transparent);
+}
+
+.ui-searchable-select:disabled {
+  cursor: not-allowed;
+  background: var(--color-surface-muted);
+  color: var(--color-text-muted);
+}
+
+/* Compact date field (DatePicker compact) */
+.ui-date-compact {
+  box-sizing: border-box;
+  min-height: var(--control-h);
+  height: var(--control-h);
+  border-radius: var(--control-radius);
+  border: 1px solid var(--color-border-soft);
+  background: var(--color-surface);
+  font-family: var(--font-sans);
+}
+
+.ui-date-compact > span {
+  padding-left: var(--control-padding-x);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+}
+
+.ui-date-compact--error {
+  border-color: var(--color-danger);
+}
+
+.ui-date-compact--disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.ui-date-compact__error {
+  margin: 0.2rem 0 0;
+  font-size: var(--text-xs);
+  color: var(--color-danger);
 }
 .ui-select,
 select {
@@ -3618,6 +3712,124 @@ html.has-sticky-page-footer .app-shell-fab-stack {
   margin: 0.45rem 0 0;
   font-size: 0.9375rem;
   color: #64748b;
+}
+
+/* ── Centered operation error dialog (ToastContext / OperationErrorDialog.jsx) ── */
+@keyframes operationErrorFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes operationErrorCardIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.operation-error-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 10050;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right))
+    max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
+  margin: 0;
+  animation: operationErrorFadeIn 0.14s ease-out forwards;
+  pointer-events: auto;
+}
+
+.operation-error-dialog__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.32);
+  backdrop-filter: blur(2px);
+}
+
+.operation-error-dialog__card {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 21.25rem);
+  max-width: calc(100vw - 2rem);
+  border-radius: var(--radius-lg, 0.625rem);
+  border: 1px solid var(--color-border, #e2e8f0);
+  background: #ffffff;
+  padding: 1rem 1rem 0.95rem;
+  box-shadow:
+    0 10px 28px -8px rgba(15, 23, 42, 0.14),
+    0 4px 10px -4px rgba(15, 23, 42, 0.08);
+  animation: operationErrorCardIn 0.16s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  font-family: inherit;
+}
+
+.operation-error-dialog__close {
+  position: absolute;
+  top: 0.55rem;
+  right: 0.55rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-md, 0.5rem);
+  background: transparent;
+  color: var(--color-text-muted, #94a3b8);
+  cursor: pointer;
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.operation-error-dialog__close:hover {
+  background: var(--color-surface-muted, #f1f5f9);
+  color: var(--color-text, #334155);
+}
+
+.operation-error-dialog__close-icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+.operation-error-dialog__title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding-right: 1.75rem;
+}
+
+.operation-error-dialog__icon {
+  width: 1.05rem;
+  height: 1.05rem;
+  flex-shrink: 0;
+  color: #ef4444;
+}
+
+.operation-error-dialog__title {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--color-text, #1e293b);
+  letter-spacing: -0.01em;
+}
+
+.operation-error-dialog__message {
+  margin: 0.45rem 0 0;
+  padding-left: 1.5rem;
+  font-size: 0.8125rem;
+  font-weight: 400;
+  line-height: 1.45;
+  color: var(--color-text-muted, #64748b);
 }
 
 /* ========== Smooth Page Transition (Anti-Blink) ========== */

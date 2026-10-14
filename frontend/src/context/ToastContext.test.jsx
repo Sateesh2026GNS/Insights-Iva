@@ -1,6 +1,21 @@
 import { describe, expect, it } from "vitest";
-import { formatSimpleToastMessage } from "./ToastContext";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+
+import { formatSimpleToastMessage, ToastProvider, useToast } from "./ToastContext";
 import { apiErrorMessage, formatApiError, httpStatusMessage } from "../utils/apiError";
+import {
+  OPERATION_ERROR_DUPLICATE_MESSAGE,
+  OPERATION_ERROR_DUPLICATE_TITLE,
+} from "../utils/operationError";
+
+function ToastProbe({ message, type = "error" }) {
+  const { addToast } = useToast();
+  return (
+    <button type="button" onClick={() => addToast(message, type)}>
+      trigger
+    </button>
+  );
+}
 
 describe("Validation error toast popup formatting", () => {
   it("formats Pydantic and FastAPI validation error toasts as 'Enter valid inputs'", () => {
@@ -46,5 +61,50 @@ describe("Validation error toast popup formatting", () => {
   it("formatApiError returns 'Enter valid inputs' on validation error arrays and value error strings", () => {
     expect(formatApiError([{ loc: ["body", "phone"], msg: "Value error" }])).toBe("Enter valid inputs");
     expect(formatApiError("phone: Value error, Mobile No. cannot start with 1")).toBe("Enter valid inputs");
+  });
+
+  it("shows centered operation error dialog for duplicate save failures", async () => {
+    render(
+      <ToastProvider>
+        <ToastProbe message="A vendor with GSTIN '29ABCDE1234F1Z5' already exists." />
+      </ToastProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "trigger" }));
+
+    expect(await screen.findByRole("alertdialog")).toBeInTheDocument();
+    expect(screen.getByText(OPERATION_ERROR_DUPLICATE_TITLE)).toBeInTheDocument();
+    expect(screen.getByText(OPERATION_ERROR_DUPLICATE_MESSAGE)).toBeInTheDocument();
+  });
+
+  it("keeps validation errors as corner toasts, not the centered dialog", async () => {
+    render(
+      <ToastProvider>
+        <ToastProbe message="phone: Value error, invalid" />
+      </ToastProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "trigger" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toBeInTheDocument();
+    });
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    expect(screen.getByText("Enter valid inputs")).toBeInTheDocument();
+  });
+
+  it("does not open duplicate centered dialogs for the same error within 4s", async () => {
+    render(
+      <ToastProvider>
+        <ToastProbe message="Email already in use" />
+      </ToastProvider>,
+    );
+
+    const trigger = screen.getByRole("button", { name: "trigger" });
+    fireEvent.click(trigger);
+    fireEvent.click(trigger);
+
+    expect(await screen.findByRole("alertdialog")).toBeInTheDocument();
+    expect(screen.getAllByRole("alertdialog")).toHaveLength(1);
   });
 });

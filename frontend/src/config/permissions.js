@@ -315,6 +315,7 @@ export const STORE_MANAGER_ALLOWED_PATHS = new Set([
   "/purchases/debit-notes",
   "/masters/vendors",
   "/masters/products",
+  "/production/bom",
   "/sales/customers",
   "/settings",
   "/settings/my-account",
@@ -343,6 +344,23 @@ export const STORE_MANAGER_ALLOWED_PATHS = new Set([
 
 export function isProductionManager(user) {
   return hasRole(user, "Production Manager");
+}
+
+export function userCanViewBom(user) {
+  if (!user) return false;
+  if (isOperator(user) || isSalesManager(user)) return false;
+  if (isAdmin(user) || isProductionManager(user) || isStoreManager(user) || isAccountant(user)) return true;
+  return false;
+}
+
+export function userCanEditBom(user) {
+  if (!user) return false;
+  return isAdmin(user) || isProductionManager(user);
+}
+
+export function userCanViewBomCost(user) {
+  if (!user) return false;
+  return isAdmin(user) || isProductionManager(user) || isAccountant(user);
 }
 
 export function isStoreManager(user) {
@@ -527,6 +545,7 @@ export function storeManagerPathAllowed(pathname) {
   if (path.startsWith("/chat")) return true;
   if (path.startsWith("/meetings")) return true;
   if (path.startsWith("/sales/customers")) return true;
+  if (path.startsWith("/production/bom")) return true;
   return false;
 }
 
@@ -654,6 +673,7 @@ export function userCanAccessPath(user, pathname) {
   // BOM maintenance is available to members explicitly granted production access,
   // even though its route sits under Masters.
   if (path === "/masters/bom" && userCanAccess(user, "production")) return true;
+  if (path.startsWith("/production/bom") && userCanViewBom(user)) return true;
   const module = getModuleForPath(pathname);
   if (!userCanAccess(user, module)) return false;
   if (path === "/analytics" || path.startsWith("/analytics/")) {

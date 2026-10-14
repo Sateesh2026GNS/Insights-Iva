@@ -52,7 +52,7 @@ export const SIDEBAR_NAV = [
       { label: "Customers", to: "/sales/customers", module: "masters" },
       { label: "Vendors", to: "/procurement/vendors", module: "masters" },
       { label: "Products", to: "/masters/products", module: "masters" },
-      { label: "Bill of Materials (BOM)", to: "/masters/bom", module: "production" },
+      { label: "Bill of Materials (BOM)", to: "/production/bom", module: "production", bomViewOnly: true },
     ],
   },
   {
@@ -61,6 +61,7 @@ export const SIDEBAR_NAV = [
     icon: Factory,
     children: [
       { labelKey: "erpNav.productionPlanning", to: "/production/planning", module: "production", managerOnly: true },
+      { label: "Bill of Materials", to: "/production/bom", module: "production", bomViewOnly: true },
       { labelKey: "erpNav.workOrders", to: "/production/work-orders", module: "production" },
       { labelKey: "erpNav.productionSchedule", to: "/production/schedule", module: "production" },
       { labelKey: "erpNav.machineAllocation", to: "/production/tasks", module: "production", managerOnly: true },

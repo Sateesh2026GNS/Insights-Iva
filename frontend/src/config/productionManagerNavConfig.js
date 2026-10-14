@@ -41,6 +41,7 @@ export const PRODUCTION_MANAGER_NAV_ITEMS = [
         module: "production",
         end: true,
       },
+      { key: "bom", label: "Bill of Materials (BOM)", to: "/production/bom", module: "production" },
       { key: "workOrders", label: "Work Orders", to: "/production/work-orders", module: "production" },
       { key: "schedule", label: "Production Schedule", to: "/production/schedule", module: "production" },
       { key: "machineAllocation", label: "Machine Allocation", to: "/production/tasks", module: "production" },
@@ -87,7 +88,7 @@ export const PRODUCTION_MANAGER_NAV_ITEMS = [
     icon: Layers,
     module: "production",
     children: [
-      { key: "bom", label: "Bill of Materials (BOM)", to: "/masters/bom", module: "production" },
+      { key: "bomMaster", label: "Bill of Materials (BOM)", to: "/production/bom", module: "production" },
     ],
   },
   {
