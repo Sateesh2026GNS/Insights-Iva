@@ -1212,46 +1212,27 @@ input[type="datetime-local"],
 input[type="month"],
 input[type="time"],
 .ui-date-input {
+  position: relative;
   color-scheme: light dark;
   font-family: var(--font-sans);
 }
-input[type="date"]::-webkit-calendar-picker-indicator,
-input[type="datetime-local"]::-webkit-calendar-picker-indicator,
-input[type="month"]::-webkit-calendar-picker-indicator,
-input[type="time"]::-webkit-calendar-picker-indicator {
-  cursor: pointer;
-  opacity: 0.65;
-  filter: opacity(0.85);
-}
-input[type="date"]::-webkit-calendar-picker-indicator:hover,
-input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover,
-input[type="month"]::-webkit-calendar-picker-indicator:hover,
-input[type="time"]::-webkit-calendar-picker-indicator:hover {
-  opacity: 1;
-}
-/* Avoid duplicate chrome on native date controls (Edge / Chrome) */
-input[type="date"]::-webkit-inner-spin-button,
-input[type="datetime-local"]::-webkit-inner-spin-button,
-input[type="time"]::-webkit-inner-spin-button {
-  display: none;
-}
-input[type="date"]::-webkit-clear-button,
-input[type="datetime-local"]::-webkit-clear-button {
-  display: none;
-}
-/* Custom calendar button (FormField / DatePicker) — single icon only */
+
+/* Custom calendar button (FormField / DatePicker) — single icon only, anchored at calendar button */
 .ui-date-input::-webkit-calendar-picker-indicator,
 .relative > input[type="datetime-local"]::-webkit-calendar-picker-indicator,
 .relative > input[type="date"]::-webkit-calendar-picker-indicator {
-  display: none !important;
-  -webkit-appearance: none !important;
-  appearance: none !important;
-  opacity: 0 !important;
-  pointer-events: none !important;
-  width: 0 !important;
-  height: 0 !important;
+  position: absolute !important;
+  top: 0 !important;
+  right: 0 !important;
+  width: 2.5rem !important;
+  height: 100% !important;
   margin: 0 !important;
   padding: 0 !important;
+  opacity: 0 !important;
+  cursor: pointer !important;
+  display: block !important;
+  background: transparent !important;
+  color: transparent !important;
 }
 .ui-date-range-popover {
   z-index: 80;

@@ -504,16 +504,13 @@ export default function CreateLeadPage() {
 
   return (
     <div className="ui-page mx-auto max-w-[960px] space-y-4 p-4 pb-24">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-bold text-[var(--color-text)]">
-          {isEdit ? t("sales.leads.create.editTitle") : t("sales.leads.create.title")}
-        </h1>
-        {leadNo ? (
+      {leadNo ? (
+        <div className="flex items-center">
           <span className="rounded-full bg-[var(--color-surface-muted)] px-3 py-1 text-xs font-semibold text-[var(--color-text-secondary)]">
             {leadNo}
           </span>
-        ) : null}
-      </div>
+        </div>
+      ) : null}
 
       <AsyncPageBody
         loading={loading}
@@ -624,6 +621,7 @@ export default function CreateLeadPage() {
                 onChange={(val) => set("expected_value", val)}
                 placeholder="0"
                 className={inputClass}
+                showWords={false}
               />
             </Field>
             <Field label={t("sales.leads.create.expectedClose")} error={fieldErrors.expected_close_date}>

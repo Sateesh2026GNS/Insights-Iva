@@ -40,7 +40,6 @@ export const SIDEBAR_NAV = [
     to: "/my-job-cards",
     icon: ClipboardList,
     module: "production",
-    operatorOnly: true,
     end: false,
   },
   {

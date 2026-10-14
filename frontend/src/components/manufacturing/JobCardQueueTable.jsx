@@ -376,11 +376,10 @@ export default function JobCardQueueTable({
         icon="clipboard"
         title={emptyTitle}
         description={emptyDescription}
-        actionLabel={emptyAction?.label || (onRefresh ? "Refresh" : undefined)}
+        actionLabel={emptyAction?.label}
         actionHref={emptyAction?.to}
-        onAction={emptyAction?.onClick || (emptyAction?.to ? undefined : onRefresh)}
-        compact
-        className="mx-4 my-6 border-0 bg-transparent"
+        onAction={emptyAction?.onClick}
+        className="border-none bg-transparent py-12"
       />
     );
   }

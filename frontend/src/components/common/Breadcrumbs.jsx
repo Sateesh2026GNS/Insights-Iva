@@ -16,6 +16,7 @@ const pathLabels = {
   machines: "Machines",
   reports: "Daily Reports",
   create: "Create",
+  new: "Create",
   inventory: "Inventory",
   "raw-materials": "Raw Materials",
   "finished-goods": "Finished Goods",
@@ -212,11 +213,13 @@ const PAGE_TITLE_OVERRIDES = {
   "/analytics/inventory": "Inventory KPI",
   "/analytics/sales": "Sales KPI",
   "/analytics/finance": "Finance KPI",
+  "/sales/leads/new": "Create New Lead",
 };
 
 const BREADCRUMB_TITLE_OVERRIDES = {
   "/inventory": "Stock Items",
   "/production/dashboard": "Dashboard",
+  "/sales/leads/new": "Create New Lead",
 };
 
 const STAGE_LABELS = {
@@ -278,7 +281,8 @@ function getLabel(segment, segments, index) {
 
   if (segment === "dashboard" && prev === "inventory") return "Dashboard";
   if (segment === "settings" && prev === "inventory") return "Inventory Settings";
-  if (segment === "create" && prev && ENTITY_SINGULAR[prev]) {
+  if ((segment === "create" || segment === "new") && prev && ENTITY_SINGULAR[prev]) {
+    if (segment === "new" && prev === "leads") return "Create New Lead";
     return `Create ${ENTITY_SINGULAR[prev]}`;
   }
   if (segment === "edit" && index >= 2) {
@@ -322,7 +326,7 @@ function getLabel(segment, segments, index) {
     ENTITY_SINGULAR[prev] &&
     !pathLabels[segment] &&
     segment.length > 0 &&
-    !["create", "edit", "copy", "bulk-import"].includes(segment)
+    !["create", "new", "edit", "copy", "bulk-import"].includes(segment)
   ) {
     return `${ENTITY_SINGULAR[prev]} Details`;
   }

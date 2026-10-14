@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { ClipboardList, Plus } from "lucide-react";
+import { ClipboardList, Plus, Search, X } from "lucide-react";
 
 import Button from "../../components/common/Button";
 import { ListPageShell } from "../../components/common/ListPageShell";
@@ -158,6 +158,7 @@ export default function MyJobCardsPage() {
   const [serverSearchActive, setServerSearchActive] = useState(false);
   const [customerSelectOptions, setCustomerSelectOptions] = useState([]);
   const [sendTarget, setSendTarget] = useState(null);
+  const [searchOpen, setSearchOpen] = useState(false);
   const deleteInFlight = useRef(false);
 
   const canCreate = userCanCreateSalesJobCard(user);
@@ -621,7 +622,7 @@ export default function MyJobCardsPage() {
           : qualityMode
             ? "Completed production jobs appear here when ready for quality inspection."
             : canCreate
-              ? "Create your first Sales Job Card using the button below."
+              ? "No Sales Job Cards have been created yet."
               : "Job cards appear here when they are created in the manufacturing workflow.";
   const sectionTitle = storeMode
     ? "Sales Orders / Job Cards from Sales"
@@ -747,42 +748,60 @@ export default function MyJobCardsPage() {
           ) : (
             <span className="my-job-cards-page__section-total">Total: {listTotal}</span>
           )}
-          {sectionTitle || (canCreate && !storeMode && !billingMode && !operatorMode && !qualityMode) ? (
-            <div className="my-job-cards-page__section-actions">
-              {sectionTitle ? (
-                <span className="my-job-cards-page__section-total">Total: {listTotal}</span>
-              ) : null}
-              {canCreate && !storeMode && !billingMode && !operatorMode && !qualityMode ? (
-                <Button
-                  variant="add"
-                  size="sm"
-                  onClick={() => navigate(jobCardCreateUrl())}
-                  leftIcon={<Plus className="h-4 w-4" aria-hidden />}
-                >
-                  Create Job Card
-                </Button>
-              ) : null}
-            </div>
-          ) : null}
+          <div className="my-job-cards-page__section-actions">
+            {sectionTitle ? (
+              <span className="my-job-cards-page__section-total">Total: {listTotal}</span>
+            ) : null}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setSearchOpen((v) => !v)}
+              aria-expanded={searchOpen}
+              aria-controls="my-job-cards-filters-panel"
+              className={searchOpen ? "my-job-cards-search-toggle--open" : ""}
+              leftIcon={
+                searchOpen ? (
+                  <X className="h-4 w-4" aria-hidden />
+                ) : (
+                  <Search className="h-4 w-4" aria-hidden />
+                )
+              }
+            >
+              {searchOpen ? "Close Search" : "Search"}
+            </Button>
+            {canCreate && !storeMode && !billingMode && !operatorMode && !qualityMode ? (
+              <Button
+                variant="add"
+                size="sm"
+                onClick={() => navigate(jobCardCreateUrl())}
+                leftIcon={<Plus className="h-4 w-4" aria-hidden />}
+              >
+                Create Job Card
+              </Button>
+            ) : null}
+          </div>
         </div>
 
-        <div id="my-job-cards-filters-panel" className="my-job-cards-page__filters-panel">
-          <JobCardQueueFilters
-            search={draftFilters.search}
-            onSearchChange={(v) => patchDraft("search", v)}
-            customer={draftFilters.customer}
-            onCustomerChange={(v) => patchDraft("customer", v)}
-            salesOrderNo={draftFilters.salesOrderNo}
-            onSalesOrderNoChange={(v) => patchDraft("salesOrderNo", v)}
-            customerSelectOptions={customerSelectOptions}
-            salesOrderSelectOptions={salesOrderSelectOptions}
-            erpLayout
-            searching={searching}
-            onClear={clearFilters}
-            onApply={handleApplyFilters}
-            onSearchKeyDown={handleSearchKeyDown}
-          />
-        </div>
+        {searchOpen ? (
+          <div id="my-job-cards-filters-panel" className="my-job-cards-page__filters-panel">
+            <JobCardQueueFilters
+              search={draftFilters.search}
+              onSearchChange={(v) => patchDraft("search", v)}
+              customer={draftFilters.customer}
+              onCustomerChange={(v) => patchDraft("customer", v)}
+              salesOrderNo={draftFilters.salesOrderNo}
+              onSalesOrderNoChange={(v) => patchDraft("salesOrderNo", v)}
+              customerSelectOptions={customerSelectOptions}
+              salesOrderSelectOptions={salesOrderSelectOptions}
+              erpLayout
+              searching={searching}
+              onClear={clearFilters}
+              onApply={handleApplyFilters}
+              onSearchKeyDown={handleSearchKeyDown}
+            />
+          </div>
+        ) : null}
 
         {partialWarning ? (
           <div className="px-4 pt-4">
@@ -818,12 +837,6 @@ export default function MyJobCardsPage() {
             jobCardLinkForRow={jobCardLinkForRow}
             emptyTitle={emptyTitle}
             emptyDescription={emptyDescription}
-            emptyAction={
-              canCreate && !storeMode && !billingMode && !operatorMode && !qualityMode
-                ? { label: "Create Job Card", onClick: () => navigate(jobCardCreateUrl()) }
-                : undefined
-            }
-            onRefresh={reloadQueue}
             snoOffset={from}
             storeMode={storeMode}
             erpLayout

@@ -57,4 +57,23 @@ describe("JobCardQueueTable ERP job card link", () => {
 
     expect(tableWrap.scrollLeft).toBe(0);
   });
+
+  it("renders empty state without a refresh button even if onRefresh is passed", () => {
+    const onRefresh = vi.fn();
+    render(
+      <MemoryRouter>
+        <JobCardQueueTable
+          rows={[]}
+          emptyTitle="No Job Cards Found"
+          emptyDescription="No Sales Job Cards have been created yet."
+          onRefresh={onRefresh}
+        />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText("No Job Cards Found")).toBeInTheDocument();
+    expect(screen.getByText("No Sales Job Cards have been created yet.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /refresh/i })).not.toBeInTheDocument();
+  });
 });
+

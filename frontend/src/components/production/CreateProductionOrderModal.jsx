@@ -59,7 +59,7 @@ function DateTimeField({ value, onChange, error }) {
         type="datetime-local"
         value={value}
         onChange={onChange}
-        className={`ui-input w-full !pr-10 [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:w-0 [&::-webkit-calendar-picker-indicator]:pointer-events-none ${error ? "border-[var(--color-danger)]" : ""}`}
+        className={`ui-input w-full !pr-10 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-0 [&::-webkit-calendar-picker-indicator]:top-0 [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:w-10 [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer ${error ? "border-[var(--color-danger)]" : ""}`}
       />
       <button
         type="button"

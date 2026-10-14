@@ -177,7 +177,8 @@ export function DatePicker({
     return (
       <div className={className}>
         <div
-          className={`ui-date-compact relative flex w-full items-center ${
+          onClick={openPicker}
+          className={`ui-date-compact relative flex w-full items-center cursor-pointer ${
             error ? "ui-date-compact--error" : ""
           } ${disabled ? "ui-date-compact--disabled" : ""} ${inputClassName}`.trim()}
         >

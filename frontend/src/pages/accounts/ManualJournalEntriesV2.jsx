@@ -180,7 +180,7 @@ export default function ManualJournalEntriesV2() {
                   value={fromDate}
                   onChange={(e) => setFromDate(e.target.value)}
                   onClick={(e) => e.target.showPicker?.()}
-                  className="w-[110px] border-0 bg-transparent text-[12px] font-medium outline-none cursor-pointer [&::-webkit-calendar-picker-indicator]:hidden"
+                  className="w-[110px] border-0 bg-transparent text-[12px] font-medium outline-none cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer"
                 />
                 <span className="text-[#94A3B8] font-semibold">→</span>
                 <input
@@ -188,7 +188,7 @@ export default function ManualJournalEntriesV2() {
                   value={toDate}
                   onChange={(e) => setToDate(e.target.value)}
                   onClick={(e) => e.target.showPicker?.()}
-                  className="w-[110px] border-0 bg-transparent text-[12px] font-medium outline-none cursor-pointer [&::-webkit-calendar-picker-indicator]:hidden"
+                  className="w-[110px] border-0 bg-transparent text-[12px] font-medium outline-none cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer"
                 />
               </div>
               <AccountsAddButton onClick={goNew} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
