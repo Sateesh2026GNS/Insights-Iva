@@ -123,6 +123,8 @@ const pathLabels = {
   inspection: "Inspection",
   "inventory-settings": "Inventory Settings",
   "invoice-settings": "Invoice Settings",
+  "opening-balances": "Opening Balances",
+  devices: "Manage Devices",
   "invoice-template": "Invoice Template",
   "issue-materials": "Issue Materials",
   "live-operations": "Live Operations",

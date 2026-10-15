@@ -9,7 +9,13 @@ from app.api.deps import get_db
 from app.core.auth_cookies import cookie_auth_enabled, read_access_token
 from app.models.user import User
 from app.services.auth_service import decode_access_token
-from app.services.security_service import check_session_active, is_access_token_revoked, touch_user_activity
+from app.services.security_service import (
+    check_session_active,
+    is_access_token_revoked,
+    is_refresh_session_revoked,
+    touch_refresh_session,
+    touch_user_activity,
+)
 
 http_bearer = HTTPBearer(auto_error=False)
 
@@ -73,6 +79,17 @@ def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Session expired due to inactivity",
         )
+    session_id = payload.get("sid")
+    if session_id and is_refresh_session_revoked(
+        db, session_uuid=str(session_id), user_id=user.id, tenant_id=user.tenant_id
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has been revoked",
+        )
     user.active_role = payload.get("role_name") or payload.get("role")
     touch_user_activity(db, user)
+    if session_id:
+        touch_refresh_session(db, str(session_id))
+    request.state.session_id = session_id
     return user

@@ -10,7 +10,6 @@ import {
   Plus,
   RefreshCw,
   Save,
-  Shield,
   Trash2,
   Upload,
 } from "lucide-react";
@@ -695,26 +694,15 @@ function SecuritySection() {
 
       {tab === "sessions" && (
         <SectionCard title="Sessions & devices">
-          <div className="space-y-3 text-sm text-slate-600 dark:text-slate-300">
-            <div className="flex items-center justify-between rounded-xl border border-slate-100 px-4 py-3 dark:border-slate-700">
-              <div className="flex items-center gap-3">
-                <Shield className="h-5 w-5 text-[var(--color-primary)]" />
-                <div>
-                  <p className="font-medium text-slate-800 dark:text-slate-100">This browser</p>
-                  <p className="text-xs text-slate-500">Current session · Active now</p>
-                </div>
-              </div>
-              <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">
-                Trusted
-              </span>
-            </div>
-            <p className="text-xs text-slate-500">
-              Change password from your profile or use Forgot Password on the login page.
-            </p>
-            <Link to="/forgot-password" className="inline-flex text-sm font-semibold text-[var(--color-primary)] hover:underline">
-              Reset password →
-            </Link>
-          </div>
+          <p className="mb-3 text-sm text-slate-600 dark:text-slate-300">
+            Review signed-in browsers and sign out of sessions you do not recognise.
+          </p>
+          <Link
+            to="/settings/my-account/devices"
+            className="inline-flex text-sm font-semibold text-[var(--color-primary)] hover:underline"
+          >
+            Open Manage Devices →
+          </Link>
         </SectionCard>
       )}
     </PanelShell>

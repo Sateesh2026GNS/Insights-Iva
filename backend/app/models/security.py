@@ -8,17 +8,31 @@ from app.models.base import Base, TimestampMixin
 
 
 class RefreshToken(Base, TimestampMixin):
+    """Refresh-token row = one browser/device session. Never expose token_hash."""
+
     __tablename__ = "refresh_tokens"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
+    tenant_id: Mapped[int | None] = mapped_column(
+        ForeignKey("tenants.id", ondelete="CASCADE"), nullable=True, index=True
+    )
+    session_uuid: Mapped[str] = mapped_column(String(36), unique=True, nullable=False, index=True)
     token_hash: Mapped[str] = mapped_column(String(128), unique=True, nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     revoked: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_active_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_jti: Mapped[str | None] = mapped_column(String(64), nullable=True)
     user_agent: Mapped[str | None] = mapped_column(String(512))
     ip_address: Mapped[str | None] = mapped_column(String(64))
+    device_name: Mapped[str | None] = mapped_column(String(255))
+    browser: Mapped[str | None] = mapped_column(String(128))
+    operating_system: Mapped[str | None] = mapped_column(String(128))
+    device_type: Mapped[str | None] = mapped_column(String(32))
+    approximate_location: Mapped[str | None] = mapped_column(String(128))
 
 
 class RevokedToken(Base, TimestampMixin):

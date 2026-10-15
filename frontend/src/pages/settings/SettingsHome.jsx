@@ -2,10 +2,16 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import LogoutConfirmModal from "../../components/common/LogoutConfirmModal";
-import { filterAccessibleSettingsCategories, isOperator } from "../../config/permissions";
+import {
+  filterAccessibleSettingsCategories,
+  isOperator,
+  userCanAccessSettingsSection,
+} from "../../config/permissions";
 import useAuth from "../../hooks/useAuth";
 import { SETTINGS_NAV_GROUPS, searchSettingsCategories } from "./settingsCatalog";
 import Button from "../../components/common/Button";
+import OpeningBalancesPanel from "./OpeningBalancesPanel";
+import { useOpeningBalanceDate } from "./useOpeningBalanceDate";
 import {
   SettingsGroupPanel,
   SettingsHero,
@@ -15,6 +21,7 @@ import {
   SkeletonCards,
   resolveSettingsIcon,
 } from "./settingsUi";
+import { PartialDataState } from "../../components/common/states";
 
 export default function SettingsHome() {
   const navigate = useNavigate();
@@ -29,6 +36,8 @@ export default function SettingsHome() {
   );
   const byId = useMemo(() => Object.fromEntries(results.map((c) => [c.id, c])), [results]);
   const isSearching = Boolean(query.trim());
+  const canOpeningBalances = userCanAccessSettingsSection(user, "opening-balances");
+  const opening = useOpeningBalanceDate(canOpeningBalances && !isSearching);
 
   const groups = useMemo(() => {
     if (isSearching) {
@@ -116,6 +125,30 @@ export default function SettingsHome() {
           ))}
         </div>
       )}
+
+      {canOpeningBalances && !isSearching ? (
+        <div className="space-y-3">
+          {opening.partial ? (
+            <PartialDataState
+              description="The saved opening balance date could not be loaded. The default financial-year start is shown."
+              onRetry={opening.load}
+            />
+          ) : null}
+          {opening.loading ? (
+            <div className="grid gap-4 lg:grid-cols-2">
+              <div className="ui-card h-44 animate-pulse bg-[var(--color-surface-muted)]" />
+              <div className="ui-card h-44 animate-pulse bg-[var(--color-surface-muted)]" />
+            </div>
+          ) : (
+            <OpeningBalancesPanel
+              dateValue={opening.dateValue}
+              onDateChange={opening.saveDate}
+              saving={opening.saving}
+              fieldError={opening.fieldError}
+            />
+          )}
+        </div>
+      ) : null}
     </div>
   );
 }

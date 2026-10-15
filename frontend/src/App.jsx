@@ -218,6 +218,7 @@ export default function App() {
     location.pathname === "/settings/change-format" ||
     location.pathname === "/settings/format-settings" ||
     location.pathname === "/settings/invoice-settings" ||
+    location.pathname === "/settings/opening-balances" ||
     location.pathname === "/inventory/items/create" ||
     location.pathname === "/masters/products" ||
     location.pathname.startsWith("/masters/products/") ||
